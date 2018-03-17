@@ -7,8 +7,8 @@
             "Source/LyShine.h",
             "Source/LyShineDebug.cpp",
             "Source/LyShineDebug.h",
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h",
+            "Source/LyShine_precompiled.cpp",
+            "Source/LyShine_precompiled.h",
             "Source/UiRenderer.cpp",
             "Source/UiRenderer.h",
             "Source/resource.h"

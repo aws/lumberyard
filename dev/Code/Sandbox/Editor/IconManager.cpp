@@ -110,7 +110,7 @@ int CIconManager::GetIconTexture(const char* iconName)
     QString actualName = iconName;
 
     char iconPath[AZ_MAX_PATH_LEN] = { 0 };
-    gEnv->pFileIO->ResolvePath(actualName.toLatin1().data(), iconPath, AZ_MAX_PATH_LEN);
+    gEnv->pFileIO->ResolvePath(actualName.toUtf8().data(), iconPath, AZ_MAX_PATH_LEN);
 
     // if we can't find it at the resolved path, try the devroot if necessary:
     if (!gEnv->pFileIO->Exists(iconPath))
@@ -230,10 +230,10 @@ QImage* CIconManager::GetIconBitmap(const char* filename, bool& bHaveAlpha, uint
     if (Path::GetExt(iconFilename).isEmpty())
     {
         // By default add .bmp extension to the filename without extension.
-        pBitmap = GetIconBitmap((iconFilename + ".png").toLatin1().data(), bHaveAlpha);
+        pBitmap = GetIconBitmap((iconFilename + ".png").toUtf8().data(), bHaveAlpha);
         if (!pBitmap)
         {
-            pBitmap = GetIconBitmap((iconFilename + ".bmp").toLatin1().data(), bHaveAlpha);
+            pBitmap = GetIconBitmap((iconFilename + ".bmp").toUtf8().data(), bHaveAlpha);
         }
         return pBitmap;
     }

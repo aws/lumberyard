@@ -17,7 +17,7 @@
                             </div>
                             <div *ngSwitchCase="false">
                                 <div *ngFor="let gem of gemService.currentGems" class="sidebar-links">
-                                    <a class="child-link" [routerLink]="['/game/cloudgems/', gem.identifier]" routerLinkActive="active"> 
+                                    <a class="child-link" (click)="raiseRouteEvent('/game/cloudgems/'+gem.identifier)" routerLinkActive="active"> 
                                         {{gem.displayName}} 
                                     </a>
                                 </div>
@@ -26,11 +26,11 @@
                     </div>
                 </ng-container>
             </div>
-            <a routerLink="support" routerLinkActive="active">
+            <a (click)="raiseRouteEvent('/game/support')" routerLinkActive="active">
                 <i class="fa fa-life-ring fa-lg" aria-hidden="true"></i>
                 <span *ngIf="sidebarState === 'Expanded'"> Support </span>
             </a>
-            <a routerLink="analytics" routerLinkActive="active">
+            <a (click)="raiseRouteEvent('/game/analytics')" routerLinkActive="active">
                 <i class="fa fa-area-chart fa-lg" aria-hidden="true"></i>
                 <span *ngIf="sidebarState === 'Expanded'"> Analytics </span>
             </a>
@@ -44,10 +44,10 @@
             </a>
             <div *ngIf="sidebarState === 'Expanded'">
                 <div class="child-links">
-                    <a class="child-link admin-user-mgt" routerLink="/game/admin/users" routerLinkActive="active">
+                    <a class="child-link admin-user-mgt"  (click)="raiseRouteEvent('/game/admin/users')" routerLinkActive="active">
                         User Administration
                     </a>
-                    <a class="child-link admin-proj-logs" routerLink="/game/admin/logs" routerLinkActive="active">
+                    <a class="child-link admin-proj-logs" (click)="raiseRouteEvent('/game/admin/logs')" routerLinkActive="active">
                         Project Logs
                     </a>
                 </div>

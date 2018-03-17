@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "CapsuleShapeComponent.h"
 #include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/Math/Transform.h>

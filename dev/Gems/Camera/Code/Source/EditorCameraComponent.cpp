@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Camera_precompiled.h"
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
@@ -222,9 +222,14 @@ namespace Camera
         m_view->SetCurrentParams(viewParams);
     }
 
-    float EditorCameraComponent::GetFov()
+    float EditorCameraComponent::GetFovDegrees()
     {
         return m_fov;
+    }
+
+    float EditorCameraComponent::GetFovRadians()
+    {
+        return AZ::DegToRad(m_fov);
     }
 
     float EditorCameraComponent::GetNearClipDistance()
@@ -247,10 +252,15 @@ namespace Camera
         return m_frustumHeight;
     }
 
-    void EditorCameraComponent::SetFov(float fov)
+    void EditorCameraComponent::SetFovDegrees(float fov)
     {
         m_fov = AZ::GetClamp(fov, s_minFoV, s_maxFoV); 
         UpdateCamera();
+    }
+
+    void EditorCameraComponent::SetFovRadians(float fovRadians)
+    {
+        SetFovDegrees(AZ::RadToDeg(fovRadians));
     }
 
     void EditorCameraComponent::SetNearClipDistance(float nearClipDistance)

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <stdafx.h>
+#include <StdAfx.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyBoolRadioButtonsCtrl.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyQTConstants.h>
 

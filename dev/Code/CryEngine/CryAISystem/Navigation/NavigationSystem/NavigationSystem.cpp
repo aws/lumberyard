@@ -72,6 +72,8 @@ enum
 #if NAVIGATION_SYSTEM_PC_ONLY
 void GenerateTileJob(MNM::TileGenerator::Params params, volatile uint16* state, MNM::Tile* tile, uint32* hashValue)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AI);
+
     if (*state != NavigationSystem::TileTaskResult::Failed)
     {
         MNM::TileGenerator generator;
@@ -90,9 +92,6 @@ void GenerateTileJob(MNM::TileGenerator::Params params, volatile uint16* state, 
         }
     }
 }
-
-
-DECLARE_JOB("NavigationGeneration", NavigationGenerationJob, GenerateTileJob);
 #endif
 
 uint32 NameHash(const char* name)
@@ -379,7 +378,7 @@ void NavigationSystem::DestroyMesh(NavigationMeshID meshID)
         {
             if (m_results[m_runningTasks[t]].meshID == meshID)
             {
-                gEnv->pJobManager->WaitForJob(m_results[m_runningTasks[t]].jobState);
+                m_results[m_runningTasks[t]].jobExecutor.WaitForCompletion();
             }
         }
 
@@ -932,7 +931,7 @@ void NavigationSystem::UpdateMeshes(const float frameTime, const bool blocking, 
                 {
                     FRAME_PROFILER("Navigation System::UpdateMeshes() - Running Task Processing - WaitForJob", gEnv->pSystem, PROFILE_AI);
 
-                    gEnv->GetJobManager()->WaitForJob(result.jobState);
+                    result.jobExecutor.WaitForCompletion();
                 }
 
                 ++completed;
@@ -1176,10 +1175,10 @@ bool NavigationSystem::SpawnJob(TileTaskResult& result, NavigationMeshID meshID,
 
     if (mt)
     {
-        NavigationGenerationJob job(params, &result.state, &result.tile, &result.hashValue);
-        job.RegisterJobState(&result.jobState);
-        job.SetPriorityLevel(JobManager::eStreamPriority);
-        job.Run();
+        result.jobExecutor.StartJob([params, &result]()
+        {
+            GenerateTileJob(params, &result.state, &result.tile, &result.hashValue);
+        }); // Legacy JobManager priority: eStreamPriority
     }
     else
     {
@@ -1494,7 +1493,7 @@ void NavigationSystem::StopAllTasks()
 
     for (size_t t = 0; t < m_runningTasks.size(); ++t)
     {
-        gEnv->pJobManager->WaitForJob(m_results[m_runningTasks[t]].jobState);
+        m_results[m_runningTasks[t]].jobExecutor.WaitForCompletion();
     }
 
     for (size_t t = 0; t < m_runningTasks.size(); ++t)
@@ -2243,6 +2242,16 @@ bool NavigationSystem::ReloadConfig()
                         }
                     }
 
+                    // Make sure the agent height is greater than the climable height
+                    // because otherwise it can cause an infinite loop in the
+                    // navigation algorithm
+                    if (params.heightVoxelCount <= params.climbableVoxelCount)
+                    {
+                        AIWarning("AgentType '%s' height (%d) must be greater than climbable height (%d).",
+                            name, params.heightVoxelCount, params.climbableVoxelCount);
+                        return false;
+                    }
+
                     NavigationAgentTypeID agentTypeID = CreateAgentType(name, params);
                     if (!agentTypeID)
                     {
@@ -2335,8 +2344,11 @@ void NavigationSystem::SetupTasks()
     // will ever,ever,ever make that efficient.
     // PeteB: Optimized the tile job time enough to make it viable to do more than one per frame. Added CVar
     //        multiplier to allow people to control it based on the speed of their machine.
-    m_maxRunningTaskCount = (gEnv->pJobManager->GetNumWorkerThreads() * 3 / 4) * gAIEnv.CVars.NavGenThreadJobs;
-    m_results.resize(m_maxRunningTaskCount);
+    m_maxRunningTaskCount = (AZ::JobContext::GetGlobalContext()->GetJobManager().GetNumWorkerThreads() * 3 / 4) * gAIEnv.CVars.NavGenThreadJobs;
+    {
+        TileTaskResults temp(m_maxRunningTaskCount);
+        m_results.swap(temp);
+    }
 
     for (size_t i = 0; i < m_results.size(); ++i)
     {

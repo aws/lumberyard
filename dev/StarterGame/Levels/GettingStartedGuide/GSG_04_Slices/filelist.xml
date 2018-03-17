@@ -1,6 +1,6 @@
 <download name="GSG_04_Slices" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="402916" md5="b34aeb8fff36ea1f7674e3e2f8c1ee34"/>
+  <file src="level.pak" dest="level.pak" size="403143" md5="07f3d60b81a69ae59faf76b10b457e36"/>
  </files>
 </download>

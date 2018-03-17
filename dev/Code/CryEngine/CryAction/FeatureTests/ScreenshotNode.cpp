@@ -16,6 +16,7 @@
 #include "ScopeGuard.h"
 #include "FeatureTests.h"
 #include <AzCore/IO/SystemFile.h>
+#include "CryActionTraits.h"
 
 /** A feature test node for taking screenshots base on the camera view in flow graph.
 */
@@ -99,7 +100,7 @@ void ScreenshotNode::ProcessEvent(EFlowEvent event, SActivationInfo* pActInfo)
 
             CryFixedStringT<CRYFILE_MAX_PATH> screenshotFileName;
 
-            screenshotFileName.Format(c_screenshotNameTemplate, levelName, FeatureTests::GetTestGroupName(), testName.c_str(), "tif");
+            screenshotFileName.Format(c_screenshotNameTemplate, levelName, FeatureTests::GetTestGroupName(), testName.c_str(), AZ_LEGACY_CRYACTION_TRAIT_SCREENSHOT_EXTENSION);
 
             CryFixedStringT<256> failureString;
 

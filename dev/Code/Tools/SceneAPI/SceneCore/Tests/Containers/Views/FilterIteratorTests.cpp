@@ -41,6 +41,7 @@ namespace AZ
                     }
                     ~FilterIteratorBasicTests() override = default;
 
+                    using BaseIteratorReference = typename IteratorTypedTestsBase<CollectionType>::BaseIteratorReference;
                     template<typename T>
                     void MakeComparePredicate(T compareValue)
                     {
@@ -67,23 +68,27 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     Constructor_InputIsEmptyValidBaseIterator_NoCrash)
                 {
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
                     FilterIterator<BaseIterator>
-                    testIterator(m_testCollection.begin(), m_testCollection.end(),
-                        m_testPredicate);
+                    testIterator(this->m_testCollection.begin(), this->m_testCollection.end(),
+                        this->m_testPredicate);
                 }
 
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     Constructor_MovesForwardBasedOnPredicate_ExpectSkipFirstEntryAndReturnSecond)
                 {
-                    MakeComparePredicate(1);
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeComparePredicate(1);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     FilterIterator<BaseIterator>
-                    lhsIterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    lhsIterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     EXPECT_EQ(1, *lhsIterator);
                 }
 
@@ -91,14 +96,16 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorPreIncrement_MoveOneUnfilteredElementUp_ReturnsTheSecondValue)
                 {
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     FilterIterator<BaseIterator>
-                    iterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    iterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     ++iterator;
 
                     EXPECT_EQ(1, *iterator);
@@ -107,17 +114,19 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorPreIncrement_MoveOneSkippingOne_ReturnsTheThirdValue)
                 {
-                    MakeComparePredicate(1);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    this->MakeComparePredicate(1);
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     FilterIterator<BaseIterator>
-                    iterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    iterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     ++iterator;
 
                     EXPECT_EQ(2, *iterator);
@@ -126,14 +135,16 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorPostIncrement_MoveOneUnfilteredElementUp_ReturnsTheSecondValue)
                 {
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     FilterIterator<BaseIterator>
-                    iterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    iterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     iterator++;
 
                     EXPECT_EQ(1, *iterator);
@@ -142,17 +153,19 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorPostIncrement_MoveOneSkippingOne_ReturnsTheThirdValue)
                 {
-                    MakeComparePredicate(1);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    this->MakeComparePredicate(1);
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     FilterIterator<BaseIterator>
-                    iterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    iterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     iterator++;
 
                     EXPECT_EQ(2, *iterator);
@@ -162,52 +175,58 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorEqualsEquals_DifferentlyInitializedObjectsPredicatePassesAll_ReturnsFalse)
                 {
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
                     FilterIterator<BaseIterator>
-                    lhsIterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    lhsIterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     FilterIterator<BaseIterator>
-                    rhsIterator(GetBaseIterator(1), m_testCollection.end(),
-                        m_testPredicate);
+                    rhsIterator(this->GetBaseIterator(1), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     EXPECT_NE(lhsIterator, rhsIterator);
                 }
 
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorEqualsEquals_DifferentlyInitializedObjectsPredicatePassesPart_ReturnsTrue)
                 {
-                    MakeComparePredicate(1);
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeComparePredicate(1);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     FilterIterator<BaseIterator>
-                    lhsIterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    lhsIterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     FilterIterator<BaseIterator>
-                    rhsIterator(GetBaseIterator(1), m_testCollection.end(),
-                        m_testPredicate);
+                    rhsIterator(this->GetBaseIterator(1), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     EXPECT_EQ(lhsIterator, rhsIterator);
                 }
 
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorEqualsEquals_SkippingAllEntriesMatchesWithEndIterator_FullySkippedIteratorIsSameAsEnd)
                 {
-                    MakeComparePredicate(3);
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeComparePredicate(3);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     FilterIterator<BaseIterator>
-                    iterator(m_testCollection.begin(), m_testCollection.end(),
-                        m_testPredicate);
+                    iterator(this->m_testCollection.begin(), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     FilterIterator<BaseIterator>
-                    endIterator(m_testCollection.end(), m_testCollection.end(),
-                        m_testPredicate);
+                    endIterator(this->m_testCollection.end(), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     EXPECT_EQ(iterator, endIterator);
                 }
 
@@ -215,15 +234,17 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorNotEquals_DifferentObjects_ReturnsTrue)
                 {
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
 
                     FilterIterator<BaseIterator>
-                    lhsIterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    lhsIterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     FilterIterator<BaseIterator>
-                    rhsIterator(GetBaseIterator(1), m_testCollection.end(),
-                        m_testPredicate);
+                    rhsIterator(this->GetBaseIterator(1), this->m_testCollection.end(),
+                        this->m_testPredicate);
 
                     EXPECT_TRUE(lhsIterator != rhsIterator);
                 }
@@ -232,11 +253,13 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorStar_GetValueByDereferencingIterator_ExpectFirstValueInArray)
                 {
-                    AddElement(m_testCollection, 0);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    AddElement(this->m_testCollection, 0);
 
                     FilterIterator<BaseIterator>
-                    lhsIterator(GetBaseIterator(0), m_testCollection.end(),
-                        m_testPredicate);
+                    lhsIterator(this->GetBaseIterator(0), this->m_testCollection.end(),
+                        this->m_testPredicate);
                     EXPECT_EQ(0, *lhsIterator);
                 }
 
@@ -255,7 +278,7 @@ namespace AZ
                 {
                     int operator()(FilterIteratorBasicTests<Container>& test, int iteratorOffset, int expectedResult)
                     {
-                        FilterIterator<Container::iterator>
+                        FilterIterator<typename Container::iterator>
                         iterator(test.GetBaseIterator(iteratorOffset), test.m_testCollection.begin(), test.m_testCollection.end(),
                             test.m_testPredicate);
 
@@ -290,7 +313,7 @@ namespace AZ
                 {
                     int operator()(FilterIteratorBasicTests<Container>& test, int iteratorOffset, int expectedResult)
                     {
-                        FilterIterator<Container::iterator>
+                        FilterIterator<typename Container::iterator>
                         iterator(test.GetBaseIterator(iteratorOffset), test.m_testCollection.begin(), test.m_testCollection.end(),
                             test.m_testPredicate);
 
@@ -314,10 +337,12 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorDecrement_MoveOneUnfilteredElementDown_ReturnsTheFirstValue)
                 {
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
+                    using CollectionType = typename IteratorTypedTestsBase<TypeParam>::CollectionType;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
                     EXPECT_EQ(0, OperatorPreDecrement<CollectionType>()(*this, 1, 0));
                     EXPECT_EQ(0, OperatorPostDecrement<CollectionType>()(*this, 1, 0));
                 }
@@ -325,12 +350,14 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorDecrement_MoveOneFilteredElementDown_ReturnsTheFirstValue)
                 {
-                    MakeNotEqualPredicate(1);
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    using CollectionType = typename IteratorTypedTestsBase<TypeParam>::CollectionType;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeNotEqualPredicate(1);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
                     EXPECT_EQ(0, OperatorPreDecrement<CollectionType>()(*this, 2, 0));
                     EXPECT_EQ(0, OperatorPostDecrement<CollectionType>()(*this, 2, 0));
                 }
@@ -338,11 +365,13 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorDecrement_MoveDownToLastFilteredElement_ExpectToStayOnCurrentElement)
                 {
-                    MakeNotEqualPredicate(0);
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
+                    using CollectionType = typename IteratorTypedTestsBase<TypeParam>::CollectionType;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeNotEqualPredicate(0);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
                     EXPECT_EQ(1, OperatorPreDecrement<CollectionType>()(*this, 1, 1));
                     EXPECT_EQ(1, OperatorPostDecrement<CollectionType>()(*this, 1, 1));
                 }
@@ -350,10 +379,12 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     OperatorDecrement_MoveOneUnfilteredElementDownFromEnd_ReturnsTheSecondValue)
                 {
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
+                    using CollectionType = typename IteratorTypedTestsBase<TypeParam>::CollectionType;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
                     EXPECT_EQ(1, OperatorPreDecrement<CollectionType>()(*this, 2, 1));
                     EXPECT_EQ(1, OperatorPostDecrement<CollectionType>()(*this, 2, 1));
                 }
@@ -362,13 +393,15 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     MakeFilterView_InputIsIterator_CorrectFilteredElements)
                 {
-                    MakeComparePredicate(2);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
-                    AddElement(m_testCollection, 3);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    this->MakeComparePredicate(2);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+                    AddElement(this->m_testCollection, 3);
                     AZStd::unordered_set<int> expectedElements = {2, 3};
-                    View<FilterIterator<BaseIterator> > view = MakeFilterView(m_testCollection.begin(), m_testCollection.end(),
-                            m_testPredicate);
+                    View<FilterIterator<BaseIterator> > view = MakeFilterView(this->m_testCollection.begin(), this->m_testCollection.end(),
+                            this->m_testPredicate);
                     for (auto it : view)
                     {
                         if (expectedElements.find(it) != expectedElements.end())
@@ -382,16 +415,18 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     MakeFilterView_InputIteratorNotStartsAtBegin_CorrectFilteredElements)
                 {
-                    MakeComparePredicate(2);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
-                    AddElement(m_testCollection, 3);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeComparePredicate(2);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+                    AddElement(this->m_testCollection, 3);
+
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
 
                     AZStd::unordered_set<int> expectedElements = { 2, 3 };
-                    View<FilterIterator<BaseIterator> > view = MakeFilterView(GetBaseIterator(1), m_testCollection.end(),
-                            m_testPredicate);
+                    View<FilterIterator<BaseIterator> > view = MakeFilterView(this->GetBaseIterator(1), this->m_testCollection.end(),
+                            this->m_testPredicate);
                     for (auto it : view)
                     {
                         if (expectedElements.find(it) != expectedElements.end())
@@ -406,15 +441,17 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     Algorithms_CopyFilteredContainer_ContainerIsCopiedWithoutFilteredValue)
                 {
-                    MakeNotEqualPredicate(1);
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeNotEqualPredicate(1);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
 
-                    View<FilterIterator<BaseIterator> > view = MakeFilterView(GetBaseIterator(0), m_testCollection.end(),
-                            m_testPredicate);
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
+
+                    View<FilterIterator<BaseIterator> > view = MakeFilterView(this->GetBaseIterator(0), this->m_testCollection.end(),
+                            this->m_testPredicate);
 
                     AZStd::vector<int> target;
                     AZStd::copy(view.begin(), view.end(), AZStd::back_inserter(target));
@@ -427,36 +464,40 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     Algorithms_FillFilteredContainer_AllValuesAreSetTo42ExceptFilteredValue)
                 {
-                    MakeNotEqualPredicate(1);
-                    AddElement(m_testCollection, 0);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
 
-                    ReorderToMatchIterationWithAddition(m_testCollection);
+                    this->MakeNotEqualPredicate(1);
+                    AddElement(this->m_testCollection, 0);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
 
-                    View<FilterIterator<BaseIterator> > view = MakeFilterView(GetBaseIterator(0), m_testCollection.end(),
-                            m_testPredicate);
+                    ReorderToMatchIterationWithAddition(this->m_testCollection);
+
+                    View<FilterIterator<BaseIterator> > view = MakeFilterView(this->GetBaseIterator(0), this->m_testCollection.end(),
+                            this->m_testPredicate);
 
                     AZStd::generate_n(view.begin(), 2, [](){ return 42; });
 
-                    EXPECT_EQ(42, *GetBaseIterator(0));
-                    EXPECT_EQ(1, *GetBaseIterator(1));
-                    EXPECT_EQ(42, *GetBaseIterator(2));
+                    EXPECT_EQ(42, *this->GetBaseIterator(0));
+                    EXPECT_EQ(1, *this->GetBaseIterator(1));
+                    EXPECT_EQ(42, *this->GetBaseIterator(2));
                 }
 
                 TYPED_TEST_P(FilterIteratorBasicTests,
                     Algorithms_PartialSortCopyFilteredContainer_AllValuesLargerOrEqualThan10AreCopiedAndSorted)
                 {
-                    MakeComparePredicate(10);
-                    AddElement(m_testCollection, 18);
-                    AddElement(m_testCollection, 42);
-                    AddElement(m_testCollection, 36);
-                    AddElement(m_testCollection, 9);
-                    AddElement(m_testCollection, 88);
-                    AddElement(m_testCollection, 3);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    this->MakeComparePredicate(10);
+                    AddElement(this->m_testCollection, 18);
+                    AddElement(this->m_testCollection, 42);
+                    AddElement(this->m_testCollection, 36);
+                    AddElement(this->m_testCollection, 9);
+                    AddElement(this->m_testCollection, 88);
+                    AddElement(this->m_testCollection, 3);
 
                     AZStd::vector<int> results;
-                    View<FilterIterator<BaseIterator> > view = MakeFilterView(m_testCollection.begin(), m_testCollection.end(), m_testPredicate);
+                    View<FilterIterator<BaseIterator> > view = MakeFilterView(this->m_testCollection.begin(), this->m_testCollection.end(), this->m_testPredicate);
 
                     AZStd::copy(view.begin(), view.end(), AZStd::back_inserter(results));
                     for (auto val : results)
@@ -500,11 +541,12 @@ namespace AZ
                 public:
                     FilterIteratorMapTests()
                     {
-                        MakeComparePredicate(0);
+                        this->MakeComparePredicate(0);
                     }
                     ~FilterIteratorMapTests() override = default;
 
                 protected:
+                    using BaseIteratorReference = typename IteratorTypedTestsBase<CollectionType>::BaseIteratorReference;
                     template<typename T>
                     void MakeComparePredicate(T compareValue)
                     {
@@ -521,13 +563,15 @@ namespace AZ
                 TYPED_TEST_P(FilterIteratorMapTests,
                     MakeFilterView_InputIsIterator_CorrectFilteredElements)
                 {
-                    MakeComparePredicate(2);
-                    AddElement(m_testCollection, 1);
-                    AddElement(m_testCollection, 2);
-                    AddElement(m_testCollection, 3);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    this->MakeComparePredicate(2);
+                    AddElement(this->m_testCollection, 1);
+                    AddElement(this->m_testCollection, 2);
+                    AddElement(this->m_testCollection, 3);
                     AZStd::unordered_set<int> expectedElements = { 2, 3 };
-                    View<FilterIterator<BaseIterator> > view = MakeFilterView(m_testCollection.begin(), m_testCollection.end(),
-                            m_testPredicate);
+                    View<FilterIterator<BaseIterator> > view = MakeFilterView(this->m_testCollection.begin(), this->m_testCollection.end(),
+                            this->m_testPredicate);
                     for (auto it : view)
                     {
                         if (expectedElements.find(it.first) != expectedElements.end())

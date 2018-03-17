@@ -13,7 +13,7 @@
 #define TRANSFORMCOMPONENTBUS_H_
 
 #include <AzCore/base.h>
-#include <AzCore/Math/transform.h>
+#include <AzCore/Math/Transform.h>
 
 #pragma once
 

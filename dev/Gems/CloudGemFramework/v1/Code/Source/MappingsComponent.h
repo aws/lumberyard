@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 
 #include <AzCore/Component/Component.h>
 

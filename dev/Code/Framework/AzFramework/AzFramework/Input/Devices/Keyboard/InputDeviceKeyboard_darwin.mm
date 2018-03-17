@@ -14,7 +14,7 @@
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
 
 #include <AppKit/NSEvent.h>
-#include <AppKit/NSTextView.h>
+#include <AppKit/NSView.h>
 #include <AppKit/NSWindow.h>
 #include <Carbon/Carbon.h>
 
@@ -27,13 +27,13 @@
 //
 // "Class X is implemented in both A and B. One of the two will be used. Which one is undefined."
 //
-// To get around this absurdity we're using method swizzling to hook into the two NSTextView methods
-// we need to customize, using EBus to forward them to our InputDeviceKeyboardOsx instance, which in
-// turn will either intercept the calls to implement our custom logic (if it owns the NSTextView) or
-// return false (if it does not own the NSTextView) so that we'll invoke the original implementation.
+// To get around this absurdity we're using method swizzling to hook into two NSResponder methods we
+// can then customize by using EBus to forward them to our InputDeviceKeyboardOsx instance, which in
+// turn will either intercept the calls to implement our custom logic if it owns the NSResponder, or
+// return false if it does not own the NSResponder so that we'll invoke the original implementation.
 //
-// One advantage to all this is that we do not need to add our NSTextView to the view hierarchy, or
-// call makeFirstResponder, we just create it and call interpretKeyEvents as needed to process text.
+// One advantage to all this is that we don't need to add anything to the view hierarchy, instead we
+// just create a dummy NSView and call makeFirstResponder then interpretKeyEvents process text input.
 namespace
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ namespace
         Method instanceMethod = class_getInstanceMethod(classType, selector);
         if (!instanceMethod)
         {
-            AZ_Warning("SetInstanceMethodImplementaion", false, "Instance method not found on NSTextView.");
+            AZ_Warning("SetInstanceMethodImplementaion", false, "Instance method not found");
             return nullptr;
         }
 
@@ -59,148 +59,192 @@ namespace
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! EBus interface used to listen for NSTextView method calls that have been intercepted
-    class NSTextViewMethodHookNotifications : public AZ::EBusTraits
+    //! EBus interface used to listen for NSResponder method calls that have been intercepted
+    class NSResponderMethodHookNotifications : public AZ::EBusTraits
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! EBus Trait: NSTextView method hook notifications are addressed to a single address
+        //! EBus Trait: NSResponder method hook notifications are addressed to a single address
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! EBus Trait: NSTextView method hook notifications can be handled by multiple listeners
+        //! EBus Trait: NSResponder method hook notifications can be handled by multiple listeners
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Sent when a call to the NSTextView::deleteBackward method has been intercepted
-        //! \param[in] textView The NSTextView that the original method was invoked on
-        //! \param[in] sender The sender of the original deleteBackward message
+        //! Sent when a call to the NSResponder::insertText method has been intercepted
+        //! \param[in] responder The NSResponder that the original method was invoked on
+        //! \param[in] textString The text to insert (could be an NString or an NSAttributedString)
         //! \return True if the method call was handled, false otherwise
-        virtual bool DeleteBackward(NSTextView* textView, id sender) = 0;
+        virtual bool InsertText(NSResponder* responder, id textString) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Sent when a call to the NSTextView::shouldChangeTextInRange method has been intercepted
-        //! \param[in] textView The NSTextView that the original method was invoked on
-        //! \param[in] range The range of the text to change
-        //! \param[in] string The new replacement text
+        //! Sent when a call to the NSResponder::noResponderFor method has been intercepted
+        //! \param[in] responder The NSResponder that the original method was invoked on
+        //! \param[in] eventSelector The event selector that was sent to the original message
         //! \return True if the method call was handled, false otherwise
-        virtual bool ShouldChangeTextInRange(NSTextView* textView, NSRange range, NSString* string) = 0;
+        virtual bool NoResponderFor(NSResponder* responder, SEL eventSelector) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Call to insert the custom method hooks into the NSTextView class implementation
+        //! Sent when a call to the NSResponder::doCommandBySelector method has been intercepted
+        //! \param[in] responder The NSResponder that the original method was invoked on
+        //! \param[in] commandSelector The command selector that was sent to the original message
+        //! \return True if the method call was handled, false otherwise
+        virtual bool DoCommandBySelector(NSResponder* responder, SEL commandSelector) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Call to insert the custom method hooks into the NSResponder class implementation
         static void InsertHooks();
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Call to remove the custom method hooks from the NSTextView class implementation
+        //! Call to remove the custom method hooks from the NSResponder class implementation
         static void RemoveHooks();
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Custom implementation of NSTextView::deleteBackward:
-        //! \ref NSTextView::deleteBackward:
-        static void DeleteBackwardHook(NSTextView* textView, SEL selector, id sender);
+        //! Custom implementation of NSResponder::insertText:
+        //! \ref NSResponder::insertText:
+        static void InsertTextHook(NSResponder* responder,
+                                   SEL methodSelector,
+                                   id textString);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Custom implementation of NSTextView::shouldChangeTextInRange:replacementString:
-        //! \ref NSTextView::shouldChangeTextInRange:replacementString:
-        static BOOL ShouldChangeTextInRangeHook(NSTextView* textView,
-                                                SEL selector,
-                                                NSRange range,
-                                                NSString* string);
+        //! Custom implementation of NSResponder::noResponderFor:
+        //! \ref NSResponder::noResponderFor:
+        static void NoResponderForHook(NSResponder* responder,
+                                       SEL methodSelector,
+                                       SEL eventSelector);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Pointer to the default implementation of the NSTextView::deleteBackward method
-        static IMP s_defaultDeleteBackwardImplementation;
+        //! Custom implementation of NSResponder::doCommandBySelector:
+        //! \ref NSResponder::doCommandBySelector:
+        static void DoCommandBySelectorHook(NSResponder* responder,
+                                            SEL methodSelector,
+                                            SEL commandSelector);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Pointer to the default implementation of the NSTextView::shouldChangeTextInRange method
-        static IMP s_defaultShouldChangeTextInRangeImplementation;
+        //! Pointer to the default implementation of the NSResponder::insertText method
+        static IMP s_defaultInsertTextImplementation;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Pointer to the default implementation of the NSResponder::noResponderFor method
+        static IMP s_defaultNoResponderForImplementation;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Pointer to the default implementation of the NSResponder::doCommandBySelector method
+        static IMP s_defaultDoCommandBySelectorImplementation;
     };
-    using NSTextViewMethodHookNotificationBus = AZ::EBus<NSTextViewMethodHookNotifications>;
+    using NSResponderMethodHookNotificationBus = AZ::EBus<NSResponderMethodHookNotifications>;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    IMP NSTextViewMethodHookNotifications::s_defaultDeleteBackwardImplementation = nullptr;
+    IMP NSResponderMethodHookNotifications::s_defaultInsertTextImplementation = nullptr;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    IMP NSTextViewMethodHookNotifications::s_defaultShouldChangeTextInRangeImplementation = nullptr;
+    IMP NSResponderMethodHookNotifications::s_defaultNoResponderForImplementation = nullptr;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void NSTextViewMethodHookNotifications::InsertHooks()
+    IMP NSResponderMethodHookNotifications::s_defaultDoCommandBySelectorImplementation = nullptr;
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void NSResponderMethodHookNotifications::InsertHooks()
     {
-        // Switch the imlplementation of NSTextView::deleteBackward with our custom one,
+        // Switch the imlplementation of NSResponder::insertText with our custom one,
         // storing the original default implementation so that it can be restored later.
-        s_defaultDeleteBackwardImplementation =
-            SetInstanceMethodImplementaion([NSTextView class],
-                                           @selector(deleteBackward:),
-                                           (IMP)DeleteBackwardHook);
+        s_defaultInsertTextImplementation =
+            SetInstanceMethodImplementaion([NSResponder class],
+                                           @selector(insertText:),
+                                           (IMP)InsertTextHook);
 
-        // Switch the imlplementation of NSTextView::shouldChangeTextInRange with our custom one,
+        // Switch the imlplementation of NSResponder::noResponderFor with our custom one,
         // storing the original default implementation so that it can be restored later.
-        s_defaultShouldChangeTextInRangeImplementation =
-            SetInstanceMethodImplementaion([NSTextView class],
-                                           @selector(shouldChangeTextInRange:replacementString:),
-                                           (IMP)ShouldChangeTextInRangeHook);
+        s_defaultNoResponderForImplementation =
+            SetInstanceMethodImplementaion([NSResponder class],
+                                           @selector(noResponderFor:),
+                                           (IMP)NoResponderForHook);
+
+        // Switch the imlplementation of NSResponder::doCommandBySelector with our custom one,
+        // storing the original default implementation so that it can be restored later.
+        s_defaultDoCommandBySelectorImplementation =
+            SetInstanceMethodImplementaion([NSResponder class],
+                                           @selector(doCommandBySelector:),
+                                           (IMP)DoCommandBySelectorHook);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void NSTextViewMethodHookNotifications::RemoveHooks()
+    void NSResponderMethodHookNotifications::RemoveHooks()
     {
-        // Restore the default imlplementation of NSTextView::shouldChangeTextInRange.
-        SetInstanceMethodImplementaion([NSTextView class],
-                                       @selector(shouldChangeTextInRange:replacementString:),
-                                       s_defaultShouldChangeTextInRangeImplementation);
-        s_defaultShouldChangeTextInRangeImplementation = nullptr;
+        // Restore the default imlplementation of NSResponder::doCommandBySelector.
+        SetInstanceMethodImplementaion([NSResponder class],
+                                       @selector(doCommandBySelector:),
+                                       s_defaultDoCommandBySelectorImplementation);
+        s_defaultDoCommandBySelectorImplementation = nullptr;
 
-        // Restore the default imlplementation of NSTextView::deleteBackward.
-        SetInstanceMethodImplementaion([NSTextView class],
-                                       @selector(deleteBackward:),
-                                       s_defaultDeleteBackwardImplementation);
-        s_defaultDeleteBackwardImplementation = nullptr;
+        // Restore the default imlplementation of NSResponder::noResponderFor.
+        SetInstanceMethodImplementaion([NSResponder class],
+                                       @selector(noResponderFor:),
+                                       s_defaultNoResponderForImplementation);
+        s_defaultNoResponderForImplementation = nullptr;
+
+        // Restore the default imlplementation of NSResponder::insertText.
+        SetInstanceMethodImplementaion([NSResponder class],
+                                       @selector(insertText:),
+                                       s_defaultInsertTextImplementation);
+        s_defaultInsertTextImplementation = nullptr;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void NSTextViewMethodHookNotifications::DeleteBackwardHook(NSTextView* textView,
-                                                               SEL selector,
-                                                               id sender)
+    void NSResponderMethodHookNotifications::InsertTextHook(NSResponder* responder,
+                                                            SEL methodSelector,
+                                                            id textString)
     {
         bool handled = false;
-        NSTextViewMethodHookNotificationBus::BroadcastResult(handled,
-                                                             &NSTextViewMethodHookNotifications::DeleteBackward,
-                                                             textView,
-                                                             sender);
+        NSResponderMethodHookNotificationBus::BroadcastResult(
+            handled,
+            &NSResponderMethodHookNotifications::InsertText,
+            responder,
+            textString);
 
-        if (!handled && s_defaultDeleteBackwardImplementation)
+        if (!handled && s_defaultInsertTextImplementation)
         {
-            s_defaultDeleteBackwardImplementation(textView, selector, sender);
+            s_defaultInsertTextImplementation(responder, methodSelector, textString);
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    BOOL NSTextViewMethodHookNotifications::ShouldChangeTextInRangeHook(NSTextView* textView,
-                                                                        SEL selector,
-                                                                        NSRange range,
-                                                                        NSString* string)
+    void NSResponderMethodHookNotifications::NoResponderForHook(NSResponder* responder,
+                                                                SEL methodSelector,
+                                                                SEL eventSelector)
     {
         bool handled = false;
-        NSTextViewMethodHookNotificationBus::BroadcastResult(handled,
-                                                             &NSTextViewMethodHookNotifications::ShouldChangeTextInRange,
-                                                             textView,
-                                                             range,
-                                                             string);
+        NSResponderMethodHookNotificationBus::BroadcastResult(
+            handled,
+            &NSResponderMethodHookNotifications::NoResponderFor,
+            responder,
+            eventSelector);
 
-        if (handled)
+        if (!handled && s_defaultNoResponderForImplementation)
         {
-            // Return false so that the text field itself does not update.
-            return FALSE;
+            s_defaultNoResponderForImplementation(responder, methodSelector, eventSelector);
         }
+    }
 
-        if (s_defaultShouldChangeTextInRangeImplementation)
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void NSResponderMethodHookNotifications::DoCommandBySelectorHook(NSResponder* responder,
+                                                                     SEL methodSelector,
+                                                                     SEL commandSelector)
+    {
+        bool handled = false;
+        NSResponderMethodHookNotificationBus::BroadcastResult(
+            handled,
+            &NSResponderMethodHookNotifications::DoCommandBySelector,
+            responder,
+            commandSelector);
+
+        if (!handled && s_defaultDoCommandBySelectorImplementation)
         {
-            s_defaultShouldChangeTextInRangeImplementation(textView, selector, range, string);
-            return TRUE;
+            s_defaultDoCommandBySelectorImplementation(responder, methodSelector, commandSelector);
         }
-        return FALSE;
     }
 }
 
@@ -369,7 +413,7 @@ namespace AzFramework
     //! Platform specific implementation for osx keyboard input devices
     class InputDeviceKeyboardOsx : public InputDeviceKeyboard::Implementation
                                  , public RawInputNotificationBusOsx::Handler
-                                 , public NSTextViewMethodHookNotificationBus::Handler
+                                 , public NSResponderMethodHookNotificationBus::Handler
     {
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Count of the number instances of this class that have been created
@@ -415,12 +459,16 @@ namespace AzFramework
         void OnRawInputEvent(const NSEvent* nsEvent) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // \ref NSTextViewMethodHookNotifications::DeleteBackward
-        bool DeleteBackward(NSTextView* textView, id sender) override;
+        // \ref NSResponderMethodHookNotifications::InsertText
+        bool InsertText(NSResponder* responder, id textString) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // \ref NSTextViewMethodHookNotifications::ShouldChangeTextInRange
-        bool ShouldChangeTextInRange(NSTextView* textView, NSRange range, NSString* string) override;
+        // \ref NSResponderMethodHookNotifications::NoResponderFor
+        bool NoResponderFor(NSResponder* responder, SEL eventSelector) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // \ref NSResponderMethodHookNotifications::DoCommandBySelector
+        bool DoCommandBySelector(NSResponder* responder, SEL commandSelector) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Convenience function to queue standard key events processed in OnRawInputEvent
@@ -435,8 +483,8 @@ namespace AzFramework
         void QueueRawModifierKeyEvent(AZ::u32 keyCode, AZ::u32 modifierFlags);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! A dummy NSTextView used to receive text events
-        NSTextView* m_textView = nullptr;
+        //! A dummy NSView used to interpret key down events into text
+        NSView* m_textInterpreterView = nullptr;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Has text entry been started?
@@ -459,40 +507,37 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboardOsx::InputDeviceKeyboardOsx(InputDeviceKeyboard& inputDevice)
         : InputDeviceKeyboard::Implementation(inputDevice)
-        , m_textView(nullptr)
+        , m_textInterpreterView(nullptr)
         , m_hasTextEntryStarted(false)
         , m_hasFocus(false)
     {
         if (s_instanceCount++ == 0)
         {
-            NSTextViewMethodHookNotifications::InsertHooks();
+            NSResponderMethodHookNotifications::InsertHooks();
         }
 
-        // Create an NSTextView that we can call interpretKeyEvents on to process text input.
-        m_textView = [[NSTextView alloc] initWithFrame: CGRectZero];
-
-        // Add something to the text view so delete works.
-        m_textView.string = @" ";
+        // Create an NSView that we can call interpretKeyEvents on to process text input.
+        m_textInterpreterView = [[NSView alloc] initWithFrame: CGRectZero];
 
         RawInputNotificationBusOsx::Handler::BusConnect();
-        NSTextViewMethodHookNotificationBus::Handler::BusConnect();
+        NSResponderMethodHookNotificationBus::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboardOsx::~InputDeviceKeyboardOsx()
     {
-        NSTextViewMethodHookNotificationBus::Handler::BusDisconnect();
+        NSResponderMethodHookNotificationBus::Handler::BusDisconnect();
         RawInputNotificationBusOsx::Handler::BusDisconnect();
 
-        if (m_textView)
+        if (m_textInterpreterView)
         {
-            [m_textView release];
-            m_textView = nullptr;
+            [m_textInterpreterView release];
+            m_textInterpreterView = nullptr;
         }
 
         if (--s_instanceCount == 0)
         {
-            NSTextViewMethodHookNotifications::RemoveHooks();
+            NSResponderMethodHookNotifications::RemoveHooks();
         }
     }
 
@@ -581,7 +626,19 @@ namespace AzFramework
                 if (m_hasTextEntryStarted)
             #endif // defined(ALWAYS_DISPATCH_KEYBOARD_TEXT_INPUT)
                 {
-                    [m_textView interpretKeyEvents: [NSArray arrayWithObject: nsEvent]];
+                    // This is important, otherwise interpretKeyEvents may do nothing
+                    [NSApplication.sharedApplication.mainWindow makeFirstResponder: nil];
+
+                    // Translate key presses into text that will get sent on
+                    // to NSResponderMethodHookNotifications::InsertTextHook
+                    [m_textInterpreterView interpretKeyEvents: [NSArray arrayWithObject: nsEvent]];
+
+                    if (nsEvent.keyCode == kVK_Delete)
+                    {
+                        // Emulate Windows where the backspace key generates a '\b' character
+                        const AZStd::string textUTF8 = "\b";
+                        QueueRawTextEvent(textUTF8);
+                    }
                 }
             }
             break;
@@ -604,41 +661,45 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardOsx::DeleteBackward(NSTextView* textView, id /*sender*/)
+    bool InputDeviceKeyboardOsx::InsertText(NSResponder* responder, id textString)
     {
-        if (textView != m_textView)
+        if (responder != m_textInterpreterView)
         {
-            // We don't own the text view that this method was invoked on
+            // We don't own the responder that this method was invoked on
             return false;
         }
 
-        // Only queue text events if this application's window has focus
-        if (NSApplication.sharedApplication.active)
+        if (!NSApplication.sharedApplication.active)
         {
-            const AZStd::string textUTF8 = "\b";
-            QueueRawTextEvent(textUTF8);
+            // This application is not active
+            return false;
         }
+
+        const bool isAttributed = [textString isKindOfClass: [NSAttributedString class]];
+        const AZStd::string textUTF8 = isAttributed ?
+                                       [textString string].UTF8String :
+                                       [textString UTF8String];
+        QueueRawTextEvent(textUTF8);
+
         return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardOsx::ShouldChangeTextInRange(NSTextView* textView,
-                                                         NSRange /*range*/,
-                                                         NSString* string)
+    bool InputDeviceKeyboardOsx::NoResponderFor(NSResponder* /*responder*/, SEL /*eventSelector*/)
     {
-        if (textView != m_textView)
-        {
-            // We don't own the text view that this method was invoked on
-            return false;
-        }
-
-        // Only queue text events if this application's window has focus
-        if (NSApplication.sharedApplication.active)
-        {
-            const AZStd::string textUTF8 = string.UTF8String;
-            QueueRawTextEvent(textUTF8);
-        }
+        // Do nothing, but return true so we don't invoke the default behavior that calls NSBeep.
+        // This method is only ever called on the main NSWindow object, so while it is not ideal
+        // that we're intercepting methods to an object we don't own it's the only way to ensure
+        // (in all circumstances) that a beeping sound isn't emitted when pressing keyboard keys.
         return true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceKeyboardOsx::DoCommandBySelector(NSResponder* responder, SEL /*commandSelector*/)
+    {
+        // If we own the responder that this method was invoked on return
+        // true so we don't invoke the default behavior that calls NSBeep
+        return responder == m_textInterpreterView;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "UIFramework.hxx"
 #include <qaction.h>
@@ -291,7 +291,7 @@ namespace AzToolsFramework
             if (*iter != item)
             {
                 // if the incoming key matches one already existing
-                if (!_stricmp((*iter)->hotkeyData.m_desc.m_currentKey.c_str(), clickResult.toString().toUtf8().data()))
+                if (!qstricmp((*iter)->hotkeyData.m_desc.m_currentKey.c_str(), clickResult.toString().toUtf8().data()))
                 {
                     if ((*iter)->hotkeyData.m_desc.m_scope == HotkeyDescription::SCOPE_GLOBAL)
                     {
@@ -341,7 +341,7 @@ namespace AzToolsFramework
 
     void Framework::HotkeyData::SelfBindActions()
     {
-        QKeySequence qkey = (m_desc.m_currentKey.c_str());
+        QKeySequence qkey(m_desc.m_currentKey.c_str());
 
         ActionContainerType::iterator iter = m_actionsBound.begin();
         while (iter != m_actionsBound.end())

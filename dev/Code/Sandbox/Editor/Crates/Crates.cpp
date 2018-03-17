@@ -15,7 +15,7 @@
 
 #include <QAbstractButton>
 #include <QMessageBox>
-#include <Qdir>
+#include <QDir>
 #include <QTemporaryDir>
 #include <QDropEvent>
 #include <QPushButton>

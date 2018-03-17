@@ -75,7 +75,7 @@ void ReflectedVarInit::setupReflection(AZ::SerializeContext* serializeContext)
         ec->Class< CReflectedVarUser >("VarUser", "")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &CReflectedVarUser::varName)
-            ->Attribute(AZ::Edit::UIHandlers::Handler, AZ_CRC("ePropertyUser", 0x65b972c0))
+            ->Attribute(AZ::Edit::Attributes::Handler, AZ_CRC("ePropertyUser", 0x65b972c0))
             ;
 
         ec->Class< CReflectedVarColor >("VarColor", "")
@@ -89,7 +89,7 @@ void ReflectedVarInit::setupReflection(AZ::SerializeContext* serializeContext)
         ec->Class< CReflectedVarSpline >("VarSpline", "")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &CReflectedVarSpline::varName)
-            ->Attribute(AZ::Edit::UIHandlers::Handler, &CReflectedVarSpline::handler)
+            ->Attribute(AZ::Edit::Attributes::Handler, &CReflectedVarSpline::handler)
             ;
 
         ec->Class< CPropertyContainer >("PropertyContainer", "")
@@ -233,7 +233,7 @@ void CReflectedVarGenericProperty::reflect(AZ::SerializeContext* serializeContex
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &CReflectedVarGenericProperty::varName)
             ->Attribute(AZ::Edit::Attributes::DescriptionTextOverride, &CReflectedVarGenericProperty::description)
-            ->Attribute(AZ::Edit::UIHandlers::Handler, &CReflectedVarGenericProperty::handler)
+            ->Attribute(AZ::Edit::Attributes::Handler, &CReflectedVarGenericProperty::handler)
             ;
     }
 

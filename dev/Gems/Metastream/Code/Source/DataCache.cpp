@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Metastream_precompiled.h"
 #include "DataCache.h"
 #include <AzCore/JSON/stringbuffer.h>
 #include <AzCore/JSON/writer.h>

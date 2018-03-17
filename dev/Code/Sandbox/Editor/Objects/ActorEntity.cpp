@@ -122,7 +122,7 @@ void CActorEntity::BeginEditParams(IEditor* ie, int flags)
             }
             if (ms_treePanelId == 0)
             {
-                ms_treePanelId = AddUIPage(tr("Prototypes").toLatin1().data(), ms_pTreePanel, false);
+                ms_treePanelId = AddUIPage(tr("Prototypes").toUtf8().data(), ms_pTreePanel, false);
             }
         }
 
@@ -183,7 +183,7 @@ XmlNodeRef CActorEntity::Export(const QString& levelPath, XmlNodeRef& xmlNode)
     XmlNodeRef node = CEntityObject::Export(levelPath, xmlNode);
     if (node)
     {
-        node->setAttr("Prototype", static_cast<QString>(mv_prototype).toLatin1().data());
+        node->setAttr("Prototype", static_cast<QString>(mv_prototype).toUtf8().data());
     }
     return node;
 }

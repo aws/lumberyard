@@ -29,6 +29,10 @@ def build(bld):
         defines            = ['ENGINE_EXPORTS'],
         win_features       = ['crcfix'],
 
+       
+
+       
+
         # Testing
         test_all_file_list = ['cry3dengine_test.waf_files'],
     )

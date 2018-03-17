@@ -57,7 +57,7 @@
 #include "PluginManager.h"
 
 #include "Objects/Group.h"
-#include "Objects/AIPoint.h"
+#include "Objects/AiPoint.h"
 #include "Objects/CloudGroup.h"
 #include "Objects/CameraObject.h"
 #include "Objects/EntityScript.h"
@@ -229,6 +229,7 @@
 #include <QProgressBar>
 #include <QStandardItemModel>
 #include <QTreeView>
+#include <QClipboard>
 #include <ILevelSystem.h>
 
 #include <AzFramework/Components/CameraBus.h>
@@ -427,7 +428,8 @@ namespace
 
     int PyCreateLevel(const char* levelName, int resolution, int unitSize, bool bUseTerrain)
     {
-        return theApp.CreateLevel(levelName, resolution, unitSize, bUseTerrain);
+        QString qualifiedName;
+        return theApp.CreateLevel(levelName, resolution, unitSize, bUseTerrain, qualifiedName);
     }
 
     QString PyGetCurrentLevelName()
@@ -443,11 +445,6 @@ namespace
     void Command_LoadPlugins()
     {
         GetIEditor()->LoadPlugins();
-    }
-
-    void Command_UnloadPlugins()
-    {
-        GetIEditor()->UnloadPlugins();
     }
 
     boost::python::tuple PyGetCurrentViewPosition()
@@ -516,9 +513,6 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetCurrentLevelPath, general, get_current
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(Command_LoadPlugins, general, load_all_plugins,
     "Loads all available plugins.",
     "general.load_all_plugins()");
-REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(Command_UnloadPlugins, general, unload_all_plugins,
-    "Unloads all available plugins.",
-    "general.unload_all_plugins()");
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetCurrentViewPosition, general, get_current_view_position,
     "Returns the position of the current view as a list of 3 floats.",
     "general.get_current_view_position()");
@@ -638,7 +632,7 @@ CCryEditDoc* CCryDocManager::OpenDocumentFile(LPCTSTR lpszFileName, BOOL bAddToM
 
         CCrySingleDocTemplate::Confidence match;
         assert(pOpenDocument == NULL);
-        match = pTemplate->MatchDocType(szPath.toLatin1().data(), pOpenDocument);
+        match = pTemplate->MatchDocType(szPath.toUtf8().data(), pOpenDocument);
         if (match > bestMatch)
         {
             bestMatch = match;
@@ -661,7 +655,7 @@ CCryEditDoc* CCryDocManager::OpenDocumentFile(LPCTSTR lpszFileName, BOOL bAddToM
         return NULL;
     }
 
-    return pBestTemplate->OpenDocumentFile(szPath.toLatin1().data(), bAddToMRU, FALSE);
+    return pBestTemplate->OpenDocumentFile(szPath.toUtf8().data(), bAddToMRU, FALSE);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -815,11 +809,12 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_AI_NAVIGATION_ADD_SEED, OnAINavigationAddSeed)
     ON_COMMAND(ID_AI_NAVIGATION_VISUALIZE_ACCESSIBILITY, OnVisualizeNavigationAccessibility)
     ON_COMMAND(ID_LAYER_SELECT, OnLayerSelect)
+    ON_COMMAND(ID_SWITCH_PHYSICS, OnSwitchPhysics)
     ON_COMMAND(ID_GAME_SYNCPLAYER, OnSyncPlayer)
     ON_COMMAND(ID_RESOURCES_REDUCEWORKINGSET, OnResourcesReduceworkingset)
     ON_COMMAND(ID_TOOLS_EQUIPPACKSEDIT, OnToolsEquipPacksEdit)
     ON_COMMAND(ID_TOOLS_UPDATEPROCEDURALVEGETATION, OnToolsUpdateProcVegetation)
-    //}}AFX_MSG_MAP
+
     // Standard file based document commands
     ON_COMMAND(ID_EDIT_HIDE, OnEditHide)
     ON_COMMAND(ID_EDIT_SHOW_LAST_HIDDEN, OnEditShowLastHidden)
@@ -1483,7 +1478,8 @@ bool CCryEditApp::ShowEnableDisableCryEntityRemovalDialog()
     if (box.exec() == QMessageBox::AcceptRole)
     {
         OpenProjectConfigurator(PROJECT_CONFIGURATOR_GEM_PAGE);
-        MainWindow::instance()->close();
+        // Called from a modal dialog with the main window as its parent. Best not to close the main window while the dialog is still active.
+        QTimer::singleShot(0, []() {MainWindow::instance()->close(); });
         return true;
     }
 
@@ -2213,7 +2209,7 @@ void CCryEditApp::OutputStartupMessage(QString str)
     g_splashScreenStateLock.Lock();
     if (g_pInitializeUIInfo)
     {
-        g_pInitializeUIInfo->SetInfoText(str.toLatin1().data());
+        g_pInitializeUIInfo->SetInfoText(str.toUtf8().data());
     }
     g_splashScreenStateLock.Unlock();
 }
@@ -2253,10 +2249,10 @@ void CCryEditApp::InitFromCommandLine(CEditCommandLineInfo& cmdInfo)
     // Do we have a passed filename ?
     if (!cmdInfo.m_strFileName.isEmpty())
     {
-        if (!cmdInfo.m_bRunPythonScript && IsPreviewableFileType(cmdInfo.m_strFileName.toLatin1().constData()))
+        if (!cmdInfo.m_bRunPythonScript && IsPreviewableFileType(cmdInfo.m_strFileName.toUtf8().constData()))
         {
             m_bPreviewMode = true;
-            azstrncpy(m_sPreviewFile, _MAX_PATH, cmdInfo.m_strFileName.toLatin1().constData(), _MAX_PATH);
+            azstrncpy(m_sPreviewFile, _MAX_PATH, cmdInfo.m_strFileName.toUtf8().constData(), _MAX_PATH);
         }
     }
 
@@ -2342,11 +2338,11 @@ bool CCryEditApp::InitGame()
 
         pVar = gEnv->pConsole->GetCVar("sys_game_folder");
         const char* sGameFolder = pVar ? pVar->GetString() : nullptr;
-        Log((QString("sys_game_folder = ") + (sGameFolder && sGameFolder[0] ? sGameFolder : "<not set>")).toLatin1().data());
+        Log((QString("sys_game_folder = ") + (sGameFolder && sGameFolder[0] ? sGameFolder : "<not set>")).toUtf8().data());
 
         pVar = gEnv->pConsole->GetCVar("sys_localization_folder");
         const char* sLocalizationFolder = pVar ? pVar->GetString() : nullptr;
-        Log((QString("sys_localization_folder = ") + (sLocalizationFolder && sLocalizationFolder[0] ? sLocalizationFolder : "<not set>")).toLatin1().data());
+        Log((QString("sys_localization_folder = ") + (sLocalizationFolder && sLocalizationFolder[0] ? sLocalizationFolder : "<not set>")).toUtf8().data());
 
         OutputStartupMessage("Starting Game...");
 
@@ -2401,7 +2397,7 @@ void CCryEditApp::InitLevel(CEditCommandLineInfo& cmdInfo)
     {
         GetIEditor()->SetModifiedFlag(false);
         GetIEditor()->SetModifiedModule(eModifiedNothing);
-        auto pDocument = OpenDocumentFile(m_exportFile.toLatin1().constData());
+        auto pDocument = OpenDocumentFile(m_exportFile.toUtf8().constData());
         if (pDocument)
         {
             GetIEditor()->SetModifiedFlag(false);
@@ -2423,17 +2419,17 @@ void CCryEditApp::InitLevel(CEditCommandLineInfo& cmdInfo)
     {
         GetIEditor()->SetModifiedFlag(false);
         GetIEditor()->SetModifiedModule(eModifiedNothing);
-        auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toLatin1().constData());
+        auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toUtf8().constData());
         if (pDocument)
         {
             GetIEditor()->SetModifiedFlag(false);
             GetIEditor()->SetModifiedModule(eModifiedNothing);
-            GetISystem()->GetIConsole()->ExecuteString(QString("sw batch %1 sw %2").arg(cmdInfo.m_strFileName, cmdInfo.m_swCmdLine).toLatin1().constData());
+            GetISystem()->GetIConsole()->ExecuteString(QString("sw batch %1 sw %2").arg(cmdInfo.m_strFileName, cmdInfo.m_swCmdLine).toUtf8().constData());
         }
     }
     else if (QFileInfo(cmdInfo.m_strFileName).suffix() == "cry")
     {
-        auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toLatin1().constData());
+        auto pDocument = OpenDocumentFile(cmdInfo.m_strFileName.toUtf8().constData());
         if (pDocument)
         {
             GetIEditor()->SetModifiedFlag(false);
@@ -2550,7 +2546,7 @@ void CCryEditApp::InitLevel(CEditCommandLineInfo& cmdInfo)
             // create an empty doc for doc template other than default template, such as ".scry", to avoid frame shutdown due to open failed
             //m_pDocManager->GetBestTemplate(levelName)->OpenDocumentFile(NULL);
 
-            OpenDocumentFile(levelName.toLatin1().data());
+            OpenDocumentFile(levelName.toUtf8().data());
         }
     }
 }
@@ -2596,7 +2592,7 @@ BOOL CCryEditApp::InitConsole()
     gEnv->pConsole->ExecuteString("exec user.cfg");
 
     // should be after init game (should be executed even if there is no game)
-    if (!GetIEditor()->GetSystem()->GetIGame())
+    //if (!GetIEditor()->GetSystem()->GetIGame())
     {
         GetISystem()->ExecuteCommandLine();
     }
@@ -2609,7 +2605,7 @@ void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
 {
     if (cmdInfo.m_bRunPythonScript)
     {
-        GetIEditor()->ExecuteCommand("general.run_file '%s'", cmdInfo.m_strFileName.toLatin1().data());
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file '%1'").arg(cmdInfo.m_strFileName));
     }
 }
 
@@ -2833,8 +2829,8 @@ BOOL CCryEditApp::InitInstance()
 
     if (!GetIEditor()->IsInMatEditMode() && !GetIEditor()->IsInConsolewMode())
     {
-        mainWindowWrapper->restoreGeometryFromSettings();
-        QtViewPaneManager::instance()->RestoreLayout();
+        bool restoreDefaults = !mainWindowWrapper->restoreGeometryFromSettings();
+        QtViewPaneManager::instance()->RestoreLayout(restoreDefaults);
     }
 
     CloseSplashScreen();
@@ -2940,7 +2936,8 @@ void CCryEditApp::UnregisterEventLoopHook(IEventLoopHook* pHookToRemove)
     }
 }
 
-#if AZ_TESTS_ENABLED
+#if AZ_TESTS_ENABLED 
+#if defined(AZ_PLATFORM_WINDOWS)
 class MainArgs
 {
 public:
@@ -3020,6 +3017,12 @@ int CCryEditApp::RunPluginUnitTests(CEditCommandLineInfo& cmdLine)
 
     return exitCode;
 }
+#else
+int CCryEditApp::RunPluginUnitTests(CEditCommandLineInfo& cmdLine)
+{
+    return 0;
+}
+#endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -3625,7 +3628,11 @@ int CCryEditApp::IdleProcessing(bool bBackgroundUpdate)
         res = 1;
         bActive = true;
     }
-    m_bForceProcessIdle = false;
+
+    if (m_bForceProcessIdle && bIsAppWindow)
+    {
+        m_bForceProcessIdle = false;
+    }
 
     // focus changed
     if (m_bPrevActive != bActive)
@@ -3783,9 +3790,6 @@ bool CCryEditApp::UserExportToGame(bool bExportTexture, bool bReloadTerrain, boo
         // Record errors and display a dialog with them at the end.
         CErrorsRecorder errRecorder(GetIEditor());
 
-        // Change the cursor to show that we're busy.
-        QWaitCursor wait;
-
         // Temporarily disable auto backup.
         CScopedVariableSetter<bool> autoBackupEnabledChange(gSettings.autoBackupEnabled, false);
         CScopedVariableSetter<int> autoRemindTimeChange(gSettings.autoRemindTime, 0);
@@ -3805,6 +3809,9 @@ bool CCryEditApp::UserExportToGame(bool bExportTexture, bool bReloadTerrain, boo
             SGameExporterSettings& settings = gameExporter.GetSettings();
             settings.iExportTexWidth = dimensionDialog.GetDimensions();
         }
+
+        // Change the cursor to show that we're busy.
+        QWaitCursor wait;
 
         unsigned int flags = eExp_CoverSurfaces;
         if (bExportTexture)
@@ -4005,7 +4012,7 @@ void CCryEditApp::ToolTexture()
     // Show the terrain texture dialog
     ////////////////////////////////////////////////////////////////////////
 
-    GetIEditor()->OpenView(LyViewPane::TerrainEditor);
+    GetIEditor()->OpenView(LyViewPane::TerrainTextureLayers);
 }
 
 void CCryEditApp::OnGeneratorsStaticobjects()
@@ -4645,7 +4652,7 @@ void CCryEditApp::OnExportSelectedObjects()
         }
     }
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
-    pExportManager->Export(filename.toLatin1().data(), "obj", levelPath.toLatin1().data());
+    pExportManager->Export(filename.toUtf8().data(), "obj", levelPath.toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4654,7 +4661,7 @@ void CCryEditApp::OnExportTerrainArea()
     CExportManager* pExportManager = static_cast<CExportManager*> (GetIEditor()->GetExportManager());
     QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
-    pExportManager->Export((levelName + "_terrain").toLatin1().data(), "obj", levelPath.toLatin1().data(), false, false, true);
+    pExportManager->Export((levelName + "_terrain").toUtf8().data(), "obj", levelPath.toUtf8().data(), false, false, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4663,7 +4670,7 @@ void CCryEditApp::OnExportTerrainAreaWithObjects()
     CExportManager* pExportManager = static_cast<CExportManager*> (GetIEditor()->GetExportManager());
     QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
-    pExportManager->Export(levelName.toLatin1().data(), "obj", levelPath.toLatin1().data(), false, true, true);
+    pExportManager->Export(levelName.toUtf8().data(), "obj", levelPath.toUtf8().data(), false, true, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4672,7 +4679,7 @@ void CCryEditApp::OnFileExportOcclusionMesh()
     CExportManager* pExportManager = static_cast<CExportManager*> (GetIEditor()->GetExportManager());
     QString levelName = GetIEditor()->GetGameEngine()->GetLevelName();
     QString levelPath = GetIEditor()->GetGameEngine()->GetLevelPath();
-    pExportManager->Export(levelName.toLatin1().data(), "ocm", levelPath.toLatin1().data(), false, false, false, true);
+    pExportManager->Export(levelName.toUtf8().data(), "ocm", levelPath.toUtf8().data(), false, false, false, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -5280,7 +5287,7 @@ void CCryEditApp::OnLockSelection()
 void CCryEditApp::OnEditLevelData()
 {
     auto dir = QFileInfo(GetIEditor()->GetDocument()->GetPathName()).dir();
-    CFileUtil::EditTextFile(dir.absoluteFilePath("LevelData.xml").toLatin1().data());
+    CFileUtil::EditTextFile(dir.absoluteFilePath("LevelData.xml").toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -5541,6 +5548,33 @@ void CCryEditApp::OnTerrainCollisionUpdate(QAction* action)
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnSwitchPhysics()
+{
+    QWaitCursor wait;
+    uint32 flags = GetIEditor()->GetDisplaySettings()->GetSettings();
+    if (flags & SETTINGS_PHYSICS)
+    {
+        flags &= ~SETTINGS_PHYSICS;
+    }
+    else
+    {
+        flags |= SETTINGS_PHYSICS;
+    }
+    GetIEditor()->GetDisplaySettings()->SetSettings(flags);
+
+    if ((flags & SETTINGS_PHYSICS) == 0)
+    {
+        GetIEditor()->GetGameEngine()->SetSimulationMode(false);
+        GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED, 0, 0);
+    }
+    else
+    {
+        GetIEditor()->GetGameEngine()->SetSimulationMode(true);
+        GetISystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_EDITOR_SIMULATION_MODE_CHANGED, 1, 0);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnSwitchPhysicsUpdate(QAction* action)
 {
     Q_ASSERT(action->isCheckable());
@@ -5664,24 +5698,6 @@ void CCryEditApp::OnAIGenerateCoverSurfaces()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CCryEditApp::OnAINavigationDisplayAgentUpdate(QAction* action)
-{
-    Q_ASSERT(action->isCheckable());
-    CAIManager* pAIMgr = GetIEditor()->GetAI();
-    action->setChecked(pAIMgr->GetNavigationDebugDisplayState());
-
-    size_t selected = 0;
-    if (pAIMgr->GetNavigationDebugDisplayAgent(&selected))
-    {
-        action->setText(pAIMgr->GetNavigationAgentTypeName(selected));
-    }
-    else
-    {
-        action->setText("None");
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnAINavigationShowAreas()
 {
     CAIManager* pAIMgr = GetIEditor()->GetAI();
@@ -5790,7 +5806,7 @@ void CCryEditApp::OnUpdateNonGameMode(QAction* action)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain)
+CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName /* ={} */)
 {
     QString currentLevel = GetIEditor()->GetLevelFolder();
     if (!currentLevel.isEmpty())
@@ -5800,9 +5816,10 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
 
     QString cryFileName = levelName.mid(levelName.lastIndexOf('/') + 1, levelName.length() - levelName.lastIndexOf('/') + 1);
     QString levelPath = QStringLiteral("%1/Levels/%2/").arg(Path::GetEditingGameDataFolder().c_str(), levelName);
-    QString filename = levelPath + cryFileName + defaultFileExtension;
+    fullyQualifiedLevelName = levelPath + cryFileName + defaultFileExtension;
 
-    if (filename.length() >= _MAX_PATH)
+    //_MAX_PATH includes null terminator, so we actually want to cap at _MAX_PATH-1
+    if (fullyQualifiedLevelName.length() >= _MAX_PATH-1)
     {
         return ECLR_MAX_PATH_EXCEEDED;
     }
@@ -5842,7 +5859,7 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     }
 
     // Save the document to this folder
-    GetIEditor()->GetDocument()->SetPathName(filename);
+    GetIEditor()->GetDocument()->SetPathName(fullyQualifiedLevelName);
     GetIEditor()->GetGameEngine()->SetLevelPath(levelPath);
 
     if (GetIEditor()->GetDocument()->Save())
@@ -5895,7 +5912,7 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     GetIEditor()->SetStatusText("Ready");
 
     // At the end of the creating level process, add this level to the MRU list
-    CCryEditApp::instance()->AddToRecentFileList(filename);
+    CCryEditApp::instance()->AddToRecentFileList(fullyQualifiedLevelName);
 
     return ECLR_OK;
 }
@@ -5989,7 +6006,7 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
         GetIEditor()->GetDocument()->DeleteTemporaryLevel();
     }
 
-    if (levelName.length() == 0 || !CryStringUtils::IsValidFileName(levelName.toLatin1().data()))
+    if (levelName.length() == 0 || !CryStringUtils::IsValidFileName(levelName.toUtf8().data()))
     {
         QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Level name is invalid, please choose another name."));
         return false;
@@ -6002,7 +6019,8 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
         return false;
     }
 
-    ECreateLevelResult result = (ECreateLevelResult)PyCreateLevel(levelNameWithPath.toLatin1().data(), resolution, unitSize, bUseTerrain);
+    QString fullyQualifiedLevelName;
+    ECreateLevelResult result = CreateLevel(levelNameWithPath, resolution, unitSize, bUseTerrain, fullyQualifiedLevelName);
 
     if (result == ECLR_ALREADY_EXISTS)
     {
@@ -6027,7 +6045,7 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
         _getcwd(cwd.data(), cwd.length());
 #else
         windowsErrorMessage = strerror(dw);
-        cwd = QDir::currentPath().toLatin1();
+        cwd = QDir::currentPath().toUtf8();
 #endif
 
         QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Failed to create level directory: %1\n Error: %2\nCurrent Path: %3").arg(szLevelRoot, windowsErrorMessage, cwd));
@@ -6035,9 +6053,29 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
     }
     else if (result == ECLR_MAX_PATH_EXCEEDED)
     {
-        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The new level name exceeds the maximum supported path length of %1 characters. Please choose a smaller name.").arg(_MAX_PATH));
+        QFileInfo info(fullyQualifiedLevelName);
+        const AZStd::string rawProjectDirectory = Path::GetEditingGameDataFolder();
+        const QString projectDirectory = QDir::toNativeSeparators(QString::fromUtf8(rawProjectDirectory.data(), rawProjectDirectory.size()));
+        const QString elidedLevelName = QStringLiteral("%1...%2").arg(levelName.left(10)).arg(levelName.right(10));
+        const QString elidedLevelFileName = QStringLiteral("%1...%2").arg(info.fileName().left(10)).arg(info.fileName().right(10));
+        const QString message = QObject::tr(
+            "The fully-qualified path for the new level exceeds the maximum supported path length of %1 characters (it's %2 characters long). Please choose a smaller name.\n\n"
+            "The fully-qualified path is made up of the project folder (\"%3\", %4 characters), the \"Levels\" sub-folder, a folder named for the level (\"%5\", %6 characters) and the level file (\"%7\", %8 characters), plus necessary separators.\n\n"
+            "Please also note that on most platforms, individual components of the path (folder/file names can't exceed  approximately 255 characters)\n\n"
+            "Click \"Copy to Clipboard\" to copy the fully-qualified name and close this message.")
+            .arg(_MAX_PATH - 1).arg(fullyQualifiedLevelName.size())
+            .arg(projectDirectory).arg(projectDirectory.size())
+            .arg(elidedLevelName).arg(levelName.size())
+            .arg(elidedLevelFileName).arg(info.fileName().size());
+        QMessageBox messageBox(QMessageBox::Critical, QString(), message, QMessageBox::Ok, AzToolsFramework::GetActiveWindow());
+        QPushButton* copyButton = messageBox.addButton(QObject::tr("Copy to Clipboard"), QMessageBox::ActionRole);
+        QObject::connect(copyButton, &QPushButton::pressed, [fullyQualifiedLevelName]() { QGuiApplication::clipboard()->setText(fullyQualifiedLevelName); });
+        messageBox.exec();
         return false;
     }
+
+    // force the level being rendered at least once
+    m_bForceProcessIdle = true;
 
     return true;
 }
@@ -6338,7 +6376,7 @@ void CCryEditApp::TagLocation(int index)
     QString sTagConsoleText("");
     sTagConsoleText = tr("Camera Tag Point %1 set to the position: x=%2, y=%3, z=%4 ").arg(index).arg(vPosVec.x, 0, 'f', 2).arg(vPosVec.y, 0, 'f', 2).arg(vPosVec.z, 0, 'f', 2);
 
-    GetIEditor()->WriteToConsole(sTagConsoleText.toLatin1().data());
+    GetIEditor()->WriteToConsole(sTagConsoleText.toUtf8().data());
 
     if (gSettings.bAutoSaveTagPoints)
     {
@@ -6393,7 +6431,7 @@ void CCryEditApp::GotoTagLocation(int index)
 
     if (!sTagConsoleText.isEmpty())
     {
-        GetIEditor()->WriteToConsole(sTagConsoleText.toLatin1().data());
+        GetIEditor()->WriteToConsole(sTagConsoleText.toUtf8().data());
     }
 }
 
@@ -6787,7 +6825,7 @@ void CCryEditApp::OnConvertSelectionToComponentEntity()
         }
         else
         {
-            AZ_Error("Editor", "Object %s could not be converted. Only Brushes and GeomEntities are supported sources.", objects[i]->GetName().toLatin1().data());
+            AZ_Error("Editor", "Object %s could not be converted. Only Brushes and GeomEntities are supported sources.", objects[i]->GetName().toUtf8().data());
             continue;
         }
 
@@ -6795,13 +6833,13 @@ void CCryEditApp::OnConvertSelectionToComponentEntity()
         {
             // Find the asset Id by path.
             AZ::Data::AssetId meshId;
-            EBUS_EVENT_RESULT(meshId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, meshFile.toLatin1().data(), AZ::Data::s_invalidAssetType, false);
+            EBUS_EVENT_RESULT(meshId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, meshFile.toUtf8().data(), AZ::Data::s_invalidAssetType, false);
 
             if (meshId.IsValid())
             {
                 // If we found it, create a new editor entity and add a mesh component pointing to the asset.
                 AZ::Entity* newEntity = nullptr;
-                EBUS_EVENT_RESULT(newEntity, AzToolsFramework::EditorEntityContextRequestBus, CreateEditorEntity, object->GetName().toLatin1().data());
+                EBUS_EVENT_RESULT(newEntity, AzToolsFramework::EditorEntityContextRequestBus, CreateEditorEntity, object->GetName().toUtf8().data());
 
                 if (newEntity)
                 {
@@ -6835,17 +6873,17 @@ void CCryEditApp::OnConvertSelectionToComponentEntity()
                     }
                     else
                     {
-                        AZ_Error("Editor", "Object %s could not be converted because mesh component could not be created.", objects[i]->GetName().toLatin1().data());
+                        AZ_Error("Editor", "Object %s could not be converted because mesh component could not be created.", objects[i]->GetName().toUtf8().data());
                     }
                 }
                 else
                 {
-                    AZ_Error("Editor", "Object %s could not be converted because component entity could not be created.", objects[i]->GetName().toLatin1().data());
+                    AZ_Error("Editor", "Object %s could not be converted because component entity could not be created.", objects[i]->GetName().toUtf8().data());
                 }
             }
             else
             {
-                AZ_Error("Editor", "Object %s could not be converted because Id for asset \"%s\" could not be determined.", objects[i]->GetName().toLatin1().data(), meshFile.toLatin1().data());
+                AZ_Error("Editor", "Object %s could not be converted because Id for asset \"%s\" could not be determined.", objects[i]->GetName().toUtf8().data(), meshFile.toUtf8().data());
             }
         }
     }
@@ -7135,7 +7173,7 @@ void CCryEditApp::OnValidateObjectPositions()
         }
 
         statTxt = tr("%1/%2 [Reported Objects: %3]").arg(i1).arg(objCount).arg(bugNo);
-        GetIEditor()->SetStatusText(statTxt.toLatin1().data());
+        GetIEditor()->SetStatusText(statTxt);
     }
 
     if (errorReport.GetErrorCount() == 0)
@@ -7824,49 +7862,49 @@ void CCryEditApp::OnChangeGameSpec(UINT nID)
     switch (nID)
     {
     case ID_GAME_PC_ENABLELOWSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_LOW_SPEC, CONFIG_PC);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_PC));
         break;
     case ID_GAME_PC_ENABLEMEDIUMSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_MEDIUM_SPEC, CONFIG_PC);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_PC));
         break;
     case ID_GAME_PC_ENABLEHIGHSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_HIGH_SPEC, CONFIG_PC);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_PC));
         break;
     case ID_GAME_PC_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_VERYHIGH_SPEC, CONFIG_PC);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_PC));
         break;
     case ID_GAME_OSXGL_ENABLESPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_HIGH_SPEC, CONFIG_OSX_GL);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_OSX_GL));
         break;
     case ID_GAME_OSXMETAL_ENABLESPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_LOW_SPEC, CONFIG_OSX_METAL);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_OSX_METAL));
         break;
     case ID_GAME_ANDROID_ENABLELOWSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_LOW_SPEC, CONFIG_ANDROID);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_ANDROID));
         break;
     case ID_GAME_ANDROID_ENABLEMEDIUMSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_MEDIUM_SPEC, CONFIG_ANDROID);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_ANDROID));
         break;
     case ID_GAME_ANDROID_ENABLEHIGHSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_HIGH_SPEC, CONFIG_ANDROID);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_ANDROID));
         break;
     case ID_GAME_ANDROID_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_VERYHIGH_SPEC, CONFIG_ANDROID);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_ANDROID));
         break;
     case ID_GAME_IOS_ENABLELOWSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_LOW_SPEC, CONFIG_IOS);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_IOS));
         break;
     case ID_GAME_IOS_ENABLEMEDIUMSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_MEDIUM_SPEC, CONFIG_IOS);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_IOS));
         break;
     case ID_GAME_IOS_ENABLEHIGHSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_HIGH_SPEC, CONFIG_IOS);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_IOS));
         break;
     case ID_GAME_IOS_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_VERYHIGH_SPEC, CONFIG_IOS);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_IOS));
         break;
     case ID_GAME_APPLETV_ENABLESPEC:
-        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_LOW_SPEC, CONFIG_APPLETV);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_APPLETV));
         break;
     }
 }
@@ -8250,18 +8288,23 @@ void CCryEditApp::OnOpenProjectConfiguratorGems()
             saveChanges = "save your changes and ";
         }
         QString message = QObject::tr("You must use the Project Configurator to enable gems for your project. \nDo you want to %1close the editor before continuing to the Project Configurator?").arg(saveChanges);
-        ToProjectConfigurator(message.toUtf8().data(), "Editor", PROJECT_CONFIGURATOR_GEM_PAGE);
+        ToProjectConfigurator(message, QObject::tr("Editor"), PROJECT_CONFIGURATOR_GEM_PAGE);
     }
 }
 
 void CCryEditApp::OnOpenProjectConfiguratorSwitchProject()
+{
+    OpenProjectConfiguratorSwitchProject();
+}
+
+bool CCryEditApp::OpenProjectConfiguratorSwitchProject()
 {
     bool isProjectExternal = false;
     AzFramework::ApplicationRequests::Bus::BroadcastResult(isProjectExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
 
     if (isProjectExternal)
     {
-        // External project folders is in preview mode, so we cannot use Project Configurator to set it.  
+        // External project folders is in preview mode, so we cannot use Project Configurator to set it.
         QMessageBox::warning(QApplication::activeWindow(),
             QString(),
             QObject::tr(
@@ -8269,7 +8312,7 @@ void CCryEditApp::OnOpenProjectConfiguratorSwitchProject()
                 "game projects that exist inside the engine folder from within the editor. To switch projects, shutdown "
                 "the Editor and the Asset Processor and open your desired project."
             ), QMessageBox::Ok);
-        return;
+        return false;
 
     }
     // Add save message prompt to message only if a level has been loaded and modified
@@ -8279,17 +8322,19 @@ void CCryEditApp::OnOpenProjectConfiguratorSwitchProject()
         saveChanges = "save your changes and ";
     }
 
-    QString message = QObject::tr("You must use the Project Configurator to set a new default project. \nDo you want to %1close the editor before continuing to the Project Configurator?").arg(saveChanges);
-    ToProjectConfigurator(message.toUtf8().data(), "Editor", "Project Selection");
+    QString message = QObject::tr("You must use the Project Configurator to set a new default project.\nDo you want to %1close the editor before continuing to the Project Configurator?").arg(saveChanges);
+    return ToProjectConfigurator(message, QObject::tr("Editor"), "Project Selection");
 }
 
-bool CCryEditApp::ToProjectConfigurator(const char* msg, const char* caption, const char* location)
+
+bool CCryEditApp::ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location)
 {
     if (ToExternalToolPrompt(msg, caption) &&
         ToExternalToolSave() &&
         OpenProjectConfigurator(location))
     {
-        MainWindow::instance()->close();
+        // Called from a modal dialog with the main window as its parent. Best not to close the main window while the dialog is still active.
+        QTimer::singleShot(0, []() {MainWindow::instance()->close(); });
         return true;
     }
     return false;
@@ -8300,7 +8345,7 @@ void CCryEditApp::OnRefreshAssetDatabases()
     CAssetBrowserManager::Instance()->RefreshAssetDatabases();
 }
 
-bool CCryEditApp::OpenProjectConfigurator(const char* startPage) const
+bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
 {
 #if defined(Q_OS_WIN)
     const char* projectConfigurator = "ProjectConfigurator.exe";
@@ -8331,22 +8376,22 @@ bool CCryEditApp::OpenProjectConfigurator(const char* startPage) const
             QMessageBox::warning(QApplication::activeWindow(),
                                  QString(),
                                  QObject::tr("Unable to run Project Configurator executable (%1) at location %2. Please make sure its installed correctly and try again.")
-                                    .arg(QString(projectConfigurator))
-                                    .arg(QString(exePath.c_str())));
+                                    .arg(projectConfigurator)
+                                    .arg(QString::fromUtf8(exePath.c_str(), exePath.size())));
             return false;
         }
-        projectConfiguratorPath = QString(projectConfiguratorTestPath.c_str());
+        projectConfiguratorPath = QString::fromUtf8(projectConfiguratorTestPath.c_str(), projectConfiguratorTestPath.size());
     }
     else
     {
-        projectConfiguratorPath = QString(result.GetValue().c_str());
+        projectConfiguratorPath = QString::fromUtf8(result.GetValue().c_str(), result.GetValue().size());
     }
 
-    
+
 
     bool success = QProcess::startDetached(
         projectConfiguratorPath,
-        { "-s", startPage, "-i", QString().setNum(GetCurrentProcessId()), "-e", "1" },
+        { "-s", startPage, "-i", QString::number(GetCurrentProcessId()), "-e", "1" },
         QString(exePath.c_str())
     );
 
@@ -8407,9 +8452,13 @@ QString CCryEditApp::GetRootEnginePath() const
     return m_rootEnginePath;
 }
 
-bool CCryEditApp::ToExternalToolPrompt(const char* msg, const char* caption)
+bool CCryEditApp::ToExternalToolPrompt(const QString& msg, const QString& caption)
 {
-    return QMessageBox::warning(AzToolsFramework::GetActiveWindow(), caption, msg, QMessageBox::Save | QMessageBox::Cancel) == QMessageBox::Save;
+    bool askToSave = GetIEditor()->GetDocument()->IsDocumentReady() && GetIEditor()->GetDocument()->IsModified();
+    QMessageBox::StandardButtons buttons = QMessageBox::Cancel;
+    auto action = askToSave ? QMessageBox::Save : QMessageBox::Close;
+    buttons |= action;
+    return QMessageBox::warning(AzToolsFramework::GetActiveWindow(), caption, msg, buttons) == action;
 }
 
 bool CCryEditApp::ToExternalToolSave()
@@ -8696,7 +8745,7 @@ namespace
             {
                 char resolved[AZ_MAX_PATH_LEN];
 
-                AZStd::string fullPath = Path::GamePathToFullPath(file.c_str()).toLatin1().data();
+                AZStd::string fullPath = Path::GamePathToFullPath(file.c_str()).toUtf8().data();
                 azstrncpy(resolved, AZ_MAX_PATH_LEN, fullPath.c_str(), fullPath.size());
 
                 if (AZ::IO::FileIOBase::GetInstance()->Exists(resolved))
@@ -8724,7 +8773,7 @@ namespace
         AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
         AZ_Assert(appRoot != nullptr, "Unable to communicate to AzFramework::ApplicationRequests::Bus");
 
-        AZStd::string cmdLine = AZStd::string::format("general.start_process_detached '%s" BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "LuaIDE.exe' '%s -app-root \"%s\"'", engineRoot, args.c_str(), appRoot);
+        AZStd::string cmdLine = AZStd::string::format("general.start_process_detached '%s" BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "LuaIDE' '%s -app-root \"%s\"'", engineRoot, args.c_str(), appRoot);
         GetIEditor()->ExecuteCommand(cmdLine.c_str());
     }
 

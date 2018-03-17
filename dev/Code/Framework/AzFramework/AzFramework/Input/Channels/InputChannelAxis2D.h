@@ -26,19 +26,24 @@ namespace AzFramework
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Allocator
-        AZ_CLASS_ALLOCATOR(InputChannelAxis2D, AZ::SystemAllocator, 0);
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Custom data struct for two dimensional axis data
         struct AxisData2D : public InputChannel::CustomData
         {
-            AZ_RTTI(AxisData2D, "{AA0FF4D4-ED98-4AEE-A3AB-B442287E2B7B}");
+            AZ_CLASS_ALLOCATOR(AxisData2D, AZ::SystemAllocator, 0);
+            AZ_RTTI(AxisData2D, "{AA0FF4D4-ED98-4AEE-A3AB-B442287E2B7B}", CustomData);
             ~AxisData2D() override = default;
 
             AZ::Vector2 m_values = AZ::Vector2::CreateZero();
             AZ::Vector2 m_deltas = AZ::Vector2::CreateZero();
         };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Allocator
+        AZ_CLASS_ALLOCATOR(InputChannelAxis2D, AZ::SystemAllocator, 0);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelAxis2D, "{03432ABA-C019-401A-B652-C56272FA4667}", InputChannel);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor

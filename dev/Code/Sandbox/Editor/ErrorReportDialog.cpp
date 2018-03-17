@@ -33,20 +33,13 @@
 #include <QKeyEvent>
 #include <QMenu>
 #include <QUrl>
+#include <QDateTime>
 
 
 //////////////////////////////////////////////////////////////////////////
 CErrorReportDialog* CErrorReportDialog::m_instance = 0;
 
 // CErrorReportDialog dialog
-#define BITMAP_ERROR 0
-#define BITMAP_WARNING 1
-#define BITMAP_COMMENT 2
-
-#define COLUMN_MAIL_ICON    0
-#define COLUMN_CHECK_ICON   2
-
-#define ID_REPORT_CONTROL 100
 
 static int __stdcall CompareErrorRecordItems(LPARAM p1, LPARAM p2, LPARAM sort)
 {
@@ -452,7 +445,7 @@ void CErrorReportDialog::SendInMail()
 
     std::vector<const char*> who;
     const QString subject = QString::fromLatin1("Level %1 Error Report").arg(GetIEditor()->GetGameEngine()->GetLevelPath());
-    CMailer::SendMail(subject.toLatin1().data(), textMsg.toLatin1().data(), who, who, true);
+    CMailer::SendMail(subject.toUtf8().data(), textMsg.toUtf8().data(), who, who, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -465,7 +458,7 @@ void CErrorReportDialog::OpenInExcel()
 
     const QString levelName = Path::GetFileName(GetIEditor()->GetGameEngine()->GetLevelName());
 
-    const QString filename = QString::fromLatin1("ErrorList_%1.csv").arg(levelName);
+    const QString filename = QString::fromLatin1("ErrorList_%1_%2.csv").arg(levelName).arg(QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss"));
 
     // Save to temp file.
     QFile f(filename);
@@ -477,14 +470,14 @@ void CErrorReportDialog::OpenInExcel()
             QString text = err->GetErrorText();
             text.replace(',', '.');
             text.replace('\t', ',');
-            f.write((text + QString::fromLatin1("\n")).toLatin1().data());
+            f.write((text + QString::fromLatin1("\n")).toUtf8().data());
         }
         f.close();
         QDesktopServices::openUrl(QUrl::fromLocalFile(filename));
     }
     else
     {
-        Warning("Failed to save %s", (const char*)filename.toLatin1().data());
+        Warning("Failed to save %s", (const char*)filename.toUtf8().data());
     }
 }
 

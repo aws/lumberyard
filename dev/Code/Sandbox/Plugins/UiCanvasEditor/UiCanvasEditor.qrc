@@ -49,15 +49,15 @@
     <file>Icons/AnchorIcon15Default.tif</file>
     <file>Icons/AnchorIcon15Hover.tif</file>
     <file>Icons/AnchorIcon15Selected.tif</file>
-    <file>Icons/Delete.png</file>
-    <file>Icons/Move.png</file>
+    <file>Icons/delete.png</file>
+    <file>Icons/MoveIcon.png</file>
     <file>Icons/PivotIconDefault.tif</file>
     <file>Icons/PivotIconHover.tif</file>
     <file>Icons/PivotIconSelected.tif</file>
     <file>Icons/PreviewStart.png</file>
     <file>Icons/PreviewStop.png</file>
-    <file>Icons/Resize.png</file>
-    <file>Icons/Rotate.png</file>
-    <file>Icons/Selection.png</file>
+    <file>Icons/ResizeIcon.png</file>
+    <file>Icons/RotateIcon.png</file>
+    <file>Icons/SelectionIcon.png</file>
   </qresource>
 </RCC>

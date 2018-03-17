@@ -22,6 +22,7 @@
 #include "Shaders/Vertex.h"
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/IO/FileOperations.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #include <LoadScreenBus.h>
 
@@ -268,6 +269,55 @@ private:
     size_t m_nPoolUsed;
     size_t m_nPageAllocated;
 };
+
+namespace LegacyInternal
+{
+    class JobExecutorPool final
+    {
+    public:
+        static const AZ::u32 NumPools = 3; // Skinning data is triple buffered, see usage of m_SkinningDataPool
+
+        void AdvanceCurrent()
+        {
+            m_current = (m_current + 1) % JobExecutorPool::NumPools;
+            auto& currentAllocatedList = m_allocated[m_current];
+
+            // Move all current instances to the free list
+            m_freeList.reserve(m_freeList.size() + currentAllocatedList.size());
+            for (auto& allocatedEntry : currentAllocatedList)
+            {
+                m_freeList.emplace_back(std::move(allocatedEntry));
+            }
+            currentAllocatedList.clear();
+        }
+
+        AZ::LegacyJobExecutor* Allocate()
+        {
+            auto& currentAllocatedList = m_allocated[m_current];
+
+            if (!m_freeList.empty())
+            {
+                // move from the freelist
+                currentAllocatedList.emplace_back(std::move(m_freeList.back()));
+                m_freeList.pop_back();
+            }
+            else
+            {
+                currentAllocatedList.emplace_back(AZStd::make_unique<AZ::LegacyJobExecutor>());
+            }
+
+            return currentAllocatedList.back().get();
+        }
+
+    private:
+        // We point to instances because LegacyJobExecutor instances are not movable
+        using JobExecutorList = AZStd::vector<AZStd::unique_ptr<AZ::LegacyJobExecutor>>;
+
+        JobExecutorList m_allocated[JobExecutorPool::NumPools];
+        JobExecutorList m_freeList;
+        AZ::u32 m_current = 0;
+    };
+}
 
 //////////////////////////////////////////////////////////////////////
 class CFillRateManager
@@ -759,7 +809,7 @@ public:
     virtual bool FlushRTCommands(bool bWait, bool bImmediatelly, bool bForce);
     virtual bool ForceFlushRTCommands();
 
-    virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, int32 nSizeX, int32 nSizeY, Matrix44* pmViewProj, Matrix44* pmCamBuffer) = 0;
+    virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffer) = 0;
     virtual void WaitForParticleBuffer(threadID nThreadId) = 0;
 
     virtual void RequestFlushAllPendingTextureStreamingJobs(int nFrames) { m_nFlushAllPendingTextureStreamingJobs = nFrames; }
@@ -907,7 +957,6 @@ public:
     virtual void  InitSystemResources(int nFlags);
     virtual void  InitTexturesSemantics();
 
-    void ClearJobResources();
     bool HasLoadedDefaultResources() override { return m_bSystemResourcesInit == 1; }
 
     virtual void    BeginFrame() = 0;
@@ -1445,15 +1494,13 @@ public:
 
     std::vector<CREParticle*> m_arrCREParticle[RT_COMMAND_BUF_COUNT];
     int m_nCREParticleCount[RT_COMMAND_BUF_COUNT];
-    JobManager::SJobState m_ParticlePrepareRenderObjectsState[RT_COMMAND_BUF_COUNT];
-    JobManager::SJobState m_ComputeVerticesJobState[RT_COMMAND_BUF_COUNT];
+    AZ::LegacyJobExecutor m_ComputeVerticesJobExecutors[RT_COMMAND_BUF_COUNT];
 
     CFillRateManager m_FillRateManager;
 
     // functions for handling particle jobs which cull particles and generate their vertices/indices
     virtual void EF_AddMultipleParticlesToScene(const SAddParticlesToSceneJob* jobs, size_t numJobs, const SRenderingPassInfo& passInfo);
     void PrepareParticleRenderObjects(Array<const SAddParticlesToSceneJob> aJobs, int nREStart, SRenderingPassInfo passInfo);
-    void SyncParticleRenderObjectPrepare(int nThreadID);
 
     void FinalizeRendItems(int nThreadID);
     void FinalizeRendItems_ReorderShadowRendItems(int nThreadID);
@@ -1463,18 +1510,18 @@ public:
     void FinalizeRendItems_SortRenderLists(int nThreadID);
 
     void FinalizeShadowRendItems(int nThreadID);
-    void RegisterFinalizeShadowJobs(JobManager::SJobState* pJobState, int nThreadID);
+    void RegisterFinalizeShadowJobs(int nThreadID);
 
     // Summary:
     virtual void BeginSpawningGeneratingRendItemJobs(int nThreadID);
     virtual void BeginSpawningShadowGeneratingRendItemJobs(int nThreadID);
     virtual void EndSpawningGeneratingRendItemJobs(int nThreadID);
 
-    virtual JobManager::SJobState* GetGenerateRendItemJobState(int nThreadID);
-    virtual JobManager::SJobState* GetGenerateShadowRendItemJobState(int nThreadID);
-    virtual JobManager::SJobState* GetGenerateRendItemJobStatePreProcess(int nThreadID);
-    virtual JobManager::SJobState* GetFinalizeRendItemJobState(int nThreadID);
-    virtual JobManager::SJobState* GetFinalizeShadowRendItemJobState(int nThreadID);
+    AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutor(int nThreadID) override;
+    AZ::LegacyJobExecutor* GetGenerateShadowRendItemJobExecutor(int nThreadID) override;
+    AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutorPreProcess(int nThreadID) override;
+    AZ::LegacyJobExecutor* GetFinalizeRendItemJobExecutor(int nThreadID) override;
+    AZ::LegacyJobExecutor* GetFinalizeShadowRendItemJobExecutor(int nThreadID) override;
 
 
     // Shaders management
@@ -1727,6 +1774,7 @@ protected:
     CTextMessages m_TextMessages[RT_COMMAND_BUF_COUNT];     // [ThreadID], temporary stores 2d/3d text messages to render them at the end of the frame
 
     CSkinningDataPool m_SkinningDataPool[3]; // Tripple Buffered for motion blur
+    LegacyInternal::JobExecutorPool m_jobExecutorPool;
 
     uint32 m_nShadowGenId[RT_COMMAND_BUF_COUNT];
 
@@ -2016,7 +2064,6 @@ public:
     }
 
     static int CV_r_ReprojectOnlyStaticObjects;
-    static int CV_r_ReadZBufferDirectlyFromVMEM;
     static int CV_r_D3D12SubmissionThread;
     static int CV_r_ReverseDepth;
 
@@ -2571,16 +2618,14 @@ public:
     float m_fTexturesStreamingGlobalMipFactor;
 
 
-    JobManager::SJobState m_generateRendItemJobState[RT_COMMAND_BUF_COUNT];
-    JobManager::SJobState m_generateShadowRendItemJobState[RT_COMMAND_BUF_COUNT];
-    JobManager::SJobState m_generateRendItemPreProcessJobState[RT_COMMAND_BUF_COUNT];
-    void* m_pFinalizeRendItemJob[RT_COMMAND_BUF_COUNT];
-    void* m_pFinalizeShadowRendItemJob[RT_COMMAND_BUF_COUNT];
+    AZ::LegacyJobExecutor m_generateRendItemJobExecutor[RT_COMMAND_BUF_COUNT];
+    AZ::LegacyJobExecutor m_generateShadowRendItemJobExecutor[RT_COMMAND_BUF_COUNT];
+    AZ::LegacyJobExecutor m_generateRendItemPreProcessJobExecutor[RT_COMMAND_BUF_COUNT];
 
 protected:
 
-    JobManager::SJobState m_JobState_FinalizeRendItems[RT_COMMAND_BUF_COUNT];
-    JobManager::SJobState m_JobState_FinalizeShadowRendItems[RT_COMMAND_BUF_COUNT];
+    AZ::LegacyJobExecutor m_finalizeRendItemsJobExecutor[RT_COMMAND_BUF_COUNT];
+    AZ::LegacyJobExecutor m_finalizeShadowRendItemsJobExecutor[RT_COMMAND_BUF_COUNT];
 
 private:
     std::vector<ISyncMainWithRenderListener*> m_syncMainWithRenderListeners;

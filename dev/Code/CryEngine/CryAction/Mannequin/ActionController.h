@@ -21,6 +21,7 @@ class CActionScope;
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
+#include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #ifdef _RELEASE
 #define CRYMANNEQUIN_WARN_ABOUT_VALIDITY() 0
@@ -48,6 +49,7 @@ ILINE uint32 GetLeastSignificantBit(ActionScopes scopeMask)
 
 class CActionController
     : public IActionController
+    , private  LmbrCentral::SkinnedMeshInformationBus::Handler
 {
 public:
     typedef std::vector<CActionController*> TActionControllerList;
@@ -59,6 +61,13 @@ public:
     // -- IActionController implementation --------------------------------------
 
     ~CActionController();
+
+
+    //////////////////////////////////////////////////////////////////////////
+    // SkinnedMeshInformationBus::Handler Implementation
+    void OnSkinnedMeshCreated(ICharacterInstance* characterInstance, const AZ::EntityId& entityId) override;
+    void OnSkinnedMeshDestroyed(const AZ::EntityId& entityId) override;
+    //////////////////////////////////////////////////////////////////////////
 
     virtual void OnEvent(const SGameObjectEvent& event);
     virtual void OnAnimationEvent(ICharacterInstance* pCharacter, const AnimEventInstance& event);
@@ -371,8 +380,8 @@ private:
 
     struct SProcContext
     {
-        uint32                                                              nameCRC;
-        boost::shared_ptr<IProceduralContext>   pContext;
+        uint32                                nameCRC;
+        AZStd::shared_ptr<IProceduralContext> pContext;
     };
     std::vector<SProcContext> m_procContexts;
 
@@ -405,6 +414,10 @@ private:
     std::vector< std::pair<IActionPtr, bool> > m_triggeredActions;
 
     CMannequinParams m_mannequinParams;
+
+    uint32 m_scopeContextID;
+    const IAnimationDatabase* m_animDatabase;
+    AZ::EntityId m_ContextEntityId;
 
     static uint32 s_blendChannelCRCs[MANN_NUMBER_BLEND_CHANNELS];
     static TActionControllerList s_actionControllers;

@@ -97,7 +97,8 @@ LMBR_SETUP_QT_FILTERS = {
                     "QtQml.framework",
                     "QtQuick.framework",
                     "QtSvg.framework",
-                    "QtWidgets.framework"
+                    "QtWidgets.framework",
+                    "QtXml.framework"
                 ],
                 "plugins": [
                     "imageformats/libqdds.dylib",
@@ -135,7 +136,8 @@ LMBR_SETUP_QT_FILTERS = {
                     "QtQml.framework",
                     "QtQuick.framework",
                     "QtSvg.framework",
-                    "QtWidgets.framework"
+                    "QtWidgets.framework",
+                    "QtXml.framework"
                 ],
                 "plugins": [
                     "imageformats/libqdds_debug.dylib",

@@ -1,0 +1,168 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "Resoruce Info Service Interface Definition",
+        "description": "API for accessing resource information."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+
+        "/{deployment_name}/list_deployment_resources": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "resource_info",
+                "function": "list_deployment_resources"
+            },
+
+            "get": {
+                "description": "List resources in a deployment.",
+                "parameters": [
+                    {
+                        "name": "deployment_name",
+                        "description": "The name of a deployment.",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deployment resources in the deployment",
+                        "schema": {
+                            "$ref": "#/definitions/DeploymentResources"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/{deployment_name}/access/resource/{resource_name}": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "resource_info",
+                "function": "get_deployment_access_resource_info"
+            },
+
+            "get": {
+                "description": "Returns basic information about a resource in a deployment access stack.",
+                "parameters": [
+                    {
+                        "name": "deployment_name",
+                        "description": "The name of a deployment.",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "resource_name",
+                        "description": "The name of the resource.",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful response.",
+                        "schema": {
+                            "$ref": "#/definitions/ResourceInfo"
+                        }
+                    }
+                }
+            }
+        },
+
+        "/{deployment_name}/resource-group/{resource_group_name}/resource/{resource_name}": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "resource_info",
+                "function": "get_resource_group_resource_info"
+            },
+
+            "get": {
+                "description": "Returns basic information about a resource in a resource group stack.",
+                "parameters": [
+                    {
+                        "name": "deployment_name",
+                        "description": "The name of a deployment.",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "resource_group_name",
+                        "description": "The name of the resoruce group that contains the resource.",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "resource_name",
+                        "description": "The name of the resource.",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A successful response.",
+                        "schema": {
+                            "$ref": "#/definitions/ResourceInfo"
+                        }
+                    }
+                }
+            }
+        }
+
+    },
+
+    "definitions": {
+
+        "ResourceInfo": {
+            "type": "object",
+            "properties": {
+                "PhysicalId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "PhysicalId"
+            ]
+        },
+
+        "DeploymentResources": {
+            "type": "object",
+            "properties": {
+                "Resources": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/DeploymentResourceInfo"
+                    }
+                }
+            }
+        },
+
+        "DeploymentResourceInfo": {
+            "type": "object",
+            "properties": {
+                "ResourceType": {
+                    "type": "string"
+                },
+                "PhysicalResourceId": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ResourceType",
+                "PhysicalResourceId"
+            ]
+        }
+    }
+}

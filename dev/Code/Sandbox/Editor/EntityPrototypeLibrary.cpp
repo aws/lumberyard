@@ -32,7 +32,7 @@ bool CEntityPrototypeLibrary::Load(const QString& filename)
         return false;
     }
     SetFilename(filename);
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
     if (!root)
     {
         return false;
@@ -66,7 +66,7 @@ void CEntityPrototypeLibrary::Serialize(XmlNodeRef& root, bool bLoading)
     else
     {
         // Saving.
-        root->setAttr("Name", GetName().toLatin1().data());
+        root->setAttr("Name", GetName().toUtf8().data());
 
         // Serialize prototypes.
         for (int i = 0; i < GetItemCount(); i++)

@@ -15,8 +15,6 @@
             "NewsShared/Qt/ArticleViewContainer.cpp",
             "NewsShared/Qt/ArticleViewContainer.h",
             "NewsShared/Qt/ArticleViewContainer.ui",
-            "NewsShared/Qt/QBetterLabel.cpp",
-            "NewsShared/Qt/QBetterLabel.h",
             "NewsShared/Qt/QBetterScrollArea.cpp",
             "NewsShared/Qt/QBetterScrollArea.h",
             "NewsShared/Qt/KeepInTouchView.cpp",

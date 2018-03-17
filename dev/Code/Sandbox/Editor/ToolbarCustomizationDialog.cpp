@@ -15,6 +15,8 @@
 #include "MainWindow.h"
 #include "ActionManager.h"
 
+#include <AzQtComponents/Components/WindowDecorationWrapper.h>
+
 #include <QMainWindow>
 #include <QMenuBar>
 #include <QToolBar>
@@ -25,6 +27,8 @@
 #include <QToolButton>
 #include <QDropEvent>
 #include <QDebug>
+
+using namespace AzQtComponents;
 
 enum ItemDataRole
 {
@@ -41,7 +45,7 @@ enum Tab
 };
 
 ToolbarCustomizationDialog::ToolbarCustomizationDialog(MainWindow* mainWindow)
-    : QDialog(mainWindow)
+    : QDialog(new WindowDecorationWrapper(WindowDecorationWrapper::OptionAutoAttach | WindowDecorationWrapper::OptionAutoTitleBarButtons, mainWindow))
     , ui(new Ui::ToolbarCustomizationDialog())
     , m_mainWindow(mainWindow)
     , m_toolbarManager(mainWindow->GetToolbarManager())
@@ -55,7 +59,9 @@ ToolbarCustomizationDialog::ToolbarCustomizationDialog(MainWindow* mainWindow)
     Setup();
     setAttribute(Qt::WA_DeleteOnClose);
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &ToolbarCustomizationDialog::OnTabChanged);
-    connect(ui->newButton, &QPushButton::clicked, this, &ToolbarCustomizationDialog::NewToolbar);
+    connect(ui->newButton, &QPushButton::clicked, this, [this] {
+        NewToolbar();
+    });
     connect(ui->renameButton, &QPushButton::clicked, this, &ToolbarCustomizationDialog::RenameToolbar);
     connect(ui->deleteButton, &QPushButton::clicked, this, &ToolbarCustomizationDialog::DeleteToolbar);
     connect(ui->resetButton, &QPushButton::clicked, this, &ToolbarCustomizationDialog::ResetToolbar);
@@ -257,9 +263,18 @@ void ToolbarCustomizationDialog::ToggleToolbar(QListWidgetItem* item)
     toolbar->setVisible(item->checkState() == Qt::Checked);
 }
 
-void ToolbarCustomizationDialog::NewToolbar()
+void ToolbarCustomizationDialog::NewToolbar(const QString &initialName)
 {
-    QString name = QInputDialog::getText(this, tr("New Toolbar"), tr("Toolbar name:"));
+    QString name = QInputDialog::getText(this, tr("New Toolbar"), tr("Toolbar name:"), QLineEdit::Normal, initialName);
+    for (const AmazonToolbar &t : m_toolbarManager->GetToolbars()) {
+        if (name == t.GetTranslatedName()) {
+            QMessageBox::StandardButton button = QMessageBox::warning(this, tr("Warning"),
+                tr("A toolbar with this name already exists. Please choose a different name."),
+                QMessageBox::Ok);
+            NewToolbar(name);
+            return;
+        }
+    }
     int index = m_toolbarManager->Add(name);
     if (index != -1)
     {

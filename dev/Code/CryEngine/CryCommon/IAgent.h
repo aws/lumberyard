@@ -1132,7 +1132,7 @@ enum EBodyOrientationMode
 
 struct IPipeUser
 {
-    typedef boost::shared_ptr<Vec3> LookTargetPtr;
+    typedef AZStd::shared_ptr<Vec3> LookTargetPtr;
     // <interfuscator:shuffle>
     virtual ~IPipeUser() {}
     virtual bool SelectPipe(int id, const char* name, IAIObject* pArgument = 0, int goalPipeId = 0, bool resetAlways = false, const GoalParams* node = 0) = 0;

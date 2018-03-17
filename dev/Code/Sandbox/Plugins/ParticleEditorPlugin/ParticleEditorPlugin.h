@@ -18,7 +18,7 @@
 
 class CParticleEditorPlugin
     : public IPlugin
-    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
 {
 public:
     CParticleEditorPlugin(IEditor* editor);
@@ -34,7 +34,7 @@ public:
 
 protected:
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& /*sourceUUID*/, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
 };
 #endif // CRYINCLUDE__PARTICLEEDITOR_EXAMPLEPLUGIN_H

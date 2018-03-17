@@ -953,7 +953,10 @@
                     "description": "The bot description JSON file, describing the bot to create",
                     "type": "object"
                 }
-            }
+            },
+            "required": [
+                "desc_file"
+            ]
         },
         "GetListBotsResponse" : {
             "type": "object",
@@ -1000,11 +1003,11 @@
                 },
                 "clarificationPrompt" : {
                     "description": "The message Amazon Lex uses when it doesn't understand the user's request",
-                    "$ref": "#/definitions/PromptWithMaxAttempts"
+                    "type":  "object"
                 },
                 "abortStatement" : {
                     "description": "The message that Amazon Lex returns when the user elects to end the conversation without completing it",
-                    "$ref": "#/definitions/PromptWithoutMaxAttempts"
+                    "type":  "object"
                 },
                 "status": {
                     "description": "Current status of the bot. Valid values are BUILDING | READY | FAILED | NOT_BUILT",
@@ -1042,7 +1045,12 @@
                     "description": "For each Amazon Lex bot created with the Amazon Lex Model Building Service, you must specify whether your use of Amazon Lex is related to a website, program, or other application that is directed or targeted, in whole or in part, to children under age 13 and subject to the Children's Online Privacy Protection Act (COPPA) by specifying true or false in the childDirected field",
                     "type": "boolean"
                 }
-            }
+            },
+            "required": [
+                "name",
+                "locale",
+                "childDirected"
+            ]
         },
         "IntentInfo": {
             "type": "object",
@@ -1055,48 +1063,10 @@
                     "description": "The version of the intent",
                     "type": "string"
                 }
-            }
-        },
-        "PromptWithMaxAttempts": {
-            "type": "object",
-            "properties": {
-                "messages" : {
-                    "description": "An array of objects, each of which provides a message string and its type",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/PromptMessages"
-                    }
-                },
-                "maxAttempts" : {
-                    "description": "The number of times to prompt the user for information",
-                    "type": "number"
-                }
-            }
-        },
-        "PromptMessages": {
-            "type": "object",
-            "properties": {
-                "contentType" : {
-                    "description": "The content type of the message string",
-                    "type": "string"
-                },
-                "content" : {
-                    "description": "The text of the message",
-                    "type": "string"
-                }
-            }
-        },
-        "PromptWithoutMaxAttempts": {
-            "type": "object",
-            "properties": {
-                "messages" : {
-                    "description": "An array of objects, each of which provides a message string and its type",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/PromptMessages"
-                    }
-                }
-            }
+            },
+            "required": [
+                "intentName"
+            ]
         },
         "PutBotRequest": {
             "type": "object",
@@ -1146,7 +1116,12 @@
                     "description": "Checksum of the bot alias",
                     "type": "string"
                 }
-            }
+            },
+            "required": [
+                "name",
+                "botVersion",
+                "botName"
+            ]
         },
         "GetBotAliasResponse" : {
             "type": "object",
@@ -1233,7 +1208,10 @@
                         }
                     }
                 }
-            }
+            },
+            "required": [
+                "name"
+            ]
         },
         "GetIntentResponse" : {
             "type": "object",
@@ -1271,49 +1249,27 @@
                 },
                 "confirmationPrompt" : {
                     "description": "Prompts the user to confirm the intent",
-                    "$ref": "#/definitions/PromptWithMaxAttempts"
+                    "type": "object"
                 },
                 "rejectionStatement" : {
-                    "description": "When the user answers \"no\" to the question defined in confirmationPrompt , Amazon Lex responds with this statement to acknowledge that the intent was canceled",
-                    "$ref": "#/definitions/PromptWithoutMaxAttempts"
+                    "description": "When the user answers \"no\" to the question defined in confirmationPrompt, Amazon Lex responds with this statement to acknowledge that the intent was canceled",
+                    "type": "object"
                 },
                 "followUpPrompt" : {
                     "description": "Amazon Lex uses this prompt to solicit additional activity after fulfilling an intent",
-                    "type": "object",
-                    "properties": {
-                        "prompt" : {
-                            "description": "Prompts for information from the user",
-                            "$ref": "#/definitions/PromptWithMaxAttempts"
-                        },
-                        "rejectionStatement" : {
-                            "description": "If the user answers \"no\" to the question defined in the prompt field, Amazon Lex responds with this statement to acknowledge that the intent was canceled",
-                            "$ref": "#/definitions/PromptWithoutMaxAttempts"
-                        }
-                    }
+                    "type": "object"
                 },
                 "conclusionStatement" : {
                     "description": "The statement that you want Amazon Lex to convey to the user after the intent is successfully fulfilled by the Lambda function",
-                    "type": "object",
-                    "$ref": "#/definitions/PromptWithoutMaxAttempts"
+                    "type": "object"
                 },
                 "dialogCodeHook" : {
                     "description": "Specifies a Lambda function to invoke for each user input",
-                    "type": "object",
-                    "$ref": "#/definitions/CodeHook"
+                    "type": "object"
                 },
                 "fulfillmentActivity" : {
                     "description": "Describes how the intent is fulfilled",
-                    "type": "object",
-                    "properties": {
-                        "type" : {
-                            "description": "How the intent should be fulfilled, either by running a Lambda function or by returning the slot data to the client application",
-                            "type": "string"
-                        },
-                        "codeHook" : {
-                            "description": "A description of the Lambda function that is run to fulfill the intent",
-                            "$ref": "#/definitions/CodeHook"
-                        }
-                    }
+                    "type": "object"
                 },
                 "parentIntentSignature" : {
                     "description": "A unique identifier for the built-in intent to base this intent on",
@@ -1335,20 +1291,11 @@
                     "description": "The date the intent was created",
                     "type": "string"
                 }
-            }
-        },
-        "CodeHook": {
-            "type": "object",
-            "properties": {
-                "uri" : {
-                    "description": "Information about an Amazon Lex bot alias",
-                    "type": "string"
-                },
-                "messageVersion" : {
-                    "description": "Information about an Amazon Lex bot alias",
-                    "type": "string"
-                }
-            }
+            },
+            "required": [
+                "name",
+                "fulfillmentActivity"
+            ]
         },
         "SlotEntry": {
             "type": "object",
@@ -1375,8 +1322,7 @@
                 },
                 "valueElicitationPrompt" : {
                     "description": "The prompt that Amazon Lex uses to elicit the slot value from the user",
-                    "type": "object",
-                    "$ref": "#/definitions/PromptWithMaxAttempts"
+                    "type": "object"
                 },
                 "priority" : {
                     "description": "Directs Lex the order in which to elicit this slot value from the user",
@@ -1389,7 +1335,11 @@
                         "type": "string"
                     }
                 }
-            }
+            },
+            "required": [
+                "name",
+                "slotConstraint"
+            ]
         },
         "PutIntentRequest": {
             "type": "object",
@@ -1467,7 +1417,10 @@
                                 "type": "string"
                             }
                         }
-                    }
+                    },
+                    "required": [
+                        "value"
+                    ]
                 },
                 "checksum" : {
                     "description": "Identifies a specific revision of the $LATEST version",
@@ -1489,7 +1442,10 @@
                     "description": "The date the slot type was created",
                     "type": "string"
                 }
-            }
+            },
+            "required": [
+                "name"
+            ]
         },
         "PutSlotTypeRequest": {
             "type": "object",

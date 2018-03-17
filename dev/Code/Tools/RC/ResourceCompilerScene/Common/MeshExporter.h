@@ -13,7 +13,7 @@
 #pragma once
 
 #include <CryHeaders.h>
-#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 
 class CMesh;
 
@@ -31,10 +31,10 @@ namespace AZ
         struct NodeExportContext;
 
         class MeshExporter
-            : public SceneAPI::SceneCore::ExportingComponent
+            : public SceneAPI::SceneCore::RCExportingComponent
         {
         public:
-            AZ_COMPONENT(MeshExporter, "{1F826DB8-D6B0-4392-90C8-8F6E63F649CA}", SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(MeshExporter, "{1F826DB8-D6B0-4392-90C8-8F6E63F649CA}", SceneAPI::SceneCore::RCExportingComponent);
 
             MeshExporter();
             ~MeshExporter() override = default;

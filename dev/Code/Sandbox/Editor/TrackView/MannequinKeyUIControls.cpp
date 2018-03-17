@@ -105,7 +105,7 @@ void CMannequinKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
 
             if (mv_fragment.GetVar() == pVar)
             {
-                key.m_fragmentName = ((QString)mv_fragment).toLatin1().data();
+                key.m_fragmentName = ((QString)mv_fragment).toUtf8().data();
             }
 
             if (!key.m_fragmentName.empty())
@@ -128,7 +128,7 @@ void CMannequinKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
                                 float fTransDuration = 0.0f;
                                 QString animation;
                                 mv_fragment->Get(animation);
-                                const uint32  valueName = CCrc32::ComputeLowercase(animation.toLatin1().data());
+                                const uint32  valueName = CCrc32::ComputeLowercase(animation.toUtf8().data());
 
                                 const FragmentID fragID = pAnimChar->GetActionController()->GetContext().controllerDef.m_fragmentIDs.Find(valueName);
 
@@ -138,7 +138,7 @@ void CMannequinKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
                                 pAnimChar->GetActionController()->QueryDuration(*pAction, fFragDuration, fTransDuration);
                                 key.m_duration = fFragDuration + fTransDuration;
                                 key.m_priority = mv_priority;
-                                key.m_tags = ((QString)mv_tags).toLatin1().data();
+                                key.m_tags = ((QString)mv_tags).toUtf8().data();
                             }
                         }
                     }

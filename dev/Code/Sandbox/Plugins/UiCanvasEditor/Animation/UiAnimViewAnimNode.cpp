@@ -649,7 +649,7 @@ CUiAnimViewAnimNode* CUiAnimViewAnimNode::CreateSubNodeAz(const QString& name, c
         return nullptr;
     }
 
-    pNewAnimNode->SetName(name.toLatin1().data());
+    pNewAnimNode->SetName(name.toUtf8().data());
     pNewAnimNode->CreateDefaultTracks();
     pNewAnimNode->SetParent(m_pAnimNode.get());
 
@@ -1317,7 +1317,7 @@ QString CUiAnimViewAnimNode::GetAvailableNodeNameStartingWith(const QString& nam
     QString newName = name;
     unsigned int index = 2;
 
-    while (const_cast<CUiAnimViewAnimNode*>(this)->GetAnimNodesByName(newName.toLatin1().data()).GetCount() > 0)
+    while (const_cast<CUiAnimViewAnimNode*>(this)->GetAnimNodesByName(newName.toUtf8().data()).GetCount() > 0)
     {
         newName = QStringLiteral("%1%2").arg(name).arg(index);
         ++index;
@@ -1550,7 +1550,7 @@ void CUiAnimViewAnimNode::PasteNodeFromClipboard(XmlNodeRef xmlNode)
     // Check if the node's director or sequence already contains a node with this name
     CUiAnimViewAnimNode* pDirector = GetDirector();
     pDirector = pDirector ? pDirector : GetSequence();
-    if (pDirector->GetAnimNodesByName(name.toLatin1().data()).GetCount() > 0)
+    if (pDirector->GetAnimNodesByName(name.toUtf8().data()).GetCount() > 0)
     {
         return;
     }

@@ -10,9 +10,9 @@
 *
 */
 
-#include <QEvent.h>
-#include <QPushButton.h>
-#include <QMessageBox.h>
+#include <QEvent>
+#include <QPushButton>
+#include <QMessageBox>
 #include <AzCore/Casting/numeric_cast.h>
 #include <CommonWidgets/ui_OverlayWidgetLayer.h>
 #include <SceneAPI/SceneUI/CommonWidgets/OverlayWidgetLayer.h>

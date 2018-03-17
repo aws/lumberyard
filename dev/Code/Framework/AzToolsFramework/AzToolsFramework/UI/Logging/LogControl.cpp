@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "LogControl.h"
 #include "LoggingCommon.h"
 

@@ -41,7 +41,7 @@ namespace ScriptCanvasEditor
 
             auto assetElement = rootElement.GetSubElement(assetElementIndex);
             AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset;
-            if (!assetElement.GetDataHierarchy(serializeContext, scriptCanvasAsset))
+            if (!assetElement.GetData(scriptCanvasAsset))
             {
                 AZ_Error("Script Canvas", false, "Unable to find Script Canvas Asset on a Version %u Editor ScriptCanvas Component", rootElement.GetVersion());
                 return false;

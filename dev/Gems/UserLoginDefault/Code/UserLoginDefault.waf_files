@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/UserLoginDefault_precompiled.cpp",
+            "Source/UserLoginDefault_precompiled.h"
         ]
     },
     "auto": {

@@ -15,6 +15,11 @@
 #define CRYINCLUDE_CRYANIMATION_VERTEX_VERTEXCOMMANDBUFFER_H
 #pragma once
 
+namespace AZ
+{
+    class LegacyJobExecutor;
+}
+
 class CVertexData;
 
 //
@@ -127,7 +132,7 @@ struct SVertexAnimationJob
 public:
     SVertexAnimationJob() {}
 
-    void Begin(JobManager::SJobState* pJob);
+    void Begin(AZ::LegacyJobExecutor* pJobExecutor);
     void Execute(int);
 };
 

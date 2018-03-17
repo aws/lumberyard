@@ -42,14 +42,17 @@
 #include "Environment/OceanEnvironmentBus.h"
 
 #include <IJobManager_JobDelegator.h>
-DECLARE_JOB("RenderContent", TRenderContentJob, COctreeNode::RenderContentJobEntry);
-typedef PROD_CONS_QUEUE_TYPE (TRenderContentJob, 1024) TRenderContentJobQueue;
-void* COctreeNode::m_pRenderContentJobQueue = NULL;
 
 #define CHECK_OBJECTS_BOX_WARNING_SIZE (1.0e+10f)
 #define fNodeMinSize (8.f)
 #define fObjectToNodeSizeRatio (1.f / 8.f)
 #define fMinShadowCasterViewDist (8.f)
+
+namespace
+{
+    // File scoped LegacyJobExecutor instance used to run all RenderContent jobs
+    AZ::LegacyJobExecutor* s_renderContentJobExecutor;
+};
 
 //////////////////////////////////////////////////////////////////////////
 COctreeNode::COctreeNode(int nSID, const AABB& box, CVisArea* pVisArea, COctreeNode* pParent)
@@ -116,28 +119,32 @@ void COctreeNode::RenderContent(int nRenderMask, const SRenderingPassInfo& passI
     {
         GetObjManager()->AddCullJobProducer();
     }
-    IF (m_pRenderContentJobQueue == NULL, 0)
+
+    if (!s_renderContentJobExecutor)
     {
-        m_pRenderContentJobQueue = CryAlignedNew<TRenderContentJobQueue>();
+        s_renderContentJobExecutor = new AZ::LegacyJobExecutor;
     }
-    TRenderContentJob::packet packet(nRenderMask, passInfo, rendItemSorter, pCam);
-    packet.SetClassInstance(this);
-    static_cast<TRenderContentJobQueue*>(m_pRenderContentJobQueue)->AddPacket(packet, JobManager::eHighPriority);
+
+    s_renderContentJobExecutor->StartJob(
+        [this, nRenderMask, passInfo, rendItemSorter, pCam]
+        {
+            this->RenderContentJobEntry(nRenderMask, passInfo, rendItemSorter, pCam);
+        }
+    );
 }
 
 //////////////////////////////////////////////////////////////////////////
-void COctreeNode::DeallocateRenderContentQueue()
+void COctreeNode::Shutdown()
 {
-    if (m_pRenderContentJobQueue != NULL)
-    {
-        CryAlignedDelete(static_cast<TRenderContentJobQueue*>(m_pRenderContentJobQueue));
-        m_pRenderContentJobQueue = NULL;
-    }
+    delete s_renderContentJobExecutor;
+    s_renderContentJobExecutor = nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////
-void COctreeNode::RenderContentJobEntry(int nRenderMask, SRenderingPassInfo passInfo, SRendItemSorter rendItemSorter, const CCamera* pCam)
+void COctreeNode::RenderContentJobEntry(int nRenderMask, const SRenderingPassInfo& passInfo, SRendItemSorter rendItemSorter, const CCamera* pCam)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
     SSectorTextureSet* pTerrainTexInfo = NULL;
 
     if (GetCVars()->e_VegetationUseTerrainColor)
@@ -1156,7 +1163,7 @@ void CObjManager::RenderBrush(CBrush* pEnt,
 
     //////////////////////////////////////////////////////////////////////////
     const CLodValue lodValue = pEnt->ComputeLod(pEnt->m_pRNTmpData->userData.nWantedLod, passInfo);
-    pEnt->Render(lodValue, passInfo, pTerrainTexInfo, gEnv->pRenderer->GetGenerateRendItemJobState(passInfo.ThreadID()), rendItemSorter);
+    pEnt->Render(lodValue, passInfo, pTerrainTexInfo, gEnv->pRenderer->GetGenerateRendItemJobExecutor(passInfo.ThreadID()), rendItemSorter);
 }
 
 //////////////////////////////////////////////////////////////////////////

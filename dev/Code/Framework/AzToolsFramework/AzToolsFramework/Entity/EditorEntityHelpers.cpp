@@ -289,4 +289,38 @@ namespace AzToolsFramework
         return false;
     }
 
+    bool IsComponentWithServiceRegistered(const AZ::Crc32& serviceId)
+    {
+        bool result = false;
+
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        if (serializeContext)
+        {
+            serializeContext->EnumerateDerived<AZ::Component>(
+                [&](const AZ::SerializeContext::ClassData* componentClass, const AZ::Uuid& knownType) -> bool
+            {
+                (void)knownType;
+
+                AZ::ComponentDescriptor* componentDescriptor = nullptr;
+                EBUS_EVENT_ID_RESULT(componentDescriptor, componentClass->m_typeId, AZ::ComponentDescriptorBus, GetDescriptor);
+                if (componentDescriptor)
+                {
+                    AZ::ComponentDescriptor::DependencyArrayType providedServices;
+                    componentDescriptor->GetProvidedServices(providedServices, nullptr);
+
+                    if (AZStd::find(providedServices.begin(), providedServices.end(), serviceId) != providedServices.end())
+                    {
+                        result = true;
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            );
+        }
+        return result;
+    }
+
 } // namespace AzToolsFramework

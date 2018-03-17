@@ -40,11 +40,11 @@ namespace UnitTest
     {
         CommandLine cmd;
 
-        char* argValues[] = {
+        const char* argValues[] = {
             "programname.exe", "/switch1", "test", "/switch2", "test2", "/switch3", "tEST3"
         };
 
-        cmd.Parse(7, argValues);
+        cmd.Parse(7, const_cast<char**>(argValues));
 
         EXPECT_FALSE(cmd.HasSwitch("switch4"));
         EXPECT_TRUE(cmd.HasSwitch("switch3"));
@@ -69,11 +69,11 @@ namespace UnitTest
     {
         CommandLine cmd;
 
-        char* argValues[] = {
+        const char* argValues[] = {
             "programname.exe", "/switch1", "test", "miscvalue1", "miscvalue2"
         };
 
-        cmd.Parse(5, argValues);
+        cmd.Parse(5, const_cast<char**>(argValues));
 
         EXPECT_TRUE(cmd.HasSwitch("switch1"));
         EXPECT_EQ(cmd.GetNumSwitchValues("switch1"), 1);
@@ -87,11 +87,11 @@ namespace UnitTest
     {
         CommandLine cmd;
 
-        char* argValues[] = {
+        const char* argValues[] = {
             "programname.exe", "-switch1", "test", "--switch1", "test2", "/switch2", "otherswitch", "miscvalue", "/switch3=abc,def", "miscvalue2", "/switch3", "hij,klm"
         };
 
-        cmd.Parse(12, argValues);
+        cmd.Parse(12, const_cast<char**>(argValues));
 
         EXPECT_TRUE(cmd.HasSwitch("switch1"));
         EXPECT_TRUE(cmd.HasSwitch("switch2"));
@@ -114,11 +114,11 @@ namespace UnitTest
     {
         CommandLine cmd;
 
-        char* argValues[] = {
+        const char* argValues[] = {
             "programname.exe", "/switch1 ", "test ", " /switch1", " test2", " --switch1", " abc, def ", " /switch1 = abc, def " 
         };
 
-        cmd.Parse(8, argValues);
+        cmd.Parse(8, const_cast<char**>(argValues));
 
         EXPECT_TRUE(cmd.HasSwitch("switch1"));
         EXPECT_EQ(cmd.GetSwitchValue("switch1", 0), "test");

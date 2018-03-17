@@ -343,6 +343,8 @@ namespace AzQtComponents
                 m_scrollOnInsert = false;
                 scrollToBottom();
             }
+
+            scheduleDelayedItemsLayout();
         });
 
         auto startResizeTimer = static_cast<void(QTimer::*)(void)>(&QTimer::start);

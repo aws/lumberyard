@@ -27,12 +27,21 @@ namespace AZStd
             list_node_base*     m_prev;
         };
 
+// #MSVC2013: These warnings are safe to disable because if the default constructor is actually called, it will generate an error.
+#if AZ_COMPILER_MSVC == 1800
+#pragma warning(push)
+#pragma warning(disable: 4510) // 'AZStd::Internal::list_node<T>' : default constructor could not be generated
+#pragma warning(disable: 4610) // struct 'AZStd::Internal::list_node<T>' can never be instantiated - user defined constructor required
+#endif
         template<typename ValueType>
         struct list_node
             : public list_node_base
         {
             ValueType                       m_value;
         };
+#if AZ_COMPILER_MSVC == 1800
+#pragma warning(pop)
+#endif
     }
 
     /**

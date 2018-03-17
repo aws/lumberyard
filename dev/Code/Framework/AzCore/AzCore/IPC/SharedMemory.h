@@ -15,7 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/std/parallel/lock.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) // Currently only windows support
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX) // Currently only windows and macOS support
 
 namespace AZ
 {
@@ -36,12 +36,17 @@ namespace AZ
     {
     protected:
         char                    m_name[128];
+#if defined(AZ_PLATFORM_WINDOWS)
         HANDLE                  m_mapHandle;
         HANDLE                  m_globalMutex;
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+        int                     m_mapHandle;
+        sem_t*                  m_globalMutex;
+#endif
         void*                   m_mappedBase;
         void*                   m_data;
         unsigned int            m_dataSize;
-        DWORD                   m_lastLockResult;
+        int                     m_lastLockResult;
 
         SharedMemory(const SharedMemory&);
         SharedMemory& operator=(const SharedMemory&);
@@ -68,7 +73,11 @@ namespace AZ
         CreateResult Create(const char* name, unsigned int size, bool openIfCreated = false);
         /// Open an existing shared memory block. If the block doesn't exist we will return false otherwise true.
         bool Open(const char* name);
+#if defined(AZ_PLATFORM_WINDOWS)
         bool IsReady() const            { return m_mapHandle != NULL; }
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+        bool IsReady() const            { return m_mapHandle != -1; }
+#endif
         void Close();
 
         /// Maps to the created map. If size == 0 it will map the whole memory.
@@ -133,7 +142,7 @@ namespace AZ
     };
 }
 
-#endif // AZ_PLATFORM_WINDOWS
+#endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_APPLE_OSX
 
 #endif // AZCORE_SHARED_MEMORY_H
 #pragma once

@@ -29,7 +29,7 @@
 #include "../MannDebugOptionsDialog.h"
 #include "QtUtil.h"
 #include "QtUtilWin.h"
-#include "QShortcut.h"
+#include <QShortcut>
 
 #include <QDir>
 #include <QMenu>
@@ -624,7 +624,7 @@ float CPreviewerPage::PopulateClipTracks(CSequencerNode* node, const int scopeID
         }
         else if (item.type == CFragmentHistory::SHistoryItem::Param)
         {
-            EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toLatin1().data());
+            EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toUtf8().data());
             if (paramID != eMotionParamID_COUNT)
             {
                 motionParams[paramID] = item.param.value.q.v.x;
@@ -972,7 +972,7 @@ void CPreviewerPage::PopulateAllClipTracks()
 
         if ((item.type == CFragmentHistory::SHistoryItem::Param) && item.isLocation)
         {
-            m_modelViewport->AddLocator(h, item.paramName.toLatin1().data(), item.param.value);
+            m_modelViewport->AddLocator(h, item.paramName.toUtf8().data(), item.param.value);
         }
     }
 }
@@ -1039,11 +1039,11 @@ void CPreviewerPage::SetUIFromHistory()
 
             if (m_contexts->m_scopeData[i].context[eMEM_Previewer])
             {
-                animNode->SetName((m_contexts->m_scopeData[i].name + " (" + m_contexts->m_scopeData[i].context[eMEM_Previewer]->name + ")").toLatin1().data());
+                animNode->SetName((m_contexts->m_scopeData[i].name + " (" + m_contexts->m_scopeData[i].context[eMEM_Previewer]->name + ")").toUtf8().data());
             }
             else
             {
-                animNode->SetName((m_contexts->m_scopeData[i].name + " (none)").toLatin1().data());
+                animNode->SetName((m_contexts->m_scopeData[i].name + " (none)").toUtf8().data());
             }
 
             float maxTime = MIN_TIME_RANGE;
@@ -1193,7 +1193,7 @@ void CPreviewerPage::SaveSequence(const QString& szFilename)
 
     QString fullFolder = ::GetFragmentSequenceFolder();
     Path::ConvertSlashToBackSlash(fullFolder);
-    CFileUtil::CreateDirectory(fullFolder.toLatin1().data());
+    CFileUtil::CreateDirectory(fullFolder.toUtf8().data());
 
     QString filename = QStringLiteral("test.xml");
     if (!szFilename.isNull() || CFileUtil::SelectSaveFile(SEQUENCE_FILE_FILTER_QT, "xml", fullFolder, filename))

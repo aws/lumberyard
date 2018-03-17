@@ -13,6 +13,7 @@
 #pragma once
 
 // include required headers
+#include <AzCore/std/functional.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector4.h>
 #include "StandardHeaders.h"
@@ -23,16 +24,6 @@
 
 namespace MCore
 {
-    /*
-    // some string format workaround to support Marmalade
-    #if (defined(MCORE_PLATFORM_MARMALADE) && (MCORE_COMPILER == MCORE_COMPILER_GCC))
-        int Custom_vswprintf(wchar_t* wcs, uint32 maxNumWChar, const wchar_t* format, va_list args);
-        #define FormatWString MCore::Custom_vswprintf
-    #else
-        #define FormatWString vswprintf
-    #endif
-    */
-
     /**
      * The UTF8 compatible string class.
      * Please keep in mind that this means that the GetLength() function does not always return the number of characters in the string, but the number of code units.
@@ -563,7 +554,7 @@ namespace MCore
          * @param prefix The prefix of the string part, for example "String".
          * @param validationFunction The function which tests if a given string is unique or not. Return true when the string is unique (and should be the one used) and return false when the passed string is not a valid (unique) one.
          */
-        void GenerateUniqueString(const char* prefix, const std::function<bool(const MCore::UnicodeString& value)>& validationFunction);
+        void GenerateUniqueString(const char* prefix, const AZStd::function<bool(const MCore::UnicodeString& value)>& validationFunction);
 
         /**
          * Remove the extension from a string containing a filename.

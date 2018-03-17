@@ -39,7 +39,7 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include "UiSlicePushWidget.h"
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include "UiSliceManager.h"
@@ -1291,7 +1291,7 @@ namespace UiCanvasEditor
                 bool copyResult = AzToolsFramework::InstanceDataHierarchy::CopyInstanceData(sourceNode, targetNode, m_serializeContext);
                 if (!copyResult)
                 {
-                    pushError = QString("Failed to copy instance data for \"%s.\"").arg(GetNodeDisplayName(*item->m_node).c_str());
+                    pushError = QString("Failed to copy instance data for \"%1.\"").arg(GetNodeDisplayName(*item->m_node).c_str());
                     break;
                 }
             }

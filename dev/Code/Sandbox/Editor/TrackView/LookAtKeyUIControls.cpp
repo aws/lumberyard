@@ -15,7 +15,8 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 #include "Objects/EntityObject.h"
 
@@ -137,9 +138,9 @@ bool CLookAtKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKey
 // Called when UI variable changes.
 void CLookAtKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!pSequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
     {
         return;
     }
@@ -159,20 +160,37 @@ void CLookAtKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
             {
                 QString sName;
                 sName = mv_name;
-                lookAtKey.szSelection = sName.toLatin1().data();
+                lookAtKey.szSelection = sName.toUtf8().data();
             }
 
             if (pVar == mv_lookPose.GetVar())
             {
                 QString sLookPose;
                 sLookPose = mv_lookPose;
-                lookAtKey.lookPose = sLookPose.toLatin1().data();
+                lookAtKey.lookPose = sLookPose.toUtf8().data();
             }
 
             SyncValue(mv_smoothTime, lookAtKey.smoothTime, false, pVar);
 
-            CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-            keyHandle.SetKey(&lookAtKey);
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&lookAtKey);
+            }
+            else if (isDuringUndo)
+            {
+                keyHandle.SetKey(&lookAtKey);
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key Value");
+                keyHandle.SetKey(&lookAtKey);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
+
         }
     }
 }

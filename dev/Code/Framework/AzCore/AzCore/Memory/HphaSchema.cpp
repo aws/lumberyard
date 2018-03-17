@@ -36,8 +36,8 @@ namespace AZ {
 #define HPPA_ASSERT(_exp)       AZ_Assert(_exp, "HPPA Assert")
     /// default windows virtual page size \todo Read this from the OS when we create the allocator)
 
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
-    #define OS_VIRTUAL_PAGE_SIZE (64 * 1024)
+#if defined(AZ_TRAIT_OS_HPHASCHEMA_OS_VIRTUAL_PAGE_SIZE)
+    #define OS_VIRTUAL_PAGE_SIZE AZ_TRAIT_OS_HPHASCHEMA_OS_VIRTUAL_PAGE_SIZE
 #endif
 
     //////////////////////////////////////////////////////////////////////////
@@ -406,10 +406,10 @@ namespace AZ {
 
             inline void setInvalid()                { mMarker = 0; }
 
-            free_link*      mFreeList;
-            size_t          mMarker;
-            unsigned short  mBucketIndex;
-            unsigned short  mUseCount;
+            free_link*      mFreeList = nullptr;
+            size_t          mMarker = 0;
+            unsigned short  mBucketIndex = 0;
+            unsigned short  mUseCount = 0;
 
             size_t elem_size() const                { return bucket_spacing_function_inverse(mBucketIndex); }
             unsigned bucket_index() const           { return mBucketIndex; }
@@ -1036,7 +1036,7 @@ namespace AZ {
     //////////////////////////////////////////////////////////////////////////
     HpAllocator::HpAllocator(void* memoryBlock, size_t memoryBlockSize, size_t pageSize, size_t poolPageSize, bool isPoolAllocations)
         : mMRFreeBlock(0)
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
+#if AZ_TRAIT_OS_ALLOW_DIRECT_ALLOCATIONS
         // we will use the os for direct allocations if memoryBlock == NULL
         , m_treePageSize(memoryBlock != NULL ? pageSize : OS_VIRTUAL_PAGE_SIZE)
         , m_poolPageSize(memoryBlock != NULL ? poolPageSize : OS_VIRTUAL_PAGE_SIZE)
@@ -1061,12 +1061,12 @@ namespace AZ {
             tree_attach(bl);
         }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
 #   if  defined(MULTITHREADED)
         // For some platforms we can use an actual spin lock, test and profile. We don't expect much contention there
         SetCriticalSectionSpinCount(mTreeMutex.native_handle(), SPIN_COUNT);
 #   endif // MULTITHREADED
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#endif // AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
     }
 
     HpAllocator::~HpAllocator()
@@ -1097,12 +1097,12 @@ namespace AZ {
 
     HpAllocator::bucket::bucket()
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
 #   if  defined(MULTITHREADED)
         // For some platforms we can use an actual spin lock, test and profile. We don't expect much contention there
         SetCriticalSectionSpinCount(mLock.native_handle(), SPIN_COUNT);
 #   endif // MULTITHREADED
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#endif // AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
 
         // Use the global AZ random generator.
 #ifdef AZ_OS32
@@ -2227,11 +2227,17 @@ namespace AZ {
     void*
     HpAllocator::SystemAlloc(size_t size, size_t align)
     {
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_ALLOW_DIRECT_ALLOCATIONS
+#   if AZ_TRAIT_OS_ENFORCE_STRICT_VIRTUAL_ALLOC_ALIGNMENT
+        AZ_Assert(align % OS_VIRTUAL_PAGE_SIZE == 0, "Invalid allocation/page alignment %d should be a multiple of %d!", size, OS_VIRTUAL_PAGE_SIZE);
+        AZ_Assert(size / OS_VIRTUAL_PAGE_SIZE * OS_VIRTUAL_PAGE_SIZE == size, "Invalid allocation/page size %d should be %d!", size, OS_VIRTUAL_PAGE_SIZE);
+        return AZ_OS_MALLOC(size, align);
+#   else
         (void)align;
         AZ_Assert(size / OS_VIRTUAL_PAGE_SIZE * OS_VIRTUAL_PAGE_SIZE == size, "Invalid allocation/page size %d should be %d!", size, OS_VIRTUAL_PAGE_SIZE);
         size = AZ::SizeAlignUp(size, OS_VIRTUAL_PAGE_SIZE);
         return VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+#   endif
 #else
         return memalign(align, size);
 #endif
@@ -2244,7 +2250,7 @@ namespace AZ {
     void
     HpAllocator::SystemFree(void* ptr)
     {
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if defined(AZ_PLATFORM_WINDOWS)
         BOOL ret = VirtualFree(ptr, 0, MEM_RELEASE);
         (void)ret;
         AZ_Assert(ret, "Failed to free memory!");

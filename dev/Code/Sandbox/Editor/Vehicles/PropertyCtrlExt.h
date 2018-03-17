@@ -35,7 +35,7 @@ public:
 
     void SetPreSelChangeCallback(PreSelChangeCallback callback) { m_preSelChangeFunc = callback; }
     void SelectItem(ReflectedPropertyItem* item) override;
-    void OnItemChange(ReflectedPropertyItem* item);
+    void OnItemChange(ReflectedPropertyItem* item, bool deferCallbacks = true) override;
 
     void SetVehicleVar(IVariable* pVar) { m_pVehicleVar = pVar; }
 

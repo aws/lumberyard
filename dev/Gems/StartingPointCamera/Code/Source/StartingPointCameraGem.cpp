@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "StartingPointCamera_precompiled.h"
 #include <platform_impl.h>
 
 #include "CameraTargetAcquirers/AcquireByEntityId.h"

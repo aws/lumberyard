@@ -52,7 +52,7 @@ namespace MCore
         {
             if (realSettings->mNumThreads == MCORE_INVALIDINDEX32)
             {
-                realSettings->mNumThreads = std::thread::hardware_concurrency();
+                realSettings->mNumThreads = AZStd::thread::hardware_concurrency();
                 if (realSettings->mNumThreads == 0)
                 {
                     realSettings->mNumThreads = 1;

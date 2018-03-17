@@ -10,11 +10,11 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "QTreeViewStateSaver.hxx"
 
-#include <qtreeview.h>
-#include <qscrollbar.h>
+#include <QTreeView>
+#include <QScrollBar>
 
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Serialization/SerializeContext.h>

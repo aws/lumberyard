@@ -28,50 +28,20 @@
 #include "Common/RenderView.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-DECLARE_JOB("FinalizeRendItems", TFinalizeRendItems, CRenderer::FinalizeRendItems);
-DECLARE_JOB("SortRendItems", TSortRendItemsJob, CD3D9Renderer::EF_SortRenderList);
-DECLARE_JOB("FinalizeShadowRendItems", TFinalizeShadowRendItemsJob, CRenderer::FinalizeShadowRendItems);
-DECLARE_JOB("InvokeShadowMapRenderJobs", TInvokeShadowMapRenderJobs, CD3D9Renderer::InvokeShadowMapRenderJobs);
-
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-void CRenderer::ClearJobResources()
+void CRenderer::RegisterFinalizeShadowJobs(int nThreadID)
 {
-    for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
-    {
-        if (m_pFinalizeShadowRendItemJob[i])
-        {
-            delete static_cast<TFinalizeShadowRendItemsJob*>(m_pFinalizeShadowRendItemJob[i]);
-        }
-        if (m_pFinalizeRendItemJob[i])
-        {
-            delete static_cast<TFinalizeRendItems*>(m_pFinalizeRendItemJob[i]);
-        }
-
-        m_pFinalizeShadowRendItemJob[i] = NULL;
-        m_pFinalizeRendItemJob[i] = NULL;
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-void CRenderer::RegisterFinalizeShadowJobs(JobManager::SJobState* pJobState, int nThreadID)
-{
-    IF (m_pFinalizeShadowRendItemJob[nThreadID] == NULL, 0)
-    {
-        m_pFinalizeShadowRendItemJob[nThreadID] = new TFinalizeShadowRendItemsJob(nThreadID);
-    }
-
     // Init post job
-    TFinalizeShadowRendItemsJob* pFinalizeShadowRendItemJob = static_cast<TFinalizeShadowRendItemsJob*>(m_pFinalizeShadowRendItemJob[nThreadID]);
-    pFinalizeShadowRendItemJob->ForceUpdateOfProfilingDataIndex();
-    pFinalizeShadowRendItemJob->SetClassInstance(this);
-    pFinalizeShadowRendItemJob->RegisterJobState(&m_JobState_FinalizeShadowRendItems[nThreadID]);
-    pFinalizeShadowRendItemJob->SetPriorityLevel(JobManager::eLowPriority);
-
-    m_JobState_FinalizeShadowRendItems[nThreadID].SetRunning();
-
-    pJobState->RegisterPostJob(pFinalizeShadowRendItemJob);
+    // legacy job priority: JobManager::eLowPriority
+    m_generateShadowRendItemJobExecutor[nThreadID].SetPostJob(
+        m_finalizeShadowRendItemsJobExecutor[nThreadID],
+        [this, nThreadID]
+        {
+            this->FinalizeShadowRendItems(nThreadID);
+        }
+    );
+    m_generateShadowRendItemJobExecutor[nThreadID].PushCompletionFence();
+    
+    m_finalizeShadowRendItemsJobExecutor[nThreadID].PushCompletionFence();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -190,11 +160,13 @@ void CD3D9Renderer::EF_SortRenderLists(SRenderListDesc* pRLD, int nThreadID, boo
 
                 if ((nEnd - nStart) > 0)
                 {
-                    TSortRendItemsJob job(i, j, pRLD, nThreadID, bUseDist);
-                    job.SetClassInstance(this);
-                    job.RegisterJobState(&m_JobState_FinalizeRendItems[nThreadID]);
-                    job.SetPriorityLevel(JobManager::eHighPriority);
-                    job.Run();
+                    // legacy job priority: JobManager::eHighPriority
+                    m_finalizeRendItemsJobExecutor[nThreadID].StartJob(
+                        [this, i, j, pRLD, nThreadID, bUseDist]
+                        {
+                            this->EF_SortRenderList(i, j, pRLD, nThreadID, bUseDist);
+                        }
+                    );
                 }
             }
             else
@@ -209,40 +181,34 @@ void CD3D9Renderer::EF_SortRenderLists(SRenderListDesc* pRLD, int nThreadID, boo
 void CRenderer::BeginSpawningGeneratingRendItemJobs(int nThreadID)
 {
     AZ_TRACE_METHOD();
-    // Create Job Object if not already there
-    IF (m_pFinalizeRendItemJob[nThreadID] == NULL, 0)
-    {
-        m_pFinalizeRendItemJob[nThreadID] = new TFinalizeRendItems(nThreadID);
-    }
 
-    // Init post job
-    TFinalizeRendItems* pFinalizeRendItemJob = static_cast<TFinalizeRendItems*>(m_pFinalizeRendItemJob[nThreadID]);
-    pFinalizeRendItemJob->ForceUpdateOfProfilingDataIndex();
-    pFinalizeRendItemJob->SetClassInstance(this);
-    pFinalizeRendItemJob->RegisterJobState(&m_JobState_FinalizeRendItems[nThreadID]);
-    pFinalizeRendItemJob->SetPriorityLevel(JobManager::eHighPriority);
+    // Register post job
+    // legacy job priority: JobManager::eHighPriority
+    m_generateRendItemJobExecutor[nThreadID].SetPostJob(
+        m_finalizeRendItemsJobExecutor[nThreadID],
+        [this, nThreadID]
+        {
+            this->FinalizeRendItems(nThreadID);
+        }
+    );
 
-    // increase running counter before starting jobs, prevents race conditons if they syncvar is 0, but another job is to be added
+    // Push completion fences accross all groups to prevent false (race-condition) reports of "completion" before all jobs are started.  These are then popped after we are done starting jobs.
     // there will be decreased again after the main thread has passed all job creating parts
-    m_generateRendItemPreProcessJobState[nThreadID].SetRunning();
-    m_generateRendItemJobState[nThreadID].SetRunning();
-    m_JobState_FinalizeRendItems[nThreadID].SetRunning();
-
-    // register post job
-    m_generateRendItemJobState[nThreadID].RegisterPostJob(pFinalizeRendItemJob);
+    m_generateRendItemPreProcessJobExecutor[nThreadID].PushCompletionFence();
+    m_generateRendItemJobExecutor[nThreadID].PushCompletionFence();
+    m_finalizeRendItemsJobExecutor[nThreadID].PushCompletionFence();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 void CRenderer::BeginSpawningShadowGeneratingRendItemJobs(int nThreadID)
 {
-    gRenDev->GetGenerateShadowRendItemJobState(nThreadID)->SetRunning();
-    RegisterFinalizeShadowJobs(gRenDev->GetGenerateShadowRendItemJobState(nThreadID), nThreadID);
+    RegisterFinalizeShadowJobs(nThreadID);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 void CRenderer::EndSpawningGeneratingRendItemJobs(int nThreadID)
 {
-    m_generateRendItemJobState[nThreadID].SetStopped();
+    m_generateRendItemJobExecutor[nThreadID].PopCompletionFence();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -250,12 +216,10 @@ void CRenderer::FinalizeRendItems(int nThreadID)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
 
-    SyncParticleRenderObjectPrepare(nThreadID);
-
     FinalizeRendItems_ReorderRendItems(nThreadID);
     FinalizeRendItems_SortRenderLists(nThreadID);
 
-    m_JobState_FinalizeRendItems[nThreadID].SetStopped();
+    m_finalizeRendItemsJobExecutor[nThreadID].PopCompletionFence();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -266,7 +230,7 @@ void CRenderer::FinalizeShadowRendItems(int nThreadID)
     FinalizeRendItems_ReorderShadowRendItems(nThreadID);
     FinalizeRendItems_FindShadowFrustums(nThreadID);
 
-    m_JobState_FinalizeShadowRendItems[nThreadID].SetStopped();
+    m_finalizeShadowRendItemsJobExecutor[nThreadID].PopCompletionFence();
 }
 
 
@@ -348,7 +312,7 @@ void CRenderer::FinalizeRendItems_SortRenderLists(int nThreadID)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, SRenderingPassInfo passInfo)
+void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, const SRenderingPassInfo& passInfo)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
 
@@ -375,19 +339,20 @@ void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, SRe
         }
 
         // all not yet to jobs ported types need to be processed by mainthread
-        gEnv->p3DEngine->RenderRenderNode_ShadowPass(pEnt, passInfo, gRenDev->GetGenerateShadowRendItemJobState(passInfo.ThreadID()));
+        gEnv->p3DEngine->RenderRenderNode_ShadowPass(pEnt, passInfo, gRenDev->GetGenerateShadowRendItemJobExecutor(passInfo.ThreadID()));
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 void CD3D9Renderer::StartInvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, const SRenderingPassInfo& passInfo)
 {
-    // start a job to spawn all render calls which are already ported to jobs
-    TInvokeShadowMapRenderJobs job(pCurFrustum, passInfo);
-    job.SetClassInstance(this);
-    job.RegisterJobState(gRenDev->GetGenerateShadowRendItemJobState(passInfo.ThreadID()));
-    job.SetPriorityLevel(JobManager::eLowPriority);
-    job.Run();
+    // legacy job priority: JobManager::eLowPriority
+    gRenDev->GetGenerateShadowRendItemJobExecutor(passInfo.ThreadID())->StartJob(
+        [this, pCurFrustum, passInfo]
+        {
+            this->InvokeShadowMapRenderJobs(pCurFrustum, passInfo);
+        }
+    );
 }
 
 ///////////////////////////////////////////////////////////////////////////////

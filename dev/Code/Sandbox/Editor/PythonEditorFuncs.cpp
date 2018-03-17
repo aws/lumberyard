@@ -36,7 +36,7 @@ namespace
         if (!pCVar)
         {
             Warning("PyGetCVar: Attempt to access non-existent CVar '%s'", pName ? pName : "(null)");
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid cvar.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid cvar.").toUtf8().data());
         }
         return pCVar->GetString();
     }
@@ -47,7 +47,7 @@ namespace
         if (!pCVar)
         {
             Warning("PySetCVar: Attempt to access non-existent CVar '%s'", pName ? pName : "(null)");
-            throw std::logic_error((QString("\"") + pName + " is an invalid cvar.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + " is an invalid cvar.").toUtf8().data());
         }
 
         CUndo undo("Set CVar");
@@ -66,7 +66,7 @@ namespace
         }
         else if (pCVar->GetType() == CVAR_STRING && pValue->type == SPyWrappedProperty::eType_String)
         {
-            pCVar->Set(pValue->stringValue.toLatin1().data());
+            pCVar->Set(pValue->stringValue.toUtf8().data());
         }
         else
         {
@@ -225,7 +225,7 @@ namespace
                 if (!CFileUtil::FileExists(path))
                 {
                     QString error = QString("Could not find '%1'\n in '%2'\n or '%3'\n").arg(pFile).arg(userSandboxFolder).arg(scriptFolder);
-                    PyScript::PrintError(error.toLatin1().data());
+                    PyScript::PrintError(error.toUtf8().data());
                     return false;
                 }
             }
@@ -236,7 +236,7 @@ namespace
             if (!CFileUtil::FileExists(path))
             {
                 QString error = QString("Could not find '") + pFile + "'\n";
-                PyScript::PrintError(error.toLatin1().data());
+                PyScript::PrintError(error.toUtf8().data());
                 return false;
             }
         }
@@ -273,13 +273,13 @@ namespace
             }
 
             char fileOp[] = "r";
-            PyObject* pyFileObject = PyFile_FromString(const_cast<char*>(path.toLatin1().data()), fileOp);
+            PyObject* pyFileObject = PyFile_FromString(const_cast<char*>(path.toUtf8().data()), fileOp);
 
             if (pyFileObject)
             {
                 std::vector<const char*> argv;
                 argv.reserve(inputArguments.size() + 1);
-                QByteArray p = path.toLatin1();
+                QByteArray p = path.toUtf8();
                 argv.push_back(p.data());
 
                 QVector<QByteArray> args(inputArguments.count());
@@ -291,7 +291,7 @@ namespace
                 }
 
                 PySys_SetArgv(argv.size(), const_cast<char**>(&argv[0]));
-                PyRun_SimpleFile(PyFile_AsFile(pyFileObject), path.toLatin1().data());
+                PyRun_SimpleFile(PyFile_AsFile(pyFileObject), path.toUtf8().data());
                 PyErr_Print();
             }
             Py_DECREF(pyFileObject);
@@ -425,7 +425,7 @@ namespace
                     }
 
                     char tempString[255];
-                    strcpy(tempString, stringValue.toLatin1().data());
+                    strcpy(tempString, stringValue.toUtf8().data());
 
                     for (int i = 0; i < stringValue.length(); i++)
                     {

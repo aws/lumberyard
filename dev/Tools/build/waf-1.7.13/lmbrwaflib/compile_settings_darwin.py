@@ -15,6 +15,7 @@ from waflib import Logs
 from waflib.Configure import conf
 from waflib.TaskGen import feature, before_method, after_method
 from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
+from waflib.Errors import WafError
 import subprocess
 import re
 
@@ -299,3 +300,56 @@ def add_rpath_update_tasks(self):
     for src in self.link_task.outputs:
         Logs.debug("update_rpath: creating task to update {}".format(src.abspath()))
         self.create_task('update_to_use_rpath', src)
+
+
+@conf
+def register_darwin_external_ly_identity(self, configuration):
+
+    # Do not regsiter as an external library if the source exists
+    if os.path.exists(self.Path('Code/Tools/LyIdentity/wscript')):
+        return
+
+    platform = 'mac'
+
+    if configuration not in ('Debug', 'Release'):
+        raise WafError("Invalid configuration value {}", configuration)
+
+    target_platform = 'darwin'
+    ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity')
+    include_path = os.path.join(ly_identity_base_path, 'include')
+    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
+
+    self.register_3rd_party_uselib('LyIdentity_static',
+                                   target_platform,
+                                   includes=[include_path],
+                                   libpath=[stlib_path],
+                                   lib=['libLyIdentity_static.a'])
+
+@conf
+def register_darwin_external_ly_metrics(self, configuration):
+
+    # Do not regsiter as an external library if the source exists
+    if os.path.exists(self.Path('Code/Tools/LyMetrics/wscript')):
+        return
+
+    platform = 'mac'
+
+    if configuration not in ('Debug', 'Release'):
+        raise WafError("Invalid configuration value {}", configuration)
+
+    target_platform = 'darwin'
+    ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics')
+    include_path = os.path.join(ly_identity_base_path, 'include')
+    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
+
+    self.register_3rd_party_uselib('LyMetricsShared_static',
+                                   target_platform,
+                                   includes=[include_path],
+                                   libpath=[stlib_path],
+                                   lib=['libLyMetricsShared_static.a'])
+
+    self.register_3rd_party_uselib('LyMetricsProducer_static',
+                                   target_platform,
+                                   includes=[include_path],
+                                   libpath=[stlib_path],
+                                   lib=['libLyMetricsProducer_static.a'])

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #include <IMovieSystem.h>
 #include <Range.h>
 #include <AnimKey.h>

@@ -136,13 +136,6 @@ public: // Create from serialization only
 
     void OnEnvironmentPropertyChanged(IVariable* pVar);
 
-#ifdef KDAB_TEMPORARILY_REMOVED
-#ifdef _DEBUG
-    virtual void AssertValid() const;
-    virtual void Dump(CDumpContext& dc) const;
-#endif
-#endif
-
     struct TSaveDocContext
     {
         bool bSaved;

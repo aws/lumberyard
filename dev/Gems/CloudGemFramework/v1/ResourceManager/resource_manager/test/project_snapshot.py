@@ -128,10 +128,11 @@ def create_snapshot(profile, project_directory_path, snapshot_file_path, copied_
     project_stack_name, region_name = get_project_stack_and_region_names(project_directory_path)
 
     if project_stack_name:
-
         global session
-        session = boto3.Session(region_name = region_name, profile_name = profile)
-
+        if os.environ.get('NO_TEST_PROFILE'):
+            session = boto3.Session(region_name = region_name)
+        else:
+            session = boto3.Session(region_name = region_name, profile_name = profile)
         deployment_stack_arns = download_project_stack(project_stack_name, snapshot_directory_path)
 
         for deployment_name, stack_arns in deployment_stack_arns.iteritems():
@@ -402,7 +403,10 @@ def restore_snapshot(region, profile, stack_name, project_directory_path, snapsh
             raise RuntimeError('The snapshot contains a project stack but no --stack-name argument was provided.')
 
         global session
-        session = boto3.Session(region_name = region, profile_name = profile)
+        if os.environ.get('NO_TEST_PROFILE'):
+            session = boto3.Session(region_name = region)
+        else:
+            session = boto3.Session(region_name = region, profile_name = profile)
 
         project_stack_arn = upload_project_stack(stack_name, project_directory_path, snapshot_directory_path)
 

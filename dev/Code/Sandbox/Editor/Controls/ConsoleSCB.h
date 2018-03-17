@@ -138,7 +138,7 @@ public:
     explicit ConsoleVariableEditor(QWidget* parent = nullptr);
 
     static void RegisterViewClass();
-    void HandleVariableRowUpdated(int row, ICVar* pCVar);
+    void HandleVariableRowUpdated(ICVar* pCVar);
 
 protected:
     void showEvent(QShowEvent* event) override;

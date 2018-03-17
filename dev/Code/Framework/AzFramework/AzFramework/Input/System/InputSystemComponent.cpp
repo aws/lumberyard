@@ -21,6 +21,7 @@
 #include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
 #include <AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
@@ -55,6 +56,31 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    class InputSystemNotificationBusBehaviorHandler
+        : public InputSystemNotificationBus::Handler
+        , public AZ::BehaviorEBusHandler
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_EBUS_BEHAVIOR_BINDER(InputSystemNotificationBusBehaviorHandler, "{2F3417A3-41FD-4FBB-B0B6-F154F068F4F8}", AZ::SystemAllocator
+            , OnPreInputUpdate
+            , OnPostInputUpdate
+        );
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        void OnPreInputUpdate() override
+        {
+            Call(FN_OnPreInputUpdate);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        void OnPostInputUpdate() override
+        {
+            Call(FN_OnPostInputUpdate);
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -87,6 +113,31 @@ namespace AzFramework
                 ;
             }
         }
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<InputSystemNotificationBus>("InputSystemNotificationBus")
+                ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Handler<InputSystemNotificationBusBehaviorHandler>()
+                ;
+
+            behaviorContext->EBus<InputSystemRequestBus>("InputSystemRequestBus")
+                ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Event("RecreateEnabledInputDevices", &InputSystemRequestBus::Events::RecreateEnabledInputDevices)
+                ;
+        }
+
+        InputChannelId::Reflect(context);
+        InputDeviceId::Reflect(context);
+        InputChannel::Reflect(context);
+        InputDevice::Reflect(context);
+
+        InputDeviceGamepad::Reflect(context);
+        InputDeviceKeyboard::Reflect(context);
+        InputDeviceMotion::Reflect(context);
+        InputDeviceMouse::Reflect(context);
+        InputDeviceTouch::Reflect(context);
+        InputDeviceVirtualKeyboard::Reflect(context);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

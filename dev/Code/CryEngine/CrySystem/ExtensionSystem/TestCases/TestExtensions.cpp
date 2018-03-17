@@ -37,7 +37,7 @@ namespace TestComposition
         virtual void Call1() const = 0;
     };
 
-    DECLARE_BOOST_POINTERS(ITestExt1);
+    DECLARE_SMART_POINTERS(ITestExt1);
 
 
     class CTestExt1
@@ -83,7 +83,7 @@ namespace TestComposition
         virtual void Call2() = 0;
     };
 
-    DECLARE_BOOST_POINTERS(ITestExt2);
+    DECLARE_SMART_POINTERS(ITestExt2);
 
 
     class CTestExt2
@@ -163,7 +163,7 @@ namespace TestComposition
         virtual void Call3() = 0;
     };
 
-    DECLARE_BOOST_POINTERS(ITestExt3);
+    DECLARE_SMART_POINTERS(ITestExt3);
 
     class CTestExt3
         : public ITestExt3
@@ -295,7 +295,7 @@ namespace TestComposition
         CRYINTERFACE_END()
 
     private:
-        boost::shared_ptr<CTestExt4> m_pTestExt4;
+        AZStd::shared_ptr<CTestExt4> m_pTestExt4;
     };
 
     CRYREGISTER_CLASS(CMegaComposed)
@@ -397,7 +397,7 @@ namespace TestExtension
 
     static void TestFoobar()
     {
-        boost::shared_ptr<CFoobar> p = CFoobar::CreateClassInstance();
+        AZStd::shared_ptr<CFoobar> p = CFoobar::CreateClassInstance();
         {
             CryInterfaceID iid = cryiidof<IFoobar>();
             CryClassID clsid = p->GetFactory()->GetClassID();
@@ -457,14 +457,14 @@ namespace TestExtension
 
     static void TestRaboof()
     {
-        boost::shared_ptr<CRaboof> pFoo0_ = CRaboof::CreateClassInstance();
+        AZStd::shared_ptr<CRaboof> pFoo0_ = CRaboof::CreateClassInstance();
         IRaboofPtr pFoo0 = cryinterface_cast<IRaboof>(pFoo0_);
         ICryUnknownPtr p0 = cryinterface_cast<ICryUnknown>(pFoo0);
 
         CryInterfaceID iid = cryiidof<IRaboof>();
         CryClassID clsid = p0->GetFactory()->GetClassID();
 
-        boost::shared_ptr<CRaboof> pFoo1 = CRaboof::CreateClassInstance();
+        AZStd::shared_ptr<CRaboof> pFoo1 = CRaboof::CreateClassInstance();
 
         pFoo0->Rab();
         pFoo1->Rab();
@@ -657,8 +657,8 @@ namespace TestExtension
         }
 
         {
-            boost::shared_ptr<CMultiBase> p = CMultiBase::CreateClassInstance();
-            boost::shared_ptr<const CMultiBase> pc = p;
+            AZStd::shared_ptr<CMultiBase> p = CMultiBase::CreateClassInstance();
+            AZStd::shared_ptr<const CMultiBase> pc = p;
 
             {
                 ICryUnknownPtr pUnk = cryinterface_cast<ICryUnknown>(p);
@@ -686,7 +686,7 @@ namespace TestExtension
         }
 
         {
-            boost::shared_ptr<CCustomC> p = CCustomC::CreateClassInstance();
+            AZStd::shared_ptr<CCustomC> p = CCustomC::CreateClassInstance();
 
             ICPtr pC = cryinterface_cast<IC>(p);
             ICustomCPtr pCC = cryinterface_cast<ICustomC>(pC);
@@ -705,7 +705,7 @@ namespace TestExtension
         }
 
         {
-            boost::shared_ptr<CAB> p = CAB::CreateClassInstance();
+            AZStd::shared_ptr<CAB> p = CAB::CreateClassInstance();
             CryClassID clsid = p->GetFactory()->GetClassID();
 
             IAPtr pA = cryinterface_cast<IA>(p);
@@ -725,7 +725,7 @@ namespace TestExtension
         }
 
         {
-            boost::shared_ptr<CABC> pABC = CABC::CreateClassInstance();
+            AZStd::shared_ptr<CABC> pABC = CABC::CreateClassInstance();
             CryClassID clsid = pABC->GetFactory()->GetClassID();
 
             ICryFactory* pFac = pABC->GetFactory();
@@ -812,8 +812,11 @@ namespace TestExtension
             return &CDontLikeMacrosFactory::Access();
         };
 
+		// only needed to be able to create initial shared_ptr<CDontLikeMacros> so we don't lose type info for debugging (i.e. inspecting shared_ptr<>)
         template <class T>
-        friend void boost::checked_delete(T* x);                    // only needed to be able to create initial shared_ptr<CDontLikeMacros> so we don't lose type info for debugging (i.e. inspecting shared_ptr<>)
+        friend void AZStd::Internal::sp_ms_deleter<T>::destroy();
+        template <class T>
+        friend AZStd::shared_ptr<T> AZStd::make_shared<T>();
 
     protected:
         virtual void* QueryInterface(const CryInterfaceID& iid) const
@@ -852,7 +855,7 @@ namespace TestExtension
 
     ICryUnknownPtr CDontLikeMacrosFactory::CreateClassInstance() const
     {
-        boost::shared_ptr<CDontLikeMacros> p(new CDontLikeMacros);
+        AZStd::shared_ptr<CDontLikeMacros> p = AZStd::make_shared<CDontLikeMacros>();
         return ICryUnknownPtr(*static_cast<boost::shared_ptr<ICryUnknown>*>(static_cast<void*>(&p)));
     }
 

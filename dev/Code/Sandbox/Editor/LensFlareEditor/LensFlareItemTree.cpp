@@ -56,7 +56,7 @@ void CLensFlareItemTree::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton)
     {
-        CUndo undo(tr("Changed lens flare item").toLatin1());
+        CUndo undo(tr("Changed lens flare item").toUtf8());
         QTreeView::mousePressEvent(event);
     }
     else
@@ -88,7 +88,7 @@ void CLensFlareItemTree::AssignLensFlareToLightEntity(CViewport* pViewport) cons
         CEntityObject* pEntity = (CEntityObject*)hit.object;
         if (pEntity->IsLight())
         {
-            CUndo undo(tr("Assign a lens flare item to a light entity").toLatin1());
+            CUndo undo(tr("Assign a lens flare item to a light entity").toUtf8());
             pEntity->ApplyOptics(pLensFlareItem->GetFullName(), pLensFlareItem->GetOptics());
         }
     }

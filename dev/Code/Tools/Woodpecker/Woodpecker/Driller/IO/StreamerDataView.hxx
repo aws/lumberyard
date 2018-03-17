@@ -16,9 +16,9 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#include <QtCore\QObject>
-#include <QtWidgets\QWidget>
-#include <QtWidgets\QTableView>
+#include <QtCore/QObject>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QTableView>
 
 namespace Driller
 {
@@ -38,6 +38,8 @@ namespace Driller
 		virtual int GetOperationColumn() { return 3; }
 		bool IsAtMaxScroll() const;
 		bool m_scheduledMaxScroll;
+
+                using QTableView::rowsInserted;
 
 		public slots:
 			void  rowsAboutToBeInserted();

@@ -50,7 +50,7 @@ void CEntityPrototype::SetEntityClassName(const QString& className)
         {
             if (!m_script->Load())
             {
-                Error("Failed to initialize Entity Script %s from %s", m_className.toLatin1().data(), m_script->GetFile().toLatin1().data());
+                Error("Failed to initialize Entity Script %s from %s", m_className.toUtf8().data(), m_script->GetFile().toUtf8().data());
                 m_script = 0;
             }
         }
@@ -58,7 +58,7 @@ void CEntityPrototype::SetEntityClassName(const QString& className)
 
     if (m_script && !m_script->GetClass())
     {
-        Error("No Script Class %s", m_className.toLatin1().data());
+        Error("No Script Class %s", m_className.toUtf8().data());
         m_script = 0;
     }
 
@@ -71,10 +71,10 @@ void CEntityPrototype::SetEntityClassName(const QString& className)
         }
 
         // Create a game entity archetype.
-        m_pArchetype = gEnv->pEntitySystem->LoadEntityArchetype(GetFullName().toLatin1().data());
+        m_pArchetype = gEnv->pEntitySystem->LoadEntityArchetype(GetFullName().toUtf8().data());
         if (!m_pArchetype)
         {
-            m_pArchetype = gEnv->pEntitySystem->CreateEntityArchetype(m_script->GetClass(), GetFullName().toLatin1().data());
+            m_pArchetype = gEnv->pEntitySystem->CreateEntityArchetype(m_script->GetClass(), GetFullName().toUtf8().data());
         }
     }
 
@@ -177,8 +177,8 @@ void CEntityPrototype::Serialize(SerializeContext& ctx)
     else
     {
         // Saving.
-        node->setAttr("Class", m_className.toLatin1().data());
-        node->setAttr("Description", m_description.toLatin1().data());
+        node->setAttr("Class", m_className.toUtf8().data());
+        node->setAttr("Description", m_description.toUtf8().data());
         if (m_properties)
         {
             // Serialize properties.

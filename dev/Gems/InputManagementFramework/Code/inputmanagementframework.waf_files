@@ -13,8 +13,8 @@
     },
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/InputManagementFramework_precompiled.cpp",
+            "Source/InputManagementFramework_precompiled.h"
         ]
     }
 }

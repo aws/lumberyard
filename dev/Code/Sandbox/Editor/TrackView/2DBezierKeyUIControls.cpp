@@ -17,6 +17,7 @@
 #include "TrackViewUndo.h"
 
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyItem.h"
+#include <Maestro/Types/SequenceType.h>
 
 //////////////////////////////////////////////////////////////////////////
 class C2DBezierKeyUIControls
@@ -107,9 +108,9 @@ bool C2DBezierKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedK
 // Called when UI variable changes.
 void C2DBezierKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!pSequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
     {
         return;
     }
@@ -126,8 +127,24 @@ void C2DBezierKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
 
             SyncValue(mv_value, bezierKey.value.y, false, pVar);
 
-            CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-            keyHandle.SetKey(&bezierKey);
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&bezierKey);
+            }
+            else if (isDuringUndo)
+            {
+                keyHandle.SetKey(&bezierKey);
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key Value");
+                keyHandle.SetKey(&bezierKey);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
         }
     }
 }

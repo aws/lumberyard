@@ -16,7 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Crc.h>
-#include <QtCore/qstring.h>
+#include <QtCore/QString>
 
 #pragma once
 

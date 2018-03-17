@@ -1,0 +1,111 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "Service Directory Interface Definition",
+        "description": "API for accessing Service Direcory ."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+
+        "/service/{service_url}/interface": {
+            "parameters": [
+                {
+                    "name": "service_url",
+                    "description": "The url of the service. All the service's interface urls start with this url.",
+                    "in": "path",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "put": {
+                "description": "Sets the interfaces implemented by a servcice.",
+                "parameters": [
+                    {
+                        "name": "interface_collection",
+                        "description": "A collection of the service's interfaces.",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/InterfaceCollection"
+                        }
+                    }
+                ],
+                "produces": [],
+                "responses": {
+                    "200": {
+                        "description": "The service's interfaces were set."
+                    }
+                }
+            },
+            "get": {
+                "description": "Gets the interfaces implemented by a service.",
+                "responses": {
+                    "200": {
+                        "description": "A collection of the service's interfaces.",
+                        "schema": {
+                            "$ref": "#/definitions/InterfaceCollection"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes the interfaces implemented by a service.",
+                "produces": [],
+                "responses": {
+                    "200": {
+                        "description": "The service's interfaces were deleted."
+                    }
+                }
+            }
+        }
+
+    },
+
+    "definitions": {
+
+        "Interface": {
+            "type": "object",
+            "properties": {
+                "InterfaceId": {
+                    "type": "string"
+                },
+                "InterfaceUrl": {
+                    "type": "string"
+                },
+                "InterfaceSwagger": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "InterfaceId",
+                "InterfaceUrl",
+                "InterfaceSwagger"
+            ]
+        },
+
+        "InterfaceCollection": {
+            "type": "object",
+            "properties": {
+                "Items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Interface"
+                    }
+                }
+            },
+            "required": [
+                "Items"
+            ]
+        }
+
+    }
+}

@@ -10,9 +10,9 @@
 #
 # $Revision: #1 $
 
-import properties
+from cgf_utils import properties
 import response
-from resource_manager_common import aws_utils
+from cgf_utils import aws_utils
 
 def handler(event, context):
     

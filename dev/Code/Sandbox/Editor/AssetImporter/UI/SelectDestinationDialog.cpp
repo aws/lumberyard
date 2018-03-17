@@ -35,18 +35,19 @@ namespace
 
         State validate(QString& input, int& pos) const override
         {
-            QByteArray str = input.toUtf8();
+            QString normalizedInput = QDir::fromNativeSeparators(input);
+            QByteArray str = normalizedInput.toUtf8();
             const char* path = str.constData();
 
             QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
             QString gameRootAbsPath = gameRoot.absolutePath();
 
-            if (input.isEmpty() || input.isNull())
+            if (input.isEmpty())
             {
                 return QValidator::Acceptable;
             }
 
-            if (GetIEditor()->GetFileUtil()->PathExists(path) && input.startsWith(gameRootAbsPath, Qt::CaseInsensitive))
+            if (GetIEditor()->GetFileUtil()->PathExists(path) && normalizedInput.startsWith(gameRootAbsPath, Qt::CaseInsensitive))
             {
                 return QValidator::Acceptable;
             }
@@ -132,7 +133,7 @@ void SelectDestinationDialog::SetPreviousDestinationDirectory()
         previousDestination = gameRootAbsPath;
     }
 
-    m_ui->DestinationLineEdit->setText(previousDestination);
+    m_ui->DestinationLineEdit->setText(QDir::toNativeSeparators(previousDestination));
 }
 
 void SelectDestinationDialog::accept()
@@ -140,7 +141,7 @@ void SelectDestinationDialog::accept()
     QDialog::accept();
 
     // This prevent users from not editing the destination line edit (manually type the directory or browse for the directory)
-    Q_EMIT SetDestinationDiretory(m_ui->DestinationLineEdit->text());
+    Q_EMIT SetDestinationDiretory(DestinationDirectory());
 
     if (m_ui->CopyFileRadioButton->isChecked())
     {
@@ -176,9 +177,6 @@ void SelectDestinationDialog::UpdateMessage(QString message)
 
 void SelectDestinationDialog::ValidatePath()
 {
-    QString destinationDirectory = m_ui->DestinationLineEdit->text();
-    int strLength = destinationDirectory.length();
-    
     if (!m_ui->DestinationLineEdit->hasAcceptableInput())
     {
         m_ui->DestinationLineEdit->setToolTip(tr(g_toolTip));
@@ -186,6 +184,9 @@ void SelectDestinationDialog::ValidatePath()
     }
     else
     {
+        QString destinationDirectory = DestinationDirectory();
+        int strLength = destinationDirectory.length();
+
         // store the updated acceptable destination directory into the registry,
         // so that when users manually modify the directory,
         // the Asset Importer will remember it
@@ -194,6 +195,11 @@ void SelectDestinationDialog::ValidatePath()
         m_ui->DestinationLineEdit->setToolTip("");
         Q_EMIT UpdateImportButtonState(strLength > 0);   
     } 
+}
+
+QString SelectDestinationDialog::DestinationDirectory() const
+{
+    return QDir::fromNativeSeparators(m_ui->DestinationLineEdit->text());
 }
 
 #include <AssetImporter/UI/SelectDestinationDialog.moc>

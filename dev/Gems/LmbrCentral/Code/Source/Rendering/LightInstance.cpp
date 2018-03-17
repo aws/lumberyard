@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Math/Quaternion.h>
 #include <MathConversion.h>
@@ -79,7 +79,7 @@ namespace
 
         lightParams.m_nEntityId = CreateLightId(entityId);
 
-        UpdateLightFlag(configuration.m_ignoreVisAreas, DLF_IGNORES_VISAREAS, lightParams.m_Flags);
+        UpdateLightFlag(!configuration.m_useVisAreas, DLF_IGNORES_VISAREAS, lightParams.m_Flags);
         UpdateLightFlag(configuration.m_indoorOnly, DLF_INDOOR_ONLY, lightParams.m_Flags);
         UpdateLightFlag(configuration.m_affectsThisAreaOnly, DLF_THIS_AREA_ONLY, lightParams.m_Flags);
         UpdateLightFlag(ambient, DLF_AMBIENT, lightParams.m_Flags);
@@ -231,13 +231,19 @@ namespace
 
         if (configuration.m_syncAnimWithLight)
         {
-            lightParams.m_nLightStyle = configuration.m_syncAnimIndex; // This is really a light animation curve ID
+            lightParams.m_nLightStyle = static_cast<AZ::u8>(configuration.m_syncAnimIndex); // This is really a light animation curve ID
             lightParams.SetAnimSpeed(configuration.m_syncAnimSpeed); // maps [0, 4] to [0, 255]
             lightParams.m_nLightPhase = static_cast<AZ::u8>(configuration.m_syncAnimPhase * 255.f); // maps [0, 1] to [0, 255]
         }
+        else if (configuration.m_attachToSun)
+        {
+            gEnv->p3DEngine->SetSunAnimIndex(static_cast<AZ::u8>(configuration.m_animIndex)); // This is really a light animation curve ID
+            gEnv->p3DEngine->SetSunAnimSpeed(configuration.m_animSpeed); // maps [0, 4] to [0, 255]
+            gEnv->p3DEngine->SetSunAnimPhase(static_cast<AZ::u8>(configuration.m_animPhase * 255.f)); // maps [0, 1] to [0, 255]
+        }
         else
         {
-            lightParams.m_nLightStyle = configuration.m_animIndex; // This is really a light animation curve ID
+            lightParams.m_nLightStyle = static_cast<AZ::u8>(configuration.m_animIndex); // This is really a light animation curve ID
             lightParams.SetAnimSpeed(configuration.m_animSpeed); // maps [0, 4] to [0, 255]
             lightParams.m_nLightPhase = static_cast<AZ::u8>(configuration.m_animPhase * 255.f); // maps [0, 1] to [0, 255]
         }
@@ -245,7 +251,7 @@ namespace
         lightParams.m_LensOpticsFrustumAngle = static_cast<AZ::u8>(configuration.m_lensFlareFrustumAngle / 360.f * 255.f);
 
         UpdateLightFlag(configuration.m_affectsThisAreaOnly, DLF_THIS_AREA_ONLY, lightParams.m_Flags);
-        UpdateLightFlag(configuration.m_ignoreVisAreas, DLF_IGNORES_VISAREAS, lightParams.m_Flags);
+        UpdateLightFlag(!configuration.m_useVisAreas, DLF_IGNORES_VISAREAS, lightParams.m_Flags);
         UpdateLightFlag(configuration.m_indoorOnly, DLF_INDOOR_ONLY, lightParams.m_Flags);
         UpdateLightFlag(configuration.m_attachToSun, DLF_ATTACH_TO_SUN, lightParams.m_Flags);
 

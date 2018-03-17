@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 
 #include <Pipeline/PhysXMeshExporter.h>
 #include <Pipeline/PhysXMeshAsset.h>
@@ -29,7 +29,7 @@
 #include <PxPhysicsAPI.h>
 
 // A utility macro helping set/clear bits in a single line
-#define SET_BITS( flags, condition, bits ) flags = (condition) ? ((flags) | (bits)) : ((flags) & ~(bits))
+#define SET_BITS(flags, condition, bits) flags = (condition) ? ((flags) | (bits)) : ((flags) & ~(bits))
 
 using namespace AZ::SceneAPI;
 
@@ -42,12 +42,12 @@ namespace PhysX
         namespace SceneUtil = AZ::SceneAPI::Utilities;
 
         static physx::PxDefaultAllocator pxDefaultAllocatorCallback;
-        
+
         // Error code conversion functions
         static AZStd::string convexCookingResultToString(physx::PxConvexMeshCookingResult::Enum convexCookingResultCode)
         {
             static const AZStd::string resultToString[] = { "eSUCCESS", "eZERO_AREA_TEST_FAILED", "ePOLYGONS_LIMIT_REACHED", "eFAILURE" };
-            if(AZ_ARRAY_SIZE(resultToString) > convexCookingResultCode)
+            if (AZ_ARRAY_SIZE(resultToString) > convexCookingResultCode)
             {
                 return resultToString[convexCookingResultCode];
             }
@@ -105,9 +105,9 @@ namespace PhysX
             SceneEvents::ProcessingResult result;
 
             auto vertexCount = meshToExport->GetVertexCount();
-                        
-            AZ::Vector3 * verts = new AZ::Vector3[vertexCount];
-            for( unsigned int i = 0; i < vertexCount; ++i )
+
+            AZ::Vector3* verts = new AZ::Vector3[vertexCount];
+            for (unsigned int i = 0; i < vertexCount; ++i)
             {
                 verts[i] = meshToExport->GetPosition(i);
             }
@@ -119,22 +119,22 @@ namespace PhysX
             {
                 faces[i] = meshToExport->GetFaceInfo(i);
             }
-                
+
             auto pxFoundation = PxCreateFoundation(PX_FOUNDATION_VERSION, pxDefaultAllocatorCallback, pxDefaultErrorCallback);
             if (pxFoundation)
             {
                 bool shouldExportAsConvex = pxMeshGroup.GetExportAsConvex();
                 bool cookingSuccessful = false;
                 AZStd::string cookingResultErrorCodeString;
-                
+
                 physx::PxCookingParams pxCookingParams = physx::PxCookingParams(physx::PxTolerancesScale());
-                
+
                 pxCookingParams.buildGPUData = pxMeshGroup.GetBuildGPUData();
                 pxCookingParams.midphaseDesc.setToDefault(physx::PxMeshMidPhase::eBVH34); // Always set to 3.4 since 3.3 is being deprecated (despite being default)
 
-                if(shouldExportAsConvex )
+                if (shouldExportAsConvex)
                 {
-                    if(pxMeshGroup.GetCheckZeroAreaTriangles())
+                    if (pxMeshGroup.GetCheckZeroAreaTriangles())
                     {
                         pxCookingParams.areaTestEpsilon = pxMeshGroup.GetAreaTestEpsilon();
                     }
@@ -149,7 +149,7 @@ namespace PhysX
                     pxCookingParams.buildTriangleAdjacencies = pxMeshGroup.GetBuildTriangleAdjacencies();
                     pxCookingParams.suppressTriangleMeshRemapTable = pxMeshGroup.GetSuppressTriangleMeshRemapTable();
 
-                    if(pxMeshGroup.GetWeldVertices())
+                    if (pxMeshGroup.GetWeldVertices())
                     {
                         pxCookingParams.meshPreprocessParams |= physx::PxMeshPreprocessingFlag::eWELD_VERTICES;
                     }
@@ -169,7 +169,7 @@ namespace PhysX
                 if (pxCooking)
                 {
                     physx::PxDefaultMemoryOutputStream memoryStream;
-                    
+
                     if (shouldExportAsConvex)
                     {
                         physx::PxConvexMeshDesc convexDesc;
@@ -177,7 +177,7 @@ namespace PhysX
                         convexDesc.points.stride = sizeof(AZ::Vector3);
                         convexDesc.points.data = verts;
                         convexDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
-                        
+
                         SET_BITS(convexDesc.flags, pxMeshGroup.GetUse16bitIndices(), physx::PxConvexFlag::e16_BIT_INDICES);
                         SET_BITS(convexDesc.flags, pxMeshGroup.GetCheckZeroAreaTriangles(), physx::PxConvexFlag::eCHECK_ZERO_AREA_TRIANGLES);
                         SET_BITS(convexDesc.flags, pxMeshGroup.GetQuantizeInput(), physx::PxConvexFlag::eQUANTIZE_INPUT);
@@ -204,11 +204,11 @@ namespace PhysX
                         cookingSuccessful = pxCooking->cookTriangleMesh(meshDesc, memoryStream, &trimeshCookingResultCode) && ValidateCookedTriangleMesh(memoryStream.getData(), memoryStream.getSize());
                         cookingResultErrorCodeString = trimeshCookingResultToString(trimeshCookingResultCode);
                     }
- 
-                    if(cookingSuccessful)
+
+                    if (cookingSuccessful)
                     {
                         auto groupName = pxMeshGroup.GetName();
-                        
+
                         const AZ::SceneAPI::Containers::Scene& scene = context.GetScene();
                         const AZ::SceneAPI::Containers::SceneGraph& graph = scene.GetGraph();
                         auto nodeIndex = graph.Find(nodePath);
@@ -216,9 +216,9 @@ namespace PhysX
                         AZStd::string assetName = groupName + "_" + nodeName;
 
                         AZStd::string filename = SceneUtil::FileUtilities::CreateOutputFileName(assetName, context.GetOutputDirectory(), PhysXMeshAsset::m_assetFileExtention);
-                        
+
                         bool canStartWritingToFile = !filename.empty() && SceneUtil::FileUtilities::EnsureTargetFolderExists(filename);
-                        
+
                         if (canStartWritingToFile)
                         {
                             result = SceneEvents::ProcessingResult::Success;
@@ -251,7 +251,7 @@ namespace PhysX
                     AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Creating PxCreateCooking failed!");
                     result = SceneEvents::ProcessingResult::Failure;
                 }
-                    
+
                 pxFoundation->release();
             }
             else
@@ -278,28 +278,27 @@ namespace PhysX
             auto view = SceneContainers::MakeExactFilterView<PhysXMeshGroup>(valueStorage);
 
             for (const PhysXMeshGroup& pxMeshGroup : view)
-            { 
+            {
                 auto groupName = pxMeshGroup.GetName();
 
                 AZ_TraceContext("Group Name", groupName);
 
                 const auto& sceneNodeSelectionList = pxMeshGroup.GetSceneNodeSelectionList();
-                
+
                 auto selectedNodeCount = sceneNodeSelectionList.GetSelectedNodeCount();
-                
-                for( size_t i = 0; i < selectedNodeCount; i++ )
+
+                for (size_t i = 0; i < selectedNodeCount; i++)
                 {
                     const auto& selectedNodePath = sceneNodeSelectionList.GetSelectedNode(i);
                     auto nodeIndex = graph.Find(selectedNodePath);
                     auto it = graph.ConvertToStorageIterator(nodeIndex);
                     auto mesh = azrtti_cast<const AZ::SceneAPI::DataTypes::IMeshData*>(*it);
-                    
+
                     if (mesh)
                     {
                         result += ExportMeshObject(context, mesh, selectedNodePath, pxMeshGroup);
                     }
                 }
-
             }
 
             return result.GetResult();
@@ -321,7 +320,7 @@ namespace PhysX
 
                 AZ::IO::FileIOBase::GetInstance()->Close(fileHandle);
             }
-        } 
+        }
 
         bool PhysXMeshExporter::ValidateCookedTriangleMesh(void* assetData, AZ::u32 assetDataSize) const
         {

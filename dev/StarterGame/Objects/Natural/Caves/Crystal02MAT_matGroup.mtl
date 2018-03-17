@@ -1,15 +1,15 @@
 <Material MtlFlags="524544" vertModifType="0">
  <SubMaterials>
-  <Material Name="Crystal02MAT" MtlFlags="526464" Shader="Glass" GenMask="20100000020000" StringGenMask="%DIRT_MAP%SPECULAR_MAP%TINT_COLOR_MAP" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0.38642946,0.38642946,0.38642946,1" Emittance="0.095307469,0.095307469,0.095307469,0" Opacity="1" Shininess="223.64999" AlphaTest="0.029999999" vertModifType="0" LayerAct="1">
+  <Material Name="Crystal02MAT" MtlFlags="526464" Shader="Glass" GenMask="80000040" StringGenMask="%BLUR_REFRACTION%DIRT_MAP" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0.38642946,0.38642946,0.38642946,1" Emittance="0.095307469,0.095307469,0.095307469,0" Opacity="1" Shininess="223.64999" AlphaTest="0.029999999" vertModifType="0" LayerAct="1">
    <Textures>
-    <Texture Map="Bumpmap" File="objects/natural/caves/am_crystal_02_ddn.dds"/>
     <Texture Map="Diffuse" File="objects/natural/caves/am_crystal_02_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/natural/caves/am_crystal_02_ddn.dds"/>
    </Textures>
-   <PublicParams BumpMapTile="1" TintColor="1,0.53947961,0.70110202" TintCloudiness="0" BackLightScale="0.5" BumpScale="2" IndirectColor="0.25,0.25,0.25"/>
+   <PublicParams BumpMapTile="1" TintColor="1,0.53947961,0.70110202" BlurAmount="0.5" TintCloudiness="0" BackLightScale="0.5" BumpScale="2" IndirectColor="0.25,0.25,0.25"/>
   </Material>
   <Material Name="Collision" MtlFlags="558208" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
    <Textures />
   </Material>
  </SubMaterials>
- <PublicParams />
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
 </Material>

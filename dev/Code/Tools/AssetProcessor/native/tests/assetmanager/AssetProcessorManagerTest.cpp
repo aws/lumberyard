@@ -77,7 +77,7 @@ void AssetProcessorManagerTest::SetUp()
 
     UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("subfolder1/assetProcessorManagerTest.txt"));
 
-    m_config->AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1));
+    m_config->AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true));
 
     m_config->EnablePlatform({ "pc", {"host", "renderer"} }, true);
 
@@ -133,10 +133,11 @@ TEST_F(AssetProcessorManagerTest, UnitTestForGettingJobInfoBySourceUUIDSuccess)
     AssetJobsInfoResponse response;
     m_assetProcessorManager->ProcessGetAssetJobsInfoRequest(request, response);
 
-    ASSERT_TRUE(response.m_isSuccess == true);
-    ASSERT_TRUE(response.m_jobList.size() == 1);
-    ASSERT_TRUE(response.m_jobList[0].m_status == JobStatus::Completed);
-    ASSERT_TRUE(AzFramework::StringFunc::Equal(response.m_jobList[0].m_sourceFile.c_str(), relFileName.toUtf8().data()));
+    EXPECT_TRUE(response.m_isSuccess);
+    EXPECT_EQ(1, response.m_jobList.size());
+    ASSERT_GT(response.m_jobList.size(), 0); // Assert on this to exit early if needed, otherwise indexing m_jobList later will crash.
+    EXPECT_EQ(JobStatus::Completed, response.m_jobList[0].m_status);
+    EXPECT_STRCASEEQ(relFileName.toUtf8().data(), response.m_jobList[0].m_sourceFile.c_str());
 
 
     m_assetProcessorManager->OnJobStatusChanged(entry, JobStatus::Queued);
@@ -145,15 +146,13 @@ TEST_F(AssetProcessorManagerTest, UnitTestForGettingJobInfoBySourceUUIDSuccess)
     response.m_jobList.clear();
 
     m_assetProcessorManager->ProcessGetAssetJobsInfoRequest(request, response);
-    ASSERT_TRUE(response.m_isSuccess == true);
-    ASSERT_TRUE(response.m_jobList.size() == 2);
+    EXPECT_TRUE(response.m_isSuccess);
+    EXPECT_EQ(1, response.m_jobList.size());
+    ASSERT_GT(response.m_jobList.size(), 0); // Assert on this to exit early if needed, otherwise indexing m_jobList later will crash.
 
-    for (int idx = 0; idx < response.m_jobList.size(); idx++)
-    {
-        ASSERT_TRUE(response.m_jobList[idx].m_status == JobStatus::Queued || response.m_jobList[idx].m_status == JobStatus::Completed);
-        ASSERT_TRUE(AzFramework::StringFunc::Equal(response.m_jobList[idx].m_sourceFile.c_str(), relFileName.toUtf8().data()));
-        ASSERT_TRUE(AzFramework::StringFunc::Equal(response.m_jobList[idx].m_watchFolder.c_str(), tempPath.filePath("subfolder1").toUtf8().data()));
-    }
+    EXPECT_EQ(JobStatus::Queued, response.m_jobList[0].m_status);
+    EXPECT_STRCASEEQ(relFileName.toUtf8().data(), response.m_jobList[0].m_sourceFile.c_str());
+    EXPECT_STRCASEEQ(tempPath.filePath("subfolder1").toUtf8().data(), response.m_jobList[0].m_watchFolder.c_str());
 
     ASSERT_EQ(m_assertAbsorber.m_numWarningsAbsorbed, 0);
     ASSERT_EQ(m_assertAbsorber.m_numErrorsAbsorbed, 0);

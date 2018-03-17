@@ -156,7 +156,7 @@ namespace AssetProcessor
 
         if (!m_dispatchingPaused)
         {
-            Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount() - m_RCJobListModel.FailedJobsCount()));
+            Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount()));
         }
 
         if (!m_shuttingDown)
@@ -226,7 +226,7 @@ namespace AssetProcessor
 
         if (!m_dispatchingPaused)
         {
-            Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount() - m_RCJobListModel.FailedJobsCount()));
+            Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount()));
         }
 
         // Start the job we just received if no job currently running
@@ -246,7 +246,7 @@ namespace AssetProcessor
                 if ((!m_shuttingDown) && (!m_dispatchingJobs))
                 {
                     QMetaObject::invokeMethod(this, "DispatchJobs", Qt::QueuedConnection);
-                    Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount() - m_RCJobListModel.FailedJobsCount()));
+                    Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount()));
                 }
             }
         }

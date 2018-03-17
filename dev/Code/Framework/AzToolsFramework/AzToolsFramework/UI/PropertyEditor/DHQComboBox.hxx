@@ -27,10 +27,12 @@ namespace AzToolsFramework
     public:
         AZ_CLASS_ALLOCATOR(DHQComboBox, AZ::SystemAllocator, 0);
 
-        explicit DHQComboBox(QWidget* parent = 0)
-            : QComboBox(parent) {}
+        explicit DHQComboBox(QWidget* parent = 0);
 
-        void wheelEvent(QWheelEvent* e);
+        void showPopup() override;
+
+    protected:
+        void wheelEvent(QWheelEvent* e) override;
     };
 }
 

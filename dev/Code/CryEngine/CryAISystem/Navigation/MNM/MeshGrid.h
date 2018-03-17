@@ -95,7 +95,7 @@ namespace MNM
         virtual real_t GetDangerHeuristicCost(const Vec3& locationToEval, const Vec3& startingLocation) const = 0;
         virtual const Vec3& GetLocation() const = 0;
     };
-    DECLARE_BOOST_POINTERS(DangerArea)
+    DECLARE_SMART_POINTERS(DangerArea)
 
     template<EWeightCalculationType WeightType>
     struct DangerAreaT
@@ -277,7 +277,7 @@ namespace MNM
             ILINE void Clear() { m_waySize = 0; }
         private:
 
-            boost::shared_ptr<WayTriangleData[]> m_pWayTriData;
+            AZStd::shared_ptr<WayTriangleData> m_pWayTriData;
             size_t m_wayMaxSize;
             size_t m_waySize;
         };

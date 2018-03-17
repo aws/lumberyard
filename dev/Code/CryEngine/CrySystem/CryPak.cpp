@@ -42,8 +42,9 @@
 #include <AzFramework/IO/FileOperations.h>
 #include <LoadScreenBus.h>
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
 #include "System.h"
+
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CRYPAK_POSIX
 #include <unistd.h>
 #include <sys/stat.h>                   // fstat, fileno
 //#define fileno(X) ((X)->_Handle)
@@ -2440,7 +2441,7 @@ bool CCryPak::OpenPack(const char* szPath, unsigned nFlags, IMemoryBlock* pData,
     const char* szFullPath = AdjustFileName(szPath, szFullPathBuf, nFlags);
     string strBindRoot;
     const char* pLastSlash = strrchr(szFullPath, g_cNativeSlash);
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CRYPAK_POSIX
     if (!pLastSlash)
     {
         pLastSlash = strrchr(szFullPath, g_cNonNativeSlash);
@@ -2696,7 +2697,7 @@ bool CCryPak::OpenPacksCommon(const char* szDir, const char* pWildcardIn, char* 
 
     // where to copy the filenames to form the path in cWork
     char* pDestName = strrchr(cWork, g_cNativeSlash);
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CRYPAK_POSIX
     if (!pDestName)
     {
         pDestName = strrchr (cWork, g_cNonNativeSlash);

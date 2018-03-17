@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
 

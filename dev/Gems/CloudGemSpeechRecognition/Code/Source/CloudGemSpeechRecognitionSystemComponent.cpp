@@ -1,10 +1,10 @@
 
-#include "StdAfx.h"
+#include "CloudGemSpeechRecognition_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <base64.h>
+#include <Base64.h>
 #include <AzCore/JSON/document.h>
 
 #include "CloudGemSpeechRecognitionSystemComponent.h"
@@ -13,12 +13,13 @@
 
 namespace CloudGemSpeechRecognition
 {
+
     void CloudGemSpeechRecognitionSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<CloudGemSpeechRecognitionSystemComponent, AZ::Component>()
-                ->Version(0)
+                ->Version(1)
                 ->SerializerForEmptyClass();
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
@@ -34,9 +35,10 @@ namespace CloudGemSpeechRecognition
         AZ::BehaviorContext* bc = azrtti_cast<AZ::BehaviorContext*>(context);
         if (bc)
         {
-            bc->Class<CloudGemSpeechRecognitionSystemComponent>()
-                ->Method("BeginSpeechCapture", &CloudGemSpeechRecognitionSystemComponent::BeginSpeechCapture)
-                ->Method("EndSpeechCaptureAndCallBot", &CloudGemSpeechRecognitionSystemComponent::EndSpeechCaptureAndCallBot)
+            bc->EBus<SpeechRecognitionRequestBus>("CloudGemSpeechRecoginition", "SpeechRecognitionRequestBus")
+                ->Attribute(AZ::Script::Attributes::Category, "Cloud Gem")
+                ->Event("BeginSpeechCapture", &SpeechRecognitionRequestBus::Events::BeginSpeechCapture)
+                ->Event("EndSpeechCaptureAndCallBot", &SpeechRecognitionRequestBus::Events::EndSpeechCaptureAndCallBot)
                 ;
         }
     }
@@ -58,12 +60,12 @@ namespace CloudGemSpeechRecognition
     void CloudGemSpeechRecognitionSystemComponent::Activate()
     {
         EBUS_EVENT(AZ::ComponentApplicationBus, RegisterComponentDescriptor, CloudGemSpeechRecognition::ServiceAPI::CloudGemSpeechRecognitionClientComponent::CreateDescriptor());
-        CloudGemSpeechRecognitionRequestBus::Handler::BusConnect();
+        SpeechRecognitionRequestBus::Handler::BusConnect();
     }
 
     void CloudGemSpeechRecognitionSystemComponent::Deactivate()
     {
-        CloudGemSpeechRecognitionRequestBus::Handler::BusDisconnect();
+        SpeechRecognitionRequestBus::Handler::BusDisconnect();
     }
 
 

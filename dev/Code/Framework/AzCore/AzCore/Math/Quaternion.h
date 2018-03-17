@@ -280,10 +280,8 @@ namespace AZ
 AZSTD_DECLARE_POD_TYPE(AZ::Quaternion);
 #endif
 
-#if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
+#if AZ_TRAIT_USE_PLATFORM_SIMD
     #include <AzCore/Math/Internal/QuaternionWin32.inl>
-#elif defined(AZ_SIMD_WII)
-    #include <AzCore/Math/Internal/QuaternionWii.inl>
 #else
     #include <AzCore/Math/Internal/QuaternionFpu.inl>
 #endif

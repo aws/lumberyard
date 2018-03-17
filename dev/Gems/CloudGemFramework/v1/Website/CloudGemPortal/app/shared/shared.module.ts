@@ -20,7 +20,8 @@ import {
     TagComponent,
     InlineEditingComponent,
     SwitchButtonComponent,
-    BreadcrumbComponent
+    BreadcrumbComponent,
+    DropdownComponent
 } from "./component/index";
 
 @NgModule({
@@ -56,7 +57,8 @@ import {
         TagComponent,
         InlineEditingComponent,
         SwitchButtonComponent,
-        BreadcrumbComponent
+        BreadcrumbComponent,
+        DropdownComponent
     ],
     declarations: [
         ModalComponent,
@@ -73,7 +75,8 @@ import {
         TagComponent,
         InlineEditingComponent,
         SwitchButtonComponent,
-        BreadcrumbComponent
+        BreadcrumbComponent,
+        DropdownComponent
     ]
 })
 export class AppSharedModule {

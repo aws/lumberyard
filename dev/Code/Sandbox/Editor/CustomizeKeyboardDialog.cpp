@@ -13,10 +13,14 @@
 #include "CustomizeKeyboardDialog.h"
 #include "ui_CustomizeKeyboardDialog.h"
 
+#include <AzQtComponents/Components/WindowDecorationWrapper.h>
+
 #include <QVector>
 #include <QMenuBar>
 #include <QAbstractListModel>
 #include <QMessageBox>
+
+using namespace AzQtComponents;
 
 namespace
 {
@@ -215,7 +219,7 @@ private:
 };
 
 CustomizeKeyboardDialog::CustomizeKeyboardDialog(KeyboardCustomizationSettings& settings, QWidget* parent /* = nullptr */)
-    : QDialog(parent)
+    : QDialog(new WindowDecorationWrapper(WindowDecorationWrapper::OptionAutoAttach | WindowDecorationWrapper::OptionAutoTitleBarButtons, parent))
     , m_ui(new Ui::CustomizeKeyboardDialog)
     , m_settings(settings)
     , m_settingsSnapshot(m_settings.CreateSnapshot())

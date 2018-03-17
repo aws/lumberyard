@@ -16,6 +16,8 @@
 
 #include <AzCore/EBus/EBus.h>
 
+#include <AzCore/RTTI/ReflectContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
@@ -44,11 +46,32 @@ namespace AzFramework
         {
         public:
             ////////////////////////////////////////////////////////////////////////////////////////
+            // Allocator
+            AZ_CLASS_ALLOCATOR(BusIdType, AZ::SystemAllocator, 0);
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Type Info
+            AZ_TYPE_INFO(BusIdType, "{FA0B740B-8917-4260-B402-05444C985AB5}");
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Reflection
+            static void Reflect(AZ::ReflectContext* context);
+
+            ////////////////////////////////////////////////////////////////////////////////////////
             //! Constructor
             //! \param[in] channelId Id of the input channel to address requests
             //! \param[in] deviceIndex Index of the input device to address requests
             BusIdType(const InputChannelId& channelId, AZ::u32 deviceIndex = 0)
                 : m_channelId(channelId)
+                , m_deviceIndex(deviceIndex)
+            {}
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Constructor
+            //! \param[in] channelName Name of the input channel to address requests
+            //! \param[in] deviceIndex Index of the input device to address requests
+            BusIdType(const char* channelName, AZ::u32 deviceIndex = 0)
+                : m_channelId(channelName)
                 , m_deviceIndex(deviceIndex)
             {}
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "Draw2d.h"
 #include "IFont.h"
 #include "IRenderer.h"

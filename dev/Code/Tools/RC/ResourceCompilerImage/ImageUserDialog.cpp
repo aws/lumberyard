@@ -805,9 +805,9 @@ void CImageUserDialog::SetPreviewModes(const CImageProperties& props, const bool
 string CImageUserDialog::GetPreset(QWidget* control)
 {
     const QString text = control->property(control->metaObject()->userProperty().name()).toString();
-    if (!StringHelpers::Equals(s_pComboboxSeparator, text.toLatin1().data()))
+    if (!StringHelpers::Equals(s_pComboboxSeparator, text.toUtf8().data()))
     {
-        return text.toLatin1().data();
+        return text.toUtf8().data();
     }
 
     return "";
@@ -817,7 +817,7 @@ string CImageUserDialog::GetPreset(QWidget* control)
 EPreviewMode CImageUserDialog::GetPreviewMode(const CImageProperties& props, QWidget* control)
 {
     const QString text = control->property(control->metaObject()->userProperty().name()).toString();
-    if (!StringHelpers::Equals(s_pComboboxSeparator, text.toLatin1().data()))
+    if (!StringHelpers::Equals(s_pComboboxSeparator, text.toUtf8().data()))
     {
         for (int i = 0; i < ePM_Num; ++i)
         {
@@ -1087,6 +1087,11 @@ void CImageUserDialog::Draw(QPainter* painter)
         image.forget();
     }
 
+    // Q: Why can't original image be gamma-corrected?
+    // Q: Why can't original image be RGBK?
+    m_ImagePreview.AssignImage(original);
+    m_ImagePreview.AssignPreset(&m_pImageCompiler->m_Props, false, true);
+
     if (m_pImageCompiler->m_Props.GetPowOf2() && !original->HasPowerOfTwoSizes())
     {
         char str[256];
@@ -1094,11 +1099,6 @@ void CImageUserDialog::Draw(QPainter* painter)
         m_ImagePreview.PrintTo(painter, rec, "Image size is not power of two", str);
         return;
     }
-
-    // Q: Why can't original image be gamma-corrected?
-    // Q: Why can't original image be RGBK?
-    m_ImagePreview.AssignImage(original);
-    m_ImagePreview.AssignPreset(&m_pImageCompiler->m_Props, false, true);
 
     if (!m_ImagePreview.BlitTo(painter, rec, m_PreviewData.fShiftX, m_PreviewData.fShiftY, m_PreviewData.iScale64))
     {
@@ -1473,7 +1473,7 @@ void CImageUserDialog::WndProc(int uMsg, int wParam, int lParam)
             }
 
             const CImageCompiler* const pIC = m_pImageCompiler;
-            const int sectionIndex = pIC->m_CC.pRC->GetIniFile()->FindSection(presetName.toLatin1().data());
+            const int sectionIndex = pIC->m_CC.pRC->GetIniFile()->FindSection(presetName.toUtf8().data());
 
             if (sectionIndex < 0)
             {
@@ -1912,7 +1912,7 @@ ChooseResolutionDialog::ChooseResolutionDialog(QWidget* parent)
 
         {
             CImageProperties::ReduceMap workReduceMap;
-            Reduce::s_pImageCompiler->m_Props.ConvertReduceStringToMap(str.toLatin1().data(), workReduceMap);
+            Reduce::s_pImageCompiler->m_Props.ConvertReduceStringToMap(str.toUtf8().data(), workReduceMap);
             Reduce::s_pImageCompiler->m_Props.SetReduceResolutionFile(workReduceMap);
         }
 

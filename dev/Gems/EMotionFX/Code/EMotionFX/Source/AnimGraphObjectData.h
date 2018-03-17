@@ -62,7 +62,7 @@ public:                                                                  \
     class EMFX_API AnimGraphObjectData
         : public BaseObject
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphObjectData, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTUNIQUEDATA);
+        MCORE_MEMORYOBJECTCATEGORY(AnimGraphObjectData, MCore::MCORE_SIMD_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTUNIQUEDATA);
 
         friend class AnimGraphObjectDataPool;
 

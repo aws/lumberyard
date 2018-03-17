@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 #include <platform_impl.h>
 
 #include <IEntityClass.h>
@@ -19,7 +19,7 @@
 #include "LightningGem.h"
 #include "LightningArc.h"
 #include "LightningGameEffectCry.h"
-#include "LightningGameEffectAZ.h"
+#include "LightningGameEffectAz.h"
 #include "ScriptBind_LightningArc.h"
 
 #include "LightningArcComponent.h"

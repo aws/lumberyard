@@ -19,6 +19,10 @@ namespace AzQtComponents
     ToolBarArea::ToolBarArea(QWidget *parent)
         : QMainWindow(parent)
     {
+        // this will prevent this toolbar area from being temporarily styled with a custom title bar
+        setProperty("HasNoWindowDecorations", true);
+
+        // this will prevent this toolbar area from being created as a full window
         setWindowFlags(windowFlags() & ~Qt::Window);
     }
 

@@ -9,14 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "CloudGemDynamicContent_precompiled.h"
 
 #include "QDynamicContentEditorMainWindow.h"
 
 #include "FileWatcherModel.h"
 #include "PackagesModel.h"
 #include "ManifestTableKeys.h"
-#include "FileWatcherView.h"
+#include "fileWatcherView.h"
 
 #include <QPainter>
 #include <QRadioButton>

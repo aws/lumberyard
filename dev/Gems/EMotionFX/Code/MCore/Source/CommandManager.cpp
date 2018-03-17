@@ -148,16 +148,16 @@ namespace MCore
     // save command in the history
     void CommandManager::PushCommandHistory(Command* command, const CommandLine& parameters)
     {
-        // if we reached the maximum number of history entries remove the oldest one
-        if (mCommandHistory.GetLength() >= mMaxHistoryEntries)
-        {
-            PopCommandHistory();
-            mHistoryIndex = mCommandHistory.GetLength() - 1;
-        }
-
         uint32 i;
         if (mCommandHistory.GetLength() > 0)
         {
+            // if we reached the maximum number of history entries remove the oldest one
+            if (mCommandHistory.GetLength() >= mMaxHistoryEntries)
+            {
+                PopCommandHistory();
+                mHistoryIndex = mCommandHistory.GetLength() - 1;
+            }
+
             // remove unneeded commands
             uint32 numToRemove = mCommandHistory.GetLength() - mHistoryIndex - 1;
             const uint32 numCallbacks = mCallbacks.GetLength();
@@ -967,6 +967,7 @@ namespace MCore
     // set the max num history items
     void CommandManager::SetMaxHistoryItems(uint32 maxItems)
     {
+        maxItems = AZStd::max(1u, maxItems);
         mMaxHistoryEntries = maxItems;
     }
 

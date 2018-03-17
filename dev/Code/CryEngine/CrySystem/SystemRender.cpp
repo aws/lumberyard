@@ -81,7 +81,7 @@ bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_hei
     return UIKitGetPrimaryPhysicalDisplayDimensions(o_widthPixels, o_heightPixels);
 #else
     return false;
-#endif // defined(AZ_PLATFORM_*)
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -256,13 +256,6 @@ void CSystem::RenderEnd(bool bRenderStats, bool bMainWindow)
             // keep debug allocations out of level heap
             ScopedSwitchToGlobalHeap globalHeap;
 
-#if !defined(_RELEASE) && !defined(DURANGO)
-            if (bRenderStats)
-            {
-                RenderPhysicsHelpers();
-            }
-#endif
-
 #if !defined (_RELEASE)
             // Flush render data and swap buffers.
             m_env.pRenderer->RenderDebug(bRenderStats);
@@ -349,7 +342,6 @@ void CSystem::OnScene3DEnd()
 void CSystem::RenderPhysicsHelpers()
 {
 #if !defined (_RELEASE)
-    ScopedSwitchToGlobalHeap globalHeap;
     if (gEnv->pPhysicalWorld)
     {
         char str[128];
@@ -363,11 +355,6 @@ void CSystem::RenderPhysicsHelpers()
         m_pPhysRenderer->Flush(m_Time.GetFrameTime());
 
         RenderPhysicsStatistics(gEnv->pPhysicalWorld);
-    }
-
-    if (m_env.pRenderer->GetIRenderAuxGeom())
-    {
-        m_env.pRenderer->GetIRenderAuxGeom()->Flush();
     }
 #endif
 }
@@ -986,7 +973,7 @@ void CSystem::RenderOverscanBorders()
 
 void CSystem::RenderThreadInfo()
 {
-#if (defined(WIN32) || defined(DURANGO)) && !defined(RELEASE)
+#if !defined(RELEASE) && AZ_LEGACY_CRYSYSTEM_TRAIT_RENDERTHREADINFO
     if (g_cvars.sys_display_threads)
     {
         static int maxCPU = 0;

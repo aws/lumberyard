@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Preprocessor/Sequences.h> // for AZ_EBUS_BEHAVIOR_BINDER
 #include <AzCore/RTTI/BehaviorObjectSignals.h>
@@ -670,28 +671,6 @@ namespace AZ
             BehaviorContext* m_context;
         };
     } // namespace Internal
-
-      /**
-      * Create a default value to be stored with the parameter metadata. Default value are stored by value
-      * in a temp storage, so currently there is limit the \ref BehaviorValueParameter temp storage, we
-      * can easily change that if it became a problem.
-      */
-    template<class Value>
-    inline BehaviorDefaultValue* BehaviorMakeDefaultValue(Value&& defaultValue)
-    {
-        return aznew BehaviorDefaultValue(AZStd::forward<Value>(defaultValue));
-    }
-
-    /**
-     * Create a container of default values to be used with methods. Default values are stored by value
-     * in a temp storage, so currently there is limit the \ref BehaviorValueParameter temp storage, we
-     * can easily change that if it became a problem.
-     */
-    template<class... Values>
-    inline BehaviorValues* BehaviorMakeDefaultValues(Values&&... values)
-    {
-        return aznew Internal::BehaviorValuesSpecialization<Values...>(AZStd::forward<Values>(values)...);
-    }
 
     /**
      * Internal helpers to bind fields to properties.
@@ -1425,6 +1404,22 @@ namespace AZ
         template<class T>
         EBusBuilder<T> EBus(const char* name, const char *deprecatedName = nullptr, const char *toolTip = nullptr);
 
+        /**
+        * Create a default value to be stored with the parameter metadata. Default value are stored by value
+        * in a temp storage, so currently there is limit the \ref BehaviorValueParameter temp storage, we
+        * can easily change that if it became a problem.
+        */
+        template<class Value>
+        BehaviorDefaultValue* MakeDefaultValue(Value&& defaultValue);
+
+        /**
+        * Create a container of default values to be used with methods. Default values are stored by value
+        * in a temp storage, so currently there is limit the \ref BehaviorValueParameter temp storage, we
+        * can easily change that if it became a problem.
+        */
+        template<class... Values>
+        BehaviorValues* MakeDefaultValues(Values&&... values);
+
         // TODO: This is only for searching by string, do we even need that?
         //ClassBuilder< OpenNamespace(const char* name);
         //ClassBuilder<T> CloneNamespace();
@@ -1437,6 +1432,49 @@ namespace AZ
     };
 
     //////////////////////////////////////////////////////////////////////////
+    /*!
+    \deprecated Use the BehaviorContext::MakeDefaultValue function instead
+    The reason for deprecation is that this function has no access to the BehaviorContext
+    and therefore does not know when the BehaviorContext is removing reflection
+    */
+    template<class Value>
+    AZ_DEPRECATED(BehaviorDefaultValue* BehaviorMakeDefaultValue(Value&& defaultValue)
+    {
+        AZ::BehaviorContext* behaviorContext{};
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+        if (behaviorContext)
+        {
+            return behaviorContext->MakeDefaultValue(AZStd::forward<Value>(defaultValue));
+        }
+
+        // If the BehaviorContext could not be found registered with the ComponentApplicationBus
+        // then it cannot be determined if reflection is being removed and therefore the BehaviorDefaultValue
+        // is always created
+        return aznew BehaviorDefaultValue(AZStd::forward<Value>(defaultValue));
+    }, "BehaviorMakeDefaultValue is deprecated as of Version 1.13. Please use the BehaviorContext::MakeDefaultValue function instead.")
+
+        /*!
+        \deprecated Use the BehaviorContext::MakeDefaultValues function instead
+        The reason for deprecation is that this function has no access to the BehaviorContext
+        and therefore does not know when the BehaviorContext is removing reflection
+        */
+        template<class... Values>
+    AZ_DEPRECATED(BehaviorValues* BehaviorMakeDefaultValues(Values&&... values)
+    {
+        AZ::BehaviorContext* behaviorContext{};
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+        if (behaviorContext)
+        {
+            return behaviorContext->MakeDefaultValues(AZStd::forward<Values>(values)...);
+        }
+
+        // If the BehaviorContext could not be found registered with the ComponentApplicationBus
+        // then it cannot be determined if reflection is being removed and therefore the BehaviorValues
+        // is always created
+        return aznew Internal::BehaviorValuesSpecialization<Values...>(AZStd::forward<Values>(values)...);
+    }, "BehaviorMakeDefaultValue is deprecated as of Version 1.13. Please use the BehaviorContext::MakeDefaultValues function instead.")
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
@@ -2328,6 +2366,17 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
+    template<class Value>
+    BehaviorDefaultValue* BehaviorContext::MakeDefaultValue(Value&& defaultValue)
+    {
+        return !IsRemovingReflection() ? aznew BehaviorDefaultValue(AZStd::forward<Value>(defaultValue)) : nullptr;
+    }
+
+    template<class... Values>
+    BehaviorValues* BehaviorContext::MakeDefaultValues(Values&&... values)
+    {
+        return !IsRemovingReflection() ? aznew Internal::BehaviorValuesSpecialization<Values...>(AZStd::forward<Values>(values)...) : nullptr;
+    }
 
     //////////////////////////////////////////////////////////////////////////
     template<class T>
@@ -3185,7 +3234,7 @@ namespace AZ
             if (onDemandReflection)
             {
                 // deal with OnDemand reflection
-                OnDemandReflectionFunctionPtr reflectHooks[sizeof...(Args)+1] = { OnDemandReflectHook<typename AZStd::remove_pointer<typename AZStd::decay<Args>::type>::type>::Get()... };
+                StaticReflectionFunctionPtr reflectHooks[sizeof...(Args)+1] = { OnDemandReflectHook<typename AZStd::remove_pointer<typename AZStd::decay<Args>::type>::type>::Get()... };
                 for (size_t i = 0; i < sizeof...(Args); ++i)
                 {
                     if (reflectHooks[i])

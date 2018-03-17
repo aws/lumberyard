@@ -391,6 +391,7 @@ private:
         {
             DoRequestEdit();
         }
+        OnSourceControlStatusChanged();
     }
 
     void OnSourceControlStatusChanged()

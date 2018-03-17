@@ -56,6 +56,9 @@ namespace AZ
             void SetOpacity(float opacity) override;
             void SetShininess(float shininess) override;
 
+            AZ::u32 GetDccMaterialHash() const override;
+            void SetDccMaterialHash(AZ::u32 hash) override;
+
         private:
             AZStd::string m_materialName;
             AZStd::string m_diffuseMap;
@@ -70,6 +73,8 @@ namespace AZ
             AZ::Vector3 m_emissiveColor;
             float m_opacity;
             float m_shininess;
+
+            AZ::u32 m_dccMaterialHash;
         };
 
         class MaterialGroup
@@ -100,6 +105,8 @@ namespace AZ
             bool AddMaterialNode(const IMaterial& mat);
             bool UpdateMaterialNode(const IMaterial& mat);
             void RemoveMaterialNode(const IMaterial& mat);
+
+            AZ::u32 CalculateDccMaterialHash();
 
             void CreateMtlFile();
             void UpdateMtlFile();

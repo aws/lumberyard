@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyRowWidget.hxx"
 #include "PropertyQTConstants.h"
 
@@ -1143,6 +1143,11 @@ namespace AzToolsFramework
         }
 
         return level;
+    }
+
+    bool PropertyRowWidget::HasChildRows() const
+    {
+        return !m_childrenRows.empty(); 
     }
 
     QWidget* PropertyRowWidget::GetFirstTabWidget()

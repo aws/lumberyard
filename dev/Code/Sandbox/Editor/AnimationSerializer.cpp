@@ -12,9 +12,9 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
-#include "animationserializer.h"
+#include "AnimationSerializer.h"
 #include "CryEditDoc.h"
-#include "mission.h"
+#include "Mission.h"
 #include "IMovieSystem.h"
 
 #include "Util/PakFile.h"
@@ -76,7 +76,7 @@ void CAnimationSerializer::LoadAllSequences(const char* szPath)
     for (int i = 0; i < files.size(); i++)
     {
         // Construct the full filepath of the current file
-        LoadSequence((dir + files[i].filename).toLatin1().data());
+        LoadSequence((dir + files[i].filename).toUtf8().data());
     }
 }
 

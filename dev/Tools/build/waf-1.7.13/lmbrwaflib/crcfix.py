@@ -48,7 +48,8 @@ def create_crcfix_tasks(self):
     inputs = []
     for ext in ('h', 'cpp', 'hxx', 'hpp', 'cxx', 'c', 'inl'):
         paths.append('"' + os.path.join(src_node.abspath(), '*', '*.' + ext) + '"')
-        inputs += src_node.ant_glob('**/*.' + ext)
+
+    inputs = self.to_nodes(self.source) + self.to_nodes(self.header_files)
 
     task = self.create_task('crcfix', inputs)
     task.prepare(binary=binary, input_paths=paths)

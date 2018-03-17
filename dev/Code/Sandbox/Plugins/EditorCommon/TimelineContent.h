@@ -17,7 +17,7 @@
 
 #include "QPropertyTree/Color.h"
 #include "Serialization/Strings.h"
-#include "Serialization/smartptr.h"
+#include "Serialization/SmartPtr.h"
 #include "Serialization.h"
 
 #include <smartptr.h>

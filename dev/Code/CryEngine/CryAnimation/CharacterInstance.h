@@ -64,10 +64,6 @@ private:
     DualQuat* m_pSkinningTransformationsPrevious;
     uint32 m_skinningTransformationCount;
     f32* m_pSkinningTransformationsMovement;
-
-
-private:
-    JobManager::SJobState m_jobState;
 };
 
 

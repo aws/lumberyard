@@ -201,7 +201,4 @@ private:
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(CPanelTreeBrowser::EFlags)
 
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
 #endif // CRYINCLUDE_EDITOR_PANELTREEBROWSER_H

@@ -597,6 +597,8 @@ struct SANDBOX_API SEditorSettings
 
     SMetricsSettings sMetricsSettings;
 
+    bool bEnableUI2;
+
 private:
     void SaveValue(const char* sSection, const char* sKey, int value);
     void SaveValue(const char* sSection, const char* sKey, const QColor& value);

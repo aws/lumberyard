@@ -1672,6 +1672,8 @@ static int __s_pvtx_map_dummy = 0;
 
 static void SyncToRenderMesh(SSyncToRenderMeshContext* ctx, volatile int* updateState)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
     IGeometry* pPhysGeom = ctx->pObj->GetPhysGeom() ? ctx->pObj->GetPhysGeom()->pGeom : 0;
     if (pPhysGeom)
     {
@@ -1749,12 +1751,6 @@ static void SyncToRenderMesh(SSyncToRenderMeshContext* ctx, volatile int* update
         pPhysGeom->Unlock(0);
     }
 }
-
-DECLARE_JOB(
-    "StatObj_SyncToRenderMesh"
-    , TStatObj_SyncToRenderMesh
-    , SyncToRenderMesh);
-
 
 IStatObj* CStatObj::UpdateVertices(strided_pointer<Vec3> pVtx, strided_pointer<Vec3> pNormals, int iVtx0, int nVtx, int* pVtxMap, float rscale)
 {
@@ -1898,15 +1894,21 @@ IStatObj* CStatObj::UpdateVertices(strided_pointer<Vec3> pVtx, strided_pointer<V
         {
             m_pAsyncUpdateContext = new SSyncToRenderMeshContext;
         }
-        gEnv->pJobManager->WaitForJob(m_pAsyncUpdateContext->jobState);
+        else
+        {
+            m_pAsyncUpdateContext->jobExecutor.WaitForCompletion();
+        }
         m_pAsyncUpdateContext->Set(&pObj->m_vBoxMin,    &pObj->m_vBoxMax,   iVtx0, nVtx, pVtx, pVtxMap, mask, rscale
             , m_pClothTangentsData, pMeshVtx, pTangents, pNormals, pObj);
 
         if (GetCVars()->e_RenderMeshUpdateAsync)
         {
-            TStatObj_SyncToRenderMesh job(m_pAsyncUpdateContext, mesh->SetAsyncUpdateState());
-            job.RegisterJobState(&m_pAsyncUpdateContext->jobState);
-            job.Run();
+            SSyncToRenderMeshContext* pAsyncUpdateContext = m_pAsyncUpdateContext;
+            volatile int* updateState = mesh->SetAsyncUpdateState();
+            m_pAsyncUpdateContext->jobExecutor.StartJob([pAsyncUpdateContext, updateState]()
+            {
+                SyncToRenderMesh(pAsyncUpdateContext, updateState);
+            });
         }
         else
         {

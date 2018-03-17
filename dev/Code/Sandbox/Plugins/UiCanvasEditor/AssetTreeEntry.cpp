@@ -121,7 +121,7 @@ AssetTreeEntry* AssetTreeEntry::BuildAssetTree(const AZ::Data::AssetType& assetT
 
     // asset browser model is a collection of all assets. We search it from root entry down for all ui slice files.
     AssetBrowserModel* assetBrowserModel;
-    AssetBrowserComponentRequestsBus::BroadcastResult(assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
+    AssetBrowserComponentRequestBus::BroadcastResult(assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
     AZ_Assert(assetBrowserModel, "Failed to get asset browser model");
 
     const auto rootEntry = assetBrowserModel->GetRootEntry();

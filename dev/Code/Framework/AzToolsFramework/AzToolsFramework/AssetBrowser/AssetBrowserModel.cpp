@@ -31,13 +31,13 @@ namespace AzToolsFramework
             , m_addingEntry(false)
             , m_removingEntry(false)
         {
-            AssetBrowserModelRequestsBus::Handler::BusConnect();
+            AssetBrowserModelRequestBus::Handler::BusConnect();
             AZ::TickBus::Handler::BusConnect();
         }
 
         AssetBrowserModel::~AssetBrowserModel()
         {
-            AssetBrowserModelRequestsBus::Handler::BusDisconnect();
+            AssetBrowserModelRequestBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
         }
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "StartingPointCamera_precompiled.h"
 #include "AcquireByTag.h"
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/TransformBus.h>

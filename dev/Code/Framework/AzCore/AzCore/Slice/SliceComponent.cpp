@@ -804,6 +804,13 @@ namespace AZ
 
         // Prevent entities we don't own from being deleted
         sourceObjects.ClearAndReleaseOwnership();
+
+        // Broadcast OnSliceEntitiesLoaded for freshly instantiated entities.
+        if (!instance.m_instantiated->m_entities.empty())
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "SliceComponent::SliceReference::InstantiateInstance:OnSliceEntitiesLoaded");
+            SliceAssetSerializationNotificationBus::Broadcast(&SliceAssetSerializationNotificationBus::Events::OnSliceEntitiesLoaded, instance.m_instantiated->m_entities);
+        }
     }
 
     //=========================================================================
@@ -1820,7 +1827,18 @@ namespace AZ
         /// Called right after we finish writing data to the instance pointed at by classPtr.
         void OnWriteEnd(void* classPtr) override
         {
-            EBUS_EVENT(SliceAssetSerializationNotificationBus, OnWriteDataToSliceAssetEnd, *reinterpret_cast<SliceComponent*>(classPtr));
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+
+            SliceComponent* sliceComponent = reinterpret_cast<SliceComponent*>(classPtr);
+            EBUS_EVENT(SliceAssetSerializationNotificationBus, OnWriteDataToSliceAssetEnd, *sliceComponent);
+
+            // Broadcast OnSliceEntitiesLoaded for entities that are "new" to this slice.
+            // We can't broadcast this event for instanced entities yet, since they don't exist until instantiation.
+            if (!sliceComponent->GetNewEntities().empty())
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "SliceComponentSerializationEvents::OnWriteEnd:OnSliceEntitiesLoaded");
+                EBUS_EVENT(SliceAssetSerializationNotificationBus, OnSliceEntitiesLoaded, sliceComponent->GetNewEntities());
+            }
         }
     };
 

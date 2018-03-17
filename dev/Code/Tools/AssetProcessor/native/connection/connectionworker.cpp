@@ -479,4 +479,4 @@ bool ConnectionWorker::InitiatedConnection() const
     return m_initiatedConnection;
 }
 } // namespace AssetProcessor
-#include <native/connection/connectionWorker.moc>
+#include <native/connection/connectionworker.moc>

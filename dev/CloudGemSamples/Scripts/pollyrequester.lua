@@ -23,8 +23,12 @@ function pollyrequester:OnActivate()
 	Debug.Log("Activating")
 end
 
-function pollyrequester:AddCharacterSSMLToMessage(tags, message)
-	if #tags == 0 then
+function pollyrequester:AddCharacterSSMLToMessage(language, timbre, tags, ssml, message)
+	if #tags == 0 and language == "" and timbre == 100 then
+		-- Cached files from the CGP will already have start and end 'speak' ssml tags, even if everything else is default if the character has SSML tags enabled
+		if ssml then
+			return "<speak>" .. message .. "</speak>";
+		end
 		return message
 	end
 
@@ -33,12 +37,33 @@ function pollyrequester:AddCharacterSSMLToMessage(tags, message)
 		Debug.Log("already have ssml in this text");
 		message = string.sub(message, 8, string.len(message) - 8);
 	end
-	
-	local finalMessage = "<speak><prosody";
+
+	if language ~= "" then
+		ssmlLangTag = "lang=\""..language.."\""
+		message = "<lang xml:"..ssmlLangTag..">"..message.."</lang>"
+	end
+
+	if timbre ~= 100 then
+		message = "<amazon:effect vocal-tract-length=\""..tostring(timbre).."%\">"..message.."</amazon:effect>"
+	end
+
+	local finalMessage = "<speak>";
+	if #tags ~= 0 then
+		finalMessage = finalMessage.."<prosody"
+	end
+
 	for index = 1, #tags do
 		finalMessage = finalMessage.." "..tags[index];
 	end
-	finalMessage = finalMessage .. ">" .. message .. "</prosody></speak>";
+	if #tags ~= 0 then
+		finalMessage = finalMessage .. ">";
+	end
+	finalMessage = finalMessage .. message
+	if #tags ~= 0 then
+		finalMessage = finalMessage.."</prosody>"
+	end
+	
+	finalMessage = finalMessage .."</speak>";
 
 	return finalMessage
 end
@@ -58,6 +83,7 @@ function pollyrequester:OnAction(entityId, actionName)
 				-- This optional character input let's the users slect the voice of the Characters for their game without having to
 				-- remember what the name of the Polly voice is. This is useful when getting a package of voices generated in the Cloud Gem Portal
 				local characterInput = UiTextInputBus.Event.GetText(self.characterInputElement);
+				local marks = "VS";
 				if characterInput == '' then
 					characterInput = self.Properties.character;
 				end
@@ -65,11 +91,15 @@ function pollyrequester:OnAction(entityId, actionName)
 
 				if voice == '' then
 					voice = voiceInput;
+				else
+					local prosodyTags = TextToSpeechRequestBus.Event.GetProsodyTagsFromCharacter(self.entityId, characterInput);
+					local languageOverride = TextToSpeechRequestBus.Event.GetLanguageOverrideFromCharacter(self.entityId, characterInput);
+					local timbre = TextToSpeechRequestBus.Event.GetTimbreFromCharacter(self.entityId, characterInput);
+					marks = TextToSpeechRequestBus.Event.GetSpeechMarksFromCharacter(self.entityId, characterInput)
+					text = self:AddCharacterSSMLToMessage(languageOverride, timbre, prosodyTags, string.match(marks, "T"), text)
 				end
 
-				local prosodyTags = TextToSpeechRequestBus.Event.GetProsodyTagsFromCharacter(self.entityId, characterInput);
-				text = self:AddCharacterSSMLToMessage(prosodyTags, text)
-				TextToSpeechRequestBus.Event.ConvertTextToSpeechWithMarks(self.entityId, voice, text, "VS");
+				TextToSpeechRequestBus.Event.ConvertTextToSpeechWithMarks(self.entityId, voice, text, marks);
 				UiTextInputBus.Event.SetText(self.textInputElement, "");
 			end
 		end

@@ -1134,8 +1134,8 @@
         {
             "identifier" : "GoogleMock",
             "name" : "googleMockName",
-            "version" : "az-1.2",
-            "source" : "GoogleMock/gmock-az-1.2",
+            "version" : "az-1.3",
+            "source" : "GoogleMock/gmock-az-1.3",
             "optional" : 0,
             "description" : "googleMockDescriptionSummary",
             "detailedInstructions" : "googleMockDetailedInstructions",
@@ -1143,44 +1143,44 @@
             "symlinks" :
             [
                 {
-                    "source" : "GoogleMock/gmock-az-1.2/googlemock/include/gmock",
+                    "source" : "GoogleMock/gmock-az-1.3/googlemock/include/gmock",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/include/gmock",
                     "exampleFile" : "gmock.h"
                 },
                 {
-                    "source" : "GoogleMock/gmock-az-1.2/googletest/include/gtest",
+                    "source" : "GoogleMock/gmock-az-1.3/googletest/include/gtest",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/include/gtest",
                     "exampleFile" : "gtest.h"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source": "GoogleMock/gmock-az-1.2/lib",
+                    "source": "GoogleMock/gmock-az-1.3/lib",
                     "destination": "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
                     "exampleFile": "x64/vc120-md/LIB/Debug/gmock.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source": "GoogleMock/gmock-az-1.2/lib",
+                    "source": "GoogleMock/gmock-az-1.3/lib",
                     "destination": "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
                     "exampleFile": "x64/vc140-md/LIB/Debug/gmock.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "GoogleMock/gmock-az-1.2/lib",
+                    "source" : "GoogleMock/gmock-az-1.3/lib",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
                     "exampleFile" : "osx/Debug/libgmock.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "GoogleMock/gmock-az-1.2/lib/linux",
+                    "source" : "GoogleMock/gmock-az-1.3/lib/linux",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/lib/linux",
-                    "exampleFile" : "libgmock.a"
+                    "exampleFile" : "debug/libgmock.a"
                 },
                 {
                     "hostOS" : ["linux"],
-                    "source" : "GoogleMock/gmock-az-1.2/lib/linux",
+                    "source" : "GoogleMock/gmock-az-1.3/lib/linux",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GoogleMock/lib/linux",
-                    "exampleFile" : "libgmock.a"
+                    "exampleFile" : "debug/libgmock.a"
                 }
             ]
         },
@@ -1662,33 +1662,33 @@
         {
             "identifier" : "OpenSSL",
             "name" : "OpenSSLname",
-            "version" : "1.0.2k",
-            "source" : "OpenSSL/1.0.2k",
+            "version" : "1.0.2k-noasm",
+            "source" : "OpenSSL/1.0.2k-noasm",
             "description" : "OpenSSLdescription",
             "detailedInstructions" : "OpenSSLdetailedInstructions",
             "roles" : ["compilegame","compileengine", "compileandroid","compileeditor", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "OpenSSL/1.0.2k",
+                    "source" : "OpenSSL/1.0.2k-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "include/openssl/ssl.h"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source" : "OpenSSL/1.0.2k",
+                    "source" : "OpenSSL/1.0.2k-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/vc120_x64_release/libeay32.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source" : "OpenSSL/1.0.2k",
+                    "source" : "OpenSSL/1.0.2k-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/vc140_x64_release/libeay32.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "OpenSSL/1.0.2k",
+                    "source" : "OpenSSL/1.0.2k-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/linux-x86_64-clang-release/libssl.a"
                 }

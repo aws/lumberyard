@@ -15,8 +15,8 @@
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/containers/lock_free_queue.h>
 #include <AzCore/std/parallel/containers/lock_free_stamped_queue.h>
-#include <AzCore/std/parallel/containers/work_stealing_queue.h>
 #include <AzCore/std/functional.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 using namespace AZStd;
 using namespace UnitTestInternal;
@@ -48,7 +48,7 @@ namespace UnitTest
             int expected = 0;
             while (expected < NUM_ITERATIONS)
             {
-                int value = NUM_ITERATIONS;
+                typename Q::value_type value = NUM_ITERATIONS;
                 if (queue->pop(&value))
                 {
                     if (value == expected)
@@ -63,11 +63,62 @@ namespace UnitTest
         atomic<int> m_counter;
     };
 
-
     TEST_F(LockFreeQueue, LockFreeQueue)
     {
         lock_free_queue<int, MyLockFreeAllocator> queue;
         int result;
+        AZ_TEST_ASSERT(queue.empty());
+        AZ_TEST_ASSERT(!queue.pop(&result));
+
+        queue.push(20);
+        AZ_TEST_ASSERT(!queue.empty());
+        AZ_TEST_ASSERT(queue.pop(&result));
+        AZ_TEST_ASSERT(result == 20);
+        AZ_TEST_ASSERT(queue.empty());
+        AZ_TEST_ASSERT(!queue.pop(&result));
+
+        queue.push(20);
+        queue.push(30);
+        AZ_TEST_ASSERT(!queue.empty());
+        AZ_TEST_ASSERT(queue.pop(&result));
+        AZ_TEST_ASSERT(result == 20);
+        AZ_TEST_ASSERT(!queue.empty());
+        AZ_TEST_ASSERT(queue.pop(&result));
+        AZ_TEST_ASSERT(result == 30);
+        AZ_TEST_ASSERT(queue.empty());
+        AZ_TEST_ASSERT(!queue.pop(&result));
+
+        {
+            m_counter = 0;
+            AZStd::thread thread0(AZStd::bind(&LockFreeQueue::Push<decltype(queue)>, this, &queue));
+            AZStd::thread thread1(AZStd::bind(&LockFreeQueue::Pop<decltype(queue)>, this, &queue));
+            thread0.join();
+            thread1.join();
+            AZ_TEST_ASSERT(m_counter == NUM_ITERATIONS);
+            AZ_TEST_ASSERT(queue.empty());
+        }
+    }
+
+
+    struct SharedInt {
+        SharedInt() : m_ptr(nullptr) {}
+        SharedInt(int i) : m_ptr(new int(i)) {}
+        bool operator==(const SharedInt& other) 
+        {
+            if (!m_ptr || !other.m_ptr) 
+            { 
+                return false; 
+            }
+            return *m_ptr == *other.m_ptr;
+        }
+    private:
+        AZStd::shared_ptr<int> m_ptr;
+    };
+
+    TEST_F(LockFreeQueue, LockFreeQueueNonTrivialDestructor)
+    {
+        lock_free_queue<SharedInt, MyLockFreeAllocator> queue;
+        SharedInt result;
         AZ_TEST_ASSERT(queue.empty());
         AZ_TEST_ASSERT(!queue.pop(&result));
 
@@ -137,104 +188,39 @@ namespace UnitTest
         }
     }
 
-    /**
-     * work_stealing_queue container test.
-     */
-    class WorkStealingQueue
-        : public AllocatorsFixture
+    TEST_F(LockFreeQueue, LockFreeStampedQueueNonTrivialDestructor)
     {
-    public:
-#ifdef _DEBUG
-        static const int NUM_ITERATIONS = 5000;
-#else
-        static const int NUM_ITERATIONS = 50000;
-#endif
-        void PushAndPop(work_stealing_queue<int>* queue)
-        {
-            //push
-            for (int i = 1; i <= NUM_ITERATIONS; ++i)
-            {
-                queue->local_push_bottom(i);
-                m_total.fetch_add(i);
-            }
-            //pop
-            while (m_numPopped < NUM_ITERATIONS)
-            {
-                int value = 0;
-                if (queue->local_pop_bottom(&value))
-                {
-                    m_total.fetch_sub(value);
-                    ++m_numPopped;
-                }
-            }
-        }
-        void Steal(work_stealing_queue<int>* queue)
-        {
-            while (m_numPopped < NUM_ITERATIONS)
-            {
-                int value = 0;
-                if (queue->steal_top(&value))
-                {
-                    m_total.fetch_sub(value);
-                    ++m_numPopped;
-                }
-            }
-        }
-        
-        atomic<int> m_total;
-        atomic<int> m_numPopped;
-    };
+        lock_free_stamped_queue<SharedInt, MyLockFreeAllocator> queue;
 
-    TEST_F(WorkStealingQueue, Test)
-    {
-        work_stealing_queue<int> queue;
-
-        int result;
+        SharedInt result;
         AZ_TEST_ASSERT(queue.empty());
-        AZ_TEST_ASSERT(!queue.local_pop_bottom(&result));
+        AZ_TEST_ASSERT(!queue.pop(&result));
 
-        queue.local_push_bottom(20);
+        queue.push(20);
         AZ_TEST_ASSERT(!queue.empty());
-        AZ_TEST_ASSERT(queue.local_pop_bottom(&result));
+        AZ_TEST_ASSERT(queue.pop(&result));
         AZ_TEST_ASSERT(result == 20);
         AZ_TEST_ASSERT(queue.empty());
-        AZ_TEST_ASSERT(!queue.local_pop_bottom(&result));
+        AZ_TEST_ASSERT(!queue.pop(&result));
 
-        queue.local_push_bottom(20);
-        queue.local_push_bottom(30);
+        queue.push(20);
+        queue.push(30);
         AZ_TEST_ASSERT(!queue.empty());
-        AZ_TEST_ASSERT(queue.local_pop_bottom(&result));
+        AZ_TEST_ASSERT(queue.pop(&result));
+        AZ_TEST_ASSERT(result == 20);
+        AZ_TEST_ASSERT(!queue.empty());
+        AZ_TEST_ASSERT(queue.pop(&result));
         AZ_TEST_ASSERT(result == 30);
-        AZ_TEST_ASSERT(!queue.empty());
-        AZ_TEST_ASSERT(queue.local_pop_bottom(&result));
-        AZ_TEST_ASSERT(result == 20);
         AZ_TEST_ASSERT(queue.empty());
-        AZ_TEST_ASSERT(!queue.local_pop_bottom(&result));
-
-        AZ_TEST_ASSERT(!queue.steal_top(&result));
-        queue.local_push_bottom(20);
-        queue.local_push_bottom(30);
-        queue.local_push_bottom(40);
-        queue.local_push_bottom(50);
-        AZ_TEST_ASSERT(queue.steal_top(&result));
-        AZ_TEST_ASSERT(result == 20);
-        AZ_TEST_ASSERT(queue.local_pop_bottom(&result));
-        AZ_TEST_ASSERT(result == 50);
-        AZ_TEST_ASSERT(queue.steal_top(&result));
-        AZ_TEST_ASSERT(result == 30);
-        AZ_TEST_ASSERT(queue.steal_top(&result));
-        AZ_TEST_ASSERT(result == 40);
-        AZ_TEST_ASSERT(!queue.steal_top(&result));
+        AZ_TEST_ASSERT(!queue.pop(&result));
 
         {
-            m_total = 0;
-            m_numPopped = 0;
-            AZStd::thread thread0(AZStd::bind(&WorkStealingQueue::PushAndPop, this, &queue));
-            AZStd::thread thread1(AZStd::bind(&WorkStealingQueue::Steal, this, &queue));
+            m_counter = 0;
+            AZStd::thread thread0(AZStd::bind(&LockFreeQueue::Push<decltype(queue)>, this, &queue));
+            AZStd::thread thread1(AZStd::bind(&LockFreeQueue::Pop<decltype(queue)>, this, &queue));
             thread0.join();
             thread1.join();
-            AZ_TEST_ASSERT(m_total == 0);
-            AZ_TEST_ASSERT(m_numPopped == NUM_ITERATIONS);
+            AZ_TEST_ASSERT(m_counter == NUM_ITERATIONS);
             AZ_TEST_ASSERT(queue.empty());
         }
     }

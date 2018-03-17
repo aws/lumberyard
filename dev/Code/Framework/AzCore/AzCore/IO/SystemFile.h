@@ -59,9 +59,9 @@ namespace AZ
 
             typedef AZ::u64         SizeType;
 
-            #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+            #if AZ_TRAIT_USE_WINDOWS_FILE_API
             using FileHandleType = void*;
-            #elif defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+            #elif AZ_TRAIT_USE_SYSTEMFILE_HANDLE
             using FileHandleType = int;
             #elif defined(AZ_PLATFORM_ANDROID)
             using FileHandleType = FILE*;

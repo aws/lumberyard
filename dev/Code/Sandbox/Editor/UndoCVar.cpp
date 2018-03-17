@@ -87,7 +87,7 @@ void CUndoCVar::Undo(bool bUndo)
         }
         else if (pTempCVar->GetType() == CVAR_STRING && m_undo.type == SPyWrappedProperty::eType_String)
         {
-            pTempCVar->Set(m_undo.stringValue.toLatin1().data());
+            pTempCVar->Set(m_undo.stringValue.toUtf8().data());
         }
     }
 }
@@ -107,7 +107,7 @@ void CUndoCVar::Redo()
         }
         else if (pTempCVar->GetType() && m_undo.type == SPyWrappedProperty::eType_String)
         {
-            pTempCVar->Set(m_redo.stringValue.toLatin1().data());
+            pTempCVar->Set(m_redo.stringValue.toUtf8().data());
         }
     }
 }

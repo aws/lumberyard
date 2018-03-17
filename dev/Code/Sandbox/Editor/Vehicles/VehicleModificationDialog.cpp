@@ -128,8 +128,8 @@ CVehicleModificationDialog::CVehicleModificationDialog(QWidget* pParent /*=NULL*
     connect(ui->m_buttonNew, &QPushButton::clicked, this, &CVehicleModificationDialog::OnModNew);
     connect(ui->m_buttonClone, &QPushButton::clicked, this, &CVehicleModificationDialog::OnModClone);
     connect(ui->m_buttonDelete, &QPushButton::clicked, this, &CVehicleModificationDialog::OnModDelete);
-    connect(ui->m_buttonOk, &QPushButton::clicked, this, &QDialog::accept);
-    connect(ui->m_buttonCancel, &QPushButton::clicked, this, &QDialog::reject);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 CVehicleModificationDialog::~CVehicleModificationDialog()

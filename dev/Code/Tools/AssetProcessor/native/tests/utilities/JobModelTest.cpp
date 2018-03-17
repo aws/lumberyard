@@ -14,6 +14,8 @@
 
 TEST_F(JobModelUnitTests, Test_RemoveMiddleJob)
 {
+    VerifyModel(); // verify up front for sanity.
+
     AzToolsFramework::AssetSystem::JobInfo jobInfo;
     jobInfo.m_sourceFile = "source2.txt";
     jobInfo.m_platform = "platform";
@@ -41,6 +43,8 @@ TEST_F(JobModelUnitTests, Test_RemoveMiddleJob)
 
 TEST_F(JobModelUnitTests, Test_RemoveFirstJob)
 {
+    VerifyModel(); // verify up front for sanity.
+
     AzToolsFramework::AssetSystem::JobInfo jobInfo;
     jobInfo.m_sourceFile = "source1.txt";
     jobInfo.m_platform = "platform";
@@ -68,6 +72,8 @@ TEST_F(JobModelUnitTests, Test_RemoveFirstJob)
 
 TEST_F(JobModelUnitTests, Test_RemoveLastJob)
 {
+    VerifyModel(); // verify up front for sanity.
+
     AzToolsFramework::AssetSystem::JobInfo jobInfo;
     jobInfo.m_sourceFile = "source6.txt";
     jobInfo.m_platform = "platform";
@@ -91,6 +97,41 @@ TEST_F(JobModelUnitTests, Test_RemoveLastJob)
     jobIndex = iter.value();
     ASSERT_EQ(jobIndex, 0);
     VerifyModel();
+}
+
+
+TEST_F(JobModelUnitTests, Test_RemoveAllJobsBySource)
+{
+    VerifyModel(); // verify up front for sanity.
+
+    AssetProcessor::CachedJobInfo* jobInfo1 = new AssetProcessor::CachedJobInfo();
+    jobInfo1->m_elementId.SetInputAssetName("source3.txt"); // this is the second job for this source - the fixture creates one
+    jobInfo1->m_elementId.SetPlatform("platform_2"); // differing job keys
+    jobInfo1->m_elementId.SetJobDescriptor("jobKey_3"); // differing descriptor
+
+    jobInfo1->m_jobState = AzToolsFramework::AssetSystem::JobStatus::Completed;
+    m_unitTestJobModel->m_cachedJobs.push_back(jobInfo1);
+    m_unitTestJobModel->m_cachedJobsLookup.insert(jobInfo1->m_elementId, m_unitTestJobModel->m_cachedJobs.size() - 1);
+
+    AssetProcessor::QueueElementID elementId("source3.txt", "platform_2", "jobKey_3");
+    auto iter = m_unitTestJobModel->m_cachedJobsLookup.find(elementId);
+    ASSERT_NE(iter, m_unitTestJobModel->m_cachedJobsLookup.end());
+    unsigned int jobIndex = iter.value();
+    ASSERT_EQ(jobIndex, 6); //last job
+
+    ASSERT_EQ(m_unitTestJobModel->m_cachedJobs.size(), 7);
+    m_unitTestJobModel->OnSourceRemoved("source3.txt");
+
+    // both  sources should be removed!
+    ASSERT_EQ(m_unitTestJobModel->m_cachedJobs.size(), 5);
+    VerifyModel();
+
+    // make sure source3 is completely gone.
+    for (int idx = 0; idx < m_unitTestJobModel->m_cachedJobs.size(); idx++)
+    {
+        AssetProcessor::CachedJobInfo* jobInfo = m_unitTestJobModel->m_cachedJobs[idx];
+        ASSERT_NE(jobInfo->m_elementId.GetInputAssetName(), QString::fromUtf8("source3.txt"));
+    }
 }
 
 void JobModelUnitTests::SetUp()
@@ -147,13 +188,23 @@ void JobModelUnitTests::TearDown()
 
 void JobModelUnitTests::VerifyModel()
 {
+    // Every job should exist in the lookup map as well.
     ASSERT_EQ(m_unitTestJobModel->m_cachedJobs.size(), m_unitTestJobModel->m_cachedJobsLookup.size());
 
-    //Every job should exist in the lookup map as well
+    // every job in the vector should have a corresponding element in the lookup table.
     for (int idx = 0; idx < m_unitTestJobModel->m_cachedJobs.size(); idx++)
     {
         AssetProcessor::CachedJobInfo* jobInfo = m_unitTestJobModel->m_cachedJobs[idx];
         auto iter = m_unitTestJobModel->m_cachedJobsLookup.find(jobInfo->m_elementId);
         ASSERT_NE(iter, m_unitTestJobModel->m_cachedJobsLookup.end());
+    }
+
+    // this tests the other direction - every job in the lookup table should map to a job in the vector
+    // we also verify that its the appropriate job and not an off-by-one type of problem.
+    for (const auto& key : m_unitTestJobModel->m_cachedJobsLookup.keys())
+    {
+        int expectedIndex = m_unitTestJobModel->m_cachedJobsLookup[key];
+        ASSERT_LT(expectedIndex, m_unitTestJobModel->m_cachedJobs.size());
+        ASSERT_EQ(m_unitTestJobModel->m_cachedJobs[expectedIndex]->m_elementId, key);
     }
 }

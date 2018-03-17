@@ -125,7 +125,7 @@ void CSmartObjectHelperDialog::OnRefreshBtn()
 
     if (m_bFromTemplate)
     {
-        CSOLibrary::VectorClassData::iterator itClass = CSOLibrary::FindClass(m_sClassName.toLatin1().data());
+        CSOLibrary::VectorClassData::iterator itClass = CSOLibrary::FindClass(m_sClassName.toUtf8().data());
         if (itClass != CSOLibrary::GetClasses().end() && itClass->pClassTemplateData)
         {
             const CSOLibrary::CClassTemplateData::TTemplateHelpers& templateHelpers = itClass->pClassTemplateData->helpers;

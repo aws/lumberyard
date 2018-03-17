@@ -1,2 +1,2 @@
 
-#include "StdAfx.h"
+#include "CryLegacyAnimation_precompiled.h"

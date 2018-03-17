@@ -44,7 +44,7 @@ public:
         bLoading = false;
         bOwnNamedData = true;
         pNamedData = new CNamedData;
-        root = XmlHelpers::CreateXmlNode(xmlRoot.toLatin1().data());
+        root = XmlHelpers::CreateXmlNode(xmlRoot.toUtf8().data());
     };
     ~CXmlArchive()
     {

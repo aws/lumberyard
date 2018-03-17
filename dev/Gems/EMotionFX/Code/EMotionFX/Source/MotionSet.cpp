@@ -306,6 +306,7 @@ namespace EMotionFX
 
         // Not supported yet by the AZStd::unordered_map.
         //m_motionEntries.reserve(numMotionEntries);
+        MCORE_UNUSED(numMotionEntries);
     }
 
 

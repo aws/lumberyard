@@ -14,7 +14,7 @@ import contextlib
 import mock
 import os
 
-import resource_manager.util
+from cgf_utils.version_utils import Version
 import resource_manager.hook
 
 import lmbr_aws_test_support
@@ -34,7 +34,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(lmbr_aws_
         super(IntegrationTest_CloudGemFramework_ResourceManager_version_update, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        self.prepare_test_envionment("project_update")
+        self.prepare_test_envionment("project_update_1_0_0")
 
     def test_framework_version_update_end_to_end(self):  
         self.run_all_tests()    
@@ -71,7 +71,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(lmbr_aws_
                 'resource-manager-code/update.py', 
                 'before_framework_version_updated', 
                 kwargs={
-                    'from_version': resource_manager.util.Version('1.0.0'),
+                    'from_version': Version('1.0.0'),
                     'to_version': self.CURRENT_FRAMEWORK_VERSION
                 })
         
@@ -79,7 +79,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(lmbr_aws_
                 'resource-manager-code/update.py', 
                 'after_framework_version_updated', 
                 kwargs={
-                    'from_version': resource_manager.util.Version('1.0.0'),
+                    'from_version': Version('1.0.0'),
                     'to_version': self.CURRENT_FRAMEWORK_VERSION
                 })
 
@@ -112,7 +112,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(lmbr_aws_
             stack_name = self.TEST_PROJECT_STACK_NAME, 
             project_directory_path = self.GAME_DIR, 
             snapshot_file_path = self.snapshot_path('CGF_1_0_0_Minimal_Initialized'),
-            root_directory_path = self.REAL_ROOT_DIR)
+            root_directory_path = self.REAL_ROOT_DIR)        
 
     def __120_commands_fail_before_updating_initialized_project(self):
         self.lmbr_aws('resource-group', 'list', expect_failure = True)
@@ -129,7 +129,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(lmbr_aws_
                 'resource-manager-code/update.py', 
                 'before_framework_version_updated', 
                 kwargs={
-                    'from_version': resource_manager.util.Version('1.0.0'),
+                    'from_version': Version('1.0.0'),
                     'to_version': self.CURRENT_FRAMEWORK_VERSION
                 })
         
@@ -137,7 +137,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update(lmbr_aws_
                 'resource-manager-code/update.py', 
                 'after_framework_version_updated', 
                 kwargs={
-                    'from_version': resource_manager.util.Version('1.0.0'),
+                    'from_version': Version('1.0.0'),
                     'to_version': self.CURRENT_FRAMEWORK_VERSION
                 })
 

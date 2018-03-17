@@ -99,7 +99,6 @@ namespace EMotionFX
         {
             const uint32 nodeIndex = mNodeNumbers[i];
             mBoneMatrices[i].MultMatrix4x3(invBindPoseMatrices[nodeIndex], globalMatrices[nodeIndex]);
-
             mBoneMatrices[i].MultMatrix4x3(invNodeTM);
         }
 

@@ -112,6 +112,7 @@ namespace EMotionFX
         {
         public:
             virtual const AZ::Data::AssetId& GetActorAssetId() = 0;
+            virtual AZ::EntityId GetAttachedToEntityId() const = 0;
         };
 
         using EditorActorComponentRequestBus = AZ::EBus<EditorActorComponentRequests>;

@@ -79,12 +79,14 @@ from waflib.Tools import cxx
 from waflib import Task, Utils, Options, Errors, Context
 from waflib.TaskGen import feature, after_method, extension, before_method
 from waflib.Configure import conf
+from waflib.Tools import c_preproc
 from waflib import Logs
 from generate_uber_files import UBER_HEADER_COMMENT
 import copy_tasks
 from collections import defaultdict
 from threading import Lock
 from sets import Set
+import lmbr_setup_tools
 
 MOC_H = ['.h', '.hpp', '.hxx', '.hh']
 """
@@ -150,57 +152,44 @@ Qt5Xml'''
 # moc'ing.  The path of the moc file must be relative to the current project root
 INCLUDE_MOC_RE = re.compile(r'\s*\#include\s+[\"<](.*.moc)[\">]',flags=re.MULTILINE)
 INCLUDE_SRC_RE = re.compile(r'\s*\#include\s+[\"<](.*.(cpp|cxx|cc))[\">]',flags=re.MULTILINE)
+QOBJECT_RE = re.compile(r'\s*Q_OBJECT\s*', flags=re.MULTILINE)
 
-# Flag to shorten the generated paths used for the qt5 generated files under the working folder.  If true, that means
-# each project cannot use any QT generated artifacts that do no exist within its project boundaries.  If we want to
-# allow QT artifacts that are shared across different project folders (which is not ideal), then set this flag to False
-RESTRICT_BINTEMP_QT_PATH=True
 
 # Derive a specific moc_files.<idx> folder name based on the base bldnode and idx
 def get_target_qt5_root(ctx, target_name, idx):
-
     base_qt_node = ctx.bldnode.make_node('qt5/{}.{}'.format(target_name,idx))
     return base_qt_node
 
 # Change a target node from a changed extension to one marked as QT code generated
-def change_target_qt5_node(ctx, project_path, target_name, target_node,idx):
+# The qt5 generated files are restricted to the build folder.  That means
+# each project cannot use any QT generated artifacts that do no exist within its project boundaries.
+def change_target_qt5_node(ctx, project_path, target_name, relpath_target, idx):
+    relpath_project = project_path.relpath()
 
+    if relpath_target.startswith(relpath_project):
+        # Strip out the project relative path and use that as the target_qt5 relative path
+        restricted_path = relpath_target.replace(relpath_project,'')
+    elif relpath_target.startswith('..'):
+        # Special case.  If the target and project rel paths dont align, then the target node is outside of the
+        # project folder.  (ie there is a qt-related file in the waf_files that is outside the project's context path)
 
+        # If the file is an include or moc file, it must reside inside the project context, because it will be
+        # included based on an expected project relative path
+        target_node_name_lower = relpath_target.lower()
+        if target_node_name_lower.endswith(".moc") or target_node_name_lower.endswith(".h"):
+            ctx.fatal("QT target {} for project {} cannot exist outside of its source folder context.".format(relpath_target, target_name))
 
-    bld_node = ctx.bldnode
-    if RESTRICT_BINTEMP_QT_PATH:
-        relpath_target = target_node.relpath()
-        relpath_project = project_path.relpath()
-
-        if relpath_target.startswith(relpath_project):
-            # Strip out the project relative path and use that as the target_qt5 relative path
-            restricted_path = relpath_target.replace(relpath_project,'')
-
-        elif relpath_target.startswith('..'):
-
-            # Special case.  If the target and project rel paths dont align, then the target node is outside of the
-            # project folder.  (ie there is a qt-related file in the waf_files that is outside the project's context
-            # path)
-
-            # If the file is an include or moc file, it must reside inside the project context, because it will be
-            # included based on an expected project relative path
-            target_node_name_lower = target_node.name.lower()
-            if target_node_name_lower.endswith(".moc") or target_node_name_lower.endswith(".h"):
-                ctx.fatal("QT target {} for project {} cannot exist outside of its source folder context.".format(target_node.name, target_name))
-
-            restricted_path = "__/{}.{}/{}".format(target_name, idx, target_node.name)
-        else:
-            restricted_path = relpath_target
-
-        target_node_subdir = os.path.dirname(restricted_path)
+        restricted_path = "__/{}.{}/{}".format(target_name, idx, target_name)
     else:
-        target_node_subdir = target_node.bld_dir()
+        restricted_path = relpath_target
+
+    target_node_subdir = os.path.dirname(restricted_path)
 
     # Change the output target to the specific moc file folder
     output_qt_dir = get_target_qt5_root(ctx, target_name, idx).make_node(target_node_subdir)
     output_qt_dir.mkdir()
 
-    output_qt_node = output_qt_dir.make_node(target_node.name)
+    output_qt_node = output_qt_dir.make_node(os.path.split(relpath_target)[1])
     return output_qt_node
 
 
@@ -258,7 +247,7 @@ class qxx(Task.classes['cxx']):
 
         return status
 
-    def create_moc_task(self, h_node, m_node):
+    def create_moc_task(self, h_node, moc_filename):
         """
         If several libraries use the same classes, it is possible that moc will run several times (Issue 1318)
         It is not possible to change the file names, but we can assume that the moc transformation will be identical,
@@ -278,11 +267,12 @@ class qxx(Task.classes['cxx']):
         try:
             return moc_cache[cache_key]
         except KeyError:
+            relpath_target = os.path.join(h_node.parent.relpath(), moc_filename)
 
             target_node = change_target_qt5_node(self.generator.bld,
                                                  self.generator.path,
                                                  self.generator.name,
-                                                 m_node,
+                                                 relpath_target,
                                                  self.generator.idx)
 
             tsk = moc_cache[cache_key] = Task.classes['moc'](env=self.env, generator=self.generator)
@@ -333,24 +323,22 @@ class qxx(Task.classes['cxx']):
 
         for include_moc_node_rel_path in include_moc_node_rel_paths:
 
-            base_name = include_moc_node_rel_path[:-4]
+            base_name = os.path.splitext(include_moc_node_rel_path)[0]
 
             # We are only allowing to include mocing header files that are relative to the project folder
             header_node = None
             for moc_ext in self.moc_h_ext():
-                header_node = base_node.find_node('{}{}'.format(base_name,moc_ext))
+                # use search_node(), it will not create a node if the node is not found, and won't create bogus nodes while searching
+                header_node = base_node.search_node('{}{}'.format(base_name, moc_ext))
                 if header_node:
                     break
-            if header_node:
-                moc_filename = '{}.moc'.format(os.path.splitext(header_node.name)[0])
-                moc_node = header_node.parent.make_node(moc_filename)
-
-
             if not header_node:
-                raise Errors.WafError('No source found for {} which is a moc file'.format(base_name))
+                raise Errors.WafError('No source found for {} which is a moc file.  Is the file included in .waf_files?'.format(base_name))
+
+            moc_filename = '{}.moc'.format(os.path.splitext(header_node.name)[0])
 
             # create the moc task
-            task = self.create_moc_task(header_node, moc_node)
+            task = self.create_moc_task(header_node, moc_filename)
             moctasks.append(task)
 
         return moctasks
@@ -432,13 +420,13 @@ def create_rcc_task(self, node):
 
     if is_static_lib:
 
-        rcc_filename = 'rcc_%s.h' % node.name[:-4]
-        rcc_node = node.parent.make_node(rcc_filename)
+        rcc_filename = 'rcc_%s.h' % os.path.splitext(node.name)[0]
+        relpath_target = os.path.join(node.parent.relpath(), rcc_filename)
 
         rcnode = change_target_qt5_node(self.bld,
                                         self.path,
                                         self.name,
-                                        rcc_node,
+                                        relpath_target,
                                         self.idx)
 
         qrc_task = self.create_task('rcc', node, rcnode)
@@ -446,13 +434,13 @@ def create_rcc_task(self, node):
         return qrc_task
     else:
 
-        rcc_filename = '%s_rc.cpp' % node.name[:-4]
-        rcc_node = node.parent.make_node(rcc_filename)
+        rcc_filename = '%s_rc.cpp' % os.path.splitext(node.name)[0]
+        relpath_target = os.path.join(node.parent.relpath(), rcc_filename)
 
         rcnode = change_target_qt5_node(self.bld,
                                         self.path,
                                         self.name,
-                                        rcc_node,
+                                        relpath_target,
                                         self.idx)
 
         qrc_task = self.create_task('rcc', node, rcnode)
@@ -473,11 +461,22 @@ def add_rcc_dependencies(self):
     if not getattr(self, 'rcc_tasks', False):
         return
 
+    rcc_tasks = set(self.rcc_tasks)
     for task in self.tasks:
-        if task.__class__.__name__ in ['qxx', 'cxx', 'c']:
-            for dep in self.rcc_tasks:
-                task.set_run_after(dep)
+        if any(isinstance(task, Task.classes[c]) for c in ['qxx', 'cxx', 'c']):
+            task.run_after |= rcc_tasks
 
+
+@feature('qt5')
+@after_method('apply_link')
+def create_automoc_task(self):
+    if hasattr(self, 'header_files') and len(self.header_files) > 0:
+        header_nodes = self.to_nodes(self.header_files)
+
+        task = self.create_task('automoc', header_nodes)
+
+        # this may mutate the link task, must run the link task after this task
+        self.link_task.set_run_after(task)
 
 @extension(*EXT_UI)
 def create_uic_task(self, node):
@@ -495,12 +494,11 @@ def create_uic_task(self, node):
     uictask = self.create_task('ui5', node)
 
     ui_filename = self.env['ui_PATTERN'] % node.name[:-3]
-    ui_node = node.parent.make_node(ui_filename)
-
+    relpath_target = os.path.join(node.parent.relpath(), ui_filename)
     target_node = change_target_qt5_node(self.bld,
                                          self.path,
                                          self.name,
-                                         ui_node,
+                                         relpath_target,
                                          self.idx)
     uictask.outputs = [target_node]
     self.uic_tasks.append(uictask)
@@ -512,10 +510,10 @@ def add_uic_dependencies(self):
     if not getattr(self, 'uic_tasks', False):
         return
 
+    uic_tasks = set(self.uic_tasks)
     for task in self.tasks:
         if task.__class__.__name__ in ['qxx', 'cxx', 'c']:
-            for dep in self.uic_tasks:
-                task.set_run_after(dep)
+            task.run_after |= uic_tasks
 
 @extension('.ts')
 def add_lang(self, node):
@@ -535,10 +533,7 @@ def apply_qt5_includes(self):
                                         self.idx)
     if not hasattr(self, 'includes'):
         self.includes = []
-    if RESTRICT_BINTEMP_QT_PATH:
-        self.includes.append(base_moc_node)
-    else:
-        self.includes.append(base_moc_node.make_node(self.path.relpath()))
+    self.includes.append(base_moc_node)
 
 
 @feature('qt5')
@@ -572,10 +567,12 @@ def apply_qt5(self):
         for x in self.to_list(self.lang):
             if isinstance(x, str):
                 x = self.path.find_resource(x + '.ts')
+            qm_filename = '%s.qm' % os.path.splitext(x.name)[0]
+            relpath_target = os.path.join(x.parent.relpath(), qm_filename)
             new_qm_node = change_target_qt5_node(self.bld,
                                                  self.path,
                                                  self.name,
-                                                 x.change_ext('.qm'),
+                                                 relpath_target,
                                                  self.idx)
             qmtask = self.create_task('ts2qm', x, new_qm_node)
             qmtasks.append(qmtask)
@@ -588,13 +585,13 @@ def apply_qt5(self):
 
         if getattr(self, 'langname', None):
             qmnodes = [x.outputs[0] for x in qmtasks]
-            rcnode = self.langname
-            if isinstance(rcnode, str):
-                rcnode = self.path.find_or_declare(rcnode + '.qrc')
+            assert(isinstance(self.langname, str))
+            qrc_filename = '%s.qrc' % self.langname
+            relpath_target = os.path.join(self.path.relpath(), qrc_filename)
             new_rc_node = change_target_qt5_node(self.bld,
                                                  self.path,
                                                  self.name,
-                                                 rcnode,
+                                                 relpath_target,
                                                  self.idx)
             t = self.create_task('qm2rcc', qmnodes, new_rc_node)
 
@@ -632,10 +629,6 @@ def apply_qt5(self):
             lst.append(additional_flag)
 
 
-    # Instruct MOC.exe to not generate an #include statement to the header file in the output.
-    # This will require that all files that include a .moc file must also include the .h file as well
-    lst.append('-i')
-
     self.env.append_value('MOC_FLAGS', lst)
 
 
@@ -652,7 +645,6 @@ def cxx_hook(self, node):
 
 # QT tasks involve code generation, so we need to also check if the generated code is still there
 class QtTask(Task.Task):
-
     def runnable_status(self):
 
         missing_output = False
@@ -671,6 +663,99 @@ class QtTask(Task.Task):
         return status
 
 
+class automoc(Task.Task):
+    def create_moc_tasks(self, moc_headers):
+        moc_names = set()
+        for moc_header in moc_headers:
+            moc_node_name = os.path.splitext(moc_header.name)[0]
+
+            # Make sure we don't have two moc files with the same name
+            suffix = None
+            while (moc_node_name + ("_%i" % suffix if suffix else "")) in moc_names:
+                suffix = suffix + 1 if suffix else 2
+            if suffix:
+                moc_node_name += "_%i" % suffix
+            moc_names.add(moc_node_name)
+
+            cpp_filename = '%s_moc.cpp' % moc_node_name
+            relpath_target = os.path.join(moc_header.parent.relpath(), cpp_filename)
+
+            moc_node = change_target_qt5_node(self.generator.bld,
+                                              self.generator.path,
+                                              self.generator.name,
+                                              relpath_target,
+                                              self.generator.idx)
+
+            moc_task = self.generator.create_task('moc', moc_header, moc_node)
+            # Include the precompiled header, if applicable
+            if getattr(self.generator, 'pch_header', None) is not None:
+                moc_task.env['MOC_FLAGS'] = moc_task.env['MOC_FLAGS'] + ['-b', self.generator.pch_header]
+
+            cpp_task = self.generator.create_compiled_task('cxx', moc_node)
+            # Ignore warnings in generated code
+            is_msvc = cpp_task.env['CXX_NAME'] == 'msvc'
+            moc_cxx_flags = [flag for flag in cpp_task.env['CXXFLAGS'] if not flag.startswith('/W' if is_msvc else '-W')]
+
+            if is_msvc and '/EHsc' not in moc_cxx_flags:
+                moc_cxx_flags.append('/EHsc')
+            elif not is_msvc and '-w' not in moc_cxx_flags:
+                moc_cxx_flags.append('-w')
+
+            cpp_task.env['CXXFLAGS'] = moc_cxx_flags
+
+            # Define Q_MOC_BUILD for the (rare) case where a header might need to check to see if it's been included by
+            # a _moc file.
+            cpp_task.env.append_unique('DEFINES', 'Q_MOC_BUILD')
+            cpp_task.set_run_after(moc_task)
+
+            # add cpp output to link task.
+            # Modifying the task should be ok because the link task is already registered as a run_after of
+            # the automoc task (this task), and runnable_status in run on the main thread
+            self.generator.link_task.inputs.append(cpp_task.outputs[0])
+            self.generator.link_task.set_run_after(cpp_task)
+
+            # direct injection in the build phase (safe because runnable_status is only called from the main thread)
+            producer = self.generator.bld.producer
+            producer.outstanding.insert(0, moc_task)  # insert the moc_task, its ready to run
+            producer.outstanding.append(cpp_task)  # append the cpp_task, it must wait for the moc task completion anyways
+            producer.total += 2
+
+    def runnable_status(self):
+        # check if any of the inputs have changed, or the input list has changed, or the dependencies have changed
+        status = Task.Task.runnable_status(self)
+
+        moc_headers = []
+        if Task.RUN_ME == status:
+            # run the automoc scan to generate the up-to-date contents
+            for header_node in self.inputs:
+                header_contents = header_node.read()
+                # For now, only work on headers that opt in with an AUTOMOC comment
+                if "AUTOMOC" not in header_contents:
+                    continue
+                header_contents = c_preproc.re_cpp.sub(c_preproc.repl, header_contents)
+                if QOBJECT_RE.search(header_contents):
+                    moc_headers.append(header_node)
+
+            # store on task, will be added to the node_deps in post_run
+            self.moc_headers = moc_headers
+        else:
+            # signatures didn't change, grab the saved nodes
+            moc_headers = self.generator.bld.node_deps[self.uid()]
+
+        # build the qt tasks, and add them to the link task
+        self.create_moc_tasks(moc_headers)
+
+        return status
+
+    def scan(self):
+        moc_headers = self.generator.bld.node_deps.get(self.uid(), [])
+        return (moc_headers, [])
+
+    def post_run(self):
+        self.generator.bld.node_deps[self.uid()] = getattr(self, 'moc_headers', [])
+        Task.Task.post_run(self)
+
+
 class rcc(QtTask):
     """
     Process *.qrc* files
@@ -681,56 +766,15 @@ class rcc(QtTask):
 
     def __init__(self, *k, **kw):
         QtTask.__init__(self, *k, **kw)
-        self.old_run = self.run
-        self.run = self.run_single_threaded
-        bld = self.generator.bld
-        if not getattr(bld, 'qrclock', None):
-            bld.qrclock = set()
-            bld.qrcmutex = Lock()
-        if not getattr(bld, 'scanlock', None):
-            bld.scanlock = set()
-            bld.scanmutex = Lock()
-        
-    def run_single_threaded(self):
-        bld = self.generator.bld
-        # there is a problem with qt QRC in that it locks the file with an exclusive read
-        # and thus any two QRCs cannot run simultaneously on the same source file
-        # we don't want to GLOBALLY prevent 2 rc tasks from running on different QRCs
-        # so we have a dictionary of 'how many QRCs are currently running' for that specific file, 
-        # and as soon as there are zero we atomically switch it and run it.
-        # this avoids having to create a semaphore for each specific QRC file (wasteful)
 
-        while (True): # wait for other threads to finish
-            bld.qrcmutex.acquire()
-            try:
-                runnable = self.inputs[0].name not in bld.qrclock
-                if runnable:
-                    bld.qrclock.add(self.inputs[0].name)
-            finally:
-                bld.qrcmutex.release()
-            if runnable:
-                break
-            else:
-                time.sleep(0.01) # 10ms waits - QRC files are sometimes a couple megs, no point in waiting shorter
-        
-        try:
-            ret = self.old_run()
-        finally:
-            bld.qrcmutex.acquire()
-            bld.qrclock.remove(self.inputs[0].name)
-            bld.qrcmutex.release()
-            
-        return ret
-    
     def rcname(self):
         return os.path.splitext(self.inputs[0].name)[0]
 
-    def scan(self):
+    def parse_deps(self):
         """Parse the *.qrc* files"""
-        bld = self.generator.bld
         if not has_xml:
             Logs.error('no xml support was found, the rcc dependencies will be incomplete!')
-            return ([], [])
+            return
 
         parser = make_parser()
         curHandler = XMLHandler()
@@ -741,36 +785,51 @@ class rcc(QtTask):
         finally:
             fi.close()
 
+        self.rcc_deps_paths = curHandler.files
+
+    def lookup_deps(self, root, deps_paths):
         nodes = []
         names = []
 
-        while (True):  # wait for other threads to finish
-            bld.scanmutex.acquire()
-            try:
-                runnable = self.inputs[0].name not in bld.scanlock
-                if runnable:
-                    bld.scanlock.add(self.inputs[0].name)
-            finally:
-                bld.scanmutex.release()
-            if runnable:
-                break
+        for x in deps_paths:
+            nd = root.find_resource(x)
+            if nd:
+                nodes.append(nd)
             else:
-                time.sleep(0.01) # 10ms waits
-
-        try:
-            root = self.inputs[0].parent
-            for x in curHandler.files:
-                nd = root.find_resource(x)
-                if nd:
-                    nodes.append(nd)
-                else:
-                    names.append(x)
-        finally:
-            bld.scanmutex.acquire()
-            bld.scanlock.remove(self.inputs[0].name)
-            bld.scanmutex.release()
-
+                names.append(x)
         return (nodes, names)
+
+    def scan(self):
+        resolved_nodes = self.generator.bld.node_deps.get(self.uid(), [])
+        unresolved_names = self.generator.bld.raw_deps.get(self.uid(), [])
+        return (resolved_nodes, unresolved_names)
+
+    def post_run(self):
+        self.parse_deps()
+
+        # convert input dependency files to nodes.  Care must be taken in this block wrt thread safety because it creates nodes
+        if 'msvcdeps' in sys.modules:
+            # msvcdeps is run on the worker threads, it may conflict with generate_deps, which is also creating node at
+            # compile time.  Defer to msvcdeps module to handle thread locking
+            (nodes, names) = sys.modules['msvcdeps'].sync_lookup_deps(self.inputs[0].parent, self.rcc_deps_paths)
+        else:
+            (nodes, names) = self.lookup_deps(self.inputs[0].parent, self.rcc_deps_paths)
+
+        del self.rcc_deps_paths
+
+        # store dependencies in build
+        self.generator.bld.node_deps[self.uid()] = nodes
+        self.generator.bld.raw_deps[self.uid()] = names
+
+        # delete signature to force a rebuild of signature.  Scan() will be called to store the deps
+        try:
+            del self.cache_sig
+        except:
+            pass
+
+        # call base class to regenerate signature
+        super(rcc, self).post_run()
+
 
 class moc(QtTask):
     """
@@ -779,6 +838,18 @@ class moc(QtTask):
     color   = 'BLUE'
 
     run_str = '${QT_MOC} ${MOC_FLAGS} ${SRC} -o ${TGT}'
+
+
+class fake_moc(QtTask):
+    """
+    Create dummy *.moc files - this is a temporary workaround while we migrate to autmoc
+    """
+    color = 'BLUE'
+
+    def post_run(self):
+        self.outputs[0].write("/* Dummy moc file, this will eventually be removed */\n")
+        super(fake_moc, self).post_run(self)
+
 
 class ui5(QtTask):
     """
@@ -851,6 +922,26 @@ def get_qt_version(self):
 
     return version
 
+def _prepare_lib_folder_for_linux(qt_lib_path):
+    # this functions sets up the qt linux shared library, for example
+    # libQt5Xml.so -> libQt5Xml.so.5.6.2
+    # libQt5Xml.so.5 -> libQt5Xml.so.5.6.2
+    # libQt5Xml.so.5.6 -> libQt5Xml.so.5.6.2
+    import glob
+    library_files = glob.glob(os.path.join(qt_lib_path, 'lib*.so*'))
+    for lib_path in library_files:
+
+        if os.path.islink(lib_path):
+            continue
+
+        lib_path_basename = os.path.basename(lib_path)
+
+        new_lib_path, ext = os.path.splitext(lib_path)
+        while ext != '.so':
+            if os.path.lexists(new_lib_path) is False:
+                os.symlink(lib_path_basename, new_lib_path)
+                Logs.debug('Made link: {} -> {}'.format(lib_path, new_lib_path))
+            new_lib_path, ext = os.path.splitext(new_lib_path)
 
 @conf
 def find_qt5_binaries(self, platform):
@@ -958,27 +1049,6 @@ def find_qt5_binaries(self, platform):
         if not os.path.exists(qt_subdir):
             self.fatal('Unable to find QT lib folder {}'.format(name))
         return qt_subdir
-
-    def _prepare_lib_folder_for_linux(qt_lib_path):
-        # this functions sets up the qt linux shared library, for example
-        # libQt5Xml.so -> libQt5Xml.so.5.6.2
-        # libQt5Xml.so.5 -> libQt5Xml.so.5.6.2
-        # libQt5Xml.so.5.6 -> libQt5Xml.so.5.6.2
-        import glob
-        library_files = glob.glob(os.path.join(qt_lib_path, "lib*.so*"))
-        for lib_path in library_files:
-
-            if os.path.islink(lib_path):
-                continue
-
-            lib_path_basename = os.path.basename(lib_path)
-
-            new_lib_path, ext = os.path.splitext(lib_path)
-            while ext != ".so":
-                if os.path.lexists(new_lib_path) is False:
-                    os.symlink(lib_path_basename, new_lib_path)
-                    Logs.debug("Made link: {} -> {}".format(lib_path, new_lib_path))
-                new_lib_path, ext = os.path.splitext(new_lib_path)
 
     # generate symlinks for the library files within the lib folder
     if platform == "linux_x64":
@@ -1257,6 +1327,7 @@ def options(opt):
 
     opt.add_option('--translate', action="store_true", help="collect translation strings", dest="trans_qt5", default=False)
 
+SUPPORTED_QTLIB_PLATFORMS = ['win_x64_vs2013', 'win_x64_vs2015', 'darwin_x64', 'linux_x64']
 
 PLATFORM_TO_QTGA_SUBFOLDER = {
     "win_x64_vs2013": ["win32/vc120/qtga.dll", "win32/vc120/qtgad.dll", "win32/vc120/qtgad.pdb"],
@@ -1355,9 +1426,9 @@ def qtlib_bootstrap(self, platform, configuration):
     if platform in QT_SDK_MISSING:
         return
 
-    def _copy_folder(src, dst, qt_type, ignore):
+    def _copy_folder(src, dst, qt_type, pattern, is_ignore):
         dst_type = os.path.normcase(os.path.join(dst, qt_type))
-        return copy_tasks.copy_tree2(src, dst_type, False, ignore, False)
+        return copy_tasks.copy_tree2(src, dst_type, False, pattern, is_ignore, False)
 
     def _copy_file(src_path, dest_path):
         src = os.path.normcase(src_path)
@@ -1392,7 +1463,7 @@ def qtlib_bootstrap(self, platform, configuration):
             copied += _copy_file(src_dll, dst_dll)
         return copied
 
-    def _copy_qtlib_folder(ctx, dst, current_platform, ignore_patterns, is_require_lib, is_require_qml, is_require_plugins):
+    def _copy_qtlib_folder(ctx, dst, current_platform, patterns, is_required_pattern):
 
         # Used to track number of files copied by this function
         num_files_copied = 0
@@ -1409,16 +1480,26 @@ def qtlib_bootstrap(self, platform, configuration):
             return num_files_copied
 
         # Copy the libs for qtlibs
-        if is_require_lib:
-            num_files_copied += _copy_folder(ctx.env.QT_LIB_DIR, dst_qtlib, 'lib', ignore_patterns)
+        lib_pattern = patterns
+        if 'lib' in patterns:
+            lib_pattern = patterns['lib']
+        num_files_copied += _copy_folder(ctx.env.QT_LIB_DIR, dst_qtlib, 'lib', lib_pattern, is_required_pattern)
+        
+        # special setup for linux_x64 platform
+        if platform == 'linux_x64':
+            _prepare_lib_folder_for_linux(os.path.join(dst_qtlib, 'lib'))
 
         # Copy the qml for qtlibs
-        if is_require_qml:
-            num_files_copied += _copy_folder(ctx.env.QT_QML_DIR, dst_qtlib, 'qml', None)
+        qml_pattern = patterns
+        if 'qml' in patterns:
+            qml_pattern = patterns['qml']
+        num_files_copied += _copy_folder(ctx.env.QT_QML_DIR, dst_qtlib, 'qml', qml_pattern, is_required_pattern)
 
         # Copy the plugins for qtlibs
-        if is_require_plugins:
-            num_files_copied += _copy_folder(ctx.env.QT_PLUGINS_DIR, dst_qtlib, 'plugins', ignore_patterns)
+        plugins_pattern = patterns
+        if 'plugins' in patterns:
+            plugins_pattern = patterns['plugins']
+        num_files_copied += _copy_folder(ctx.env.QT_PLUGINS_DIR, dst_qtlib, 'plugins', plugins_pattern, is_required_pattern)
 
         # Copy the extra txt files
         qt_base = os.path.normcase(ctx.Path('Code/Sandbox/SDKs/Qt'))
@@ -1477,6 +1558,9 @@ def qtlib_bootstrap(self, platform, configuration):
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
+    # Check if current configuration is a debug build
+    is_debug = configuration.startswith('debug')
+
     # For windows, we will bootstrap copy the Qt Dlls to the main and rc subfolder
     # (for non-test and non-dedicated configurations)
     if platform in ['win_x64_vs2015', 'win_x64_vs2013'] and configuration in \
@@ -1490,15 +1574,11 @@ def qtlib_bootstrap(self, platform, configuration):
         # Copy all the dlls required by Qt
         # Copy to the current configuration's BinXXX folder
         files_copied = _copy_qt_dlls(self, output_path, WINDOWS_MAIN_QT_DLLS)
-
-        # Copy specific files if we are building from the engine folder
-        if self.is_engine_local():
-            # Copy to the current configuration's BinXXX/rc folder
-            files_copied += _copy_qt_dlls(self, os.path.join(output_path, 'rc'), WINDOWS_RC_QT_DLLS)
-
-            # Copy to the LmbrSetup folder
-            files_copied += _copy_qt_dlls(self,
-                self.Path(self.get_lmbr_setup_tools_output_folder()), WINDOWS_LMBRSETUP_QT_DLLS)
+        # Copy to the current configuration's BinXXX/rc folder
+        files_copied += _copy_qt_dlls(self, os.path.join(output_path, 'rc'), WINDOWS_RC_QT_DLLS)
+        # Copy to the LmbrSetup folder
+        files_copied += _copy_qt_dlls(self,
+            self.Path(self.get_lmbr_setup_tools_output_folder()), lmbr_setup_tools.LMBR_SETUP_QT_FILTERS['win']['Modules'])
 
         # Report the sync job, but only report the number of files if any were actually copied
         if files_copied > 0:
@@ -1509,7 +1589,7 @@ def qtlib_bootstrap(self, platform, configuration):
                 Logs.info('[INFO] Skipped qt dll copy to target folder. ({})'.format(str(copy_timer)))
 
     # Check if this is a platform that supports the qtlib folder synchronization
-    if platform in PLATFORM_TO_QTGA_SUBFOLDER:
+    if platform in SUPPORTED_QTLIB_PLATFORMS:
 
         copy_timer = Utils.Timer()
 
@@ -1518,12 +1598,21 @@ def qtlib_bootstrap(self, platform, configuration):
 
         # Copy the entire qtlib folder to current output path
         # Contains lib, plugins and qml folders, and license information
-        files_copied = _copy_qtlib_folder(self, output_path, platform, ignore_lib_patterns, True, True, True)
+        files_copied = _copy_qtlib_folder(self, output_path, platform, ignore_lib_patterns, False)
 
-        import lmbr_setup_tools
+        lmbr_configuration_key = 'debug' if is_debug else 'profile'
+        lmbr_platform_key = ''
+        for key in lmbr_setup_tools.LMBR_SETUP_QT_FILTERS:
+            if platform.startswith(key):
+                lmbr_platform_key = key
+                break
+
+        if not lmbr_platform_key:
+            Logs.error('Cannot find the current configuration ({}) to setup LmbrSetup folder.'.format(platform))
+
         files_copied += _copy_qtlib_folder(self,
             self.Path(self.get_lmbr_setup_tools_output_folder()),
-            platform, ignore_lib_patterns, True, True, True)
+            platform, lmbr_setup_tools.LMBR_SETUP_QT_FILTERS[lmbr_platform_key]['qtlibs'][lmbr_configuration_key], True)
 
         # Report the sync job, but only report the number of files if any were actually copied
         if files_copied > 0:

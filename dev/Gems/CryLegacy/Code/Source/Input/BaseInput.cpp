@@ -14,7 +14,7 @@
 // Description : BaseInput
 
 
-#include "StdAfx.h"
+#include "CryLegacy_precompiled.h"
 #include "BaseInput.h"
 #include "InputDevice.h"
 #include "InputCVars.h"

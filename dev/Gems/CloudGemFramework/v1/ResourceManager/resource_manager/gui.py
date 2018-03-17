@@ -22,6 +22,7 @@ import player_identity
 import profile
 import util
 import importer
+import function
 
 from errors import HandledError
 from context import Context
@@ -60,7 +61,7 @@ command_handlers = {
     'describe-deployment-stack': deployment.describe_stack,
     'describe-resource-group-stack': resource_group.describe_stack,
     'upload-resources': deployment.upload_resources,
-    'upload-lambda-code': deployment.upload_lambda_code,
+    'upload-lambda-code': function.upload_lambda_code,
     'update-project-stack': project.update_stack,
     'add-resource-group': resource_group.add,
     'remove-resource-group': resource_group.remove,
@@ -164,6 +165,9 @@ class GuiViewContext(ViewContext):
         super(GuiViewContext, self).initialize(args)
         self.__view_output_function = args.view_output_function
         self.__requestId = args.request_id if args.request_id is not None else 0
+
+    def project_stack_exists(self, value):
+        self._output('project_stack_exists', value)
 
     def _output(self, key, value):
         print 'command output   - requestId: {}, key: {}, value: {}'.format(self.__requestId, key, value)

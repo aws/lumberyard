@@ -7,7 +7,7 @@
     <ProjectHome />
     <StartupFile>
     </StartupFile>
-    <SearchPath>..\..\common-code\ResourceManagerCommon\;..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\common-code\LambdaService\;..\..\common-code\LambdaSettings\</SearchPath>
+    <SearchPath>..\..\common-code\ResourceManagerCommon\;..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\common-code\LambdaService\;..\..\common-code\LambdaSettings\;..\..\common-code\Utils\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
@@ -23,8 +23,27 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="api\resource_info.py" />
+    <Compile Include="api\service_directory.py" />
     <Compile Include="api\service_status.py" />
     <Compile Include="api\__init__.py" />
+    <Compile Include="resource_types\AWS_SQS_Queue.py" />
+    <Compile Include="resource_types\cognito\identity_pool.py" />
+    <Compile Include="resource_types\cognito\user_pool.py" />
+    <Compile Include="resource_types\cognito\__init__.py" />
+    <Compile Include="resource_types\Custom_AccessControl.py" />
+    <Compile Include="resource_types\Custom_CognitoIdentityPool.py" />
+    <Compile Include="resource_types\Custom_CognitoUserPool.py" />
+    <Compile Include="resource_types\Custom_EmptyDeployment.py" />
+    <Compile Include="resource_types\Custom_Helper.py" />
+    <Compile Include="resource_types\Custom_ResourceGroupConfiguration.py" />
+    <Compile Include="resource_types\Custom_ServiceApi.py" />
+    <Compile Include="resource_types\__init__.py" />
+    <Compile Include="test\test_unit_service_directory.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="test\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include=".ignore" />
@@ -34,6 +53,9 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="api\" />
+    <Folder Include="resource_types\" />
+    <Folder Include="resource_types\cognito\" />
+    <Folder Include="test\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

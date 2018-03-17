@@ -53,8 +53,8 @@ namespace EMotionFX
         ATTRIBUTE_INTERFACETYPE_MULTIPLEMOTIONPICKER        = 25,// AttributeArray (of AttributeString attributes)
         ATTRIBUTE_INTERFACETYPE_TAG                         = 26,// bool
         ATTRIBUTE_INTERFACETYPE_TAGPICKER                   = 27,// AttributeArray (of AttributeString attributes)
-        ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS           = 28, // AttributeArray (of AttributeBlendSpaceMotion attributes)
-        ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONPICKER      = 29, // String
+        ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS           = 28,// AttributeArray (of AttributeBlendSpaceMotion attributes)
+        ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONPICKER      = 29,// String
     };
 
     // forward declaration
@@ -185,7 +185,7 @@ namespace EMotionFX
             return true;
         }
 
-        bool ConvertToString(MCore::String& outString) const override       { outString.Format("%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d", mDegrees.GetX(), mDegrees.GetY(), mDegrees.GetZ(), mRotation.x, mRotation.y, mRotation.z, mRotation.w, mOrder); return true; }
+        bool ConvertToString(MCore::String& outString) const override       { outString.Format("%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d", static_cast<float>(mDegrees.GetX()), static_cast<float>(mDegrees.GetY()), static_cast<float>(mDegrees.GetZ()), mRotation.x, mRotation.y, mRotation.z, mRotation.w, mOrder); return true; }
         uint32 GetClassSize() const override                                { return sizeof(AttributeRotation); }
 
     private:
@@ -194,11 +194,11 @@ namespace EMotionFX
         ERotationOrder      mOrder;         /**< The rotation order, which defaults to ZYX. */
 
         AttributeRotation()
-            : MCore::Attribute(TYPE_ID)                         { mDegrees = AZ::Vector3::CreateZero(); mOrder = ROTATIONORDER_ZYX; }
+            : MCore::Attribute(TYPE_ID)     { mDegrees = AZ::Vector3::CreateZero(); mOrder = ROTATIONORDER_ZYX; }
         AttributeRotation(const AZ::Vector3& angles, const MCore::Quaternion& quat)
-            : MCore::Attribute(TYPE_ID)      { mDegrees = angles; mRotation = quat; mOrder = ROTATIONORDER_ZYX; }
+            : MCore::Attribute(TYPE_ID)     { mDegrees = angles; mRotation = quat; mOrder = ROTATIONORDER_ZYX; }
         AttributeRotation(float xDeg, float yDeg, float zDeg)
-            : MCore::Attribute(TYPE_ID)                         { mOrder = ROTATIONORDER_ZYX; mDegrees.Set(xDeg, yDeg, zDeg); UpdateRotationQuaternion(); }
+            : MCore::Attribute(TYPE_ID)     { mOrder = ROTATIONORDER_ZYX; mDegrees.Set(xDeg, yDeg, zDeg); UpdateRotationQuaternion(); }
         ~AttributeRotation()    {}
 
         uint32 GetDataSize() const override;

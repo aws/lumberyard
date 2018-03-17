@@ -19,16 +19,16 @@ def get(request):
     voices = {}
     for voice in response["Voices"]:
         if voices.get(voice["LanguageName"], []):
-            voices[voice["LanguageName"]].append({"voiceId": voice["Id"], "gender": voice["Gender"]})               
+            voices[voice["LanguageName"]].append({"voiceId": voice["Id"], "gender": voice["Gender"], "languageCode": voice["LanguageCode"]})               
         else:
-            voices[voice["LanguageName"]] = [{"voiceId": voice["Id"], "gender": voice["Gender"]}]
+            voices[voice["LanguageName"]] = [{"voiceId": voice["Id"], "gender": voice["Gender"], "languageCode": voice["LanguageCode"]}]
 
     while response.get("NextToken", ""):
         response = client.describe_voices(NextToken=response["NextToken"])
         for voice in response["Voices"]:
             if voices.get(voice["LanguageName"], []):
-                voices[voice["LanguageName"]].append({"voiceId": voice["Id"], "gender": voice["Gender"]})               
+                voices[voice["LanguageName"]].append({"voiceId": voice["Id"], "gender": voice["Gender"], "languageCode": voice["LanguageCode"]})               
             else:
-                voices[voice["LanguageName"]] = [{"voiceId": voice["Id"], "gender": voice["Gender"]}]
+                voices[voice["LanguageName"]] = [{"voiceId": voice["Id"], "gender": voice["Gender"], "languageCode": voice["LanguageCode"]}]
 
     return { "voices": voices }

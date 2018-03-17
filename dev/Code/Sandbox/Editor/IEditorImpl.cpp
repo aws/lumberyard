@@ -129,8 +129,6 @@
 
 #include <CloudCanvas/ICloudCanvas.h>
 
-LINK_SYSTEM_LIBRARY(version.lib)
-
 // even in Release mode, the editor will return its heap, because there's no Profile build configuration for the editor
 #ifdef _RELEASE
 #undef _RELEASE
@@ -612,15 +610,15 @@ void CEditorImpl::RegisterTools()
 
 void CEditorImpl::ExecuteCommand(const char* sCommand, ...)
 {
-    const size_t BUF_SIZE = 1024;
-    char buffer[BUF_SIZE];
     va_list args;
-
-    buffer[BUF_SIZE - 1] = '\0';
     va_start(args, sCommand);
-    vsprintf_s(buffer, BUF_SIZE, sCommand, args);
+    ExecuteCommand(QString::asprintf(sCommand, args));
     va_end(args);
-    m_pCommandManager->Execute(buffer);
+}
+
+void CEditorImpl::ExecuteCommand(const QString& command)
+{
+    m_pCommandManager->Execute(command.toUtf8().data());
 }
 
 void CEditorImpl::Update()
@@ -1095,15 +1093,15 @@ void CEditorImpl::SetEditTool(const QString& sEditToolName, bool bStopCurrentToo
         }
     }
 
-    IClassDesc* pClass = GetIEditor()->GetClassFactory()->FindClass(sEditToolName.toLatin1().data());
+    IClassDesc* pClass = GetIEditor()->GetClassFactory()->FindClass(sEditToolName.toUtf8().data());
     if (!pClass)
     {
-        Warning("Editor Tool %s not registered.", sEditToolName.toLatin1().data());
+        Warning("Editor Tool %s not registered.", sEditToolName.toUtf8().data());
         return;
     }
     if (pClass->SystemClassID() != ESYSTEM_CLASS_EDITTOOL)
     {
-        Warning("Class name %s is not a valid Edit Tool class.", sEditToolName.toLatin1().data());
+        Warning("Class name %s is not a valid Edit Tool class.", sEditToolName.toUtf8().data());
         return;
     }
 
@@ -1116,7 +1114,7 @@ void CEditorImpl::SetEditTool(const QString& sEditToolName, bool bStopCurrentToo
     }
     else
     {
-        Warning("Class name %s is not a valid Edit Tool class.", sEditToolName.toLatin1().data());
+        Warning("Class name %s is not a valid Edit Tool class.", sEditToolName.toUtf8().data());
         return;
     }
 }
@@ -1330,10 +1328,8 @@ int CEditorImpl::ClearSelection()
     {
         return 0;
     }
-    string countString = GetCommandManager()->Execute("general.clear_selection");
-    int count = 0;
-    FromString(count, countString.c_str());
-    return count;
+    QString countString = GetCommandManager()->Execute("general.clear_selection");
+    return countString.toInt();
 }
 
 void CEditorImpl::LockSelection(bool bLock)
@@ -1475,7 +1471,7 @@ void CEditorImpl::LaunchAWSConsole(QString destUrl)
     CCryEditApp::instance()->OnAWSLaunchConsolePage(destUrl.toStdString().c_str());
 }
 
-bool CEditorImpl::ToProjectConfigurator(const char* msg, const char* caption, const char* location)
+bool CEditorImpl::ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location)
 {
     return CCryEditApp::instance()->ToProjectConfigurator(msg, caption, location);
 }
@@ -1563,7 +1559,7 @@ void CEditorImpl::CloseView(const GUID& classId)
     IClassDesc* found = GetClassFactory()->FindClass(classId);
     if (found)
     {
-        CloseView(found->ClassName().toLatin1().data());
+        CloseView(found->ClassName().toUtf8().data());
     }
 }
 
@@ -1669,6 +1665,15 @@ bool CEditorImpl::IsInGameMode()
     if (m_pGameEngine)
     {
         return m_pGameEngine->IsInGameMode();
+    }
+    return false;
+}
+
+bool CEditorImpl::IsInSimulationMode()
+{
+    if (m_pGameEngine)
+    {
+        return m_pGameEngine->GetSimulationMode();
     }
     return false;
 }
@@ -1833,7 +1838,7 @@ CShaderEnum* CEditorImpl::GetShaderEnum()
 
 bool CEditorImpl::ExecuteConsoleApp(const QString& CommandLine, QString& OutputText, bool bNoTimeOut, bool bShowWindow)
 {
-    CLogFile::FormatLine("Executing console application '%s'", CommandLine.toLatin1().data());
+    CLogFile::FormatLine("Executing console application '%s'", CommandLine.toUtf8().data());
 
     QProcess process;
     if (bShowWindow)
@@ -2429,7 +2434,7 @@ void CEditorImpl::CmdPy(IConsoleCmdArgs* pArgs)
     scriptCmd = scriptCmd.right(scriptCmd.length() - 2); // The part of the text after the 'py'
     scriptCmd = scriptCmd.trimmed();
     PyScript::AcquirePythonLock();
-    PyRun_SimpleString(scriptCmd.toLatin1().data());
+    PyRun_SimpleString(scriptCmd.toUtf8().data());
     PyErr_Print();
     PyScript::ReleasePythonLock();
 }

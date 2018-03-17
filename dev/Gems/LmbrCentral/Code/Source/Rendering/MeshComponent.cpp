@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "MeshComponent.h"
 #include "MaterialOwnerRequestBusHandlerImpl.h"
 
@@ -70,7 +70,7 @@ namespace LmbrCentral
             const char* getMaterialParamTooltip = "Returns a Material param value for the given Entity";
             AZ::BehaviorParameterOverrides setParamNameDetails = { "ParamName", "The name of the Material param to set" };
             AZ::BehaviorParameterOverrides getParamNameDetails = { "ParamName", "The name of the Material param to return" };
-            AZ::BehaviorParameterOverrides paramMaterialIdDetails = { "MaterialID", "The ID of a Material slot to access, if the Owner has multiple Materials. IDs start at 1.",  AZ::BehaviorMakeDefaultValue(1) };
+            AZ::BehaviorParameterOverrides paramMaterialIdDetails = { "MaterialID", "The ID of a Material slot to access, if the Owner has multiple Materials. IDs start at 1.",  behaviorContext->MakeDefaultValue(1) };
             const AZStd::array<AZ::BehaviorParameterOverrides, 2> getMaterialParamArgs = { { getParamNameDetails, paramMaterialIdDetails } };
             const char* newValueTooltip = "The new value to apply";
 

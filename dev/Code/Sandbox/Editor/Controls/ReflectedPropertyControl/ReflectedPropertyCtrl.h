@@ -80,7 +80,7 @@ public:
 
     /** Set selchange callback to be used for this property window.
     */
-    void SetSelChangeCallback(SelChangeCallback callback) { m_selChangeFunc = callback; }
+    void SetSelChangeCallback(SelChangeCallback callback);
 
     //set a key that can be used to save/restore expanded state.
     void SetSavedStateKey(AZ::u32 key);
@@ -157,6 +157,9 @@ public:
     int GetContentHeight() const;
     int GetVisibleHeight() const {return GetContentHeight();}
 
+    //whether this control is a section of a TwoColumnPropertyCtrl (so we can show correct copy/paste options)
+    void SetIsTwoColumnCtrlSection(bool isSection);
+
     struct SCustomPopupItem
     {
         typedef Functor0 Callback;
@@ -203,14 +206,19 @@ public slots:
 
     void SetTitle(const QString &title);
 
-    void OnCopy(bool bRecursively);
+    void OnCopy(QVector<ReflectedPropertyItem*> items, bool bRecursively);
     void OnCopyAll();
+    void OnCopyAll(XmlNodeRef node);
     void OnPaste();
+
+Q_SIGNALS:
+    void CopyAllSections();
+    void PasteAllSections();
 
 protected:
     friend class ReflectedPropertyItem;
 
-    void OnItemChange(ReflectedPropertyItem* item);
+    virtual void OnItemChange(ReflectedPropertyItem* item, bool deferCallbacks = true);
     CReflectedVar* GetReflectedVarFromCallbackInstance(AzToolsFramework::InstanceDataNode* pNode);
     void RecreateAllItems();
 
@@ -253,6 +261,8 @@ private:
     bool m_sortProperties;
     bool m_bSendCallbackOnNonModified;
     bool m_initialized;
+
+    bool m_isTwoColumnSection;
 
     //custom popup menu
     std::vector<SCustomPopupItem> m_customPopupMenuItems;
@@ -304,6 +314,9 @@ public:
     void ExpandAllChildren(bool recursive);
 
     void ReloadItems();
+    
+    void OnCopyAll();
+    void OnPaste();
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

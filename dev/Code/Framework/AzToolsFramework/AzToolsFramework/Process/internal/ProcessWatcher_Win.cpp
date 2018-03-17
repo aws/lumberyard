@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #ifdef AZ_PLATFORM_WINDOWS // Only windows support currently
 
@@ -104,6 +104,14 @@ namespace AzToolsFramework
                 workingDirectory.empty() ? nullptr : workingDirectory.c_str(),  // use parent's current directory
                 &processData.startupInfo, // STARTUPINFO pointer
                 &processData.processInformation); // receives PROCESS_INFORMATION
+
+        if (result != TRUE)
+        {
+            if (GetLastError() == ERROR_FILE_NOT_FOUND)
+            {
+                processLaunchInfo.m_launchResult = PLR_MissingFile;
+            }
+        }
 
         // Close inherited handles
         CloseHandle(processData.startupInfo.hStdInput);

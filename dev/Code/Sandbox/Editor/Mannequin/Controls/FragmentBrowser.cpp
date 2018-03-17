@@ -32,7 +32,6 @@
 #include <QDragMoveEvent>
 #include <QMimeData>
 #include <QDebug>
-#include <QClipBoard>
 #include <QTreeWidget>
 #include <QApplication>
 #include <QInputDialog>
@@ -401,11 +400,6 @@ BOOL CFragmentBrowser::OnInitDialog()
     m_launchTagDefinitionEditorAction->setData(CMD_LAUNCH_TAG_DEF_EDITOR);
     connect(m_launchTagDefinitionEditorAction, &QAction::triggered, this, &CFragmentBrowser::OnTagDefEditorBtn);
 
-#ifdef KDAB_TEMPORARILY_REMOVED
-    m_pDropTarget = new CFragmentBrowserBaseDropTarget(this);
-    m_pDropTarget->Register(this);
-#endif
-
     UpdateControlEnabledStatus();
 
     return TRUE;
@@ -508,7 +502,7 @@ std::vector<QString> CFragmentBrowser::draggedAnimations(const QMimeData* mimeDa
         {
             QString name;
             stream >> name;
-            animations.emplace_back(name.toLatin1().data());
+            animations.emplace_back(name.toUtf8().data());
         }
     }
 
@@ -893,7 +887,7 @@ void CFragmentBrowser::OnRDrop(STreeFragmentDataPtr fragmentDataFrom, QTreeWidge
             else
             {
                 QString szFragID = hitDest->text(0);
-                fragID = m_animDB->GetFragmentID(szFragID.toLatin1().data());
+                fragID = m_animDB->GetFragmentID(szFragID.toUtf8().data());
 
                 if (fragID == FRAGMENT_ID_INVALID)
                 {
@@ -1078,7 +1072,7 @@ void CFragmentBrowser::CopyItem(const QTreeWidgetItem* copySourceItem)
 
         const QString name = copySourceItem->text(0);
 
-        const FragmentID fragmentID = m_animDB->GetFragmentID(name.toLatin1().data());
+        const FragmentID fragmentID = m_animDB->GetFragmentID(name.toUtf8().data());
         if (fragmentID != FRAGMENT_ID_INVALID)
         {
             SCopyItemFragmentID copyItemFragmentID;
@@ -1285,7 +1279,7 @@ void CFragmentBrowser::PasteFragments(const QTreeWidgetItem* targetItem, const s
     const STreeFragmentDataPtr pFragmentDataTo = targetItem->data(0, Qt::UserRole).value<STreeFragmentDataPtr>();
 
     IMannequin& mannequinSys = gEnv->pGame->GetIGameFramework()->GetMannequinInterface();
-    const FragmentID destFragmentID = pFragmentDataTo ? pFragmentDataTo->fragID : m_animDB->GetFragmentID(targetItem->text(0).toLatin1().data());
+    const FragmentID destFragmentID = pFragmentDataTo ? pFragmentDataTo->fragID : m_animDB->GetFragmentID(targetItem->text(0).toUtf8().data());
     SFragTagState copyBaseTagState = pFragmentDataTo ? pFragmentDataTo->tagState : SFragTagState();
 
     if (advancedPaste)
@@ -1382,7 +1376,7 @@ void CFragmentBrowser::SetADBFileNameTextToCurrent()
         }
 
         QString IDName = rootItem->text(0);
-        const char* filename = m_animDB == NULL ? "" : m_animDB->FindSubADBFilenameForID(m_animDB->GetFragmentID(IDName.toLatin1().data()));
+        const char* filename = m_animDB == NULL ? "" : m_animDB->FindSubADBFilenameForID(m_animDB->GetFragmentID(IDName.toUtf8().data()));
 
         QString adbName = Path::GetFile(filename);
         m_CurrFile->setText(adbName);
@@ -2029,13 +2023,13 @@ void CFragmentBrowser::BuildFragment(FragmentID fragID)
                 }
 
                 const CTagDefinition& tagDefs = m_animDB->GetTagDefs();
-                TagID id = tagDefs.Find(sSingleTagString.toLatin1().data());
+                TagID id = tagDefs.Find(sSingleTagString.toUtf8().data());
                 if (TAG_ID_INVALID == id)
                 {
                     const CTagDefinition* fragTagDefs = m_context->m_controllerDef->GetFragmentTagDef(fragID);
                     if (fragTagDefs)
                     {
-                        id = fragTagDefs->Find(sSingleTagString.toLatin1().data());
+                        id = fragTagDefs->Find(sSingleTagString.toUtf8().data());
                         if (id != TAG_ID_INVALID)
                         {
                             vTags.push_back(std::make_pair(fragTagDefs->GetPriority(id), sSingleTagString));
@@ -2079,8 +2073,8 @@ void CFragmentBrowser::BuildFragment(FragmentID fragID)
                     const QString& tagName = it->second;
                     const CTagDefinition& globalTagDef = m_animDB->GetTagDefs();
                     const CTagDefinition* pFragTagDef = m_animDB->GetFragmentDefs().GetSubTagDefinition(fragID);
-                    const TagID globalTagId = globalTagDef.Find(tagName.toLatin1().data());
-                    const TagID fragmentTagID = pFragTagDef ? pFragTagDef->Find(tagName.toLatin1().data()) : TAG_ID_INVALID;
+                    const TagID globalTagId = globalTagDef.Find(tagName.toUtf8().data());
+                    const TagID fragmentTagID = pFragTagDef ? pFragTagDef->Find(tagName.toUtf8().data()) : TAG_ID_INVALID;
                     if (fragmentTagID != TAG_ID_INVALID)
                     {
                         pFragTagDef->Set(itemTagState.fragmentTags, fragmentTagID, true);
@@ -2266,6 +2260,7 @@ bool CFragmentBrowser::AddNewDefinition()
     do
     {
         QInputDialog fragmentNameDialog;
+        fragmentNameDialog.setWindowTitle(tr("New ID"));
         fragmentNameDialog.setLabelText(tr("New FragmentID Name"));
         fragmentNameDialog.setWindowFlags(fragmentNameDialog.windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
@@ -2276,7 +2271,7 @@ bool CFragmentBrowser::AddNewDefinition()
 
         fragmentName = fragmentNameDialog.textValue();
 
-        result = pManEditMan->CreateFragmentID(m_animDB->GetFragmentDefs(), fragmentName.toLatin1().data());
+        result = pManEditMan->CreateFragmentID(m_animDB->GetFragmentDefs(), fragmentName.toUtf8().data());
         if (result != eMFIR_Success)
         {
             const QString commonErrorMessage = tr("Failed to create FragmentID with name '%1'.\n  Reason:\n\n  %2").arg(fragmentName);
@@ -2308,7 +2303,7 @@ bool CFragmentBrowser::AddNewDefinition()
         }
     } while (result != eMFIR_Success);
 
-    const FragmentID fragID = m_animDB->GetFragmentID(fragmentName.toLatin1().data());
+    const FragmentID fragID = m_animDB->GetFragmentID(fragmentName.toUtf8().data());
 
     CMannTagEditorDialog tagEditorDialog(m_animDB, fragID, this);
 
@@ -2554,7 +2549,7 @@ FragmentID CFragmentBrowser::GetValidFragIDForAnim(const QTreeWidgetItem* item, 
     else
     {
         QString IDName = item->text(0);
-        fragID = m_animDB->GetFragmentID(IDName.toLatin1().data());
+        fragID = m_animDB->GetFragmentID(IDName.toUtf8().data());
         tagState = SFragTagState();
     }
 

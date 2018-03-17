@@ -20,8 +20,9 @@
 
 #pragma warning(disable: 4503)  // decorated name length exceeded, name was truncated
 
-
 #include <AzTest/AzTest.h>
+
+#if defined(AZ_COMPILER_MSVC)
 
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/list.h>
@@ -138,7 +139,7 @@ namespace AZ
 
                     Iterator Construct()
                     {
-                        return Iterator(m_source.begin(), m_source.end(),
+                        return Iterator(this->m_source.begin(), this->m_source.end(),
                             [](int) -> bool
                             {
                                 return true;
@@ -272,20 +273,24 @@ namespace AZ
                     // Constructor
                     TYPED_TEST_P(AllContext, Constructor_CanBeConstructedAndDestructed_DoesNotCrash)
                     {
-                        Construct();
+                        this->Construct();
                     }
 
                     // Copy constructor
                     TYPED_TEST_P(AllContext, CopyConstructor_CanBeCopyConstructedExplicit_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         Iterator other(iterator);
                         (void)other;
                     }
 
                     TYPED_TEST_P(AllContext, CopyConstructor_CanBeCopyConstructedImplicit_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         Iterator other = iterator;
                         (void)other;
                     }
@@ -293,42 +298,54 @@ namespace AZ
                     // Assignment operator
                     TYPED_TEST_P(AllContext, AssignmentOperator_CanBeAssignedToOtherIterator_DoesNotCrash)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
                         lhsIterator = rhsIterator;
                     }
 
                     TYPED_TEST_P(AllContext, AssignmentOperator_CanBeChainAssigned_DoesNotCrash)
                     {
-                        Iterator iteratorFirst = Construct();
-                        Iterator iteratorSecond = Construct();
-                        Iterator iteratorThird = Construct();
-                        iteratorFirst = iteratorSecond = iteratorThird = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator iteratorFirst = this->Construct();
+                        Iterator iteratorSecond = this->Construct();
+                        Iterator iteratorThird = this->Construct();
+                        iteratorFirst = iteratorSecond = iteratorThird = this->Construct();
                     }
 
                     // Post Increment Operator
                     TYPED_TEST_P(AllContext, PostIncrementOperator_IterateOneStep_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         iterator++;
                     }
 
                     TYPED_TEST_P(AllContext, PostIncrementOperator_ReturnsIterator_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         Iterator returned = iterator++;
                     }
 
                     // Pre Increment Operator
                     TYPED_TEST_P(AllContext, PreIncrementOperator_IterateOneStep_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         ++iterator;
                     }
 
                     TYPED_TEST_P(AllContext, PreIncrementOperator_ReturnsIterator_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename AllContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         Iterator returned = ++iterator;
                     }
 
@@ -364,21 +381,27 @@ namespace AZ
                     // Equal operator
                     TYPED_TEST_P(InputContext, EqualsOperator_IteratorComparedWithSelf_SameIteratorObject)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         EXPECT_TRUE(iterator == iterator);
                     }
 
                     TYPED_TEST_P(InputContext, EqualsOperator_IdenticallyConstructedIterators_IteratorsAreEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
                         EXPECT_TRUE(lhsIterator == rhsIterator);
                     }
 
                     TYPED_TEST_P(InputContext, EqualsOperator_DifferentIterators_IteratorsAreNotEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator intermediate = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator intermediate = this->Construct();
                         Iterator rhsIterator = ++intermediate;
                         EXPECT_FALSE(lhsIterator == rhsIterator);
                     }
@@ -386,21 +409,27 @@ namespace AZ
                     // Not equal operator
                     TYPED_TEST_P(InputContext, NotEqualsOperator_IteratorComparedWithSelf_InstanceNotNotEqualToItself)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         EXPECT_FALSE(iterator != iterator);
                     }
 
                     TYPED_TEST_P(InputContext, NotEqualsOperator_IdenticallyConstructedIterators_IteratorsAreNotNotEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
                         EXPECT_FALSE(lhsIterator != rhsIterator);
                     }
 
                     TYPED_TEST_P(InputContext, NotEqualsOperator_DifferentIterators_IteratorsAreNotEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
                         ++rhsIterator;
                         EXPECT_TRUE(lhsIterator != rhsIterator);
                     }
@@ -408,27 +437,35 @@ namespace AZ
                     // Dereference operator
                     TYPED_TEST_P(InputContext, DereferenceOperator_IteratorCanBeDereferenced_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         *iterator;
                     }
 
                     TYPED_TEST_P(InputContext, DereferenceOperator_TwoNewlyCreatedIteratorsReferenceTheSameValue_ValuesAreEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
                         EXPECT_EQ(*lhsIterator, *rhsIterator);
                     }
 
                     TYPED_TEST_P(InputContext, DereferenceOperator_ExplicitlyCopiedIteratorsHaveTheSameValue_ValuesAreEqual)
                     {
-                        Iterator lhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
                         Iterator rhsIterator(lhsIterator);
                         EXPECT_EQ(*lhsIterator, *rhsIterator);
                     }
 
                     TYPED_TEST_P(InputContext, DereferenceOperator_ImplicitlyCopiedIteratorsHaveTheSameValue_ValuesAreEqual)
                     {
-                        Iterator lhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
                         Iterator rhsIterator = lhsIterator;
                         EXPECT_EQ(*lhsIterator, *rhsIterator);
                     }
@@ -448,13 +485,17 @@ namespace AZ
                     // Arrow operator
                     TYPED_TEST_P(InputContext, ArrowOperator_DereferencesToSameValueAsDereferenceOperator_ValuesAreEqual)
                     {
-                        TestArrowOperator(Construct(), AZStd::is_pointer<Iterator>::type());
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        TestArrowOperator(this->Construct(), typename AZStd::is_pointer<Iterator>::type());
                     }
 
                     // Post increment operator - additional
                     TYPED_TEST_P(InputContext, PostIncrementOperator_IncrementedIteratorIsNotTheSameAsTheOriginal_IteratorsDiffers)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
                         original++;
                         EXPECT_NE(copy, original);
@@ -462,7 +503,9 @@ namespace AZ
 
                     TYPED_TEST_P(InputContext, PostIncrementOperator_OperatorReturnsOriginalIterator_ReturnedIteratorEqualsOriginalAndNotIncremented)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
                         Iterator returned = original++;
 
@@ -473,7 +516,9 @@ namespace AZ
                     // Pre increment operator - additional
                     TYPED_TEST_P(InputContext, PreIncrementOperator_IncrementedIteratorIsNotTheSameAsTheOriginal_IteratorsDiffers)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
                         ++original;
                         EXPECT_NE(copy, original);
@@ -481,7 +526,9 @@ namespace AZ
 
                     TYPED_TEST_P(InputContext, PreIncrementOperator_OperatorReturnsIncrementedIterator_ReturnedIteratorEqualsIncrementedAndNotOriginal)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
                         Iterator returned = ++original;
 
@@ -492,14 +539,18 @@ namespace AZ
                     // Copy constructor - additional
                     TYPED_TEST_P(InputContext, CopyConstructor_CanBeCopyConstructedExplicit_IteratorsAreEqual)
                     {
-                        Iterator lhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
                         Iterator rhsIterator(lhsIterator);
                         EXPECT_EQ(lhsIterator, rhsIterator);
                     }
 
                     TYPED_TEST_P(InputContext, CopyConstructor_CanBeCopyConstructedImplicit_IteratorsAreEqual)
                     {
-                        Iterator lhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
                         Iterator rhsIterator = lhsIterator;
                         EXPECT_EQ(lhsIterator, rhsIterator);
                     }
@@ -507,20 +558,24 @@ namespace AZ
                     // Assignment operator - additional
                     TYPED_TEST_P(InputContext, AssignmentOperator_CanBeAssignedToOtherIterator_IteratorsAreEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
                         lhsIterator = rhsIterator;
                         EXPECT_EQ(lhsIterator, rhsIterator);
                     }
 
                     TYPED_TEST_P(InputContext, AssignmentOperator_CanBeChainAssigned_IteratorsAreEqual)
                     {
-                        Iterator iteratorFirst = Construct();
-                        Iterator iteratorSecond = Construct();
-                        Iterator iteratorThird = Construct();
+                        using Iterator = typename InputContext<TypeParam>::Iterator;
 
-                        iteratorFirst = iteratorSecond = iteratorThird = Construct();
-                        Iterator reference = Construct();
+                        Iterator iteratorFirst = this->Construct();
+                        Iterator iteratorSecond = this->Construct();
+                        Iterator iteratorThird = this->Construct();
+
+                        iteratorFirst = iteratorSecond = iteratorThird = this->Construct();
+                        Iterator reference = this->Construct();
 
                         EXPECT_EQ(iteratorFirst, reference);
                         EXPECT_EQ(iteratorSecond, reference);
@@ -573,12 +628,16 @@ namespace AZ
                     // Default constructor
                     TYPED_TEST_P(ForwardContext, DefaultConstructor_CanExplicityConstructed_DoesNotCrash)
                     {
+                        using Iterator = typename ForwardContext<TypeParam>::Iterator;
+
                         Iterator iterator = Iterator();
                         (void)iterator;
                     }
 
                     TYPED_TEST_P(ForwardContext, DefaultConstructor_CanImplicityConstructed_DoesNotCrash)
                     {
+                        using Iterator = typename ForwardContext<TypeParam>::Iterator;
+
                         Iterator iterator;
                         (void)iterator;
                     }
@@ -586,7 +645,9 @@ namespace AZ
                     // Multi pass
                     TYPED_TEST_P(ForwardContext, MultiPass_DereferencingMultipleTimes_ValueBeforeAndAfterIncrementingIsTheSame)
                     {
-                        Iterator a = Construct();
+                        using Iterator = typename ForwardContext<TypeParam>::Iterator;
+
+                        Iterator a = this->Construct();
                         Iterator b = a;
                         auto aValue = *a++;
                         auto bValue = *b;
@@ -619,21 +680,27 @@ namespace AZ
                     // Post Decrement Operator
                     TYPED_TEST_P(BidirectionalContext, PostDecrementOperator_IterateOneStep_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         iterator++;
                         iterator--;
                     }
 
                     TYPED_TEST_P(BidirectionalContext, PostDecrementOperator_ReturnsIterator_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         iterator++;
                         Iterator returned = iterator--;
                     }
 
                     TYPED_TEST_P(BidirectionalContext, PostDecrementOperator_IteratorReturnsOriginalIterator_OriginalIteratorMatchesCopiedValueAndNotMoveIterator)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         original++;
                         Iterator copy = original;
                         Iterator returned = original--;
@@ -644,7 +711,9 @@ namespace AZ
 
                     TYPED_TEST_P(BidirectionalContext, PostDecrementOperator_IncrementedIteratorReturnsToSamePoint_PreMovedIteratorIsSameAsPostMoved)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
                         original++;
                         original--;
@@ -655,20 +724,26 @@ namespace AZ
                     // Pre Decrement Operator
                     TYPED_TEST_P(BidirectionalContext, PreDecrementOperator_IterateOneStep_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         ++iterator;
                         --iterator;
                     }
 
                     TYPED_TEST_P(BidirectionalContext, PreDecrementOperator_ReturnsIterator_DoesNotCrash)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         Iterator returned = ++iterator;
                     }
 
                     TYPED_TEST_P(BidirectionalContext, PreDecrementOperator_IteratorReturnsMovedIterator_OriginalIteratorDoesNotMatchCopiedValueButMovedIteratorDoes)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = ++original;
                         Iterator returned = --original;
 
@@ -678,7 +753,9 @@ namespace AZ
 
                     TYPED_TEST_P(BidirectionalContext, PreDecrementOperator_IncrementedIteratorReturnsToSamePoint_PreMovedIteratorIsSameAsPostMoved)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename BidirectionalContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
                         ++original;
                         --original;
@@ -717,7 +794,9 @@ namespace AZ
                     // Difference subtract operator
                     TYPED_TEST_P(RandomAccessContext, DifferenceSubtractOperator_DifferenceWithItself_DifferenceIsZero)
                     {
-                        Iterator iterator = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator iterator = this->Construct();
                         size_t difference = iterator - iterator;
 
                         EXPECT_EQ(0, difference);
@@ -725,8 +804,10 @@ namespace AZ
 
                     TYPED_TEST_P(RandomAccessContext, DifferenceSubtractOperator_DifferenceBetweenIteratorsAtSamePosition_DifferenceIsZero)
                     {
-                        Iterator rhsIterator = Construct();
-                        Iterator lhsIterator = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator rhsIterator = this->Construct();
+                        Iterator lhsIterator = this->Construct();
                         size_t difference = lhsIterator - rhsIterator;
 
                         EXPECT_EQ(0, difference);
@@ -734,8 +815,10 @@ namespace AZ
 
                     TYPED_TEST_P(RandomAccessContext, DifferenceSubtractOperator_DifferenceBetweenIteratorsAtDifferentPositions_DifferenceIsOne)
                     {
-                        Iterator rhsIterator = Construct();
-                        Iterator intermediate = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator rhsIterator = this->Construct();
+                        Iterator intermediate = this->Construct();
                         Iterator lhsIterator = ++intermediate;
                         size_t difference = lhsIterator - rhsIterator;
 
@@ -745,7 +828,9 @@ namespace AZ
                     // Arithmetic add operator
                     TYPED_TEST_P(RandomAccessContext, ArithmeticAddOperator_IteratorMovesTwoPlacesUp_ExplicitlyIncrementedIteratorAtSameLocation)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original + 2;
 
                         original++;
@@ -757,7 +842,9 @@ namespace AZ
                     // Arithmetic subtract operator
                     TYPED_TEST_P(RandomAccessContext, ArithmeticSubtractOperator_IteratorMovesTwoPlacesDown_CopyIteratorAtSameLocation)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
 
                         original++;
@@ -769,7 +856,9 @@ namespace AZ
 
                     TYPED_TEST_P(RandomAccessContext, ArithmeticSubtractOperator_DifferenceBetweenTwoIterators_DifferenceIsTwo)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original + 2;
 
                         EXPECT_EQ(2, moved - original);
@@ -778,7 +867,9 @@ namespace AZ
                     // Arithmetic add-equal operator
                     TYPED_TEST_P(RandomAccessContext, ArithmeticAddEqualOperator_IteratorMovesTwoPlacesUp_ExplicitlyIncrementedIteratorAtSameLocation)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original;
 
                         original++;
@@ -791,7 +882,9 @@ namespace AZ
                     // Arithmetic subtract-equal operator
                     TYPED_TEST_P(RandomAccessContext, ArithmeticSubtractEqualOperator_IteratorMovesTwoPlacesDown_CopyIteratorAtSameLocation)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
 
                         original++;
@@ -804,7 +897,9 @@ namespace AZ
                     // Smaller than operator
                     TYPED_TEST_P(RandomAccessContext, SmallerThanOperator_OriginalIteratorIsSmallerThanIncrementedIterator_OrignalIsSmallerInBothDirections)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original + 1;
 
                         EXPECT_TRUE(original < moved);
@@ -814,7 +909,9 @@ namespace AZ
                     // Larger than operator
                     TYPED_TEST_P(RandomAccessContext, LargerThanOperator_MovedIteratorIsLargerThanOriginalIterator_MovedIsLargerInBothDirections)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original + 1;
 
                         EXPECT_TRUE(moved > original);
@@ -824,7 +921,9 @@ namespace AZ
                     // Smaller than equal operator
                     TYPED_TEST_P(RandomAccessContext, SmallerThanEqualOperator_OriginalIteratorIsSmallerThanIncrementedIterator_OrignalIsSmallerInBothDirections)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original + 1;
 
                         EXPECT_TRUE(original <= moved);
@@ -833,7 +932,9 @@ namespace AZ
 
                     TYPED_TEST_P(RandomAccessContext, SmallerThanEqualOperator_SameIteratorsCompareAsEqual_OriginalAndCopyCompareAsTrue)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
 
                         EXPECT_TRUE(original <= copy);
@@ -841,8 +942,10 @@ namespace AZ
 
                     TYPED_TEST_P(RandomAccessContext, SmallerThanEqualOperator_NewIteratorsCompareAsEqual_FirstAndSecondCreatedIteratorsCompareEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
 
                         EXPECT_TRUE(lhsIterator <= rhsIterator);
                     }
@@ -850,7 +953,9 @@ namespace AZ
                     // Larger than equal operator
                     TYPED_TEST_P(RandomAccessContext, LargerThanEqualOperator_MovedIteratorIsLargerThanOriginalIterator_MovedIsLargerInBothDirections)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original + 1;
 
                         EXPECT_TRUE(moved >= original);
@@ -859,7 +964,9 @@ namespace AZ
 
                     TYPED_TEST_P(RandomAccessContext, LargerThanEqualOperator_SameIteratorsCompareAsEqual_OriginalAndCopyCompareAsTrue)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator copy = original;
 
                         EXPECT_TRUE(original >= copy);
@@ -867,8 +974,10 @@ namespace AZ
 
                     TYPED_TEST_P(RandomAccessContext, LargerThanEqualOperator_NewIteratorsCompareAsEqual_FirstAndSecondCreatedIteratorsCompareEqual)
                     {
-                        Iterator lhsIterator = Construct();
-                        Iterator rhsIterator = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator lhsIterator = this->Construct();
+                        Iterator rhsIterator = this->Construct();
 
                         EXPECT_TRUE(lhsIterator >= rhsIterator);
                     }
@@ -876,13 +985,17 @@ namespace AZ
                     // Index operator
                     TYPED_TEST_P(RandomAccessContext, IndexOperator_IndexValueMatchesDereferencedValue_StoredValuesAreTheSame)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         EXPECT_EQ(*original, original[0]);
                     }
 
                     TYPED_TEST_P(RandomAccessContext, IndexOperator_IndexValueMatchesDereferencedValueAtOffset_StoredValuesAreTheSame)
                     {
-                        Iterator original = Construct();
+                        using Iterator = typename RandomAccessContext<TypeParam>::Iterator;
+
+                        Iterator original = this->Construct();
                         Iterator moved = original + 1;
 
                         EXPECT_EQ(*moved, original[1]);
@@ -976,3 +1089,5 @@ namespace AZ
         } // Containers
     } // SceneAPI
 } // AZ
+
+#endif // AZ_COMPILER_MSVC

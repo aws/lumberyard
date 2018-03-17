@@ -75,12 +75,9 @@ class AmazonToolbar
 public:
     typedef QVector<AmazonToolbar> List;
 
-    AmazonToolbar(const QString& name = QString(), const QString& translatedName = QString(), bool applyHoverEffect = false);
+    AmazonToolbar(const QString& name = QString(), const QString& translatedName = QString());
     AmazonToolbar(const AmazonToolbar&) = default;
     AmazonToolbar& operator=(const AmazonToolbar&) = default;
-
-    // must be called before Create!
-    void SetApplyHoverEffect(bool applyHoverEffect);
 
     void InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* manager);
     bool IsInstantiated() const { return m_toolbar != nullptr; }
@@ -108,9 +105,6 @@ public:
     void UpdateAllowedAreas();
     static void UpdateAllowedAreas(QToolBar* toolbar);
 
-    bool IsOlderVersionOf(const AmazonToolbar& referenceToolbar, int versionNumber);
-    void AddActionsFromNewerVersion(const AmazonToolbar& referenceToolbar, int versionNumber);
-
     const bool IsSame(const AmazonToolbar& other) const;
 
 private:
@@ -127,7 +121,6 @@ private:
     QVector<ActionData> m_actions;
     bool m_showByDefault = true;
     bool m_showToggled = false;
-    bool m_applyHoverEffect = false;
 };
 
 class ToolbarManager
@@ -168,7 +161,7 @@ private:
     void SaveToolbar(EditableQToolBar* toolbar);
     void InstantiateToolbars();
     void InstantiateToolbar(int index);
-    void SanitizeToolbars();
+    void SanitizeToolbars(const QMap<QString, AmazonToolbar>& previousStandardToolbars);
     void InitializeStandardToolbars();
     void UpdateAllowedAreas(QToolBar* toolbar);
     bool IsDirty(const AmazonToolbar& toolbar) const;

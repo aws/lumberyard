@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemTextToSpeech_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>

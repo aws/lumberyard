@@ -21,7 +21,7 @@
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QGridLayout>
-#include <qdebug.h>
+#include <QDebug>
 #include <QFontMetrics>
 
 //Editor
@@ -34,7 +34,7 @@
 #include <Util/FileUtil.h>
 #include "XConsoleVariable.h"
 
-#include "ui_GraphicsSettingsDialog.h"
+#include "ui_graphicssettingsdialog.h"
 
 GraphicsSettingsDialog::GraphicsSettingsDialog(QWidget* parent /* = nullptr */)
     : QDialog(parent)

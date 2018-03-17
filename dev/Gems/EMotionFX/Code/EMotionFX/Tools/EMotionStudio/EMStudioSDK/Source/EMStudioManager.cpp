@@ -13,7 +13,6 @@
 #include "EMStudioManager.h"
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/StringFunc/StringFunc.h>
-#include "MainWindow.h"
 #include "RecoverFilesWindow.h"
 #include "MotionEventPresetManager.h"
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/Commands.h>
@@ -85,10 +84,7 @@ namespace EMStudio
         mCommandManager->RegisterCommand(new CommandSaveAnimGraph());
         mCommandManager->RegisterCommand(new CommandSaveWorkspace());
 
-        // create the main window
-        mMainWindow = new MainWindow();
-
-        mEventPresetManager         = new MotionEventPresetManager(mMainWindow);
+        mEventPresetManager         = new MotionEventPresetManager();
         mPluginManager              = new PluginManager();
         mLayoutManager              = new LayoutManager();
         mOutlinerManager            = new OutlinerManager();
@@ -121,11 +117,23 @@ namespace EMStudio
         delete mCommandManager;
     }
 
+    MainWindow* EMStudioManager::GetMainWindow() 
+    {
+        if (mMainWindow.isNull())
+        {
+            mMainWindow = new MainWindow();
+            mEventPresetManager->LoadFromSettings();
+            mEventPresetManager->Load();
+            mMainWindow->Init();
+        }
+        return mMainWindow; 
+    }
+
 
     // clear everything
     void EMStudioManager::ClearScene()
     {
-        mMainWindow->Reset();
+        GetMainWindow()->Reset();
         EMotionFX::GetAnimGraphManager().RemoveAllAnimGraphInstances(true);
         EMotionFX::GetAnimGraphManager().RemoveAllAnimGraphs(true);
         EMotionFX::GetMotionManager().Clear(true);
@@ -438,7 +446,6 @@ namespace EMStudio
 
         // create the new EMStudio object
         gEMStudioMgr = new EMStudioManager(app, argc, argv);
-        GetMainWindow()->Init();
 
         // return success
         return true;

@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 
 #include <AzCore/IO/SystemFile.h>

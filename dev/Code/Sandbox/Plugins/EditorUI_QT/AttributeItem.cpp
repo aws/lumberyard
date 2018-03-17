@@ -1131,7 +1131,7 @@ void CAttributeItem::CreateVector2(const Prop::Description* desc, IVariable* var
     QString str;
     var->Get(str);
     Vec2 v;
-    int numScanned = azsscanf(str.toLatin1().data(), "%f,%f", &v.x, &v.y);
+    int numScanned = azsscanf(str.toUtf8().data(), "%f,%f", &v.x, &v.y);
     if (numScanned != 2)
     {
         return;

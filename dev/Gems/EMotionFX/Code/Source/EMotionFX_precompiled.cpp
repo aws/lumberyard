@@ -11,4 +11,4 @@
 */
 
 
-#include "StdAfx.h"
+#include "EMotionFX_precompiled.h"

@@ -27,8 +27,6 @@
     #define RENDER_MESH_TEST_DISTANCE (0.2f)
 #endif
 
-DECLARE_JOB("RayIntersection", TRayIntersectionJob, CRenderMeshUtils::RayIntersectionAsync);
-
 CPhysStreamer g_PhysStreamer;
 
 // allocator for CDeferredCollisionEventOnPhysCollision(use 4kb pages, should be enough for deferred collision events)
@@ -951,7 +949,7 @@ void CDeferredCollisionEventOnPhysCollision::MarkFinished(int nResult)
 void CDeferredCollisionEventOnPhysCollision::Sync()
 {
     FUNCTION_PROFILER_3DENGINE;
-    gEnv->GetJobManager()->WaitForJob(m_jobState);
+	m_jobCompletion.WaitForCompletion();
 
     // in normal execution case, m_bTaskRunning should always be false when we are here
     while (m_bTaskRunning)
@@ -968,7 +966,7 @@ bool CDeferredCollisionEventOnPhysCollision::HasFinished()
         return false;
     }
 
-    if (m_jobState.IsRunning())
+    if (m_jobCompletion.IsRunning())
     {
         return false;
     }
@@ -986,10 +984,7 @@ void CDeferredCollisionEventOnPhysCollision::OnUpdate()
     }
     if (m_RayIntersectionData.Init(m_pRenderMesh, &m_HitInfo, m_pMaterial, m_bDecalPlacementTestRequested))
     {
-        TRayIntersectionJob job(&m_RayIntersectionData);
-        job.SetPriorityLevel(JobManager::eLowPriority);
-        job.RegisterJobState(&m_jobState);
-        job.Run();
+        m_jobCompletion.StartJob([this](){ CRenderMeshUtils::RayIntersectionAsync(&this->m_RayIntersectionData); }); // legacy: job.SetPriorityLevel(JobManager::eLowPriority);
     }
 
     if (m_threadTaskInfo.m_pThread)

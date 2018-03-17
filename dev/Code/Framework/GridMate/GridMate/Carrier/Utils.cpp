@@ -14,7 +14,7 @@
 #include <GridMate/Carrier/Utils.h>
 #include <GridMate/Carrier/Driver.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
 #   include <AzCore/PlatformIncl.h>
 #   include <WinSock2.h>
 #   include <Ws2tcpip.h>
@@ -47,7 +47,7 @@ namespace GridMate
     {
         string machineName;
         (void)familyType;
-    #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+    #if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
         char name[MAX_PATH];
         int result = gethostname(name, sizeof(name));
         AZ_Error("GridMate", result == 0, "Failed in gethostname with result=%d, WSAGetLastError=%d!", result, WSAGetLastError());

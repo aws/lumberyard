@@ -200,7 +200,7 @@
             "Editor/View/Windows/GraphCanvas_style.json",
             "Editor/View/Windows/MainWindow.cpp",
             "Editor/View/Windows/MainWindow.h",
-            "Editor/View/Windows/MainWindow.ui",
+            "Editor/View/Windows/mainwindow.ui",
             "Editor/View/Windows/MainWindowBus.h",
             "Editor/View/Windows/NodeContextMenu.cpp",
             "Editor/View/Windows/NodeContextMenu.h",

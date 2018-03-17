@@ -227,7 +227,7 @@ protected slots:
 protected:
     void OnCommandFitAll();
     void OnSelectEntity();
-    //afx_msg void OnToggleMinimize();
+    //void OnToggleMinimize();
 
     virtual void ShowContextMenu(const QPoint& point, CHyperNode* pNode);
     virtual void UpdateTooltip(CHyperNode* pNode, CHyperNodePort* pPort);
@@ -272,7 +272,7 @@ private:
             return &(*lSubMenus.rbegin());
         }
 
-        DECLARE_BOOST_POINTERS(QMenu);
+        DECLARE_SMART_POINTERS(QMenu);
         QMenuPtr pMenu;
         std::list<SClassMenuGroup> lSubMenus;
     };

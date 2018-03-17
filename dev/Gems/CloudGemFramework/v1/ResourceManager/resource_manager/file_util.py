@@ -101,7 +101,7 @@ def __zip_directory(context, zip_file, zip_file_path, src_directory_path, dst_di
 
     context.view.add_zip_content(src_directory_path, zip_file_path)
 
-    should_ignore = create_ignore_filter_function(context, src_directory_path, '.ignore')
+    should_ignore = create_ignore_filter_function(context, src_directory_path, '.ignore', always_ignore = ['*.pyproj', '*.pyc', '.import'])
 
     for src_root, src_directory_names, src_file_names in os.walk(src_directory_path):
         for src_file_name in src_file_names:
@@ -256,7 +256,7 @@ def create_file(context, destination_path, initial_content, overwrite_existing =
         return True
 
 
-def create_ignore_filter_function(context, ignore_file_path, ignore_file_name):
+def create_ignore_filter_function(context, ignore_file_path, ignore_file_name, always_ignore = []):
     ignore_filters = []
 
     try:
@@ -267,6 +267,7 @@ def create_ignore_filter_function(context, ignore_file_path, ignore_file_name):
         pass
 
     # Always ignore the ignore file
+    ignore_filters.extend(always_ignore)
     ignore_filters.append(ignore_file_name)
 
     # Go through each ignore filter, normalizing them (fnmatch doesn't handle up level references well), and handling any special cases

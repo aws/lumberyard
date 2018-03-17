@@ -19,10 +19,10 @@
 
 #include "VoxelSegment.h"
 #include "BlockPacker.h"
-#include "visareas.h"
-#include "brush.h"
+#include "VisAreas.h"
+#include "Brush.h"
 #include "SceneTree.h"
-#include <IJobManager_JobDelegator.h>
+#include <AzCore/Jobs/JobFunction.h>
 
 #define SVO_CPU_VOXELIZATION_OFFSET_MESH     0.02f
 #define SVO_CPU_VOXELIZATION_OFFSET_TERRAIN -0.04f
@@ -225,8 +225,6 @@ public:
     StreamingThread m_streamingThreads[m_numThreads];
 }* pVoxStreamEngine = 0;
 
-DECLARE_JOB("VoxelSegmentFileDecompress", TDecompressVoxStreamItemJob, CVoxStreamEngine::DecompressVoxStreamItem);
-
 void CVoxStreamEngine::ThreadEntry()
 {
     while (1)
@@ -274,10 +272,15 @@ void CVoxStreamEngine::ThreadEntry()
 #endif
             if (Cry3DEngineBase::GetCVars()->e_svoMaxStreamRequests > 4)
             {
-                TDecompressVoxStreamItemJob job(*pItem);
-                job.SetClassInstance(this);
-                job.SetPriorityLevel(JobManager::eStreamPriority);
-                job.Run();
+                SVoxStreamItem & jobItem = *pItem; // Force a by-value capture of the dereferenced pointer
+                    AZ::Job* decompressJob = AZ::CreateJobFunction(
+                        [this, jobItem]()
+                        {
+                            this->DecompressVoxStreamItem(jobItem);
+                        },
+                        true
+                );
+                decompressJob->Start(); // legacy job priority: JobManager::eStreamPriority
             }
             else
             {

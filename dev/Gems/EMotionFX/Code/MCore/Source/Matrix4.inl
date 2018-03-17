@@ -12,21 +12,13 @@
 
 MCORE_INLINE Matrix::Matrix(const Matrix& m)
 {
-#ifdef MCORE_PLATFORM_WII
-    PSMTX44Copy(m.m44, m44);
-#else
     MCore::MemCopy(m16, m.m16, sizeof(Matrix));
-#endif
 }
 
 
 MCORE_INLINE void Matrix::operator = (const Matrix& right)
 {
-#ifdef MCORE_PLATFORM_WII
-    PSMTX44Copy(right.m44, m44);
-#else
     MCore::MemCopy(m16, right.m16, sizeof(Matrix));
-#endif
 }
 
 
@@ -297,6 +289,4 @@ Matrix Matrix::Normalized() const
     result.Normalize();
     return result;
 }
-
-
 

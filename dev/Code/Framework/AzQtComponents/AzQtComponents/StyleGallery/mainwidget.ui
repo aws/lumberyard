@@ -1998,7 +1998,7 @@ p, li { white-space: pre-wrap; }
   <customwidget>
    <class>AzQtComponents::TitleBar</class>
    <extends>QWidget</extends>
-   <header>AzQtComponents/Components/TitleBar.h</header>
+   <header>AzQtComponents/Components/Titlebar.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

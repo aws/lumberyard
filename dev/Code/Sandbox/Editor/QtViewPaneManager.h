@@ -129,6 +129,7 @@ struct QtViewPane
     static AzQtComponents::DockTabWidget* ParentTabWidget(QDockWidget* dockWidget);
 
     bool Close(CloseModes = CloseMode::Destroy);
+    bool CloseInstance(QDockWidget* dockWidget, CloseModes closeModes = CloseMode::Destroy);
 };
 
 typedef QVector<QtViewPane> QtViewPanes;
@@ -159,6 +160,7 @@ public:
     const QtViewPane* OpenPane(const QString& name, QtViewPane::OpenModes = QtViewPane::OpenMode::None);
     QDockWidget* InstancePane(const QString& name);
     bool ClosePane(const QString& name, QtViewPane::CloseModes = QtViewPane::CloseMode::None);
+    bool ClosePaneInstance(const QString& name, QDockWidget* dockPanel, QtViewPane::CloseModes = QtViewPane::CloseMode::None);
 
     /**
      * If the pane is not visible, it will be opened and made visible.
@@ -181,7 +183,7 @@ public:
      */
     QWidget* CreateWidget(const QString& paneName);
 
-    void RestoreLayout();
+    void RestoreLayout(bool restoreDefaults);
     bool RestoreLayout(QString name);
     void RestoreDefaultLayout(bool resetSettings = false);
     void RestoreLegacyLayout();

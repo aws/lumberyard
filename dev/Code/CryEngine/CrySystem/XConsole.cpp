@@ -63,6 +63,18 @@ static inline void AssertName(const char* szName)
 #endif
 }
 
+void ResetCVars(IConsoleCmdArgs*)
+{
+    if (gEnv->pSystem)
+    {
+        CXConsole* pConsole = static_cast<CXConsole*>(gEnv->pSystem->GetIConsole());
+        if (pConsole)
+        {
+            pConsole->ResetCVarsToDefaults();
+        }
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 // user defined comparison - for nicer printout
 inline int GetCharPrio(char x)
@@ -350,6 +362,8 @@ CXConsole::CXConsole()
     CNotificationNetworkConsole::Initialize();
 
     AzFramework::ConsoleRequestBus::Handler::BusConnect();
+
+    AddCommand("resetcvars", (ConsoleCommandFunc)ResetCVars, 0, "Resets all cvars to their initial values");
 }
 
 
@@ -2254,7 +2268,19 @@ void CXConsole::ExecuteString(const char* command, const bool bSilentMode, const
 // This can be used from anywhere in code or via script since the bus is relected to the behavior context
 void CXConsole::ExecuteConsoleCommand(const char* command)
 {
-    ExecuteString(command, true);
+    ExecuteString(command, true, true);
+}
+
+void CXConsole::ResetCVarsToDefaults()
+{
+    ConsoleVariablesMapItor It = m_mapVariables.begin();
+
+    while (It != m_mapVariables.end())
+    {
+        It->second->Reset();
+        ++It;
+    }
+
 }
 
 void CXConsole::SplitCommands(const char* line, std::list<string>& split)

@@ -143,9 +143,6 @@ namespace UnitTest
 
         AZ_TEST_STATIC_ASSERT((AZStd::is_invocable<CLFunc, const InvokeTestStruct&, int>::value));
         AZ_TEST_STATIC_ASSERT((AZStd::is_invocable<CLFunc, const InvokeTestDerivedStruct&, int>::value));
-        AZ_TEST_STATIC_ASSERT((AZStd::is_invocable<CLFunc, InvokeTestStruct, int>::value));
-        AZ_TEST_STATIC_ASSERT((AZStd::is_invocable<CLFunc, InvokeTestStruct&&, int>::value));
-        AZ_TEST_STATIC_ASSERT((AZStd::is_invocable<CLFunc, const InvokeTestStruct&&, int>::value));
 
 #if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC >= 1900
         AZ_TEST_STATIC_ASSERT((AZStd::is_invocable<RFunc, InvokeTestStruct, int>::value));
@@ -201,7 +198,7 @@ namespace UnitTest
 
         // Bullet 3
         using TestPtrType = InvokeTestStruct*;
-        using DerivedTestPtrType = InvokeTestDerivedStruct;
+        using DerivedTestPtrType = InvokeTestDerivedStruct*;
         using ConstTestPtrType = const InvokeTestStruct*;
         using UniqueTestPtrType = AZStd::unique_ptr<InvokeTestStruct>;
         using SharedTestPtrType = AZStd::shared_ptr<InvokeTestStruct>;
@@ -341,8 +338,10 @@ namespace UnitTest
         }
 
     public:
-        static const int s_rawFuncResult = 24;
+        static const int s_rawFuncResult;
     };
+
+    const int InvokeTest::s_rawFuncResult = 24;
 
     template<typename FuncSig, typename ExpectResultType, typename Functor>
     void InvokeMemberFunctionTester(Functor&& functor, int expectResult)
@@ -352,7 +351,8 @@ namespace UnitTest
 
         InvokeNonCopyable nonCopyableArg;
 
-        AZ_TEST_STATIC_ASSERT((AZStd::is_invocable_r<ExpectResultType, MemberFunc, Functor, InvokeNonCopyable&&>::value));
+        using DeducedResultType = decltype(AZStd::invoke(memberFunc, AZStd::forward<Functor>(functor), AZStd::move(nonCopyableArg)));
+        AZ_TEST_STATIC_ASSERT((AZStd::is_same<ExpectResultType, DeducedResultType>::value));
         AZ_TEST_STATIC_ASSERT((AZStd::is_same<ExpectResultType, AZStd::invoke_result_t<MemberFunc, Functor, InvokeNonCopyable&&>>::value));
         
         auto result = AZStd::invoke(memberFunc, AZStd::forward<Functor>(functor), AZStd::move(nonCopyableArg));
@@ -364,7 +364,8 @@ namespace UnitTest
     {
         auto memberObjPtr = &InvokeTestStruct::m_data;
 
-        AZ_TEST_STATIC_ASSERT((AZStd::is_invocable_r<ExpectResultType, decltype(memberObjPtr), Functor>::value));
+        using DeducedResultType = decltype(AZStd::invoke(memberObjPtr, AZStd::forward<Functor>(functor)));
+        AZ_TEST_STATIC_ASSERT((AZStd::is_same<ExpectResultType, DeducedResultType>::value));
         AZ_TEST_STATIC_ASSERT((AZStd::is_same<ExpectResultType, AZStd::invoke_result_t<decltype(memberObjPtr), Functor>>::value));
 
         auto result = AZStd::invoke(memberObjPtr, AZStd::forward<Functor>(functor));
@@ -376,7 +377,8 @@ namespace UnitTest
     {
         InvokeNonCopyable nonCopyableArg;
 
-        AZ_TEST_STATIC_ASSERT((AZStd::is_invocable_r<ExpectResultType, Functor, InvokeNonCopyable&&>::value));
+        using DeducedResultType = decltype(AZStd::invoke(AZStd::forward<Functor>(functor), AZStd::move(nonCopyableArg)));
+        AZ_TEST_STATIC_ASSERT((AZStd::is_same<ExpectResultType, DeducedResultType>::value));
         AZ_TEST_STATIC_ASSERT((AZStd::is_same<ExpectResultType, AZStd::invoke_result_t<Functor, InvokeNonCopyable&&>>::value));
 
         auto result = AZStd::invoke(AZStd::forward<Functor>(functor), AZStd::move(nonCopyableArg));

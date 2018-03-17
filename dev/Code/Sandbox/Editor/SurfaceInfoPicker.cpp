@@ -619,7 +619,7 @@ void CSurfaceInfoPicker::FindNearestInfoFromTerrain(
             {
                 if (pOutLastMaterial)
                 {
-                    *pOutLastMaterial = GetIEditor()->Get3DEngine()->GetMaterialManager()->FindMaterial(mtlName.toLatin1().data());
+                    *pOutLastMaterial = GetIEditor()->Get3DEngine()->GetMaterialManager()->FindMaterial(mtlName.toUtf8().data());
                 }
                 outHitInfo.fDistance = hit.dist;
                 outHitInfo.nHitMatID = -1;

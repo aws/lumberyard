@@ -13,7 +13,7 @@
 #include "StdAfx.h"
 #include <AssetBrowserContextProvider.h>
 #include <AssetImporterPlugin.h>
-#include <QtCore/QMimeData.h>
+#include <QtCore/QMimeData>
 #include <QMenu>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>

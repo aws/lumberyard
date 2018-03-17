@@ -55,7 +55,7 @@ namespace AZ
                 EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<PhysicsRule>("Physics Proxy", "Configure collision data.\nNote: A physics rule will generate an MTL file even if a Material Rule is not applied.")
+                    editContext->Class<PhysicsRule>("CryPhysics Proxy", "Configure CryPhysics collision data.\nNote: A physics rule will generate an MTL file even if a Material Rule is not applied.")
                         ->ClassElement(Edit::ClassElements::EditorData, "")
                             ->Attribute("AutoExpand", true)
                             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")

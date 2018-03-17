@@ -426,6 +426,12 @@ void CTrackViewSequence::OnNodeChanged(CTrackViewNode* pNode, ITrackViewSequence
 {
     if (pNode && pNode->GetNodeType() == eTVNT_AnimNode)
     {
+        // Deselect the node before deleting to give listeners a chance to update things like UI state.
+        if (pNode->IsSelected() && type == ITrackViewSequenceListener::eNodeChangeType_Removed)
+        {
+            pNode->SetSelected(false);
+        }
+
         CTrackViewAnimNode* pAnimNode = static_cast<CTrackViewAnimNode*>(pNode);
         CEntityObject* pNodeEntity = pAnimNode->GetNodeEntity();
 

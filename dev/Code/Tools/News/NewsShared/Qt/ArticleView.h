@@ -20,8 +20,12 @@ namespace Ui
     class PinnedArticleViewWidget;
 }
 
+namespace AzQtComponents
+{
+    class ExtendedLabel;
+}
+
 class QFrame;
-class QBetterLabel;
 
 namespace News
 {
@@ -46,15 +50,15 @@ namespace News
         void linkActivatedSignal(const QString& link);
 
     protected:
-        void SetupViewWidget(QFrame* widgetImageFrame, QBetterLabel* widgetTitle, QBetterLabel* widgetBody);
+        void SetupViewWidget(QFrame* widgetImageFrame, AzQtComponents::ExtendedLabel* widgetTitle, AzQtComponents::ExtendedLabel* widgetBody);
         void mousePressEvent(QMouseEvent* event);
 
     private:
 
         QFrame* m_widgetImageFrame = nullptr;
-        QBetterLabel* m_widgetTitle = nullptr;
-        QBetterLabel* m_widgetBody = nullptr;
-        QBetterLabel* m_icon = nullptr;
+        AzQtComponents::ExtendedLabel* m_widgetTitle = nullptr;
+        AzQtComponents::ExtendedLabel* m_widgetBody = nullptr;
+        AzQtComponents::ExtendedLabel* m_icon = nullptr;
 
         QSharedPointer<const ArticleDescriptor> m_pArticle;
         const ResourceManifest& m_manifest;

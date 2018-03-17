@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 
 #include <sstream>
 #include <Base64.h>

@@ -145,7 +145,7 @@ struct IBlockingActionListener
     virtual void AfterAction(){};
 };
 
-typedef boost::shared_ptr<IBlockingActionListener> TBlockingActionListener;
+typedef AZStd::shared_ptr<IBlockingActionListener> TBlockingActionListener;
 
 enum EActionAnalogCompareOperation
 {

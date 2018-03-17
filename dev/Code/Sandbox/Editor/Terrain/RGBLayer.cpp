@@ -405,7 +405,7 @@ bool CRGBLayer::OpenPakForLoading()
     m_pakFilename = GetFullFileName();
 
     ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
-    m_bPakOpened = pIPak->OpenPack(m_pakFilename.toLatin1().data());
+    m_bPakOpened = pIPak->OpenPack(m_pakFilename.toUtf8().data());
 
     // if the pak file wasn't created yet
     if (!m_bPakOpened)
@@ -413,7 +413,7 @@ bool CRGBLayer::OpenPakForLoading()
         // create PAK file so we don't get errors when loading
         SaveAndFreeMemory(true);
 
-        m_bPakOpened = pIPak->OpenPack(m_pakFilename.toLatin1().data());
+        m_bPakOpened = pIPak->OpenPack(m_pakFilename.toUtf8().data());
     }
 
     return m_bPakOpened;
@@ -429,7 +429,7 @@ void CRGBLayer::ClosePakForLoading()
 
     ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
 
-    m_bPakOpened = !pIPak->ClosePack(m_pakFilename.toLatin1().data());
+    m_bPakOpened = !pIPak->ClosePack(m_pakFilename.toUtf8().data());
 
     assert(!m_bPakOpened);
 }
@@ -494,7 +494,7 @@ CRGBLayer::CTerrainTextureTiles* CRGBLayer::LoadTileIfNeeded(const uint32 dwTile
 
                 sprintf_s(szTileName, "Tile%d_%d.raw", dwTileX, dwTileY);
 
-                if (file.Open((Path::AddPathSlash(pathRel) + szTileName).toLatin1().data(), "rb"))
+                if (file.Open((Path::AddPathSlash(pathRel) + szTileName).toUtf8().data(), "rb"))
                 {
                     if (file.ReadType(&dwWidth)
                         && file.ReadType(&dwHeight)
@@ -647,7 +647,7 @@ bool CRGBLayer::WouldSaveSucceed()
     }
 
     // create pak file
-    if (!pakFile.Open(GetFullFileName().toLatin1().data()))
+    if (!pakFile.Open(GetFullFileName().toUtf8().data()))
     {
         return false;
     }
@@ -727,7 +727,7 @@ bool CRGBLayer::SaveAndFreeMemory(const bool bForceFileCreation)
 
     // create pak file
     CPakFile pakFile;
-    if (!pakFile.Open(GetFullFileName().toLatin1().data()))
+    if (!pakFile.Open(GetFullFileName().toUtf8().data()))
     {
         // error
         assert(0);
@@ -755,7 +755,7 @@ bool CRGBLayer::SaveAndFreeMemory(const bool bForceFileCreation)
 
                 sprintf_s(szTileName, "Tile%d_%d.raw", dwTileX, dwTileY);
 
-                if (!pakFile.UpdateFile((Path::AddPathSlash(GetIEditor()->GetGameEngine()->GetLevelPath()) + szTileName).toLatin1().data(), mem))
+                if (!pakFile.UpdateFile((Path::AddPathSlash(GetIEditor()->GetGameEngine()->GetLevelPath()) + szTileName).toUtf8().data(), mem))
                 {
                     // error
                     assert(0);
@@ -1173,7 +1173,7 @@ bool CRGBLayer::RefineTiles()
     QString path = GetFullFileName();
     QString path2 = out.GetFullFileName();
 
-    QFile::rename(path, PathUtil::ReplaceExtension(path.toLatin1().data(), "bak").c_str());
+    QFile::rename(path, PathUtil::ReplaceExtension(path.toUtf8().data(), "bak").c_str());
     QFile::rename(path2, path);
 
     AllocateTiles(m_dwTileCountX * 2, m_dwTileCountY * 2, m_dwTileResolution);

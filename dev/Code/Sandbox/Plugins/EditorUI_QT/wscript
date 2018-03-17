@@ -41,8 +41,6 @@ def build(bld):
         enable_rtti         = True,
         darwin_cxxflags = ['-Wno-char-subscripts'],
 
-        win_defines     = ['KDAB_MAC_PORT'],
-
         # Testing
         test_all_file_list = ['editorui_qt_test.waf_files'],
     )

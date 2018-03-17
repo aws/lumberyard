@@ -33,6 +33,9 @@
     <button class="btn l-primary float-right" [disabled]="!selectedSpeechesNum > 0" (click)="downloadModal()">
         Download Speech Files (.zip)
     </button>
+    <button class="btn l-primary delete-button float-right" [disabled]="!selectedSpeechesNum > 0" (click)="deleteMultipleSpeechesModal()">
+        Delete
+    </button>
     <label class="number float-right">{{selectedSpeechesNum}} Selected</label>
     <div [ngSwitch]="isLoadingSpeechLibrary">
         <div *ngSwitchCase="true">
@@ -41,10 +44,10 @@
             </div>
         </div>
         <div class="content-container" *ngSwitchCase="false">
-            <div *ngIf="(!speechLibrary || speechLibrary.length == 0) && !filterApplied">
+            <div *ngIf="(!speechLibrary || speechLibrary.length == 0) && !tagFilterApplied">
                 No speechLibrary
             </div>
-            <div *ngIf="speechLibrary.length > 0 || filterApplied">
+            <div *ngIf="speechLibrary.length > 0 || tagFilterApplied">
                 <table class="table table-hover speech-lib float-left">
                     <thead>
                         <tr>
@@ -52,42 +55,72 @@
                                 <input #selectAllSpeeches type="checkbox" [id]="'select-all-speeches'" name="'select-all-speeches'" (change)="selectAll($event, speechLibrary, 'list')">
                                 <label [attr.for]="'select-all-speeches'"></label>
                             </th>
-                            <th class="character-column" (click)="sortTable('SpeechLibrary')">
-                                CHARACTER
-                                <i *ngIf="this.sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
-                                <i *ngIf="this.sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                            <th class="character-column">
+                                <span (click)="sortTable('SpeechLibrary')">
+                                    CHARACTER
+                                    <i *ngIf="this.sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
+                                    <i *ngIf="this.sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
+                                </span>
+                                <i [ngClass]="characterFilterApplied ? 'fa fa-filter filtered' : 'fa fa-filter'" aria-hidden="true" (click)="openCharacterFilter()"></i>
+                                <div class="btn-group">
+                                    <div [ngClass]="characterFilterOpen ? 'dropdown-menu' : 'dropdown-menu-hide'">
+                                        <input type="text" class="filter-input" [(ngModel)]="characterFilterText" placeholder="Search characters..." />
+                                        <ul class="filter-list">
+                                            <li *ngFor="let character of filterCharacterList">
+                                                <div *ngIf="character.name.toLowerCase().includes(characterFilterText.toLowerCase())">
+                                                    <input type="checkbox" [id]="character.name" [name]="character.name" [(ngModel)]="character.isSelected"/>
+                                                    <label class="l-checkbox" [attr.for]="character.name">
+                                                        {{character.name}}
+                                                    </label>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                        <div class="dropdown-element">
+                                            <hr>
+                                            <button class="btn l-primary edit-button float-right" (click)="applyFilter()">Apply</button>
+                                            <button class="btn btn-outline-primary edit-button float-right" (click)="cancelCharacterFilter()">Cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span *ngIf="characterFilterApplied" class="filtered" (click)="openCharacterFilter()">
+                                    Filtered
+                                </span>
                             </th>
                             <th class="line-column"> SPEECH LINE </th>
                             <th class="preview-column"></th>
                             <th class="tags-column">
                                 TAGS
-                                <i [ngClass]="filterApplied ? 'fa fa-filter filtered' : 'fa fa-filter'" aria-hidden="true" (click)="clickFilterIcon()">
-                                    <span *ngIf="filterApplied" class="filtered">
-                                        Filtered
-                                    </span>
-                                </i>
+                                <i [ngClass]="tagFilterApplied ? 'fa fa-filter filtered' : 'fa fa-filter'" aria-hidden="true" (click)="openTagFilter()"></i>
                                 <div class="btn-group">
-                                    <ul [ngClass]="filterOpen ? 'dropdown-menu' : 'dropdown-menu-hide'">
-                                        <li *ngIf="filterOpen">
-                                            <div class="form-group">
-                                                <input type="text" [(ngModel)]="filterText" placeholder="Search tags..." />
-                                            </div>
-                                        </li>
-                                        <li *ngFor="let tag of tagList">
-                                            <div *ngIf="tag.name.toLowerCase().includes(filterText.toLowerCase())">
-                                                <input type="checkbox" [id]="tag.name" name="tag.name" [(ngModel)]="tag.isSelected" />
-                                                <label class="l-checkbox" [attr.for]="tag.name">
-                                                    {{tag.name}}
-                                                </label>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <hr class="filter-parting-line">
+                                    <div [ngClass]="tagFilterOpen ? 'dropdown-menu' : 'dropdown-menu-hide'">
+                                        <input type="text" class="filter-input" [(ngModel)]="tagFilterText" placeholder="Search tags..." />
+                                        <ul class="filter-list">
+                                            <li *ngFor="let tag of filterTagList">
+                                                <div *ngIf="tag.name.toLowerCase().includes(tagFilterText.toLowerCase())">
+                                                    <input type="checkbox" [id]="tag.name" name="tag.name" [(ngModel)]="tag.isSelected" />
+                                                    <label class="l-checkbox" [attr.for]="tag.name">
+                                                        {{tag.name}}
+                                                    </label>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                        <div class="dropdown-element">
+                                            <hr>
+                                            Match
+                                            <select [(ngModel)]="tagsFilterLogic">
+                                                <option value="And">All</option>
+                                                <option value="Or">Any</option>
+                                            </select>
+                                            of the selected tags
+                                            <hr>
                                             <button class="btn l-primary edit-button float-right" (click)="applyFilter()">Apply</button>
-                                            <button class="btn btn-outline-primary edit-button float-right" (click)="cancelFilter()">Cancel</button>
-                                        </li>
-                                    </ul>
+                                            <button class="btn btn-outline-primary edit-button float-right" (click)="cancelTagFilter()">Cancel</button>
+                                        </div>
+                                    </div>
                                 </div>
+                                <span *ngIf="tagFilterApplied" class="filtered" (click)="openTagFilter()">
+                                    Filtered
+                                </span>
                             </th>
                             <th class="control-column"></th>
                         </tr>
@@ -175,7 +208,7 @@
                                 <i *ngIf="this.sortDir == 'asc'" class="fa fa-sort-amount-asc" aria-hidden="true"></i>
                                 <i *ngIf="this.sortDir == 'desc'" class="fa fa-sort-amount-desc" aria-hidden="true"></i>
                             </th>
-                            <th class="language-column"> LANGUAGE </th>
+                            <th class="language-column"> NATIVE LANGUAGE </th>
                             <th class="voice-column"> VOICE </th>
                             <th class="speechmark-column">
                                 SPEECH MARKS
@@ -273,6 +306,9 @@
                             <td class="size-column">
                                 {{(generatedPackage.size / 1048576).toFixed(3)}}
                             </td>
+                            <td>
+                                <i (click)="deleteModal(generatedPackage)" class="fa fa-trash-o delete-icon float-right" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -314,23 +350,31 @@
 
 <!-- Delete modal -->
 <modal *ngIf="mode == Modes.Delete"
-       [title]="subNavActiveIndex == 0 ? 'Delete Speech' : 'Delete Chatacter'"
+       [title]="getDeleteModalTitle()"
        [autoOpen]="true"
        [hasSubmit]="true"
        [onDismiss]="dismissModal"
        [onClose]="dismissModal"
-       [submitButtonText]="subNavActiveIndex == 0 ? 'Delete Speech' : 'Delete Character'"
-       (modalSubmitted)="delete()"
+       [submitButtonText]="'Delete'"
+       (modalSubmitted)="deleteMultipleSpeeches ? deleteSelectedSpeeches() : delete()"
        [metricIdentifier]="context.identifier">
     <div class="modal-body">
         <div *ngIf="subNavActiveIndex == 0">
-            <p> Are you sure you want to delete this speech?</p>
-            <pre>{{currentSpeech | json | devonly}}</pre>
-
+            <div *ngIf="!deleteMultipleSpeeches">
+                <p> Are you sure you want to delete this speech?</p>
+                <pre>{{currentSpeech | json | devonly}}</pre>
+            </div>
+            <div *ngIf="deleteMultipleSpeeches">
+                <p> Are you sure you want to delete the selected speeches?</p>
+            </div>
         </div>
         <div *ngIf="subNavActiveIndex == 1">
             <p> Are you sure you want to delete this character?</p>
             <pre>{{currentCharacter | json | devonly}}</pre>
+        </div>
+        <div *ngIf="subNavActiveIndex == 2">
+            <p> Are you sure you want to delete this package?</p>
+            <pre>{{currentpackage | json | devonly}}</pre>
         </div>
     </div>
 </modal>
@@ -385,7 +429,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let field of this.customFields">
+                        <tr *ngFor="let field of customFields">
                             <td class="csv-header-column">{{field}}</td>
                             <td class="csv-value-column">{{importableSpeechesData[0][field]}}</td>
                             <td class="mappings-column">
@@ -438,18 +482,40 @@
        [onDismiss]="dismissModal"
        [onClose]="dismissModal"
        [submitButtonText]="'Save'"
-       (modalSubmitted)="saveSsmlTag()"
+       (modalSubmitted)="savessmlTag()"
        [metricIdentifier]="context.identifier">
     <div class="modal-body">
         <form>
-            <div *ngFor="let ssmlTagType of ssmlTagTypes">
+            <div *ngFor="let ssmlProsodyTagType of ssmlProsodyTagTypes">
                 <div class="form-group row">
-                    <label class="col-3 col-form-label affix capitalize">{{ssmlTagType}}</label>
-                    <span class="col-8">
-                        <select [name]="ssmlTagType" [(ngModel)]="currentCharacter.ssmlTagMappings[ssmlTagType]">
-                            <option *ngFor="let ssmlTagValue of prosody[ssmlTagType]" [ngValue]="ssmlTagValue">{{ssmlTagValue}}</option>
+                    <label class="col-3 col-form-label affix capitalize">{{ssmlProsodyTagType}}</label>
+                    <div class="col-4">
+                        <select class="form-control" [name]="ssmlProsodyTagType" [(ngModel)]="currentCharacter.ssmlProsodyTagMappings[ssmlProsodyTagType]">
+                            <option *ngFor="let ssmlProsodyTagValue of prosody[ssmlProsodyTagType]" [ngValue]="ssmlProsodyTagValue">{{ssmlProsodyTagValue}}</option>
                         </select>
-                    </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix capitalize">
+                    Language Override
+                    <i class="fa fa-question-circle-o question-mark" aria-hidden="true" placement="bottom" ngbTooltip="You can override your character's native language and let him/her speak another language with better rendered accent."></i>
+                </label>
+                <div class="col-4">
+                    <select class="form-control" name="languageOverride" [(ngModel)]="currentCharacter.ssmlLanguage">
+                        <option *ngFor="let language of languages" [ngValue]="voices[language][0]['languageCode']">{{language}}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix capitalize">
+                    timbre ({{currentCharacter.timbre}}%)
+                </label>
+                <div class="col-4">
+                    <input class="form-control timbre-range" type="range" name="timbre" min="50" max="200" [(ngModel)]="currentCharacter.timbre">
+                </div>
+                <div class="col-1 reset-timbre">
+                    <i class="fa fa-undo" aria-hidden="true" (click)="resetTimbre()"></i>
                 </div>
             </div>
         </form>

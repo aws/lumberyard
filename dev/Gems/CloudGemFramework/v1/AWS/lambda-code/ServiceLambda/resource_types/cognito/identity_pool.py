@@ -31,8 +31,8 @@ def get_identity_pool(identity_pool_id):
     return get_identity_client().describe_identity_pool(IdentityPoolId=identity_pool_id)
 
 # Gets the Cognito identity providers mapped to an identity pool.
-def get_cognito_identity_providers(stack_arn, identity_pool_logical_id):
-    mappings = get_identity_mappings(stack_arn)
+def get_cognito_identity_providers(stack_manager, stack_arn, identity_pool_logical_id):
+    mappings = get_identity_mappings(stack_manager, stack_arn)
     for mapping in mappings:
         pool = mapping['identity_pool_resource']
         if pool.stack.stack_arn == stack_arn and pool.logical_id == identity_pool_logical_id:
@@ -46,9 +46,9 @@ def get_cognito_identity_providers(stack_arn, identity_pool_logical_id):
 #   - Identity pools will be linked to the user pool if they aren't already.
 #   - Identity pools that are already linked will be updated with the user pool's current client ids.
 #   - Identity pools that are linked but no longer part of the mapping will be unlinked from the user pool.
-def update_cognito_identity_providers(stack_arn, user_pool_id, updated_resources={}):
+def update_cognito_identity_providers(stack_manager, stack_arn, user_pool_id, updated_resources={}):
     provider_to_update =  user_pool.get_provider_name(user_pool_id)
-    mappings = get_identity_mappings(stack_arn, updated_resources)
+    mappings = get_identity_mappings(stack_manager, stack_arn, updated_resources)
     
     for mapping in mappings:
         identity_pool_id = mapping['identity_pool_resource'].physical_id
@@ -101,10 +101,10 @@ def update_cognito_identity_providers(stack_arn, user_pool_id, updated_resources
 #           ]
 #       }
 #   ]
-def get_identity_mappings(stack_arn, updated_resources={}):
+def get_identity_mappings(stack_manager, stack_arn, updated_resources={}):
     # Collect a list of stacks to search for resource metadata.
     stacks_to_search = []
-    stack = stack_info.get_stack_info(stack_arn)
+    stack = stack_manager.get_stack_info(stack_arn)
     if stack.stack_type == stack_info.StackInfo.STACK_TYPE_DEPLOYMENT_ACCESS or stack.stack_type == stack_info.StackInfo.STACK_TYPE_RESOURCE_GROUP:
         # Pools can be linked between resource groups and the deployment access stack.
         stacks_to_search.extend(stack.deployment.resource_groups)

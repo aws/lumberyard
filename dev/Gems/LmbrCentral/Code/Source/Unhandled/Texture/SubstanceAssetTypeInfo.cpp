@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "SubstanceAssetTypeInfo.h"
 
 namespace LmbrCentral

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Rain_precompiled.h"
 #include "EditorRainComponent.h"
 
 #include <Editor/Objects/BaseObject.h>
@@ -53,7 +53,7 @@ namespace Rain
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &RainOptions::m_ignoreVisAreas, "Ignore VisAreas", "Should rain render when the player is inside of a VisArea")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &RainOptions::m_useVisAreas, "Use VisAreas", "Should rain render when the player is inside of a VisArea")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RainOptions::m_disableOcclusion, "Disable Occlusion", "Should allow objects to block rainfall")
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &RainOptions::m_radius, "Radius", "Radius of the rain area")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
@@ -214,7 +214,7 @@ namespace Rain
         SRainParams legacyParams = rain->GetRainParams();
         Rain::RainOptions options;
 
-        options.m_ignoreVisAreas = legacyParams.bIgnoreVisareas;
+        options.m_useVisAreas = !legacyParams.bIgnoreVisareas;
         options.m_disableOcclusion = legacyParams.bDisableOcclusion;
         options.m_radius = legacyParams.fRadius;
         options.m_amount = legacyParams.fAmount;

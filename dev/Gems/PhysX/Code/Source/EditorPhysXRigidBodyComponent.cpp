@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 
 #include <EditorPhysXRigidBodyComponent.h>
 #include <PhysXRigidBodyComponent.h>

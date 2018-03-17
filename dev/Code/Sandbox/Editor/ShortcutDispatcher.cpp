@@ -49,6 +49,13 @@ static QPointer<QWidget> s_lastFocus;
 // This way when docking a main window Qt::WindowShortcut still works
 QWidget* ShortcutDispatcher::FindParentScopeRoot(QWidget* w)
 {
+    // if the current scope root is a QDockWidget, we want to bubble out
+    // so we move to the parent immediately
+    if (qobject_cast<QDockWidget*>(w) != nullptr)
+    {
+        w = w->parentWidget();
+    }
+
     QWidget* newScopeRoot = w;
     while (newScopeRoot && newScopeRoot->parent() && !qobject_cast<QDockWidget*>(newScopeRoot))
     {
@@ -346,6 +353,14 @@ void ShortcutDispatcher::setNewFocus(QObject* obj)
     {
         return;
     }
+
+#ifdef AZ_PLATFORM_APPLE
+    if (!widget->isActiveWindow())
+    {
+        widget->activateWindow();
+        widget->setFocus();
+    }
+#endif
 
     // track it for later
     s_lastFocus = widget;

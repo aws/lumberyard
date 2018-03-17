@@ -29,7 +29,7 @@
 #endif
 #include <limits>
 
-#if !defined(PS3) && !defined(LINUX) && !defined(ORBIS) && !defined(APPLE) // ACCEPTED_USE
+#if   !defined(LINUX) && !defined(APPLE)
 #ifdef __cplusplus
 	#include <new.h> 
 #endif
@@ -128,7 +128,7 @@ public:
 	typedef size_t    size_type;
 #ifdef  _WIN64
 	typedef __int64 difference_type;
-#elif defined(ORBIS) || defined(LINUX) || defined(APPLE)
+#elif defined(LINUX) || defined(APPLE)
 	typedef int64 difference_type;
 #else
 	typedef _W64 int difference_type;

@@ -12,7 +12,7 @@
 *
 */
 
-#include <QWidget.h>
+#include <QWidget>
 #include <AzCore/std/string/string.h>
 #include <AzCore/Memory/SystemAllocator.h>
 

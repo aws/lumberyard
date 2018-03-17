@@ -22,6 +22,7 @@
 #include <QTreeView>
 #include <QSortFilterProxyModel>
 #include <QStandardItemModel>
+#include <QScopedValueRollback>
 
 namespace AzQtComponents
 {
@@ -78,7 +79,11 @@ namespace AzQtComponents
 
         connect(m_model, &QStandardItemModel::itemChanged, this, [this](QStandardItem* item)
         {
-            emit TypeToggled(item->data().toInt(), item->checkState() == Qt::Checked);
+            // Don't emit itemChanged while Setup is running
+            if (!m_settingUp)
+            {
+                emit TypeToggled(item->data().toInt(), item->checkState() == Qt::Checked);
+            }
         });
 
         setMaximumSize(500, 750);
@@ -92,6 +97,8 @@ namespace AzQtComponents
     void SearchTypeSelector::Setup(const SearchTypeFilterList& searchTypes)
     {
         m_model->clear();
+
+        QScopedValueRollback<bool> setupGuard(m_settingUp, true);
         QMap<QString, QStandardItem*> categories;
         for (int i = 0, length = searchTypes.length(); i < length; ++i)
         {
@@ -134,7 +141,7 @@ namespace AzQtComponents
         UpdateClearIcon();
         SetTypeFilterVisible(false);
 
-        connect(m_ui->clearLabel, &AzToolsFramework::QBetterLabel::clicked, this, &FilteredSearchWidget::ClearTypeFilter);
+        connect(m_ui->clearLabel, &AzQtComponents::ExtendedLabel::clicked, this, &FilteredSearchWidget::ClearTypeFilter);
         connect(m_ui->textSearch, &QLineEdit::textChanged, this, &FilteredSearchWidget::UpdateClearIcon);
         connect(m_ui->textSearch, &QLineEdit::textChanged, this, &FilteredSearchWidget::TextFilterChanged);
         connect(m_ui->buttonClearFilter, &QPushButton::clicked, this, [this](){m_ui->textSearch->setText(QString());});

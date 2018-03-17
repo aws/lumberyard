@@ -43,7 +43,7 @@ namespace Driller
         "480 Frames",
         NULL
     };
-    static char* menuTypeStrings[] =
+    static const char* menuTypeStrings[] =
     {
         "Incl.Time",
         "Excl.Time",

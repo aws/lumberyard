@@ -20,6 +20,8 @@ namespace AZ
     {
         class JobManagerBase
         {
+        public:
+            static const AZ::u32 InvalidWorkerThreadId = ~0u;
         protected:
             void Process(Job* job);
         };

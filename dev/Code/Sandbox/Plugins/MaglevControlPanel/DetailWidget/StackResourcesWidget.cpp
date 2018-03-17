@@ -21,7 +21,7 @@
 #include <QHeaderView>
 #include <QScrollBar>
 #include <QTreeView>
-#include <QTooltip>
+#include <QToolTip>
 #include <ResourceManagementView.h>
 #include <QApplication>
 #include <QClipboard>

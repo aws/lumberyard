@@ -819,11 +819,11 @@ namespace EMotionFX
 
     protected:
         uint32                              mNodeIndex;
-        AnimGraphNode*                     mParentNode;
+        AnimGraphNode*                      mParentNode;
         MCore::Array<BlendTreeConnection*>  mConnections;
         MCore::Array<Port>                  mInputPorts;
         MCore::Array<Port>                  mOutputPorts;
-        MCore::Array<AnimGraphNode*>       mChildNodes;
+        MCore::Array<AnimGraphNode*>        mChildNodes;
         MCore::String                       mNodeInfo;
         void*                               mCustomData;
         uint32                              mNameID;

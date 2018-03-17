@@ -1165,7 +1165,7 @@ void CLog::CreateBackupFile() const
     {
         return;
     }
-#if defined(WIN32) || defined(LINUX) || defined(APPLE) || defined(DURANGO) // ACCEPTED_USE
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE
     // simple:
     //      string bakpath = PathUtil::ReplaceExtension(m_szFilename,"bak");
     //      CopyFile(m_szFilename,bakpath.c_str(),false);
@@ -1243,7 +1243,7 @@ void CLog::CreateBackupFile() const
     cry_strcpy(m_sBackupFilename, bakdest.c_str());
     fileSystem->Copy(m_szFilename, bakdest);
 
-#endif // defined(WIN32) || defined(XENON) || defined(LINUX) || defined(APPLE) || defined(DURANGO) // ACCCEPTED_USE
+#endif // AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE
 }
 
 //set the file used to log to disk

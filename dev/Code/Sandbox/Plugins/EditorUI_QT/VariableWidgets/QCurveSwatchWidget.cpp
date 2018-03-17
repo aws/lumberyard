@@ -12,7 +12,7 @@
 #include "stdafx.h"
 #include "QCurveSwatchWidget.h"
 #include "CurveEditorContent.h"
-#include "qpainter.h"
+#include <QPainter>
 #include "SplineInterpolators.h"
 #include "../Utils.h"
 

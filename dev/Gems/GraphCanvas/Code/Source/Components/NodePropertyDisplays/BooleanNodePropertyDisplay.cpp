@@ -11,9 +11,9 @@
 */
 #include "precompiled.h"
 
-#include <qcombobox.h>
-#include <qgraphicsproxywidget.h>
-#include <qpushbutton.h>
+#include <QComboBox>
+#include <QGraphicsProxyWidget>
+#include <QPushButton>
 
 #include <Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h>
 

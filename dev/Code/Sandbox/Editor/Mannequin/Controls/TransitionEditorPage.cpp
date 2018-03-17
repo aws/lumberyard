@@ -28,7 +28,7 @@
 #include "../SequenceAnalyzerNodes.h"
 #include "../MannDebugOptionsDialog.h"
 #include "QtUtilWin.h"
-#include "QShortcut.h"
+#include <QShortcut>
 
 #include <QMessageBox>
 
@@ -631,7 +631,7 @@ float CTransitionEditorPage::PopulateClipTracks(CSequencerNode* node, const int 
         }
         else if (item.type == CFragmentHistory::SHistoryItem::Param)
         {
-            EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toLatin1().data());
+            EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toUtf8().data());
             if (paramID != eMotionParamID_COUNT)
             {
                 motionParams[paramID] = item.param.value.q.v.x;
@@ -1059,7 +1059,7 @@ void CTransitionEditorPage::PopulateAllClipTracks()
 
         if ((item.type == CFragmentHistory::SHistoryItem::Param) && item.isLocation)
         {
-            m_modelViewport->AddLocator(h, item.paramName.toLatin1().data(), item.param.value);
+            m_modelViewport->AddLocator(h, item.paramName.toUtf8().data(), item.param.value);
         }
     }
 }
@@ -1174,11 +1174,11 @@ void CTransitionEditorPage::SetUIFromHistory()
 
         if (scopeData.context[eMEM_TransitionEditor])
         {
-            animNode->SetName((scopeData.name + " (" + scopeData.context[eMEM_TransitionEditor]->name + ")").toLatin1().data());
+            animNode->SetName((scopeData.name + " (" + scopeData.context[eMEM_TransitionEditor]->name + ")").toUtf8().data());
         }
         else
         {
-            animNode->SetName((scopeData.name + " (none)").toLatin1().data());
+            animNode->SetName((scopeData.name + " (none)").toUtf8().data());
         }
 
         float maxTime = TRANSITION_MIN_TIME_RANGE;

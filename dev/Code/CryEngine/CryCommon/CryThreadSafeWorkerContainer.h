@@ -23,6 +23,9 @@
 
 #include "platform.h"
 #include <vector>
+
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobManager.h>
 #include <AzCore/std/typetraits/typetraits.h>
 
 
@@ -161,8 +164,8 @@ inline CThreadSafeWorkerContainer<T>::~CThreadSafeWorkerContainer()
 template<typename T>
 inline void CThreadSafeWorkerContainer<T>::Init()
 {
-    m_nNumWorkers = gEnv->GetJobManager()->GetNumWorkerThreads() + 1;
-    m_workers = new  CThreadSafeWorkerContainer<T>::SWorker[m_nNumWorkers];
+    m_nNumWorkers = AZ::JobContext::GetGlobalContext()->GetJobManager().GetNumWorkerThreads() + 1;
+    m_workers = new CThreadSafeWorkerContainer<T>::SWorker[m_nNumWorkers];
 
     m_foreignThreadId = THREADID_NULL;
 }
@@ -570,10 +573,9 @@ inline T* CThreadSafeWorkerContainer<T>::push_back_impl(size_t& nIndex)
 template<typename T>
 uint32 CThreadSafeWorkerContainer<T>::GetWorkerId_threadlocal() const
 {
-    const uint32 workerThreadId =  JobManager::GetWorkerThreadId();
+    const uint32 workerThreadId =  AZ::JobContext::GetGlobalContext()->GetJobManager().GetWorkerThreadId();
 
-    const bool isValidWorkerThread = (workerThreadId != ~0);
-    if (!isValidWorkerThread)
+    if (workerThreadId == AZ::JobManager::InvalidWorkerThreadId)
     {
         // Only one non-worker thread is allowed, so check to see if this is that thread.
         
@@ -585,6 +587,7 @@ uint32 CThreadSafeWorkerContainer<T>::GetWorkerId_threadlocal() const
     }
 
     // Non-worker has id of ~0 ... add +1 to shift to 0. Worker0 will use slot 1 etc.
+    static_assert(AZ::JobManager::InvalidWorkerThreadId == ~0u, "Assumptions about InvalidWorkerId no longer hold true");
     return workerThreadId + 1;
 }
 

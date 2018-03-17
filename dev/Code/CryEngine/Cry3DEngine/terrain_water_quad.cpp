@@ -39,6 +39,7 @@ COcean::COcean(_smart_ptr<IMaterial> pMat)
 
     memset(m_fRECustomData, 0, sizeof(m_fRECustomData));
     memset(m_fREOceanBottomCustomData, 0, sizeof(m_fREOceanBottomCustomData));
+    m_windUvTransform = AZ::Vector2(0.0f, 0.0f);
 
     SetMaterial(pMat);
     m_fLastFov = 0;
@@ -491,8 +492,21 @@ void COcean::Render(const SRenderingPassInfo& passInfo)
     m_fRECustomData[3] = oceanAnimationData.fWavesAmount;
     m_fRECustomData[4] = oceanAnimationData.fWavesSize;
 
-    sincos_tpl(oceanAnimationData.fWindDirection, &m_fRECustomData[6], &m_fRECustomData[5]);
+    const float timeDiff = p3DEngine->GetTimer()->GetFrameTime();
+
+    // calculate the wind direction
+    AZ::Vector2 windDirectionVector = AZ::Vector2::CreateFromAngle(oceanAnimationData.fWindDirection);
+
+    // calculate wind offset based on speed and time delta
+    float windFrameOffset = 0.0025f * timeDiff * oceanAnimationData.fWindSpeed;
+    m_windUvTransform += windDirectionVector * windFrameOffset;
+
+    // update constant buffer with the values;
+    m_fRECustomData[6] = m_windUvTransform.GetX();
+    m_fRECustomData[5] = m_windUvTransform.GetY();
+
     m_fRECustomData[7] = fWaterLevel;
+
     m_fRECustomData[8] = m_fRECustomData[9] = m_fRECustomData[10] = m_fRECustomData[11] = 0.0f;
 
     bool isFastpath = GetCVars()->e_WaterOcean == 2;

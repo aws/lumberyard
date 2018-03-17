@@ -114,6 +114,7 @@ namespace ScriptCanvasEditor
         void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
         void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
         //=====================================================================
+
         AZStd::string m_name;
         ScriptCanvasAssetHolder m_scriptCanvasAssetHolder;
     };

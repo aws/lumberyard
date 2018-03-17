@@ -35,9 +35,16 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="index-dist.html" />
+    <Content Include="app\view\game\component\sidebar.component.html" />
+    <Content Include="app\view\game\component\sidebar.component.scss" />
+    <Content Include="app\view\game\module\admin\component\log.component.html" />
+    <Content Include="e2e\driver\geckodriver-v0.18.0.zip" />
+    <Content Include="e2e\driver\geckodriver.exe" />
+    <Content Include="e2e\driver\geckodriver0.18.exe" />
+    <Content Include="e2e\driver\MicrosoftWebDriver.exe" />
+    <Content Include="e2e\driver\selenium-server-standalone-3.5.3.jar" />
+    <Content Include="e2e\driver\selenium-server-standalone-3.6.0.jar" />
     <Content Include="index.html" />
-    <Content Include="package-lock.json" />
     <Content Include="styles\bootstrap\.scss-lint.yml" />
     <Content Include="styles\bootstrap\bootstrap-grid.css" />
     <Content Include="styles\bootstrap\bootstrap-grid.scss" />
@@ -177,6 +184,7 @@
     <TypeScriptCompile Include="app\main.ts" />
     <TypeScriptCompile Include="app\shared\class\apihandler.class.ts" />
     <TypeScriptCompile Include="app\shared\class\datetime.class.ts" />
+    <TypeScriptCompile Include="app\shared\class\environment.class.ts" />
     <TypeScriptCompile Include="app\shared\class\index.ts" />
     <TypeScriptCompile Include="app\shared\class\log.class.ts" />
     <TypeScriptCompile Include="app\shared\class\string.class.ts" />
@@ -199,6 +207,7 @@
     <TypeScriptCompile Include="app\shared\pipe\object-keys.pipe.ts" />
     <TypeScriptCompile Include="app\shared\service\api.service.ts" />
     <TypeScriptCompile Include="app\shared\service\auth-guard.service.ts" />
+    <TypeScriptCompile Include="app\shared\service\breadcrumb.service.ts" />
     <TypeScriptCompile Include="app\shared\service\definition.service.ts" />
     <TypeScriptCompile Include="app\shared\service\gem.service.ts" />
     <TypeScriptCompile Include="app\shared\service\index.ts" />
@@ -214,10 +223,12 @@
     <TypeScriptCompile Include="app\view\error\error.module.ts" />
     <TypeScriptCompile Include="app\view\game\component\game.component.ts" />
     <TypeScriptCompile Include="app\view\game\component\nav.component.ts" />
+    <TypeScriptCompile Include="app\view\game\component\sidebar.component.ts" />
     <TypeScriptCompile Include="app\view\game\game.module.ts" />
     <TypeScriptCompile Include="app\view\game\game.routes.ts" />
     <TypeScriptCompile Include="app\view\game\module\admin\admin.module.ts" />
     <TypeScriptCompile Include="app\view\game\module\admin\admin.routes.ts" />
+    <TypeScriptCompile Include="app\view\game\module\admin\component\log.component.ts" />
     <TypeScriptCompile Include="app\view\game\module\admin\component\admin.component.ts" />
     <TypeScriptCompile Include="app\view\game\module\analytic\analytic.module.ts" />
     <TypeScriptCompile Include="app\view\game\module\analytic\analytic.routes.ts" />
@@ -274,7 +285,6 @@
     <Content Include="app\view\authentication\component\login.component.css" />
     <Content Include="app\view\authentication\component\login.component.scss" />
     <Content Include="app\view\game\component\game.component.html" />
-    <Content Include="app\view\game\component\nav.component.css" />
     <Content Include="app\view\game\component\nav.component.html" />
     <Content Include="app\view\game\component\nav.component.scss" />
     <Content Include="app\view\game\module\admin\component\admin.component.html" />
@@ -290,32 +300,15 @@
     <Content Include="app\view\game\module\cloudgems\component\thumbnail.component.scss" />
     <Content Include="app\view\game\module\documentation\component\documentation.component.css" />
     <Content Include="app\view\game\module\documentation\documentation.component.css" />
-    <Content Include="app\view\game\module\shared\component\action-stub-basic.css" />
     <Content Include="app\view\game\module\shared\component\action-stub-basic.html" />
     <Content Include="app\view\game\module\shared\component\action-stub-basic.scss" />
-    <Content Include="app\view\game\module\shared\component\action-stub.component.css" />
     <Content Include="app\view\game\module\shared\component\action-stub.component.html" />
     <Content Include="app\view\game\module\shared\component\action-stub.component.scss" />
-    <Content Include="app\view\game\module\shared\component\cloud-watch-logs.component.css" />
-    <Content Include="app\view\game\module\shared\component\dragula.css" />
     <Content Include="app\view\game\module\shared\component\dragula.scss" />
-    <Content Include="app\view\game\module\shared\component\facet-cloud-watch-logs.component.css" />
-    <Content Include="app\view\game\module\shared\component\facet-rest-explorer.component.css" />
-    <Content Include="app\view\game\module\shared\component\facet.component.css" />
-    <Content Include="app\view\game\module\shared\component\facets.component.css" />
-    <Content Include="app\view\game\module\shared\component\facet\cloud-watch-logs.component.css" />
-    <Content Include="app\view\game\module\shared\component\facet\facet-cloud-watch-logs.component.css" />
-    <Content Include="app\view\game\module\shared\component\facet\facet-rest-explorer.component.css" />
-    <Content Include="app\view\game\module\shared\component\facet\facet.component.css" />
     <Content Include="app\view\game\module\shared\component\facet\facet.component.scss" />
-    <Content Include="app\view\game\module\shared\component\facet\rest-explorer.component.css" />
     <Content Include="app\view\game\module\shared\component\facet\rest-explorer.component.html" />
     <Content Include="app\view\game\module\shared\component\facet\rest-explorer.component.scss" />
-    <Content Include="app\view\game\module\shared\component\nav.component.css" />
-    <Content Include="app\view\game\module\shared\component\pagination.component.css" />
     <Content Include="app\view\game\module\shared\component\pagination.component.scss" />
-    <Content Include="app\view\game\module\shared\component\rest-explorer.component.css" />
-    <Content Include="app\view\game\module\shared\component\subnav.component.css" />
     <Content Include="app\view\game\module\support\component\support.component.css" />
     <Content Include="app\view\game\module\support\component\support.component.html" />
     <Content Include="app\view\game\module\support\component\support.component.scss" />
@@ -363,6 +356,8 @@
     <Folder Include="app\view\game\module\support\" />
     <Folder Include="app\view\game\module\support\component\" />
     <Folder Include="e2e\" />
+    <Folder Include="e2e\driver\" />
+    <Folder Include="e2e\sequential\" />
     <Folder Include="Scripts\" />
     <Folder Include="Scripts\typings\" />
     <Folder Include="Scripts\typings\angularjs\" />
@@ -381,15 +376,12 @@
     <Folder Include="styles\user\" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="cgp_bootstrap.js" />
-    <Compile Include="config-dist.js" />
     <Compile Include="config.js" />
-    <Compile Include="e2e\authentication-no-bootstrap.e2e-spec.js" />
-    <Compile Include="e2e\authentication-welcome-page.e2e-spec.js" />
-    <Compile Include="e2e\authentication.e2e-spec.js" />
     <Compile Include="e2e\dynamic-content.e2e-spec.js" />
     <Compile Include="e2e\message-of-the-day.e2e-spec.js" />
     <Compile Include="e2e\protractor.config.js" />
+    <Compile Include="e2e\sequential\authentication-no-bootstrap.e2e-spec.js" />
+    <Compile Include="e2e\sequential\authentication-welcome-page.e2e-spec.js" />
     <Compile Include="e2e\session-helper.js" />
     <Compile Include="e2e\test-accounts.js" />
     <Compile Include="e2e\user-administration.e2e-spec.js" />

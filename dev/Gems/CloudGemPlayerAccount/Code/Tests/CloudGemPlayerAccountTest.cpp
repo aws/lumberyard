@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "CloudGemPlayerAccount_precompiled.h"
 
 #include <mutex>
 #include <sstream>

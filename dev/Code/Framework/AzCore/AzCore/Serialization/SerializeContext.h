@@ -34,9 +34,9 @@
 #define AZ_SERIALIZE_BINARY_STACK_BUFFER 4096
 
 #if defined(AZ_BIG_ENDIAN)
-#   define AZ_SERIALIZE_SWAP_ENDIAN(_value, _isSwap)  (void)_isSwap
+#   define AZ_SERIALIZE_SWAP_ENDIAN(_value, _isSwap)  (void)(_isSwap); (void)(_value)
 #else
-#   define AZ_SERIALIZE_SWAP_ENDIAN(_value, _isSwap)   if (_isSwap) AZStd::endian_swap(_value)
+#   define AZ_SERIALIZE_SWAP_ENDIAN(_value, _isSwap)  if (_isSwap) AZStd::endian_swap(_value)
 #endif
 
 namespace AZ
@@ -532,20 +532,18 @@ namespace AZ
                 : m_classData(nullptr) {}
 
             /**
-             * Get/Set data work only on leaf nodes (classes which implement serializers)
+             * Get/Set data work only on leaf nodes
              */
-            template<typename T>
-            bool GetData(T& value);
-            template<typename T>
+            template <typename T>
+            bool GetData(T& value, ErrorHandler* errorHandler = nullptr);
+            template <typename T>
             bool GetChildData(u32 childNameCrc, T& value);
-            template<typename T>
+            template <typename T>
             bool SetData(SerializeContext& sc, const T& value, ErrorHandler* errorHandler = nullptr);
 
-            /**
-             * GetDataHierarchy retrieves the current value of an object of type T that is made up of the tree of DataElementNodes
-             */
-            template<typename T>
-            bool GetDataHierarchy(SerializeContext& sc, T& value, ErrorHandler* errorHandler = nullptr);
+            //! @deprecated Use GetData instead
+            template <typename T>
+            bool GetDataHierarchy(SerializeContext&, T& value, ErrorHandler* errorHandler = nullptr);
 
             /**
              * Converts current DataElementNode from one type to another.
@@ -554,9 +552,9 @@ namespace AZ
              */
             bool Convert(SerializeContext& sc, const char* name, const Uuid& id);
             bool Convert(SerializeContext& sc, const Uuid& id);
-            template<typename T>
+            template <typename T>
             bool Convert(SerializeContext& sc, const char* name);
-            template<typename T>
+            template <typename T>
             bool Convert(SerializeContext& sc);
 
             DataElement&        GetRawDataElement()             { return m_element; }
@@ -577,28 +575,30 @@ namespace AZ
             int                 AddElement(SerializeContext& sc, const char* name, const Uuid& id);
             int                 AddElement(SerializeContext& sc, const char* name, const ClassData& classData);
             int                 AddElement(SerializeContext& sc, AZStd::string_view name, GenericClassInfo* genericClassInfo);
-            template<typename T>
+            template <typename T>
             int                 AddElement(SerializeContext& sc, const char* name);
             /// \returns index of the replaced element (index) if replaced, otherwise -1
-            template<typename T>
+            template <typename T>
             int                 AddElementWithData(SerializeContext& sc, const char* name, const T& dataToSet);
             int                 ReplaceElement(SerializeContext& sc, int index, const char* name, const Uuid& id);
-            template<typename T>
+            template <typename T>
             int                 ReplaceElement(SerializeContext& sc, int index, const char* name);
 
         protected:
             typedef AZStd::vector<DataElementNode> NodeArray;
 
             bool SetDataHierarchy(SerializeContext& sc, const void* objectPtr, const Uuid& classId, ErrorHandler* errorHandler = nullptr, const ClassData* classData = nullptr);
-            bool GetDataHierarchy(SerializeContext& sc, void* objectPtr, const Uuid& classId, ErrorHandler* errorHandler = nullptr);
+            bool GetDataHierarchy(void* objectPtr, const Uuid& classId, ErrorHandler* errorHandler = nullptr);
+
             struct DataElementInstanceData
             {
                 void* m_ptr = nullptr;
                 DataElementNode* m_dataElement = nullptr;
                 int m_currentContainerElementIndex = 0;
             };
-            bool GetDataHierarchyEnumerate(SerializeContext& sc, ErrorHandler* errorHandler, AZStd::vector<DataElementInstanceData>& nodeStack);
-            bool GetClassElement(SerializeContext& sc, ClassElement& classElement, const DataElementNode& parentDataElement, ErrorHandler* errorHandler) const;
+            using NodeStack = AZStd::list<DataElementInstanceData>;
+            bool GetDataHierarchyEnumerate(ErrorHandler* errorHandler, NodeStack& nodeStack);
+            bool GetClassElement(ClassElement& classElement, const DataElementNode& parentDataElement, ErrorHandler* errorHandler) const;
 
             DataElement         m_element; ///< Serialization data for this element.
             const ClassData*    m_classData; ///< Reflected ClassData for this element.
@@ -1574,64 +1574,8 @@ namespace AZ
     // DataElementNode::GetData
     // [10/31/2012]
     //=========================================================================
-    template<typename T>
-    bool SerializeContext::DataElementNode::GetData(T& value)
-    {
-        const ClassData* classData = m_classData;
-
-        // check generic types
-        bool genericClassStoresType = false;
-        if (!classData)
-        {
-            GenericClassInfo* genericInfo = SerializeGenericTypeInfo<T>::GetGenericInfo();
-            if (genericInfo)
-            {
-                genericClassStoresType = genericInfo->CanStoreType(m_element.m_id);
-                classData = genericInfo->GetClassData();
-            }
-        }
-
-        if (classData && classData->m_serializer)
-        {
-            if (classData->m_typeId == m_element.m_id || genericClassStoresType)
-            {
-                if (m_element.m_dataSize == 0)
-                {
-                    // we allow to have 0 bytes written, this is valid "save" state.
-                    // If we want to be even "more" correct we can add IsAllowZero to the IDataSerializer interface
-                    // to explicitly state if this is allowed, so the return will look like
-                    // return classData->m_serializer->CanSaveZeroBytes();
-                    return true;
-                }
-                else
-                {
-                    if (m_element.m_dataType == DataElement::DT_TEXT)
-                    {
-                        // convert to binary so we can load the data
-                        AZStd::string text;
-                        text.resize_no_construct(m_element.m_dataSize);
-                        m_element.m_byteStream.Read(text.size(), reinterpret_cast<void*>(text.data()));
-                        m_element.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                        m_element.m_dataSize = classData->m_serializer->TextToData(text.c_str(), m_element.m_version, m_element.m_byteStream);
-                        m_element.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                        m_element.m_dataType = DataElement::DT_BINARY;
-                    }
-
-                    bool isLoaded = classData->m_serializer->Load(&value, m_element.m_byteStream, m_element.m_version, m_element.m_dataType == DataElement::DT_BINARY_BE);
-                    m_element.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN); // reset stream position
-                    return isLoaded;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    //=========================================================================
-    // DataElementNode::GetDataHierarchy
-    //=========================================================================
-    template<typename T>
-    bool SerializeContext::DataElementNode::GetDataHierarchy(SerializeContext& sc, T& value, ErrorHandler* errorHandler)
+    template <typename T>
+    bool SerializeContext::DataElementNode::GetData(T& value, ErrorHandler* errorHandler)
     {
         const Uuid& classTypeId = SerializeGenericTypeInfo<T>::GetClassTypeId();
         GenericClassInfo* genericInfo = SerializeGenericTypeInfo<T>::GetGenericInfo();
@@ -1676,7 +1620,7 @@ namespace AZ
             }
             else
             {
-                return GetDataHierarchy(sc, &value, classTypeId, errorHandler);
+                return GetDataHierarchy(&value, classTypeId, errorHandler);
             }
         }
 
@@ -1689,6 +1633,15 @@ namespace AZ
         }
 
         return false;
+    }
+
+    //=========================================================================
+    // DataElementNode::GetDataHierarchy
+    //=========================================================================
+    template <typename T>
+    bool SerializeContext::DataElementNode::GetDataHierarchy(SerializeContext&, T& value, ErrorHandler* errorHandler)
+    {
+        return GetData<T>(value, errorHandler);
     }
 
     //=========================================================================
@@ -1742,7 +1695,8 @@ namespace AZ
             }
             else
             {
-                return SetDataHierarchy(sc, &value, classTypeId, errorHandler, classData);
+                // clear the value and prepare for the new one, then set the new value
+                return Convert<T>(sc) && SetDataHierarchy(sc, &value, classTypeId, errorHandler, classData);
             }
         }
 

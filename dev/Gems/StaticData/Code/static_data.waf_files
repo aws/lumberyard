@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/StaticData_precompiled.cpp",
+            "Source/StaticData_precompiled.h"
         ]
     },
     "auto": {

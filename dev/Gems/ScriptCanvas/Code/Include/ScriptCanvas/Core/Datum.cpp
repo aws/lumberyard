@@ -61,7 +61,11 @@ namespace
             AZ_Assert(sourceType.GetType() == Data::eType::BehaviorContextObject, "Conversion to %s requires one type to be a BehaviorContextObject", Data::Traits<t_Value>::GetName());
             t_Value& targetValue = AZStd::any_cast<t_Value&>(target);
             AZ_Assert(sourceType.GetAZType() == azrtti_typeid<t_Value>(), "Value type not valid for ScriptCanvas conversion to %s", Data::Traits<t_Value>::GetName());
-            targetValue = *reinterpret_cast<const t_Value*>(source);
+
+            if (source)
+            {
+                targetValue = *reinterpret_cast<const t_Value*>(source);
+            }
         }
         else
         {

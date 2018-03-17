@@ -14,10 +14,11 @@
 #define AZ_NUMERICCAST_ENABLED 1
 #endif
 
-#include <StdAfx.h>
+#include <EMotionFX_precompiled.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Math/Transform.h>
@@ -61,9 +62,10 @@ namespace EMotionFX
             int nList = nFrameID % 3;
             if (m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_arrSkinningRendererData[nList].pSkinningData)
             {
-                if (m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobs)
+                AZ::LegacyJobExecutor* pAsyncDataJobExecutor = m_arrSkinningRendererData[nList].pSkinningData->pAsyncDataJobExecutor;
+                if (pAsyncDataJobExecutor)
                 {
-                    gEnv->pJobManager->WaitForJob(*m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobs);
+                    pAsyncDataJobExecutor->WaitForCompletion();
                 }
             }
 
@@ -416,9 +418,10 @@ namespace EMotionFX
             {
                 renderSkinningData->nHWSkinningFlags |= eHWS_MotionBlured;
                 renderSkinningData->pPreviousSkinningRenderData = m_arrSkinningRendererData[nPrevList].pSkinningData;
-                if (renderSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+                AZ::LegacyJobExecutor* pAsyncDataJobExecutor = renderSkinningData->pPreviousSkinningRenderData->pAsyncDataJobExecutor;
+                if (pAsyncDataJobExecutor)
                 {
-                    gEnv->pJobManager->WaitForJob(*renderSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+                    pAsyncDataJobExecutor->WaitForCompletion();
                 }
             }
             else
@@ -875,7 +878,7 @@ namespace EMotionFX
                 return false;
             }
 
-            AZStd::function<void()> finalizeOnMainThread = [asset, this]()
+            AZStd::function<void()> finalizeOnMainThread = [asset]()
                 {
                     // RenderMesh creation must be performed on the main thread,
                     // as required by the renderer.

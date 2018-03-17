@@ -16,7 +16,7 @@
 #pragma once
 
 
-#include "ixml.h"
+#include "IXml.h"
 #include <cstdio>
 class IXMLDataSink;
 class IXMLDataSource;

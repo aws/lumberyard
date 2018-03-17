@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,9 +10,9 @@
 *
 */
 
-#include <memory>
-#include <cassert>
-#include "fbxsdk.h"
+#pragma once
+
+#include <fbxsdk.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
@@ -78,5 +76,5 @@ namespace AZ
             FbxMeshWrapper() = default;
             FbxMesh* m_fbxMesh;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

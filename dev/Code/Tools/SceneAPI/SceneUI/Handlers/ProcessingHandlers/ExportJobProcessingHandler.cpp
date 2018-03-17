@@ -17,7 +17,6 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 #include <SceneAPI/SceneUI/Handlers/ProcessingHandlers/ExportJobProcessingHandler.h>
-#include <SceneAPI/SceneUI/CommonWidgets/JobWatcher.h>
 
 namespace AZ
 {
@@ -33,42 +32,37 @@ namespace AZ
 
             void ExportJobProcessingHandler::BeginProcessing()
             {
-                emit StatusMessageUpdated("File processing...");
-                
                 m_jobWatcher.reset(new JobWatcher(m_sourceAssetPath, m_traceTag));
-                connect(m_jobWatcher.get(), &JobWatcher::JobsForSourceFileFound, this, &ExportJobProcessingHandler::OnJobsForSourceFileFound);
                 connect(m_jobWatcher.get(), &JobWatcher::JobProcessingComplete, this, &ExportJobProcessingHandler::OnJobProcessingComplete);
                 connect(m_jobWatcher.get(), &JobWatcher::AllJobsComplete, this, &ExportJobProcessingHandler::OnAllJobsComplete);
+                m_jobWatcher->StartMonitoring();
+
+                emit StatusMessageUpdated("File processing...");
             }
             
-            void ExportJobProcessingHandler::OnJobQueryFailed()
+            void ExportJobProcessingHandler::OnJobQueryFailed(const char* message)
             {
-                AZ_TracePrintf(Utilities::ErrorWindow, "Failed to retrieve job information from Asset Processor");
+                emit StatusMessageUpdated("Processing failed.");
+                AZ_TracePrintf(Utilities::ErrorWindow, "%s", message);
                 emit ProcessingComplete();
-            }
-
-            void ExportJobProcessingHandler::OnJobsForSourceFileFound(const AZStd::vector<AZStd::string>& jobPlatforms)
-            {
-                if (!jobPlatforms.size())
-                {
-                    AZ_TracePrintf(Utilities::WarningWindow, 
-                        "No jobs scheduled for any platform, this may indicate an error in the asset processor, or else a zero-net change.");
-                    emit ProcessingComplete();
-                }
             }
 
             void ExportJobProcessingHandler::OnJobProcessingComplete(const AZStd::string& platform, AZ::u64 jobId, bool success, const AZStd::string& fullLogText)
             {
-                bool parseResult = AzToolsFramework::Logging::LogEntry::ParseLog(fullLogText.c_str(), aznumeric_cast<AZ::u64>(fullLogText.length()),
-                    [this](const AzToolsFramework::Logging::LogEntry& entry)
-                    {
-                        emit AddLogEntry(entry);
-                    });
-                
                 AZ_TraceContext("Platform", platform);
-                if (!parseResult)
+
+                if (!fullLogText.empty())
                 {
-                    AZ_TracePrintf(Utilities::ErrorWindow, "Failed to parse log. See Asset Processor for more info.");
+                    bool parseResult = AzToolsFramework::Logging::LogEntry::ParseLog(fullLogText.c_str(), aznumeric_cast<AZ::u64>(fullLogText.length()),
+                        [this](const AzToolsFramework::Logging::LogEntry& entry)
+                        {
+                            emit AddLogEntry(entry);
+                        });
+
+                    if (!parseResult)
+                    {
+                        AZ_TracePrintf(Utilities::ErrorWindow, "Failed to parse log. See Asset Processor for more info.");
+                    }
                 }
 
                 if (success)

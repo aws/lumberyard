@@ -20,7 +20,7 @@
 //
 //   #include "IResourceSelectorHost.h"
 //
-//   dll_string SoundFileSelector(const SResourceSelectorContext& x, const char* previousValue)
+//   QString SoundFileSelector(const SResourceSelectorContext& x, const QString& previousValue)
 //   {
 //     CMyModalDialog dialog(CWnd::FromHandle(x.parentWindow));
 //     ...
@@ -54,8 +54,8 @@
 // If you want to be able to pass some custom context to the selector (e.g. source of the information for the
 // list of items or something similar) then you can add a poitner argument to your selector function, i.e.:
 //
-//   dll_string SoundFileSelector(const SResourceSelectorContext& x, const char* previousValue,
-//                                    SoundFileList* list) // your context argument
+//   QString SoundFileSelector(const SResourceSelectorContext& x, const QString& previousValue,
+//                             SoundFileList* list) // your context argument
 //
 // And provide this value through serialization context:
 //
@@ -68,9 +68,8 @@
 //   }
 // }
 
-#include "dll_string.h"
-
 #include <Serialization/TypeID.h>
+#include <QString>
 
 struct ICharacterInstance;
 
@@ -99,15 +98,15 @@ struct SResourceSelectorContext
 // TResourceSelecitonFunction is used to declare handlers for specific types.
 //
 // For canceled dialogs previousValue should be returned.
-typedef dll_string (* TResourceSelectionFunction)(const SResourceSelectorContext& selectorContext, const char* previousValue);
-typedef dll_string (* TResourceSelectionFunctionWithContext)(const SResourceSelectorContext& selectorContext, const char* previousValue, void* contextObject);
+typedef QString (* TResourceSelectionFunction)(const SResourceSelectorContext& selectorContext, const QString& previousValue);
+typedef QString (* TResourceSelectionFunctionWithContext)(const SResourceSelectorContext& selectorContext, const QString& previousValue, void* contextObject);
 
 struct SStaticResourceSelectorEntry;
 
 // See note at the beginning of the file.
 struct IResourceSelectorHost
 {
-    virtual dll_string SelectResource(const SResourceSelectorContext& context, const char* previousValue) = 0;
+    virtual QString SelectResource(const SResourceSelectorContext& context, const QString& previousValue) = 0;
     virtual const char* ResourceIconPath(const char* typeName) const = 0;
     virtual Serialization::TypeID ResourceContextType(const char* typeName) const = 0;
 
@@ -147,7 +146,7 @@ struct SStaticResourceSelectorEntry
     }
 
     template<class T>
-    SStaticResourceSelectorEntry(const char* typeName, dll_string (*function)(const SResourceSelectorContext&, const char* previousValue, T * context), const char* icon)
+    SStaticResourceSelectorEntry(const char* typeName, QString (*function)(const SResourceSelectorContext&, const QString& previousValue, T * context), const char* icon)
         : typeName(typeName)
         , function()
         , functionWithContext(TResourceSelectionFunctionWithContext(function))

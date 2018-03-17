@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <PhysXSystemComponent.h>
@@ -32,15 +32,15 @@ namespace PhysX
                 ->Field("Enabled", &PhysXSystemComponent::m_enabled)
                 ->Field("CreateDefaultWorld", &PhysXSystemComponent::m_createDefaultWorld)
                 ->SerializerForEmptyClass()
-                ;
+            ;
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {
                 ec->Class<PhysXSystemComponent>("PhysX", "Global PhysX physics configuration")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &PhysXSystemComponent::m_enabled, "Enabled", "Enables the PhysX system component.")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &PhysXSystemComponent::m_createDefaultWorld, "Create Default World", "Enables creation of a default PhysX world.")
                 ;
@@ -92,7 +92,6 @@ namespace PhysX
         AZ::AllocatorInstance<PhysXAllocator>::Create();
 
         // create PhysX basis
-        // TODO get PVD IP address from project configurator
         m_foundation = PxCreateFoundation(PX_FOUNDATION_VERSION, m_azAllocator, m_azErrorCallback);
         m_pvdTransport = physx::PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
         m_pvd = PxCreatePvd(*m_foundation);
@@ -107,13 +106,14 @@ namespace PhysX
         // connect to relevant buses
         Physics::SystemRequestBus::Handler::BusConnect();
         PhysXSystemRequestBus::Handler::BusConnect();
-        PhysXRequestBus::Handler::BusConnect();
         AZ::TickBus::Handler::BusConnect();
         LegacyTerrain::LegacyTerrainNotificationBus::Handler::BusConnect();
+        LegacyTerrain::LegacyTerrainRequestBus::Handler::BusConnect();
+#ifdef PHYSX_EDITOR
         AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+#endif
 
         // set up CPU dispatcher
-        // TODO get number of threads from project configurator
         m_cpuDispatcher = AzPhysXCpuDispatcherCreate();
 
         // create default world
@@ -132,6 +132,7 @@ namespace PhysX
         AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddExtension, Pipeline::PhysXMeshAsset::m_assetFileExtention);
     }
 
+#ifdef PHYSX_EDITOR
     void PhysXSystemComponent::OnStartPlayInEditor()
     {
         // set up visual debugger
@@ -150,19 +151,25 @@ namespace PhysX
     {
         m_pvd->disconnect();
     }
+#endif
 
     void PhysXSystemComponent::Deactivate()
     {
+#ifdef PHYSX_EDITOR
         AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
+#endif
+        LegacyTerrain::LegacyTerrainRequestBus::Handler::BusDisconnect();
         LegacyTerrain::LegacyTerrainNotificationBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
-        PhysXRequestBus::Handler::BusDisconnect();
         PhysXSystemRequestBus::Handler::BusDisconnect();
         Physics::SystemRequestBus::Handler::BusDisconnect();
 
         m_terrainTiles.clear();
         m_worlds.clear();
-        m_cpuDispatcher->release();
+
+        delete m_cpuDispatcher;
+        m_cpuDispatcher = nullptr;
+
         m_material->release();
         m_cooking->release();
         m_physics->release();
@@ -170,14 +177,13 @@ namespace PhysX
         m_pvdTransport->release();
         m_foundation->release();
         m_scene = nullptr;
-        m_cpuDispatcher = nullptr;
         m_material = nullptr;
         m_cooking = nullptr;
         m_physics = nullptr;
         m_pvd = nullptr;
         m_pvdTransport = nullptr;
         m_foundation = nullptr;
-        
+
         m_assetHandlers.clear();
 
         AZ::AllocatorInstance<PhysXAllocator>::Destroy();
@@ -194,8 +200,11 @@ namespace PhysX
         m_scene->removeActor(actor);
     }
 
-    physx::PxScene* PhysXSystemComponent::CreateScene(const physx::PxSceneDesc& sceneDesc)
+    physx::PxScene* PhysXSystemComponent::CreateScene( physx::PxSceneDesc& sceneDesc)
     {
+        AZ_Assert(m_cpuDispatcher, "PhysX CPU dispatcher was not created");
+
+        sceneDesc.cpuDispatcher = m_cpuDispatcher;
         return m_physics->createScene(sceneDesc);
     }
 
@@ -212,7 +221,7 @@ namespace PhysX
 
         return convex;
     }
-    
+
     physx::PxConvexMesh* PhysXSystemComponent::CreateConvexMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize)
     {
         physx::PxDefaultMemoryInputData inpStream(reinterpret_cast<physx::PxU8*>(const_cast<void*>(cookedMeshData)), bufferSize);
@@ -221,13 +230,8 @@ namespace PhysX
 
     physx::PxTriangleMesh* PhysXSystemComponent::CreateTriangleMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize)
     {
-        physx::PxDefaultMemoryInputData inpStream( reinterpret_cast<physx::PxU8*>(const_cast<void*>(cookedMeshData)), bufferSize);
+        physx::PxDefaultMemoryInputData inpStream(reinterpret_cast<physx::PxU8*>(const_cast<void*>(cookedMeshData)), bufferSize);
         return m_physics->createTriangleMesh(inpStream);
-    }
-
-    AzPhysXCpuDispatcher* PhysXSystemComponent::GetCpuDispatcher()
-    {
-        return m_cpuDispatcher;
     }
 
     void PhysXSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
@@ -238,7 +242,7 @@ namespace PhysX
         }
     }
 
-    // terrain
+    // LegacyTerrainRequestBus
     bool PhysXSystemComponent::GetTerrainHeight(const AZ::u32 x, const AZ::u32 y, float& height) const
     {
         if (m_terrainTileSize == 0 || m_numTerrainTiles == 0)
@@ -271,7 +275,7 @@ namespace PhysX
         physx::PxShape* shape;
         actor->getShapes(&shape, 1, 0);
 
-        // Heightfield has an additional row and column of vertices from adjacent tiles to fill gaps between tiles, 
+        // Heightfield has an additional row and column of vertices from adjacent tiles to fill gaps between tiles,
         // so expect the heightfield dimensions to be 1 larger than the terrain tile size.
         physx::PxHeightFieldGeometry geometry;
         if (!shape->getHeightFieldGeometry(geometry) ||
@@ -374,7 +378,7 @@ namespace PhysX
                 if (rescale)
                 {
                     float height = heightMin + heightScale * heightMap[lyHeightMapIndex];
-                    samples[pxHeightFieldIndex].height = 
+                    samples[pxHeightFieldIndex].height =
                         static_cast<physx::PxI16>((height - rescaledHeightMin) / rescaledHeightScale + INT16_MIN);
                 }
                 else
@@ -394,12 +398,12 @@ namespace PhysX
         {
             if (GetTerrainHeight((tileX + 1) * m_terrainTileSize, tileY * m_terrainTileSize + i, neighbourHeight))
             {
-                samples[(tileSize + 1) * (i + 1) - 1].height = 
+                samples[(tileSize + 1) * (i + 1) - 1].height =
                     static_cast<physx::PxI16>((neighbourHeight - heightMin) / heightScale + INT16_MIN);
             }
-            if (GetTerrainHeight((tileX)* m_terrainTileSize + i, (tileY + 1) * m_terrainTileSize, neighbourHeight))
+            if (GetTerrainHeight((tileX) * m_terrainTileSize + i, (tileY + 1) * m_terrainTileSize, neighbourHeight))
             {
-                samples[tileSize * (tileSize + 1) + i].height = 
+                samples[tileSize * (tileSize + 1) + i].height =
                     static_cast<physx::PxI16>((neighbourHeight - heightMin) / heightScale + INT16_MIN);
             }
         }
@@ -412,7 +416,7 @@ namespace PhysX
         heightFieldDesc.samples.data = samples;
 
         physx::PxHeightField* heightField = m_cooking->createHeightField(heightFieldDesc,
-            m_physics->getPhysicsInsertionCallback());
+                m_physics->getPhysicsInsertionCallback());
         physx::PxHeightFieldGeometry heightFieldGeom(heightField, physx::PxMeshGeometryFlags(),
             rescale ? rescaledHeightScale : heightScale, horizontalScale, horizontalScale);
 
@@ -428,7 +432,7 @@ namespace PhysX
             posZ = rescaledHeightMin - INT16_MIN * rescaledHeightScale;
         }
         heightFieldShape->setLocalPose(physx::PxTransform(physx::PxQuat(physx::PxHalfPi, physx::PxVec3(1, 0, 0)) *
-            physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0, 1, 0))));
+                physx::PxQuat(physx::PxHalfPi, physx::PxVec3(0, 1, 0))));
         m_terrainTiles[tileIndex] = m_physics->createRigidStatic(physx::PxTransform(physx::PxVec3(posX, posY, posZ)));
         if (!m_terrainTiles[tileIndex])
         {
@@ -489,16 +493,12 @@ namespace PhysX
 
     bool PhysXSystemComponent::DestroyWorldByName(const char* worldName)
     {
-        // TODO: Review this when we start using multiple threads for working with worlds
-        // This function is not thread-safe!
         const AZ::Crc32 worldId(worldName);
         return DestroyWorldById(worldId);
     }
 
     bool PhysXSystemComponent::DestroyWorldById(AZ::u32 worldId)
     {
-        // TODO: Review this when we start using multiple threads for working with worlds
-        // This function is not thread-safe!
         auto worldPtr = FindWorldById(worldId);
 
         if (worldPtr)
@@ -506,11 +506,8 @@ namespace PhysX
             m_worlds.erase(worldId);
             return true;
         }
-        else
-        {
-            AZ_Assert(false, "DestroyWorldById(): Unable to find world");
-        }
 
+        AZ_Error("PhysX System", false, "DestroyWorldById(): Unable to find world");
         return false;
     }
 

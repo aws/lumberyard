@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShineExamples_precompiled.h"
 #include "UiTestScrollBoxDataProviderComponent.h"
 
 #include <AzCore/Serialization/SerializeContext.h>

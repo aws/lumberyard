@@ -78,9 +78,6 @@ protected:
     //ISoundObject *m_ITag;
 
     static int m_rollupId;
-#ifdef KDAB_REMOVED
-    static class CSoundObjectPanel* m_panel;
-#endif	
 };
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_SOUNDOBJECT_H

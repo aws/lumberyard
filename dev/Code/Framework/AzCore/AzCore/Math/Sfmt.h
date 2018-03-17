@@ -16,7 +16,7 @@
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/mutex.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_HARDWARE_ENABLE_EMM_INTRINSICS
 #   include <emmintrin.h>
 #endif
 
@@ -29,7 +29,7 @@ namespace AZ
         static const int MEXP = 19937;
         static const int N    = MEXP / (128 + 1);
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_HARDWARE_HAS_M128I
         union W128_T
         {
             __m128i si;

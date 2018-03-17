@@ -168,6 +168,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "user",
@@ -189,7 +192,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "LeaderboardInfo": {
             "Metadata": {
@@ -217,6 +220,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "stat",
@@ -246,7 +252,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "LeaderboardTable": {
             "Metadata": {
@@ -277,6 +283,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "type",
@@ -306,7 +315,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "MainTable": {
             "Metadata": {
@@ -496,6 +505,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "shard_id",
@@ -517,7 +529,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "ServiceApi": {
             "Metadata": {
@@ -622,6 +634,12 @@
         },
         "ServiceLambdaConfiguration": {
             "Properties": {
+                "Services": [
+                    {
+                        "InterfaceId": "CloudGemPlayerAccount_banplayer_1_0_0",
+                        "Optional": "True"
+                    }
+                ],
                 "ConfigurationBucket": {
                     "Ref": "ConfigurationBucket"
                 },
@@ -676,6 +694,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "name",
@@ -697,7 +718,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "UserIdentityMap": {
             "Metadata": {
@@ -714,6 +735,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "user",
@@ -735,7 +759,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         }
     }
 }

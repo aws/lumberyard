@@ -13,7 +13,7 @@
 
 #include "stdafx.h"
 #include "IRenderAuxGeom.h"
-#include "arcball.h"
+#include "ArcBall.h"
 
 bool CArcBall3D::ArcControl(const Matrix34& reference, const Ray& ray, uint32 mouseleft)
 {

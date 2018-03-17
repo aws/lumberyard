@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <CloudGemAWSScriptBehaviors_precompiled.h>
 
 #include "AWSBehaviorMap.h"
 #include <AzCore/JSON/document.h>

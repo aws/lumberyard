@@ -963,7 +963,7 @@ void CTerrainTextureDialog::OnFileExportLargePreview()
 
     // Save the texture to disk
     QString tempDirectory = Path::AddPathSlash(gSettings.strStandardTempDirectory);
-    CFileUtil::CreateDirectory(tempDirectory.toLatin1().data());
+    CFileUtil::CreateDirectory(tempDirectory.toUtf8().data());
 
     QString imageName = "TexturePreview.bmp";
     bool bOk = CImageUtil::SaveImage(tempDirectory + imageName, image);
@@ -991,13 +991,13 @@ void CTerrainTextureDialog::OnImport()
     if (dlg.exec())
     {
         QString file = dlg.selectedFiles().first();
-        CLogFile::FormatLine("Importing layer settings from %s", file.toLatin1().data());
+        CLogFile::FormatLine("Importing layer settings from %s", file.toUtf8().data());
 
         CUndo undo("Import Texture Layers");
         GetIEditor()->RecordUndo(new CTerrainLayersUndoObject());
 
         CXmlArchive ar;
-        if (ar.Load(file.toLatin1().data()))
+        if (ar.Load(file.toUtf8().data()))
         {
             GetIEditor()->GetTerrainManager()->SerializeSurfaceTypes(ar);
             GetIEditor()->GetTerrainManager()->SerializeLayerSettings(ar);
@@ -1045,12 +1045,12 @@ void CTerrainTextureDialog::OnExport()
     if (dlg.exec())
     {
         QString file = dlg.selectedFiles().constFirst();
-        CLogFile::FormatLine("Exporting layer settings to %s", file.toLatin1().data());
+        CLogFile::FormatLine("Exporting layer settings to %s", file.toUtf8().data());
 
         CXmlArchive ar("LayerSettings");
         GetIEditor()->GetTerrainManager()->SerializeSurfaceTypes(ar);
         GetIEditor()->GetTerrainManager()->SerializeLayerSettings(ar);
-        ar.Save(file.toLatin1().data());
+        ar.Save(file.toUtf8().data());
     }
 }
 

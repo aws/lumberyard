@@ -197,7 +197,7 @@ void CTrackEventNode::PopulateOutput(bool bLoading)
     if (m_pSequence == NULL)
     {
         m_inputs[kSequenceName].pVar->Get(sequence);
-        m_pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(sequence.toLatin1().data());
+        m_pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(sequence.toUtf8().data());
     }
 
     // Check if sequence exists
@@ -219,7 +219,7 @@ void CTrackEventNode::PopulateOutput(bool bLoading)
         // Clear all outputs
         while (false == m_outputs.empty())
         {
-            RemoveOutputEvent(m_outputs.begin()->GetName().toLatin1().data());
+            RemoveOutputEvent(m_outputs.begin()->GetName().toUtf8().data());
         }
 
         // Add sequence event outputs
@@ -242,11 +242,11 @@ void CTrackEventNode::PopulateOutput(bool bLoading)
 void CTrackEventNode::AddOutputEvent(const char* event)
 {
     QString desc;
-    desc = QStringLiteral("Called when %s is triggered from sequence").arg(event);
+    desc = QStringLiteral("Called when %1 is triggered from sequence").arg(event);
     IVariablePtr pVar = new CVariableFlowNode<QString>();
     pVar->SetName(event);
     pVar->SetHumanName(event);
-    pVar->SetDescription(desc.toLatin1().data());
+    pVar->SetDescription(desc);
     CHyperNodePort port(pVar, false, true);
     AddPort(port);
     Invalidate(true);
@@ -323,8 +323,8 @@ void CTrackEventNode::RenameOutputEvent(const char* event, const char* newName)
             i->pVar->SetName(newName);
             i->pVar->SetHumanName(newName);
             QString desc;
-            desc = QStringLiteral("Called when %s is triggered from sequence").arg(newName);
-            i->pVar->SetDescription(desc.toLatin1().data());
+            desc = QStringLiteral("Called when %1 is triggered from sequence").arg(newName);
+            i->pVar->SetDescription(desc);
 
             // Update the connected edges.
             if (CHyperGraph* pGraph = (CHyperGraph*)GetGraph())

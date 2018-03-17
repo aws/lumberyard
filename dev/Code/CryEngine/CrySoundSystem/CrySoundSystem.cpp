@@ -334,7 +334,12 @@ CRYREGISTER_SINGLETON_CLASS(CEngineModule_CrySoundSystem)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 CEngineModule_CrySoundSystem::CEngineModule_CrySoundSystem()
 {
-#if defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_XBONE) || defined(AZ_TESTS_ENABLED)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(CrySoundSystem_cpp)
+#else
+#define CRYSOUNDSYSTEM_CPP_TRAIT_DISABLE_AUDIO 0
+#endif
+#if CRYSOUNDSYSTEM_CPP_TRAIT_DISABLE_AUDIO || defined(AZ_TESTS_ENABLED)
     #define DEFAULT_AUDIO_SYSTEM_IMPLEMENTATION_NAME    "CryAudioImplNoSound"
 #else
     #define DEFAULT_AUDIO_SYSTEM_IMPLEMENTATION_NAME    "CryAudioImplWwise"

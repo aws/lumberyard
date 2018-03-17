@@ -122,9 +122,9 @@ namespace GridMate
         : public Driver
     {
     public:
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
         typedef AZStd::size_t SocketType;
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID) // ACCEPTED_USE
+#elif AZ_TRAIT_OS_USE_POSIX_SOCKETS
         typedef int SocketType;
 #else
 #       error SocketType undefined

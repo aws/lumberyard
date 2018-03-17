@@ -9,10 +9,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import properties
+from cgf_utils import properties
 
 class PropertiesMatcher(object):
     '''Matches properties._Properties objects.'''
 
+    def __init__(self, src = None):
+        self.__src = src
+
     def __eq__(self, other):
-        return isinstance(other, properties._Properties)
+
+        if not isinstance(other, properties._Properties):
+            return False
+
+        if self.__src is not None:
+            if self.__src != other.__dict__:
+                return False
+
+        return True

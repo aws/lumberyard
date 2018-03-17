@@ -21,7 +21,7 @@
 
 #include <Woodpecker/Driller/Carrier/CarrierDataView.moc>
 #include <Woodpecker/Driller/Carrier/ui_CarrierDataView.h>
-#include <qstring.h>
+#include <QString>
 
 namespace Driller
 {

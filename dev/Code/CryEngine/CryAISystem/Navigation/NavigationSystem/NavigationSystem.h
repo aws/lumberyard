@@ -28,6 +28,7 @@
 #include "IslandConnectionsManager.h"
 
 #include <CryListenerSet.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #if defined(WIN32) || defined(WIN64)
 #define NAVIGATION_SYSTEM_EDITOR_BACKGROUND_UPDATE 1
@@ -580,7 +581,6 @@ public:
             Failed,
         };
 
-        JobManager::SJobState jobState;
         MNM::Tile tile;
         uint32 hashValue;
 
@@ -593,7 +593,9 @@ public:
 
         volatile uint16 state; // communicated over thread boundaries
         uint16 next; // next free
-    };
+
+        AZ::LegacyJobExecutor jobExecutor;
+    } _ALIGN(16);
 
 private:
 

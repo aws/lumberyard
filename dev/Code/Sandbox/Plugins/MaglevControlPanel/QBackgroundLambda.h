@@ -11,9 +11,9 @@
 */
 #pragma once
 
-#include <qobject.h>
-#include <qthread.h>
-#include <qwidget.h>
+#include <QObject>
+#include <QThread>
+#include <QWidget>
 
 #include <functional>
 

@@ -208,7 +208,7 @@ namespace MCommon
             // render delta position of the gizmo of the name if not dragging at the moment
             if (mSelectionLocked && mMode != TRANSLATE_NONE)
             {
-                mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", deltaPos.GetX(), deltaPos.GetY(), deltaPos.GetZ());
+                mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", static_cast<float>(deltaPos.GetX()), static_cast<float>(deltaPos.GetY()), static_cast<float>(deltaPos.GetZ()));
                 renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
             }
             else
@@ -227,7 +227,7 @@ namespace MCommon
         if (mMode != TRANSLATE_NONE)
         {
             const AZ::Vector3 offsetPos = GetPosition();
-            mTempString.Format("Abs Pos X: %.3f, Y: %.3f, Z: %.3f", offsetPos.GetX(), offsetPos.GetY(), offsetPos.GetZ());
+            mTempString.Format("Abs Pos X: %.3f, Y: %.3f, Z: %.3f", static_cast<float>(offsetPos.GetX()), static_cast<float>(offsetPos.GetY()), static_cast<float>(offsetPos.GetZ()));
             renderUtil->RenderText(10, 10, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f);
         }
     }

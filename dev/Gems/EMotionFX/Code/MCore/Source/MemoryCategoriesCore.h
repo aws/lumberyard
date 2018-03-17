@@ -17,7 +17,8 @@ namespace MCore
     // default memory alignment in bytes
     enum
     {
-        MCORE_DEFAULT_ALIGNMENT = 4     /**< The default memory address alignment of objects, in bytes. */
+        MCORE_DEFAULT_ALIGNMENT = 4,     /**< The default memory address alignment of objects, in bytes. */
+        MCORE_SIMD_ALIGNMENT    = 16
     };
 
 
@@ -53,7 +54,7 @@ namespace MCore
         MCORE_MEMCATEGORY_STRINGOPS         = 35,
         MCORE_MEMCATEGORY_FRUSTUM           = 36,
         MCORE_MEMCATEGORY_STREAM            = 37,
-        MCORE_MEMCATEGORY_MULTITHREADMANAGER = 38,
+        MCORE_MEMCATEGORY_MULTITHREADMANAGER= 38,
         MCORE_MEMCATEGORY_JOBSYSTEM         = 39,
         MCORE_MEMCATEGORY_TRIANGULATOR      = 40,
         // insert new categories here

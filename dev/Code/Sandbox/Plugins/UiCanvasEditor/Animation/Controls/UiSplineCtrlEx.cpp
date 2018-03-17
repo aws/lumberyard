@@ -1069,19 +1069,14 @@ void SplineWidget::DrawTangentHandle(QPainter* painter, int nSpline, int nKey, i
 //////////////////////////////////////////////////////////////////////////
 void SplineWidget::DrawTimeMarker(QPainter* painter)
 {
-#ifdef KDAB_TEMPORARILY_REMOVED
-    if (!(GetStyle() & SPLINE_STYLE_NO_TIME_MARKER))
-#endif
+    const QPen pOldPen = painter->pen();
+    painter->setPen(QColor(255, 0, 255));
+    float x = TimeToXOfs(m_fTimeMarker);
+    if (x >= m_rcSpline.left() && x <= m_rcSpline.right())
     {
-        const QPen pOldPen = painter->pen();
-        painter->setPen(QColor(255, 0, 255));
-        float x = TimeToXOfs(m_fTimeMarker);
-        if (x >= m_rcSpline.left() && x <= m_rcSpline.right())
-        {
-            painter->drawLine(x, m_rcSpline.top(), x, m_rcSpline.bottom());
-        }
-        painter->setPen(pOldPen);
+        painter->drawLine(x, m_rcSpline.top(), x, m_rcSpline.bottom());
     }
+    painter->setPen(pOldPen);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1336,7 +1331,7 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
         float time = m_pHitSpline->GetKeyTime(m_nHitKeyIndex);
         ISplineInterpolator::ValueType  afValue;
         m_pHitSpline->GetKeyValue(m_nHitKeyIndex, afValue);
-        const QString tipText = QString::fromLatin1("t=%.3f  v=%2.3f").arg(time * m_fTooltipScaleX, 0, 'f', 3).arg(afValue[m_nHitDimension] * m_fTooltipScaleY, 2, 'f', 3);
+        const QString tipText = QStringLiteral("t=%1  v=%2").arg(time * m_fTooltipScaleX, 0, 'f', 3).arg(afValue[m_nHitDimension] * m_fTooltipScaleY, 2, 'f', 3);
 
         m_tooltipText = tipText;
         if (m_lastToolTipPos != point)

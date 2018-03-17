@@ -19,7 +19,7 @@
 
 //! Loads thumbnails that require acccess to renderer
 class TextureThumbnailRenderer
-    : public AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::Handler
+    : public AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestBus::Handler
     , public AZ::SystemTickBus::Handler
 {
 public:

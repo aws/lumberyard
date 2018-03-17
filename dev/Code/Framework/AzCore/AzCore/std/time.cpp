@@ -31,13 +31,13 @@ namespace AZStd
 {
     AZStd::sys_time_t GetTimeTicksPerSecond()
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_QUERY_PERFORMANCE_COUNTER
         static AZStd::sys_time_t freq = 0;
         if (freq == 0)
         {
             QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
         }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif (defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE))
         // Value is in nano seconds, return number of nano seconds in one second
         AZStd::sys_time_t freq = 1000000000L;
 #else
@@ -49,9 +49,9 @@ namespace AZStd
     AZStd::sys_time_t GetTimeNowTicks()
     {
         AZStd::sys_time_t timeNow;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_QUERY_PERFORMANCE_COUNTER
         QueryPerformanceCounter((LARGE_INTEGER*)&timeNow);
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif (defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE))
         struct timespec ts;
 #   if defined(AZ_PLATFORM_APPLE)
         clock_serv_t cclock;
@@ -114,10 +114,10 @@ namespace AZStd
     AZStd::sys_time_t GetTimeNowSecond()
     {
         AZStd::sys_time_t timeNowSecond;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_QUERY_PERFORMANCE_COUNTER
         // Using get tick count, since it's more stable for longer time measurements.
         timeNowSecond = GetTickCount() / 1000;
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#elif (defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE))
         struct timespec ts;
 #   if defined(AZ_PLATFORM_APPLE)
         clock_serv_t cclock;
@@ -157,7 +157,7 @@ namespace AZStd
     AZ::u64 GetTimeUTCMilliSecond()
     {
         AZ::u64 utc;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_QUERY_PERFORMANCE_COUNTER
         FILETIME UTCFileTime;
         GetSystemTimeAsFileTime(&UTCFileTime);
         // store time in 100 of nanoseconds since January 1, 1601 UTC

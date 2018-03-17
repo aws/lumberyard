@@ -14,7 +14,7 @@
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/std/parallel/thread.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_THREADS
 
 #include <AzCore/std/parallel/threadbus.h>
 
@@ -162,6 +162,6 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
 }
 
-#endif 
+#endif // AZ_TRAIT_OS_USE_WINDOWS_THREADS
 
 #endif // #ifndef AZ_UNITY_BUILD

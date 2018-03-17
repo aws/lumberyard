@@ -524,7 +524,7 @@ bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, Q
         }
     }
 
-    GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   CTRL+L-Mouse:Pick LayerId").toLatin1().data());
+    GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   CTRL+L-Mouse:Pick LayerId"));
 
     return true;
 }

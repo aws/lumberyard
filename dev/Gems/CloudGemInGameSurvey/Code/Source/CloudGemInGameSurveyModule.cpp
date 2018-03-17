@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemInGameSurvey_precompiled.h"
 #include <platform_impl.h>
 
 #include "CloudGemInGameSurveySystemComponent.h"

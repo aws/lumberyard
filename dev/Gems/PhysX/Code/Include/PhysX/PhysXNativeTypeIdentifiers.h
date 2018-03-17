@@ -22,7 +22,5 @@ namespace PhysX
         static const AZ::Crc32 PhysXRigidBody = AZ_CRC("PhysXRigidBody", 0xb2dcf053);
         static const AZ::Crc32 PhysXGhost = AZ_CRC("PhysXGhost", 0xbee7664f);
         static const AZ::Crc32 PhysXCharacter = AZ_CRC("PhysXCharacter", 0x21ea2dd0);
-
     } // namespace NativeTypeIdentifiers
-
 } // namespace PhysX

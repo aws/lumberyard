@@ -285,9 +285,9 @@ namespace LensFlareUtil
             {
                 return;
             }
-            node->setAttr("From", m_From.toLatin1().data());
-            node->setAttr("FlareFullPath", m_LensFlareFullPath.toLatin1().data());
-            node->setAttr("OpticsPath", m_LensOpticsPath.toLatin1().data());
+            node->setAttr("From", m_From.toUtf8().data());
+            node->setAttr("FlareFullPath", m_LensFlareFullPath.toUtf8().data());
+            node->setAttr("OpticsPath", m_LensOpticsPath.toUtf8().data());
         }
 
         void FillThisFromXmlNode(XmlNodeRef node)

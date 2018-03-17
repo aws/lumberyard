@@ -61,6 +61,8 @@ namespace AZ
              const char* g_stringPhysicsNoDraw = "PhysicsNoDraw";
 
              const char* g_mtlExtension = ".mtl";
+             const char* g_dccMaterialExtension = ".dccmtl";
+             const char* g_dccMaterialHashString = "DccMaterialHash";
 
              const char* g_whiteTexture = "EngineAssets/Textures/white.dds";
 
@@ -93,6 +95,19 @@ namespace AZ
                  }
                  return false;
              }
+
+             bool ParseUintAttribute(rapidxml::xml_attribute<char>* attribute, AZ::u32& uintValue)
+             {
+                 if (attribute)
+                 {
+                     const char* value = attribute->value();
+                     if (azsscanf(value, "%u", &uintValue) == 1)
+                     {
+                         return true;
+                     }
+                 }
+                 return false;
+             }
         }
 
         Material::Material() 
@@ -103,6 +118,7 @@ namespace AZ
             , m_emissiveColor(AZ::Vector3::CreateZero())
             , m_opacity(1.f)
             , m_shininess(0.f)
+            , m_dccMaterialHash(0)
         {
         }
 
@@ -122,6 +138,7 @@ namespace AZ
                 rapidxml::xml_attribute<char>* emissiveColor = materialNode->first_attribute(MaterialExport::g_emissiveMapName);
                 rapidxml::xml_attribute<char>* opacity = materialNode->first_attribute(MaterialExport::g_opacityString);
                 rapidxml::xml_attribute<char>* shininess = materialNode->first_attribute(MaterialExport::g_shininessString);
+                rapidxml::xml_attribute<char>* hash = materialNode->first_attribute(MaterialExport::g_dccMaterialHashString);
 
                 if (name)
                 {
@@ -133,6 +150,7 @@ namespace AZ
                 MaterialExport::ParseVectorAttribute(emissiveColor, m_emissiveColor);
                 MaterialExport::ParseFloatAttribute(opacity, m_opacity);
                 MaterialExport::ParseFloatAttribute(shininess, m_shininess);
+                MaterialExport::ParseUintAttribute(hash, m_dccMaterialHash);
 
                 if (shader)
                 {
@@ -309,6 +327,16 @@ namespace AZ
             m_shininess = shininess;
         }
 
+        AZ::u32 Material::GetDccMaterialHash() const
+        {
+            return m_dccMaterialHash;
+        }
+
+        void Material::SetDccMaterialHash(AZ::u32 hash)
+        {
+            m_dccMaterialHash = hash;
+        }
+
         MaterialGroup::MaterialGroup() 
             : m_readFromMtl(false)
         {
@@ -413,7 +441,7 @@ namespace AZ
             m_mtlDoc.parse<rapidxml::parse_no_data_nodes>(m_mtlBuffer.data());
 
             //Parse MTL file for materials and/or submaterials. 
-            rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node("Material");
+            rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node(MaterialExport::g_materialString);
             if (!materialNode)
             {
                 AZ_Error("MaterialIO", false, "Invalid material file %s. File does not contain a 'Material' node. Try removing the file or replacing it with a valid material file.", fileName);
@@ -492,12 +520,33 @@ namespace AZ
             m_materialGroupName = name;
         }
 
+        AZ::u32 MaterialGroup::CalculateDccMaterialHash()
+        {
+            // Compound material group hash from sub material hashes.
+            AZ::Crc32 hash(0u);
+            for (const auto& mat : m_materials)
+            {
+                AZ::u32 subMaterialHash = mat->GetDccMaterialHash();
+                hash.Add(&subMaterialHash, sizeof(AZ::u32));
+            }
+            return hash;
+        }
+
         void MaterialGroup::CreateMtlFile()
         {
             rapidxml::xml_node<char>* rootNode = m_mtlDoc.allocate_node(rapidxml::node_element, MaterialExport::g_materialString);
+            
+            // MtlFlags
             rapidxml::xml_attribute<char>* attr = m_mtlDoc.allocate_attribute(MaterialExport::g_mtlFlagString,
                 m_mtlDoc.allocate_string(AZStd::to_string(EMaterialFlags::MTL_64BIT_SHADERGENMASK | EMaterialFlags::MTL_FLAG_MULTI_SUBMTL).c_str()));
             rootNode->append_attribute(attr);
+
+            // DccMaterialHash
+            const AZStd::string hashString = AZStd::string::format("%u", CalculateDccMaterialHash());
+            attr = m_mtlDoc.allocate_attribute(MaterialExport::g_dccMaterialHashString, m_mtlDoc.allocate_string(hashString.c_str()));
+            rootNode->append_attribute(attr);
+
+            // SubMaterials
             rapidxml::xml_node<char>* subMaterialNode = m_mtlDoc.allocate_node(rapidxml::node_element, MaterialExport::g_subMaterialString);
             rootNode->append_node(subMaterialNode);
 
@@ -510,6 +559,15 @@ namespace AZ
 
         void MaterialGroup::UpdateMtlFile()
         {
+            // Update DCC material hash
+            rapidxml::xml_node<char>* rootNode = m_mtlDoc.first_node(MaterialExport::g_materialString);
+            rapidxml::xml_attribute<char>* dccMaterialHashAttribute = rootNode->first_attribute(MaterialExport::g_dccMaterialHashString);
+            if (dccMaterialHashAttribute)
+            {
+                const AZStd::string hashString = AZStd::string::format("%u", CalculateDccMaterialHash());
+                dccMaterialHashAttribute->value(m_mtlDoc.allocate_string(hashString.c_str()));
+            }
+
             //update or add materials
             for (auto& mat : m_materials)
             {
@@ -523,7 +581,7 @@ namespace AZ
 
         bool MaterialGroup::AddMaterialNode(const IMaterial& mat)
         {
-            rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node("Material");
+            rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node(MaterialExport::g_materialString);
 
             rapidxml::xml_node<char>* submaterialNode = nullptr;
 
@@ -578,6 +636,16 @@ namespace AZ
                         flag = ((flag & (~EMaterialFlags::MTL_FLAG_NODRAW)) | EMaterialFlags::MTL_64BIT_SHADERGENMASK);
                     }
                     flagAttribute->value(m_mtlDoc.allocate_string(AZStd::to_string(flag).c_str()));
+                }
+            }
+
+            // Update DCC material hash
+            {
+                rapidxml::xml_attribute<char>* dccMaterialHashAttribute = node->first_attribute(MaterialExport::g_dccMaterialHashString);
+                if (dccMaterialHashAttribute)
+                {
+                    const AZStd::string hashString = AZStd::string::format("%u", mat.GetDccMaterialHash());
+                    dccMaterialHashAttribute->value(m_mtlDoc.allocate_string(hashString.c_str()));
                 }
             }
 
@@ -718,7 +786,7 @@ namespace AZ
 
         rapidxml::xml_node<char>* MaterialGroup::FindMaterialNode(const IMaterial& mat) const
         {
-            rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node("Material");
+            rapidxml::xml_node<char>* materialNode = m_mtlDoc.first_node(MaterialExport::g_materialString);
             if (materialNode == nullptr)
             {
                 return nullptr;
@@ -787,6 +855,8 @@ namespace AZ
             const AZStd::string emissiveColorString = AZStd::string::format("%f,%f,%f", (float)emissiveColor.GetX(), (float)emissiveColor.GetY(), (float)emissiveColor.GetZ());
             const AZStd::string opacityString = AZStd::string::format("%f", material.GetOpacity());
             const AZStd::string shininessString = AZStd::string::format("%f", material.GetShininess());
+            const AZStd::string hashString = AZStd::string::format("%u", material.GetDccMaterialHash());
+
             attr = m_mtlDoc.allocate_attribute(MaterialExport::g_diffuseMapName, m_mtlDoc.allocate_string(diffuseColorString.c_str()));
             materialNode->append_attribute(attr);
             attr = m_mtlDoc.allocate_attribute(MaterialExport::g_specularMapName, m_mtlDoc.allocate_string(specularColorString.c_str()));
@@ -796,6 +866,8 @@ namespace AZ
             attr = m_mtlDoc.allocate_attribute(MaterialExport::g_opacityString, m_mtlDoc.allocate_string(opacityString.c_str()));
             materialNode->append_attribute(attr);
             attr = m_mtlDoc.allocate_attribute(MaterialExport::g_shininessString, m_mtlDoc.allocate_string(shininessString.c_str()));
+            materialNode->append_attribute(attr);
+            attr = m_mtlDoc.allocate_attribute(MaterialExport::g_dccMaterialHashString, m_mtlDoc.allocate_string(hashString.c_str()));
             materialNode->append_attribute(attr);
 
             AZStd::string genMask;

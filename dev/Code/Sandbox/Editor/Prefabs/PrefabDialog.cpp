@@ -39,9 +39,6 @@
 
 #include <QDebug>
 
-#define IDC_PREFABS_TREE AFX_IDW_PANE_FIRST
-
-/////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 class CPrefabPickCallback
     : public IPickObjectCallback
@@ -628,34 +625,6 @@ void CPrefabDialog::OnNotifyMtlTreeRClick(const QPoint& point)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CPrefabDialog::OnPickPrefab()
-{
-    if (!CPrefabPickCallback::IsActive())
-    {
-        GetIEditor()->PickObject(new CPrefabPickCallback, 0, "Pick Object to Select Particle");
-    }
-    else
-    {
-        GetIEditor()->CancelPick();
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CPrefabDialog::OnUpdatePickPrefab()
-{
-#ifdef KDAB_TEMPORARIL_REMOVED
-    if (CPrefabPickCallback::IsActive())
-    {
-        pCmdUI->SetCheck(1);
-    }
-    else
-    {
-        pCmdUI->SetCheck(0);
-    }
-#endif
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CPrefabDialog::OnCopy()
 {
     CPrefabItem* pItem = GetSelectedPrefab();
@@ -800,10 +769,10 @@ bool CPrefabDialog::PromptForPrefabName(QString& inOutGroupName, QString& inOutI
         }
 
         QString fullName = m_pItemManager->MakeFullItemName(m_pLibrary, dlg.GetGroup(), dlg.GetString());
-        if (m_pItemManager->FindItemByName(fullName.toLatin1().data()))
+        if (m_pItemManager->FindItemByName(fullName))
         {
             QString message = tr("Item with name %1 already exists").arg(fullName);
-            CryMessageBox(message.toLatin1().constData(), "Invalid name", MB_OK | MB_ICONERROR);
+            CryMessageBox(message.toUtf8().constData(), "Invalid name", MB_OK | MB_ICONERROR);
             dlgResult = dlg.exec();
             continue;
         }

@@ -12,6 +12,7 @@
 from waflib import Context
 from waflib.TaskGen import feature, after_method
 from waflib.Configure import conf, Logs
+from waflib.Errors import WafError
 
 from cry_utils import get_configuration, append_unique_kw_entry
 from collections import OrderedDict
@@ -46,6 +47,20 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
 CONFIGURATION_TO_3RD_PARTY_NAME = {'debug'  : 'debug',
                                    'profile': 'release',
                                    'release': 'release'}
+
+
+def trim_lib_name(platform, lib_name):
+    """
+    Trim the libname if it meets certain platform criteria
+    :param platform: The platform key to base the trim decision on
+    :param libname: The libname to conditionally trim
+    :return:
+    """
+    if platform.startswith('win_x64'):
+        return lib_name
+    if not lib_name.startswith('lib'):
+        return lib_name
+    return lib_name[3:]
 
 
 def get_third_party_platform_name(ctx, waf_platform_key):
@@ -391,7 +406,7 @@ class ThirdPartyLibReader:
                 lib_configuration = self.configuration_key.split('_')[0]
             else:
                 # This is the common case where the library only has debug and release, which matches the engine's debug and non-debug configurations
-                is_debug = self.configuration_key.lower() in ["debug", "debug_dedicated", "debug_test"]
+                is_debug = self.configuration_key.lower() in ["debug", "debug_dedicated", "debug_test", "debug_test_dedicated"]
                 if is_debug:
                     lib_configuration = "debug"
                 else:
@@ -742,20 +757,6 @@ class ThirdPartyLibReader:
         :param platform_config_lib_map: Map to collect the library full paths based on a compound key of ${}_${}
         :return:
         """
-
-        def _trim_lib_name(platform, lib_name):
-            """
-            Trim the libname if it meets certain platform criteria
-            :param platform: The platform key to base the trim decision on
-            :param libname: The libname to conditionally trim
-            :return:
-            """
-            if platform.startswith('win_x64'):
-                return lib_name
-            if not lib_name.startswith('lib'):
-                return lib_name
-            return lib_name[3:]
-
         if lib_filenames is None:
             return
 
@@ -794,7 +795,7 @@ class ThirdPartyLibReader:
                 self.ctx.env.append_unique(uselib_key, lib_found_fullpath)
             else:
                 lib_parts = os.path.splitext(lib_filename)
-                lib_name = _trim_lib_name(self.processed_platform_key, lib_parts[0])
+                lib_name = trim_lib_name(self.processed_platform_key, lib_parts[0])
                 self.ctx.env.append_unique(uselib_key, lib_name)
 
     def apply_framework(self, uselib_env_name, frameworks):
@@ -993,6 +994,92 @@ ALL_3RD_PARTY_USELIB_PREFIXES = (
     'COPY_EXTRA'
 )
 
+REGISTERED_3RD_PARTY_USELIB = set()
+
+@conf
+def register_3rd_party_uselib(ctx, use_name, target_platform, *k, **kw):
+    """
+    Register a 3rd party uselib manually
+    :param ctx              configuration context
+    :param use_name         The uselib name (ie library name) to register
+    :param target_platform  The target platform for special library name handling.
+    :param k,kw:            keyword inputs
+    """
+
+    def _apply_to_list(uselib_prefix, value_key):
+        """
+        Apply a general value to a uselib key
+        :param uselib_prefix:   uselib prefix (category, ie DEFINES_, INCLUDES_, etc)
+        :param value_key:       The value from the keyword input to extract the value
+        """
+        if value_key not in kw:
+            return
+        value = kw[value_key]
+        if isinstance(value, list):
+            ctx.env['{}_{}'.format(uselib_prefix, use_name)] = value
+        else:
+            ctx.env['{}_{}'.format(uselib_prefix, use_name)] = [value]
+
+    def _apply_lib_to_list(lib_uselib_prefix, lib_key, libpath_uselib_prefix, libpath_key, process_libname):
+        """
+        Apply the uselib to a library and its library path.  The library value must be in the form of its full filename
+        :param lib_uselib_prefix:       The uselib prefix for the library declaration
+        :param lib_key:                 The kw keyname to get the library name(s)
+        :param libpath_uselib_prefix:   The uselib prefix for the library path(s)
+        :param libpath_key:             The kw keyname to get the library path(s)
+        """
+        if lib_key not in kw or libpath_key not in kw:
+            return
+
+        # Convert the values to a list always
+        lib_value = kw[lib_key]
+        libs_to_process = lib_value if isinstance(lib_value, list) else [lib_value]
+
+        libpath_value = kw[libpath_key]
+        libpaths_to_process = libpath_value if isinstance(libpath_value, list) else [libpath_value]
+
+        # Check each lib's path validity and adjust the lib name if necessary (the lib values are the actual filenames)
+        processed_libs = []
+        for lib_to_process in libs_to_process:
+            path_valid = False
+            for libpath in libpaths_to_process:
+                if os.path.exists(os.path.join(libpath, lib_to_process)):
+                    path_valid = True
+                    break
+            if not path_valid:
+                ctx.warn_once('Invalid library path for uselib {}.  This may cause linker errors.'.format(use_name))
+                continue
+            processed_lib = os.path.splitext(trim_lib_name(target_platform, lib_to_process))[0] if process_libname else lib_to_process
+            processed_libs.append(processed_lib)
+
+        ctx.env['{}_{}'.format(lib_uselib_prefix, use_name)] = processed_libs
+        ctx.env['{}_{}'.format(libpath_uselib_prefix, use_name)] = libpaths_to_process
+
+
+    if 'lib' in kw and 'sharedlib' in kw:
+        raise WafError("Cannot register both a static lib and a regular lib for the same library ({})".format(use_name))
+    if 'sharedlib' in kw and 'importlib' not in kw:
+        raise WafError("Cannot register a shared library without declaring its import library({})".format(use_name))
+    if 'importlib' in kw and 'sharedlib' not in kw:
+        raise WafError("Cannot register an import library without declaring its shared library({})".format(use_name))
+
+    # Apply the library specific values
+    if 'lib' in kw:
+        _apply_lib_to_list('STLIB', 'lib', 'STLIBPATH', 'libpath', True)
+
+    elif 'sharedlib' in kw:
+        _apply_lib_to_list('LIB', 'importlib', 'LIBPATH', 'sharedlibpath', True)
+        _apply_lib_to_list('SHAREDLIB', 'sharedlib', 'SHAREDLIBPATH', 'sharedlibpath', False)
+
+    # Apply the general uselib keys if provided
+    _apply_to_list('INCLUDES', 'includes')
+    _apply_to_list('DEFINES', 'defines')
+    _apply_to_list('FRAMEWORKPATH', 'frameworkpath')
+    _apply_to_list('LINKFLAGS', 'linkflags')
+    _apply_to_list('PDB', 'pdb')
+    _apply_to_list('COPY_EXTRA', 'copy_extra')
+
+    REGISTERED_3RD_PARTY_USELIB.add(use_name)
 
 def is_third_party_uselib_configured(ctx, use_name):
     """
@@ -1005,6 +1092,8 @@ def is_third_party_uselib_configured(ctx, use_name):
 
     # First check against the evaluated 3rd party set
     if use_name in CONFIGURED_3RD_PARTY_USELIBS:
+        return True
+    if use_name in REGISTERED_3RD_PARTY_USELIB:
         return True
 
     # Check against the global env

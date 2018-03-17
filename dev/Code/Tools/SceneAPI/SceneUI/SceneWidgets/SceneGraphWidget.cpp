@@ -302,7 +302,7 @@ namespace AZ
                         QVariant itemData = item->data();
                         if (itemData.isValid())
                         {
-                            AZStd::string fullName = itemData.toString().toLatin1().data();
+                            AZStd::string fullName = itemData.toString().toUtf8().data();
                             if (state == Qt::CheckState::Unchecked)
                             {
                                 m_targetList->RemoveSelectedNode(fullName);
@@ -403,7 +403,7 @@ namespace AZ
                     return;
                 }
 
-                AZStd::string fullName = itemData.toString().toLatin1().data();
+                AZStd::string fullName = itemData.toString().toUtf8().data();
                 AZ_TraceContext("Selected item", fullName);
                 Containers::SceneGraph::NodeIndex nodeIndex = m_scene.GetGraph().Find(fullName);
                 AZ_Assert(nodeIndex.IsValid(), "Invalid node added to tree.");
@@ -462,7 +462,7 @@ namespace AZ
                     return false;
                 }
 
-                AZStd::string fullName = itemData.toString().toLatin1().data();
+                AZStd::string fullName = itemData.toString().toUtf8().data();
                 AZ_TraceContext("Item for addition", fullName);
                 Containers::SceneGraph::NodeIndex nodeIndex = m_scene.GetGraph().Find(fullName);
                 AZ_Assert(nodeIndex.IsValid(), "Invalid node added to tree.");
@@ -490,7 +490,7 @@ namespace AZ
                     return false;
                 }
 
-                AZStd::string fullName = itemData.toString().toLatin1().data();
+                AZStd::string fullName = itemData.toString().toUtf8().data();
                 AZ_TraceContext("Item for removal", fullName);
                 Containers::SceneGraph::NodeIndex nodeIndex = m_scene.GetGraph().Find(fullName);
                 AZ_Assert(nodeIndex.IsValid(), "Invalid node removed from tree.");

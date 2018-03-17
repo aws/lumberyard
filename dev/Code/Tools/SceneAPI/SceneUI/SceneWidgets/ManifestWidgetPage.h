@@ -12,7 +12,7 @@
 *
 */
 
-#include <QWidget.h>
+#include <QWidget>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Math/Uuid.h>

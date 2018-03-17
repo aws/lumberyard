@@ -19,11 +19,6 @@
 
 #include "../Common/Textures/TextureStreamPool.h"
 
-//===============================================================================
-#ifdef TEXSTRM_ASYNC_TEXCOPY
-DECLARE_JOB("Texture_StreamOutCopy", TTexture_StreamOutCopy, STexStreamOutState::CopyMips);
-#endif
-
 // checks for MT-safety of called functions
 #define D3D_CHK_RENDTH assert(gcpRendD3D->m_pRT->IsRenderThread())
 #define D3D_CHK_MAINTH assert(gcpRendD3D->m_pRT->IsMainThread())
@@ -166,10 +161,10 @@ int CTexture::StreamTrim(int nToMip)
 
                 SetStreamingInProgress(StreamOutMask | (uint8)s_StreamOutTasks.GetIdxFromPtr(pStreamState));
 
-                TTexture_StreamOutCopy job;
-                job.SetClassInstance(pStreamState);
-                job.RegisterJobState(&pStreamState->m_jobState);
-                job.Run();
+                pStreamState->m_jobExecutor.StartJob([pStreamState]()
+                {
+                    pStreamState->CopyMips();
+                });
 
                 bCopying = true;
 
@@ -230,10 +225,10 @@ int CTexture::StreamUnload()
 
             SetStreamingInProgress(StreamOutMask | (uint8)s_StreamOutTasks.GetIdxFromPtr(pStreamState));
 
-            TTexture_StreamOutCopy job;
-            job.SetClassInstance(pStreamState);
-            job.RegisterJobState(&pStreamState->m_jobState);
-            job.Run();
+            pStreamState->m_jobExecutor.StartJob([pStreamState]()
+            {
+                pStreamState->CopyMips();
+            });
 
             bCopying = true;
         }

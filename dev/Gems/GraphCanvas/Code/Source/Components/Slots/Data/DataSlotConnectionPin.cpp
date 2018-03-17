@@ -11,7 +11,7 @@
 */
 #include "precompiled.h"
 
-#include <qpainter.h>
+#include <QPainter>
 
 #include <Components/Slots/Data/DataSlotConnectionPin.h>
 

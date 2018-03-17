@@ -22,7 +22,7 @@
 #include <SceneAPI/SceneUI/Handlers/ProcessingHandlers/ProcessingHandler.h>
 #include <SceneAPI/SceneUI/CommonWidgets/OverlayWidget.h>
 #include <QCloseEvent>
-#include <QDateTime.h>
+#include <QDateTime>
 #include <QLabel>
 #include <QTimer>
 
@@ -32,11 +32,10 @@ namespace AZ
     {
         namespace SceneUI
         {
-            ProcessingOverlayWidget::ProcessingOverlayWidget(UI::OverlayWidget* overlay, Layout layout, Uuid traceTag, const AZStd::shared_ptr<ProcessingHandler>& handler)
+            ProcessingOverlayWidget::ProcessingOverlayWidget(UI::OverlayWidget* overlay, Layout layout, Uuid traceTag)
                 : QWidget()
                 , m_traceTag(traceTag)
                 , ui(new Ui::ProcessingOverlayWidget())
-                , m_targetHandler(handler)
                 , m_overlay(overlay)
                 , m_progressLabel(nullptr)
                 , m_layerId(UI::OverlayWidget::s_invalidOverlayIndex)
@@ -68,16 +67,9 @@ namespace AZ
 
                 UpdateColumnSizes();
                 
-                AZ_Assert(handler, "Processing handler was null");
-
-                connect(m_targetHandler.get(), &ProcessingHandler::StatusMessageUpdated, this, &ProcessingOverlayWidget::OnSetStatusMessage);
-                connect(m_targetHandler.get(), &ProcessingHandler::AddLogEntry, this, &ProcessingOverlayWidget::AddLogEntry);
-                connect(m_targetHandler.get(), &ProcessingHandler::ProcessingComplete, this, &ProcessingOverlayWidget::OnProcessingComplete);
                 connect(m_overlay, &UI::OverlayWidget::LayerRemoved, this, &ProcessingOverlayWidget::OnLayerRemoved);
 
                 BusConnect();
-
-                m_targetHandler->BeginProcessing();
 
                 m_resizeTimer->setSingleShot(true);
                 m_resizeTimer->setInterval(0);
@@ -218,7 +210,25 @@ namespace AZ
             {
                 return m_isProcessingComplete;
             }
-                        
+
+            void ProcessingOverlayWidget::SetAndStartProcessingHandler(const AZStd::shared_ptr<ProcessingHandler>& handler)
+            {
+                AZ_Assert(handler, "Processing handler was null");
+                AZ_Assert(!m_targetHandler, "A handler has already been assigned. Only one can be active per layer at any given time.");
+                if (m_targetHandler)
+                {
+                    return;
+                }
+
+                m_targetHandler = handler;
+
+                connect(m_targetHandler.get(), &ProcessingHandler::StatusMessageUpdated, this, &ProcessingOverlayWidget::OnSetStatusMessage);
+                connect(m_targetHandler.get(), &ProcessingHandler::AddLogEntry, this, &ProcessingOverlayWidget::AddLogEntry);
+                connect(m_targetHandler.get(), &ProcessingHandler::ProcessingComplete, this, &ProcessingOverlayWidget::OnProcessingComplete);
+
+                handler->BeginProcessing();
+            }
+
             AZStd::shared_ptr<ProcessingHandler> ProcessingOverlayWidget::GetProcessingHandler() const
             {
                 return m_targetHandler;
@@ -248,8 +258,20 @@ namespace AZ
                 AzQtComponents::StyledDetailsTableModel::TableEntry reportEntry;
                 for (auto& field : entry.GetFields())
                 {
+                    size_t offset = 0;
                     hasStatus = hasStatus || AzFramework::StringFunc::Equal("status", field.second.m_name.c_str());
-                    reportEntry.Add(field.second.m_name.c_str(), field.second.m_value.c_str());
+                    if (AzFramework::StringFunc::Equal("message", field.second.m_name.c_str()))
+                    {
+                        if (field.second.m_value.length() > 2)
+                        {
+                            // Removing the prefixes such as "W: " and "E: ".
+                            if (field.second.m_value[1] == ':' && field.second.m_value[2] == ' ')
+                            {
+                                offset = 3;
+                            }
+                        }
+                    }
+                    reportEntry.Add(field.second.m_name.c_str(), field.second.m_value.c_str() + offset);
                 }
 
                 if (!hasStatus)
@@ -311,8 +333,8 @@ namespace AZ
                     {
                         m_overlay->RefreshLayer(m_layerId);
                     }
+                    m_busyLabel->SetIsBusy(false);
                 }
-                m_busyLabel->SetIsBusy(false);
             }
 
             bool ProcessingOverlayWidget::CanClose() const

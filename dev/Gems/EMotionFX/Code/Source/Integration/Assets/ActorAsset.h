@@ -68,7 +68,7 @@ namespace EMotionFX
 
                 CMesh*                                  m_mesh;      // Non-null only until asset is finalized.
                 AZStd::vector<SMeshBoneMapping_uint16>  m_vertexBoneMappings;
-                std::atomic_bool                        m_isReady;
+                AZStd::atomic_bool                      m_isReady;
 
                 MeshLOD()
                     : m_mesh(nullptr)

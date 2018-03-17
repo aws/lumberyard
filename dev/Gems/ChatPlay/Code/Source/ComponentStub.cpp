@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 #include <platform_impl.h>
 
 #include <IGem.h>

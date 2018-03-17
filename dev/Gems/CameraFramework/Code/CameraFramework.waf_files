@@ -14,8 +14,8 @@
     },
     "NoUberFile": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/CameraFramework_precompiled.cpp",
+            "Source/CameraFramework_precompiled.h"
         ]
     }
 }

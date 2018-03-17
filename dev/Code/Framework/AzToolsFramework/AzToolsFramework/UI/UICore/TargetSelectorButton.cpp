@@ -10,15 +10,15 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzCore/std/string/string.h>
 
 #include "TargetSelectorButton.hxx"
 #include <UI/UICore/TargetSelectorButton.moc>
 
-#include <qaction.h>
-#include <qmenu.h>
+#include <QAction>
+#include <QMenu>
 
 namespace AzToolsFramework
 {

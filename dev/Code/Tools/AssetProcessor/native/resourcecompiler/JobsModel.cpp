@@ -252,9 +252,33 @@ namespace AssetProcessor
         }
     }
 
+    void JobsModel::OnSourceRemoved(QString sourceRelPath)
+    {
+        // when a source is removed, we need to eliminate all job entries for that source regardless of all other details of it.
+        QList<AssetProcessor::QueueElementID> elementsToRemove;
+        for (int index = 0; index < m_cachedJobs.count(); ++index)
+        {
+            if (QString::compare(m_cachedJobs[index]->m_elementId.GetInputAssetName(), sourceRelPath, Qt::CaseSensitive) == 0)
+            {
+                elementsToRemove.push_back(m_cachedJobs[index]->m_elementId);
+            }
+        }
+
+        // now that we've collected all the elements to remove, we can remove them.  
+        // Doing it this way avoids problems with mutating these cache structures while iterating them.
+        for (const AssetProcessor::QueueElementID& removal : elementsToRemove)
+        {
+            RemoveJob(removal);
+        }
+    }
+
     void JobsModel::OnJobRemoved(AzToolsFramework::AssetSystem::JobInfo jobInfo)
     {
-        QueueElementID elementId(jobInfo.m_sourceFile.c_str(), jobInfo.m_platform.c_str(), jobInfo.m_jobKey.c_str());
+        RemoveJob(QueueElementID(jobInfo.m_sourceFile.c_str(), jobInfo.m_platform.c_str(), jobInfo.m_jobKey.c_str()));
+    }
+
+    void JobsModel::RemoveJob(const AssetProcessor::QueueElementID& elementId)
+    {
         auto iter = m_cachedJobsLookup.find(elementId);
         if (iter != m_cachedJobsLookup.end())
         {

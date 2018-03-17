@@ -54,6 +54,7 @@ namespace LegacyFramework
         /// Create application, if systemEntityFileName is NULL, we will create with default settings.
     public:
 
+        using CoreMessageBus::Handler::Run;
         virtual int Run(const ApplicationDesc& desc);
         Application();
         virtual ~Application();
@@ -81,7 +82,7 @@ namespace LegacyFramework
         // ------------------------------------------------------------------
 
 
-        virtual AZ::Entity* Create(const char* systemEntityFileName);
+        AZ::Entity* Create(const char* systemEntityFileName, const StartupParameters& startupParameters = StartupParameters()) override;
         virtual void Destroy();
         /**
          * Before we reflect for serialization make sure we have the serialize context

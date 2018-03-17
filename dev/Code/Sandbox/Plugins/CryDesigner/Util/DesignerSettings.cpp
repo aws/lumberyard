@@ -131,7 +131,7 @@ void SDesignerExclusiveMode::EnableExclusiveMode(bool bEnable)
 
         QString designerCameraPath = QString("%1\\Editor\\Objects\\CryDesigner_Camera.grp").arg(QDir::currentPath());
 
-        XmlNodeRef cameraNode = XmlHelpers::LoadXmlFromFile(designerCameraPath.toLatin1().constData());
+        XmlNodeRef cameraNode = XmlHelpers::LoadXmlFromFile(designerCameraPath.toUtf8().constData());
         if (cameraNode)
         {
             CObjectArchive cameraArchive(GetIEditor()->GetObjectManager(), cameraNode, true);
@@ -351,7 +351,7 @@ void SDesignerExclusiveMode::SetTimeOfDayForExclusiveMode()
 {
     QString designerTimeOfDay = QString("%1\\Editor\\CryDesigner_TimeOfDay.xml").arg(QDir::currentPath());
 
-    XmlNodeRef root = GetIEditor()->GetSystem()->LoadXmlFromFile(designerTimeOfDay.toLatin1().constData());
+    XmlNodeRef root = GetIEditor()->GetSystem()->LoadXmlFromFile(designerTimeOfDay.toUtf8().constData());
     if (root)
     {
         ITimeOfDay* pTimeOfDay = GetIEditor()->Get3DEngine()->GetTimeOfDay();

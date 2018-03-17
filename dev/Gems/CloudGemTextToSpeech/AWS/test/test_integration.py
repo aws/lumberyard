@@ -1,4 +1,4 @@
-import resource_manager.constant as constant
+import resource_manager_common.constant as constant
 import boto3
 from botocore.exceptions import ClientError
 from resource_manager.test import lmbr_aws_test_support

@@ -14,7 +14,7 @@
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
 #include <AzCore/Math/Color.h>
-#include <QColor.h>
+#include <QColor>
 
 
 namespace AzQtComponents

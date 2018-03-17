@@ -592,6 +592,9 @@ namespace AZStd
         const_pointer m_end;
     };
 
+    template <class Element, class Traits>
+    const typename basic_string_view<Element, Traits>::size_type basic_string_view<Element, Traits>::npos;
+
     using string_view = basic_string_view<char>;
     using wstring_view = basic_string_view<wchar_t>;
 

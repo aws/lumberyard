@@ -311,16 +311,18 @@ namespace AssetProcessor
 
 
         PlatformConfiguration config;
-        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse order
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4", "",          false, false, -6)); // subfolder 4 overrides subfolder3
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "subfolder3", "subfolder3", "",          false, false, -5)); // subfolder 3 overrides subfolder2
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "subfolder2", "subfolder2", "",          false, true, -2)); // subfolder 2 overrides subfolder1
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "",          false, true, -1)); // subfolder1 overrides root
-        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),         "temp",       "tempfolder", "",          true, false, 0)); // add the root
+        config.EnablePlatform({ "pc",{ "desktop", "renderer" } }, true);
+        config.EnablePlatform({ "es3",{ "mobile", "renderer" } }, true);
+        config.EnablePlatform({ "fandago",{ "console", "renderer" } }, false);
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        config.PopulatePlatformsForScanFolder(platforms);
+        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse  platforms   order
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4", "",          false, false, platforms, -6)); // subfolder 4 overrides subfolder3
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "subfolder3", "subfolder3", "",          false, false, platforms,-5)); // subfolder 3 overrides subfolder2
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "subfolder2", "subfolder2", "",          false, true,  platforms, -2)); // subfolder 2 overrides subfolder1
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "",          false, true,  platforms, -1)); // subfolder1 overrides root
+        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),         "temp",       "tempfolder", "",          true, false,  platforms, 0)); // add the root
 
-        config.EnablePlatform({ "pc", { "desktop", "renderer" } }, true);
-        config.EnablePlatform({ "es3", { "mobile", "renderer" } }, true);
-        config.EnablePlatform({ "fandago", { "console", "renderer" } }, false);
 
         config.AddMetaDataType("exportsettings", QString());
 
@@ -333,7 +335,7 @@ namespace AssetProcessor
 
         speces3.m_extraRCParams = "somerandomparam";
         rec.m_name = "random files";
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.random", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.random", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         config.AddRecognizer(rec);
         UNIT_TEST_EXPECT_TRUE(mockAppManager.RegisterAssetRecognizerAsBuilder(rec));
@@ -343,7 +345,7 @@ namespace AssetProcessor
 
         const char* builderTxt1Name = "txt files";
         rec.m_name = builderTxt1Name;
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         rec.m_platformSpecs.insert("es3", speces3);
 
@@ -357,14 +359,14 @@ namespace AssetProcessor
         config.AddRecognizer(rec);
         mockAppManager.RegisterAssetRecognizerAsBuilder(rec);
 
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher(".*\\/test\\/.*\\.format", AssetBuilderSDK::AssetBuilderPattern::Regex);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher(".*\\/test\\/.*\\.format", AssetBuilderSDK::AssetBuilderPattern::Regex);
         rec.m_name = "format files that live in a folder called test";
         config.AddRecognizer(rec);
         mockAppManager.RegisterAssetRecognizerAsBuilder(rec);
 
         // tiff file recognizer
         rec.m_name = "tiff files";
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.tiff", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.tiff", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.clear();
         rec.m_platformSpecs.insert("pc", specpc);
         rec.m_testLockSource = true;
@@ -378,7 +380,7 @@ namespace AssetProcessor
         speces3.m_extraRCParams = "es3params";
 
         rec.m_name = "xxx files";
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.xxx", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.xxx", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         rec.m_platformSpecs.insert("es3", speces3);
         config.AddRecognizer(rec);
@@ -398,7 +400,7 @@ namespace AssetProcessor
         ignore_spec.m_extraRCParams = "skip";
         AssetRecognizer ignore_rec;
         ignore_rec.m_name = "ignore files";
-        ignore_rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.ignore", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        ignore_rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.ignore", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         ignore_rec.m_platformSpecs.insert("pc", specpc);
         ignore_rec.m_platformSpecs.insert("es3", ignore_spec);
         config.AddRecognizer(ignore_rec);
@@ -407,7 +409,7 @@ namespace AssetProcessor
 
         ExcludeAssetRecognizer excludeRecogniser;
         excludeRecogniser.m_name = "backup";
-        excludeRecogniser.m_patternMatcher = AssetUtilities::FilePatternMatcher(".*\\/savebackup\\/.*", AssetBuilderSDK::AssetBuilderPattern::Regex);
+        excludeRecogniser.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher(".*\\/savebackup\\/.*", AssetBuilderSDK::AssetBuilderPattern::Regex);
         config.AddExcludeRecognizer(excludeRecogniser);
 
         AssetProcessorManager_Test apm(&config);  // note, this will 'push' the scan folders in to the db.
@@ -2420,7 +2422,7 @@ namespace AssetProcessor
         AssetRecognizer abt_rec1;
         AssetPlatformSpec abt_speces3;
         abt_rec1.m_name = "UnitTestTextBuilder1";
-        abt_rec1.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        abt_rec1.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         //abt_rec1.m_regexp.setPatternSyntax(QRegExp::Wildcard);
         //abt_rec1.m_regexp.setPattern("*.txt");
         abt_rec1.m_platformSpecs.insert("es3", speces3);
@@ -2429,7 +2431,7 @@ namespace AssetProcessor
         AssetRecognizer abt_rec2;
         AssetPlatformSpec abt_specpc;
         abt_rec2.m_name = "UnitTestTextBuilder2";
-        abt_rec2.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        abt_rec2.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         //abt_rec2.m_regexp.setPatternSyntax(QRegExp::Wildcard);
         //abt_rec2.m_regexp.setPattern("*.txt");
         abt_rec2.m_platformSpecs.insert("pc", specpc);
@@ -2518,11 +2520,12 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
 
         PlatformConfiguration config;
+        config.EnablePlatform({ "pc" ,{ "desktop", "renderer" } }, true);
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        config.PopulatePlatformsForScanFolder(platforms);
         //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse order
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1)); // subfolder1 overrides root
-        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, 0)); // add the root
-
-        config.EnablePlatform({ "pc" , { "desktop", "renderer"} }, true);
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, platforms,-1)); // subfolder1 overrides root
+        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, platforms, 0)); // add the root
 
         AssetProcessorManager_Test apm(&config);
 
@@ -2729,12 +2732,14 @@ namespace AssetProcessor
         // should create cache folder in the root, and read everything from there.
 
         PlatformConfiguration config;
-        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse order
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4", "", false, false, -6)); // subfolder 4 overrides subfolder3
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "subfolder3", "subfolder3", "", false, false, -5)); // subfolder 3 overrides subfolder2
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "subfolder2", "subfolder2", "", false, true, -2)); // subfolder 2 overrides subfolder1
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1)); // subfolder1 overrides root
-        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, 0)); // add the root
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        config.PopulatePlatformsForScanFolder(platforms);
+        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse platforms order
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4", "", false, false, platforms, -6)); // subfolder 4 overrides subfolder3
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "subfolder3", "subfolder3", "", false, false, platforms, -5)); // subfolder 3 overrides subfolder2
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "subfolder2", "subfolder2", "", false, true, platforms, -2)); // subfolder 2 overrides subfolder1
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, platforms, -1)); // subfolder1 overrides root
+        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, platforms, 0)); // add the root
 
         {
             // create this, which will write those scan folders into the db as-is
@@ -2777,15 +2782,17 @@ namespace AssetProcessor
 
         // now make a different config with different scan folders but with some of the same portable keys but new paths.
         PlatformConfiguration config2;
-        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse order
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms2;
+        config2.PopulatePlatformsForScanFolder(platforms2);
+        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse platforms order
         // case 1:  same absolute path, but the same portable key - should use same ID as before.
-        config2.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4", "", false, false, -6)); // subfolder 4 overrides subfolder3
+        config2.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4", "", false, false, platforms2, -6)); // subfolder 4 overrides subfolder3
 
         // case 2:  A new absolute path, but same portable key - should use same id as before
-        config2.AddScanFolder(ScanFolderInfo(tempPath.filePath("newfolder3"), "subfolder3", "subfolder3", "", false, false, -5)); // subfolder 3 overrides subfolder2
+        config2.AddScanFolder(ScanFolderInfo(tempPath.filePath("newfolder3"), "subfolder3", "subfolder3", "", false, false, platforms2, -5)); // subfolder 3 overrides subfolder2
 
         // case 3:  same absolute path, new portable key - should use a new ID
-        config2.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder3", "newfolder3", "", false, false, -5)); // subfolder 3 overrides subfolder2
+        config2.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder3", "newfolder3", "", false, false, platforms2, -5)); // subfolder 3 overrides subfolder2
 
         // case 4:  subfolder2 is missing - it should be gone.
 
@@ -2910,9 +2917,11 @@ namespace AssetProcessor
         // should create cache folder in the root, and read everything from there.
 
         PlatformConfiguration config;
-        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse order
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1)); // subfolder1 overrides root
-        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, 0)); // add the root
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        config.PopulatePlatformsForScanFolder(platforms);
+        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse platforms order
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, platforms, -1)); // subfolder1 overrides root
+        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, platforms, 0)); // add the root
 
         
         AssetProcessorManager_Test apm(&config);
@@ -3352,12 +3361,14 @@ namespace AssetProcessor
         UNIT_TEST_EXPECT_FALSE(gameName.isEmpty());
 
         PlatformConfiguration config;
-        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse order
+        config.EnablePlatform({ "pc",{ "desktop", "renderer" } }, true);
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        config.PopulatePlatformsForScanFolder(platforms);
+        //                                               PATH                 DisplayName  PortKey       outputfolder  root recurse  platforms order
 
         // note: the crux of this test is that we ar redirecting output into the cache at a different location instead of default.
         // so our scan folder has a "redirected" folder.
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "redirected", false, true, -1)); 
-        config.EnablePlatform({ "pc", {"desktop", "renderer"} }, true);
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "redirected", false, true, platforms, -1)); 
 
         AssetProcessorManager_Test apm(&config);
 

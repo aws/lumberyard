@@ -222,8 +222,7 @@ void CThreadTask_Thread::RemoveAllTasks()
 
 void CThreadTask_Thread::Init()
 {
-#if defined(WIN32) || defined(DURANGO)
-    // init thread
+#if AZ_TRAIT_OS_USE_WINDOWS_THREADS
     m_hThreadHandle = GetCurrentThread();
 #endif
 
@@ -695,15 +694,15 @@ void CThreadTaskManager::SetThreadName(threadID dwThreadId, const char* sThreadN
         dwThreadId = GetCurrentThreadId();
     }
 
-#if defined(AZ_PROFILE_TELEMETRY) && (defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE))
+#if defined(AZ_PROFILE_TELEMETRY) && AZ_TRAIT_OS_USE_WINDOWS_THREADS
     AZStd::thread_desc desc;
     desc.m_name = sThreadName;
     EBUS_EVENT(AZStd::ThreadEventBus, OnThreadEnter, AZStd::thread::id(dwThreadId), &desc);
 #endif
 
-#if defined(WIN32) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_THREADTASK_EXCEPTIONS
     //////////////////////////////////////////////////////////////////////////
-    // Rise exception to set thread name for debugger.
+    // Raise exception to set thread name for debugger.
     //////////////////////////////////////////////////////////////////////////
     THREADNAME_INFO_TASK threadName;
     threadName.dwType = 0x1000;

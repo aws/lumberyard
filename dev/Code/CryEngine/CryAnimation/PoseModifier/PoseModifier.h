@@ -61,7 +61,7 @@ private:
     std::vector<IAnimationPoseModifierPtr> m_modifiers;
 };
 
-DECLARE_BOOST_POINTERS(CPoseModifierStack);
+DECLARE_SMART_POINTERS(CPoseModifierStack);
 
 //
 
@@ -102,7 +102,7 @@ private:
     CPoseModifierStackPtr m_pPoseModifierStack;
 };
 
-DECLARE_BOOST_POINTERS(CPoseModifierSetup);
+DECLARE_SMART_POINTERS(CPoseModifierSetup);
 
 #endif // ENABLE_RUNTIME_POSE_MODIFIERS
 

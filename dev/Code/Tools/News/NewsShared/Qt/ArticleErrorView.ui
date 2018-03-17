@@ -114,7 +114,7 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QBetterLabel" name="label">
+           <widget class="AzQtComponents::ExtendedLabel" name="label">
             <property name="minimumSize">
              <size>
               <width>160</width>
@@ -227,9 +227,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QBetterLabel</class>
+   <class>AzQtComponents::ExtendedLabel</class>
    <extends>QLabel</extends>
-   <header>NewsShared/Qt/QBetterLabel.h</header>
+   <header>AzQtComponents/Components/ExtendedLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>

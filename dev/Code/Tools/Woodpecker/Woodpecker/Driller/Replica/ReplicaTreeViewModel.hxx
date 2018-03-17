@@ -13,7 +13,7 @@
 #ifndef DRILLER_REPLICA_REPLICATREEVIEWMODELS_H
 #define DRILLER_REPLICA_REPLICATREEVIEWMODELS_H
 
-#include <qabstractitemmodel.h>
+#include <QAbstractItemModel>
 
 #include "Woodpecker/Driller/Replica/ReplicaDisplayHelpers.h"
 

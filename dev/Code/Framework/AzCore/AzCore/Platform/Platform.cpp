@@ -36,7 +36,7 @@ namespace AZ
             ProcessId result = 0;
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) 
             result = ::getpid();
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#elif AZ_TRAIT_USE_WINDOWS_PROCESSID
             result = ::GetCurrentProcessId();
 #else
 #   error Platform not supported!

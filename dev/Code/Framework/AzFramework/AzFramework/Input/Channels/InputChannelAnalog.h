@@ -28,6 +28,10 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputChannelAnalog, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelAnalog, "{C3E76C92-0D00-45F1-AF03-EFF3F1910A0D}", InputChannel);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputChannelId Id of the input channel being constructed
         //! \param[in] inputDevice Input device that owns the input channel

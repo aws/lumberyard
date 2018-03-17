@@ -275,6 +275,15 @@ namespace LegacyConversionInternal
         return LegacyConversionResult::HandledDeleteEntity;
     }
 
+    /*
+        This is used to invert the legacy IgnoreVisAreas param
+        to the new UseVisAreas param. 
+     */
+    bool UseVisAreaAdapter(const bool& ignoreVisAreas)
+    {
+        return !ignoreVisAreas;
+    }
+
     // note: CEnvironementProbeObject -> EditorEnvProbeComponent
     LegacyConversionResult ConvertEnvironmentLightEntity(CBaseObject* entityToConvert)
     {
@@ -338,7 +347,7 @@ namespace LegacyConversionInternal
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, float>("fSpecularMultiplier", varBlock, &LmbrCentral::EditorLightComponentRequests::SetSpecularMultiplier, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bAffectsVolumetricFogOnly", varBlock, &LmbrCentral::EditorLightComponentRequests::SetVolumetricFogOnly, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, float>("fAttenuationFalloffMax", varBlock, &LmbrCentral::EditorLightComponentRequests::SetAttenuationFalloffMax, newEntityId);
-            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bIgnoresVisAreas", varBlock, &LmbrCentral::EditorLightComponentRequests::SetIgnoreVisAreas, newEntityId);
+            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool, bool>("bIgnoresVisAreas", varBlock, &LmbrCentral::EditorLightComponentRequests::SetUseVisAreas, newEntityId, UseVisAreaAdapter);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bVolumetricFog", varBlock, &LmbrCentral::EditorLightComponentRequests::SetVolumetricFog, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, QString, AZStd::string>("texture_deferred_cubemap", varBlock, &LmbrCentral::EditorLightComponentRequests::SetCubemap, newEntityId, QStringAdapter);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, float>("fBoxHeight", varBlock, &LmbrCentral::EditorLightComponentRequests::SetBoxHeight, newEntityId);
@@ -482,7 +491,7 @@ namespace LegacyConversionInternal
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bAmbient", varBlock, &LmbrCentral::EditorLightComponentRequests::SetAmbient, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bAffectsVolumetricFogOnly", varBlock, &LmbrCentral::EditorLightComponentRequests::SetVolumetricFogOnly, newEntityId);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bVolumetricFog", varBlock, &LmbrCentral::EditorLightComponentRequests::SetVolumetricFog, newEntityId);
-            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bIgnoresVisAreas", varBlock, &LmbrCentral::EditorLightComponentRequests::SetIgnoreVisAreas, newEntityId);
+            conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool, bool>("bIgnoresVisAreas", varBlock, &LmbrCentral::EditorLightComponentRequests::SetUseVisAreas, newEntityId, UseVisAreaAdapter);
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bAffectsThisAreaOnly", varBlock, &LmbrCentral::EditorLightComponentRequests::SetAffectsThisAreaOnly, newEntityId);
 
             conversionSuccess &= ConvertVarBus<LmbrCentral::EditorLightComponentRequestBus, bool>("bActive", varBlock, &LmbrCentral::EditorLightComponentRequests::SetOnInitially, newEntityId);
@@ -1540,9 +1549,9 @@ namespace AZ
                 ConvertAreaShapeEntity,
                 ConvertAreaBoxEntity,
                 ConvertAreaSphereEntity,
-                //ConvertNavigationSeed, Disabled for v1.12
+                ConvertNavigationSeed,
                 //ConvertWindVolumeEntity, Disabled for v1.12
-                //ConvertNavigationAreaEntity, Disabled for v1.12
+                ConvertNavigationAreaEntity,
                 ConvertTagPointEntity,
                 ConvertDecalEntity,
                 ConvertFogVolumeEntity,

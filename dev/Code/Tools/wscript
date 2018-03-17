@@ -58,14 +58,10 @@ def build(bld):
 
         if os.path.exists(bld.Path('Code/Tools/LyIdentity/wscript')):
             bld.recurse(['LyIdentity'])
-        else:
-            bld.register_ly_identity_as_external()
 
         if os.path.exists(bld.Path('Code/Tools/LyMetrics/wscript')):
             bld.recurse(['LyMetrics'])
         else:
-            bld.register_ly_metrics_as_external()
-
             bld.mark_module_exempt('LyMetricsProducer_python')
             bld.mark_module_exempt('LyMetricsConsumer')
             bld.mark_module_exempt('LyInstallerMetrics')

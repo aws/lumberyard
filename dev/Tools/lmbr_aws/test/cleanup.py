@@ -13,6 +13,7 @@
 import argparse
 import boto3
 import time
+import os
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
@@ -31,21 +32,36 @@ class Cleaner:
         self.logs = session.client('logs')
         self.apigateway = session.client('apigateway')
         self.dynamodb = session.client('dynamodb')
-
+        self.lambda_client = session.client('lambda')        
+        self.sqs = session.client('sqs')        
+        try:
+            self.glue = session.client('glue')        
+        except:
+            self.glue = None
+            print 'Glue service not found, skipping'
+        self.iot_client = session.client('iot')
+        
     def cleanup(self, prefixes, exceptions):
         self.__prefixes = prefixes
         self.__exceptions = exceptions
         self._delete_stacks()
         self._delete_buckets()
         self._delete_identity_pools()
-        self._delete_user_pools()
-        self._delete_users()
-        self._delete_roles()
-        self._delete_policies()
+        self._delete_user_pools()        
         self._delete_dynamodb_tables()
         self._delete_log_groups()
         self._delete_api_gateway()
+        self._delete_lambdas()
+        self._delete_sqs_queues()
+        self._delete_glue_crawlers()
+        self._delete_glue_databases()
 
+        #users/roles/policies need to be deleted last
+        self._delete_users()
+        self._delete_roles()
+        self._delete_policies()
+        self._delete_iot_policies()
+        
     def _has_prefix(self, name):
         
         name = name.lower()
@@ -62,6 +78,136 @@ class Cleaner:
 
     def __describe_prefixes(self):
         return str(self.__prefixes) + ' but not ' + str(self.__exceptions)
+
+    def _delete_glue_crawlers(self):
+        if not self.glue:
+            print 'No glue client available, skipping glue crawlers'
+            return
+			
+        print '\n\nlooking for Glue crawlers with names starting with one of', self.__describe_prefixes()
+        token = None
+        while True:
+            params = {}   
+            if token:
+                params["NextToken"]= token
+            res = self.glue.get_crawlers(**params)   
+            token = res.get('NextToken')
+            for crawler in res['Crawlers']:
+                crawler_name = crawler['Name']                
+                if not self._has_prefix(crawler_name):                
+                    continue
+                print '  found crawler', crawler_name
+                while True:
+                    try:
+                        print '    deleting crawler', crawler_name
+                        self.glue.delete_crawler(
+                                        Name=crawler_name
+                                    )
+                        break
+                    except ClientError as e:
+                        if e.response["Error"]["Code"] == "LimitExceededException":
+                            print '    too many requests, sleeping...'                        
+                            time.sleep(15)
+                        else:
+                            print '      ERROR:', e
+                            break   
+            if token is None:
+                break
+
+    def _delete_glue_tables(self, database_name):
+        print '\tlooking for Glue tables with names starting with one of', self.__describe_prefixes()
+        token = None
+        while True:
+            params = {}
+            params['DatabaseName'] = database_name   
+            if token:
+                params["NextToken"]= token
+            res = self.glue.get_tables(**params)   
+            token = res.get('NextToken')
+            for table in res['TableList']:
+                table_name = table['Name']                
+                if not self._has_prefix(table_name):                
+                    continue
+                print '  found glue table', table_name
+                while True:
+                    try:
+                        print '\t\tdeleting glue table', table_name
+                        self.glue.delete_table(
+                                        Name=table_name,
+                                        DatabaseName=database_name
+                                    )
+                        break
+                    except ClientError as e:
+                        if e.response["Error"]["Code"] == "LimitExceededException":
+                            print '    too many requests, sleeping...'                        
+                            time.sleep(15)
+                        else:
+                            print '      ERROR:', e
+                            break   
+            if token is None:
+                break
+
+    def _delete_glue_databases(self):
+        if not self.glue:
+            print 'No glue client available, skipping glue databases'
+            return
+			
+        print '\n\nlooking for Glue databases with names starting with one of', self.__describe_prefixes()
+        token = None
+        while True:
+            params = {}   
+            if token:
+                params["NextToken"]= token
+            res = self.glue.get_databases(**params)   
+            token = res.get('NextToken') 
+            for database in res['DatabaseList']:
+                database_name = database['Name']                
+                if not self._has_prefix(database_name):                
+                    continue
+                print '  found glue database', database_name
+                self._delete_glue_tables(database_name)
+                while True:
+                    try:
+                        print '    deleting glue database', database_name
+                        self.glue.delete_database(
+                                        Name=database_name
+                                    )
+                        break
+                    except ClientError as e:
+                        if e.response["Error"]["Code"] == "LimitExceededException":
+                            print '    too many requests, sleeping...'                        
+                            time.sleep(15)
+                        else:
+                            print '      ERROR:', e
+                            break   
+            if token is None:
+                break
+
+    def _delete_sqs_queues(self):
+        print '\n\nlooking for SQS queues with names starting with one of', self.__describe_prefixes()
+        res = self.sqs.list_queues()  
+        if 'QueueUrls' not in res:      
+            return
+        for queueurl in res['QueueUrls']:
+            queue_parts = queueurl.split("/")
+            queue = queue_parts[4]
+            if not self._has_prefix(queue):                
+                continue
+            print '  found queue', queue
+            while True:
+                try:
+                    print '    deleting queue', queue
+                    self.sqs.delete_queue(
+                                    QueueUrl=queueurl
+                                )
+                    break
+                except ClientError as e:
+                    if e.response["Error"]["Code"] == "LimitExceededException":
+                        print '    too many requests, sleeping...'                        
+                        time.sleep(15)
+                    else:
+                        print '      ERROR:', e
+                        break    
 
     def _delete_dynamodb_tables(self):
         print '\n\nlooking for dynamo tables with names starting with one of', self.__describe_prefixes()
@@ -174,17 +320,26 @@ class Cleaner:
             print e
             if e.response['Error']['Code'] == 'NoSuchBucket':
                 return
-        while 'Versions' in list_res and list_res['Versions']:
+        while True:
 
             delete_list = []
 
-            for version in list_res['Versions']:
+            for version in list_res.get('Versions', []):
                 print '      deleting object', version['Key'], version['VersionId']
                 delete_list.append(
                     {
-                        'Key': version['Key'],
-                        'VersionId': version['VersionId']
+                        'Key': version['Key'],'VersionId': version['VersionId']
                     })
+
+            for marker in list_res.get('DeleteMarkers', []):
+                print '      deleting object', marker['Key'], marker['VersionId'], '(delete marker)'
+                delete_list.append(
+                    {
+                        'Key': marker['Key'],'VersionId': marker['VersionId']
+                    })
+
+            if not len(delete_list):
+                break
 
             try:
                 delete_res = self.s3.delete_objects(Bucket=bucket_id, Delete={ 'Objects': delete_list, 'Quiet': True })
@@ -490,6 +645,85 @@ class Cleaner:
             else:
                 res = self.apigateway.get_rest_apis(position=position)
 
+    def _delete_lambdas(self):
+
+        print '\n\nlooking for lambda functions starting with one of', self.__describe_prefixes()
+
+        res = self.lambda_client.list_functions()
+        while True:
+
+            for info in res['Functions']:
+
+                name = info['FunctionName']
+                arn = info['FunctionArn']
+                if self._has_prefix(name):
+
+                    while True:
+                        try:
+                            print '  deleting lambda', name, arn
+                            self.lambda_client.delete_function(FunctionName=arn)
+                            break
+                        except ClientError as e:
+                            if e.response["Error"]["Code"] == "TooManyRequestsException":
+                                print '    too many requests, sleeping...'
+                                time.sleep(15)
+                            else:
+                                print '      ERROR:', e
+                                break
+
+            position = res.get('NextMarker', None)
+            if position is None:
+                break
+            else:
+                res = self.lambda_client.list_functions(Marker=position)
+
+    def _delete_iot_policies(self):
+
+        print '\n\nlooking for iot policies with names starting with one of', self.__describe_prefixes()
+
+        res = self.iot_client.list_policies(pageSize=100)
+        while True:
+            for thisPolicy in res['policies']:
+                # Iot policies are created by the WebCommunicator Gem
+
+                name = thisPolicy['policyName']
+                if not self._has_prefix(name):
+                    continue
+                # Clean up old versions of the policy
+                version_list = self.iot_client.list_policy_versions(policyName=name)
+                for thisVersion in version_list['policyVersions']:
+                    if not thisVersion['isDefaultVersion']:
+                        try:
+                            print '  deleting iot policy {} version {}'.format(name, thisVersion['versionId'])    
+                            self.iot_client.delete_policy_version(policyName=name, policyVersionId=thisVersion['versionId'])
+                        except ClientError as e:
+                            print '    ERROR', e.message
+                # Now detach the policy from any principals
+                principal_list = self.iot_client.list_policy_principals(policyName=name, pageSize=100)
+                next_marker = principal_list.get('nextMarker')
+                while True:
+                    for thisPrincipal in principal_list['principals']:
+                        print '  Detaching policy {} from principal {}'.format(name, thisPrincipal)
+                        try:
+                            ## Response is in the form of accountId:CognitoId - when we detach we only want cognitoId
+                            self.iot_client.detach_principal_policy(policyName=name, principal=thisPrincipal.split(':',1)[1])
+                        except ClientError as e:
+                            print '    ERROR', e.message                          
+                    if next_marker is None:
+                        break
+                    principal_list = self.iot_client.list_policy_principals(policyName=name, pageSize=100, marker=next_marker)  
+                    next_marker = principal_list.get('nextMarker')
+                try:
+                    print '  deleting iot policy {}'.format(name)
+                    self.iot_client.delete_policy(policyName=name)
+                except ClientError as e:
+                    print '    ERROR', e.message
+            next_marker = res.get('nextMarker', None)
+            if next_marker is None:
+                break
+            else:
+                res = self.iot_client.list_policies(pageSize=100, marker=next_marker)
+                
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -512,9 +746,10 @@ if __name__ == '__main__':
 
     if args.aws_access_key and args.aws_secret_key:
         session = boto3.Session(aws_access_key_id=args.aws_access_key, aws_secret_access_key=args.aws_secret_key, region_name=args.region)
+    elif os.environ.get('NO_TEST_PROFILE', None):
+        session = boto3.Session(region_name=args.region)
     else:
-        session = boto3.Session(profile_name=args.profile, region_name=args.region)
-        
+        session = boto3.Session(profile_name=args.profile, region_name=args.region)    
     cleaner = Cleaner(session)
     cleaner.cleanup(prefixes, exceptions)
 

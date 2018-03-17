@@ -210,6 +210,7 @@ private:
     void SetGameMode(bool inGame);
     void SwitchToInGame();
     void SwitchToInEditor();
+    static void HandleQuitRequest(IConsoleCmdArgs*);
 
     CLogFile m_logFile;
     QString m_levelName;

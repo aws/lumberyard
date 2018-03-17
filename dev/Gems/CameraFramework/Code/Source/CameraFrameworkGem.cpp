@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CameraFramework_precompiled.h"
 #include <platform_impl.h>
 
 #include "CameraRigComponent.h"

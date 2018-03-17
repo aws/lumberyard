@@ -447,18 +447,17 @@ namespace AzToolsFramework
             m_selectedEntities.set_capacity(0);
             m_highlightedEntities.set_capacity(0);
 
-            m_serializeContext->DestroyEditContext();
+            GetSerializeContext()->DestroyEditContext();
 
             Application::Stop();
         }
     }
 
-    void ToolsApplication::CreateSerializeContext()
+    void ToolsApplication::CreateReflectionManager()
     {
-        if (m_serializeContext == nullptr)
-        {
-            m_serializeContext = aznew AZ::SerializeContext(true, true); // create EditContext
-        }
+        Application::CreateReflectionManager();
+
+        GetSerializeContext()->CreateEditContext();
     }
 
     void ToolsApplication::Reflect(AZ::ReflectContext* context)

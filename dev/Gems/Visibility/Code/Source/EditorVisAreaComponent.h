@@ -40,10 +40,7 @@ namespace Visibility
         void ChangeHeight() override;
         void ChangeDisplayFilled() override;
         void ChangeAffectedBySun() override;
-        void ChangeIgnoreSkyColor() override;
-        void ChangeIgnoreGI() override;
         void ChangeViewDistRatio() override;
-        void ChangeSkyOnly() override;
         void ChangeOceanIsVisible() override;
         void ChangeVertexContainer() override;
 
@@ -113,26 +110,6 @@ namespace Visibility
             return m_config.m_AffectedBySun;
         }
 
-        void SetIgnoreSkyColor(const bool value) override
-        {
-            m_config.m_IgnoreSkyColor = value;
-            UpdateVisArea();
-        }
-        bool GetIgnoreSkyColor() override
-        {
-            return m_config.m_IgnoreSkyColor;
-        }
-
-        void SetIgnoreGI(const bool value) override
-        {
-            m_config.m_IgnoreGI = value;
-            UpdateVisArea();
-        }
-        bool GetIgnoreGI() override
-        {
-            return m_config.m_IgnoreGI;
-        }
-
         void SetViewDistRatio(const float value) override
         {
             m_config.m_ViewDistRatio = value;
@@ -141,16 +118,6 @@ namespace Visibility
         float GetViewDistRatio() override
         {
             return m_config.m_ViewDistRatio;
-        }
-
-        void SetSkyOnly(const bool value) override
-        {
-            m_config.m_SkyOnly = value;
-            UpdateVisArea();
-        }
-        bool GetSkyOnly() override
-        {
-            return m_config.m_SkyOnly;
         }
 
         void SetOceanIsVisible(const bool value) override

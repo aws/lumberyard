@@ -22,7 +22,7 @@ import copy
 import time
 
 import common_code
-import constant
+from resource_manager_common import constant
 import file_util
 
 class Phase():
@@ -151,14 +151,16 @@ class Uploader(object):
 
             function_name: the name of the lambda function resource.
 
-        Returns two values:
+        Returns three values:
 
            code_path: the value returned by get_lambda_function_code_path.
            imported_paths: a list containing paths imported by code_path.
+           multi_imports: a dictionary of import names to the set of gem names that will participate in the import.
+                          The multi-imports come from .import files containing *.ImportName entries.
         '''
         code_path = Uploader._get_lambda_function_code_path(context, function_name, source_directory_paths)
 
-        imported_paths = common_code.resolve_imports(context, code_path)
+        imported_paths, multi_imports = common_code.resolve_imports(context, code_path)
 
         # TODO: The use of shared-lambda-code was deprecated in Lumberyard 1.10.
         for source_directory_path in source_directory_paths:
@@ -167,11 +169,10 @@ class Uploader(object):
                 context.view.using_deprecated_lambda_code_path(function_name, shared_lambda_code_path, os.path.join(source_directory_path, 'common-code', 'LambdaCommon'))
                 imported_paths.add(shared_lambda_code_path)
         # End deprecated code
+        return code_path, imported_paths, multi_imports
 
-        return code_path, imported_paths
 
-
-    def zip_and_upload_lambda_function_code(self, function_name, aggregated_directories = None, aggregated_content = None):
+    def zip_and_upload_lambda_function_code(self, function_name, aggregated_directories = None, aggregated_content = None, source_gem=None, keep = False):
         '''Zips and uploads all of the specified lambda function's code from the uploader's source directory.
 
         The get_lambda_function_code_paths function is used to locate the lambda function's code. The zip will 
@@ -190,12 +191,18 @@ class Uploader(object):
             aggregated_directories (named): Identifies additional directories included in the zip file.
             See the docs for zip_and_upload_directory.
 
+            keep (named): keep the zip file after uploading. By default the zip file is deleted.
+
         Returns: the key of the object uploaded.
         '''
 
         self.context.view.processing_lambda_code(self._source_description, function_name)
 
-        code_path, imported_directory_paths = Uploader._get_lambda_function_code_paths(self.context, function_name, self.source_directory_paths)
+        source_directory_paths = self.source_directory_paths
+        if source_gem:
+            source_directory_paths.append(os.path.join(source_gem.aws_directory_path, 'project-code'))
+
+        code_path, imported_directory_paths, multi_imports = Uploader._get_lambda_function_code_paths(self.context, function_name, source_directory_paths)
 
         if imported_directory_paths:
             aggregated_directories = copy.deepcopy(aggregated_directories) if aggregated_directories else {}
@@ -205,11 +212,32 @@ class Uploader(object):
             value.extend(imported_directory_paths)
             aggregated_directories[''] = value
 
+        # Create a top level module for each multi-import module to help discovery of what was imported.
+        # This should be the Lambda zip file equivalent of how MultiImportModuleLoader in hook.py loads multi-imports in a local workspace.
+        for import_package_name, imported_gem_names in multi_imports.iteritems():
+            sorted_gem_names = sorted(imported_gem_names)
+            top_level_module_names = { gem_name: '{}__{}'.format(import_package_name, gem_name) for gem_name in sorted_gem_names }
+
+            # Import each top level module ( MyModule__CloudGemName ) using the gem name as the sub-module name ( MyModule.CloudGemName ).
+            init_content = [ 'import {} as {}'.format(top_level_module_names[gem_name], gem_name) for gem_name in sorted_gem_names ]
+
+            # Define __all__ for "from package import *".
+            init_content.append('__all__ = [{}]'.format(','.join([ '"{}"'.format(gem_name) for gem_name in sorted_gem_names ])))
+
+            # A dictionary of gem name to loaded module for easy iterating ( imported_modules = { CloudGemName: <the_loaded_CloudGemName_module> } ).
+            init_content.append('imported_modules = {{{}}}'.format(','.join([ '"{}":{}'.format(gem_name, gem_name) for gem_name in sorted_gem_names ])))
+
+            if aggregated_content is None:
+                aggregated_content = {}
+
+            aggregated_content['{}/__init__.py'.format(import_package_name)] = '\n'.join(init_content)
+
         return self.zip_and_upload_directory(
             code_path, 
             aggregated_directories = aggregated_directories, 
             aggregated_content = aggregated_content,
-            file_name = '{}-lambda-code.zip'.format(function_name))
+            file_name = '{}-lambda-code.zip'.format(function_name),
+            keep = keep)
 
 
     def upload_content(self, name, content, description):
@@ -389,7 +417,7 @@ class Uploader(object):
         return 'https://{bucket}.s3.amazonaws.com/{key}'.format(bucket=bucket, key=key)
 
 
-    def zip_and_upload_directory(self, directory_path, file_name = None, aggregated_directories = None, aggregated_content = None, extra_args = None):
+    def zip_and_upload_directory(self, directory_path, file_name = None, aggregated_directories = None, aggregated_content = None, extra_args = None, keep = False):
         '''Creates an object in an S3 bucket using a zip file created from the contents of the specified directory.
 
         Args:
@@ -410,6 +438,8 @@ class Uploader(object):
 
             file_name (named): the name of the zip file. By default the directory name with
             '.zip' appended is used.
+
+            keep (named): keep the zip file after uploading. By default the zip file is deleted.
 
         Returns:
 
@@ -434,7 +464,7 @@ class Uploader(object):
             return self.__upload_file(file_name, zip_file_path, extra_args=extra_args) 
 
         finally:
-            if os.path.exists(zip_file_path):
+            if os.path.exists(zip_file_path) and not keep:
                 self.context.view.deleting_file(zip_file_path)
                 os.remove(zip_file_path)
 

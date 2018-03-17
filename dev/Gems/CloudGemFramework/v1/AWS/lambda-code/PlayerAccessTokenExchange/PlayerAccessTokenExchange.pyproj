@@ -6,7 +6,7 @@
     <ProjectGuid>{d3ff16ba-2d0c-4ba2-9dfe-5553ffce5c69}</ProjectGuid>
     <ProjectHome />
     <StartupFile>auth_token_exchange.py</StartupFile>
-    <SearchPath>..\..\common-code\ResourceManagerCommon\</SearchPath>
+    <SearchPath>..\..\common-code\ResourceManagerCommon\;..\..\common-code\Utils\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>

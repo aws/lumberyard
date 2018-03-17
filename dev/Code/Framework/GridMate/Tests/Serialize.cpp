@@ -738,6 +738,20 @@ namespace UnitTest
             AZ_TEST_ASSERT(v.IsClose(rv, 0.03f));
 
             //////////////////////////////////////////////////////////////////////////
+            // Color
+            //////////////////////////////////////////////////////////////////////////
+            AZ::Color color, readColor;
+            color.Set(1, 0.2f, 0.6f, 0.8f);
+            // Start the read color at a totally different value.
+            readColor.Set(0, 1, 1, 0);
+            wb.Clear();
+            wb.Write(color);
+            AZ_TEST_ASSERT(wb.Size() == 16);
+            rb = ReadBuffer(wb.GetEndianType(), wb.Get(), wb.Size());
+            rb.Read(readColor);
+            AZ_TEST_ASSERT(color.IsClose(readColor));
+
+            //////////////////////////////////////////////////////////////////////////
             // Quaternion
             //////////////////////////////////////////////////////////////////////////
             AZ::Quaternion q, rq;

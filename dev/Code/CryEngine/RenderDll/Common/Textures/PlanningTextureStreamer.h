@@ -18,6 +18,8 @@
 
 #include "ITextureStreamer.h"
 
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
 //#define TEXSTRM_DEFER_UMR
 
 ILINE int bsel(bool c, int t, int f)
@@ -300,7 +302,7 @@ private:
 
     volatile State m_state;
 
-    JobManager::SJobState m_JobState;
+    AZ::LegacyJobExecutor m_jobExecutor;
     SPlanningUMRState m_umrState;
     SPlanningSortState m_sortState;
 

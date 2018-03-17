@@ -181,7 +181,7 @@ void CSplineDistributor::LoadGeometry(const QString& filename)
 {
     if (m_pGeometry)
     {
-        if (m_pGeometry->IsSameObject(filename.toLatin1().data()))
+        if (m_pGeometry->IsSameObject(filename.toUtf8().data()))
         {
             return;
         }
@@ -190,7 +190,7 @@ void CSplineDistributor::LoadGeometry(const QString& filename)
     }
 
     GetIEditor()->GetErrorReport()->SetCurrentFile(filename);
-    m_pGeometry = CEdMesh::LoadMesh(filename.toLatin1().data());
+    m_pGeometry = CEdMesh::LoadMesh(filename.toUtf8().data());
     if (m_pGeometry)
     {
         m_pGeometry->AddUser();

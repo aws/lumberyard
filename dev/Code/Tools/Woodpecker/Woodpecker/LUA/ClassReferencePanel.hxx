@@ -12,9 +12,9 @@
 
 #include <AzCore/base.h>
 
-#include <QtCore\QObject>
-#include <QtWidgets\QWidget>
-#include <QtWidgets\QTreeView>
+#include <QtCore/QObject>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QTreeView>
 
 #pragma once
 

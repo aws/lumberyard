@@ -29,9 +29,6 @@ class IToolbar;
 class QComboBox;
 
 
-#define IDC_LIBRARY_ITEMS_TREE AFX_IDW_PANE_FIRST
-
-
 class BaseLibraryDialogTree
     : public QTreeView
 {

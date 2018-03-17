@@ -17,7 +17,8 @@
 
 namespace LmbrCentral
 {
-    static const AZ::Uuid SpawnerComponentTypeId = "{8022A627-FA7D-4516-A155-657A0927A3CA}";
+    static const AZ::Uuid SpawnerComponentTypeId = "{8022A627-DD76-5432-C75A-7234AC2798C1}";
+    static const AZ::Uuid DeprecatedSpawnerComponentTypeId = "{8022A627-FA7D-4516-A155-657A0927A3CA}";
 
     /*!
      * SpawnerComponentRequests

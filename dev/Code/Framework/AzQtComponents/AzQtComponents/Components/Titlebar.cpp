@@ -825,6 +825,6 @@ namespace AzQtComponents
         }
     }
 
-#include <Components/TitleBar.moc>
+#include <Components/Titlebar.moc>
 } // namespace AzQtComponents
 

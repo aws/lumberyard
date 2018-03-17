@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #include <DynamoDB/FlowNode_CloudHashMapAddNumber.h>
 #include <aws/dynamodb/model/UpdateItemRequest.h>
 #include <aws/core/utils/Outcome.h>

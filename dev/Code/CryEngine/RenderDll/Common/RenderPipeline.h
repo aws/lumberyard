@@ -739,14 +739,6 @@ struct SRenderPipeline
     int m_Flags;                // Reset on start pipeline
 
     EShapeMeshType m_nDeferredPrimitiveID;
-    Matrix44 m_newOcclusionCameraProj;
-    Matrix44 m_newOcclusionCameraView;
-    Matrix44 m_OcclusionCameraBuffer[CULLER_MAX_CAMS];
-#ifdef CULLER_DEBUG
-    int m_OcclusionCameraBufferID[CULLER_MAX_CAMS];
-#endif
-    int m_nZOcclusionProcess;
-    int m_nZOcclusionReady;
     int m_nZOcclusionBufferID;
 
     threadID m_nFillThreadID;

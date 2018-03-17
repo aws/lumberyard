@@ -26,6 +26,7 @@ static const char* BRUSH_TYPE_FLATTEN = "Flatten";
 static const char* BRUSH_TYPE_SMOOTH = "Smooth";
 static const char* BRUSH_TYPE_RISE_LOWER = "Rise/Lower";
 static const char* BRUSH_TYPE_PICK_HEIGHT = "Pick Height";
+static const double SLIDER_MULTIPLIER = 100.0;
 
 /////////////////////////////////////////////////////////////////////////////
 // CTerrainModifyPanel dialog
@@ -64,11 +65,11 @@ void CTerrainModifyPanel::OnInitDialog()
     // Brush outside radius
     connect(m_ui->brushOutsideRadiusSlider, &QSlider::valueChanged, [=](int i)
         {
-            SyncWidgetValue(m_ui->brushOutsideRadiusSpin, std::pow(10.0, i / 100.0));
+            SyncWidgetValue(m_ui->brushOutsideRadiusSpin, i / SLIDER_MULTIPLIER);
         });
     connect(m_ui->brushOutsideRadiusSpin, qSpinBoxValueChangedDouble, [=](double d)
         {
-            SyncWidgetValue(m_ui->brushOutsideRadiusSlider, std::round(std::log10(std::max(d, 0.01)) * 100.0));
+            SyncWidgetValue(m_ui->brushOutsideRadiusSlider, d * SLIDER_MULTIPLIER);
         });
 
     connect(m_ui->syncRadiusCheck, &QCheckBox::stateChanged, this, &CTerrainModifyPanel::OnSyncRadius);
@@ -76,22 +77,21 @@ void CTerrainModifyPanel::OnInitDialog()
     // Brush inner radius
     connect(m_ui->brushInsideRadiusSlider, &QSlider::valueChanged, [=](int i)
         {
-            // Since this can go to zero and 10^0 = 1, we special-case zero
-            SyncWidgetValue(m_ui->brushInsideRadiusSpin, i == 0 ? 0 : std::pow(10.0, i / 100.0));
+            SyncWidgetValue(m_ui->brushInsideRadiusSpin, i / SLIDER_MULTIPLIER);
         });
     connect(m_ui->brushInsideRadiusSpin, qSpinBoxValueChangedDouble, [=](double d)
         {
-            SyncWidgetValue(m_ui->brushInsideRadiusSlider, std::round(std::log10(std::max(d, 0.01)) * 100.0));
+            SyncWidgetValue(m_ui->brushInsideRadiusSlider, d * SLIDER_MULTIPLIER);
         });
 
     // Brush hardness
     connect(m_ui->brushHardnessSlider, &QSlider::valueChanged, [=](int i)
         {
-            SyncWidgetValue(m_ui->brushHardnessSpin, i / 100.0);
+            SyncWidgetValue(m_ui->brushHardnessSpin, i / SLIDER_MULTIPLIER);
         });
     connect(m_ui->brushHardnessSpin, qSpinBoxValueChangedDouble, [=](double d)
         {
-            SyncWidgetValue(m_ui->brushHardnessSlider, d * 100);
+            SyncWidgetValue(m_ui->brushHardnessSlider, d * SLIDER_MULTIPLIER);
         });
 
     // Brush "height"

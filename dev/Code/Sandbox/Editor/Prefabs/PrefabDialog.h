@@ -51,8 +51,6 @@ protected:
 
     void OnAddItem();
     void OnNotifyMtlTreeRClick(const QPoint& point);
-    void OnPickPrefab();
-    void OnUpdatePickPrefab();
     void OnUpdateActions() override;
 
     void OnCopy();

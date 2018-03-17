@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "SphereShapeComponent.h"
 #include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/RTTI/BehaviorContext.h>

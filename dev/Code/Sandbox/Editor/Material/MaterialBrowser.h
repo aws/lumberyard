@@ -107,10 +107,6 @@ public:
     void StartRecordUpdateJobs();
 
     bool ShowCheckedOutRecursive(TMaterialBrowserRecords* pRecords);
-
-    #ifdef KDAB_PORT_TODO
-    bool OnFilterTestSubmaterials(CTreeItemRecord* pRecord, bool bAddOperation);
-#endif
     
     void OnCopy();
     void OnCopyName();

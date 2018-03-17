@@ -50,6 +50,8 @@ public:
         void(const char* pFunc, int line));
     MOCK_METHOD0(RenderStatistics,
         void());
+    MOCK_METHOD0(RenderPhysicsHelpers,
+        void());
     MOCK_METHOD1(RenderPhysicsStatistics,
         void(IPhysicalWorld * pWorld));
     MOCK_METHOD0(GetUsedMemory,

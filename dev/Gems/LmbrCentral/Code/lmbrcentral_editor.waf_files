@@ -101,6 +101,8 @@
             "Source/Scripting/EditorLookAtComponent.cpp",
             "Source/Scripting/EditorRandomTimedSpawnerComponent.cpp",
             "Source/Scripting/EditorRandomTimedSpawnerComponent.h",
+            "Source/Scripting/EditorSpawnerComponent.h",
+            "Source/Scripting/EditorSpawnerComponent.cpp",
             "Source/Scripting/EditorTagComponent.h",
             "Source/Scripting/EditorTagComponent.cpp",
             "Source/Scripting/EditorTriggerAreaComponent.h",
@@ -130,7 +132,9 @@
             "Source/Ai/EditorNavigationSeedComponent.h",
             "Source/Ai/EditorNavigationSeedComponent.cpp",
             "Source/Ai/EditorNavigationAreaComponent.h",
-            "Source/Ai/EditorNavigationAreaComponent.cpp"
+            "Source/Ai/EditorNavigationAreaComponent.cpp",
+            "Source/Ai/EditorNavigationUtil.h",
+            "Source/Ai/EditorNavigationUtil.cpp"
         ],
         "Source/Editor": [
             "Source/Editor/EditorCommentComponent.h",

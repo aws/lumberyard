@@ -14,7 +14,7 @@ import unittest
 import mock
 import httplib
 
-import custom_resource_response
+from cgf_utils import custom_resource_response
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_custom_resource_response(unittest.TestCase):
 

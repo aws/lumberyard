@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Slice/SliceComponent.h>
@@ -274,12 +274,12 @@ namespace AzToolsFramework
         // because we don't have access to the parent Entity.
         // We could have swapped after writing the AZ::Entity from data,
         // but Entities are written with high frequency for many reasons (ex: undo).
-        // Therefore, do the swap after SliceAsset finishes loading.
+        // Therefore, do the swap after slice entities finish loading.
         // Any editor-entity that's saved out to disk will come in via a
         // SliceAsset, so this is a safe place for the check.
-        void GenericComponentUnwrapper::OnWriteDataToSliceAssetEnd(AZ::SliceComponent& sliceAsset)
+        void GenericComponentUnwrapper::OnSliceEntitiesLoaded(const AZStd::vector<AZ::Entity*>& entities)
         {
-            for (AZ::Entity* entity : sliceAsset.GetNewEntities())
+            for (AZ::Entity* entity : entities)
             {
                 for (AZ::Component* component : entity->GetComponents())
                 {

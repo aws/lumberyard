@@ -57,7 +57,7 @@ private:
     bool   m_bWaiting;
     AZStd::string m_Name;
 
-#if (defined(WIN32) || defined(DURANGO))
+#if GPUTIMER_H_TRAIT_DEFINEQUERIES
     ID3D11Query* m_pQueryStart, * m_pQueryStop, * m_pQueryFreq;
 #endif
 };

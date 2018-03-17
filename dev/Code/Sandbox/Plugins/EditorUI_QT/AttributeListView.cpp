@@ -6,8 +6,8 @@
 #include "PanelWidget/paneltitlebar.h"
 #include <AttributeListView.moc>
 
-#include <qdebug.h>
-#include <qevent.h>
+#include <QDebug>
+#include <QEvent>
 
 CAttributeListView::CAttributeListView(bool isCustom, QString groupvisibility)
     : QDockWidget()

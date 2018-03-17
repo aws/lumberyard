@@ -29,7 +29,7 @@
 #define DOS_PATH_SEP_STR     "\\"
 #define DOS_PATH_SEP_CHR     '\\'
 
-#if defined(APPLE) || defined(LINUX) || defined(ORBIS)
+#if AZ_LEGACY_CRYCOMMON_TRAIT_USE_UNIX_PATHS
 #define CRY_NATIVE_PATH_SEPSTR  UNIX_PATH_SEP_STR
 #else
 #define CRY_NATIVE_PATH_SEPSTR  DOS_PATH_SEP_STR
@@ -85,7 +85,7 @@ namespace PathUtil
     //! Convert a path to the Native form.
     inline string ToNativePath(const string& strPath)
     {
-#if defined(APPLE) || defined(LINUX) || defined(ORBIS)
+#if AZ_LEGACY_CRYCOMMON_TRAIT_USE_UNIX_PATHS
         return ToUnixPath(strPath);
 #else
         return ToDosPath(strPath);

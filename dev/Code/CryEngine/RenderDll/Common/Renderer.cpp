@@ -1359,7 +1359,9 @@ void RendererAssetListener::OnFileChanged(AZStd::string assetName)
 
 CRenderer::CRenderer()
     : m_assetListener(this)
-{}
+{
+    static_assert(LegacyInternal::JobExecutorPool::NumPools == AZ_ARRAY_SIZE(CRenderer::m_SkinningDataPool), "JobExecutorPool and Skinning data pool size mismatch");
+}
 
 void CRenderer::InitRenderer()
 {
@@ -3587,19 +3589,7 @@ void CRenderer::InitRenderer()
     m_IdentityMatrix.SetIdentity();
 
     m_TemporalJitterClipSpace = Vec4(0.0f);
-
-    m_RP.m_newOcclusionCameraProj.SetIdentity();
-    m_RP.m_newOcclusionCameraView.SetIdentity();
-
-    for (int i = 0; i < CULLER_MAX_CAMS; i++)
-    {
-        m_RP.m_OcclusionCameraBuffer[i].SetIdentity();
-
-#ifdef CULLER_DEBUG
-        m_RP.m_OcclusionCameraBufferID[i] = -1;
-#endif
-    }
-
+    
     m_RP.m_nZOcclusionBufferID = -1;
 
     m_RP.m_nCurrResolveBounds[0] = m_RP.m_nCurrResolveBounds[1] = m_RP.m_nCurrResolveBounds[2] = m_RP.m_nCurrResolveBounds[3] = 0;
@@ -3650,12 +3640,6 @@ void CRenderer::InitRenderer()
     m_RP.m_pCurrentFillView = m_RP.m_pRenderViews[0].get();
     m_pRT = new SRenderThread;
     m_pRT->StartRenderThread();
-
-    for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
-    {
-        m_pFinalizeRendItemJob[i] = NULL;
-        m_pFinalizeShadowRendItemJob[i] = NULL;
-    }
 
     m_ShadowFrustumMGPUCache.Init();
     RegisterSyncWithMainListener(&m_ShadowFrustumMGPUCache);
@@ -4520,8 +4504,6 @@ void CRenderer::FreeResources(int nFlags)
         {
             m_gpuParticleEngine->Release();
         }
-        ClearJobResources();
-        CRenderMesh::ClearJobResources();
 
         for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
         {
@@ -6904,11 +6886,6 @@ static void DXTCompressRowFloat(SCompressRowData data)
     }
 }
 
-DECLARE_JOB("DXTDecompressRow", TDXTDecompressRow, DXTDecompressRow);
-DECLARE_JOB("DXTDecompressRowFloat", TDXTDecompressRowFloat, DXTDecompressRowFloat);
-DECLARE_JOB("DXTCompressRow", TDXTCompressRow, DXTCompressRow);
-DECLARE_JOB("DXTCompressRowFloat", TDXTCompressRowFloat, DXTCompressRowFloat);
-
 #endif // #if !defined(__RECODE__) && !defined(EXCLUDE_SQUISH_SDK)
 
 bool CRenderer::DXTDecompress(const byte* sourceData, const size_t srcFileSize, byte* destinationData, int width, int height, int mips, ETEX_Format sourceFormat, bool bUseHW, int nDstBytesPerPix)
@@ -7013,49 +6990,19 @@ bool CRenderer::DXTDecompress(const byte* sourceData, const size_t srcFileSize, 
 
     if ((datatype == squish::sqio::DT_U8) && (nDstBytesPerPix == 4))
     {
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        JobManager::SJobState jobState;
-#endif
-
         for (int y = 0; y < height; y += blockHeight)
         {
             data.row = y;
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-            TDXTDecompressRow compressJob(data);
-            compressJob.RegisterJobState(&jobState);
-            compressJob.SetPriorityLevel(JobManager::eStreamPriority);
-            compressJob.Run();
-#else
             DXTDecompressRow(data);
-#endif
         }
-
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        gEnv->pJobManager->WaitForJob(jobState);
-#endif
     }
     else if ((datatype == squish::sqio::DT_F23) && (nDstBytesPerPix == 4))
     {
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        JobManager::SJobState jobState;
-#endif
-
         for (int y = 0; y < height; y += blockHeight)
         {
             data.row = y;
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-            TDXTDecompressRowFloat compressJob(data);
-            compressJob.RegisterJobState(&jobState);
-            compressJob.SetPriorityLevel(JobManager::eStreamPriority);
-            compressJob.Run();
-#else
             DXTDecompressRowFloat(data);
-#endif
         }
-
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        gEnv->pJobManager->WaitForJob(jobState);
-#endif
     }
     else
     {
@@ -7196,49 +7143,19 @@ bool CRenderer::DXTCompress(const byte* sourceData, int width, int height, ETEX_
 
     if ((datatype == squish::sqio::DT_U8) && (nSrcBytesPerPix == 4))
     {
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        JobManager::SJobState jobState;
-#endif
-
         for (int y = 0; y < height; y += blockHeight)
         {
             data.row = y;
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-            TDXTCompressRow compressJob(data);
-            compressJob.RegisterJobState(&jobState);
-            compressJob.SetPriorityLevel(JobManager::eHighPriority);
-            compressJob.Run();
-#else
             DXTCompressRow(data);
-#endif
         }
-
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        gEnv->pJobManager->WaitForJob(jobState);
-#endif
     }
     else if ((datatype == squish::sqio::DT_F23) && (nSrcBytesPerPix == 4))
     {
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        JobManager::SJobState jobState;
-#endif
-
         for (int y = 0; y < height; y += blockHeight)
         {
             data.row = y;
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-            TDXTCompressRowFloat compressJob(data);
-            compressJob.RegisterJobState(&jobState);
-            compressJob.SetPriorityLevel(JobManager::eHighPriority);
-            compressJob.Run();
-#else
             DXTCompressRowFloat(data);
-#endif
         }
-
-#ifdef PROCESS_TEXTURES_IN_PARALLEL
-        gEnv->pJobManager->WaitForJob(jobState);
-#endif
     }
     else
     {
@@ -7988,8 +7905,6 @@ SSkinningData* CRenderer::EF_CreateSkinningData(uint32 nNumBones, bool bNeedJobS
     uint32 skinningFlags = bUseMatrixSkinning ? eHWS_Skinning_Matrix : 0;
 
     uint32 nNeededSize = Align(sizeof(SSkinningData), 16);
-    nNeededSize += Align(bNeedJobSyncVar ? sizeof(JobManager::SJobState) : 0, 16);
-    nNeededSize += Align(bNeedJobSyncVar ? sizeof(JobManager::SJobState) : 0, 16);
 
     size_t boneSize = bUseMatrixSkinning ? sizeof(Matrix34) : sizeof(DualQuat);
 
@@ -7999,17 +7914,8 @@ SSkinningData* CRenderer::EF_CreateSkinningData(uint32 nNumBones, bool bNeedJobS
     SSkinningData* pSkinningRenderData = alias_cast<SSkinningData*>(pData);
     pData += Align(sizeof(SSkinningData), 16);
 
-    pSkinningRenderData->pAsyncJobs = bNeedJobSyncVar ? alias_cast<JobManager::SJobState*>(pData) : NULL;
-    pData += Align(bNeedJobSyncVar ? sizeof(JobManager::SJobState) : 0, 16);
-
-    pSkinningRenderData->pAsyncDataJobs = bNeedJobSyncVar ? alias_cast<JobManager::SJobState*>(pData) : NULL;
-    pData += Align(bNeedJobSyncVar ? sizeof(JobManager::SJobState) : 0, 16);
-
-    if (bNeedJobSyncVar) // init job state if requiered
-    {
-        new(pSkinningRenderData->pAsyncJobs) JobManager::SJobState();
-        new(pSkinningRenderData->pAsyncDataJobs) JobManager::SJobState();
-    }
+    pSkinningRenderData->pAsyncJobExecutor = bNeedJobSyncVar ? m_jobExecutorPool.Allocate() : nullptr;
+    pSkinningRenderData->pAsyncDataJobExecutor = bNeedJobSyncVar ? m_jobExecutorPool.Allocate() : nullptr;
 
     if (bUseMatrixSkinning)
     {
@@ -8065,8 +7971,8 @@ SSkinningData* CRenderer::EF_CreateRemappedSkinningData(uint32 nNumBones, SSkinn
     // use actual bone information from original skinning data
     pSkinningRenderData->pBoneQuatsS = pSourceSkinningData->pBoneQuatsS;
     pSkinningRenderData->pBoneMatrices = pSourceSkinningData->pBoneMatrices;
-    pSkinningRenderData->pAsyncJobs = pSourceSkinningData->pAsyncJobs;
-    pSkinningRenderData->pAsyncDataJobs = pSourceSkinningData->pAsyncDataJobs;
+    pSkinningRenderData->pAsyncJobExecutor = pSourceSkinningData->pAsyncJobExecutor;
+    pSkinningRenderData->pAsyncDataJobExecutor = pSourceSkinningData->pAsyncDataJobExecutor;
 
     pSkinningRenderData->pCharInstCB = pSourceSkinningData->pCharInstCB;
 
@@ -8088,6 +7994,8 @@ void CRenderer::EF_ClearSkinningDataPool()
     m_pRT->RC_PushSkinningPoolId(++m_nPoolIndex);
     m_SkinningDataPool[m_nPoolIndex % 3].ClearPool();
     FX_ClearCharInstCB(m_nPoolIndex);
+
+    m_jobExecutorPool.AdvanceCurrent();
 }
 
 int CRenderer::EF_GetSkinningPoolID()

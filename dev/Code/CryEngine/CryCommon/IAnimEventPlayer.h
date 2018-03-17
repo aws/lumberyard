@@ -43,6 +43,8 @@ struct IAnimEventPlayer
     : public ICryUnknown
 {
     CRYINTERFACE_DECLARE(IAnimEventPlayer, 0x2e2f7475542447f3, 0xb6729edb4a3af495)
+    template<class T>
+    friend void AZStd::checked_delete(T* x);
 
     // Can be used to customize parameter type for editing.
     virtual bool Play(ICharacterInstance* character, const AnimEventInstance& animEvent) = 0;
@@ -59,7 +61,7 @@ struct IAnimEventPlayer
     virtual int GetCustomTypeCount() const { return 0; }
 };
 
-DECLARE_BOOST_POINTERS(IAnimEventPlayer);
+DECLARE_SMART_POINTERS(IAnimEventPlayer);
 
 inline bool Serialize(Serialization::IArchive& ar, IAnimEventPlayerPtr& pointer, const char* name, const char* label)
 {

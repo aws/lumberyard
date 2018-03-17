@@ -3,8 +3,8 @@
     {
         "Source":
         [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Visibility_precompiled.cpp",
+            "Source/Visibility_precompiled.h"
         ]
     },
     "auto":

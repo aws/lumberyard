@@ -24,7 +24,7 @@ namespace EMStudio
         Q_OBJECT
 
     public:
-        RemovePluginOnCloseDockWidget(const QString& name, EMStudio::EMStudioPlugin* plugin);
+        RemovePluginOnCloseDockWidget(QWidget* parent, const QString& name, EMStudio::EMStudioPlugin* plugin);
 
     protected:
         void closeEvent(QCloseEvent* event) override;

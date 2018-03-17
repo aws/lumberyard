@@ -209,7 +209,7 @@ bool CAssetTextureItem::Cache()
     QString str = m_strRelativePath;
     str += m_strFilename;
 
-    if (!CImageUtil::LoadImage(str.toLatin1().data(), img))
+    if (!CImageUtil::LoadImage(str.toUtf8().data(), img))
     {
         SetFlag(eFlag_Invalid, true);
         return false;
@@ -641,8 +641,8 @@ void CAssetTextureItem::ToXML(XmlNodeRef& node) const
 {
     node->setTag("Texture");
     QString fileName = m_strRelativePath + m_strFilename;
-    node->setAttr("fileName", fileName.toLatin1().data());
-    node->setAttr("dccFilename", m_strDccFilename.toLatin1().data());
+    node->setAttr("fileName", fileName.toUtf8().data());
+    node->setAttr("dccFilename", m_strDccFilename.toUtf8().data());
     node->setAttr("nTextureWidth", m_nTextureWidth);
     node->setAttr("nTextureHeight", m_nTextureHeight);
     node->setAttr("nMips", m_nMips);

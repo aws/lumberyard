@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Twitch_precompiled.h"
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/IO/SystemFile.h>

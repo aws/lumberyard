@@ -71,7 +71,7 @@ namespace EMStudio
         QHBoxLayout* layout = new QHBoxLayout();
         layout->addWidget(mIcon);
         layout->addWidget(mMessageLabel);
-
+ 
         // set the layout
         setLayout(layout);
 
@@ -80,6 +80,12 @@ namespace EMStudio
         mTimer->setSingleShot(true);
         connect(mTimer, SIGNAL(timeout()), this, SLOT(TimerTimeOut()));
         mTimer->start(GetNotificationWindowManager()->GetVisibleTime() * 1000);
+    }
+
+    NotificationWindow::~NotificationWindow()
+    {
+        // remove from the notification window manager
+        GetManager()->GetNotificationWindowManager()->RemoveNotificationWindow(this);
     }
 
 

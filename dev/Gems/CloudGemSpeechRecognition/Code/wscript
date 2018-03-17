@@ -15,9 +15,15 @@ def build(bld):
             
     bld.DefineGem(
         file_list = file_list,
+        ios_file_list = ['cloudgemspeechrecognition_cocoa.waf_files'],
+        darwin_file_list = ['cloudgemspeechrecognition_cocoa.waf_files'],
         includes    = [
             bld.Path('Code/CryEngine/CryAction')
         ],
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
-        use = ['CloudGemFrameworkStaticLibrary']
+        use = ['CloudGemFrameworkStaticLibrary', 'Microphone'],
+
+        darwin_framework    = ['AVFoundation'],
+        ios_framework  = ['AVFoundation']
+
     )

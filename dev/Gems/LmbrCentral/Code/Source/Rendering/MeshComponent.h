@@ -203,8 +203,8 @@ namespace LmbrCentral
 
             AZStd::function<void()> m_changeCallback;
 
-            //Due to the fact that some ui elements like sliders don't seem to work properly with
-            //entire tree refreshes we needed to have two on change functions.
+            // Minor property changes don't require refreshing/rebuilding the property tree since no other properties
+            // are shown/hidden as a result of a change.
             AZ::u32 OnMinorChanged()
             {
                 if (m_changeCallback)

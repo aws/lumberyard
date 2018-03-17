@@ -31,6 +31,7 @@ namespace Water
     class EditorWaterVolumeCommon
         : public WaterVolumeCommon
         , public EditorWaterVolumeComponentRequestBus::Handler
+        , public AzToolsFramework::EditorEvents::Bus::Handler
     {
         friend class WaterVolumeConverter; //So that it can access m_displayFilled
 
@@ -57,6 +58,9 @@ namespace Water
         float GetViewDistanceMultiplier() { return m_viewDistanceMultiplier; }
 
     private:
+        // AzToolsFramework::EditorEvents interface implementation
+        void OnEditorSpecChange() override;
+
         bool m_displayFilled = false;
 
         static AZ::Color s_waterAreaColor;

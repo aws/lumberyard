@@ -18,7 +18,6 @@
 
 #include <vector>
 #include <list>
-#include <utility>
 #include <map>
 
 #include "Serialization/Serializer.h"

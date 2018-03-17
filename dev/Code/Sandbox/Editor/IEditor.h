@@ -510,6 +510,7 @@ struct IEditor
     virtual ICommandManager* GetICommandManager() = 0;
     // Executes an Editor command.
     virtual void ExecuteCommand(const char* sCommand, ...) = 0;
+    virtual void ExecuteCommand(const QString& sCommand) = 0;
     virtual void SetDocument(CCryEditDoc* pDoc) = 0;
     //! Get active document
     virtual CCryEditDoc* GetDocument() const = 0;
@@ -523,7 +524,7 @@ struct IEditor
     //! Save current document.
     virtual bool SaveDocument() = 0;
     //! Write the passed string to the editors console
-    virtual void WriteToConsole(const char* pszString) = 0;
+    virtual void WriteToConsole(const QString& string) = 0;
     //! Set value of console variable.
     virtual void SetConsoleVar(const char* var, float value) = 0;
     //! Get value of console variable.
@@ -561,6 +562,8 @@ struct IEditor
     virtual bool IsInitialized() const = 0;
     //! Check if editor running in gaming mode.
     virtual bool IsInGameMode() = 0;
+    //! Check if editor running in AI/Physics mode.
+    virtual bool IsInSimulationMode() = 0;
     //! Set game mode of editor.
     virtual void SetInGameMode(bool inGame) = 0;
     //! Return true if Editor runs in the testing mode.
@@ -892,7 +895,7 @@ struct IEditor
     virtual void LaunchAWSConsole(QString destUrl) = 0;
 
 	// Prompt to open the Project Configurator with a specific message.
-	virtual bool ToProjectConfigurator(const char* msg, const char* caption, const char* location) = 0;
+	virtual bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location) = 0;
 
     // Provides a way to extend the context menu of an object. The function gets called every time the menu is opened.
     typedef Functor2<QMenu*, const CBaseObject*> TContextMenuExtensionFunc;

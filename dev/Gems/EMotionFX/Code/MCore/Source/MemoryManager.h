@@ -30,65 +30,6 @@ namespace MCore
 #ifdef MCORE_USE_MEMORYMANAGER
     /**
      * Specify that a given class has to be managed by the memory manager.
-     * NOTE: You have to make a call to MEMORYCATEGORY(...) too, this can be done outside your class definition too.
-     * Another thing you have to remember is that when you want to use this macro on a template, you have to use the
-     * macro MEMORYOBJECTCATEGORY instead. That same macro can also be used on classes, but requires you to specify the
-     * memory category immediately, which is handled by that macro as well (but not by this MEMORYOBJECT macro!).
-     * Another option is to call MEMORYOBJECTCATEGORY(...) in case you want to immediately specify the memory category as well.
-     * @param CLASSNAME The class name, which would be "FooBar" in case you declare your class as "class FooBar { .... };".
-     * @param ALIGNMENT The alignment, in bytes, on which the memory address should be aligned when you 'new' a class of this type.
-     */
-    #define MCORE_MEMORYOBJECT(CLASSNAME, ALIGNMENT)                           \
-public:                                                                        \
-    static uint16 CLASSNAME::GetMemoryCategory();                              \
-    static uint16 CLASSNAME::GetMemoryAlignment()                              \
-    {                                                                          \
-        return ALIGNMENT;                                                      \
-    }                                                                          \
-                                                                               \
-    void* operator new(size_t numBytes)                                        \
-    {                                                                          \
-        const uint16 category  = GetMemoryCategory();                          \
-        /*const uint16 alignment = GetMemoryAlignment();*/                     \
-        return MCore::Allocate(numBytes, category, 0, MCORE_FILE, MCORE_LINE); \
-    }                                                                          \
-                                                                               \
-    void* operator new(size_t numBytes, void* location)                        \
-    {                                                                          \
-        static_cast<void>(numBytes);                                           \
-        return location;                                                       \
-    }                                                                          \
-                                                                               \
-    void operator delete(void* memLocation)                                    \
-    {                                                                          \
-        MCore::Free(memLocation);                                              \
-    }                                                                          \
-                                                                               \
-    void operator delete(void* memLocation, void* placement)                   \
-    {                                                                          \
-    }                                                                          \
-                                                                               \
-    void* operator new[](size_t numBytes)                                      \
-    {                                                                          \
-        const uint16 category  = GetMemoryCategory();                          \
-        /*const uint16 alignment = GetMemoryAlignment();*/                     \
-        return MCore::Allocate(numBytes, category, 0, MCORE_FILE, MCORE_LINE); \
-    }                                                                          \
-                                                                               \
-    void* operator new[](size_t numBytes, void* place)                         \
-    {                                                                          \
-        static_cast<void>(numBytes);                                           \
-        return place;                                                          \
-    }                                                                          \
-                                                                               \
-    void operator delete[](void* memLocation)                                  \
-    {                                                                          \
-        MCore::Free(memLocation);                                              \
-    }
-
-
-    /**
-     * Specify that a given class has to be managed by the memory manager.
      * @param CLASSNAME The class name, which would be "FooBar" in case you declare your class as "class FooBar { .... };".
      * @param ALIGNMENT The alignment, in bytes, on which the memory address should be aligned when you 'new' a class of this type.
      * @param CATEGORY An integer containing the memory category ID where this class belongs to.

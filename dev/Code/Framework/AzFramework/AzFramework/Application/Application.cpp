@@ -309,8 +309,6 @@ namespace AzFramework
             AZ::IO::FileIOBase::SetInstance(m_defaultFileIO.get());
         }
 
-        CreateNetworkContext();
-
         m_pimpl.reset(Implementation::Create());
 
         if ((m_argC) && (m_argV))
@@ -389,16 +387,12 @@ namespace AzFramework
         {
             m_pimpl.reset();
 
-            /* The following three lines of code are a temporary fix (CR: https://lumberyard-cr.amazon.com/r/1648621/)
+            /* The following line of code is a temporary fix (CR: https://lumberyard-cr.amazon.com/r/1648621/) 
              * GridMate's ReplicaChunkDescriptor is stored in a global environment variable 'm_globalDescriptorTable'
              * which does not get cleared when Application shuts down. We need to un-reflect here to clear ReplicaChunkDescriptor
              * so that ReplicaChunkDescriptor::m_vdt doesn't get flooded when we repeatedly instantiate Application in unit tests.
              */
-            m_networkContext->EnableRemoveReflection();
-            EBUS_EVENT(AZ::ComponentDescriptorBus, Reflect, m_networkContext.get());
-            m_networkContext->DisableRemoveReflection();
-
-            m_networkContext.reset();
+            m_reflectionManager->RemoveReflectContext<NetworkContext>();
 
             if (AZ::IO::FileIOBase::GetInstance() == m_defaultFileIO.get())
             {
@@ -487,26 +481,6 @@ namespace AzFramework
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             AzFramework::AssetRegistry::ReflectSerialize(serializeContext);
-        }
-    }
-
-    void Application::RegisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor)
-    {
-        AZ::ComponentApplication::RegisterComponentDescriptor(descriptor);
-        if (m_networkContext)
-        {
-            descriptor->Reflect(m_networkContext.get());
-        }
-    }
-
-    void Application::UnregisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor)
-    {
-        AZ::ComponentApplication::UnregisterComponentDescriptor(descriptor);
-        if (m_networkContext)
-        {
-            m_networkContext->EnableRemoveReflection();
-            descriptor->Reflect(m_networkContext.get());
-            m_networkContext->DisableRemoveReflection();
         }
     }
 
@@ -655,11 +629,13 @@ namespace AzFramework
         return "Profile";
 #endif
     }
-    void Application::CreateNetworkContext()
+
+    void Application::CreateReflectionManager()
     {
+        ComponentApplication::CreateReflectionManager();
+
         // Setup NetworkContext
-        m_networkContext.reset(aznew NetworkContext());
-        Reflect(m_networkContext.get());
+        m_reflectionManager->AddReflectContext<NetworkContext>();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -677,6 +653,12 @@ namespace AzFramework
             }
         }
         return uuid;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    NetworkContext* Application::GetNetworkContext()
+    {
+        return m_reflectionManager ? m_reflectionManager->GetReflectContext<NetworkContext>() : nullptr;
     }
 
     bool Application::IsEngineExternal() const

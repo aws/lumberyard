@@ -10,8 +10,8 @@
         <file>tool_cancel_highlight.png</file>
         <file>tool_cancel_hover.png</file>
         <file>tool_filter.png</file>
-        <file>browse.png</file>
-        <file>browse_on.png</file>
+        <file>Browse.png</file>
+        <file>Browse_on.png</file>
         <file>edit-asset.png</file>
         <file>slice_item.png</file>
         <file>changed_data_item.png</file>
@@ -25,5 +25,7 @@
         <file>disabled_header.png</file>
         <file>help.png</file>
         <file alias="EntityPicker">eye_dropper.png</file>
+        <file>pin_button.png</file>
+        <file>pin_header.png</file>
     </qresource>
 </RCC>

@@ -1,2 +1,2 @@
 
-#include "StdAfx.h"
+#include "ScriptedEntityTweener_precompiled.h"

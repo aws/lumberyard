@@ -1068,8 +1068,7 @@ private:
             return a.timestamp < b.timestamp;
         }
     };
-
-#if defined(DURANGO) || defined (LINUX)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_MEMREPLAY_MODULE_STATE
     struct EnumModuleState
     {
         CReplayModules* pSelf;

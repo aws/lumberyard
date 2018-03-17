@@ -22,6 +22,7 @@
 #include <AzQtComponents/Components/StyledLineEdit.h>
 #include <AzQtComponents/Components/StyledDetailsTableView.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
+#include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 
 #include <QAbstractItemView>
 #include <QToolBar>
@@ -54,6 +55,7 @@
 #include <QApplication>
 #include <QMenu>
 #include <QPushButton>
+#include <QColorDialog>
 
 #include <assert.h>
 
@@ -111,8 +113,6 @@ namespace EditorProxyStylePrivate
 #endif // #ifdef Q_OS_WIN
 }
 
-Q_DECLARE_METATYPE(QMargins)
-
 // Constant for the docking drop zone hotspot color when hovered over
 static const QColor g_dropZoneColorOnHover(245, 127, 35);
 // Constant for the active button border color
@@ -130,62 +130,6 @@ namespace AzQtComponents
     const int toolButtonMenuWidth = 17;
     const int toolButtonButtonWidth = 22;
     const int toolButtonWithMenuLeftMargin = 4;
-
-#ifdef Q_OS_WIN
-    static QVector<QWidget*> g_titleBarOverdrawWidgets;
-
-    static QPlatformWindow* overdrawWindow(HWND hWnd)
-    {
-        for (auto widget : g_titleBarOverdrawWidgets)
-        {
-            auto handle = widget->windowHandle();
-            if (handle && widget->internalWinId() == (WId)hWnd)
-            {
-                return handle->handle();
-            }
-        }
-        return nullptr;
-    }
-
-    static QMargins customTitlebarMargins(unsigned style, unsigned exStyle, bool maximized)
-    {
-        RECT rect = { 0, 0, 500, 500 };
-        AdjustWindowRectEx(&rect, style, FALSE, exStyle);
-        return QMargins(0, rect.top - (maximized ? rect.left : 0), 0, 0);
-    }
-
-    static void applyOverdrawMargins(QPlatformWindow* window, HWND hWnd, bool maximized)
-    {
-        if (auto pni = QGuiApplication::platformNativeInterface())
-        {
-            const auto style = GetWindowLongPtr(hWnd, GWL_STYLE);
-            const auto exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
-            const auto margins = customTitlebarMargins(style, exStyle, maximized);
-            pni->setWindowProperty(window, QStringLiteral("WindowsCustomMargins"), qVariantFromValue(margins));
-        }
-    }
-
-    static void applyOverdrawMargins(QWindow* window)
-    {
-        if (auto platformWindow = window->handle())
-        {
-            auto hWnd = (HWND)window->winId();
-            WINDOWPLACEMENT placement;
-            placement.length = sizeof(WINDOWPLACEMENT);
-            const bool maximized = GetWindowPlacement(hWnd, &placement) && placement.showCmd == SW_SHOWMAXIMIZED;
-            applyOverdrawMargins(platformWindow, hWnd, maximized);
-        }
-        else
-        {
-            // We should not create a real window (HWND) yet, so get margins using presumed style
-            const static unsigned style = WS_OVERLAPPEDWINDOW & ~WS_OVERLAPPED;
-            const static unsigned exStyle = 0;
-            const auto margins = customTitlebarMargins(style, exStyle, false);
-            // ... and apply them to the creation context for the future window
-            window->setProperty("_q_windowsCustomMargins", qVariantFromValue(margins));
-        }
-    }
-#endif
 
     // done as a switch statement instead of as an array so that if a new flavor gets added, it'll assert
     static QColor GetLineEditFlavorColor(StyledLineEdit::Flavor flavor, bool focusOn)
@@ -446,6 +390,9 @@ namespace AzQtComponents
         if (!w || qobject_cast<const WindowDecorationWrapper*>(w) ||
             qobject_cast<const QDockWidget*>(w) ||
             qobject_cast<const QFileDialog*>(w) || // QFileDialog is native
+#if defined(AZ_PLATFORM_APPLE)
+            qobject_cast<const QColorDialog*>(w) || // QColorDialog is native on macOS
+#endif
             w->property("HasNoWindowDecorations").toBool() || // Allows decorations to be disabled
             isQWinWidget(w))
         {
@@ -533,28 +480,6 @@ namespace AzQtComponents
         return g_dropZoneColorOnHover;
     }
 
-    void EditorProxyStyle::addTitleBarOverdrawWidget(QWidget* widget)
-    {
-#ifdef Q_OS_WIN
-        if (QSysInfo::windowsVersion() != QSysInfo::WV_WINDOWS10 || g_titleBarOverdrawWidgets.contains(widget))
-        {
-            return;
-        }
-
-        g_titleBarOverdrawWidgets.append(widget);
-        connect(widget, &QWidget::destroyed, [widget] {
-                g_titleBarOverdrawWidgets.removeOne(widget);
-            });
-
-        if (auto handle = widget->windowHandle())
-        {
-            applyOverdrawMargins(handle);
-        }
-#else
-        Q_UNUSED(widget)
-#endif
-    }
-
     void EditorProxyStyle::UpdatePrimaryButtonStyle(QPushButton* button)
     {
         Q_ASSERT(button != nullptr);
@@ -604,6 +529,8 @@ namespace AzQtComponents
 
     void EditorProxyStyle::polish(QWidget* widget)
     {
+        TitleBarOverdrawHandler::getInstance()->polish(widget);
+
         if (qobject_cast<QToolButton*>(widget))
         {
             // So we can have a different effect on hover
@@ -630,10 +557,6 @@ namespace AzQtComponents
                 header->installEventFilter(UpdateOnMouseEventFilter());
             }
         }
-        else if (strcmp(widget->metaObject()->className(), "QDockWidgetGroupWindow") == 0)
-        {
-            addTitleBarOverdrawWidget(widget);
-        }
         else if (QMenu* menu = qobject_cast<QMenu*>(widget))
         {
 #ifdef Q_OS_WIN
@@ -649,35 +572,6 @@ namespace AzQtComponents
 #endif
         }
         return QProxyStyle::polish(widget);
-    }
-
-    void EditorProxyStyle::polish(QApplication* app)
-    {
-#ifdef Q_OS_WIN
-        struct Win10ClientAreaFilter : public QAbstractNativeEventFilter
-        {
-            bool nativeEventFilter(const QByteArray&, void* message, long*) override
-            {
-                MSG* msg = static_cast<MSG*>(message);
-                const bool maxRestore = msg->message == WM_SIZE && (msg->wParam == SIZE_MAXIMIZED ||
-                                                                    msg->wParam == SIZE_RESTORED);
-                if (maxRestore || msg->message == WM_DPICHANGED)
-                {
-                    if (auto window = overdrawWindow(msg->hwnd))
-                    {
-                        applyOverdrawMargins(window, msg->hwnd, msg->wParam == SIZE_MAXIMIZED);
-                    }
-                }
-                return false;
-            }
-        };
-        if (QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10)
-        {
-            static Win10ClientAreaFilter filter;
-            app->installNativeEventFilter(&filter);
-        }
-#endif
-        QProxyStyle::polish(app);
     }
 
     QSize EditorProxyStyle::sizeFromContents(QStyle::ContentsType type, const QStyleOption* option,
@@ -807,12 +701,12 @@ namespace AzQtComponents
 
     static bool toolButtonSupportsHoverEffect(const QToolButton* button)
     {
-        if (QToolBar* bar = findParent<QToolBar>(button))
+        if (QAction *action = button->defaultAction())
         {
             // We can't enable the hover effect for all QToolButtons right now, because some Lumberyard
             // View panes are using old icons that don't look nice with this effect.
             // So only enable it for QToolBar QToolButtons, or where we explicitely request it.
-            return bar->property("IconsHaveHoverEffect").toBool();
+            return action->property("IconHasHoverEffect").toBool();
         }
         return false;
     }
@@ -845,7 +739,7 @@ namespace AzQtComponents
         else if (element == CE_ToolButtonLabel)
         {
             auto tbOpt = qstyleoption_cast<const QStyleOptionToolButton*>(opt);
-            auto button = static_cast<const QToolButton*>(widget);
+            auto button = qobject_cast<const QToolButton*>(widget);
             if (button && tbOpt)
             {
                 // Draw the button of a tool button with menu
@@ -986,24 +880,6 @@ namespace AzQtComponents
             if ((!isStyled || isHovered)
                 && hOpt->position != QStyleOptionHeader::End
                 && hOpt->position != QStyleOptionHeader::OnlyOneSection)
-            {
-                p->save();
-                p->setPen(QColor(153, 153, 153));
-                p->drawLine(QLine(opt->rect.topRight(), opt->rect.bottomRight()).translated(-1, 0));
-                p->restore();
-            }
-            return;
-        }
-        else if (element == CE_HeaderSection)
-        {
-            // Test for any part of the widget under the mouse, not just the current section
-            const auto header = qobject_cast<const QHeaderView*>(widget);
-            const bool isStyled = header && qobject_cast<const StyledDetailsTableView*>(widget->parentWidget());
-            const bool isHovered = header && header->viewport()->underMouse();
-            const auto hOpt = qstyleoption_cast<const QStyleOptionHeader*>(opt);
-            if ((!isStyled || isHovered)
-                    && hOpt->position != QStyleOptionHeader::End
-                    && hOpt->position != QStyleOptionHeader::OnlyOneSection)
             {
                 p->save();
                 p->setPen(QColor(153, 153, 153));

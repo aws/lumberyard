@@ -66,8 +66,6 @@
 #include <fcntl.h>
 #endif
 
-#include <AzCore/std/string/wildcard.h>
-
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
@@ -92,39 +90,6 @@ namespace AssetUtilsInternal
     // so that even if we do init two seeds at exactly the same msec time, theres still this extra
     // changing number
     static AZStd::atomic_int g_randomNumberSequentialSeed;
-    // the Assert Absorber here is used to absorb asserts during regex creation.
-    // it only absorbs asserts spawned by this thread;
-    class AssertAbsorber
-        : public AZ::Debug::TraceMessageBus::Handler
-    {
-    public:
-        AssertAbsorber()
-        {
-            // only absorb asserts when this object is on scope in the thread that this object is on scope in.
-            s_onAbsorbThread = true;
-            BusConnect();
-        }
-
-        bool OnAssert(const char* message)
-        {
-            if (s_onAbsorbThread)
-            {
-                m_assertMessage = message;
-                return true; // I handled this, do not forward it
-            }
-            return false;
-        }
-
-        ~AssertAbsorber()
-        {
-            s_onAbsorbThread = false;
-        }
-
-        AZStd::string m_assertMessage;
-        // only absorb messages for your thread!
-        static AZ_THREAD_LOCAL bool s_onAbsorbThread;
-    };
-    AZ_THREAD_LOCAL bool AssertAbsorber::s_onAbsorbThread = false;
 
     bool FileCopyMoveWithTimeout(QString sourceFile, QString outputFile, bool isCopy, unsigned int waitTimeInSeconds)
     {
@@ -1292,92 +1257,14 @@ namespace AssetUtilities
         return productName.toLower();
     }
 
-    FilePatternMatcher::FilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern)
-        : m_pattern(pattern)
-    {
-        if (pattern.m_type == AssetBuilderSDK::AssetBuilderPattern::Regex)
-        {
-            m_isRegex = true;
-            m_isValid = FilePatternMatcher::ValidatePatternRegex(pattern.m_pattern, m_errorString);
-            if (m_isValid)
-            {
-                this->m_regex = RegexType(pattern.m_pattern.c_str(), RegexType::flag_type::icase | RegexType::flag_type::ECMAScript);
-            }
-        }
-        else
-        {
-            m_isValid = true;
-            m_isRegex = false;
-        }
-    }
-
-    FilePatternMatcher::FilePatternMatcher(const AZStd::string& pattern, AssetBuilderSDK::AssetBuilderPattern::PatternType type)
-        : FilePatternMatcher(AssetBuilderSDK::AssetBuilderPattern(pattern, type))
-    {
-    }
-
-    FilePatternMatcher::FilePatternMatcher(const FilePatternMatcher& copy)
-        : m_pattern(copy.m_pattern)
-        , m_regex(copy.m_regex)
-        , m_isRegex(copy.m_isRegex)
-        , m_isValid(copy.m_isValid)
-        , m_errorString(copy.m_errorString)
-    {
-    }
-
-    bool FilePatternMatcher::MatchesPath(const AZStd::string& assetPath) const
-    {
-        bool matches = false;
-        if (this->m_isRegex)
-        {
-            matches = AZStd::regex_match(assetPath.c_str(), this->m_regex);
-        }
-        else
-        {
-            matches = AZStd::wildcard_match(this->m_pattern.m_pattern, assetPath);
-        }
-        return matches;
-    }
-
-    bool FilePatternMatcher::MatchesPath(const QString& assetPath) const
-    {
-        return MatchesPath(AZStd::string(assetPath.toUtf8().data()));
-    }
-
-    bool FilePatternMatcher::IsValid() const
-    {
-        return this->m_isValid;
-    }
-
-    AZStd::string FilePatternMatcher::GetErrorString() const
-    {
-        return m_errorString;
-    }
-
-    const AssetBuilderSDK::AssetBuilderPattern& FilePatternMatcher::GetBuilderPattern() const
-    {
-        return this->m_pattern;
-    }
-
-    bool FilePatternMatcher::ValidatePatternRegex(const AZStd::string& pattern, AZStd::string& errorString)
-    {
-        AssetUtilsInternal::AssertAbsorber absorber;
-        AZStd::regex validate_regex(pattern.c_str(),
-            AZStd::regex::flag_type::icase |
-            AZStd::regex::flag_type::ECMAScript);
-
-        return absorber.m_assertMessage.empty();
-    }
-
-
     BuilderFilePatternMatcher::BuilderFilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern, const AZ::Uuid& builderDescID)
-        : FilePatternMatcher(pattern)
+        : AssetBuilderSDK::FilePatternMatcher(pattern)
         , m_builderDescID(builderDescID)
     {
     }
 
     BuilderFilePatternMatcher::BuilderFilePatternMatcher(const BuilderFilePatternMatcher& copy)
-        : FilePatternMatcher(copy)
+        : AssetBuilderSDK::FilePatternMatcher(copy)
         , m_builderDescID(copy.m_builderDescID)
     {
     }

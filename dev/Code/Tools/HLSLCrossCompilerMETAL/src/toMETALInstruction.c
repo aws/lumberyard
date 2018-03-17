@@ -57,8 +57,20 @@ static void AddOpAssignToDestWithMask(HLSLCrossCompilerContext* psContext, const
 
     *pNeedsParenthesis = 0;
 
-    TranslateOperandWithMaskMETAL(psContext, psDest, TO_FLAG_DESTINATION, ui32CompMask);
-
+    uint32_t flags = TO_FLAG_DESTINATION;
+    // Default is full floats. Handle half floats if the source is half precision
+    if (eSrcType == SVT_FLOAT16)
+    {
+        flags |= TO_FLAG_FLOAT16;
+    }
+    TranslateOperandWithMaskMETAL(psContext, psDest, flags, ui32CompMask);
+    
+    //GMEM data output types can only be full floats.
+    if(eDestDataType== SVT_FLOAT16 && psDest->eType== OPERAND_TYPE_OUTPUT && psContext->gmemOutputNumElements[0]>0 )
+    {
+        eDestDataType = SVT_FLOAT;
+    }
+    
     // Simple path: types match.
     if (eDestDataType == eSrcType)
     {
@@ -79,6 +91,7 @@ static void AddOpAssignToDestWithMask(HLSLCrossCompilerContext* psContext, const
     switch (eDestDataType)
     {
     case SVT_INT:
+    {
         if (1 == ui32DestElementCount)
         {
             bformata(metal, " %s as_type<int>(", szAssignmentOp);
@@ -87,15 +100,10 @@ static void AddOpAssignToDestWithMask(HLSLCrossCompilerContext* psContext, const
         {
             bformata(metal, "%s as_type<int%d>(", szAssignmentOp, ui32DestElementCount);
         }
-
-        // Cover cases where the HLSL language expects the rest of the components to be default-filled
-        if (ui32DestElementCount > ui32SrcElementCount)
-        {
-            bformata(metal, "%s(", GetConstructorForTypeMETAL(eSrcType, ui32DestElementCount));
-            (*pNeedsParenthesis)++;
-        }
         break;
+    }
     case SVT_UINT:
+    {
         if (1 == ui32DestElementCount)
         {
             bformata(metal, " %s as_type<uint>(", szAssignmentOp);
@@ -104,35 +112,52 @@ static void AddOpAssignToDestWithMask(HLSLCrossCompilerContext* psContext, const
         {
             bformata(metal, "%s as_type<uint%d>(", szAssignmentOp, ui32DestElementCount);
         }
-
-        // Cover cases where the HLSL language expects the rest of the components to be default-filled
-        if (ui32DestElementCount > ui32SrcElementCount)
-        {
-            bformata(metal, "%s(", GetConstructorForTypeMETAL(eSrcType, ui32DestElementCount));
-            (*pNeedsParenthesis)++;
-        }
         break;
-
+    }
     case SVT_FLOAT:
+    {
+        const char* castType = eSrcType == SVT_FLOAT16 ? "static_cast" : "as_type";
         if (1 == ui32DestElementCount)
         {
-            bformata(metal, " %s as_type<float>(", szAssignmentOp);
+            bformata(metal, " %s %s<float>(", szAssignmentOp, castType);
         }
         else
         {
-            bformata(metal, "%s as_type<float%d>(", szAssignmentOp, ui32DestElementCount);
-        }
-
-        // Cover cases where the HLSL language expects the rest of the components to be default-filled
-        if (ui32DestElementCount > ui32SrcElementCount)
-        {
-            bformata(metal, "%s(", GetConstructorForTypeMETAL(eSrcType, ui32DestElementCount));
-            (*pNeedsParenthesis)++;
+            bformata(metal, "%s %s<float%d>(", szAssignmentOp, castType, ui32DestElementCount);
         }
         break;
+    }
+    case SVT_FLOAT16:
+    {
+        if (1 == ui32DestElementCount)
+        {
+            bformata(metal, " %s static_cast<half>(", szAssignmentOp);
+        }
+        else
+        {
+            bformata(metal, "%s static_cast<half%d>(", szAssignmentOp, ui32DestElementCount);
+        }
+        break;
+    }
     default:
         // TODO: Handle bools?
         break;
+    }
+    
+    switch (eDestDataType)
+    {
+        case SVT_INT:
+        case SVT_UINT:
+        case SVT_FLOAT:
+        case SVT_FLOAT16:
+        {
+            // Cover cases where the HLSL language expects the rest of the components to be default-filled
+            if (ui32DestElementCount > ui32SrcElementCount)
+            {
+                bformata(metal, "%s(", GetConstructorForTypeMETAL(eSrcType, ui32DestElementCount));
+                (*pNeedsParenthesis)++;
+            }
+        }
     }
     (*pNeedsParenthesis)++;
     return;
@@ -548,7 +573,8 @@ static void CallTernaryOp(HLSLCrossCompilerContext* psContext, const char* op1, 
     uint32_t dstSwizCount = GetNumSwizzleElementsMETAL(&psInst->asOperands[dest]);
     uint32_t destMask = GetOperandWriteMaskMETAL(&psInst->asOperands[dest]);
 
-    uint32_t ui32Flags = dataType;
+    const SHADER_VARIABLE_TYPE eDestType = GetOperandDataTypeMETAL(psContext, &psInst->asOperands[dest]);
+    uint32_t ui32Flags = dataType | SVTTypeToFlagMETAL(eDestType);
     int numParenthesis = 0;
 
     AddIndentation(psContext);
@@ -566,7 +592,9 @@ static void CallTernaryOp(HLSLCrossCompilerContext* psContext, const char* op1, 
 static void CallHelper3(HLSLCrossCompilerContext* psContext, const char* name, Instruction* psInst,
     int dest, int src0, int src1, int src2, int paramsShouldFollowWriteMask)
 {
-    uint32_t ui32Flags = TO_AUTO_BITCAST_TO_FLOAT;
+    const SHADER_VARIABLE_TYPE eDestType = GetOperandDataTypeMETAL(psContext, &psInst->asOperands[dest]);
+    uint32_t ui32Flags = TO_AUTO_BITCAST_TO_FLOAT | SVTTypeToFlagMETAL(eDestType);
+    
     bstring glsl = *psContext->currentShaderString;
     uint32_t destMask = paramsShouldFollowWriteMask ? GetOperandWriteMaskMETAL(&psInst->asOperands[dest]) : OPERAND_4_COMPONENT_MASK_ALL;
     uint32_t src2SwizCount = GetNumSwizzleElementsMETAL(&psInst->asOperands[src2]);
@@ -593,7 +621,9 @@ static void CallHelper3(HLSLCrossCompilerContext* psContext, const char* name, I
 static void CallHelper2(HLSLCrossCompilerContext* psContext, const char* name, Instruction* psInst,
     int dest, int src0, int src1, int paramsShouldFollowWriteMask)
 {
-    uint32_t ui32Flags = TO_AUTO_BITCAST_TO_FLOAT;
+    const SHADER_VARIABLE_TYPE eDestType = GetOperandDataTypeMETAL(psContext, &psInst->asOperands[dest]);
+    uint32_t ui32Flags = TO_AUTO_BITCAST_TO_FLOAT | SVTTypeToFlagMETAL(eDestType);
+    
     bstring glsl = *psContext->currentShaderString;
     uint32_t destMask = paramsShouldFollowWriteMask ? GetOperandWriteMaskMETAL(&psInst->asOperands[dest]) : OPERAND_4_COMPONENT_MASK_ALL;
     uint32_t src1SwizCount = GetNumSwizzleElementsMETAL(&psInst->asOperands[src1]);
@@ -1144,7 +1174,7 @@ static void TranslateTextureSample(HLSLCrossCompilerContext* psContext, Instruct
     uint32_t ui32Flags)
 {
     bstring metal = *psContext->currentShaderString;
-    uint32_t numParenthesis = 0;
+    int numParenthesis = 0;
 
     const char* funcName = "sample";
     const char* offset = "";
@@ -1572,6 +1602,10 @@ static void TranslateShaderStorageStore(HLSLCrossCompilerContext* psContext, Ins
                         {
                             flags = TO_FLAG_NONE;
                         }
+                        else if (psVarType->Type == SVT_FLOAT16)
+                        {
+                            flags = TO_FLAG_FLOAT16;
+                        } 
                         else
                         {
                             ASSERT(0);
@@ -1678,6 +1712,14 @@ static void TranslateShaderStorageStore(HLSLCrossCompilerContext* psContext, Ins
                     else if (psVarType->Type == SVT_FLOAT)
                     {
                         flags = TO_FLAG_NONE;
+                    }
+                    else if (psVarType->Type == SVT_FLOAT16)
+                    {
+                        flags = TO_FLAG_FLOAT16;
+                    }
+                    else
+                    {
+                        ASSERT(0);
                     }
                 }
                 //TGSM always uint
@@ -2434,6 +2476,11 @@ static SHADER_VARIABLE_TYPE SelectHigherType(SHADER_VARIABLE_TYPE a, SHADER_VARI
     if (a == SVT_FLOAT || b == SVT_FLOAT)
     {
         return SVT_FLOAT;
+    }
+
+    if (a == SVT_FLOAT16 || b == SVT_FLOAT16)
+    {
+        return SVT_FLOAT16;
     }
     // Apart from floats, the enum values are fairly well-ordered, use that directly.
     return a > b ? a : b;
@@ -3333,15 +3380,16 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         AddIndentation(psContext);
         AddAssignToDest(psContext, &psInst->asOperands[0], SVT_FLOAT, 1, &numParenthesis);
         bcatcstr(metal, "dot(");
-        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[1], TO_AUTO_BITCAST_TO_FLOAT, 3 /* .xy */);
+        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[1], TO_AUTO_BITCAST_TO_FLOAT | SVTTypeToFlagMETAL(eDestDataType), 3 /* .xy */);
         bcatcstr(metal, ", ");
-        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[2], TO_AUTO_BITCAST_TO_FLOAT, 3 /* .xy */);
+        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[2], TO_AUTO_BITCAST_TO_FLOAT | SVTTypeToFlagMETAL(eDestDataType), 3 /* .xy */);
         bcatcstr(metal, ")");
         AddAssignPrologue(psContext, numParenthesis);
         break;
     }
     case OPCODE_DP3:
     {
+        SHADER_VARIABLE_TYPE eDestDataType = GetOperandDataTypeMETAL(psContext, &psInst->asOperands[0]);
         int numParenthesis = 0;
 #ifdef _DEBUG
         AddIndentation(psContext);
@@ -3350,9 +3398,9 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         AddIndentation(psContext);
         AddAssignToDest(psContext, &psInst->asOperands[0], SVT_FLOAT, 1, &numParenthesis);
         bcatcstr(metal, "dot(");
-        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[1], TO_AUTO_BITCAST_TO_FLOAT, 7 /* .xyz */);
+        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[1], TO_AUTO_BITCAST_TO_FLOAT | SVTTypeToFlagMETAL(eDestDataType), 7 /* .xyz */);
         bcatcstr(metal, ", ");
-        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[2], TO_AUTO_BITCAST_TO_FLOAT, 7 /* .xyz */);
+        TranslateOperandWithMaskMETAL(psContext, &psInst->asOperands[2], TO_AUTO_BITCAST_TO_FLOAT | SVTTypeToFlagMETAL(eDestDataType), 7 /* .xyz */);
         bcatcstr(metal, ")");
         AddAssignPrologue(psContext, numParenthesis);
         break;
@@ -4560,7 +4608,7 @@ void TranslateInstructionMETAL(HLSLCrossCompilerContext* psContext, Instruction*
         AddIndentation(psContext);
         bcatcstr(metal, "{\n");
 
-        AddIndentation(psContext); 
+        AddIndentation(psContext);
         bformata(metal, "  %s mask = ~(%s(0xffffffff) << ", GetConstructorForTypeMETAL(SVT_UINT, numComponents), GetConstructorForTypeMETAL(SVT_UINT, numComponents));
         TranslateOperandMETAL(psContext, &psInst->asOperands[1], TO_FLAG_UNSIGNED_INTEGER);
         bcatcstr(metal, ");\n");

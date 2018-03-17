@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <CloudGemAWSScriptBehaviors_precompiled.h>
 
 #include "AWSBehaviorS3Presign.h"
 

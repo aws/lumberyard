@@ -37,7 +37,7 @@ CUiAVSequenceProps::CUiAVSequenceProps(CUiAnimViewSequence* pSequence, float fps
     ui->setupUi(this);
     assert(pSequence);
     m_pSequence = pSequence;
-    connect(ui->BTNOK, &QPushButton::clicked, this, &CUiAVSequenceProps::OnOK);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &CUiAVSequenceProps::OnOK);
     connect(ui->TU_SECONDS, &QRadioButton::toggled, this, &CUiAVSequenceProps::OnBnClickedTuSeconds);
     connect(ui->TU_FRAMES, &QRadioButton::toggled, this, &CUiAVSequenceProps::OnBnClickedTuFrames);
 
@@ -146,7 +146,7 @@ void CUiAVSequenceProps::OnOK()
     if (name != seqName)
     {
         // Rename sequence.
-        m_pSequence->SetName(name.toLatin1().data());
+        m_pSequence->SetName(name.toUtf8().data());
     }
 
     int seqFlags = m_pSequence->GetFlags();

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "LibraryTreeViewItem.h"
 //Editor
@@ -121,7 +121,7 @@ CBaseLibraryItem* CLibraryTreeViewItem::GetItem()
     }
     if (m_libManager)
     {
-        CBaseLibraryItem* item = static_cast<CBaseLibraryItem*>(m_libManager->FindItemByName(m_lookup.toUtf8().data()));
+        CBaseLibraryItem* item = static_cast<CBaseLibraryItem*>(m_libManager->FindItemByName(m_lookup));
         if (item)
         {
             return item;

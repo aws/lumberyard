@@ -82,6 +82,8 @@ def load_debug_win_x64_win_x64_vs2013_settings(conf):
     # Load additional shared settings
     conf.load_debug_cryengine_settings()
 
+    conf.register_win_x64_external_ly_identity('vs2013', 'Debug')
+    conf.register_win_x64_external_ly_metrics('vs2013', 'Debug')
 
 @conf
 def load_profile_win_x64_win_x64_vs2013_settings(conf):
@@ -95,6 +97,9 @@ def load_profile_win_x64_win_x64_vs2013_settings(conf):
     
     # Load additional shared settings
     conf.load_profile_cryengine_settings()
+
+    conf.register_win_x64_external_ly_identity('vs2015', 'Release')
+    conf.register_win_x64_external_ly_metrics('vs2015', 'Release')
 
 
 @conf

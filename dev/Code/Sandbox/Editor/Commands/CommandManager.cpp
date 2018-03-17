@@ -97,7 +97,7 @@ bool CEditorCommandManager::AddCommand(CCommand* pCommand, TPfnDeleter deleter)
         QString errMsg;
 
         errMsg = QStringLiteral("Error: Command %1.%2 already registered!").arg(module.c_str(), name.c_str());
-        Warning(errMsg.toLatin1().data());
+        Warning(errMsg.toUtf8().data());
 
         return false;
     }
@@ -221,7 +221,7 @@ int CEditorCommandManager::GenNewCommandId()
     return uniqueId++;
 }
 
-string CEditorCommandManager::Execute(const string& module, const string& name, const CCommand::CArgs& args)
+QString CEditorCommandManager::Execute(const string& module, const string& name, const CCommand::CArgs& args)
 {
     string fullName = GetFullCommandName(module, name);
     CommandTable::iterator iter = m_commands.find(fullName);
@@ -237,13 +237,13 @@ string CEditorCommandManager::Execute(const string& module, const string& name, 
         QString errMsg;
 
         errMsg = QStringLiteral("Error: Trying to execute a unknown command, '%1'!").arg(fullName.c_str());
-        CryLogAlways(errMsg.toLatin1().data());
+        CryLogAlways(errMsg.toUtf8().data());
     }
 
     return "";
 }
 
-string CEditorCommandManager::Execute(const string& cmdLine)
+QString CEditorCommandManager::Execute(const string& cmdLine)
 {
     string cmdTxt, argsTxt;
     size_t argStart = cmdLine.find_first_of(' ');
@@ -273,7 +273,7 @@ string CEditorCommandManager::Execute(const string& cmdLine)
         QString errMsg;
 
         errMsg = QStringLiteral("Error: Trying to execute a unknown command, '%1'!").arg(cmdLine.c_str());
-        CryLogAlways(errMsg.toLatin1().data());
+        CryLogAlways(errMsg.toUtf8().data());
     }
 
     return "";
@@ -295,7 +295,7 @@ void CEditorCommandManager::Execute(int commandId)
         QString errMsg;
 
         errMsg = QStringLiteral("Error: Trying to execute a unknown command of ID '%1'!").arg(commandId);
-        CryLogAlways(errMsg.toLatin1().data());
+        CryLogAlways(errMsg.toUtf8().data());
     }
 }
 
@@ -514,13 +514,12 @@ void CEditorCommandManager::LogCommand(const string& fullCmdName, const CCommand
     }
 }
 
-string CEditorCommandManager::ExecuteAndLogReturn(CCommand* pCommand, const CCommand::CArgs& args)
+QString CEditorCommandManager::ExecuteAndLogReturn(CCommand* pCommand, const CCommand::CArgs& args)
 {
-    string result = pCommand->Execute(args).c_str();
-    string returnMsg;
+    const QString result = pCommand->Execute(args);
+    const QString returnMsg = QString("Returned: %1").arg(result);
 
-    returnMsg.Format("Returned: %s", result.c_str());
-    CLogFile::WriteLine(returnMsg.c_str());
+    CLogFile::WriteLine(returnMsg.toUtf8().constData());
 
     return result;
 }

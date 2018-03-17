@@ -21,6 +21,9 @@
 #include <AzCore/std/parallel/mutex.h>
 #include "UnalignedBlit.h"
 
+// Remove this include once the restricted platform separation process is complete
+#include "RendererDefs.h"
+
 #if defined(ANDROID)
 #include <sched.h>
 #include <unistd.h>
@@ -44,7 +47,7 @@ struct SDynTexture;
 struct STexStreamInState;
 struct SDepthTexture;
 
-#if defined(ORBIS) || defined(DURANGO) || defined(MOBILE)
+#if RENDERTHREAD_H_TRAIT_USE_LOCKS_FOR_FLUSH_SYNC
 #define USE_LOCKS_FOR_FLUSH_SYNC
 #elif defined(WIN32)
 #define USE_LOCKS_FOR_FLUSH_SYNC

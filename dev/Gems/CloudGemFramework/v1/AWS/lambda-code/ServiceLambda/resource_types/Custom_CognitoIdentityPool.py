@@ -10,14 +10,14 @@
 #
 # $Revision: #1 $
 
-import properties
-import custom_resource_response
+from cgf_utils import properties
+from cgf_utils import custom_resource_response
 import boto3
 import botocore
 import json
-from resource_manager_common import aws_utils
+from cgf_utils import aws_utils
 from resource_manager_common import constant
-import identity_pool
+from resource_types.cognito import identity_pool
 from resource_manager_common import stack_info
 
 def handler(event, context):
@@ -44,6 +44,7 @@ def handler(event, context):
         })
 
     #give the identity pool a unique name per stack
+    stack_manager = stack_info.StackInfoManager()
     stack_name = aws_utils.get_stack_name_from_stack_arn(event['StackId'])
     identity_pool_name = stack_name+props.IdentityPoolName
     identity_pool_name = identity_pool_name.replace('-', ' ')
@@ -71,7 +72,7 @@ def handler(event, context):
                 for key, value in auth_doc.iteritems():
                     supported_login_providers[value['provider_uri']] = value['app_id']         
 
-        cognito_identity_providers = identity_pool.get_cognito_identity_providers(event['StackId'], event['LogicalResourceId'])
+        cognito_identity_providers = identity_pool.get_cognito_identity_providers(stack_manager, event['StackId'], event['LogicalResourceId'])
 
         print 'Identity Providers: ', cognito_identity_providers
         allow_anonymous = props.AllowUnauthenticatedIdentities.lower() == 'true'
@@ -112,7 +113,7 @@ def handler(event, context):
     
     physical_resource_id = identity_pool_id
 
-    custom_resource_response.succeed(event, context, data, physical_resource_id)
+    return custom_resource_response.success_response(data, physical_resource_id)
 
 def _load_doc_from_s3(bucket, key):
     s3_client = boto3.client('s3', region_name=aws_utils.current_region)    

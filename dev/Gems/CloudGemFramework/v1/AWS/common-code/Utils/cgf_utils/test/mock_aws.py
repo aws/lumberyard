@@ -60,7 +60,7 @@ def patch_client(service, method, **kwargs):
 
     Example:
 
-        import mock_aws
+        import cgf_utils.test.mock_aws
 
         BODY_CONTENT = '...'
 

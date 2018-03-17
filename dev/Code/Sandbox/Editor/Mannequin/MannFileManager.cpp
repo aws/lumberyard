@@ -111,7 +111,7 @@ public:
             return;
         }
 
-        if (CFileUtil::CheckoutFile(m_fullFileName.toLatin1().data()))
+        if (CFileUtil::CheckoutFile(m_fullFileName.toUtf8().data()))
         {
             m_bCheckedOut = true;
             m_bReadOnly = false;

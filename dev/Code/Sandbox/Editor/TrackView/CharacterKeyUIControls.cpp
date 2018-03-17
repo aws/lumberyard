@@ -159,7 +159,7 @@ void CCharacterKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& s
 
             if (mv_animation.GetVar() == pVar)
             {
-                charKey.m_animation = ((QString)mv_animation).toLatin1().data();
+                charKey.m_animation = ((QString)mv_animation).toUtf8().data();
                 // This call is required to make sure that the newly set animation is properly triggered.
                 pTrack->GetSequence()->Reset(false);
             }

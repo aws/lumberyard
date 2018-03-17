@@ -253,14 +253,17 @@ class CryThread;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Include architecture specific code.
-#if defined(LINUX) || defined(ORBIS)
+#if AZ_LEGACY_CRYCOMMON_TRAIT_USE_PTHREADS
 #include <CryThread_pthreads.h>
-#elif defined(APPLE)
-#include <CryThread_pthreads.h>
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(WIN32) || defined(WIN64)
-
 #include <CryThread_windows.h>
-
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(CryThread_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 // Put other platform specific includes here!
 #include <CryThread_dummy.h>

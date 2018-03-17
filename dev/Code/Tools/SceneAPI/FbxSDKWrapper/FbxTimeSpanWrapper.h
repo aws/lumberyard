@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,8 +10,9 @@
 *
 */
 
-#include <stdint.h>
-#include "fbxsdk.h"
+#pragma once
+
+#include <fbxsdk.h>
 
 namespace AZ
 {
@@ -32,5 +31,5 @@ namespace AZ
         protected:
             FbxTimeSpan m_fbxTimeSpan;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

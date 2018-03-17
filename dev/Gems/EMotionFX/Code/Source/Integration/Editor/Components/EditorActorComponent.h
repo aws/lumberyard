@@ -67,6 +67,7 @@ namespace EMotionFX
             // EditorActorComponentRequestBus::Handler
             //////////////////////////////////////////////////////////////////////////
             const AZ::Data::AssetId& GetActorAssetId() override;
+            AZ::EntityId GetAttachedToEntityId() const override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -148,6 +149,8 @@ namespace EMotionFX
             void CreateActorInstance();
             void DestroyActorInstance();
 
+            bool IsValidAttachment(const AZ::EntityId& attachment, const AZ::EntityId& attachTo) const;
+ 
             AZ::Data::Asset<ActorAsset>         m_actorAsset;               ///< Assigned actor asset.
             ActorAsset::MaterialList            m_materialPerLOD;           ///< Material assignment for each LOD level.
             bool                                m_renderSkeleton;           ///< Toggles rendering of character skeleton.

@@ -8,7 +8,6 @@ Tasks represent atomic operations such as processes.
 
 import os, shutil, re, tempfile, time, pprint
 from waflib import Context, Utils, Logs, Errors
-import waflib.Build
 from binascii import hexlify
 
 # task states
@@ -488,8 +487,9 @@ class Task(TaskBase):
 			m = Utils.md5()
 			up = m.update
 			up(self.__class__.__name__.encode())
-			for x in self.inputs + self.outputs:
-				up(x.abspath().encode())
+			deplist = [k.abspath().encode() for k in self.inputs + self.outputs]
+			dep_bld_sigs_str = "".join(deplist)
+			up(dep_bld_sigs_str)
 			self.uid_ = m.digest()
 			return self.uid_
 
@@ -549,17 +549,16 @@ class Task(TaskBase):
 		self.m.update(self.hcode.encode())
 
 		# explicit deps
-		self.sig_explicit_deps()
+		exp_deps = self.sig_explicit_deps()
+		self.m.update(exp_deps)
 
 		# env vars
 		self.sig_vars()
 
 		# implicit deps / scanner results
 		if self.scan:
-			try:
-				self.sig_implicit_deps()
-			except Errors.TaskRescan:
-				return self.signature()
+			imp_deps = self.sig_implicit_deps()
+			self.m.update(imp_deps)
 
 		ret = self.cache_sig = self.m.digest()
 		return ret
@@ -569,7 +568,6 @@ class Task(TaskBase):
 		Override :py:meth:`waflib.Task.TaskBase.runnable_status` to determine if the task is ready
 		to be run (:py:attr:`waflib.Task.Task.run_after`)
 		"""
-		#return 0 # benchmarking
 
 		for t in self.run_after:
 			if not t.hasrun:
@@ -644,9 +642,7 @@ class Task(TaskBase):
 		:rtype: hash value
 		"""
 		bld = self.generator.bld
-		upd = self.m.update
-		key = self.uid()
-
+		bld_sigs = []
 		exp_output = ''
 
 		# the inputs
@@ -655,9 +651,10 @@ class Task(TaskBase):
 				bld_sig = x.get_bld_sig()
 				if Logs.sig_delta:
 					exp_output += '{} {} {}\n'.format(x.name, x.abspath(), hexlify(bld_sig))
-				upd(bld_sig)
+				bld_sigs.append(bld_sig)
 			except (AttributeError, TypeError):
-				raise Errors.WafError('Missing node signature for %r (required by %r)' % (x, self))
+				Logs.warn('Missing signature for node %r (required by %r)' % (x, self))
+				continue	# skip adding the signature to the calculation, but continue adding other dependencies
 
 		# manual dependencies, they can slow down the builds
 		if bld.deps_man:
@@ -679,10 +676,16 @@ class Task(TaskBase):
 						v = v() # dependency is a function, call it
 					if Logs.sig_delta:
 						exp_output += '{} {}\n'.format(v_name, hexlify(v))
-					upd(v)
+					bld_sigs.append(v)
 
-		explicit_sig = self.m.digest()
+		dep_bld_sigs_str = "".join(bld_sigs)
+
+		m = Utils.md5()
+		m.update(dep_bld_sigs_str)
+		explicit_sig = m.digest()
+
 		if Logs.sig_delta:
+			key = self.uid()
 			prev_sig = bld.task_sigs.get((key, 'exp'), [])
 			if prev_sig and prev_sig != explicit_sig:
 				self.capture_signature_log('\nExplicit(Old):\n')
@@ -691,7 +694,7 @@ class Task(TaskBase):
 				self.capture_signature_log(exp_output)
 			bld.last_build['exp_deps'][key] = exp_output
 			bld.task_sigs[(key, 'exp')] = explicit_sig
-		
+
 		return explicit_sig
 
 	def sig_vars(self):
@@ -760,11 +763,6 @@ class Task(TaskBase):
 		"""
 		Used by :py:meth:`waflib.Task.Task.signature` hashes node signatures obtained by scanning for dependencies (:py:meth:`waflib.Task.Task.scan`).
 
-		The exception :py:class:`waflib.Errors.TaskRescan` is thrown
-		when a file has changed. When this occurs, :py:meth:`waflib.Task.Task.signature` is called
-		once again, and this method will be executed once again, this time calling :py:meth:`waflib.Task.Task.scan`
-		for searching the dependencies.
-
 		:rtype: hash value
 		"""
 		bld = self.generator.bld
@@ -776,13 +774,16 @@ class Task(TaskBase):
 		# for issue #379
 		if prev:
 			try:
-				if prev == self.compute_sig_implicit_deps():
+				# if a dep is deleted, it will be missing.  Don't warn, the signature will be different
+				sid = self.compute_sig_implicit_deps(False)
+				if prev == sid:
 					return prev
 			except Exception:
 				# when a file was renamed (IOError usually), remove the stale nodes (headers in folders without source files)
 				# this will break the order calculation for headers created during the build in the source directory (should be uncommon)
 				# the behaviour will differ when top != out
-				for x in bld.node_deps.get(self.uid(), []):
+				deps = bld.node_deps.get(self.uid(), [])
+				for x in deps:
 					if x.is_child_of(bld.srcnode):
 						try:
 							os.stat(x.abspath())
@@ -791,8 +792,8 @@ class Task(TaskBase):
 								del x.parent.children[x.name]
 							except KeyError:
 								pass
+			# the previous signature and the current signature don't match, delete the implicit deps, and cause a rescan below
 			del bld.task_sigs[(key, 'imp')]
-			raise Errors.TaskRescan('rescan')
 
 		# no previous run or the signature of the dependencies has changed, rescan the dependencies
 		(nodes, names) = self.scan()
@@ -803,34 +804,22 @@ class Task(TaskBase):
 		bld.node_deps[key] = nodes
 		bld.raw_deps[key] = names
 
-		# might happen
-		self.are_implicit_nodes_ready()
-
 		# recompute the signature and return it
-		try:
-			old_sig_debug_log = self.sig_implicit_debug_log
+		old_sig_debug_log = self.sig_implicit_debug_log
 
-			bld.task_sigs[(key, 'imp')] = sig = self.compute_sig_implicit_deps()
+		bld.task_sigs[(key, 'imp')] = sig = self.compute_sig_implicit_deps()
 
-			# Make the equality check since it's possible we didn't have a prior imp key but had prior nodes
-			# and said nodes didn't change
-			if Logs.sig_delta and old_sig_debug_log != self.sig_implicit_debug_log:
-				self.capture_signature_log('\nImplicit(Old):\n')
-				self.capture_signature_log(old_sig_debug_log)
-				self.capture_signature_log('\nImplicit(New):\n')
-				self.capture_signature_log(self.sig_implicit_debug_log)
-		except Exception:
-			if Logs.verbose:
-				for k in bld.node_deps.get(self.uid(), []):
-					try:
-						k.get_bld_sig()
-					except Exception:
-						Logs.warn('Missing signature for node %r (may cause rebuilds)' % k)
-						self.capture_signature_log('Missing signature for node %r (may cause rebuilds)\n' % k)
-		else:
-			return sig
+		# Make the equality check since it's possible we didn't have a prior imp key but had prior nodes
+		# and said nodes didn't change
+		if Logs.sig_delta and old_sig_debug_log != self.sig_implicit_debug_log:
+			self.capture_signature_log('\nImplicit(Old):\n')
+			self.capture_signature_log(old_sig_debug_log)
+			self.capture_signature_log('\nImplicit(New):\n')
+			self.capture_signature_log(self.sig_implicit_debug_log)
 
-	def compute_sig_implicit_deps(self):
+		return sig
+
+	def compute_sig_implicit_deps(self, warn_on_missing=True):
 		"""
 		Used by :py:meth:`waflib.Task.Task.sig_implicit_deps` for computing the actual hash of the
 		:py:class:`waflib.Node.Node` returned by the scanner.
@@ -838,8 +827,6 @@ class Task(TaskBase):
 		:return: hash value
 		:rtype: string
 		"""
-
-		upd = self.m.update
 
 		bld = self.generator.bld
 
@@ -850,14 +837,25 @@ class Task(TaskBase):
 		# scanner returns a node that does not have a signature
 		# just *ignore* the error and let them figure out from the compiler output
 		# waf -k behaviour
-		for k in bld.node_deps.get(self.uid(), []):
-			bld_sig = k.get_bld_sig()
-			if Logs.sig_delta:
-				self.sig_implicit_debug_log += ('{} {}\n'.format(k.name, hexlify(bld_sig)))
-			upd(bld_sig)
+		deps = bld.node_deps.get(self.uid(), [])
 
+		bld_sigs = []
+		for k in deps:
+			try:
+				bld_sig = k.get_bld_sig()
+				if Logs.sig_delta:
+					self.sig_implicit_debug_log += ('{} {}\n'.format(k.name, hexlify(bld_sig)))
+			except:
+				if warn_on_missing:
+					Logs.warn('Missing signature for node %r (dependency will not be tracked)' % k)
+				continue	# skip adding the signature to the calculation, but continue adding other dependencies
+			bld_sigs.append(bld_sig)
+		dep_bld_sigs_str = "".join(bld_sigs)
 
-		return self.m.digest()
+		m = Utils.md5()
+		m.update(dep_bld_sigs_str)
+
+		return m.digest()
 
 	def are_implicit_nodes_ready(self):
 		"""
@@ -880,17 +878,18 @@ class Task(TaskBase):
 				for x in tsk.outputs:
 					dct[x] = tsk
 
-		modified = False
-		for x in bld.node_deps.get(self.uid(), []):
-			if x in dct:
-				self.run_after.add(dct[x])
-				modified = True
+		# find any dependency that is not part of the run_after set already
+		deps = bld.node_deps.get(self.uid(), [])
+		deps_missing_from_runafter = [dct[i] for i in deps if i in dct and dct[i] not in self.run_after]
 
-		if modified:
-			for tsk in self.run_after:
-				if not tsk.hasrun:
-					#print "task is not ready..."
-					raise Errors.TaskNotReady('not ready')
+		# verify that all tasks have not already run
+		for tsk in deps_missing_from_runafter:
+			if not tsk.hasrun:
+				#print "task is not ready..."
+				raise Errors.TaskNotReady('not ready')
+
+		# update the run_after tasks
+		self.run_after.update(deps_missing_from_runafter)
 
 	def capture_signature_log(self, output):
 		"""

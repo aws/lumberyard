@@ -26,17 +26,74 @@ import tempfile
 import threading
 
 from waflib import Context, Errors, Logs, Task, Utils
-from waflib.Tools import c_preproc, c, cxx
 from waflib.TaskGen import feature, before_method
-
-lock = threading.Lock()
-nodes = {} # Cache the path -> Node lookup
 
 PREPROCESSOR_FLAG = '/showIncludes'
 INCLUDE_PATTERN = 'Note: including file:'
 
 # Extensible by outside tools
 supported_compilers = ['msvc']
+
+
+lock = threading.Lock()
+
+# do not call this function without holding the lock!
+def _find_or_make_node_case_correct(base_node, path):
+    lst = path.split('\\')
+
+    node = base_node
+    for x in lst:
+        if x == '.':
+            continue
+        if x == '..':
+            node = node.parent
+            continue
+
+        # find existing node
+        try:
+            node = node.children[x]
+            continue
+        except AttributeError:
+            # node.children does not exist
+            pass
+        except KeyError:
+            # node.children exists, but node.children[x] does not
+            # find an existing node that matches name but not case
+            x_lower = x.lower()
+            insensitive = None
+            try:
+                for y in node.children:
+                    if x_lower == y.lower():
+                        insensitive = node.children[y]
+                        break
+            except RuntimeError as e:
+                Logs.warn("node: {} children: {} looking for child: {}".format(node.abspath(), node.children, x_lower))
+                # forward error
+                raise
+
+            # found a node, use it
+            if insensitive:
+                node = insensitive
+                continue
+            # fallthrough, create a new node
+
+        # create a node, using the case on disk for the node name
+        found_node = None
+        x_lower = x.lower()
+        for item in os.listdir(node.abspath()):
+            # find a directory entry on disk from the parent that matches caseless
+            if x_lower == item.lower():
+                found_node = node.make_node(item)
+                break
+        node = found_node
+
+        # this should always find a node, the compile task just succeeded, but..
+        if not node:
+            # this can occur if node.children has 2 entries that differ only by case
+            raise ValueError('could not find %r for %r' % (path, base_node))
+
+    return node
+
 
 @feature('c', 'cxx')
 @before_method('process_source')
@@ -59,24 +116,6 @@ def apply_msvcdeps_flags(taskgen):
         if taskgen.env.get_flat(flag).find(PREPROCESSOR_FLAG) < 0:
             taskgen.env.append_value(flag, PREPROCESSOR_FLAG)
 
-def path_to_node(base_node, path, cached_nodes):
-    # Take the base node and the path and return a node
-    # Results are cached because searching the node tree is expensive
-    # The following code is executed by threads, it is not safe, so a lock is needed...
-    if getattr(path, '__hash__'):
-        node_lookup_key = (base_node, path)
-    else:
-        # Not hashable, assume it is a list and join into a string
-        node_lookup_key = (base_node, os.path.sep.join(path))
-    try:
-        lock.acquire()
-        node = cached_nodes[node_lookup_key]
-    except KeyError:
-        node = base_node.find_resource(path)
-        cached_nodes[node_lookup_key] = node
-    finally:
-        lock.release()
-    return node
 
 '''
 Register a task subclass that has hooks for running our custom
@@ -97,68 +136,23 @@ def wrap_compiled_task(classname):
         unresolved_names = []
         resolved_nodes = []
 
-        lowercase = self.generator.msvcdeps_drive_lowercase
-        correct_case_path = bld.path.abspath()
-        correct_case_path_len = len(correct_case_path)
-        correct_case_path_norm = os.path.normcase(correct_case_path)
-
-        # Dynamically bind to the cache
-        try:
-            cached_nodes = bld.cached_nodes
-        except AttributeError:
-            cached_nodes = bld.cached_nodes = {}
-
-        for path in self.msvcdeps_paths:
-            node = None
-            if os.path.isabs(path):
-                # Force drive letter to match conventions of main source tree
-                drive, tail = os.path.splitdrive(path)
-
-                if os.path.normcase(path[:correct_case_path_len]) == correct_case_path_norm:
-                    # Path is in the sandbox, force it to be correct.  MSVC sometimes returns a lowercase path.
-                    path = correct_case_path + path[correct_case_path_len:]
-                else:
-                    # Check the drive letter
-                    if lowercase and (drive != drive.lower()):
-                        path = drive.lower() + tail
-                    elif (not lowercase) and (drive != drive.upper()):
-                        path = drive.upper() + tail
-                node = path_to_node(bld.root, path, cached_nodes)
-            else:
-                base_node = bld.bldnode
-                # when calling find_resource, make sure the path does not begin by '..'
-                path = [k for k in Utils.split_path(path) if k and k != '.']
-                while path[0] == '..':
-                    path = path[1:]
-                    base_node = base_node.parent
-
-                node = path_to_node(base_node, path, cached_nodes)
-
-            if not node:
-                raise ValueError('could not find %r for %r' % (path, self))
-            else:
-                if not c_preproc.go_absolute:
-                    if not (node.is_child_of(bld.srcnode) or node.is_child_of(bld.bldnode)):
-                        # System library
-                        Logs.debug('msvcdeps: Ignoring system include %r' % node)
-                        continue
-
-                if id(node) == id(self.inputs[0]):
-                    # Self-dependency
-                    continue
-
-                if node in self.outputs:
-                    # Circular dependency
-                    continue
-
-                resolved_nodes.append(node)
+        if (len(self.src_deps_paths) + len(self.bld_deps_paths)):
+            # The following code is executed by threads, it is not safe, so a lock is needed...
+            with lock:
+                for path in self.src_deps_paths:
+                    node = _find_or_make_node_case_correct(bld.srcnode, path)
+                    resolved_nodes.append(node)
+                for path in self.bld_deps_paths:
+                    node = _find_or_make_node_case_correct(bld.bldnode, path)
+                    resolved_nodes.append(node)
 
         bld.node_deps[self.uid()] = resolved_nodes
         bld.raw_deps[self.uid()] = unresolved_names
 
         # Free memory (200KB for each file in CryEngine, without UberFiles, this accumulates to 1 GB)
-        del self.msvcdeps_paths
-                
+        del self.src_deps_paths
+        del self.bld_deps_paths
+
         try:
             del self.cache_sig
         except:
@@ -166,7 +160,7 @@ def wrap_compiled_task(classname):
 
         Task.Task.post_run(self)
 
-    def scan(self):        
+    def scan(self):
         if self.env.CC_NAME not in supported_compilers:
             return super(derived_class, self).scan()
 
@@ -174,19 +168,7 @@ def wrap_compiled_task(classname):
         unresolved_names = []
         return (resolved_nodes, unresolved_names)
 
-    def sig_implicit_deps(self):        
-        if self.env.CC_NAME not in supported_compilers:
-            return super(derived_class, self).sig_implicit_deps()
-
-        try:
-            return Task.Task.sig_implicit_deps(self)
-        except Errors.TaskRescan:
-            # Honor the request to rescan
-            return Task.Task.sig_implicit_deps(self)
-        except Errors.WafError:
-            return Utils.SIG_NIL
-
-    def exec_response_command(self, cmd, **kw):        
+    def exec_response_command(self, cmd, **kw):
         # exec_response_command() is only called from inside msvc.py anyway
         assert self.env.CC_NAME in supported_compilers
         
@@ -213,10 +195,16 @@ def wrap_compiled_task(classname):
                                 # Note seems something changed, and this env var cannot be found anymore
                 #assert 'VS_UNICODE_OUTPUT' not in kw['env']
 
+                # Note to future explorers: sometimes msvc doesn't return any includes even though
+                # /showIncludes was specified.  The only repro I've found is building pch files,
+                # when the .pch and .obj file did not actually change (their dependencies didn't change).
+                # This will then clear out the dependencies of that file, and may have future issues triggering rebuild.
+                # The not-so-good workaround is to delete the pch before rebuild
+
                 tmp = None
 
                 # This block duplicated from Waflib's msvc.py
-                if sys.platform.startswith('win') and isinstance(cmd, list) and len(' '.join(cmd)) >= 8192:
+                if sys.platform.startswith('win') and isinstance(cmd, list) and len(' '.join(cmd)) >= 16384:
                     tmp_files_folder = self.generator.bld.get_bintemp_folder_node().make_node('TempFiles')
                     program = cmd[0]
                     cmd = [self.quote_response_command(x) for x in cmd]
@@ -226,7 +214,8 @@ def wrap_compiled_task(classname):
                     cmd = [program, '@' + tmp]
                 # ... end duplication
 
-                self.msvcdeps_paths = set()
+                self.src_deps_paths = set()
+                self.bld_deps_paths = set()
 
                 kw['env'] = kw.get('env', os.environ.copy())
                 kw['cwd'] = kw.get('cwd', os.getcwd())
@@ -247,15 +236,36 @@ def wrap_compiled_task(classname):
                         raw_out = str(e)
                         ret = -1
 
-                show_includes = self.generator.bld.is_option_true('show_includes')
+                bld = self.generator.bld
+                srcnode_abspath_lower = bld.srcnode.abspath().lower()
+                bldnode_abspath_lower = bld.bldnode.abspath().lower()
+                srcnode_abspath_lower_len = len(srcnode_abspath_lower)
+                bldnode_abspath_lower_len = len(bldnode_abspath_lower)
+
+                show_includes = bld.is_option_true('show_includes')
                 for line in raw_out.splitlines():
                     if line.startswith(INCLUDE_PATTERN):
+                        if show_includes:
+                            out.append(line)
                         inc_path = line[len(INCLUDE_PATTERN):].strip()
                         if Logs.verbose:
                             Logs.debug('msvcdeps: Regex matched %s' % inc_path)
-                        self.msvcdeps_paths.add(inc_path)
-                        if show_includes:
-                            out.append(line)
+                        # normcase will change '/' to '\\' and lowercase everything, use sparingly
+                        # normpath is safer, but we really want to ignore all permutations of these roots
+                        norm_path = os.path.normpath(inc_path)
+                        # The bld node may be embedded under the source node, eg dev/BinTemp/flavor.
+                        # check if the path is in the src node first, and bld node second, allowing for this overlap
+                        if norm_path[:srcnode_abspath_lower_len].lower() == srcnode_abspath_lower:
+                            subpath = norm_path[srcnode_abspath_lower_len + 1:]
+                            self.src_deps_paths.add(subpath)
+                            continue
+                        if norm_path[:bldnode_abspath_lower_len].lower() == bldnode_abspath_lower:
+                            subpath = norm_path[bldnode_abspath_lower_len + 1:]
+                            self.bld_deps_paths.add(subpath)
+                            continue
+                        # System library
+                        if Logs.verbose:
+                            Logs.debug('msvcdeps: Ignoring system include %r' % inc_path)
                     else:
                         out.append(line)
 
@@ -306,10 +316,46 @@ def wrap_compiled_task(classname):
 
     derived_class.post_run = post_run
     derived_class.scan = scan
-    derived_class.sig_implicit_deps = sig_implicit_deps
     derived_class.exec_response_command = exec_response_command
     derived_class.can_retrieve_cache = can_retrieve_cache
 
 
 for compile_task in ('c', 'cxx','pch_msvc'):
     wrap_compiled_task(compile_task)
+
+
+'''
+This module adds nodes during the parallel Build.compile() step
+Other modules are also doing this, which requires a some thread safety
+Register a module hook and a task subclass that has hooks for running our custom
+scan method that locks the node access to one thread to reduce threading issues
+'''
+def sync_lookup_deps(root, deps_paths):
+    nodes = []
+    names = []
+
+    with lock:
+        for x in deps_paths:
+            nd = root.find_resource(x)
+            if nd:
+                nodes.append(nd)
+            else:
+                names.append(x)
+
+    return (nodes, names)
+
+
+def sync_node_access_during_compile(classname):
+    derived_class = type(classname, (Task.classes[classname],), {})
+
+    def post_run(self):
+        with lock:
+            rv = super(derived_class, self).post_run()
+        return rv
+
+    derived_class.post_run = post_run
+
+
+for compile_task in ('winrc', ):
+    sync_node_access_during_compile(compile_task)
+

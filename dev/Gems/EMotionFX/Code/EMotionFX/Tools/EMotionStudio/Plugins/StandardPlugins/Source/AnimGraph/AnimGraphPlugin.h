@@ -402,26 +402,26 @@ namespace EMStudio
         CommandRemoveNodePostCallback*              mRemoveNodePostCallback;
         CommandRemoveNodePreCallback*               mRemoveNodePreCallback;
         CommandSetAsEntryStateCallback*             mSetAsEntryStateCallback;
-        CommandAnimGraphAddConditionCallback*      mAddConditionCallback;
-        CommandAnimGraphRemoveConditionCallback*   mRemoveConditionCallback;
+        CommandAnimGraphAddConditionCallback*       mAddConditionCallback;
+        CommandAnimGraphRemoveConditionCallback*    mRemoveConditionCallback;
         CommandPlayMotionCallback*                  mPlayMotionCallback;
-        CommandAnimGraphWapParametersCallback*     mSwapParametersCallback;
+        CommandAnimGraphWapParametersCallback*      mSwapParametersCallback;
         CommandRecorderClearCallback*               mRecorderClearCallback;
         CommandMotionSetAdjustMotionCallback*       mMotionSetAdjustMotionCallback;
-        CommandAnimGraphCreateParameterCallback*   mCreateParameterCallback;
-        CommandAnimGraphAdjustParameterCallback*   mAdjustParameterCallback;
-        CommandAnimGraphRemoveParameterCallback*   mRemoveParameterCallback;
+        CommandAnimGraphCreateParameterCallback*    mCreateParameterCallback;
+        CommandAnimGraphAdjustParameterCallback*    mAdjustParameterCallback;
+        CommandAnimGraphRemoveParameterCallback*    mRemoveParameterCallback;
 
-        AZStd::vector<AnimGraphPerFrameCallback*>  mPerFrameCallbacks;
+        AZStd::vector<AnimGraphPerFrameCallback*>   mPerFrameCallbacks;
 
         bool                                        mDisableRendering;
 
         MCore::Array<GraphInfo*>                    mGraphInfos;
-        MCore::Array<AnimGraphHistory*>            mAnimGraphHistories;
-        MCore::Array<AnimGraphWithNode*>           mCurrentVisibleNodeOnAnimGraphs;
-        AnimGraphHistory*                          mCurrentAnimGraphHistory;
+        MCore::Array<AnimGraphHistory*>             mAnimGraphHistories;
+        MCore::Array<AnimGraphWithNode*>            mCurrentVisibleNodeOnAnimGraphs;
+        AnimGraphHistory*                           mCurrentAnimGraphHistory;
 
-        AnimGraphEventHandler*                     mEventHandler;
+        AnimGraphEventHandler*                      mEventHandler;
 
         BlendGraphWidget*                           mGraphWidget;
         NavigateWidget*                             mNavigateWidget;
@@ -433,9 +433,9 @@ namespace EMStudio
         BlendGraphViewWidget*                       mViewWidget;
         RecorderWidget*                             mRecorderWidget;
 
-        QStackedWidget                             mViewportStack;
+        QStackedWidget                              mViewportStack;
 
-        SaveDirtyAnimGraphFilesCallback*           mDirtyFilesCallback;
+        SaveDirtyAnimGraphFilesCallback*            mDirtyFilesCallback;
         OutlinerCategoryCallback*                   mOutlinerCategoryCallback;
 
         MysticQt::DockWidget*                       mAttributeDock;
@@ -443,11 +443,11 @@ namespace EMStudio
         MysticQt::DockWidget*                       mNavigationDock;
         MysticQt::DockWidget*                       mParameterDock;
         MysticQt::DockWidget*                       mNodeGroupDock;
-        EMotionFX::AnimGraph*                      mActiveAnimGraph;
+        EMotionFX::AnimGraph*                       mActiveAnimGraph;
 
 #ifdef HAS_GAME_CONTROLLER
         GameControllerWindow*                       mGameControllerWindow;
-        MysticQt::DockWidget*                       mGameControllerDock;
+        QPointer<MysticQt::DockWidget>              mGameControllerDock;
 #endif
 
         float                                       mLastPlayTime;

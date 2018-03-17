@@ -1,2 +1,2 @@
 
-#include "StdAfx.h"
+#include "CloudGemInGameSurvey_precompiled.h"

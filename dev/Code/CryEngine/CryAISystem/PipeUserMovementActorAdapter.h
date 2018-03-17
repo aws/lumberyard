@@ -67,9 +67,9 @@ public:
     virtual void SetActorStyle(const MovementStyle& style, const INavPath& navPath) override;
     virtual void SetStance(const MovementStyle::Stance stance) override;
 
-    virtual boost::shared_ptr<Vec3> CreateLookTarget() override;
+    virtual AZStd::shared_ptr<Vec3> CreateLookTarget() override;
     virtual void SetLookTimeOffset(float lookTimeOffset) override;
-    virtual void UpdateLooking(float updateTime, boost::shared_ptr<Vec3> lookTarget, const bool targetReachable, const float pathDistanceToEnd, const Vec3& followTargetPosition, const MovementStyle& style) override;
+    virtual void UpdateLooking(float updateTime, AZStd::shared_ptr<Vec3> lookTarget, const bool targetReachable, const float pathDistanceToEnd, const Vec3& followTargetPosition, const MovementStyle& style) override;
     // ~IMovementActorCommunicationInterface
 
 private:

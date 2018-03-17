@@ -3,14 +3,14 @@
         "Root": [
             "dllmain.cpp",
 
-	    "IStaticDataMonitor.h",
+            "IStaticDataMonitor.h",
             "StaticDataMonitorEditorPlugin.cpp",
             "StaticDataMonitorEditorPlugin.h",
             "StaticDataMonitor.cpp",
             "StaticDataMonitor.h",
 
-	    "StdAfx.cpp",
-            "StdAfx.h"
+	    "StaticData_precompiled.cpp",
+            "StaticData_precompiled.h"
 
         ]
     }

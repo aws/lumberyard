@@ -84,6 +84,7 @@ protected slots:
     void OnMaterialPreview();
     void OnSelectAssignedObjects();
     void OnChangedBrowserListType(int);
+    void OnResetMaterialViewport();
 
     void UpdateActions();
 
@@ -168,5 +169,6 @@ protected:
     QAction* m_removeAction;
     QAction* m_resetAction;
     QAction* m_saveAction;
+    QAction* m_resetViewporAction;
 };
 

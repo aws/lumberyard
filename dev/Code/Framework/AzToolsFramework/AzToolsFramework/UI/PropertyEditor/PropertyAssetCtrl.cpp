@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "PropertyAssetCtrl.hxx"
 #include "PropertyQTConstants.h"
@@ -136,10 +136,10 @@ namespace AzToolsFramework
         QPoint globalPos = mapToGlobal(pos);
 
         QMenu myMenu;
-        
+
         QAction* copyAction = myMenu.addAction(tr("Copy asset reference"));
         QAction* pasteAction = myMenu.addAction(tr("Paste asset reference"));
-        
+
         copyAction->setEnabled(GetCurrentAssetID().IsValid());
 
         bool canPasteFromClipboard = false;
@@ -402,7 +402,7 @@ namespace AzToolsFramework
 
         // Connect pressed to opening the error dialog
         // Must capture this for call to QObject::connect
-        connect(m_errorButton, &QPushButton::pressed, this, [this, errorLog]() {
+        connect(m_errorButton, &QPushButton::pressed, this, [errorLog]() {
             // Create the dialog for the log panel, and set the layout
             QDialog* logDialog = new QDialog();
             logDialog->setMinimumSize(1024, 400);
@@ -522,7 +522,7 @@ namespace AzToolsFramework
                 if (m_currentAssetID.IsValid())
                 {
                     bool someoneHandledIt = false;
-                    AssetBrowser::AssetBrowserInteractionNotificationsBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, m_currentAssetID, someoneHandledIt);
+                    AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, m_currentAssetID, someoneHandledIt);
                 }
             }
         }

@@ -10,4 +10,4 @@
 *
 */
 
-#include "StdAfx.h"
+#include "OSVR_precompiled.h"

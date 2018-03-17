@@ -883,7 +883,7 @@ void CRenderAuxGeomD3D::DrawAuxObjects(CAuxGeomCB::AuxSortedPushBuffer::const_it
             m_pAuxGeomShader->FXSetVSFloat(auxGeomObjShadingName, &shadingVec, 1);
 
             // set light vector (rotate back into local space)
-            Matrix33 matWorldInv(drawParams.m_matWorld.GetInverted());
+            Matrix33 matWorldInv(drawParams.m_matWorldRotation.GetInverted());
             Vec3 lightLocalSpace(matWorldInv * Vec3(0.5773f, 0.5773f, 0.5773f));
 
             // normalize light vector (matWorld could contain non-uniform scaling)

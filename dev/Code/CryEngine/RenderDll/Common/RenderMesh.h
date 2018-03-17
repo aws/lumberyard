@@ -20,6 +20,7 @@
 #include <VectorSet.h>
 #include <GeomQuery.h>
 #include "Shaders/Vertex.h"
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 // Enable the below to get fatal error is some holds a rendermesh buffer lock for longer than 1 second
 //#define RM_CATCH_EXCESSIVE_LOCKS
@@ -28,7 +29,7 @@
 
 struct SMeshSubSetIndicesJobEntry
 {
-    JobManager::SJobState jobState;
+    AZ::LegacyJobExecutor jobExecutor;
     _smart_ptr<IRenderMesh> m_pSrcRM;                           // source mesh to create a new index mesh from
     _smart_ptr<IRenderMesh> m_pIndexRM;                     // when finished: newly created index mesh for this mask, else NULL
     uint64 m_nMeshSubSetMask;                       // mask to use

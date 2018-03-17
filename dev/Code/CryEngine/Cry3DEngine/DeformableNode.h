@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRY3DENGINE_DEFORMABLENODE_H
 #pragma once
 
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
 struct SDeformableData;
 struct SMMRMProjectile;
 
@@ -37,8 +39,8 @@ class CDeformableNode
     _smart_ptr<IRenderMesh> m_renderMesh;
     size_t m_numVertices, m_numIndices;
     IStatObj* m_pStatObj;
-    JobManager::SJobState m_cullState;
-    JobManager::SJobState m_updateState;
+    AZ::LegacyJobExecutor m_cullCompletionDeformableNode;
+    AZ::LegacyJobExecutor m_updateCompletionDeformableNode;
     bool m_all_prepared : 1;
 
 protected:

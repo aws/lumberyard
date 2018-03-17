@@ -11,7 +11,7 @@
 */
 
 
-#include "StdAfx.h"
+#include "EMotionFX_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>

@@ -88,8 +88,11 @@
             "Type": "Custom::AccessControl"
         }, 
         "Table": {
-            "Type": "AWS::DynamoDB::Table",
+            "Type": "Custom::DynamoDBTable",
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "Key",
@@ -190,7 +193,7 @@
                         ]
                     }
                 }, 
-                "Handler": "service.dispatch", 
+                "Handler": "cgf_lambda_service.dispatch", 
                 "Role": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration", 

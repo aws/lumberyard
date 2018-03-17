@@ -87,4 +87,4 @@ namespace Driller
     }
 }
 
-#include <Woodpecker/Driller/Annotations/AnnotationheaderView.moc>
+#include <Woodpecker/Driller/Annotations/AnnotationHeaderView.moc>

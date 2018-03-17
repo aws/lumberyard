@@ -850,8 +850,12 @@ struct SDrawTextInfo
 #define MIN_RESOLUTION_SCALE (0.25f)
 #define MAX_RESOLUTION_SCALE (4.0f)
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #include AZ_RESTRICTED_FILE(IRenderer_h)
+#else
 //SLI/CROSSFIRE GPU maximum count
     #define MAX_GPU_NUM 4
+#endif
 
 #define MAX_FRAME_ID_STEP_PER_FRAME 20
 const int MAX_GSM_LODS_NUM = 16;
@@ -1344,7 +1348,10 @@ struct IRenderer
     //  Sets an event listener for texture streaming updates
     virtual void SetTextureStreamListener(ITextureStreamListener* pListener) = 0;
 
-    virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, int32 nSizeX, int32 nSizeY, Matrix44* pmViewProj, Matrix44* pmCamBuffer) = 0;
+    // Summary:
+    //  Populates a CPU-side occlusion buffer with the contents from the previous frame's downsampled depth buffer.
+    //  This will be called from a job thread within the occlusion system.
+    virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffer) = 0;
 
     // Summary:
     //   Gets a screenshot and save to a file
@@ -2161,11 +2168,11 @@ struct IRenderer
 
     // Summary:
     // get the shared job state for SRendItem Generating jobs
-    virtual JobManager::SJobState* GetGenerateRendItemJobState(int nThreadID) = 0;
-    virtual JobManager::SJobState* GetGenerateShadowRendItemJobState(int nThreadID) = 0;
-    virtual JobManager::SJobState* GetGenerateRendItemJobStatePreProcess(int nThreadID) = 0;
-    virtual JobManager::SJobState* GetFinalizeRendItemJobState(int nThreadID) = 0;
-    virtual JobManager::SJobState* GetFinalizeShadowRendItemJobState(int nThreadID) = 0;
+    virtual AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutor(int nThreadID) = 0;
+    virtual AZ::LegacyJobExecutor* GetGenerateShadowRendItemJobExecutor(int nThreadID) = 0;
+    virtual AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutorPreProcess(int nThreadID) = 0;
+    virtual AZ::LegacyJobExecutor* GetFinalizeRendItemJobExecutor(int nThreadID) = 0;
+    virtual AZ::LegacyJobExecutor* GetFinalizeShadowRendItemJobExecutor(int nThreadID) = 0;
 
     virtual void FlushPendingTextureTasks() = 0;
 

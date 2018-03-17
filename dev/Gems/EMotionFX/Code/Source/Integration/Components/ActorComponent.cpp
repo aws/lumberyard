@@ -11,7 +11,7 @@
 */
 
 
-#include "StdAfx.h"
+#include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -147,8 +147,6 @@ namespace EMotionFX
             m_renderNode = nullptr;
 
             DestroyActor();
-
-            m_configuration.m_actorAsset.Release();
         }
 
         //////////////////////////////////////////////////////////////////////////

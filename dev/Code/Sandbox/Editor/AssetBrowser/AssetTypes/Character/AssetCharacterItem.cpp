@@ -137,7 +137,7 @@ ULONG STDMETHODCALLTYPE CAssetCharacterItem::Release()
 
 bool CAssetCharacterItem::LoadModel()
 {
-    m_pObject = gEnv->p3DEngine->LoadStatObjUnsafeManualRef((m_strRelativePath + m_strFilename).toLatin1().data(), 0, 0, true);
+    m_pObject = gEnv->p3DEngine->LoadStatObjUnsafeManualRef((m_strRelativePath + m_strFilename).toUtf8().data(), 0, 0, true);
 
     if (!m_pObject)
     {
@@ -1000,7 +1000,7 @@ void CAssetCharacterItem::ToXML(XmlNodeRef& node) const
 {
     node->setTag("Character");
     QString fileName = m_strRelativePath + m_strFilename;
-    node->setAttr("fileName", fileName.toLatin1().data());
+    node->setAttr("fileName", fileName.toUtf8().data());
     XmlNodeRef aabbNode = node->newChild("aabb");
     aabbNode->setAttr("min", m_aabb.min);
     aabbNode->setAttr("max", m_aabb.max);

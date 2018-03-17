@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -89,7 +89,7 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<LensFlareConfiguration>()->
-                Version(2)->
+                Version(3, &VersionConverter)->
                 Field("Visible", &LensFlareConfiguration::m_visible)->
                 Field("LensFlare", &LensFlareConfiguration::m_lensFlare)->
 
@@ -98,7 +98,7 @@ namespace LmbrCentral
                 Field("Size", &LensFlareConfiguration::m_size)->
                 Field("AttachToSun", &LensFlareConfiguration::m_attachToSun)->
                 Field("AffectsThisAreaOnly", &LensFlareConfiguration::m_affectsThisAreaOnly)->
-                Field("IgnoreVisAreas", &LensFlareConfiguration::m_ignoreVisAreas)->
+                Field("UseVisAreas", &LensFlareConfiguration::m_useVisAreas)->
                 Field("IndoorOnly", &LensFlareConfiguration::m_indoorOnly)->
                 Field("OnInitially", &LensFlareConfiguration::m_onInitially)->
                 Field("ViewDistanceMultiplier", &LensFlareConfiguration::m_viewDistMultiplier)->
@@ -120,12 +120,44 @@ namespace LmbrCentral
         }
     }
 
+    bool LensFlareConfiguration::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        // conversion from version 2 to version 3:
+        // - Need to rename IgnoreVisAreas to UseVisAreas
+        // UseVisAreas is the Inverse of IgnoreVisAreas
+        if (classElement.GetVersion() <= 2)
+        {
+            int ignoreVisAreasIndex = classElement.FindElement(AZ_CRC("IgnoreVisAreas", 0x01823201));
+
+            if (ignoreVisAreasIndex < 0)
+            {
+                return false;
+            }
+
+            AZ::SerializeContext::DataElementNode& useVisAreasNode = classElement.GetSubElement(ignoreVisAreasIndex);
+            useVisAreasNode.SetName("UseVisAreas");
+
+            bool ignoreVisAreas = true;
+            if (!useVisAreasNode.GetData<bool>(ignoreVisAreas))
+            {
+                return false;
+            }
+
+            if (!useVisAreasNode.SetData<bool>(context, !ignoreVisAreas))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     void LensFlareComponent::TurnOnLensFlare()
     {
         bool success = m_light.TurnOn();
         if (success)
         {
-            EBUS_EVENT_ID(GetEntityId(), LensFlareComponentNotificationBus, LensFlareTurnedOn);
+            LensFlareComponentNotificationBus::Event(GetEntityId(), &LensFlareComponentNotificationBus::Events::LensFlareTurnedOn);
         }
     }
 
@@ -134,7 +166,7 @@ namespace LmbrCentral
         bool success = m_light.TurnOff();
         if (success)
         {
-            EBUS_EVENT_ID(GetEntityId(), LensFlareComponentNotificationBus, LensFlareTurnedOff);
+            LensFlareComponentNotificationBus::Event(GetEntityId(), &LensFlareComponentNotificationBus::Events::LensFlareTurnedOff);
         }
     }
 
@@ -223,7 +255,7 @@ namespace LmbrCentral
         , m_brightness(1.f)
         , m_viewDistMultiplier(1.f)
         , m_affectsThisAreaOnly(1.f)
-        , m_ignoreVisAreas(false)
+        , m_useVisAreas(true)
         , m_indoorOnly(false)
         , m_animSpeed(1.f)
         , m_animPhase(0.f)

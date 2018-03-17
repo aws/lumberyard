@@ -65,7 +65,8 @@ namespace AzToolsFramework
 
         protected Q_SLOTS:
             void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected) override;
-
+            void rowsAboutToBeRemoved(const QModelIndex &parent, int start, int end) override;
+            
         private:
             QMimeData m_mimeDataContainer;
             QPointer<AssetBrowserModel> m_assetBrowserModel;

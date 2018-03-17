@@ -11,7 +11,6 @@
 */
 
 #include "StdAfx.h"
-#include <shlobj.h>
 
 #include "DrillerCaptureWindow.hxx"
 #include <Woodpecker/Driller/DrillerCaptureWindow.moc>
@@ -1379,23 +1378,18 @@ namespace Driller
 
     void DrillerCaptureWindow::OnOpenDrillerFile()
     {
-        WCHAR capturePath[MAX_PATH] = {0};
-        WCHAR* capturePathFromSystem = nullptr;
-
-        if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents,
-                    KF_FLAG_CREATE,
-                    NULL,
-                    &capturePathFromSystem)))
+        auto paths = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation);
+        QString capturePath;
+        if (paths.isEmpty())
         {
-            GetTempPath(MAX_PATH, capturePath);
+            paths = QStandardPaths::standardLocations(QStandardPaths::TempLocation);
         }
-        else
+        if (!paths.isEmpty())
         {
-            lstrcpy(capturePath, capturePathFromSystem);
+            capturePath = paths.first();
         }
 
-
-        QString fileName = QFileDialog::getOpenFileName(this, "Open Driller File", QString::fromWCharArray(capturePath), "Driller Files (*.drl)");
+        QString fileName = QFileDialog::getOpenFileName(this, "Open Driller File", capturePath, "Driller Files (*.drl)");
         if (!fileName.isNull())
         {
             OnOpenDrillerFile(fileName);
@@ -1677,30 +1671,26 @@ namespace Driller
             return;
         }
 
-        char saveCapturePath[MAX_PATH] = {0};
-        char tempWorkspacePath[MAX_PATH] = {0};
-        char tempWorkspaceName[MAX_PATH] = {0};
+        QString saveCapturePath;
+        QString tempWorkspaceName;
 
         auto newState = AZ::UserSettings::CreateFind<DrillerCaptureWindowSavedState>(m_windowStateCRC, AZ::UserSettings::CT_GLOBAL);
         if (!newState->m_priorSaveFolder.empty())
         {
-            strcpy_s(saveCapturePath, MAX_PATH, newState->m_priorSaveFolder.data());
+            saveCapturePath = newState->m_priorSaveFolder.data();
         }
         else
         {
-            WCHAR* saveCapturePathFromSystem = nullptr;
+            auto paths = QStandardPaths::standardLocations(QStandardPaths::DocumentsLocation);
 
-            if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents,
-                        KF_FLAG_CREATE,
-                        NULL,
-                        &saveCapturePathFromSystem)))
+            if (paths.isEmpty())
             {
-                GetTempPathA(MAX_PATH, saveCapturePath);
+                paths = QStandardPaths::standardLocations(QStandardPaths::TempLocation);
             }
-            else
+
+            if (!paths.isEmpty())
             {
-                size_t charsCopied = 0;
-                wcstombs_s(&charsCopied, saveCapturePath, MAX_PATH, saveCapturePathFromSystem, MAX_PATH);
+                saveCapturePath = paths.first();
             }
         }
 
@@ -1731,20 +1721,23 @@ namespace Driller
                     {
                         m_currentDataFilename = fileName;
 
-                        auto pathResult = GetTempPathA(MAX_PATH, tempWorkspacePath);
-                        if (pathResult)
                         {
-                            auto nameResult = GetTempFileNameA(tempWorkspacePath, "DRW_", 0, tempWorkspaceName);
-                            if (nameResult)
+                            QTemporaryFile f;
+                            f.setAutoRemove(false);
+                            if (f.open())
                             {
-                                OnSaveWorkspaceFile(tempWorkspaceName, true);
+                                tempWorkspaceName = f.fileName();
                             }
+                        }
+                        if (!tempWorkspaceName.isEmpty())
+                        {
+                            OnSaveWorkspaceFile(tempWorkspaceName, true);
                         }
 
                         ResetCaptureControls();
 
-                        EBUS_EVENT(Driller::DrillerDataViewMessages::Bus, EventRequestOpenWorkspace, tempWorkspaceName);
-                        auto deleteResult = DeleteFileA(tempWorkspaceName);
+                        EBUS_EVENT(Driller::DrillerDataViewMessages::Bus, EventRequestOpenWorkspace, tempWorkspaceName.toUtf8().data());
+                        auto deleteResult = QFile::remove(tempWorkspaceName);
                         if (!deleteResult)
                         {
                             QMessageBox::warning(this, tr("Can't delete temp file"), tr("File = ( %1 )").arg(tempWorkspaceName));
@@ -1770,9 +1763,7 @@ namespace Driller
     QString DrillerCaptureWindow::PrepDataFileForSaving(QString filename, QString workspaceName)
     {
         // is this a TMP file?
-        char tempDirectory[MAX_PATH] = {0};
-        GetTempPathA(MAX_PATH, tempDirectory);
-        QString tempPath(tempDirectory);
+        QString tempPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
         if (filename.contains(tempPath, Qt::CaseInsensitive))
         {
             // yes := rename to match workspace
@@ -1789,12 +1780,11 @@ namespace Driller
 
     QString DrillerCaptureWindow::PrepTempFile(QString filename)
     {
-        char tmpCapturePath[MAX_PATH] = {0};
-        GetTempPathA(MAX_PATH, tmpCapturePath);
-        strcat_s(tmpCapturePath, filename.toUtf8().data());
+        QString tmpCapturePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+        tmpCapturePath = QDir(tmpCapturePath).absoluteFilePath(filename);
         m_tmpCaptureFilename = tmpCapturePath;
         m_currentDataFilename = m_tmpCaptureFilename;
-        return QString(tmpCapturePath);
+        return tmpCapturePath;
     }
 
     void DrillerCaptureWindow::OnAnnotationOptionsClick()

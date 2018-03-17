@@ -20,7 +20,7 @@
 #include <ActiveDeployment.moc>
 #include <EditorCoreAPI.h>
 #include <IAWSResourceManager.h>
-#include <MaglevcontrolPanelPlugin.h>
+#include <MaglevControlPanelPlugin.h>
 
 using namespace AZStd;
 

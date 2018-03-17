@@ -5,11 +5,12 @@
         [
             "StdAfx.cpp",
             "PhysCallbacks.cpp",
-            "Cry3DEngine.cpp"
+            "Cry3DEngine.cpp",
+            "Cry3DEngineTraits.h"
         ],
         "3DEngine":
         [
-            "3dEngineLoad.cpp"
+          "3dEngineLoad.cpp"
         ]
     },
     "Cry3DEngine_volume_water_uber.cpp":

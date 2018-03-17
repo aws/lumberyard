@@ -464,8 +464,6 @@ void SPhysEnviron::SArea::GetForces(SPhysForces& forces, Vec3 const& vPos, uint3
         }
         else
         {
-            FUNCTION_PROFILER_SYS(PARTICLE);
-
 #ifdef DEBUG_FORCES
             // Compare locally computed results to physics system.
             // Occasionally fails because of threaded physics area updates.

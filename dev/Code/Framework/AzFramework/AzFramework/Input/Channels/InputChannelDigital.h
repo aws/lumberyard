@@ -28,6 +28,10 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputChannelDigital, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelDigital, "{07BD463B-0E1C-47B5-849D-3C09F9D1B468}", InputChannel);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputChannelId Id of the input channel being constructed
         //! \param[in] inputDevice Input device that owns the input channel

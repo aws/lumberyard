@@ -21,9 +21,9 @@
 #include "QCustomColorDialog.h"
 #include "../ContextMenu.h"
 #include "UIFactory.h"
-#include <qsettings.h>
-#include <qapplication.h>
-#include <qdesktopwidget.h>
+#include <QSettings>
+#include <QApplication>
+#include <QDesktopWidget>
 #include "QAmazonLineEdit.h"
 #include "IEditorParticleUtils.h"
 

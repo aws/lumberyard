@@ -10,12 +10,10 @@
 *
 */
 
-#include "fbxsdk.h"
+#include <fbxsdk.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Transform.h>
-#include <AzCore/std/string/string.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
 
 namespace AZ
 {
@@ -29,5 +27,5 @@ namespace AZ
             static Transform ToTransform(const FbxAMatrix& matrix);
             static Transform ToTransform(const FbxMatrix& matrix);
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

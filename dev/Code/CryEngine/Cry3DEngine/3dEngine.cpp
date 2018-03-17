@@ -82,6 +82,7 @@
 
 #include <IJobManager_JobDelegator.h>
 #include <AzFramework/IO/FileOperations.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/Math/MathUtils.h>
 
 // requiered for LARGE_INTEGER used by QueryPerformanceCounter
@@ -592,7 +593,7 @@ void C3DEngine::OnFrameStart()
     m_bendingPoolIdx = (m_bendingPoolIdx + 1) % NUM_BENDING_POOLS;
     m_bendingPool[m_bendingPoolIdx].resize(0);
 
-#if defined(USE_GEOM_CACHES)
+#if defined(USE_GEOM_CACHES) && !defined(DEDICATED_SERVER)
     if (m_pGeomCacheManager)
     {
         m_pGeomCacheManager->StreamingUpdate();
@@ -689,10 +690,9 @@ void C3DEngine::Update()
             pa.pGeom = gEnv->pPhysicalWorld->GetGeomManager()->CreatePrimitive(primitives::heightfield::type, &hf);
             pArea->SetParams(&pa);
 
-            Vec4 par0, par1;
-            GetOceanAnimationParams(par0, par1);
+            OceanAnimationData params = GetOceanAnimationParams();
             pe_params_buoyancy pb;
-            pb.waterFlow = Vec3(par1.z, par1.y, 0) * (par0.z * 0.25f); // tone down the speed
+            pb.waterFlow = Vec3(params.fWindDirectionV, params.fWindDirectionU, 0) * (params.fWavesSpeed * 0.25f); // tone down the speed
         }
         else if (!bOceanEnabled && pa.pGeom)
         {
@@ -724,8 +724,8 @@ void C3DEngine::Update()
     // make sure all jobs from the previous frame have finished
     threadID nThreadID;
     gEnv->pRenderer->EF_Query(EFQ_RenderThreadList, nThreadID);
-    gEnv->pRenderer->GetFinalizeRendItemJobState(nThreadID)->Wait();
-    gEnv->pRenderer->GetFinalizeShadowRendItemJobState(nThreadID)->Wait();
+    gEnv->pRenderer->GetFinalizeRendItemJobExecutor(nThreadID)->WaitForCompletion();
+    gEnv->pRenderer->GetFinalizeShadowRendItemJobExecutor(nThreadID)->WaitForCompletion();
 
     UpdateRNTmpDataPool(m_bResetRNTmpDataPool);
     m_bResetRNTmpDataPool = false;
@@ -735,12 +735,13 @@ void C3DEngine::Update()
 
 void C3DEngine::Tick()
 {
-    AZ_TRACE_METHOD();
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::System);
+
     // make sure all jobs from the previous frame have finished (also in Tick since Update is not called during loading)
     threadID nThreadID = 0;
     gEnv->pRenderer->EF_Query(EFQ_RenderThreadList, nThreadID);
-    gEnv->pRenderer->GetFinalizeRendItemJobState(nThreadID)->Wait();
-    gEnv->pRenderer->GetFinalizeShadowRendItemJobState(nThreadID)->Wait();
+    gEnv->pRenderer->GetFinalizeRendItemJobExecutor(nThreadID)->WaitForCompletion();
+    gEnv->pRenderer->GetFinalizeShadowRendItemJobExecutor(nThreadID)->WaitForCompletion();
 
     AZ::MainThreadRenderRequestBus::ExecuteQueuedEvents();
 
@@ -901,7 +902,7 @@ void C3DEngine::ShutDown()
         CryFatalError("C3DEngine::Shutdown() could not shutdown temporary pool");
     }
 
-    COctreeNode::DeallocateRenderContentQueue();
+    COctreeNode::Shutdown();
 }
 
 #ifdef WIN64
@@ -1539,6 +1540,79 @@ void C3DEngine::SetSunColor(Vec3 vColor)
     if (m_pObjManager)
     {
         m_pObjManager->SetSunColor(vColor);
+        m_pObjManager->SetSunAnimColor(vColor);
+    }
+}
+
+Vec3 C3DEngine::GetSunAnimColor()
+{
+    if (m_pObjManager)
+    {
+        return m_pObjManager->GetSunAnimColor();
+    }
+
+    return Vec3();
+}
+
+void C3DEngine::SetSunAnimColor(const Vec3& sunAnimColor)
+{
+    if (m_pObjManager)
+    {
+        m_pObjManager->SetSunAnimColor(sunAnimColor);
+    }
+}
+
+float C3DEngine::GetSunAnimSpeed()
+{
+    if (m_pObjManager)
+    {
+        return m_pObjManager->GetSunAnimSpeed();
+    }
+
+    return 0.0f;
+}
+
+void C3DEngine::SetSunAnimSpeed(float sunAnimSpeed)
+{
+    if (m_pObjManager)
+    {
+        m_pObjManager->SetSunAnimSpeed(sunAnimSpeed);
+    }
+}
+
+AZ::u8 C3DEngine::GetSunAnimPhase()
+{
+    if (m_pObjManager)
+    {
+        return m_pObjManager->GetSunAnimPhase();
+    }
+
+    return 0;
+}
+
+void C3DEngine::SetSunAnimPhase(AZ::u8 sunAnimPhase)
+{
+    if (m_pObjManager)
+    {
+        m_pObjManager->SetSunAnimPhase(sunAnimPhase);
+    }
+}
+
+AZ::u8 C3DEngine::GetSunAnimIndex()
+{
+    if (m_pObjManager)
+    {
+        return m_pObjManager->GetSunAnimIndex();
+    }
+
+    return 0;
+}
+
+void C3DEngine::SetSunAnimIndex(AZ::u8 sunAnimIndex)
+{
+    if (m_pObjManager)
+    {
+        m_pObjManager->SetSunAnimIndex(sunAnimIndex);
     }
 }
 
@@ -2805,38 +2879,6 @@ void C3DEngine::GetHDRSetupParams(Vec4 pParams[5]) const
     pParams[4] = Vec4(m_vHDREyeAdaptationLegacy, 1.0f);
 };
 
-// TODO: collapse this function and merge with the version of GetOceanAnimationParams() that doesn't have arguments.
-void C3DEngine::GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const
-{
-    static int nFrameID = -1;
-    int nCurrFrameID = GetRenderer()->GetFrameID(false);
-
-    static Vec4 s_pParams0 = Vec4(0, 0, 0, 0);
-    static Vec4 s_pParams1 = Vec4(0, 0, 0, 0);
-
-    if (nFrameID != nCurrFrameID)
-    {
-        if (OceanToggle::IsActive())
-        {
-            s_pParams1.w = OceanRequest::GetOceanLevelOrDefault(AZ::OceanConstants::s_HeightUnknown);
-        }
-        else
-        {
-            s_pParams1.w = m_pTerrain ? m_pTerrain->GetWaterLevel() : AZ::OceanConstants::s_HeightUnknown;
-        }
-
-        const auto ocean = GetOceanAnimationParams();
-
-        sincos_tpl(ocean.fWindDirection, &s_pParams1.y, &s_pParams1.z);
-        s_pParams0 = Vec4(ocean.fWindDirection, ocean.fWindSpeed, ocean.fWavesSpeed, ocean.fWavesAmount);
-        s_pParams1.x = ocean.fWavesSize;
-
-        nFrameID = nCurrFrameID;
-    }
-
-    pParams0 = s_pParams0;
-    pParams1 = s_pParams1;
-};
 
 I3DEngine::OceanAnimationData C3DEngine::GetOceanAnimationParams() const
 {
@@ -2857,6 +2899,8 @@ I3DEngine::OceanAnimationData C3DEngine::GetOceanAnimationParams() const
         data.fWindDirection = m_oceanWindDirection;
         data.fWindSpeed = m_oceanWindSpeed;
     }
+
+    sincos_tpl(data.fWindDirection, &data.fWindDirectionU, &data.fWindDirectionV);
     return data;
 }
 
@@ -4366,8 +4410,8 @@ void C3DEngine::UpdateRNTmpDataPool(bool bFreeAll)
     {
         threadID nThreadID;
         gEnv->pRenderer->EF_Query(EFQ_MainThreadList, nThreadID);
-        gEnv->pRenderer->GetFinalizeRendItemJobState(nThreadID)->Wait();
-        gEnv->pRenderer->GetFinalizeShadowRendItemJobState(nThreadID)->Wait();
+        gEnv->pRenderer->GetFinalizeRendItemJobExecutor(nThreadID)->WaitForCompletion();
+        gEnv->pRenderer->GetFinalizeShadowRendItemJobExecutor(nThreadID)->WaitForCompletion();
     }
     //CryLogAlways("UpdateRNTmpDataPool bFreeAll 0x%x nMainFrameID 0X%x", bFreeAll, nMainFrameID );
     FUNCTION_PROFILER_3DENGINE;
@@ -4593,7 +4637,7 @@ void C3DEngine::OnObjectModified(IRenderNode* pRenderNode, uint dwFlags)
 {
     if ((dwFlags & (ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS)) != 0)
     {
-        SetRecomputeCachedShadows(ShadowMapFrustum::ShadowCacheData::eFullUpdateTimesliced);
+        SetRecomputeCachedShadows(ShadowMapFrustum::ShadowCacheData::eFullUpdate);
     }
 }
 

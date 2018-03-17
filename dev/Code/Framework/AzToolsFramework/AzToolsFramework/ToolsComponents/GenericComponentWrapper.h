@@ -105,7 +105,7 @@ namespace AzToolsFramework
 
             ////////////////////////////////////////////////////////////////////////
             // SliceAssetSerializationNotificationBus
-            void OnWriteDataToSliceAssetEnd(AZ::SliceComponent& sliceAsset) override;
+            void OnSliceEntitiesLoaded(const AZStd::vector<AZ::Entity*>& entities) override;
             ////////////////////////////////////////////////////////////////////////
         };
 
@@ -115,6 +115,37 @@ namespace AzToolsFramework
     /// If the component is a GenericComponentWrapper,
     /// then the type ID of the wrapped component is returned.
     const AZ::Uuid& GetUnderlyingComponentType(const AZ::Component& component);
+
+    /**
+     * Find the component of the specified type on an entity.
+     * This function is often used to find components that don't have editor-time counterparts and thus are wrapped in \ref GenericComponentWrapper.
+     * @param entity The pointer to an entity.
+     * @return A pointer to the component found on the entity. If multiple components are found the first one is returned.
+     */
+    template <typename ComponentType>
+    ComponentType* FindWrappedComponentForEntity(const AZ::Entity* entity)
+    {
+        if (!entity)
+        {
+            return nullptr;
+        }
+
+        AZStd::vector<Components::GenericComponentWrapper*> genericComponentsArray = entity->FindComponents<Components::GenericComponentWrapper>();
+        if (genericComponentsArray.empty())
+        {
+            return nullptr;
+        }
+
+        for (Components::GenericComponentWrapper* genericComponent : genericComponentsArray)
+        {
+            auto componentType = GetUnderlyingComponentType(*genericComponent);
+            if (componentType == azrtti_typeid<ComponentType>())
+            {
+                return static_cast<ComponentType*>(genericComponent->GetTemplate());
+            }
+        }
+        return nullptr;
+    }
 } // namespace AzToolsFramework
 
 #endif

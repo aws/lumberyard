@@ -14,7 +14,7 @@
 // Description : Animationes environment parameters
 
 
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include "AnimEnvironmentNode.h"
 #include "AnimLightNode.h"

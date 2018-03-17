@@ -11,7 +11,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include <AzToolsFramework/ToolsComponents/ScriptEditorComponent.h>
 #include <AzCore/Script/ScriptSystemBus.h>
 #include <AzCore/EBus/Results.h>
@@ -913,20 +913,17 @@ namespace AzToolsFramework
 
             if (script)
             {
-                AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
-                AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, m_scriptAsset.GetId(), false);
+                bool outcome = false;
+                AZStd::string folderFoundIn;
+                AZ::Data::AssetInfo assetInfo;
 
-                if (jobOutcome.IsSuccess())
+                AssetSystemRequestBus::BroadcastResult(outcome, &AssetSystemRequestBus::Events::GetSourceInfoBySourceUUID, m_scriptAsset.GetId().m_guid, assetInfo, folderFoundIn);
+
+                if (outcome)
                 {
-                    AssetSystem::JobInfoContainer& jobs = jobOutcome.GetValue();
-
-                    // Get the asset relative path
-                    if (!jobs.empty())
-                    {
-                        AZStd::string name;
-                        AzFramework::StringFunc::Path::GetFileName(jobs[0].m_sourceFile.c_str(), name);
-                        m_customName += AZStd::string::format(" - %s", name.c_str());
-                    }
+                    AZStd::string name;
+                    AzFramework::StringFunc::Path::GetFileName(assetInfo.m_relativePath.c_str(), name);
+                    m_customName += AZStd::string::format(" - %s", name.c_str());
                 }
             }
         }

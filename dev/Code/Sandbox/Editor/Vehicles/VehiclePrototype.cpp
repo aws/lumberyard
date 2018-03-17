@@ -78,11 +78,11 @@ bool CVehiclePrototype::Init(IEditor* ie, CBaseObject* prev, const QString& file
     const XmlNodeRef& xmlDef = CVehicleData::GetXMLDef();
     if (xmlDef == 0)
     {
-        Warning("Loading definition file %s failed.. returning", VEHICLE_XML_DEF.toLatin1().data());
+        Warning("Loading definition file %s failed.. returning", VEHICLE_XML_DEF.toUtf8().data());
         return false;
     }
 
-    string fullPath = (VEHICLE_XML_PATH + name + ".xml").toLatin1().data();
+    string fullPath = (VEHICLE_XML_PATH + name + ".xml").toUtf8().data();
 
     // get entity name from xml
     XmlNodeRef vehicleXml = GetISystem()->LoadXmlFromFile(fullPath);
@@ -394,7 +394,7 @@ void CVehiclePrototype::Serialize(CObjectArchive& ar)
     else
     {
         // saving
-        xmlNode->setAttr("veedVehicleName", m_name.toLatin1().data());
+        xmlNode->setAttr("veedVehicleName", m_name.toUtf8().data());
     }
 }
 

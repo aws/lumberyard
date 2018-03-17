@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "StdAfx.h"
+#include "Microphone_precompiled.h"
 #include <MicrophoneSystemComponent.h>
 
 namespace Audio
@@ -48,7 +48,7 @@ namespace Audio
         {
         }
 
-        bool IsCapturing() const override
+        bool IsCapturing() override
         {
             return false;
         }

@@ -76,7 +76,7 @@ namespace AZStd
             AZSTD_STATIC_CONSTANT(size_t, arity = sizeof...(Args));
             AZSTD_STATIC_CONSTANT(size_t, num_args = sizeof...(Args));
             using result_type = R;
-            using raw_fp_type = result_type(*)(Args...);
+            using raw_fp_type = result_type(*)(Args..., ...);
 
             template<size_t index>
             using get_arg_t = pack_traits_get_arg_t<index, Args...>;

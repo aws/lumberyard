@@ -43,6 +43,8 @@ namespace AzToolsFramework
         void RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& respCallback) override;
         void RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
         void RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

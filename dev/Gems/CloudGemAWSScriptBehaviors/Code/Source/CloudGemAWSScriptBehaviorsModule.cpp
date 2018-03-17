@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CloudGemAWSScriptBehaviors_precompiled.h"
 #include <platform_impl.h>
 
 #include "CloudGemAWSScriptBehaviorsSystemComponent.h"

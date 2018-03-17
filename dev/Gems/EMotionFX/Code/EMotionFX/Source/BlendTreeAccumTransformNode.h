@@ -92,8 +92,7 @@ namespace EMotionFX
                 mMustUpdate = true;
                 mIsValid    = false;
                 mAdditiveTransform.Identity();
-                EMFX_SCALECODE(mAdditiveTransform.mScale.CreateZero();
-                    )
+                EMFX_SCALECODE(mAdditiveTransform.mScale.CreateZero();)
             }
 
             ~UniqueData() {}

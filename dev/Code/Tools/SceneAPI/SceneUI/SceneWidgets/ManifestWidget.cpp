@@ -10,8 +10,8 @@
 *
 */
 
-#include <QLabel.h>
-#include <QPushButton.h>
+#include <QLabel>
+#include <QPushButton>
 #include <SceneWidgets/ui_ManifestWidget.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>

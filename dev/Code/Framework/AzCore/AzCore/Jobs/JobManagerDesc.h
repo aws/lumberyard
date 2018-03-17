@@ -62,7 +62,8 @@ namespace AZ
     {
         JobManagerDesc() {}
 
-        AZStd::fixed_vector<JobManagerThreadDesc, 64> m_workerThreads; ///< List of worker threads to create
+        using DescList = AZStd::fixed_vector<JobManagerThreadDesc, 64>;
+        DescList m_workerThreads; ///< List of worker threads to create
     };
 }
 

@@ -87,7 +87,7 @@ TEST_F(RCBuilderTest, Initialize_StandardInitializationWithDuplicateAndInvalidRe
     // Good spec
     AssetRecognizer     good;
     good.m_name = "Good";
-    good.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    good.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     AssetPlatformSpec   good_spec;
     good_spec.m_extraRCParams = "/i";
     good.m_platformSpecs["pc"] = good_spec;
@@ -95,7 +95,7 @@ TEST_F(RCBuilderTest, Initialize_StandardInitializationWithDuplicateAndInvalidRe
     // No Platform spec
     AssetRecognizer     no_platform;
     no_platform.m_name = "No Platform";
-    no_platform.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.ccc", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    no_platform.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.ccc", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
 
     // Duplicate
     AssetRecognizer     duplicate(good.m_name, good.m_testLockSource, good.m_priority, good.m_isCritical, good.m_supportsCreateJobs, good.m_patternMatcher, good.m_version, good.m_productAssetType);
@@ -143,7 +143,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandard_Valid)
 
     AssetRecognizer     good;
     good.m_name = "Good";
-    good.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    good.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     AssetPlatformSpec   good_spec;
     good_spec.m_extraRCParams = "/i";
     good.m_platformSpecs["pc"] = good_spec;
@@ -182,7 +182,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateMultiplesJobStandard_Valid)
     const AZStd::string     job_key_rc = "RCjob";
     {
         standard_AR_RC.m_name = "RCjob";
-        standard_AR_RC.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+        standard_AR_RC.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
         AssetPlatformSpec   good_rc_spec;
         good_rc_spec.m_extraRCParams = "/i";
         standard_AR_RC.m_platformSpecs["pc"] = good_rc_spec;
@@ -193,7 +193,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateMultiplesJobStandard_Valid)
     const AZStd::string     job_key_copy = "Copyjob";
     {
         standard_AR_Copy.m_name = QString(job_key_copy.c_str());
-        standard_AR_Copy.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+        standard_AR_Copy.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
         AssetPlatformSpec   good_copy_spec;
         good_copy_spec.m_extraRCParams = "copy";
         standard_AR_Copy.m_platformSpecs["pc"] = good_copy_spec;
@@ -256,7 +256,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobCopy_Valid)
 
     AssetRecognizer     copy;
     copy.m_name = "Copy";
-    copy.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.copy", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    copy.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.copy", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     AssetPlatformSpec   copy_spec;
     copy_spec.m_extraRCParams = "copy";
     copy.m_platformSpecs["pc"] = copy_spec;
@@ -295,7 +295,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandardSkip_Valid)
     {
         AssetRecognizer     skip;
         skip.m_name = "Skip";
-        skip.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.skip", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+        skip.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.skip", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
         AssetPlatformSpec   skip_spec;
         skip_spec.m_extraRCParams = "skip";
         skip.m_platformSpecs["pc"] = skip_spec;
@@ -330,7 +330,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandard_Failed)
 
     AssetRecognizer     good;
     good.m_name = "Good";
-    good.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    good.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     AssetPlatformSpec   good_spec;
     good_spec.m_extraRCParams = "/i";
     good.m_platformSpecs["pc"] = good_spec;
@@ -363,7 +363,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobStandard_ShuttingDown)
 
     AssetRecognizer     good;
     good.m_name = "Good";
-    good.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    good.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     AssetPlatformSpec   good_spec;
     good_spec.m_extraRCParams = "/i";
     good.m_platformSpecs["pc"] = good_spec;
@@ -398,7 +398,7 @@ TEST_F(RCBuilderTest, CreateJobs_CreateSingleJobBadJobRequest1_Failed)
 
     AssetRecognizer     good;
     good.m_name = "Good";
-    good.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+    good.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
     AssetPlatformSpec   good_spec;
     good_spec.m_extraRCParams = "/i";
     good.m_platformSpecs["pc"] = good_spec;

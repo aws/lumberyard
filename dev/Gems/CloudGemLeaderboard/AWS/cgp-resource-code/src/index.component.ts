@@ -147,7 +147,9 @@ export class LeaderboardIndexComponent extends AbstractCloudGemIndexComponent {
         let split = model.name.split(" ");
 
         model.validation = {
-            id: {},
+            id: {
+                valid: true
+            },
             min: {
                 valid: true
             },
@@ -194,7 +196,7 @@ export class LeaderboardIndexComponent extends AbstractCloudGemIndexComponent {
                 model.validation.min.message = "The minimum reportable value must be a greater than the maximum reportable value."                
             }
         }
-        isValid = model.validation.max.valid && model.validation.min.valid && model.validation.sample_size.valid;       
+        isValid = model.validation.max.valid && model.validation.min.valid && model.validation.sample_size.valid && model.validation.id.valid;       
         let addMode: number = LeaderboardMode.Add;
         if (Number(model.state) == addMode) {
             for (var i = 0; i < model.leaderboards.length; i++) {

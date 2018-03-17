@@ -139,7 +139,7 @@ namespace UnitTest
         AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const>::value));
         AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() volatile>::value));
         AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const volatile>::value));
-#if !defined(AZ_COMPILER_MSVC) || _MSC_VER >= 1900
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC >= 1900
         AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() &>::value));
         AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const&>::value));
         AZ_TEST_STATIC_ASSERT((is_member_function_pointer<int (MyStruct::*)() const volatile&>::value));
@@ -276,6 +276,7 @@ namespace UnitTest
         AZ_TEST_STATIC_ASSERT(is_signed<MyStruct>::value == false);
         AZ_TEST_STATIC_ASSERT(is_signed<unsigned int>::value == false);
         AZ_TEST_STATIC_ASSERT(is_signed<float>::value == false);
+
         // is_unsigned
         AZ_TEST_STATIC_ASSERT(is_unsigned<int>::value == false);
         AZ_TEST_STATIC_ASSERT(is_unsigned<MyStruct>::value == false);

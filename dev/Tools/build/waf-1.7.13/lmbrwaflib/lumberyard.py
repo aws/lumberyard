@@ -60,15 +60,16 @@ NON_BUILD_COMMANDS = [
 # Table of lmbr waf modules that need to be loaded by the root waf script, grouped by tooldir where the modules need to be loaded from.
 # The module can be restricted to an un-versioned system platform value (win32, darwin, linux) by adding a ':' + the un-versioned system platform value.
 # The '.' key represents the default waf tooldir (Code/Tools/waf-1.7.13/waflib)
-LMBR_WAFLIB_MODULES = {
+LMBR_WAFLIB_MODULES = [
 
-GENERAL_WAF_TOOL_DIR : [
+    ( GENERAL_WAF_TOOL_DIR , [
         'c_config',
         'c',
         'cxx',
-        'c_osx:darwin'
-    ],
-LMBR_WAF_TOOL_DIR : [
+        'c_osx:darwin',
+        'winres:win32'
+    ] ) ,
+    ( LMBR_WAF_TOOL_DIR , [
         'cry_utils',
         'project_settings',
         'branch_spec',
@@ -112,17 +113,17 @@ LMBR_WAF_TOOL_DIR : [
 
         'bootstrap',
         'lmbr_setup_tools'
-    ]
-}
+    ])
+]
 
 #
-LMBR_WAFLIB_DATA_DRIVEN_MODULES = {
-    LMBR_WAF_TOOL_DIR : [
+LMBR_WAFLIB_DATA_DRIVEN_MODULES = [
+    (LMBR_WAF_TOOL_DIR , [
         'default_settings',
         'cryengine_modules',
         'incredibuild'
-    ]
-}
+    ])
+]
 
 # List of all compile settings configuration modules
 PLATFORM_COMPILE_SETTINGS = [
@@ -154,8 +155,7 @@ def load_lmbr_waf_modules(conf, module_table):
     """
     host_platform = Utils.unversioned_sys_platform()
 
-    for tool_dir in module_table:
-        module_list = module_table[tool_dir]
+    for tool_dir, module_list in module_table:
 
         for lmbr_waflib_module in module_list:
 

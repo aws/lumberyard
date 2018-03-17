@@ -30,10 +30,6 @@
 #undef CopyFile
 #endif
 
-#ifdef MoveFile
-#undef MoveFile
-#endif
-
 class SANDBOX_API CFileUtil_impl
     : public IFileUtil
 {
@@ -64,11 +60,17 @@ public:
     //! Discard changes to a file from source control API.  Blocks until completed
     bool RevertFile(const char* filename, QWidget* parentWindow = nullptr) override;
 
+    //! Renames (moves) a file through the source control API.  Blocks until completed
+    bool RenameFile(const char* sourceFile, const char* targetFile, QWidget* parentWindow = nullptr) override;
+
     //! Deletes a file using source control API.  Blocks until completed.
     bool DeleteFromSourceControl(const char* filename, QWidget* parentWindow = nullptr) override;
 
+    //! Attempts to get the latest version of a file from source control.  Blocks until completed
+    bool GetLatestFromSourceControl(const char* filename, QWidget* parentWindow = nullptr) override;
+
     //! Gather information about a file using the source control API.  Blocks until completed
-    bool GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr) override;
+    bool GetFileInfoFromSourceControl(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr) override;
 
     //! Creates this directory.
     void CreateDirectory(const char* dir) override;
@@ -119,9 +121,6 @@ public:
     // It doesn't move the source folder to the target folder, only it's contents.
     // THIS FUNCTION IS NOT DESIGNED FOR MULTI-THREADED USAGE
     ECopyTreeResult MoveTree(const QString& strSourceDirectory, const QString& strTargetDirectory, bool boRecurse = true, bool boConfirmOverwrite = false) override;
-
-    //
-    ECopyTreeResult MoveFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false) override;
 
     void GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, bool bMakeLowerCase = false, bool bMakeUnixPath = false) override;
 

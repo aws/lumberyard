@@ -286,7 +286,7 @@ CTerrainTextureExport::CTerrainTextureExport(QWidget* pParent /*=NULL*/)
     connect(ui->exportButton, &QPushButton::clicked, this, &CTerrainTextureExport::OnExport);
     connect(ui->importButton, &QPushButton::clicked, this, &CTerrainTextureExport::OnImport);
     connect(ui->CHANGE, &QPushButton::clicked, this, &CTerrainTextureExport::OnChangeResolutionBtn);
-    connect(ui->CANCEL, &QPushButton::clicked, this, &QDialog::accept);
+    connect(ui->buttonBox, &QDialogButtonBox::clicked, this, &QDialog::accept);
 
     ui->FILE->setText(gSettings.terrainTextureExport);
 
@@ -336,7 +336,7 @@ void CTerrainTextureExport::ImportExport(bool bIsImport, bool bIsClipboard)
     AZStd::string filename;
     if (bIsClipboard == false)
     {
-        filename = gSettings.terrainTextureExport.toLatin1().data();
+        filename = gSettings.terrainTextureExport.toUtf8().data();
     }
 
     if (bIsImport)

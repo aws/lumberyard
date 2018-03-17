@@ -189,6 +189,9 @@ namespace LmbrCentral
 
         // Sets up an effect emitter by name and params.
         virtual void SetupEmitter(const AZStd::string& emitterName, const ParticleEmitterSettings& settings) {}
+
+        // Restarts the emitter.
+        virtual void Restart() { }
     };
 
     using ParticleComponentRequestBus = AZ::EBus <ParticleComponentRequests>;

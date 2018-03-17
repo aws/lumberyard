@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -343,13 +343,13 @@ namespace LmbrCentral
                       Attribute(AZ::Edit::Attributes::AutoExpand, true)->
                       Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)->
 
-                    ClassElement(AZ::Edit::ClassElements::Group, "General Settings")->
-                        Attribute(AZ::Edit::Attributes::AutoExpand, true)->
-
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_visible, "Visible", "The current visibility status of this flare")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
-
+                    
                     DataElement(0, &LightConfiguration::m_onInitially, "On initially", "The light is initially turned on.")->
+
+                    ClassElement(AZ::Edit::ClassElements::Group, "General Settings")->
+                        Attribute(AZ::Edit::Attributes::AutoExpand, true)->
 
                     DataElement(AZ::Edit::UIHandlers::Color, &LightConfiguration::m_color, "Color", "Light color")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
@@ -560,7 +560,7 @@ namespace LmbrCentral
                         EnumAttribute(IRenderNode::VM_Static, "Static")->
                         EnumAttribute(IRenderNode::VM_Dynamic, "Dynamic")->
 
-                    DataElement(0, &LightConfiguration::m_ignoreVisAreas, "Ignore vis areas", "Ignore vis areas")->
+                    DataElement(0, &LightConfiguration::m_useVisAreas, "Use VisAreas", "Light is affected by VisAreas")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
 
                     DataElement(0, &LightConfiguration::m_volumetricFog, "Volumetric fog", "Affects volumetric fog")->
@@ -1425,17 +1425,17 @@ namespace LmbrCentral
         return m_configuration.m_attenFalloffMax;
     }
 
-    void EditorLightComponent::SetIgnoreVisAreas(bool newIgnoreVisAreas)
+    void EditorLightComponent::SetUseVisAreas(bool useVisAreas)
     {
-        if (m_configuration.m_ignoreVisAreas != newIgnoreVisAreas)
+        if (m_configuration.m_useVisAreas != useVisAreas)
         {
-            m_configuration.m_ignoreVisAreas = newIgnoreVisAreas;
+            m_configuration.m_useVisAreas = useVisAreas;
             m_configuration.MinorPropertyChanged();
         }
     }
-    bool EditorLightComponent::GetIgnoreVisAreas()
+    bool EditorLightComponent::GetUseVisAreas()
     {
-        return m_configuration.m_ignoreVisAreas;
+        return m_configuration.m_useVisAreas;
     }
 
     void EditorLightComponent::SetAffectsThisAreaOnly(bool affectsThisAreaOnly)

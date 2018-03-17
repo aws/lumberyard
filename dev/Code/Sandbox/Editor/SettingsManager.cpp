@@ -67,14 +67,14 @@ void CSettingsManager::SaveLayoutSettings(const QByteArray& layout, const QStrin
                 return;
             }
 
-            XmlNodeRef toolNode = xmlDockingLayoutNode->findChild(toolName.toLatin1().data());
+            XmlNodeRef toolNode = xmlDockingLayoutNode->findChild(toolName.toUtf8().data());
 
             if (toolNode)
             {
                 xmlDockingLayoutNode->removeChild(toolNode);
             }
 
-            toolNode = XmlHelpers::CreateXmlNode(toolName.toLatin1().data());
+            toolNode = XmlHelpers::CreateXmlNode(toolName.toUtf8().data());
             xmlDockingLayoutNode->addChild(toolNode);
 
             XmlNodeRef windowStateNode = XmlHelpers::CreateXmlNode("WindowState");
@@ -142,25 +142,25 @@ void CSettingsManager::SaveSetting(const QString& path, const QString& attr, con
 
     for (int i = 0; i < strNodes.size(); ++i)
     {
-        if (!tmpNode->findChild(strNodes[i].toLatin1().data()))
+        if (!tmpNode->findChild(strNodes[i].toUtf8().data()))
         {
-            tmpNode->addChild(tmpNode->createNode(strNodes[i].toLatin1().data()));
-            tmpNode = tmpNode->findChild(strNodes[i].toLatin1().data());
+            tmpNode->addChild(tmpNode->createNode(strNodes[i].toUtf8().data()));
+            tmpNode = tmpNode->findChild(strNodes[i].toUtf8().data());
         }
         else
         {
-            tmpNode = tmpNode->findChild(strNodes[i].toLatin1().data());
+            tmpNode = tmpNode->findChild(strNodes[i].toUtf8().data());
         }
     }
 
-    if (!tmpNode->findChild(writeAttr.toLatin1().data()))
+    if (!tmpNode->findChild(writeAttr.toUtf8().data()))
     {
-        tmpNode->addChild(tmpNode->createNode(writeAttr.toLatin1().data()));
-        tmpNode = tmpNode->findChild(writeAttr.toLatin1().data());
+        tmpNode->addChild(tmpNode->createNode(writeAttr.toUtf8().data()));
+        tmpNode = tmpNode->findChild(writeAttr.toUtf8().data());
     }
     else
     {
-        tmpNode = tmpNode->findChild(writeAttr.toLatin1().data());
+        tmpNode = tmpNode->findChild(writeAttr.toUtf8().data());
     }
 
     if (!tmpNode)
@@ -168,7 +168,7 @@ void CSettingsManager::SaveSetting(const QString& path, const QString& attr, con
         return;
     }
 
-    tmpNode->setAttr(EDITOR_SETTINGS_ATTRIB_NAME, val.toLatin1().data());
+    tmpNode->setAttr(EDITOR_SETTINGS_ATTRIB_NAME, val.toUtf8().data());
 }
 
 void CSettingsManager::SaveSetting(const QString& path, const QString& attr, bool bVal)
@@ -232,9 +232,9 @@ XmlNodeRef CSettingsManager::LoadSetting(const QString& path, const QString& att
 
     for (int i = 0; i < strNodes.size(); ++i)
     {
-        if (tmpNode->findChild(strNodes[i].toLatin1().data()))
+        if (tmpNode->findChild(strNodes[i].toUtf8().data()))
         {
-            tmpNode = tmpNode->findChild(strNodes[i].toLatin1().data());
+            tmpNode = tmpNode->findChild(strNodes[i].toUtf8().data());
         }
         else
         {
@@ -242,13 +242,13 @@ XmlNodeRef CSettingsManager::LoadSetting(const QString& path, const QString& att
         }
     }
 
-    if (!tmpNode->findChild(readAttr.toLatin1().data()))
+    if (!tmpNode->findChild(readAttr.toUtf8().data()))
     {
         return 0;
     }
     else
     {
-        tmpNode = tmpNode->findChild(readAttr.toLatin1().data());
+        tmpNode = tmpNode->findChild(readAttr.toUtf8().data());
     }
 
     if (tmpNode->haveAttr(EDITOR_SETTINGS_ATTRIB_NAME))
@@ -331,7 +331,7 @@ void CSettingsManager::AddSettingsNode(XmlNodeRef newNode)
 {
     QString nodeStr = newNode->getTag();
 
-    XmlNodeRef oldNode = m_pSettingsManagerMemoryNode->findChild(nodeStr.toLatin1().data());
+    XmlNodeRef oldNode = m_pSettingsManagerMemoryNode->findChild(nodeStr.toUtf8().data());
 
     if (oldNode)
     {
@@ -343,7 +343,7 @@ void CSettingsManager::AddSettingsNode(XmlNodeRef newNode)
 
 void CSettingsManager::ExportSettings(XmlNodeRef exportNode, QString fileName)
 {
-    exportNode->saveToFile(fileName.toLatin1().data());
+    exportNode->saveToFile(fileName.toUtf8().data());
 }
 
 void CSettingsManager::Export()
@@ -362,7 +362,7 @@ void CSettingsManager::Export()
     // Save CVars
     SerializeCVars(m_pSettingsManagerMemoryNode, false);
 
-    m_pSettingsManagerMemoryNode->saveToFile(m_ExportFilePath.toLatin1().data());
+    m_pSettingsManagerMemoryNode->saveToFile(m_ExportFilePath.toUtf8().data());
 
     GetIEditor()->SetStatusText("Export Successful");
 }
@@ -412,7 +412,7 @@ void CSettingsManager::GetMatchingLayoutNames(TToolNamesMap& foundTools, XmlNode
     // Need to populate in-memory node with available layouts.
     UpdateLayoutNode();
 
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toUtf8().data());
 
     if (!root)
     {
@@ -459,13 +459,13 @@ void CSettingsManager::GetMatchingLayoutNames(TToolNamesMap& foundTools, XmlNode
 
     for (; toolIT != toolNames->end(); ++toolIT)
     {
-        if (root->findChild(toolIT->first.toLatin1().data()))
+        if (root->findChild(toolIT->first.toUtf8().data()))
         {
             foundTools[toolIT->first] = toolIT->second;
 
             if (resultNode)
             {
-                resultNode->addChild(root->findChild(toolIT->first.toLatin1().data()));
+                resultNode->addChild(root->findChild(toolIT->first.toUtf8().data()));
             }
         }
     }
@@ -473,7 +473,7 @@ void CSettingsManager::GetMatchingLayoutNames(TToolNamesMap& foundTools, XmlNode
 
 void CSettingsManager::ImportSettings(QString file)
 {
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toUtf8().data());
 
     if (!root)
     {
@@ -513,7 +513,7 @@ void CSettingsManager::ImportSettings(QString file)
     {
         QString macroFilePath;
         GetIEditor()->GetToolBoxManager()->GetSaveFilePath(macroFilePath);
-        userToolsNode->saveToFile(macroFilePath.toLatin1().data());
+        userToolsNode->saveToFile(macroFilePath.toUtf8().data());
         GetIEditor()->GetToolBoxManager()->Load();
     }
 
@@ -664,9 +664,9 @@ void CSettingsManager::ReadValueStr(XmlNodeRef& sourceNode, const QString& path,
 
     for (int i = 0; i < strNodes.size(); ++i)
     {
-        if (tmpNode->findChild(strNodes[i].toLatin1().data()))
+        if (tmpNode->findChild(strNodes[i].toUtf8().data()))
         {
-            tmpNode = tmpNode->findChild(strNodes[i].toLatin1().data());
+            tmpNode = tmpNode->findChild(strNodes[i].toUtf8().data());
         }
         else
         {
@@ -674,13 +674,13 @@ void CSettingsManager::ReadValueStr(XmlNodeRef& sourceNode, const QString& path,
         }
     }
 
-    if (!tmpNode->findChild(readAttr.toLatin1().data()))
+    if (!tmpNode->findChild(readAttr.toUtf8().data()))
     {
         return;
     }
     else
     {
-        tmpNode = tmpNode->findChild(readAttr.toLatin1().data());
+        tmpNode = tmpNode->findChild(readAttr.toUtf8().data());
     }
 
     if (tmpNode->haveAttr(EDITOR_SETTINGS_ATTRIB_NAME))
@@ -821,25 +821,25 @@ void CSettingsManager::SaveLogEventSetting(const QString& path, const QString& a
 
     for (int i = 0; i < strNodes.size(); ++i)
     {
-        if (!tmpNode->findChild(strNodes[i].toLatin1().data()))
+        if (!tmpNode->findChild(strNodes[i].toUtf8().data()))
         {
-            tmpNode->addChild(tmpNode->createNode(strNodes[i].toLatin1().data()));
-            tmpNode = tmpNode->findChild(strNodes[i].toLatin1().data());
+            tmpNode->addChild(tmpNode->createNode(strNodes[i].toUtf8().data()));
+            tmpNode = tmpNode->findChild(strNodes[i].toUtf8().data());
         }
         else
         {
-            tmpNode = tmpNode->findChild(strNodes[i].toLatin1().data());
+            tmpNode = tmpNode->findChild(strNodes[i].toUtf8().data());
         }
     }
 
-    if (!tmpNode->findChild(writeAttr.toLatin1().data()))
+    if (!tmpNode->findChild(writeAttr.toUtf8().data()))
     {
-        tmpNode->addChild(tmpNode->createNode(writeAttr.toLatin1().data()));
-        tmpNode = tmpNode->findChild(writeAttr.toLatin1().data());
+        tmpNode->addChild(tmpNode->createNode(writeAttr.toUtf8().data()));
+        tmpNode = tmpNode->findChild(writeAttr.toUtf8().data());
     }
     else
     {
-        tmpNode = tmpNode->findChild(writeAttr.toLatin1().data());
+        tmpNode = tmpNode->findChild(writeAttr.toUtf8().data());
     }
 
     if (!tmpNode)
@@ -847,7 +847,7 @@ void CSettingsManager::SaveLogEventSetting(const QString& path, const QString& a
         return;
     }
 
-    tmpNode->setAttr(EDITOR_EVENT_LOG_ATTRIB_NAME, val.toLatin1().data());
+    tmpNode->setAttr(EDITOR_EVENT_LOG_ATTRIB_NAME, val.toUtf8().data());
 
     root->saveToFile(EDITOR_EVENT_LOG_FILE_PATH);
 }
@@ -885,9 +885,9 @@ XmlNodeRef CSettingsManager::LoadLogEventSetting(const QString& path, const QStr
 
     for (int i = 0; i < strNodes.size(); ++i)
     {
-        if (tmpNode->findChild(strNodes[i].toLatin1().data()))
+        if (tmpNode->findChild(strNodes[i].toUtf8().data()))
         {
-            tmpNode = tmpNode->findChild(strNodes[i].toLatin1().data());
+            tmpNode = tmpNode->findChild(strNodes[i].toUtf8().data());
         }
         else
         {
@@ -895,7 +895,7 @@ XmlNodeRef CSettingsManager::LoadLogEventSetting(const QString& path, const QStr
         }
     }
 
-    if (tmpNode->haveAttr(readAttr.toLatin1().data()))
+    if (tmpNode->haveAttr(readAttr.toUtf8().data()))
     {
         return tmpNode;
     }

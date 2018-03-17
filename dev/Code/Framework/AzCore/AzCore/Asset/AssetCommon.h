@@ -336,9 +336,9 @@ namespace AZ
             static const bool EnableEventQueue = true;
 
             /**
-            * Custom connection policy to make sure all we are filly in sync
+            * Custom connection policy to make sure all we are fully in sync
             */
-            template<class Bus>
+            template <class Bus>
             struct AssetConnectionPolicy
                 : public EBusConnectionPolicy<Bus>
             {

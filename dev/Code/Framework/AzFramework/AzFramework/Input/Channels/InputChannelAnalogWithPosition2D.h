@@ -55,6 +55,10 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputChannelAnalogWithPosition2D, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelAnalogWithPosition2D, "{2C07314B-3294-41F8-9F14-FD5FE4048283}", InputChannel);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputChannelId Id of the input channel being constructed
         //! \param[in] inputDevice Input device that owns the input channel

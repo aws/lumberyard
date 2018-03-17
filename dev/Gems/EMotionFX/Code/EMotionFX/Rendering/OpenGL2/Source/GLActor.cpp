@@ -20,7 +20,7 @@
 #include <EMotionFX/Source/SubMesh.h>
 #include <EMotionFX/Source/MeshDeformerStack.h>
 #include "GraphicsManager.h"
-#include "GLActor.h"
+#include "glactor.h"
 #include "StandardMaterial.h"
 
 

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "AudioPreloadComponent.h"
 
 #include <ISystem.h>
@@ -80,7 +80,10 @@ namespace LmbrCentral
         {
             Unload();       // unload the default preload (if any)
 
-            for (auto& preload : m_loadedPreloads)
+            // Copy the preloads names first so we can iterate the copy while modifying the real list
+            AZStd::unordered_set<AZStd::string> preloadsToUnload = m_loadedPreloads;
+
+            for (auto& preload : preloadsToUnload)
             {
                 UnloadPreload(preload.c_str());     // unload any remaining preloads
             }

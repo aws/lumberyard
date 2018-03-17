@@ -52,6 +52,11 @@ namespace AZ
         virtual void OnEntityDestruction(const AZ::EntityId&) {}
 
         /**
+         * Signals that an initialized entity has been deleted.
+         */
+        virtual void OnEntityDestroyed(const AZ::EntityId&) {}
+
+        /**
          * Signals that an entity was activated.
          * This event is dispatched after the activation of the entity is complete. 
          * @param id The ID of the activated entity.
@@ -144,6 +149,11 @@ namespace AZ
          * Signals that an initialized entity is about to be deleted.
          */
         virtual void OnEntityDestruction(const AZ::EntityId&) {}
+
+        /**
+         * Signals that an initialized entity has been deleted.
+         */
+        virtual void OnEntityDestroyed(const AZ::EntityId&) {}
 
         /**
          * Signals that an entity was activated. 

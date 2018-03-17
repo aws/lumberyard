@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Twitch_precompiled.cpp",
+            "Source/Twitch_precompiled.h"
         ]
     },
     "auto": {

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Visibility_precompiled.h"
 #include "VisAreaComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -34,14 +34,11 @@ namespace Visibility
         if (serializeContext)
         {
             serializeContext->Class<VisAreaConfiguration>()
-                ->Version(1)
+                ->Version(2, &VersionConverter)
                 ->Field("m_Height", &VisAreaConfiguration::m_Height)
                 ->Field("m_DisplayFilled", &VisAreaConfiguration::m_DisplayFilled)
                 ->Field("m_AffectedBySun", &VisAreaConfiguration::m_AffectedBySun)
-                ->Field("m_IgnoreSkyColor", &VisAreaConfiguration::m_IgnoreSkyColor)
-                ->Field("m_IgnoreGI", &VisAreaConfiguration::m_IgnoreGI)
                 ->Field("m_ViewDistRatio", &VisAreaConfiguration::m_ViewDistRatio)
-                ->Field("m_SkyOnly", &VisAreaConfiguration::m_SkyOnly)
                 ->Field("m_OceanIsVisible", &VisAreaConfiguration::m_OceanIsVisible)
                 ->Field("m_vertexContainer", &VisAreaConfiguration::m_vertexContainer)
                 ;
@@ -64,21 +61,9 @@ namespace Visibility
                 ->Event("GetAffectedBySun", &VisAreaComponentRequestBus::Events::GetAffectedBySun)
                 ->VirtualProperty("AffectedBySun", "GetAffectedBySun", "SetAffectedBySun")
 
-                ->Event("SetIgnoreSkyColor", &VisAreaComponentRequestBus::Events::SetIgnoreSkyColor)
-                ->Event("GetIgnoreSkyColor", &VisAreaComponentRequestBus::Events::GetIgnoreSkyColor)
-                ->VirtualProperty("IgnoreSkyColor", "GetIgnoreSkyColor", "SetIgnoreSkyColor")
-
-                ->Event("SetIgnoreGI", &VisAreaComponentRequestBus::Events::SetIgnoreGI)
-                ->Event("GetIgnoreGI", &VisAreaComponentRequestBus::Events::GetIgnoreGI)
-                ->VirtualProperty("IgnoreGI", "GetIgnoreGI", "SetIgnoreGI")
-
                 ->Event("SetViewDistRatio", &VisAreaComponentRequestBus::Events::SetViewDistRatio)
                 ->Event("GetViewDistRatio", &VisAreaComponentRequestBus::Events::GetViewDistRatio)
                 ->VirtualProperty("ViewDistRatio", "GetViewDistRatio", "SetViewDistRatio")
-
-                ->Event("SetSkyOnly", &VisAreaComponentRequestBus::Events::SetSkyOnly)
-                ->Event("GetSkyOnly", &VisAreaComponentRequestBus::Events::GetSkyOnly)
-                ->VirtualProperty("SkyOnly", "GetSkyOnly", "SetSkyOnly")
 
                 ->Event("SetOceanIsVisible", &VisAreaComponentRequestBus::Events::SetOceanIsVisible)
                 ->Event("GetOceanIsVisible", &VisAreaComponentRequestBus::Events::GetOceanIsVisible)
@@ -87,6 +72,22 @@ namespace Visibility
 
             behaviorContext->Class<VisAreaComponent>()->RequestBus("VisAreaComponentRequestBus");
         }
+    }
+
+    bool VisAreaConfiguration::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        // conversion from version 1:
+        // - Remove IgnoreSkyColor
+        // - Remove IgnoreGI
+        // - Remove SkyOnly
+        if (classElement.GetVersion() <= 1)
+        {
+            classElement.RemoveElementByName(AZ_CRC("IgnoreSkyColor"));
+            classElement.RemoveElementByName(AZ_CRC("IgnoreGI"));
+            classElement.RemoveElementByName(AZ_CRC("SkyOnly"));
+        }
+
+        return true;
     }
 
     void VisAreaComponent::Reflect(AZ::ReflectContext* context)
@@ -150,26 +151,6 @@ namespace Visibility
         return m_config.m_AffectedBySun;
     }
 
-    void VisAreaComponent::SetIgnoreSkyColor(const bool value)
-    {
-        m_config.m_IgnoreSkyColor = value;
-        
-    }
-    bool VisAreaComponent::GetIgnoreSkyColor()
-    {
-        return m_config.m_IgnoreSkyColor;
-    }
-
-    void VisAreaComponent::SetIgnoreGI(const bool value)
-    {
-        m_config.m_IgnoreGI = value;
-        
-    }
-    bool VisAreaComponent::GetIgnoreGI()
-    {
-        return m_config.m_IgnoreGI;
-    }
-
     void VisAreaComponent::SetViewDistRatio(const float value)
     {
         m_config.m_ViewDistRatio = value;
@@ -177,15 +158,6 @@ namespace Visibility
     float VisAreaComponent::GetViewDistRatio()
     {
         return m_config.m_ViewDistRatio;
-    }
-
-    void VisAreaComponent::SetSkyOnly(const bool value)
-    {
-        m_config.m_SkyOnly = value;
-    }
-    bool VisAreaComponent::GetSkyOnly()
-    {
-        return m_config.m_SkyOnly;
     }
 
     void VisAreaComponent::SetOceanIsVisible(const bool value)

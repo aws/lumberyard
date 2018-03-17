@@ -128,7 +128,7 @@ SpriteBorderEditor::SpriteBorderEditor(const char* path, QWidget* parent)
                                 }
 
                                 QString fullPath = Path::GamePathToFullPath(sprite->GetPathname().c_str());
-                                bool result = sprite->SaveToXml(fullPath.toLatin1().data());
+                                bool result = sprite->SaveToXml(fullPath.toUtf8().data());
 
                                 if (result)
                                 {

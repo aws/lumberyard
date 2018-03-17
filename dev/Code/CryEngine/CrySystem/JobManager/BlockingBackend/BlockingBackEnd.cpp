@@ -441,9 +441,12 @@ void JobManager::BlockingBackEnd::CBlockingBackEndWorkerThread::DoWorkProducerCo
         // make sure we don't try to execute an already stopped job
         assert(pAddPacketData->pJobState && pAddPacketData->pJobState->IsRunning() == true);
 
-        // call delegator function to invoke job entry
-        PREFAST_ASSUME(pInvoker);
-        (*pInvoker)(pParamMem);
+        {
+            // call delegator function to invoke job entry
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::System, "JobManager::BlockingBackEnd:RunJob");
+            PREFAST_ASSUME(pInvoker);
+            (*pInvoker)(pParamMem);
+        }
 
         // mark job as finished
         IF (pAddPacketData->pJobState, 1)

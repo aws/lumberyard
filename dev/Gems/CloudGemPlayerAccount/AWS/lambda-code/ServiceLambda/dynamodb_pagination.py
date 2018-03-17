@@ -19,13 +19,13 @@ DISTINCT_KEY_SEARCH_MAX_RESULTS_PER_PAGE = 20
 
 # The main class for returning pages of results from a partitioned global secondary index.
 class PaginatedSearch:
-    def __init__(self, partitioned_index_config, page_token):
+    def __init__(self, partitioned_index_config, page_token, start_player_name = ''):
         self.__config = partitioned_index_config
 
         self.__forward = page_token.forward
         self.__partitions = {}
         for partition in self.__partition_keys:
-            self.__partitions[partition] = PaginatedPartition(self.__config, partition, page_token)
+            self.__partitions[partition] = PaginatedPartition(self.__config, partition, page_token, start_player_name)
 
     # Gets the next page of results and internally updates the search position.
     def get_next_page(self, max_results):
@@ -179,12 +179,13 @@ def get_page_token_for_inclusive_start(config, inclusive_start, forward):
 
 # Handles fetching pages for one partition.
 class PaginatedPartition:
-    def __init__(self, partitioned_index_config, partition, page_token):
+    def __init__(self, partitioned_index_config, partition, page_token, start_player_name = ''):
         self.__partitioned_index_config = partitioned_index_config
         self.__partition = partition
         self.__forward = page_token.forward
         self.__is_at_end = page_token.is_partition_at_end(partition)
         self.__previous_page_first_item = None
+        self.__start_player_name = start_player_name
         if not self.__is_at_end:
             self.__inclusive = page_token.is_inclusive(partition)
             self.__start_key = page_token.get_start_key(partition)
@@ -277,6 +278,9 @@ class PaginatedPartition:
             'Limit': max_results,
             'ScanIndexForward': forward
         }
+
+        if self.__start_player_name:
+            queryArgs['KeyConditionExpression'] = queryArgs['KeyConditionExpression'] & Key(config.sort_key_name).eq(self.__start_player_name)
 
         if exclusive_start:
             queryArgs['ExclusiveStartKey'] = exclusive_start

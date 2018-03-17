@@ -90,7 +90,7 @@ namespace AZ
 #   else
         unsigned long m_generatorHandle;
 #   endif // AZ_OS64
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_PS4)
+#elif AZ_TRAIT_PSUEDO_RANDOM_USE_FILE
         FILE * m_generatorHandle;
 #else
 #       error Platform not supported

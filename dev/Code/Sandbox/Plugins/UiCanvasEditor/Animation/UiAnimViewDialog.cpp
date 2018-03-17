@@ -15,9 +15,6 @@
 
 //----- UI_ANIMATION_REVISIT - this is required to compile since something we include still uses MFC
 
-// turns off MFC's hiding of some common and often safely ignored warning messages
-#define _AFX_ALL_WARNINGS
-
 // prevent inclusion of conflicting definitions of INT8_MIN etc
 #define _INTSAFE_H_INCLUDED_
 
@@ -196,32 +193,6 @@ CUiAnimViewDialog::~CUiAnimViewDialog()
     UiEditorAnimationStateBus::Handler::BusDisconnect();
     UiEditorAnimListenerBus::Handler::BusDisconnect();
 }
-
-#ifdef KDAB_TEMPORARILY_REMOVED
-void CUiAnimViewDialog::AddShortCutMenu(CustomizeKeyboardPage& pageKeyboard, CToolBar* pToolBar, const CString& sToolBarName)
-{
-    UINT nID = -1;
-    CString sButtonText;
-    CMenu pMenu;
-    pMenu.CreateMenu();
-
-    int nButtonCount = pToolBar->GetToolBarCtrl().GetButtonCount();
-
-    for (int i = 0; i < nButtonCount; ++i)
-    {
-        nID = pToolBar->GetItemID(i);
-        sButtonText.LoadString(nID);
-        sButtonText.Delete(sButtonText.Find("\n"), sButtonText.GetLength());
-        pMenu.AppendMenu(MF_STRING, nID, sButtonText);
-    }
-
-    if (pMenu.GetMenuItemCount() > 0)
-    {
-        CXTPControls* pControls =  pageKeyboard.InsertCategory(sToolBarName);
-        pControls->LoadMenu(&pMenu);
-    }
-}
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewDialog::OnAddEntityNodeMenu()

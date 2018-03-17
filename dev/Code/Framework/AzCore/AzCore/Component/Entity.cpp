@@ -299,6 +299,12 @@ namespace AZ
         {
             delete *it;
         }
+
+        if (m_state == ES_INIT)
+        {
+            EBUS_EVENT(EntitySystemBus, OnEntityDestroyed, m_id);
+            EBUS_EVENT_ID(m_id, EntityBus, OnEntityDestroyed, m_id);
+        }
     }
 
     //=========================================================================
@@ -985,9 +991,9 @@ namespace AZ
                 ->Field("Id", &Entity::m_id)
                     ->Attribute(Edit::Attributes::IdGeneratorFunction, &Entity::MakeId)
                 ->Field("Name", &Entity::m_name)
+                ->Field("Components", &Entity::m_components) // Component serialization can result in IsDependencyReady getting modified, so serialize Components first.
                 ->Field("IsDependencyReady", &Entity::m_isDependencyReady)
                 ->Field("IsRuntimeActive", &Entity::m_isRuntimeActiveByDefault)
-                ->Field("Components", &Entity::m_components)
                 ;
 
             serializeContext->Class<EntityId>()

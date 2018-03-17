@@ -66,7 +66,7 @@
 #include <AzFramework/Components/CameraBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
 #include <AzToolsFramework/Manipulators/ManipulatorManager.h>
@@ -147,6 +147,7 @@ CRenderViewport::CRenderViewport(const QString& name, QWidget* parent)
 
     Camera::EditorCameraRequestBus::Handler::BusConnect();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+    AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
 
     m_manipulatorManager = GetIEditor()->GetViewManager()->GetManipulatorManager();
 }
@@ -159,6 +160,7 @@ CRenderViewport::~CRenderViewport()
         m_pPrimaryViewport = nullptr;
     }
 
+    AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
     AzToolsFramework::ViewportInteractionRequestBus::Handler::BusDisconnect();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
     Camera::EditorCameraRequestBus::Handler::BusDisconnect();
@@ -207,6 +209,9 @@ void CRenderViewport::paintEvent(QPaintEvent* event)
     if ((ge && ge->IsLevelLoaded()) || (GetType() != ET_ViewportCamera))
     {
         setRenderOverlayVisible(true);
+        m_isOnPaint = true;
+        Update();
+        m_isOnPaint = false;
     }
     else
     {
@@ -365,12 +370,12 @@ void CRenderViewport::OnLButtonDown(Qt::KeyboardModifiers modifiers, const QPoin
     }
 
     const auto scaledPoint = WidgetToViewport(point);
-    if (m_manipulatorManager == nullptr 
+    if (m_manipulatorManager == nullptr
         || !m_manipulatorManager->ConsumeViewportMousePress(BuildMouseInteraction(
             Internal::MouseButtonsFromButton(MouseButton::Left), BuildKeyboardModifiers(modifiers), BuildMousePick(scaledPoint))))
     {
         QtViewport::OnLButtonDown(modifiers, scaledPoint);
-}
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -466,7 +471,11 @@ void CRenderViewport::OnRButtonUp(Qt::KeyboardModifiers modifiers, const QPoint&
     m_bInZoomMode = false;
 
     ReleaseMouse();
-    ShowCursor();
+
+    if (!m_bInMoveMode)
+    {
+        ShowCursor();
+    }
 
     // Update viewports after done with rotating.
     //GetIEditor()->UpdateViews(eUpdateObjects);
@@ -606,15 +615,7 @@ void CRenderViewport::ProcessMouse()
             m_relCameraRotZ += MousedeltaX;
             m_relCameraRotX += MousedeltaY;
 
-            if (!gSettings.stylusMode)
-            {
-                const QPoint pnt = mapToGlobal(ViewportToWidget(m_prevMousePos));
-                AzQtComponents::SetCursorPos(pnt);
-            }
-            else
-            {
-                m_prevMousePos = point;
-            }
+            ResetCursor();
         }
     }
     else if ((m_bInRotateMode && m_bInMoveMode) || m_bInZoomMode)
@@ -633,15 +634,7 @@ void CRenderViewport::ProcessMouse()
         m.SetTranslation(pos);
         SetViewTM(m);
 
-        if (!gSettings.stylusMode)
-        {
-            const QPoint pnt = mapToGlobal(ViewportToWidget(m_prevMousePos));
-            AzQtComponents::SetCursorPos(pnt);
-        }
-        else
-        {
-            m_prevMousePos = point;
-        }
+        ResetCursor();
     }
     else if (m_bInRotateMode)
     {
@@ -666,15 +659,7 @@ void CRenderViewport::ProcessMouse()
         camtm = Matrix34(CCamera::CreateOrientationYPR(ypr), camtm.GetTranslation());
         SetViewTM(camtm);
 
-        if (!gSettings.stylusMode)
-        {
-            const QPoint pnt = mapToGlobal(ViewportToWidget(m_prevMousePos));
-            AzQtComponents::SetCursorPos(pnt);
-        }
-        else
-        {
-            m_prevMousePos = point;
-        }
+        ResetCursor();
     }
     else if (m_bInMoveMode)
     {
@@ -694,15 +679,7 @@ void CRenderViewport::ProcessMouse()
         m.SetTranslation(pos);
         SetViewTM(m, true);
 
-        if (!gSettings.stylusMode)
-        {
-            const QPoint pnt = mapToGlobal(ViewportToWidget(m_prevMousePos));
-            AzQtComponents::SetCursorPos(pnt);
-        }
-        else
-        {
-            m_prevMousePos = point;
-        }
+        ResetCursor();
     }
     else if (m_bInOrbitMode)
     {
@@ -732,16 +709,20 @@ void CRenderViewport::ProcessMouse()
 
         SetViewTM(camTM);
 
-        if (!gSettings.stylusMode)
-        {
-            const QPoint pnt = mapToGlobal(ViewportToWidget(m_prevMousePos));
-            AzQtComponents::SetCursorPos(pnt);
-        }
-        else
-        {
-            m_prevMousePos = point;
-        }
+        ResetCursor();
     }
+}
+
+void CRenderViewport::ResetCursor()
+{
+    if (!gSettings.stylusMode)
+    {
+        const QPoint point = mapToGlobal(ViewportToWidget(m_prevMousePos));
+        AzQtComponents::SetCursorPos(point);
+    }
+    
+    // Recalculate the prev mouse pos even if we just reset to it to avoid compounding floating point math issues with DPI scaling
+    m_prevMousePos = WidgetToViewport(mapFromGlobal(QCursor::pos()));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -775,11 +756,10 @@ bool  CRenderViewport::event(QEvent* event)
         }
         else
         {
-            if ((keyEvent->modifiers() && Qt::ControlModifier) == 0)
+            if (!(keyEvent->modifiers() & Qt::ControlModifier))
             {
                 switch (keyEvent->key())
                 {
-                case Qt::Key_F:
                 case Qt::Key_Up:
                 case Qt::Key_W:
                 case Qt::Key_Down:
@@ -1283,6 +1263,8 @@ void CRenderViewport::OnRender()
 
     CGameEngine* ge = GetIEditor()->GetGameEngine();
 
+    bool levelIsDisplayable = (ge && ge->IsLevelLoaded() && GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+
     //Handle scene render tasks such as gizmos and handles but only when not in VR
     if (!m_renderer->IsStereoEnabled())
     {
@@ -1292,7 +1274,7 @@ void CRenderViewport::OnRender()
         RenderAll();
 
         // Draw Axis arrow in lower left corner.
-        if (ge && ge->IsLevelLoaded())
+        if (levelIsDisplayable)
         {
             DrawAxis();
         }
@@ -1317,7 +1299,7 @@ void CRenderViewport::OnRender()
         m_cameraSetForWidgetRendering = false;
     }
 
-    if (ge && ge->IsLevelLoaded())
+    if (levelIsDisplayable)
     {
         const auto rendererSize = WidgetToViewport(QSize(m_renderer->GetWidth(), m_renderer->GetHeight()));
         m_renderer->SetViewport(0, 0, rendererSize.width(), rendererSize.height(), m_nCurViewportID);
@@ -1421,6 +1403,12 @@ void CRenderViewport::InitDisplayContext()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CRenderViewport::PopulateEditorGlobalContextMenu(QMenu* /*menu*/, const AZ::Vector2& /*point*/, int /*flags*/)
+{
+    m_bInMoveMode = false;
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CRenderViewport::RenderAll()
 {
     // Draw all objects.
@@ -1459,7 +1447,7 @@ void CRenderViewport::RenderAll()
         CProcessInfo::QueryMemInfo(mi);
         int MB = 1024 * 1024;
         QString str = QStringLiteral("WorkingSet=%1Mb, PageFile=%2Mb, PageFaults=%3").arg(mi.WorkingSet / MB).arg(mi.PagefileUsage / MB).arg(mi.PageFaultCount);
-        m_renderer->TextToScreenColor(1, 1, 1, 0, 0, 1, str.toLatin1().data());
+        m_renderer->TextToScreenColor(1, 1, 1, 0, 0, 1, str.toUtf8().data());
     }
 
     // Display editing tool.
@@ -1591,7 +1579,7 @@ void CRenderViewport::RenderCursorString()
 
     // Display hit object name.
     float col[4] = { 1, 1, 1, 1 };
-    m_renderer->Draw2dLabel(point.x() + 12, point.y() + 4, 1.2f, col, false, "%s", m_cursorStr.toLatin1().data());
+    m_renderer->Draw2dLabel(point.x() + 12, point.y() + 4, 1.2f, col, false, "%s", m_cursorStr.toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2612,11 +2600,6 @@ void CRenderViewport::ProcessKeys()
         return;
     }
 
-    if (IsKeyDown(Qt::Key_F))
-    {
-        SetViewFocus();
-    }
-
     bool bIsPressedSome = false;
 
     if (IsKeyDown(Qt::Key_Up) || IsKeyDown(Qt::Key_W))
@@ -3172,39 +3155,45 @@ void CRenderViewport::CenterOnSelection()
         // Get selection bounds & center
         CSelectionGroup* sel = GetIEditor()->GetSelection();
         AABB selectionBounds = sel->GetBounds();
-        Vec3 selectionCenter = selectionBounds.GetCenter();
-
-        // Minimum center size is 40cm
-        const float minSelectionRadius = 0.4f;
-        const float selectionSize = std::max(minSelectionRadius, selectionBounds.GetRadius());
-
-        // Move camera 25% further back than required
-        const float centerScale = 1.25f;
-
-        // Decompose original transform matrix
-        const Matrix34& originalTM = GetViewTM();
-        AffineParts affineParts;
-        affineParts.SpectralDecompose(originalTM);
-
-        // Forward vector is y component of rotation matrix
-        Matrix33 rotationMatrix(affineParts.rot);
-        const Vec3 viewDirection = rotationMatrix.GetColumn1().GetNormalized();
-
-        // Compute adjustment required by FOV != 90 degrees
-        const float fov = GetFOV();
-        const float fovScale = (1.0f / tan(fov * 0.5f));
-
-        // Compute new transform matrix
-        const float distanceToTarget = selectionSize * fovScale * centerScale;
-        const Vec3 newPosition = selectionCenter - (viewDirection * distanceToTarget);
-        Matrix34 newTM = Matrix34(rotationMatrix, newPosition);
-
-        // Set new orbit distance
-        m_orbitDistance = distanceToTarget;
-        m_orbitDistance = fabs(m_orbitDistance);
-
-        SetViewTM(newTM);
+        CenterOnAABB(selectionBounds);
     }
+}
+
+void CRenderViewport::CenterOnAABB(const AABB& aabb)
+{
+    Vec3 selectionCenter = aabb.GetCenter();
+
+    // Minimum center size is 40cm
+    const float minSelectionRadius = 0.4f;
+    const float selectionSize = std::max(minSelectionRadius, aabb.GetRadius());
+
+    // Move camera 25% further back than required
+    const float centerScale = 1.25f;
+
+    // Decompose original transform matrix
+    const Matrix34& originalTM = GetViewTM();
+    AffineParts affineParts;
+    affineParts.SpectralDecompose(originalTM);
+
+    // Forward vector is y component of rotation matrix
+    Matrix33 rotationMatrix(affineParts.rot);
+    const Vec3 viewDirection = rotationMatrix.GetColumn1().GetNormalized();
+
+    // Compute adjustment required by FOV != 90 degrees
+    const float fov = GetFOV();
+    const float fovScale = (1.0f / tan(fov * 0.5f));
+
+    // Compute new transform matrix
+    const float distanceToTarget = selectionSize * fovScale * centerScale;
+    const Vec3 newPosition = selectionCenter - (viewDirection * distanceToTarget);
+    Matrix34 newTM = Matrix34(rotationMatrix, newPosition);
+
+    // Set new orbit distance
+    m_orbitDistance = distanceToTarget;
+    m_orbitDistance = fabs(m_orbitDistance);
+
+    SetViewTM(newTM);
+
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3843,6 +3832,12 @@ void CRenderViewport::UpdateCurrentMousePos(const QPoint& newPosition)
 {
     m_prevMousePos = m_mousePos;
     m_mousePos = newPosition;
+}
+
+void CRenderViewport::BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QPoint& pt)
+{
+    const auto scaledPoint = WidgetToViewport(pt);
+    QtViewport::BuildDragDropContext(context, scaledPoint);
 }
 
 #include <RenderViewport.moc>

@@ -32,10 +32,12 @@
 #include "OutlinerManager.h"
 #include "NotificationWindowManager.h"
 #include "Workspace.h"
+#include "MainWindow.h"
 
 // include Qt
 #include <QString>
 #include <QPainter>
+#include <QPointer>
 #include <QWidget>
 
 // forward declarations
@@ -46,7 +48,6 @@ QT_FORWARD_DECLARE_CLASS(QLabel)
 namespace EMStudio
 {
     // forward declarations
-    class MainWindow;
     class MotionEventPresetManager;
 
     /**
@@ -65,7 +66,8 @@ namespace EMStudio
         const char* GetCompileDate() const                                      { return mCompileDate.AsChar(); }
 
         MCORE_INLINE QApplication* GetApp()                                     { return mApp; }
-        MCORE_INLINE MainWindow* GetMainWindow()                                { return mMainWindow; }
+        MCORE_INLINE bool HasMainWindow() const                                 { return !mMainWindow.isNull(); }
+        MainWindow* GetMainWindow();
         MCORE_INLINE PluginManager* GetPluginManager()                          { return mPluginManager; }
         MCORE_INLINE LayoutManager* GetLayoutManager()                          { return mLayoutManager; }
         MCORE_INLINE OutlinerManager* GetOutlinerManager()                      { return mOutlinerManager; }
@@ -114,7 +116,7 @@ namespace EMStudio
 
     private:
         MCore::Array<MCommon::TransformationManipulator*> mTransformationManipulators;
-        MainWindow*                         mMainWindow;
+        QPointer<MainWindow>                mMainWindow;
         QApplication*                       mApp;
         PluginManager*                      mPluginManager;
         LayoutManager*                      mLayoutManager;
@@ -167,6 +169,7 @@ namespace EMStudio
     // shortcuts
     MCORE_INLINE QApplication*                  GetApp()                        { return gEMStudioMgr->GetApp(); }
     MCORE_INLINE EMStudioManager*               GetManager()                    { return gEMStudioMgr; }
+    MCORE_INLINE bool                           HasMainWindow()                 { return gEMStudioMgr->HasMainWindow(); }
     MCORE_INLINE MainWindow*                    GetMainWindow()                 { return gEMStudioMgr->GetMainWindow(); }
     MCORE_INLINE PluginManager*                 GetPluginManager()              { return gEMStudioMgr->GetPluginManager(); }
     MCORE_INLINE LayoutManager*                 GetLayoutManager()              { return gEMStudioMgr->GetLayoutManager(); }

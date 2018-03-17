@@ -13,6 +13,7 @@
 #pragma once
 
 // include the required headers
+#include <AzCore/std/string/string.h>
 #include "StandardHeaders.h"
 #include "UnicodeString.h"
 #include "Array.h"
@@ -182,7 +183,7 @@ namespace MCore
      * @param fmt The format string like "FloatValue = %f".
      * @result The formatted string.
      */
-    std::string MCORE_API FormatStdString(const char* fmt, ...);
+    AZStd::string MCORE_API FormatStdString(const char* fmt, ...);
 
     //----------------------------------------------------------------------------
 

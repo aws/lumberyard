@@ -76,7 +76,7 @@ namespace EMotionFX
 
         // use start value
         MCore::AttributeSettings* useStartAttribute = RegisterAttribute("Use Start Value", "useStartValue", "Enable this to use the start value, otherwise the first input value will be used as start value.", MCore::ATTRIBUTE_INTERFACETYPE_CHECKBOX);
-        useStartAttribute->SetDefaultValue(MCore::AttributeFloat::Create(1));
+        useStartAttribute->SetDefaultValue(MCore::AttributeFloat::Create(0));
 
         // start value
         MCore::AttributeSettings* startValueAttribute = RegisterAttribute("Start Value", "startValue", "When the blend tree gets activated the smoothing node will start interpolating from this value.", MCore::ATTRIBUTE_INTERFACETYPE_FLOATSPINNER);
@@ -192,7 +192,7 @@ namespace EMotionFX
         else
         {
             // set the current value to the current input value
-            ///     UpdateAllIncomingNodes(animGraphInstance, 0.0f);
+            UpdateAllIncomingNodes(animGraphInstance, 0.0f);
             //      OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_DEST) );
             uniqueData->mCurrentValue = GetInputNumberAsFloat(animGraphInstance, INPUTPORT_DEST);
         }

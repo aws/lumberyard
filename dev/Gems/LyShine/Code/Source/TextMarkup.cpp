@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "TextMarkup.h"
 #include <AzCore/std/containers/stack.h>
 #include <AzCore/std/string/conversions.h>

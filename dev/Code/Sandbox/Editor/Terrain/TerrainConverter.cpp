@@ -30,7 +30,7 @@ bool ConvertTerrain(const Config& config)
     MacroTextureConfiguration macroTextureConfig;
 
     AZStd::string quadtreeFilePath;
-    AzFramework::StringFunc::Path::ConstructFull(GetIEditor()->GetLevelFolder().toLatin1().data(), config.macroTextureQuadtreeFilename.c_str(), quadtreeFilePath);
+    AzFramework::StringFunc::Path::ConstructFull(GetIEditor()->GetLevelFolder().toUtf8().data(), config.macroTextureQuadtreeFilename.c_str(), quadtreeFilePath);
 
     // See if the file exists before asking to read it or else the reader will spit a warning.
     {
@@ -79,8 +79,8 @@ bool FixTerrainMultiplier(const Config& config, MacroTextureConfiguration& macro
     AZStd::string quadtreeFilePath;
     AZStd::string xmlFilePath;
 
-    AzFramework::StringFunc::Path::ConstructFull(GetIEditor()->GetLevelFolder().toLatin1().data(), config.macroTextureQuadtreeFilename.c_str(), quadtreeFilePath);
-    AzFramework::StringFunc::Path::ConstructFull(GetIEditor()->GetLevelDataFolder().toLatin1().data(), config.macroTextureXMLFilename.c_str(), xmlFilePath);
+    AzFramework::StringFunc::Path::ConstructFull(GetIEditor()->GetLevelFolder().toUtf8().data(), config.macroTextureQuadtreeFilename.c_str(), quadtreeFilePath);
+    AzFramework::StringFunc::Path::ConstructFull(GetIEditor()->GetLevelDataFolder().toUtf8().data(), config.macroTextureXMLFilename.c_str(), xmlFilePath);
 
     XmlNodeRef root = XmlHelpers::LoadXmlFromFile(xmlFilePath.c_str());
     if (!root)
@@ -94,14 +94,14 @@ bool FixTerrainMultiplier(const Config& config, MacroTextureConfiguration& macro
     // Make sure terrain texture pak file can be written
     if (!CFileUtil::OverwriteFile(RGBLayer.GetFullFileName()))
     {
-        Error(QStringLiteral("Cannot overwrite file %1").arg(RGBLayer.GetFullFileName()).toLatin1().data());
+        Error(QStringLiteral("Cannot overwrite file %1").arg(RGBLayer.GetFullFileName()).toUtf8().data());
         return false;
     }
     // Make sure the quadtree file can be written (do this now to make sure both files can be modified before actually changing them)
     QString qsQuadtreeFilePath = QString(quadtreeFilePath.c_str());
     if (!CFileUtil::OverwriteFile(qsQuadtreeFilePath))
     {
-        Error(QStringLiteral("Cannot overwrite file %1").arg(qsQuadtreeFilePath).toLatin1().data());
+        Error(QStringLiteral("Cannot overwrite file %1").arg(qsQuadtreeFilePath).toUtf8().data());
         return false;
     }
 

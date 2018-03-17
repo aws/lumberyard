@@ -66,6 +66,7 @@ private:
         bool m_bShowNews;
         bool m_showFlowGraphNotification;
         bool m_enableSceneInspector;
+        bool m_enableUI2;
     };
 
     struct Undo

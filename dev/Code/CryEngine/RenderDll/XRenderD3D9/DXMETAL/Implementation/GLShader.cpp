@@ -368,7 +368,7 @@ namespace NCryMetal
         return true;
     }
 
-    bool InitializeShaderReflectionParameters(SShaderReflection::TParameters& kParameters, SDXBCParseContext* pContext)
+    bool InitializeShaderReflectionParameters(SShaderReflection::TParameters& kParameters, SDXBCParseContext* pContext, bool extended = false)
     {
         uint32 uNumElements, uVersion;
         if (!DXBCReadUint32(*pContext, uNumElements) ||
@@ -386,6 +386,12 @@ namespace NCryMetal
             for (uElement = uPrevNumElements; uElement < kParameters.size(); ++uElement)
             {
                 SShaderReflectionParameter& kParameter(kParameters.at(uElement));
+                // Only for extended parameters fxc adds two extra pieces of information, the stream index and the minimum precision.
+                if (extended && !DXBCReadUint32(*pContext, kParameter.m_kDesc.Stream))
+                {
+                    return false;
+                }
+                
                 uint32 uSemNamePosition;
                 if (!DXBCReadUint32(*pContext, uSemNamePosition) ||
                     !SDXBCParseContext(*pContext, uSemNamePosition).ReadString(kParameter.m_acSemanticName, DXGL_ARRAY_SIZE(kParameter.m_acSemanticName)))
@@ -400,8 +406,8 @@ namespace NCryMetal
                     !DXBCReadUint32(*pContext, kParameter.m_kDesc.Register) ||
                     !DXBCReadUint8(*pContext, kParameter.m_kDesc.Mask) ||
                     !DXBCReadUint8(*pContext, kParameter.m_kDesc.ReadWriteMask) ||
-                    !DXBCReadUint8(*pContext, kParameter.m_kDesc.Stream) ||
-                    !DXBCReadUint8(*pContext, kParameter.m_kDesc.MinPrecision))
+                    !pContext->SeekRel(sizeof(uint16_t)) || // These two bytes are part of the mask but are not used, so we skip them.
+                    (extended && !DXBCReadUint32(*pContext, kParameter.m_kDesc.MinPrecision))) // Precision available only for extended parameters.
                 {
                     return false;
                 }
@@ -513,13 +519,15 @@ namespace NCryMetal
             }
             break;
             case FOURCC_ISGN:
-                if (!InitializeShaderReflectionParameters(pReflection->m_kInputs, &kChunkContext))
+            case FOURCC_ISG1:
+                if (!InitializeShaderReflectionParameters(pReflection->m_kInputs, &kChunkContext, uChunkFourCC == FOURCC_ISG1))
                 {
                     return false;
                 }
                 break;
             case FOURCC_OSGN:
-                if (!InitializeShaderReflectionParameters(pReflection->m_kOutputs, &kChunkContext))
+            case FOURCC_OSG1:
+                if (!InitializeShaderReflectionParameters(pReflection->m_kOutputs, &kChunkContext, uChunkFourCC == FOURCC_OSG1))
                 {
                     return false;
                 }
@@ -1304,9 +1312,23 @@ namespace NCryMetal
         SInputLayoutPtr spLayout(new SInputLayout());
         uint32 auSlotOffsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
         memset(auSlotOffsets, 0, sizeof(auSlotOffsets));
+        
+        int attrMatchedNum = 0;
+        int reflectionAttrNum = 0;
+        
+        //Calculate the number of attributes in the vertex shader that dont start with 'SV_'.
+        TShaderReflection::TParameters::const_iterator kInputSemanticIter(kReflection.m_kInputs.begin());
+        const TShaderReflection::TParameters::const_iterator kInputSemanticEnd(kReflection.m_kInputs.end());
+        while (kInputSemanticIter != kInputSemanticEnd)
+        {
+            if(strstr(kInputSemanticIter->m_kDesc.SemanticName, "SV_") == 0)
+            {
+                reflectionAttrNum++;
+            }
+            ++kInputSemanticIter;
+        }
 
-        uint32 uElement;
-        for (uElement = 0; uElement < uNumElements; ++uElement)
+        for (uint32 uElement = 0; uElement < uNumElements; ++uElement)
         {
             const D3D11_INPUT_ELEMENT_DESC& kDesc(pInputElementDescs[uElement]);
 
@@ -1325,6 +1347,7 @@ namespace NCryMetal
             }
             //  Confetti End: Igor Lobanchikov
 
+            
             // Find a match within the input signatures of the shader reflection data
             TShaderReflection::TParameters::const_iterator kInputSemanticIter(kReflection.m_kInputs.begin());
             const TShaderReflection::TParameters::const_iterator kInputSemanticEnd(kReflection.m_kInputs.end());
@@ -1335,16 +1358,20 @@ namespace NCryMetal
                 {
                     if (!PushInputLayoutAttribute(*spLayout, auSlotOffsets, kDesc, kInputSemanticIter->m_kDesc.Register))
                     {
+                        AZ_Assert(false, "Failed to Push Input Layout");
                         return NULL;
                     }
+                    attrMatchedNum++;
                     break;
                 }
                 ++kInputSemanticIter;
             }
-            if (kInputSemanticIter == kInputSemanticEnd)
-            {
-                return NULL;
-            }
+        }
+
+        if( attrMatchedNum != reflectionAttrNum)
+        {
+            AZ_Assert(false, "Shader input attributes count doesn not match with vertex format attributes count");
+            return NULL;
         }
 
         return spLayout;

@@ -69,7 +69,7 @@ namespace AzToolsFramework
     {
         Picking::BoundShapeLineSegment lineBound;
         lineBound.m_start = worldFromLocal * localPosition;
-        lineBound.m_end = lineBound.m_start + axis * length;
+        lineBound.m_end = lineBound.m_start + worldFromLocal.Multiply3x3(axis).GetNormalized() * length;
         lineBound.m_width = width;
         return lineBound;
     }

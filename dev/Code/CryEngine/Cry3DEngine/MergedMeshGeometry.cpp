@@ -18,7 +18,7 @@
 #include "VMath.hpp"
 
 #if MMRM_ENABLE_PROFILER
-# define MMRM_PROFILE_FUNCTION(x, y) FUNCTION_PROFILER_3DENGINE(x, y)
+# define MMRM_PROFILE_FUNCTION(x, y) FUNCTION_PROFILER_LEGACYONLY(x, y)
 # define MMRM_FRAME_PROFILER(x, y, z) FRAME_PROFILER(x, y, z)
 #else
 # define MMRM_PROFILE_FUNCTION(x, y) (void)0
@@ -3526,6 +3526,8 @@ static void TraceWindSample(const Vec3& offs, const Vec3& dw, const SMMRMInstanc
 // Merge instance geometry into a list of buffers
 static void MergeInstanceList(SMMRMInstanceContext& context)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
     using namespace NVMath;
     MEMORY_SCOPE_CHECK_HEAP();
     SMMRMGeometry* geom = context.geom;
@@ -4502,6 +4504,7 @@ void SMMRMGroupHeader::CullInstances(CCamera* cam, Vec3* origin, Vec3* rotationO
 {
     MEMORY_SCOPE_CHECK_HEAP();
     MMRM_PROFILE_FUNCTION(gEnv->pSystem, PROFILE_3DENGINE);
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
 
     SMMRMGroupHeader* header = this;
     size_t visibleSamples = 0, j = 0;

@@ -25,45 +25,46 @@ import json
 from third_party import is_third_party_uselib_configured, get_third_party_platform_name, get_third_party_configuration_name
 from gems import Gem
 
-def get_common_inputs():
-    inputs = [
-        'additional_settings',
-        'export_definitions',
-        'meta_includes',
-        'file_list',
-        'use',              # module dependency
-        'defines',
-        'export_defines',
-        'includes',
-        'export_includes',
-        'cxxflags',
-        'cflags',
-        'lib',              # shared
-        'libpath',          # shared
-        'stlib',            # static
-        'stlibpath',        # static
-        'linkflags',
-        'framework',
-        'frameworkpath',
-        'rpath',
-        'features',
-        'enable_rtti',
-        'remove_release_define',
-        'uselib',
-        'mirror_artifacts_to_include',
-        'mirror_artifacts_to_exclude',
-        'output_folder',
-        'source_artifacts_include',
-        'source_artifacts_exclude',
-        'mirror_artifacts_to_include',
-        'mirror_artifacts_to_exclude',
-        'copy_external',
-        'copy_dependent_files',
-        'copyright_org',  # optional keyword to tag the file's originator company
-        'dx12_only',         # Option to build only if dx12 was detected on the host machine
-        'additional_manifests',
-    ]
-    return inputs
+COMMON_INPUTS = [
+    'additional_settings',
+    'export_definitions',
+    'meta_includes',
+    'file_list',
+    'use',  # module dependency
+    'defines',
+    'export_defines',
+    'includes',
+    'export_includes',
+    'cxxflags',
+    'cflags',
+    'lib',  # shared
+    'libpath',  # shared
+    'stlib',  # static
+    'stlibpath',  # static
+    'linkflags',
+    'framework',
+    'frameworkpath',
+    'rpath',
+    'features',
+    'enable_rtti',
+    'remove_release_define',
+    'uselib',
+    'mirror_artifacts_to_include',
+    'mirror_artifacts_to_exclude',
+    'output_folder',
+    'source_artifacts_include',
+    'source_artifacts_exclude',
+    'mirror_artifacts_to_include',
+    'mirror_artifacts_to_exclude',
+    'copy_external',
+    'copy_dependent_files',
+    'copyright_org',  # optional keyword to tag the file's originator company
+    'dx12_only',  # Option to build only if dx12 was detected on the host machine
+    'additional_manifests',
+]
+
+SANITIZE_INPUTS = COMMON_INPUTS + ['output_file_name', 'files', 'winres_includes', 'winres_defines']
+
 
 def get_all_supported_platforms(ctx):
     all_supported_platforms = []
@@ -108,9 +109,11 @@ def get_platform_list(self, platform):
 
     return results
 
+CXX_EXT_LIST = ('.c', '.C', '.cc', '.CC', '.cpp', '.CPP')
+
 @conf
 def is_cxx_file(self, file_name):
-    return file_name.endswith(('.c', '.C', '.cc', '.CC', '.cpp', '.CPP'))
+    return file_name.endswith(CXX_EXT_LIST)
 
 @conf
 def is_windows_platform(self, platform):
@@ -154,14 +157,7 @@ def has_dx12(conf):
 def SanitizeInput(ctx, kw):
 
     # Sanitize the inputs kws that should be list inputs
-    inputs = get_common_inputs()
-    inputs += [
-        'output_file_name',
-        'files',
-        'winres_includes',
-        'winres_defines'
-    ]
-    sanitize_kw_input_lists(inputs, kw)
+    sanitize_kw_input_lists(SANITIZE_INPUTS, kw)
 
     # Recurse for additional settings
     if 'additional_settings' in kw:
@@ -274,6 +270,7 @@ def TrackFileListChanges(ctx, kw):
         ctx.additional_files_to_track += [ file_node ]
         append_kw_entry(kw,'waf_file_entries',[ file_node ])
 
+
 def LoadFileLists(ctx, kw, file_lists):
     """
     Util function to extract a list of needed source files, based on uber files and current command
@@ -316,13 +313,14 @@ def LoadFileLists(ctx, kw, file_lists):
     plist_files             = set()
     uber_files              = set()
     other_files             = set()
-    uber_file_relative_list = set()
 
     target                  = kw['target']
     found_pch               = False
     pch_file                = kw.get('pch', '')
     platform                = ctx.env['PLATFORM']
     uber_file_folder        = ctx.get_bintemp_folder_node().make_node('uber_files/{}'.format(target))
+
+    pch_node = ctx.path.make_node(pch_file)
 
     # Keep track of files per waf_file spec and be ready to identify duplicate ones per file
     file_list_to_file_collection = dict()
@@ -390,25 +388,13 @@ def LoadFileLists(ctx, kw, file_lists):
                 if uber_file in uber_files:
                     ctx.cry_file_error('[%s] UberFile "%s" was specifed twice. Please choose a different name' % (kw['target'], uber_file), file_list_file)
 
-                # Collect Uber file related informations
-
-                # Determine if we need to do a relative path or an absolute path
+                # Collect Uber file related information
                 uber_file_node = uber_file_folder.make_node(uber_file)
                 uber_file_node_abs = uber_file_node.abspath()
-                ctx_node_abs = ctx.path.abspath()
-                common_path = os.path.commonprefix([uber_file_node_abs, ctx_node_abs])
+                task_generator_files.add(uber_file_node_abs)
+                uber_files.add(uber_file_node)
 
-
-                task_generator_files.add(uber_file_node.abspath().lower())
-                uber_files.add(uber_file)
-
-                if len(common_path)>0:
-                    uber_file_relative = uber_file_node.path_from(ctx.path)
-                    uber_file_relative_list.add(uber_file_relative)
-                else:
-                    uber_file_relative_list.add(uber_file_node_abs)
-
-                file_to_project_filter[uber_file_node.abspath()] = 'Uber Files'
+                file_to_project_filter[uber_file_node_abs] = 'Uber Files'
 
             for (filter_name, file_entries) in project_filter_list.items():
                 for file_entry in file_entries:
@@ -420,7 +406,7 @@ def LoadFileLists(ctx, kw, file_lists):
                         file_node = ctx.path.make_node(file_entry)
                         file = file_entry
 
-                    filenode_abs_path = file_node.abspath().lower()
+                    filenode_abs_path = file_node.abspath()
 
                     # Keep track of files for file_list file and track which ones are duplicate
                     if (filenode_abs_path in file_list_to_file_collection[file_list_file]):
@@ -437,24 +423,24 @@ def LoadFileLists(ctx, kw, file_lists):
                         found_pch = True
 
                     elif ctx.is_cxx_file(file):
-                        source_files.add(file)
+                        source_files.add(file_node)
                         if not generate_uber_file:
-                            no_uber_file_files.add(file)
+                            no_uber_file_files.add(file_node)
                     elif file.endswith(('.mm', '.m')):
-                        objc_source_files.add(file)
+                        objc_source_files.add(file_node)
                     elif file.endswith(('.ui', '.qrc', '.ts')):
-                        qt_source_files.add(file)
+                        qt_source_files.add(file_node)
                     elif file.endswith(('.h', '.H', '.hpp', '.HPP', '.hxx', '.HXX')):
-                        header_files.add(file)
+                        header_files.add(file_node)
                     elif file.endswith(('.rc', '.r')):
-                        resource_files.add(file)
+                        resource_files.add(file_node)
                     elif file.endswith('.plist'):
-                        plist_files.add(file)
+                        plist_files.add(file_node)
                     else:
-                        other_files.add(file)
+                        other_files.add(file_node)
 
                     # Build file name -> Visual Studio Filter mapping
-                    file_to_project_filter[file_node.abspath()] = filter_name
+                    file_to_project_filter[filenode_abs_path] = filter_name
 
                     # Build list of uber files to files
                     if generate_uber_file:
@@ -477,7 +463,7 @@ def LoadFileLists(ctx, kw, file_lists):
     # Compute final source list based on platform
     if platform == 'project_generator' or ctx.options.file_filter != "":
         # Collect all files plus uber files for project generators and when doing a single file compilation
-        kw['source'] = uber_file_relative_list | source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
+        kw['source'] = uber_files | source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
         kw['mac_plist'] = list(plist_files)
         if len(plist_files) != 0:
             if 'darwin' in ctx.cmd or 'mac' in ctx.cmd:
@@ -488,24 +474,29 @@ def LoadFileLists(ctx, kw, file_lists):
                 kw['ios_app'] = True
 
         if platform == 'project_generator' and pch_file != '':
-            kw['source'].add(pch_file) # Also collect PCH for project generators
+            kw['source'].add(pch_node) # Also collect PCH for project generators
 
     else:
         # Regular compilation path
+        # Note: Always sort the file list so that it is stable between recompilation.  WAF uses the order of input files to generate the UID of the task,
+        # and if the order changes, it will cause recompilation!
+
+        kw['source'] = []
+
+        if found_pch and not ctx.is_option_true('use_precompiled_header'):
+            kw['source'].append(pch_node) # Also collect PCH for when not using PCH for intended task
+
         if ctx.is_option_true('use_uber_files'):
             # Only take uber files when uber files are enabled and files not using uber files
-            kw['source'] = uber_file_relative_list | no_uber_file_files | qt_source_files
+            kw['source'].extend(sorted(uber_files | no_uber_file_files | qt_source_files, key=lambda file: file.abspath()))
         else:
             # Fall back to pure list of source files
-            kw['source'] = source_files | qt_source_files
-            
-        if found_pch and not ctx.is_option_true('use_precompiled_header'):
-            kw['source'].add(pch_file) # Also collect PCH for when not using PCH for intended task
+            kw['source'].extend(sorted(source_files | qt_source_files, key=lambda file: file.abspath()))
 
         # Append platform specific files
         if 'darwin' in ctx.get_platform_list( platform ) or 'ios' in ctx.get_platform_list( platform ) or 'appletv' in ctx.get_platform_list( platform ):
-            kw['source'] |= objc_source_files
-            kw['mac_plist'] = list(plist_files)
+            kw['source'].extend(sorted(objc_source_files, key=lambda file: file.abspath()))
+            kw['mac_plist'] = list(sorted(plist_files, key=lambda file:file.abspath()))
             if len(plist_files) != 0:
                 if 'darwin' in ctx.cmd or 'mac' in ctx.cmd:
                     kw['mac_app'] = True
@@ -515,7 +506,7 @@ def LoadFileLists(ctx, kw, file_lists):
                     kw['ios_app'] = True
 
         if ctx.is_windows_platform(ctx.env['PLATFORM']):
-            kw['source'] |= resource_files
+            kw['source'].extend(sorted(resource_files, key=lambda file: file.abspath()))
 
     # Handle PCH files
     if pch_file != '' and found_pch == False:
@@ -534,17 +525,7 @@ def LoadFileLists(ctx, kw, file_lists):
     kw['project_filter']        = file_to_project_filter
     kw['uber_file_lookup']      = uber_file_to_file_list
     kw['file_list_to_source']   = file_list_to_source
-    kw['header_files']          = header_files
-
-    # Note: Always sort the file list so that its stable between recompilation.  WAF uses the order of input files to generate the UID of the task, 
-    # and if the order changes, it will cause recompilation!
-    if (platform != 'project_generator'):
-        kw['source'] = sorted(kw['source'])
-        kw['header_files'] = sorted(kw['header_files'])
-
-    # save sources and header_files as lists.  WAF appears to work just fine as sets, but historically these were lists, so I'm minimizing impact.
-    kw['source'] = list(kw['source'])
-    kw['header_files'] = list(kw['header_files'])
+    kw['header_files']          = sorted(header_files, key=lambda file: file.abspath())
 
     # In the uber files, paths are relative to the current module path, so make sure the root of the project is included in the include search path
     if '.' not in kw.get('includes',[]):
@@ -680,7 +661,10 @@ def LoadAdditionalFileSettings(ctx, kw):
         uber_file_folder = uber_file_folder.make_node(kw['target'])
 
         for file in file_list:
-            file_abspath = ctx.path.make_node(file).abspath()
+            if isinstance(file, Node.Node):
+                file_abspath = file.abspath()
+            else:
+                file_abspath = ctx.path.make_node(file).abspath()
 
             if 'uber_file_lookup' in kw:
                 for uber_file in kw['uber_file_lookup']:
@@ -1024,7 +1008,6 @@ def process_extern_engine_lib(self):
                 target_paths.append(output_subfolder_path)
             except:
                 Logs.warn('[WARN] Target folder "{}" for engine output cannot be created.'.format(output_subfolder_path))
-                pass
 
     for source_path in getattr(self,'source_paths',[]):
         if os.path.isfile(source_path):
@@ -1098,7 +1081,7 @@ def MonolithicBuildModule(ctx, *k, **kw):
     # Remove rc files from the sources for monolithic builds (only the rc of
     # the launcher will be used) and remove any duplicate files that may have
     # sneaked in as well (using the python idiom: list(set(...)) to do so
-    kw['source'] = [file for file in list(set(kw['source'])) if not file.endswith('.rc')]
+    kw['source'] = [file for file in kw['source'] if not file.abspath().endswith('.rc')]
 
     return ctx.objects(*k, **kw)
 
@@ -2550,7 +2533,7 @@ def ApplyPlatformSpecificSettings(ctx, kw, target):
     process_kw_macros_expansion(target, kw, platform, configuration)
 
     # handle list entries
-    for entry in get_common_inputs():
+    for entry in COMMON_INPUTS:
         append_kw_entry(kw,entry,GetPlatformSpecificSettings(ctx, kw, entry, platform, configuration))
 
     # Handle string entries
@@ -2698,27 +2681,22 @@ def is_building_dedicated_server(ctx):
 
 
 @feature('cxx')
-@after_method('apply_incpaths')
+@before_method('process_source')
+@before_method('add_pch_msvc')
+@before_method('add_pch_clang')
 def apply_custom_flags(self):
-
     rtti_include_option = getattr(self,'enable_rtti',False)
     if  'msvc' in (self.env.CC_NAME, self.env.CXX_NAME):
         remove_release_define_option = getattr(self,'remove_release_define',False)
         rtti_flag = '/GR' if rtti_include_option == [True] else '/GR-'
 
-        for t in getattr(self, 'compiled_tasks', []):
-            t.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('/GR'), t.env['CXXFLAGS']))
-            t.env['CXXFLAGS'] += [rtti_flag]
-            if remove_release_define_option:
-                t.env['DEFINES'] = list(filter(lambda r:r!='_RELEASE', t.env['DEFINES']))
-
-        if getattr(self, 'pch_task', None):
-            self.pch_task.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('/GR'), self.pch_task.env['CXXFLAGS']))
-            self.pch_task.env['CXXFLAGS'] += [rtti_flag]
+        self.env['CXXFLAGS'] = list(filter(lambda r: not r.startswith('/GR'), self.env['CXXFLAGS']))
+        self.env['CXXFLAGS'] += [rtti_flag]
+        if remove_release_define_option:
+            self.env['DEFINES'] = list(filter(lambda r: r != '_RELEASE', self.env['DEFINES']))
     else:
-        for t in getattr(self, 'compiled_tasks', []):
-            if rtti_include_option == [True]:
-                t.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('-fno-rtti'), t.env['CXXFLAGS']))
+        if rtti_include_option == [True]:
+            self.env['CXXFLAGS'] = list(filter(lambda r:not r.startswith('-fno-rtti'), self.env['CXXFLAGS']))
 
 
 # handle outputs not in the build directory.  Outputs in the build directory don't cache their signatures,
@@ -2735,6 +2713,7 @@ def allow_non_bld_outputs(self):
         old_post_run()
         for node in self.outputs:
             node.sig = node.cache_sig = Utils.h_file(node.abspath())
+            # most of the task_sigs use uid as the key, this is using the node path as the key and storing the uid
             self.generator.bld.task_sigs[node.abspath()] = self.uid()
     self.post_run = new_post_run
 
@@ -2752,6 +2731,7 @@ def allow_non_bld_outputs(self):
             prev_sig = bld.task_sigs[self.uid()]
             if prev_sig == self.signature():
                 for x in self.outputs:
+                    # most of the task_sigs use uid as the key, this is using the node path as the key and storing the uid
                     if not x.sig or bld.task_sigs[x.abspath()] != self.uid():
                         return Task.RUN_ME
                 return Task.SKIP_ME
@@ -3033,6 +3013,13 @@ def patch_run_method(self):
                 for (tgt, temp_tgt) in file_rename_pairs:
                     try:
                         Logs.debug('link_running_program: bailing out - restoring %s -> %s' % (temp_tgt, tgt))
+                        try:
+                            # the linker may write out a partial file, which happens with pdb files that contain missing
+                            # symbols.  Remove the potentially partial file before restoring
+                            os.unlink(tgt)
+                        except OSError as e:
+                            # ignore errors, it will be caught in the next rename operation, if its actually an error
+                            pass
                         os.rename(temp_tgt, tgt)
                     except OSError as e:
                         Logs.warn('link_running_program: Could not restore existing file on failure: %s -> %s' % (temp_tgt, tgt))

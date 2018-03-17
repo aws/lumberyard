@@ -169,6 +169,7 @@ protected:
     void OnEntityCompositionChanged(const AzToolsFramework::EntityIdList& entityIds) override;
 
     void OnEntityInitialized(const AZ::EntityId& entityId) override;
+    void AfterEntitySelectionChanged() override;
 
     //! AzToolsFramework::EditorEntityInfoNotificationBus::Handler
     //! Get notifications when the EditorEntityInfo changes so we can update our model
@@ -199,10 +200,6 @@ protected:
     QVariant dataForLock(const QModelIndex& index, int role) const;
     QVariant dataForSortIndex(const QModelIndex& index, int role) const;
 
-    //! Data used in the filtering process.
-    AzToolsFramework::FilterByCategoryMap m_filtersRegExp;
-    AzToolsFramework::FilterOperatorType m_filterOperator;
-
     //! Request a hierarchy expansion
     void ExpandAncestors(const AZ::EntityId& entityId);
     bool IsExpanded(const AZ::EntityId& entityId) const;
@@ -219,6 +216,13 @@ protected:
 
     bool AreAllDescendantsSameLockState(const AZ::EntityId& entityId) const;
     bool AreAllDescendantsSameVisibleState(const AZ::EntityId& entityId) const;
+
+    // These are needed until we completely disassociated selection control from the outliner state to
+    // keep track of selection state before/during/after filtering and searching
+    AzToolsFramework::EntityIdList m_unfilteredSelectionEntityIds;
+    void CacheSelectionIfAppropriate();
+    void RestoreSelectionIfAppropriate();
+    bool ShouldOverrideUnfilteredSelection();
 };
 
 // Class used to identify the visibility checkbox element for styling purposes

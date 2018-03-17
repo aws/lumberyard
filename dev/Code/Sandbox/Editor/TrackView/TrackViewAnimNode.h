@@ -354,6 +354,7 @@ private:
     // Helper functions
     static void RemoveChildNode(CTrackViewAnimNode* child);
     static AZ::Transform GetEntityWorldTM(const AZ::EntityId entityId);
+    static void SetParentsInChildren(CTrackViewAnimNode* currentNode);
 
     IAnimSequence* m_pAnimSequence;
     AZStd::intrusive_ptr<IAnimNode> m_pAnimNode;

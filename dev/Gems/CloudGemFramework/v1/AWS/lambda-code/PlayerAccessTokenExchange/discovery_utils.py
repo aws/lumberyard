@@ -14,7 +14,7 @@ import os
 import json
 
 import boto3
-from resource_manager_common import aws_utils
+from cgf_utils import aws_utils
 
 lambda_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME')
 current_region = os.environ.get('AWS_REGION')

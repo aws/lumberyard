@@ -34,7 +34,7 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
-#include "StdAfx.h"
+#include "CloudGemMessageOfTheDay_precompiled.h"
 
 namespace CloudGemMessageOfTheDay {
 namespace ServiceAPI {

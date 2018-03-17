@@ -51,7 +51,7 @@ def build(bld):
         darwin_use      = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
         win_use         = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
 
-        darwin_cxxflags = ['-Wno-unused-local-typedef'],
+        darwin_cxxflags = ['-Wno-unused-local-typedef'], # required for boost python
         darwin_x64_lib  = ['python2.7', 'curl'],
 
         # Testing

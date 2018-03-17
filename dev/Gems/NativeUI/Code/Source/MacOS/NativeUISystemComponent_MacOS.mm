@@ -12,7 +12,7 @@
 
 #include <ISystem.h>
 #include <NativeUISystemComponent.h>
-#include "StdAfx.h"
+#include "NativeUI_precompiled.h"
 
 #import <AppKit/AppKit.h>
 

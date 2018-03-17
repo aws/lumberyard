@@ -67,7 +67,7 @@ namespace Audio
          * Check if the Microphone is actively capturing data.
          * @return True if a capturing session has started and is running, false otherwise.
          */
-        virtual bool IsCapturing() const = 0;
+        virtual bool IsCapturing() = 0;
 
         /**
          * Obtain the format set up for the mic capture session.

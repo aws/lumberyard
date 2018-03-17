@@ -96,12 +96,16 @@ namespace Editor
 
         QSet<int> pressedKeys() const { return m_pressedKeys; }
         int pressedMouseButtons() const { return m_pressedButtons; }
-
+#ifdef _DEBUG
+        bool notify(QObject* receiver, QEvent* ev) override;
+#endif
     public Q_SLOTS:
         void InitializeQML();
         void UninitializeQML();
 
         void setIsMovingOrResizing(bool isMovingOrResizing);
+
+        void EnableUI2(bool enable);
 
     signals:
         void skinChanged();

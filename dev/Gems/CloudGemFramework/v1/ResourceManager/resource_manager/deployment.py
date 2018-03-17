@@ -23,7 +23,7 @@ import project
 from botocore.exceptions import NoCredentialsError
 
 from uploader import ProjectUploader, Phase
-import constant
+from resource_manager_common import constant
 
 PENDING_CREATE_REASON = 'The deployment''s resource group defined resources have not yet been created in AWS.'
 ACCESS_PENDING_CREATE_REASON = 'The deployment''s access control resources have not been created in AWS.'
@@ -381,24 +381,6 @@ def upload_resources(context, args):
     else:
         update_stack(context, args)
 
-def upload_lambda_code(context, args):
-    # Use default deployment if necessary
-    if args.deployment is None:
-        if context.config.default_deployment is None:
-            raise HandledError('No deployment was specified and there is no default deployment configured.')
-        args.deployment = context.config.default_deployment
-
-    # The deployment doesn't exist
-    if not context.config.deployment_stack_exists(args.deployment):
-        raise HandledError('There is no {} deployment stack.'.format(args.deployment))
-
-    #Update the Lambda function code if the resource group exists
-    stack_id = context.config.get_resource_group_stack_id(args.deployment, args.resource_group, optional=True)
-    if args.resource_group in context.resource_groups and stack_id is not None:
-        resource_group.update_lambda_code(context, args)
-    else:
-        raise HandledError('There is no {} resource group stack.'.format(args.resource_group))
-
 def update_stack(context, args):
 
     # Use default deployment if necessary
@@ -551,7 +533,7 @@ def before_update(context, deployment_uploader):
 def after_update(context, deployment_uploader):
 
     for group in context.resource_groups.values():
-        if group .is_enabled:
+        if group.is_enabled:
             resource_group.after_update(
                 deployment_uploader, 
                 group.name

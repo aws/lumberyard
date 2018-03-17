@@ -34,7 +34,7 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
-#include "StdAfx.h"
+#include "CloudGemDynamicContent_precompiled.h"
 
 namespace CloudGemDynamicContent {
 namespace ServiceAPI {

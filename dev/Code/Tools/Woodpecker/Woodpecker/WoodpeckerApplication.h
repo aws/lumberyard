@@ -16,6 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/UserSettings/UserSettings.h>
+#include <AZCore/Component/ComponentApplication.h>
 
 #include <AzFramework/IO/LocalFileIO.h>
 
@@ -29,22 +30,22 @@ namespace Woodpecker
     {
     public:
 
-        BaseApplication();
+        BaseApplication(int &argc, char **argv);
         ~BaseApplication() override;
 
     protected:
 
-        void ReflectSerializeDeprecated() override;
-        void RegisterCoreComponents() override;
-        void CreateSystemComponents() override;
-        void CreateApplicationComponents() override;
-        void OnApplicationEntityActivated() override;
+        virtual void ReflectSerializeDeprecated();
+        virtual void RegisterCoreComponents();
+        virtual void CreateSystemComponents();
+        virtual void CreateApplicationComponents();
+        virtual void OnApplicationEntityActivated();
 
     private:
         bool LaunchDiscoveryService();
 
         // AZ::UserSettingsFileLocatorBus::Handler
-        AZStd::string ResolveFilePath(AZ::u32 /*providerId*/) override;
+        AZStd::string ResolveFilePath(AZ::u32 /*providerId*/);
         //////////////////////////////////////////////////////////////////////////
     };
 }

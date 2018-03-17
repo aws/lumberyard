@@ -21,9 +21,9 @@ public:
         : m_libHandle(nullptr)
     {
         std::string libext = lib;
-        if (!AZ::Test::EndsWith(libext, ".dylib"))
+        if (!AZ::Test::EndsWith(libext, ".so"))
         {
-            libext += ".dylib";
+            libext += ".so";
         }
         m_libHandle = dlopen(libext.c_str(), RTLD_NOW);
         const char* error = dlerror();

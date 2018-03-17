@@ -11,7 +11,7 @@ namespace CloudGemSpeechRecognition
 
     class CloudGemSpeechRecognitionSystemComponent
         : public AZ::Component
-        , protected CloudGemSpeechRecognitionRequestBus::Handler
+        , protected SpeechRecognitionRequestBus::Handler
     {
     public:
         AZ_COMPONENT(CloudGemSpeechRecognitionSystemComponent, "{498454B8-1903-4998-9821-6ACDCF93E552}");
@@ -21,12 +21,12 @@ namespace CloudGemSpeechRecognition
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
-        void BeginSpeechCapture();
+        void BeginSpeechCapture() override;
         void EndSpeechCaptureAndCallBot(
             const AZStd::string& botName, 
             const AZStd::string& botAlias, 
             const AZStd::string& userId,
-            const AZStd::string& sessionAttributes);
+            const AZStd::string& sessionAttributes) override;
 
     protected:
         ////////////////////////////////////////////////////////////////////////

@@ -106,7 +106,7 @@ uint32 HandlerBase::SyncSetAffinity(uint32 cpuMask)//put -1
     return 0;
 }
 
-#elif defined(WIN32) || defined(DURANGO)
+#elif AZ_LEGACY_CRYSYSTEM_TRAIT_USE_HANDLER_SYNC_AFFINITY
 
 uint32 HandlerBase::SyncSetAffinity(uint32 cpuMask)//put -1
 {

@@ -151,7 +151,7 @@ namespace PrefabHelpers
                 // Extract the filename without its extension, get it from fullFileName rather than
                 // file.filename because the former preserves case
                 AZStd::string filename;
-                AzFramework::StringFunc::Path::GetFileName(fullFileName.toLatin1().data(), filename);
+                AzFramework::StringFunc::Path::GetFileName(fullFileName.toUtf8().data(), filename);
                 qint64 fileSize = file.size;
 
                 QAction* action = new QAction(filename.c_str(), prefabMenu);

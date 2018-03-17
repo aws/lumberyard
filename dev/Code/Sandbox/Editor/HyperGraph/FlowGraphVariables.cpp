@@ -162,7 +162,7 @@ namespace
             }
             if (pSelEntity == 0)
             {
-                Warning(QObject::tr("FlowGraph: Please select first an Entity to be used as reference for this AI Action.").toLatin1().data());
+                Warning(QObject::tr("FlowGraph: Please select first an Entity to be used as reference for this AI Action.").toUtf8().data());
             }
             return pSelEntity;
         }
@@ -199,7 +199,7 @@ namespace
             CHyperNodePort* pPort = pFlowNode->FindPort(targetEntityPort, true);
             if (!pPort)
             {
-                Warning("FlowGraphVariables.cpp: Internal error - Cannot resolve port '%s' on ref-lookup. Check C++ Code!", targetEntityPort.toLatin1().data());
+                Warning("FlowGraphVariables.cpp: Internal error - Cannot resolve port '%s' on ref-lookup. Check C++ Code!", targetEntityPort.toUtf8().data());
                 return 0;
             }
             const TFlowInputData* pFlowData = pGameFG->GetInputValue(pFlowNode->GetFlowNodeId(), pPort->nPortIndex);
@@ -207,7 +207,7 @@ namespace
             const bool success = pFlowData->GetValueWithConversion(targetEntityId);
             if (!success || targetEntityId == 0)
             {
-                Warning("FlowGraph: No valid Target Entity set on port '%s'", targetEntityPort.toLatin1().data());
+                Warning("FlowGraph: No valid Target Entity set on port '%s'", targetEntityPort.toUtf8().data());
                 return 0;
             }
         }
@@ -215,7 +215,7 @@ namespace
         IEntity* pEntity = gEnv->pEntitySystem->GetEntity(targetEntityId);
         if (!pEntity)
         {
-            Warning("FlowGraph: Cannot find entity with id %u, set on port '%s'", targetEntityId, targetEntityPort.toLatin1().data());
+            Warning("FlowGraph: Cannot find entity with id %u, set on port '%s'", targetEntityId, targetEntityPort.toUtf8().data());
             return 0;
         }
 
@@ -1091,9 +1091,9 @@ CUIEnumsDatabase_SEnum* CVariableFlowNodeDefinedEnum::GetSEnum()
             const uint32 portId = m_portId - ((config.nFlags & EFLN_TARGET_ENTITY) ? 1 : 0);
 
             string outEnumName;
-            if (!pIFlowNode->GetPortGlobalEnum(portId, pNodeIEntity, m_refFormatString.toLatin1().data(), outEnumName))
+            if (!pIFlowNode->GetPortGlobalEnum(portId, pNodeIEntity, m_refFormatString.toUtf8().data(), outEnumName))
             {
-                outEnumName = m_refFormatString.toLatin1().data();
+                outEnumName = m_refFormatString.toUtf8().data();
             }
 
             CUIEnumsDatabase_SEnum* pEnum = GetIEditor()->GetUIEnumsDatabase()->FindEnum(outEnumName.c_str());

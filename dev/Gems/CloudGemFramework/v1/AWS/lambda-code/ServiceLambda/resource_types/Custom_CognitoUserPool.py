@@ -10,14 +10,12 @@
 #
 # $Revision: #5 $
 
-import boto3
-import botocore
-import custom_resource_response
-from resource_manager_common import aws_utils
-import properties
+from cgf_utils import custom_resource_response
+from cgf_utils import aws_utils
+from cgf_utils import properties
 from resource_manager_common import stack_info
-import user_pool
-import identity_pool
+from resource_types.cognito import user_pool
+from resource_types.cognito import identity_pool
 import json
 
 def handler(event, context):
@@ -39,6 +37,7 @@ def handler(event, context):
         })
 
     #give the identity pool a unique name per stack
+    stack_manager = stack_info.StackInfoManager()
     stack_name = aws_utils.get_stack_name_from_stack_arn(event['StackId'])
     stack_name = stack_name.replace('-', ' ') # Prepare stack_name to be used by _associate_user_pool_with_player_access
     pool_name = props.PoolName.replace('-', ' ')
@@ -65,7 +64,7 @@ def handler(event, context):
         client_app_data = {};
         lambda_config = props.LambdaConfig
 
-        user_pool.validate_identity_metadata(event['StackId'], event['LogicalResourceId'], props.ClientApps)
+        user_pool.validate_identity_metadata(stack_manager, event['StackId'], event['LogicalResourceId'], props.ClientApps)
         admin_create_user_config = __get_admin_create_user_config(props.AllowAdminCreateUserOnly)
         print json.dumps(admin_create_user_config)
 
@@ -140,7 +139,7 @@ def handler(event, context):
             }
         }
 
-        identity_pool.update_cognito_identity_providers(event['StackId'], pool_id, updated_resources)
+        identity_pool.update_cognito_identity_providers(stack_manager, event['StackId'], pool_id, updated_resources)
 
         data = {
             'UserPoolName': pool_name,
@@ -150,7 +149,7 @@ def handler(event, context):
     
     physical_resource_id = pool_id
 
-    custom_resource_response.succeed(event, context, data, physical_resource_id)
+    return custom_resource_response.success_response(data, physical_resource_id)
 
 def update_client_apps(user_pool_id, new_client_name_list, existing_clients, should_generate_secret, explicitauthflows, refreshtokenvalidity):
     client_changes = {'Created':[], 'Deleted':[], 'Updated':[]}

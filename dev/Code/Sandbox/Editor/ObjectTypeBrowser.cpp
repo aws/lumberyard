@@ -45,7 +45,7 @@ void ObjectTypeBrowser::SetCategory(CObjectCreateTool* createTool, const QString
         bi.toolClassName = "EditTool.ObjectCreate";
         bi.name = types[i];
         bi.toolUserDataKey = "type";
-        bi.toolUserData = types[i].toLatin1().data();
+        bi.toolUserData = types[i].toUtf8().data();
         AddButton(bi);
     }
 }

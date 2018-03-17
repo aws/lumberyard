@@ -154,7 +154,7 @@ void CDistanceCloudObject::UpdateEngineNode()
     // set properties
     SDistanceCloudProperties properties;
     properties.m_pos = wtm.TransformPoint(Vec3(0, 0, 0));
-    QByteArray name = GetMaterial()->GetName().toLatin1();
+    QByteArray name = GetMaterial()->GetName().toUtf8();
     properties.m_pMaterialName = name.data();
     properties.m_sizeX = wtm.TransformVector(Vec3(1, 0, 0)).GetLength();
     properties.m_sizeY = wtm.TransformVector(Vec3(0, 1, 0)).GetLength();

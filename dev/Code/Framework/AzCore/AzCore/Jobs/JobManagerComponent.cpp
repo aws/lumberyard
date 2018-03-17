@@ -70,6 +70,7 @@ namespace AZ
         m_jobGlobalContext = aznew JobContext(*m_jobManager);
 
         JobContext::SetGlobalContext(m_jobGlobalContext);
+        AZ_Assert(JobContext::GetGlobalContext(), "Global context must be created");
     }
 
     //=========================================================================

@@ -21,8 +21,21 @@
 #include "CompileTimeAssert.h"
 #include <AzCore/Casting/numeric_cast.h>
 
+// Section dictionary
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define BITFIDDLING_H_SECTION_TRAITS 1
+#define BITFIDDLING_H_SECTION_INTEGERLOG2 2
+#endif
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BITFIDDLING_H_SECTION_TRAITS
+#include AZ_RESTRICTED_FILE(BitFiddling_h)
+#elif defined(LINUX) || defined(APPLE)
+#define BITFIDDLING_H_TRAIT_HAS_COUNT_LEADING_ZEROS 1
+#endif
+
+#if BITFIDDLING_H_TRAIT_HAS_COUNT_LEADING_ZEROS
 #define countLeadingZeros32(x)              __builtin_clz(x)
 #else       // Windows implementation
 ILINE uint32 countLeadingZeros32(uint32 x)
@@ -135,6 +148,10 @@ inline unsigned long int IntegerLog2(unsigned long int x)
 #endif
 #undef IL2VAL
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BITFIDDLING_H_SECTION_INTEGERLOG2
+#include AZ_RESTRICTED_FILE(BitFiddling_h)
+#endif
 
 template <typename TInteger>
 inline TInteger IntegerLog2_RoundUp(TInteger x)

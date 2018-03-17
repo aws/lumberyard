@@ -20,10 +20,10 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/string/string.h>
 
-#include <qabstractitemmodel.h>
-#include <QtWidgets/qmainwindow.h>
-#include <QtWidgets/qdialog.h>
-#include <qitemselectionmodel.h>
+#include <QAbstractItemModel>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QDialog>
+#include <QItemSelectionModel>
 
 #include "Woodpecker/Driller/StripChart.hxx"
 #include "Woodpecker/Driller/Replica/ReplicaDisplayHelpers.h"

@@ -1589,7 +1589,7 @@ protected:
             ::UnitTest::Integ_CarrierMultiChannelTest> Integ_CarrierTests;
     #endif
     TYPED_TEST_CASE(Integ_SecureDriverTester, Integ_CarrierTests);
-    TYPED_TEST(Integ_SecureDriverTester, Integ_CarrierTests) { Test(); }
+    TYPED_TEST(Integ_SecureDriverTester, Integ_CarrierTests) { this->Test(); }
 #endif // TEST_WITH_SECURE_SOCKET_DRIVER
 
 #endif // defined(AZ_TESTS_ENABLED)

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
 
@@ -37,19 +37,19 @@ namespace Lightning
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkyHighlightConfiguration::m_enabled, "Enabled", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SkyHighlightConfiguration::m_enabled, "Enabled", "Sets if the sky highlight is enabled.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::Color, &SkyHighlightConfiguration::m_color, "Color", "Color of the sky highlight")
+                    ->DataElement(AZ::Edit::UIHandlers::Color, &SkyHighlightConfiguration::m_color, "Color", "Color of the sky highlight.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &SkyHighlightConfiguration::m_colorMultiplier, "Color Multiplier", "Modifier for the color intensity")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &SkyHighlightConfiguration::m_colorMultiplier, "Color Multiplier", "Modifier for the color intensity.")
                         ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &SkyHighlightConfiguration::m_verticalOffset, "Vertical Offset", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &SkyHighlightConfiguration::m_verticalOffset, "Vertical Offset", "An offset of the sky highlight on the global Z axis.")
                         ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &SkyHighlightConfiguration::m_size, "Size", "Size of the sky highlight")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &SkyHighlightConfiguration::m_size, "Size", "Size of the sky highlight.")
                         ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->Attribute(AZ::Edit::Attributes::Min, SkyHighlightComponent::MinSkyHighlightSize)
                     ;
@@ -78,7 +78,7 @@ namespace Lightning
             
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorSkyHighlightComponent>("SkyHighlight", "")
+                editContext->Class<EditorSkyHighlightComponent>("SkyHighlight", "Produces a bright sky highlight effect.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Environment")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SkyHighlight.png")

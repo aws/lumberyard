@@ -10,12 +10,12 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 #include "LightningArcComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
 
-#include "LightningGameEffectAZ.h"
+#include "LightningGameEffectAz.h"
 
 namespace Lightning
 {

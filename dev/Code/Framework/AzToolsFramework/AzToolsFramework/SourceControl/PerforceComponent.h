@@ -13,15 +13,8 @@
 #pragma once
 
 #include <AzCore/base.h>
-#include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/semaphore.h>
 #include <AzCore/std/parallel/atomic.h>
-#include <AzCore/std/function/function_fwd.h>
-#include <AzCore/std/parallel/thread.h>
-#include <AzCore/Serialization/EditContext.h>
-
-#include <AzCore/Component/TickBus.h>
-#include <AzCore/Component/Component.h>
 
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/SourceControl/LocalFileSCComponent.h>
@@ -39,23 +32,28 @@ namespace AzToolsFramework
             PJR_Edit,
             PJR_Delete,
             PJR_Revert,
+            PJR_Rename,
+            PJR_Sync,
         };
 
         RequestType m_requestType;
         AZStd::string m_requestPath;
+        AZStd::string m_targetPath;
         bool m_allowMultiCheckout;
         SourceControlResponseCallback m_callback;
 
-        PerforceJobRequest(RequestType requestType, const AZStd::string& requestPath, bool allowMultiCheckout, SourceControlResponseCallback responseCB)
+        PerforceJobRequest(RequestType requestType, const AZStd::string& requestPath, SourceControlResponseCallback responseCB)
             : m_requestType(requestType)
             , m_requestPath(requestPath)
-            , m_allowMultiCheckout(allowMultiCheckout)
+            , m_allowMultiCheckout(false)
             , m_callback(responseCB)
         {}
 
         PerforceJobRequest()
             : m_requestType(PJR_Invalid)
-            , m_callback(0) {}
+            , m_allowMultiCheckout(false)
+            , m_callback(0)
+        {}
     };
 
     class PerforceJobResult
@@ -118,6 +116,8 @@ namespace AzToolsFramework
         void RequestEdit(const char* fullFilePath, bool allowMultiCheckout, const SourceControlResponseCallback& callbackFn) override;
         void RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
         void RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback) override;
+        void RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -146,18 +146,22 @@ namespace AzToolsFramework
         bool RequestDelete(const char* fullFilePath);
 
         //! Attempt to get the latest revision of the file
-        bool GetLatest(const char* fullFilePath);
+        bool RequestLatest(const char* fullFilePath);
 
         //! Attempt to revert a file to its last changelist
         bool RequestRevert(const char* fullFilePath);
 
-        // internal:
+        //! Attempt to rename a file
+        bool RequestRename(const char* sourcePathFull, const char* destPathFull);
+
         bool ClaimChangedFile(const char* fullFilePath, int changelistTarget);
 
         bool ExecuteAdd(const char* filePath);
-        bool ExecuteEdit(const char* filePath, bool allowMultiCheckout);
+        bool ExecuteEdit(const char* filePath, bool allowMultiCheckout, bool allowAdd);
         bool ExecuteDelete(const char* filePath);
+        bool ExecuteSync(const char* filePath);
         bool ExecuteRevert(const char* filePath);
+        bool ExecuteMove(const char* sourcePath, const char* destPath);
 
         void QueueJobRequest(PerforceJobRequest&& jobRequest);
         void QueueSettingResponse(const PerforceSettingResult& result);

@@ -14,7 +14,7 @@
 #include "LevelEditorMenuHandler.h"
 #include "MainWindow.h"
 #include "QtViewPaneManager.h"
-#include "Toolbox.h"
+#include "ToolBox.h"
 #include "Viewport.h"
 #include "Controls/RollupBar.h"
 #include "Controls/ConsoleSCB.h"
@@ -47,7 +47,7 @@ static const char* g_assetImporterMetricsIdentifier = "AssetImporter";
 
 static bool CompareLayoutNames(const QString& name1, const QString& name2)
 {
-    return name1.compare(name2, Qt::CaseInsensitive) > 0;
+    return name1.compare(name2, Qt::CaseInsensitive) < 0;
 }
 
 static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* name)
@@ -182,7 +182,7 @@ void LevelEditorMenuHandler::UpdateViewLayoutsMenu(ActionManager::MenuWrapper& l
     QStringList layoutNames = m_viewPaneManager->LayoutNames();
     qSort(layoutNames.begin(), layoutNames.end(), CompareLayoutNames);
     layoutsMenu->clear();
-    const int MAX_LAYOUTS = ID_VIEW_LAYOUT_LAST - ID_VIEW_LAYOUT_FIRST;
+    const int MAX_LAYOUTS = ID_VIEW_LAYOUT_LAST - ID_VIEW_LAYOUT_FIRST + 1;
 
     // Component entity layout is just the default if we are in Cry-Free mode
     QString componentLayoutLabel = m_enableLegacyCryEntities ? tr("Component Entity Layout") : tr("Default Layout");
@@ -647,6 +647,10 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
     // Play Game
     gameMenu.AddAction(ID_VIEW_SWITCHTOGAME);
+
+    // Enable Physics/AI
+    gameMenu.AddAction(ID_SWITCH_PHYSICS);
+    gameMenu.AddSeparator();
 
     // Export to Engine
     gameMenu.AddAction(ID_FILE_EXPORTTOGAMENOSURFACETEXTURE);
@@ -1382,7 +1386,7 @@ void LevelEditorMenuHandler::UpdateMRUFiles()
         m_actionManager->RegisterActionHandler(ID_FILE_MRU_FILE1 + i, [i]() {
             auto cryEdit = CCryEditApp::instance();
             RecentFileList* mruList = cryEdit->GetRecentFileList();
-            cryEdit->OpenDocumentFile((*mruList)[i].toLatin1().data());
+            cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
         });
 
         GetIEditor()->RegisterNotifyListener(new EditorListener(action, [action](EEditorNotifyEvent e) {

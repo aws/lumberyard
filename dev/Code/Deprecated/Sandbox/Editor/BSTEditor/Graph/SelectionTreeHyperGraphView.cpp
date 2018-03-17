@@ -20,7 +20,7 @@
 #include "Nodes/SelectionTree_TreeNode.h"
 
 #include "BSTEditor/SelectionTreeManager.h"
-#include "clipboard.h"
+#include "Clipboard.h"
 
 IMPLEMENT_DYNAMIC( CSelectionTreeHyperGraphView, CHyperGraphView )
 

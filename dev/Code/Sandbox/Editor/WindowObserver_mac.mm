@@ -21,6 +21,7 @@
 @interface NSWindowObserver : NSObject
 {
     Editor::WindowObserver* m_observer;
+    NSWindow* m_window;
 }
 @end
 
@@ -30,24 +31,24 @@
 {
     if ((self = [super init])) {
         m_observer = observer;
-
+        m_window = window;
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(onWindowWillMove)
                                                      name:NSWindowWillMoveNotification
-                                                   object:window];
+                                                   object:m_window];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(onWindowDidMove)
                                                      name:NSWindowDidMoveNotification
-                                                   object:window];
+                                                   object:m_window];
 
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(onWindowWillStartLiveResize)
                                                      name:NSWindowWillStartLiveResizeNotification
-                                                   object:window];
+                                                   object:m_window];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(onWindowDidLiveResize)
                                                      name:NSWindowDidEndLiveResizeNotification
-                                                   object:window];
+                                                   object:m_window];
 
     }
     return self;
@@ -62,11 +63,36 @@
 - (void)onWindowWillMove
 {
     m_observer->setWindowIsMoving(true);
+    // This notification only indicates that the window is likely to move because the used clicked
+    // the title bar. If the user releases the mouse without moving the title bar we won't receive
+    // a NSWindowDidMoveNotification, so we add an additional observer to check the state of the
+    // mouse. Note that we don't care whether the window moved or not, we just want to be able to
+    // disable rendering when it is likely
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(onWindowDidUpdate:)
+                                                 name:NSWindowDidUpdateNotification
+                                               object:m_window];
 }
 
 - (void)onWindowDidMove
 {
     m_observer->setWindowIsMoving(false);
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:NSWindowDidUpdateNotification
+                                                  object:m_window];
+}
+
+- (void)onWindowDidUpdate:(NSNotification*)notification
+{
+    static const unsigned long leftMouseButton = 1;  // a value of 1 << 0 corresponds to the left mouse button
+
+    if (([NSEvent pressedMouseButtons] & leftMouseButton) != 0)
+    {
+        m_observer->setWindowIsMoving(false);
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                        name:NSWindowDidUpdateNotification
+                                                      object:m_window];
+    }
 }
 
 - (void)onWindowWillStartLiveResize

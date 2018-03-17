@@ -14,7 +14,7 @@
 
 #include <AzCore/base.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_SET_EVENT
 #   include <AzCore/std/parallel/config.h>
 #   include <AzCore/std/chrono/types.h>
 
@@ -36,7 +36,7 @@ namespace AZStd
     class binary_semaphore
     {
     public:
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_SET_EVENT
 
         typedef HANDLE native_handle_type;
 

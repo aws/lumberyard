@@ -17,7 +17,7 @@
 
 
 #include <IFlowGraphModuleManager.h>
-#include "resource.h"
+#include "Resource.h"
 
 #include <QDialog>
 #include <QScopedPointer>

@@ -651,4 +651,4 @@ namespace Charts
     }
 }
 
-#include <Woodpecker/Driller/axis.moc>
+#include <Woodpecker/Driller/Axis.moc>

@@ -27,7 +27,7 @@ namespace ThirdPartySDKs
     {
         /*
          * An SDK is considered available if all of its valid
-         * example files exist on disk per symlinks.
+         * example files exist on disk.
          */
         Available,
         Partially,
@@ -68,12 +68,10 @@ namespace ThirdPartySDKs
 
         virtual AZStd::set<AZStd::string> GetFilteredPlatforms(
             const AZStd::set<AZStd::string>& tags) const = 0;
-        
-        virtual Lyzard::StringOutcome SetupSymlinks(
+
+        virtual void SetupSymlinks(
             const AZStd::set<AZStd::string>& tags,
-            const AZStd::string& enginePath,
             const AZStd::string& thirdPartyPath) = 0;
-        virtual Lyzard::StringOutcome RemoveAllSymlinks(const AZStd::string& enginePath) = 0;
 
     };
     using SDKRequestBus = AZ::EBus<SDKRequests>;
@@ -96,10 +94,6 @@ namespace ThirdPartySDKs
         virtual AZStd::map<SDKHandle, SDKAvailableState> GetAllSDKsAvailableState() const = 0;
         virtual bool DoesSDKExist(const AZStd::string& sdkIdentifier) const = 0;
         virtual SDKHandle GetSDKHandle(const AZStd::string& sdkIdentifier) const = 0;
-
-        virtual Lyzard::StringOutcome SetupAllTrackedSymlinks(
-            const AZStd::set<AZStd::string>& enabledTags,
-            const AZStd::string& enginePath) = 0;
     };
 
     using SDKsControllerRequestBus = AZ::EBus<SDKsControllerRequests>;

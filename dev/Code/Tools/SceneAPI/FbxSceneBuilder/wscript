@@ -12,13 +12,6 @@
 ########################################################################################
 
 def build(bld):
-
-    #Create a file list that is needed for the exported symbols in the dylib in a non-monolithic build
-    darwinExportedSymbolFileList=[]
-    if not bld.is_monolithic_build():
-        darwinExportedSymbolFileList.append('fbxscenebuilder_darwin.waf_files');
-
-
     bld.CryEngineModule(
         # Settings
         target                  = 'FbxSceneBuilder',
@@ -26,26 +19,24 @@ def build(bld):
         file_list               = 'fbxscenebuilder.waf_files',
 
         platforms               = ['win', 'darwin'],
-        configurations          = ['debug_all', 'profile_all'],
+        configurations          = ['debug', 'debug_test', 'profile', 'profile_test'],
         disable_pch             = True,
         includes                = [bld.Path('Code/Tools')],
+        export_includes         = [bld.Path('Code/Tools')],
         use                     = ['AzCore',
                                    'AzFramework',
                                    'SceneCore',
                                    'SceneData',
                                    'AzToolsFramework',
-                                   'GFxFramework'],
-        uselib                  = ['FBXSDK', 
-                                   'QT5CORE',  # the QT uses are due to AzToolsFramework.
-                                   'QT5WIDGETS',
-                                   'QT5GUI'],
+                                   'GFxFramework',
+                                   'FbxSDKWrapper'],
         defines                 = ['FBX_SCENE_BUILDER_EXPORTS',
                                    '_HAS_EXCEPTIONS=0'],
         output_sub_folder_copy  = ['rc'],
 		features				= ['link_running_program'],
 
         #platform specific
-        darwin_file_list        = darwinExportedSymbolFileList,
+        darwin_file_list        = 'fbxscenebuilder_darwin.waf_files',
 
         # Testing
         test_all_file_list = 'fbxscenebuilder_testing.waf_files',

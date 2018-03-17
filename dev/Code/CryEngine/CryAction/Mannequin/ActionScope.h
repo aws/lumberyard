@@ -312,7 +312,7 @@ private:
         TProcClipSequence sequence;
         SAnimBlend blend;
         float installTime;
-        boost::shared_ptr<IProceduralClip> proceduralClip;
+        AZStd::shared_ptr<IProceduralClip> proceduralClip;
         uint8 pos;
         uint8 flags;
     };

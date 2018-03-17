@@ -122,7 +122,6 @@ Streamer::Destroy()
     AZ_Assert(g_streamer, "Data streamer not created!");
     delete g_streamer.Get();
     *g_streamer = nullptr;
-
 }
 
 //=========================================================================
@@ -271,14 +270,12 @@ NormalizePath(const char* path, const char* defaultRoot, AZStd::string& oFullPat
     if (defaultRoot)
     {
         bool isFullPath = false;
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
         if (strncmp(path, "\\\\", 2) == 0)
         {
             isFullPath = true;
         }
         else
-#endif
         {
             for (const char* c = path; *c; ++c)
             {

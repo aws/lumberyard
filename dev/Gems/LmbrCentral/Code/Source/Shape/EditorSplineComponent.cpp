@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "EditorSplineComponent.h"
 
 #include <AzCore/Serialization/EditContext.h>

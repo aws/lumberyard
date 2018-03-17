@@ -60,11 +60,11 @@ namespace MysticQt
 
         DoubleSpinBox* mSpinbox;
 
-        int32   mPrevMouseY;
-        int32   mPressedMouseY;
-        bool    mMouseMoveSpinningEnabled;
-        bool    mDownButton;
-        bool    mEnabled;
+        int32   mPrevMouseY = 0;
+        int32   mPressedMouseY = 0;
+        bool    mMouseMoveSpinningEnabled = false;
+        bool    mDownButton = false;
+        bool    mEnabled = false;
     };
 
 

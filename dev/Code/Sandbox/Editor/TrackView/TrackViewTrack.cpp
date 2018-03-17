@@ -18,7 +18,8 @@
 #include "TrackViewSequence.h"
 #include "TrackViewUndo.h"
 #include "TrackViewNodeFactories.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewTrackBundle::AppendTrack(CTrackViewTrack* pTrack)
@@ -761,11 +762,18 @@ void CTrackViewTrack::CopyKeysToClipboard(XmlNodeRef& xmlNode, const bool bOnlyS
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewTrack::PasteKeys(XmlNodeRef xmlNode, const float timeOffset)
 {
-    assert(CUndo::IsRecording());
 
-    CTrackViewSequence* pSequence = GetSequence();
+    CTrackViewSequence* sequence = GetSequence();
 
-    CUndo::Record(new CUndoTrackObject(this, pSequence));
-    m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
-    CUndo::Record(new CUndoAnimKeySelection(pSequence));
+    if (sequence->GetSequenceType() == SequenceType::Legacy)
+    {
+        m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
+    }
+    else
+    {
+        AZ_Assert(CUndo::IsRecording(), "Expected Undo Recording");
+        CUndo::Record(new CUndoTrackObject(this, sequence));
+        m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
+        CUndo::Record(new CUndoAnimKeySelection(sequence));
+    }
 }

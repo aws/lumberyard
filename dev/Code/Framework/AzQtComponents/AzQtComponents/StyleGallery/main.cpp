@@ -200,7 +200,7 @@ int main(int argv, char **argc)
         auto widLayout = new QVBoxLayout(wid);
         widLayout->addWidget(button);
         wid->resize(300, 200);
-        QObject::connect(button, &QPushButton::clicked, [dock, &w]{
+        QObject::connect(button, &QPushButton::clicked, [dock]{
             dock->setFloating(!dock->isFloating());
         });
         w->addDockWidget(Qt::BottomDockWidgetArea, dock);

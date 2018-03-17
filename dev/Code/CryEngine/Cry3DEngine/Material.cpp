@@ -121,6 +121,10 @@ CMatInfo::CMatInfo()
     m_sLoadingCallstack = GetSystem()->GetLoadingProfilerCallstack();
 #endif
 
+    // Used to know when a .dccmtl file has been changed,
+    // requiring the source material to be updated
+    m_dccMaterialHash = 0;
+
     m_isDirty = false;
 }
 

@@ -2062,15 +2062,21 @@ namespace EMStudio
 
         if (shortcutManager->Check(event, "Select All", "Anim Graph Window"))
         {
-            mActiveGraph->SelectAllNodes(true);
-            event->accept();
+            if (mActiveGraph)
+            {
+                mActiveGraph->SelectAllNodes(true);
+                event->accept();
+            }
             return;
         }
 
         if (shortcutManager->Check(event, "Unselect All", "Anim Graph Window"))
         {
-            mActiveGraph->UnselectAllNodes(true);
-            event->accept();
+            if (mActiveGraph)
+            {
+                mActiveGraph->UnselectAllNodes(true);
+                event->accept();
+            }
             return;
         }
 

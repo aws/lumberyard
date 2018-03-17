@@ -37,8 +37,8 @@ CShadersDialog::CShadersDialog(const QString& selection, QWidget* pParent /*=NUL
     connect(ui->m_shaders->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CShadersDialog::OnSelchangeShaders);
     connect(ui->m_shaders, &QListView::doubleClicked, this, &CShadersDialog::OnDblclkShaders);
     connect(ui->m_shaderText, &QTextEdit::textChanged, this, &CShadersDialog::OnEnChangeText);
-    connect(ui->m_okButton, &QPushButton::clicked, this, &QDialog::accept);
-    connect(ui->m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(ui->m_saveButton, &QPushButton::clicked, this, &CShadersDialog::OnBnClickedSave);
     connect(ui->m_editButton, &QPushButton::clicked, this, &CShadersDialog::OnBnClickedEdit);
 }
@@ -113,7 +113,7 @@ void CShadersDialog::OnBnClickedEdit()
     {
         CShaderEnum* shaderEnum = GetIEditor()->GetShaderEnum();
         QString file = shaderEnum->GetShaderFile(index.row());
-        CFileUtil::EditTextFile(file.toLatin1().data(), IFileUtil::FILE_TYPE_SHADER);
+        CFileUtil::EditTextFile(file.toUtf8().data(), IFileUtil::FILE_TYPE_SHADER);
     }
 }
 

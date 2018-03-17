@@ -24,6 +24,14 @@ function playeraccountbus:OnDeactivate()
 end
 
 --- API wrappers
+function playeraccountbus:GetServiceStatus()
+    local requestId = CloudGemPlayerAccountRequestBus.Broadcast.GetServiceStatus()
+    return self:CreateAsyncResult(requestId)
+end
+function playeraccountbus:OnGetServiceStatusComplete(result)
+    self:HandleEvent(result)
+end
+
 
 function playeraccountbus:GetCurrentUser()
     local requestId = CloudGemPlayerAccountRequestBus.Broadcast.GetCurrentUser()

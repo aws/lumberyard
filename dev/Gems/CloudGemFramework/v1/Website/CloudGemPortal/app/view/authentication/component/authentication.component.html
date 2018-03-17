@@ -10,16 +10,16 @@
            title="Missing Cloud Gem Portal bootstrap information.">
         <div class="modal-body">
             <p>It seems that either the ./index.html is missing or the 'boostrap' variable in the file is empty.</p>
-            
+
             <h2>Development for the Cloud Gem Portal</h2>
-            <p>If you are developing for the Cloud Gem Portal then this is expected.  You will need to copy the project bootstrap information to the ./index.html file.</p>            
-            <pre>&lt;LumberyardInstallPath&gt; lmbr_aws cloud-gem-framework cloud-gem-portal --show-configuration --show-url-only</pre>            
-            <p>Copy the line of the output that looks like this</p> 
+            <p>If you are developing for the Cloud Gem Portal then this is expected.  You will need to copy the project bootstrap information to the ./index.html file.</p>
+            <pre>&lt;LumberyardInstallPath&gt; lmbr_aws cloud-gem-framework cloud-gem-portal --show-configuration --show-url-only</pre>
+            <p>Copy the line of the output that looks like this</p>
             <pre>{{'{'}}"userPoolId": XX, "firstTimeUse": XX, "region": XX, "clientId": XX, "identityPoolId": XX, "projectConfigBucketId": XX{{'}'}}</pre>
             <p>to the</p>
-            <pre>&lt;LumberyardInstallPath&gt;/Gems/CloudGemFramework/v1/Website/CloudGemPortal/index.html file</pre>            
+            <pre>&lt;LumberyardInstallPath&gt;/Gems/CloudGemFramework/v1/Website/CloudGemPortal/index.html file</pre>
             <p>For more information on the topic refer to the link <a herf="http://docs.aws.amazon.com/lumberyard/latest/developerguide/cloud-canvas-cgf-cgp-dev-gs.html" target="_blank">Cloud Gem Portal Development</a></p>
-            
+
             <h2>Are you just running the Cloud Gem Portal?</h2>
             <p>Unfortunately this an unexpected behaviour.</p>
             <p>Please head over to our <a href="https://gamedev.amazon.com/forums/spaces/133/cloud-canvas.html">forums</a> and post a question regarding the issue.</p>
@@ -219,11 +219,11 @@
     <login-container *ngIf="state == loginstates.ENTER_CODE"
                      heading="User password reset"
                      submitButtonText="Change Password"
-                     [isButtonDisabled]="userInitiatedWithOutLoginPasswordResetForm.controls['username'].pristine 
-                     || userInitiatedWithOutLoginPasswordResetForm.controls['code'].pristine 
-                     || userInitiatedWithOutLoginPasswordResetForm.controls['password1'].pristine 
-                     || userInitiatedWithOutLoginPasswordResetForm.controls['password2'].pristine 
-                     || isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password1') 
+                     [isButtonDisabled]="userInitiatedWithOutLoginPasswordResetForm.controls['username'].pristine
+                     || userInitiatedWithOutLoginPasswordResetForm.controls['code'].pristine
+                     || userInitiatedWithOutLoginPasswordResetForm.controls['password1'].pristine
+                     || userInitiatedWithOutLoginPasswordResetForm.controls['password2'].pristine
+                     || isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password1')
                      || isNotValid(userInitiatedWithOutLoginPasswordResetForm, 'password2')"
                      secondaryLinkText="Login?"
                      (secondaryLinkClick)="error = null; change(loginstates.LOGIN)"
@@ -302,14 +302,15 @@
     <login-container *ngIf="state == authstates.PASSWORD_CHANGE || state == authstates.PASSWORD_CHANGE_FAILED"
                      heading="Change password"
                      submitButtonText="Save Password"
-                     [isButtonDisabled]="userChangePasswordForm.controls['password1'].pristine 
-                     || userChangePasswordForm.controls['password2'].pristine 
-                     || isNotValid(userChangePasswordForm, 'password1') 
+                     [isButtonDisabled]="userChangePasswordForm.controls['password1'].pristine
+                     || userChangePasswordForm.controls['password2'].pristine
+                     || userChangePasswordForm.controls['password1'].value !== userChangePasswordForm.controls['password2'].value
+                     || isNotValid(userChangePasswordForm, 'password1')
                      || isNotValid(userChangePasswordForm, 'password2')"
                      secondaryLinkText="Login?"
                      (secondaryLinkClick)="error = null; change(loginstates.LOGIN)"
                      (formSubmitted)="change(loginstates.LOGIN); updatePassword(userChangePasswordForm.value.password1)">
-        <form [formGroup]="userChangePasswordForm">
+        <form [formGroup]="userChangePasswordForm" >
             <div class="form-group row" [ngClass]="{'has-danger': isNotValid(userChangePasswordForm, 'password1')}">
                 <label for="code">
                     Password <i class="fa fa-question-circle-o" placement="right"
@@ -330,9 +331,9 @@
         <div class='has-danger'><p class="form-control-feedback">{{error}}</p></div>
     </login-container>
 
-    <pre>{{authstates[state] | devonly}}{{loginstates[state] | devonly}}</pre>    
+    <pre>{{authstates[state] | devonly}}{{loginstates[state] | devonly}}</pre>
     <pre>{{'FirstTimeModal: '+isFirstTimeModal | json | devonly}}</pre>
     <pre>{{'FirstTimeLogin: '+isFirstTimeLogin | json | devonly}}</pre>
 </div>
 <cgp-footer></cgp-footer>
-<router-outlet></router-outlet>    
+<router-outlet></router-outlet>

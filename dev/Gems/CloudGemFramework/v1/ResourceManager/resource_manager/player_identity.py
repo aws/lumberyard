@@ -14,7 +14,7 @@ import aws
 import botocore
 import json 
 from errors import HandledError
-import constant
+from resource_manager_common import constant
 
 key = 'player-access/'+constant.AUTH_SETTINGS_FILENAME
 amazon = 'amazon'

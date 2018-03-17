@@ -77,6 +77,7 @@ def build(bld):
 
         darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworks = ['CoreServices'],
+        darwin_cxxflags = [ '-x', 'objective-c++' ],
     )
 
     ###########################################################################################################################################

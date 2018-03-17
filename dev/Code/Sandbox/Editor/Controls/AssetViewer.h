@@ -54,16 +54,8 @@ public:
             m_pfnOnClick = NULL;
         }
 
-        CThumbMiniButton(TClickCallback pfnOnClick, const char* pToolTipText, const char* pImageFilename)
-        {
-            m_pfnOnClick = pfnOnClick;
-            m_toolTip = QString::fromLatin1(pToolTipText);
-            m_image.Load(pImageFilename, true);
-        }
-
         TClickCallback m_pfnOnClick;
         QString m_toolTip;
-        CAlphaBitmap m_image;
     };
 
     // Description:
@@ -198,8 +190,8 @@ protected:
     template<class T>
     static inline bool CompareAssetFieldsValues(IAssetItem* pA, IAssetItem* pB)
     {
-        QVariant vA = pA->GetAssetFieldValue(s_pSortField->m_fieldName.toLatin1().data());
-        QVariant vB = pB->GetAssetFieldValue(s_pSortField->m_fieldName.toLatin1().data());
+        QVariant vA = pA->GetAssetFieldValue(s_pSortField->m_fieldName.toUtf8().data());
+        QVariant vB = pB->GetAssetFieldValue(s_pSortField->m_fieldName.toUtf8().data());
         T valueA = vA.value<T>();
         T valueB = vB.value<T>();
 

@@ -198,15 +198,12 @@ namespace UnitTest
         : public GridMateMPTestFixture
     {
     public:
-        enum class Const
-        {
-            kPacketSize = 128
-        };
+        static const AZ::u32 kPacketSize = 128;
 
         struct Service
         {
             StreamSecureSocketDriver m_driver;
-            TestPacketGenerator<static_cast<AZ::u32>(Const::kPacketSize)> m_packetGenerator;
+            TestPacketGenerator<kPacketSize> m_packetGenerator;
             PacketQueue m_sentPackets;
             PacketQueue m_receivedPackets;
             SocketAddressPtr m_thisAddress;
@@ -214,7 +211,7 @@ namespace UnitTest
             DriverAddressPtr GetPacket()
             {
                 DriverAddressPtr f;
-                char buffer[Const::kPacketSize];
+                char buffer[kPacketSize];
                 AZ::u32 bytesRead = m_driver.Receive(buffer, sizeof(buffer), f);
                 if (bytesRead > 0)
                 {

@@ -70,26 +70,28 @@ void PlatformConfigurationTests::StartTest()
         }
 
         PlatformConfiguration config;
+        config.EnablePlatform({ "pc",{ "desktop", "host" } }, true);
+        config.EnablePlatform({ "es3",{ "mobile", "android" } }, true);
+        config.EnablePlatform({ "fandago",{ "console" } }, false);
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        config.PopulatePlatformsForScanFolder(platforms);
 
-        //                                         PATH               DisplayName  PortKey outputfolder  root  recurse isunittesting
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"),   "", "sf3",  "",           false, false), true); // subfolder 3 overrides subfolder2
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"),   "", "sf4",  "",           false, true), true); // subfolder 2 overrides subfolder1
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"),   "", "sf1",  "subfolder1", false, true), true); // subfolder1 overrides root
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"),   "", "sf4",  "",           false, true), true); // subfolder4 overrides subfolder5
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder5"),   "", "sf5",  "b/c",        false, true), true); // subfolder5 overrides subfolder6
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder6"),   "", "sf6",  "b/c",        false, true), true); // subfolder6 overrides subfolder7
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder7"),   "", "sf7",  "",           false, true), true); // subfolder7 overrides subfolder8
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder8/x"), "", "sf8",  "",           false, true), true); // subfolder8 overrides root
-        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),       "temp", "temp", "",           true, false), true); // add the root
+        //                                         PATH               DisplayName  PortKey outputfolder  root   recurse  platforms,      isunittesting
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"),   "", "sf3",  "",           false, false,   platforms), true); // subfolder 3 overrides subfolder2
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"),   "", "sf4",  "",           false, true,    platforms), true); // subfolder 2 overrides subfolder1
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"),   "", "sf1",  "subfolder1", false, true,    platforms), true); // subfolder1 overrides root
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"),   "", "sf4",  "",           false, true,    platforms), true); // subfolder4 overrides subfolder5
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder5"),   "", "sf5",  "b/c",        false, true,    platforms), true); // subfolder5 overrides subfolder6
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder6"), "", "sf6", "b/c",           false, true,    platforms), true); // subfolder6 overrides subfolder7
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder7"), "", "sf7", "",              false, true,    platforms), true); // subfolder7 overrides subfolder8
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder8/x"), "", "sf8", "",            false, true,    platforms), true); // subfolder8 overrides root
+        config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),       "temp", "temp", "",           true, false,    platforms), true); // add the root
 
         // these are checked for later.
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("GameName"),             "gn",    "",          "", false, true), true);
-        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("GameNameButWithExtra"), "gnbwe", "", "WithExtra", false, true), true);
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("GameName"),             "gn",    "",          "", false, true, platforms), true);
+        config.AddScanFolder(ScanFolderInfo(tempPath.filePath("GameNameButWithExtra"), "gnbwe", "", "WithExtra", false, true, platforms), true);
 
 
-        config.EnablePlatform({ "pc", { "desktop", "host" } }, true);
-        config.EnablePlatform({ "es3", { "mobile", "android" } }, true);
-        config.EnablePlatform({ "fandago", { "console" } }, false);
 
         AssetRecognizer rec;
         AssetPlatformSpec specpc;
@@ -99,7 +101,7 @@ void PlatformConfigurationTests::StartTest()
         speces3.m_extraRCParams = "testextraparams";
 
         rec.m_name = "txt files";
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         rec.m_platformSpecs.insert("es3", speces3);
         rec.m_platformSpecs.insert("fandago", specfandago); 
@@ -108,7 +110,7 @@ void PlatformConfigurationTests::StartTest()
         // test dual-recognisers - two recognisers for the same pattern.
         rec.m_name = "txt files 2";
         config.AddRecognizer(rec);
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher(".*\\/test\\/.*\\.format", AssetBuilderSDK::AssetBuilderPattern::Regex);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher(".*\\/test\\/.*\\.format", AssetBuilderSDK::AssetBuilderPattern::Regex);
         rec.m_name = "format files that live in a folder called test";
         config.AddRecognizer(rec);
 

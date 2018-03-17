@@ -19,8 +19,7 @@
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
 #include <MysticQt/Source/DockWidget.h>
-#include <assert.h>
-
+#include <QPointer>
 
 namespace EMStudio
 {
@@ -40,6 +39,8 @@ namespace EMStudio
 
         EMStudioPlugin::EPluginType GetPluginType() const override              { return EMStudioPlugin::PLUGINTYPE_DOCKWIDGET; }
 
+        void OnMainWindowClosed() override;
+
         virtual bool GetIsClosable() const                                  { return true; }
         virtual bool GetIsFloatable() const                                 { return true;  }
         virtual bool GetIsVertical() const                                  { return false; }
@@ -48,17 +49,17 @@ namespace EMStudio
         virtual void SetInterfaceTitle(const char* name);
         virtual void CreateBaseInterface(const char* objectName) override;
 
-        virtual QString GetObjectName() const override                          { assert(mDock); return mDock->objectName(); }
-        virtual void SetObjectName(const QString& name) override                    { mDock->setObjectName(name); }
+        virtual QString GetObjectName() const override                      { AZ_Assert(mDock, "mDock is null"); return mDock->objectName(); }
+        virtual void SetObjectName(const QString& name) override            { GetDockWidget()->setObjectName(name); }
 
-        virtual QSize GetInitialWindowSize() const                      { return QSize(500, 650); }
+        virtual QSize GetInitialWindowSize() const                          { return QSize(500, 650); }
 
         virtual bool GetHasWindowWithObjectName(const MCore::String& objectName) override;
 
-        MCORE_INLINE MysticQt::DockWidget* GetDockWidget()              { return mDock; }
+        MysticQt::DockWidget* GetDockWidget();
 
     protected:
-        MysticQt::DockWidget*   mDock;
+        QPointer<MysticQt::DockWidget>   mDock;
     };
 }   // namespace EMStudio
 

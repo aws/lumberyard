@@ -35,11 +35,9 @@ public:
     CMemoryBlock* GetDataBlock(const QString& blockName, bool& bCompressed);
 
     void Clear();
-    // ClassWizard generated virtual function overrides
-    //{{AFX_VIRTUAL(CCurveObject)
+
 public:
-    virtual void Serialize(CArchive& ar);
-    //}}AFX_VIRTUAL
+    virtual bool Serialize(CArchive& ar);
 
     //! Save named data to pak file.
     void Save(CPakFile& pakFile);

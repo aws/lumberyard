@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ConvertContext.h"
 #include "ChunkCompiler.h"
 #include "../Cry3DEngine/CGF/ChunkFileReaders.h"

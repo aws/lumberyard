@@ -13,7 +13,7 @@
 import os
 import random
 import time
-import constant
+from resource_manager_common import constant
 import util
 import json
 import datetime
@@ -33,17 +33,7 @@ from config import CloudProjectSettings
 
 from botocore.client import Config
 
-
-class JSONCustomEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, set):
-            return list(obj)
-        elif isinstance(obj, datetime.datetime):
-            return unicode(obj)
-        elif isinstance(obj, botocore.response.StreamingBody):
-            return str(obj)
-        return json.JSONEncoder.default(self, obj)
-
+from cgf_utils import json_utils
 
 class AwsCredentials(object):
     """Wraps a RawConfigParser to treat a section named 'default' as a nomral section."""
@@ -203,7 +193,7 @@ class ClientWrapper(object):
                 msg += value
                 msg += '"'
             elif isinstance(value, dict):
-                msg += json.dumps(value, cls=JSONCustomEncoder)
+                msg += json.dumps(value, cls=json_utils.SafeEncoder)
             else:
                 msg += str(value)
             comma_needed = True
@@ -216,7 +206,7 @@ class ClientWrapper(object):
         msg = 'success: '
         msg += type(result).__name__
         if isinstance(result, dict):
-            msg += json.dumps(result, cls=JSONCustomEncoder)
+            msg += json.dumps(result, cls=json_utils.SafeEncoder)
         else:
             msg += str(result)
 
@@ -306,7 +296,13 @@ class AWSContext(object):
             try:
                 self.__session = Session(profile_name = profile)
             except (ProfileNotFound) as e:
-                raise HandledError('The AWS session failed to locate AWS credentials. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.  The AWS error message is \'{}\''.format(e.message))
+                if self.has_credentials_file():
+                    raise HandledError('The AWS session failed to locate AWS credentials for profile {}. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.  The AWS error message is \'{}\''.format(profile, e.message))
+                try:
+                    # Try loading from environment
+                    self.__session = Session()
+                except (ProfileNotFound) as e:
+                    raise HandledError('The AWS session failed to locate AWS credentials from the environment. Ensure that an AWS profile is present with command \'lmbr_aws list-profiles\' or using the Credentials Manager (AWS -> Credentials manager) in Lumberyard.  The AWS error message is \'{}\''.format(e.message))
 
         self.__add_cloud_canvas_attribution(self.__session)
 
@@ -414,6 +410,8 @@ class AWSContext(object):
             credentials.read(path)
         return credentials
 
+    def has_credentials_file(self):
+        return os.path.isfile(self.get_credentials_file_path())
 
     def get_temporary_credentails(self, logical_role_id, deployment_name, duration_seconds):
 

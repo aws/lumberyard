@@ -113,7 +113,7 @@ CFlowGraphMigrationHelper::Substitute(XmlNodeRef node)
         if (m_bInitialized == false)
         {
             QString filename = DEPRECATIONS_FILE_PATH;
-            Error(QObject::tr("Error while loading FlowGraph Substitution File: %1. Substitution will NOT work!").arg(filename).toLatin1().data());
+            Error(QObject::tr("Error while loading FlowGraph Substitution File: %1. Substitution will NOT work!").arg(filename).toUtf8().data());
         }
         m_bLoaded = true;
     }
@@ -158,7 +158,7 @@ CFlowGraphMigrationHelper::Substitute(XmlNodeRef node)
                 // store old name
                 nodeToNameMap[nodeId] = nodeclass;
                 // store new class name in XML node
-                nodeXml->setAttr("Class", nodeEntry.newName.toLatin1().data());
+                nodeXml->setAttr("Class", nodeEntry.newName.toUtf8().data());
 
                 // report
                 if (nodeclass.compare(nodeEntry.newName, Qt::CaseInsensitive) != 0)
@@ -183,7 +183,7 @@ CFlowGraphMigrationHelper::Substitute(XmlNodeRef node)
                     InputValues::iterator valIter = nodeEntry.inputValues.begin();
                     while (valIter != nodeEntry.inputValues.end())
                     {
-                        inputsXml->setAttr(valIter->first.toLatin1().data(), valIter->second.toLatin1().data());
+                        inputsXml->setAttr(valIter->first.toUtf8().data(), valIter->second.toUtf8().data());
                         ReportEntry reportEntry;
                         reportEntry.nodeId = nodeId;
                         reportEntry.description = QStringLiteral("NodeID %1: NodeClass '%2': Setting input value '%3' to '%4'")
@@ -237,7 +237,7 @@ CFlowGraphMigrationHelper::Substitute(XmlNodeRef node)
                                     }
 
                                     // set new value
-                                    inputsXml->setAttr(portEntry.newName.toLatin1().data(), newValue);
+                                    inputsXml->setAttr(portEntry.newName.toUtf8().data(), newValue);
                                     ReportEntry reportEntry;
                                     reportEntry.nodeId = nodeId;
                                     reportEntry.description = QStringLiteral("NodeID %1: Remapped attribute '%2' to '%3' value='%4' %5")
@@ -327,8 +327,8 @@ CFlowGraphMigrationHelper::Substitute(XmlNodeRef node)
                 }
                 else
                 {
-                    edgeXml->setAttr("portIn", newPortIn.toLatin1().data());
-                    edgeXml->setAttr("portOut", newPortOut.toLatin1().data());
+                    edgeXml->setAttr("portIn", newPortIn.toUtf8().data());
+                    edgeXml->setAttr("portOut", newPortOut.toUtf8().data());
                     if (newPortIn != portIn || newPortOut != portOut)
                     {
                         ReportEntry reportEntry;
@@ -391,13 +391,13 @@ void CFlowGraphMigrationHelper::AddEntry(XmlNodeRef node)
     success = node->getAttr("OldClass", oldClass);
     if (!success)
     {
-        Error(QObject::tr("CFlowGraphMigrationHelper::AddEntry: No attribute 'OldClass'").toLatin1().data());
+        Error(QObject::tr("CFlowGraphMigrationHelper::AddEntry: No attribute 'OldClass'").toUtf8().data());
         return;
     }
     success = node->getAttr("NewClass", entry.newName);
     if (!success)
     {
-        Error(QObject::tr("CFlowGraphMigrationHelper::AddEntry: No attribute 'NewClass'").toLatin1().data());
+        Error(QObject::tr("CFlowGraphMigrationHelper::AddEntry: No attribute 'NewClass'").toUtf8().data());
         return;
     }
 
@@ -453,11 +453,11 @@ void CFlowGraphMigrationHelper::AddEntry(XmlNodeRef node)
                 QString funcName;
                 // FIXME: messing up global lua namespace with __fg_tx_%d functions
                 funcName = QStringLiteral("__fg_tx_%1").arg(m_transformFuncs.size());
-                func += QStringLiteral("function %1 (val) %2 end").arg(funcName, transformer).toLatin1();
+                func += QStringLiteral("function %1 (val) %2 end").arg(funcName, transformer).toUtf8();
                 IScriptSystem* pScriptSystem = gEnv->pScriptSystem;
                 if (pScriptSystem->ExecuteBuffer(func.data(), func.length(), "FlowGraph MG-Helper LUA Transformer") == true)
                 {
-                    HSCRIPTFUNCTION luaFunc = pScriptSystem->GetFunctionPtr(funcName.toLatin1().data()); // unref is Done in ReleaseLUAFuncs()
+                    HSCRIPTFUNCTION luaFunc = pScriptSystem->GetFunctionPtr(funcName.toUtf8().data()); // unref is Done in ReleaseLUAFuncs()
                     if (luaFunc)
                     {
                         m_transformFuncs.push_back(luaFunc);
@@ -466,13 +466,13 @@ void CFlowGraphMigrationHelper::AddEntry(XmlNodeRef node)
                     else
                     {
                         Error("CFlowGraphMigrationHelper::AddEntry: LUA-Transformer for Class [%s->%s] Port [%s->%s] compiled but function is NIL!",
-                            oldClass.toLatin1().data(), entry.newName.toLatin1().data(), port.toLatin1().data(), portEntry.newName.toLatin1().data());
+                            oldClass.toUtf8().data(), entry.newName.toUtf8().data(), port.toUtf8().data(), portEntry.newName.toUtf8().data());
                     }
                 }
                 else
                 {
                     Error("CFlowGraphMigrationHelper::AddEntry: LUA-Transformer for Class [%s->%s] Port [%s->%s] cannot be compiled.",
-                        oldClass.toLatin1().data(), entry.newName.toLatin1().data(), port.toLatin1().data(), portEntry.newName.toLatin1().data());
+                        oldClass.toUtf8().data(), entry.newName.toUtf8().data(), port.toUtf8().data(), portEntry.newName.toUtf8().data());
                 }
             }
 
@@ -509,8 +509,8 @@ void CFlowGraphMigrationHelper::AddEntry(XmlNodeRef node)
         else
         {
             Error("CFlowGraphMigrationHelper::AddEntry: [OldClass=%s,NewClass=%s] Unknown tag '%s'",
-                oldClass.toLatin1().data(),
-                entry.newName.toLatin1().data(),
+                oldClass.toUtf8().data(),
+                entry.newName.toUtf8().data(),
                 portNode->getTag());
         }
     }
@@ -525,7 +525,7 @@ CFlowGraphMigrationHelper::LoadSubstitutions()
 
     QString filename = DEPRECATIONS_FILE_PATH;
 
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
     if (!root)
     {
         return false;

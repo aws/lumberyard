@@ -32,7 +32,7 @@ typedef AZ::s32 AZSOCKLEN;
 typedef int SOCKET;
 typedef AZ::u32 AZSOCKLEN;
 
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#elif AZ_TRAIT_USE_WINSOCK_API
 #   define GetInternalSocketError                   WSAGetLastError()
 typedef AZ::s32 AZSOCKLEN;
 #pragma warning(push)
@@ -81,7 +81,7 @@ namespace AZ
                 TRANSLATE(ETOOMANYREFS, AzSockError::eASE_ETOOMANYREFS);
                 TRANSLATE(EWOULDBLOCK, AzSockError::eASE_EWOULDBLOCK);
 
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#elif AZ_TRAIT_USE_WINSOCK_API
                 TRANSLATE(WSAEACCES, AzSockError::eASE_EACCES);
                 TRANSLATE(WSAEADDRINUSE, AzSockError::eASE_EADDRINUSE);
                 TRANSLATE(WSAEADDRNOTAVAIL, AzSockError::eASE_EADDRNOTAVAIL);
@@ -284,7 +284,7 @@ namespace AZ
             flags &= ~O_NONBLOCK;
             flags |= (blocking ? 0 : O_NONBLOCK);
             return ::fcntl(sock, F_SETFL, flags);
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#elif AZ_TRAIT_USE_WINSOCK_API
             u_long val = blocking ? 0 : 1;
             return HandleSocketError(ioctlsocket(sock, FIONBIO, &val));
 #else
@@ -316,7 +316,7 @@ namespace AZ
         AZ::s32 Connect(AZSOCKET sock, const AzSocketAddress& addr)
         {
             AZ::s32 err = HandleSocketError(connect(sock, addr.GetTargetAddress(), sizeof(AZSOCKADDR_IN)));
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINSOCK_API
             if (err == static_cast<AZ::s32>(AzSockError::eASE_EWOULDBLOCK))
 #else
             if (err == static_cast<AZ::s32>(AzSockError::eASE_EINPROGRESS))
@@ -346,7 +346,7 @@ namespace AZ
         {
 #if   defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
             AZ::s32 msgNoSignal = MSG_NOSIGNAL;
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#elif defined(AZ_PLATFORM_APPLE) || AZ_TRAIT_USE_WINSOCK_API
             AZ::s32 msgNoSignal = 0;
 #endif
 
@@ -408,7 +408,7 @@ namespace AZ
 
         AZ::s32 Startup()
         {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINSOCK_API
             WSAData wsaData;
             return TranslateOSError(WSAStartup(MAKEWORD(2, 2), &wsaData));
 #else
@@ -418,7 +418,7 @@ namespace AZ
 
         AZ::s32 Cleanup()
         {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINSOCK_API
             return TranslateOSError(WSACleanup());
 #else
             return static_cast<AZ::s32>(AzSockError::eASE_NO_ERROR);
@@ -533,7 +533,7 @@ namespace AZ
 /**
 * Windows platform-specific net modules
 */
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINSOCK_API
 #   pragma comment(lib,"WS2_32.lib")
 #   pragma warning(pop)
 #endif  // AZ_PLATFORM_WINDOWS

@@ -190,6 +190,12 @@ namespace AzToolsFramework
         */
         void setDecimals(int value);
 
+        /**
+        * Sets the number of display decimals to truncate the spinboxes being managed by this control to
+        * @param DisplayDecimals value
+        */
+        void setDisplayDecimals(int value);
+
         void OnValueChangedInElement(double newValue, int elementIndex);
 
         /**

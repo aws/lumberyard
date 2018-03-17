@@ -11,7 +11,7 @@
 */
 
 #include <StdAfx.h>
-#include <Implementation/GLBlitFrameBufferHelper.hpp>
+#include <Implementation/GLBlitFramebufferHelper.hpp>
 #include <Implementation/GLBlitShaders.hpp>
 #include <Implementation/GLContext.hpp>
 #if DXGL_INPUT_GLSL && DXGL_GLSL_FROM_HLSLCROSSCOMPILER

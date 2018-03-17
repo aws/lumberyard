@@ -30,6 +30,7 @@
 
 #include "ImageExtensionHelper.h"
 #include <CryEngineAPI.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/std/parallel/atomic.h>
 
 class CTexture;
@@ -921,7 +922,7 @@ public:
     void CopyMips();
 
 public:
-    JobManager::SJobState   m_jobState;
+    AZ::LegacyJobExecutor m_jobExecutor;
 
     CTexture*                               m_pTexture;
     STexPoolItem*                       m_pNewPoolItem;
@@ -2362,8 +2363,6 @@ public:
 
     static CTexture* s_ptexZTarget;
 
-    static CTexture* s_ptexZOcclusion[2];
-    static CTexture* s_ptexZTargetReadBack[4];
     static CTexture* s_ptexZTargetDownSample[4];
     static CTexture* s_ptexZTargetScaled;
     static CTexture* s_ptexZTargetScaled2;

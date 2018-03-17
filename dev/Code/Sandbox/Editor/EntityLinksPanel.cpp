@@ -218,7 +218,7 @@ void CEntityLinksPanel::OnPick(CBaseObject* picked)
     }
     else
     {
-        CryLog("Attempt to add duplicate entity link was blocked, linkname '%s' to entity '%s'", linkName.toLatin1().data(), pickedEntity->GetName().toLatin1().data());
+        CryLog("Attempt to add duplicate entity link was blocked, linkname '%s' to entity '%s'", linkName.toUtf8().data(), pickedEntity->GetName().toUtf8().data());
     }
 
     ReloadLinks();

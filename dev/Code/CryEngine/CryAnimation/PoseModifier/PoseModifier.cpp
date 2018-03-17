@@ -2176,7 +2176,7 @@ void CPoseModifierSetup::Entry::Serialize(Serialization::IArchive& ar)
             ICryFactoryRegistry* factoryRegistry = gEnv->pSystem->GetCryFactoryRegistry();
             if (ICryFactory* factory = factoryRegistry->GetFactory(classId))
             {
-                instance = boost::static_pointer_cast<IAnimationPoseModifier>(factory->CreateClassInstance());
+                instance = AZStd::static_pointer_cast<IAnimationPoseModifier>(factory->CreateClassInstance());
             }
             if (IAnimationSerializable* ser = cryinterface_cast<IAnimationSerializable>(instance.get()))
             {

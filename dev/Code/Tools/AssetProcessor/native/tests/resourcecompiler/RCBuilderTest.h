@@ -170,7 +170,7 @@ struct TestInternalRecognizerBasedBuilder
     AZ::u32 AddTestRecognizer(QString builderID, QString extraRCParam, QString platformString)
     {
         // Create a dummy test recognizer
-        AssetUtilities::FilePatternMatcher patternMatcher;
+        AssetBuilderSDK::FilePatternMatcher patternMatcher;
         QString versionZero("0");
         AZ::Data::AssetType productAssetType = AZ::Uuid::CreateRandom();
 

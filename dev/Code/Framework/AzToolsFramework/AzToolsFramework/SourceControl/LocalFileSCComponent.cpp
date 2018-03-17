@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzToolsFramework/SourceControl/LocalFileSCComponent.h>
 
@@ -63,10 +63,10 @@ namespace AzToolsFramework
     void LocalFileSCComponent::GetFileInfo(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
     {
         SourceControlFileInfo fileInfo(fullFilePath);
-        auto job = AZ::CreateJobFunction([fileInfo, respCallback, this]() mutable
+        auto job = AZ::CreateJobFunction([fileInfo, respCallback]() mutable
                 {
                     RefreshInfoFromFileSystem(fileInfo);
-                    AZ::TickBus::QueueFunction(respCallback, fileInfo.HasFlag(SCF_Tracked), fileInfo);
+                    AZ::TickBus::QueueFunction(respCallback, fileInfo.CompareStatus(SCS_OpSuccess), fileInfo);
                 }, true);
         job->Start();
     }
@@ -74,13 +74,13 @@ namespace AzToolsFramework
     void LocalFileSCComponent::RequestEdit(const char* fullFilePath, bool /*allowMultiCheckout*/, const SourceControlResponseCallback& respCallback)
     {
         SourceControlFileInfo fileInfo(fullFilePath);
-        auto job = AZ::CreateJobFunction([fileInfo, respCallback, this]() mutable
+        auto job = AZ::CreateJobFunction([fileInfo, respCallback]() mutable
                 {
                     RefreshInfoFromFileSystem(fileInfo);
                     RemoveReadOnly(fileInfo);
                     RefreshInfoFromFileSystem(fileInfo);
 
-                    // As a quality of life improvement for our users, we want request edit 
+                    // As a quality of life improvement for our users, we want request edit
                     // to report success in the case where a file doesn't exist.  We do this so
                     // developers can always call RequestEdit before a save operation; instead of:
                     //   File Exists            --> RequestEdit, then SaveOperation
@@ -93,7 +93,7 @@ namespace AzToolsFramework
     void LocalFileSCComponent::RequestDelete(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
     {
         SourceControlFileInfo fileInfo(fullFilePath);
-        auto job = AZ::CreateJobFunction([fileInfo, respCallback, this]() mutable
+        auto job = AZ::CreateJobFunction([fileInfo, respCallback]() mutable
                 {
                     RefreshInfoFromFileSystem(fileInfo);
                     RemoveReadOnly(fileInfo);
@@ -108,6 +108,32 @@ namespace AzToolsFramework
     {
         // Get the info, and fail if the file doesn't exist.
         GetFileInfo(fullFilePath, respCallback);
+    }
+
+    void LocalFileSCComponent::RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback)
+    {
+        SourceControlFileInfo fileInfo(fullFilePath);
+        auto job = AZ::CreateJobFunction([fileInfo, respCallback, this]() mutable
+        {
+            RefreshInfoFromFileSystem(fileInfo);
+            AZ::TickBus::QueueFunction(respCallback, true, fileInfo);
+        }, true);
+        job->Start();
+    }
+
+    void LocalFileSCComponent::RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback)
+    {
+        SourceControlFileInfo fileInfoSrc(sourcePathFull);
+        SourceControlFileInfo fileInfoDst(destPathFull);
+        auto job = AZ::CreateJobFunction([fileInfoSrc, fileInfoDst, respCallback, this]() mutable
+        {
+            RefreshInfoFromFileSystem(fileInfoSrc);
+            auto succeeded = AZ::IO::SystemFile::Rename(fileInfoSrc.m_filePath.c_str(), fileInfoDst.m_filePath.c_str());
+            RefreshInfoFromFileSystem(fileInfoDst);
+            fileInfoDst.m_status = succeeded ? SCS_OpSuccess : SCS_ProviderError;
+            AZ::TickBus::QueueFunction(respCallback, succeeded, fileInfoDst);
+        }, true);
+        job->Start();
     }
 
     void LocalFileSCComponent::Reflect(AZ::ReflectContext* context)

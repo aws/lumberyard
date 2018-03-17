@@ -1,0 +1,13 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+        ],
+        "Source":
+        [
+            "Source/MicrophoneSystemComponent_android.inl",
+            "Source/SimpleDownsample.cpp"
+        ]
+    }
+}

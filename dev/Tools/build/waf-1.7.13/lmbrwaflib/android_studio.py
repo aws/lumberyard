@@ -42,7 +42,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle-experimental:0.10.0-alpha4"
+        classpath "com.android.tools.build:gradle-experimental:0.9.3"
 
         // NOTE: Do not place your application dependencies here: they belong
         // in the individual module build.gradle files
@@ -171,6 +171,20 @@ org.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=512m
 # http://www.gradle.org/docs/current/userguide/multi_project_builds.html#sec:configuration_on_demand
 org.gradle.configureondemand=true
 '''
+
+GRADLE_WRAPPER_PROPERTIES = r'''
+################################################################
+# This file was automatically created by WAF
+# WARNING! All modifications will be lost!
+################################################################
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-3.3-all.zip
+'''
+
+GRADLE_WRAPPER_DIR = 'Code/Launcher/AndroidLauncher/ProjectBuilder/GradleWrapper'
 #                     Defaults END                             #
 ################################################################
 
@@ -1047,7 +1061,7 @@ class Module(GradleContainer):
             deps.add_compile_files(*files)
             addNode = True
 
-        # Look for the android specific uses 
+        # Look for the android specific uses
         if self.__type == ModelType.Application:
             def _get_task_gen(task_name):
                 try:
@@ -1533,6 +1547,40 @@ class android_studio(Build.BuildContext):
         try:
             with open(gradle_props.abspath(), 'w') as props_file:
                 props_file.write(GRADLE_PROPERTIES)
+        except Exception as err:
+            self.fatal(str(err))
+
+        # generate the gradle wrapper
+        if self.is_engine_local():
+            source_node = self.path.make_node(GRADLE_WRAPPER_DIR)
+        else:
+            source_node = self.root.make_node(os.path.abspath(os.path.join(self.engine_path, GRADLE_WRAPPER_DIR)))
+
+        wrapper_root_node = android_root.make_node([ 'gradle', 'wrapper' ])
+        wrapper_root_node.mkdir()
+
+        wrapper_files = {
+            'gradlew' : android_root,
+            'gradlew.bat' : android_root,
+            'gradle-wrapper.jar' : wrapper_root_node
+        }
+
+        for filename, dest_root in wrapper_files.iteritems():
+            node = source_node.find_node(filename)
+            if not node:
+                self.fatal('[ERROR] Failed to find required Gradle wrapper file - {} - in {}'.format(filename, source_node.abspath()))
+
+            dest_node = dest_root.make_node(filename)
+
+            Logs.debug('android_studio: Copying %s to %s', node.abspath(), dest_node.abspath())
+            shutil.copyfile(node.abspath(), dest_node.abspath())
+            dest_node.chmod(511) # same as chmod 777
+
+        wrapper_properties_node = wrapper_root_node.make_node('gradle-wrapper.properties')
+        Logs.debug('android_studio: Creating %s', wrapper_properties_node.abspath())
+        try:
+            with open(wrapper_properties_node.abspath(), 'w') as props_file:
+                props_file.write(GRADLE_WRAPPER_PROPERTIES)
         except Exception as err:
             self.fatal(str(err))
 

@@ -26,10 +26,8 @@
 
 #include <IJobManager_JobDelegator.h>
 
-DECLARE_JOB("CBrush_Render", TCBrush_Render, CBrush::Render_JobEntry);
-
 ///////////////////////////////////////////////////////////////////////////////
-void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SSectorTextureSet* pTerrainTexInfo, JobManager::SJobState* pJobState, const SRendItemSorter& rendItemSorter)
+void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInfo, const SSectorTextureSet* pTerrainTexInfo, AZ::LegacyJobExecutor* pJobExecutor, const SRendItemSorter& rendItemSorter)
 {
     FUNCTION_PROFILER_3DENGINE;
     CVars* pCVars = GetCVars();
@@ -192,16 +190,18 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
             // these lists are handled earlier than GENERAL lists, thus they need to use another sync variable
             if (!passInfo.IsShadowPass() && !passInfo.IsRecursivePass() && m_bExecuteAsPreprocessJob)
             {
-                pJobState = gEnv->pRenderer->GetGenerateRendItemJobStatePreProcess(passInfo.ThreadID());
+                pJobExecutor = gEnv->pRenderer->GetGenerateRendItemJobExecutorPreProcess(passInfo.ThreadID());
             }
 
-            if (pJobState && GetCVars()->e_DebugDraw == 0)
+            if (pJobExecutor && GetCVars()->e_DebugDraw == 0)
             {
-                TCBrush_Render job(pObj, lodValue, passInfo, rendItemSorter);
-                job.SetClassInstance(this);
-                job.RegisterJobState(pJobState);
-                job.SetPriorityLevel(passInfo.IsGeneralPass() ? JobManager::eRegularPriority : JobManager::eLowPriority);
-                job.Run();
+                // legacy job priority: "passInfo.IsGeneralPass() ? JobManager::eRegularPriority : JobManager::eLowPriority"
+                pJobExecutor->StartJob(
+                    [this, pObj, lodValue, passInfo, rendItemSorter]
+                    {
+                        this->Render_JobEntry(pObj, lodValue, passInfo, rendItemSorter);
+                    }
+                );
             }
             else
             {
@@ -212,8 +212,10 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void CBrush::Render_JobEntry(CRenderObject* pObj, const CLodValue lodValue, SRenderingPassInfo passInfo, SRendItemSorter rendItemSorter)
+void CBrush::Render_JobEntry(CRenderObject* pObj, const CLodValue lodValue, const SRenderingPassInfo& passInfo, SRendItemSorter rendItemSorter)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
     CStatObj* pStatObj = (CStatObj*)CBrush::GetEntityStatObj();
     pStatObj->RenderInternal(pObj, 0, lodValue, passInfo, rendItemSorter, false);
 }

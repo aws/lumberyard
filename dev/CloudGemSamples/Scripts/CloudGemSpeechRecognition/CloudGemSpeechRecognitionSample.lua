@@ -22,8 +22,6 @@ function CloudGemSpeechRecognitionSample:OnActivate()
     self.uiEventHandler = UiCanvasNotificationBus.Connect(self, self.canvasEntityId)
     self.lexNotificationHandler = CloudGemSpeechRecognitionNotificationBus.Connect(self, self.entityId)
 
-    self.speechToText = CloudGemSpeechRecognitionSystemComponent()
-
     local map = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "imgMap")
     PingEntities["helpMe"] = UiElementBus.Event.FindChildByName(map, "imgMeHelp")
     PingEntities["pingMe"] = UiElementBus.Event.FindChildByName(map, "imgMePing")
@@ -74,7 +72,7 @@ function CloudGemSpeechRecognitionSample:CallTextService()
 end
 
 function CloudGemSpeechRecognitionSample:TalkStart()
-    self.speechToText:BeginSpeechCapture()
+    CloudGemSpeechRecoginition.Broadcast.BeginSpeechCapture()
 end
 
 function CloudGemSpeechRecognitionSample:TalkEnd()
@@ -82,7 +80,7 @@ function CloudGemSpeechRecognitionSample:TalkEnd()
     local sessionAttrMap = StringMap()
     sessionAttrMap:SetValue("user_position", "10,40")
 
-    self.speechToText:EndSpeechCaptureAndCallBot("LYTestBot", "$LATEST", "lumberyard_user", sessionAttrMap:ToJSON())
+    CloudGemSpeechRecoginition.Broadcast.EndSpeechCaptureAndCallBot("LYTestBot", "$LATEST", "lumberyard_user", sessionAttrMap:ToJSON())
 end
 
 function CloudGemSpeechRecognitionSample:HandleResponse(response)

@@ -10,8 +10,8 @@
     },
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/StartingPointMovement_precompiled.cpp",
+            "Source/StartingPointMovement_precompiled.h"
         ]
     }
 }

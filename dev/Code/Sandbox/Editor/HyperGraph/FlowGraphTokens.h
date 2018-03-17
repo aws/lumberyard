@@ -19,7 +19,7 @@
 #include <QScopedPointer>
 
 #include "FlowGraph.h"
-#include "resource.h"
+#include "Resource.h"
 
 class ReflectedPropertyControl;
 class CHyperGraphDialog;

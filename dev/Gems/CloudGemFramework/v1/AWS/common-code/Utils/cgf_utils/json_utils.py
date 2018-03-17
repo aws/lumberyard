@@ -15,7 +15,7 @@ import json
 import datetime
 import botocore
 
-class JSONCustomEncoder(json.JSONEncoder):
+class SafeEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
@@ -23,5 +23,5 @@ class JSONCustomEncoder(json.JSONEncoder):
             return unicode(obj)
         elif isinstance(obj, botocore.response.StreamingBody):
             return str(obj)
-        return json.JSONEncoder.default(self, obj)
+        return '(cannot convert to JSON: {})'.format(type(obj))
 

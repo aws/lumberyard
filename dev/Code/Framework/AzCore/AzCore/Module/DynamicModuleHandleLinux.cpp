@@ -72,7 +72,8 @@ namespace AZ
                 fileName = modulePrefix + fileName;
             }
 
-            if (fileName.substr(fileName.length() - 3, 3) != moduleExtension)
+            size_t extensionLen = strlen(moduleExtension);
+            if (fileName.substr(fileName.length() - extensionLen, extensionLen) != moduleExtension)
             {
                 fileName = fileName + moduleExtension;
             }

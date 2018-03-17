@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,9 +10,11 @@
 *
 */
 
-#include "FbxTimeWrapper.h"
-#include "FbxMeshWrapper.h"
-#include "FbxPropertyWrapper.h"
+#pragma once
+
+#include <SceneAPI/FbxSDKWrapper/FbxTimeWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxMeshWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxPropertyWrapper.h>
 #include <AzCore/Math/Transform.h>
 
 namespace AZ
@@ -73,5 +73,5 @@ namespace AZ
 
             FbxNode* m_fbxNode;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

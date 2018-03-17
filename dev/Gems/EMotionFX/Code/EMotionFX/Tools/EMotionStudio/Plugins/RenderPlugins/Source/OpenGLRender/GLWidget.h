@@ -15,7 +15,7 @@
 
 #include "../RenderPluginsConfig.h"
 
-#include <EMotionFX/Rendering/OpenGL2/Source/GLActor.h>
+#include <EMotionFX/Rendering/OpenGL2/Source/glactor.h>
 #include <EMotionFX/Rendering/OpenGL2/Source/GBuffer.h>
 #include <EMotionFX/Rendering/Common/Camera.h>
 #include <EMotionFX/Rendering/Common/TransformationManipulator.h>

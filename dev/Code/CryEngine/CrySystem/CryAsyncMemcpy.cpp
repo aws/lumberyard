@@ -13,7 +13,7 @@
 
 #include "StdAfx.h"
 #include <AzCore/Debug/Profiler.h>
-#include <IJobManager_JobDelegator.h>
+#include <AzCore/Jobs/JobFunction.h>
 
 namespace
 {
@@ -34,8 +34,6 @@ namespace
     }
 }
 
-DECLARE_JOB("CryAsyncMemcpy", TCryAsyncMemcpy, cryAsyncMemcpy_Int);
-
 #if !defined(CRY_ASYNC_MEMCPY_DELEGATE_TO_CRYSYSTEM)
 CRY_ASYNC_MEMCPY_API void cryAsyncMemcpy(
 #else
@@ -47,8 +45,13 @@ CRY_ASYNC_MEMCPY_API void cryAsyncMemcpyDelegate(
     , int nFlags
     , volatile int* sync)
 {
-    TCryAsyncMemcpy job(dst, src, size, nFlags, sync);
-    job.Run();
+    AZ::Job* job = AZ::CreateJobFunction(
+        [dst, src, size, nFlags, sync]()
+        {
+            cryAsyncMemcpy_Int(dst, src, size, nFlags, sync);
+        },
+        true); // Auto-delete
+    job->Start();
 }
 
 

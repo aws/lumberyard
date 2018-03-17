@@ -27,14 +27,14 @@
 static bool IsFileExists(const char* filename)
 {
     string path = PathUtil::Make(Path::GetEditingGameDataFolder().c_str(), filename);
-    DWORD fileAttributes = GetFileAttributesA(path.c_str());
+    DWORD fileAttributes = GetFileAttributes(path.c_str());
     return fileAttributes != INVALID_FILE_ATTRIBUTES;
 }
 
 static bool DeleteFileInGameFolder(const char* filename)
 {
     string path = PathUtil::Make(Path::GetEditingGameDataFolder().c_str(), filename);
-    DWORD fileAttributes = GetFileAttributesA(path.c_str());
+    DWORD fileAttributes = GetFileAttributes(path.c_str());
     if (fileAttributes == INVALID_FILE_ATTRIBUTES)
     {
         return false;

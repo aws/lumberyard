@@ -140,7 +140,7 @@ namespace UnitTest
         encodedString = AzFramework::StringFunc::Base64::Encode(binaryValue3, AZ_ARRAY_SIZE(binaryValue3));
         EXPECT_EQ("FPucAw==", encodedString);
 
-        EXPECT_EQ("TlVMAEluU3RyaW5n", StringFunc::Base64::Encode(reinterpret_cast<AZ::u8*>("NUL\0InString"), AZ_ARRAY_SIZE("NUL\0InString") - 1));
+        EXPECT_EQ("TlVMAEluU3RyaW5n", StringFunc::Base64::Encode(reinterpret_cast<const AZ::u8*>("NUL\0InString"), AZ_ARRAY_SIZE("NUL\0InString") - 1));
     }
 
     //! Test RFC 4648 Binary https://tools.ietf.org/html/rfc4648#page-12

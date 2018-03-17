@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Snow_precompiled.h"
 #include "SnowComponent.h"
 
 #include <AzCore/Component/TransformBus.h>

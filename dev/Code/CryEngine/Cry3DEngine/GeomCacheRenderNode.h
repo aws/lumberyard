@@ -111,7 +111,7 @@ public:
     bool FillFrameAsync(const char* const pFloorFrameData, const char* const pCeilFrameData, const float lerpFactor);
 
     // Called from FillFrameAsync
-    void UpdateMesh_JobEntry(SGeomCacheRenderMeshUpdateContext* pUpdateContext, SGeomCacheStaticMeshData* pStaticMeshData,
+    void UpdateMesh_JobEntry(SGeomCacheRenderMeshUpdateContext *pUpdateContext, const SGeomCacheStaticMeshData *pStaticMeshData,
         const char* pFloorMeshData, const char* pCeilMeshData, float lerpFactor);
 
     // Called from CGeomCacheManager when playback stops

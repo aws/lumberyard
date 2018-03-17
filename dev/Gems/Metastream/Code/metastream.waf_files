@@ -1,8 +1,8 @@
 {
     "NoUberFile": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Metastream_precompiled.cpp",
+            "Source/Metastream_precompiled.h"
         ]
     },
     "auto": {

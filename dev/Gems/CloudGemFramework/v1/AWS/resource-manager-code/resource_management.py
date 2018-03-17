@@ -10,6 +10,8 @@
 #
 
 import os
+import json
+from resource_manager_common import constant 
 
 from resource_manager.errors import HandledError
 
@@ -43,7 +45,7 @@ RESOURCE_DEFINITIONS = {
             "S3Bucket" : { "Fn::GetAtt": [ LAMBDA_CONFIGURATION_RESOURCE_NAME, "ConfigurationBucket" ] },
             "S3Key" : { "Fn::GetAtt": [ LAMBDA_CONFIGURATION_RESOURCE_NAME, "ConfigurationKey" ] },
         },
-        "Handler" : "service.dispatch",
+        "Handler" : "cgf_lambda_service.dispatch",
         "Role" : { "Fn::GetAtt": [ LAMBDA_CONFIGURATION_RESOURCE_NAME, "Role" ] },
         "Runtime" : { "Fn::GetAtt": [ LAMBDA_CONFIGURATION_RESOURCE_NAME, "Runtime" ] }
       },
@@ -123,6 +125,69 @@ def remove_resources(context, args):
     resource_group.remove_output(SERVICE_URL_OUTPUT_NAME)
     resource_group.save_template()
 
+def list_paths(context, args):
+    list = []
+    list.append({
+        "Type": "AWS Directory",
+        "Path": context.config.framework_aws_directory_path
+        })
+    list.append({
+        "Type": "Root Directory",
+        "Path": context.config.root_directory_path
+        })
+    list.append({
+        "Type": "Game Directory",
+        "Path": context.config.game_directory_path
+        })
+    list.append({
+        "Type": "User Directory",
+        "Path": context.config.user_directory_path
+        }),
+    list.append({
+        "Type": "Gem Directory",
+        "Path": context.config.gem_directory_path
+        })
+    list.append({
+        "Type": "Local Project Settings",
+        "Path": context.config.join_aws_directory_path(constant.PROJECT_LOCAL_SETTINGS_FILENAME)
+        })
+    list.append({
+        "Type": "Framework AWS Directory",
+        "Path": context.config.framework_aws_directory_path
+        })
+    list.append({
+        "Type": "GUI Refresh File",
+        "Path": context.config.gui_refresh_file_path
+        })
+    list.append({
+        "Type": "Project Lambda Code Path",
+        "Path": context.config.project_lambda_code_path
+        })
+    list.append({
+        "Type": "Resource Manager Path",
+        "Path": context.config.resource_manager_path
+        })
+    list.append({
+        "Type": "Project Stack ARN",
+        "Path": context.config.project_stack_id
+        })
+    
+    for hook in context.hooks._HookContext__hook_modules:        
+        for module in context.hooks._HookContext__hook_modules[hook]:                        
+            list.append({
+                "Type": module._HookModule__hook_name + " - Module Directory" ,
+                "Path": module._HookModule__module_directory
+            })
+            list.append({
+                "Type": module._HookModule__hook_name + " - Module Path" ,
+                "Path": module._HookModule__module_path
+            })
+            list.append({
+                "Type": module._HookModule__hook_name + " - Lib Path" ,
+                "Path": module._HookModule__module_lib_directory
+            })
+
+    context.view.path_list(list)
 
 def add_cli_commands(subparsers, addCommonArgs):
 
@@ -138,4 +203,9 @@ def add_cli_commands(subparsers, addCommonArgs):
     subparser.add_argument('--resource-group', required=True, metavar='GROUP', help='The name of the resource group.')
     addCommonArgs(subparser)
     subparser.set_defaults(func=remove_resources)
+
+    # list resource in use
+    subparser = subparsers.add_parser('paths', help='List the currently defined resource paths.')    
+    addCommonArgs(subparser)
+    subparser.set_defaults(func=list_paths)
 

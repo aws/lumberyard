@@ -176,6 +176,9 @@ namespace EMotionFX
     void BlendSpaceNode::DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 masterIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
             EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data)
     {
+        MCORE_UNUSED(animGraphInstance);
+        MCORE_UNUSED(masterIdx);
+
         const AZ::u32 numMotions = (AZ::u32)motionInfos.size();
         for (AZ::u32 i=0; i < numMotions; ++i)
         {
@@ -467,8 +470,30 @@ namespace EMotionFX
 
     void BlendSpaceNode::SyncMotionToNode(AnimGraphInstance* animGraphInstance, ESyncMode syncMode, MotionInfo& motionInfo, AnimGraphNode* srcNode)
     {
+        MCORE_UNUSED(syncMode);
+
         motionInfo.m_currentTime = srcNode->GetCurrentPlayTime(animGraphInstance);
         motionInfo.m_playSpeed  = srcNode->GetPlaySpeed(animGraphInstance);
     }
+
+
+    void BlendSpaceNode::RewindMotions(MotionInfos& motionInfos)
+    {
+        for (MotionInfo& motionInfo : motionInfos)
+        {
+            MotionInstance* motionInstance = motionInfo.m_motionInstance;
+            if (!motionInstance)
+            {
+                continue;
+            }
+
+            motionInstance->Rewind();
+
+            motionInfo.m_currentTime = motionInstance->GetCurrentTime();
+            motionInfo.m_preSyncTime = motionInfo.m_currentTime;
+            motionInfo.m_syncIndex = MCORE_INVALIDINDEX32;
+        }
+    }
+
 } // namespace EMotionFX
 

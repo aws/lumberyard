@@ -1293,9 +1293,12 @@ void Q2DViewport::CenterOnSelection()
     }
 
     AABB bounds = sel->GetBounds();
-    Vec3 selPos = sel->GetCenter();
+    CenterOnAABB(bounds);
+}
 
-    float size = (bounds.max - bounds.min).GetLength();
+void Q2DViewport::CenterOnAABB(const AABB& aabb)
+{
+    Vec3 selPos = aabb.GetCenter();
 
     Vec3 v1 = ViewToWorld(m_rcClient.bottomLeft());
     Vec3 v2 = ViewToWorld(m_rcClient.topRight());
@@ -1305,6 +1308,7 @@ void Q2DViewport::CenterOnSelection()
 
     m_bContentValid = false;
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 Vec3 Q2DViewport::GetOrigin2D() const

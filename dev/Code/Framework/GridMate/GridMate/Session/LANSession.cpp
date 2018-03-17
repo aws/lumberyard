@@ -1136,7 +1136,7 @@ LANSearch::SearchDone()
 LANSessionService::LANSessionService(const SessionServiceDesc& desc)
     : SessionService(desc)
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
     WSAData wsaData;
     int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (err != 0)
@@ -1148,7 +1148,7 @@ LANSessionService::LANSessionService(const SessionServiceDesc& desc)
 
 LANSessionService::~LANSessionService()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
     WSACleanup();
 #endif
 }

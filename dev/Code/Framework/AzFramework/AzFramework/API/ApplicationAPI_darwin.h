@@ -29,11 +29,17 @@ namespace AzFramework
 
         using Bus = AZ::EBus<DarwinLifecycleEvents>;
 
-        virtual void OnWillResignActive() {}    // Constrain
+        virtual void OnWillResignActive() {}
+        virtual void OnDidResignActive() {}     // Constrain
+
+        virtual void OnWillBecomeActive() {}
         virtual void OnDidBecomeActive() {}     // Unconstrain
 
-        virtual void OnDidResignActive() {}     // Suspend
-        virtual void OnWillBecomeActive() {}    // Resume
+        virtual void OnWillHide() {}
+        virtual void OnDidHide() {}             // Suspend
+
+        virtual void OnWillUnhide() {}
+        virtual void OnDidUnhide() {}           // Resume
 
         virtual void OnWillTerminate() {}       // Terminate
     };

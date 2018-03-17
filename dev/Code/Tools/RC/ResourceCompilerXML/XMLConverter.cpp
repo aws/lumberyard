@@ -15,7 +15,7 @@
 #include "XMLConverter.h"
 #include "IRCLog.h"
 #include "IXmlSerializer.h"
-#include "XmlBinaryHeaders.h"
+#include "XMLBinaryHeaders.h"
 #include "XMLBinaryReader.h"
 #include "XMLBinaryWriter.h"
 #include "IConfig.h"

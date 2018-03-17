@@ -92,7 +92,7 @@ void CCustomActionsEditorManager::LoadCustomActionGraphs()
                 filename += pCustomAction->GetCustomActionGraphName();
                 filename += ".xml";
                 pFlowGraph->SetName("");
-                pFlowGraph->Load(filename.toLatin1().data());
+                pFlowGraph->Load(filename.toUtf8().data());
             }
         }
     }
@@ -146,7 +146,7 @@ void CCustomActionsEditorManager::SaveAndReloadCustomActionGraphs()
 
     if (!actionName.isEmpty())
     {
-        ICustomAction* pCustomAction = pCustomActionManager->GetCustomActionFromLibrary(actionName.toLatin1().data());
+        ICustomAction* pCustomAction = pCustomActionManager->GetCustomActionFromLibrary(actionName.toUtf8().data());
         if (pCustomAction)
         {
             CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
@@ -184,7 +184,7 @@ void CCustomActionsEditorManager::SaveCustomActionGraphs()
         CFlowGraph* m_pFlowGraph = pFlowGraphManager->FindGraphForCustomAction(pCustomAction);
         if (m_pFlowGraph->IsModified())
         {
-            m_pFlowGraph->Save(QString(m_pFlowGraph->GetName() + QStringLiteral(".xml")).toLatin1().data());
+            m_pFlowGraph->Save(QString(m_pFlowGraph->GetName() + QStringLiteral(".xml")).toUtf8().data());
             pCustomAction->Invalidate();
         }
     }
@@ -241,7 +241,7 @@ bool CCustomActionsEditorManager::NewCustomAction(QString& filename)
     pGraph->ConnectPorts(pSucceedNode, &pSucceedNode->GetOutputs()->at(0), pEndNode, &pEndNode->GetInputs()->at(5), false);
     pGraph->ConnectPorts(pAbortNode, &pAbortNode->GetOutputs()->at(0), pEndNode, &pEndNode->GetInputs()->at(6), false);
 
-    bool r = pGraph->Save(filename.toLatin1().data());
+    bool r = pGraph->Save(filename.toUtf8().data());
 
     delete pGraph;
 

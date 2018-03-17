@@ -77,7 +77,7 @@ void CSmartObjectEventDialog::OnNewBtn()
             model->setData(model->index(row, 0), m_sSOEvent);
             m_ui->m_wndEventList->setCurrentIndex(model->index(row, 0));
             m_ui->m_description->setText(dlg.description());
-            CSOLibrary::AddEvent(m_sSOEvent.toLatin1().data(), dlg.description().toLatin1().data());
+            CSOLibrary::AddEvent(m_sSOEvent.toUtf8().data(), dlg.description().toUtf8().data());
         }
 
         m_ui->buttonBox->setStandardButtons(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -92,7 +92,7 @@ void CSmartObjectEventDialog::OnEditBtn()
         return;
     }
 
-    CSOLibrary::VectorEventData::iterator it = CSOLibrary::FindEvent(m_sSOEvent.toLatin1().data());
+    CSOLibrary::VectorEventData::iterator it = CSOLibrary::FindEvent(m_sSOEvent.toUtf8().data());
     if (it == CSOLibrary::GetEvents().end())
     {
         return;
@@ -161,7 +161,7 @@ void CSmartObjectEventDialog::UpdateDescription()
     }
     else
     {
-        CSOLibrary::VectorEventData::iterator it = CSOLibrary::FindEvent(m_sSOEvent.toLatin1().data());
+        CSOLibrary::VectorEventData::iterator it = CSOLibrary::FindEvent(m_sSOEvent.toUtf8().data());
         if (it != CSOLibrary::GetEvents().end())
         {
             m_ui->m_description->setPlainText(it->description);

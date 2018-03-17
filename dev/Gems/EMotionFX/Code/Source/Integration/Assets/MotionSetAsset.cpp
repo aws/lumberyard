@@ -11,7 +11,7 @@
 */
 
 
-#include "StdAfx.h"
+#include "EMotionFX_precompiled.h"
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/TickBus.h>

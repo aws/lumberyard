@@ -51,6 +51,7 @@ namespace GraphCanvas
         m_spinBox->setMaximum(m_dataInterface->GetMax());
         m_spinBox->setSuffix(QString(m_dataInterface->GetSuffix()));
         m_spinBox->setDecimals(m_dataInterface->GetDecimalPlaces());
+        m_spinBox->SetDisplayDecimals(m_dataInterface->GetDisplayDecimalPlaces());
 
         m_proxyWidget->setWidget(m_spinBox);
 
@@ -87,7 +88,7 @@ namespace GraphCanvas
         {
             QSignalBlocker signalBlocker(m_spinBox);
 
-            AZStd::string displayValue = AZStd::string::format("%.*f%s", m_dataInterface->GetDecimalPlaces(), value, m_dataInterface->GetSuffix());
+            AZStd::string displayValue = AZStd::string::format("%.*f%s", m_dataInterface->GetDisplayDecimalPlaces(), value, m_dataInterface->GetSuffix());
             
             m_spinBox->setValue(value);
             m_spinBox->deselectAll();

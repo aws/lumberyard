@@ -10,4 +10,4 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"

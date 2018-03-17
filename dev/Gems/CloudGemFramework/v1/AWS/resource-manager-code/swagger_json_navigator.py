@@ -158,13 +158,27 @@ class SwaggerNavigator(object):
     def is_array(self):
         return isinstance(self.value, list)
 
-    def get_array(self, selector, default=REQUIRED):
+    def get_array(self, selector, default=REQUIRED, auto_promote_singletons = False):
 
         navigator = self.get(selector, default=default)
         if not (navigator.is_array or navigator.is_none):
-            raise ValueError('{} value {} is not an array.'.format(navigator, navigator.value))
+            if auto_promote_singletons:
+                self.value[selector] = [navigator.value]
+                navigator = self.get(selector)
+            else:
+                raise ValueError('{} value {} is not an array.'.format(navigator, navigator.value))
 
         return navigator
+
+    def get_or_add_array(self, selector, default=None):
+        if not self.contains(selector):
+            if self.is_object:
+                self.value[selector] = default if default else []
+            elif self.is_array:
+                self.value.insert(selector, default if default else [])
+            else:
+                raise ValueError('{} is not an object or array. Cannot add {} at {}.'.format(self, default, selector))        
+        return self.get_array(selector)
 
     def get_array_value(self, selector, default=REQUIRED):
         navigator = self.get_array(selector, default)

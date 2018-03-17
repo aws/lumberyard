@@ -74,7 +74,7 @@ public:
         const int row = it - CSOLibrary::GetClasses().begin();
         beginInsertRows(QModelIndex(), row, row);
         m_checkedRows.insert(row, Qt::Unchecked);
-        CSOLibrary::AddClass(itemName.toLatin1().data(), description.toLatin1().data(), location.toLatin1().data(), templateName.toLatin1().data());
+        CSOLibrary::AddClass(itemName.toUtf8().data(), description.toUtf8().data(), location.toUtf8().data(), templateName.toUtf8().data());
         endInsertRows();
         return true;
     }
@@ -274,7 +274,7 @@ void CSmartObjectClassDialog::OnTVSelChanged()
     }
     else
     {
-        CSOLibrary::VectorClassData::iterator it = CSOLibrary::FindClass(item.data().toString().toLatin1().data());
+        CSOLibrary::VectorClassData::iterator it = CSOLibrary::FindClass(item.data().toString().toUtf8().data());
         m_ui->m_description->setPlainText(it->description);
         m_ui->m_btnEdit->setEnabled(true);
     }
@@ -332,9 +332,9 @@ void CSmartObjectClassDialog::OnRefreshBtn()
         {
             if (CItemDescriptionDlg::ValidateItem(token))
             {
-                if (CSOLibrary::FindClass(token.toLatin1().data()) == CSOLibrary::GetClasses().end())
+                if (CSOLibrary::FindClass(token.toUtf8().data()) == CSOLibrary::GetClasses().end())
                 {
-                    CSOLibrary::AddClass(token.toLatin1().data(), "", "", "");
+                    CSOLibrary::AddClass(token.toUtf8().data(), "", "", "");
                 }
                 QModelIndexList indexes = m_ui->m_TreeCtrl->model()->match(m_ui->m_TreeCtrl->model()->index(0, 0), Qt::DisplayRole, token, 1, Qt::MatchExactly | Qt::MatchRecursive);
                 if (!indexes.isEmpty())
@@ -376,7 +376,7 @@ void CSmartObjectClassDialog::OnEditBtn()
     }
 
     QString name = item.data().toString();
-    CSOLibrary::VectorClassData::iterator it = CSOLibrary::FindClass(name.toLatin1().data());
+    CSOLibrary::VectorClassData::iterator it = CSOLibrary::FindClass(name.toUtf8().data());
     assert(it != CSOLibrary::GetClasses().end());
 
     CItemDescriptionDlg dlg(this, false, false, true, true);

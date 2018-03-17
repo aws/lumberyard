@@ -467,9 +467,9 @@ int RGBE_ReadPixels_RLE(CCryFile* fp, char* data, uint32 scanline_width,
 bool CImageHDR::Load(const QString& fileName, CImageEx& outImage)
 {
     CCryFile file;
-    if (!file.Open(fileName.toLatin1().data(), "rb"))
+    if (!file.Open(fileName.toUtf8().data(), "rb"))
     {
-        CLogFile::FormatLine("File not found %s", fileName.toLatin1().data());
+        CLogFile::FormatLine("File not found %s", fileName.toUtf8().data());
         return false;
     }
 

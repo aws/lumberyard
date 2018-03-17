@@ -1676,8 +1676,8 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     // make sure all jobs from the previous frame have finished
     threadID nPrevThreadID = 0;
     gEnv->pRenderer->EF_Query(EFQ_RenderThreadList, nPrevThreadID);
-    gEnv->pRenderer->GetFinalizeRendItemJobState(nPrevThreadID)->Wait();
-    gEnv->pRenderer->GetFinalizeShadowRendItemJobState(nPrevThreadID)->Wait();
+    gEnv->pRenderer->GetFinalizeRendItemJobExecutor(nPrevThreadID)->WaitForCompletion();
+    gEnv->pRenderer->GetFinalizeShadowRendItemJobExecutor(nPrevThreadID)->WaitForCompletion();
 
     GetRenderer()->EF_ClearSkinningDataPool();
     GetRenderer()->BeginSpawningGeneratingRendItemJobs(passInfo.ThreadID());

@@ -11,6 +11,8 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 from waflib.Configure import conf
+from waflib.Errors import WafError
+import os
 
 @conf
 def load_windows_common_settings(conf):
@@ -59,3 +61,88 @@ def load_release_windows_settings(conf):
     the 'debug' configuration
     """
     conf.load_windows_common_settings()
+
+
+@conf
+def register_win_x64_external_ly_identity(self, compiler, configuration):
+
+    # Do not register as an external library if the source exists
+    if os.path.exists(self.Path('Code/Tools/LyIdentity/wscript')):
+        return
+
+    platform = 'windows'
+    processor = 'intel64'
+
+    if compiler not in ('vs2013', 'vs2015'):
+        raise WafError("Invalid compiler value {}", compiler)
+    if configuration not in ('Debug', 'Release'):
+        raise WafError("Invalid configuration value {}", configuration)
+
+    target_platform = 'win_x64'
+    ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity')
+    include_path = os.path.join(ly_identity_base_path, 'include')
+    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, processor, compiler, configuration)
+    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, processor, compiler, configuration)
+    self.register_3rd_party_uselib('LyIdentity_shared',
+                                   target_platform,
+                                   includes=[include_path],
+                                   defines=['LINK_LY_IDENTITY_DYNAMICALLY'],
+                                   importlib=['LyIdentity_shared.lib'],
+                                   sharedlibpath=[shlib_path],
+                                   sharedlib=['LyIdentity_shared.dll'])
+
+    self.register_3rd_party_uselib('LyIdentity_static',
+                                   target_platform,
+                                   includes=[include_path],
+                                   libpath=[stlib_path],
+                                   lib=['LyIdentity_static.lib'])
+
+
+@conf
+def register_win_x64_external_ly_metrics(self, compiler, configuration):
+
+    # Do not register as an external library if the source exists
+    if os.path.exists(self.Path('Code/Tools/LyMetrics/wscript')):
+        return
+
+    platform = 'windows'
+    processor = 'intel64'
+
+    if compiler not in ('vs2013', 'vs2015'):
+        raise WafError("Invalid compiler value {}", compiler)
+    if configuration not in ('Debug', 'Release'):
+        raise WafError("Invalid configuration value {}", configuration)
+
+    target_platform = 'win_x64'
+    ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics')
+    include_path = os.path.join(ly_identity_base_path, 'include')
+    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, processor, compiler, configuration)
+    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, processor, compiler, configuration)
+
+    self.register_3rd_party_uselib('LyMetricsShared_shared',
+                                   target_platform,
+                                   includes=[include_path],
+                                   defines=['LINK_LY_METRICS_DYNAMICALLY'],
+                                   importlib=['LyMetricsShared_shared.lib'],
+                                   sharedlibpath=[shlib_path],
+                                   sharedlib=['LyMetricsShared_shared.dll'])
+
+    self.register_3rd_party_uselib('LyMetricsShared_static',
+                                   target_platform,
+                                   includes=[include_path],
+                                   libpath=[stlib_path],
+                                   lib=['LyMetricsShared_static.lib'])
+
+    self.register_3rd_party_uselib('LyMetricsProducer_shared',
+                                   target_platform,
+                                   includes=[include_path],
+                                   defines=['LINK_LY_METRICS_PRODUCER_DYNAMICALLY'],
+                                   importlib=['LyMetricsProducer_shared.lib'],
+                                   sharedlibpath=[shlib_path],
+                                   sharedlib=['LyMetricsProducer_shared.dll'])
+
+    self.register_3rd_party_uselib('LyMetricsProducer_static',
+                                   target_platform,
+                                   includes=[include_path],
+                                   libpath=[stlib_path],
+                                   lib=['LyMetricsProducer_static.lib'])

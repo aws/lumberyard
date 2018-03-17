@@ -79,6 +79,7 @@ enum EVarFlags
     VF_CHEAT_NOCHECK =                      0x02000000,       // This variable is set as VF_CHEAT but doesn't have to be checked/hashed since it's harmless to hack
     VF_SYSSPEC_OVERWRITE =              0x04000000,       // This variable is specified by system.cfg with the intention to overwrite all subsequent settings
     VF_CVARGRP_IGNOREINREALVAL =    0x08000000,       // This variable will be ignored when cvar group's real val is checked (Needed for cvars which are in a group but change in various situations)
+    VF_RESETTABLE =                          0x10000000,         // This variable will be reset when a commanded reset to defaults occurs
     VF_RENDERER_CVAR =                      0x20000000,         // The update of this variable will be done in render thread
     VF_DEPRECATED =                             0x40000000,         // Deprecated cvars use default values which cannot be modified outside the code
     VF_EXPERIMENTAL =                           0x80000000,         // This variable is used by WIP or experimental feature
@@ -587,6 +588,9 @@ struct ICVar
     // Return the data probe string value of the variable, don't store pointer as multiple calls to this function might return same memory ptr
     // @return the value
     virtual const char* GetDataProbeString() const = 0;
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Reset the CVar to its default value if possible
+    virtual void Reset() {}
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // set the string value of the variable
     // @param s string representation the value

@@ -85,7 +85,7 @@ void CFlowNode::Init()
     {
         sNodeName = m_name;
     }
-    m_flowNodeId = GetIFlowGraph()->CreateNode(m_classname.toLatin1().data(), sNodeName.toLatin1().data());
+    m_flowNodeId = GetIFlowGraph()->CreateNode(m_classname.toUtf8().data(), sNodeName.toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -373,7 +373,7 @@ void CFlowNode::SetInputs(bool bActivate, bool bForceResetEntities)
         {
             QString v;
             pVar->Get(v);
-            bSet = value.Set(string(v.toLatin1().data()));
+            bSet = value.Set(string(v.toUtf8().data()));
             //string *str = value.GetPtr<string>();
         }
         break;
@@ -453,11 +453,11 @@ void CFlowNode::Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar)
                 IVariable* pVar = m_inputs[i].pVar;
                 if (pVar->GetType() != IVariable::UNKNOWN)
                 {
-                    if (portsNode->haveAttr(pVar->GetName().toLatin1().data()) == false)
+                    if (portsNode->haveAttr(pVar->GetName().toUtf8().data()) == false)
                     {
                         // if we did not find a value for the variable we try to use the old name
                         // with the stripped version
-                        QByteArray sVarName = pVar->GetName().toLatin1();
+                        QByteArray sVarName = pVar->GetName().toUtf8();
                         const char* sSpecial = strchr(sVarName.data(), '_');
                         if (sSpecial)
                         {

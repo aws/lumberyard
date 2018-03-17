@@ -1,0 +1,120 @@
+{
+    "Resources": {
+        "LexResourceType": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "LexResourceTypeLambdaConfig",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::Lex": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "Custom_Lex.handler"
+                        },
+                        "PermissionMetadata": {
+                            "DefaultRoleMappings": [
+                                {
+                                    "AbstractRole": [
+                                        "ServiceLambda"
+                                    ],
+                                    "Action": [
+                                        "lex:PostText",
+                                        "lex:PostContent",
+                                        "lex:GetBots",
+                                        "lex:GetBot",
+                                        "lex:CreateBotVersion",
+                                        "lex:PutBotAlias",
+                                        "lex:PutSlotType",
+                                        "lex:PutIntent",
+                                        "lex:PutBot",
+                                        "lex:GetIntent",
+                                        "lex:GetSlotType",
+                                        "lex:DeleteBot",
+                                        "lex:CreateIntentVersion",
+                                        "lex:CreateSlotTypeVersion",
+                                        "lex:GetBuiltinIntents",
+                                        "lex:GetBuiltinSlotTypes",
+                                        "lex:GetIntents",
+                                        "lex:GetSlotTypes",
+                                        "lex:DeleteIntent",
+                                        "lex:DeleteSlotType",
+                                        "lex:GetBotAliases",
+                                        "lex:DeleteBotAlias",
+                                        "lex:GetBotVersions",
+                                        "lex:GetBotAlias",
+                                        "lex:GetIntentVersions",
+                                        "lex:GetSlotTypeVersions",
+                                        "lex:GetBuiltinIntent"
+                                    ],
+                                    "ResourceSuffix": ""
+                                }
+                            ],
+                            "RestrictActions": [
+                                "lex:PostText",
+                                "lex:PostContent",
+                                "lex:GetBots",
+                                "lex:GetBot",
+                                "lex:CreateBotVersion",
+                                "lex:PutBotAlias",
+                                "lex:PutSlotType",
+                                "lex:PutIntent",
+                                "lex:PutBot",
+                                "lex:GetIntent",
+                                "lex:GetSlotType",
+                                "lex:DeleteBot",
+                                "lex:CreateIntentVersion",
+                                "lex:CreateSlotTypeVersion",
+                                "lex:GetBuiltinIntents",
+                                "lex:GetBuiltinSlotTypes",
+                                "lex:GetIntents",
+                                "lex:GetSlotTypes",
+                                "lex:DeleteIntent",
+                                "lex:DeleteSlotType",
+                                "lex:GetBotAliases",
+                                "lex:DeleteBotAlias",
+                                "lex:GetBotVersions",
+                                "lex:GetBotAlias",
+                                "lex:GetIntentVersions",
+                                "lex:GetSlotTypeVersions",
+                                "lex:GetBuiltinIntent"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "LexResourceTypeLambdaConfig": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "Configuration"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "LexResourceType",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::LambdaConfiguration",
+            "DependsOn": [
+                "CoreResourceTypes"
+            ]
+        }
+    }
+}

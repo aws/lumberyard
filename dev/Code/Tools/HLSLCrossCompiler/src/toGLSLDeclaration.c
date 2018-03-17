@@ -1430,10 +1430,10 @@ void DeclareBufferVariable(HLSLCrossCompilerContext* psContext, const uint32_t u
 
     PreDeclareStructType(psContext, bstr2cstr(StructName, '\0'), &psCBuf->asVars[0].sType);
 
-    // Add 'std430' layout for storage buffers. 
+    // Add 'std430' layout for storage buffers.
     // We don't use a global setting for all buffers because Mali drivers don't like that.
     bcatcstr(glsl, "layout(std430");
-    
+
     /* [layout (location = X)] uniform vec4 HLSLConstantBufferName[numConsts]; */
     // If storage blocking binding is not supported, then we must set the binding location in the shader. If we don't do it,
     // all the storage buffers of the program get assigned the same value (0).
@@ -2092,7 +2092,7 @@ void TranslateDeclaration(HLSLCrossCompilerContext* psContext, const Declaration
 
             // If this is the first GMEM Framebuffer fetch texture, then let's declare the needed extension
             int num_gmem_tex = 0;
-            for (auto i = 0; i < MAX_COLOR_MRT; i++)
+            for (int i = 0; i < MAX_COLOR_MRT; i++)
             {
                 num_gmem_tex += psContext->gmemOutputNumElements[i] != 0 ? 1 : 0;
             }

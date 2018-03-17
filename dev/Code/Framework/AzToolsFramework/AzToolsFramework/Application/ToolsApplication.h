@@ -35,7 +35,7 @@ namespace AzToolsFramework
         ~ToolsApplication();
 
         void Stop();
-        void CreateSerializeContext() override;
+        void CreateReflectionManager() override;
         void Reflect(AZ::ReflectContext* context) override;
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;

@@ -13,8 +13,9 @@
 from errors import HandledError
 from resource_group import ResourceGroup
 import os
-import constant
+from resource_manager_common import constant
 import util
+import json
 
 class ResourceGroupContext(object):
 
@@ -92,8 +93,22 @@ class ResourceGroupContext(object):
                     cpp_aws_directory_path = os.path.join(cpp_base_directory_path, constant.GEM_AWS_DIRECTORY_NAME, name)
                     self.__resource_groups[name] = ResourceGroup(self.__context, name, directory_path, cpp_base_directory_path, cpp_aws_directory_path)
 
-    def before_update_framework_version_to_1_1_1(self):
+    def before_update_framework_version_to_1_1_1(self, from_version):                 
+        self.__context.view.version_update(from_version, json.dumps(self.__context.config.local_project_settings.raw_dict()), '1.1.1')
         self.__convert_enabled_list_to_disabled_list()
+        self.__context.view.version_update_complete('1.1.1', json.dumps(self.__context.config.local_project_settings.raw_dict()))        
+
+    def before_update_framework_version_to_1_1_2(self, from_version):        
+        self.__context.view.version_update(from_version, json.dumps(self.__context.config.local_project_settings.raw_dict()), '1.1.2')
+        self.__convert_enabled_list_to_disabled_list() 
+        self.__context.view.version_update_complete('1.1.2', json.dumps(self.__context.config.local_project_settings.raw_dict()))                
+
+    def before_update_framework_version_to_1_1_3(self, from_version):                
+        self.__context.view.version_update(from_version, json.dumps(self.__context.config.local_project_settings.raw_dict()), '1.1.3')
+        self.__create_default_section()
+        self.__set_default_section_from_project_stack_id(from_version)
+        self.__move_attributes()        
+        self.__context.view.version_update_complete('1.1.3', json.dumps(self.__context.config.local_project_settings.raw_dict()))        
 
     def __convert_enabled_list_to_disabled_list(self):
 
@@ -101,9 +116,66 @@ class ResourceGroupContext(object):
         # a DisabledResourceGroups property.
 
         complete_set = set(self.keys())
-        enabled_set = set(self.__context.config.local_project_settings.get(constant.ENABLED_RESOURCE_GROUPS_KEY, []))
-        disabled_set = complete_set - enabled_set
-
-        self.__context.config.local_project_settings[constant.DISABLED_RESOURCE_GROUPS_KEY] = list(disabled_set)
-        self.__context.config.local_project_settings.pop(constant.ENABLED_RESOURCE_GROUPS_KEY, None)
+        settings = self.__context.config.local_project_settings.raw_dict()        
+        enabled_set = set(settings.get(constant.ENABLED_RESOURCE_GROUPS_KEY, []))     
+        disabled_set = complete_set - enabled_set        
+        settings[constant.DISABLED_RESOURCE_GROUPS_KEY] = list(disabled_set)    
+        settings.pop(constant.ENABLED_RESOURCE_GROUPS_KEY, None)    
         # save not needed, will happen after updating the framework version number
+
+    def __create_default_section(self):
+         self.__context.config.local_project_settings.create_default_section()
+
+    def __set_default_section_from_project_stack_id(self,from_version):
+        # if the local project setting is initialized
+        # parse the region from the PendingProjectStackId or the ProjectStackId
+        settings = self.__context.config.local_project_settings.raw_dict()     
+        if constant.PROJECT_STACK_ID in settings:
+            project_stack_id = settings[constant.PROJECT_STACK_ID]
+            region = util.get_region_from_arn(project_stack_id)
+            #create the region section
+            self.__context.config.local_project_settings.default(region)
+            self.__context.config.local_project_settings[constant.PROJECT_STACK_ID] = project_stack_id
+
+        if constant.PENDING_PROJECT_STACK_ID in settings:
+            pending_project_stack_id = settings[constant.PENDING_PROJECT_STACK_ID]
+            region = util.get_region_from_arn(pending_project_stack_id)
+            #create the region section
+            self.__context.config.local_project_settings.default(region)
+            
+
+        # if the local project setting is NOT initialized
+        # locate the region in the request context and set the default to that region
+        if not self.__context.config.local_project_settings.is_default_set_to_region():                    
+            #move to migration section defined by the version
+            self.__context.config.local_project_settings.default(str(from_version))
+            self.__context.config.local_project_settings[constant.LAZY_MIGRATION] = True            
+        
+    
+    def __move_attributes(self):        
+        if not self.__context.config.local_project_settings.is_default_set_to_region():
+            return
+
+        settings = self.__context.config.local_project_settings.raw_dict()     
+        if constant.ENABLED_RESOURCE_GROUPS_KEY in settings:            
+            settings.pop(constant.ENABLED_RESOURCE_GROUPS_KEY, None)
+        
+        if constant.ENABLED_RESOURCE_GROUPS_KEY in self.__context.config.local_project_settings:   
+            del self.__context.config.local_project_settings[constant.ENABLED_RESOURCE_GROUPS_KEY]
+
+        if constant.ENABLED_RESOURCE_GROUPS_KEY in self.__context.config.local_project_settings.default_set():   
+            del self.__context.config.local_project_settings.default_set()[constant.ENABLED_RESOURCE_GROUPS_KEY]
+
+        if constant.DISABLED_RESOURCE_GROUPS_KEY in settings:
+            self.__context.config.local_project_settings[constant.DISABLED_RESOURCE_GROUPS_KEY] = settings[constant.DISABLED_RESOURCE_GROUPS_KEY]
+            settings.pop(constant.DISABLED_RESOURCE_GROUPS_KEY, None)
+
+        if constant.PROJECT_STACK_ID in settings:
+            self.__context.config.local_project_settings[constant.PROJECT_STACK_ID] = settings[constant.PROJECT_STACK_ID]
+            settings.pop(constant.PROJECT_STACK_ID, None)
+
+        if constant.PENDING_PROJECT_STACK_ID in settings:
+            self.__context.config.local_project_settings[constant.PENDING_PROJECT_STACK_ID] = settings[constant.PENDING_PROJECT_STACK_ID]
+            settings.pop(constant.PENDING_PROJECT_STACK_ID, None)
+
+        settings.pop(constant.FRAMEWORK_VERSION_KEY, None)

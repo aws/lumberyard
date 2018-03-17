@@ -535,7 +535,7 @@ int Run(const char* srcPath, const char* destPath, ShaderLang language, int flag
 		printf("cc time: %.2f us\n", crossCompileTime);
 
 		// https://msdn.microsoft.com/en-us/library/ms175782.aspx.  As to disable the "("'n' format specifier disabled", 0)" assertion.
-		_set_printf_count_output(1); 
+		_set_printf_count_output(1);
 
 		if (destPath)
 		{
@@ -670,6 +670,55 @@ DWORD FilterException(DWORD uExceptionCode)
 
 #endif
 
+const char* PatchHLSLShaderFile(const char* path)
+{
+    // Need to transform "half" into "min16float" so FXC preserve min precision to the operands.
+    static char patchedFileName[MAX_PATH_CHARS];
+    const char* defines = "#define half min16float\n"
+        "#define half2 min16float2\n"
+        "#define half3 min16float3\n"
+        "#define half4 min16float4\n";
+
+    sprintf_s(patchedFileName, sizeof(patchedFileName), "%s.hlslPatched", path);
+    FILE* shaderFile = fopen(path, "rb");
+    if (!shaderFile)
+    {
+        return NULL;
+    }
+
+    FILE* patchedFile = fopen(patchedFileName, "wb");
+    if (!patchedFile)
+    {
+        return NULL;
+    }
+
+    // Get size of file
+    bool result = false;
+    fseek(shaderFile, 0, SEEK_END);
+    long size = ftell(shaderFile);
+    fseek(shaderFile, 0, SEEK_SET);
+    unsigned char* data = new unsigned char[size + 1]; // Extra byte for the '/0' character.
+    if (fread(data, 1, size, shaderFile) == size)
+    {
+        data[size] = '\0';
+        fprintf(patchedFile, "%s%s", defines, data);
+        result = true;
+    }
+
+    if (shaderFile)
+    {
+        fclose(shaderFile);
+    }
+
+    if (patchedFile)
+    {
+        fclose(patchedFile);
+    }
+
+    delete[] data;
+    return result ? patchedFileName : NULL;
+}
+
 int main(int argc, char** argv)
 {
 	Options options;
@@ -684,66 +733,81 @@ int main(int argc, char** argv)
 			return 1;
 		}
 
-		if (options.bUseFxc)
-		{
-			char dxbcFileName[MAX_PATH_CHARS];
-			char glslFileName[MAX_PATH_CHARS];
-			char fullFxcCmdLine[MAX_FXC_CMD_CHARS];
-			int retValue;
+        if (options.bUseFxc)
+        {
+            char dxbcFileName[MAX_PATH_CHARS];
+            char glslFileName[MAX_PATH_CHARS];
+            char fullFxcCmdLine[MAX_FXC_CMD_CHARS];
+            int retValue;
 
-			sprintf_s(dxbcFileName, sizeof(glslFileName), "%s.dxbc", options.shaderFile);
-			sprintf_s(glslFileName, sizeof(glslFileName), "%s.patched", options.shaderFile);
+            if (options.flags & HLSLCC_FLAG_HALF_FLOAT_TRANSFORM)
+            {
+                options.shaderFile = PatchHLSLShaderFile(options.shaderFile);
+                if (!options.shaderFile)
+                {
+                    return 1;
+                }
+            }
 
-			// Need to extract the path to the executable so we can enclose it in quotes
-			// in case it contains spaces.
-			const std::string fxcExeName = "fxc.exe";
+            sprintf_s(dxbcFileName, sizeof(dxbcFileName), "%s.dxbc", options.shaderFile);
+            sprintf_s(glslFileName, sizeof(glslFileName), "%s.patched", options.shaderFile);
 
-			// Case insensitive search
-			std::string::iterator fxcPos = std::search(
+            // Need to extract the path to the executable so we can enclose it in quotes
+            // in case it contains spaces.
+            const std::string fxcExeName = "fxc.exe";
+
+            // Case insensitive search
+            std::string::iterator fxcPos = std::search(
 			    options.fxcCmdLine.begin(), options.fxcCmdLine.end(),
 			    fxcExeName.begin(), fxcExeName.end(),
 			    [](char ch1, char ch2) { return std::tolower(ch1) == std::tolower(ch2); }
-			);
+            );
 
-			if (fxcPos == options.fxcCmdLine.end())
-			{
-			    fprintf(stderr, "Could not find fxc.exe in command line");
-			    return 1;
-			}
+            if (fxcPos == options.fxcCmdLine.end())
+            {
+                fprintf(stderr, "Could not find fxc.exe in command line");
+                return 1;
+	        }
 
-			// Add the fxcExeName so it gets copied to the fxcExe path.
-			fxcPos += fxcExeName.length();
-			std::string fxcExe(options.fxcCmdLine.begin(), fxcPos);
-			std::string fxcArguments(fxcPos, options.fxcCmdLine.end());
+            // Add the fxcExeName so it gets copied to the fxcExe path.
+            fxcPos += fxcExeName.length();
+            std::string fxcExe(options.fxcCmdLine.begin(), fxcPos);
+            std::string fxcArguments(fxcPos, options.fxcCmdLine.end());
 
-			// Need an extra set of quotes around the full command line because the way "system" executes it using cmd.
-			sprintf_s(fullFxcCmdLine, sizeof(fullFxcCmdLine), "\"\"%s\" %s \"%s\" \"%s\"\"", fxcExe.c_str(), fxcArguments.c_str(), dxbcFileName, options.shaderFile);
-			retValue = system(fullFxcCmdLine);
+            // Need an extra set of quotes around the full command line because the way "system" executes it using cmd.
+            sprintf_s(fullFxcCmdLine, sizeof(fullFxcCmdLine), "\"\"%s\" %s \"%s\" \"%s\"\"", fxcExe.c_str(), fxcArguments.c_str(), dxbcFileName, options.shaderFile);
 
-			if (retValue == 0)
-			{
-				Shader shader;
-				retValue = !Run(dxbcFileName, glslFileName, options.language, options.flags, options.reflectPath, &shader, 1, fullFxcCmdLine, options.shaderFile);
+            retValue = system(fullFxcCmdLine);
 
-				if (retValue == 0)
-				{
-					retValue = !CombineDXBCWithGLSL(dxbcFileName, options.outputShaderFile, &shader);
-					FreeShader(&shader);
-				}
-			}
+            if (retValue == 0)
+            {
+            	Shader shader;
+            	retValue = !Run(dxbcFileName, glslFileName, options.language, options.flags, options.reflectPath, &shader, 1, fullFxcCmdLine, options.shaderFile);
 
-			remove(dxbcFileName);
-			remove(glslFileName);
-			return retValue;
-		}
+            	if (retValue == 0)
+            	{
+            		retValue = !CombineDXBCWithGLSL(dxbcFileName, options.outputShaderFile, &shader);
+            		FreeShader(&shader);
+            	}
+            }
 
-		else if (options.shaderFile)
-		{
+            remove(dxbcFileName);
+            remove(glslFileName);
+            if (options.flags & HLSLCC_FLAG_HALF_FLOAT_TRANSFORM)
+            {
+                // Removed the hlsl patched file that was created.
+                remove(options.shaderFile);
+            }
+
+            return retValue;
+        }
+        else if (options.shaderFile)
+        {
 			if (!Run(options.shaderFile, options.outputShaderFile, options.language, options.flags, options.reflectPath, NULL, 0, NULL, NULL))
 			{
 				return 1;
 			}
-		}
+        }
 
 #if defined(_WIN32) && defined(PORTABLE)
 	}

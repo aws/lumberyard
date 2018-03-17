@@ -12,7 +12,7 @@
 *
 */
 
-#include <QWidget.h>
+#include <QWidget>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>

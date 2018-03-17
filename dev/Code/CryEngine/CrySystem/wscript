@@ -28,7 +28,7 @@ def build(bld):
         defines                 = ['ENGINE_EXPORTS'],
         use                     = ['AzFramework',
                                    'GridMate',
-                                   'ToolsCrashHandler'],
+                                   'CrashHandler'],
         uselib                  = ['LZ4',
                                    'TIFF',
                                    'TOMCRYPT',
@@ -42,7 +42,7 @@ def build(bld):
         features                = ['link_running_program'],
 
         # Platform Specific
-        win_defines             = ['EXCLUDE_CINEMIZER_SDK', 'KDAB_MAC_PORT'],
+        win_defines             = ['EXCLUDE_CINEMIZER_SDK'],
         win_file_list           = 'platformos_pc.waf_files',
         win_linkflags           = '/NODEFAULTLIB:libcmt.lib',
         win_cxxflags            = '/EHsc',

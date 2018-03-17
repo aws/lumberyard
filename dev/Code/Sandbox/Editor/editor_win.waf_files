@@ -3,6 +3,7 @@
 	{
 		"Resource Files":
 		[
+			"Resource.h",
 			"EditorCryEdit.rc",
 			"res/editor_icon.ico"
 		]

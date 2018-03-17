@@ -10,4 +10,4 @@
 *
 */
 
-#include "StdAfx.h"
+#include "HttpRequestor_precompiled.h"

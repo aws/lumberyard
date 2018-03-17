@@ -82,6 +82,9 @@ namespace LmbrCentral
         //! True if the emitter has been created.
         bool IsCreated() const;
 
+        //! Restarts the emitter.
+        void Restart();
+
         IRenderNode* GetRenderNode();
         
     protected:
@@ -173,6 +176,7 @@ namespace LmbrCentral
         void SetViewDistMultiplier(float multiplier) override;
         void SetUseVisArea(bool enable) override;
         ParticleEmitterSettings GetEmitterSettings() override;
+        void Restart() override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

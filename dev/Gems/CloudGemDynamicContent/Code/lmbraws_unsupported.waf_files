@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/CloudGemDynamicContent_precompiled.cpp",
+            "Source/CloudGemDynamicContent_precompiled.h"
         ]
     },
     "auto": {

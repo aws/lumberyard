@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 
 #include "PlayerIdentityComponent.h"
 
@@ -410,6 +410,15 @@ namespace CloudGemFramework
             }
         }
         return false;
+    }
+
+    AZStd::string CloudCanvasPlayerIdentityComponent::GetIdentityId() 
+    {
+        if (m_authIdentityProvider)
+        {
+            return m_authIdentityProvider->GetIdentityId().c_str();
+        }
+        return "";
     }
 
     std::shared_ptr<Aws::Auth::AWSCredentialsProvider> CloudCanvasPlayerIdentityComponent::GetPlayerCredentialsProvider()

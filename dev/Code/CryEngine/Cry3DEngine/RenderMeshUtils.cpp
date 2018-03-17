@@ -131,6 +131,8 @@ bool CRenderMeshUtils::RayIntersection(IRenderMesh* pRenderMesh, SRayHitInfo& hi
 
 void CRenderMeshUtils::RayIntersectionAsync(SIntersectionData* pIntersectionRMData)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
     // forward call to implementation
     SRayHitInfo& rHitInfo = *pIntersectionRMData->pHitInfo;
     SIntersectionData& rIntersectionData = *pIntersectionRMData;

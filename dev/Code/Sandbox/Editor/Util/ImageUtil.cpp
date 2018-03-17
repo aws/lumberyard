@@ -53,7 +53,7 @@ bool CImageUtil::Load(const QString& fileName, CImageEx& image)
 
     if (imgBitmap.isNull())
     {
-        CLogFile::FormatLine("Invalid file:  %s", fileName.toLatin1().data());
+        CLogFile::FormatLine("Invalid file:  %s", fileName.toUtf8().data());
         return false;
     }
 
@@ -119,7 +119,7 @@ bool CImageUtil::SavePGM(const QString& fileName, const CImageEx& image)
 //////////////////////////////////////////////////////////////////////////
 bool CImageUtil::LoadPGM(const QString& fileName, CImageEx& image)
 {
-    FILE* file = fopen(fileName.toLatin1().data(), "rt");
+    FILE* file = fopen(fileName.toUtf8().data(), "rt");
     if (!file)
     {
         return false;
@@ -231,7 +231,7 @@ bool CImageUtil::LoadImage(const QString& fileName, CImageEx& image, bool* pQual
         *pQualityLoss = false;
     }
 
-    _splitpath(fileName.toLatin1().data(), drive, dir, fname, ext);
+    _splitpath(fileName.toUtf8().data(), drive, dir, fname, ext);
 
     // Only DDS has explicit sRGB flag - we'll assume by default all formats are stored in gamma space
     image.SetSRGB(true);
@@ -262,7 +262,7 @@ bool CImageUtil::LoadImage(const QString& fileName, CImageEx& image, bool* pQual
     }
     else if (_stricmp(ext, ".dds") == 0)
     {
-        return CImage_DXTC().Load(fileName.toLatin1().data(), image, pQualityLoss);
+        return CImage_DXTC().Load(fileName.toUtf8().data(), image, pQualityLoss);
     }
     else if (_stricmp(ext, ".png") == 0)
     {
@@ -270,7 +270,7 @@ bool CImageUtil::LoadImage(const QString& fileName, CImageEx& image, bool* pQual
     }
     else if (stricmp(ext, ".hdr") == 0)
     {
-        return CImageHDR().Load(fileName.toLatin1().data(), image);
+        return CImageHDR().Load(fileName, image);
     }
 
     return false;
@@ -287,7 +287,7 @@ bool CImageUtil::SaveImage(const QString& fileName, CImageEx& image)
     // Remove the read-only attribute so the file can be overwritten.
     QFile(fileName).setPermissions(QFile::ReadOther | QFile::WriteOther);
 
-    _splitpath(fileName.toLatin1().data(), drive, dir, fname, ext);
+    _splitpath(fileName.toUtf8().data(), drive, dir, fname, ext);
     if (_stricmp(ext, ".bmp") == 0)
     {
         return SaveBitmap(fileName, image);

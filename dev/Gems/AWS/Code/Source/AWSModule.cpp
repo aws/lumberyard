@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "AWS_precompiled.h"
 
 #include <AzCore/Module/Module.h>
 

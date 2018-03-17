@@ -133,7 +133,7 @@ namespace AzFramework
                 ->Method("IsActivated", &BehaviorEntity::IsActivated)
                 ->Method("Activate", &BehaviorEntity::Activate)
                 ->Method("Deactivate", &BehaviorEntity::Deactivate)
-                ->Method("CreateComponent", &BehaviorEntity::CreateComponent, AZ::BehaviorMakeDefaultValues(static_cast<const AZ::ComponentConfig*>(nullptr)))
+                ->Method("CreateComponent", &BehaviorEntity::CreateComponent, behaviorContext->MakeDefaultValues(static_cast<const AZ::ComponentConfig*>(nullptr)))
                 ->Method("DestroyComponent", &BehaviorEntity::DestroyComponent)
                 ->Method("GetComponents", &BehaviorEntity::GetComponents)
                 ->Method("FindComponentOfType", &BehaviorEntity::FindComponentOfType)

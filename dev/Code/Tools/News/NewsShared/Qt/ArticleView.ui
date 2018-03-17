@@ -124,7 +124,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QBetterLabel" name="titleLabel">
+       <widget class="AzQtComponents::ExtendedLabel" name="titleLabel">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
           <horstretch>0</horstretch>
@@ -173,7 +173,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QBetterLabel" name="bodyLabel">
+       <widget class="AzQtComponents::ExtendedLabel" name="bodyLabel">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
           <horstretch>0</horstretch>
@@ -234,9 +234,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QBetterLabel</class>
+   <class>AzQtComponents::ExtendedLabel</class>
    <extends>QLabel</extends>
-   <header>NewsShared/Qt/QBetterLabel.h</header>
+   <header>AzQtComponents/Components/ExtendedLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

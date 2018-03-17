@@ -34,6 +34,7 @@
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
@@ -61,8 +62,6 @@ OutlinerListModel::OutlinerListModel(QObject* parent)
     , m_entityChangeQueue()
     , m_entityChangeQueued(false)
     , m_entityLayoutQueued(false)
-    , m_filtersRegExp()
-    , m_filterOperator()
     , m_entityExpansionState()
     , m_entityFilteredState()
 {
@@ -724,7 +723,9 @@ bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, con
             return false;
         }
 
-        AZ::TransformBus::EventResult(currParentId, currParentId, &AZ::TransformBus::Events::GetParentId);
+        AZ::EntityId tempParentId;
+        AZ::TransformBus::EventResult(tempParentId, currParentId, &AZ::TransformBus::Events::GetParentId);
+        currParentId = tempParentId;
     }
 
     return true;
@@ -1085,14 +1086,107 @@ AZ::EntityId OutlinerListModel::GetEntityFromIndex(const QModelIndex& index) con
 
 void OutlinerListModel::SearchStringChanged(const AZStd::string& filter)
 {
+    if (filter.size() > 0)
+    {
+        CacheSelectionIfAppropriate();
+    }
+
     m_filterString = filter;
     InvalidateFilter();
+
+    RestoreSelectionIfAppropriate();
 }
 
 void OutlinerListModel::SearchFilterChanged(const AZStd::vector<AZ::Uuid>& componentFilters)
 {
+    if (componentFilters.size() > 0)
+    {
+        CacheSelectionIfAppropriate();
+    }
+
     m_componentFilters = AZStd::move(componentFilters);
     InvalidateFilter();
+
+    RestoreSelectionIfAppropriate();
+}
+
+bool OutlinerListModel::ShouldOverrideUnfilteredSelection()
+{
+    AzToolsFramework::EntityIdList currentSelection;
+    AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(currentSelection, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+    // If new selection is greater, then we need to override
+    if (currentSelection.size() > m_unfilteredSelectionEntityIds.size())
+    {
+        return true;
+    }
+
+    for (auto& entityId : currentSelection)
+    {
+        // If one element in the current selection doesn't exist in our unfiltered selection, we need to override with the new selection
+        auto it = AZStd::find(m_unfilteredSelectionEntityIds.begin(), m_unfilteredSelectionEntityIds.end(), entityId);
+        if (it == m_unfilteredSelectionEntityIds.end())
+        {
+            return true;
+        }
+    }
+
+    if (currentSelection.empty())
+    {
+        for (auto& entityId : m_unfilteredSelectionEntityIds)
+        {
+            // If any of the entities are visible, then the user must have forcibly cleared selection
+            if (!IsFiltered(entityId))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+void OutlinerListModel::CacheSelectionIfAppropriate()
+{
+    if (ShouldOverrideUnfilteredSelection())
+    {
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(m_unfilteredSelectionEntityIds, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+    }
+}
+
+void OutlinerListModel::RestoreSelectionIfAppropriate()
+{
+    if (m_unfilteredSelectionEntityIds.size() > 0)
+    {
+        // Store these in a temp list so it doesn't get cleared mid-loop by external logic
+        AzToolsFramework::EntityIdList tempList = m_unfilteredSelectionEntityIds;
+
+        for (auto& entityId : tempList)
+        {
+            if (!IsFiltered(entityId))
+            {
+                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::MarkEntitySelected, entityId);
+            }
+        }
+
+        m_unfilteredSelectionEntityIds = tempList;
+    }
+
+    if (m_unfilteredSelectionEntityIds.size() > 0 && m_componentFilters.size() == 0 && m_filterString.size() == 0)
+    {
+        m_unfilteredSelectionEntityIds.clear();
+    }
+}
+
+void OutlinerListModel::AfterEntitySelectionChanged()
+{
+    if (m_unfilteredSelectionEntityIds.size() > 0)
+    {
+        if (ShouldOverrideUnfilteredSelection())
+        {
+            m_unfilteredSelectionEntityIds.clear();
+        }
+    }
 }
 
 void OutlinerListModel::OnEntityExpanded(const AZ::EntityId& entityId)
@@ -1300,6 +1394,13 @@ bool OutlinerListModel::FilterEntity(const AZ::EntityId& entityId)
     for (auto childId : children)
     {
         isFilterMatch |= FilterEntity(childId);
+    }
+
+    // If we now match the filter and we previously didn't and we're set in an expanded state
+    // we need to queue an expand again so that the treeview state matches our internal saved state
+    if (isFilterMatch && m_entityFilteredState[entityId] && IsExpanded(entityId))
+    {
+        QueueEntityToExpand(entityId, true);
     }
 
     m_entityFilteredState[entityId] = !isFilterMatch;

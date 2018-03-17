@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "InstanceDataHierarchy.h"
 #include <AzCore/std/bind/bind.h>
 #include <AzCore/std/functional.h>
@@ -24,7 +24,7 @@
 
 #include <AzCore/Serialization/EditContextConstants.inl>
 
-#include "PropertyEditorApi.h"
+#include "PropertyEditorAPI.h"
 
 namespace
 {

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "HMDFramework_precompiled.h"
 
 #include <HMDBus.h>
 #include <VRControllerBus.h>

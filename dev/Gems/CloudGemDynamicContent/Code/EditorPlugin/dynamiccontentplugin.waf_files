@@ -4,8 +4,8 @@
             "dllmain.cpp",
             "DynamicContentEditorPlugin.cpp",
             "DynamicContentEditorPlugin.h",
-            "StdAfx.cpp",
-            "StdAfx.h",
+            "CloudGemDynamicContent_precompiled.cpp",
+            "CloudGemDynamicContent_precompiled.h",
             "QDynamicContentEditorMainWindow.h",
             "QDynamicContentEditorMainWindow.cpp",
             "create_package.ui",
@@ -22,8 +22,8 @@
             "ManifestTableKeys.h",
             "ManifestTableKeys.cpp",
             "ManifestDataStructures.h",
-            "FileWatcherView.h",
-            "FileWatcherView.cpp"
+            "fileWatcherView.h",
+            "fileWatcherView.cpp"
         ]
     }
 }

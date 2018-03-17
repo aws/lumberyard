@@ -14,12 +14,15 @@
 
 #include <QWidget>
 
-namespace Ui 
+namespace Ui
 {
     class ArticleErrorViewWidget;
 }
 
-class QBetterLabel;
+namespace AzQtComponents
+{
+    class ExtendedLabel;
+}
 
 namespace News
 {

@@ -230,101 +230,104 @@ namespace UnitTest
         //////////////////////////////////////////////////////////////////////////
     };
 
+    struct MyAssetMsgHandler
+        : public AssetBus::Handler
+    {
+        MyAssetMsgHandler(const AssetId& assetId, const AssetType& assetType)
+            : m_assetId(assetId)
+            , m_assetType(assetType)
+            , m_ready(0)
+            , m_moved(0)
+            , m_reloaded(0)
+            , m_saved(0)
+            , m_unloaded(0)
+            , m_error(0)
+        {
+        }
+
+        template<class AssetClass>
+        MyAssetMsgHandler(const AssetId& assetId)
+            : m_assetId(assetId)
+            , m_assetType(AzTypeInfo<AssetClass>::Uuid())
+            , m_ready(0)
+            , m_moved(0)
+            , m_reloaded(0)
+            , m_saved(0)
+            , m_unloaded(0)
+            , m_error(0)
+        {
+        }
+
+        virtual void OnAssetReady(Asset<AssetData> asset) override
+        {
+            EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
+            AZStd::string expectedData = AZStd::string::format("Asset<id=%s, type=%s>", asset.GetId().ToString<AZStd::string>().c_str(), asset.GetType().ToString<AZStd::string>().c_str());
+            Asset<MyAssetType> myAsset = AssetManager::Instance().GetAsset<MyAssetType>(asset.GetId());
+            EXPECT_TRUE(myAsset.IsReady());
+            MyAssetType* myAssetData = myAsset.Get();
+            EXPECT_TRUE(myAssetData != nullptr);
+            EXPECT_TRUE(azstricmp(expectedData.c_str(), reinterpret_cast<char*>(myAssetData->m_data)) == 0);
+            m_ready++;
+        }
+
+        virtual void OnAssetMoved(Asset<AssetData> asset, void* oldDataPointer) override
+        {
+            (void)oldDataPointer;
+            EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
+            m_moved++;
+        }
+
+        virtual void OnAssetReloaded(Asset<AssetData> asset) override
+        {
+            EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
+            m_reloaded++;
+        }
+
+        virtual void OnAssetSaved(Asset<AssetData> asset, bool isSuccessful) override
+        {
+            EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
+            EXPECT_TRUE(isSuccessful);
+            m_saved++;
+        }
+
+        virtual void OnAssetUnloaded(const AssetId assetId, const AssetType assetType) override
+        {
+            EXPECT_TRUE(assetId == m_assetId && assetType == m_assetType);
+            m_unloaded++;
+        }
+
+        virtual void OnAssetError(Asset<AssetData> asset) override
+        {
+            EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
+            m_error++;
+        }
+
+        AssetId     m_assetId;
+        AssetType   m_assetType;
+        AZStd::atomic_int         m_ready;
+        AZStd::atomic_int         m_moved;
+        AZStd::atomic_int         m_reloaded;
+        AZStd::atomic_int         m_saved;
+        AZStd::atomic_int         m_unloaded;
+        AZStd::atomic_int         m_error;
+    };
+
+    struct MyAssetHolder
+    {
+        AZ_TYPE_INFO(MyAssetHolder, "{1DA71115-547B-4f32-B230-F3C70608AD68}");
+        AZ_CLASS_ALLOCATOR(MyAssetHolder, AZ::SystemAllocator, 0);
+        Asset<MyAssetType>  m_asset1;
+        Asset<MyAssetType>  m_asset2;
+    };
+
     class AssetManagerTest
         : public AllocatorsFixture
     {
         IO::FileIOBase* m_prevFileIO{ nullptr };
         TestFileIOBase m_fileIO;
+    protected:
+        MyAssetHandlerAndCatalog* m_assetHandlerAndCatalog;
     public:
-        struct MyAssetMsgHandler
-            : public AssetBus::Handler
-        {
-            MyAssetMsgHandler(const AssetId& assetId, const AssetType& assetType)
-                : m_assetId(assetId)
-                , m_assetType(assetType)
-                , m_ready(0)
-                , m_moved(0)
-                , m_reloaded(0)
-                , m_saved(0)
-                , m_unloaded(0)
-                , m_error(0)
-            {
-            }
-
-            template<class AssetClass>
-            MyAssetMsgHandler(const AssetId& assetId)
-                : m_assetId(assetId)
-                , m_assetType(AzTypeInfo<AssetClass>::Uuid())
-                , m_ready(0)
-                , m_moved(0)
-                , m_reloaded(0)
-                , m_saved(0)
-                , m_unloaded(0)
-                , m_error(0)
-            {
-            }
-
-            virtual void OnAssetReady(Asset<AssetData> asset) override
-            {
-                EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
-                AZStd::string expectedData = AZStd::string::format("Asset<id=%s, type=%s>", asset.GetId().ToString<AZStd::string>().c_str(), asset.GetType().ToString<AZStd::string>().c_str());
-                Asset<MyAssetType> myAsset = AssetManager::Instance().GetAsset<MyAssetType>(asset.GetId());
-                EXPECT_TRUE(myAsset.IsReady());
-                MyAssetType* myAssetData = myAsset.Get();
-                EXPECT_TRUE(myAssetData != nullptr);
-                EXPECT_TRUE(azstricmp(expectedData.c_str(), reinterpret_cast<char*>(myAssetData->m_data)) == 0);
-                m_ready++;
-            }
-
-            virtual void OnAssetMoved(Asset<AssetData> asset, void* oldDataPointer) override
-            {
-                (void)oldDataPointer;
-                EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
-                m_moved++;
-            }
-
-            virtual void OnAssetReloaded(Asset<AssetData> asset) override
-            {
-                EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
-                m_reloaded++;
-            }
-
-            virtual void OnAssetSaved(Asset<AssetData> asset, bool isSuccessful) override
-            {
-                EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
-                EXPECT_TRUE(isSuccessful);
-                m_saved++;
-            }
-
-            virtual void OnAssetUnloaded(const AssetId assetId, const AssetType assetType) override
-            {
-                EXPECT_TRUE(assetId == m_assetId && assetType == m_assetType);
-                m_unloaded++;
-            }
-
-            virtual void OnAssetError(Asset<AssetData> asset) override
-            {
-                EXPECT_TRUE(asset.GetId() == m_assetId && asset.GetType() == m_assetType);
-                m_error++;
-            }
-
-            AssetId     m_assetId;
-            AssetType   m_assetType;
-            AZStd::atomic_int         m_ready;
-            AZStd::atomic_int         m_moved;
-            AZStd::atomic_int         m_reloaded;
-            AZStd::atomic_int         m_saved;
-            AZStd::atomic_int         m_unloaded;
-            AZStd::atomic_int         m_error;
-        };
-
-        struct MyAssetHolder
-        {
-            AZ_TYPE_INFO(MyAssetHolder, "{1DA71115-547B-4f32-B230-F3C70608AD68}");
-            AZ_CLASS_ALLOCATOR(MyAssetHolder, AZ::SystemAllocator, 0);
-            Asset<MyAssetType>  m_asset1;
-            Asset<MyAssetType>  m_asset2;
-        };
 
         void SetUp() override
         {
@@ -342,10 +345,23 @@ namespace UnitTest
                 streamerDesc.m_fileMountPoint = testFolder.c_str();
             }
             IO::Streamer::Create(streamerDesc);
+
+            // create the database
+            AssetManager::Descriptor desc;
+            AssetManager::Create(desc);
+
+            // create and register an asset handler
+            m_assetHandlerAndCatalog = aznew MyAssetHandlerAndCatalog;
+            AssetManager::Instance().RegisterHandler(m_assetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
+            AssetManager::Instance().RegisterCatalog(m_assetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
+            AssetManager::Instance().RegisterHandler(m_assetHandlerAndCatalog, AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
         }
 
         void TearDown() override
         {
+            // destroy the database
+            AssetManager::Destroy();
+
             if (IO::Streamer::IsReady())
             {
                 IO::Streamer::Destroy();
@@ -379,20 +395,10 @@ namespace UnitTest
             *done = true;
         }
 
-        void run()
+        template <class AT>
+        void CreateTestAssets(Asset<AT>& asset1, Asset<AT>& asset2)
         {
-            // create the database
-            AssetManager::Descriptor desc;
-            AssetManager::Create(desc);
-
-            // create and register an asset handler
-            MyAssetHandlerAndCatalog* myAssetHandlerAndCatalog = aznew MyAssetHandlerAndCatalog;
-            AssetManager::Instance().RegisterHandler(myAssetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
-            AssetManager::Instance().RegisterCatalog(myAssetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
-            AssetManager::Instance().RegisterHandler(myAssetHandlerAndCatalog, AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
-
             // Asset 1
-
             MyAssetMsgHandler assetStatus1(Uuid(MYASSET1_ID), AzTypeInfo<MyAssetType>::Uuid());
             assetStatus1.BusConnect(Uuid(MYASSET1_ID));
 
@@ -400,357 +406,420 @@ namespace UnitTest
             MyAssetMsgHandler assetStatus2(Uuid(MYASSET2_ID), AzTypeInfo<MyAssetType>::Uuid());
             assetStatus2.BusConnect(Uuid(MYASSET2_ID));
 
-            // First, create some assets and write them out to disc
-            {
-                Asset<MyAssetType> asset1 = AssetManager::Instance().CreateAsset<MyAssetType>(Uuid(MYASSET1_ID));
-                EXPECT_TRUE(asset1);
-                Asset<MyAssetType> asset2;
-                EXPECT_TRUE(asset2.Create(Uuid(MYASSET2_ID))); // same meaning as asset1 just avoid direct call to AssetManager
-                EXPECT_TRUE(asset2);
-                AssetManager::Instance().SaveAsset(asset1);
-                asset2.Save(); // same as asset1, except avoid direct call to AssetManager
-                while (assetStatus1.m_saved < 1 || assetStatus2.m_saved < 1)
-                {
-                    AssetManager::Instance().DispatchEvents();
-                    AZStd::this_thread::yield();
-                }
-                EXPECT_EQ(0, assetStatus1.m_ready);
-                EXPECT_EQ(0, assetStatus1.m_moved);
-                EXPECT_EQ(0, assetStatus1.m_reloaded);
-                EXPECT_EQ(1, assetStatus1.m_saved);
-                EXPECT_EQ(0, assetStatus1.m_unloaded);
-                EXPECT_EQ(0, assetStatus1.m_error);
-                EXPECT_EQ(0, assetStatus2.m_ready);
-                EXPECT_EQ(0, assetStatus2.m_moved);
-                EXPECT_EQ(0, assetStatus2.m_reloaded);
-                EXPECT_EQ(1, assetStatus2.m_saved);
-                EXPECT_EQ(0, assetStatus2.m_unloaded);
-                EXPECT_EQ(0, assetStatus2.m_error);
-            }
+            EXPECT_FALSE(asset1);
+            asset1 = AssetManager::Instance().CreateAsset<MyAssetType>(Uuid(MYASSET1_ID));
+            EXPECT_TRUE(asset1);
 
-            // Allow asset1 and asset2 to release their data
-            while (assetStatus1.m_unloaded < 1 || assetStatus2.m_unloaded < 1)
+            EXPECT_FALSE(asset2);
+            EXPECT_TRUE(asset2.Create(Uuid(MYASSET2_ID))); // same meaning as asset1 just avoid direct call to AssetManager
+            EXPECT_TRUE(asset2);
+
+            AssetManager::Instance().SaveAsset(asset1);
+            asset2.Save(); // same as asset1, except avoid direct call to AssetManager
+            WaitForAssetSystem([&]() { return assetStatus1.m_saved == 1 && assetStatus2.m_saved == 1; });
+        }
+
+        void WaitForAssetSystem(AZStd::function<bool()> condition)
+        {
+            while (!condition())
             {
                 AssetManager::Instance().DispatchEvents();
                 AZStd::this_thread::yield();
             }
-
-            // Try to load the assets back in
-            MyAssetHolder assetHolder;
-            {
-                Asset<MyAssetType> asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
-                EXPECT_TRUE(asset1);
-                Asset<MyAssetType> asset2;
-                EXPECT_TRUE(asset2.Create(Uuid(MYASSET2_ID), true));
-                EXPECT_TRUE(asset2);
-                while (assetStatus1.m_ready < 1 || assetStatus2.m_ready < 1)
-                {
-                    AssetManager::Instance().DispatchEvents();
-                    AZStd::this_thread::yield();
-                }
-                EXPECT_EQ(1, assetStatus1.m_ready); // asset1 should be ready...
-                EXPECT_EQ(0, assetStatus1.m_moved);
-                EXPECT_EQ(0, assetStatus1.m_reloaded);
-                EXPECT_EQ(1, assetStatus1.m_saved);
-                EXPECT_EQ(1, assetStatus1.m_unloaded); // ...and unloaded once because the prior asset1 went out of scope
-                EXPECT_EQ(0, assetStatus1.m_error);
-                EXPECT_EQ(1, assetStatus2.m_ready); // asset2 should be ready...
-                EXPECT_EQ(0, assetStatus2.m_moved);
-                EXPECT_EQ(0, assetStatus2.m_reloaded);
-                EXPECT_EQ(1, assetStatus2.m_saved);
-                EXPECT_EQ(1, assetStatus2.m_unloaded); // ...and unloaded once because the prior asset2 went out of scope
-                EXPECT_EQ(0, assetStatus2.m_error);
-
-                assetHolder.m_asset1 = asset1;
-                assetHolder.m_asset2 = asset2;
-            }
-
-            // We should still be holding to both assets so nothing should have changed
-            AssetManager::Instance().DispatchEvents();
-            EXPECT_EQ(1, assetStatus1.m_ready);
-            EXPECT_EQ(0, assetStatus1.m_moved);
-            EXPECT_EQ(0, assetStatus1.m_reloaded);
-            EXPECT_EQ(1, assetStatus1.m_saved);
-            EXPECT_EQ(1, assetStatus1.m_unloaded);
-            EXPECT_EQ(0, assetStatus1.m_error);
-            EXPECT_EQ(1, assetStatus2.m_ready);
-            EXPECT_EQ(0, assetStatus2.m_moved);
-            EXPECT_EQ(0, assetStatus2.m_reloaded);
-            EXPECT_EQ(1, assetStatus2.m_saved);
-            EXPECT_EQ(1, assetStatus2.m_unloaded);
-            EXPECT_EQ(0, assetStatus2.m_error);
-
-            // test serializing out assets
-            SerializeContext sc;
-            sc.Class<MyAssetHolder>()
-                ->Field("asset1", &MyAssetHolder::m_asset1)
-                ->Field("asset2", &MyAssetHolder::m_asset2);
-
-            {
-                IO::SystemFile file;
-                AZStd::string fileName = GetTestFolderPath() + "MyAssetHolder.xml";
-                file.Open(fileName.c_str(), IO::SystemFile::SF_OPEN_CREATE | IO::SystemFile::SF_OPEN_WRITE_ONLY);
-                IO::SystemFileStream stream(&file, true);
-                ObjectStream* objStream = ObjectStream::Create(&stream, sc, ObjectStream::ST_XML);
-                SaveObjects(objStream, &assetHolder);
-                objStream->Finalize();
-            }
-
-            // Now release the assets
-            assetHolder.m_asset1 = nullptr;
-            assetHolder.m_asset2 = nullptr;
-            AssetManager::Instance().DispatchEvents();
-            EXPECT_EQ(1, assetStatus1.m_ready);
-            EXPECT_EQ(0, assetStatus1.m_moved);
-            EXPECT_EQ(0, assetStatus1.m_reloaded);
-            EXPECT_EQ(1, assetStatus1.m_saved);
-            EXPECT_EQ(2, assetStatus1.m_unloaded); // asset should be unloaded now
-            EXPECT_EQ(0, assetStatus1.m_error);
-            EXPECT_EQ(1, assetStatus2.m_ready);
-            EXPECT_EQ(0, assetStatus2.m_moved);
-            EXPECT_EQ(0, assetStatus2.m_reloaded);
-            EXPECT_EQ(1, assetStatus2.m_saved);
-            EXPECT_EQ(2, assetStatus2.m_unloaded); // asset should be unloaded now
-            EXPECT_EQ(0, assetStatus2.m_error);
-
-            // load back the saved data
-            {
-                IO::StreamerStream stream("MyAssetHolder.xml", IO::OpenMode::ModeRead);
-                ObjectStream::ClassReadyCB readyCB(AZStd::bind(&AssetManagerTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2));
-                ObjectStream::LoadBlocking(&stream, sc, readyCB);
-            }
-
-            // Verify that all the notifications ave been received
-            AssetManager::Instance().DispatchEvents();
-            //EXPECT_TRUE(assetStatus1.m_ready == 2 && assetStatus1.m_moved == 0 && assetStatus1.m_reloaded == 0 && assetStatus1.m_saved == 1 && assetStatus1.m_unloaded == 3 && assetStatus1.m_error == 0);
-            //EXPECT_TRUE(assetStatus2.m_ready == 2 && assetStatus2.m_moved == 0 && assetStatus2.m_reloaded == 0 && assetStatus2.m_saved == 1 && assetStatus2.m_unloaded == 3 && assetStatus2.m_error == 0);
-
-            // Asset ptr tests.
-            {
-                Asset<EmptyAssetTypeWithId> someAsset = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
-                EmptyAssetTypeWithId* someData = someAsset.Get();
-
-                EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
-
-                // Construct with flags
-                {
-                    Asset<EmptyAssetTypeWithId> assetWithFlags(5);
-                    EXPECT_TRUE(!assetWithFlags.GetId().IsValid());
-                    EXPECT_TRUE(assetWithFlags.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
-                }
-
-                // Construct w/ data (verify id & type)
-                {
-                    Asset<EmptyAssetTypeWithId> assetWithData(someData);
-                    EXPECT_TRUE(someData->GetUseCount() == 2);
-                    EXPECT_TRUE(assetWithData.GetId().IsValid());
-                    EXPECT_TRUE(assetWithData.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
-                }
-
-                // Copy construct (verify id & type, acquisition of new data)
-                {
-                    Asset<EmptyAssetTypeWithId> assetWithData = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
-                    EmptyAssetTypeWithId* newData = assetWithData.Get();
-                    Asset<EmptyAssetTypeWithId> assetWithData2(assetWithData);
-
-                    EXPECT_TRUE(assetWithData.Get()->GetUseCount() == 2);
-                    EXPECT_TRUE(assetWithData.Get() == newData);
-                    EXPECT_TRUE(assetWithData2.Get() == newData);
-                }
-
-                EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
-                
-#if defined(AZ_HAS_RVALUE_REFS)
-                // Move construct (verify id & type, release of old data, acquisition of new)
-                {
-                    Asset<EmptyAssetTypeWithId> assetWithData = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
-                    EmptyAssetTypeWithId* newData = assetWithData.Get();
-                    Asset<EmptyAssetTypeWithId> assetWithData2(AZStd::move(assetWithData));
-
-                    EXPECT_TRUE(assetWithData.Get() == nullptr);
-                    EXPECT_TRUE(assetWithData2.Get() == newData);
-                    EXPECT_TRUE(newData->GetUseCount() == 1);
-                }
-
-                EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
-
-                // Copy from r-value (verify id & type, release of old data, acquisition of new)
-                {
-                    Asset<EmptyAssetTypeWithId> assetWithData = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
-                    EmptyAssetTypeWithId* newData = assetWithData.Get();
-                    EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 2);
-                    Asset<EmptyAssetTypeWithId> assetWithData2 = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
-                    EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 3);
-                    assetWithData2 = AZStd::move(assetWithData);
-                    EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 2);
-
-                    EXPECT_TRUE(assetWithData.Get() == nullptr);
-                    EXPECT_TRUE(assetWithData2.Get() == newData);
-                    EXPECT_TRUE(newData->GetUseCount() == 1);
-                }
-
-                EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
-#endif // AZ_HAS_RVALUE_REFS
-
-                {
-                    // Test copy of a different, but compatible asset type to make sure it takes on the correct info.
-                    Asset<AssetData> genericAsset(someData);
-                    EXPECT_TRUE(genericAsset.GetId().IsValid());
-                    EXPECT_TRUE(genericAsset.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
-
-                    // Test copy of a different incompatible asset type to make sure error is caught, and no data is populated.
-                    AZ_TEST_START_ASSERTTEST;
-                    Asset<MyAssetType> incompatibleAsset(someData);
-                    AZ_TEST_STOP_ASSERTTEST(1);
-                    EXPECT_TRUE(incompatibleAsset.Get() == nullptr);
-                    EXPECT_TRUE(!incompatibleAsset.GetId().IsValid());
-                    EXPECT_EQ(AzTypeInfo<MyAssetType>::Uuid(), incompatibleAsset.GetType());
-                }
-
-                EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
-                EXPECT_TRUE(someData->GetUseCount() == 1);
-            }
-
-            // destroy the database
-            AssetManager::Destroy();
         }
     };
 
-    TEST_F(AssetManagerTest, Test)
+    TEST_F(AssetManagerTest, LoadAndSave)
     {
-        run();
+        // Asset 1
+        MyAssetMsgHandler assetStatus1(Uuid(MYASSET1_ID), AzTypeInfo<MyAssetType>::Uuid());
+        assetStatus1.BusConnect(Uuid(MYASSET1_ID));
+
+        // Asset2
+        MyAssetMsgHandler assetStatus2(Uuid(MYASSET2_ID), AzTypeInfo<MyAssetType>::Uuid());
+        assetStatus2.BusConnect(Uuid(MYASSET2_ID));
+
+        // First, create some assets and write them out to disk
+        {
+            Asset<MyAssetType> asset1;
+            Asset<MyAssetType> asset2;
+            CreateTestAssets(asset1, asset2);
+            EXPECT_EQ(0, assetStatus1.m_ready);
+            EXPECT_EQ(0, assetStatus1.m_moved);
+            EXPECT_EQ(0, assetStatus1.m_reloaded);
+            EXPECT_EQ(1, assetStatus1.m_saved);
+            EXPECT_EQ(0, assetStatus1.m_unloaded);
+            EXPECT_EQ(0, assetStatus1.m_error);
+            EXPECT_EQ(0, assetStatus2.m_ready);
+            EXPECT_EQ(0, assetStatus2.m_moved);
+            EXPECT_EQ(0, assetStatus2.m_reloaded);
+            EXPECT_EQ(1, assetStatus2.m_saved);
+            EXPECT_EQ(0, assetStatus2.m_unloaded);
+            EXPECT_EQ(0, assetStatus2.m_error);
+
+            // asset1 and asset2 go out of scope and should clear the refcount in the DB
+        }
+
+        // Allow asset1 and asset2 to release their data
+        WaitForAssetSystem([&]() { return assetStatus1.m_unloaded == 1 && assetStatus2.m_unloaded == 1; });
+        
+        // Try to load the assets back in
+        MyAssetHolder assetHolder;
+        {
+            Asset<MyAssetType> asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
+            EXPECT_TRUE(asset1);
+            Asset<MyAssetType> asset2;
+            EXPECT_TRUE(asset2.Create(Uuid(MYASSET2_ID), true));
+            EXPECT_TRUE(asset2);
+
+            WaitForAssetSystem([&]() { return assetStatus1.m_ready == 1 && assetStatus2.m_ready == 1; });
+            
+            EXPECT_EQ(1, assetStatus1.m_ready); // asset1 should be ready...
+            EXPECT_EQ(0, assetStatus1.m_moved);
+            EXPECT_EQ(0, assetStatus1.m_reloaded);
+            EXPECT_EQ(1, assetStatus1.m_saved);
+            EXPECT_EQ(1, assetStatus1.m_unloaded); // ...and unloaded once because the prior asset1 went out of scope
+            EXPECT_EQ(0, assetStatus1.m_error);
+            EXPECT_EQ(1, assetStatus2.m_ready); // asset2 should be ready...
+            EXPECT_EQ(0, assetStatus2.m_moved);
+            EXPECT_EQ(0, assetStatus2.m_reloaded);
+            EXPECT_EQ(1, assetStatus2.m_saved);
+            EXPECT_EQ(1, assetStatus2.m_unloaded); // ...and unloaded once because the prior asset2 went out of scope
+            EXPECT_EQ(0, assetStatus2.m_error);
+
+            assetHolder.m_asset1 = asset1;
+            assetHolder.m_asset2 = asset2;
+        }
+
+        // We should still be holding to both assets so nothing should have changed
+        unsigned count = 0;
+        WaitForAssetSystem([&count]() { return count++ > 0; });
+
+        EXPECT_EQ(1, assetStatus1.m_ready);
+        EXPECT_EQ(0, assetStatus1.m_moved);
+        EXPECT_EQ(0, assetStatus1.m_reloaded);
+        EXPECT_EQ(1, assetStatus1.m_saved);
+        EXPECT_EQ(1, assetStatus1.m_unloaded);
+        EXPECT_EQ(0, assetStatus1.m_error);
+        EXPECT_EQ(1, assetStatus2.m_ready);
+        EXPECT_EQ(0, assetStatus2.m_moved);
+        EXPECT_EQ(0, assetStatus2.m_reloaded);
+        EXPECT_EQ(1, assetStatus2.m_saved);
+        EXPECT_EQ(1, assetStatus2.m_unloaded);
+        EXPECT_EQ(0, assetStatus2.m_error);
+
+        // test serializing out assets
+        SerializeContext sc;
+        sc.Class<MyAssetHolder>()
+            ->Field("asset1", &MyAssetHolder::m_asset1)
+            ->Field("asset2", &MyAssetHolder::m_asset2);
+
+        {
+            IO::SystemFile file;
+            AZStd::string fileName = GetTestFolderPath() + "MyAssetHolder.xml";
+            file.Open(fileName.c_str(), IO::SystemFile::SF_OPEN_CREATE | IO::SystemFile::SF_OPEN_WRITE_ONLY);
+            IO::SystemFileStream stream(&file, true);
+            ObjectStream* objStream = ObjectStream::Create(&stream, sc, ObjectStream::ST_XML);
+            SaveObjects(objStream, &assetHolder);
+            objStream->Finalize();
+        }
+
+        // Now release the assets
+        assetHolder.m_asset1 = nullptr;
+        assetHolder.m_asset2 = nullptr;
+        WaitForAssetSystem([&]() { return assetStatus1.m_unloaded == 2 && assetStatus2.m_unloaded == 2; });
+
+        EXPECT_EQ(1, assetStatus1.m_ready);
+        EXPECT_EQ(0, assetStatus1.m_moved);
+        EXPECT_EQ(0, assetStatus1.m_reloaded);
+        EXPECT_EQ(1, assetStatus1.m_saved);
+        EXPECT_EQ(2, assetStatus1.m_unloaded); // asset should be unloaded now
+        EXPECT_EQ(0, assetStatus1.m_error);
+        EXPECT_EQ(1, assetStatus2.m_ready);
+        EXPECT_EQ(0, assetStatus2.m_moved);
+        EXPECT_EQ(0, assetStatus2.m_reloaded);
+        EXPECT_EQ(1, assetStatus2.m_saved);
+        EXPECT_EQ(2, assetStatus2.m_unloaded); // asset should be unloaded now
+        EXPECT_EQ(0, assetStatus2.m_error);
+
+        // load back the saved data
+        {
+            IO::StreamerStream stream("MyAssetHolder.xml", IO::OpenMode::ModeRead);
+            ObjectStream::ClassReadyCB readyCB(AZStd::bind(&AssetManagerTest::OnLoadedClassReady, this, AZStd::placeholders::_1, AZStd::placeholders::_2));
+            ObjectStream::LoadBlocking(&stream, sc, readyCB);
+        }
+
+        // Verify that all the notifications ave been received
+        count = 0;
+        WaitForAssetSystem([&count]() { return count++ > 0; });
+        EXPECT_EQ(2, assetStatus1.m_ready);
+        EXPECT_EQ(0, assetStatus1.m_moved);
+        EXPECT_EQ(0, assetStatus1.m_reloaded);
+        EXPECT_EQ(1, assetStatus1.m_saved);
+        EXPECT_EQ(3, assetStatus1.m_unloaded); // asset should be unloaded now
+        EXPECT_EQ(0, assetStatus1.m_error);
+        EXPECT_EQ(2, assetStatus2.m_ready);
+        EXPECT_EQ(0, assetStatus2.m_moved);
+        EXPECT_EQ(0, assetStatus2.m_reloaded);
+        EXPECT_EQ(1, assetStatus2.m_saved);
+        EXPECT_EQ(3, assetStatus2.m_unloaded); // asset should be unloaded now
+        EXPECT_EQ(0, assetStatus2.m_error);
     }
 
-    /*
-     *
-     */
-    class AssetBusCallbacksTest
-        : public AllocatorsFixture
+    TEST_F(AssetManagerTest, AssetPtrRefCount)
     {
-        AssetBusCallbacks* m_assetCB1;
-        AssetBusCallbacks* m_assetCB2;
-        Asset<MyAssetType>  m_asset1;
-        Asset<MyAssetType>  m_asset2;
-        IO::FileIOBase* m_prevFileIO{ nullptr };
-        TestFileIOBase m_fileIO;
+        // Asset ptr tests.
+        Asset<EmptyAssetTypeWithId> someAsset = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
+        EmptyAssetTypeWithId* someData = someAsset.Get();
 
-    public:
-       
-        void SetUp() override
+        EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
+
+        // Construct with flags
         {
-            AllocatorsFixture::SetUp();
-
-            AllocatorInstance<PoolAllocator>::Create();
-            AllocatorInstance<ThreadPoolAllocator>::Create();
-
-            m_prevFileIO = IO::FileIOBase::GetInstance();
-            IO::FileIOBase::SetInstance(&m_fileIO);
-            IO::Streamer::Descriptor streamerDesc;
-            AZStd::string testFolder = GetTestFolderPath();
-            if (testFolder.length() > 0)
-            {
-                streamerDesc.m_fileMountPoint = testFolder.c_str();
-            }
-            IO::Streamer::Create(streamerDesc);
+            Asset<EmptyAssetTypeWithId> assetWithFlags(5);
+            EXPECT_TRUE(!assetWithFlags.GetId().IsValid());
+            EXPECT_TRUE(assetWithFlags.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
         }
 
-        void TearDown() override
+        // Construct w/ data (verify id & type)
         {
-            if (IO::Streamer::IsReady())
-            {
-                IO::Streamer::Destroy();
-            }
-
-            IO::FileIOBase::SetInstance(m_prevFileIO);
-            AllocatorInstance<ThreadPoolAllocator>::Destroy();
-            AllocatorInstance<PoolAllocator>::Destroy();
-
-            AllocatorsFixture::TearDown();
+            Asset<EmptyAssetTypeWithId> assetWithData(someData);
+            EXPECT_TRUE(someData->GetUseCount() == 2);
+            EXPECT_TRUE(assetWithData.GetId().IsValid());
+            EXPECT_TRUE(assetWithData.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
         }
 
-        void OnAssetReady(Asset<AssetData> asset, AssetBusCallbacks* listener)
+        // Copy construct (verify id & type, acquisition of new data)
         {
-            Asset<MyAssetType> _asset = static_pointer_cast<MyAssetType>(asset);
-            if (_asset.GetId().m_guid == Uuid(MYASSET1_ID))
+            Asset<EmptyAssetTypeWithId> assetWithData = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
+            EmptyAssetTypeWithId* newData = assetWithData.Get();
+            Asset<EmptyAssetTypeWithId> assetWithData2(assetWithData);
+
+            EXPECT_TRUE(assetWithData.Get()->GetUseCount() == 2);
+            EXPECT_TRUE(assetWithData.Get() == newData);
+            EXPECT_TRUE(assetWithData2.Get() == newData);
+        }
+
+        EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
+
+#if defined(AZ_HAS_RVALUE_REFS)
+        // Move construct (verify id & type, release of old data, acquisition of new)
+        {
+            Asset<EmptyAssetTypeWithId> assetWithData = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
+            EmptyAssetTypeWithId* newData = assetWithData.Get();
+            Asset<EmptyAssetTypeWithId> assetWithData2(AZStd::move(assetWithData));
+
+            EXPECT_TRUE(assetWithData.Get() == nullptr);
+            EXPECT_TRUE(assetWithData2.Get() == newData);
+            EXPECT_TRUE(newData->GetUseCount() == 1);
+        }
+
+        EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
+
+        // Copy from r-value (verify id & type, release of old data, acquisition of new)
+        {
+            Asset<EmptyAssetTypeWithId> assetWithData = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
+            EmptyAssetTypeWithId* newData = assetWithData.Get();
+            EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 2);
+            Asset<EmptyAssetTypeWithId> assetWithData2 = AssetManager::Instance().CreateAsset<EmptyAssetTypeWithId>(Uuid::CreateRandom());
+            EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 3);
+            assetWithData2 = AZStd::move(assetWithData);
+            EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 2);
+
+            EXPECT_TRUE(assetWithData.Get() == nullptr);
+            EXPECT_TRUE(assetWithData2.Get() == newData);
+            EXPECT_TRUE(newData->GetUseCount() == 1);
+        }
+
+        EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
+#endif // AZ_HAS_RVALUE_REFS
+
+        {
+            // Test copy of a different, but compatible asset type to make sure it takes on the correct info.
+            Asset<AssetData> genericAsset(someData);
+            EXPECT_TRUE(genericAsset.GetId().IsValid());
+            EXPECT_TRUE(genericAsset.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
+
+            // Test copy of a different incompatible asset type to make sure error is caught, and no data is populated.
+            AZ_TEST_START_ASSERTTEST;
+            Asset<MyAssetType> incompatibleAsset(someData);
+            AZ_TEST_STOP_ASSERTTEST(1);
+            EXPECT_TRUE(incompatibleAsset.Get() == nullptr); // Verify data assignment was rejected
+            EXPECT_TRUE(!incompatibleAsset.GetId().IsValid()); // Verify asset Id was not assigned
+            EXPECT_EQ(AzTypeInfo<MyAssetType>::Uuid(), incompatibleAsset.GetType()); // Verify asset ptr type is still the original template type.
+        }
+
+        EXPECT_TRUE(EmptyAssetTypeWithId::s_alive == 1);
+        EXPECT_TRUE(someData->GetUseCount() == 1);
+    }
+
+    TEST_F(AssetManagerTest, LoadFromMultipleThreads)
+    {
+        {
+            // Track Asset 1
+            MyAssetMsgHandler assetStatus1(Uuid(MYASSET1_ID), AzTypeInfo<MyAssetType>::Uuid());
+            assetStatus1.BusConnect(Uuid(MYASSET1_ID));
+
             {
-                EXPECT_TRUE(listener == m_assetCB1);
-                m_assetCB1 = NULL;
+                Asset<MyAssetType> asset1, asset2;
+                CreateTestAssets(asset1, asset2);
+            }
+            
+            // Wait for Asset 1 to unload so we start clean
+            WaitForAssetSystem([&]() { return assetStatus1.m_unloaded > 0; });
+        }
+
+        // Spin up threads that load assets, both blocking and non-blocking.
+        // Ensure a blocking load against and already-in-progress async load still blocks until load is complete.
+
+        AZStd::atomic_bool nonBlockingResult(true);
+        AZStd::atomic_bool blockingResult(true);
+
+        AZStd::function<void()> threadFuncNonBlocking =
+            [&nonBlockingResult]()
+        {
+            auto asset = AssetManager::Instance().GetAsset<MyAssetType>(AssetId(Uuid(MYASSET1_ID)), true /*load*/, nullptr, false /*not blocking*/);
+            if (!asset.IsLoading() && !asset.IsReady())
+            {
+                nonBlockingResult = false;
+                AZ_TracePrintf("Error - NonBlocking", "Asset is not loading, and is not ready.");
+                return;
+            }
+            while (asset.IsLoading())
+            {
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
+            }
+            if (!asset.IsReady())
+            {
+                AZ_TracePrintf("Error - NonBlocking", "Asset failed to load.");
+                nonBlockingResult = false;
+            }
+        };
+        AZStd::function<void()> threadFuncBlocking =
+            [&blockingResult]()
+        {
+            auto asset = AssetManager::Instance().GetAsset<MyAssetType>(AssetId(Uuid(MYASSET1_ID)), true /*load*/, nullptr, true /*blocking*/);
+            if (!asset.IsReady())
+            {
+                AZ_TracePrintf("Error - Blocking", "Asset is not fully loaded after blocking load call.");
+                blockingResult = false;
+            }
+        };
+
+        static const size_t kNonBlockingThreads = 100;
+        static const size_t kBlockingThreads = 100;
+
+        AZStd::thread nonBlockingThreads[kNonBlockingThreads];
+        AZStd::thread blockingThreads[kBlockingThreads];
+
+        for (AZStd::thread& t : nonBlockingThreads)
+        {
+            t = AZStd::thread(threadFuncNonBlocking);
+        }
+
+        for (AZStd::thread& t : blockingThreads)
+        {
+            t = AZStd::thread(threadFuncBlocking);
+        }
+
+        for (AZStd::thread& t : nonBlockingThreads)
+        {
+            t.join();
+        }
+
+        for (AZStd::thread& t : blockingThreads)
+        {
+            t.join();
+        }
+
+        EXPECT_TRUE(nonBlockingResult);
+        EXPECT_TRUE(blockingResult);
+    }
+
+    TEST_F(AssetManagerTest, AssetCallbacks_Clear)
+    {
+        // Helper function that always asserts. Used to make sure that clearing asset callbacks actually clears them.
+        auto testAssetCallbacksClear = []()
+        {
+            EXPECT_TRUE(false);
+        };
+
+        AssetBusCallbacks* assetCB1 = aznew AssetBusCallbacks;
+
+        // Test clearing the callbacks (using bind allows us to ignore all arguments)
+        assetCB1->SetCallbacks(
+            /*OnAssetReady*/ AZStd::bind(testAssetCallbacksClear),
+            /*OnAssetMoved*/ AZStd::bind(testAssetCallbacksClear),
+            /*OnAssetReloaded*/ AZStd::bind(testAssetCallbacksClear),
+            /*OnAssetSaved*/ AZStd::bind(testAssetCallbacksClear),
+            /*OnAssetUnloaded*/ AZStd::bind(testAssetCallbacksClear),
+            /*OnAssetError*/ AZStd::bind(testAssetCallbacksClear));
+        assetCB1->ClearCallbacks();
+        // Invoke all callback functions to make sure nothing is registered anymore.
+        assetCB1->OnAssetReady(nullptr);
+        assetCB1->OnAssetMoved(nullptr, nullptr);
+        assetCB1->OnAssetReloaded(nullptr);
+        assetCB1->OnAssetSaved(nullptr, true);
+        assetCB1->OnAssetUnloaded(AZ::Data::AssetId(), AZ::Data::AssetType());
+        assetCB1->OnAssetError(nullptr);
+
+        delete assetCB1;
+    }
+
+    TEST_F(AssetManagerTest, AssetCallbacks_Bind)
+    {
+        {
+            Asset<MyAssetType> asset1, asset2;
+            CreateTestAssets(asset1, asset2);
+        }
+
+        AssetBusCallbacks callbacks[2];
+        AssetBusCallbacks* assetCB1 = &callbacks[0];
+        AssetBusCallbacks* assetCB2 = &callbacks[1];
+        Asset<MyAssetType> asset1;
+        Asset<MyAssetType> asset2;
+
+        auto onAssetReady = [&assetCB1, &assetCB2](Asset<AssetData> asset, AssetBusCallbacks& callbacks)
+        {
+            Asset<MyAssetType> myasset = static_pointer_cast<MyAssetType>(asset);
+            if (myasset.GetId().m_guid == Uuid(MYASSET1_ID))
+            {
+                EXPECT_EQ(assetCB1, &callbacks);
+                assetCB1 = nullptr;
+            }
+            else if (myasset.GetId().m_guid == Uuid(MYASSET2_ID))
+            {
+                EXPECT_EQ(assetCB2, &callbacks);
+                assetCB2 = nullptr;
             }
             else
             {
-                EXPECT_TRUE(listener == m_assetCB2);
-                m_assetCB2 = NULL;
+                EXPECT_TRUE(false) << "Loaded asset doesn't match any test asset";
             }
-            delete listener;
-        }
+        };
 
-        // Helper function that always asserts. Used to make sure that clearing asset callbacks actually clears them.
-        void TestAssetCallbacksClear()
+        // load asset 1
+        asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
+
+        assetCB1->SetCallbacks(onAssetReady, nullptr, nullptr, nullptr, nullptr, nullptr);
+        assetCB1->BusConnect(asset1.GetId());
+
+        // load asset 2
+        asset2 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET2_ID));
+        assetCB2->SetCallbacks(onAssetReady, nullptr, nullptr, nullptr, nullptr, nullptr);
+        assetCB2->BusConnect(asset2.GetId());
+
+        // Wait for assets to load
+        while (assetCB1 || assetCB2)
         {
-            EXPECT_TRUE(false);
+            AssetManager::Instance().DispatchEvents();
+            AZStd::this_thread::yield();
         }
 
-        void run()
-        {
-            // create the database
-            AssetManager::Descriptor desc;
-            AssetManager::Create(desc);
-
-            // create and register an asset handler
-            MyAssetHandlerAndCatalog* myAssetHandlerAndCatalog = aznew MyAssetHandlerAndCatalog;
-            AssetManager::Instance().RegisterHandler(myAssetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
-            AssetManager::Instance().RegisterCatalog(myAssetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
-
-            // load asset 1
-            m_asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
-            m_assetCB1 = aznew AssetBusCallbacks;
-
-            // Test clearing the callbacks
-            m_assetCB1->SetCallbacks(
-                /*OnAssetReady*/ AZStd::bind(&AssetBusCallbacksTest::TestAssetCallbacksClear, this),
-                /*OnAssetMoved*/ AZStd::bind(&AssetBusCallbacksTest::TestAssetCallbacksClear, this),
-                /*OnAssetReloaded*/ AZStd::bind(&AssetBusCallbacksTest::TestAssetCallbacksClear, this),
-                /*OnAssetSaved*/ AZStd::bind(&AssetBusCallbacksTest::TestAssetCallbacksClear, this),
-                /*OnAssetUnloaded*/ AZStd::bind(&AssetBusCallbacksTest::TestAssetCallbacksClear, this),
-                /*OnAssetError*/ AZStd::bind(&AssetBusCallbacksTest::TestAssetCallbacksClear, this));
-            m_assetCB1->ClearCallbacks();
-            // Invoke all callback functions to make sure nothing is registered anymore.
-            m_assetCB1->OnAssetReady(nullptr);
-            m_assetCB1->OnAssetMoved(nullptr, nullptr);
-            m_assetCB1->OnAssetReloaded(nullptr);
-            m_assetCB1->OnAssetSaved(nullptr, true);
-            m_assetCB1->OnAssetUnloaded(AZ::Data::AssetId(), AZ::Data::AssetType());
-            m_assetCB1->OnAssetError(nullptr);
-
-
-            m_assetCB1->SetCallbacks(AZStd::bind(&AssetBusCallbacksTest::OnAssetReady, this, AZStd::placeholders::_1, m_assetCB1), NULL, NULL, NULL, NULL, NULL);
-            m_assetCB1->BusConnect(m_asset1.GetId());
-
-            // load asset 2
-            m_asset2 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET2_ID));
-            m_assetCB2 = aznew AssetBusCallbacks;
-            m_assetCB2->SetCallbacks(AZStd::bind(&AssetBusCallbacksTest::OnAssetReady, this, AZStd::placeholders::_1, m_assetCB2), NULL, NULL, NULL, NULL, NULL);
-            m_assetCB2->BusConnect(m_asset2.GetId());
-
-            while (m_assetCB1 || m_assetCB2)
-            {
-                AssetManager::Instance().DispatchEvents();
-                AZStd::this_thread::yield();
-            }
-
-            EXPECT_TRUE(m_asset1.IsReady());
-            m_asset1 = nullptr;
-            EXPECT_TRUE(m_asset2.IsReady());
-            m_asset2 = nullptr;
-
-            // destroy the database
-            AssetManager::Destroy();
-        }
-    };
-
-    TEST_F(AssetBusCallbacksTest, Test)
-    {
-        run();
+        EXPECT_TRUE(asset1.IsReady());
+        asset1 = nullptr;
+        EXPECT_TRUE(asset2.IsReady());
+        asset2 = nullptr;
     }
 
     /**
@@ -1138,7 +1207,9 @@ namespace UnitTest
 
     TEST_F(AssetJobsFloodTest, Test)
     {
+        #if !defined(AZ_PLATFORM_APPLE)
         run();
+        #endif
     }
 
     /**
@@ -1466,7 +1537,9 @@ namespace UnitTest
     // We do not do this in production, so the test is disabled until we need it
     TEST_F(AssetJobsMultithreadedTest, DISABLED_Test)
     {
+        #if !defined(AZ_PLATFORM_APPLE)
         run();
+        #endif
     }
 }
 

@@ -22,6 +22,7 @@
 #include "EMotionFXManager.h"
 #include <MCore/Source/AttributeSettings.h>
 #include <AzCore/std/sort.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 namespace
 {
@@ -177,7 +178,6 @@ namespace EMotionFX
         {
             AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
 
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
             OnUpdateUniqueData(animGraphInstance);
         }
 
@@ -566,8 +566,8 @@ namespace EMotionFX
         uint32 uniqueDataMotionIndex = 0;
         for (uint32 i = 0; i < attributeIndex; ++i)
         {
-            AttributeBlendSpaceMotion* motionAttribute = static_cast<AttributeBlendSpaceMotion*>(motionsAttribute->GetAttribute(i));
-            if (motionAttribute->TestFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
+            AttributeBlendSpaceMotion* theMotionAttribute = static_cast<AttributeBlendSpaceMotion*>(motionsAttribute->GetAttribute(i));
+            if (theMotionAttribute->TestFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
             {
                 continue;
             }
@@ -617,9 +617,9 @@ namespace EMotionFX
 
     void BlendSpace1DNode::SortMotionInstances(UniqueData& uniqueData)
     {
-        const AZ::u32 numMotions = (AZ::u32)uniqueData.m_motionCoordinates.size();
+        const AZ::u16 numMotions = aznumeric_caster(uniqueData.m_motionCoordinates.size());
         uniqueData.m_sortedMotions.resize(numMotions);
-        for (AZ::u32 i = 0; i < numMotions; ++i)
+        for (AZ::u16 i = 0; i < numMotions; ++i)
         {
             uniqueData.m_sortedMotions[i] = i;
         }
@@ -740,5 +740,12 @@ namespace EMotionFX
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         outputPose->InitFromBindPose(actorInstance);
     }
+
+    void BlendSpace1DNode::Rewind(AnimGraphInstance* animGraphInstance)
+    {
+        UniqueData* uniqueData = static_cast<BlendSpace1DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        RewindMotions(uniqueData->m_motionInfos);
+    }
+
 } // namespace EMotionFX
 

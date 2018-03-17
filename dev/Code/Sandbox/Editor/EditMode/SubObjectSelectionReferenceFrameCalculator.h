@@ -19,7 +19,7 @@
 #pragma once
 
 
-#include "ISubObjectSelectioNReferenceFrameCalculator.h"
+#include "ISubObjectSelectionReferenceFrameCalculator.h"
 #include "Objects/SubObjSelection.h"
 
 class SubObjectSelectionReferenceFrameCalculator

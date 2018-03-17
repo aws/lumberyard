@@ -310,18 +310,6 @@ int CMannequinDialog::defaultTabPosition<CPreviewerPage*>();
 template<>
 int CMannequinDialog::defaultTabPosition<CErrorReport*>();
 
-enum
-{
-    BITMAP_ERROR = 0,
-    BITMAP_WARNING = 1,
-    BITMAP_COMMENT = 2,
-
-    COLUMN_MAIL_ICON = 0,
-    COLUMN_CHECK_ICON = 2,
-
-    ID_REPORT_CONTROL = 100
-};
-
 const QString MANNEQUIN_FOLDER = "Animations/Mannequin/ADB/";
 const QString TAGS_FILENAME_ENDING = "tags";
 const QString TAGS_FILENAME_EXTENSION = ".xml";

@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "UIFramework.hxx"
 
@@ -39,6 +39,15 @@
 #include <QDir>
 
 #include <AzFramework/StringFunc/StringFunc.h>
+
+#ifndef AZ_PLATFORM_WINDOWS
+extern int __argc;
+extern char **__argv;
+#endif
+
+#ifdef AZ_PLATFORM_APPLE
+#include <mach-o/dyld.h>
+#endif
 
 //#include "PanelData.h"
 
@@ -299,24 +308,22 @@ namespace AzToolsFramework
     void Framework::Init()
     {
         char myFileName[MAX_PATH] = {0};
+#ifdef AZ_PLATFORM_APPLE
+        uint32_t bufSize = AZ_ARRAY_SIZE(myFileName);
+        _NSGetExecutablePath(myFileName, &bufSize);
+        if (strlen(myFileName) > 0)
+#else
         if (GetModuleFileNameA(NULL, myFileName, MAX_PATH))
+#endif
         {
-            char driveName[MAX_PATH] = {0};
-            char directoryName[MAX_PATH] = {0};
-            char qtPluginDirectory[MAX_PATH] = {0};
-            char executableFolder[MAX_PATH] = {0};
-            ::_splitpath_s(myFileName, driveName, MAX_PATH, directoryName, MAX_PATH, NULL, 0, NULL, 0);
+            QFileInfo fi(myFileName);
+            QString executableFolder = fi.absolutePath();
+            QString qtPluginDirectory = fi.dir().absoluteFilePath("qtlibs/plugins");
 
-            strcpy_s(executableFolder, MAX_PATH, driveName);
-            strcat_s(executableFolder, MAX_PATH, directoryName);
-
-            strcpy_s(qtPluginDirectory, MAX_PATH, executableFolder);
-            strcat_s(qtPluginDirectory, MAX_PATH, "qtlibs\\plugins");
-
-            if (AZ::IO::SystemFile::Exists(qtPluginDirectory))
+            if (AZ::IO::SystemFile::Exists(qtPluginDirectory.toUtf8().data()))
             {
                 QApplication::addLibraryPath(qtPluginDirectory);
-                m_QtPluginsPaths.push_back(qtPluginDirectory); // keep track of all Qt plugin folders
+                m_QtPluginsPaths.push_back(qtPluginDirectory.toUtf8().data()); // keep track of all Qt plugin folders
             }
             else
             {

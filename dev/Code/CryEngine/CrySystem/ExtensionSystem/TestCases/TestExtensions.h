@@ -37,7 +37,7 @@ struct IFoobar
     virtual void Foo() = 0;
 };
 
-DECLARE_BOOST_POINTERS(IFoobar);
+DECLARE_SMART_POINTERS(IFoobar);
 
 struct IRaboof
     : public ICryUnknown
@@ -47,7 +47,7 @@ struct IRaboof
     virtual void Rab() = 0;
 };
 
-DECLARE_BOOST_POINTERS(IRaboof);
+DECLARE_SMART_POINTERS(IRaboof);
 
 struct IA
     : public ICryUnknown
@@ -57,7 +57,7 @@ struct IA
     virtual void A() = 0;
 };
 
-DECLARE_BOOST_POINTERS(IA);
+DECLARE_SMART_POINTERS(IA);
 
 struct IB
     : public ICryUnknown
@@ -67,7 +67,7 @@ struct IB
     virtual void B() = 0;
 };
 
-DECLARE_BOOST_POINTERS(IB);
+DECLARE_SMART_POINTERS(IB);
 
 struct IC
     : public ICryUnknown
@@ -77,7 +77,7 @@ struct IC
     virtual void C() = 0;
 };
 
-DECLARE_BOOST_POINTERS(IC);
+DECLARE_SMART_POINTERS(IC);
 
 struct ICustomC
     : public IC
@@ -87,7 +87,7 @@ struct ICustomC
     virtual void C1() = 0;
 };
 
-DECLARE_BOOST_POINTERS(ICustomC);
+DECLARE_SMART_POINTERS(ICustomC);
 
 //////////////////////////////////////////////////////////////////////////
 // use of extension system without any of the helper macros/templates
@@ -98,7 +98,9 @@ struct IDontLikeMacros
     template <class T>
     friend const CryInterfaceID& InterfaceCastSemantics::cryiidof();
     template <class T>
-    friend void boost::checked_delete(T* x);
+    friend void AZStd::Internal::sp_ms_deleter<T>::destroy();
+    template <class T>
+    friend AZStd::shared_ptr<T> AZStd::make_shared<T>();
 protected:
     virtual ~IDontLikeMacros() {}
 
@@ -116,7 +118,7 @@ public:
     virtual void CallMe() = 0;
 };
 
-DECLARE_BOOST_POINTERS(IDontLikeMacros);
+DECLARE_SMART_POINTERS(IDontLikeMacros);
 
 
 #endif // #ifdef EXTENSION_SYSTEM_INCLUDE_TESTCASES

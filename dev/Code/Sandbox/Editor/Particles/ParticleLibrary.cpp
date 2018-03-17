@@ -37,7 +37,7 @@ bool CParticleLibrary::Load(const QString& filename)
     m_bNewLibrary = false;
     // Always set the filename. Ignored the unique check.
     SetFilename(filename, /*checkForUnique = */false);
-    XmlNodeRef root = GetIEditor()->GetSystem()->LoadXmlFromFile(filename.toLatin1().data());
+    XmlNodeRef root = GetIEditor()->GetSystem()->LoadXmlFromFile(filename.toUtf8().data());
     if (!root)
     {
         return false;
@@ -67,7 +67,7 @@ void CParticleLibrary::Serialize(XmlNodeRef& root, bool bLoading)
                 continue;
             }
             QString effectName = name + "." + itemNode->getAttr("Name");
-            IParticleEffect* pEffect = GetIEditor()->GetEnv()->pParticleManager->LoadEffect(effectName.toLatin1().data(), itemNode, false);
+            IParticleEffect* pEffect = GetIEditor()->GetEnv()->pParticleManager->LoadEffect(effectName.toUtf8().data(), itemNode, false);
             if (pEffect)
             {
                 CParticleItem* pItem = new CParticleItem(pEffect);
@@ -97,7 +97,7 @@ void CParticleLibrary::Serialize(XmlNodeRef& root, bool bLoading)
     else
     {
         // Saving.
-        root->setAttr("Name", GetName().toLatin1().data());
+        root->setAttr("Name", GetName().toUtf8().data());
         char version[50];
         GetIEditor()->GetFileVersion().ToString(version, AZ_ARRAY_SIZE(version));
         root->setAttr("SandboxVersion", version);
@@ -140,7 +140,7 @@ bool CParticleLibrary::SetFilename(const QString& filename, bool checkForUnique 
     if (checkForUnique)
     {
         // If this is a new library and already exist a file with the same name
-        if (xmlFile.Open(filename.toLatin1().data(), "rb"))
+        if (xmlFile.Open(filename.toUtf8().data(), "rb"))
         {
             return false;
         }

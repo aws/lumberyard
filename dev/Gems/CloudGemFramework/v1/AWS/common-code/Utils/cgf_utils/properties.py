@@ -192,10 +192,12 @@ class Integer(object):
         if value is None:
             raise ValidationError('A value for property {} must be provided.'.format(name))
 
-        if not isinstance(value, int):
-            raise ValidationError('The {} property value {} must be an integer. It is currently a {}'.format(name, value, type(value)))
+        try:
+            result = int(value)
+        except ValueError:
+            raise ValidationError('The {} property value {} must be an integer.'.format(name, value))
 
-        return value
+        return result
 
 
 def load(event, schema):

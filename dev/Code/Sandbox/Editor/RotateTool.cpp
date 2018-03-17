@@ -176,11 +176,11 @@ void CRotateTool::Display(DisplayContext& dc)
 
         if (m_object->CheckFlags(OBJFLAG_IS_PARTICLE))
         {
-            dc.DrawTextLabel(ap.pos, textScale, label.toLatin1().data());
+            dc.DrawTextLabel(ap.pos, textScale, label.toUtf8().data());
         }
         else
         {
-            dc.DrawTextOn2DBox(ap.pos, label.toLatin1().data(), textScale, Col_White, textBackground);
+            dc.DrawTextOn2DBox(ap.pos, label.toUtf8().data(), textScale, Col_White, textBackground);
         }
     }
 

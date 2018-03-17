@@ -173,7 +173,7 @@ namespace minigui
         // </interfuscator:shuffle>
     };
 
-    DECLARE_BOOST_POINTERS(IMiniGUI);
+    DECLARE_SMART_POINTERS(IMiniGUI);
 
     struct IMiniCtrl
         : public _reference_target_t

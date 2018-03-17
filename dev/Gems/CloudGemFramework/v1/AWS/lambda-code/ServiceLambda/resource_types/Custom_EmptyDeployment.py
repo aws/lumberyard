@@ -10,9 +10,9 @@
 #
 # $Revision: #7 $
 
-import properties
-import custom_resource_response
-from resource_manager_common import aws_utils
+from cgf_utils import properties
+from cgf_utils import custom_resource_response
+from cgf_utils import aws_utils
 
 def handler(event, context):
     
@@ -28,4 +28,4 @@ def handler(event, context):
 
     physical_resource_id = 'CloudCanvas:EmptyDeployment:{}'.format(aws_utils.get_stack_name_from_stack_arn(event['StackId']))
 
-    custom_resource_response.succeed(event, context, data, physical_resource_id)
+    return custom_resource_response.success_response(data, physical_resource_id)

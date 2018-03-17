@@ -15,7 +15,7 @@
 
 
 #include <complex>
-#include <IJobManager_JobDelegator.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #define WATER_UPDATE_THREAD_NAME "WaterUpdate"
 
@@ -41,9 +41,6 @@ struct SWaterUpdateThreadInfo
     float fTime;
     bool bOnlyHeight;
 };
-
-void WaterAsyncUpdate(CWaterSim*, int, float, bool, void*);
-DECLARE_JOB("WaterUpdate", TWaterUpdateJob, WaterAsyncUpdate);
 
 class CWaterSim
 {
@@ -74,8 +71,6 @@ public:
 
         m_nWorkerThreadID = m_nFillThreadID = 0;
         m_bQuit = false;
-
-        memset(&m_JobState, 0, sizeof(m_JobState));
     }
 
     virtual ~CWaterSim()
@@ -510,6 +505,8 @@ public:
 
     void Update(int nFrameID, float fTime, bool bOnlyHeight)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
+
         CRenderer* rd = gRenDev;
 
         m_nFillThreadID = m_nWorkerThreadID = 0;
@@ -555,7 +552,7 @@ public:
         pSizer->AddObject(this, sizeof(*this));
     }
 
-    void SpawnUpdateJob(int nFrameID, float fTime, bool bOnlyHeight, void* pRawPtr)
+    void SpawnUpdateJob(int nFrameID, float fTime, bool bOnlyHeight, void*)
     {
         if (nFrameID != m_nFrameID)
         {
@@ -567,14 +564,18 @@ public:
         }
 
         WaitForJob();
-        TWaterUpdateJob job(this, nFrameID, fTime, bOnlyHeight, pRawPtr);
-        job.RegisterJobState(&m_JobState);
-        job.Run();
+        m_jobExecutor.Reset();
+        m_jobExecutor.StartJob(
+            [this, nFrameID, fTime, bOnlyHeight]()
+            {
+                this->Update(nFrameID, fTime, bOnlyHeight);
+            }
+        );
     }
 
     void WaitForJob()
     {
-        gEnv->GetJobManager()->WaitForJob(m_JobState);
+        m_jobExecutor.WaitForCompletion();
     }
 
 protected:
@@ -606,20 +607,9 @@ protected:
     float m_fMaxWaveSize;
     float m_fChoppyWaveScale;
 
-    JobManager::SJobState m_JobState;
-    SWaterUpdateThreadInfo m_JobInfo[2];
+    AZ::LegacyJobExecutor m_jobExecutor;
 } _ALIGN(128);
 
-
-void WaterAsyncUpdate(CWaterSim* pWaterSim, int nFrameID, float fTime, bool bOnlyHeight, void* pRawPtr)
-{
-    if (pWaterSim == NULL)
-    {
-        return;
-    }
-
-    pWaterSim->Update(nFrameID, fTime, bOnlyHeight);
-}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////

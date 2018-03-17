@@ -15,7 +15,23 @@ from urlparse import urlparse
 import random
 import time
 import json
-from resource_manager_common import json_utils
+from cgf_utils import json_utils
+
+
+def success_response(data, physical_resource_id):
+    return {
+        'Success': True,
+        'Data': data,
+        'PhysicalResourceId': physical_resource_id
+    }
+
+
+def failure_response(reason):
+    return {
+        'Success': False,
+        'Reason': reason
+    }
+
 
 class HttpError(Exception):
     def __init__(self, response):
@@ -23,7 +39,7 @@ class HttpError(Exception):
 
 
 def succeed(event, context, data, physical_resource_id):
-    print 'succeeded -- event: {} -- context: {} -- data: {} -- physical_resource_id: {}'.format(json.dumps(event, cls=json_utils.JSONCustomEncoder), context, data, physical_resource_id)
+    print 'succeeded -- event: {} -- context: {} -- data: {} -- physical_resource_id: {}'.format(json.dumps(event, cls=json_utils.SafeEncoder), context, data, physical_resource_id)
     __send(event, context, 
         {
             'Status': 'SUCCESS',
@@ -37,7 +53,7 @@ def succeed(event, context, data, physical_resource_id):
 
 
 def fail(event, context, reason):
-    print 'failed -- event: {} -- context: {} -- reason: {}'.format(json.dumps(event, cls=json_utils.JSONCustomEncoder), context, reason)
+    print 'failed -- event: {} -- context: {} -- reason: {}'.format(json.dumps(event, cls=json_utils.SafeEncoder), context, reason)
     __send(event, context, 
         {
             'Status': 'FAILED',

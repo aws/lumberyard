@@ -86,8 +86,8 @@ MaterialBrowserFilterModel::MaterialBrowserFilterModel(QObject* parent)
     using namespace AzToolsFramework::MaterialBrowser;
 
     MaterialBrowserSourceControlBus::Handler::BusConnect();
-    AssetBrowserModelNotificationsBus::Handler::BusConnect();
-    MaterialBrowserRequestsBus::Handler::BusConnect();
+    AssetBrowserModelNotificationBus::Handler::BusConnect();
+    MaterialBrowserRequestBus::Handler::BusConnect();
     AzFramework::AssetCatalogEventBus::Handler::BusConnect();
 
     m_imageList.push_back(QPixmap(":/MaterialBrowser/images/material_00.png"));
@@ -124,9 +124,9 @@ MaterialBrowserFilterModel::~MaterialBrowserFilterModel()
     SAFE_DELETE(m_jobContext);
     SAFE_DELETE(m_jobManager);
 
-    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler::BusDisconnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusDisconnect();
     MaterialBrowserSourceControlBus::Handler::BusDisconnect();
-    AzToolsFramework::MaterialBrowser::MaterialBrowserRequestsBus::Handler::BusDisconnect();
+    AzToolsFramework::MaterialBrowser::MaterialBrowserRequestBus::Handler::BusDisconnect();
     AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
 }
 

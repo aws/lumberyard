@@ -29,7 +29,7 @@ namespace MCore
         mFinishedJobLists.Reserve(512);
         mFinishedJobLists.SetMemoryCategory(MCORE_MEMCATEGORY_JOBSYSTEM);
 
-        const uint32 numThreads = MCore::Max<uint32>(1, std::thread::hardware_concurrency());
+        const uint32 numThreads = MCore::Max<uint32>(1, AZStd::thread::hardware_concurrency());
         Init(numThreads);
     }
 

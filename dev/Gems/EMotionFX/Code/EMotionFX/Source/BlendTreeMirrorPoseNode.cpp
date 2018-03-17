@@ -99,13 +99,19 @@ namespace EMotionFX
         return clone;
     }
 
-
     // pre-create unique data object
     void BlendTreeMirrorPoseNode::Init(AnimGraphInstance* animGraphInstance)
     {
         MCORE_UNUSED(animGraphInstance);
     }
 
+
+    void BlendTreeMirrorPoseNode::HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode)
+    {
+        MCORE_UNUSED(animGraphInstance);
+        MCORE_UNUSED(inputNode);
+        MCORE_UNUSED(uniqueDataOfThisNode);
+    }
 
     // check if mirroring is enabled
     bool BlendTreeMirrorPoseNode::GetIsMirroringEnabled(AnimGraphInstance* animGraphInstance) const

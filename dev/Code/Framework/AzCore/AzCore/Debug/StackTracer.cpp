@@ -18,7 +18,7 @@
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
 #   include <AzCore/Debug/StackTracerLinux.inl>
 #else // DEFAULT NOT STACK TRACE SUPPORT
-#if defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_ANDROID)
+#if AZ_TRAIT_NO_SUPPORT_STACK_TRACE
 /* NOTE: Android has not official support, but there are solutions for different versions like
 https://android.googlesource.com/platform/system/core/+/kitkat-dev/libutils/CallStack.cpp for KitKat
 Add an implementation when we establish the supported versions!*/

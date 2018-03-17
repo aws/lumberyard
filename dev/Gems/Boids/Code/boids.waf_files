@@ -3,7 +3,7 @@
     {
         "Root":
         [
-            "source/StdAfx.cpp"
+            "source/Boids_precompiled.cpp"
         ],
         "Source":
         [
@@ -14,7 +14,7 @@
     {
         "Root":
         [
-            "source/StdAfx.h"
+            "source/Boids_precompiled.h"
         ],
         "Source":
         [

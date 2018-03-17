@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "InAppPurchases_precompiled.h"
 
 #include "InAppPurchasesModule.h"
 #include <platform_impl.h>

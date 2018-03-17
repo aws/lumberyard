@@ -68,7 +68,7 @@ public:
             beginRemoveRows(QModelIndex(), r, r);
             CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
             assert(pSequence);
-            pSequence->RemoveTrackEvent(eventName.toLatin1().data());
+            pSequence->RemoveTrackEvent(eventName.toUtf8().data());
             endRemoveRows();
         }
         return true;
@@ -80,7 +80,7 @@ public:
         assert(pSequence);
         const int index = rowCount();
         beginInsertRows(QModelIndex(), index, index);
-        const bool result = pSequence->AddTrackEvent(name.toLatin1().data());
+        const bool result = pSequence->AddTrackEvent(name.toUtf8().data());
         endInsertRows();
         if (!result)
         {
@@ -101,12 +101,12 @@ public:
         if (up)
         {
             beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
-            pSequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toLatin1().data());
+            pSequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
         }
         else
         {
             beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
-            pSequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toLatin1().data());
+            pSequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
         }
         endMoveRows();
         return true;
@@ -152,7 +152,7 @@ public:
 
         const QString oldName = index.data().toString();
         const QString newName = value.toString();
-        pSequence->RenameTrackEvent(oldName.toLatin1().data(), newName.toLatin1().data());
+        pSequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
         emit dataChanged(index, index);
         return true;
     }

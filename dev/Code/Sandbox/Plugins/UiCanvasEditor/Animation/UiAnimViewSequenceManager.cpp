@@ -114,7 +114,7 @@ void CUiAnimViewSequenceManager::CreateSequence(QString name)
     IUiAnimationSystem* animationSystem = nullptr;
     EBUS_EVENT_RESULT(animationSystem, UiEditorAnimationBus, GetAnimationSystem);
 
-    IUiAnimSequence* pNewUiAnimationSequence = animationSystem->CreateSequence(name.toLatin1().data(), false, ++m_nextSequenceId);
+    IUiAnimSequence* pNewUiAnimationSequence = animationSystem->CreateSequence(name.toUtf8().data(), false, ++m_nextSequenceId);
     CUiAnimViewSequence* pNewSequence = new CUiAnimViewSequence(pNewUiAnimationSequence);
 
     m_sequences.push_back(std::unique_ptr<CUiAnimViewSequence>(pNewSequence));

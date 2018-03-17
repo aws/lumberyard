@@ -64,7 +64,7 @@ def build(bld):
         # Suppressing level 1 warning C4351 on windows
         # new behavior: elements of array 'array' will be default initialized
         # https://msdn.microsoft.com/en-us/library/1ywe7hcy.aspx
-        win_cxxflags = ['/wd4351', '/W3','/wd4251', '/wd4275'],
+        msvc_cxxflags = ['/wd4351', '/W3','/wd4251', '/wd4275'],
 
         az_code_gen = AZ_CODEGEN_ARGS,
 
@@ -77,7 +77,7 @@ def build(bld):
             features        = ['qt5', 'az_code_gen'],
             az_code_gen     = AZ_CODEGEN_ARGS,
             win_file_list       = ['scriptcanvasdiagnosticlibrary_common.waf_files', 'scriptcanvasdiagnosticlibrary_editor.waf_files'],
-            win_use             = ['Editor', 'AzQtComponents','CryCommon','ScriptCanvas'],
+            win_use             = ['AzQtComponents','CryCommon','ScriptCanvas'],
             uselib          = ['QT5CORE',
                                'QT5QUICK',
                                'QT5QML',
@@ -87,11 +87,8 @@ def build(bld):
                                 '..',
                                 'Include',
                                 'Source',
-                                bld.Path('Code/Sandbox/Editor'),
-                                bld.Path('Code/Sandbox/Editor/Include'),
-                                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-                                bld.Path('Code/Sandbox'),
-                                bld.Path('Code/CryEngine') ],
+                                bld.Path('Code/CryEngine')
+                                ],
             export_includes = ['.'],
 
         )

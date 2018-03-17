@@ -13,15 +13,15 @@
 import unittest
 import mock
 
-import custom_resource_response
-import HelperResourceHandler
+from cgf_utils import custom_resource_response
+from resource_types import Custom_Helper
 
-from properties import ValidationError
+from cgf_utils.properties import ValidationError
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_HelperResourceHandler(unittest.TestCase):
 
 
-    @mock.patch.object(custom_resource_response, 'succeed')
+    @mock.patch.object(custom_resource_response, 'success_response')
     def __assert_succeeds(self, input, expected_output, mock_response_succeed):
 
         event = {
@@ -34,11 +34,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_HelperResourceHandler(un
 
         context = {}
 
-        HelperResourceHandler.handler(event, context) 
+        Custom_Helper.handler(event, context)
 
         expected_physical_resource_id = 'TestStackName-TestLogicalId'
 
-        mock_response_succeed.assert_called_with(event, context, expected_output, expected_physical_resource_id)
+        mock_response_succeed.assert_called_with(expected_output, expected_physical_resource_id)
 
 
     def __assert_fails(self, input):
@@ -54,7 +54,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_HelperResourceHandler(un
         context = {}
 
         with self.assertRaises(ValidationError):
-            HelperResourceHandler.handler(event, context) 
+            Custom_Helper.handler(event, context)
 
 
     def test_non_functions(self):

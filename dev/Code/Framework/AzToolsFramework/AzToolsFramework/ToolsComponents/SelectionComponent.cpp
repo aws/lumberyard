@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "SelectionComponent.h"
 #include <AzCore/Serialization/EditContext.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>

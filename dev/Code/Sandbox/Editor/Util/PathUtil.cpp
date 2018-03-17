@@ -30,7 +30,7 @@ namespace Path
     //////////////////////////////////////////////////////////////////////////
     void SplitPath(const QString& rstrFullPathFilename, QString& rstrDriveLetter, QString& rstrDirectory, QString& rstrFilename, QString& rstrExtension)
     {
-        string          strFullPathString(rstrFullPathFilename.toLatin1().data());
+        string          strFullPathString(rstrFullPathFilename.toUtf8().data());
         string          strDriveLetter;
         string          strDirectory;
         string          strFilename;
@@ -92,7 +92,7 @@ namespace Path
     void GetDirectoryQueue(const QString& rstrSourceDirectory, QStringList& rcstrDirectoryTree)
     {
         string                      strCurrentDirectoryName;
-        string                      strSourceDirectory(rstrSourceDirectory.toLatin1().data());
+        string                      strSourceDirectory(rstrSourceDirectory.toUtf8().data());
         const char*             szSourceDirectory(strSourceDirectory.c_str());
         const char*             pchCurrentPosition(szSourceDirectory);
         const char*             pchLastPosition(szSourceDirectory);
@@ -174,7 +174,7 @@ namespace Path
         size_t  nLastFoundSlash(string::npos);
         size_t  nFirstFoundNotSlash(string::npos);
 
-        string strTempInputParentDirectory(strInputParentDirectory.toLatin1().data());
+        string strTempInputParentDirectory(strInputParentDirectory.toUtf8().data());
 
         nFirstFoundNotSlash = strTempInputParentDirectory.find_last_not_of("\\/", nLastFoundSlash);
         // If we can't find a non-slash caracter, this is likely to be a mal formed path...
@@ -394,7 +394,7 @@ namespace Path
 
     QString Make(const QString& path, const QString& file)
     {
-        if (gEnv->pCryPak->IsAbsPath(file.toLatin1().data()))
+        if (gEnv->pCryPak->IsAbsPath(file.toUtf8().data()))
         {
             return file;
         }
@@ -410,7 +410,7 @@ namespace Path
 
         bool relPathfound = false;
         AZStd::string relativePath;
-        AZStd::string fullAssetPath(fullPath.toLatin1().data());
+        AZStd::string fullAssetPath(fullPath.toUtf8().data());
         EBUS_EVENT_RESULT(relPathfound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullAssetPath, relativePath);
 
         if (relPathfound)

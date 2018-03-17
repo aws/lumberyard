@@ -128,69 +128,45 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="OK">
-       <property name="text">
-        <string>OK</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="CANCEL">
-       <property name="text">
-        <string>Cancel</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
  <resources/>
  <connections>
   <connection>
-   <sender>CANCEL</sender>
-   <signal>clicked()</signal>
-   <receiver>CFlowGraphEditModuleDlg</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>256</x>
-     <y>321</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>104</x>
-     <y>313</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>OK</sender>
-   <signal>clicked()</signal>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
    <receiver>CFlowGraphEditModuleDlg</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>180</x>
-     <y>325</y>
+     <x>144</x>
+     <y>314</y>
     </hint>
     <hint type="destinationlabel">
-     <x>42</x>
-     <y>321</y>
+     <x>109</x>
+     <y>301</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>CFlowGraphEditModuleDlg</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>169</x>
+     <y>314</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>171</x>
+     <y>298</y>
     </hint>
    </hints>
   </connection>

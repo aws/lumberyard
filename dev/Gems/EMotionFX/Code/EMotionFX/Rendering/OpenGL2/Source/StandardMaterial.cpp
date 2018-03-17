@@ -13,7 +13,7 @@
 #include <AzCore/Math/Vector2.h>
 #include "StandardMaterial.h"
 #include "GraphicsManager.h"
-#include "GLActor.h"
+#include "glactor.h"
 #include <EMotionFX/Source/TransformData.h>
 #include <MCore/Source/UnicodeString.h>
 

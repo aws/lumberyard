@@ -13,7 +13,6 @@
 import fnmatch
 import os
 import json
-import datetime
 
 import mappings
 import deployment
@@ -25,7 +24,7 @@ from boto3.session import Session
 from errors import HandledError
 from util import Args, load_template
 from uploader import ProjectUploader
-import constant
+from resource_manager_common import constant
 from copy import deepcopy
 import security
 import time
@@ -43,9 +42,9 @@ def create_stack(context, args):
     context.config.initialize_aws_directory()
     if(args.files_only):
         return
-
+    
     # Already initialized?
-    if context.config.project_stack_id is not None:
+    if context.config.local_project_settings.project_stack_exists():
         raise HandledError('The project has already been initialized and is using the {} AWS Cloud Formation stack.'.format(context.config.project_stack_id))
 
     # Project settings writable?
@@ -69,7 +68,8 @@ def create_stack(context, args):
 
         # Does a stack with the name already exist?
         if context.stack.name_exists(args.stack_name, args.region):
-            raise HandledError('An AWS Cloud Formation stack with the name {} already exists in region {}. Use the --stack-name option to provide a different name.'.format(args.stack_name, args.region))
+            message = 'An AWS Cloud Formation stack with the name {} already exists in region {}. Use the --stack-name option to provide a different name.'.format(args.stack_name, args.region)
+            raise HandledError(message)
 
         # Is the stack name valid?
         util.validate_stack_name(args.stack_name)
@@ -88,10 +88,10 @@ def create_stack(context, args):
 
     # Temporarily set the config's project_stack_id property to the pending stack
     # id so the project uploader can find it later.
-    context.config.project_stack_id = context.config.get_pending_project_stack_id()
+    # context.config.project_stack_id = context.config.get_pending_project_stack_id()
 
     # Do the initial update...
-    __update_project_stack(context, pending_resource_status, capabilities)
+    __update_project_stack(context, pending_resource_status, capabilities, args)
 
 
 def update_framework_version(context, args):
@@ -135,7 +135,7 @@ def update_framework_version(context, args):
             pending_resource_status
         )
 
-        __update_project_stack(context, pending_resource_status, capabilities)
+        __update_project_stack(context, pending_resource_status, capabilities, args)
 
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'after_framework_version_updated', 
         kwargs={
@@ -148,7 +148,7 @@ def update_framework_version(context, args):
 
 
 def update_stack(context, args):
-
+    
     # Has the project been initialized?
     if not context.config.project_initialized:
 
@@ -179,11 +179,10 @@ def update_stack(context, args):
     )
 
     # Do the update...
-    __update_project_stack(context, pending_resource_status, capabilities)
+    __update_project_stack(context, pending_resource_status, capabilities, args)
 
 
-def __update_project_stack(context, pending_resource_status, capabilities):
-
+def __update_project_stack(context, pending_resource_status, capabilities, args):    
     # Upload the project template and code directory.
 
     project_uploader = ProjectUploader(context)
@@ -197,15 +196,17 @@ def __update_project_stack(context, pending_resource_status, capabilities):
     )
    
     __zip_individual_lambda_code_folders(context, project_uploader)
-
+                  
     # Deprecated in 1.9. TODO: remove
     # Execute all the uploader pre hooks before the resources are updated
     project_uploader.execute_uploader_pre_hooks()
-
-    context.hooks.call_module_handlers('resource-manager-code/update.py', 'before_project_updated', 
-        kwargs={
-            'project_uploader': project_uploader
+    
+    kwargs = {
+            'project_uploader': project_uploader,
+            'args': args        
         }
+    context.hooks.call_module_handlers('resource-manager-code/update.py', 'before_project_updated', 
+        kwargs=kwargs
     )
 
     # wait a bit for S3 to help insure that templates can be read by cloud formation
@@ -222,33 +223,54 @@ def __update_project_stack(context, pending_resource_status, capabilities):
         capabilities=capabilities
     )
 
+    # wait a bit for S3 to help insure that templates can be read by cloud formation
+    time.sleep(constant.STACK_UPDATE_DELAY_TIME)
+
+    # Project is fully initialized only after the first successful update
+    # Project resource intialization is based on having a ProjectStackId in your local-project-settings.json
+    # Post hooks could be dependant on the availability of project_resources
+    # So we save the pending stack id which is used during Project stack creation
+    # Then we reinitialize the config.__project_resources to make the project_resources available to hooks even during a project stack creation
+    context.config.save_pending_project_stack_id()
+
     # Deprecated in 1.9. TODO: remove
     # Now all the stack resources should be available to the hooks
     project_uploader.execute_uploader_post_hooks()
 
     context.hooks.call_module_handlers('resource-manager-code/update.py', 'after_project_updated', 
-        kwargs={
-            'project_uploader': project_uploader
-        }
+        kwargs=kwargs
     )
 
-    # Project is fully initialized only after the first successful update
-    context.config.save_pending_project_stack_id()
+
 
 
 def __zip_individual_lambda_code_folders(context, uploader):
-
     resources = context.config.project_template_aggregator.effective_template.get("Resources", {})
-    for name, description in  resources.iteritems():
+    uploaded_folders = []
 
+    # Iterating over LambdaConfiguration resources first, as the lambdas without them are special cases.
+    # Just future proofing against further specialization on ProjectResourceHandler code
+    for name, description in  resources.iteritems():
+        if not description["Type"] == "Custom::LambdaConfiguration":
+            continue
+        function_name = description["Properties"]["FunctionName"]
+        uploaded_folders.append(function_name)
+        aggregated_directories = None
+        source_gem_name = description.get("Metadata", {}).get("CloudGemFramework", {}).get("Source", None)
+        uploader.zip_and_upload_lambda_function_code(function_name, source_gem = context.gem.get_by_name(source_gem_name))
+    
+    # There's some untagling needed to allow uploading ProjectResourceHandler without a LambdaConfiguration
+    # We should generally avoid adding any more functions like this to the project stack and eventually do away with it.
+    for name, description in  resources.iteritems():
+        aggregated_directories = None
         if not description["Type"] == "AWS::Lambda::Function":
             continue
-
-        if name == 'ProjectResourceHandler':
+        if name in uploaded_folders:
+            print "We already uploaded this with the Corresponding LambdaConfiguration resource"
+            continue
+        
+        if name == "ProjectResourceHandler":
             aggregated_directories = __get_plugin_project_code_paths(context)
-        else:
-            aggregated_directories = None
-
         uploader.zip_and_upload_lambda_function_code(name, aggregated_directories = aggregated_directories)
 
 
@@ -258,12 +280,12 @@ def __get_plugin_project_code_paths(context):
 
     for group in context.resource_groups.values():
         resource_group_path = group.directory_path
-        resource_group_project_code_path = os.path.join(resource_group_path, 'project-code')
+        resource_group_project_code_path = os.path.join(resource_group_path, 'project-code', 'plugin')
         if os.path.isdir(resource_group_project_code_path):
             plugin_project_code_paths[os.path.join('plugin', group.name)] = resource_group_project_code_path
 
     for gem in context.gem.enabled_gems:
-        gem_project_code_path = os.path.join(gem.aws_directory_path, 'project-code')
+        gem_project_code_path = os.path.join(gem.aws_directory_path, 'project-code', 'plugin')
         if os.path.isdir(gem_project_code_path):
             plugin_project_code_paths[os.path.join('plugin', gem.name)] = gem_project_code_path
 
@@ -293,11 +315,10 @@ def __get_pending_resource_status(context, deleting=False):
 
     resources = context.config.project_template_aggregator.effective_template.get("Resources", {})
     for name, description in  resources.iteritems():
-
         if not description["Type"] == "AWS::Lambda::Function":
             continue
 
-        code_path, imported_paths = ProjectUploader.get_lambda_function_code_paths(context, name)
+        code_path, imported_paths, multi_imports = ProjectUploader.get_lambda_function_code_paths(context, name)
 
         lambda_function_content_paths.append(code_path)
         lambda_function_content_paths.extend(imported_paths)
@@ -335,7 +356,8 @@ def delete_stack(context, args):
 
     if context.stack.id_exists(context.config.project_stack_id):
 
-        logs_bucket_id = context.stack.get_physical_resource_id(context.config.project_stack_id, 'Logs', optional=True, expected_type='AWS::S3::Bucket')
+        retained_bucket_names = ["Config", "Logs"]
+        retained_bucket_ids = [context.stack.get_physical_resource_id(context.config.project_stack_id, name, optional=True, expected_type='AWS::S3::Bucket') for name in retained_bucket_names]
 
         pending_resource_status = __get_pending_resource_status(context, deleting=True)
         context.stack.confirm_stack_operation(
@@ -347,23 +369,24 @@ def delete_stack(context, args):
 
         context.stack.delete(context.config.project_stack_id, pending_resource_status = pending_resource_status)
 
-        if logs_bucket_id:
+        for retained_bucket_name, retained_bucket_id in zip(retained_bucket_names, retained_bucket_ids):
+            if retained_bucket_id:
 
-            s3 = context.aws.client('s3')
+                s3 = context.aws.client('s3')
 
-            # Check to see if the bucket still exists, old versions of project-template.json
-            # don't have DeletionPolicy="Retain" on this bucket.
-            try:
-                s3.head_bucket(Bucket=logs_bucket_id)
-                bucket_still_exists = True
-            except:
-                bucket_still_exists = False
+                # Check to see if the bucket still exists, old versions of project-template.json
+                # don't have DeletionPolicy="Retain" on this bucket.
+                try:
+                    s3.head_bucket(Bucket=retained_bucket_id)
+                    bucket_still_exists = True
+                except:
+                    bucket_still_exists = False
 
-            if bucket_still_exists:
-                stack_name = util.get_stack_name_from_arn(context.config.project_stack_id)
-                util.delete_bucket_contents(context, stack_name, "Logs", logs_bucket_id)
-                context.view.deleting_bucket(logs_bucket_id)
-                s3.delete_bucket(Bucket=logs_bucket_id)
+                if bucket_still_exists:
+                    stack_name = util.get_stack_name_from_arn(context.config.project_stack_id)
+                    util.delete_bucket_contents(context, stack_name, retained_bucket_name, retained_bucket_id)
+                    context.view.deleting_bucket(retained_bucket_id)
+                    s3.delete_bucket(Bucket=retained_bucket_id)
 
     else:
 
@@ -437,69 +460,6 @@ def describe_stack(context, args):
         }
     context.view.project_stack_description(stack_description)
 
-
-def get_function_log(context, args):
-
-    # Assume role explicitly because we don't read any project config, and
-    # that is what usually triggers it (project config must be read before 
-    # assuming the role).
-    context.config.assume_role()
-
-    project_stack_id = context.config.project_stack_id
-    if not project_stack_id: 
-        project_stack_id = context.config.get_pending_project_stack_id()
-
-    if not project_stack_id:
-        raise HandledError('A project stack must be created first.')
-
-    if args.deployment and args.resource_group:
-        target_stack_id = context.config.get_resource_group_stack_id(args.deployment, args.resource_group)
-    elif args.deployment or args.resource_group:
-        raise HandledError('Both the --deployment option and --resource-group must be provided if either is provided.')
-    else:
-        target_stack_id = project_stack_id
-
-    function_id = context.stack.get_physical_resource_id(target_stack_id, args.function)
-
-    log_group_name = '/aws/lambda/{}'.format(function_id)
-
-    region = util.get_region_from_arn(target_stack_id)
-    logs = context.aws.client('logs', region=region)
-
-    if args.log_stream_name:
-        limit = 50
-    else:
-        limit = 1
-
-    log_stream_name = None
-    try:
-        res = logs.describe_log_streams(logGroupName=log_group_name, orderBy='LastEventTime', descending=True, limit=limit)
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            raise HandledError('No logs found.')
-        raise e
-
-    for log_stream in res['logStreams']:
-        # partial log stream name matches are ok
-        if not args.log_stream_name or args.log_stream_name in log_stream['logStreamName']:
-            log_stream_name = log_stream['logStreamName']
-            break
-
-    if not log_stream_name:
-        if args.log_stream_name:
-            raise HandledError('No log stream name with {} found in the first {} log streams.'.format(args.log_stream_name, limit))
-        else:
-            raise HandledError('No log stream was found.')
-
-    res = logs.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name, startFromHead=True)
-    while res['events']:
-        for event in res['events']:
-            time_stamp = datetime.datetime.fromtimestamp(event['timestamp']/1000.0).strftime("%Y-%m-%d %H:%M:%S")
-            message = event['message'][:-1]
-            context.view.log_event(time_stamp, message)
-        nextForwardToken = res.get('nextForwardToken', None)
-        if not nextForwardToken: break
-        res = logs.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name, startFromHead=True, nextToken=nextForwardToken)
 
 def get_regions(context, args):
     supported_regions = __get_region_list()

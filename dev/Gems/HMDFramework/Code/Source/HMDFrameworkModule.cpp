@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "HMDFramework_precompiled.h"
 #include <platform_impl.h>
 #include "HMDDebuggerComponent.h"
 #include "HMDLuaComponent.h"

@@ -47,7 +47,7 @@ namespace Audio
             return AZ::IO::InvalidHandle;
         }
 
-#if   defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if   defined(AZ_PLATFORM_APPLE)
         // On 64 bit systems, strict compilers throw an error trying to reinterpret_cast
         // from AkFileHandle (a 64 bit pointer) to AZ::IO::HandleType (a uint32_t) because:
         //

@@ -56,8 +56,7 @@ namespace LmbrCentral
         , public MaterialOwnerRequestBus::Handler
         , public GeometryCacheComponentRequestBus::Handler
     {
-        friend class EditorGeometryCacheCommon;
-        friend class EditorGeometryCacheComponent;
+        friend class EditorGeometryCacheCommon; //So that we can reflect private members
 
     public:
         AZ_TYPE_INFO(GeometryCacheCommon, "{4534C4C4-50CC-4256-83F0-85B0274A5E26}");
@@ -124,6 +123,8 @@ namespace LmbrCentral
 
         IGeomCacheRenderNode* GetGeomCacheRenderNode() override { return m_geomCacheRenderNode; }
 
+        void ClearGeomCacheRenderNode() { m_geomCacheRenderNode = nullptr; }
+
     protected:
         //Reflected Members
         bool m_visible = true;
@@ -175,6 +176,8 @@ namespace LmbrCentral
 
         void LoadMaterialOverride();
 
+        void RegisterRenderNode();
+
         void CreateGeomCache();
         void DestroyGeomCache();
 
@@ -207,6 +210,7 @@ namespace LmbrCentral
         explicit GeometryCacheComponent(GeometryCacheCommon* common)
         {
             m_common = *common;
+            m_common.ClearGeomCacheRenderNode(); //We don't want to copy the render node from the given common structure
         }
         ~GeometryCacheComponent() = default;
 
@@ -217,6 +221,5 @@ namespace LmbrCentral
     private:
         //Reflected members
         GeometryCacheCommon m_common;
-        
     };
 } //namespace LmbrCentral

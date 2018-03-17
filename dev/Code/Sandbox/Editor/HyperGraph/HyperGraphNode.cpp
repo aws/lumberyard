@@ -449,9 +449,9 @@ void CHyperNode::Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar)
         // Saving.
         if (!m_name.isEmpty())
         {
-            node->setAttr("Name", m_name.toLatin1().data());
+            node->setAttr("Name", m_name.toUtf8().data());
         }
-        node->setAttr("Class", m_classname.toLatin1().data());
+        node->setAttr("Class", m_classname.toUtf8().data());
 
         Vec3 pos(m_rect.x(), m_rect.y(), 0);
         node->setAttr("pos", pos);

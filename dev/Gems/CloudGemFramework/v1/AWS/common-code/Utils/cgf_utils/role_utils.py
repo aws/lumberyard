@@ -14,7 +14,7 @@ import boto3
 import json
 import time
 
-from resource_manager_common import aws_utils
+from cgf_utils import aws_utils
 from resource_manager_common import stack_info
 
 from botocore.exceptions import ClientError
@@ -36,7 +36,10 @@ ASSUME_ROLE_POLICY_DOCUMENT = '''{
 
 PROPAGATION_DELAY_SECONDS = 30
 
-def create_access_control_role(id_data, stack_arn, logical_role_name, assume_role_service, delay_for_propagation = True, default_policy = None):
+def get_assume_role_policy_document_for_service(service):
+    return ASSUME_ROLE_POLICY_DOCUMENT.replace("{assume_role_service}", service)
+
+def create_access_control_role(stack_manager, id_data, stack_arn, logical_role_name, assume_role_service, delay_for_propagation = True, default_policy = None):
     '''Create an IAM Role for a resource group stack. 
     
     Developers typlically do not have the IAM permissions necessary to create
@@ -52,6 +55,7 @@ def create_access_control_role(id_data, stack_arn, logical_role_name, assume_rol
     to this role.
     
     Args:
+        stack_manager: A stack_info.StackManager() instance that can be used to retrieve cached stack information.
 
         resource_group_stack_arn: Identifies the stack that "owns" the role.
 
@@ -68,7 +72,7 @@ def create_access_control_role(id_data, stack_arn, logical_role_name, assume_rol
     '''
 
     role_name = get_access_control_role_name(stack_arn, logical_role_name)
-    owning_stack_info = stack_info.get_stack_info(stack_arn)
+    owning_stack_info = stack_manager.get_stack_info(stack_arn)
 
     deployment_name = "NONE"
     resource_group_name = "NONE"
@@ -90,7 +94,7 @@ def create_access_control_role(id_data, stack_arn, logical_role_name, assume_rol
         resource_group_name=resource_group_name,
         logical_role_name=logical_role_name)
 
-    assume_role_policy_document = ASSUME_ROLE_POLICY_DOCUMENT.replace('{assume_role_service}', assume_role_service)
+    assume_role_policy_document = get_assume_role_policy_document_for_service(assume_role_service)
 
     try:
         res = iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=assume_role_policy_document, Path=path)
@@ -190,6 +194,17 @@ def get_access_control_role_arn(id_data, logical_role_name):
 
 MAX_ROLE_NAME_LENGTH = 64
 
+
+def sanitize_role_name(role_name):
+    result = role_name
+
+    if len(role_name) > MAX_ROLE_NAME_LENGTH:
+        digest = "-%x" % (hash(role_name) & 0xffffffff)
+        result = role_name[:MAX_ROLE_NAME_LENGTH - len(digest)] + digest
+
+    return result
+
+
 def get_access_control_role_name(stack_arn, logical_role_name):
     '''Generates a role name based on a stack name and a logical role name.
 
@@ -202,32 +217,10 @@ def get_access_control_role_name(stack_arn, logical_role_name):
     '''
 
     # Expecting stack names like: {project-name}-{deployment-name}-{resource-group-name}-{random-stuff}.
-    # We shorten the {project-name}-{deployment-name}-{resource-group-name} part to the point that we
-    # can append {random-stuff} and the role's logical name and end up with a name that meets the max
-    # role name length requirement.
+    # In practice role names are truncated to the max allowable length.
 
     stack_name = aws_utils.get_stack_name_from_stack_arn(stack_arn)
-
-    if len(stack_name) + len(logical_role_name) + 1 <= MAX_ROLE_NAME_LENGTH:
-
-        role_name = stack_name + '-' + logical_role_name
-
-    else:
-
-        last_dash = stack_name.rfind('-')
-        if last_dash == -1:
-            raise RuntimeError('Stack name does not have the expected format: {}'.format(stack_name))
-
-        root_part = stack_name[:last_dash]
-        random_part = stack_name[last_dash+1:]
-
-        root_part_len = MAX_ROLE_NAME_LENGTH - (len(random_part) + len(logical_role_name) + 2)
-        if root_part_len < 0:
-            raise RuntimeError('The logical role name is too long: {}'.format(logical_role_name))
-
-        root_part = root_part[:root_part_len]
-
-        role_name = root_part + '-' + random_part + '-' + logical_role_name
+    role_name = sanitize_role_name(stack_name + '-' + logical_role_name)
 
     return role_name
 

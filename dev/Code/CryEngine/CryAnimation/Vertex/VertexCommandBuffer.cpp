@@ -14,7 +14,7 @@
 #include "stdafx.h"
 #include <AzCore/Debug/Profiler.h>
 
-#include <IJobManager_JobDelegator.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #include "../ModelMesh.h"
 
@@ -98,8 +98,6 @@ void CVertexCommandBuffer::Process(CVertexData& vertexData)
 SVertexAnimationJobData
 */
 
-DECLARE_JOB("VertexAnimation", TVertexAnimation, SVertexAnimationJob::Execute);
-
 void SVertexAnimationJob::Execute(int)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
@@ -120,11 +118,10 @@ void SVertexAnimationJob::Execute(int)
     CryInterlockedDecrement(pRenderMeshSyncVariable);
 }
 
-void SVertexAnimationJob::Begin(JobManager::SJobState* pJob)
+void SVertexAnimationJob::Begin(AZ::LegacyJobExecutor* pJobExecutor)
 {
-    TVertexAnimation job(0);
-    job.SetClassInstance(this);
-    job.SetPriorityLevel(JobManager::eRegularPriority);
-    job.RegisterJobState(pJob);
-    job.Run();
+    pJobExecutor->StartJob([this]()
+    {
+        this->Execute(0);
+    }); // Legacy JobManager priority: eRegularPriority
 }

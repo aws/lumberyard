@@ -11,11 +11,16 @@
 */
 #pragma once
 
-#if defined(DARWIN) || defined(ORBIS) || defined(ANDROID) || defined(LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AzTest_h)
+#elif defined(DARWIN) || defined(ANDROID) || defined(LINUX)
+#define AZTEST_H_TRAITS_UNDEF_STRDUP 1
+#endif
+#if AZTEST_H_TRAITS_UNDEF_STRDUP
 // Notes in the Cry* code indicate that strdup may cause memory errors, and shouldn't be
 // used. It's required, however, by googletest, so for test builds, un-hack the strdup removal.
 #   undef strdup
-#endif // defined(DARWN) || defined(ORBIS) || defined(ANDROID) || defined(LINUX)
+#endif // AZTEST_H_TRAITS_UNDEF_STRDUP
 
 
 #pragma warning( push )

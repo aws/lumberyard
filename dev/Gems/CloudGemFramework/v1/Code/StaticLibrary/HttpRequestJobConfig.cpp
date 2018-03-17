@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/http/HttpClientFactory.h>

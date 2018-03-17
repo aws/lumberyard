@@ -36,4 +36,25 @@ namespace LmbrCentral
         void Register();
         void Unregister();
     };
+
+    class DccMaterialAssetTypeInfo
+        : public AZ::AssetTypeInfoBus::Handler
+    {
+    public:
+
+        AZ_CLASS_ALLOCATOR(DccMaterialAssetTypeInfo, AZ::SystemAllocator, 0);
+
+        ~DccMaterialAssetTypeInfo() override;
+
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // AZ::AssetTypeInfoBus::Handler
+        AZ::Data::AssetType GetAssetType() const override;
+        const char* GetAssetTypeDisplayName() const override;
+        const char* GetGroup() const override;
+        const char* GetBrowserIcon() const override;
+        //////////////////////////////////////////////////////////////////////////////////////////////
+
+        void Register();
+        void Unregister();
+    };
 } // namespace LmbrCentral

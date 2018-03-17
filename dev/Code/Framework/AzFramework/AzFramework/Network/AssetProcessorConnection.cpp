@@ -141,7 +141,7 @@ namespace AzFramework
             azvsnprintf(msg, 2048, format, va);
             va_end(va);
             char buffer[2048];
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#   if AZ_TRAIT_OS_USE_WINDOWS_THREADS
             // on these platforms, this_thread::getId returns an unsigned.
             azsnprintf(buffer, 2048, "(%p/%u): %s\n", this, AZStd::this_thread::get_id().m_id, msg);
 #   elif defined(AZ_PLATFORM_ANDROID)

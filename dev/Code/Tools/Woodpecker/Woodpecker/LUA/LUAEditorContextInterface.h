@@ -36,11 +36,7 @@ namespace LUAEditor
         AZStd::string m_assetName; // relative asset name
         AZStd::string m_displayName; // for friendly display only
 
-#if defined(AZ_PLATFORM_WINDOWS)
         FILETIME m_lastKnownModTime;
-#else
-#error platform not supported
-#endif
         AzToolsFramework::SourceControlFileInfo m_sourceControlInfo;
 
         bool m_bSourceControl_Ready; // a result (or failure) came back from SCC.  Until this is true, you cannot write to it.

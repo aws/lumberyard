@@ -51,6 +51,7 @@ namespace AZ
         {
         public:
             RCToolApplication();
+            void RegisterDescriptors();
             void AddSystemComponents(AZ::Entity* systemEntity) override;
 
             AZ::ComponentTypeList GetRequiredSystemComponents() const override;
@@ -74,7 +75,6 @@ namespace AZ
 
         protected:
             virtual bool PrepareForExporting(const char* configFilePath, RCToolApplication& application, const AZStd::string& appRoot);
-            virtual AZ::Entity* CreateSceneSystemEntity(const char* configFilePath);
             virtual bool LoadAndExportScene(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
             virtual bool ExportScene(AssetBuilderSDK::ProcessJobResponse& response, const AZ::SceneAPI::Containers::Scene& scene, const char* platformIdentifier);
             

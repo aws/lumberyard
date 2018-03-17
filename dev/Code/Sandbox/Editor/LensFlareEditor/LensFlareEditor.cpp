@@ -417,7 +417,7 @@ void CLensFlareEditor::Paste(const QModelIndex& hSelectedTreeItem, XmlNodeRef no
         targetGroupName = m_pLibraryItemTreeModel->GetFullName(hTargetItem);
     }
 
-    CUndo undo(tr("Copy/Cut & Paste for Lens Flare").toLatin1());
+    CUndo undo(tr("Copy/Cut & Paste for Lens Flare").toUtf8());
     CLensFlareItem* pNewItem = NULL;
 
     for (int i = 0, iChildCount(node->getChildCount()); i < iChildCount; ++i)
@@ -586,11 +586,11 @@ void CLensFlareEditor::OnAddItem()
     QString fullName = m_pItemManager->MakeFullItemName(m_pLibrary, dlg.GetGroup(), dlg.GetString());
     if (m_pItemManager->FindItemByName(fullName))
     {
-        Warning("Item with name %s already exist", fullName.toLatin1().data());
+        Warning("Item with name %s already exist", fullName.toUtf8().data());
         return;
     }
 
-    CUndo undo(tr("Add flare library item").toLatin1());
+    CUndo undo(tr("Add flare library item").toUtf8());
 
     CLensFlareItem* pNewLensFlare = AddNewLensFlareItem(dlg.GetGroup(), dlg.GetString());
     if (pNewLensFlare)
@@ -612,7 +612,7 @@ CLensFlareItem* CLensFlareEditor::AddNewLensFlareItem(const QString& groupName, 
         m_pItemManager->DeleteItem(pNewFlare);
         return NULL;
     }
-    pNewFlare->GetOptics()->SetName(pNewFlare->GetShortName().toLatin1().data());
+    pNewFlare->GetOptics()->SetName(pNewFlare->GetShortName().toUtf8().data());
     return pNewFlare;
 }
 
@@ -883,7 +883,7 @@ void CLensFlareEditor::ReloadItems()
 void CLensFlareEditor::OnRemoveItem()
 {
     CLensFlareItem* pSelectedLensFlareItem = GetSelectedLensFlareItem();
-    CUndo undo(tr("Remove Flare Group Item").toLatin1());
+    CUndo undo(tr("Remove Flare Group Item").toUtf8());
 
     if (pSelectedLensFlareItem == NULL)
     {
@@ -965,7 +965,7 @@ void CLensFlareEditor::OnRemoveItem()
 
 void CLensFlareEditor::OnAddLibrary()
 {
-    StringDlg dlg(tr("New Library Name").toLatin1(), this);
+    StringDlg dlg(tr("New Library Name"), this);
 
     dlg.SetCheckCallback([this](QString library) -> bool
     {

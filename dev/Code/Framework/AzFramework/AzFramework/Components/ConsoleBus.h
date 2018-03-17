@@ -41,6 +41,8 @@ namespace AzFramework
 
         virtual void ExecuteConsoleCommand(const char* command) = 0;
 
+        virtual void ResetCVarsToDefaults() = 0;
+
         static void Reflect(AZ::ReflectContext* context);
     };
 

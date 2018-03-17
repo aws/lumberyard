@@ -14,6 +14,7 @@
 
 #include "StandardHeaders.h"
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/function/function_fwd.h>
 
 
 namespace MCore
@@ -35,7 +36,7 @@ namespace MCore
          * @param[in] commandManager Command manager used to add error.
          * @result True in case everything went fine, false it something wrong happened. Check log for these cases.
          */
-        static bool SaveToFileSecured(const char* filename, const std::function<bool()>& saveFunction, CommandManager* commandManager = nullptr);
+        static bool SaveToFileSecured(const char* filename, const AZStd::function<bool()>& saveFunction, CommandManager* commandManager = nullptr);
 
         static const char       mFolderSeparatorChar;   /**< The folder separator slash type used on the different supported platforms. */
         static AZStd::string    mSecureSavePath;        /**< The folder path used to keep a backup in SaveToFileSecured. */

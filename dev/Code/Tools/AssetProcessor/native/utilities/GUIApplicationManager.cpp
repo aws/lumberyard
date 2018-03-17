@@ -45,9 +45,13 @@
 #include <ToolsCrashHandler.h>
 #endif
 
-#define STYLE_SHEET_VARIABLES_PATH_DARK "Editor/Styles/EditorStylesheetVariables_Dark.json"
-#define STYLE_SHEET_VARIABLES_PATH_LIGHT "Editor/Styles/EditorStylesheetVariables_Light.json"
-#define GLOBAL_STYLE_SHEET_PATH "Editor/Styles/EditorStylesheet.qss"
+#if defined(AZ_PLATFORM_APPLE_OSX)
+#include <AppKit/NSRunningApplication.h>
+#include <CoreServices/CoreServices.h>
+#endif
+
+#define STYLE_SHEET_VARIABLES_PATH_DARK "Editor/Styles/AssetProcessorGlobalStyleSheetVariables.json"
+#define GLOBAL_STYLE_SHEET_PATH "Editor/Styles/AssetProcessorGlobalStyleSheet.qss"
 #define ASSET_PROCESSOR_STYLE_SHEET_PATH "Editor/Styles/AssetProcessor.qss"
 
 using namespace AssetProcessor;
@@ -77,17 +81,10 @@ namespace
             binaryDir.remove(tempFile);
         }
     }
-    QString LoadStyleSheet(QDir rootDir, QString styleSheetPath, bool darkSkin)
+    QString LoadStyleSheet(QDir rootDir, QString styleSheetPath)
     {
         QFile styleSheetVariablesFile;
-        if (darkSkin)
-        {
-            styleSheetVariablesFile.setFileName(rootDir.filePath(STYLE_SHEET_VARIABLES_PATH_DARK));
-        }
-        else
-        {
-            styleSheetVariablesFile.setFileName(rootDir.filePath(STYLE_SHEET_VARIABLES_PATH_LIGHT));
-        }
+        styleSheetVariablesFile.setFileName(rootDir.filePath(STYLE_SHEET_VARIABLES_PATH_DARK));
 
         AzQtComponents::StylesheetPreprocessor styleSheetProcessor(nullptr);
         if (styleSheetVariablesFile.open(QFile::ReadOnly))
@@ -109,6 +106,12 @@ namespace
 GUIApplicationManager::GUIApplicationManager(int* argc, char*** argv, QObject* parent)
     : BatchApplicationManager(argc, argv, parent)
 {
+#if defined(AZ_PLATFORM_APPLE_OSX)
+    // Since AP is not a proper Mac application yet it will not receive keyboard focus
+    // unless we tell the OS specifically to treat it as a foreground application
+    ProcessSerialNumber psn = { 0, kCurrentProcess };
+    TransformProcessType(&psn, kProcessTransformToForegroundApplication);
+#endif
 }
 
 
@@ -151,6 +154,12 @@ ApplicationManager::BeforeRunStatus GUIApplicationManager::BeforeRun()
 
     m_fileWatcher.addPath(assetDbPath);
 
+    // if our Gems file changes, make sure we watch that, too.
+    QString gameName = AssetUtilities::ComputeGameName();
+    QString gemsConfigFile = devRoot.filePath(gameName + "/gems.json");
+
+    m_fileWatcher.addPath(gemsConfigFile);
+
     QObject::connect(&m_fileWatcher, &QFileSystemWatcher::fileChanged, this, &GUIApplicationManager::FileChanged);
     QObject::connect(&m_fileWatcher, &QFileSystemWatcher::directoryChanged, this, &GUIApplicationManager::DirectoryChanged);
 
@@ -180,12 +189,17 @@ bool GUIApplicationManager::Run()
     QDir::addSearchPath("STYLESHEETIMAGES", systemRoot.filePath("Editor/Styles/StyleSheetImages"));
 
     QApplication::setStyle(QStyleFactory::create("Fusion"));
-    QString appStyleSheet = LoadStyleSheet(systemRoot, GLOBAL_STYLE_SHEET_PATH, true);
-    qApp->setStyleSheet(appStyleSheet);
-
     m_mainWindow = new MainWindow(this);
-    QString windowStyleSheet = LoadStyleSheet(systemRoot, ASSET_PROCESSOR_STYLE_SHEET_PATH, true);
-    m_mainWindow->setStyleSheet(windowStyleSheet);
+    
+    auto refreshStyleSheets = [systemRoot, this]()
+    {
+        QString appStyleSheet = LoadStyleSheet(systemRoot, GLOBAL_STYLE_SHEET_PATH);
+        qApp->setStyleSheet(appStyleSheet);
+
+        QString windowStyleSheet = LoadStyleSheet(systemRoot, ASSET_PROCESSOR_STYLE_SHEET_PATH);
+        m_mainWindow->setStyleSheet(windowStyleSheet);
+    };
+    refreshStyleSheets();
 
     // CheckForRegistryProblems can pop up a dialog, so we need to check after
     // we initialize the stylesheet
@@ -227,14 +241,7 @@ bool GUIApplicationManager::Run()
     QAction* refreshAction = new QAction(QObject::tr("Refresh Stylesheet"), m_mainWindow);
     refreshAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
     m_mainWindow->addAction(refreshAction);
-    m_mainWindow->connect(refreshAction, &QAction::triggered, [systemRoot, this]()
-        {
-            QString appStyleSheet = LoadStyleSheet(systemRoot, GLOBAL_STYLE_SHEET_PATH, true);
-            qApp->setStyleSheet(appStyleSheet);
-
-            QString windowStyleSheet = LoadStyleSheet(systemRoot, ASSET_PROCESSOR_STYLE_SHEET_PATH, true);
-            m_mainWindow->setStyleSheet(windowStyleSheet);
-        });
+    m_mainWindow->connect(refreshAction, &QAction::triggered, refreshStyleSheets);
 
     QObject::connect(this, &GUIApplicationManager::ShowWindow, m_mainWindow, &MainWindow::ShowWindow);
 
@@ -269,7 +276,14 @@ bool GUIApplicationManager::Run()
             {
                 if (reason == QSystemTrayIcon::DoubleClick)
                 {
-                    m_mainWindow->setVisible(!m_mainWindow->isVisible());
+                    if (m_mainWindow->isVisible())
+                    {
+                        m_mainWindow->setVisible(false);
+                    }
+                    else
+                    {
+                        m_mainWindow->ShowWindow();
+                    }
                 }
             });
 
@@ -553,6 +567,68 @@ void GUIApplicationManager::FileChanged(QString path)
             {
                 QMetaObject::invokeMethod(this, "Restart", Qt::QueuedConnection);
             });
+        }
+    }
+    else if (AssetUtilities::NormalizeFilePath(path).endsWith("gems.json", Qt::CaseInsensitive))
+    {
+        QList<AssetProcessor::GemInformation> oldGemsList = GetPlatformConfiguration()->GetGemsInformation();
+        QList<AssetProcessor::GemInformation> newGemsList;
+        GetPlatformConfiguration()->ReadGems(newGemsList);
+
+        for (auto oldGemIter = oldGemsList.begin(); oldGemIter != oldGemsList.end();)
+        {
+            bool gemMatch = false;
+            for (auto newGemIter = newGemsList.begin(); newGemIter != newGemsList.end();)
+            {
+                if (QString::compare(oldGemIter->m_identifier, newGemIter->m_identifier, Qt::CaseInsensitive) == 0)
+                {
+                    gemMatch = true;
+                    newGemIter = newGemsList.erase(newGemIter);
+                    break;
+                }
+                newGemIter++;
+            }
+
+            if (gemMatch)
+            {
+                oldGemIter = oldGemsList.erase(oldGemIter);
+            }
+            else
+            {
+                oldGemIter++;
+            }
+        }
+
+        // oldGemslist should contain the list of gems that got removed and newGemsList should contain the list of gems that were added to the project
+        // if the project requires to be built again then we will quit otherwise we can restart
+        bool exitApp = false;
+        for (const AssetProcessor::GemInformation& gemInfo : newGemsList)
+        {
+            if (!gemInfo.m_assetOnly)
+            {
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Gem %s was added to the project and require building. Quitting\n", gemInfo.m_displayName.toUtf8().data());
+                exitApp = true;
+            }
+        }
+
+        if (exitApp)
+        {
+            QuitRequested();
+        }
+        else
+        {
+            if (oldGemsList.size() || newGemsList.size())
+            {
+                if (oldGemsList.size())
+                {
+                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Gem(s) were removed from the project. Restarting\n");
+                }
+                else if (newGemsList.size())
+                {
+                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Assets only gem(s) were added to the project. Restarting\n");
+                }
+                QMetaObject::invokeMethod(this, "Restart", Qt::QueuedConnection);
+            }
         }
     }
 }

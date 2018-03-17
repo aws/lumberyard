@@ -74,7 +74,7 @@ void CSequenceBrowser::OnOpen()
     if (ui->TREE->IsFile(selectedItem))
     {
         QString sequencePath = ui->TREE->GetPath(selectedItem);
-        m_previewerPage.LoadSequence(sequencePath.toLatin1());
+        m_previewerPage.LoadSequence(sequencePath.toUtf8());
         CMannequinDialog::GetCurrentInstance()->ShowPane<CPreviewerPage*>();
     }
 }

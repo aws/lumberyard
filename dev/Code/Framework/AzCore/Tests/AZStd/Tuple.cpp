@@ -116,7 +116,7 @@ namespace UnitTest
 
         TEST_F(TupleTest, ConvertingConstruct)
         {
-            AZStd::tuple<AZStd::string, AZStd::array<AZStd::string_view, 2U>> testTuple("Test", { "Arg1", "Arg2" });
+            AZStd::tuple<AZStd::string, AZStd::array<AZStd::string_view, 2U>> testTuple("Test", { { "Arg1", "Arg2" } });
             EXPECT_EQ("Test", AZStd::get<0>(testTuple));
             EXPECT_EQ(2, AZStd::get<1>(testTuple).size());
             EXPECT_EQ("Arg1", AZStd::get<1>(testTuple)[0]);
@@ -1108,7 +1108,6 @@ namespace UnitTest
                 EXPECT_EQ(142, AZStd::apply(sum_obj, t));
             }
             {
-                // TODO: Add std::tuple_size and std::get specialization for AZStd::array in order to use that test that class
                 using Tup = AZStd::array<AZ::s32, 3>;
                 using Fn = AZ::s32(&)(AZ::s32, AZ::s32, AZ::s32);
                 const Tup t = { { 42, 101, -1 } };
@@ -1281,7 +1280,7 @@ namespace UnitTest
             // member function w/ref
             {
                 T a;
-                Tuple t{ a };
+                Tuple t{ { a } };
                 EXPECT_EQ(1, AZStd::apply(mem1, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1289,7 +1288,7 @@ namespace UnitTest
             // member function w/pointer
             {
                 T a;
-                TuplePtr t{ &a };
+                TuplePtr t{ { &a } };
                 EXPECT_EQ(1, AZStd::apply(mem1, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1297,7 +1296,7 @@ namespace UnitTest
             // member function w/base
             {
                 Base a;
-                TupleBase t{ a };
+                TupleBase t{ { a } };
                 EXPECT_EQ(1, AZStd::apply(mem1, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1305,7 +1304,7 @@ namespace UnitTest
             // member function w/wrap
             {
                 Wrap a;
-                TupleWrap t{ a };
+                TupleWrap t{ { a } };
                 EXPECT_EQ(1, AZStd::apply(mem1, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1315,7 +1314,7 @@ namespace UnitTest
             // const member function w/ref
             {
                 T const a;
-                ConstTuple t{ a };
+                ConstTuple t{ { a } };
                 EXPECT_EQ(1, AZStd::apply(mem2, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1324,7 +1323,7 @@ namespace UnitTest
             // const member function w/pointer
             {
                 T const a;
-                ConstTuplePtr t{ &a };
+                ConstTuplePtr t{ { &a } };
                 EXPECT_EQ(1, AZStd::apply(mem2, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1334,7 +1333,7 @@ namespace UnitTest
             // const member function w/base
             {
                 Base const a;
-                ConstTupleBase t{ a };
+                ConstTupleBase t{ { a } };
                 EXPECT_EQ(1, AZStd::apply(mem2, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1345,7 +1344,7 @@ namespace UnitTest
             // const member function w/wrapper
             {
                 Wrap const a;
-                ConstTupleWrap t{ a };
+                ConstTupleWrap t{ { a } };
                 EXPECT_EQ(1, AZStd::apply(mem2, t));
                 EXPECT_EQ(1, ExtendedTupleTest::m_count);
             }
@@ -1353,25 +1352,25 @@ namespace UnitTest
             // member object w/ref
             {
                 T a{ 42 };
-                Tuple t{ a };
+                Tuple t{ { a } };
                 EXPECT_EQ(42, AZStd::apply(obj1, t));
             }
             // member object w/pointer
             {
                 T a{ 42 };
-                TuplePtr t{ &a };
+                TuplePtr t{ { &a } };
                 EXPECT_EQ(42, AZStd::apply(obj1, t));
             }
             // member object w/base
             {
                 Base a{ 42 };
-                TupleBase t{ a };
+                TupleBase t{ { a } };
                 EXPECT_EQ(42, AZStd::apply(obj1, t));
             }
             // member object w/wrapper
             {
                 Wrap a{ 42 };
-                TupleWrap t{ a };
+                TupleWrap t{ { a } };
                 EXPECT_EQ(42, AZStd::apply(obj1, t));
             }
         }

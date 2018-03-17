@@ -890,36 +890,6 @@ STRUCT_VAR_INFO(m_StatInstGroupID, TYPE_INFO(uint32))
 STRUCT_VAR_INFO(m_nSamples, TYPE_INFO(uint32))
 STRUCT_INFO_END(SMergedMeshSectorChunk)
 
-DECLARE_JOB(
-    "PVRNCullSamples"
-    , TPVRNCullRenderMesh
-    , SMMRMGroupHeader::CullInstances);
-
-DECLARE_JOB(
-    "PVRNUpdateSpines"
-    , TPVRNUpdateRenderMeshSpines
-    , SMMRMUpdateContext::MergeInstanceMeshesSpines);
-
-DECLARE_JOB(
-    "PVRNUpdateDeform"
-    , TPVRNUpdateRenderMeshDeform
-    , SMMRMUpdateContext::MergeInstanceMeshesDeform);
-
-DECLARE_JOB(
-    "MMRM_SortActiveInstances"
-    , TMMRM_SortActiveInstances
-    , CMergedMeshesManager::SortActiveInstances_Async);
-
-DECLARE_JOB(
-    "MergedMesh_InitializeSamples"
-    , TMergedMesh_InitializeSamples
-    , CMergedMeshRenderNode::InitializeSamples);
-
-DECLARE_JOB(
-    "MergedMesh_InitializeSpines"
-    , TMergedMesh_InitializeSpines
-    , CMergedMeshRenderNode::InitializeSpines);
-
 // ToDo: pack into struct to ensure better locality in data segment
 struct SMergedMeshGlobals
 {
@@ -1366,7 +1336,7 @@ public:
     CGeometryManager();
     ~CGeometryManager();
 
-    void Initialize(int nThreads);
+    void Initialize();
     void Shutdown();
 
     SMMRMGeometry* GetGeometry(uint32, uint16);
@@ -1396,11 +1366,6 @@ public:
     }
 };
 
-DECLARE_JOB(
-    "PVRNPrepGeom"
-    , TPVRNPrepGeomJob
-    , CGeometryManager::PrepareGeometry);
-
 static size_t s_jobQueueIndex[2] = {0, 0};
 
 CGeometryManager::CGeometryManager()
@@ -1413,7 +1378,7 @@ void CGeometryManager::Shutdown()
     m_PreprocessedSize = 0;
 }
 
-void CGeometryManager::Initialize(int nWorkers)
+void CGeometryManager::Initialize()
 {
 }
 
@@ -1682,6 +1647,8 @@ bool CGeometryManager::ExtractDeformLOD(SMMRMGeometry* geometry, IStatObj* host,
 
 bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, IStatObj* host, size_t nLod, const Matrix34& transformMatrix)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
     MEMORY_SCOPE_CHECK_HEAP();
     IRenderMesh* renderMesh = NULL;
     strided_pointer<Vec2> uv;
@@ -2030,6 +1997,8 @@ bool CGeometryManager::PrepareLOD(SMMRMGeometry* geometry, IStatObj* host, size_
 
 void CGeometryManager::PrepareGeometry(SMMRMGeometry* geometry)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
     if (!geometry)
     {
         return;
@@ -2153,16 +2122,19 @@ SMMRMGeometry* CGeometryManager::GetGeometry(uint32 groupId, uint16 slot)
         // keep an extra reference to the static geometry (needed because we want to extract material sometimes...)
         statObj->AddRef();
 
-        it = m_geomMap.insert(it, std::make_pair(fileNameHash, SMMRMGeometry(groupId, slot)));
+        it = m_geomMap.emplace_hint(it,
+                                    std::piecewise_construct,
+                                    std::forward_as_tuple(fileNameHash),
+                                    std::forward_as_tuple(groupId, slot));
+
         it->second.aabb = statObj->GetAABB();
         if (!(gEnv->IsDynamicMergedMeshGenerationEnable()))
         {
-            TPVRNPrepGeomJob job(&it->second);
-            job.SetClassInstance(this);
-            job.RegisterJobState(&it->second.geomPrepareState);
-            job.SetBlocking();
-            job.SetPriorityLevel(JobManager::eLowPriority);
-            job.Run();
+            SMMRMGeometry* geometry = &it->second;
+            geometry->geomPrepareJobExecutor.StartJob([this, geometry]()
+            {
+                this->PrepareGeometry(geometry);
+            }); // Legacy JobManager priority: eLowPriority, used SJobState::SetBlocking
         }
         else
         {
@@ -2181,7 +2153,10 @@ SMMRMGeometry* CGeometryManager::GetGeometry(IStatObj* statObj, uint16 slot)
     GeometryMapT::iterator it = m_geomMap.lower_bound(fileNameHash);
     if (it == m_geomMap.end() || it->first != fileNameHash)
     {
-        it = m_geomMap.insert(it, std::make_pair(fileNameHash, SMMRMGeometry(statObj, slot)));
+        it = m_geomMap.emplace_hint(it,
+                                    std::piecewise_construct,
+                                    std::forward_as_tuple(fileNameHash),
+                                    std::forward_as_tuple(statObj, slot));
         it->second.aabb = statObj->GetAABB();
 
         // keep an extra reference to the static geometry (needed because we want to extract material sometimes...)
@@ -2191,12 +2166,11 @@ SMMRMGeometry* CGeometryManager::GetGeometry(IStatObj* statObj, uint16 slot)
         }
         if (!(gEnv->IsDynamicMergedMeshGenerationEnable()))
         {
-            TPVRNPrepGeomJob job(&it->second);
-            job.SetClassInstance(this);
-            job.RegisterJobState(&it->second.geomPrepareState);
-            job.SetBlocking();
-            job.SetPriorityLevel(JobManager::eLowPriority);
-            job.Run();
+            SMMRMGeometry* geometry = &it->second;
+            geometry->geomPrepareJobExecutor.StartJob([this, geometry]()
+            {
+                this->PrepareGeometry(geometry);
+            }); // Legacy JobManager priority: eLowPriority, used SJobState::SetBlocking
         }
         else
         {
@@ -2250,7 +2224,7 @@ void CGeometryManager::GetUsedMeshes(DynArray<string>& names)
          it != end; ++it)
     {
         const SMMRMGeometry& geom = it->second;
-        gEnv->pJobManager->WaitForJob(const_cast<JobManager::SJobState&>(geom.geomPrepareState));
+        const_cast<AZ::LegacyJobExecutor&>(geom.geomPrepareJobExecutor).WaitForCompletion();
         IStatObj* pObj = NULL;
         if (geom.is_obj)
         {
@@ -2275,7 +2249,7 @@ bool CGeometryManager::SyncPreparationStep()
          it != end; ++it)
     {
         const SMMRMGeometry& geom = it->second;
-        gEnv->pJobManager->WaitForJob(const_cast<JobManager::SJobState&>(geom.geomPrepareState));
+        const_cast<AZ::LegacyJobExecutor&>(geom.geomPrepareJobExecutor).WaitForCompletion();
         success &= geom.state == SMMRMGeometry::PREPARED;
     }
     return success;
@@ -2329,52 +2303,24 @@ SMMRMGroupHeader::~SMMRMGroupHeader()
 }
 
 CMergedMeshRenderNode::CMergedMeshRenderNode()
-    : m_LastDrawFrame()
-    , m_LastUpdateFrame()
-    , m_DistanceSQ()
-    , m_groups()
-    , m_nGroups()
-    , m_pos()
-    , m_zRotation(0.0f)
-    , m_visibleAABB(AABB::RESET)
-    , m_internalAABB(AABB::RESET)
-    , m_Instances()
-    , m_SpineCount((size_t)-1)
-    , m_DeformCount((size_t)-1)
-    , m_nLod(-1)
-    , m_nActive()
-    , m_nVisible()
-    , m_needsStaticMeshUpdate()
-    , m_needsDynamicMeshUpdate()
-    , m_needsPostRenderStatic()
-    , m_needsPostRenderDynamic()
+    : m_nActive(0)
+    , m_nVisible(0)
+    , m_needsStaticMeshUpdate(0)
+    , m_needsDynamicMeshUpdate(0)
+    , m_needsPostRenderStatic(0)
+    , m_needsPostRenderDynamic(0)
     , m_ownsGroups(1)
-    , m_State(INITIALIZED)
-    , m_RenderMode(NOT_VISIBLE)
-    , m_wind()
-    , m_density()
-    , m_Colliders()
-    , m_nColliders()
-    , m_Projectiles()
-    , m_nProjectiles()
-    , m_cullState()
-    , m_updateState()
-    , m_spineInitializationState()
-    , m_SizeInVRam()
-    , m_renderMeshes()
-    , m_pReadStream()
-    , m_SpinesActive()
 {
     memset(m_surface_types, 0x0, sizeof(m_surface_types));
     SetViewDistUnlimited();
     m_fWSMaxViewDist = FLT_MAX;
-    m_visibleAABB.Reset();
     SetRndFlags(ERF_CASTSHADOWMAPS | ERF_HAS_CASTSHADOWMAPS, true);
     if (GetCVars()->e_MergedMeshesOutdoorOnly)
     {
         SetRndFlags(GetRndFlags() | ERF_OUTDOORONLY, true);
     }
 }
+
 CMergedMeshRenderNode::~CMergedMeshRenderNode()
 {
     MEMORY_SCOPE_CHECK_HEAP();
@@ -2390,7 +2336,7 @@ void CMergedMeshRenderNode::Clear()
     {
         if (m_groups[i].procGeom)
         {
-            gEnv->pJobManager->WaitForJob(m_groups[i].procGeom->geomPrepareState);
+            m_groups[i].procGeom->geomPrepareJobExecutor.WaitForCompletion();
         }
     }
     DeleteRenderMesh(RUT_STATIC);
@@ -2454,7 +2400,7 @@ bool CMergedMeshRenderNode::PrepareRenderMesh(RENDERMESH_UPDATE_TYPE type)
     {
         SMMRMGroupHeader* header = NULL;
         size_t index = groups[i];
-        if (m_groups[index].procGeom->geomPrepareState.IsRunning() == true)
+        if (m_groups[index].procGeom->geomPrepareJobExecutor.IsRunning() == true)
         {
             allDone = false;
             continue;
@@ -2661,7 +2607,7 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
 
     SMMRMGeometry* procGeom = s_GeomManager.GetGeometry(sample.InstGroupId, 0);
 
-    gEnv->pJobManager->WaitForJob(m_cullState);
+    m_cullJobExecutor.WaitForCompletion();
     for (size_t i = 0; i < m_nGroups; ++i)
     {
         if (m_groups[i].instGroupId == sample.InstGroupId &&
@@ -2673,7 +2619,8 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
             break;
         }
     }
-    gEnv->pJobManager->WaitForJob(m_updateState);
+
+    m_updateJobExecutor.WaitForCompletion();
     if (headerIndex == (size_t)-1)
     {
         resize_list(m_groups, m_nGroups + 1, 128);
@@ -2685,6 +2632,7 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
     {
         s_GeomManager.ReleaseGeometry(procGeom);
     }
+
     if (header->numSamples + 1 >= header->numSamplesAlloc)
     {
         pool_resize_list(header->instances, header->numSamplesAlloc += 0xff, 128);
@@ -2741,8 +2689,8 @@ size_t CMergedMeshRenderNode::RemoveInstance(size_t headerIndex, size_t instance
     assert (headerIndex < m_nGroups);
 
     SMMRMGroupHeader* header = &m_groups[headerIndex];
-    gEnv->pJobManager->WaitForJob(m_cullState);
-    gEnv->pJobManager->WaitForJob(m_updateState);
+    m_cullJobExecutor.WaitForCompletion();
+    m_updateJobExecutor.WaitForCompletion();
 
     assert (instanceIndex < header->numSamples);
     std::swap(header->instances[instanceIndex], header->instances[header->numSamples - 1]);
@@ -3095,19 +3043,11 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
 #       if MMRM_USE_JOB_SYSTEM
             if (update->group->deform_vertices)
             {
-                TPVRNUpdateRenderMeshDeform job(& s_mmrm_globals.camera, 0u);
-                job.RegisterJobState(& m_updateState);
-                job.SetClassInstance(update);
-                job.SetPriorityLevel(JobManager::eLowPriority);
-                job.Run();
+                    m_updateJobExecutor.StartJob([update](){ update->MergeInstanceMeshesDeform(&s_mmrm_globals.camera, 0u); }); // legacy: job.SetPriorityLevel(JobManager::eLowPriority);
             }
             else
             {
-                TPVRNUpdateRenderMeshSpines job(& s_mmrm_globals.camera, 0u);
-                job.RegisterJobState(& m_updateState);
-                job.SetClassInstance(update);
-                job.SetPriorityLevel(JobManager::eLowPriority);
-                job.Run();
+                    m_updateJobExecutor.StartJob([update](){ update->MergeInstanceMeshesSpines(&s_mmrm_globals.camera, 0u); }); // legacy: job.SetPriorityLevel(JobManager::eLowPriority);
             }
 #       else
             if (update->group->deform_vertices)
@@ -3269,20 +3209,22 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
                             continue;
                         }
                         int flags = (int)MMRM_CULL_FRUSTUM | MMRM_CULL_DISTANCE;
-#       if MMRM_USE_JOB_SYSTEM
+#if MMRM_USE_JOB_SYSTEM
                         mmrm_printf("starting culljob on %#x header (%#x instance %#x numsamples)\n",
-                                    (unsigned int)& m_groups[i]
-                                    , (unsigned int)m_groups[i].instances
-                                    , (unsigned int)m_groups[i].numSamples);
-                        TPVRNCullRenderMesh job(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
-                        job.RegisterJobState(& m_cullState);
-                        job.SetClassInstance(& m_groups[i]);
-                        job.SetPriorityLevel(JobManager::eHighPriority);
-                        job.Run();
+                            (unsigned int)&m_groups[i],
+                            (unsigned int)m_groups[i].instances,
+                            (unsigned int)m_groups[i].numSamples);
+
+                        m_cullJobExecutor.StartJob(
+                            [this, i, flags]()
+                            {
+                                m_groups[i].CullInstances(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags);
+                            }
+                        ); // legacy: job.SetPriorityLevel(JobManager::eHighPriority);
                         //gEnv->pJobManager->WaitForJob(m_cullState);
-#       else
+#else
                         m_groups[i].CullInstances(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
-#       endif
+#endif
                         dispatched = true;
                     }
                     if (dispatched)
@@ -3307,13 +3249,14 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
                             continue;
                         }
                         int flags = (int)(nLod << MMRM_LOD_SHIFT) | MMRM_CULL_LOD | MMRM_CULL_DISTANCE;
-#         if MMRM_USE_JOB_SYSTEM
-                        TPVRNCullRenderMesh job(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
-                        job.RegisterJobState(& m_cullState);
-                        job.SetClassInstance(& m_groups[i]);
-                        job.SetPriorityLevel(JobManager::eHighPriority);
-                        job.Run();
-#         else
+#if MMRM_USE_JOB_SYSTEM
+                        m_cullJobExecutor.StartJob(
+                            [this, i, flags]()
+                            {
+                                m_groups[i].CullInstances(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags); // job.SetPriorityLevel(JobManager::eHighPriority);
+                            }
+                        );
+#else
                         m_groups[i].CullInstances(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
 #endif
                         dispatched = true;
@@ -3453,9 +3396,9 @@ bool CMergedMeshRenderNode::PostRender(const SRenderingPassInfo& passInfo)
 
     // Sadly because of the interleaved renderchunks structure, we can
     // only start building a mesh when all culling tasks have completed.
-    IF (m_cullState.IsRunning(), 1)
+    IF(m_cullJobExecutor.IsRunning(), 1)
     {
-        return true;
+        return true; 
     }
 
     const float distance = (s_mmrm_globals.camera.GetPosition() - m_pos).len();
@@ -3583,7 +3526,7 @@ void CMergedMeshRenderNode::FillSamples(DynArray<Vec2>& samples)
 
 void CMergedMeshRenderNode::ActivateSpines()
 {
-    if (m_spineInitializationState.IsRunning() || m_updateState.IsRunning())
+    if (m_spineInitializationJobExecutor.IsRunning() || m_updateJobExecutor.IsRunning())
     {
         return;
     }
@@ -3612,11 +3555,7 @@ void CMergedMeshRenderNode::ActivateSpines()
         }
     }
 # if MMRM_USE_JOB_SYSTEM
-    TMergedMesh_InitializeSpines job;
-    job.SetPriorityLevel(JobManager::eLowPriority);
-    job.SetClassInstance(this);
-    job.RegisterJobState(& m_spineInitializationState);
-    job.Run();
+    m_spineInitializationJobExecutor.StartJob([this](){ this->InitializeSpines(); }); // job.SetPriorityLevel(JobManager::eLowPriority);
 # else
     InitializeSpines();
 # endif
@@ -3624,7 +3563,7 @@ void CMergedMeshRenderNode::ActivateSpines()
 
 void CMergedMeshRenderNode::RemoveSpines()
 {
-    if (m_spineInitializationState.IsRunning() || m_updateState.IsRunning())
+    if (m_spineInitializationJobExecutor.IsRunning() || m_updateJobExecutor.IsRunning())
     {
         return;
     }
@@ -3724,10 +3663,9 @@ void CMergedMeshRenderNode::StreamAsyncOnComplete (IReadStream* pStream, unsigne
         stepcount += header->numSamples;
     }
 
-    TMergedMesh_InitializeSamples job(fExtents, reinterpret_cast<const uint8*>(pStream->GetBuffer()));
-    job.SetPriorityLevel(JobManager::eLowPriority);
-    job.SetClassInstance(this);
-    job.Run();
+    const uint8* buffer = reinterpret_cast<const uint8*>(pStream->GetBuffer());
+    AZ::Job* job = AZ::CreateJobFunction([this, fExtents, buffer](){ this->InitializeSamples(fExtents, buffer); }, true);
+    job->Start(); // legacy: job.SetPriorityLevel(JobManager::eLowPriority);
 }
 
 void CMergedMeshRenderNode::PrintState(float& yPos)
@@ -4255,15 +4193,15 @@ bool CMergedMeshRenderNode::UpdateStreamableComponents(
 
 bool CMergedMeshRenderNode::SyncAllJobs()
 {
-    IF (m_cullState.IsRunning(), 0)
+    IF(m_cullJobExecutor.IsRunning(), 0)
     {
         return false;
     }
-    IF (m_updateState.IsRunning(), 0)
+    IF(m_updateJobExecutor.IsRunning(), 0)
     {
         return false;
     }
-    IF (m_spineInitializationState.IsRunning(), 0)
+    IF(m_spineInitializationJobExecutor.IsRunning(), 0)
     {
         return false;
     }
@@ -4323,11 +4261,13 @@ void CMergedMeshRenderNode::Reset()
     {
         if (m_groups[i].procGeom)
         {
-            gEnv->pJobManager->WaitForJob(m_groups[i].procGeom->geomPrepareState);
+            m_groups[i].procGeom->geomPrepareJobExecutor.WaitForCompletion();
         }
     }
-    gEnv->pJobManager->WaitForJob(m_cullState);
-    gEnv->pJobManager->WaitForJob(m_updateState);
+    m_cullJobExecutor.WaitForCompletion();
+    m_cullJobExecutor.Reset();
+    m_updateJobExecutor.WaitForCompletion();
+    m_updateJobExecutor.Reset();
 
     m_renderMeshes[0].clear();
     m_renderMeshes[1].clear();
@@ -4379,7 +4319,7 @@ CMergedMeshesManager::~CMergedMeshesManager()
 
 void CMergedMeshesManager::Init()
 {
-    s_GeomManager.Initialize(gEnv->pJobManager->GetNumWorkerThreads());
+    s_GeomManager.Initialize();
     if (ICVar* pVar = gEnv->pConsole->GetCVar("e_MergedMeshesLodRatio"))
     {
         pVar->SetOnChangeCallback(UpdateRatios);
@@ -4903,11 +4843,7 @@ void CMergedMeshesManager::RemoveMergedMesh(CMergedMeshRenderNode* node)
 void CMergedMeshesManager::SortActiveInstances(const SRenderingPassInfo& passInfo)
 {
 # if MMRM_USE_JOB_SYSTEM
-    TMMRM_SortActiveInstances job(passInfo);
-    job.SetClassInstance(this);
-    job.RegisterJobState(& m_updateState);
-    job.SetPriorityLevel(JobManager::eHighPriority);
-    job.Run();
+    m_updateCompletionMergedMeshesManager.StartJob([this, passInfo]() { this->SortActiveInstances_Async(passInfo); }); // legacy: job.SetPriorityLevel(JobManager::eHighPriority); 
 # else
     SortActiveInstances_Async(passInfo);
 # endif
@@ -4981,7 +4917,7 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
     {
         CRYPROFILE_SCOPE_PROFILE_MARKER("MMRMGR: state jobsync");
         // Maintain a sorted list of active instances - we have to wait here for the job to have completed
-        gEnv->pJobManager->WaitForJob(m_updateState);
+        m_updateCompletionMergedMeshesManager.WaitForCompletion();
     }
 
     // Stream in instances up until main memory pool limit
@@ -5378,11 +5314,12 @@ CDeformableNode::~CDeformableNode()
 
 void CDeformableNode::ClearInstanceData()
 {
-    gEnv->pJobManager->WaitForJob(m_cullState);
-    gEnv->pJobManager->WaitForJob(m_updateState);
+    m_cullCompletionDeformableNode.WaitForCompletion();
+    m_updateCompletionDeformableNode.WaitForCompletion();
+
     for (size_t i = 0; i < m_nData; ++i)
     {
-        gEnv->pJobManager->WaitForJob(m_pData[i]->m_mmrmHeader.procGeom->geomPrepareState);
+        m_pData[i]->m_mmrmHeader.procGeom->geomPrepareJobExecutor.WaitForCompletion();
         if (m_pHeap && m_pHeap->UsableSize(m_pData[i]->m_mmrmHeader.deform_vertices))
         {
             m_pHeap->Free(m_pData[i]->m_mmrmHeader.deform_vertices);
@@ -5430,7 +5367,7 @@ void CDeformableNode::ClearSimulationData()
 {
     for (size_t i = 0; i < m_nData; ++i)
     {
-        gEnv->pJobManager->WaitForJob(m_pData[i]->m_mmrmHeader.procGeom->geomPrepareState);
+        m_pData[i]->m_mmrmHeader.procGeom->geomPrepareJobExecutor.WaitForCompletion();
         if (m_pHeap && m_pHeap->UsableSize(m_pData[i]->m_mmrmHeader.deform_vertices))
         {
             m_pHeap->Free(m_pData[i]->m_mmrmHeader.deform_vertices);
@@ -5621,11 +5558,7 @@ void CDeformableNode::UpdateInternalDeform(
             }
 
 #   if MMRM_USE_JOB_SYSTEM
-            TPVRNUpdateRenderMeshDeform job(& s_mmrm_globals.camera, 0u);
-            job.RegisterJobState(& m_updateState);
-            job.SetClassInstance(update);
-            job.SetPriorityLevel(JobManager::eLowPriority);
-            job.Run();
+            m_updateCompletionDeformableNode.StartJob([update](){ update->MergeInstanceMeshesDeform(&s_mmrm_globals.camera, 0u); }); //job.SetPriorityLevel(JobManager::eLowPriority);
 #   else
             update->MergeInstanceMeshesDeform(& s_mmrm_globals.camera, 0u);
 #   endif
@@ -5668,8 +5601,8 @@ void CDeformableNode::RenderInternalDeform(
     {
         {
             FRAME_PROFILER("CDeformableNode::RenderInternalDeform JobSync", gEnv->pSystem, PROFILE_3DENGINE);
-            gEnv->pJobManager->WaitForJob(m_cullState);
-            gEnv->pJobManager->WaitForJob(m_updateState);
+            m_cullCompletionDeformableNode.WaitForCompletion();
+            m_updateCompletionDeformableNode.WaitForCompletion();
         }
 
         m_nFrameId = passInfo.GetMainFrameID();

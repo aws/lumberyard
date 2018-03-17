@@ -156,7 +156,7 @@ void CUndoRenameLensFlareItem::Rename(const SUndoDataStruct& data)
     pEditor->RenameLensFlareItem(pLensFlareItem, groupName, shortName);
     if (pLensFlareItem->GetOptics())
     {
-        pLensFlareItem->GetOptics()->SetName(shortName.toLatin1().data());
+        pLensFlareItem->GetOptics()->SetName(shortName.toUtf8().data());
         LensFlareUtil::UpdateOpticsName(pLensFlareItem->GetOptics());
     }
     pEditor->UpdateLensFlareItem(pLensFlareItem);

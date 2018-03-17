@@ -30,12 +30,28 @@
 #include <AzCore/Debug/ProfileModuleInit.h>
 #include <AzCore/Module/Environment.h>
 
+// Section dictionary
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define PLATFORM_IMPL_H_SECTION_TRAITS 1
+#define PLATFORM_IMPL_H_SECTION_CRYLOWLATENCYSLEEP 2
+#define PLATFORM_IMPL_H_SECTION_CRYGETFILEATTRIBUTES 3
+#define PLATFORM_IMPL_H_SECTION_CRYSETFILEATTRIBUTES 4
+#define PLATFORM_IMPL_H_SECTION_LOADLIBRARY 5
+#endif
+
 #if !defined(AZ_MONOLITHIC_BUILD)
 SC_API struct SSystemGlobalEnvironment* gEnv = NULL;
 #endif //AZ_MONOLITHIC_BUILD
 
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BITFIDDLING_H_SECTION_TRAITS
+#include AZ_RESTRICTED_FILE(platform_impl_h)
+#elif defined(LINUX) || defined(APPLE)
+#define PLATFORM_IMPL_H_TRAIT_DEFINE_GLOBAL_SREGFACTORYNODE 1
+#endif
 
-#if defined(_LAUNCHER) && (defined(_RELEASE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_XBONE)) || !defined(AZ_MONOLITHIC_BUILD)
+#if defined(_LAUNCHER) && (defined(_RELEASE) || PLATFORM_IMPL_H_TRAIT_DEFINE_GLOBAL_SREGFACTORYNODE) || !defined(AZ_MONOLITHIC_BUILD)
 //The reg factory is used for registering the different modules along the whole project
 struct SRegFactoryNode* g_pHeadToRegFactories = 0;
 #endif
@@ -165,12 +181,6 @@ void __stl_debug_message(const char* format_str, ...)
 #endif //_STLP_DEBUG_MESSAGE
 
 
-#ifdef WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <process.h>
-#endif
-
 #if defined(WIN32) || defined(WIN64)
 #include <intrin.h>
 #endif
@@ -210,7 +220,15 @@ void CrySleep(unsigned int dwMilliseconds)
 void CryLowLatencySleep(unsigned int dwMilliseconds)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::System);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRYLOWLATENCYSLEEP
+#include AZ_RESTRICTED_FILE(platform_impl_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     CrySleep(dwMilliseconds);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -429,14 +447,30 @@ uint32 CryGetFileAttributes(const char* lpFileName)
 {
     WIN32_FILE_ATTRIBUTE_DATA data;
     BOOL res;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRYGETFILEATTRIBUTES
+#include AZ_RESTRICTED_FILE(platform_impl_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     res = GetFileAttributesEx(lpFileName, GetFileExInfoStandard, &data);
+#endif
     return res ? data.dwFileAttributes : -1;
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CrySetFileAttributes(const char* lpFileName, uint32 dwFileAttributes)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRYSETFILEATTRIBUTES
+#include AZ_RESTRICTED_FILE(platform_impl_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     return SetFileAttributes(lpFileName, dwFileAttributes) != 0;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -449,6 +483,10 @@ threadID CryGetCurrentThreadId()
 
 #endif //AZ_MONOLITHIC_BUILD
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_LOADLIBRARY
+#include AZ_RESTRICTED_FILE(platform_impl_h)
+#endif
 
 #if defined(AZ_PLATFORM_WINDOWS) && (!defined(AZ_MONOLITHIC_BUILD) || defined(_LAUNCHER))
 int64 CryGetTicks()

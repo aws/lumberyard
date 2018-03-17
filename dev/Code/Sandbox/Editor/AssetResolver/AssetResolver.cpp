@@ -116,7 +116,7 @@ void CMissingAssetResolver::PumpEvents()
         {
             if (pRecord->searchRequestId == IAssetSearcher::INVALID_ID && pRecord->state == CMissingAssetRecord::ESTATE_PENDING)
             {
-                pRecord->searchRequestId = pSearcher->AddSearch(pRecord->orgname.toLatin1().data(), pRecord->assetTypeId);
+                pRecord->searchRequestId = pSearcher->AddSearch(pRecord->orgname.toUtf8().data(), pRecord->assetTypeId);
             }
             else if (pRecord->searchRequestId != IAssetSearcher::INVALID_ID)
             {

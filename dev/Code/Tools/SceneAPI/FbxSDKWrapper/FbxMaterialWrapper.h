@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,12 +10,11 @@
 *
 */
 
-#include <AzCore/Math/Vector3.h>
+#pragma once
 
-#include <memory>
-#include <cassert>
-#include <string>
-#include "fbxsdk.h"
+#include <AzCore/Math/Vector3.h>
+#include <fbxsdk.h>
+#include <AzCore/std/string/string.h>
 
 namespace AZ
 {
@@ -36,10 +33,10 @@ namespace AZ
             FbxMaterialWrapper(FbxSurfaceMaterial* fbxMaterial);
             virtual ~FbxMaterialWrapper();
 
-            virtual std::string GetName() const;
-            virtual std::string GetTextureFileName(const char* textureType) const;
-            virtual std::string GetTextureFileName(const std::string& textureType) const;
-            virtual std::string GetTextureFileName(MaterialMapType textureType) const;
+            virtual AZStd::string GetName() const;
+            virtual AZStd::string GetTextureFileName(const char* textureType) const;
+            virtual AZStd::string GetTextureFileName(const AZStd::string& textureType) const;
+            virtual AZStd::string GetTextureFileName(MaterialMapType textureType) const;
 
             virtual AZ::Vector3 GetDiffuseColor() const;
             virtual AZ::Vector3 GetSpecularColor() const;
@@ -50,5 +47,5 @@ namespace AZ
         protected:
             FbxSurfaceMaterial* m_fbxMaterial;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

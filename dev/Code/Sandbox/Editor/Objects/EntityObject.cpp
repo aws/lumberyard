@@ -207,7 +207,7 @@ private:
         if (pEntity)
         {
             pEntity->SetAttachType(m_attachmentType);
-            pEntity->SetAttachTarget(m_attachmentTarget.toLatin1().data());
+            pEntity->SetAttachTarget(m_attachmentTarget.toUtf8().data());
         }
     }
 
@@ -444,7 +444,7 @@ bool CEntityObject::Init(IEditor* pEditor, CBaseObject* pPrev, const QString& fi
         m_entityClass = file;
 
         IEntityPoolManager* pPoolManager = gEnv->pEntitySystem->GetIEntityPoolManager();
-        if (pPoolManager && pPoolManager->IsClassDefaultBookmarked(m_entityClass.toLatin1().data()))
+        if (pPoolManager && pPoolManager->IsClassDefaultBookmarked(m_entityClass.toUtf8().data()))
         {
             mv_createdThroughPool = true;
         }
@@ -1268,7 +1268,7 @@ void CEntityObject::SpawnEntity()
     SEntitySpawnParams params;
     params.pClass = m_pEntityScript->GetClass();
     params.nFlags = 0;
-    QByteArray name = GetName().toLatin1();
+    QByteArray name = GetName().toUtf8();
     params.sName = name.data();
     params.vPosition = GetPos();
     params.qRotation = GetRotation();
@@ -1589,13 +1589,13 @@ void CEntityObject::SetName(const QString& name)
     CBaseObject::SetName(name);
     if (m_pEntity)
     {
-        m_pEntity->SetName(GetName().toLatin1().data());
+        m_pEntity->SetName(GetName().toUtf8().data());
     }
 
     CListenerSet<IEntityObjectListener*> listeners = m_listeners;
     for (CListenerSet<IEntityObjectListener*>::Notifier notifier(listeners); notifier.IsValid(); notifier.Next())
     {
-        notifier->OnNameChanged(name.toLatin1().data());
+        notifier->OnNameChanged(name.toUtf8().data());
     }
 }
 
@@ -1618,7 +1618,7 @@ void CEntityObject::BeginEditParams(IEditor* ie, int flags)
         s_pPropertiesPanel2->AddVars(m_pProperties2);
         if (!s_propertiesPanelIndex2)
         {
-            s_propertiesPanelIndex2 = AddUIPage(QString(GetTypeName() + " Properties2").toLatin1().data(), s_pPropertiesPanel2);
+            s_propertiesPanelIndex2 = AddUIPage(QString(GetTypeName() + " Properties2").toUtf8().data(), s_pPropertiesPanel2);
         }
     }
 
@@ -1638,7 +1638,7 @@ void CEntityObject::BeginEditParams(IEditor* ie, int flags)
             s_pPropertiesPanel->AddVars(m_pProperties);
             if (!s_propertiesPanelIndex)
             {
-                s_propertiesPanelIndex = AddUIPage(QString(GetTypeName() + " Properties").toLatin1().data(), s_pPropertiesPanel);
+                s_propertiesPanelIndex = AddUIPage(QString(GetTypeName() + " Properties").toUtf8().data(), s_pPropertiesPanel);
             }
 
             if (s_pPropertiesPanel)
@@ -1651,7 +1651,7 @@ void CEntityObject::BeginEditParams(IEditor* ie, int flags)
     if (!m_panel && m_pEntity)
     {
         m_panel = new CEntityPanel;
-        m_rollupId = AddUIPage((QString("Entity: ") + m_entityClass).toLatin1().data(), m_panel);
+        m_rollupId = AddUIPage((QString("Entity: ") + m_entityClass).toUtf8().data(), m_panel);
     }
     if (m_panel)
     {
@@ -1815,7 +1815,7 @@ void CEntityObject::BeginEditMultiSelParams(bool bAllOfSameType)
         }
         if (!s_propertiesPanelIndex2)
         {
-            s_propertiesPanelIndex2 = AddUIPage(QString(GetTypeName() + " Properties").toLatin1().data(), s_pPropertiesPanel2);
+            s_propertiesPanelIndex2 = AddUIPage(QString(GetTypeName() + " Properties").toUtf8().data(), s_pPropertiesPanel2);
         }
 
         if (s_pPropertiesPanel2)
@@ -1848,7 +1848,7 @@ void CEntityObject::BeginEditMultiSelParams(bool bAllOfSameType)
         }
         if (!s_propertiesPanelIndex)
         {
-            s_propertiesPanelIndex = AddUIPage((GetTypeName() + " Properties").toLatin1().data(), s_pPropertiesPanel);
+            s_propertiesPanelIndex = AddUIPage((GetTypeName() + " Properties").toUtf8().data(), s_pPropertiesPanel);
         }
 
         if (s_pPropertiesPanel)
@@ -2054,7 +2054,7 @@ void CEntityObject::DrawExtraLightInfo(DisplayContext& dc)
 
             ColorB col(255, 255, 255);
             dc.SetColor(col);
-            dc.DrawTextLabel(vDrawPos, 1.3f, csText.toLatin1().data());
+            dc.DrawTextLabel(vDrawPos, 1.3f, csText.toUtf8().data());
         }
     }
 }
@@ -2617,13 +2617,13 @@ void CEntityObject::Serialize(CObjectArchive& ar)
                 xmlNode->setAttr("AttachmentType", "CharacterBone");
             }
 
-            xmlNode->setAttr("AttachmentTarget", m_attachmentTarget.toLatin1().data());
+            xmlNode->setAttr("AttachmentTarget", m_attachmentTarget.toUtf8().data());
         }
 
         // Saving.
         if (!m_entityClass.isEmpty() && m_prototype == NULL)
         {
-            xmlNode->setAttr("EntityClass", m_entityClass.toLatin1().data());
+            xmlNode->setAttr("EntityClass", m_entityClass.toUtf8().data());
         }
 
         if (m_physicsState)
@@ -2660,8 +2660,8 @@ void CEntityObject::Serialize(CObjectArchive& ar)
 
                 XmlNodeRef eventTarget = eventTargets->newChild("EventTarget");
                 eventTarget->setAttr("TargetId", targetId);
-                eventTarget->setAttr("Event", et.event.toLatin1().data());
-                eventTarget->setAttr("SourceEvent", et.sourceEvent.toLatin1().data());
+                eventTarget->setAttr("Event", et.event.toUtf8().data());
+                eventTarget->setAttr("SourceEvent", et.sourceEvent.toUtf8().data());
             }
         }
 
@@ -2761,16 +2761,16 @@ XmlNodeRef CEntityObject::Export(const QString& levelPath, XmlNodeRef& xmlExport
     // Export entities to entities.ini
     XmlNodeRef objNode = xmlExportNode->newChild("Entity");
 
-    objNode->setAttr("Name", GetName().toLatin1().data());
+    objNode->setAttr("Name", GetName().toUtf8().data());
 
     if (GetMaterial())
     {
-        objNode->setAttr("Material", GetMaterial()->GetName().toLatin1().data());
+        objNode->setAttr("Material", GetMaterial()->GetName().toUtf8().data());
     }
 
     if (m_prototype)
     {
-        objNode->setAttr("Archetype", m_prototype->GetFullName().toLatin1().data());
+        objNode->setAttr("Archetype", m_prototype->GetFullName().toUtf8().data());
     }
 
     Vec3 pos = GetPos(), scale = GetScale();
@@ -2805,7 +2805,7 @@ XmlNodeRef CEntityObject::Export(const QString& levelPath, XmlNodeRef& xmlExport
                         objNode->setAttr("AttachmentType", "CharacterBone");
                     }
 
-                    objNode->setAttr("AttachmentTarget", m_attachmentTarget.toLatin1().data());
+                    objNode->setAttr("AttachmentTarget", m_attachmentTarget.toUtf8().data());
                 }
             }
         }
@@ -2836,7 +2836,7 @@ XmlNodeRef CEntityObject::Export(const QString& levelPath, XmlNodeRef& xmlExport
     }
 
     objNode->setTag("Entity");
-    objNode->setAttr("EntityClass", m_entityClass.toLatin1().data());
+    objNode->setAttr("EntityClass", m_entityClass.toUtf8().data());
     objNode->setAttr("EntityId", m_entityId);
     objNode->setAttr("EntityGuid", ToEntityGuid(GetId()));
 
@@ -2900,7 +2900,7 @@ XmlNodeRef CEntityObject::Export(const QString& levelPath, XmlNodeRef& xmlExport
 
     if (!GetLayer()->GetName().isEmpty())
     {
-        objNode->setAttr("Layer", GetLayer()->GetName().toLatin1().data());
+        objNode->setAttr("Layer", GetLayer()->GetName().toUtf8().data());
     }
 
     // Export Event Targets.
@@ -2924,8 +2924,8 @@ XmlNodeRef CEntityObject::Export(const QString& levelPath, XmlNodeRef& xmlExport
 
             XmlNodeRef eventTarget = eventTargets->newChild("EventTarget");
             eventTarget->setAttr("Target", entityId);
-            eventTarget->setAttr("Event", et.event.toLatin1().data());
-            eventTarget->setAttr("SourceEvent", et.sourceEvent.toLatin1().data());
+            eventTarget->setAttr("Event", et.event.toUtf8().data());
+            eventTarget->setAttr("SourceEvent", et.sourceEvent.toUtf8().data());
         }
     }
 
@@ -2941,7 +2941,7 @@ XmlNodeRef CEntityObject::Export(const QString& levelPath, XmlNodeRef& xmlExport
             {
                 XmlNodeRef linkNode = linksNode->newChild("Link");
                 linkNode->setAttr("TargetId", m_links[i].target->GetEntityId());
-                linkNode->setAttr("Name", m_links[i].name.toLatin1().data());
+                linkNode->setAttr("Name", m_links[i].name.toUtf8().data());
 
                 if (m_links[i].target->GetType() == OBJTYPE_VOLUMESOLID)
                 {
@@ -3533,7 +3533,7 @@ void CEntityObject::BindToParent()
                 XFormGameEntity();
                 const int flags = ((m_attachmentType == eAT_GeomCacheNode) ? IEntity::ATTACHMENT_GEOMCACHENODE : 0)
                     | ((m_attachmentType == eAT_CharacterBone) ? IEntity::ATTACHMENT_CHARACTERBONE : 0);
-                SChildAttachParams attachParams(flags | IEntity::ATTACHMENT_KEEP_TRANSFORMATION, m_attachmentTarget.toLatin1().data());
+                SChildAttachParams attachParams(flags | IEntity::ATTACHMENT_KEEP_TRANSFORMATION, m_attachmentTarget.toUtf8().data());
                 ientParent->AttachChild(m_pEntity, attachParams);
                 XFormGameEntity();
             }
@@ -3563,7 +3563,7 @@ void CEntityObject::BindIEntityChilds()
                 pChildEntity->XFormGameEntity();
                 const int flags = ((pChildEntity->m_attachmentType == eAT_GeomCacheNode) ? IEntity::ATTACHMENT_GEOMCACHENODE : 0)
                     | ((pChildEntity->m_attachmentType == eAT_CharacterBone) ? IEntity::ATTACHMENT_CHARACTERBONE : 0);
-                SChildAttachParams attachParams(flags, pChildEntity->m_attachmentTarget.toLatin1().data());
+                SChildAttachParams attachParams(flags, pChildEntity->m_attachmentTarget.toUtf8().data());
                 m_pEntity->AttachChild(ientChild, attachParams);
                 pChildEntity->XFormGameEntity();
             }
@@ -3669,7 +3669,7 @@ void CEntityObject::ResolveEventTarget(CBaseObject* object, unsigned int index)
         CLineGizmo* pLineGizmo = new CLineGizmo;
         pLineGizmo->SetObjects(this, object);
         pLineGizmo->SetColor(Vec3(0.8f, 0.4f, 0.4f), Vec3(0.8f, 0.4f, 0.4f));
-        pLineGizmo->SetName(m_eventTargets[index].event.toLatin1().data());
+        pLineGizmo->SetName(m_eventTargets[index].event.toUtf8().data());
         AddGizmo(pLineGizmo);
         m_eventTargets[index].pLineGizmo = pLineGizmo;
     }
@@ -3737,7 +3737,7 @@ void CEntityObject::LoadLink(XmlNodeRef xmlNode, CObjectArchive* pArchive)
                     linkNode->getAttr("RelPos", relPos);
 
                     SetAttachType(eAT_CharacterBone);
-                    SetAttachTarget(name.mid(1).toLatin1().data());
+                    SetAttachTarget(name.mid(1).toUtf8().data());
                     pTargetEntity->AttachChild(this);
 
                     SetPos(relPos);
@@ -3765,7 +3765,7 @@ void CEntityObject::SaveLink(XmlNodeRef xmlNode)
     {
         XmlNodeRef linkNode = linksNode->newChild("Link");
         linkNode->setAttr("TargetId", m_links[i].targetId);
-        linkNode->setAttr("Name", m_links[i].name.toLatin1().data());
+        linkNode->setAttr("Name", m_links[i].name.toUtf8().data());
         linkNode->setAttr("Version", 1);
     }
 }
@@ -3824,7 +3824,7 @@ int CEntityObject::AddEventTarget(CBaseObject* target, const QString& event, con
         CLineGizmo* pLineGizmo = new CLineGizmo;
         pLineGizmo->SetObjects(this, target);
         pLineGizmo->SetColor(Vec3(0.8f, 0.4f, 0.4f), Vec3(0.8f, 0.4f, 0.4f));
-        pLineGizmo->SetName(event.toLatin1().data());
+        pLineGizmo->SetName(event.toUtf8().data());
         AddGizmo(pLineGizmo);
         et.pLineGizmo = pLineGizmo;
     }
@@ -3901,7 +3901,7 @@ int CEntityObject::AddEntityLink(const QString& name, GUID targetEntityId)
         pLineGizmo = new CLineGizmo;
         pLineGizmo->SetObjects(this, target);
         pLineGizmo->SetColor(Vec3(0.4f, 1.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
-        pLineGizmo->SetName(name.toLatin1().data());
+        pLineGizmo->SetName(name.toUtf8().data());
         AddGizmo(pLineGizmo);
     }
 
@@ -3915,7 +3915,7 @@ int CEntityObject::AddEntityLink(const QString& name, GUID targetEntityId)
     if (m_pEntity != NULL && target != NULL)
     {
         // Add link to entity itself.
-        m_pEntity->AddEntityLink(name.toLatin1().data(), target->GetEntityId(), 0);
+        m_pEntity->AddEntityLink(name.toUtf8().data(), target->GetEntityId(), 0);
         // tell the target about the linkage
         target->EntityLinked(name, GetId());
     }
@@ -3975,7 +3975,7 @@ void CEntityObject::RenameEntityLink(int index, const QString& newName)
 
         if (m_links[index].pLineGizmo)
         {
-            m_links[index].pLineGizmo->SetName(newName.toLatin1().data());
+            m_links[index].pLineGizmo->SetName(newName.toUtf8().data());
         }
 
         m_links[index].name = newName;
@@ -3997,7 +3997,7 @@ void CEntityObject::UpdateIEntityLinks(bool bCallOnPropertyChange)
         {
             if (m_links[i].target)
             {
-                m_pEntity->AddEntityLink(m_links[i].name.toLatin1().data(), m_links[i].target->GetEntityId(), 0);
+                m_pEntity->AddEntityLink(m_links[i].name.toUtf8().data(), m_links[i].target->GetEntityId(), 0);
             }
         }
 
@@ -4564,7 +4564,7 @@ void CEntityObject::OpenFlowGraph(const QString& groupName)
     if (!m_pFlowGraph)
     {
         StoreUndo("Create Flow Graph");
-        SetFlowGraph(GetIEditor()->GetFlowGraphManager()->CreateGraphForEntity(this, groupName.toLatin1().data()));
+        SetFlowGraph(GetIEditor()->GetFlowGraphManager()->CreateGraphForEntity(this, groupName.toUtf8().data()));
         UpdatePrefab();
     }
     GetIEditor()->GetFlowGraphManager()->OpenView(m_pFlowGraph);
@@ -4709,7 +4709,7 @@ void CEntityObject::OnMenuConvertToPrefab()
     if (pLibrary == NULL)
     {
         QString sError = tr("Could not convert procedural object %1 to prefab library %2").arg(this->GetName(), libraryFileName);
-        CryMessageBox(sError.toLatin1().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
+        CryMessageBox(sError.toUtf8().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
         return;
     }
 
@@ -4750,7 +4750,7 @@ void CEntityObject::OnMenuConvertToPrefab()
         nIdx = nLen + 1;    // counts the . separating the library names
     }
     // check if the prefab item exists inside the library
-    IDataBaseItem* pItem = pLibrary->FindItem(strFullName.mid(nIdx).toLatin1().data());
+    IDataBaseItem* pItem = pLibrary->FindItem(strFullName.mid(nIdx).toUtf8().data());
 
     if (pItem)
     {
@@ -4759,7 +4759,7 @@ void CEntityObject::OnMenuConvertToPrefab()
         if (!pObject)
         {
             QString sError = tr("Could not convert procedural object to %1").arg(strFullName);
-            CryMessageBox(sError.toLatin1().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
+            CryMessageBox(sError.toUtf8().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
         }
         else
         {
@@ -4774,7 +4774,7 @@ void CEntityObject::OnMenuConvertToPrefab()
     else
     {
         QString sError = tr("Library not found %1").arg(sLibraryName);
-        CryMessageBox(sError.toLatin1().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
+        CryMessageBox(sError.toUtf8().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
     }
 
     QtViewPaneManager::instance()->OpenPane(LyViewPane::LegacyRollupBar);
@@ -4994,10 +4994,10 @@ void CEntityObject::ApplyOptics(const QString& opticsFullName, IOpticsElementBas
     else
     {
         int nOpticsIndex(0);
-        if (!gEnv->pOpticsManager->Load(opticsFullName.toLatin1().data(), nOpticsIndex))
+        if (!gEnv->pOpticsManager->Load(opticsFullName.toUtf8().data(), nOpticsIndex))
         {
             IOpticsElementBasePtr pNewOptics = gEnv->pOpticsManager->Create(eFT_Root);
-            if (!gEnv->pOpticsManager->AddOptics(pNewOptics, opticsFullName.toLatin1().data(), nOpticsIndex))
+            if (!gEnv->pOpticsManager->AddOptics(pNewOptics, opticsFullName.toUtf8().data(), nOpticsIndex))
             {
                 CDLight* pLight = GetLightProperty();
                 if (pLight)
@@ -5034,7 +5034,7 @@ void CEntityObject::SetOpticsName(const QString& opticsFullName)
     {
         if (GetOpticsElement())
         {
-            if (gEnv->pOpticsManager->Rename(GetOpticsElement()->GetName(), opticsFullName.toLatin1().data()))
+            if (gEnv->pOpticsManager->Rename(GetOpticsElement()->GetName(), opticsFullName.toUtf8().data()))
             {
                 SetFlareName(opticsFullName);
             }
@@ -5106,7 +5106,7 @@ void CEntityObject::PreInitLightProperty()
         {
             CLensFlareManager* pLensManager = GetIEditor()->GetLensFlareManager();
             CLensFlareLibrary* pLevelLib = (CLensFlareLibrary*)pLensManager->GetLevelLibrary();
-            IOpticsElementBasePtr pLevelOptics = pLevelLib->GetOpticsOfItem(flareFullName.toLatin1().data());
+            IOpticsElementBasePtr pLevelOptics = pLevelLib->GetOpticsOfItem(flareFullName.toUtf8().data());
             if (pLevelLib && pLevelOptics)
             {
                 int nOpticsIndex(0);
@@ -5116,7 +5116,7 @@ void CEntityObject::PreInitLightProperty()
                     pNewOptics = gEnv->pOpticsManager->Create(eFT_Root);
                 }
 
-                if (gEnv->pOpticsManager->AddOptics(pNewOptics, flareFullName.toLatin1().data(), nOpticsIndex))
+                if (gEnv->pOpticsManager->AddOptics(pNewOptics, flareFullName.toUtf8().data(), nOpticsIndex))
                 {
                     LensFlareUtil::CopyOptics(pLevelOptics, pNewOptics);
                     SetOpticsElement(pNewOptics);
@@ -5154,7 +5154,7 @@ void CEntityObject::UpdateLightProperty()
         bool bEnableOptics = GetEntityPropertyBool("bFlareEnable");
         if (bEnableOptics && GetIEditor()->GetLensFlareManager()->LoadFlareItemByName(flareName, pOptics))
         {
-            pOptics->SetName(flareName.toLatin1().data());
+            pOptics->SetName(flareName.toUtf8().data());
             SetOpticsElement(pOptics);
         }
         else
@@ -5186,14 +5186,14 @@ void CEntityObject::SetPropertyPanelsState()
     {
         s_pPropertiesPanel->InvalidateCtrl();
 
-        RenameUIPage(s_propertiesPanelIndex, (GetTypeName() + " Properties").toLatin1().data());
+        RenameUIPage(s_propertiesPanelIndex, (GetTypeName() + " Properties").toUtf8().data());
     }
 
     if (s_pPropertiesPanel2)
     {
         s_pPropertiesPanel2->InvalidateCtrl();
 
-        RenameUIPage(s_propertiesPanelIndex2, (GetTypeName() + " Properties2").toLatin1().data());
+        RenameUIPage(s_propertiesPanelIndex2, (GetTypeName() + " Properties2").toUtf8().data());
     }
 }
 
@@ -5596,7 +5596,7 @@ void CEntityObject::SetEntityProperty(const char* pName, T value)
 
         if (!pVariable)
         {
-            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toLatin1().data());
+            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toUtf8().data());
         }
     }
 
@@ -5770,7 +5770,7 @@ SPyWrappedProperty CEntityObject::PyGetEntityProperty(const char* pName) const
 
         if (!pVariable)
         {
-            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toLatin1().data());
+            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toUtf8().data());
         }
     }
 
@@ -5848,7 +5848,7 @@ void CEntityObject::PySetEntityProperty(const char* pName, const SPyWrappedPrope
 
         if (!pVariable)
         {
-            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toLatin1().data());
+            throw std::runtime_error((QString("\"") + pName + "\" is an invalid property.").toUtf8().data());
         }
     }
 
@@ -5897,7 +5897,7 @@ SPyWrappedProperty PyGetEntityProperty(const char* pObjName, const char* pPropNa
     }
     else
     {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toLatin1().data());
+        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toUtf8().data());
     }
 
     if (qobject_cast<CEntityObject*>(pObject))
@@ -5907,7 +5907,7 @@ SPyWrappedProperty PyGetEntityProperty(const char* pObjName, const char* pPropNa
     }
     else
     {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid entity.").toLatin1().data());
+        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid entity.").toUtf8().data());
     }
 }
 
@@ -5923,7 +5923,7 @@ void PySetEntityProperty(const char* entityName, const char* propName, SPyWrappe
     CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(entityName);
     if (!pObject || !qobject_cast<CEntityObject*>(pObject))
     {
-        throw std::logic_error((QString("\"") + entityName + "\" is an invalid entity.").toLatin1().data());
+        throw std::logic_error((QString("\"") + entityName + "\" is an invalid entity.").toUtf8().data());
     }
 
     CUndo undo("Set Entity Property");
@@ -5950,7 +5950,7 @@ SPyWrappedProperty PyGetObjectVariableRec(IVariableContainer* pVariableContainer
     IVariableContainer* pSubVariableContainer = pVariableContainer;
     if (path.size() != 1)
     {
-        pSubVariableContainer = pSubVariableContainer->FindVariable(currentPath.toLatin1().data(), false, true);
+        pSubVariableContainer = pSubVariableContainer->FindVariable(currentPath.toUtf8().data(), false, true);
         if (!pSubVariableContainer)
         {
             throw std::logic_error("Path is invalid.");
@@ -5959,7 +5959,7 @@ SPyWrappedProperty PyGetObjectVariableRec(IVariableContainer* pVariableContainer
         PyGetObjectVariableRec(pSubVariableContainer, path);
     }
 
-    IVariable* pVariable = pSubVariableContainer->FindVariable(currentName.toLatin1().data(), false, true);
+    IVariable* pVariable = pSubVariableContainer->FindVariable(currentName.toUtf8().data(), false, true);
 
     if (pVariable)
     {
@@ -6001,7 +6001,7 @@ SPyWrappedProperty PyGetObjectVariableRec(IVariableContainer* pVariableContainer
         throw std::logic_error("Data type is invalid.");
     }
 
-    throw std::logic_error((QString("\"") + currentName + "\" is an invalid parameter.").toLatin1().data());
+    throw std::logic_error((QString("\"") + currentName + "\" is an invalid parameter.").toUtf8().data());
 }
 
 SPyWrappedProperty PyGetEntityParam(const char* pObjName, const char* pVarPath)
@@ -6025,7 +6025,7 @@ SPyWrappedProperty PyGetEntityParam(const char* pObjName, const char* pVarPath)
     }
     else
     {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toLatin1().data());
+        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toUtf8().data());
         return result;
     }
 
@@ -6039,7 +6039,7 @@ SPyWrappedProperty PyGetEntityParam(const char* pObjName, const char* pVarPath)
     }
     else
     {
-        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid entity.").toLatin1().data());
+        throw std::logic_error((QString("\"") + pObjName + "\" is an invalid entity.").toUtf8().data());
     }
 
     return result;
@@ -6066,7 +6066,7 @@ void PySetEntityParam(const char* pObjectName, const char* pVarPath, SPyWrappedP
         CVarBlock* pVarBlock = pObject->GetVarBlock();
         if (pVarBlock)
         {
-            IVariable* pVariable = pVarBlock->FindVariable(splittedPath.back().toLatin1().data(), false, true);
+            IVariable* pVariable = pVarBlock->FindVariable(splittedPath.back().toUtf8().data(), false, true);
 
             CUndo undo("Set Entity Param");
             if (CUndo::IsRecording())
@@ -6107,13 +6107,13 @@ void PySetEntityParam(const char* pObjectName, const char* pVarPath, SPyWrappedP
             }
             else
             {
-                throw std::logic_error((QString("\"") + pVarPath + "\"" + " is an invalid parameter.").toLatin1().data());
+                throw std::logic_error((QString("\"") + pVarPath + "\"" + " is an invalid parameter.").toUtf8().data());
             }
         }
     }
     else
     {
-        throw std::logic_error((QString("\"") + pObjectName + "\" is an invalid entity.").toLatin1().data());
+        throw std::logic_error((QString("\"") + pObjectName + "\" is an invalid entity.").toUtf8().data());
     }
 }
 

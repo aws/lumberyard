@@ -10,7 +10,7 @@
  *
  */
 
-#include "StdAfx.h"
+#include "Visibility_precompiled.h"
 #include "OccluderAreaComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>

@@ -13,24 +13,53 @@
 #pragma once
 
 #include <AzCore/Debug/TraceMessageBus.h>
-#include <AzCore/std/string/osstring.h>
+#include <AzToolsFramework/Debug/TraceContextMultiStackHandler.h>
+#include <AssetBuilderSDK/AssetBuilderBusses.h>
 
-class TraceMessageHook
-    : public AZ::Debug::TraceMessageBus::Handler
+namespace AssetBuilder
 {
-public:
-    TraceMessageHook();
-    ~TraceMessageHook() override;
-    
-    bool OnAssert(const char* message) override;
-    bool OnError(const char* /*window*/, const char* message) override;
-    bool OnWarning(const char* /*window*/, const char* message) override;
-    bool OnException(const char* message) override;
-    bool OnOutput(const char* window, const char* message) override;
+    class TraceMessageHook
+        : public AZ::Debug::TraceMessageBus::Handler
+        , public AssetBuilderSDK::AssetBuilderTraceBus::Handler
+    {
+    public:
+        TraceMessageHook();
+        ~TraceMessageHook() override;
 
-    static void CleanMessage(FILE* stream, const char* prefix, const char* rawMessage);
+        void EnableTraceContext(bool enable);
+        void EnableDebugMode(bool enable);
 
-    // once we're in an exception, we accept all log data as error, since we will terminate
-    // this ensures that call stack info (which is 'traced', not 'exceptioned') is present.
-    bool m_isInException = false;
-};
+        bool OnAssert(const char* message) override;
+        bool OnError(const char* window, const char* message) override;
+        bool OnWarning(const char* window, const char* message) override;
+        bool OnException(const char* message) override;
+        bool OnPrintf(const char* window, const char* message) override;
+        bool OnOutput(const char* window, const char* message) override;
+
+        void IgnoreNextErrors(AZ::u32 count) override;
+        void IgnoreNextWarning(AZ::u32 count) override;
+        void IgnoreNextPrintf(AZ::u32 count) override;
+
+        void ResetWarningCount() override;
+        void ResetErrorCount() override;
+        AZ::u32 GetWarningCount() override;
+        AZ::u32 GetErrorCount() override;
+
+        void DumpTraceContext(FILE* stream);
+
+        static void CleanMessage(FILE* stream, const char* prefix, const char* message, bool forceFlush);
+
+    protected:
+        AzToolsFramework::Debug::TraceContextMultiStackHandler* m_stacks;
+        AZ::u32 m_skipErrorsCount;
+        AZ::u32 m_skipWarningsCount;
+        AZ::u32 m_skipPrintfsCount;
+        AZ::u32 m_totalWarningCount;
+        AZ::u32 m_totalErrorCount;
+        bool m_inDebugMode;
+
+        // once we're in an exception, we accept all log data as error, since we will terminate
+        // this ensures that call stack info (which is 'traced', not 'exceptioned') is present.
+        bool m_isInException = false;
+    };
+} // namespace AssetBuilder

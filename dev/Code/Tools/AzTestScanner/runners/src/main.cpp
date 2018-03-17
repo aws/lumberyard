@@ -18,7 +18,14 @@
 #if AZ_TESTS_ENABLED
 #   include <AzTest/AzTest.h>
 #   include <AzTest/Platform.h>
+#   include <AzCore/IO/SystemFile.h>
+#else
+#   define AZ_MAX_PATH_LEN 1024
 #endif // AZ_TESTS_ENABLED
+
+#if defined(AZ_PLATFORM_WINDOWS)
+#    define getcwd _getcwd // stupid MSFT "deprecation" warning
+#endif
 
 namespace
 {
@@ -74,6 +81,10 @@ int main(int argc, char** argv)
     }
     
 #if VERBOSE
+    char cwd[AZ_MAX_PATH_LEN] = { '\0' };
+    getcwd(cwd, sizeof(cwd));
+    std::cout << "cwd = " << cwd << std::endl;
+
     for (int i=0; i<argc; i++)
     {
         std::cout << "arg[" << i << "] " << argv[i] << std::endl;

@@ -73,7 +73,7 @@ namespace EMotionFX
         const char* GetTypeString() const override;
         AnimGraphObject* Clone(AnimGraph* animGraph) override;
 
-        void HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode) override {}
+        void HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode) override;
 
         bool GetIsMirroringEnabled(AnimGraphInstance* animGraphInstance) const;
 

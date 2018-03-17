@@ -377,8 +377,9 @@ void CVars::Init()
     REGISTER_CVAR_CB(e_ShadowsCacheRenderCharacters, 0, VF_NULL,
         "Render characters into the shadow cache. 0=disabled, 1=enabled", OnDynamicDistanceShadowsVarChange);
     REGISTER_CVAR(e_ShadowsCacheRequireManualUpdate, 0, VF_NULL,
-        "Sets whether levels must trigger manual updates of the cached shadow maps: 0=Cached shadows default to Incremental updates\n"
-        "1=Levels must trigger cached shadow updates via script\n"
+        "Sets whether levels must trigger manual updates of the cached shadow maps:\n"
+        "0=Cached shadows default to Incremental updates. Each cached shadow frustum will traverse and cull the octree each frame (Potentially high CPU/GPU overhead)\n"
+        "1=Levels must trigger cached shadow updates via script (Preferred: Lowest overhead)\n"
         "2=Levels may either trigger cached shadow updates via script or allow cached shadows to update if the user moves too close to the border of the shadowmap");
     REGISTER_CVAR_CB(e_DynamicDistanceShadows, 1, VF_NULL,
         "Enable dynamic distance shadows, 0=disable, 1=enable, -1=don't render dynamic distance shadows", OnDynamicDistanceShadowsVarChange);
@@ -571,6 +572,12 @@ void CVars::Init()
         "Debug");
     DefineConstIntCVar(e_CoverageBufferMaxAddRenderMeshTime, 2, VF_NULL,
         "Max time for unlimited AddRenderMesh");
+    REGISTER_CVAR(e_CoverageBufferNumberFramesLatency, 2, VF_NULL,
+        "Configures the number of frames of latency between the GPU write of the downsample Z-Target and CPU readback of that target.\n"
+        "0 - Disable CPU readback (For debugging)"
+        "1 - Coverage buffer uses previous frame's depth information. (Not recommended, CPU may stall waiting on GPU)\n"
+        "2 - Coverage buffer uses two frame old depth. (Default)\n"
+        "3 - Coverage buffer uses three frame old depth information.");
 
     DefineConstIntCVar(e_DynamicLightsMaxCount, 512, VF_CHEAT,
         "Sets maximum amount of dynamic light sources");

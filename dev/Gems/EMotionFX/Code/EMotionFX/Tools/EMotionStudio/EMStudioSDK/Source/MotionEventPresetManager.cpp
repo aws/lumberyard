@@ -54,14 +54,10 @@ namespace EMStudio
 
     const uint32 MotionEventPresetManager::m_unknownEventColor = MCore::RGBA(193, 195, 196, 255);
 
-    MotionEventPresetManager::MotionEventPresetManager(QWidget* parent)
-        : mParent(parent)
-        , mDirtyFlag(false)
+    MotionEventPresetManager::MotionEventPresetManager()
+        : mDirtyFlag(false)
     {
         mFileName = GetManager()->GetAppDataFolder() + "EMStudioDefaultEventPresets.cfg";
-
-        LoadFromSettings();
-        Load();
     }
 
 
@@ -153,7 +149,7 @@ namespace EMStudio
         Clear();
         CreateDefaultPresets();
 
-        QSettings settings(mFileName.c_str(), QSettings::IniFormat, mParent);
+        QSettings settings(mFileName.c_str(), QSettings::IniFormat, GetManager()->GetMainWindow());
 
         const uint32 numMotionEventPresets = settings.value("numMotionEventPresets").toInt();
         if (numMotionEventPresets == 0)
@@ -196,7 +192,7 @@ namespace EMStudio
     {
         mFileName = filename;
 
-        QSettings settings(mFileName.c_str(), QSettings::IniFormat, mParent);
+        QSettings settings(mFileName.c_str(), QSettings::IniFormat, GetManager()->GetMainWindow());
 
         const size_t numEventPresets = mEventPresets.size();
         {
@@ -251,7 +247,7 @@ namespace EMStudio
 
     void MotionEventPresetManager::SaveToSettings()
     {
-        QSettings settings(mParent);
+        QSettings settings(GetManager()->GetMainWindow());
         settings.beginGroup("EMotionFX");
         settings.setValue("lastEventPresetFile", mFileName.c_str());
         settings.endGroup();
@@ -260,7 +256,7 @@ namespace EMStudio
 
     void MotionEventPresetManager::LoadFromSettings()
     {
-        QSettings settings(mParent);
+        QSettings settings(GetManager()->GetMainWindow());
         settings.beginGroup("EMotionFX");
         mFileName = FromQtString(settings.value("lastEventPresetFile", QVariant("")).toString());
         settings.endGroup();

@@ -63,6 +63,8 @@ namespace NCryOpenGL
     {
         GLint m_iMaxSamples;
         GLint m_iMaxVertexAttribs;
+        GLint m_maxRenderTargets;
+        GLint m_plsSizeInBytes; // 0 when PLS is not supported
 
         SResourceUnitCapabilities m_akResourceUnits[eRUT_NUM];
 

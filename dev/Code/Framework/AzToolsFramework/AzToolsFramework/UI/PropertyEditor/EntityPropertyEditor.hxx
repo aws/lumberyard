@@ -82,6 +82,8 @@ namespace AzToolsFramework
         , private ToolsApplicationEvents::Bus::Handler
         , public IPropertyEditorNotify
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
+        , public AzToolsFramework::PropertyEditorEntityChangeNotificationBus::MultiHandler
+        , public EditorInspectorComponentNotificationBus::MultiHandler
         , public AZ::EntitySystemBus::Handler
     {
         Q_OBJECT;
@@ -114,6 +116,10 @@ namespace AzToolsFramework
 
         void SetAllowRename(bool allowRename);
 
+        void SetOverrideEntityIds(const AzToolsFramework::EntityIdList& entities);
+
+        void SetSystemEntityEditor(bool isSystemEntityEditor);
+
     private:
 
         struct SharedComponentInfo
@@ -127,8 +133,8 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         // ToolsApplicationEvents::Bus::Handler
-        virtual void BeforeEntitySelectionChanged();
-        virtual void AfterEntitySelectionChanged();
+        void BeforeEntitySelectionChanged() override;
+        void AfterEntitySelectionChanged() override;
 
         virtual void EntityParentChanged(AZ::EntityId, AZ::EntityId, AZ::EntityId) {}
         //////////////////////////////////////////////////////////////////////////
@@ -137,10 +143,18 @@ namespace AzToolsFramework
         /// AzToolsFramework::EditorEntityContextNotificationBus implementation
         void OnStartPlayInEditor() override;
         void OnStopPlayInEditor() override;
+        void OnContextReset() override;
+        void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
         //////////////////////////////////////////////////////////////////////////
+
+        void OnEntityComponentPropertyChanged(AZ::ComponentId /*componentId*/) override;
+
+        void OnComponentOrderChanged() override;
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::EntitySystemBus::Handler
+        void OnEntityInitialized(const AZ::EntityId&) override;
+        void OnEntityDestroyed(const AZ::EntityId&) override;
         void OnEntityActivated(const AZ::EntityId& entityId) override;
         void OnEntityDeactivated(const AZ::EntityId& entityId) override;
         void OnEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name) override;
@@ -381,6 +395,8 @@ namespace AzToolsFramework
         // changes to an object to mark it as busy.
         int m_propertyEditBusy;
 
+        bool m_isSystemEntityEditor;
+
         // the spacer's job is to make sure that its always at the end of the list of components.
         QSpacerItem* m_spacer;
         bool m_isAlreadyQueuedRefresh;
@@ -403,6 +419,20 @@ namespace AzToolsFramework
         QIcon m_emptyIcon;
         QIcon m_clearIcon;
 
+        EntityIdList m_overrideSelectedEntityIds;
+
+        void GetSelectedEntities(EntityIdList& selectedEntityIds);
+        bool IsLockedToSpecificEntities() { return m_overrideSelectedEntityIds.size() > 0; }
+
+        EntityIdList m_lastSelectedEntityIds;
+
+        // When m_initiatingPropertyChangeNotification is set to true, it means this EntityPropertyEditor is
+        // broadcasting a change to all listeners about a property change for a given entity.  This is needed
+        // so that we don't update the values twice for this inspector
+        bool m_initiatingPropertyChangeNotification = false;
+        void ConnectToEntityBuses(const AZ::EntityId& entityId);
+        void DisconnectFromEntityBuses(const AZ::EntityId& entityId);
+
         private slots:
         void OnPropertyRefreshRequired(); // refresh is needed for a property.
         void UpdateContents();
@@ -416,7 +446,11 @@ namespace AzToolsFramework
         void OnSearchTextChanged();
         void ClearSearchFilter();
 
+        void OpenPinnedInspector();
+
         bool SelectedEntitiesAreFromSameSourceSliceEntity() const;
+
+        void CloseInspectorWindow();
     };
 
 }

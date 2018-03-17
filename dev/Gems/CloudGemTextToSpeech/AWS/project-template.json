@@ -1,0 +1,70 @@
+{
+    "Resources": {
+        "PollyResourceType": {
+            "Type": "Custom::ResourceTypes",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                },
+                "LambdaConfiguration": {
+                    "Fn::GetAtt": [
+                        "PollyResourceTypeLambdaConfig",
+                        "ComposedLambdaConfiguration"
+                    ]
+                },
+                "LambdaTimeout": 30,
+                "Definitions": {
+                    "Custom::Polly": {
+                        "ArnFormat": "*",
+                        "HandlerFunction": {
+                            "Function": "Custom_Polly.handler"
+                        },
+                        "PermissionMetadata": {
+                            "DefaultRoleMappings": [
+                                {
+                                    "AbstractRole": [
+                                        "ServiceLambda"
+                                    ],
+                                    "Action": [
+                                        "polly:DescribeVoices",
+                                        "polly:SynthesizeSpeech"
+                                    ],
+                                    "ResourceSuffix": ""
+                                }
+                            ],
+                            "RestrictActions": [
+                                "polly:SynthesizeSpeech",
+                                "polly:DescribeVoices"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "PollyResourceTypeLambdaConfig": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "Configuration"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "PollyResourceType",
+                "Runtime": "python2.7",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ProjectResourceHandler",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::LambdaConfiguration",
+            "DependsOn": [
+                "CoreResourceTypes"
+            ]
+        }
+    }
+}

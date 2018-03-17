@@ -35,7 +35,6 @@
 #include "QtUtilWin.h"
 #include "QtUtil.h"
 
-//#include <afxcolordialog.h>
 #include <QHeaderView>
 #include <QVBoxLayout>
 #include <QLineEdit>
@@ -684,7 +683,7 @@ void CUiAnimViewNodesCtrl::UpdateUiAnimNodeRecord(CRecord* pRecord, CUiAnimViewA
         _smart_ptr<IMaterial>  pMaterial = nullptr;
         QString matName;
         int subMtlIndex = GetMatNameAndSubMtlIndexFromName(matName, pAnimNode->GetName());
-        pMaterial = gEnv->p3DEngine->GetMaterialManager()->FindMaterial(matName.toLatin1().data());
+        pMaterial = gEnv->p3DEngine->GetMaterialManager()->FindMaterial(matName.toUtf8().data());
         if (pMaterial)
         {
             bool bMultiMat = pMaterial->GetSubMtlCount() > 0;
@@ -1088,7 +1087,7 @@ void CUiAnimViewNodesCtrl::OnNMRclick(QPoint point)
             QString newMatName;
             newMatName = QStringLiteral("%1.[%2]").arg(matName).arg(cmd - eMI_SelectSubmaterialBase + 1);
             UiAnimUndo undo("Rename Animation node");
-            pAnimNode->SetName(newMatName.toLatin1().data());
+            pAnimNode->SetName(newMatName.toUtf8().data());
             pAnimNode->SetSelected(true);
             UpdateNodeRecord(pRecord);
         }

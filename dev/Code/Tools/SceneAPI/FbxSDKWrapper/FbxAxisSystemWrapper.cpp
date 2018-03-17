@@ -13,8 +13,8 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include "FbxAxisSystemWrapper.h"
-#include "FbxTypeConverter.h"
+#include <SceneAPI/FbxSDKWrapper/FbxAxisSystemWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxTypeConverter.h>
 
 namespace AZ
 {
@@ -71,5 +71,5 @@ namespace AZ
             FbxAMatrix adjustMatrix = targetMatrix * currentMatrix.Inverse();
             return FbxTypeConverter::ToTransform(adjustMatrix);
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

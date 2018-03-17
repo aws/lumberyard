@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "OverwritePromptDialog.hxx"
 #include <UI/UICore/ui_OverwritePromptDialog.h>
 

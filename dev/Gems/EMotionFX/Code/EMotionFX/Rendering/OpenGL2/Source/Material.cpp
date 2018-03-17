@@ -12,7 +12,7 @@
 
 #include "Material.h"
 #include "GraphicsManager.h"
-#include "GLActor.h"
+#include "glactor.h"
 
 
 namespace RenderGL

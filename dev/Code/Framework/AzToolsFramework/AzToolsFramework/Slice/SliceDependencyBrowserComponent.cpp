@@ -26,14 +26,14 @@ namespace AzToolsFramework
 
     void SliceDependencyBrowserComponent::Activate()
     {
-        AssetBrowser::AssetDatabaseLocationNotificationsBus::Handler::BusConnect();
+        AssetBrowser::AssetDatabaseLocationNotificationBus::Handler::BusConnect();
         SliceDependencyBrowserRequestsBus::Handler::BusConnect();
     }
 
     void SliceDependencyBrowserComponent::Deactivate()
     {
         SliceDependencyBrowserRequestsBus::Handler::BusConnect();
-        AssetBrowser::AssetDatabaseLocationNotificationsBus::Handler::BusDisconnect();
+        AssetBrowser::AssetDatabaseLocationNotificationBus::Handler::BusDisconnect();
         AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
     }
 

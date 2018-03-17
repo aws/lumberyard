@@ -13,13 +13,13 @@
 #define QGradientColorPickerWidget_h__
 #include <QWidget>
 #include <QGridLayout>
-#include "qpropertyanimation.h"
+#include <QPropertyAnimation>
 #include "CurveEditorContent.h"
-#include "qpushbutton.h"
-#include "qlineedit.h"
+#include <QPushButton>
+#include <QLineEdit>
 #include <Controls/QToolTipWidget.h>
-#include "QWidgetAction"
-#include "qgraphicseffect.h"
+#include <QWidgetAction>
+#include <QGraphicsEffect>
 
 class CCurveEditor;
 struct ISplineInterpolator;

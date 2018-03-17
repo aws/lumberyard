@@ -81,12 +81,6 @@ CUiAnimViewKeyPropertiesDlg::CUiAnimViewKeyPropertiesDlg(QWidget* hParentWnd)
     m_wndProps->Setup();
     m_wndProps->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     l->addWidget(m_wndProps);
-#ifdef KDAB_PORT_REMOVED
-    // was never visible in old build, remove here
-    m_wndTcbPreview = new CTcbPreviewCtrl(this);
-    m_wndTcbPreview->setFixedHeight(60);
-    l->addWidget(m_wndTcbPreview);
-#endif
     m_wndProps->SetStoreUndoByItems(false);
 #endif
 
@@ -267,25 +261,6 @@ void CUiAnimViewKeyPropertiesDlg::OnKeySelectionChanged(CUiAnimViewSequence* pSe
     {
         PopulateVariables();
     }
-
-#ifdef KDAB_PORT_REMOVED
-    if (selectedKeys.GetKeyCount() == 1 && selectedKeys.AreAllKeysOfSameType())
-    {
-        CUiAnimViewTrack* pTrack = selectedKeys.GetKey(0).GetTrack();
-
-        if (pTrack->GetCurveType() == eUiAnimCurveType_TCBFloat
-            || pTrack->GetCurveType() == eUiAnimCurveType_TCBVector
-            || pTrack->GetCurveType() == eUiAnimCurveType_TCBQuat)
-        {
-            CUiAnimViewKeyHandle& keyHandle = selectedKeys.GetKey(0);
-
-            ITcbKey tcbKey;
-            keyHandle.GetKey(&tcbKey);
-            m_wndTcbPreview->SetTcb(tcbKey.tens, tcbKey.cont, tcbKey.bias, tcbKey.easeto, tcbKey.easefrom);
-        }
-    }
-#endif
-
 #endif
 }
 

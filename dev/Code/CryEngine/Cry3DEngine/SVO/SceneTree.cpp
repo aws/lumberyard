@@ -27,7 +27,7 @@
 #include "Brush.h"
 #include "SceneTreeManager.h"
 #include "IRenderAuxGeom.h"
-#include "visareas.h"
+#include "VisAreas.h"
 
 CSvoEnv * gSvoEnv = nullptr;
 

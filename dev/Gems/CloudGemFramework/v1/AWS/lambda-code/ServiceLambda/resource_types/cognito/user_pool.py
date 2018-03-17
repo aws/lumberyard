@@ -55,9 +55,9 @@ def get_provider_name(user_pool_id):
     return beginning + region + middle + user_pool_id
 
 # A quick check to ensure that the metadata looks valid.
-def validate_identity_metadata(stack_arn, user_pool_logical_id, client_names):
+def validate_identity_metadata(stack_manager, stack_arn, user_pool_logical_id, client_names):
     client_names_set = set(client_names)
-    stack = stack_info.get_stack_info(stack_arn)
+    stack = stack_manager.get_stack_info(stack_arn)
     user_pool = stack.resources.get_by_logical_id(user_pool_logical_id)
     for identity in user_pool.metadata.get('CloudCanvas', {}).get('Identities', []):
         if 'IdentityPoolLogicalName' not in identity:

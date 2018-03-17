@@ -22,11 +22,11 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 
-#include <qcolor.h>
-#include <qicon.h>
+#include <QColor>
+#include <QIcon>
 
 // QModelIndex
-#include <qabstractitemmodel.h>
+#include <QAbstractItemModel>
 
 #include "Woodpecker/Driller/DrillerDataTypes.h"
 #include "Woodpecker/Driller/Replica/ReplicaBandwidthChartData.h"
@@ -189,7 +189,7 @@ namespace Driller
         {
             DisplayType* retVal = nullptr;
 
-            AZStd::unordered_map< Key, DisplayType* >::iterator helperIter = m_displayHelperMap.find(key);
+            typename AZStd::unordered_map< Key, DisplayType* >::iterator helperIter = m_displayHelperMap.find(key);
 
             if (helperIter == m_displayHelperMap.end())
             {
@@ -201,7 +201,7 @@ namespace Driller
                 retVal = m_displayHelperMap[key];
             }
 
-            KeyToIndexMapping::iterator indexIter = m_keyMapping.find(key);
+            typename KeyToIndexMapping::iterator indexIter = m_keyMapping.find(key);
 
             if (indexIter == m_keyMapping.end())
             {
@@ -224,7 +224,7 @@ namespace Driller
         {
             DisplayType* retVal = nullptr;
 
-            KeyToIndexMapping::iterator indexIter = m_keyMapping.find(key);
+            typename KeyToIndexMapping::iterator indexIter = m_keyMapping.find(key);
 
             if (indexIter != m_keyMapping.end())
             {
@@ -238,7 +238,7 @@ namespace Driller
         {
             const DisplayType* retVal = nullptr;
 
-            KeyToIndexMapping::const_iterator indexIter = m_keyMapping.find(key);
+            typename KeyToIndexMapping::const_iterator indexIter = m_keyMapping.find(key);
 
             if (indexIter != m_keyMapping.end())
             {

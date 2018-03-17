@@ -38,7 +38,7 @@ IDebugCallStack::~IDebugCallStack()
     StopMemLog();
 }
 
-#if !defined(DURANGO) && !defined(ORBIS) && !defined(_WIN32)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_DEBUGCALLSTACK_SINGLETON
 IDebugCallStack* IDebugCallStack::instance()
 {
     static IDebugCallStack sInstance;
@@ -69,7 +69,7 @@ const char* IDebugCallStack::TranslateExceptionCode(DWORD dwExcept)
 {
     switch (dwExcept)
     {
-#if !defined(LINUX) && !defined(APPLE) && !defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_DEBUGCALLSTACK_TRANSLATE
     case EXCEPTION_ACCESS_VIOLATION:
         return "EXCEPTION_ACCESS_VIOLATION";
         break;
@@ -200,7 +200,7 @@ void IDebugCallStack::PutVersion(char* str)
         }
     }
 
-#if !defined(LINUX) && !defined(APPLE) && !defined(DURANGO) && !defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_DEBUGCALLSTACK_APPEND_MODULENAME
     GetModuleFileNameA(NULL, s, sizeof(s));
     strcat(str, "Executable: ");
     strcat(str, s);

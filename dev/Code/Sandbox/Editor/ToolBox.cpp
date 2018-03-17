@@ -26,7 +26,7 @@
 void CToolBoxCommand::Save(XmlNodeRef commandNode) const
 {
     commandNode->setAttr("type", (int)m_type);
-    commandNode->setAttr("text", m_text.toLatin1().data());
+    commandNode->setAttr("text", m_text.toUtf8().data());
     commandNode->setAttr("bVariableToggle", m_bVariableToggle);
 }
 
@@ -45,20 +45,20 @@ void CToolBoxCommand::Execute() const
 {
     if (m_type == CToolBoxCommand::eT_SCRIPT_COMMAND)
     {
-        PyScript::Execute(m_text.toLatin1().data());
+        PyScript::Execute(m_text.toUtf8().data());
     }
     else if (m_type == CToolBoxCommand::eT_CONSOLE_COMMAND)
     {
         if (m_bVariableToggle)
         {
             // Toggle the variable.
-            float val = GetIEditor()->GetConsoleVar(m_text.toLatin1().data());
+            float val = GetIEditor()->GetConsoleVar(m_text.toUtf8().data());
             bool bOn = val != 0;
-            GetIEditor()->SetConsoleVar(m_text.toLatin1().data(), (bOn) ? 0 : 1);
+            GetIEditor()->SetConsoleVar(m_text.toUtf8().data(), (bOn) ? 0 : 1);
         }
         else
         {
-            GetIEditor()->GetSystem()->GetIConsole()->ExecuteString(m_text.toLatin1().data());
+            GetIEditor()->GetSystem()->GetIConsole()->ExecuteString(m_text.toUtf8().data());
         }
     }
 }
@@ -317,7 +317,7 @@ void CToolBoxManager::Load(ActionManager* actionManager)
 
     if (actionManager)
     {
-        QByteArray array = gSettings.strEditorEnv.toLatin1();
+        QByteArray array = gSettings.strEditorEnv.toUtf8();
         AZStd::string actualPath = AZStd::string::format("@engroot@/%s", array.constData());
         XmlNodeRef envNode = XmlHelpers::LoadXmlFromFile(actualPath.c_str());
         if (envNode)
@@ -333,13 +333,11 @@ void CToolBoxManager::Load(ActionManager* actionManager)
             }
         }
     }
-
-    UpdateShortcutsAndIcons();
 }
 
 void CToolBoxManager::LoadShelves(QString scriptPath, QString shelvesPath, ActionManager* actionManager)
 {
-    GetIEditor()->ExecuteCommand("general.run_file_parameters 'addToSysPath.py' '%s'", scriptPath.toLatin1().data());
+    GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file_parameters 'addToSysPath.py' '%1'").arg(scriptPath));
     IFileUtil::FileArray files;
     CFileUtil::ScanDirectory(shelvesPath, "*.xml", files);
 
@@ -351,7 +349,7 @@ void CToolBoxManager::LoadShelves(QString scriptPath, QString shelvesPath, Actio
             continue;
         }
 
-        QString shelfName(PathUtil::GetFileName(files[idx].filename.toLatin1().data()));
+        QString shelfName(PathUtil::GetFileName(files[idx].filename.toUtf8().data()));
 
         AmazonToolbar toolbar(shelfName, shelfName);
         Load(shelvesPath + QString("/") + files[idx].filename, &toolbar, false, actionManager);
@@ -362,7 +360,7 @@ void CToolBoxManager::LoadShelves(QString scriptPath, QString shelvesPath, Actio
 
 void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolbox, ActionManager* actionManager)
 {
-    XmlNodeRef toolBoxNode = XmlHelpers::LoadXmlFromFile(xmlpath.toLatin1().data());
+    XmlNodeRef toolBoxNode = XmlHelpers::LoadXmlFromFile(xmlpath.toUtf8().data());
     if (toolBoxNode == NULL)
     {
         return;
@@ -422,7 +420,7 @@ void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolb
 
         pMacro->Load(macroNode);
         pMacro->SetShortcutName(shortcutName);
-        pMacro->SetIconPath(iconPath.toLatin1().data());
+        pMacro->SetIconPath(iconPath.toUtf8().data());
         pMacro->SetToolbarId(-1);
 
         if (!pToolbar)
@@ -430,9 +428,9 @@ void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolb
             continue;
         }
 
-        string shelfPath = PathUtil::GetParentDirectory(xmlpath.toLatin1().data());
+        string shelfPath = PathUtil::GetParentDirectory(xmlpath.toUtf8().data());
         string fullIconPath = PathUtil::AddSlash(shelfPath.c_str());
-        fullIconPath.append(iconPath.toLatin1().data());
+        fullIconPath.append(iconPath.toUtf8().data());
 
         pMacro->SetIconPath(fullIconPath);
 
@@ -449,8 +447,8 @@ void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolb
         {
             actionId = bToolbox ? ID_TOOL_FIRST + idx : ID_TOOL_SHELVE_FIRST + idx;
 
-            // KDAB: handler will be executed when ActionManager passes the id to MainFrm. We need to
-            // disconnect the already connected handler here or it will be executed twice.
+            // ActionManager uses a QSignalMapper internally. We need to disconnect any existing
+            // connections here otherwise the macro will be called more than once.
             QObject::disconnect(pMacro->action(), &QAction::triggered, nullptr, nullptr);
 
             actionManager->AddAction(actionId, pMacro->action());
@@ -459,85 +457,6 @@ void CToolBoxManager::Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolb
         pToolbar->AddAction(actionId);
     }
 }
-
-//////////////////////////////////////////////////////////////////////////
-void CToolBoxManager::UpdateShortcutsAndIcons()
-{
-#ifdef KDAB_TEMPORARILY_REMOVED
-    CXTPShortcutManager* pShortcutMgr = nullptr;
-#ifdef KDAB_TEMPORARILY_REMOVED
-    // Port to KeyboardCustomizationDialog after porting to Qt/QAction, don't use XTPShortcutManager()
-    /// Shortcuts
-    pShortcutMgr = ((CMainFrame*)AfxGetMainWnd())->XTPShortcutManager();
-#endif
-    if (pShortcutMgr == NULL)
-    {
-        return;
-    }
-
-    CToolBoxManager* pToolBoxMgr(GetIEditor()->GetToolBoxManager());
-    if (pToolBoxMgr == NULL)
-    {
-        return;
-    }
-
-    CXTPShortcutManagerAccelTable* pAccelTable = pShortcutMgr->GetDefaultAccelerator();
-    for (int i = 0; i < pAccelTable->GetCount(); )
-    {
-        CXTPShortcutManagerAccel* pAccel = pAccelTable->GetAt(i);
-        if ((pAccel->cmd >= ID_TOOL_FIRST && pAccel->cmd <= ID_TOOL_LAST) || (pAccel->cmd >= ID_TOOL_SHELVE_FIRST && pAccel->cmd <= ID_TOOL_SHELVE_LAST))
-        {
-            pAccelTable->RemoveAt(i);
-            continue;
-        }
-        ++i;
-    }
-
-
-    const int macroCount = pToolBoxMgr->GetMacroCount(true);
-    for (int i = 0; i < macroCount; ++i)
-    {
-        CToolBoxMacro* pMacro = pToolBoxMgr->GetMacro(i, true);
-        if (!pMacro)
-        {
-            continue;
-        }
-
-        QString shortcutName(pMacro->GetShortcutName().toString());
-        if (shortcutName.isEmpty())
-        {
-            continue;
-        }
-
-        if (!CToolBoxManager::AddShortcut(ID_TOOL_FIRST + i, QtUtil::ToCString(shortcutName)))
-        {
-            pMacro->SetShortcutName("");
-        }
-    }
-
-    const int shelveMacroCount = pToolBoxMgr->GetMacroCount(false);
-    for (int i = 0; i < shelveMacroCount; ++i)
-    {
-        CToolBoxMacro* pMacro = pToolBoxMgr->GetMacro(i, false);
-        if (!pMacro)
-        {
-            continue;
-        }
-
-        QString shortcutName(pMacro->GetShortcutName().toString());
-        if (shortcutName.isEmpty())
-        {
-            continue;
-        }
-
-        if (!CToolBoxManager::AddShortcut(ID_TOOL_SHELVE_FIRST + i, QtUtil::ToCString(shortcutName)))
-        {
-            pMacro->SetShortcutName("");
-        }
-    }
-#endif
-}
-
 
 //////////////////////////////////////////////////////////////////////////
 void CToolBoxManager::Save() const
@@ -551,14 +470,14 @@ void CToolBoxManager::Save() const
         }
 
         XmlNodeRef macroNode = toolBoxNode->newChild("macro");
-        macroNode->setAttr("title", m_macros[i]->GetTitle().toLatin1().data());
-        macroNode->setAttr("shortcut", m_macros[i]->GetShortcutName().toString().toLatin1().data());
-        macroNode->setAttr("icon", m_macros[i]->GetIconPath().toLatin1().data());
+        macroNode->setAttr("title", m_macros[i]->GetTitle().toUtf8().data());
+        macroNode->setAttr("shortcut", m_macros[i]->GetShortcutName().toString().toUtf8().data());
+        macroNode->setAttr("icon", m_macros[i]->GetIconPath().toUtf8().data());
         m_macros[i]->Save(macroNode);
     }
     QString path;
     GetSaveFilePath(path);
-    XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), toolBoxNode, path.toLatin1().data());
+    XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), toolBoxNode, path.toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -566,7 +485,6 @@ void CToolBoxManager::Clear()
 {
     for (size_t i = 0; i < m_macros.size(); ++i)
     {
-        RemoveMacroShortcut(i, true);
         delete m_macros[i];
     }
     m_macros.clear();
@@ -630,7 +548,6 @@ void CToolBoxManager::RemoveMacro(int index, bool bToolbox)
 {
     assert(0 <= index && index < GetMacroCount(bToolbox));
 
-    RemoveMacroShortcut(index, bToolbox);
     if (bToolbox)
     {
         delete m_macros[index];
@@ -646,112 +563,10 @@ void CToolBoxManager::RemoveMacro(int index, bool bToolbox)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CToolBoxManager::RemoveMacroShortcut(int index, bool bToolbox)
-{
-    if (index >= GetMacroCount(bToolbox))
-    {
-        return;
-    }
-
-#ifdef KDAB_TEMPORARILY_REMOVED
-    CXTPShortcutManager* pShortcutMgr = nullptr;
-#ifdef KDAB_TEMPORARILY_REMOVED
-    // Port to KeyboardCustomizationDialog after porting to Qt/QAction, don't use XTPShortcutManager()
-    CXTPShortcutManager* pShortcutMgr = ((CMainFrame*)AfxGetMainWnd())->XTPShortcutManager();
-#endif
-    if (pShortcutMgr == NULL)
-    {
-        return;
-    }
-
-    CXTPShortcutManagerAccelTable* pAccelTable = pShortcutMgr->GetDefaultAccelerator();
-    if (pAccelTable == NULL)
-    {
-        return;
-    }
-
-    pAccelTable->RemoveAt(bToolbox ? ID_TOOL_FIRST + index : ID_TOOL_SHELVE_FIRST + index);
-#endif
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CToolBoxManager::GetSaveFilePath(QString& outPath) const
 {
     outPath = Path::GetResolvedUserSandboxFolder();
     outPath += "Macros.xml";
-}
-
-#ifdef KDAB_TEMPORARILY_REMOVED
-//////////////////////////////////////////////////////////////////////////
-bool CToolBoxManager::AddShortcut(CXTPShortcutManagerAccel& accel)
-{
-    CXTPShortcutManager* pShortcutMgr = nullptr;
-#ifdef KDAB_TEMPORARILY_REMOVED
-    // Port to KeyboardCustomizationDialog after porting to Qt/QAction, don't use XTPShortcutManager()
-    pShortcutMgr = ((CMainFrame*)AfxGetMainWnd())->XTPShortcutManager();
-#endif
-    if (pShortcutMgr == NULL)
-    {
-        return false;
-    }
-
-    QString shortcutName(pShortcutMgr->Format(&accel, NULL));
-    bool isPossible = IsPossibleToAddShortcut(shortcutName);
-
-    if (isPossible)
-    {
-        CXTPShortcutManagerAccelTable* pAccelTable = pShortcutMgr->GetDefaultAccelerator();
-        pAccelTable->Add(accel);
-    }
-
-    return isPossible;
-}
-#endif
-
-//////////////////////////////////////////////////////////////////////////
-bool CToolBoxManager::AddShortcut(int cmdID, const QString& shortcutName)
-{
-#ifdef KDAB_TEMPORARILY_REMOVED
-    CXTPShortcutManager* pShortcutMgr = nullptr;
-#ifdef KDAB_TEMPORARILY_REMOVED
-    // Port to KeyboardCustomizationDialog after porting to Qt/QAction, don't use XTPShortcutManager()
-    pShortcutMgr = ((CMainFrame*)AfxGetMainWnd())->XTPShortcutManager();
-#endif
-    if (pShortcutMgr == NULL)
-    {
-        return false;
-    }
-
-    bool isPossible = IsPossibleToAddShortcut(shortcutName);
-
-    if (isPossible)
-    {
-        pShortcutMgr->AddShortcut(cmdID, shortcutName);
-    }
-
-    return isPossible;
-#endif
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CToolBoxManager::IsPossibleToAddShortcut(const QString& shortcutName)
-{
-#ifdef KDAB_TEMPORARILY_REMOVED
-    CXTPShortcutManager* pShortcutMgr = nullptr;
-#ifdef KDAB_TEMPORARILY_REMOVED
-    // Port to KeyboardCustomizationDialog after porting to Qt/QAction, don't use XTPShortcutManager()
-    pShortcutMgr = ((CMainFrame*)AfxGetMainWnd())->XTPShortcutManager();
-#endif
-    if (pShortcutMgr == NULL)
-    {
-        return false;
-    }
-
-    CXTPShortcutManagerAccel accel;
-    return pShortcutMgr->ParseShortcut(shortcutName, &accel);
-#endif
-    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////

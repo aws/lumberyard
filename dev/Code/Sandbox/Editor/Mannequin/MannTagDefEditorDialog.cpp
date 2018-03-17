@@ -113,7 +113,7 @@ public:
         }
         const int row = m_selectedTagDef->GetNumGroups();
         beginInsertRows(QModelIndex(), row, row);
-        TagGroupID groupID = m_selectedTagDef->AddGroup(name.toLatin1().data());
+        TagGroupID groupID = m_selectedTagDef->AddGroup(name.toUtf8().data());
         m_selectedTagDef->AssignBits();
         endInsertRows();
         return index(row, 0);
@@ -142,7 +142,7 @@ public:
 
         // First ensure that there's enough space to create the new tag
         CTagDefinition tempDefinition = *m_selectedTagDef;
-        const TagID tagID = tempDefinition.AddTag(name.toLatin1().data(), group.isEmpty() ? nullptr : group.toLatin1().data());
+        const TagID tagID = tempDefinition.AddTag(name.toUtf8().data(), group.isEmpty() ? nullptr : group.toUtf8().data());
         const bool success = tempDefinition.AssignBits();
         if (!success)
         {
@@ -611,7 +611,7 @@ void CMannTagDefEditorDialog::OnNewDefButton()
 
         IAnimationDatabaseManager& db = gEnv->pGame->GetIGameFramework()->GetMannequinInterface().GetAnimationDatabaseManager();
         // TODO: This is actually changing the live database - cancelling the tagdef editor will not remove this!
-        CTagDefinition* pTagDef = db.CreateTagDefinition(QString(MANNEQUIN_FOLDER + text).toLatin1().data());
+        CTagDefinition* pTagDef = db.CreateTagDefinition(QString(MANNEQUIN_FOLDER + text).toUtf8().data());
         CTagDefinition* pTagDefCopy = new CTagDefinition(*pTagDef);
         STagDefPair tagDefPair(pTagDef, pTagDefCopy);
         m_tagDefLocalCopy.push_back(tagDefPair);
@@ -767,7 +767,7 @@ void CMannTagDefEditorDialog::PopulateTagDefListRec(const QString& baseDir)
     ICryPak* pCryPak = gEnv->pCryPak;
     _finddata_t fd;
 
-    intptr_t handle = pCryPak->FindFirst(QString(baseDir + "*").toLatin1().data(), &fd);
+    intptr_t handle = pCryPak->FindFirst(QString(baseDir + "*").toUtf8().data(), &fd);
     if (handle != -1)
     {
         do
@@ -786,14 +786,14 @@ void CMannTagDefEditorDialog::PopulateTagDefListRec(const QString& baseDir)
             {
                 if (filename.right(filter.length()).compare(filter, Qt::CaseInsensitive) == 0)
                 {
-                    if (XmlNodeRef root = GetISystem()->LoadXmlFromFile(filename.toLatin1().data()))
+                    if (XmlNodeRef root = GetISystem()->LoadXmlFromFile(filename.toUtf8().data()))
                     {
                         // Ignore non-tagdef XML files
                         QString tag = root->getTag();
                         if (tag == "TagDefinition")
                         {
                             IAnimationDatabaseManager& db = gEnv->pGame->GetIGameFramework()->GetMannequinInterface().GetAnimationDatabaseManager();
-                            const CTagDefinition* pTagDef = db.LoadTagDefs(filename.toLatin1().data(), true);
+                            const CTagDefinition* pTagDef = db.LoadTagDefs(filename.toUtf8().data(), true);
                             CTagDefinition* pTagDefCopy = new CTagDefinition(*pTagDef);
                             STagDefPair tagDefPair(pTagDef, pTagDefCopy);
                             m_tagDefLocalCopy.push_back(tagDefPair);
@@ -937,7 +937,7 @@ bool CMannTagDefEditorDialog::OnTagTreeEndLabelEdit(const QModelIndex& index, co
             }
         }
 
-        m_tagDefTreeModel->selectedTagDefinition()->SetTagName(id, text.toLatin1().data());
+        m_tagDefTreeModel->selectedTagDefinition()->SetTagName(id, text.toUtf8().data());
     }
     else
     {
@@ -965,7 +965,7 @@ bool CMannTagDefEditorDialog::OnTagTreeEndLabelEdit(const QModelIndex& index, co
             }
         }
 
-        m_tagDefTreeModel->selectedTagDefinition()->SetGroupName(groupID, text.toLatin1().data());
+        m_tagDefTreeModel->selectedTagDefinition()->SetGroupName(groupID, text.toUtf8().data());
     }
 
     return true;
@@ -1046,7 +1046,7 @@ bool CMannTagDefEditorDialog::ValidateTagName(const QString& name)
     }
 
     // Check for duplicates
-    if (m_tagDefTreeModel->selectedTagDefinition()->Find(name.toLatin1().data()) != TAG_ID_INVALID)
+    if (m_tagDefTreeModel->selectedTagDefinition()->Find(name.toUtf8().data()) != TAG_ID_INVALID)
     {
         QMessageBox::critical(this, tr("Invalid Name"), tr("The tag name '%1' already exists").arg(name));
         return false;
@@ -1066,7 +1066,7 @@ bool CMannTagDefEditorDialog::ValidateGroupName(const QString& name)
     }
 
     // Check for duplicates
-    if (m_tagDefTreeModel->selectedTagDefinition()->FindGroup(name.toLatin1().data()) != GROUP_ID_NONE)
+    if (m_tagDefTreeModel->selectedTagDefinition()->FindGroup(name.toUtf8().data()) != GROUP_ID_NONE)
     {
         QMessageBox::critical(this, tr("Invalid Name"), tr("The group name '%1' already exists").arg(name));
         return false;
@@ -1108,7 +1108,7 @@ bool CMannTagDefEditorDialog::ValidateTagDefName(QString& name)
 
     // Check for duplicates
     IAnimationDatabaseManager& db = gEnv->pGame->GetIGameFramework()->GetMannequinInterface().GetAnimationDatabaseManager();
-    if (db.FindTagDef(QString(MANNEQUIN_FOLDER + filename).toLatin1().data()))
+    if (db.FindTagDef(QString(MANNEQUIN_FOLDER + filename).toUtf8().data()))
     {
         QMessageBox::critical(this, tr("Invalid Name"), tr("The tag definition name '%1' already exists").arg(filename));
         return false;

@@ -37,9 +37,6 @@ namespace
 };
 
 
-#define IDW_KEYS_PANE         AFX_IDW_CONTROLBAR_FIRST + 10
-
-
 CMannFragmentEditor::CMannFragmentEditor(QWidget* parent)
     : CMannDopeSheet(parent)
     , m_contexts(NULL)
@@ -105,7 +102,7 @@ void CalculateMotionParams(float motionParams[eMotionParamID_COUNT], const CFrag
 
         if (item.type == CFragmentHistory::SHistoryItem::Param)
         {
-            EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toLatin1().data());
+            EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toUtf8().data());
             if (paramID != eMotionParamID_COUNT)
             {
                 motionParams[paramID] = item.param.value.q.v.x;
@@ -284,7 +281,7 @@ void CMannFragmentEditor::SetFragment(const FragmentID fragID, const SFragTagSta
                         {
                             buffer += tr("(%1 of %2)").arg(fragSelection.optionIdx + 1).arg(numOptions);
                         }
-                        fragNode->SetName(buffer.toLatin1().data());
+                        fragNode->SetName(buffer.toUtf8().data());
 
                         fragNode->SetSelection(foundMatch, fragSelection);
 

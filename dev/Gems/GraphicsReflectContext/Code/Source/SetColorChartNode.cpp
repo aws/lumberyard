@@ -49,6 +49,9 @@ namespace GraphicsReflectContext
         AZ::ColorGradingRequestBus::Broadcast(&AZ::ColorGradingRequests::FadeInColorChart, textureName, fadeTime);
 
         m_loadedTextureName = textureName;
+
+        const ScriptCanvas::SlotId outSlot = SetColorChartNodeProperty::GetOutSlotId(this);
+        SignalOutput(outSlot);
     }
     
 }

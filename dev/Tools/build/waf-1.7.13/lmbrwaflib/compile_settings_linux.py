@@ -20,13 +20,13 @@ def load_linux_common_settings(v):
     """
     Setup all compiler and linker settings shared over all linux configurations
     """
-    
+
     # Add common linux defines
     v['DEFINES'] += [ 'LINUX', '__linux__' ]
-    
+
     # Setup default libraries to always link against
-    v['LIB'] = [ 'pthread', 'dl', 'c++abi', ] 
-        
+    v['LIB'] = [ 'pthread', 'dl', 'c++abi', ]
+
     # Pattern to transform outputs
     v['cprogram_PATTERN']   = '%s'
     v['cxxprogram_PATTERN'] = '%s'
@@ -34,10 +34,22 @@ def load_linux_common_settings(v):
     v['cxxshlib_PATTERN']   = 'lib%s.so'
     v['cstlib_PATTERN']     = 'lib%s.a'
     v['cxxstlib_PATTERN']   = 'lib%s.a'
-    
-    # For now compile for SSE2 
-    v['CXXFLAGS'] += [ '-msse2'] 
-    v['CFLAGS'] += [ '-msse2' ]  
+
+    # For now compile for SSE2
+    v['CXXFLAGS'] += [
+        '-msse2',
+        '-Wno-unused-lambda-capture',
+
+        # Workaround for compiler seeing file case differently from what OS show in console.
+        '-Wno-nonportable-include-path'
+    ]
+    v['CFLAGS'] += [
+        '-msse2',
+        '-Wno-unused-lambda-capture',
+
+        # Workaround for compiler seeing file case differently from what OS show in console.
+        '-Wno-nonportable-include-path'
+    ]
 
     v['LINKFLAGS'] += ['-stdlib=libc++']
 
@@ -47,7 +59,7 @@ def load_linux_common_settings(v):
     v['LINKFLAGS_ASLR'] = [] #['-fsanitize=memory']
     v['ASAN_cflags'] = [] # ['-fsanitize=address']
     v['ASAN_cxxflags'] = [] # ['-fsanitize=address']
-    
+
 @conf
 def load_debug_linux_settings(conf):
     """
@@ -56,7 +68,7 @@ def load_debug_linux_settings(conf):
     """
     v = conf.env
     load_linux_common_settings(v)
-    
+
 @conf
 def load_profile_linux_settings(conf):
     """
@@ -65,7 +77,7 @@ def load_profile_linux_settings(conf):
     """
     v = conf.env
     load_linux_common_settings(v)
-    
+
 @conf
 def load_performance_linux_settings(conf):
     """
@@ -74,7 +86,7 @@ def load_performance_linux_settings(conf):
     """
     v = conf.env
     load_linux_common_settings(v)
-    
+
 @conf
 def load_release_linux_settings(conf):
     """
@@ -83,8 +95,8 @@ def load_release_linux_settings(conf):
     """
     v = conf.env
     load_linux_common_settings(v)
-    
-###############################################################################     
+
+###############################################################################
 ###############################################################################
 LAUNCHER_SCRIPT='''#!/bin/bash
 PATTERN="%e.%t.coredump"
@@ -97,34 +109,34 @@ fi
 ulimit -c unlimited
 xterm -T "${project.to_launch_executable} Launcher" -hold -e './${project.to_launch_executable}'
 '''
-    
-# Function to generate the copy tasks for build outputs 
+
+# Function to generate the copy tasks for build outputs
 @feature('cprogram', 'cxxprogram')
 @after_method('apply_flags_msvc')
 @after_method('apply_link')
 def add_linux_launcher_script(self):
     if not getattr(self, 'create_linux_launcher', False):
         return
-            
+
     if self.env['PLATFORM'] == 'project_generator':
         return
 
     if not getattr(self, 'link_task', None):
-        self.bld.fatal('Linux Launcher is only supported for Executable Targets')       
+        self.bld.fatal('Linux Launcher is only supported for Executable Targets')
 
     # Write to rc file if content is different
     for node in self.bld.get_output_folders(self.bld.env['PLATFORM'],self.bld.env['CONFIGURATION']):
-        
+
         node.mkdir()
-    
+
         for project in self.bld.get_enabled_game_project_list():
-            # Set up values for linux launcher script template      
+            # Set up values for linux launcher script template
             linux_launcher_script_file = node.make_node('Launch_'+self.bld.get_executable_name(project)+'.sh')
             self.to_launch_executable = self.bld.get_executable_name(project)
-            
-            
+
+
             linux_launcher_script_content = LAUNCHER_SCRIPT.replace('${project.to_launch_executable}', self.to_launch_executable)
-            
-            if not os.path.exists(linux_launcher_script_file.abspath()) or linux_launcher_script_file.read() != linux_launcher_script_content:  
+
+            if not os.path.exists(linux_launcher_script_file.abspath()) or linux_launcher_script_file.read() != linux_launcher_script_content:
                 Logs.info('Updating Linux Launcher Script (%s)' % linux_launcher_script_file.abspath() )
                 linux_launcher_script_file.write(linux_launcher_script_content)

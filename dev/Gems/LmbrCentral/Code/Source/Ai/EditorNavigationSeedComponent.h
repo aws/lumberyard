@@ -23,12 +23,11 @@ namespace LmbrCentral
         , private NavigationSeedRequestsBus::Handler
         , private AZ::TransformNotificationBus::Handler
     {
-    private:
         using Base = AzToolsFramework::Components::EditorComponentBase;
 
     public:
         AZ_EDITOR_COMPONENT(EditorNavigationSeedComponent, "{A836E9F7-0C5A-4397-AD01-523EBC1E41A5}");
-        EditorNavigationSeedComponent();
+        EditorNavigationSeedComponent() = default;
 
     protected:
         void Activate() override;
@@ -42,14 +41,10 @@ namespace LmbrCentral
         void TriggerReachaibilityRecalculation() const;
         AZ::u32 OnAgentTypeChanged() const;
 
-        //////////////////////////////////////////////////////////////////////////
         // NavigationSeedRequestBus
-        virtual void RecalculateReachabilityAroundSelf() override;
-        //////////////////////////////////////////////////////////////////////////
+        void RecalculateReachabilityAroundSelf() override;
 
-        //////////////////////////////////////////////////////////////////////////
         // TransformNotificationBus
-        virtual void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        //////////////////////////////////////////////////////////////////////////
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
     };
-} //namespace LmbrCentral
+} // namespace LmbrCentral

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "StarterGameGem_precompiled.h"
 #include "WaypointsComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -34,6 +34,7 @@ namespace StarterGameGem
     void WaypointsComponent::Deactivate()
     {
         WaypointsComponentRequestsBus::Handler::BusDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
     }
 
     void WaypointsComponent::Reflect(AZ::ReflectContext* reflection)

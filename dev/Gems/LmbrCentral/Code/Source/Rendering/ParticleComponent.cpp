@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "ParticleComponent.h"
 
 #include <IParticles.h>
@@ -105,6 +105,7 @@ namespace LmbrCentral
                 ->Event("SetViewDistMultiplier", &ParticleComponentRequestBus::Events::SetViewDistMultiplier)
                 ->Event("SetUseVisArea", &ParticleComponentRequestBus::Events::SetUseVisArea)
                 ->Event("GetEmitterSettings", &ParticleComponentRequestBus::Events::GetEmitterSettings)
+                ->Event("Restart", &ParticleComponentRequestBus::Events::Restart)
                 ->VirtualProperty("Visible", "GetVisibility", "SetVisibility")
                 ->VirtualProperty("Enable", "GetEnable", "Enable")
                 ->VirtualProperty("ColorTint", "GetColorTint", "SetColorTint")
@@ -437,6 +438,11 @@ namespace LmbrCentral
     ParticleEmitterSettings ParticleComponent::GetEmitterSettings()
     {
         return m_settings;
+    }
+
+    void ParticleComponent::Restart()
+    {
+        m_emitter.Restart();
     }
 
     bool ParticleComponent::GetVisibility()
@@ -834,6 +840,14 @@ namespace LmbrCentral
     bool ParticleEmitter::IsCreated() const
     {
         return (m_emitter != nullptr);
+    }
+
+    void ParticleEmitter::Restart()
+    {
+        if (m_emitter)
+        {
+            m_emitter->Restart();
+        }
     }
 
     IRenderNode* ParticleEmitter::GetRenderNode()

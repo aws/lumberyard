@@ -156,9 +156,9 @@ namespace AZ
     #define AZ_WarningOnce(window, expression, ...)
     #define AZ_TracePrintf(window, ...)
 
-    #define AZ_Verify(expression, ...) (expression)
-    #define AZ_VerifyError(window, expression, ...) (expression)
-    #define AZ_VerifyWarning(window, expression, ...) (expression)
+    #define AZ_Verify(expression, ...) (void)(expression)
+    #define AZ_VerifyError(window, expression, ...) (void)(expression)
+    #define AZ_VerifyWarning(window, expression, ...) (void)(expression)
 
 #endif  // AZ_ENABLE_TRACING
 

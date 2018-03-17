@@ -15,9 +15,9 @@
 #include <PhysXSystemComponent.h>
 #include <PhysXRigidBody.h>
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Physics/RigidBody.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
 
 namespace PhysX
 {
@@ -26,8 +26,8 @@ namespace PhysX
     */
     class PhysXRigidBodyComponent
         : public AZ::Component
+        , public AzFramework::PhysicsComponentRequestBus::Handler
         , protected AZ::TransformNotificationBus::MultiHandler
-        , protected AZ::EntityBus::MultiHandler
         , protected EntityPhysXEventBus::Handler
     {
     public:
@@ -68,22 +68,32 @@ namespace PhysX
         void Activate() override;
         void Deactivate() override;
 
+        // PhysicsComponentBus
+        void EnablePhysics() override;
+        void DisablePhysics() override;
+        bool IsPhysicsEnabled() override;
+        void AddImpulse(const AZ::Vector3& impulse) override;
+        void AddImpulseAtPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePoint) override;
+        void AddAngularImpulse(const AZ::Vector3& impulse) override;
+        AZ::Vector3 GetVelocity() override;
+        void SetVelocity(const AZ::Vector3& velocity);
+        AZ::Vector3 GetAngularVelocity() override;
+        void SetAngularVelocity(const AZ::Vector3& angularVelocity) override;
+        float GetMass() override;
+        void SetMass(float mass) override;
+        float GetLinearDamping() override;
+        void SetLinearDamping(float damping) override;
+        float GetAngularDamping() override;
+        void SetAngularDamping(float damping) override;
+        float GetSleepThreshold() override;
+        void SetSleepThreshold(float threshold) override;
+        AZ::Aabb GetAabb() override;
+
         // EntityPhysXEvents
         void OnPostStep() override;
 
-        // TransformNotifications (listening to self and descendants)
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        void OnChildAdded(AZ::EntityId childId) override;
-
-        // EntityEvents
-        void OnEntityActivated(const AZ::EntityId& entityId) override;
-
-        void AddCollidersFromEntityAndDescendants(const AZ::EntityId& rootEntityId);
-        void AddCollidersFromEntity(const AZ::EntityId& entityId);
-
-        PhysXRigidBody m_rigidBody;
-
     private:
+        PhysXRigidBody m_rigidBody;
         AZ_DISABLE_COPY_MOVE(PhysXRigidBodyComponent);
     };
 } // namespace PhysX

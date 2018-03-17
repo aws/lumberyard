@@ -93,7 +93,7 @@ namespace Serialization {
             {
                 string sharedPrefix;
                 bool hasSharedPrefix = true;
-                std::unique_ptr<ICryFactory*[]> factories(new ICryFactory*[factoryCount]);
+                AZStd::unique_ptr<ICryFactory*[]> factories(new ICryFactory*[factoryCount]);
                 factoryRegistry->IterateFactories(cryiidof<TBase>(), factories.get(), factoryCount);
 
                 for (size_t i = 0; i < factoryCount; ++i)
@@ -178,33 +178,33 @@ namespace Serialization {
             {
                 return;
             }
-            boost::shared_ptr<TBase> ptr(create(m_types[index].name()));
+            AZStd::shared_ptr<TBase> ptr(create(m_types[index].name()));
             if (TSerializable* ser = cryinterface_cast<TSerializable>(ptr.get()))
             {
                 ar(*ser, name, label);
             }
         }
 
-        boost::shared_ptr<TBase> create(const char* registeredName)
+        AZStd::shared_ptr<TBase> create(const char* registeredName)
         {
             size_t count = m_types.size();
             for (size_t i = 0; i < count; ++i)
             {
                 if (strcmp(m_types[i].name(), registeredName) == 0)
                 {
-                    return boost::static_pointer_cast<TBase>(m_factories[i]->CreateClassInstance());
+                    return AZStd::static_pointer_cast<TBase>(m_factories[i]->CreateClassInstance());
                 }
             }
-            return boost::shared_ptr<TBase>();
+            return AZStd::shared_ptr<TBase>();
         }
 
-        const char* getRegisteredTypeName(const boost::shared_ptr<TBase>& ptr) const
+        const char* getRegisteredTypeName(const AZStd::shared_ptr<TBase>& ptr) const
         {
             if (!ptr.get())
             {
                 return "";
             }
-            CryInterfaceID id = boost::static_pointer_cast<TBase>(ptr)->GetFactory()->GetClassID();
+            CryInterfaceID id = AZStd::static_pointer_cast<TBase>(ptr)->GetFactory()->GetClassID();
             size_t count = m_classIds.size();
             for (size_t i = 0; i < count; ++i)
             {
@@ -229,7 +229,7 @@ namespace Serialization {
         : public Serialization::IPointer
     {
     public:
-        CryExtensionSharedPtr(boost::shared_ptr<T>& ptr)
+        CryExtensionSharedPtr(AZStd::shared_ptr<T>& ptr)
             : m_ptr(ptr)
         {}
 
@@ -271,17 +271,17 @@ namespace Serialization {
         }
         void* get() const override { return reinterpret_cast<void*>(m_ptr.get()); }
         const void* handle() const override { return &m_ptr; }
-        Serialization::TypeID pointerType() const override { return Serialization::TypeID::get<boost::shared_ptr<T> >(); }
+        Serialization::TypeID pointerType() const override { return Serialization::TypeID::get<AZStd::shared_ptr<T> >(); }
         CryExtensionClassFactory<T, TSerializable>* factory() const override { return &CryExtensionClassFactory<T, TSerializable>::the(); }
     protected:
-        boost::shared_ptr<T>& m_ptr;
+        AZStd::shared_ptr<T>& m_ptr;
     };
 }
 
 namespace boost
 {
     template<class T>
-    bool Serialize(Serialization::IArchive& ar, shared_ptr<T>& ptr, const char* name, const char* label)
+    bool Serialize(Serialization::IArchive& ar, AZStd::shared_ptr<T>& ptr, const char* name, const char* label)
     {
         Serialization::CryExtensionPointer<T, T> serializer(ptr);
         return ar(static_cast<Serialization::IPointer&>(ptr), name, label);

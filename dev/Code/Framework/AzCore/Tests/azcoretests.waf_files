@@ -12,6 +12,7 @@
             "DLL.cpp",
             "Driller.cpp",
             "EBus.cpp",
+            "EntityIdTests.cpp",
             "FileIOBaseTestTypes.h",
             "IPC.cpp",
             "Jobs.cpp",

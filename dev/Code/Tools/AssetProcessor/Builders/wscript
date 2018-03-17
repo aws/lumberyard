@@ -16,6 +16,7 @@ SUBFOLDERS = [
     'ExampleBuilder',
     'MaterialBuilder',
     'LuaBuilder',
+    'SceneBuilder',
     'SliceBuilder',
     'TranslationBuilder'
 ]

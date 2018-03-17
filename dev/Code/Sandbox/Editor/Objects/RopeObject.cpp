@@ -648,7 +648,7 @@ void CRopeObject::UpdateGameArea(bool bRemove)
             {
                 pRopeNode->SetMatrix(GetWorldTM());
 
-                pRopeNode->SetName(GetName().toLatin1().data());
+                pRopeNode->SetName(GetName().toUtf8().data());
                 CMaterial* mtl = GetMaterial();
                 if (mtl)
                 {
@@ -851,7 +851,7 @@ void CRopeObject::Serialize(CObjectArchive& ar)
         if (!m_ropeSoundData.sName.isEmpty())
         {
             XmlNodeRef const xmlNodeSound = xmlNodeRope->newChild("Sound");
-            xmlNodeSound->setAttr("Name", m_ropeSoundData.sName.toLatin1().data());
+            xmlNodeSound->setAttr("Name", m_ropeSoundData.sName.toUtf8().data());
             xmlNodeSound->setAttr("SegmentToAttachTo", m_ropeSoundData.nSegementToAttachTo);
             xmlNodeSound->setAttr("Offset", m_ropeSoundData.fOffset);
         }
@@ -892,7 +892,7 @@ XmlNodeRef CRopeObject::Export(const QString& levelPath, XmlNodeRef& xmlNode)
         if (!m_ropeSoundData.sName.isEmpty())
         {
             XmlNodeRef const xmlNodeSound = xmlNodeRope->newChild("Sound");
-            xmlNodeSound->setAttr("Name", m_ropeSoundData.sName.toLatin1().data());
+            xmlNodeSound->setAttr("Name", m_ropeSoundData.sName.toUtf8().data());
             xmlNodeSound->setAttr("SegmentToAttachTo", m_ropeSoundData.nSegementToAttachTo);
             xmlNodeSound->setAttr("Offset", m_ropeSoundData.fOffset);
         }
@@ -978,7 +978,7 @@ void CRopeObject::UpdateSoundData()
     {
         if (m_bIsSimulating)
         {
-            pRopeRenderNode->SetRopeSound(m_ropeSoundData.sName.toLatin1().data(), m_ropeSoundData.nSegementToAttachTo, m_ropeSoundData.fOffset);
+            pRopeRenderNode->SetRopeSound(m_ropeSoundData.sName.toUtf8().data(), m_ropeSoundData.nSegementToAttachTo, m_ropeSoundData.fOffset);
         }
         else
         {

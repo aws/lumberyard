@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "VideoPlayback_precompiled.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <platform_impl.h>
 

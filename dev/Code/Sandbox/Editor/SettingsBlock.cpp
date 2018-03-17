@@ -83,7 +83,7 @@ static bool ReadFileContent(vector<char>* pBuffer, const char* filename)
 
 static bool SaveFileContent(const char* filename, const char* pBuffer, size_t length)
 {
-    string fullpath = Path::GamePathToFullPath(filename).toLatin1().data();
+    string fullpath = Path::GamePathToFullPath(filename).toUtf8().data();
 
     AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
     if (!gEnv->pFileIO->Open(fullpath.c_str(), AZ::IO::GetOpenModeFromStringMode("wb"), fileHandle))

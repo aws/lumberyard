@@ -17,7 +17,7 @@
 #include "StdAfx.h"
 #include "ObjManCullQueue.h"
 #include "CZBufferCuller.h"
-#include <IJobManager_JobDelegator.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #if defined(USE_CULL_QUEUE)
 # define CULL_QUEUE_USE_JOB 1
@@ -26,8 +26,12 @@
 #endif
 
 #if CULL_QUEUE_USE_JOB
-DECLARE_JOB("IsBoxOccluded", TBoxOccludedJob, NCullQueue::SCullQueue::ProcessInternal);
-JobManager::SJobState g_OcclJobState;
+
+namespace
+{
+    AZ::LegacyJobExecutor s_occlusionJobCompletion;
+}
+
 #endif
 
 NCullQueue::SCullQueue::SCullQueue()
@@ -73,11 +77,12 @@ void NCullQueue::SCullQueue::Process()
 {
 #ifdef USE_CULL_QUEUE
     FUNCTION_PROFILER_3DENGINE;
-
-    TBoxOccludedJob job(m_MainFrameID, (CZBufferCuller*)m_pCullBuffer, m_pCam);
-    job.SetClassInstance(this);
-    job.RegisterJobState(&g_OcclJobState);
-    job.Run();
+    s_occlusionJobCompletion.StartJob(
+        [this]()
+        {
+            this->ProcessInternal(this->m_MainFrameID, this->m_pCullBuffer, this->m_pCam);
+        }
+    );
 #endif //USE_CULL_QUEUE
 }
 
@@ -90,8 +95,7 @@ void NCullQueue::SCullQueue::Wait()
     FUNCTION_PROFILER_3DENGINE;
 
 #ifdef USE_CULL_QUEUE
-    gEnv->GetJobManager()->WaitForJob(g_OcclJobState, 300);
-
+    s_occlusionJobCompletion.WaitForCompletion();
     cullBufWriteHeadIndex = 0;
     cullBufReadHeadIndex = 0;
 #endif
@@ -100,6 +104,7 @@ void NCullQueue::SCullQueue::Wait()
 void NCullQueue::SCullQueue::ProcessInternal(uint32 mainFrameID, CZBufferCuller* const pCullBuffer, const CCamera* const pCam)
 {
 #ifdef USE_CULL_QUEUE
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
     CZBufferCuller& cullBuffer = *(CZBufferCuller*)pCullBuffer;
     #define localQueue (*this)
     #define localCam (*pCam)

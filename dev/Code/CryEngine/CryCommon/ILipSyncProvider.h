@@ -40,5 +40,5 @@ struct ILipSyncProvider
     virtual void UpdateLipSync(IComponentAudioPtr pAudioComponent, const Audio::TAudioControlID nAudioTriggerId, const ELipSyncMethod lipSyncMethod) = 0;
 };
 
-DECLARE_BOOST_POINTERS(ILipSyncProvider);
+DECLARE_SMART_POINTERS(ILipSyncProvider);
 

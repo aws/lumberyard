@@ -245,9 +245,9 @@ void CBaseLibraryItem::Serialize(SerializeContext& ctx)
     else
     {
         // Saving.
-        node->setAttr("Name", m_name.toLatin1().data());
+        node->setAttr("Name", m_name.toUtf8().data());
         node->setAttr("Id", m_guid);
-        node->setAttr("Library", GetLibrary()->GetName().toLatin1().data());
+        node->setAttr("Library", GetLibrary()->GetName().toUtf8().data());
     }
     m_bModified = false;
 }

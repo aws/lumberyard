@@ -1,6 +1,6 @@
 <download name="GSG_06_Scripting" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="418096" md5="102288a404bfb317c1ce1b77802fe95a"/>
+  <file src="level.pak" dest="level.pak" size="418333" md5="07725083e08740f386d0b06dee40c34c"/>
  </files>
 </download>

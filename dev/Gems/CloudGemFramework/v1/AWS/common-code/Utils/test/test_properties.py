@@ -13,7 +13,7 @@
 import unittest
 import mock
 
-import properties
+from cgf_utils import properties
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_properties_TestString(unittest.TestCase):
 

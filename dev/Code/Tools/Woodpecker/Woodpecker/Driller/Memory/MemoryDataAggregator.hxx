@@ -19,6 +19,7 @@
 #include <AzCore/RTTI/RTTI.h>
 
 #include "MemoryDataParser.h"
+#include "MemoryDataView.hxx"
 
 namespace Driller
 {

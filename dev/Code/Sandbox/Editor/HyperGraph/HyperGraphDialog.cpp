@@ -88,13 +88,6 @@ namespace
 
 #define GRAPH_FILE_FILTER "Graph XML Files (*.xml)"
 
-#define IDW_HYPERGRAPH_RIGHT_PANE  AFX_IDW_CONTROLBAR_FIRST + 10
-#define IDW_HYPERGRAPH_TREE_PANE  AFX_IDW_CONTROLBAR_FIRST + 11
-#define IDW_HYPERGRAPH_COMPONENTS_PANE  AFX_IDW_CONTROLBAR_FIRST + 12
-#define IDW_HYPERGRAPH_SEARCH_PANE  AFX_IDW_CONTROLBAR_FIRST + 13
-#define IDW_HYPERGRAPH_SEARCHRESULTS_PANE  AFX_IDW_CONTROLBAR_FIRST + 14
-#define IDW_HYPERGRAPH_BREAKPOINTS_PANE  AFX_IDW_CONTROLBAR_FIRST + 15
-
 #define HYPERGRAPH_DIALOGFRAME_CLASSNAME "HyperGraphDialog"
 
 #define IDC_HYPERGRAPH_COMPONENTS 1
@@ -639,7 +632,7 @@ void CHyperGraphsTreeCtrl::Reload()
                 if (pObjGroup == 0)
                 {
                     CryLogAlways("CHyperGraphsTreeCtrl::Reload(): Entity %p (%s) in Group but GroupPtr is 0",
-                        pEntity, pEntity->GetName().toLatin1().data());
+                        pEntity, pEntity->GetName().toUtf8().data());
                     continue;
                 }
 
@@ -654,8 +647,8 @@ void CHyperGraphsTreeCtrl::Reload()
 #if 0
                     CryLogAlways("entity 0x%p name=%s group=%s",
                         pEntity,
-                        pEntity->GetName().toLatin1().data(),
-                        pfGroupName.toLatin1().data());
+                        pEntity->GetName().toUtf8().data(),
+                        pfGroupName.toUtf8().data());
 #endif
 
                     QTreeWidgetItem* hGroup = stl::find_in_map(groups[3], pfGroupName, NULL);
@@ -826,7 +819,7 @@ void CHyperGraphsTreeCtrl::Reload()
         }
         else if (type == IFlowGraph::eFGT_Module)
         {
-            if (IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pFlowGraph->GetName().toLatin1().data()))
+            if (IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pFlowGraph->GetName().toUtf8().data()))
             {
                 IFlowGraphModule::EType moduleType = pModule->GetType();
 
@@ -2235,13 +2228,13 @@ void CHyperGraphDialog::OnFileSave()
             else
             {
                 QString srcAssetPath = Path::GamePathToFullPath(filename);
-                ok = pGraph->Save(srcAssetPath.toLatin1().data());
+                ok = pGraph->Save(srcAssetPath.toUtf8().data());
             }
         }
 
         if (!ok)
         {
-            Warning ("Cannot save FlowGraph to file '%s'.\nMake sure the path is correct.", filename.toLatin1().data());
+            Warning ("Cannot save FlowGraph to file '%s'.\nMake sure the path is correct.", filename.toUtf8().data());
         }
 
         // After saving custom action graph, flag it so in-memory copy in CCustomActionManager will be reloaded from xml
@@ -2332,7 +2325,7 @@ void CHyperGraphDialog::NewFGModule(IFlowGraphModule::EType type)
 
     if (pModuleManager->NewModule(filename, type))
     {
-        IFlowGraphPtr pModuleGraph = pModuleManager->GetModuleFlowGraph(PathUtil::GetFileName(filename.toLatin1().data()));
+        IFlowGraphPtr pModuleGraph = pModuleManager->GetModuleFlowGraph(PathUtil::GetFileName(filename.toUtf8().data()));
 
         if (pModuleGraph)
         {
@@ -2363,7 +2356,7 @@ bool CHyperGraphDialog::RemoveModuleFile(const char* filePath)
     bool promptLocalDelete = true;
     AzToolsFramework::SourceControlFileInfo sccFileInfo;
 
-    if (CFileUtil::GetSccFileInfo(filePath, sccFileInfo, this))
+    if (CFileUtil::GetFileInfoFromSourceControl(filePath, sccFileInfo, this))
     {
         if (sccFileInfo.IsManaged())
         {
@@ -2436,7 +2429,7 @@ void CHyperGraphDialog::OnFileNewAction()
     QString filename;
     if (GetIEditor()->GetAI()->NewAction(filename, this))
     {
-        IAIAction* pAction = gEnv->pAISystem->GetAIActionManager()->GetAIAction(PathUtil::GetFileName(filename.toLatin1().data()));
+        IAIAction* pAction = gEnv->pAISystem->GetAIActionManager()->GetAIAction(PathUtil::GetFileName(filename.toUtf8().data()));
         if (pAction)
         {
             CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
@@ -2528,7 +2521,7 @@ void CHyperGraphDialog::OnEditModuleInputsOutputs()
                 IFlowGraph::EFlowGraphType type = pIFlowGraph->GetType();
                 if (pIFlowGraph->GetType() == IFlowGraph::eFGT_Module)
                 {
-                    IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pGraph->GetName().toLatin1().data());
+                    IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pGraph->GetName().toUtf8().data());
 
                     if (pModule)
                     {
@@ -2561,7 +2554,7 @@ void CHyperGraphDialog::OnFileNewCustomAction()
             return;
         }
 
-        ICustomAction* pCustomAction = pCustomActionManager->GetCustomActionFromLibrary(PathUtil::GetFileName(filename.toLatin1().data()));
+        ICustomAction* pCustomAction = pCustomActionManager->GetCustomActionFromLibrary(PathUtil::GetFileName(filename.toUtf8().data()));
         if (pCustomAction)
         {
             CFlowGraphManager* pFlowGraphManager = GetIEditor()->GetFlowGraphManager();
@@ -3547,9 +3540,9 @@ void CHyperGraphDialog::ProcessMenu(int nMenuOption, TDTreeItems& rchSelectedIte
                     if (bIsModule)
                     {
                         // Remove the module file
-                        QString modulePath = pModuleManager->GetModulePath(pFlowGraph->GetName().toLatin1().constData());
+                        QString modulePath = pModuleManager->GetModulePath(pFlowGraph->GetName().toUtf8().constData());
                         fullPath = Path::GamePathToFullPath(modulePath);
-                        success = RemoveModuleFile(fullPath.toLatin1().data());
+                        success = RemoveModuleFile(fullPath.toUtf8().data());
                     }
 
                     if (success)
@@ -3589,7 +3582,7 @@ void CHyperGraphDialog::ProcessMenu(int nMenuOption, TDTreeItems& rchSelectedIte
                         if (bIsModule)
                         {
                             // Finally Notify the module manager
-                            pModuleManager->OnDeleteModuleXML(pFlowGraph->GetName().toLatin1().constData(), fullPath.toLatin1().data());
+                            pModuleManager->OnDeleteModuleXML(pFlowGraph->GetName().toUtf8().constData(), fullPath.toUtf8().data());
                         }
                         else
                         {
@@ -4006,7 +3999,7 @@ bool CHyperGraphDialog::IsGlobalModuleFolder(QTreeWidgetItem* hSelectedItem)
     }
 
     CFlowGraph* pFlowGraph = static_cast<CFlowGraph*>(pGraph);
-    IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pFlowGraph->GetName().toLatin1().data());
+    IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pFlowGraph->GetName().toUtf8().data());
     if (!pModule)
     {
         return false;
@@ -4024,7 +4017,7 @@ bool CHyperGraphDialog::IsLevelModuleFolder(QTreeWidgetItem* hSelectedItem)
     }
 
     CFlowGraph* pFlowGraph = static_cast<CFlowGraph*>(pGraph);
-    IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pFlowGraph->GetName().toLatin1().data());
+    IFlowGraphModule* pModule = gEnv->pFlowSystem->GetIModuleManager()->GetModule(pFlowGraph->GetName().toUtf8().data());
     if (!pModule)
     {
         return false;

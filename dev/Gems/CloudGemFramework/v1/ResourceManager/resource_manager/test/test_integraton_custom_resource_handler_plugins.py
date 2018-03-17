@@ -19,7 +19,7 @@ from time import sleep
 
 from botocore.exceptions import ClientError
 
-import resource_manager.constant
+import resource_manager_common.constant
 
 import lmbr_aws_test_support
 import mock_specification
@@ -82,6 +82,15 @@ class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(lm
                 'StackResources': {
                     'Custom': {
                         'ResourceType': 'Custom::Test'
+                    },
+                    'CustomType': {
+                        'ResourceType': 'Custom::ResourceTypes'
+                    },
+                    'ServiceLambda': {
+                        'ResourceType': 'AWS::Lambda::Function'
+                    },
+                    'ServiceLambdaConfiguration': {
+                        'ResourceType': 'Custom::LambdaConfiguration'
                     }
                 }
             })
@@ -138,31 +147,41 @@ class IntegrationTest_CloudGemFramework_ResouceManager_ResourceHandlerPlugins(lm
 
 
     CUSTOM_RESOURCE_HANDLER = '''
-import custom_resource_response
+from cgf_utils import custom_resource_response
 
 def handler(event, context):
     data = { 'TestProperty': 'TestValue' }
     physical_resource_id = 'TestPyhsicalResourceId'
-    custom_resource_response.succeed(event, context, data, physical_resource_id)
+    return custom_resource_response.success_response(data, physical_resource_id)
 '''
 
     CUSTOM_RESOURCE_NAME = 'Test'
 
+    LAMBDA_IMPORTS = '''CloudGemFramework.LambdaService
+    CloudGemFramework.ResourceManagerCommon
+    CloudGemFramework.Utils'''
+
 
     def add_custom_resource_handler_to_resource_group(self):
 
-        resource_group_project_code_path = self.get_resource_group_project_code_path()
-        resource_group_custom_resource_file_path = os.path.join(resource_group_project_code_path, self.CUSTOM_RESOURCE_NAME + 'ResourceHandler.py')
+        resource_group_resource_type_code_path = self.get_resource_group_resource_types_code_path()
+        resource_group_custom_resource_file_path = os.path.join(resource_group_resource_type_code_path, "Custom_" + self.CUSTOM_RESOURCE_NAME + ".py")
 
-        os.mkdir(resource_group_project_code_path)
+        os.makedirs(resource_group_resource_type_code_path)
 
         with open(resource_group_custom_resource_file_path, 'w') as f:
             f.write(self.CUSTOM_RESOURCE_HANDLER)
 
+        with open(os.path.join(resource_group_resource_type_code_path, "__init__.py"), "w") as f:
+            pass
+
+        with open(os.path.join(resource_group_resource_type_code_path, "..", ".import"), "w") as f:
+            f.write(self.LAMBDA_IMPORTS)
+
 
     def remove_custom_resource_handler_from_resource_group(self):
-        resource_group_project_code_path = self.get_resource_group_project_code_path()
-        shutil.rmtree(resource_group_project_code_path)
+        resource_group_resource_type_code_path = self.get_resource_group_resource_types_code_path()
+        shutil.rmtree(resource_group_resource_type_code_path)
 
 
     def add_custom_resource_to_resource_group(self):
@@ -171,15 +190,84 @@ def handler(event, context):
 
             resource_group_resources = resource_group_template['Resources'] = {}
 
+            # We need to specify a ServiceLambda for the CGF to package and upload our Lambda code
+            resource_group_resources['ServiceLambda'] = {
+                "Properties": {
+                    "Code": {
+                        "S3Bucket": {
+                            "Fn::GetAtt": [
+                                "ServiceLambdaConfiguration",
+                                "ConfigurationBucket"
+                            ]
+                        },
+                        "S3Key": {
+                            "Fn::GetAtt": [
+                                "ServiceLambdaConfiguration",
+                                "ConfigurationKey"
+                            ]
+                        }
+                    },
+                    "Handler": "service.dispatch",
+                    "Role": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "Role"
+                        ]
+                    },
+                    "Runtime": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "Runtime"
+                        ]
+                    }
+                },
+                "Type": "AWS::Lambda::Function"
+            }
+
+            resource_group_resources['ServiceLambdaConfiguration'] = {
+                "Properties": {
+                    "ConfigurationBucket": {
+                        "Ref": "ConfigurationBucket"
+                    },
+                    "ConfigurationKey": {
+                        "Ref": "ConfigurationKey"
+                    },
+                    "FunctionName": "ServiceLambda",
+                    "Runtime": "python2.7",
+                    "ServiceToken": {
+                        "Ref": "ProjectResourceHandler"
+                    },
+                    "Settings": {}
+                },
+                "Type": "Custom::LambdaConfiguration"
+            }
+
+            resource_group_resources['CustomType'] = {
+                "Type": "Custom::ResourceTypes",
+                "Properties": {
+                    "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                    "LambdaConfiguration": { "Fn::GetAtt": [ "ServiceLambdaConfiguration", "ComposedLambdaConfiguration" ] },
+                    "Definitions": {
+                        "Custom::" + self.CUSTOM_RESOURCE_NAME: {
+                            "ArnFormat": "*",
+                            "HandlerFunction": {
+                                "Function": "Custom_" + self.CUSTOM_RESOURCE_NAME + ".handler"
+                            }
+                        }
+                    }
+                }
+            }
+
             resource_group_resources['Custom'] = {
                 "Type": "Custom::" + self.CUSTOM_RESOURCE_NAME,
                 "Properties": {
                     "ServiceToken": { "Ref": "ProjectResourceHandler" },
                     "ConfigurationKey": { "Ref": "ConfigurationKey" }
-                }
+                },
+                "DependsOn": [ "CustomType" ]
             }
 
 
-    def get_resource_group_project_code_path(self):
-        return self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'project-code')
+    def get_resource_group_resource_types_code_path(self):
+        return self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME, 'lambda-code', 'ServiceLambda', 'resource_types')
 

@@ -41,7 +41,7 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
     m_ui->m_searchWidget->GetFilter()->AddFilter(m_selection.GetDisplayFilter());
     
     using namespace AzToolsFramework::AssetBrowser;
-    AssetBrowserComponentRequestsBus::BroadcastResult(m_assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
+    AssetBrowserComponentRequestBus::BroadcastResult(m_assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
     AZ_Assert(m_assetBrowserModel, "Failed to get asset browser model");
     m_filterModel->setSourceModel(m_assetBrowserModel);
     m_filterModel->SetFilter(m_ui->m_searchWidget->GetFilter());
@@ -52,6 +52,7 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
     m_ui->m_assetBrowserTreeViewWidget->SetThumbnailContext("AssetBrowser");
     m_ui->m_assetBrowserTreeViewWidget->setSelectionMode(selection.GetMultiselect() ?
         QAbstractItemView::SelectionMode::ExtendedSelection : QAbstractItemView::SelectionMode::SingleSelection);
+    m_ui->m_assetBrowserTreeViewWidget->setDragEnabled(false);
 
     // if the current selection is invalid, disable the Ok button
     m_ui->m_buttonBox->buttons().constFirst()->setEnabled(EvaluateSelection());

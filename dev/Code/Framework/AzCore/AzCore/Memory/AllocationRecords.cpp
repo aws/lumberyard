@@ -39,7 +39,7 @@ AllocationRecords::AllocationRecords(unsigned char stackRecordLevels, bool isMem
     , m_requestedBytesPeak(0)
 {
     m_memoryGuardSize = isMemoryGuard ? sizeof(Debug::GuardValue) : 0;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
     SetCriticalSectionSpinCount(DrillerEBusMutex::GetMutex().native_handle(), 4000);
 #endif
     // preallocate some buckets

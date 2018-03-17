@@ -125,6 +125,18 @@ namespace AZ
             return m_id < rhs.m_id;
         }
 
+        /**
+        * Evaluates whether the entity ID is greater than a given entity ID.
+        * @param rhs An entity ID whose size you want to compare to the given
+        * entity ID.
+        * @return True if the entity ID is greater than the given entity ID.
+        * Otherwise, false.
+        */
+        AZ_FORCE_INLINE bool operator>(const EntityId& rhs) const
+        {
+            return m_id > rhs.m_id;
+        }
+
     protected:
 
         /**

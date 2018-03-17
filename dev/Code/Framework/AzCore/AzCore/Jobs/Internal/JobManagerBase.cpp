@@ -30,7 +30,7 @@ void JobManagerBase::Process(Job* job)
 
     if (!job->IsCancelled())
     {
-        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "AZ::JobManagerBase::Process");
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "AZ::JobManagerBase::Process Job");
         job->Process();
     }
 

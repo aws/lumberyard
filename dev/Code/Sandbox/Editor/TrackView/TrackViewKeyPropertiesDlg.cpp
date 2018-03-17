@@ -169,9 +169,18 @@ void CTrackViewKeyPropertiesDlg::OnKeysChanged(CTrackViewSequence* pSequence)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* pSequence)
+void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* sequence)
 {
-    CTrackViewKeyBundle selectedKeys = pSequence->GetSelectedKeys();
+    if (nullptr == sequence)
+    {
+        m_wndProps->ClearSelection();
+        m_pVarBlock->DeleteAllVariables();
+        m_wndProps->setEnabled(false);
+        m_wndTrackProps->setEnabled(false);
+        return;
+    }
+
+    CTrackViewKeyBundle selectedKeys = sequence->GetSelectedKeys();
 
     m_wndTrackProps->OnKeySelectionChange(selectedKeys);
 
@@ -199,6 +208,7 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* pSequ
     }
 
     m_wndProps->setEnabled(false);
+    m_wndTrackProps->setEnabled(false);
     bool bAssigned = false;
     if (selectedKeys.GetKeyCount() > 0 && selectedKeys.AreAllKeysOfSameType())
     {
@@ -227,10 +237,12 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* pSequ
         }
 
         m_wndProps->setEnabled(true);
+        m_wndTrackProps->setEnabled(true);
     }
     else
     {
         m_wndProps->setEnabled(false);
+        m_wndTrackProps->setEnabled(false);
     }
 
     if (bSelectChangedInSameTrack)
@@ -260,8 +272,9 @@ void CTrackViewKeyPropertiesDlg::ReloadValues()
     m_wndProps->ReloadValues();
 }
 
-void CTrackViewKeyPropertiesDlg::OnSequenceChanged()
+void CTrackViewKeyPropertiesDlg::OnSequenceChanged(CTrackViewSequence* sequence)
 {
+    OnKeySelectionChanged(sequence);
     m_wndTrackProps->OnSequenceChanged();
 }
 
@@ -335,11 +348,23 @@ void CTrackViewTrackPropsDlg::OnUpdateTime()
         CTrackViewSequence* sequence = track->GetSequence();
         if (nullptr != sequence) 
         {
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
             if (sequence->GetSequenceType() == SequenceType::Legacy)
             {
                 CUndo undo("Change key time");
                 CUndo::Record(new CUndoTrackObject(m_keyHandle.GetTrack()));
 
+                m_keyHandle.SetTime(time);
+                CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
+                if (newKey != m_keyHandle)
+                {
+                    SetCurrKey(newKey);
+                }
+            }
+            else if (isDuringUndo)
+            {
                 m_keyHandle.SetTime(time);
                 CTrackViewKeyHandle newKey = m_keyHandle.GetTrack()->GetKeyByTime(time);
                 if (newKey != m_keyHandle)

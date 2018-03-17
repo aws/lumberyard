@@ -186,7 +186,7 @@ void CComponentEntityObject::SetName(const QString& name)
 
         if (entity)
         {
-            entity->SetName(name.toLatin1().data());
+            entity->SetName(name.toUtf8().data());
         }
     }
 

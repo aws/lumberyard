@@ -67,10 +67,10 @@ namespace AzToolsFramework
         void ProductThumbnail::LoadThread()
         {
             bool installed = false;
-            ThumbnailerRendererRequestsBus::EventResult(installed, m_assetType, &ThumbnailerRendererRequests::Installed);
+            ThumbnailerRendererRequestBus::EventResult(installed, m_assetType, &ThumbnailerRendererRequests::Installed);
             if (installed)
             {
-                ThumbnailerRendererRequestsBus::QueueEvent(m_assetType, &ThumbnailerRendererRequests::RenderThumbnail, m_assetId, m_thumbnailSize);
+                ThumbnailerRendererRequestBus::QueueEvent(m_assetType, &ThumbnailerRendererRequests::RenderThumbnail, m_assetId, m_thumbnailSize);
                 // wait for response from thumbnail renderer
                 m_renderWait.acquire();
             }

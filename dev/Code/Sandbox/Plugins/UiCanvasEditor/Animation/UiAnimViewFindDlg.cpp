@@ -152,13 +152,13 @@ void CUiAnimViewFindDlg::ProcessSel()
             pAnimationContext->SetSequence(pSequence, false, false);
 
             CUiAnimViewAnimNode* pParentDirector = pSequence;
-            CUiAnimViewAnimNodeBundle foundDirectorNodes = pSequence->GetAnimNodesByName(object.m_directorName.toLatin1().data());
+            CUiAnimViewAnimNodeBundle foundDirectorNodes = pSequence->GetAnimNodesByName(object.m_directorName.toUtf8().data());
             if (foundDirectorNodes.GetCount() > 0 && foundDirectorNodes.GetNode(0)->GetType() == eUiAnimNodeType_Director)
             {
                 pParentDirector = foundDirectorNodes.GetNode(0);
             }
 
-            CUiAnimViewAnimNodeBundle foundNodes = pParentDirector->GetAnimNodesByName(object.m_objName.toLatin1().data());
+            CUiAnimViewAnimNodeBundle foundNodes = pParentDirector->GetAnimNodesByName(object.m_objName.toUtf8().data());
 
             const uint numNodes = foundNodes.GetCount();
             for (uint i = 0; i < numNodes; ++i)

@@ -48,8 +48,7 @@ void CD3D9Renderer::EF_PrepareShadowGenRenderList()
     //TFIX nCurRecLevel+1 is incorrect
     TArray<SRenderLight>&  arrDeferLights = CDeferredShading::Instance().GetLights(nThreadID, nCurRecLevel);
 
-    gRenDev->GetGenerateShadowRendItemJobState(nThreadID)->SetRunning();
-    RegisterFinalizeShadowJobs(gRenDev->GetGenerateShadowRendItemJobState(nThreadID), nThreadID);
+    RegisterFinalizeShadowJobs(nThreadID);
 
     if (NumDynLights <= 0 && arrDeferLights.Num() <= 0)
     {

@@ -111,8 +111,7 @@
             "parallel/containers/lock_free_queue.h",
             "parallel/containers/lock_free_stack.h",
             "parallel/containers/lock_free_stamped_queue.h",
-            "parallel/containers/lock_free_stamped_stack.h",
-            "parallel/containers/work_stealing_queue.h"
+            "parallel/containers/lock_free_stamped_stack.h"
         ],
         "std/parallel/containers/internal":
         [
@@ -238,6 +237,7 @@
             "typetraits/same_traits.h",
             "typetraits/size_t_trait_def.h",
             "typetraits/transform_traits.h",
+            "typetraits/tuple_traits.h",
             "typetraits/typetraits.h",
             "typetraits/type_id.h",
             "typetraits/type_trait_def.h",

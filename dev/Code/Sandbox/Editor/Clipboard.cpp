@@ -44,7 +44,7 @@ void CClipboard::Put(XmlNodeRef& node, const QString& title)
 XmlNodeRef CClipboard::Get() const
 {
     QString str = GetString();
-    return XmlHelpers::LoadXmlFromBuffer(str.toLatin1().data(), str.toLatin1().length(), true);
+    return XmlHelpers::LoadXmlFromBuffer(str.toUtf8().data(), str.toUtf8().length(), true);
 }
 
 //////////////////////////////////////////////////////////////////////////

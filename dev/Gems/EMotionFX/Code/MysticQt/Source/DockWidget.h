@@ -35,7 +35,7 @@ namespace MysticQt
         MCORE_MEMORYOBJECTCATEGORY(DockWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MYSTICQT_CUSTOMWIDGETS);
 
     public:
-        DockWidget(const QString& name);
+        DockWidget(QWidget* parent, const QString& name);
         ~DockWidget();
 
         void SetContents(QWidget* contents);

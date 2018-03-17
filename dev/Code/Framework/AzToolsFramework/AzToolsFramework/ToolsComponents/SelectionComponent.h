@@ -16,7 +16,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Math/Crc.h>
-#include <AzCore/Math/aabb.h>
+#include <AzCore/Math/Aabb.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/SelectionComponentBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>

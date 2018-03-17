@@ -275,5 +275,5 @@ namespace AZ
     AZ_TYPE_INFO_SPECIALIZE(AzToolsFramework::PropertyModificationRefreshLevel, "{06F58AEC-352A-4761-9040-FD5FCEC4D314}")
 } // namespace AZ
 
-#include "PropertyEditorAPI_Internals_impl.h"
+#include "PropertyEditorAPI_Internals_Impl.h"
 

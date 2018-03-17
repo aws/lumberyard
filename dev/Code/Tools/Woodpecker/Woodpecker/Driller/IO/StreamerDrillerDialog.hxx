@@ -167,7 +167,7 @@ namespace Driller
 		// QAbstractTableModel
 		virtual int rowCount(const QModelIndex& index = QModelIndex()) const;
 		virtual int columnCount(const QModelIndex& index = QModelIndex()) const;
-		virtual Qt::ItemFlags StreamerDrillerLogModel::flags(const QModelIndex &index) const;
+		virtual Qt::ItemFlags flags(const QModelIndex &index) const;
 		virtual QVariant data(const QModelIndex& index, int role) const;
 		virtual QVariant data(int row, int column, int role) const;
 		virtual QVariant data(DrillerEvent* event, int row, int column, int role) const;

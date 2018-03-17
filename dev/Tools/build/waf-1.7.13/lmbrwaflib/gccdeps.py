@@ -189,17 +189,6 @@ def post_run(self):
 
     Task.Task.post_run(self)
 
-def sig_implicit_deps(self):
-    if self.env.CC_NAME not in supported_compilers:
-        return self.no_gccdeps_sig_implicit_deps()
-    try:
-        return Task.Task.sig_implicit_deps(self)
-    except Errors.TaskRescan:
-        # Honor the request to rescan
-        return Task.Task.sig_implicit_deps(self)
-    except Errors.WafError:
-        return Utils.SIG_NIL
-
 for name in 'c cxx'.split():
     try:
         cls = Task.classes[name]
@@ -208,9 +197,7 @@ for name in 'c cxx'.split():
     else:
         cls.no_gccdeps_post_run = cls.post_run
         cls.no_gccdeps_scan = cls.scan
-        cls.no_gccdeps_sig_implicit_deps = cls.sig_implicit_deps
 
         cls.post_run = post_run
         cls.scan = scan
-        cls.sig_implicit_deps = sig_implicit_deps
 

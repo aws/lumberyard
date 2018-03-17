@@ -89,6 +89,28 @@
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings.json" ]] },
                                 { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/project-settings/*" ]] }
                             ]
+                        },
+                        {
+                            "Sid": "ReadResourceDefinitions",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:ListBucket"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" } ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/resource-definitions/*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "InvokeArnLambdas",
+                            "Effect": "Allow",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ],
+                            "Resource": [ 
+                                { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectStack" }, "-AH-*" ]] }
+                            ]
                         }
                     ]
                 }
@@ -252,17 +274,13 @@
                             "Effect": "Deny",
                             "Action": [
                                 "dynamodb:*",
-                                "s3:*",
                                 "sqs:*",
-                                "sns:*",
-                                "lambda:*"
+                                "sns:*"
                             ],
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:dynamodb:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":table/", { "Ref": "AWS::StackName" }, "-*" ]] },
-                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Fn::GetAtt": [ "Helper", "LowerCaseStackName" ] }, "-*" ] ] },
                                 { "Fn::Join": [ "", [ "arn:aws:sqs:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":", { "Ref": "AWS::StackName" }, "-*" ]] },
-                                { "Fn::Join": [ "", [ "arn:aws:sns:*:", { "Ref": "AWS::AccountId" }, ":", { "Ref": "AWS::StackName" }, "-*" ] ] },
-                                { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "AWS::StackName" }, "-*" ]] }
+                                { "Fn::Join": [ "", [ "arn:aws:sns:*:", { "Ref": "AWS::AccountId" }, ":", { "Ref": "AWS::StackName" }, "-*" ] ] }
                             ]
                         },
                         {
@@ -275,6 +293,16 @@
                             ],
                             "Resource": [
                                 { "Fn::Join": [ "", [ "arn:aws:iam::", {"Ref": "AWS::AccountId"}, ":role/", {"Ref": "ProjectStack"}, "/", {"Ref": "DeploymentName"}, "/*"]] }
+                            ]
+                        },
+                        {
+                            "Sid": "InvokeArnLambdas",
+                            "Effect": "Allow",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ],
+                            "Resource": [ 
+                                { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "ProjectStack" }, "-AH-*" ]] }
                             ]
                         },
                         {

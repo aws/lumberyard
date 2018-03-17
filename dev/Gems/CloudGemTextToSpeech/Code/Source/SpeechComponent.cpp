@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CloudGemTextToSpeech_precompiled.h"
 
 #include <AzCore/EBus/EBus.h>
 

@@ -10,11 +10,11 @@
 #
 # $Revision: #3 $
 
-import properties
-import custom_resource_response
-from resource_manager_common import aws_utils
+from cgf_utils import properties
+from cgf_utils import custom_resource_response
+from cgf_utils import aws_utils
 
-from properties import ValidationError 
+from cgf_utils.properties import ValidationError
 
 def handler(event, context):
     
@@ -27,7 +27,7 @@ def handler(event, context):
 
     output = _process_dict(props.Input)
 
-    custom_resource_response.succeed(event, context, output, physical_resource_id)
+    return custom_resource_response.success_response(output, physical_resource_id)
 
 
 def _process_dict(input):

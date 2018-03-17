@@ -49,6 +49,6 @@ private:
     TEntityAttributeArray   m_attributes;
 };
 
-DECLARE_BOOST_POINTERS(CComponentEntityAttributes)
+DECLARE_SMART_POINTERS(CComponentEntityAttributes)
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_COMPONENTS_COMPONENTENTITYATTRIBUTES_H

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/IO/FileIO.h>

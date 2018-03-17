@@ -485,7 +485,7 @@ void CNULLRenderer::WaitForParticleBuffer(threadID nThreadId)
 {
 }
 
-int CNULLRenderer::GetOcclusionBuffer(uint16* pOutOcclBuffer, int32 nSizeX, int32 nSizeY, Matrix44* pmViewProj, Matrix44* pmCamBuffe)
+int CNULLRenderer::GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffe)
 {
     return 0;
 }
@@ -633,11 +633,6 @@ void CNULLRenderer::PrecacheResources()
 bool CNULLRenderer::EF_PrecacheResource(SShaderItem* pSI, float fMipFactorSI, float fTimeToReady, int Flags, int nUpdateId, int nCounter)
 {
     return true;
-}
-
-
-void CRenderer::ClearJobResources()
-{
 }
 
 ITexture* CNULLRenderer::EF_CreateCompositeTexture(int type, const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, ETEX_Format eTF, const STexComposition* pCompositions, size_t nCompositions, int8 nPriority)

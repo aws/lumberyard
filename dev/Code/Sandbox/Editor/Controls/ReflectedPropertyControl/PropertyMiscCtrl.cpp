@@ -108,7 +108,7 @@ void UserPopupWidgetHandler::WriteGUIValuesIntoProperty(size_t index, UserProper
     Q_UNUSED(index);
     Q_UNUSED(node);
     CReflectedVarUser val = instance;
-    val.m_value = GUI->GetValue().toLatin1().data();
+    val.m_value = GUI->GetValue().toUtf8().data();
     instance = static_cast<property_t>(val);
 }
 
@@ -189,7 +189,7 @@ void LensFlareHandler::WriteGUIValuesIntoProperty(size_t index, LensFlarePropert
         Q_UNUSED(index);
         Q_UNUSED(node);
         CReflectedVarGenericProperty val = instance;
-        val.m_value = GUI->GetValue().toLatin1().data();
+        val.m_value = GUI->GetValue().toUtf8().data();
         instance = static_cast<property_t>(val);
 }
 

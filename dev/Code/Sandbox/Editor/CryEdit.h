@@ -129,7 +129,7 @@ public:
     BOOL RegDelnodeRecurse(HKEY hKeyRoot, LPTSTR lpSubKey);
     RecentFileList* GetRecentFileList();
     virtual void AddToRecentFileList(const QString& lpszPathName);
-    ECreateLevelResult CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain);
+    ECreateLevelResult CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName);
     void CloseCurrentLevel();
     static void InitDirectory();
     BOOL FirstInstance(bool bForceNewInstance = false);
@@ -154,11 +154,13 @@ public:
     // Check for credentials - if found call OpenAWSConsoleFederated using the provided link, otherwise open the signup page
     void OnAWSLaunchConsolePage(const QString& str);
 
-    bool ToProjectConfigurator(const char* msg, const char* caption, const char* location);
+    bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location);
 
-    bool ToExternalToolPrompt(const char* msg, const char* caption);
+    bool ToExternalToolPrompt(const QString& msg, const QString& caption);
     bool ToExternalToolSave();
-    bool OpenProjectConfigurator(const char* startPage) const;
+    bool OpenProjectConfiguratorSwitchProject();
+    bool OpenProjectConfigurator(const QString& startPage) const;
+
     bool OpenSetupAssistant() const;
     QString GetRootEnginePath() const;
 
@@ -356,7 +358,7 @@ public:
     void OnVisualizeNavigationAccessibility();
     void OnVisualizeNavigationAccessibilityUpdate(QAction* action);
     void OnAINavigationDisplayAgent();
-    void OnAINavigationDisplayAgentUpdate(QAction* action);
+    void OnSwitchPhysics();
     void OnSwitchPhysicsUpdate(QAction* action);
     void OnSyncPlayer();
     void OnSyncPlayerUpdate(QAction* action);

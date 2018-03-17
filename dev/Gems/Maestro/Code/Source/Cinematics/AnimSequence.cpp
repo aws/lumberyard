@@ -14,7 +14,7 @@
 // Description : Implementation of IAnimSequence interface.
 
 
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 
 #include <Maestro/Bus/EditorSequenceComponentBus.h>
 
@@ -917,13 +917,17 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
         {
             // legacy sequence and deprecated serialization path! Somewhere along the line some old
             // crusty sequences were saved with "ID" set all to zero. This should never happen because
-            // id's are assigned starting at one. If the "ID" is zero here just keep the dynamic id
-            // that was assigned when the object was created. LY-68910
-            // This code can be deleted when legacy sequences are no longer supported.
-            if (u32Id != 0)
+            // id's are assigned starting at one. If the "ID" is zero here just generate a new one here.
+            if (u32Id == 0)
             {
-                SetId(u32Id);
+                IMovieSystem* movieSystem = GetMovieSystem();
+                if (nullptr != movieSystem)
+                {
+                    u32Id = movieSystem->GrabNextSequenceId();
+                }
             }
+
+            SetId(u32Id);
         }
         if (xmlNode->getAttr("SequenceType", sequenceTypeAttr))
         {

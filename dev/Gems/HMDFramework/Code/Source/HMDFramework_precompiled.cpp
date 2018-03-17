@@ -1,2 +1,2 @@
 
-#include "StdAfx.h"
+#include "HMDFramework_precompiled.h"

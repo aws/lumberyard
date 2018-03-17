@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include "GeomCacheComponent.h"
 
@@ -139,11 +139,21 @@ namespace LmbrCentral
 
     GeometryCacheCommon::~GeometryCacheCommon()
     {
+        if (m_geomCacheRenderNode)
+        {
+            delete m_geomCacheRenderNode;
+            m_geomCacheRenderNode = nullptr;
+        }
     }
 
     void GeometryCacheCommon::Init(const AZ::EntityId& entityId)
     {
         m_entityId = entityId;
+
+        if (gEnv && gEnv->p3DEngine && !m_geomCacheRenderNode)
+        {
+            m_geomCacheRenderNode = static_cast<IGeomCacheRenderNode*>(gEnv->p3DEngine->CreateRenderNode(eERType_GeomCache));
+        }
     }
 
     void GeometryCacheCommon::Activate()
@@ -188,6 +198,7 @@ namespace LmbrCentral
 
         OnTransformChanged(AZ::Transform::CreateIdentity(), world);
 
+        m_playing = false;
         if (m_playOnStart)
         {
             Play();
@@ -216,27 +227,18 @@ namespace LmbrCentral
             m_geomCacheRenderNode->SetMatrix(cryMat);
 
             //Re-register to update position
-            if (m_isRegisteredWithRenderer)
-            {
-                if (gEnv && gEnv->p3DEngine)
-                {
-                    gEnv->p3DEngine->RegisterEntity(m_geomCacheRenderNode);
-                }
-            }
+            RegisterRenderNode();
         }
     }
 
     void GeometryCacheCommon::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
-        if (m_geomCacheRenderNode)
+        if (m_geomCacheRenderNode && m_playing)
         {
             float playbackTime = m_currentTime;
 
-            if (m_playing)
-            {
-                m_currentTime += deltaTime;
-                playbackTime = m_currentTime;
-            }
+            m_currentTime += deltaTime;
+            playbackTime = m_currentTime;
 
             m_geomCacheRenderNode->SetPlaybackTime(playbackTime);
         }
@@ -397,6 +399,10 @@ namespace LmbrCentral
         {
             m_playing = false;
             m_currentTime = 0;
+            if (m_geomCacheRenderNode)
+            {
+                m_geomCacheRenderNode->StopStreaming();
+            }
             GeometryCacheComponentNotificationBus::Broadcast(&GeometryCacheComponentNotificationBus::Events::OnPlaybackStop);
         }
     }
@@ -543,13 +549,7 @@ namespace LmbrCentral
         m_geomCacheRenderNode->SetRndFlags(rendFlags);
 
         //Re-register to update flags
-        if (m_isRegisteredWithRenderer)
-        {
-            if (gEnv && gEnv->p3DEngine)
-            {
-                gEnv->p3DEngine->RegisterEntity(m_geomCacheRenderNode);
-            }
-        }
+        RegisterRenderNode();
     }
 
     void GeometryCacheCommon::OnGeomCacheAssetChanged()
@@ -570,10 +570,7 @@ namespace LmbrCentral
         //However when the asset actually loads, the material should be applied.
         //This is just for whenever the material override *changes*
         //but not necessarily for material application on startup.
-        if (m_isRegisteredWithRenderer)
-        {
-            gEnv->p3DEngine->RegisterEntity(m_geomCacheRenderNode);
-        }
+        RegisterRenderNode();
     }
 
     void GeometryCacheCommon::OnStartTimeChanged()
@@ -598,16 +595,22 @@ namespace LmbrCentral
     void GeometryCacheCommon::OnMaxViewDistanceChanged()
     {
         m_geomCacheRenderNode->SetBaseMaxViewDistance(m_maxViewDistance);
+
+        RegisterRenderNode();
     }
 
     void GeometryCacheCommon::OnViewDistanceMultiplierChanged()
     {
         m_geomCacheRenderNode->SetViewDistanceMultiplier(m_viewDistanceMultiplier);
+
+        RegisterRenderNode();
     }
 
     void GeometryCacheCommon::OnLODDistanceRatioChanged()
     {
         m_geomCacheRenderNode->SetLodRatio(m_lodDistanceRatio);
+
+        RegisterRenderNode();
     }
 
     void GeometryCacheCommon::OnStreamInDistanceChanged()
@@ -629,6 +632,14 @@ namespace LmbrCentral
         else
         {
             m_materialOverride = nullptr;
+        }
+    }
+
+    void GeometryCacheCommon::RegisterRenderNode()
+    {
+        if(m_isRegisteredWithRenderer && gEnv && gEnv->p3DEngine)
+        {
+            gEnv->p3DEngine->RegisterEntity(m_geomCacheRenderNode);
         }
     }
 
@@ -655,12 +666,12 @@ namespace LmbrCentral
 
     void GeometryCacheCommon::DestroyGeomCache()
     {
-        if (m_isRegisteredWithRenderer && gEnv && gEnv->p3DEngine && m_geomCacheRenderNode)
+        if (m_isRegisteredWithRenderer && m_geomCacheRenderNode)
         {
+            m_geomCacheRenderNode->StopStreaming();
             m_isRegisteredWithRenderer = false;
 
-            delete m_geomCacheRenderNode;
-            m_geomCacheRenderNode = nullptr;
+            gEnv->p3DEngine->FreeRenderNodeState(m_geomCacheRenderNode);
         }
 
         m_geomCache = nullptr;

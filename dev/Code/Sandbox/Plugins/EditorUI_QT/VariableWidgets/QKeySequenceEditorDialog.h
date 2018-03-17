@@ -14,9 +14,9 @@
 
 #include <QDialog>
 #include "QKeySequenceCaptureWidget.h"
-#include "qformlayout.h"
-#include "qpushbutton.h"
-#include "qscrollarea.h"
+#include <QFormLayout>
+#include <QPushButton>
+#include <QScrollArea>
 
 struct HotKey;
 

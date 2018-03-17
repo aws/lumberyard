@@ -16,7 +16,7 @@
 
 #include "MainWindow.h"
 
-#include "AIGoalLibrary.h"
+#include "AiGoalLibrary.h"
 #include "AiGoal.h"
 #include "AiBehaviorLibrary.h"
 
@@ -255,7 +255,7 @@ void CAIManager::LoadActionGraphs()
             filename += pAction->GetName();
             filename += ".xml";
             m_pFlowGraph->SetName("");
-            m_pFlowGraph->Load(filename.toLatin1().data());
+            m_pFlowGraph->Load(filename.toUtf8().data());
         }
     }
 }
@@ -288,7 +288,7 @@ void CAIManager::SaveAndReloadActionGraphs()
 
     if (!actionName.isEmpty())
     {
-        IAIAction* pAction = GetAISystem()->GetAIActionManager()->GetAIAction(actionName.toLatin1().data());
+        IAIAction* pAction = GetAISystem()->GetAIActionManager()->GetAIAction(actionName.toUtf8().data());
         if (pAction)
         {
             CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
@@ -318,7 +318,7 @@ void CAIManager::SaveActionGraphs()
         CFlowGraph* m_pFlowGraph = GetIEditor()->GetFlowGraphManager()->FindGraphForAction(pAction);
         if (m_pFlowGraph->IsModified())
         {
-            m_pFlowGraph->Save((m_pFlowGraph->GetName() + QStringLiteral(".xml")).toLatin1().data());
+            m_pFlowGraph->Save((m_pFlowGraph->GetName() + QStringLiteral(".xml")).toUtf8().data());
             pAction->Invalidate();
         }
     }
@@ -475,7 +475,7 @@ bool CAIManager::NewAction(QString& filename, QWidget* container)
     filename = newFileName.toLower();
 
     // check if file exists.
-    FILE* file = fopen(filename.toLatin1().data(), "rb");
+    FILE* file = fopen(filename.toUtf8().data(), "rb");
     if (file)
     {
         fclose(file);
@@ -497,7 +497,7 @@ bool CAIManager::NewAction(QString& filename, QWidget* container)
     pGraph->UnselectAll();
     pGraph->ConnectPorts(pStartNode, &pStartNode->GetOutputs()->at(1), pPosNode, &pPosNode->GetInputs()->at(0), false);
 
-    bool r = pGraph->Save(filename.toLatin1().data());
+    bool r = pGraph->Save(filename.toUtf8().data());
 
     delete pGraph;
 

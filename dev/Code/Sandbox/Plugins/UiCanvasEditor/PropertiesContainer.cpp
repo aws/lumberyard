@@ -13,7 +13,7 @@
 
 #include "EditorCommon.h"
 #include <AzToolsFramework/Slice/SliceUtilities.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <LyShine/Bus/UiSystemBus.h>
 
 //-------------------------------------------------------------------------------

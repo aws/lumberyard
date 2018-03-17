@@ -27,9 +27,12 @@ def build(bld):
 
         darwin_file_list  = ['nativeui_macos.waf_files'],
 
-        # empty implementation for unsupported platforms
-        win_file_list     = ['nativeui_none.waf_files'],
+        win_file_list     = ['nativeui_win.waf_files'],
+
        
+       
+
+        # empty implementation for unsupported platforms
        
         linux_file_list   = ['nativeui_none.waf_files']
     )

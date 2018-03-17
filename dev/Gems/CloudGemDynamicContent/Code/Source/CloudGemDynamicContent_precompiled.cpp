@@ -10,4 +10,4 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CloudGemDynamicContent_precompiled.h"

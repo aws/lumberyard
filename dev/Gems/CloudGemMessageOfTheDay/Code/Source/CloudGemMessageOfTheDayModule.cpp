@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemMessageOfTheDay_precompiled.h"
 #include <platform_impl.h>
 
 #include "CloudGemMessageOfTheDaySystemComponent.h"

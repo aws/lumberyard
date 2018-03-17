@@ -16,6 +16,7 @@
 #pragma once
 
 #include <IDeferredCollisionEvent.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 class CPhysCallbacks
     : public Cry3DEngineBase
@@ -88,7 +89,7 @@ private:
     void MarkFinished(int nResult);
 
     // == state variables to sync the asynchron execution == //
-    JobManager::SJobState m_jobState;
+    AZ::LegacyJobExecutor m_jobCompletion;
 
     volatile bool m_bTaskRunning;
 

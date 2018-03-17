@@ -40,19 +40,6 @@
 #include <QTreeView>
 #include <QPainter>
 
-#define IDC_REPORT_CONTROL 1
-
-#define COLUMN_ANIM_NAME 0
-#define COLUMN_ANIM_LENGTH 1
-#define COLUMN_ANIM_SIZE 2
-#define COLUMN_ANIM_POS_KEY_NUM 3
-#define COLUMN_ANIM_ROT_KEY_NUM 4
-
-#define ID_COPY_TO_CLIPBOARD 10
-#define ID_EXPORT_CAF_TO_HTR 11
-#define ID_SAVE_VGRID 12
-#define ID_REGENERATE_AIM_GRID 13
-
 static int MAXIMUM_HISTORY_SIZE = 50;
 
 namespace CharacterEditor
@@ -106,7 +93,7 @@ public:
         if (!indexes.isEmpty())
         {
             QModelIndex index = indexes.first().sibling(indexes.first().row(), 0);
-            mimeData->setData(EditorDragDropHelpers::GetAnimationNameClipboardFormat(), index.data().toString().toLatin1());
+            mimeData->setData(EditorDragDropHelpers::GetAnimationNameClipboardFormat(), index.data().toString().toUtf8());
         }
         return mimeData;
     }
@@ -817,7 +804,7 @@ void CAnimationBrowser::OnReportSelChange()
     }
 
     QString combinedString = anims.join(QLatin1String(","));
-    GetIEditor()->GetResourceSelectorHost()->SetGlobalSelection("animation", combinedString.toLatin1().data());
+    GetIEditor()->GetResourceSelectorHost()->SetGlobalSelection("animation", combinedString.toUtf8().data());
 
     UpdateAnimationHistory(anims);
 }
@@ -999,7 +986,7 @@ void CAnimationBrowser::ExportCAF2HTR(const string name)
         return;
     }
 
-    string dirName = PathUtil::GetParentDirectory(path.toLatin1().data()) + string("\\");
+    string dirName = PathUtil::GetParentDirectory(path.toUtf8().data()) + string("\\");
 
     ISkeletonAnim* pISkeletonAnim = m_pInstance_SKEL->GetISkeletonAnim();
     pISkeletonAnim->ExportHTRAndICAF(name.c_str(), dirName.c_str());
@@ -1065,7 +1052,7 @@ void CAnimationBrowser::OnReportItemRClick(const QPoint& pos)
         return;
     }
 
-    string name = m_wndReport->currentIndex().data().toString().toLatin1().data();
+    string name = m_wndReport->currentIndex().data().toString().toUtf8().data();
 
     // create main menu items
     menu.addAction(tr("Copy"), [&](){ CClipboard(this).PutString(name.c_str()); });

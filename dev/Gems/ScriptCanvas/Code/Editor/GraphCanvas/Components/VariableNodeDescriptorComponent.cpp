@@ -124,7 +124,7 @@ namespace ScriptCanvasEditor
         bool isValidName = true;
 
         // This isn't used here, but on 2013 there is a weird issue trying to resolve GetVariablename
-        GraphCanvas::SceneVariableRequestBus::EnumerateHandlersId(sceneId, [this, &isValidName, &proposedVariableName, &currentVariableId](GraphCanvas::SceneVariableRequests* sceneVariable)
+        GraphCanvas::SceneVariableRequestBus::EnumerateHandlersId(sceneId, [&isValidName, &proposedVariableName, &currentVariableId](GraphCanvas::SceneVariableRequests* sceneVariable)
         {
             AZ::EntityId variableId = sceneVariable->GetVariableId();
 
@@ -204,7 +204,7 @@ namespace ScriptCanvasEditor
     {
         return m_slotIdToConnectionId[endpoint.GetSlotId()];
     }
-    
+
     void VariableNodeDescriptorComponent::OnAddedToScene(const AZ::EntityId& sceneId)
     {
         GraphCanvas::SceneVariableRequestBus::Handler::BusConnect(sceneId);
@@ -242,7 +242,7 @@ namespace ScriptCanvasEditor
 
         ActivateVariable();
     }
-    
+
     void VariableNodeDescriptorComponent::OnRemovedFromScene(const AZ::EntityId& sceneId)
     {
         GraphCanvas::SceneVariableRequestBus::Handler::BusDisconnect(sceneId);

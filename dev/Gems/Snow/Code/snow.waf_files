@@ -3,8 +3,8 @@
     {
         "Source":
         [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Snow_precompiled.cpp",
+            "Source/Snow_precompiled.h"
         ]
     },
     "auto":

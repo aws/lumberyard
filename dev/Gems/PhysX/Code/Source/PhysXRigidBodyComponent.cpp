@@ -10,13 +10,12 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Transform.h>
 #include <PhysXRigidBodyComponent.h>
 #include <PhysXMathConversion.h>
-#include <Include/PhysX/PhysXBus.h>
 #include <Include/PhysX/PhysXColliderComponentBus.h>
 
 namespace PhysX
@@ -52,11 +51,12 @@ namespace PhysX
     {
         // Get necessary information from transform and shape buses and create PhysXRigidBody
         AZ::Transform lyTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(lyTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+        AZ::TransformBus::EventResult(lyTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
         m_rigidBody.SetScale(lyTransform.ExtractScaleExact());
 
         Physics::Ptr<Physics::ShapeConfiguration> shapeConfig = nullptr;
-        EBUS_EVENT_ID_RESULT(shapeConfig, GetEntityId(), PhysXColliderComponentRequestBus, GetShapeConfigFromEntity);
+        PhysXColliderComponentRequestBus::EventResult(shapeConfig, GetEntityId(),
+            &PhysXColliderComponentRequests::GetShapeConfigFromEntity);
 
         m_rigidBody.SetShape(shapeConfig);
         m_rigidBody.SetTransform(lyTransform);
@@ -64,44 +64,19 @@ namespace PhysX
         auto pxRigidActor = m_rigidBody.CreatePhysXActor();
 
         // Add actor to scene
-        EBUS_EVENT(PhysX::PhysXSystemRequestBus, AddActor, *pxRigidActor);
+        PhysXSystemRequestBus::Broadcast(&PhysXSystemRequests::AddActor, *pxRigidActor);
 
         // Listen to the PhysX system for events concerning this entity.
         EntityPhysXEventBus::Handler::BusConnect(GetEntityId());
+
+        AzFramework::PhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void PhysXRigidBodyComponent::Deactivate()
     {
+        AzFramework::PhysicsComponentRequestBus::Handler::BusDisconnect();
         EntityPhysXEventBus::Handler::BusDisconnect();
-
-        // Stop listening for events from self and descendants
-        AZ::EntityBus::MultiHandler::BusDisconnect();
-        AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
-
         m_rigidBody.ReleasePhysXActor();
-    }
-
-    void PhysXRigidBodyComponent::AddCollidersFromEntityAndDescendants(const AZ::EntityId& rootEntityId)
-    {
-    }
-
-    void PhysXRigidBodyComponent::AddCollidersFromEntity(const AZ::EntityId& entityId)
-    {
-    }
-
-    void PhysXRigidBodyComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
-    {
-    }
-
-    void PhysXRigidBodyComponent::OnChildAdded(AZ::EntityId childId)
-    {
-    }
-
-    void PhysXRigidBodyComponent::OnEntityActivated(const AZ::EntityId& entityId)
-    {
-        AZ_Assert(entityId != GetEntityId(), "Shouldn't be connected to our own EntityBus");
-
-        AZ::EntityBus::MultiHandler::BusDisconnect(entityId);
     }
 
     void PhysXRigidBodyComponent::OnPostStep()
@@ -112,9 +87,105 @@ namespace PhysX
 
         // Maintain scale (this must be precise).
         AZ::Transform entityTransform = AZ::Transform::Identity();
-        EBUS_EVENT_ID_RESULT(entityTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+        AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
         transform.MultiplyByScale(entityTransform.ExtractScaleExact());
 
-        EBUS_EVENT_ID(GetEntityId(), AZ::TransformBus, SetWorldTM, transform);
+        AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, transform);
+    }
+
+    void PhysXRigidBodyComponent::EnablePhysics()
+    {
+        AZ_Warning("PhysXRigidBodyComponent", false, "EnablePhysics() not implemented.");
+    }
+
+    void PhysXRigidBodyComponent::DisablePhysics()
+    {
+        AZ_Warning("PhysXRigidBodyComponent", false, "DisablePhysics() not implemented.");
+    }
+
+    bool PhysXRigidBodyComponent::IsPhysicsEnabled()
+    {
+        AZ_Warning("PhysXRigidBodyComponent", false, "IsPhysicsEnabled() not implemented.");
+        return true;
+    }
+
+    void PhysXRigidBodyComponent::AddImpulse(const AZ::Vector3& impulse)
+    {
+        m_rigidBody.ApplyLinearImpulse(impulse);
+    }
+
+    void PhysXRigidBodyComponent::AddImpulseAtPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePoint)
+    {
+        m_rigidBody.ApplyLinearImpulseAtWorldPoint(impulse, worldSpacePoint);
+    }
+
+    void PhysXRigidBodyComponent::AddAngularImpulse(const AZ::Vector3& impulse)
+    {
+        m_rigidBody.ApplyAngularImpulse(impulse);
+    }
+
+    AZ::Vector3 PhysXRigidBodyComponent::GetVelocity()
+    {
+        return m_rigidBody.GetLinearVelocity();
+    }
+
+    void PhysXRigidBodyComponent::SetVelocity(const AZ::Vector3& velocity)
+    {
+        m_rigidBody.SetLinearVelocity(velocity);
+    }
+
+    AZ::Vector3 PhysXRigidBodyComponent::GetAngularVelocity()
+    {
+        return m_rigidBody.GetAngularVelocity();
+    }
+
+    void PhysXRigidBodyComponent::SetAngularVelocity(const AZ::Vector3& angularVelocity)
+    {
+        m_rigidBody.SetAngularVelocity(angularVelocity);
+    }
+
+    float PhysXRigidBodyComponent::GetMass()
+    {
+        return m_rigidBody.GetMass();
+    }
+
+    void PhysXRigidBodyComponent::SetMass(float mass)
+    {
+        m_rigidBody.SetMass(mass);
+    }
+
+    float PhysXRigidBodyComponent::GetLinearDamping()
+    {
+        return m_rigidBody.GetLinearDamping();
+    }
+
+    void PhysXRigidBodyComponent::SetLinearDamping(float damping)
+    {
+        m_rigidBody.SetLinearDamping(damping);
+    }
+
+    float PhysXRigidBodyComponent::GetAngularDamping()
+    {
+        return m_rigidBody.GetAngularDamping();
+    }
+
+    void PhysXRigidBodyComponent::SetAngularDamping(float damping)
+    {
+        m_rigidBody.SetAngularDamping(damping);
+    }
+
+    float PhysXRigidBodyComponent::GetSleepThreshold()
+    {
+        return m_rigidBody.GetSleepThreshold();
+    }
+
+    void PhysXRigidBodyComponent::SetSleepThreshold(float threshold)
+    {
+        m_rigidBody.SetSleepThreshold(threshold);
+    }
+
+    AZ::Aabb PhysXRigidBodyComponent::GetAabb()
+    {
+        return m_rigidBody.GetAabb();
     }
 } // namespace PhysX

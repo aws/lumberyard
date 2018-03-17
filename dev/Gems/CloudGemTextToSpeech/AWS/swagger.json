@@ -173,6 +173,28 @@
                 }
             }
         },
+        "/tts/generatedpackage/{key}": {
+            "delete": {
+                "description": "Delete already generated voice line package",
+                "parameters":[
+                    {
+                        "description": "The generated voice line package to delete.",
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "type" : "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success or failure",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        },
         "/tts/custommappings": {
             "get": {
                 "description": "Get the custom mappings for import",
@@ -340,12 +362,12 @@
                 "description": "Get a subset of speech lib entries based on the tags provided",
                 "parameters":[
                     {
-                        "description": "The tags used for filtering. Example: [\"time:morning\", \"test\"]",
-                        "name": "tags",
+                        "description": "The conditions used for filtering. Example: {\"tags\": [\"time:morning\", \"test\"]. \"character\": \"Joanna\"}",
+                        "name": "filterConditions",
                         "in": "body",
                         "required": true,
                         "schema" : {
-                            "$ref" : "#/definitions/TagList"
+                            "$ref" : "#/definitions/filterConditions"
                         }
                     }
                 ],
@@ -643,12 +665,23 @@
                 "line"
             ]
         },
-        "TagList": {
+        "filterConditions": {
             "type": "object",
             "properties":{
                 "tags": {
                     "description": "The tags for filtering. Example: [\"time:morning\", \"test\"]",
                     "$ref": "#/definitions/StringList"
+                },
+                "characters": {
+                    "description": "The characters for filtering. Example: [\"Joanna\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "logic": {
+                    "description": "The logic used for filtering. Choose from \"And\" and \"Or\"",
+                    "type": "string"
                 }
             },
             "required": [
@@ -698,6 +731,14 @@
                 "ssmlTags":{
                     "description": "The SSML tags of the character. Example: [\"volume=\"soft\"\",\"rate=\"slow\"\"]",
                     "$ref": "#/definitions/StringList"
+                },
+                "ssmlLanguage": {
+                    "description": "The SSML language of the character. Example: fr-FR",
+                    "type": "string"
+                },
+                "timbre":{
+                    "description": "The tonal quality of the character. Example: 110",
+                    "type": "number"
                 },
                 "description":{
                     "description": "The description of the character",

@@ -45,12 +45,12 @@ void CUndoEntityProperty::Undo(bool bUndo)
 {
     if (bUndo)
     {
-        m_redo = PyGetEntityProperty(m_entityName.toLatin1().data(), m_propertyName.toLatin1().data());
+        m_redo = PyGetEntityProperty(m_entityName.toUtf8().data(), m_propertyName.toUtf8().data());
     }
-    PySetEntityProperty(m_entityName.toLatin1().data(), m_propertyName.toLatin1().data(), m_undo);
+    PySetEntityProperty(m_entityName.toUtf8().data(), m_propertyName.toUtf8().data(), m_undo);
 }
 
 void CUndoEntityProperty::Redo()
 {
-    PySetEntityProperty(m_entityName.toLatin1().data(), m_propertyName.toLatin1().data(), m_redo);
+    PySetEntityProperty(m_entityName.toUtf8().data(), m_propertyName.toUtf8().data(), m_redo);
 }

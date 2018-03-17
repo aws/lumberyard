@@ -180,7 +180,7 @@ void CMannequinFileChangeWriter::WriteModifiedFiles()
     for (size_t i = 0; i < modifiedFilesCount; ++i)
     {
         SFileEntry& entry = m_modifiedFiles[ i ];
-        entry.xmlNode->saveToFile((Path::GamePathToFullPath(entry.filename)).toLatin1().data());
+        entry.xmlNode->saveToFile((Path::GamePathToFullPath(entry.filename)).toUtf8().data());
     }
     m_modifiedFiles.clear();
 }
@@ -200,13 +200,13 @@ void CMannequinFileChangeWriter::UndoModifiedFile(const QString& filename)
             switch (entry.type)
             {
             case eFET_Database:
-                manager->RevertDatabase(entry.filename.toLatin1().data());
+                manager->RevertDatabase(entry.filename.toUtf8().data());
                 break;
             case eFET_ControllerDef:
-                manager->RevertControllerDef(entry.filename.toLatin1().data());
+                manager->RevertControllerDef(entry.filename.toUtf8().data());
                 break;
             case eFET_TagDef:
-                manager->RevertTagDef(entry.filename.toLatin1().data());
+                manager->RevertTagDef(entry.filename.toUtf8().data());
                 break;
             }
 
@@ -280,7 +280,7 @@ bool CMannequinFileChangeWriter::SaveFile(const char* filename, XmlNodeRef xmlNo
     path = filename;
     Path::ConvertBackSlashToSlash(path);
 
-    const XmlNodeRef xmlNodeOnDisk = GetISystem()->LoadXmlFromFile(Path::GamePathToFullPath(path).toLatin1().data());
+    const XmlNodeRef xmlNodeOnDisk = GetISystem()->LoadXmlFromFile(Path::GamePathToFullPath(path).toUtf8().data());
     if (!xmlNodeOnDisk)
     {
         return true;

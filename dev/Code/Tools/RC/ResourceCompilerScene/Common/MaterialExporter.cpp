@@ -45,7 +45,7 @@ namespace AZ
         namespace SceneViews = AZ::SceneAPI::Containers::Views;
 
         MaterialExporter::MaterialExporter()
-            : SceneAPI::SceneCore::ExportingComponent()
+            : SceneAPI::SceneCore::RCExportingComponent()
             , m_cachedGroup(nullptr)
             , m_exportMaterial(true)
         {
@@ -61,7 +61,7 @@ namespace AZ
             SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<MaterialExporter, SceneAPI::SceneCore::ExportingComponent>()->Version(1);
+                serializeContext->Class<MaterialExporter, SceneAPI::SceneCore::RCExportingComponent>()->Version(1);
             }
         }
 
@@ -140,8 +140,14 @@ namespace AZ
             AZStd::string materialPath = context.m_scene.GetSourceFilename();
             AzFramework::StringFunc::Path::ReplaceFullName(materialPath, context.m_group.GetName().c_str(), GFxFramework::MaterialExport::g_mtlExtension);
             AZ_TraceContext("Material source file path", materialPath);
+            
+            //get if we need to upate materials in source folder
+            const AZ::SceneAPI::Containers::RuleContainer& rules = context.m_group.GetRuleContainerConst();
+            AZStd::shared_ptr<const SceneDataTypes::IMaterialRule> materialRule = rules.FindFirstByType<SceneDataTypes::IMaterialRule>();
+            bool updateMaterials = materialRule->UpdateMaterials();
 
-            if (AZ::IO::SystemFile::Exists(materialPath.c_str()))
+            //if the source material exist and we won't need to update material later then we load the material from source folder
+            if (AZ::IO::SystemFile::Exists(materialPath.c_str()) && !updateMaterials)
             {
                 AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Using source material file for linking to meshes.");
                 fileRead = m_materialGroup->ReadMtlFile(materialPath.c_str());
@@ -149,7 +155,7 @@ namespace AZ
             else
             {
                 materialPath = SceneAPI::Utilities::FileUtilities::CreateOutputFileName(
-                    context.m_group.GetName(), context.m_outputDirectory, GFxFramework::MaterialExport::g_mtlExtension);
+                    context.m_group.GetName(), context.m_outputDirectory, GFxFramework::MaterialExport::g_dccMaterialExtension);
                 AZ_TraceContext("Material cache file path", materialPath);
                 if (AZ::IO::SystemFile::Exists(materialPath.c_str()))
                 {
@@ -191,14 +197,16 @@ namespace AZ
 
         SceneAPI::Events::ProcessingResult MaterialExporter::PatchMaterials(MeshNodeExportContext& context)
         {
-            AZ_Assert(m_cachedGroup == &context.m_group, "MeshNodeExportContext doesn't belong to chain of previously called MeshGroupExportContext.");
+            AZ_Assert(m_cachedGroup == &context.m_group, "MeshNodeExportContext doesn't belong to chain of previously\
+called MeshGroupExportContext.");
 
             AZStd::vector<size_t> relocationTable;
             SceneEvents::ProcessingResult result = BuildRelocationTable(relocationTable, context);
 
             if (result == SceneEvents::ProcessingResult::Failure)
             {
-                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Material mapping has encountered an error and mesh generation has failed. If this FBX file was previously processed using the legacy FBX importer there may be a material mismatch. Please either move the FBX file from the source directory or delete the existing outputs and reimport.");
+                AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Material mapping error, mesh generation failed. \
+Change FBX Setting's \"Update Materials\" to true or modify the associated material file(.mtl) to fix the issue.");
                 return result;
             }
 

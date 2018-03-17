@@ -266,7 +266,7 @@ void CLensFlareElementTree::OnAddGroup()
         return;
     }
 
-    CUndo undo(tr("Add library item").toLatin1());
+    CUndo undo(tr("Add library item").toUtf8());
     m_model->AddElement(selected.first(), 0, eFT_Group);
     GetIEditor()->GetLensFlareManager()->Modified();
 }
@@ -311,7 +311,7 @@ void CLensFlareElementTree::OnPaste()
         return;
     }
 
-    CUndo undo(tr("Copy/Cut & Paste library item").toLatin1());
+    CUndo undo(tr("Copy/Cut & Paste library item").toUtf8());
     m_model->Paste(selected.first(), xmlNode);
 }
 
@@ -359,14 +359,14 @@ void CLensFlareElementTree::OnRemoveItem()
     QString str = tr("Delete %1?").arg(name);
     if (QMessageBox::question(this, tr("Delete Confirmation"), str) == QMessageBox::Yes)
     {
-        CUndo undo(tr("Remove an optics element").toLatin1());
+        CUndo undo(tr("Remove an optics element").toUtf8());
         m_model->removeRow(index.row(), index.parent());
     }
 }
 
 void CLensFlareElementTree::OnRemoveAll()
 {
-    CUndo undo(tr("Remove All in FlareTreeCtrl").toLatin1());
+    CUndo undo(tr("Remove All in FlareTreeCtrl").toUtf8());
 
     if (QMessageBox::question(this, tr("Delete Confirmation"), tr("Do you want delete all?")) == QMessageBox::Yes)
     {
@@ -390,7 +390,7 @@ void CLensFlareElementTree::OnItemUp()
         return;
     }
 
-    CUndo undo(tr("Copy/Cut & Paste library item").toLatin1());
+    CUndo undo(tr("Copy/Cut & Paste library item").toUtf8());
 
     CLensFlareElement* pElement = index.data(Qt::UserRole).value<CLensFlareElement*>();
     m_model->MoveElement(pElement, row - 1, index.parent());
@@ -411,7 +411,7 @@ void CLensFlareElementTree::OnItemDown()
         return;
     }
 
-    CUndo undo(tr("Copy/Cut & Paste library item").toLatin1());
+    CUndo undo(tr("Copy/Cut & Paste library item").toUtf8());
 
     CLensFlareElement* pElement = index.data(Qt::UserRole).value<CLensFlareElement*>();
     m_model->MoveElement(pElement, row + 2, index.parent());
@@ -448,7 +448,7 @@ void CLensFlareElementTree::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton)
     {
-        CUndo undo(tr("Changed Lens flares element").toLatin1());
+        CUndo undo(tr("Changed Lens flares element").toUtf8());
         QTreeView::mousePressEvent(event);
     }
     else
@@ -520,7 +520,7 @@ void LensFlareElementTreeModel::RenameElement(CLensFlareElement* pLensFlareEleme
     IOpticsElementBasePtr pOptics = pLensFlareElement->GetOpticsElement();
     if (pOptics)
     {
-        pOptics->SetName(newName.toLatin1().data());
+        pOptics->SetName(newName.toUtf8().data());
         LensFlareUtil::UpdateOpticsName(pOptics);
     }
 }
@@ -551,7 +551,7 @@ bool LensFlareElementTreeModel::setData(const QModelIndex& index, const QVariant
     {
     case Qt::CheckStateRole:
     {
-        CUndo undo(tr("Update an enable checkbox for tree ctrl.").toLatin1());
+        CUndo undo(tr("Update an enable checkbox for tree ctrl.").toUtf8());
         EnableElement(pElement, value.toInt() == Qt::Checked);
         emit dataChanged(index, index);
         return true;
@@ -561,7 +561,7 @@ bool LensFlareElementTreeModel::setData(const QModelIndex& index, const QVariant
     {
         QString text = value.toString();
 
-        CUndo undo(tr("Rename library item").toLatin1());
+        CUndo undo(tr("Rename library item").toUtf8());
 
         if (IsExistElement(text))
         {
@@ -943,7 +943,7 @@ CLensFlareElement::LensFlareElementPtr LensFlareElementTreeModel::AddElement(IOp
 
         QString validName;
         MakeValidElementName(fullElementName, validName);
-        pOptics->SetName(validName.toLatin1().data());
+        pOptics->SetName(validName.toUtf8().data());
     }
 
     pLensFlareElement = CreateElement(pOptics);
@@ -1039,7 +1039,7 @@ bool LensFlareElementTreeModel::MoveElement(CLensFlareElement* pElement, int row
     pSourceParent->RemoveChild(sourceRow);
     pSourceParent->GetOpticsElement()->Remove(sourceRow);
 
-    pElement->GetOpticsElement()->SetName(validName.toLatin1().data());
+    pElement->GetOpticsElement()->SetName(validName.toUtf8().data());
     LensFlareUtil::UpdateOpticsName(pElement->GetOpticsElement());
 
     endMoveRows();
@@ -1061,7 +1061,7 @@ bool LensFlareElementTreeModel::dropMimeData(const QMimeData* data, Qt::DropActi
             int flareType;
             stream >> flareType;
 
-            CUndo undo(tr("Add Atomic Lens Flare Item").toLatin1());
+            CUndo undo(tr("Add Atomic Lens Flare Item").toUtf8());
             AddElement(parent, row, static_cast<EFlareType>(flareType));
         }
 
@@ -1074,7 +1074,7 @@ bool LensFlareElementTreeModel::dropMimeData(const QMimeData* data, Qt::DropActi
         int count = array.size() / sizeof(CLensFlareElement*);
         auto ppElements = reinterpret_cast<CLensFlareElement**>(array.data());
 
-        CUndo undo(tr("Copy/Cut & Paste library item").toLatin1());
+        CUndo undo(tr("Copy/Cut & Paste library item").toUtf8());
 
         for (int i = 0; i < count; i++)
         {
@@ -1229,7 +1229,7 @@ void LensFlareElementTreeModel::Paste(const QModelIndex& hItem, XmlNodeRef xmlNo
         {
             QString msg;
             msg = tr("[%1] lens item can be pasted into the same item").arg(clipboardData.m_LensFlareFullPath);
-            CryMessageBox(msg.toLatin1().data(), "Warning", MB_OK);
+            CryMessageBox(msg.toUtf8().data(), "Warning", MB_OK);
             continue;
         }
 

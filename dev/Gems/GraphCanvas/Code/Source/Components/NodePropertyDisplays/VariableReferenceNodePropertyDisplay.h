@@ -11,14 +11,14 @@
 */
 #pragma once
 
-#include <qabstractitemmodel.h>
-#include <qboxlayout.h>
-#include <qcombobox.h>
-#include <qcompleter.h>
-#include <qevent.h>
-#include <qlineedit.h>
-#include <qobject.h>
-#include <qsortfilterproxymodel.h>
+#include <QAbstractItemModel>
+#include <QBoxLayout>
+#include <QComboBox>
+#include <QCompleter>
+#include <QEvent>
+#include <QLineEdit>
+#include <QObject>
+#include <QSortFilterProxyModel>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 

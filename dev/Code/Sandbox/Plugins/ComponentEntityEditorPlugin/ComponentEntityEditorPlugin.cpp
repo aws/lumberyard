@@ -65,6 +65,17 @@ ComponentEntityEditorPlugin::ComponentEntityEditorPlugin(IEditor* editor)
         LyViewPane::CategoryTools,
         inspectorOptions);
 
+    ViewPaneOptions pinnedInspectorOptions;
+    pinnedInspectorOptions.canHaveMultipleInstances = true;
+    pinnedInspectorOptions.preferedDockingArea = Qt::NoDockWidgetArea;
+    pinnedInspectorOptions.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    pinnedInspectorOptions.paneRect = QRect(50, 50, 400, 700);
+    pinnedInspectorOptions.showInMenu = false;
+    RegisterViewPane<QComponentEntityEditorInspectorWindow>(
+        LyViewPane::EntityInspectorPinned,
+        LyViewPane::CategoryTools,
+        pinnedInspectorOptions);
+
     ViewPaneOptions outlinerOptions;
     outlinerOptions.canHaveMultipleInstances = true;
     outlinerOptions.preferedDockingArea = Qt::LeftDockWidgetArea;
@@ -94,6 +105,7 @@ void ComponentEntityEditorPlugin::Release()
 
         UnregisterViewPane(LyViewPane::EntityInspector);
         UnregisterViewPane(LyViewPane::EntityOutliner);
+        UnregisterViewPane(LyViewPane::EntityInspectorPinned);
 
         UnregisterSandboxObjects();
     }

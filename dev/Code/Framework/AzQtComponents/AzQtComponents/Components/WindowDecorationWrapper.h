@@ -73,6 +73,11 @@ namespace AzQtComponents
             const QString& key);
 
         /**
+        * Enables restoring/saving geometry on creation/destruction, using the default settings values for organization and application.
+        */
+        void enableSaveRestoreGeometry(const QString& key);
+
+        /**
          * Returns true if restoring/saving geometry on creation/destruction is enabled.
          * It's disabled by default.
          */
@@ -81,7 +86,7 @@ namespace AzQtComponents
         /**
         * Restores geometry and shows window
         */
-        void restoreGeometryFromSettings();
+        bool restoreGeometryFromSettings();
 
         QMargins margins() const;
 

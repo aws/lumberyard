@@ -60,11 +60,39 @@ namespace AZ
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
             typedef AssetId                 BusIdType;
             typedef AZStd::recursive_mutex  MutexType;
-            template<typename Bus>
-            using ConnectionPolicy = AssetEvents::AssetConnectionPolicy<Bus>;
 
-            virtual void OnAssetReady(const Asset<AssetData>& asset) = 0;
-            virtual void OnAssetError(const Asset<AssetData>& asset) = 0;
+            template <class Bus>
+            struct AssetJobConnectionPolicy
+                : public EBusConnectionPolicy<Bus>
+            {
+                static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+                {
+                    typename Bus::BusIdType actualId = AssetInternal::ResolveAssetId(id);
+                    EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, actualId);
+
+                    // If the asset is loaded or failed already, deliver the status update immediately
+                    // Note that we check IsReady here, ReadyPreNotify must be tested because there is
+                    // a small gap between ReadyPreNotify and Ready where the callback could be missed
+                    Asset<AssetData> assetData(AssetInternal::GetAssetData(actualId));
+                    if (assetData)
+                    {
+                        if (assetData.Get()->IsReady())
+                        {
+                            handler->OnAssetReady(assetData);
+                        }
+                        else if (assetData.Get()->IsError())
+                        {
+                            handler->OnAssetError(assetData);
+                        }
+                    }
+                }
+            };
+
+            template <typename Bus>
+            using ConnectionPolicy = AssetJobConnectionPolicy<Bus>;
+
+            virtual void OnAssetReady(const Asset<AssetData>& /*asset*/) {}
+            virtual void OnAssetError(const Asset<AssetData>& /*asset*/) {}
         };
 
         typedef EBus<AssetJobEvents> AssetJobBus;
@@ -989,10 +1017,25 @@ namespace AZ
         //=========================================================================
         void AssetManager::OnAssetReady(const Asset<AssetData>& asset)
         {
-            // queue broadcast message for delivery on game thread
             AZ_Assert(asset.Get(), "OnAssetReady fired for an asset with no data.");
+
+            // Set status immediately from within the AssetManagerBus dispatch, so it's committed before anyone is notified (e.g. job to job, via AssetJobBus).
             asset.Get()->m_status = static_cast<int>(AssetData::AssetStatus::ReadyPreNotify);
-            EBUS_QUEUE_FUNCTION(AssetBus, &AssetManager::NotifyAssetReady, this, Asset<AssetData>(asset));
+
+            // Queue broadcast message for delivery on game thread.
+            AssetBus::QueueFunction(&AssetManager::NotifyAssetReady, this, Asset<AssetData>(asset));
+        }
+
+        //=========================================================================
+        // OnAssetError
+        //=========================================================================
+        void AssetManager::OnAssetError(const Asset<AssetData>& asset)
+        {
+            // Set status immediately from within the AssetManagerBus dispatch, so it's committed before anyone is notified (e.g. job to job, via AssetJobBus).
+            asset.Get()->m_status = static_cast<int>(AssetData::AssetStatus::Error);
+
+            // Queue broadcast message for delivery on game thread.
+            AssetBus::QueueFunction(&AssetManager::NotifyAssetError, this, Asset<AssetData>(asset));
         }
 
         //=========================================================================
@@ -1000,8 +1043,8 @@ namespace AZ
         //=========================================================================
         void AssetManager::OnAssetReloaded(const Asset<AssetData>& asset)
         {
-            // queue broadcast message for delivery on game thread
-            EBUS_QUEUE_FUNCTION(AssetBus, &AssetManager::NotifyAssetReloaded, this, Asset<AssetData>(asset));
+            // Queue broadcast message for delivery on game thread.
+            AssetBus::QueueFunction(&AssetManager::NotifyAssetReloaded, this, Asset<AssetData>(asset));
         }
 
         //=========================================================================
@@ -1009,17 +1052,8 @@ namespace AZ
         //=========================================================================
         void AssetManager::OnAssetReloadError(const Asset<AssetData>& asset)
         {
-            // queue broadcast message for delivery on game thread
-            EBUS_QUEUE_FUNCTION(AssetBus, &AssetManager::NotifyAssetReloadError, this, Asset<AssetData>(asset));
-        }
-
-        //=========================================================================
-        // OnAssetError
-        // [04/02/2014]
-        //=========================================================================
-        void AssetManager::OnAssetError(const Asset<AssetData>& asset)
-        {
-            EBUS_QUEUE_FUNCTION(AssetBus, &AssetManager::NotifyAssetError, this, Asset<AssetData>(asset));
+            // Queue broadcast message for delivery on game thread.
+            AssetBus::QueueFunction(&AssetManager::NotifyAssetReloadError, this, Asset<AssetData>(asset));
         }
 
         //=========================================================================

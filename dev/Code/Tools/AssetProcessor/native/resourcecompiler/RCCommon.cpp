@@ -55,7 +55,7 @@ namespace AssetProcessor
         // if this becomes a hotspot in profile, we could use CRCs or other boost to comparison here.  These classes are constructed rarely
         // compared to how commonly they are compared with each other.
         return (
-            (QString::compare(m_inputAssetName, other.m_inputAssetName, Qt::CaseInsensitive) == 0) &&
+            (QString::compare(m_inputAssetName, other.m_inputAssetName, Qt::CaseSensitive) == 0) &&
             (QString::compare(m_platform, other.m_platform, Qt::CaseInsensitive) == 0) &&
             (QString::compare(m_jobDescriptor, other.m_jobDescriptor, Qt::CaseInsensitive) == 0)
             );
@@ -63,7 +63,7 @@ namespace AssetProcessor
 
     bool QueueElementID::operator<(const QueueElementID& other) const
     {
-        int compare = QString::compare(m_inputAssetName, other.m_inputAssetName, Qt::CaseInsensitive);
+        int compare = QString::compare(m_inputAssetName, other.m_inputAssetName, Qt::CaseSensitive);
         if (compare != 0)
         {
             return (compare < 0);

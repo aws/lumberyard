@@ -21,6 +21,7 @@
 #include "View.h"
 #include "IMovieSystem.h"
 #include <ILevelSystem.h>
+#include <AzFramework/Components/CameraBus.h>
 
 
 
@@ -28,6 +29,7 @@ class CViewSystem
     : public IViewSystem
     , public IMovieUser
     , public ILevelSystemListener
+    , public Camera::CameraSystemRequestBus::Handler
 {
 private:
 
@@ -44,6 +46,9 @@ public:
 
     virtual void SetActiveView(IView* pView);
     virtual void SetActiveView(unsigned int viewId);
+
+    //CameraSystemRequestBus
+    AZ::EntityId GetActiveCamera() override { return m_activeViewId ? GetActiveView()->GetLinkedId() : AZ::EntityId(); }
 
     //utility functions
     virtual IView* GetView(unsigned int viewId);

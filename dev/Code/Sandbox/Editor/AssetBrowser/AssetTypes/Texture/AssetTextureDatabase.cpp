@@ -168,7 +168,7 @@ IAssetItem* CAssetTextureDatabase::GetAsset(const char* pAssetFilename)
         {
             const char* formatExt = IResourceCompilerHelper::GetEngineImageFormat(formatIdx, false);
             QString texFilename = Path::ReplaceExtension(pAssetFilename, formatExt);
-            asset = CAssetItemDatabase::GetAsset(texFilename.toLatin1().data());
+            asset = CAssetItemDatabase::GetAsset(texFilename.toUtf8().data());
             if (asset)
             {
                 break;
@@ -235,12 +235,12 @@ void CAssetTextureDatabase::Refresh()
         strPathOnly = Path::GetPath(strOutputTextureName);
         strExtension = Path::GetExt(strOutputTextureName);
         poTextureDatabaseItem->SetFileSize(rstFileDescriptor.size);
-        poTextureDatabaseItem->SetFilename(strFileNameOnly.toLatin1().data());
-        poTextureDatabaseItem->SetRelativePath(strPathOnly.toLatin1().data());
+        poTextureDatabaseItem->SetFilename(strFileNameOnly.toUtf8().data());
+        poTextureDatabaseItem->SetRelativePath(strPathOnly.toUtf8().data());
         poTextureDatabaseItem->SetOwnerDatabase(this);
-        poTextureDatabaseItem->SetFileExtension(strExtension.toLatin1().data());
+        poTextureDatabaseItem->SetFileExtension(strExtension.toUtf8().data());
         poTextureDatabaseItem->SetFlag(IAssetItem::eFlag_Visible, true);
-        poTextureDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(strOutputTextureName.toLatin1().data()));
+        poTextureDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(strOutputTextureName.toUtf8().data()));
         m_assets[strOutputTextureName] = poTextureDatabaseItem;
     }
 
@@ -263,7 +263,7 @@ void CAssetTextureDatabase::Refresh()
         Path::ConvertBackSlashToSlash(strIntermediateFilename);
         strOutputTextureName = strIntermediateFilename;
 
-        if (!IResourceCompilerHelper::IsSourceImageFormatSupported(strOutputTextureName.toLatin1().data()))
+        if (!IResourceCompilerHelper::IsSourceImageFormatSupported(strOutputTextureName.toUtf8().data()))
         {
             continue;
         }
@@ -302,12 +302,12 @@ void CAssetTextureDatabase::Refresh()
         }
 
         poTextureDatabaseItem->SetFileSize(rstFileDescriptor.size);
-        poTextureDatabaseItem->SetFilename(strFileNameOnly.toLatin1().data());
-        poTextureDatabaseItem->SetRelativePath(strPathOnly.toLatin1().data());
+        poTextureDatabaseItem->SetFilename(strFileNameOnly.toUtf8().data());
+        poTextureDatabaseItem->SetRelativePath(strPathOnly.toUtf8().data());
         poTextureDatabaseItem->SetOwnerDatabase(this);
-        poTextureDatabaseItem->SetFileExtension(strExtension.toLatin1().data());
+        poTextureDatabaseItem->SetFileExtension(strExtension.toUtf8().data());
         poTextureDatabaseItem->SetFlag(IAssetItem::eFlag_Visible, true);
-        poTextureDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(strOutputTextureName.toLatin1().data()));
+        poTextureDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(strOutputTextureName.toUtf8().data()));
         m_assets[strIntermediateFilename] = poTextureDatabaseItem;
     }
 }

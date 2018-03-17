@@ -198,6 +198,7 @@ public:
 
     //! Center viewport on selection.
     virtual void CenterOnSelection() = 0;
+    virtual void CenterOnAABB(const AABB& aabb) = 0;
 
     /** Set ID of this viewport
     */
@@ -259,6 +260,8 @@ public:
     //from screen-space to world-space. 
     virtual void PreWidgetRendering() {}
     virtual void PostWidgetRendering() {}
+
+    virtual CViewport *asCViewport() { return this; }
 
 protected:
     CLayoutViewPane* m_viewPane;
@@ -385,11 +388,6 @@ public:
 
     void SetAxisConstrain(int axis);
 
-    // Overrides
-    // ClassWizard generated virtual function overrides
-    //{{AFX_VIRTUAL(CViewport)
-    //}}AFX_VIRTUAL
-
     //////////////////////////////////////////////////////////////////////////
     // Selection.
     //////////////////////////////////////////////////////////////////////////
@@ -405,7 +403,8 @@ public:
     //! Get selection procision tollerance.
     float GetSelectionTolerance() const { return m_selectionTolerance; }
     //! Center viewport on selection.
-    virtual void CenterOnSelection() {};
+    virtual void CenterOnSelection() override {};
+    virtual void CenterOnAABB(const AABB& aabb) override {};
 
     //! Performs hit testing of 2d point in view to find which object hit.
     virtual bool HitTest(const QPoint& point, HitContext& hitInfo) override;
@@ -529,7 +528,7 @@ protected:
 #endif
     void OnSetCursor();
 
-    void BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QDropEvent* dropEvent);
+    virtual void BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QPoint& pt);
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;
     void dragLeaveEvent(QDragLeaveEvent* event) override;

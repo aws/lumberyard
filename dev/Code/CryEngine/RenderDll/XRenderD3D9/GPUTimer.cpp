@@ -73,7 +73,7 @@ CSimpleGPUTimer::CSimpleGPUTimer()
     m_bWaiting = false;
     m_bStarted = false;
 
-#if (defined(WIN32) || defined(DURANGO))
+#if GPUTIMER_CPP_TRAIT_CSIMPLEGPUTIMER_SETQUERYSTART
     m_pQueryStart = m_pQueryStop = m_pQueryFreq = NULL;
 #endif
 }
@@ -86,7 +86,7 @@ CSimpleGPUTimer::~CSimpleGPUTimer()
 
 void CSimpleGPUTimer::Release()
 {
-#if (defined(WIN32) || defined(DURANGO))
+#if GPUTIMER_CPP_TRAIT_RELEASE_RELEASEQUERY
     SAFE_RELEASE(m_pQueryStart);
     SAFE_RELEASE(m_pQueryStop);
     SAFE_RELEASE(m_pQueryFreq);
@@ -102,7 +102,7 @@ bool CSimpleGPUTimer::Init()
 #ifdef ENABLE_SIMPLE_GPU_TIMERS
     if (!m_bInitialized)
     {
-    #if (defined(WIN32) || defined(DURANGO))
+    #if GPUTIMER_CPP_TRAIT_INIT_CREATEQUERY
         D3D11_QUERY_DESC stampDisjointDesc = { D3D11_QUERY_TIMESTAMP_DISJOINT, 0 };
         D3D11_QUERY_DESC stampDesc = { D3D11_QUERY_TIMESTAMP, 0 };
 
@@ -129,7 +129,7 @@ void CSimpleGPUTimer::Start(const char* name)
     {
         m_Name = name;
 
-    #if (defined(WIN32) || defined(DURANGO))
+    #if GPUTIMER_CPP_TRAIT_START_PRIMEQUERY
         // TODO: The d3d docs suggest that the disjoint query should be done once per frame at most
         gcpRendD3D->GetDeviceContext().Begin(m_pQueryFreq);
         gcpRendD3D->GetDeviceContext().End(m_pQueryStart);
@@ -144,7 +144,7 @@ void CSimpleGPUTimer::Stop()
 #ifdef ENABLE_SIMPLE_GPU_TIMERS
     if (s_bTimingEnabled && m_bStarted && m_bInitialized)
     {
-    #if (defined(WIN32) || defined(DURANGO))
+    #if GPUTIMER_CPP_TRAIT_STOP_ENDQUERY
         gcpRendD3D->GetDeviceContext().End(m_pQueryStop);
         gcpRendD3D->GetDeviceContext().End(m_pQueryFreq);
         m_bStarted = false;
@@ -159,7 +159,7 @@ void CSimpleGPUTimer::UpdateTime()
 #ifdef ENABLE_SIMPLE_GPU_TIMERS
     if (s_bTimingEnabled && m_bWaiting && m_bInitialized)
     {
-    #if (defined(WIN32) || defined(DURANGO))
+    #if GPUTIMER_CPP_TRAIT_UPDATETIME_GETDATA
         D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjointData;
         UINT64 timeStart, timeStop;
 

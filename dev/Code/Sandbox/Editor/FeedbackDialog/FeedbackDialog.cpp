@@ -29,6 +29,7 @@ FeedbackDialog::FeedbackDialog(QWidget* pParent)
 {
     ui->setupUi(this);
     ui->feedbackLabel->setText(feedbackText);
+    resize(size().expandedTo(sizeHint()));
 }
 
 

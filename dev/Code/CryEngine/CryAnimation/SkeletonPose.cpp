@@ -126,9 +126,9 @@ void CSkeletonPose::SynchronizePoseDataAndLocatorWriteables()
         // sync skinnign jobs if there are any
         int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
         int nList = nFrameID % 3;
-        if (m_pInstance->arrSkinningRendererData[nList].nFrameID == nFrameID && m_pInstance->arrSkinningRendererData[nList].pSkinningData && m_pInstance->arrSkinningRendererData[nList].pSkinningData->pAsyncJobs)
+        if (m_pInstance->arrSkinningRendererData[nList].nFrameID == nFrameID && m_pInstance->arrSkinningRendererData[nList].pSkinningData && m_pInstance->arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor)
         {
-            gEnv->pJobManager->WaitForJob(*m_pInstance->arrSkinningRendererData[nList].pSkinningData->pAsyncJobs);
+            m_pInstance->arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor->WaitForCompletion();
         }
 
         m_poseData.Initialize(m_poseDataWriteable);

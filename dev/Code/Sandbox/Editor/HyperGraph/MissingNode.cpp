@@ -89,7 +89,7 @@ void CMissingNode::Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar
 
     if (!m_sGraphEntity.isEmpty())
     {
-        node->setAttr("GraphEntity", m_sGraphEntity.toLatin1().data());
+        node->setAttr("GraphEntity", m_sGraphEntity.toUtf8().data());
     }
 
     if (!GuidUtil::IsEmpty(m_entityGuid))

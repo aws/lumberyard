@@ -2,6 +2,9 @@
     "none": {
         "Components": [
             "AzQtComponentsAPI.h"
+        ],
+        "Components/Fonts": [
+            "Components/Fonts/InternalFontResources.cpp"
         ]
     },
     "auto": {
@@ -36,10 +39,11 @@
             "Components/FilteredSearchWidget.cpp",
             "Components/FilteredSearchWidget.h",
             "Components/FilteredSearchWidget.ui",
-            "Components/LumberyardStylesheet.cpp",
             "Components/LumberyardStylesheet.h",
             "Components/Titlebar.cpp",
             "Components/Titlebar.h",
+            "Components/TitleBarOverdrawHandler.cpp",
+            "Components/TitleBarOverdrawHandler.h",
             "Components/ToolButtonComboBox.cpp",
             "Components/ToolButtonComboBox.h",
             "Components/ToolButtonLineEdit.cpp",
@@ -66,6 +70,12 @@
             "Components/StyledLineEdit.h",
             "Components/StyledSpinBox.cpp",
             "Components/StyledSpinBox.h",
+            "Components/Style.cpp",
+            "Components/Style.h",
+            "Components/StyleManager.cpp",
+            "Components/StyleManager.h",
+            "Components/StyleSheetCache.cpp",
+            "Components/StyleSheetCache.h",
             "Components/StylesheetPreprocessor.cpp",
             "Components/StylesheetPreprocessor.h",
             "Components/TagSelector.cpp",
@@ -76,7 +86,37 @@
             "Components/VectorEdit.h",
             "Components/WindowDecorationWrapper.cpp",
             "Components/WindowDecorationWrapper.h",
+            "Components/ExtendedLabel.cpp",
+            "Components/ExtendedLabel.h",
+            "../../AzToolsFramework/AzToolsFramework/UI/Qt/FlowLayout.h",
+            "../../AzToolsFramework/AzToolsFramework/UI/Qt/FlowLayout.cpp",
             "Components/resources.qrc"
+        ],
+        "Components/Widgets": [
+            "Components/Widgets/BaseStyleSheet.qss",
+            "Components/Widgets/CheckBox.cpp",
+            "Components/Widgets/CheckBox.h",
+            "Components/Widgets/CheckBox.qss",
+            "Components/Widgets/CheckBoxConfig.ini",
+            "Components/Widgets/Menu.qss",
+            "Components/Widgets/ProgressBar.cpp",
+            "Components/Widgets/ProgressBar.h",
+            "Components/Widgets/ProgressBarConfig.ini",
+            "Components/Widgets/ProgressBar.qss",
+            "Components/Widgets/PushButton.cpp",
+            "Components/Widgets/PushButton.h",
+            "Components/Widgets/PushButtonConfig.ini",
+            "Components/Widgets/PushButton.qss",
+            "Components/Widgets/RadioButton.cpp",
+            "Components/Widgets/RadioButton.h",
+            "Components/Widgets/RadioButton.qss",
+            "Components/Widgets/RadioButtonConfig.ini",
+            "Components/Widgets/Slider.cpp",
+            "Components/Widgets/Slider.h",
+            "Components/Widgets/Slider.qss",
+            "Components/Widgets/SliderConfig.ini",
+            "Components/Widgets/Text.qss",
+            "Components/Widgets/ToolTip.qss"
         ],
         "Utilities": [
             "Utilities/Conversions.h",

@@ -45,7 +45,7 @@ def build(bld):
         # Platform Specific
         win_features            = ['ExternalLyMetrics'],
         win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer']),
-        win_defines             = ['KDAB_MAC_PORT','_SCL_SECURE_NO_WARNINGS'],
+        win_defines             = ['_SCL_SECURE_NO_WARNINGS'],
 
         darwin_features         = ['ExternalLyMetrics'],
         darwin_use              = bld.make_aws_library_task_list(['LyMetricsProducer']),

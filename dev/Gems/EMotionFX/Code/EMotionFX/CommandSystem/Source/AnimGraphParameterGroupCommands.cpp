@@ -72,7 +72,6 @@ namespace CommandSystem
         AZStd::string actionString;
         parameters.GetValue("action", this, actionString);
 
-        Action action = ACTION_NONE;
         if (AzFramework::StringFunc::Equal(actionString.c_str(), "add"))
         {
             return ACTION_ADD;

@@ -15,7 +15,10 @@
 #define CRYINCLUDE_CRY3DENGINE_MERGEDMESHRENDERNODE_H
 #pragma once
 
+#include <limits>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 #include "ObjMan.h"
+#include "Cry3DEngineTraits.h"
 
 // Global define to enable and disable some debugging features (defined &
 // described below) to help finding issues in merged meshes at runtime.
@@ -101,7 +104,7 @@
 // Unrolls the geometry baking loops, can result in very large functions
 // exceeding the instruction cache footprint. Best to be turned off on AMD
 // Jaguar platforms, as the tight loop exceeds the 32kb L1I cache size
-#define MMRM_UNROLL_GEOMETRY_BAKING_LOOPS 1
+#define MMRM_UNROLL_GEOMETRY_BAKING_LOOPS AZ_LEGACY_3DENGINE_TRAIT_UNROLL_GEOMETRY_BACKING_LOOPS
 
 // Number of instances that will submitted per job
 #define MMRM_MAX_SAMPLES_PER_BATCH (1024u)
@@ -213,8 +216,8 @@ class CMergedMeshRenderNode
     friend struct SMergedMeshInstanceSorter;
     friend class CTerrain;
     // FrameID of the last frame this rendernode was drawn and updated
-    uint32 m_LastDrawFrame;
-    uint32 m_LastUpdateFrame;
+    uint32 m_LastDrawFrame = 0;
+    uint32 m_LastUpdateFrame = 0;
 
     // The state the rendernode can reside in
     enum State
@@ -248,7 +251,7 @@ class CMergedMeshRenderNode
         }
         return "UNKNOWN";
     }
-    volatile State m_State;
+    volatile State m_State = INITIALIZED;
     enum RENDERMESH_UPDATE_TYPE
     {
         RUT_STATIC = 0,
@@ -256,32 +259,30 @@ class CMergedMeshRenderNode
     };
 
     // The number of instances this rendernode maintains
-    size_t m_Instances;
-    mutable size_t m_SpineCount;
-    mutable size_t m_DeformCount;
+    size_t m_Instances = 0;
+    mutable size_t m_SpineCount = std::numeric_limits<size_t>::max();
+    mutable size_t m_DeformCount = std::numeric_limits<size_t>::max();
 
     // The distance to camera
-    float m_DistanceSQ;
+    float m_DistanceSQ = 0.0f;
 
-    // The internal extents used as to determine the unique spatial hash of this
-    // rendernode
-    AABB m_internalAABB;
+    // The internal extents used as to determine the unique spatial hash of this rendernode
+    AABB m_internalAABB = AABB::RESET;
 
     // The extents of the instance geometry attached to this rendernode
-    AABB m_visibleAABB;
+    AABB m_visibleAABB = AABB::RESET;
 
-    // Position of this rendernode - corresponds to the center of the internal
-    // aabb
+    // Position of this rendernode - corresponds to the center of the internal aabb
     Vec3 m_pos;
 
     // Initial position of this rendernode before applying world shift
     Vec3 m_initPos;
 
     // A z rotation to apply to this rendernode
-    float m_zRotation;
+    float m_zRotation = 0.0f;
 
     // The (external) lod
-    int m_nLod;
+    int m_nLod = -1;
 
     // Is the mesh already put into the active list?
     unsigned int m_nActive : 1;
@@ -307,54 +308,52 @@ class CMergedMeshRenderNode
     // The render state
     enum RenderMode
     {
-        DYNAMIC = 0, // dynamic - prebaked & optionally simualted unique meshes
+        DYNAMIC = 0, // dynamic - prebaked & optionally simulated unique meshes
         INSTANCED,   // instanced - preprocessed
         NOT_VISIBLE, // simply not visible
     };
-    RenderMode m_RenderMode;
+    RenderMode m_RenderMode = NOT_VISIBLE;
 
     // VRAM Memory footprint of the corresponding buffers in bytes
-    uint32 m_SizeInVRam;
+    uint32 m_SizeInVRam = 0;
 
     // The instance lists.
-    SMMRMGroupHeader* m_groups;
-    uint32 m_nGroups;
+    SMMRMGroupHeader* m_groups = nullptr;
+    uint32 m_nGroups = 0;
 
-    // Stored render params because this rendernode is rendered in a two-stage
-    // process.
+    // Stored render params because this rendernode is rendered in a two-stage process.
     SRendParams m_rendParams;
 
-    // The wind force sample lattice. Get's bilinearly interpolated during the
-    // simulation.
-    Vec3* m_wind;
+    // The wind force sample lattice. Gets bilinearly interpolated during the simulation.
+    Vec3* m_wind = nullptr;
 
     // The list of surface types used by the instances in this node
     ISurfaceType* m_surface_types[MMRM_MAX_SURFACE_TYPES];
 
     // The density samples
-    SSampleDensity* m_density;
+    SSampleDensity* m_density = nullptr;
 
     // The list of colliders, approximated as spheres. Probably more elaborate
     // primitives will be supported in the future
-    primitives::sphere* m_Colliders;
+    primitives::sphere* m_Colliders = nullptr;
 
     // Number of active colliders
-    int m_nColliders;
+    int m_nColliders = 0;
 
     // The list of potential projectiles, approximated as spheres and directions.
-    SMMRMProjectile* m_Projectiles;
+    SMMRMProjectile* m_Projectiles = nullptr;
 
     // Number of active projectiles
-    int m_nProjectiles;
+    int m_nProjectiles = 0;
 
-    // The jobstate for all cull jobs
-    JobManager::SJobState m_cullState;
+    // The jobstate for all cull jobs 
+    AZ::LegacyJobExecutor m_cullJobExecutor;
 
     // The jobstate for all mesh update jobs
-    JobManager::SJobState m_updateState;
+    AZ::LegacyJobExecutor m_updateJobExecutor;
 
     // The jobstate for initializing spines
-    JobManager::SJobState m_spineInitializationState;
+    AZ::LegacyJobExecutor m_spineInitializationJobExecutor;
 
     // The list of rendermeshes that belong to this object
     std::vector<SMMRM> m_renderMeshes[2];
@@ -362,11 +361,11 @@ class CMergedMeshRenderNode
     // The list of rendermeshes that belong to this object
     std::vector< std::pair<_smart_ptr<IMaterial>, IStatObj*> > m_usedMaterials;
 
-    // Only walid if we are currently streaming in data
+    // Only valid if we are currently streaming in data
     IReadStream_AutoPtr m_pReadStream;
 
     // Are spines active and present in memory?
-    bool m_SpinesActive : 1;
+    bool m_SpinesActive = false;
 
     // Debug visualization (gets the lod passed the rendernode has selected in)
     void DebugRender(int nLod);
@@ -654,7 +653,7 @@ class CMergedMeshesManager
     volatile int m_ProjectileLock;
 
     // The jobstate for all mesh update jobs
-    JobManager::SJobState m_updateState;
+    AZ::LegacyJobExecutor m_updateCompletionMergedMeshesManager;
 
     size_t  m_CurrentSizeInVramDynamic;
     size_t  m_CurrentSizeInVramInstanced;

@@ -166,7 +166,15 @@ namespace AssetProcessor
 
     void RCJob::SetState(const JobState& state)
     {
+        bool wasPending = (m_jobState == pending);
         m_jobState = state;
+
+        if ((wasPending)&&(m_jobState == cancelled))
+        {
+            // if we were pending (had not started yet) and we are now cancelled, we sitll have to emit the finished signal
+            // so that all the various systems waiting for us can do their housekeeping.
+            Q_EMIT Finished();
+        }
     }
 
     void RCJob::SetJobEscalation(int jobEscalation)

@@ -34,7 +34,7 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
-#include "StdAfx.h"
+#include "CloudGemPlayerAccount_precompiled.h"
 
 namespace CloudGemPlayerAccount {
 namespace ServiceAPI {

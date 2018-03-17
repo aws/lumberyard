@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/HttpRequestor_precompiled.cpp",
+            "Source/HttpRequestor_precompiled.h"
         ]
     },
     "auto": {

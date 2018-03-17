@@ -30,7 +30,23 @@ namespace Camera
         * Gets the camera's field of view in degrees
         * @return The camera's field of view in degrees
         */
-        virtual float GetFov() = 0;
+        virtual float GetFov()
+        {
+            AZ_WarningOnce("CameraBus", false, "GetFov is deprecated.  Please use GetFovDegrees or GetFovRadians.");
+            return GetFovDegrees();
+        }
+
+        /**
+        * Gets the camera's field of view in degrees
+        * @return The camera's field of view in degrees
+        */
+        virtual float GetFovDegrees() = 0;
+
+        /**
+        * Gets the camera's field of view in radians
+        * @return The camera's field of view in radians
+        */
+        virtual float GetFovRadians() = 0;
         
         /**
         * Gets the camera's distance from the near clip plane in meters
@@ -60,7 +76,23 @@ namespace Camera
         * Sets the camera's field of view in degrees between 0 < fov < 180 degrees
         * @param fov The camera frustum's new field of view in degrees
         */
-        virtual void SetFov(float fov) = 0;
+        virtual void SetFov(float fov)
+        {
+            AZ_WarningOnce("CameraBus", false, "SetFov is deprecated.  Please use SetFovDegrees or SetFovRadians.");
+            SetFovDegrees(fov);
+        }
+
+        /**
+        * Sets the camera's field of view in degrees between 0 < fov < 180 degrees
+        * @param fov The camera frustum's new field of view in degrees
+        */
+        virtual void SetFovDegrees(float fovInDegrees) = 0;
+
+        /**
+        * Sets the camera's field of view in radians between 0 < fov < pi radians
+        * @param fov The camera frustum's new field of view in radians
+        */
+        virtual void SetFovRadians(float fovInRadians) = 0;
 
         /**
         * Sets the near clip plane to a given distance from the camera in meters.  Should be small, but greater than 0
@@ -111,6 +143,22 @@ namespace Camera
         virtual AZ::EntityId GetCameras() = 0;
     };
     using CameraBus = AZ::EBus<CameraRequests>;
+
+    /**
+    * Use this system broadcast for things like getting the active camera
+    */
+    class CameraSystemRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~CameraSystemRequests() = default;
+
+        /**
+        * returns the camera being used by the active view
+        */
+        virtual AZ::EntityId GetActiveCamera() = 0;
+    };
+    using CameraSystemRequestBus = AZ::EBus<CameraSystemRequests>;
 
     /**
     * Handle this bus if you want to know when cameras are added or removed during edit or run time

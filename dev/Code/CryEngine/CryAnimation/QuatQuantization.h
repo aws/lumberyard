@@ -530,7 +530,12 @@ struct SmallTree48BitQuat
 #if defined(_CPU_SSE) && !defined(_DEBUG)
 
         float* m_Res = &q.v.x;
-#if defined(ORBIS) || defined(APPLE) || defined(LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(QuatQuantization_h)
+#elif defined(APPLE) || defined(LINUX)
+#define QUATQUANTIZATION_H_TRAIT_USE_FL_M128_UNION 1
+#endif
+#if QUATQUANTIZATION_H_TRAIT_USE_FL_M128_UNION
 #define TEMPLATE_PROCESSING(index, offset0, offset1, offset2)                \
     m_Res[offset0] = (float)((uint16)(m_1 & 0x7FFF));                        \
     m_Res[offset1] = (float)((uint16)(((m_1 >> 15) + (m_2 << 1)) & 0x7FFF)); \

@@ -424,7 +424,7 @@ struct IPlatformOS
         virtual void TouchFile() {}
         // </interfuscator:shuffle>
     };
-    DECLARE_BOOST_POINTERS(ISaveReader);
+    DECLARE_SMART_POINTERS(ISaveReader);
     typedef std::vector<IPlatformOS::ISaveReaderPtr> ISaveReaderPtrVector;
 
     struct ISaveWriter
@@ -449,7 +449,7 @@ struct IPlatformOS
         virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
         // </interfuscator:shuffle>
     };
-    DECLARE_BOOST_POINTERS(ISaveWriter);
+    DECLARE_SMART_POINTERS(ISaveWriter);
     typedef std::vector<IPlatformOS::ISaveWriterPtr> ISaveWriterPtrVector;
 
     struct IFileFinder
@@ -497,7 +497,7 @@ struct IPlatformOS
         virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
         // </interfuscator:shuffle>
     };
-    typedef boost::shared_ptr<IFileFinder> IFileFinderPtr;
+    typedef AZStd::shared_ptr<IFileFinder> IFileFinderPtr;
 
     // CScopedSaveLoad
     // Description:

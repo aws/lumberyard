@@ -15,10 +15,9 @@ import os
 import json
 import re
 
-from distutils.version import LooseVersion
-
 from errors import HandledError
 from botocore.exceptions import ClientError
+from resource_manager_common import resource_type_info
 
 def default(value, default):
     '''Returns a default value when a given value is None, otherwise returns the given value.'''
@@ -85,6 +84,10 @@ def validate_stack_name_format(check_name):
     if not re.match('^[a-z][a-z0-9\-]*$', check_name, re.I):
         raise HandledError('Name can only consist of letters, numbers and hyphens and must start with a letter: {}'.format(check_name))
 
+def validate_stack_name_no_reserved_words(check_name):
+    if check_name in resource_type_info.LAMBDA_TAGS:
+        raise HandledError('Name must not be any of %s' % sorted(list(resource_type_info.LAMBDA_TAGS)))
+
 def validate_stack_name(check_name):
 
     if check_name == None:
@@ -93,6 +96,8 @@ def validate_stack_name(check_name):
     validate_stack_name_length(check_name)
 
     validate_stack_name_format(check_name)
+
+    validate_stack_name_no_reserved_words(check_name)
 
 def validate_writable_list(context, write_check_list):
     '''Prompts the user to make specified files writable.
@@ -164,42 +169,6 @@ def get_data_from_custom_physical_resource_id(physical_resource_id):
     else:
         id_data = {}
     return id_data
-
-RESOURCE_ARN_PATTERNS = {
-    'AWS::DynamoDB::Table': 'arn:aws:dynamodb:{region}:{account_id}:table/{resource_name}',
-    'AWS::Lambda::Function': 'arn:aws:lambda:{region}:{account_id}:function:{resource_name}',
-    'AWS::SQS::Queue': '{resource_name}',
-    'AWS::SNS::Topic': 'arn:aws:sns:{region}:{account_id}:{resource_name}',
-    'AWS::S3::Bucket': 'arn:aws:s3:::{resource_name}',
-    'Custom::CognitoUserPool': 'arn:aws:cognito-idp:{region}:{account_id}:userpool/{resource_name}',
-    'Custom::ServiceApi': 'arn:aws:execute-api:{region}:{account_id}:{resource_name}'
-}
-
-def get_resource_arn(stack_arn, resource_type, resource_name, optional = False, context = None):
-
-    # TODO: need a way to "plug in" resource types, so hacks like this aren't necessary
-    if resource_type == 'Custom::ServiceApi':
-        id_data = get_data_from_custom_physical_resource_id(resource_name)
-        rest_api_id = id_data.get('RestApiId', '')
-        resource_name = rest_api_id
-    elif resource_type == 'AWS::SQS::Queue':
-        client = context.aws.client('sqs', region=get_region_from_arn(stack_arn))
-        result = client.get_queue_attributes(QueueUrl=resource_name, AttributeNames=["QueueArn"])
-        queue_arn = result["Attributes"].get("QueueArn", None)
-        if queue_arn is None:
-            raise RuntimeError('Could not find QueueArn in {} for {}'.format(result, resource_name))
-        resource_name = queue_arn
-
-    pattern = RESOURCE_ARN_PATTERNS.get(resource_type, None)
-    if pattern is None:
-        if optional:
-            return None
-        raise RuntimeError('Unsupported resource type {} for resource {}.'.format(resource_type, resource_name))
-
-    return pattern.format(
-        region=get_region_from_arn(stack_arn),
-        account_id=get_account_id_from_arn(stack_arn),
-        resource_name=resource_name)
 
 def trim_at(s, c):
     i = s.find(c)
@@ -287,51 +256,6 @@ def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_buck
             break
 
         list_res = s3.list_object_versions(Bucket=physical_bucket_id, MaxKeys=500, KeyMarker=list_res['NextKeyMarker'], VersionIdMarker=list_res['NextVersionIdMarker'])
-
-
-# Our version numbers should conform to http://semver.org/ 2.0.
-class Version(LooseVersion):
-
-    def __init__(self, s):
-        # LooseVersion is an old style class, so can't use super
-        LooseVersion.__init__(self, s) 
-
-    @property
-    def major(self):
-        return self.version[0]
-
-    @property
-    def minor(self):
-        return self.version[1]
-
-    @property
-    def revision(self):
-        return self.version[2]
-
-    def is_compatible_with(self, other):
-        
-        if not isinstance(other, Version):
-            other = Version(other)
-
-        if self.major != other.major:
-            return False
-        
-        # self.major == other.major
-
-        if self.minor < other.minor:
-            return False
-
-        if self.minor > other.minor:
-            return True
-
-        # self.minor == other.minor
-
-        if self.revision < other.revision:
-            return False
-
-        # self.revision == self.revions
-
-        return True
 
 
 

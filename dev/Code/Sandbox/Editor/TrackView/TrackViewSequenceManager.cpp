@@ -207,7 +207,7 @@ void CTrackViewSequenceManager::CreateSequence(QString name, SequenceType sequen
 IAnimSequence* CTrackViewSequenceManager::OnCreateSequenceObject(QString name, bool isLegacySequence, AZ::EntityId entityId)
 {
     SequenceType sequenceType = (isLegacySequence ? SequenceType::Legacy : SequenceType::SequenceComponent);
-    IAnimSequence* pNewCryMovieSequence = GetIEditor()->GetMovieSystem()->CreateSequence(name.toLatin1().data(), /*bload =*/ false, /*id =*/ 0U, sequenceType, entityId);
+    IAnimSequence* pNewCryMovieSequence = GetIEditor()->GetMovieSystem()->CreateSequence(name.toUtf8().data(), /*bload =*/ false, /*id =*/ 0U, sequenceType, entityId);
     CTrackViewSequence* newTrackViewSequence = new CTrackViewSequence(pNewCryMovieSequence);
 
     AddTrackViewSequence(newTrackViewSequence);
@@ -323,6 +323,11 @@ void CTrackViewSequenceManager::DeleteSequence(CTrackViewSequence* pSequence)
 void CTrackViewSequenceManager::RenameNode(CTrackViewAnimNode* pAnimNode, const char* newName) const
 {
     CBaseObject*    baseObj = nullptr;
+    CTrackViewSequence* sequence = pAnimNode->GetSequence();
+
+    AZ_Assert(sequence, "Nodes should never have a null sequence.");
+
+    bool isLegacySequence = sequence->GetSequenceType() == SequenceType::Legacy;
 
     if (pAnimNode->IsBoundToEditorObjects())
     {
@@ -348,16 +353,34 @@ void CTrackViewSequenceManager::RenameNode(CTrackViewAnimNode* pAnimNode, const 
 
     if (baseObj)
     {
-        // We use AzToolsFramework::ScopedUndoBatch instead of the legacy CUndo to get on the AzToolsFramework undo stack for renaming
-        // The AzToolsFramework::ScopedUndoBatch is also a wrapper for the legacy CUndo stack, so CUndo::Record works as expected.
-        AzToolsFramework::ScopedUndoBatch undoBatch("ModifyEntityName");
-        CUndo::Record(new CUndoAnimNodeObjectRename(baseObj, newName));
+        if (isLegacySequence)
+        {
+            // We use AzToolsFramework::ScopedUndoBatch instead of the legacy CUndo to get on the AzToolsFramework undo stack for renaming
+            // The AzToolsFramework::ScopedUndoBatch is also a wrapper for the legacy CUndo stack, so CUndo::Record works as expected.
+            AzToolsFramework::ScopedUndoBatch undoBatch("ModifyEntityName");
+            CUndo::Record(new CUndoAnimNodeObjectRename(baseObj, newName));
+        }
+        else
+        {
+            AzToolsFramework::ScopedUndoBatch undoBatch("ModifyEntityName");
+            static_cast<CObjectManager*>(GetIEditor()->GetObjectManager())->ChangeObjectName(baseObj, newName);
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+        }
     }
     else
     {
         // this is an internal TrackView Node - handle it internally
-        CUndo undo("Rename TrackView Node");
-        pAnimNode->SetName(newName);
+        if (isLegacySequence)
+        {
+            CUndo undo("Rename TrackView Node");
+            pAnimNode->SetName(newName);
+        }
+        else
+        {
+            AzToolsFramework::ScopedUndoBatch undoBatch("Rename TrackView Node");
+            pAnimNode->SetName(newName);
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+        }
     }
 }
 
@@ -665,7 +688,7 @@ void CTrackViewSequenceManager::HandleObjectRename(CBaseObject* pObject)
     for (uint i = 0; i < numAffectedNodes; ++i)
     {
         CTrackViewAnimNode* pAnimNode = bundle.GetNode(i);
-        pAnimNode->SetName(pObject->GetName().toLatin1().data());
+        pAnimNode->SetName(pObject->GetName().toUtf8().data());
     }
     
     if (numAffectedNodes > 0)

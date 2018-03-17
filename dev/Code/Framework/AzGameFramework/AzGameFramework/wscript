@@ -24,14 +24,7 @@ def build(bld):
         export_includes     = ['..'],
 
         # Compiler Specific
-        msvc_cxxflags       = [
-                               '/W4', # warning level
-                              ],
-
-        clang_cxxflags      = [
-                               '-Werror',  # warnings as errors
-                               '-Wall'     # warning level
-                              ],
+        msvc_cxxflags       = ['/W4'],
 
         # Platform Specific
         win_features        = ['crcfix'],

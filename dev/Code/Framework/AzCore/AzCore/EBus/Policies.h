@@ -256,25 +256,26 @@ namespace AZ
         void Execute()
         {
             AZ_Warning("System", m_isActive, "You are calling execute queued functions on a bus, which has not activate it's function queuing! Call YouBus::AllowFunctionQueuing(true)!");
-            while (!m_messages.empty())
+            while (true)
             {
                 BusMessageCall invoke;
+
                 //////////////////////////////////////////////////////////////////////////
                 // Pop element from the queue.
-                m_messagesMutex.lock();
-                size_t numMessages = m_messages.size();
-                if (numMessages == 0)
                 {
-                    m_messagesMutex.unlock();
-                    return;
+                    AZStd::lock_guard<MutexType> lock(m_messagesMutex);
+                    size_t numMessages = m_messages.size();
+                    if (numMessages == 0)
+                    {
+                        break;
+                    }
+                    AZStd::swap(invoke, m_messages.front());
+                    m_messages.pop();
+                    if (numMessages == 1)
+                    {
+                        m_messages.get_container().clear(); // If it was the last message, free all memory.
+                    }
                 }
-                AZStd::swap(invoke, m_messages.front());
-                m_messages.pop();
-                if (numMessages == 1)
-                {
-                    m_messages.get_container().clear(); // If it was the last message, free all memory.
-                }
-                m_messagesMutex.unlock();
                 //////////////////////////////////////////////////////////////////////////
 
                 invoke();

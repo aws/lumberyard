@@ -33,7 +33,7 @@ struct IMemoryFile
     virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
 };
 
-DECLARE_BOOST_POINTERS(IMemoryFile);
+DECLARE_SMART_POINTERS(IMemoryFile);
 
 
 
@@ -84,7 +84,7 @@ struct IMemoryFileSystem
 
     virtual void DumpFiles(const char* label) = 0;
 };
-DECLARE_BOOST_POINTERS(IMemoryFileSystem);
+DECLARE_SMART_POINTERS(IMemoryFileSystem);
 
 
 class CSaveReader_Memory

@@ -26,7 +26,7 @@
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 
-#include "StdAfx.h"
+#include "CloudGemSpeechRecognition_precompiled.h"
 
 
 #include "AWS/ServiceAPI/CloudGemSpeechRecognitionClientComponent.h"

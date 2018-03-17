@@ -30,6 +30,10 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputChannelDigitalWithSharedPosition2D, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelDigitalWithSharedPosition2D, "{EFCEC2F4-A81F-4218-A878-1D7676FB1FC6}", InputChannel);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputChannelId Id of the input channel being constructed
         //! \param[in] inputDevice Input device that owns the input channel

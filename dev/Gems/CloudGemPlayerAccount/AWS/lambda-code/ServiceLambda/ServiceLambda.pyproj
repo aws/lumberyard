@@ -32,9 +32,6 @@
     <Compile Include="api\admin_identityProviders_Cognito_users_resetUserPassword.py" />
     <Compile Include="api\service_status.py" />
     <Compile Include="api\__init__.py" />
-    <Compile Include="CloudCanvas\test\test_settings.py" />
-    <Compile Include="CloudCanvas\test\__init__.py" />
-    <Compile Include="CloudCanvas\__init__.py" />
     <Compile Include="dynamodb_pagination.py" />
     <Compile Include="errors.py" />
     <Compile Include="service.py" />
@@ -43,8 +40,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="api" />
-    <Folder Include="CloudCanvas" />
-    <Folder Include="CloudCanvas\test" />
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>

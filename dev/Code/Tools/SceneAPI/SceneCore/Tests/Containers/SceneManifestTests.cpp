@@ -24,6 +24,8 @@ namespace AZ
     {
         namespace Containers
         {
+            static decltype(SceneManifest::s_invalidIndex) INVALID_INDEX(SceneManifest::s_invalidIndex); // gtest cannot compare static consts
+
             class MockManifestInt : public DataTypes::IManifestObject
             {
             public:
@@ -208,13 +210,13 @@ namespace AZ
             TEST_F(SceneManifestTest, FindIndex_InvalidValueFromSharedPtr_ResultIsInvalidIndex)
             {
                 AZStd::shared_ptr<DataTypes::IManifestObject> invalid = AZStd::make_shared<MockManifestInt>(42);
-                EXPECT_EQ(SceneManifest::s_invalidIndex, m_testManifest.FindIndex(invalid.get()));
+                EXPECT_EQ(INVALID_INDEX, m_testManifest.FindIndex(invalid.get()));
             }
 
             TEST_F(SceneManifestTest, FindIndex_InvalidValueFromNullptr_ResultIsInvalidIndex)
             {
                 DataTypes::IManifestObject* invalid = nullptr;
-                EXPECT_EQ(SceneManifest::s_invalidIndex, m_testManifest.FindIndex(invalid));
+                EXPECT_EQ(INVALID_INDEX, m_testManifest.FindIndex(invalid));
             }
 
             // RemoveEntry - continued
@@ -235,7 +237,7 @@ namespace AZ
                 EXPECT_EQ(3, azrtti_cast<MockManifestInt*>(testManifest.GetValue(1))->GetValue());
 
                 EXPECT_EQ(0, testManifest.FindIndex(testDataObject1));
-                EXPECT_EQ(SceneManifest::s_invalidIndex, testManifest.FindIndex(testDataObject2));
+                EXPECT_EQ(INVALID_INDEX, testManifest.FindIndex(testDataObject2));
                 EXPECT_EQ(1, testManifest.FindIndex(testDataObject3));
             }
 

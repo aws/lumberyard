@@ -414,7 +414,7 @@ void CTerrainDialog::OnExportHeightmap()
         else
         {
             // BMP or others
-            m_pHeightmap->SaveImage(fileName.toLatin1().data());
+            m_pHeightmap->SaveImage(fileName.toUtf8().data());
         }
     }
 }
@@ -863,9 +863,16 @@ void CTerrainDialog::OnSetUnitSize()
         return;
     }
 
+    // Don't go further if a level hasn't been loaded, since the heightmap
+    // resolution will be 0, causing a divide by 0
+    uint64 terrainResolution = heightmap->GetWidth();
+    if (terrainResolution <= 0)
+    {
+        return;
+    }
+
     // Calculate valid unit sizes for the current terrain resolution
     int currentUnitSize = heightmap->GetUnitSize();
-    uint64 terrainResolution = heightmap->GetWidth();
     int maxUnitSize = IntegerLog2(Ui::MAXIMUM_TERRAIN_RESOLUTION / terrainResolution);
     int units = Ui::START_TERRAIN_UNITS;
     QStringList unitSizes;

@@ -86,7 +86,7 @@ static void WipFeatureVarChange(ICVar* pVar)
             }
             else
             {
-                CWipFeatureManager::Instance()->SetAllFeaturesParams(attr.toLatin1().data());
+                CWipFeatureManager::Instance()->SetAllFeaturesParams(attr.toUtf8().data());
             }
 
             return;
@@ -123,7 +123,7 @@ static void WipFeatureVarChange(ICVar* pVar)
         }
         else
         {
-            CWipFeatureManager::Instance()->SetFeatureParams(id, attr.toLatin1().data());
+            CWipFeatureManager::Instance()->SetFeatureParams(id, attr.toUtf8().data());
         }
     }
 }

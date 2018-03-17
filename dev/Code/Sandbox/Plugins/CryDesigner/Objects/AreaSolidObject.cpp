@@ -420,7 +420,7 @@ void AreaSolidObject::DisplayMemoryUsage(DisplayContext& dc)
 
     QString sizeBuffer;
     sizeBuffer = tr("Size : %1 KB").arg(m_pSizer->GetTotalSize() * 0.001f, 0, 'f', 4);
-    DrawTextOn2DBox(dc, aabb.GetCenter(), sizeBuffer.toLatin1().data(), 1.4f, ColorF(1, 1, 1, 1), ColorF(0, 0, 0, 0.25f));
+    DrawTextOn2DBox(dc, aabb.GetCenter(), sizeBuffer.toUtf8().data(), 1.4f, ColorF(1, 1, 1, 1), ColorF(0, 0, 0, 0.25f));
 }
 
 void AreaSolidObject::GenerateGameFilename(QString& generatedFileName) const

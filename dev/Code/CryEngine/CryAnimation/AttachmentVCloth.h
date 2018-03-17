@@ -31,10 +31,6 @@ struct SBuffers;
 
 
 
-/*#if defined(WIN64) || defined(DURANGO)
-#   define CLOTH_SSE
-#endif*/
-
 #ifdef CLOTH_SSE
 struct Mask
 {

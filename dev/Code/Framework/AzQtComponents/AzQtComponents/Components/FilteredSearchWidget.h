@@ -78,6 +78,7 @@ namespace AzQtComponents
     private:
         QTreeView* m_tree;
         QStandardItemModel* m_model;
+        bool m_settingUp = false;
     };
 
     class AZ_QT_COMPONENTS_API FilteredSearchWidget

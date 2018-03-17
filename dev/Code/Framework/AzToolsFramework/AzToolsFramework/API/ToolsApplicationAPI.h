@@ -45,6 +45,7 @@ namespace AzToolsFramework
 {
     struct ViewPaneOptions;
     class PreemptiveUndoCache;
+    class EntityPropertyEditor;
 
     namespace UndoSystem
     {
@@ -665,6 +666,18 @@ namespace AzToolsFramework
 
         /// Generate a new default Editable navigation area
         virtual void GenerateNavigationArea(const AZStd::string& /*name*/, const AZ::Vector3& /*position*/, const AZ::Vector3* /*points*/, size_t /*numPoints*/, float /*height*/) { }
+
+        /**
+         * Return all available agent types defined in the Navigation xml file.
+         */
+        virtual AZStd::vector<AZStd::string> GetAgentTypes() { return AZStd::vector<AZStd::string>(); }
+        
+        virtual void OpenPinnedInspector(const AzToolsFramework::EntityIdList& /*entities*/) { }
+
+        virtual void ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* /*editor*/) {}
+
+        /// Focus all viewports on the list of entities
+        virtual void GoToSelectedOrHighlightedEntitiesInViewports() { }
     };
 
     using EditorRequestBus = AZ::EBus<EditorRequests>;

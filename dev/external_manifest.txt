@@ -1,0 +1,26 @@
+# External folder manifest
+#
+# Note: Path wildcards such as '*' and '?' is accepted.
+#       For optional items, mark them with a trailing '^' character
+#
+
+AssetProcessorPlatformConfig.ini
+bootstrap.cfg
+editor.cfg
+engine.json
+lmbr_waf.*
+shadercachegen.cfg
+system*.cfg
+waf_branch_spec.py
+wscript
+_WAF_/android/
+_WAF_/appletv/
+_WAF_/ios/
+_WAF_/msbuild/
+_WAF_/specs/
+_WAF_/default_settings.json
+_WAF_/environment.json^
+_WAF_/user_settings.options
+
+
+

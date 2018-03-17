@@ -9,8 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+
+#include "LmbrCentral_precompiled.h"
 #include "EditorNavigationSeedComponent.h"
+#include "EditorNavigationUtil.h"
 
 // Cry pathfinding system
 #include <IAISystem.h>
@@ -20,7 +22,6 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Script/ScriptContextAttributes.h>
 
 namespace LmbrCentral
 {
@@ -36,22 +37,17 @@ namespace LmbrCentral
             {
                 editContext->Class<EditorNavigationSeedComponent>("Navigation Seed", "Determines reachable navigation nodes")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.12
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview) // Hidden for v1.12
-                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/nav-seed-component")
-                    ->Attribute(AZ::Edit::Attributes::Category, "AI")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NavigationSeed.png")
-                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NavigationSeed.png")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(0, &EditorNavigationSeedComponent::m_agentType, "Agent Type", "Describes the type of the Entity for navigation purposes.")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/nav-seed-component")
+                        ->Attribute(AZ::Edit::Attributes::Category, "AI")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NavigationSeed.png")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NavigationSeed.png")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorNavigationSeedComponent::m_agentType, "Agent Type", "Describes the type of the Entity for navigation purposes.")
+                        ->Attribute(AZ::Edit::Attributes::StringList, &PopulateAgentTypeList)
                         ->Attribute("ChangeNotify", &EditorNavigationSeedComponent::OnAgentTypeChanged);
             }
         }
-    }
-
-    EditorNavigationSeedComponent::EditorNavigationSeedComponent()
-        : m_agentType("MediumSizedCharacters")
-    {
     }
 
     void EditorNavigationSeedComponent::TriggerReachaibilityRecalculation() const
@@ -68,8 +64,8 @@ namespace LmbrCentral
 
     void EditorNavigationSeedComponent::RecalculateReachabilityAroundSelf()
     {
-        AZ::Vector3 translation;
-        EBUS_EVENT_ID_RESULT(translation, m_entity->GetId(), AZ::TransformBus, GetWorldTranslation);
+        AZ::Vector3 translation = AZ::Vector3::CreateZero();
+        AZ::TransformBus::EventResult(translation, m_entity->GetId(), &AZ::TransformInterface::GetWorldTranslation);
 
         auto navigationSystem = gEnv->pAISystem->GetNavigationSystem();
         auto agentType = navigationSystem->GetAgentTypeID(m_agentType.c_str());

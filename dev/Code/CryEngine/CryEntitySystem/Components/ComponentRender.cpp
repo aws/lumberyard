@@ -29,15 +29,13 @@
 #include <CryExtension/CryCreateClassInstance.h>
 #include <IJobManager_JobDelegator.h>
 
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
 DECLARE_DEFAULT_COMPONENT_FACTORY(CComponentRender, IComponentRender)
 
 #if defined(PLATFORM_64BIT) // the parameters for the particle geometry render job are too large for the infoblock on 32 bit systems, there only use it on 64 bit
 #   define SUPPORT_COMPONENTRENDER_RENDER_JOB
 #endif // PLATFORM_64BIT
-
-#if defined(SUPPORT_COMPONENTRENDER_RENDER_JOB)
-DECLARE_JOB("CComponentRender_Render", TComponentRenderJob, CComponentRender::Render_JobEntry);
-#endif // SUPPORT_COMPONENTRENDER_RENDER_JOB
 
 float CComponentRender::s_fViewDistMin          = 0.0f;
 float CComponentRender::s_fViewDistRatio        = 60.0f;
@@ -909,11 +907,14 @@ void CComponentRender::Render(const SRendParams& inRenderParams, const SRenderin
     if (CanExecuteRenderAsJob())
     {
 #if defined(SUPPORT_COMPONENTRENDER_RENDER_JOB)
-        TComponentRenderJob job(inRenderParams, passInfo);
-        job.SetClassInstance(this);
-        job.RegisterJobState(passInfo.IsShadowPass() ? gEnv->pRenderer->GetGenerateShadowRendItemJobState(passInfo.ThreadID()) : gEnv->pRenderer->GetGenerateRendItemJobState(passInfo.ThreadID()));
-        job.SetPriorityLevel(passInfo.IsGeneralPass() ? JobManager::eRegularPriority : JobManager::eLowPriority);
-        job.Run();
+        // legacy job priority: "passInfo.IsGeneralPass() ? JobManager::eRegularPriority : JobManager::eLowPriority"
+        AZ::LegacyJobExecutor *pJobExecutor = passInfo.IsShadowPass() ? gEnv->pRenderer->GetGenerateShadowRendItemJobExecutor(passInfo.ThreadID()) : gEnv->pRenderer->GetGenerateRendItemJobExecutor(passInfo.ThreadID());
+        pJobExecutor->StartJob(
+            [this, inRenderParams, passInfo]
+            {
+                this->Render_JobEntry(inRenderParams, passInfo);
+            }
+        );
 #else
         __debugbreak(); // unsupported code path
 #endif // SUPPORT_COMPONENTRENDER_RENDER_JOB
@@ -925,7 +926,7 @@ void CComponentRender::Render(const SRendParams& inRenderParams, const SRenderin
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CComponentRender::Render_JobEntry(const SRendParams inRenderParams, const SRenderingPassInfo passInfo)
+void CComponentRender::Render_JobEntry(const SRendParams& inRenderParams, const SRenderingPassInfo& passInfo)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_ENTITY);
 

@@ -14,14 +14,17 @@ import os
 import json
 import shutil
 import unittest
+import urllib2
 
 from copy import deepcopy
+from StringIO import StringIO
 from time import sleep
+from zipfile import ZipFile
 
 from botocore.exceptions import ClientError
 
 import resource_manager.util
-import resource_manager.constant
+import resource_manager_common.constant
 
 import lmbr_aws_test_support
 import mock_specification
@@ -135,7 +138,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
         self.add_bucket_to_resource_group(self.TEST_RESOURCE_GROUP_NAME, 'TestBucket1')
         self.add_bucket_to_resource_group(self.TEST_RESOURCE_GROUP_NAME, 'TestBucket2')
         resource_group_path = self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME)
-        self.assertTrue(os.path.isfile(os.path.join(resource_group_path, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME)))
+        self.assertTrue(os.path.isfile(os.path.join(resource_group_path, resource_manager_common.constant.RESOURCE_GROUP_TEMPLATE_FILENAME)))
         self.assertTrue(os.path.isdir(os.path.join(resource_group_path, 'lambda-code', 'ServiceLambda')))
 
 
@@ -398,10 +401,35 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
 
 
     def __515_upload_lambda_code(self):
+        # Upload new lambda code.  This should preserve the settings file that was put into the zip during the cloud formation stack update.
         self.lmbr_aws(
             'function', 'upload-code',
             '--resource-group', self.TEST_RESOURCE_GROUP_NAME
         )
+
+        stack_arn = self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME)
+        res = self.aws_cloudformation.describe_stack_resources(StackName = stack_arn)
+        physical_ids = { resource['LogicalResourceId']: resource['PhysicalResourceId'] for resource in res['StackResources'] }
+
+        # Download the lambda function and find the settings file.
+        lambda_function = self.aws_lambda.get_function(FunctionName=physical_ids['ServiceLambda'])
+        zip_content = urllib2.urlopen(lambda_function['Code']['Location'])
+        zip_file = ZipFile(StringIO(zip_content.read()), 'r')
+
+        settings_name = 'cgf_lambda_settings/settings.json'
+        settings_content = None
+        for name in zip_file.namelist():
+            if name == settings_name:
+                settings_content = zip_file.open(settings_name, 'r').read()
+
+        # Verify that some of the settings are correct.
+        self.assertIsNotNone(settings_content)
+        settings = json.loads(settings_content)
+        # The deployment name is a built-in setting added to all lambdas.
+        self.assertEqual(settings['CloudCanvas::DeploymentName'], self.TEST_DEPLOYMENT_NAME)
+        # The table setting is defined by the resource template.
+        self.assertEqual(settings['Table'], physical_ids['Table'])
+
 
     def __520_remove_resource_group(self):
         self.lmbr_aws(
@@ -575,7 +603,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
 
 
     def add_bucket_to_resource_group(self, gem_name, bucket_name):
-        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+        with self.edit_gem_aws_json(gem_name, resource_manager_common.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             template['Resources'][bucket_name] = {
                 'Type': 'AWS::S3::Bucket'
             }
@@ -590,7 +618,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_StackOperations(lmbr_aws
 
 
     def remove_resource(self, gem_name, resource_name):
-        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+        with self.edit_gem_aws_json(gem_name, resource_manager_common.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             template['Resources'].pop(resource_name, None)
 
 

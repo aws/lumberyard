@@ -76,7 +76,7 @@ void DesignerObject::Display(DisplayContext& dc)
             GetBoundBox(bbox);
             if (!(dc.flags & DISPLAY_HIDENAMES))
             {
-                dc.DrawTextLabel(bbox.GetCenter(), 1.5, GetName().toLatin1().data());
+                dc.DrawTextLabel(bbox.GetCenter(), 1.5, GetName().toUtf8().data());
             }
             dc.PopMatrix();
         }
@@ -95,7 +95,7 @@ void DesignerObject::Display(DisplayContext& dc)
         dc.DrawWireBox(worldAABB.min, worldAABB.max);
         if (!(dc.flags & DISPLAY_HIDENAMES))
         {
-            dc.DrawTextLabel(worldAABB.GetCenter(), 1.5, GetName().toLatin1().data());
+            dc.DrawTextLabel(worldAABB.GetCenter(), 1.5, GetName().toUtf8().data());
         }
         dc.SetDrawInFrontMode(false);
     }

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CloudGemPlayerAccount_precompiled.h"
 #include "AuthTokenGroup.h"
 
 #include <aws/core/utils/DateTime.h>

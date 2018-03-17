@@ -274,13 +274,13 @@ class Node(object):
 				except KeyError:
 					pass
 
-			# optimistic: create the node first then look if it was correct to do so
-			cur = self.__class__(x, cur)
 			try:
-				os.stat(cur.abspath())
+				new_node_path = os.path.join(cur.abspath(), x)
+				os.stat(new_node_path)
 			except OSError:
-				cur.evict()
 				return None
+			# create the node
+			cur = self.__class__(x, cur)
 
 		ret = cur
 
@@ -734,11 +734,11 @@ class Node(object):
 			return node
 		self = self.get_src()
 		node = self.find_node(lst)
-		if node:			
+		if node:
 			if not os.path.isfile(node.abspath()):
 				node.sig = None
 				node.parent.mkdir()
-			return node		
+			return node
 		node = self.get_bld().make_node(lst)		
 		node.parent.mkdir()
 		return node

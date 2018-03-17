@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 #include <PxPhysicsAPI.h>
 #include <Include/PhysX/PhysXSystemComponentBus.h>
 #include <Include/PhysX/PhysXMeshShapeComponentBus.h>
@@ -55,19 +55,22 @@ namespace PhysX
     {
         const AZ::EntityId& entityId = GetEntityId();
         AZ::Crc32 shapeType;
-        EBUS_EVENT_ID_RESULT(shapeType, entityId, LmbrCentral::ShapeComponentRequestsBus, GetShapeType);
+        LmbrCentral::ShapeComponentRequestsBus::EventResult(shapeType, entityId,
+            &LmbrCentral::ShapeComponentRequests::GetShapeType);
 
         if (shapeType == AZ_CRC("Sphere", 0x55f96687))
         {
             LmbrCentral::SphereShapeConfiguration config;
-            EBUS_EVENT_ID_RESULT(config, entityId, LmbrCentral::SphereShapeComponentRequestsBus, GetSphereConfiguration);
+            LmbrCentral::SphereShapeComponentRequestsBus::EventResult(config, entityId,
+                &LmbrCentral::SphereShapeComponentRequests::GetSphereConfiguration);
             return Physics::SphereShapeConfiguration::Create(config.GetRadius());
         }
 
         else if (shapeType == AZ_CRC("Box", 0x08a9483a))
         {
             LmbrCentral::BoxShapeConfiguration config;
-            EBUS_EVENT_ID_RESULT(config, entityId, LmbrCentral::BoxShapeComponentRequestsBus, GetBoxConfiguration);
+            LmbrCentral::BoxShapeComponentRequestsBus::EventResult(config, entityId,
+                &LmbrCentral::BoxShapeComponentRequests::GetBoxConfiguration);
             // config.m_dimensions[i] is total length of side, BoxShapeConfiguration uses half extents
             AZ::Vector3 halfExtents = config.GetDimensions() * 0.5f;
             return Physics::BoxShapeConfiguration::Create(halfExtents);
@@ -76,12 +79,13 @@ namespace PhysX
         else if (shapeType == AZ_CRC("Capsule", 0xc268a183))
         {
             LmbrCentral::CapsuleShapeConfiguration config;
-            EBUS_EVENT_ID_RESULT(config, entityId, LmbrCentral::CapsuleShapeComponentRequestsBus, GetCapsuleConfiguration);
+            LmbrCentral::CapsuleShapeComponentRequestsBus::EventResult(config, entityId,
+                &LmbrCentral::CapsuleShapeComponentRequests::GetCapsuleConfiguration);
             float hh = AZStd::max(0.f, (0.5f * config.GetHeight()) - config.GetRadius());
             return Physics::CapsuleShapeConfiguration::Create(AZ::Vector3(0.0f, 0.0f, hh), AZ::Vector3(0.0f, 0.0f, -hh), config.GetRadius());
         }
 
-        else if( shapeType == AZ_CRC("PhysXMesh", 0xe86bc8a6))
+        else if (shapeType == AZ_CRC("PhysXMesh", 0xe86bc8a6))
         {
             // It is a valid case to have PhysXMesh shape but we don't create any configurations for this
             return nullptr;
@@ -89,10 +93,6 @@ namespace PhysX
 
         AZ_Warning("PhysX", false, "Shape not supported in PhysX.");
         return nullptr;
-    }
-
-    void PhysXColliderComponent::OnEntityActivated(const AZ::EntityId& entityId)
-    {
     }
 
     void PhysXColliderComponent::Activate()

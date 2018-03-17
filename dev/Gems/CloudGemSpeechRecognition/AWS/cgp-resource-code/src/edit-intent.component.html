@@ -25,7 +25,7 @@
                 <div *ngIf="listSampleUtterances" class="settings-container">
                     <div *ngIf="currentIntent['version'] == '$LATEST'" class="intent-input">
                         <input class="intent-property-entry form-control" type="text" placeholder="e.g. I would like to book a flight." [(ngModel)]="newSampleUtterance"/>
-                        <button class="btn l-primary basic-button add-button" (click)="addNewSampleUtterance(newSampleUtterance)" data-toggle="tooltip" data-placement="top" title="Add a new sample utterance">Add</button>
+                        <button class="btn l-primary basic-button add-button" (click)="addNewSampleUtterance()" data-toggle="tooltip" data-placement="top" title="Add a new sample utterance">Add</button>
                     </div>
                     <div *ngFor="let sampleUtterance of currentIntent.sampleUtterances; let i = index; trackBy:customTrackBy" class="intent-input">
                         <input class="intent-property-entry form-control" type="text" [ngModel]="currentIntent.sampleUtterances[i]" (ngModelChange)="currentSampleUtteranceChange($event, i)"/>

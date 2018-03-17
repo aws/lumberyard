@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CloudGemDynamicContent_precompiled.h"
 #include <DynamicContentTransferManager.h>
 #include <DynamicContent/DynamicContentBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

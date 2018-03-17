@@ -21,6 +21,8 @@ import component_gen_utils
 from resource_manager.errors import HandledError
 import resource_manager.cli
 
+from resource_manager_common import module_utils
+
 import resource_management
 import swagger_processor
 import cloud_gem_portal
@@ -153,29 +155,15 @@ def __initialize_jinja(context):
 
     sys.path.append(markupsafe_path)
 
-    loaders_module = __load_module('loaders', os.path.join(jinja_path, 'jinja2'))
+    loaders_module = module_utils.load_module('loaders', os.path.join(jinja_path, 'jinja2'))
     template_path = os.path.join(os.path.dirname(__file__), 'templates')
     print 'template_path', template_path
     loader = loaders_module.FileSystemLoader(template_path)
 
-    environment_module = __load_module('environment', os.path.join(jinja_path, 'jinja2'))
+    environment_module = module_utils.load_module('environment', os.path.join(jinja_path, 'jinja2'))
     environment = environment_module.Environment(loader=loader)
 
     return environment
-
-
-def __load_module(name, path):
-
-    path = [ path ]
-
-    fp, pathname, description = imp.find_module(name, path)
-
-    try:
-        module = imp.load_module(name, fp, pathname, description)
-        return module
-    finally:
-        if fp:
-            fp.close()
 
 
 def __load_swagger(context, swagger_file_path):

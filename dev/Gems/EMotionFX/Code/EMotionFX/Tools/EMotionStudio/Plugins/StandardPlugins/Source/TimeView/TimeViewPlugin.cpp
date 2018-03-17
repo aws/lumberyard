@@ -86,7 +86,7 @@ namespace EMStudio
         mActorInstanceData  = nullptr;
         mEventEmitterNode   = nullptr;
         
-        mMainWindow                 = nullptr;
+        mMainWidget                 = nullptr;
         mMotionWindowPlugin         = nullptr;
         mMotionEventsPlugin         = nullptr;
         mMotionListWindow           = nullptr;
@@ -212,16 +212,14 @@ namespace EMStudio
         layout->setSpacing(0);
 
         // create an inner widget and let it use the created layout
-        mMainWindow = new QMainWindow();
-        QWidget* innerWidget = new QWidget();
-        innerWidget->setLayout(layout);
-        mMainWindow->setCentralWidget(innerWidget);
+        mMainWidget = new QWidget(mDock);
+        mMainWidget->setLayout(layout);
 
         // insert the inner widget inside the docking window
-        mDock->SetContents(mMainWindow);
+        mDock->SetContents(mMainWidget);
 
         // create the splitter window and add the widgets to it
-        QSplitter* splitterWidget = new QSplitter(innerWidget);
+        QSplitter* splitterWidget = new QSplitter(mMainWidget);
         splitterWidget->setObjectName("TimeViewSplitter");
         layout->addWidget(splitterWidget);
 
@@ -866,7 +864,7 @@ namespace EMStudio
     // render the frame
     void TimeViewPlugin::ProcessFrame(float timePassedInSeconds)
     {
-        if (GetManager()->GetAvoidRendering() || mMainWindow->visibleRegion().isEmpty())
+        if (GetManager()->GetAvoidRendering() || mMainWidget->visibleRegion().isEmpty())
         {
             return;
         }
@@ -1427,77 +1425,83 @@ namespace EMStudio
                 // get the number of motion events and iterate through them
                 uint32 j;
                 const uint32 numMotionEvents = eventTrack->GetNumEvents();
-                for (j = 0; j < numMotionEvents; ++j)
+                if (numMotionEvents == 0)
                 {
-                    const EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(j);
-
-                    TimeTrackElement* element = nullptr;
-                    if (j < timeTrack->GetNumElements())
-                    {
-                        element = timeTrack->GetElement(j);
-                    }
-                    else
-                    {
-                        element = new TimeTrackElement("", timeTrack);
-                        timeTrack->AddElement(element);
-                    }
-
-                    text.Format("%s - %s", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).AsChar());
-                    uint32 color = GetEventPresetManager()->GetEventColor(motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).AsChar());
-                    QColor qColor = QColor(MCore::ExtractRed(color), MCore::ExtractGreen(color), MCore::ExtractBlue(color));
-
-                    element->SetIsVisible(true);
-                    element->SetName(text.AsChar());
-                    element->SetColor(qColor);
-                    element->SetElementNumber(j);
-                    element->SetStartTime(motionEvent.GetStartTime());
-                    element->SetEndTime(motionEvent.GetEndTime());
-
-                    // tooltip
-                    MCore::String tooltip;
-                    MCore::String rowName;
-                    tooltip.Reserve(16384);
-
-                    tooltip = "<table border=\"0\">";
-
-                    if (motionEvent.GetIsTickEvent())
-                    {
-                        // time
-                        rowName = "Time";
-                        tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                        tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
-                    }
-                    else // range event
-                    {
-                        // start time
-                        rowName = "Start Time";
-                        rowName.ConvertToNonBreakingHTMLSpaces();
-                        tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                        tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
-
-                        // end time
-                        rowName = "End Time";
-                        rowName.ConvertToNonBreakingHTMLSpaces();
-                        tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                        tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetEndTime());
-                    }
-
-                    // type
-                    rowName = "Type";
-                    tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                    tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetEventTypeString());
-
-                    // parameters
-                    rowName = "Parameters";
-                    tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                    tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetParameterString(eventTrack).AsChar());
-
-                    tooltip += "</table>";
-
-                    // set tooltip
-                    element->SetToolTip(tooltip.AsChar());
+                    timeTrack->RemoveAllElements();
                 }
+                else
+                {
+                    for (j = 0; j < numMotionEvents; ++j)
+                    {
+                        const EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(j);
 
+                        TimeTrackElement* element = nullptr;
+                        if (j < timeTrack->GetNumElements())
+                        {
+                            element = timeTrack->GetElement(j);
+                        }
+                        else
+                        {
+                            element = new TimeTrackElement("", timeTrack);
+                            timeTrack->AddElement(element);
+                        }
+
+                        text.Format("%s - %s", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).AsChar());
+                        uint32 color = GetEventPresetManager()->GetEventColor(motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).AsChar());
+                        QColor qColor = QColor(MCore::ExtractRed(color), MCore::ExtractGreen(color), MCore::ExtractBlue(color));
+
+                        element->SetIsVisible(true);
+                        element->SetName(text.AsChar());
+                        element->SetColor(qColor);
+                        element->SetElementNumber(j);
+                        element->SetStartTime(motionEvent.GetStartTime());
+                        element->SetEndTime(motionEvent.GetEndTime());
+
+                        // tooltip
+                        MCore::String tooltip;
+                        MCore::String rowName;
+                        tooltip.Reserve(16384);
+
+                        tooltip = "<table border=\"0\">";
+
+                        if (motionEvent.GetIsTickEvent())
+                        {
+                            // time
+                            rowName = "Time";
+                            tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
+                            tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
+                        }
+                        else // range event
+                        {
+                            // start time
+                            rowName = "Start Time";
+                            rowName.ConvertToNonBreakingHTMLSpaces();
+                            tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
+                            tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
+
+                            // end time
+                            rowName = "End Time";
+                            rowName.ConvertToNonBreakingHTMLSpaces();
+                            tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
+                            tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetEndTime());
+                        }
+
+                        // type
+                        rowName = "Type";
+                        tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
+                        tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetEventTypeString());
+
+                        // parameters
+                        rowName = "Parameters";
+                        tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
+                        tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetParameterString(eventTrack).AsChar());
+
+                        tooltip += "</table>";
+
+                        // set tooltip
+                        element->SetToolTip(tooltip.AsChar());
+                    }
+                }
                 for (j = numMotionEvents; j < timeTrack->GetNumElements(); ++j)
                 {
                     TimeTrackElement* element = timeTrack->GetElement(j);

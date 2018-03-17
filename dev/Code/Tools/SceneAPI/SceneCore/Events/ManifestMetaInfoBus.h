@@ -13,7 +13,7 @@
 */
 
 #include <limits>
-#include <AzCore/EBus/ebus.h>
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>

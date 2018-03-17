@@ -15,7 +15,7 @@
 
 #include <QFile>
 #include <vector>
-#include <QDebug.h>
+#include <QDebug>
 
 CAttributeViewConfig::config::item CAttributeViewConfig::parseItemNode(QDomNode item)
 {

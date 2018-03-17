@@ -27,7 +27,7 @@ namespace AZ
     inline void* AZMemAlloc(AZStd::size_t byteSize, AZStd::size_t alignment, const char* name = "No name allocation")
     {
         (void)name;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_SUPPORT_WINDOWS_ALIGNED_MALLOC
         return _aligned_malloc(byteSize, alignment);
 #else
         return memalign((size_t)alignment, (size_t)byteSize);
@@ -38,7 +38,7 @@ namespace AZ
     {
         (void)byteSize;
         (void)alignment;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_SUPPORT_WINDOWS_ALIGNED_MALLOC
         _aligned_free(ptr);
 #else
         free(ptr);

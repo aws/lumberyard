@@ -24,8 +24,7 @@ def build(bld):
         includes        = ['include',
                            'source'],
         export_includes = ['include'],
-        use             = ['AzFramework',
-                           'LyzardSDK'],
+        use             = ['AzFramework'],
         win_lib         = ['shlwapi'],
         features        = ['copy_to_lmbrsetup'],
 

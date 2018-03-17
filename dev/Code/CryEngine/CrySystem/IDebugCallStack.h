@@ -17,9 +17,9 @@
 #define CRYINCLUDE_CRYSYSTEM_IDEBUGCALLSTACK_H
 #pragma once
 
+#include "System.h"
 
-
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_FORWARD_EXCEPTION_POINTERS
 struct EXCEPTION_POINTERS;
 #endif
 //! Limits the maximal number of functions in call stack.

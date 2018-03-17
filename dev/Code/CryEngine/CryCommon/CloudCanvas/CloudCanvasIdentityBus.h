@@ -50,6 +50,7 @@ namespace CloudGemFramework
         virtual bool ApplyConfiguration() = 0;
         virtual bool GetRefreshTokenForProvider(AZStd::string& refreshToken, const AZStd::string& provider) = 0;
         virtual bool ResetPlayerIdentity() = 0;
+        virtual AZStd::string GetIdentityId() = 0;
     };
     using CloudCanvasPlayerIdentityBus = AZ::EBus<CloudCanvasPlayerIdentityRequests>;
 

@@ -3,8 +3,8 @@
     {
         "Source":
         [
-            "source/StdAfx.cpp",
-            "source/StdAfx.h"
+            "source/LightningArc_precompiled.cpp",
+            "source/LightningArc_precompiled.h"
         ]
     },
     "auto":

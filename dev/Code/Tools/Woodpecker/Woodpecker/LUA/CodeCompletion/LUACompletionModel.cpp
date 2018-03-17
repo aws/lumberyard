@@ -12,7 +12,7 @@
 
 #include "stdafx.h"
 #include "LUACompletionModel.hxx"
-#include <Woodpecker\LUA\LUAEditorStyleMessages.h>
+#include <Woodpecker/LUA/LUAEditorStyleMessages.h>
 
 #include <Woodpecker/LUA/CodeCompletion/LUACompletionModel.moc>
 

@@ -181,9 +181,6 @@ protected:
     ReflectedPropertyControl* m_wndProps;
 #endif
     CUiAnimViewTrackPropsDlg* m_wndTrackProps;
-#ifdef KDAB_PORT_REMOVED
-    CTcbPreviewCtrl* m_wndTcbPreview;
-#endif
 
     CUiAnimViewDopeSheetBase* m_keysCtrl;
 

@@ -32,7 +32,7 @@ void CAIWaveObject::BeginEditParams(IEditor* ie, int flags)
     if (!CEntityObject::m_panel)
     {
         CEntityObject::m_panel = new CAIWavePanel;
-        CEntityObject::m_rollupId = AddUIPage((QString("Entity: ") + m_entityClass).toLatin1().data(), CEntityObject::m_panel);
+        CEntityObject::m_rollupId = AddUIPage((QString("Entity: ") + m_entityClass).toUtf8().data(), CEntityObject::m_panel);
     }
     if (CEntityObject::m_panel && CEntityObject::m_panel->isVisible())
     {
@@ -50,7 +50,7 @@ void CAIWaveObject::BeginEditMultiSelParams(bool bAllOfSameType)
     if (!CEntityObject::m_panel)
     {
         CEntityObject::m_panel = new CAIWavePanel;
-        CEntityObject::m_rollupId = AddUIPage(QString(m_entityClass + " and other Entities").toLatin1().data(), CEntityObject::m_panel);
+        CEntityObject::m_rollupId = AddUIPage(QString(m_entityClass + " and other Entities").toUtf8().data(), CEntityObject::m_panel);
     }
     if (CEntityObject::m_panel && CEntityObject::m_panel->isVisible())
     {

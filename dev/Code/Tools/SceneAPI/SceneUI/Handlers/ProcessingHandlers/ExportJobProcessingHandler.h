@@ -35,8 +35,7 @@ namespace AZ
                 void BeginProcessing() override;
 
             private slots:
-                void OnJobQueryFailed();
-                void OnJobsForSourceFileFound(const AZStd::vector<AZStd::string>& jobPlatforms);
+                void OnJobQueryFailed(const char* message);
                 void OnJobProcessingComplete(const AZStd::string& platform, AZ::u64 jobId, bool success, const AZStd::string& fullLogText);
                 void OnAllJobsComplete();
 
@@ -44,6 +43,6 @@ namespace AZ
                 AZStd::string m_sourceAssetPath;
                 AZStd::unique_ptr<JobWatcher> m_jobWatcher;
             };
-        }
-    }
-}
+        } // namespace SceneUI
+    } //  namespace SceneAPI
+} // namespace AZ

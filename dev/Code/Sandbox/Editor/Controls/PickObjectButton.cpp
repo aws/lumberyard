@@ -49,7 +49,7 @@ void QPickObjectButton::OnClicked()
     }
 
     SetSelected(true);
-    GetIEditor()->PickObject(this, m_targetClass, m_statusText.toLatin1().data(), m_bMultipick);
+    GetIEditor()->PickObject(this, m_targetClass, m_statusText.toUtf8().data(), m_bMultipick);
 }
 
 //////////////////////////////////////////////////////////////////////////

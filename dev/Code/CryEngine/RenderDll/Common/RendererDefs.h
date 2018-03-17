@@ -31,10 +31,134 @@
 #include <AzCore/Casting/lossy_cast.h>
 
 #define SUPPORTS_WINDOWS_10_SDK false
-#if   _MSC_VER
+#if _MSC_VER
 #include <ntverp.h>
 #undef SUPPORTS_WINDOWS_10_SDK
 #define SUPPORTS_WINDOWS_10_SDK (VER_PRODUCTBUILD > 9600)
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(RendererDefs_h)
+#else
+#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
+#define RENDERERDEFS_H_TRAIT_SUPPORT_BAKED_MESHES_AND_DECALS 1
+#endif
+
+#define RENDERERDEFS_H_TRAIT_CONSTANT_BUFFER_ENABLE_DIRECT_ACCESS 0
+
+#if defined(WIN32) || defined(WIN64)
+#define RENDERERDEFS_H_TRAIT_SUPPORT_D3D_DEBUG_RUNTIME 1
+#endif
+
+#if defined(APPLE)
+#define RENDERERDEFS_H_TRAIT_DEFINE_D3DPOOL 1
+#endif
+
+#define RENDERERDEFS_H_TRAIT_ALIAS_D3DOK 0
+#define RENDERMESH_CPP_TRAIT_BUFFER_ENABLE_DIRECT_ACCESS 0
+
+#if defined(MOBILE)
+#define RENDERTHREAD_H_TRAIT_USE_LOCKS_FOR_FLUSH_SYNC 1
+#endif
+
+#if defined(WIN64)
+#define PLANNINGTEXTURESTREAMER_JOBS_CPP_TRAIT_JOB_INITKEYS_PREFETCH 1
+#endif
+
+#define TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_ETT_2D_EARLY_OUT 1
+#define TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_FORMATCOMPATIBLE 1
+#define TEXTURESTREAMING_CPP_TRAIT_TRYCOMMIT_COPYMIPS 1
+#define TEXTURESTREAMING_CPP_TRAIT_COPYMIPS_MOVEENGINE 0
+#define TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_SRCTILEMODE_CHECK 0
+
+#define D3DFXPIPELINE_CPP_TRAIT_CLEARVIEW 1
+
+#if defined(IOS)
+#define D3DGPUPARTICLEENGINE_CPP_TRAIT_BEGINUPDATE_INIT_COMPUTE 1
+#endif
+
+#define D3DHWSHADER_H_TRAIT_DEFINE_D3D_BLOB 0
+
+#define D3DHWSHADERCOMPILING_CPP_TRAIT_VERTEX_FORMAT 0
+
+#if defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
+#define D3DRENDERRE_CPP_TRAIT_MFDRAW_SETDEPTHSURF 1
+#endif
+
+#define D3DRENDERRE_CPP_TRAIT_MFDRAW_USEINSTANCING 1
+
+#if defined(AZ_PLATFORM_WINDOWS)
+#define D3DSTEREO_CPP_TRAIT_SELECTDEFAULTDEVICE_STEREODEVICEDRIVER 1
+#endif
+
+#if defined(WIN32)
+#define D3DSYSTEM_CPP_TRAIT_SETWINDOW_REGISTERWINDOWMESSAGEHANDLER 1
+#endif
+
+#define DRIVERD3D_CPP_TRAIT_CALCULATERESOLUTIONS_1080 0
+
+#if defined(IOS) || defined(APPLETV) || defined(ANDROID)
+#define DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_FULLSCREEN 1
+#endif
+
+#if defined(IOS) || defined(APPLETV) || defined(ANDROID)
+#define DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_NATIVERES 1
+#endif
+
+#if !defined(IOS) && !defined(APPLETV) && !defined(ANDROID)
+#define DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_CALCRESOLUTIONS 1
+#endif
+
+#define DRIVERD3D_CPP_TRAIT_RT_ENDFRAME_NOTIMPL 0
+
+#if defined(_WIN32)
+#define DRIVERD3D_CPP_TRAIT_ONSYSTEMEVENT_EVENTMOVE 1
+#endif
+
+#if defined (WIN32)
+#define DRIVERD3D_H_TRAIT_DEFSAVETEXTURE 1
+#endif
+
+#if defined(WIN32)
+#define DRIVERD3D_H_TRAIT_DEFREGISTEREDWINDOWHANDLER 1
+#endif
+
+#if defined (WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
+#define DRIVERD3D_H_TRAIT_DEFOCCLUSIONTEXTURESVALID 1
+#endif
+
+#if defined(WIN32)
+#define GPUTIMER_CPP_TRAIT_CSIMPLEGPUTIMER_SETQUERYSTART 1
+#endif
+
+#if defined(WIN32)
+#define GPUTIMER_CPP_TRAIT_RELEASE_RELEASEQUERY 1
+#endif
+
+#if defined(WIN32)
+#define GPUTIMER_CPP_TRAIT_INIT_CREATEQUERY 1
+#endif
+
+#if defined(WIN32)
+#define GPUTIMER_CPP_TRAIT_START_PRIMEQUERY 1
+#endif
+
+#if defined(WIN32)
+#define GPUTIMER_CPP_TRAIT_STOP_ENDQUERY 1
+#endif
+
+#if defined(WIN32)
+#define GPUTIMER_CPP_TRAIT_UPDATETIME_GETDATA 1
+#endif
+
+#if defined(WIN32)
+#define GPUTIMER_H_TRAIT_DEFINEQUERIES 1
+#endif
+
+#if defined(LINUX) || defined(APPLE)
+#define NULL_SYSTEM_TRAIT_INIT_RETURNTHIS 1
+#endif
+
 #endif
 
 #if defined(WIN64) && defined (CRY_USE_DX12)
@@ -44,8 +168,9 @@
 #ifdef _DEBUG
 #define GFX_DEBUG
 #endif
+
 //defined in DX9, but not DX10
-#if defined(DURANGO) || defined(OPENGL)
+#if RENDERERDEFS_H_TRAIT_ALIAS_D3DOK || defined(OPENGL)
 #define D3D_OK  S_OK
 #endif
 
@@ -137,7 +262,7 @@ enum EVerifyType
 #endif
 
 // enable support for baked meshes and decals on PC
-#if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE) || defined(DURANGO)
+#if RENDERERDEFS_H_TRAIT_SUPPORT_BAKED_MESHES_AND_DECALS
 //#define RENDER_MESH_TRIANGLE_HASH_MAP_SUPPORT // CryTek removed this #define in 3.8.  Not sure if we should strip out all related code or not, or if it may be a useful feature.
 #define TEXTURE_GET_SYSTEM_COPY_SUPPORT
 #endif
@@ -301,7 +426,7 @@ typedef uintptr_t SOCKET;
 // Enable if we have direct access to video memory and the device manager
 // should manage constant buffers
 #if BUFFER_ENABLE_DIRECT_ACCESS == 1
-#   if defined(DURANGO) || defined (CRY_USE_DX12)
+#   if RENDERERDEFS_H_TRAIT_CONSTANT_BUFFER_ENABLE_DIRECT_ACCESS || defined (CRY_USE_DX12)
 #       define CONSTANT_BUFFER_ENABLE_DIRECT_ACCESS 1
 #   else
 #       define CONSTANT_BUFFER_ENABLE_DIRECT_ACCESS 0
@@ -325,7 +450,7 @@ typedef uintptr_t SOCKET;
 #endif
 
 
-#if !defined(_RELEASE) && !defined(NULL_RENDERER) && (defined(WIN32) || defined(WIN64) || defined(DURANGO)) && !defined(OPENGL)
+#if !defined(_RELEASE) && !defined(NULL_RENDERER) && RENDERERDEFS_H_TRAIT_SUPPORT_D3D_DEBUG_RUNTIME && !defined(OPENGL)
 #   define SUPPORT_D3D_DEBUG_RUNTIME
 #endif
 
@@ -407,7 +532,7 @@ typedef interface ID3DXConstTable*  LPD3DXCONSTANTTABLE;
 
 
 
-#if defined(DURANGO) || defined(APPLE) || defined(CRY_USE_DX12)
+#if RENDERERDEFS_H_TRAIT_DEFINE_D3DPOOL || defined(CRY_USE_DX12)
 // D3DPOOL define still used as function parameters, so defined to backwards compatible with D3D9
 typedef enum _D3DPOOL
 {

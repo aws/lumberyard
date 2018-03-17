@@ -236,12 +236,23 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputDeviceKeyboard, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputDeviceKeyboard, "{CFD40F74-81DF-40B1-995B-F7142E6B1259}", InputDevice);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Reflection
+        static void Reflect(AZ::ReflectContext* context);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         InputDeviceKeyboard();
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying
+        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
+        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+    protected:
         AZ_DISABLE_COPY_MOVE(InputDeviceKeyboard);
+    public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor

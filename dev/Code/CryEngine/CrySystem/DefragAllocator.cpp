@@ -673,7 +673,7 @@ void CDefragAllocator::LinkFreeChunk(Index idx)
 
 IDefragAllocator::Hdl CDefragAllocator::Allocate_Locked(size_t sz, size_t alignment, const char* source, void* pContext)
 {
-#if defined(DURANGO) || defined(WIN64)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_BIT64
     CDBA_ASSERT(sz <= (BIT64(NumBuckets)));
 #else
     CDBA_ASSERT(sz <= (BIT(NumBuckets)));
@@ -1076,7 +1076,7 @@ size_t CDefragAllocator::Defrag_FindMovesBwd(PendingMove** pMoves, size_t maxMov
 
                 if (IsMoveableCandidate(candidateChunkAttr, 0xffffffff))
                 {
-#if defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_BIT64
                     size_t candidateChunkAlign = BIT64(candidateChunk.logAlign);
 #else
                     size_t candidateChunkAlign = BIT(candidateChunk.logAlign);
@@ -1162,7 +1162,7 @@ size_t CDefragAllocator::Defrag_FindMovesBwd(PendingMove** pMoves, size_t maxMov
 
                 if (IsMoveableCandidate(candidateChunkAttr, 0xffffffff))
                 {
-#if defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_BIT64
                     size_t candidateChunkAlign = BIT64(candidateChunk.logAlign);
 #else
                     size_t candidateChunkAlign = BIT(candidateChunk.logAlign);
@@ -1273,7 +1273,7 @@ size_t CDefragAllocator::Defrag_FindMovesFwd(PendingMove** pMoves, size_t maxMov
 
             if (IsMoveableCandidate(candidateChunkAttr, 0xffffffff))
             {
-#if defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_BIT64
                 size_t candidateChunkAlign = BIT64(candidateChunk.logAlign);
 #else
                 size_t candidateChunkAlign = BIT(candidateChunk.logAlign);
@@ -1753,7 +1753,7 @@ void CDefragAllocator::SyncMoveSegment(uint32 seg)
             CDBA_ASSERT(!pChunk->attr.IsPinned());
             CDBA_ASSERT(m_policy.pDefragPolicy != NULL);
 
-#if defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_BIT64
             size_t chunkAlign = BIT64(pChunk->logAlign);
 #else
             size_t chunkAlign = BIT(pChunk->logAlign);

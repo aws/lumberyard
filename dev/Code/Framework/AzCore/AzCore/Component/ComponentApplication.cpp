@@ -20,7 +20,6 @@
 
 #include <AzCore/Memory/AllocationRecords.h>
 
-#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/ObjectStream.h>
 
@@ -240,8 +239,6 @@ namespace AZ
         m_isOSAllocatorOwner = false;
         m_memoryBlock = nullptr;
         m_osAllocator = nullptr;
-        m_serializeContext = nullptr;
-        m_behaviorContext = nullptr;
         m_currentTime = AZStd::chrono::system_clock::time_point::max();
         m_drillerManager = nullptr;
 
@@ -345,7 +342,7 @@ namespace AZ
         stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
 
         AZ::Entity* systemEntity = nullptr;
-        ObjectStream::LoadBlocking(&stream, *m_serializeContext, [this, &systemEntity](void* classPtr, const AZ::Uuid& classId, const AZ::SerializeContext* sc) {
+        ObjectStream::LoadBlocking(&stream, *GetSerializeContext(), [this, &systemEntity](void* classPtr, const AZ::Uuid& classId, const AZ::SerializeContext* sc) {
             if (ModuleEntity* moduleEntity = sc->Cast<ModuleEntity*>(classPtr, classId))
             {
                 m_moduleManager->AddModuleEntity(moduleEntity);
@@ -418,13 +415,12 @@ namespace AZ
 
         CreateSystemAllocator();
 
+        CreateReflectionManager();
+
+        // Call this and child class's reflects
+        m_reflectionManager->Reflect(azrtti_typeid(this), AZStd::bind(&ComponentApplication::Reflect, this, AZStd::placeholders::_1));
+
         RegisterCoreComponents();
-
-        CreateSerializeContext();
-        Reflect(m_serializeContext);
-
-        CreateBehaviorContext();
-        Reflect(m_behaviorContext);
 
         ComponentApplicationBus::Handler::BusConnect();
 
@@ -513,8 +509,7 @@ namespace AZ
         m_entities.rehash(0); // force free all memory
 
 
-        DestroyBehaviorContext();
-        DestroySerializeContext();
+        DestroyReflectionManager();
 
         // delete all descriptors left for application clean up
         EBUS_EVENT(ComponentDescriptorBus, ReleaseDescriptor);
@@ -537,11 +532,9 @@ namespace AZ
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
 
+            if (m_memoryBlock != nullptr)
             {
-                if (m_memoryBlock != nullptr)
-                {
-                    m_osAllocator->DeAllocate(m_memoryBlock);
-                }
+                m_osAllocator->DeAllocate(m_memoryBlock);
             }
             m_memoryBlock = nullptr;
             m_isSystemAllocatorOwner = false;
@@ -654,13 +647,9 @@ namespace AZ
     //=========================================================================
     void ComponentApplication::RegisterComponentDescriptor(const ComponentDescriptor* descriptor)
     {
-        // reflect the factory if possible
-        descriptor->Reflect(m_serializeContext);
-
-        // reflect into behaviorContext
-        if (m_behaviorContext)
+        if (m_reflectionManager)
         {
-            descriptor->Reflect(m_behaviorContext);
+            m_reflectionManager->Reflect(descriptor->GetUuid(), AZStd::bind(&ComponentDescriptor::Reflect, descriptor, AZStd::placeholders::_1));
         }
     }
 
@@ -669,21 +658,9 @@ namespace AZ
     //=========================================================================
     void ComponentApplication::UnregisterComponentDescriptor(const ComponentDescriptor* descriptor)
     {
-        if (m_behaviorContext)
+        if (m_reflectionManager)
         {
-            m_behaviorContext->EnableRemoveReflection();
-            descriptor->Reflect(m_behaviorContext);
-            m_behaviorContext->DisableRemoveReflection();
-        }
-
-        if (m_serializeContext)
-        {
-            // \todo: Unreflect from script context: https://issues.labcollab.net/browse/LMBR-17558.
-
-            // Remove all reflected data from this descriptor
-            m_serializeContext->EnableRemoveReflection();
-            descriptor->Reflect(m_serializeContext);
-            m_serializeContext->DisableRemoveReflection();
+            m_reflectionManager->Unreflect(descriptor->GetUuid());
         }
     }
 
@@ -764,45 +741,40 @@ namespace AZ
     }
 
     //=========================================================================
-    // CreateSerializeContext
-    // [5/30/2012]
+    // GetSerializeContext
     //=========================================================================
-    void ComponentApplication::CreateSerializeContext()
+    AZ::SerializeContext* ComponentApplication::GetSerializeContext()
     {
-        if (m_serializeContext == nullptr)
-        {
-            m_serializeContext = aznew SerializeContext;
-        }
+        return m_reflectionManager ? m_reflectionManager->GetReflectContext<SerializeContext>() : nullptr;
     }
 
     //=========================================================================
-    // DestroySerializeContext
-    // [11/9/2012]
+    // GetBehaviorContext
     //=========================================================================
-    void ComponentApplication::DestroySerializeContext()
+    AZ::BehaviorContext* ComponentApplication::GetBehaviorContext()
     {
-        delete m_serializeContext;
-        m_serializeContext = nullptr;
+        return m_reflectionManager ? m_reflectionManager->GetReflectContext<BehaviorContext>() : nullptr;
     }
 
     //=========================================================================
-    // CreateBehaviorContext
+    // CreateReflectionManager
     //=========================================================================
-    void ComponentApplication::CreateBehaviorContext()
+    void ComponentApplication::CreateReflectionManager()
     {
-        if (m_behaviorContext == nullptr)
-        {
-            m_behaviorContext = aznew BehaviorContext;
-        }
+        m_reflectionManager = AZStd::make_unique<ReflectionManager>();
+
+        m_reflectionManager->AddReflectContext<SerializeContext>();
+        m_reflectionManager->AddReflectContext<BehaviorContext>();
     }
 
     //=========================================================================
-    // DestroyBehaviorContext
+    // DestroyReflectionManager
     //=========================================================================
-    void ComponentApplication::DestroyBehaviorContext()
+    void ComponentApplication::DestroyReflectionManager()
     {
-        delete m_behaviorContext;
-        m_behaviorContext = nullptr;
+        // Must clear before resetting so that calls to GetSerializeContext et al will succeed will unreflecting
+        m_reflectionManager->Clear();
+        m_reflectionManager.reset();
     }
 
     //=========================================================================
@@ -873,8 +845,9 @@ namespace AZ
             return false;
         }
 
-        AZ_Assert(m_serializeContext, "ComponentApplication::m_serializeContext is NULL!");
-        ObjectStream* objStream = ObjectStream::Create(fileStream.get(), *m_serializeContext, ObjectStream::ST_XML);
+        SerializeContext* serializeContext = GetSerializeContext();
+        AZ_Assert(serializeContext, "ComponentApplication::m_serializeContext is NULL!");
+        ObjectStream* objStream = ObjectStream::Create(fileStream.get(), *serializeContext, ObjectStream::ST_XML);
         bool descWriteOk = objStream->WriteClass(&m_descriptor);
         AZ_Warning("ComponentApplication", descWriteOk, "Failed to write memory descriptor to application descriptor file %s!", fileName);
         bool entityWriteOk = objStream->WriteClass(systemEntity);
@@ -944,7 +917,7 @@ namespace AZ
             return true;
         }
 
-        const SerializeContext::ClassData* classData = m_serializeContext->FindClassData(descriptor->GetUuid());
+        const SerializeContext::ClassData* classData = GetSerializeContext()->FindClassData(descriptor->GetUuid());
         AZ_Warning("ComponentApplication", classData, "Component type %s not reflected to SerializeContext!", descriptor->GetName());
         if (classData)
         {
@@ -1044,7 +1017,7 @@ namespace AZ
         char exeDirectory[AZ_MAX_PATH_LEN];
 
         // Platform specific get exe path: http://stackoverflow.com/a/1024937
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_GET_MODULE_FILE_NAME
         // https://msdn.microsoft.com/en-us/library/windows/desktop/ms683197(v=vs.85).aspx
         DWORD pathLen = GetModuleFileNameA(nullptr, exeDirectory, AZ_ARRAY_SIZE(exeDirectory));
 #elif defined(AZ_PLATFORM_APPLE)
@@ -1103,7 +1076,7 @@ namespace AZ
 
         bool isFullPath = false;
 
-#if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
         if (nullptr != strstr(fullApplicationDescriptorPath.c_str(), ":"))
         {
             isFullPath = true;
@@ -1187,9 +1160,6 @@ namespace AZ
         SplineReflect(context);
         // reflect polygon prism
         PolygonPrismReflect(context);
-
-        // reflect all registered classes
-        EBUS_EVENT(ComponentDescriptorBus, Reflect, context);
     }
 
 } // namespace AZ

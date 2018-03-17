@@ -17,7 +17,7 @@
 #include "qguiapplication.h"
 #include "qapplication.h"
 #include <QDesktopWidget>
-#include "qpainter.h"
+#include <QPainter>
 #include <QtGlobal>
 #include <qgraphicseffect.h>
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <UI/UICore/QBetterLabel.h>
+#include <AzQtComponents/Components/ExtendedLabel.h>
 #include <AssetBrowser/Search/ui_FilterByWidget.h>
 #include <AzToolsFramework/AssetBrowser/Search/FilterByWidget.h>
 
@@ -22,7 +22,7 @@ namespace AzToolsFramework
             , m_ui(new Ui::FilterByWidgetClass)
         {
             m_ui->setupUi(this);
-            connect(m_ui->m_clearFiltersButton, &QBetterLabel::clicked, this, &FilterByWidget::ClearSignal);
+            connect(m_ui->m_clearFiltersButton, &AzQtComponents::ExtendedLabel::clicked, this, &FilterByWidget::ClearSignal);
             // hide clear button as filters are reset at the startup
             ToggleClearButton(false);
         }

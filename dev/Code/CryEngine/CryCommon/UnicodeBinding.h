@@ -34,12 +34,6 @@
 
 #pragma once
 
-#if (defined(_MSC_VER) && (_MSC_VER >= 1600)) || (__cplusplus >= 201100)
-#define UNICODE_USE_BOOST_TRAITS 0
-#else
-#define UNICODE_USE_BOOST_TRAITS 1
-#endif
-
 #ifndef assert
 // Some tools use CRT's assert, most engine and game modules use CryAssert.h (via platform.h maybe).
 // We don't want to force a choice upon all code that uses Unicode utilities, so we just assume assert is defined.
@@ -55,12 +49,7 @@
 #include <vector>                   // For std::vector.
 #include <list>                     // For std::list.
 #include <deque>                    // For std::deque.
-#if UNICODE_USE_BOOST_TRAITS        // In case C++11 compiler is not being used ...
-#include "BoostHelpers.h"           // ... required before including any boost header.
-#include <boost/type_traits.hpp>    // ... for type traits in C++03 mode.
-#else                               // Otherwise just use ...
 #include <type_traits>              // ... standard type-traits (as of C++11).
-#endif
 
 // Forward declare the supported types.
 // Before actually instantiating a binding however, you need to have the full definition included.
@@ -81,26 +70,6 @@ namespace Unicode
 {
     namespace Detail
     {
-#if UNICODE_USE_BOOST_TRAITS
-        // Import type trait names for C++98 from boost.
-        // This makes it easy to switch to C++11's type traits by replacing "boost" with "std".
-        using boost::add_const;
-        using boost::conditional;
-        using boost::extent;
-        using boost::integral_constant;
-        using boost::is_arithmetic;
-        using boost::is_array;
-        using boost::is_base_of;
-        using boost::is_const;
-        using boost::is_convertible;
-        using boost::is_integral;
-        using boost::is_pointer;
-        using boost::is_same;
-        using boost::make_unsigned;
-        using boost::remove_cv;
-        using boost::remove_extent;
-        using boost::remove_pointer;
-#else
         // Import standard type traits.
         // This requires C++11 compiler support.
         using std::add_const;
@@ -119,7 +88,6 @@ namespace Unicode
         using std::remove_cv;
         using std::remove_extent;
         using std::remove_pointer;
-#endif
 
         // SVoid<T>:
         // Result type will be void if T is well-formed.
@@ -1007,6 +975,3 @@ namespace Unicode
         };
     }
 }
-
-// Clean up macros that are used only in this header.
-#undef UNICODE_USE_BOOST_TRAITS

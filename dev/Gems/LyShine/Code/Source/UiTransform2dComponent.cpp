@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "UiTransform2dComponent.h"
 
 #include <AzCore/Math/Crc.h>
@@ -983,12 +983,14 @@ void UiTransform2dComponent::SetPivotAndAdjustOffsets(AZ::Vector2 pivot)
     // in transformed space.
     if (HasScaleOrRotation())
     {
-        // Get the untransformed canvas space rect
+        // Get the untransformed canvas space points and rect before we change the pivot
         RectPoints oldCanvasSpacePoints;
         GetCanvasSpacePointsNoScaleRotate(oldCanvasSpacePoints);
+        Rect oldCanvasSpaceRect;
+        GetCanvasSpaceRectNoScaleRotate(oldCanvasSpaceRect);
 
         // apply just this elements rotate and scale (must be done before changing pivot)
-        // NOTE: this element's pivot only affects the local transformation so that is no need to apply all the
+        // NOTE: this element's pivot only affects the local transformation so there is no need to apply all the
         // transforms up the hierarchy.
         AZ::Matrix4x4 localTransform;
         GetLocalTransform(localTransform);
@@ -997,32 +999,25 @@ void UiTransform2dComponent::SetPivotAndAdjustOffsets(AZ::Vector2 pivot)
         // Set the new pivot
         SetPivot(pivot);
 
-        // Now the pivot has changed we want to get the inverse local transform which will rotate/scale around new pivot
-        // to get back to a new untransformed canvas space rect - which we can then use to calculate the new offsets.
-        // However we cannot use GetLocalInverseTransform because that works out the canvas space pivot using the
-        // existing untransformed rect. The input pivot point is a ratio between the transformed points.
-        // So this code below is a modification of GetLocalInverseTransform that allows for that.
-        AZ::Matrix4x4 localInverseTransform;
-        {
-            // Get the pivot point using the transformed rect.
-            AZ::Vector2 rightVec = localTransformedPoints.TopRight() - localTransformedPoints.TopLeft();
-            AZ::Vector2 downVec = localTransformedPoints.BottomLeft() - localTransformedPoints.TopLeft();
-            AZ::Vector2 canvasSpacePivot = localTransformedPoints.TopLeft() + pivot.GetX() * rightVec + pivot.GetY() * downVec;
+        // Now work out what the canvas space pivot point would have to be to result in the same transformed points
+        AZ::Vector2 rightVec = localTransformedPoints.TopRight() - localTransformedPoints.TopLeft();
+        AZ::Vector2 downVec = localTransformedPoints.BottomLeft() - localTransformedPoints.TopLeft();
+        AZ::Vector2 canvasSpacePivot = localTransformedPoints.TopLeft() + pivot.GetX() * rightVec + pivot.GetY() * downVec;
 
-            AZ::Vector2 scale = GetScaleAdjustedForDevice();
+        // We know that changing the pivot will not change the size of the canvas space rect, just its position.
+        // So from this new canvas space pivot point work out where the top left of the new canvas space rect would be
+        AZ::Vector2 oldSize = oldCanvasSpaceRect.GetSize();
+        float newLeft = canvasSpacePivot.GetX() - oldSize.GetX() * pivot.GetX();
+        float newTop = canvasSpacePivot.GetY() - oldSize.GetY() * pivot.GetY();
 
-            GetInverseTransform(canvasSpacePivot, scale, m_rotation, localInverseTransform);
-        }
+        // we can then compute how much the rect has moved and just apply that delta to the offsets
+        float deltaX = newLeft - oldCanvasSpaceRect.left;
+        float deltaY = newTop - oldCanvasSpaceRect.top;
 
-        // get the new untransformed canvas space points
-        RectPoints newCanvasSpacePoints = localTransformedPoints.Transform(localInverseTransform);
-
-        // we could work out the offsets using the reverse of the calculation in GetCanvasSpacePointsNoScaleRotate
-        // but is easier to just use the delta between the old untransformed points and the new ones
-        m_offsets.m_left += newCanvasSpacePoints.TopLeft().GetX() - oldCanvasSpacePoints.TopLeft().GetX();
-        m_offsets.m_right += newCanvasSpacePoints.BottomRight().GetX() - oldCanvasSpacePoints.BottomRight().GetX();
-        m_offsets.m_top += newCanvasSpacePoints.TopLeft().GetY() - oldCanvasSpacePoints.TopLeft().GetY();
-        m_offsets.m_bottom += newCanvasSpacePoints.BottomRight().GetY() - oldCanvasSpacePoints.BottomRight().GetY();
+        m_offsets.m_left += deltaX;
+        m_offsets.m_right += deltaX;
+        m_offsets.m_top += deltaY;
+        m_offsets.m_bottom += deltaY;
 
         SetRecomputeTransformFlag();
     }

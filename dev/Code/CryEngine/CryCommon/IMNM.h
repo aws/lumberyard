@@ -167,7 +167,7 @@ namespace MNM
         OffMeshLinkID m_linkID;
     };
 
-    DECLARE_BOOST_POINTERS(OffMeshLink);
+    DECLARE_SMART_POINTERS(OffMeshLink);
 }
 
 #endif // __IMNM_H__

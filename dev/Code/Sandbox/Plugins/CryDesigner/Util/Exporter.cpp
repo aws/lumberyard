@@ -48,7 +48,7 @@ void Exporter::ExportBrushes(const QString& path, CPakFile& pakFile)
 {
     CLogFile::WriteLine("Exporting Brushes...");
 
-    pakFile.RemoveDir(Path::Make(path, BRUSH_SUB_FOLDER).toLatin1().data());
+    pakFile.RemoveDir(Path::Make(path, BRUSH_SUB_FOLDER).toUtf8().data());
 
     QString filename = Path::Make(path, BRUSH_FILE);
     QString brushListFilename = Path::Make(path, BRUSH_LIST_FILE);
@@ -133,7 +133,7 @@ void Exporter::ExportBrushes(const QString& path, CPakFile& pakFile)
         }
     }
 
-    pakFile.RemoveFile(filename.toLatin1().constData());
+    pakFile.RemoveFile(filename.toUtf8().constData());
 
     {
         CCryMemFile brushListFile;
@@ -192,7 +192,7 @@ void Exporter::ExportStatObj(const QString& path, IStatObj* pStatObj, CBaseObjec
             SExportedBrushMaterial mtl;
             mtl.size = sizeof(mtl);
             memset(mtl.material, 0, sizeof(mtl.material));
-            cry_strcpy(mtl.material, pMaterial->GetFullName().toLatin1().data());
+            cry_strcpy(mtl.material, pMaterial->GetFullName().toUtf8().data());
             m_materials.push_back(mtl);
             mtlIndex = m_materials.size() - 1;
             m_mtlMap[pMaterial] = mtlIndex;

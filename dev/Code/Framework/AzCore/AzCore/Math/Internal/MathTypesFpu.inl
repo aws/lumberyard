@@ -23,8 +23,8 @@ namespace AZ
 
     AZ_MATH_FORCE_INLINE bool IsFiniteFloat(float x)
     {
-#if defined(AZ_PLATFORM_ANDROID)
-        // on android cmath undefines isfinite
+#if defined(AZ_PLATFORM_ANDROID) && NDK_REV_MAJOR < 16
+        // Prior to NDK r16 cmath undefines isfinite. NDK r16 (and presumably beyond) __isfinitef was removed in favor of isfinite
         return __isfinitef(x) != 0;
 #else
         return (isfinite(x) != 0);

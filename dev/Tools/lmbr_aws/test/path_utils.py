@@ -71,8 +71,8 @@ def gem_lambda_code_path(gem_name, function_name, *args, **kwargs):
 def gem_lambda_code_test_path(gem_name, function_name, *args, **kwargs):
     return gem_lambda_code_path(gem_name, function_name, 'test', *args, **kwargs)
 
-def gem_common_code_path(gem_name, subdirectory_name, *args, **kwargs):
-    return gem_aws_path(gem_name, 'common-code', subdirectory_name, *args, **kwargs)
+def gem_common_code_path(gem_name, *args, **kwargs):
+    return gem_aws_path(gem_name, 'common-code', *args, **kwargs)
 
 def resource_manager_v1_path(*args, **kwargs):
     kwargs['gem_version_directory'] = 'v1'
@@ -98,132 +98,70 @@ def resource_manager_v1_resource_manager_common_path(*args, **kwargs):
     kwargs['gem_version_directory'] = 'v1'
     return gem_common_code_path('CloudGemFramework', 'ResourceManagerCommon', *args, **kwargs)
 
-class SysPathContext(object):
+# TODO: resolve_imports is duplicated in bootstrap.py. Currently test and test/.. don't know anything
+# about each other. Need to rework how the test PYTHONPATH is constructed and add test\__init__.py
+# to fix this.
+#
+# There is also a simular function in resource_manager\common_code.py, but it works for gems other
+# than CloudGemFramework, which isn't easy or needed here.
+def resolve_imports(framework_common_code_directory_path, target_directory_path, imported_paths = None):
+    '''Determines the paths identified by an .import file in a specified path.
 
-    def __init__(self, inserted_paths, added_modules):
-        self.__inserted_paths = inserted_paths
-        self.__added_modules = added_modules
+    The .import file should contain one import name per line. An import name has
+    the format CloudGemFramework.{common-code-subdirectory-name}.
 
-    @property
-    def inserted_paths(self):
-        return self.__inserted_paths
+    Imports are resolved recursivly in an arbitary order. 
+    
+    Arguments:
 
-    @property
-    def added_modules(self):
-        return self.__added_modules
+        framework_common_code_directory_path: the path to the common-code directory 
+        containing the imported directories.
 
+        target_directory_path: the path that may or may not contain an .import file.
 
-@contextlib.contextmanager
-def sys_path_context(*inserted_paths):
+        imported_paths (optional): a set of paths that have already been imported.
 
-    print('path_utils -- initializing sys path context')
+    Returns a set of full paths to imported directories. All the directories will 
+    have been verified to exist.
 
-    # insert paths into sys.path
+    Raises a HandledError if the .import file contents are malformed, identify a gem
+    that does not exist or is not enabled, or identifies an common-code directory 
+    that does not exist.
+    '''
 
-    __add_paths(inserted_paths)
+    if imported_paths is None:
+        imported_paths = set()
 
-    # we will track names of modules added in this context, the empty
-    # added_modules dict is added to the SysPathContext object below, 
-    # then populated later.
+    imports_file_path = os.path.join(target_directory_path, '.import')
+    if os.path.isfile(imports_file_path):
 
-    original_module_names = set(sys.modules.keys())
-    added_modules = {}
+        with open(imports_file_path, 'r') as imports_file:
+            lines = imports_file.readlines()
 
-    # execute the body of the with statement
+        for line in lines:
 
-    try:
+            # parse the line
+            line = line.strip()
+            parts = line.split('.')
+            if len(parts) != 2 or not parts[0] or not parts[1]:
+                raise RuntimeError('Invalid import "{}" found in {}. Import should have the format <gem-name>.<common-code-subdirectory-name>.'.format(line, imports_file_path))
 
-        yield SysPathContext(inserted_paths, added_modules)
+            gem_name, import_directory_name = parts
 
-    except Exception as e:
+            if gem_name != 'CloudGemFramework':
+                raise RuntimeError('The {} gem is not supported for resource manager imports as requested by {}. Only modules from the CloudGemFramework gem can imported.'.format(gem_name, imports_file_path))
 
-        # include a lot of debugging info if something goes wrong
+            # get the identified common-code subdirectory
 
-        details = '\n'
-        details += '*********************************************************************************************************\n'
+            path = os.path.join(framework_common_code_directory_path, import_directory_name)
+            if not os.path.isdir(path):
+                raise RuntimeError('The {} gem does not provide the {} import as found in {}. The {} directory does not exist.'.format(gem_name, line, imports_file_path, path))
 
-        # system path
+            # add it to the set and recurse
 
-        details += '\n'
-        details += 'System path when {} "{}" occured:\n'.format(type(e), str(e))
-        details += '\n'
-        for path in sys.path:
-            details += '    {}\n'.format(path if path else '(empty)')
+            if path not in imported_paths: # avoid infinte loops and extra work
+                imported_paths.add(path)
+                resolve_imports(framework_common_code_directory_path, path, imported_paths)
 
-        # loaded modules
+    return imported_paths
 
-        details += '\n'
-        details += 'Modules loaded when {} "{}" occured:\n'.format(type(e), str(e))
-        details += '\n'
-        module_names = sys.modules.keys()
-        module_names.sort()
-        for module_name in module_names:
-            module = sys.modules[module_name]
-            details += '     {} from {}\n'.format(module_name, module.__file__ if hasattr(module, '__file__') else '(unkown)')
-
-        # stack trace of origional error
-
-        details += '\n'
-        details += traceback.format_exc()
-
-        details += '\n'
-        details += '*********************************************************************************************************\n'
-        details += '\n'
-
-        raise RuntimeError(details)
-
-    finally:
-
-        # body of with statement has returned...
-
-        # determine which modules were added (these are saved in the SysPathContext object
-        # created above) and remove them from the sys.modules dictionary.
-
-        for module_name, module in sys.modules.iteritems():
-            if module_name not in original_module_names:
-                added_modules[module_name] = module
-
-        print('path_utils -- {} modules were added to the context.'.format(len(added_modules)))
-
-        __remove_modules(added_modules)
-
-        # remove paths from sys.path
-
-        __remove_paths(inserted_paths)
-
-
-def setup_sys_path_context(sys_path_context):
-    print('path_utils -- setup sys path context, restoring {} modules.'.format(len(sys_path_context.added_modules)))
-    __add_paths(sys_path_context.inserted_paths)
-    __add_modules(sys_path_context.added_modules)
-
-
-def teardown_sys_path_context(sys_path_context):
-    print('path_utils -- teardown sys path context, removing {} modules.'.format(len(sys_path_context.added_modules)))
-    __remove_modules(sys_path_context.added_modules)
-    __remove_paths(sys_path_context.inserted_paths)
-
-
-def __add_paths(paths):
-    for path in reversed(paths):
-        print('           -- adding path {}'.format(path))
-        sys.path.insert(0, path)
-
-
-def __remove_paths(paths):
-    for path in paths:
-        print('           -- removing path {}'.format(path))
-        sys.path.remove(path)
-
-
-def __remove_modules(modules):
-    for module_name in modules.keys():
-        if module_name in sys.modules:
-            # for debugging: print('           -- removing module {} {}'.format(module_name, sys.modules[module_name]))
-            del sys.modules[module_name]
-
-
-def __add_modules(modules):
-    for module_name, module in modules.iteritems():
-        # for debugging: print('           -- adding module {} {}'.format(module_name, module))
-        sys.modules[module_name] = module

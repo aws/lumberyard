@@ -142,6 +142,8 @@ AssetCatalogModel::AssetCatalogModel(QObject* parent)
     m_extensionToAssetType.insert(AZStd::make_pair(textureExtensions.replace("*", "").replace(" ", "").toStdString().c_str(), AZStd::vector<AZ::Uuid> { AZ::AzTypeInfo<LmbrCentral::TextureAsset>::Uuid() }));
     QString materialExtensions = LmbrCentral::MaterialAsset::GetFileFilter();
     m_extensionToAssetType.insert(AZStd::make_pair(materialExtensions.replace("*", "").replace(" ", "").toStdString().c_str(), AZStd::vector<AZ::Uuid> { AZ::AzTypeInfo<LmbrCentral::MaterialAsset>::Uuid() }));
+    QString dccMaterialExtensions = LmbrCentral::DccMaterialAsset::GetFileFilter();
+    m_extensionToAssetType.insert(AZStd::make_pair(dccMaterialExtensions.replace("*", "").replace(" ", "").toStdString().c_str(), AZStd::vector<AZ::Uuid> { AZ::AzTypeInfo<LmbrCentral::DccMaterialAsset>::Uuid() }));
 
     AZ::SerializeContext* serializeContext = nullptr;
     EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);

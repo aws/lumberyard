@@ -19,7 +19,7 @@
     #error ENGINE_API should only be defined in this header
 #endif
 
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#if AZ_TRAIT_COMPILER_ENABLE_WINDOWS_DLLS
     #define ENGINE_EXPORT_PUBLIC
     #if defined(ENGINE_EXPORTS)
         #define ENGINE_API __declspec(dllexport)

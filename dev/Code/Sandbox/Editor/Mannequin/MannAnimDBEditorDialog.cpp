@@ -279,7 +279,7 @@ void CMannAnimDBEditorDialog::OnDeleteContext()
     SMiniSubADB* pSelectedSubADB = GetSelectedSubADB();
     if (pSelectedSubADB)
     {
-        m_animDB->DeleteSubADBFilter(string(Path::GetFile(pSelectedSubADB->filename.c_str()).toLatin1().data()));
+        m_animDB->DeleteSubADBFilter(string(Path::GetFile(pSelectedSubADB->filename.c_str()).toUtf8().data()));
         m_model->refresh();
     }
 }

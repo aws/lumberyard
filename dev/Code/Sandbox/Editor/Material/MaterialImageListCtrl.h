@@ -81,7 +81,7 @@ public:
 
 public slots:
     void ModelDataChanged(const QModelIndex& index);
-    void resizeTimeout();
+    void ResizeTimeout();
 protected:
     void OnCreate();
     void OnDestroy();
@@ -139,6 +139,7 @@ public:
     CMaterial* MaterialFromIndex(QModelIndex index) const;
     void* UserDataFromIndex(QModelIndex index) const;
 
+public slots:
     void GenerateImages();
     void GenerateImage(const QModelIndex& index);
 

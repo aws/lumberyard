@@ -279,7 +279,7 @@ struct SShaderAsyncInfo
     }
     static void FlushPendingShaders();
 
-#if defined(DURANGO) || defined(OPENGL)
+#if D3DHWSHADER_H_TRAIT_DEFINE_D3D_BLOB || defined(OPENGL)
 #define LPD3DXBUFFER D3DBlob *
 #define ID3DXBuffer D3DBlob
 #define D3D10CreateBlob D3DCreateBlob
@@ -503,6 +503,7 @@ class CHWShader_D3D
 
         int m_nDataSize;
         int m_DeviceObjectID;
+        AZ::u32 m_uniqueNameCRC = 0; // CRC generated from the pattern: "Technique@EntryPoint(Permutations)"
 #if defined(FEATURE_PER_SHADER_INPUT_LAYOUT_CACHE)
         enum
         {
@@ -634,6 +635,12 @@ class CHWShader_D3D
 
             return false;
         }
+        
+        // CreateInputLayout in D3D11 generates a unique resource depending on the vertex format and the compiled vertex shader.
+        // If an associated vertex shader does not reference certain vertexFormat inputs, then CreateInputLayout can return
+        // a result that will not work for other vertexFormat + vertex shader combinations that do reference the previously unreferenced input.
+        // On some platforms we must generate a CRC for SOnDemandD3DVertexDeclarationCache that is based both on the vertex shader binary and the vertex format layout.
+        AZ::u32 GenerateVertexDeclarationCacheCRC(const AZ::Vertex::Format& vertexFormat);
     };
 
     typedef std::vector<SHWSInstance*> InstContainer;

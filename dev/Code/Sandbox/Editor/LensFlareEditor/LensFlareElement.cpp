@@ -139,7 +139,7 @@ void CLensFlareElement::OnInternalVariableChange(IVariable* pVar)
             ITexture* pTexture = NULL;
             if (!var.isEmpty())
             {
-                pTexture = GetIEditor()->GetRenderer()->EF_LoadTexture(var.toLatin1().data());
+                pTexture = GetIEditor()->GetRenderer()->EF_LoadTexture(var.toUtf8().data());
             }
             pFuncVar->InvokeSetter((void*)pTexture);
             if (pTexture)

@@ -7,7 +7,7 @@
     <ProjectHome />
     <StartupFile>
     </StartupFile>
-    <SearchPath>..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\common-code\ResourceManagerCommon\</SearchPath>
+    <SearchPath>..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\common-code\ResourceManagerCommon\;..\..\common-code\ServiceClient_Python\;..\..\common-code\RequestsAws4Auth\;..\..\common-code\Utils\;.;..\ServiceLambda\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
@@ -22,37 +22,19 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="AccessControlResourceHandler.py" />
-    <Compile Include="CognitoIdentityPoolResourceHandler.py" />
-    <Compile Include="CognitoUserPoolResourceHandler.py" />
     <Compile Include="custom_resource.py" />
-    <Compile Include="custom_resource_response.py" />
-    <Compile Include="EmptyDeploymentResourceHandler.py" />
-    <Compile Include="HelperResourceHandler.py" />
-    <Compile Include="identity_pool.py" />
     <Compile Include="LambdaConfigurationResourceHandler.py" />
-    <Compile Include="patch.py" />
     <Compile Include="plugin\__init__.py" />
-    <Compile Include="properties.py" />
-    <Compile Include="ResourceGroupConfigurationResourceHandler.py" />
     <Compile Include="ResourceHandler.py" />
-    <Compile Include="role_utils.py" />
-    <Compile Include="ServiceApiResourceHandler.py" />
-    <Compile Include="test\mock_properties.py" />
+    <Compile Include="ResourceTypesResourceHandler.py" />
     <Compile Include="test\test_AccessControlResourceHandler.py" />
     <Compile Include="test\test_case.py" />
-    <Compile Include="test\test_custom_resource.py" />
-    <Compile Include="test\test_custom_resource_response.py" />
     <Compile Include="test\test_EmtpyDeploymentResourceHandler.py" />
     <Compile Include="test\test_HelperResourceHandler.py" />
     <Compile Include="test\test_LambdaConfigurationResourceHandler.py" />
-    <Compile Include="test\test_properties.py" />
     <Compile Include="test\test_ResourceGroupConfigurationResourceHandler.py" />
-    <Compile Include="test\test_role_utils.py" />
-    <Compile Include="test\test_unit_patch.py" />
     <Compile Include="test\test_unit_ServiceApiResourceHandler.py" />
     <Compile Include="test\__init__.py" />
-    <Compile Include="user_pool.py" />
     <Compile Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>

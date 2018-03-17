@@ -89,8 +89,22 @@ namespace AZStd
             , m_allocator(allocator)
         {}
 
+        explicit vector(size_type numElements)
+            : m_start(0)
+            , m_last(0)
+            , m_end(0)
+        {
+            if (numElements > 0)
+            {
+                size_type byteSize = sizeof(node_type) * numElements;
+                m_start = reinterpret_cast<pointer>(m_allocator.allocate(byteSize, alignment_of<node_type>::value));
+                m_end = m_start + numElements;
+                Internal::construct<pointer, value_type, AZStd::false_type>::range(m_start, m_end);
+                m_last = m_end;
+            }
+        }
 
-        explicit vector(size_type numElements, const_reference value = value_type())
+        vector(size_type numElements, const_reference value)
             : m_start(0)
             , m_last(0)
             , m_end(0)
@@ -876,17 +890,17 @@ namespace AZStd
                 // Different allocators, move elements
                 for (auto& element : * this)
                 {
-                    temp.push_back(AZStd::move(element));
+                    temp.emplace_back(AZStd::move(element));
                 }
                 clear();
                 for (auto& element : rhs)
                 {
-                    push_back(AZStd::move(element));
+                    emplace_back(AZStd::move(element));
                 }
                 rhs.clear();
                 for (auto& element : temp)
                 {
-                    rhs.push_back(AZStd::move(element));
+                    rhs.emplace_back(AZStd::move(element));
                 }
 #else
                 // Different allocators, use assign.

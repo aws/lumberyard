@@ -33,10 +33,10 @@ namespace AZ
         struct Descriptor
         {
             Descriptor()
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
-                : m_pageSize(m_memoryBlockAlignment)
+#if AZ_TRAIT_OS_USE_HPHASCHEMA_4KPAGESIZE
+                : m_pageSize(4 * 1024)
 #else
-                : m_pageSize(4*1024)
+                : m_pageSize(m_memoryBlockAlignment)
 #endif
                 , m_poolPageSize(4*1024)
                 , m_isPoolAllocations(true)

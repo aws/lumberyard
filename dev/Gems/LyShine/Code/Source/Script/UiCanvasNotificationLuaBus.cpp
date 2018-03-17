@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "UiCanvasNotificationLuaBus.h"
 #include <LyShine/Bus/UiElementBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

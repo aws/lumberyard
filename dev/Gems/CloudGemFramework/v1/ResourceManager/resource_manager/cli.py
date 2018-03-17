@@ -25,8 +25,9 @@ import player_identity
 import profile
 import importer
 import gem
-import constant
+from resource_manager_common import constant
 import security
+import function
 
 from config import ConfigContext
 from errors import HandledError
@@ -96,7 +97,7 @@ def main():
 
             context.initialize(args)
 
-            if args.func != project.update_framework_version:
+            if args.func != project.update_framework_version:                
                 context.config.verify_framework_version()
 
             # Using context_func instead of func to specify the cli command handler
@@ -188,7 +189,9 @@ COMMON_ARG_KEYS = set([
     'aws_directory',
     'user_directory',
     'verbose',
-    'no_prompt'])
+    'no_prompt',
+    'region_override'
+    ])
 
 
 def __add_common_args(parser, no_assume_role = False):
@@ -209,6 +212,7 @@ def __add_bootstrap_args(parser):
     parser.add_argument('--user-directory', help='Location of user cache directory. The default is {root-directory}\Cache\{game}\AWS where {game} is determined by the sys_game_folder setting in the {root-directory}\bootstrap.cfg file.')
     parser.add_argument('--verbose', action='store_true', help='Show additional output when executing commands.')
     parser.add_argument('--no-prompt', action='store_true', help='Special flag set automatically when entering from tests - calls which would raise an option for user input will instead raise an error')
+    parser.add_argument('--region-override', help='An override to manually indicate which region to use in your local-project-setting.json other than the default.')
 
 
 def __add_project_stack_commands(stack_subparser):
@@ -532,11 +536,14 @@ def __add_function_commands(function_subparser):
     subparsers = function_subparser.add_subparsers(dest='subparser_name', metavar='COMMAND')
 
     subparser = subparsers.add_parser('upload-code', aliases=['upload', 'update'], help='Uploads and applies changes made to local resource-template.json files.')
-    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', help='The deployment to update. If not specified the default deployment is updated.')
-    subparser.add_argument('--resource-group', '-r', metavar='GROUP', required = True, help='The name of the resource group to update. If not specified, all the resource groups in the deployment are updated.')
+    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', help='The deployment to update. If not specified the default deployment is updated. Ignored if --project is specified.')
+    group = subparser.add_mutually_exclusive_group(required = True)
+    group.add_argument('--resource-group', '-r', metavar='GROUP', required = False, help='The name of the resource group that defines the function to be updated.')
+    group.add_argument('--project', '-p', required = False, action='store_true', help='Indicates that a project defined is to be updated.')
     subparser.add_argument('--function', '-f', metavar='FUNCTION', help='The name of the lambda function to update. If not specified, all the Lambda functions in the resource group are updated.')
+    subparser.add_argument('--keep', '-k', required = False, action='store_true', help='Keep the generated .zip file instead of deleting it after uploading.')
     __add_common_args(subparser)
-    subparser.set_defaults(func=deployment.upload_lambda_code)
+    subparser.set_defaults(func=function.upload_lambda_code)
 
     subparser = subparsers.add_parser('get-log', help='Retrieves data from a CloudWatch log file.')
     subparser.add_argument('--log-stream-name', '-l', metavar='LOG-STREAM', required=False, help='The log stream name, or part of a log stream mane. If omitted, the most recent log stream will be shown.')
@@ -544,7 +551,7 @@ def __add_function_commands(function_subparser):
     subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='The name of a deployment. If given then --resource-group must also be given. If ommitted, then the function must exist in the project stack.')
     subparser.add_argument('--resource-group', '-r', metavar='RESOURCE-GROUP', required=False, help='The name of a resource group. If given then --deployment must also be given.')
     __add_common_args(subparser)
-    subparser.set_defaults(func=project.get_function_log)
+    subparser.set_defaults(func=function.get_function_log)
 
     subparser = subparsers.add_parser('create-folder',  help='Recreates the default function folder for a lambda function resource.')
     subparser.add_argument('--function', '-f', metavar='FUNCTION', required=True, help='The logical name of a lambda function resource.')
@@ -635,7 +642,7 @@ def __add_deprecated_commands(context, subparsers):
     subparser.add_argument('--resource-group', '-r', metavar='GROUP', required = True, help='The name of the resource group to update. If not specified, all the resource groups in the deployment are updated.')
     subparser.add_argument('--function', metavar='FUNCTION', help='The name of the lambda function to update. If not specified, all the Lambda functions in the resource group are updated.')
     __add_common_args(subparser)
-    subparser.set_defaults(func=deployment.upload_lambda_code)
+    subparser.set_defaults(func=function.upload_lambda_code)
 
     subparser = subparsers.add_parser('update-mappings')
     group = subparser.add_mutually_exclusive_group()
@@ -794,7 +801,7 @@ def __add_deprecated_commands(context, subparsers):
     subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='The name of a deployment. If given then --resource-group must also be given. If ommitted, then the function must exist in the project stack.')
     subparser.add_argument('--resource-group', '-r', metavar='RESOURCE-GROUP', required=False, help='The name of a resource group. If given then --deployment must also be given.')
     __add_common_args(subparser)
-    subparser.set_defaults(func=project.get_function_log)
+    subparser.set_defaults(func=function.get_function_log)
 
 
 def __add_built_in_commands(context, subparsers):

@@ -39,7 +39,6 @@ def build(bld):
         # Platform Specific
         darwin_enable_rtti = True,
 
-
         # Testing
         test_all_file_list = ['editorcommon_test.waf_files'],
     )

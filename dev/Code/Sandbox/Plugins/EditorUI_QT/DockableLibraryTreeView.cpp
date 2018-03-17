@@ -378,7 +378,7 @@ CBaseLibraryItem* DockableLibraryTreeView::AddItem(const QString& nameWithoutLib
 
     ////////////////////////////////////////////////////////////////////////////////////////
     //Validate name.
-    if (manager->FindItemByName(fullName.toUtf8().data()))
+    if (manager->FindItemByName(fullName))
     {
         //NOTE: have to create a local buffer and evaluate the full message here due to calling into another address space to evaluate va_args
         // this prevents passing of random data to the log system ... any plugin that does not do it this way is rolling the dice each time.
@@ -410,7 +410,7 @@ QString DockableLibraryTreeView::AddLibItem(QString path, const bool overrideSaf
     {
         newItemName = newItemName.isEmpty() ? defaultName : newItemName + "." + defaultName;
         QString libName = m_library->GetName();
-        newItemName = m_library->GetManager()->MakeUniqueItemName(newItemName.toUtf8().data(), libName);
+        newItemName = m_library->GetManager()->MakeUniqueItemName(newItemName, libName);
     }
     if (newItemName.isEmpty())
     {
@@ -632,7 +632,7 @@ QString DockableLibraryTreeView::AddLibFolder(QString path, const bool overrideS
     if (!overrideSafety)
     {
         newItemName = newItemName.isEmpty() ? defaultName : newItemName + "." + defaultName;
-        newItemName = m_library->GetManager()->MakeUniqueItemName(newItemName.toUtf8().data(), m_library->GetName());
+        newItemName = m_library->GetManager()->MakeUniqueItemName(newItemName, m_library->GetName());
     }
     if (newItemName.isEmpty())
     {

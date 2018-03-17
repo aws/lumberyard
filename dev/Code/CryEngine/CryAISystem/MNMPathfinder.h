@@ -21,6 +21,7 @@
 #include <AgePriorityQueue.h>
 #include <INavigationSystem.h>
 #include <IPathfinder.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -99,14 +100,21 @@ namespace MNM
                 Completed,
             };
 
-            ProcessingContext(const size_t maxWaySize)
+            ProcessingContext(const size_t maxWaySize = 512)
                 : queryResult(maxWaySize)
                 , status(Invalid)
             {}
 
-            ~ProcessingContext()
+            ProcessingContext(ProcessingContext&& other)
+                : processingRequest(std::move(other.processingRequest))
+                , queryResult(std::move(other.queryResult))
+                , workingSet(std::move(other.workingSet))
+                , status(std::move(other.status))
             {
+                other.jobExecutor.WaitForCompletion();
             }
+
+            ProcessingContext(const ProcessingContext&) = delete;
 
             void Reset()
             {
@@ -115,7 +123,7 @@ namespace MNM
                 workingSet.Reset();
 
                 status = Invalid;
-                jobState = JobManager::SJobState();
+                jobExecutor.Reset();
             }
 
             const char* GetStatusAsString() const
@@ -144,7 +152,7 @@ namespace MNM
             bool pathHasBeenUnmarked;
 
             volatile EProcessingStatus   status;
-            JobManager::SJobState        jobState;
+            AZ::LegacyJobExecutor        jobExecutor;
         };
 
         struct IsProcessingRequestRelatedToQueuedPathId
@@ -170,11 +178,12 @@ namespace MNM
             typedef Pool::const_iterator PoolConstIterator;
             typedef Functor1<ProcessingContext&> ProcessingOperation;
 
-            ProcessingContextsPool(const size_t maxAmountOfTrianglesToCalculateWay = 512)
-                : m_pool(gAIEnv.CVars.MNMPathfinderConcurrentRequests, ProcessingContext(maxAmountOfTrianglesToCalculateWay))
-                , m_maxAmountOfTrianglesToCalculateWay(maxAmountOfTrianglesToCalculateWay)
+            ProcessingContextsPool()
+                : m_pool(gAIEnv.CVars.MNMPathfinderConcurrentRequests)
             {
             }
+
+            ProcessingContextsPool(const ProcessingContextsPool&) = delete;
 
             struct IsProcessCompleted
             {
@@ -260,21 +269,19 @@ namespace MNM
                 PoolIterator element = std::find_if(m_pool.begin(), end, IsProcessRelatedToPathId(requestId));
                 if (element != end)
                 {
-                    gEnv->GetJobManager()->WaitForJob(element->jobState);
+                    element->jobExecutor.WaitForCompletion();
                     element->status = ProcessingContext::Invalid;
                 }
             }
 
             void Reset()
             {
-                m_pool.clear();
-                m_pool.resize(gAIEnv.CVars.MNMPathfinderConcurrentRequests, ProcessingContext(m_maxAmountOfTrianglesToCalculateWay));
+                m_pool = Pool(gAIEnv.CVars.MNMPathfinderConcurrentRequests);
                 std::for_each(m_pool.begin(), m_pool.end(), ResetProcessingContext());
             }
 
         private:
             Pool m_pool;
-            size_t m_maxAmountOfTrianglesToCalculateWay;
         };
 
         struct PathfindingFailedEvent

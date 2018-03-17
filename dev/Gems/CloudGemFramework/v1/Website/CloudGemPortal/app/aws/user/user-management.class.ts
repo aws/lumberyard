@@ -13,6 +13,7 @@ import { ResetPasswordAction } from './action/reset-password.class'
 import { Router } from "@angular/router";
 import { Observable } from 'rxjs/Observable';
 import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+import { LyMetricService, Event } from 'app/shared/service/index';
 
 export enum EnumUserManagementAction {
     REGISTERING,
@@ -40,8 +41,9 @@ export class UserManagement {
 
     private _actions = [];
     private _error: BehaviorSubject<any>;
+    private _identifier = "User Administration"
 
-    constructor(private context: AwsContext, router: Router) {
+    constructor(private context: AwsContext, router: Router, private metric: LyMetricService = null) {
         this._error = new BehaviorSubject<any>(<any>{});
         this._error.subscribe(err => {            
             if (err.code == "CredentialsError") {               
@@ -110,8 +112,31 @@ export class UserManagement {
     }
 
     private execute(transition: EnumUserManagementAction, success_callback: Function, error_callback: Function, ...args: any[]): void {
-        this._actions[transition].handle(success_callback, error_callback, this._error, ...args);
+        
+        this.recordEvent("ApiServiceRequested", {
+            "Identifier": this._identifier ,
+            "Verb": "GET",
+            "Path": EnumUserManagementAction[transition].toString()
+        }, null);
+        this._actions[transition].handle((result) => {
+            this.recordEvent("ApiServiceSuccess", {
+                "Identifier": this._identifier,
+                "Path": EnumUserManagementAction[transition].toString()
+            }, null);
+            success_callback(result)
+        }, (err)=>{
+            this.recordEvent("ApiServiceError", {
+                "Message": err.message,
+                "Identifier": this._identifier,
+                "Path": EnumUserManagementAction[transition].toString()
+            }, null);
+            error_callback(err)
+        }, this._error, ...args);
     }
-    
+
+    public recordEvent(eventName: Event, attribute: { [name: string]: string; } = {}, metric: { [name: string]: number; } = null) {
+        if (this.metric !== null)
+            this.metric.recordEvent(eventName, attribute, metric);
+    }
    
 }

@@ -14,12 +14,14 @@
 #include "ProfilerEditor.h"
 #include <Woodpecker/ProfilerApplication.h>
 
+#if defined(AZ_PLATFORM_WINDOWS)
+#include "resource.h"
+#endif
+
 // Editor.cpp : Defines the entry point for the application.
 
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
-    (void)argc;
-    (void)argv;
     // here we free the console (and close the console window) in release.
 
     int exitCode = 0;
@@ -33,17 +35,15 @@ int _tmain(int argc, _TCHAR* argv[])
         AZStd::unique_ptr<AZ::IO::LocalFileIO> fileIO = AZStd::unique_ptr<AZ::IO::LocalFileIO>(aznew AZ::IO::LocalFileIO());
         AZ::IO::FileIOBase::SetInstance(fileIO.get());
 
-        Driller::Application app;
+        Driller::Application app(argc, argv);
 
-        char procPath[256];
-        char procName[256];
-        DWORD ret = GetModuleFileNameA(NULL, procPath, 256);
-        if (ret > 0)
+        QString procName;
         {
-            ::_splitpath_s(procPath, 0, 0, 0, 0, procName, 256, 0, 0);
+            QCoreApplication qca(argc, argv);
+            procName = QFileInfo(qca.applicationFilePath()).fileName();
         }
 
-        LegacyFramework::ApplicationDesc desc(procName);
+        LegacyFramework::ApplicationDesc desc(procName.toUtf8().data());
         desc.m_applicationModule = NULL;
         desc.m_enableProjectManager = false;
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "LmbrCentralEditor.h"
 #include "LmbrCentralReflectionTest.h"
 #include "Physics/EditorStaticPhysicsComponent.h"

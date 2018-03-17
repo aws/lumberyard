@@ -31,7 +31,6 @@ namespace PhysX
         * @return A smart pointer to the created ShapeConfiguration.
         */
         virtual Physics::Ptr<Physics::ShapeConfiguration> GetShapeConfigFromEntity() = 0;
-
     };
     using PhysXColliderComponentRequestBus = AZ::EBus<PhysXColliderComponentRequests>;
 

@@ -46,8 +46,8 @@ public:
     bool AttachUIInfo(const char* fullCmdName, const CCommand0::SUIInfo& uiInfo);
     bool GetUIInfo(const string& module, const string& name, CCommand0::SUIInfo& uiInfo) const;
     bool GetUIInfo(const string& fullCmdName, CCommand0::SUIInfo& uiInfo) const;
-    string Execute(const string& cmdLine);
-    string Execute(const string& module, const string& name, const CCommand::CArgs& args);
+    QString Execute(const string& cmdLine);
+    QString Execute(const string& module, const string& name, const CCommand::CArgs& args);
     void Execute(int commandId);
     void GetCommandList(std::vector<string>& cmds) const;
     //! Used in the console dialog
@@ -83,7 +83,7 @@ protected:
     static string GetFullCommandName(const string& module, const string& name);
     static void GetArgsFromString(const string& argsTxt, CCommand::CArgs& argList);
     void LogCommand(const string& fullCmdName, const CCommand::CArgs& args) const;
-    string ExecuteAndLogReturn(CCommand* pCommand, const CCommand::CArgs& args);
+    QString ExecuteAndLogReturn(CCommand* pCommand, const CCommand::CArgs& args);
 };
 
 //! A helper class for an automatic command registration

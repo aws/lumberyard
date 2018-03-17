@@ -165,10 +165,8 @@ export class PlayerAccountIndexComponent extends AbstractCloudGemIndexComponent 
             } else {
                 this.listModel = obj.result.Accounts;
             }
-
             this.isLoading = false;
-        }, err => {
-            this.toastr.error(err.message);
+        }, err => {            
             this.isLoading = false;
             this.list();
         })

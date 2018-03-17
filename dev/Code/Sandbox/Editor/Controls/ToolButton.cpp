@@ -38,22 +38,22 @@ QEditorToolButton::~QEditorToolButton()
 
 void QEditorToolButton::SetToolName(const QString& editToolName, const QString& userDataKey, void* userData)
 {
-    IClassDesc* klass = GetIEditor()->GetClassFactory()->FindClass(editToolName.toLatin1().data());
+    IClassDesc* klass = GetIEditor()->GetClassFactory()->FindClass(editToolName.toUtf8().data());
     if (!klass)
     {
-        Warning(QStringLiteral("Editor Tool %1 not registered.").arg(editToolName).toLatin1().data());
+        Warning(QStringLiteral("Editor Tool %1 not registered.").arg(editToolName).toUtf8().data());
         return;
     }
     if (klass->SystemClassID() != ESYSTEM_CLASS_EDITTOOL)
     {
-        Warning(QStringLiteral("Class name %1 is not a valid Edit Tool class.").arg(editToolName).toLatin1().data());
+        Warning(QStringLiteral("Class name %1 is not a valid Edit Tool class.").arg(editToolName).toUtf8().data());
         return;
     }
 
     QScopedPointer<QObject> o(klass->CreateQObject());
     if (!qobject_cast<CEditTool*>(o.data()))
     {
-        Warning(QStringLiteral("Class name %1 is not a valid Edit Tool class.").arg(editToolName).toLatin1().data());
+        Warning(QStringLiteral("Class name %1 is not a valid Edit Tool class.").arg(editToolName).toUtf8().data());
         return;
     }
     SetToolClass(o->metaObject(), userDataKey, userData);
@@ -143,7 +143,7 @@ void QEditorToolButton::OnClicked()
 
         if (m_userData)
         {
-            newTool->SetUserData(m_userDataKey.toLatin1().data(), (void*)m_userData);
+            newTool->SetUserData(m_userDataKey.toUtf8().data(), (void*)m_userData);
         }
 
         update();

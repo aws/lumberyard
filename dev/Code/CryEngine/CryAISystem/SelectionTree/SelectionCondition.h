@@ -98,6 +98,6 @@ private:
     int m_rootID;
 };
 
-DECLARE_BOOST_POINTERS(SelectionCondition)
+DECLARE_SMART_POINTERS(SelectionCondition)
 
 #endif // CRYINCLUDE_CRYAISYSTEM_SELECTIONTREE_SELECTIONCONDITION_H

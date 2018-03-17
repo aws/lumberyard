@@ -59,6 +59,8 @@
             "Components/BehaviorComponent.cpp",
             "Components/ExportingComponent.h",
             "Components/ExportingComponent.cpp",
+            "Components/RCExportingComponent.h",
+            "Components/RCExportingComponent.cpp",
             "Components/LoadingComponent.h",
             "Components/LoadingComponent.cpp",
             "Components/SceneSystemComponent.h",

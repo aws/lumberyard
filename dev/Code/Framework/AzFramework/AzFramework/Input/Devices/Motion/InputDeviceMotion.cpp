@@ -13,6 +13,7 @@
 #include <AzFramework/Input/Devices/Motion/InputDeviceMotion.h>
 
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
@@ -63,6 +64,42 @@ namespace AzFramework
     {{
         Current
     }};
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceMotion::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // Unfortunately it doesn't seem possible to reflect anything through BehaviorContext
+            // using lambdas which capture variables from the enclosing scope. So we are manually
+            // reflecting all input channel names, instead of just iterating over them like this:
+            //
+            //  auto classBuilder = behaviorContext->Class<InputDeviceMotion>();
+            //  for (const InputChannelId& channelId : Acceleration::All)
+            //  {
+            //      const char* channelName = channelId.GetName();
+            //      classBuilder->Constant(channelName, [channelName]() { return channelName; });
+            //  }
+
+            behaviorContext->Class<InputDeviceMotion>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Constant("name", BehaviorConstant(Id.GetName()))
+
+                ->Constant(Acceleration::Gravity.GetName(), BehaviorConstant(Acceleration::Gravity.GetName()))
+                ->Constant(Acceleration::Raw.GetName(), BehaviorConstant(Acceleration::Raw.GetName()))
+                ->Constant(Acceleration::User.GetName(), BehaviorConstant(Acceleration::User.GetName()))
+
+                ->Constant(RotationRate::Raw.GetName(), BehaviorConstant(RotationRate::Raw.GetName()))
+                ->Constant(RotationRate::Unbiased.GetName(), BehaviorConstant(RotationRate::Unbiased.GetName()))
+
+                ->Constant(MagneticField::North.GetName(), BehaviorConstant(MagneticField::North.GetName()))
+                ->Constant(MagneticField::Raw.GetName(), BehaviorConstant(MagneticField::Raw.GetName()))
+                ->Constant(MagneticField::Unbiased.GetName(), BehaviorConstant(MagneticField::Unbiased.GetName()))
+
+                ->Constant(Orientation::Current.GetName(), BehaviorConstant(Orientation::Current.GetName()))
+            ;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceMotion::InputDeviceMotion()

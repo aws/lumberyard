@@ -13,17 +13,17 @@
 #define QColorDescriptorWidget_h__
 
 #include <QWidget>
-#include "qgridlayout.h"
-#include "qpushbutton.h"
-#include "qbrush.h"
-#include "qformlayout.h"
+#include <QGridLayout>
+#include <QPushButton>
+#include <QBrush>
+#include <QFormLayout>
 
 #include "QCollapsePanel.h"
 #include "QWidgetInt.h"
 #include "QHGradientWidget.h"
-#include "qlabel.h"
-#include "qlineedit.h"
-#include "qcombobox.h"
+#include <QLabel>
+#include <QLineEdit>
+#include <QComboBox>
 #include <functional>
 #include <Controls/QToolTipWidget.h>
 #include "../QDirectJumpSlider.h"

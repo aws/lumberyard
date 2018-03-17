@@ -38,7 +38,6 @@
     #define AZ_SIZE_ALIGN(_size, _align)         AZ_SIZE_ALIGN_UP(_size, _align)
 #endif // AZ_SIZE_ALIGN
 
-
 namespace AZ
 {
     /**
@@ -164,7 +163,7 @@ namespace AZ
  * that differ, otherwise you should call directly into functions like strcmp, strstr, etc.
  * If you want guranteed "secure" functions, you should not use those wrappers. In general we recommend using AZStd::string/wstring for manipulating strings.
  */
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
 #   define azsnprintf(_buffer, _size, ...)        _snprintf_s(_buffer, _size, _size-1, __VA_ARGS__)
 #   define azvsnprintf(_buffer, _size, ...)       _vsnprintf_s(_buffer, _size, _size-1, __VA_ARGS__)
 #   define azswnprintf(_buffer, _size, ...)       _snwprintf_s(_buffer, _size, _size-1, __VA_ARGS__)
@@ -183,7 +182,7 @@ namespace AZ
 #else
 #   define azsnprintf       snprintf
 #   define azvsnprintf      vsnprintf
-#   if defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_WII) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
+#   if AZ_TRAIT_COMPILER_DEFINE_AZSWNPRINTF_AS_SWPRINTF
 #       define azswnprintf  swprintf
 #       define azvsnwprintf vswprintf
 #   else
@@ -290,20 +289,20 @@ using std::ptrdiff_t;
  * they have native type equivalent, which should take precedence.
  */
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_INCLUDE_CSTDINT
 #include <cstdint>
 #endif
 
 namespace AZ
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_INCLUDE_CSTDINT
     typedef int8_t    s8;
     typedef uint8_t   u8;
     typedef int16_t   s16;
     typedef uint16_t  u16;
     typedef int32_t   s32;
     typedef uint32_t  u32;
-#   if defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID_X64) // int64_t is long // ACCEPTED_USE
+#   if AZ_TRAIT_COMPILER_INT64_T_IS_LONG // int64_t is long
     typedef signed long long        s64;
     typedef unsigned long long      u64;
 #   else

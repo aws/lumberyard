@@ -10,9 +10,9 @@
 #
 # $Revision: #1 $
 
-import properties
-import custom_resource_response
-from resource_manager_common import aws_utils
+from cgf_utils import properties
+from cgf_utils import custom_resource_response
+from cgf_utils import aws_utils
 from resource_manager_common import constant
 
 def handler(event, context):
@@ -25,11 +25,11 @@ def handler(event, context):
     data = {
         'ConfigurationBucket': props.ConfigurationBucket,
         'ConfigurationKey': '{}/resource-group/{}'.format(props.ConfigurationKey, props.ResourceGroupName),
-        'TemplateURL': 'https://s3.amazonaws.com/{}/{}/resource-group/{}/{}'.format(props.ConfigurationBucket, props.ConfigurationKey, props.ResourceGroupName,constant.GEM_RESOURCE_GROUP_TEMPLATE_FILENAME)
+        'TemplateURL': 'https://s3.amazonaws.com/{}/{}/resource-group/{}/{}'.format(props.ConfigurationBucket, props.ConfigurationKey, props.ResourceGroupName,constant.RESOURCE_GROUP_TEMPLATE_FILENAME)
     }
 
     physical_resource_id = 'CloudCanvas:LambdaConfiguration:{stack_name}:{resource_group_name}'.format(
         stack_name=aws_utils.get_stack_name_from_stack_arn(event['StackId']),
         resource_group_name=props.ResourceGroupName)
 
-    custom_resource_response.succeed(event, context, data, physical_resource_id)
+    return custom_resource_response.success_response(data, physical_resource_id)

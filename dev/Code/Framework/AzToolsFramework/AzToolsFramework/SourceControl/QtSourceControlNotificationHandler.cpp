@@ -10,13 +10,13 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include <AzToolsFramework/SourceControl/QtSourceControlNotificationHandler.h>
 #include <AzCore/std/string/string.h>
 
-#include <QMessageBox.h>
-#include <QMetaObject.h>
+#include <QMessageBox>
+#include <QMetaObject>
 
 namespace AzToolsFramework
 {

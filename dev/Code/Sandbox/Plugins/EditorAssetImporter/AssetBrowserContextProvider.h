@@ -28,7 +28,7 @@ namespace AzToolsFramework
 namespace AZ
 {
     class AssetBrowserContextProvider
-        : public AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+        : public AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     {
     public:
         AssetBrowserContextProvider();

@@ -8,7 +8,7 @@
  * remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "LmbrCentral.h"
 
 #if !defined(AZ_MONOLITHIC_BUILD)
@@ -328,6 +328,7 @@ namespace LmbrCentral
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<LensFlareAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MaterialAsset>::Uuid());
+            assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<DccMaterialAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<MeshAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<CharacterDefinitionAsset>::Uuid());
             assetCatalog->EnableCatalogForAsset(AZ::AzTypeInfo<GeomCacheAsset>::Uuid());
@@ -341,6 +342,7 @@ namespace LmbrCentral
             assetCatalog->AddExtension("caf");
             assetCatalog->AddExtension("xml");
             assetCatalog->AddExtension("mtl");
+            assetCatalog->AddExtension("dccmtl");
             assetCatalog->AddExtension("lua");
             assetCatalog->AddExtension("sprite");
             assetCatalog->AddExtension("cax");
@@ -379,6 +381,10 @@ namespace LmbrCentral
         auto materialAssetTypeInfo = aznew MaterialAssetTypeInfo();
         materialAssetTypeInfo->Register();
         m_unhandledAssetInfo.emplace_back(materialAssetTypeInfo);
+        // DCC Material
+        auto dccMaterialAssetTypeInfo = aznew DccMaterialAssetTypeInfo();
+        dccMaterialAssetTypeInfo->Register();
+        m_unhandledAssetInfo.emplace_back(dccMaterialAssetTypeInfo);
         // Other
         auto audioAssetTypeInfo = aznew AudioAssetTypeInfo();
         audioAssetTypeInfo->Register();

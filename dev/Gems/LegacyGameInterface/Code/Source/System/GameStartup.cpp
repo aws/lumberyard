@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LegacyGameInterface_precompiled.h"
 #include "GameStartup.h"
 #include "Core/LegacyGame.h"
 #include "Core/EditorGame.h"

@@ -18,15 +18,16 @@ def build(bld):
         vs_filter                   = 'Tools',
         file_list                   = ['woodpecker.waf_files','lua_ide.waf_files'],
         win_file_list               = 'lua_ide_win.waf_files',
-        platforms                   = ['win'],
+        platforms                   = ['win', 'darwin'],
         configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
         disable_pch                 = True,
-        features                    = ['qt5','generate_rc_file'],
+        features                    = ['qt5','generate_rc_file', 'ExternalLyIdentity', 'ExternalLyMetrics'],
+        includes                    = ['./Woodpecker/Editor', './Woodpecker/LUA'],
         use                         = ['AzCore',
                                        'AzFramework',
                                        'AzToolsFramework',
                                        'GridMateForTools',
-                                       'ToolsCrashHandler'],
+                                       'ToolsCrashHandler'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
         uselib                      = ['QTANGLE',
                                        'QTMAIN',
                                        'QT5CORE',
@@ -40,14 +41,16 @@ def build(bld):
         defines                     = [ 'UNICODE', 'WOODPECKER_ENABLE_LUA_IDE' ],
         copy_dependent_files        = [ 'Bin64/d3dcompiler_47.dll'],
         # Platform Specific
-        win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
-        win_includes            = ['./Woodpecker/Editor',],
         win_cxxflags            = [
             '/W4', # warning level
         ],
         win_lib                 = [ 'shell32' ],
+        darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
+                                    'AWS_CPP_SDK_COGNITO_IDENTITY',
+                                    'AWS_CPP_SDK_MOBILEANALYTICS',
+                                    'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
 
-        darwin_rpath            = ['@executable_path/../Bin64/qtlibs/Frameworks'],
+        darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworkpath    = [bld.CreateRootRelativePath('Code/Sandbox/SDKs/Qt/lib')],
         darwin_cxxflags         = [
             '-Werror',  # warnings as errors
@@ -62,15 +65,20 @@ def build(bld):
         vs_filter                   = 'Tools',
         file_list                   = ['woodpecker.waf_files','profiler.waf_files'],
         win_file_list               = 'profiler_win.waf_files',
-        platforms                   = ['win'],
+        platforms                   = ['win', 'darwin'],
         configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
         disable_pch                 = True,
         copy_dependent_files        = [ bld.Path('Bin64/d3dcompiler_47.dll')],
-        features                    = ['qt5','generate_rc_file'],
+        features                    = ['qt5','generate_rc_file', 'ExternalLyIdentity', 'ExternalLyMetrics'],
+        includes                    = ['./Woodpecker/Editor',
+                                       './Woodpecker/Driller',
+                                       './Woodpecker/Driller/Carrier',
+                                       './Woodpecker/Driller/Profiler',
+                                       './WoodPecker/Driller/IO'],
         use                         = ['AzCore',
                                        'AzFramework',
                                        'AzToolsFramework',
-                                       'GridMateForTools'],
+                                       'GridMateForTools'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
         uselib                      = ['QTANGLE',
                                        'QTMAIN',
                                        'QT5CORE',
@@ -83,12 +91,14 @@ def build(bld):
         defines                 = [ 'UNICODE', 'WOODPECKER_ENABLE_PROFILER' ],
 
         # Platform Specific
-        win_use                 = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
-        win_includes            = ['./Woodpecker/Editor',],
         win_cxxflags = [
             '/W4', # warning level
             ],
-        darwin_rpath            = ['@executable_path/../BinMac64/qtlibs_mac/Frameworks' ],
+        darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
+                                    'AWS_CPP_SDK_COGNITO_IDENTITY',
+                                    'AWS_CPP_SDK_MOBILEANALYTICS',
+                                    'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
+        darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworkpath    = [bld.CreateRootRelativePath('Code/Sandbox/SDKs/Qt/lib')],
         darwin_cxxflags = [
             '-Werror', # warnings as errors

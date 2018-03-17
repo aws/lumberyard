@@ -32,7 +32,7 @@ ThumbnailsSampleWidget::ThumbnailsSampleWidget(QWidget* parent)
     m_ui->m_searchWidget->Setup(true, true);
 
     using namespace AzToolsFramework::AssetBrowser;
-    AssetBrowserComponentRequestsBus::BroadcastResult(m_assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
+    AssetBrowserComponentRequestBus::BroadcastResult(m_assetBrowserModel, &AssetBrowserComponentRequests::GetAssetBrowserModel);
     AZ_Assert(m_assetBrowserModel, "Failed to get filebrowser model");
     m_filterModel->setSourceModel(m_assetBrowserModel);
     m_filterModel->SetFilter(m_ui->m_searchWidget->GetFilter());

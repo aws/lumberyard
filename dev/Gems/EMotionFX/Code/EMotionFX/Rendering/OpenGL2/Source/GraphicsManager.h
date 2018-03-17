@@ -18,7 +18,7 @@
 #include <MCore/Source/Color.h>
 #include "RenderGLConfig.h"
 #include "../../Common/Camera.h"
-#include "ShaderCache.h"
+#include "shadercache.h"
 #include "TextureCache.h"
 #include "GLRenderUtil.h"
 #include "GBuffer.h"

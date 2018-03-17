@@ -122,6 +122,14 @@ ActionManager::ActionWrapper& ActionManager::ActionWrapper::SetMetricsIdentifier
     return SetMetricsIdentifier(QString("%1%2").arg(group).arg(metricsIdentifier));
 }
 
+ActionManager::ActionWrapper& ActionManager::ActionWrapper::SetApplyHoverEffect()
+{
+    // Our standard toolbar icons, when hovered on, get a white color effect.
+    // But for this to work we need .pngs that look good with this effect, so this only works with the standard toolbars
+    // and looks very ugly for other toolbars, including toolbars loaded from XML (which just show a white rectangle)
+    m_action->setProperty("IconHasHoverEffect", true);
+    return *this;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // DynamicMenu
@@ -498,4 +506,4 @@ QWidget* WidgetAction::createWidget(QWidget* parent)
     return w;
 }
 
-#include <Actionmanager.moc>
+#include <ActionManager.moc>

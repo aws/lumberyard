@@ -24,6 +24,7 @@ public:
     friend class GTEST_TEST_CLASS_NAME_(JobModelUnitTests, Test_RemoveMiddleJob);
     friend class GTEST_TEST_CLASS_NAME_(JobModelUnitTests, Test_RemoveFirstJob);
     friend class GTEST_TEST_CLASS_NAME_(JobModelUnitTests, Test_RemoveLastJob);
+    friend class GTEST_TEST_CLASS_NAME_(JobModelUnitTests, Test_RemoveAllJobsBySource);
     friend class JobModelUnitTests;
 };
 

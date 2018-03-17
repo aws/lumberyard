@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "OSVR_precompiled.h"
 #include "OSVRDevice.h"
 
 #include <IRenderer.h>

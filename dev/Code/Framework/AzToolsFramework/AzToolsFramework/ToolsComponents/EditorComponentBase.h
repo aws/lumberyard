@@ -25,7 +25,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Math/Crc.h>
-#include <AzCore/Math/transform.h>
+#include <AzCore/Math/Transform.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/Entity.h>

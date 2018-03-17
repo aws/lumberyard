@@ -35,13 +35,15 @@ namespace Driller
         AZ_RTTI(ProfilerDataAggregatorSavedState, "{98494FFE-783F-48A7-A35F-714138425640}", AZ::UserSettings);
         AZ_CLASS_ALLOCATOR(ProfilerDataAggregatorSavedState, AZ::SystemAllocator, 0);
 
-        typedef struct
+        struct RegisterOfInterest
         {
             AZ_RTTI(RegisterOfInterest, "{885335FD-79D1-4462-B637-177FC0FCF01C}");
             AZStd::string m_name;
             float m_dataScale;
             int m_usesDelta;
             int m_useSubValue;
+
+            virtual ~RegisterOfInterest() {}
 
             static void Reflect(AZ::ReflectContext* context)
             {
@@ -56,7 +58,7 @@ namespace Driller
                         ->Version(3);
                 }
             }
-        } RegisterOfInterest;
+        };
 
         int m_activeViewCount;
 
@@ -140,7 +142,7 @@ namespace Driller
         if (!m_persistentState->m_registersOfInterest.empty())
         {
             m_allRegistersOfInterestInData.resize(m_persistentState->m_registersOfInterest.size(), NULL);
-            m_allCorrespondingIdsForRegistersOfInterestInData.resize(m_persistentState->m_registersOfInterest.size(), NULL);
+            m_allCorrespondingIdsForRegistersOfInterestInData.resize(m_persistentState->m_registersOfInterest.size(), 0);
         }
     }
 
@@ -387,7 +389,7 @@ namespace Driller
                     registerName = reg->GetInfo().m_name;
                 }
 
-                if (!_stricmp(registerName.data(), m_persistentState->m_registersOfInterest[idx].m_name.data()))
+                if (!qstricmp(registerName.data(), m_persistentState->m_registersOfInterest[idx].m_name.data()))
                 {
                     m_allRegistersOfInterestInData[idx] = reg;
                     m_allCorrespondingIdsForRegistersOfInterestInData[idx] = reg->GetInfo().m_id;

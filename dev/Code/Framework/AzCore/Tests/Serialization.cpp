@@ -4670,7 +4670,7 @@ namespace UnitTest
         void SetUp() override
         {
             Serialization::SetUp();
-			m_prevFileIO = AZ::IO::FileIOBase::GetInstance();
+            m_prevFileIO = AZ::IO::FileIOBase::GetInstance();
             AZ::IO::FileIOBase::SetInstance(&m_fileIO);
             
             BaseRtti::Reflect(*m_serializeContext);
@@ -4678,7 +4678,7 @@ namespace UnitTest
 
         void TearDown() override
         {
-			AZ::IO::FileIOBase::SetInstance(m_prevFileIO);
+            AZ::IO::FileIOBase::SetInstance(m_prevFileIO);
             Serialization::TearDown();
         }
 
@@ -4778,8 +4778,8 @@ namespace UnitTest
             EXPECT_EQ( nullptr, deserialized );
         }
 
-		TestFileIOBase m_fileIO;
-		AZ::IO::FileIOBase* m_prevFileIO;
+        TestFileIOBase m_fileIO;
+        AZ::IO::FileIOBase* m_prevFileIO;
     };
 
     TEST_F(SerializationFileUtil, TestFileUtilsStream_XML)
@@ -5337,6 +5337,14 @@ namespace UnitTest
             AZStd::unordered_set<AZ::Entity*> m_entitySet;
         };
 
+        struct UnorderedMapContainerTest
+        {
+            AZ_CLASS_ALLOCATOR(UnorderedMapContainerTest, AZ::SystemAllocator, 0);
+            AZ_TYPE_INFO(UnorderedMapContainerTest, "{744ADFE1-4BFF-4F3F-8ED0-EA1BDC4A0D2F}");
+
+            AZStd::unordered_map<AZStd::string, int> m_stringIntMap;
+        };
+
         void SetUp() override
         {
             AllocatorsFixture::SetUp();
@@ -5358,7 +5366,7 @@ namespace UnitTest
                 
                 AZ::SerializeContext::DataElementNode& entityElement = rootElement.GetSubElement(entityIndex);
                 AZ::Entity newEntity;
-                EXPECT_TRUE(entityElement.GetDataHierarchy(sc, newEntity));
+                EXPECT_TRUE(entityElement.GetData(newEntity));
                 EXPECT_EQ(AZ::EntityId(21434), newEntity.GetId());
 
                 AZStd::vector<AZ::u8> newEntityBuffer;
@@ -5396,7 +5404,7 @@ namespace UnitTest
                 EXPECT_EQ(-1, addedVectorIndex);
                 
                 ContainerTest containerTest;
-                EXPECT_TRUE(rootElement.GetDataHierarchy(sc, containerTest));
+                EXPECT_TRUE(rootElement.GetData(containerTest));
 
                 EXPECT_TRUE(containerTest.m_removedSet.empty());
                 EXPECT_TRUE(containerTest.m_addedVector.empty());
@@ -5426,7 +5434,7 @@ namespace UnitTest
                 
 
                 ContainerTest containerTest2;
-                EXPECT_TRUE(rootElement.GetDataHierarchy(sc, containerTest2));
+                EXPECT_TRUE(rootElement.GetData(containerTest2));
                 EXPECT_TRUE(containerTest2.m_removedSet.empty());
                 EXPECT_EQ(3, containerTest2.m_addedVector.size());
                 EXPECT_EQ(1, containerTest2.m_changedVector.size());
@@ -5441,7 +5449,7 @@ namespace UnitTest
             return true;
         }
 
-        static bool ContainerOfEntitiesVersionConverter(AZ::SerializeContext& sc, AZ::SerializeContext::DataElementNode& rootElement)
+        static bool ContainerOfEntitiesVersionConverter(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode& rootElement)
         {
             if (rootElement.GetVersion() == 0)
             {
@@ -5450,13 +5458,41 @@ namespace UnitTest
 
                 AZ::SerializeContext::DataElementNode& entityContainerElement = rootElement.GetSubElement(entityContainerIndex);
                 AZStd::unordered_set<AZ::Entity*> newContainerEntities;
-                EXPECT_TRUE(entityContainerElement.GetDataHierarchy(sc, newContainerEntities));
+                EXPECT_TRUE(entityContainerElement.GetData(newContainerEntities));
                 for (AZ::Entity* entity : newContainerEntities)
                 {
                     delete entity;
                 }
             }
 
+            return true;
+        }
+
+        static bool StringIntMapVersionConverter(AZ::SerializeContext& sc, AZ::SerializeContext::DataElementNode& rootElement)
+        {
+            if (rootElement.GetVersion() == 0)
+            {
+                int stringIntMapIndex = rootElement.FindElement(AZ_CRC("m_stringIntMap"));
+                EXPECT_NE(-1, stringIntMapIndex);
+
+                UnorderedMapContainerTest containerTest;
+                EXPECT_TRUE(rootElement.GetDataHierarchy(sc, containerTest));
+
+                EXPECT_EQ(4, containerTest.m_stringIntMap.size());
+                auto foundIt = containerTest.m_stringIntMap.find("Source");
+                EXPECT_NE(foundIt, containerTest.m_stringIntMap.end());
+                EXPECT_EQ(0, foundIt->second);
+                foundIt = containerTest.m_stringIntMap.find("Target");
+                EXPECT_NE(containerTest.m_stringIntMap.end(), foundIt);
+                EXPECT_EQ(2, foundIt->second);
+                foundIt = containerTest.m_stringIntMap.find("In");
+                EXPECT_NE(containerTest.m_stringIntMap.end(), foundIt);
+                EXPECT_EQ(1, foundIt->second);
+                foundIt = containerTest.m_stringIntMap.find("Out");
+                EXPECT_NE(containerTest.m_stringIntMap.end(), foundIt);
+                EXPECT_EQ(4, foundIt->second);
+
+            }
             return true;
         }
     
@@ -5630,6 +5666,44 @@ namespace UnitTest
                     delete entity;
                 }
             }
+        }
+    }
+
+    TEST_F(SerializeDataElementNodeTreeTest, UnorderedMapContainerElementTest)
+    {
+        UnorderedMapContainerTest containerTest;
+        containerTest.m_stringIntMap.emplace("Source", 0);
+        containerTest.m_stringIntMap.emplace("Target", 2);
+        containerTest.m_stringIntMap.emplace("In", 1);
+        containerTest.m_stringIntMap.emplace("Out", 4);
+
+        // Write original data
+        AZStd::vector<AZ::u8> binaryBuffer;
+        {
+            AZ::SerializeContext sc;
+            sc.Class<UnorderedMapContainerTest>()
+                ->Version(0)
+                ->Field("m_stringIntMap", &UnorderedMapContainerTest::m_stringIntMap);
+
+            // Binary
+            AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> binaryStream(&binaryBuffer);
+            AZ::ObjectStream* binaryObjStream = ObjectStream::Create(&binaryStream, sc, ObjectStream::ST_BINARY);
+            binaryObjStream->WriteClass(&containerTest);
+            EXPECT_TRUE(binaryObjStream->Finalize());
+        }
+
+        // Test container version converter
+        {
+            UnorderedMapContainerTest loadedContainer;
+            AZ::SerializeContext sc;
+            sc.Class<UnorderedMapContainerTest>()
+                ->Version(1, &StringIntMapVersionConverter)
+                ->Field("m_stringIntMap", &UnorderedMapContainerTest::m_stringIntMap);
+
+            // Binary
+            IO::ByteContainerStream<const AZStd::vector<AZ::u8> > binaryStream(&binaryBuffer);
+            binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+            EXPECT_TRUE(Utils::LoadObjectFromStreamInPlace(binaryStream, loadedContainer, &sc));
         }
     }
 
@@ -6186,7 +6260,8 @@ namespace UnitTest
 
             AZ::IO::MemoryStream versionMaxStream(versionMaxStringXml.data(), versionMaxStringXml.size());
             AZ_TEST_START_ASSERTTEST;
-            AZ::Utils::LoadObjectFromStreamInPlace(versionMaxStream, loadString, m_serializeContext.get());
+            bool result = AZ::Utils::LoadObjectFromStreamInPlace(versionMaxStream, loadString, m_serializeContext.get());
+            EXPECT_FALSE(result);
             AZ_TEST_STOP_ASSERTTEST(1);
             EXPECT_EQ("", loadString);
         }
@@ -6208,7 +6283,8 @@ namespace UnitTest
 
             AZ::IO::MemoryStream versionMaxStream(versionMaxStringJson.data(), versionMaxStringJson.size());
             AZ_TEST_START_ASSERTTEST;
-            AZ::Utils::LoadObjectFromStreamInPlace(versionMaxStream, loadString, m_serializeContext.get());
+            bool result = AZ::Utils::LoadObjectFromStreamInPlace(versionMaxStream, loadString, m_serializeContext.get());
+            EXPECT_FALSE(result);
             AZ_TEST_STOP_ASSERTTEST(1);
             EXPECT_EQ("", loadString);
         }
@@ -6223,7 +6299,8 @@ namespace UnitTest
 
             binaryStream.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
             AZ_TEST_START_ASSERTTEST;
-            AZ::Utils::LoadObjectFromStreamInPlace(binaryStream, loadString, m_serializeContext.get());
+            bool result = AZ::Utils::LoadObjectFromStreamInPlace(binaryStream, loadString, m_serializeContext.get());
+            EXPECT_FALSE(result);
             AZ_TEST_STOP_ASSERTTEST(1);
             EXPECT_EQ("", loadString);
         }
@@ -7016,6 +7093,59 @@ namespace UnitTest
         EXPECT_TRUE(AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadedArray, m_serializeContext.get()));
     }
 
+    struct VectorTest
+    {
+        AZ_RTTI(VectorTest, "{2BE9FC5C-14A6-49A7-9A2C-79F6C2F27221}");
+        virtual ~VectorTest() = default;
+        AZStd::vector<int> m_vec;
+
+        static bool Convert(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            AZStd::vector<int> vec;
+            AZ::SerializeContext::DataElementNode* vecElement = classElement.FindSubElement(AZ_CRC("m_vec"));
+            EXPECT_TRUE(vecElement != nullptr);
+            bool gotData = vecElement->GetData(vec);
+            EXPECT_TRUE(gotData);
+            vec.push_back(42);
+            bool setData = vecElement->SetData(context, vec);
+            EXPECT_TRUE(setData);
+            return true;
+        }
+    };
+
+    TEST_F(Serialization, ConvertVectorContainer)
+    {
+        // Reflect version 1
+        m_serializeContext->Class<VectorTest>()
+            ->Version(1)
+            ->Field("m_vec", &VectorTest::m_vec);
+
+        VectorTest test;
+        test.m_vec.push_back(1024);
+
+        // write test to an XML buffer
+        AZStd::vector<char> byteBuffer;
+        IO::ByteContainerStream<AZStd::vector<char> > byteStream(&byteBuffer);
+        ObjectStream* byteObjStream = ObjectStream::Create(&byteStream, *m_serializeContext, ObjectStream::ST_XML);
+        byteObjStream->WriteClass(&test);
+        byteObjStream->Finalize();
+
+        // Update the version to 2 and add the converter
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<VectorTest>();
+        m_serializeContext->DisableRemoveReflection();
+        m_serializeContext->Class<VectorTest>()
+            ->Version(2, &VectorTest::Convert)
+            ->Field("m_vec", &VectorTest::m_vec);
+
+        // Reset for read
+        byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+        test = VectorTest{};
+        AZ::Utils::LoadObjectFromStreamInPlace(byteStream, test, m_serializeContext.get());
+        EXPECT_EQ(2, test.m_vec.size());
+    }
+    
     //class AssetSerializationTest : public SerializeTest
     //{
     //public:

@@ -18,7 +18,7 @@
 #include <QMenuBar>
 #include <qfiledialog.h>
 #include <QMessageBox>
-#include <qshortcut.h>
+#include <QShortcut>
 #include <qxmlstream.h>
 
 //Editor
@@ -32,7 +32,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzCore/Component/Entity.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
-#include <AzCore/EBus/ebus.h>
+#include <AzCore/EBus/EBus.h>
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
@@ -105,6 +105,7 @@ CMainWindow::CMainWindow()
     , m_preset(nullptr)
     , m_stylesheetPreprocessor(new AzQtComponents::StylesheetPreprocessor(this))
     , m_needLibraryRefresh(false)
+    , m_requireLayoutReload(false)
 {
     setWindowTitle(tr("Particle Editor"));
 
@@ -233,17 +234,17 @@ void CMainWindow::CreateMenuBar()
     }
 
     // File Menu
-    m_fileMenu = new QMenu(tr("File"), this);
+    m_fileMenu = new QMenu(tr("File"));
     connect(m_fileMenu, &QMenu::aboutToShow, this, &CMainWindow::File_PopulateMenu);
     m_menuBar->addMenu(m_fileMenu);
 
     // Edit Menu
-    m_editMenu = new QMenu(tr("Edit"), this);
+    m_editMenu = new QMenu(tr("Edit"));
     connect(m_editMenu, &QMenu::aboutToShow, this, &CMainWindow::Edit_PopulateMenu);
     m_menuBar->addMenu(m_editMenu);
 
     // View Menu
-    m_viewMenu = new QMenu(tr("View"), this);
+    m_viewMenu = new QMenu(tr("View"));
     connect(m_viewMenu, &QMenu::aboutToShow, this, &CMainWindow::View_PopulateMenu);
     m_menuBar->addMenu(m_viewMenu);
 
@@ -306,7 +307,7 @@ void CMainWindow::OnEditorNotifyEvent(EEditorNotifyEvent e)
             {
                 CRY_ASSERT(GetIEditor());
                 m_RequestedClose = false;
-                bool userDidNotCancelClose = OnWindowCloseCheck();
+                bool userDidNotCancelClose = OnCloseWindowCheck();
                 if (userDidNotCancelClose)
                 {
                     CleanupOnClose();
@@ -950,7 +951,10 @@ void CMainWindow::RefreshLibraries()
 
 void CMainWindow::closeEvent(QCloseEvent* event)
 {
-    bool userDidNotCancelClose = OnWindowCloseCheck();
+    // NOTE: this event must be handled here and now, without being queued.
+    // Otherwise, when the user closes the LY Editor, the Particle Editor will block everything closing.
+
+    bool userDidNotCancelClose = OnCloseWindowCheck();
     if (userDidNotCancelClose)
     {
         CleanupOnClose();
@@ -964,6 +968,13 @@ void CMainWindow::closeEvent(QCloseEvent* event)
 
 void CMainWindow::showEvent(QShowEvent * event)
 {
+    if (m_requireLayoutReload)
+    {
+        StateLoad();
+        StateLoad_layoutMenu();
+        m_requireLayoutReload = false;
+    }
+
     RefreshLibraries();
 }
 
@@ -971,12 +982,20 @@ void CMainWindow::CleanupOnClose()
 {
     StateSave();
     StateSave_layoutMenu();
+
+    QList<QDockWidget*> dockWidgets = findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly);
+    for (int i = 0; i < dockWidgets.size(); ++i)
+    {
+        dockWidgets[i]->hide();
+    }
+    m_requireLayoutReload = true;
+
     m_undoManager->Reset();
     m_RequestedClose = false;
 }
 
 
-bool CMainWindow::OnWindowCloseCheck()
+bool CMainWindow::OnCloseWindowCheck()
 {
     QString unsavedLibraries = tr("Libraries with unsaved changes: \n");
     bool needToWarn = false;
@@ -993,20 +1012,24 @@ bool CMainWindow::OnWindowCloseCheck()
             unsavedLibraries.append(lib->GetName() + tr("\n"));
         }
     }
+
+    bool canClose = false;
+
     if (needToWarn)
     {
         QMessageBox dlg(QMessageBox::Warning, tr("Warning"), tr("There are unsaved libraries, these will be lost upon exiting the editor.\n") + unsavedLibraries,
             QMessageBox::Close | QMessageBox::Cancel, this);
         if (dlg.exec() == QMessageBox::Button::Close)
         {
-            return true;
+            canClose = true;
         }
     }
     else
     {
-        return true;
+        canClose = true;
     }
-    return false;
+    
+    return canClose;
 }
 
 
@@ -1416,7 +1439,7 @@ void CMainWindow::OnItemUndoPoint(const QString& itemFullName, bool selected, SL
     }
 
     //all particle item's attribute changes will landed here and need to be saved for undo
-    CParticleItem* item = static_cast<CParticleItem*>(GetIEditor()->GetParticleManager()->FindItemByName(itemFullName.toUtf8().data()));
+    CParticleItem* item = static_cast<CParticleItem*>(GetIEditor()->GetParticleManager()->FindItemByName(itemFullName));
     if (item)
     {
         int lodIdx = item->GetEffect()->GetLevelOfDetailIndex(lod);
@@ -1662,9 +1685,6 @@ void CMainWindow::UpdatePalette()
         QColorEyeDropper* cedp = UIFactory::GetColorEyeDropper();
         cedp->setStyleSheet(processedStyle);
 
-        m_fileMenu->setStyleSheet(processedStyle);
-        m_editMenu->setStyleSheet(processedStyle);
-        m_viewMenu->setStyleSheet(processedStyle);
         m_attributeViewDock->setStyleSheet(processedStyle);
         m_attributeViewDock->UpdateColors(m_StyleColors);
         m_previewDock->setStyleSheet(processedStyle);
@@ -1686,7 +1706,7 @@ QString CMainWindow::ProcessStyleSheet(QString const& fileName)
     if (!file.open(QIODevice::ReadOnly))
     {
         char buffer[512];
-        sprintf(buffer, "Stylesheet '%s' is invalid.", fileName.toLatin1().data());
+        sprintf(buffer, "Stylesheet '%s' is invalid.", fileName.toUtf8().data());
         GetIEditor()->GetSystem()->GetILog()->LogWarning(buffer);
         return "";
     }
@@ -1946,7 +1966,7 @@ void CMainWindow::Library_UpdateTreeItemStyle(IDataBaseItem* item, int column)
     {
         CParticleItem* pParticle = static_cast<CParticleItem*>(item);
         bool isLod = pParticle->GetEffect()->HasLevelOfDetail();
-        CLibraryTreeViewItem* treeItem = m_libraryTreeViewDock->GetTreeItemFromPath(tr(item->GetFullName().toLatin1().data()));
+        CLibraryTreeViewItem* treeItem = m_libraryTreeViewDock->GetTreeItemFromPath(tr(item->GetFullName().toUtf8().data()));
         if (!treeItem)
         {
             //when grouping/ungrouping we can sometimes attempt to update a style before the treeitem actually exists.
@@ -2075,7 +2095,7 @@ void CMainWindow::Library_ItemPasted(IDataBaseItem* target, bool overrideSafety 
         CParticleItem* pParticle = static_cast<CParticleItem*>(target);
         CRY_ASSERT(pParticle);
         node->delAttr("Name");
-        node->setAttr("Name", target->GetName().toLatin1().data());
+        node->setAttr("Name", target->GetName().toUtf8().data());
         GetIEditor()->GetParticleManager()->PasteToParticleItem(pParticle, node, replaceAll);
         if (target->GetLibrary())
         {
@@ -2113,7 +2133,7 @@ void CMainWindow::Library_ItemsPastedToFolder(IDataBaseLibrary* lib, const QStri
     {
         //The order in the clipboard matches the order in the list so we can just loop through
         XmlNodeRef copiedEmitter = node->getChild(i);
-        CParticleItem* target = static_cast<CParticleItem*>(lib->GetManager()->FindItemByName(PasteList[i].toUtf8().data()));
+        CParticleItem* target = static_cast<CParticleItem*>(lib->GetManager()->FindItemByName(PasteList[i]));
         if (target)
         {
             GetIEditor()->GetParticleManager()->PasteToParticleItem(target, copiedEmitter, true);

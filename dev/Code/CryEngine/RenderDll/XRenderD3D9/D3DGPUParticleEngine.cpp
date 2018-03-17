@@ -2006,7 +2006,7 @@ void CImpl_GPUParticles::BeginUpdate(GPUEmitterResources& resources, int numSubE
 {
     PROFILE_LABEL_SCOPE("RESET_COUNTERS_GPU_PARTICLES");
 
-#if defined(ORBIS) || defined(IOS) || defined(OPENGL)
+#if D3DGPUPARTICLEENGINE_CPP_TRAIT_BEGINUPDATE_INIT_COMPUTE || defined(OPENGL)
 
     // * GPU Compute
     CImpl_GPUParticles* m_impl = this;

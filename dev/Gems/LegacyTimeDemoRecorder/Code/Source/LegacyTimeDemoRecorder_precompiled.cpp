@@ -1,2 +1,2 @@
 
-#include "StdAfx.h"
+#include "LegacyTimeDemoRecorder_precompiled.h"

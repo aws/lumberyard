@@ -20,17 +20,27 @@
 
 #include <platform.h>
 
-
-
-#if defined(LINUX64) || defined(APPLE) || defined(ORBIS)
-#define PrefetchLine(ptr, off) cryPrefetchT0SSE((void*)((UINT_PTR)ptr + off))
-#define ResetLine128(ptr, off) (void)(0)
-#define FlushLine128(ptr, off) (void)(0)
-#else
-#define PrefetchLine(ptr, off) cryPrefetchT0SSE((void*)((UINT_PTR)ptr + off))
-#define ResetLine128(ptr, off) (void)(0)
-#define FlushLine128(ptr, off) (void)(0)
+// Section dictionary
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define MEMORYACCESS_H_SECTION_TRAITS 1
+#define MEMORYACCESS_H_SECTION_CRYPREFETCH 2
 #endif
+
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMORYACCESS_H_SECTION_TRAITS
+#include AZ_RESTRICTED_FILE(MemoryAccess_h)
+#else
+#define MEMORYACCESS_H_TRAIT_USE_LEGACY_PREFETCHLINE 1
+#endif
+
+#if MEMORYACCESS_H_TRAIT_USE_LEGACY_PREFETCHLINE
+#define PrefetchLine(ptr, off) cryPrefetchT0SSE((void*)((UINT_PTR)ptr + off))
+#else
+#define PrefetchLine(ptr, off) (void)(0)
+#endif
+#define ResetLine128(ptr, off) (void)(0)
+#define FlushLine128(ptr, off) (void)(0)
 
 
 
@@ -549,11 +559,19 @@ ILINE void cryMemcpy(void* Dst, const void* Src, int n, int nFlags)
 
 #pragma warning(pop)
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMORYACCESS_H_SECTION_CRYPREFETCH
+#include AZ_RESTRICTED_FILE(MemoryAccess_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 //implement something usual to bring one memory location into L1 data cache
 ILINE void CryPrefetch(const void* const cpSrc)
 {
     cryPrefetchT0SSE(cpSrc);
 }
+#endif
 
 #define CryPrefetchInl CryPrefetch
 

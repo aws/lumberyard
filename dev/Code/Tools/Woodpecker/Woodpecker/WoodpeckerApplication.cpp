@@ -23,11 +23,18 @@
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
 #include <AzToolsFramework/UI/LegacyFramework/Core/IPCComponent.h>
 
+#ifndef AZ_PLATFORM_WINDOWS
+int __argc;
+char **__argv;
+#endif
+
 namespace Woodpecker
 {
-    BaseApplication::BaseApplication()
+    BaseApplication::BaseApplication(int &argc, char **argv)
         : LegacyFramework::Application()
     {
+        __argc = argc;
+        __argv = argv;
         AZ::UserSettingsFileLocatorBus::Handler::BusConnect();
     }
 
@@ -40,8 +47,8 @@ namespace Woodpecker
     {
         LegacyFramework::Application::RegisterCoreComponents();
 
-        Telemetry::TelemetryComponent::CreateDescriptor();
-        LegacyFramework::IPCComponent::CreateDescriptor();
+        RegisterComponentDescriptor(Telemetry::TelemetryComponent::CreateDescriptor());
+        RegisterComponentDescriptor(LegacyFramework::IPCComponent::CreateDescriptor());
 
         RegisterComponentDescriptor(AZ::UserSettingsComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzFramework::TargetManagementComponent::CreateDescriptor());

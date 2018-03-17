@@ -66,13 +66,17 @@ namespace AssetProcessor
         CachedJobInfo* getItem(int index) const;
         QString GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state) const;
         void PopulateJobsFromDatabase();
-        public Q_SLOTS:
+
+public Q_SLOTS:
         void OnJobStatusChanged(JobEntry entry, AzToolsFramework::AssetSystem::JobStatus status);
         void OnJobRemoved(AzToolsFramework::AssetSystem::JobInfo jobInfo);
+        void OnSourceRemoved(QString sourceRelPath);
 
     protected:
         QVector<CachedJobInfo*> m_cachedJobs;
-        QHash<AssetProcessor::QueueElementID, unsigned int> m_cachedJobsLookup;
+        QHash<AssetProcessor::QueueElementID, int> m_cachedJobsLookup; // QVector uses int as type of index.  
+
+        void RemoveJob(const AssetProcessor::QueueElementID& elementId);
     };
 
 } //namespace AssetProcessor

@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemTextToSpeech_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

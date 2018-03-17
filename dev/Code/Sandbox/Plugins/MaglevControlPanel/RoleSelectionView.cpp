@@ -23,7 +23,7 @@
 #include <RoleSelectionView.moc>
 #include <EditorCoreAPI.h>
 #include <IAWSResourceManager.h>
-#include <MaglevcontrolPanelPlugin.h>
+#include <MaglevControlPanelPlugin.h>
 #include <algorithm>
 
 using namespace AZStd;

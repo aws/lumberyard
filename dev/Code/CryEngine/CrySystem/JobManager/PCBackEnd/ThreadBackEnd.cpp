@@ -507,8 +507,10 @@ void JobManager::ThreadBackEnd::CThreadBackEndWorkerThread::DoWorkProducerConsum
 
         PREFAST_ASSUME(pInvoker);
 
-        { // call delegator function to invoke job entry
+        {
+            // call delegator function to invoke job entry
             CRYPROFILE_SCOPE_PROFILE_MARKER(pJobManager->GetJobName(pInvoker));
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::System, "JobManager::ThreadBackEnd:RunJob");
             (*pInvoker)(pParamMem);
         }
 

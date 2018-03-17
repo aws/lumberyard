@@ -121,7 +121,7 @@ void PipeUserMovementActorAdapter::SetActorStyle(const MovementStyle& style, con
     m_attachedPipeUser.GetState().bodyOrientationMode = style.GetBodyOrientationMode();
 }
 
-boost::shared_ptr<Vec3> PipeUserMovementActorAdapter::CreateLookTarget()
+AZStd::shared_ptr<Vec3> PipeUserMovementActorAdapter::CreateLookTarget()
 {
     return m_attachedPipeUser.CreateLookTarget();
 }
@@ -197,7 +197,7 @@ void PipeUserMovementActorAdapter::SetLookTimeOffset(float lookTimeOffset)
     m_lookTimeOffset = lookTimeOffset;
 }
 
-void PipeUserMovementActorAdapter::UpdateLooking(float updateTime, boost::shared_ptr<Vec3> lookTarget, const bool targetReachable, const float pathDistanceToEnd, const Vec3& followTargetPosition, const MovementStyle& style)
+void PipeUserMovementActorAdapter::UpdateLooking(float updateTime, AZStd::shared_ptr<Vec3> lookTarget, const bool targetReachable, const float pathDistanceToEnd, const Vec3& followTargetPosition, const MovementStyle& style)
 {
     if (lookTarget.get() && style.ShouldGlanceInMovementDirection())
     {

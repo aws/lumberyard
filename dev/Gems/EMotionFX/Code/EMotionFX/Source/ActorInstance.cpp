@@ -618,7 +618,6 @@ namespace EMotionFX
         MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
         Skeleton* skeleton = mActor->GetSkeleton();
 
-        // standard C++
         const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {

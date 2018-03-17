@@ -1262,7 +1262,7 @@ namespace AZ
         return success;
     }
 
-    bool SerializeContext::DataElementNode::GetClassElement(SerializeContext& sc, ClassElement& classElement, const DataElementNode& parentDataElement, ErrorHandler* errorHandler) const
+    bool SerializeContext::DataElementNode::GetClassElement(ClassElement& classElement, const DataElementNode& parentDataElement, ErrorHandler* errorHandler) const
     {
         bool elementFound = false;
         if (parentDataElement.m_classData)
@@ -1281,7 +1281,9 @@ namespace AZ
                     // otherwise we need the uuids to be exactly the same.
                     if (classElementMetadata.m_flags & SerializeContext::ClassElement::FLG_POINTER)
                     {
-                        if (!sc.CanDowncast(m_element.m_id, classElementMetadata.m_typeId, m_classData->m_azRtti, classElementMetadata.m_azRtti))
+                        bool downcastPossible = m_element.m_id == classElementMetadata.m_typeId;
+                        downcastPossible = downcastPossible || (m_classData->m_azRtti && classElementMetadata.m_azRtti && m_classData->m_azRtti->IsTypeOf(classElementMetadata.m_azRtti->GetTypeId()));
+                        if (!downcastPossible)
                         {
                             AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of pointers to type %s!"
                                 , m_element.m_id.ToString<AZStd::string>().c_str(), classElementMetadata.m_typeId.ToString<AZStd::string>().c_str());
@@ -1316,7 +1318,10 @@ namespace AZ
                         // otherwise we need the uuids to be exactly the same.
                         if (childElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                         {
-                            if (sc.CanDowncast(m_element.m_id, childElement->m_typeId, m_classData->m_azRtti, childElement->m_azRtti))
+                            // Verify that a downcast is possible
+                            bool downcastPossible = m_element.m_id == childElement->m_typeId;
+                            downcastPossible = downcastPossible || (m_classData->m_azRtti && childElement->m_azRtti && m_classData->m_azRtti->IsTypeOf(childElement->m_azRtti->GetTypeId()));
+                            if (downcastPossible)
                             {
                                 classElement = *childElement;
                             }
@@ -1337,47 +1342,49 @@ namespace AZ
         return elementFound;
     }
 
-    bool SerializeContext::DataElementNode::GetDataHierarchyEnumerate(SerializeContext& sc, ErrorHandler* errorHandler, AZStd::vector<DataElementInstanceData>& nodeStack)
+    bool SerializeContext::DataElementNode::GetDataHierarchyEnumerate(ErrorHandler* errorHandler, NodeStack& nodeStack)
     {
-        DataElementInstanceData parentData = nodeStack.back();
         if (nodeStack.empty())
         {
             return true;
         }
 
+        void* parentPtr = nodeStack.back().m_ptr;
+        DataElementNode* parentDataElement = nodeStack.back().m_dataElement;
         bool success = true;
 
         AZ::SerializeContext::ClassElement classElement;
-        bool classElementFound = parentData.m_dataElement && GetClassElement(sc, classElement, *parentData.m_dataElement, errorHandler);
+        bool classElementFound = parentDataElement && GetClassElement(classElement, *parentDataElement, errorHandler);
 
         if (classElementFound)
         {
             void* dataAddress = nullptr;
             void* reserveAddress = nullptr;
-            IDataContainer* dataContainer = parentData.m_dataElement->m_classData->m_container;
+            IDataContainer* dataContainer = parentDataElement->m_classData->m_container;
             if (dataContainer) // container elements
             {
+                int& parentCurrentContainerElementIndex = nodeStack.back().m_currentContainerElementIndex;
                 // add element to the array
-                if (dataContainer->CanAccessElementsByIndex() && dataContainer->Size(parentData.m_ptr) > parentData.m_currentContainerElementIndex)
+                if (dataContainer->CanAccessElementsByIndex() && dataContainer->Size(parentPtr) > parentCurrentContainerElementIndex)
                 {
-                    dataAddress = dataContainer->GetElementByIndex(parentData.m_ptr, &classElement, parentData.m_currentContainerElementIndex);
+                    dataAddress = dataContainer->GetElementByIndex(parentPtr, &classElement, parentCurrentContainerElementIndex);
                 }
                 else
                 {
-                    dataAddress = dataContainer->ReserveElement(parentData.m_ptr, &classElement);
+                    dataAddress = dataContainer->ReserveElement(parentPtr, &classElement);
                 }
 
                 if (dataAddress == nullptr)
                 {
-                    AZStd::string error = AZStd::string::format("Failed to reserve element in container. The container may be full. Element %u will not be added to container.", static_cast<unsigned int>(parentData.m_currentContainerElementIndex));
+                    AZStd::string error = AZStd::string::format("Failed to reserve element in container. The container may be full. Element %u will not be added to container.", static_cast<unsigned int>(parentCurrentContainerElementIndex));
                     errorHandler->ReportError(error.c_str());
                 }
 
-                parentData.m_currentContainerElementIndex++;
+                parentCurrentContainerElementIndex++;
             }
             else
             {   // normal elements
-                dataAddress = reinterpret_cast<char*>(parentData.m_ptr) + classElement.m_offset;
+                dataAddress = reinterpret_cast<char*>(parentPtr) + classElement.m_offset;
             }
 
             reserveAddress = dataAddress;
@@ -1391,7 +1398,15 @@ namespace AZ
 
                 // we need to account for additional offsets if we have a pointer to
                 // a base class.
-                void* basePtr = sc.DownCast(newDataAddress, m_element.m_id, classElement.m_typeId, m_classData->m_azRtti, classElement.m_azRtti);
+                void* basePtr = nullptr;
+                if (m_element.m_id == classElement.m_typeId)
+                {
+                    basePtr = newDataAddress;
+                }
+                else if(m_classData->m_azRtti && classElement.m_azRtti)
+                {
+                    basePtr = m_classData->m_azRtti->Cast(newDataAddress, classElement.m_azRtti->GetTypeId());
+                }
                 AZ_Assert(basePtr != nullptr, dataContainer
                     ? "Can't cast container element %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
                     : "Can't cast %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
@@ -1450,7 +1465,7 @@ namespace AZ
             for (int dataElementIndex = 0; dataElementIndex < m_subElements.size(); ++dataElementIndex)
             {
                 DataElementNode& subElement = m_subElements[dataElementIndex];
-                if (!subElement.GetDataHierarchyEnumerate(sc, errorHandler, nodeStack))
+                if (!subElement.GetDataHierarchyEnumerate(errorHandler, nodeStack))
                 {
                     success = false;
                     break;
@@ -1462,7 +1477,7 @@ namespace AZ
 
             if (dataContainer)
             {
-                dataContainer->StoreElement(parentData.m_ptr, reserveAddress);
+                dataContainer->StoreElement(parentPtr, reserveAddress);
             }
         }
 
@@ -1472,13 +1487,13 @@ namespace AZ
     //=========================================================================
     // GetDataHierarchy
     //=========================================================================
-    bool SerializeContext::DataElementNode::GetDataHierarchy(SerializeContext& sc, void* objectPtr, const Uuid& classId, ErrorHandler* errorHandler)
+    bool SerializeContext::DataElementNode::GetDataHierarchy(void* objectPtr, const Uuid& classId, ErrorHandler* errorHandler)
     {
         (void)classId;
         AZ_Assert(m_element.m_id == classId, "GetDataHierarchy called with mismatched class type {%s} for element %s",
             classId.ToString<AZStd::string>().c_str(), m_element.m_name);
 
-        AZStd::vector<DataElementInstanceData> nodeStack;
+        NodeStack nodeStack;
         DataElementInstanceData topNode;
         topNode.m_ptr = objectPtr;
         topNode.m_dataElement = this;
@@ -1487,7 +1502,7 @@ namespace AZ
         bool success = true;
         for (size_t i = 0; i < m_subElements.size(); ++i)
         {
-            if (!m_subElements[i].GetDataHierarchyEnumerate(sc, errorHandler, nodeStack))
+            if (!m_subElements[i].GetDataHierarchyEnumerate(errorHandler, nodeStack))
             {
                 success = false;
                 break;

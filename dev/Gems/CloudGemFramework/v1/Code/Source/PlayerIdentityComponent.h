@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 
 #include <AzCore/Component/Component.h>
 
@@ -71,7 +71,7 @@ namespace CloudGemFramework
         void Deactivate() override;
 
         //////////////////////////////////////////////////////////////////////////
-        // CloudCanvasCommonMappingsBus
+        // CloudCanvasPlayerIdentityBus
         virtual void AddTokenRetrievalStrategy(const char* provider, std::shared_ptr<TokenRetrievalStrategy> strategy) override;
         virtual void RemoveTokenRetrievalStrategy(const char* provider) override;
         virtual bool Login(const char* authProvider, const char* authCode, const char* refreshToken = nullptr, long long tokenExpiration = 0) override;
@@ -80,6 +80,7 @@ namespace CloudGemFramework
         virtual std::shared_ptr<Aws::Auth::AWSCredentialsProvider> GetPlayerCredentialsProvider() override;
         virtual void SetPlayerCredentialsProvider(std::shared_ptr<Aws::Auth::AWSCredentialsProvider>) override;
         virtual bool ResetPlayerIdentity() override;
+        virtual AZStd::string GetIdentityId() override;
 
         ////////////////////////////////////////////////////////////////////////
         // CloudCanvasCommonNotification Events

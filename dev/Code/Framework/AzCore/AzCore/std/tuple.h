@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/std/containers/array.h>
 #include <AzCore/std/function/invoke.h>
 #include <AzCore/std/utils.h>
 #include <AzCore/std/typetraits/is_same.h>
@@ -142,23 +143,6 @@ namespace AZStd
     }
 #endif
 
-    namespace Internal
-    {
-        template<class Fn, class Tuple, size_t... Is>
-        auto apply_impl(Fn&& f, Tuple&& tupleObj, AZStd::index_sequence<Is...>) -> decltype(AZStd::invoke(AZStd::declval<Fn>(), AZStd::get<Is>(AZStd::declval<Tuple>())...))
-        {
-            (void)tupleObj;
-            return AZStd::invoke(AZStd::forward<Fn>(f), AZStd::get<Is>(AZStd::forward<Tuple>(tupleObj))...);
-        }
-    }
-
-    template<class Fn, class Tuple>
-    auto apply(Fn&& f, Tuple&& tupleObj) 
-        -> decltype(Internal::apply_impl(AZStd::declval<Fn>(), AZStd::declval<Tuple>(), AZStd::make_index_sequence<AZStd::tuple_size<AZStd::decay_t<Tuple>>::value>{}))
-    {
-        return Internal::apply_impl(AZStd::forward<Fn>(f), AZStd::forward<Tuple>(tupleObj), AZStd::make_index_sequence<AZStd::tuple_size<AZStd::decay_t<Tuple>>::value>{});
-    }
-
     //! Creates an hash specialization for tuple types using the hash_combine function
     //! The std::tuple implementation does not have this support. This is an extension
     template <typename... Types>
@@ -178,7 +162,10 @@ namespace AZStd
             return ElementHasher(value, AZStd::make_index_sequence<sizeof...(Types)>{});
         }
     };
+}
 
+namespace AZStd
+{
     // pair code to inter operate with tuples
     template<class T1, class T2>
     template<template<class...> class TupleType, class... Args1, class... Args2, size_t... I1, size_t... I2>
@@ -339,6 +326,74 @@ namespace AZStd
     const T&& get(const AZStd::pair<U, T>&& pairObj)
     {
         return Internal::get_pair<1>::get(AZStd::move(pairObj));
+    }
+
+    //! AZStd::pair to std::tuple function for replicating the functionality of std::tuple assignment operator from std::pair
+    template<class T1, class T2>
+    tuple<T1, T2> tuple_assign(const AZStd::pair<T1, T2>& azPair)
+    {
+        return std::make_tuple(azPair.first, azPair.second);
+    }
+
+    //! AZStd::pair to std::tuple function for replicating the functionality of std::tuple assignment operator from std::pair
+    template<class T1, class T2>
+    tuple<T1, T2> tuple_assign(AZStd::pair<T1, T2>&& azPair)
+    {
+        return std::make_tuple(AZStd::move(azPair.first), AZStd::move(azPair.second));
+    }
+}
+
+namespace AZStd
+{
+    // implementation of the std::get function within the AZStd::namespace which allows AZStd::apply to be used
+    // with AZStd::array
+    template<size_t I, class T, size_t N>
+    T& get(AZStd::array<T, N>& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return arr[I];
+    };
+
+    template<size_t I, class T, size_t N>
+    const T& get(const AZStd::array<T, N>& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return arr[I];
+    };
+
+    template<size_t I, class T, size_t N>
+    T&& get(AZStd::array<T, N>&& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return AZStd::move(arr[I]);
+    };
+
+    template<size_t I, class T, size_t N>
+    const T&& get(const AZStd::array<T, N>&& arr)
+    {
+        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
+        return AZStd::move(arr[I]);
+    };
+}
+
+// AZStd::apply implemenation helper block 
+namespace AZStd
+{
+    namespace Internal
+    {
+        template<class Fn, class Tuple, size_t... Is>
+        auto apply_impl(Fn&& f, Tuple&& tupleObj, AZStd::index_sequence<Is...>) -> decltype(AZStd::invoke(AZStd::declval<Fn>(), AZStd::get<Is>(AZStd::declval<Tuple>())...))
+        {
+            (void)tupleObj;
+            return AZStd::invoke(AZStd::forward<Fn>(f), AZStd::get<Is>(AZStd::forward<Tuple>(tupleObj))...);
+        }
+    }
+
+    template<class Fn, class Tuple>
+    auto apply(Fn&& f, Tuple&& tupleObj)
+        -> decltype(Internal::apply_impl(AZStd::declval<Fn>(), AZStd::declval<Tuple>(), AZStd::make_index_sequence<AZStd::tuple_size<AZStd::decay_t<Tuple>>::value>{}))
+    {
+        return Internal::apply_impl(AZStd::forward<Fn>(f), AZStd::forward<Tuple>(tupleObj), AZStd::make_index_sequence<AZStd::tuple_size<AZStd::decay_t<Tuple>>::value>{});
     }
 }
 

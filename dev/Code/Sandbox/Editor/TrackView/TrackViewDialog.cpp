@@ -91,6 +91,9 @@ namespace
 
     const char* s_kNoSequenceComboBoxEntry = "--- No Sequence ---";
 
+    const int s_kMinimumFrameSnappingFPS = 1;
+    const int s_kMaximumFrameSnappingFPS = 120;
+
     const int TRACKVIEW_LAYOUT_VERSION = 0x0001; // Bump this up on every substantial pane layout change
     const int TRACKVIEW_REBAR_VERSION = 0x0002; // Bump this up on every substantial rebar change
 }
@@ -199,32 +202,6 @@ CTrackViewDialog::~CTrackViewDialog()
     GetIEditor()->UnregisterNotifyListener(this);
     GetIEditor()->GetObjectManager()->GetLayersManager()->RemoveUpdateListener(functor(*this, &CTrackViewDialog::OnLayerUpdate));
 }
-
-#ifdef KDAB_TEMPORARILY_REMOVED
-void CTrackViewDialog::AddShortCutMenu(CustomizeKeyboardPage& pageKeyboard, CToolBar* pToolBar, const QString& sToolBarName)
-{
-    UINT nID = -1;
-    QString sButtonText;
-    CMenu pMenu;
-    pMenu.CreateMenu();
-
-    int nButtonCount = pToolBar->GetToolBarCtrl().GetButtonCount();
-
-    for (int i = 0; i < nButtonCount; ++i)
-    {
-        nID = pToolBar->GetItemID(i);
-        sButtonText.LoadString(nID);
-        sButtonText.Delete(sButtonText.Find("\n"), sButtonText.GetLength());
-        pMenu.AppendMenu(MF_STRING, nID, sButtonText);
-    }
-
-    if (pMenu.GetMenuItemCount() > 0)
-    {
-        CXTPControls* pControls =  pageKeyboard.InsertCategory(sToolBarName);
-        pControls->LoadMenu(&pMenu);
-    }
-}
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::OnAddEntityNodeMenu()
@@ -1120,16 +1097,28 @@ void CTrackViewDialog::OnAddSequence()
         {
             SequenceType sequenceType = dlg.GetSequenceType();
 
-            CUndo undo("Add Sequence");
-            // add sequence
-            GetIEditor()->ExecuteCommand("trackview.new_sequence '%s' %d", sequenceName.toLatin1().data(), sequenceType);
+            CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+            CTrackViewSequence* newSequence = nullptr;
+
+            if (sequenceType == SequenceType::Legacy)
+            {
+                CUndo undo("Add Sequence");
+                GetIEditor()->ExecuteCommand(QStringLiteral("trackview.new_sequence '%1' %2").arg(sequenceName).arg(static_cast<int>(sequenceType)));
+                newSequence = sequenceManager->GetSequenceByName(sequenceName);
+                AZ_Assert(newSequence, "Creating new sequence failed.");
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Director Node");
+                GetIEditor()->ExecuteCommand(QStringLiteral("trackview.new_sequence '%1' %2").arg(sequenceName).arg(static_cast<int>(sequenceType)));
+                newSequence = sequenceManager->GetSequenceByName(sequenceName);
+                AZ_Assert(newSequence, "Creating new sequence failed.");
+                undoBatch.MarkEntityDirty(newSequence->GetSequenceComponentEntityId());
+            }
 
             // make it the currently selected sequence
-            CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-            CTrackViewSequence* pNewSequence = pSequenceManager->GetSequenceByName(sequenceName);
-
-            CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
-            pAnimationContext->SetSequence(pNewSequence, true, false);
+            CAnimationContext* animationContext = GetIEditor()->GetAnimation();
+            animationContext->SetSequence(newSequence, true, false);
         }
     }
 }
@@ -1290,7 +1279,7 @@ void CTrackViewDialog::OnDelSequence()
                 AZ::EntityId entityId = AZ::EntityId(entityIdString.toULongLong());
                 if (entityId.IsValid())
                 {
-                    GetIEditor()->ExecuteCommand("trackview.delete_sequence '%s'", entityIdString.toLatin1().data());
+                    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.delete_sequence '%1'").arg(entityIdString));
                 }
             }
 
@@ -1330,11 +1319,10 @@ void CTrackViewDialog::OnSequenceComboBox()
 
     // Display current sequence.
     QString entityIdString = m_sequencesComboBox->currentData().toString();
-    GetIEditor()->ExecuteCommand("trackview.set_current_sequence '%s'", entityIdString.toLatin1().data());
-}
+    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.set_current_sequence '%1'").arg(entityIdString));}
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
+void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* sequence)
 {
     if (m_bIgnoreUpdates)
     {
@@ -1342,31 +1330,31 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
     }
 
     // Remove listeners from previous sequence
-    CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-    CTrackViewSequence* pPrevSequence = pSequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
-    if (pPrevSequence)
+    CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+    CTrackViewSequence* prevSequence = sequenceManager->GetSequenceByEntityId(m_currentSequenceEntityId);
+    if (prevSequence)
     {
-        pPrevSequence->RemoveListener(this);
-        pPrevSequence->RemoveListener(m_wndNodesCtrl);
-        pPrevSequence->RemoveListener(m_wndKeyProperties);
-        pPrevSequence->RemoveListener(m_wndCurveEditor);
-        pPrevSequence->RemoveListener(m_wndDopeSheet);
+        prevSequence->RemoveListener(this);
+        prevSequence->RemoveListener(m_wndNodesCtrl);
+        prevSequence->RemoveListener(m_wndKeyProperties);
+        prevSequence->RemoveListener(m_wndCurveEditor);
+        prevSequence->RemoveListener(m_wndDopeSheet);
     }
 
-    if (pSequence)
+    if (sequence)
     {
-        m_currentSequenceEntityId = pSequence->GetSequenceComponentEntityId();
+        m_currentSequenceEntityId = sequence->GetSequenceComponentEntityId();
 
-        pSequence->Reset(true);
+        sequence->Reset(true);
         SaveZoomScrollSettings();
 
-        UpdateDopeSheetTime(pSequence);
+        UpdateDopeSheetTime(sequence);
 
-        CSequenceObject* pObj = pSequence->GetSequenceObject();
-        if (pObj && pObj->HasValidZoomScrollSettings())
+        CSequenceObject* sequenceObject = sequence->GetSequenceObject();
+        if (sequenceObject && sequenceObject->HasValidZoomScrollSettings())
         {
             CSequenceObject::CZoomScrollSettings settings;
-            pObj->GetZoomScrollSettings(settings);
+            sequenceObject->GetZoomScrollSettings(settings);
             m_wndDopeSheet->SetTimeScale(settings.dopeSheetZoom, 0);
             m_wndDopeSheet->SetScrollOffset(settings.dopeSheetHScroll);
             m_wndNodesCtrl->RestoreVerticalScrollPos(settings.nodesListVScroll);
@@ -1381,13 +1369,13 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
         m_sequencesComboBox->setCurrentIndex(sequenceIndex);
         m_sequencesComboBox->blockSignals(false);
 
-        pSequence->ClearSelection();
+        sequence->ClearSelection();
 
-        pSequence->AddListener(this);
-        pSequence->AddListener(m_wndNodesCtrl);
-        pSequence->AddListener(m_wndKeyProperties);
-        pSequence->AddListener(m_wndCurveEditor);
-        pSequence->AddListener(m_wndDopeSheet);
+        sequence->AddListener(this);
+        sequence->AddListener(m_wndNodesCtrl);
+        sequence->AddListener(m_wndKeyProperties);
+        sequence->AddListener(m_wndCurveEditor);
+        sequence->AddListener(m_wndDopeSheet);
     }
     else
     {
@@ -1397,7 +1385,7 @@ void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* pSequence)
     }
 
     m_wndNodesCtrl->OnSequenceChanged();
-    m_wndKeyProperties->OnSequenceChanged();
+    m_wndKeyProperties->OnSequenceChanged(sequence);
 
     ClearTracksToolBar();
 
@@ -1604,6 +1592,16 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
             Update();
         }
         break;
+    case eNotify_OnBeginSimulationMode:
+        SetEditLock(true);
+        m_sequencesComboBox->setEnabled(false);
+        UpdateActions();
+        break;
+    case eNotify_OnEndSimulationMode:
+        SetEditLock(false);
+        m_sequencesComboBox->setEnabled(true);
+        UpdateActions();
+        break;
     case eNotify_OnSelectionChange:
         UpdateActions();
         break;
@@ -1654,16 +1652,23 @@ void CTrackViewDialog::OnAddSelectedNode()
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::OnAddDirectorNode()
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (pSequence)
+    if (sequence)
     {
-        CUndo undo("Create TrackView Director Node");
-        AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Director Node");
-        QString name = pSequence->GetAvailableNodeNameStartingWith("Director");
-        pSequence->CreateSubNode(name, AnimNodeType::Director);
+        QString name = sequence->GetAvailableNodeNameStartingWith("Director");
+        if (sequence->GetSequenceType() == SequenceType::Legacy)
+        {
+            CUndo undo("Create TrackView Director Node");
+            sequence->CreateSubNode(name, AnimNodeType::Director);
+        }
+        else
+        {
+            AzToolsFramework::ScopedUndoBatch undoBatch("Create TrackView Director Node");
+            sequence->CreateSubNode(name, AnimNodeType::Director);
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+        }
         UpdateActions();
-        undoBatch.MarkEntityDirty(pSequence->GetSequenceComponentEntityId());
     }
 }
 
@@ -1839,7 +1844,7 @@ void CTrackViewDialog::OnSnapFPS()
 {
     int fps = FloatToIntRet(m_wndCurveEditor->GetFPS());
     bool ok = false;
-    fps = QInputDialog::getInt(this, tr("Frame rate for frame snapping"), QStringLiteral(""), fps, 1, 120, 1, &ok);
+    fps = QInputDialog::getInt(this, tr("Frame rate for frame snapping"), QStringLiteral(""), fps, s_kMinimumFrameSnappingFPS, s_kMaximumFrameSnappingFPS, 1, &ok);
     if (ok)
     {
         m_wndDopeSheet->SetSnapFPS(fps);
@@ -1907,8 +1912,11 @@ void CTrackViewDialog::ReadMiscSettings()
     if (settings.contains(s_kFrameSnappingFPSEntry))
     {
         float fps = settings.value(s_kFrameSnappingFPSEntry).toDouble();
-        m_wndDopeSheet->SetSnapFPS(FloatToIntRet(fps));
-        m_wndCurveEditor->SetFPS(fps);
+        if (fps >= s_kMinimumFrameSnappingFPS && fps <= s_kMaximumFrameSnappingFPS)
+        {
+            m_wndDopeSheet->SetSnapFPS(FloatToIntRet(fps));
+            m_wndCurveEditor->SetFPS(fps);
+        }
     }
 
     ETVTickMode tickMode = (ETVTickMode)(settings.value(s_kTickDisplayModeEntry, eTVTickMode_InSeconds).toInt());
@@ -2219,7 +2227,7 @@ void CTrackViewDialog::OnCreateLightAnimationSet()
 
     CUndo undo("Add Sequence");
     // LightAnimationSequences are for animating legacy lights, so it's implied that the sequence type is  SequenceType::Legacy
-    GetIEditor()->ExecuteCommand("trackview.new_sequence '%s' %d", LIGHT_ANIMATION_SET_NAME, SequenceType::Legacy);
+    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.new_sequence '%1' %2").arg(LIGHT_ANIMATION_SET_NAME).arg((qlonglong)SequenceType::Legacy));
 
     CTrackViewSequence* pSequence = pSequenceManager->GetLegacySequenceByName(LIGHT_ANIMATION_SET_NAME);
     assert(pSequence);
@@ -2243,7 +2251,7 @@ void CTrackViewDialog::OnAddLightAnimation()
         {
             if (dlg.exec() == QDialog::Accepted)
             {
-                if (pSequence->GetAnimNodesByName(dlg.GetString().toLatin1().data()).GetCount() > 0)
+                if (pSequence->GetAnimNodesByName(dlg.GetString().toUtf8().data()).GetCount() > 0)
                 {
                     QMessageBox::warning(this, tr("New Light Animation"),
                         tr("The name '%1' already exists!").arg(dlg.GetString()));
@@ -2388,7 +2396,7 @@ void CTrackViewDialog::SaveCurrentSequenceToFBX()
     if (!filename.isEmpty())
     {
         pExportManager->SetBakedKeysSequenceExport(true);
-        pExportManager->Export(filename.toLatin1().data(), "", "", false, false, false, false, true);
+        pExportManager->Export(filename.toUtf8().data(), "", "", false, false, false, false, true);
     }
 }
 

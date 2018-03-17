@@ -10,13 +10,13 @@
 *
 */
 
-// stdafx.h : include file for standard system include files,
+// LyShine_precompiled.h : include file for standard system include files,
 //  or project specific include files that are used frequently, but
 //      are changed infrequently
 //
 
-#ifndef LYSHINE_ANIMATION_STDAFX_H
-#define LYSHINE_ANIMATION_STDAFX_H
+#ifndef LYSHINE_ANIMATION_LYSHINE_PRECOMPILED_H
+#define LYSHINE_ANIMATION_LYSHINE_PRECOMPILED_H
 
 #if _MSC_VER > 1000
 #pragma once

@@ -56,6 +56,7 @@ namespace AzToolsFramework
         void setPrefix(QString val);
         void setSuffix(QString val);
         void setDecimals(int precision);
+        void setDisplayDecimals(int displayDecimals);
 
     protected slots:
         void onChildSpinboxValueChange(double value);

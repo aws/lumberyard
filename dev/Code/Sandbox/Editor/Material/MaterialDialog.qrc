@@ -30,6 +30,9 @@
         <file>images/materialdialog_reset_normal.png</file>
         <file>images/materialdialog_save_active.png</file>
         <file>images/materialdialog_save_normal.png</file>
+        <file>images/materialdialog_reset_viewport_active.png</file>
+        <file>images/materialdialog_reset_viewport_disabled.png</file>
+        <file>images/materialdialog_reset_viewport_normal.png</file>
     </qresource>
     <qresource prefix="/MaterialBrowser">
         <file>images/material_browser_00.png</file>

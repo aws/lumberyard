@@ -38,6 +38,11 @@ namespace Driller
             QProcess process;
             process.start("explorer /select," + windowsPath);
             process.waitForFinished();
+#else
+            QProcess::startDetached("/usr/bin/osascript", {"-e",
+                QStringLiteral("tell application \"Finder\" to reveal POSIX file \"%1\"").arg(QDir::toNativeSeparators(filePath))});
+            QProcess::startDetached("/usr/bin/osascript", {"-e",
+                QStringLiteral("tell application \"Finder\" to activate")});
 #endif
         }
     }

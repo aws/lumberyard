@@ -1,0 +1,14 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+        ],
+        "Source":
+        [
+            "Source/MicrophoneSystemComponent_macos.inl",
+            "Source/MacOS/MicrophoneSystemComponent_macos.mm",
+            "Source/SimpleDownsample.cpp"
+        ]
+    }
+}

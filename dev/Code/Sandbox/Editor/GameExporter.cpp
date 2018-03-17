@@ -179,7 +179,7 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
     if (m_bAutoExportMode)
     {
         // Remove read-only flags.
-        CrySetFileAttributes(m_levelPak.m_sPath.toLatin1().data(), FILE_ATTRIBUTE_NORMAL);
+        CrySetFileAttributes(m_levelPak.m_sPath.toUtf8().data(), FILE_ATTRIBUTE_NORMAL);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -212,18 +212,18 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
     ////////////////////////////////////////////////////////////////////////
     // Export the heightmap, store shadow informations in it
     ////////////////////////////////////////////////////////////////////////
-    ExportHeightMap(sLevelPath.toLatin1().data(), eExportEndian);
+    ExportHeightMap(sLevelPath.toUtf8().data(), eExportEndian);
 
     ////////////////////////////////////////////////////////////////////////
     // Exporting map setttings
     ////////////////////////////////////////////////////////////////////////
-    ExportOcclusionMesh(sLevelPath.toLatin1().data());
+    ExportOcclusionMesh(sLevelPath.toUtf8().data());
 
     //////////////////////////////////////////////////////////////////////////
     // Export Particles.
     {
         CParticlesExporter partExporter;
-        partExporter.ExportParticles(sLevelPath.toLatin1().data(), m_levelPath.toLatin1().data(), m_levelPak.m_pakFile);
+        partExporter.ExportParticles(sLevelPath.toUtf8().data(), m_levelPath.toUtf8().data(), m_levelPak.m_pakFile);
     }
 
     // Export prototypes/archetypes
@@ -277,7 +277,7 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
     XmlString xmlData = entityList->getXML();
     CCryMemFile file;
     file.Write(xmlData.c_str(), xmlData.length());
-    m_levelPak.m_pakFile.UpdateFile(levelDataFile.toLatin1().data(), file);
+    m_levelPak.m_pakFile.UpdateFile(levelDataFile.toUtf8().data(), file);
 
     //////////////////////////////////////////////////////////////////////////
     // End Exporting Game data.
@@ -296,11 +296,11 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
     ////////////////////////////////////////////////////////////////////////
     if (flags & eExp_ReloadTerrain)
     {
-        pEditor->SetStatusText(QObject::tr("Reloading Level...").toLatin1().data());
+        pEditor->SetStatusText(QObject::tr("Reloading Level..."));
         pGameEngine->ReloadLevel();
     }
 
-    pEditor->SetStatusText(QObject::tr("Ready").toLatin1().data());
+    pEditor->SetStatusText(QObject::tr("Ready"));
 
     // Disabled, for now. (inside EncryptPakFile)
     EncryptPakFile(m_levelPak.m_sPath);
@@ -339,7 +339,7 @@ bool CGameExporter::ExportMap(const char* pszGamePath, bool bSurfaceTexture, EEn
 
     //Older versions of the code stored the cover.ctc file in the level.pak. This is no longer the case. Just in case we are re-saving an old
     //level remove any old cover.ctc files, that will be overwritten by the resource compiler anyway.
-    m_levelPak.m_pakFile.RemoveFile(ctcFilename.toLatin1().data());
+    m_levelPak.m_pakFile.RemoveFile(ctcFilename.toUtf8().data());
 
     // No need to generate texture if there are no layers or the caller does
     // not demand the texture to be generated
@@ -373,7 +373,7 @@ bool CGameExporter::ExportMap(const char* pszGamePath, bool bSurfaceTexture, EEn
     gEnv->p3DEngine->CloseTerrainTextureFile();
     pHeightMap->GetTerrainGrid()->InitSectorGrid(pHeightMap->GetTerrainGrid()->GetNumSectors());
 
-    if (!ExportTerrainTexture(ctcFilename.toLatin1().data()))
+    if (!ExportTerrainTexture(ctcFilename.toUtf8().data()))
     {
         return false;
     }
@@ -508,7 +508,7 @@ void CGameExporter::ExportMergedMeshInstanceSectors(const char* pszGamePath, EEn
 void CGameExporter::ExportOcclusionMesh(const char* pszGamePath)
 {
     IEditor* pEditor = GetIEditor();
-    pEditor->SetStatusText(QObject::tr("including Occluder Mesh \"occluder.ocm\" if available").toLatin1().data());
+    pEditor->SetStatusText(QObject::tr("including Occluder Mesh \"occluder.ocm\" if available"));
 
     char resolvedLevelPath[AZ_MAX_PATH_LEN] = { 0 };
     AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(pszGamePath, resolvedLevelPath, AZ_MAX_PATH_LEN);
@@ -523,7 +523,7 @@ void CGameExporter::ExportOcclusionMesh(const char* pszGamePath)
         FileIn.close();
         CCryMemFile FileOut;
         FileOut.Write(Temp.GetBuffer(), Size);
-        m_levelPak.m_pakFile.UpdateFile(levelDataFile.toLatin1().data(), FileOut);
+        m_levelPak.m_pakFile.UpdateFile(levelDataFile.toUtf8().data(), FileOut);
     }
 }
 
@@ -531,10 +531,10 @@ void CGameExporter::ExportOcclusionMesh(const char* pszGamePath)
 void CGameExporter::ExportLegacyAnimations(const QString& path)
 {
     IEditor* pEditor = GetIEditor();
-    pEditor->SetStatusText(QObject::tr("Exporting Legacy Animation Sequences...").toLatin1().data());
+    pEditor->SetStatusText(QObject::tr("Exporting Animation Sequences..."));
     CLogFile::WriteLine("Export Legacy animation sequences...");
     CAnimationSerializer animSaver;
-    animSaver.SaveAllLegacySequences(path.toLatin1().data(), m_levelPak.m_pakFile);
+    animSaver.SaveAllLegacySequences(path.toUtf8().data(), m_levelPak.m_pakFile);
     CLogFile::WriteString("Done.");
 }
 
@@ -542,7 +542,7 @@ void CGameExporter::ExportLegacyAnimations(const QString& path)
 void CGameExporter::ExportLevelData(const QString& path, bool bExportMission)
 {
     IEditor* pEditor = GetIEditor();
-    pEditor->SetStatusText(QObject::tr("Exporting LevelData.xml...").toLatin1().data());
+    pEditor->SetStatusText(QObject::tr("Exporting LevelData.xml..."));
 
     char versionString[256];
     pEditor->GetFileVersion().ToString(versionString);
@@ -623,13 +623,13 @@ void CGameExporter::ExportLevelData(const QString& path, bool bExportMission)
     XmlString xmlData = root->getXML();
     CCryMemFile file;
     file.Write(xmlData.c_str(), xmlData.length());
-    m_levelPak.m_pakFile.UpdateFile(levelDataFile.toLatin1().data(), file);
+    m_levelPak.m_pakFile.UpdateFile(levelDataFile.toUtf8().data(), file);
 
     QString levelDataActionFile = path + "LevelDataAction.xml";
     XmlString xmlDataAction = rootAction->getXML();
     CCryMemFile fileAction;
     fileAction.Write(xmlDataAction.c_str(), xmlDataAction.length());
-    m_levelPak.m_pakFile.UpdateFile(levelDataActionFile.toLatin1().data(), fileAction);
+    m_levelPak.m_pakFile.UpdateFile(levelDataActionFile.toUtf8().data(), fileAction);
 
     if (bExportMission)
     {
@@ -653,14 +653,14 @@ void CGameExporter::ExportLevelData(const QString& path, bool bExportMission)
         {
             QString entitiesFile;
             entitiesFile = QStringLiteral("%1%2.entities_xml").arg(path, pCurrentMission ? pCurrentMission->GetName() : "");
-            m_levelPak.m_pakFile.UpdateFile(entitiesFile.toLatin1().data(), entitySaveBuffer.begin(), entitySaveBuffer.size());
+            m_levelPak.m_pakFile.UpdateFile(entitiesFile.toUtf8().data(), entitySaveBuffer.begin(), entitySaveBuffer.size());
         }
 
         _smart_ptr<IXmlStringData> pXmlStrData = missionNode->getXMLData(5000000);
 
         CCryMemFile fileMission;
         fileMission.Write(pXmlStrData->GetString(), pXmlStrData->GetStringLength());
-        m_levelPak.m_pakFile.UpdateFile((path + currentMissionFileName).toLatin1().data(), fileMission);
+        m_levelPak.m_pakFile.UpdateFile((path + currentMissionFileName).toUtf8().data(), fileMission);
     }
 }
 
@@ -706,7 +706,7 @@ void CGameExporter::ExportLevelInfo(const QString& path)
         CMission* pMission = pEditor->GetDocument()->GetMission(i);
         XmlNodeRef missionNode = missionsNode->newChild("Mission");
         missionNode->setAttr("Name", pMission->GetName().toUtf8().data());
-        missionNode->setAttr("Description", pMission->GetDescription().toLatin1().data());
+        missionNode->setAttr("Description", pMission->GetDescription().toUtf8().data());
     }
 
 
@@ -781,7 +781,7 @@ void CGameExporter::ExportAINavigationData(const QString& path)
         return;
     }
 
-    GetIEditor()->SetStatusText(QObject::tr("Exporting AI Navigation Data...").toLatin1().data());
+    GetIEditor()->SetStatusText(QObject::tr("Exporting AI Navigation Data..."));
 
     QString fileNameNavigation = path + QStringLiteral("mnmnav%1.bai").arg(GetIEditor()->GetDocument()->GetCurrentMission()->GetName());
 
@@ -816,7 +816,7 @@ void CGameExporter::ExportGameData(const QString& path)
         return;
     }
 
-    GetIEditor()->SetStatusText(QObject::tr("Exporting Game Level data...").toLatin1().data());
+    GetIEditor()->SetStatusText(QObject::tr("Exporting Game Level data..."));
 
     CWaitProgress wait("Saving game level data");
 
@@ -866,7 +866,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
     //  pEditor->GetGameEngine()->GenerateAiTriangulation();
 
     IEditor* pEditor = GetIEditor();
-    pEditor->SetStatusText(QObject::tr("Exporting AI Graph...").toLatin1().data());
+    pEditor->SetStatusText(QObject::tr("Exporting AI Graph..."));
 
     QString szMission = pEditor->GetDocument()->GetCurrentMission()->GetName();
     QString fileNameNav = path + QStringLiteral("net%1.bai").arg(szMission);
@@ -898,7 +898,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
             mem.Allocate(file.size());
             file.read(reinterpret_cast<char*>(mem.GetBuffer()), file.size());
             file.close();
-            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameNav.toLatin1().data(), mem))
+            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameNav.toUtf8().data(), mem))
             {
                 result += QString("Failed to update pak file with ") + fileNameNav + "\n";
             }
@@ -915,7 +915,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
             mem.Allocate(file.size());
             file.read(reinterpret_cast<char*>(mem.GetBuffer()), file.size());
             file.close();
-            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameVerts.toLatin1().data(), mem))
+            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameVerts.toUtf8().data(), mem))
             {
                 result += QString("Failed to update pak file with ") + fileNameVerts + "\n";
             }
@@ -932,7 +932,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
             mem.Allocate(file.size());
             file.read(reinterpret_cast<char*>(mem.GetBuffer()), file.size());
             file.close();
-            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameVolume.toLatin1().data(), mem))
+            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameVolume.toUtf8().data(), mem))
             {
                 result += QString("Failed to update pak file with ") + fileNameVolume + "\n";
             }
@@ -950,7 +950,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
             mem.Allocate(file.size());
             file.read(reinterpret_cast<char*>(mem.GetBuffer()), file.size());
             file.close();
-            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameAreas.toLatin1().data(), mem))
+            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameAreas.toUtf8().data(), mem))
             {
                 result += QString("Failed to update pak file with ") + fileNameAreas + "\n";
             }
@@ -967,7 +967,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
             mem.Allocate(file.size());
             file.read(reinterpret_cast<char*>(mem.GetBuffer()), file.size());
             file.close();
-            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameFlight.toLatin1().data(), mem))
+            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameFlight.toUtf8().data(), mem))
             {
                 result += QString("Failed to update pak file with ") + fileNameFlight + "\n";
             }
@@ -984,7 +984,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
             mem.Allocate(file.size());
             file.read(reinterpret_cast<char*>(mem.GetBuffer()), file.size());
             file.close();
-            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameRoads.toLatin1().data(), mem))
+            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameRoads.toUtf8().data(), mem))
             {
                 result += QString("Failed to update pak file with ") + fileNameRoads + "\n";
             }
@@ -1001,7 +1001,7 @@ QString CGameExporter::ExportAIGraph(const QString& path)
             mem.Allocate(file.size());
             file.read(reinterpret_cast<char*>(mem.GetBuffer()), file.size());
             file.close();
-            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameWaypoint3DSurface.toLatin1().data(), mem))
+            if (false == m_levelPak.m_pakFile.UpdateFile(fileNameWaypoint3DSurface.toUtf8().data(), mem))
             {
                 result += QString("Failed to update pak file with ") + fileNameWaypoint3DSurface + "\n";
             }
@@ -1052,7 +1052,7 @@ QString CGameExporter::ExportAICoverSurfaces(const QString& path)
     }
 
     IEditor* pEditor = GetIEditor();
-    pEditor->SetStatusText(QObject::tr("Exporting AI Cover Surfaces...").toLatin1().data());
+    pEditor->SetStatusText(QObject::tr("Exporting AI Cover Surfaces..."));
 
     QDir szLevel = QDir(path);
 
@@ -1105,7 +1105,7 @@ QString CGameExporter::ExportAI(const QString& path, bool coverSurfaces)
 //////////////////////////////////////////////////////////////////////////
 void CGameExporter::ExportBrushes(const QString& path)
 {
-    GetIEditor()->SetStatusText(QObject::tr("Exporting Brushes...").toLatin1().data());
+    GetIEditor()->SetStatusText(QObject::tr("Exporting Brushes..."));
     GetIEditor()->Notify(eNotify_OnExportBrushes);
 }
 
@@ -1155,11 +1155,11 @@ void CGameExporter::ExportMaterials(XmlNodeRef& levelDataNode, const QString& pa
 
         CCryMemFile file;
         file.Write(xmlData.c_str(), xmlData.length());
-        m_levelPak.m_pakFile.UpdateFile(filename.toLatin1().data(), file);
+        m_levelPak.m_pakFile.UpdateFile(filename.toUtf8().data(), file);
     }
     else
     {
-        m_levelPak.m_pakFile.RemoveFile(filename.toLatin1().data());
+        m_levelPak.m_pakFile.RemoveFile(filename.toUtf8().data());
     }
     m_numExportedMaterials = numMtls;
 }
@@ -1167,7 +1167,7 @@ void CGameExporter::ExportMaterials(XmlNodeRef& levelDataNode, const QString& pa
 //////////////////////////////////////////////////////////////////////////
 void CGameExporter::ExportLevelLensFlares(const QString& path)
 {
-    GetIEditor()->SetStatusText(QObject::tr("Exporting Lens Flares...").toLatin1().data());
+    GetIEditor()->SetStatusText(QObject::tr("Exporting Lens Flares..."));
     std::vector<CBaseObject*> objects;
     GetIEditor()->GetObjectManager()->FindObjectsOfType(&CEntityObject::staticMetaObject, objects);
     std::set<QString> flareNameSet;
@@ -1214,7 +1214,7 @@ void CGameExporter::ExportLevelLensFlares(const QString& path)
     {
         QString flareName = *iFlareNameSet;
         XmlNodeRef pFlareNode = GetIEditor()->GetSystem()->CreateXmlNode("LensFlare");
-        pFlareNode->setAttr("name", flareName.toLatin1().data());
+        pFlareNode->setAttr("name", flareName.toUtf8().data());
         pRootNode->addChild(pFlareNode);
     }
 
@@ -1222,7 +1222,7 @@ void CGameExporter::ExportLevelLensFlares(const QString& path)
     lensFlareNames.Write(pRootNode->getXMLData()->GetString(), pRootNode->getXMLData()->GetStringLength());
 
     QString exportPathName = path + FLARE_EXPORT_FILE;
-    m_levelPak.m_pakFile.UpdateFile(exportPathName.toLatin1().data(), lensFlareNames);
+    m_levelPak.m_pakFile.UpdateFile(exportPathName.toUtf8().data(), lensFlareNames);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1240,7 +1240,7 @@ void CGameExporter::ExportLevelResourceList(const QString& path)
 
     QString resFile = Path::Make(path, RESOURCE_LIST_FILE);
 
-    m_levelPak.m_pakFile.UpdateFile(resFile.toLatin1().data(), memFile, true);
+    m_levelPak.m_pakFile.UpdateFile(resFile.toUtf8().data(), memFile, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1282,16 +1282,16 @@ void CGameExporter::ExportLevelPerLayerResourceList(const QString& path)
         {
             QString filePath = Path::MakeGamePath(*it).toLower();
 
-            memFile.Write(acLayerName.toLatin1().data(), acLayerName.toLatin1().length());
+            memFile.Write(acLayerName.toUtf8().data(), acLayerName.toUtf8().length());
             memFile.Write(";", 1);
-            memFile.Write(filePath.toLatin1().data(), filePath.toLatin1().length());
+            memFile.Write(filePath.toUtf8().data(), filePath.toUtf8().length());
             memFile.Write("\n", 1);
         }
     }
 
     QString resFile = Path::Make(path, PERLAYER_RESOURCE_LIST_FILE);
 
-    m_levelPak.m_pakFile.UpdateFile(resFile.toLatin1().data(), memFile, true);
+    m_levelPak.m_pakFile.UpdateFile(resFile.toUtf8().data(), memFile, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1300,10 +1300,10 @@ void CGameExporter::ExportLevelShaderCache(const QString& path)
     QString buf;
     GetIEditor()->GetDocument()->GetShaderCache()->SaveBuffer(buf);
     CCryMemFile memFile;
-    memFile.Write(buf.toLatin1().data(), buf.toLatin1().length());
+    memFile.Write(buf.toUtf8().data(), buf.toUtf8().length());
 
     QString filename = Path::Make(path, SHADER_LIST_FILE);
-    m_levelPak.m_pakFile.UpdateFile(filename.toLatin1().data(), memFile, true);
+    m_levelPak.m_pakFile.UpdateFile(filename.toUtf8().data(), memFile, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1330,7 +1330,7 @@ void CGameExporter::ExportGameTokens(XmlNodeRef& levelDataNode, const QString& p
                 bEmptyLevelLib = false;
                 // Export this library.
                 pLib->Serialize(nodeLib, false);
-                nodeLib->setAttr("LevelName", GetIEditor()->GetGameEngine()->GetLevelPath().toLatin1().data()); // we set the Name from "Level" to the realname
+                nodeLib->setAttr("LevelName", GetIEditor()->GetGameEngine()->GetLevelPath().toUtf8().data()); // we set the Name from "Level" to the realname
             }
         }
         else
@@ -1348,7 +1348,7 @@ void CGameExporter::ExportGameTokens(XmlNodeRef& levelDataNode, const QString& p
                 XmlString xmlData = gtNodeLib->getXML();
                 file.Write(xmlData.c_str(), xmlData.length());
                 QString gtfilename = Path::Make(gtPath, Path::GetFile(pLib->GetFilename()));
-                m_levelPak.m_pakFile.UpdateFile(gtfilename.toLatin1().data(), file);
+                m_levelPak.m_pakFile.UpdateFile(gtfilename.toUtf8().data(), file);
             }
         }
     }
@@ -1358,11 +1358,11 @@ void CGameExporter::ExportGameTokens(XmlNodeRef& levelDataNode, const QString& p
 
         CCryMemFile file;
         file.Write(xmlData.c_str(), xmlData.length());
-        m_levelPak.m_pakFile.UpdateFile(filename.toLatin1().data(), file);
+        m_levelPak.m_pakFile.UpdateFile(filename.toUtf8().data(), file);
     }
     else
     {
-        m_levelPak.m_pakFile.RemoveFile(filename.toLatin1().data());
+        m_levelPak.m_pakFile.RemoveFile(filename.toUtf8().data());
     }
 }
 
@@ -1376,11 +1376,11 @@ void CGameExporter::ExportFileList(const QString& path, const QString& levelName
     string newpath;
 
     QString filename = levelName;
-    string mapname = (filename + ".dds").toLatin1().data();
-    string metaname = (filename + ".xml").toLatin1().data();
+    string mapname = (filename + ".dds").toUtf8().data();
+    string metaname = (filename + ".xml").toUtf8().data();
 
     XmlNodeRef rootNode = gEnv->pSystem->CreateXmlNode("download");
-    rootNode->setAttr("name", filename.toLatin1().data());
+    rootNode->setAttr("name", filename.toUtf8().data());
     rootNode->setAttr("type", "Map");
     XmlNodeRef indexNode = rootNode->newChild("index");
     if (indexNode)
@@ -1391,7 +1391,7 @@ void CGameExporter::ExportFileList(const QString& path, const QString& levelName
     XmlNodeRef filesNode = rootNode->newChild("files");
     if (filesNode)
     {
-        newpath = GetIEditor()->GetGameEngine()->GetLevelPath().toLatin1().data();
+        newpath = GetIEditor()->GetGameEngine()->GetLevelPath().toUtf8().data();
         newpath += "/*.*";
         handle = gEnv->pCryPak->FindFirst (newpath.c_str(), &fileinfo);
         if (handle == -1)
@@ -1429,7 +1429,7 @@ void CGameExporter::ExportFileList(const QString& path, const QString& levelName
                     newFileNode->setAttr("size", fileinfo.size);
 
                     unsigned char md5[16];
-                    string filename = GetIEditor()->GetGameEngine()->GetLevelPath().toLatin1().data();
+                    string filename = GetIEditor()->GetGameEngine()->GetLevelPath().toUtf8().data();
                     filename += "/";
                     filename += fileinfo.name;
                     if (gEnv->pCryPak->ComputeMD5(filename, md5))
@@ -1454,7 +1454,7 @@ void CGameExporter::ExportFileList(const QString& path, const QString& levelName
     }
 
     // save filelist.xml
-    newpath = path.toLatin1().data();
+    newpath = path.toUtf8().data();
     newpath += "/filelist.xml";
     rootNode->saveToFile(newpath.c_str());
 }
@@ -1463,11 +1463,11 @@ void CGameExporter::Error(const QString& error)
 {
     if (m_bAutoExportMode)
     {
-        CLogFile::WriteLine((QString("Export failed! ") + error).toLatin1().data());
+        CLogFile::WriteLine((QString("Export failed! ") + error).toUtf8().data());
     }
     else
     {
-        Warning((QString("Export failed! ") + error).toLatin1().data());
+        Warning((QString("Export failed! ") + error).toUtf8().data());
     }
 }
 
@@ -1482,13 +1482,13 @@ bool CGameExporter::OpenLevelPack(SLevelPakHelper& lphelper, bool bCryPak)
     if (bCryPak)
     {
         assert(!lphelper.m_sPath.isEmpty());
-        bRet = gEnv->pCryPak->OpenPack(lphelper.m_sPath.toLatin1().data());
+        bRet = gEnv->pCryPak->OpenPack(lphelper.m_sPath.toUtf8().data());
         assert(bRet);
         lphelper.m_bPakOpenedCryPak = true;
     }
     else
     {
-        bRet = lphelper.m_pakFile.Open(lphelper.m_sPath.toLatin1().data());
+        bRet = lphelper.m_pakFile.Open(lphelper.m_sPath.toUtf8().data());
         assert(bRet);
         lphelper.m_bPakOpened = true;
     }
@@ -1504,7 +1504,7 @@ bool CGameExporter::CloseLevelPack(SLevelPakHelper& lphelper, bool bCryPak)
     {
         assert(lphelper.m_bPakOpenedCryPak == true);
         assert(!lphelper.m_sPath.isEmpty());
-        bRet = gEnv->pCryPak->ClosePack(lphelper.m_sPath.toLatin1().data());
+        bRet = gEnv->pCryPak->ClosePack(lphelper.m_sPath.toUtf8().data());
         assert(bRet);
         lphelper.m_bPakOpenedCryPak = false;
     }

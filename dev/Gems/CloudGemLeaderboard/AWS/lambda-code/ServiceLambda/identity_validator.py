@@ -12,6 +12,8 @@ from __future__ import print_function
 
 import CloudCanvas
 import boto3
+import cgf_lambda_settings
+import cgf_service_client
 
 IDENTITY_MAP = None
 
@@ -24,9 +26,25 @@ def init_resources():
         except Exception as e:
             raise Exception("Error retrieving identity table")
 
+def get_id_from_user(user):
+    init_resources()
+    response = IDENTITY_MAP.get_item(Key = {"user": user})
+    item = response.get("Item", {})
+    if not item:
+        return None
+    return item["cognito_id"]
 
 def validate_user(user, cognito_id):
     if not cognito_id:
+        return False
+
+
+    interface_url = cgf_lambda_settings.get_service_url(
+            "CloudGemPlayerAccount_banplayer_1_0_0")
+    if interface_url:
+        if validate_using_player_account_gem(interface_url, user, cognito_id):
+            record_user_id_mapping(user, cognito_id)
+            return True
         return False
 
     init_resources()
@@ -39,3 +57,22 @@ def validate_user(user, cognito_id):
         return True
 
     return item.get("cognito_id", "") == cognito_id
+
+
+def record_user_id_mapping(user, cognito_id):
+    init_resources()
+    response = IDENTITY_MAP.get_item(Key = {"user": user})
+    item = response.get("Item", {})
+    if not item:
+        item["user"] = user
+        item["cognito_id"] = cognito_id
+        IDENTITY_MAP.put_item(Item=item)
+
+
+def validate_using_player_account_gem(interface_url, user, cognito_id):
+    client = cgf_service_client.for_url(
+        interface_url, verbose=True, session=boto3._get_default_session())
+    result = client.navigate('accountinfo', cognito_id).GET()
+    if result.DATA == None:
+        return False
+    return result.DATA['CognitoUsername'] == user # TODO: add support for playername or other attributes

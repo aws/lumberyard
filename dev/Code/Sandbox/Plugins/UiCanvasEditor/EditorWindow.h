@@ -29,7 +29,7 @@ class EditorWindow
     , public IEditorNotifyListener
     , public UiEditorDLLBus::Handler
     , public UiEditorChangeNotificationBus::Handler
-    , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler
+    , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler
 {
     Q_OBJECT
 
@@ -71,10 +71,10 @@ public: // member functions
     void OnEditorPropertiesRefreshEntireTree() override;
     // ~UiEditorChangeNotificationBus
 
-    // AssetBrowserModelNotificationsBus
+    // AssetBrowserModelNotificationBus
     void EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
     void EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
-    // ~AssetBrowserModelNotificationsBus
+    // ~AssetBrowserModelNotificationBus
 
     AZ::EntityId GetCanvas();
 

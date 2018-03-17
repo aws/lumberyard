@@ -13,6 +13,6 @@ def build(bld):
 
     bld.DefineGem(
         includes    = [ bld.Path('Code/CryEngine/CryAction'), bld.Path('Code/CryEngine')],
-        pch         = 'source/StdAfx.cpp',
+        pch         = 'source/Boids_precompiled.cpp',
         use         = ['AzGameFramework']
     )

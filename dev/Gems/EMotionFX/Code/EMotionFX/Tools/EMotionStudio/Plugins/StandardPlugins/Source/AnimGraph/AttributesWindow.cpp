@@ -173,9 +173,9 @@ namespace EMStudio
             if (object->GetBaseType() == EMotionFX::AnimGraphNode::BASETYPE_ID)
             {
                 // detect attribute changes
-                using std::placeholders::_1;
-                using std::placeholders::_2;
-                MysticQt::AttributeChangedFunction func = std::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
+                using AZStd::placeholders::_1;
+                using AZStd::placeholders::_2;
+                MysticQt::AttributeChangedFunction func = AZStd::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
                 mAttributes->AddProperty("Attributes", "Node Name", new NodeNameAttributeWidget((EMotionFX::AnimGraphNode*)object, nullptr, readOnly, false, func), nullptr, nullptr);
             }
             mAttributes->SetIsExpanded("Attributes", true);
@@ -196,9 +196,9 @@ namespace EMStudio
                 attributes.Add(attribute);
 
                 // create the attribute and add it to the layout
-                using std::placeholders::_1;
-                using std::placeholders::_2;
-                MysticQt::AttributeChangedFunction func = std::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
+                using AZStd::placeholders::_1;
+                using AZStd::placeholders::_2;
+                MysticQt::AttributeChangedFunction func = AZStd::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
                 MysticQt::AttributeWidget* attributeWidget = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->CreateAttributeWidget(attributes, attributeSettings, object, readOnly, false, true, MysticQt::AttributeWidgetFactory::ATTRIBUTE_NORMAL, false, func);
                 connect(attributeWidget, SIGNAL(RequestParentReInit()), this, SLOT(ReInitCurrentAnimGraphObject()), Qt::QueuedConnection);
                 mAttributes->AddProperty("Attributes", attributeSettings->GetName(), attributeWidget, attribute, attributeSettings, false);
@@ -264,9 +264,9 @@ namespace EMStudio
             conditionGroupName.Format("%s.%s", groupName, conditionName.AsChar());
 
             // create the remove condition attribute widget and add it as property to the property widget
-            using std::placeholders::_1;
-            using std::placeholders::_2;
-            MysticQt::AttributeChangedFunction func = std::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
+            using AZStd::placeholders::_1;
+            using AZStd::placeholders::_2;
+            MysticQt::AttributeChangedFunction func = AZStd::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
             ButtonAttributeWidget* removeConditionAttributeWidget = new ButtonAttributeWidget(MCore::Array<MCore::Attribute*>(), nullptr, nullptr, readOnly, false, func);
             mAttributes->AddProperty(groupName, conditionName.AsChar(), removeConditionAttributeWidget, nullptr, nullptr);
 
@@ -292,9 +292,9 @@ namespace EMStudio
                 MCore::Array<MCore::Attribute*> attributes;
                 attributes.Add(attribute);
 
-                using std::placeholders::_1;
-                using std::placeholders::_2;
-                MysticQt::AttributeChangedFunction func2 = std::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
+                using AZStd::placeholders::_1;
+                using AZStd::placeholders::_2;
+                MysticQt::AttributeChangedFunction func2 = AZStd::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
 
                 // create the attribute and add it to the layout
                 MysticQt::AttributeWidget* attributeWidget = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->CreateAttributeWidget(attributes, attributeSettings, object, readOnly, false, true, MysticQt::AttributeWidgetFactory::ATTRIBUTE_NORMAL, false, func2);

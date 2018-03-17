@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/PhysX_precompiled.cpp",
+            "Source/PhysX_precompiled.h"
         ]
     },
     "auto": {

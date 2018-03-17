@@ -22,11 +22,11 @@ namespace PhysX
 {
     namespace Pipeline
     {
-
         /**
          * Represents a PhysX mesh asset.
          */
-        class PhysXMeshAsset : public AZ::Data::AssetData
+        class PhysXMeshAsset
+            : public AZ::Data::AssetData
         {
         public:
             friend class PhysXMeshAssetHandler;
@@ -48,29 +48,26 @@ namespace PhysX
         /**
          * Asset handler for loading and initializing PhysXMeshAsset assets.
          */
-        class PhysXMeshAssetHandler 
+        class PhysXMeshAssetHandler
             : public AZ::Data::AssetHandler
             , private AZ::AssetTypeInfoBus::Handler
         {
         public:
             AZ_CLASS_ALLOCATOR(PhysXMeshAssetHandler, PhysXAllocator, 0);
-            
+
             PhysXMeshAssetHandler();
             ~PhysXMeshAssetHandler();
 
             void Register();
             void Unregister();
-            
-            //////////////////////////////////////////////////////////////////////////////////////////////
+
             // AZ::Data::AssetHandler
             AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;
             bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
             bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
             void DestroyAsset(AZ::Data::AssetPtr ptr) override;
             void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
-            //////////////////////////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////////////////////////
             // AZ::AssetTypeInfoBus
             AZ::Data::AssetType GetAssetType() const override;
             void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
@@ -78,9 +75,6 @@ namespace PhysX
             const char* GetBrowserIcon() const override;
             const char* GetGroup() const override;
             AZ::Uuid GetComponentTypeId() const override;
-            //////////////////////////////////////////////////////////////////////////////////////////////
         };
-
     } // namespace Pipeline
-    
 } // namespace PhysX

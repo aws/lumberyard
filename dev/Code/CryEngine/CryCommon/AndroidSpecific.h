@@ -35,10 +35,10 @@
 #endif
 
 #if (defined(__clang__) && NDK_REV_MAJOR >= 14) || (defined(_CPU_ARM) && defined(PLATFORM_64BIT))
-    // The version of clang that NDK r14+ ships with is seemingly generating different (for better or worse) code for the atomic operations 
-    // used in the LocklessLinkedList.  In either case, this is causing deadlocks in the job system and crashes from memory stomps in 
+    // The version of clang that NDK r14+ ships with is seemingly generating different (for better or worse) code for the atomic operations
+    // used in the LocklessLinkedList.  In either case, this is causing deadlocks in the job system and crashes from memory stomps in
     // the bucket allocator.  By defining INTERLOCKED_COMPARE_EXCHANGE_128_NOT_SUPPORTED it will disable the Cry job system as well as
-    // change the implementation of the LocklessLinkedList to use a mutex in it's operations instead, essentially use the same behaviour 
+    // change the implementation of the LocklessLinkedList to use a mutex in it's operations instead, essentially use the same behaviour
     // as iOS.  While not ideal to use this as a band-aid on the problem, it does fix it with a negligible performance impact.
     //
     // Additionally, arm64 processors do not provide a cmpxchg16b (or equivalent) instruction required for _InterlockedCompareExchange128
@@ -165,9 +165,13 @@ extern char* stpcpy(char* dest, const char* str);
     #define __debugbreak() __builtin_trap()
 #endif
 
-// there is no __finite in android, only __isfinite
+// there is no __finite in android, only variants of isfinite
 #undef __finite
-#define __finite __isfinite
+#if NDK_REV_MAJOR >= 16
+    #define __finite isfinite
+#else
+    #define __finite __isfinite
+#endif
 
 #define S_IWRITE S_IWUSR
 
@@ -179,8 +183,8 @@ extern char* stpcpy(char* dest, const char* str);
 
 #include <android/api-level.h>
 
-#if __ANDROID_API__ == 19 
-    // The following were apparently introduced in API 21, however in earlier versions of the 
+#if __ANDROID_API__ == 19
+    // The following were apparently introduced in API 21, however in earlier versions of the
     // platform specific headers they were defines.  In the move to unified headers, the follwoing
     // defines were removed from stat.h
     #ifndef stat64

@@ -135,6 +135,7 @@ private slots:
 
 private:
     void FocusFirstLayoutViewPane(CLayoutSplitter*);
+    void MoveViewport(CLayoutViewPane* from, CLayoutViewPane* to, const QString& viewClassName);
     bool m_bMaximized;
 
     //! What view type is current maximized.
@@ -162,8 +163,5 @@ private:
 };
 
 /////////////////////////////////////////////////////////////////////////////
-
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
 #endif // CRYINCLUDE_EDITOR_LAYOUTWND_H

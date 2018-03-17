@@ -92,7 +92,7 @@ void CPythonScriptsDialog::OnExecute()
     {
         QString workingDirectory = QDir::currentPath();
         const QString scriptPath = QStringLiteral("%1/%2").arg(workingDirectory).arg(ui->treeWidget->GetPath(selectedItem));
-        GetIEditor()->ExecuteCommand("general.run_file '%s'", QtUtil::ToString(scriptPath));
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file '%1'").arg(scriptPath));
     }
 }
 

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Water_precompiled.h"
 
 #include <Water/WaterOceanComponent.h>
 
@@ -68,13 +68,11 @@ namespace Water
 
                 ->Event("GetAnimationWindDirection", &AZ::OceanEnvironmentBus::Events::GetAnimationWindDirection)
                 ->Event("SetAnimationWindDirection", &AZ::OceanEnvironmentBus::Events::SetAnimationWindDirection)
-                // @TODO removing the "ocean wind direction" from TrackView now until the wind direction can properly interpolate on a timed curve LY-67239
-                //->VirtualProperty("WindDirection", "GetAnimationWindDirection", "SetAnimationWindDirection")
+                ->VirtualProperty("WindDirection", "GetAnimationWindDirection", "SetAnimationWindDirection")
 
                 ->Event("GetAnimationWindSpeed", &AZ::OceanEnvironmentBus::Events::GetAnimationWindSpeed)
                 ->Event("SetAnimationWindSpeed", &AZ::OceanEnvironmentBus::Events::SetAnimationWindSpeed)
-                // @TODO removing the "ocean wind speed" from TrackView now until the wind speed can properly interpolate on a timed curve LY-67239
-                //->VirtualProperty("WindSpeed", "GetAnimationWindSpeed", "SetAnimationWindSpeed")
+                ->VirtualProperty("WindSpeed", "GetAnimationWindSpeed", "SetAnimationWindSpeed")
 
                 ->Event("GetAnimationWavesSpeed", &AZ::OceanEnvironmentBus::Events::GetAnimationWavesSpeed)
                 ->Event("SetAnimationWavesSpeed", &AZ::OceanEnvironmentBus::Events::SetAnimationWavesSpeed)

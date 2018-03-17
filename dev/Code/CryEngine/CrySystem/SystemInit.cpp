@@ -161,7 +161,7 @@
 #include "WindowsConsole.h"
 
 #if defined(EXTERNAL_CRASH_REPORTING)
-#include <ToolsCrashHandler.h>
+#include <CrashHandler.h>
 #endif
 
 // select the asset processor based on cvars and defines.
@@ -181,6 +181,43 @@
 #ifdef WIN32
 extern LONG WINAPI CryEngineExceptionFilterWER(struct _EXCEPTION_POINTERS* pExceptionPointers);
 #endif
+
+#ifdef AZ_PLATFORM_APPLE
+
+#include <execinfo.h>
+#include <signal.h>
+void CryEngineSignalHandler(int signal)
+{
+    char resolvedPath[_MAX_PATH];
+
+    // it is assumed that @log@ points at the appropriate place (so for apple, to the user profile dir)
+    if (AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath("@log@/crash.log", resolvedPath, _MAX_PATH))
+    {
+        fprintf(stderr, "Crash Signal Handler - logged to %s\n", resolvedPath);
+        FILE* file = fopen(resolvedPath, "a");
+        if (file)
+        {
+            char sTime[128];
+            time_t ltime;
+            time(&ltime);
+            struct tm* today = localtime(&ltime);
+            strftime(sTime, 40, "<%Y-%m-%d %H:%M:%S> ", today);
+            fprintf(file, "%s: Error: signal %s:\n", sTime, strsignal(signal));
+            fflush(file);
+            void* array[100];
+            int s = backtrace(array, 100);
+            backtrace_symbols_fd(array, s, fileno(file));
+            fclose(file);
+            CryLogAlways("Successfully recorded crash file:  '%s'", resolvedPath);
+            abort();
+        }
+    }
+
+    CryLogAlways("Could not record crash file...");
+    abort();
+}
+
+#endif // #ifdef AZ_PLATFORM_APPLE
 
 #if defined(USE_UNIXCONSOLE)
 #if defined(LINUX) && !defined(ANDROID)
@@ -224,7 +261,7 @@ CUNIXConsole* pUnixConsole;
 #define DLL_LMBRAWS         "LmbrAWS"
 
 //////////////////////////////////////////////////////////////////////////
-#if defined(WIN32) || defined(LINUX) ||  defined(DURANGO) || defined(APPLE)
+#if defined(WIN32) || defined(LINUX) || defined(APPLE)
 #   define DLL_MODULE_INIT_ISYSTEM "ModuleInitISystem"
 #   define DLL_MODULE_SHUTDOWN_ISYSTEM "ModuleShutdownISystem"
 #   define DLL_INITFUNC_RENDERER "PackageRenderConstructor"
@@ -739,7 +776,7 @@ struct SCryEngineLanguageConfigLoader
 };
 
 //////////////////////////////////////////////////////////////////////////
-#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
+#if defined(AZ_HAS_DLL_SUPPORT) && !defined(AZ_MONOLITHIC_BUILD)
 WIN_HMODULE CSystem::LoadDynamiclibrary(const char* dllName) const
 {
     WIN_HMODULE handle = nullptr;
@@ -795,7 +832,7 @@ WIN_HMODULE CSystem::LoadDLL(const char* dllName)
 
     return handle;
 }
-#endif //#if !defined(AZ_MONOLITHIC_BUILD) && !defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
+#endif //#if defined(AZ_HAS_DLL_SUPPORT) && !defined(AZ_MONOLITHIC_BUILD)
 
 //////////////////////////////////////////////////////////////////////////
 bool CSystem::LoadEngineDLLs()
@@ -883,7 +920,7 @@ bool CSystem::InitializeEngineModule(const char* dllName, const char* moduleClas
 #endif // #if !defined(AZ_MONOLITHIC_BUILD)
 
 
-    boost::shared_ptr<IEngineModule> pModule;
+    AZStd::shared_ptr<IEngineModule> pModule;
     if (CryCreateClassInstance(moduleClassName, pModule))
     {
         MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Initialize module: %s", moduleClassName);
@@ -1115,11 +1152,11 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
         if (m_env.IsEditor())
         {
 #if defined(EXTERNAL_CRASH_REPORTING)
-            CrashHandler::ToolsCrashHandler::AddAnnotation("dx.feature.level", Win32SysInspect::GetFeatureLevelAsString(featureLevel));
-            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.name", gpuName);
-            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.vendorId", std::to_string(gpuVendorId));
-            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.deviceId", std::to_string(gpuDeviceId));
-            CrashHandler::ToolsCrashHandler::AddAnnotation("gpu.memory", std::to_string(totVidMem));
+            CrashHandler::CrashHandlerBase::AddAnnotation("dx.feature.level", Win32SysInspect::GetFeatureLevelAsString(featureLevel));
+            CrashHandler::CrashHandlerBase::AddAnnotation("gpu.name", gpuName);
+            CrashHandler::CrashHandlerBase::AddAnnotation("gpu.vendorId", std::to_string(gpuVendorId));
+            CrashHandler::CrashHandlerBase::AddAnnotation("gpu.deviceId", std::to_string(gpuDeviceId));
+            CrashHandler::CrashHandlerBase::AddAnnotation("gpu.memory", std::to_string(totVidMem));
 #endif
         }
         else
@@ -1436,9 +1473,9 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
         WIN_HWND h = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, initParams.bEditor, hinst, hwnd);
         InitPhysicsRenderer(initParams);
 
-#if (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))|| defined(ORBIS)
+#if (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))
         return true;
-#else   // (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))|| defined(ORBIS)
+#else
         if (h)
         {
             return true;
@@ -1446,8 +1483,8 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
 
         AZ_Assert(false, "Renderer failed to initialize correctly.");
         return false;
-#endif  // (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))|| defined(ORBIS)
-#endif  // WIN32
+#endif
+#endif
     }
     return true;
 }
@@ -2030,13 +2067,9 @@ bool CSystem::LaunchAssetProcessor()
 
     const char* appRoot = nullptr;
     AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
-
-    // Get the engine root path
-    const char* engineRoot = nullptr;
-    AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
-    if (engineRoot != nullptr)
+    if (appRoot != nullptr)
     {
-        AZStd::string engineBinFolder = AZStd::string::format("%s%s",engineRoot, BINFOLDER_NAME);
+        AZStd::string engineBinFolder = AZStd::string::format("%s%s", appRoot, BINFOLDER_NAME);
         azstrncpy(workingDir, AZ_ARRAY_SIZE(workingDir), engineBinFolder.c_str(), engineBinFolder.length());
 
         AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s.%s",
@@ -2193,6 +2226,9 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
         size_t iplen = strlen(initParams.remoteIP);
         int countseperators = 0;
         bool isNumeric = true;
+#if AZ_TRAIT_DENY_ASSETPROCESSOR_LOOPBACK
+        bool isIllegalLoopBack = !strcmp(initParams.remoteIP, "127.0.0.1");
+#endif
         for (int i = 0; isNumeric && i < iplen; ++i)
         {
             if (initParams.remoteIP[i] == '.')
@@ -2207,15 +2243,18 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
 
         if (iplen < 7 || 
             countseperators != 3 ||
+#if AZ_TRAIT_DENY_ASSETPROCESSOR_LOOPBACK
+            isIllegalLoopBack ||
+#endif
             !isNumeric)
         {
-                if (waitForConnect)
-                {
+            if (waitForConnect)
+            {
                 AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.\nQuitting...");
-                    return false;
-                }
-                else
-                {
+                return false;
+            }
+            else
+            {
                 AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "IP address of the Asset Processor is invalid!\nMake sure the remote_ip in the bootstrap.cfg is correct.");
             }
         }
@@ -3335,6 +3374,12 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::Init(const SSystemInitParams& startupParams)
 {
+#ifdef AZ_PLATFORM_APPLE
+    signal(SIGSEGV, CryEngineSignalHandler);
+    signal(SIGTRAP, CryEngineSignalHandler);
+    signal(SIGILL, CryEngineSignalHandler);
+#endif // #ifdef AZ_PLATFORM_APPLE
+
     LOADING_TIME_PROFILE_SECTION;
 
     SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_INIT);
@@ -6118,7 +6163,7 @@ void CSystem::CreateSystemVars()
             "0: Disable the profiler\n"
             "1: Show the full profiler\n"
             "2: Show only the execution graph\n");
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#if defined(WIN32) || defined(WIN64)
     const uint32 nJobSystemDefaultCoreNumber = 8;
 #else
     const uint32 nJobSystemDefaultCoreNumber = 4;
@@ -6398,7 +6443,7 @@ void CSystem::CreateSystemVars()
     CCryMemoryManager::RegisterCVars();
 #endif
 
-#if defined(WIN32) || defined(DURANGO)
+#if defined(WIN32)
     REGISTER_CVAR2("sys_display_threads", &g_cvars.sys_display_threads, 0, 0, "Displays Thread info");
 #endif
 

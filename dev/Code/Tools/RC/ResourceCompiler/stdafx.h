@@ -32,7 +32,7 @@
 
 #include <platform.h>
 
-#include "ixml.h"
+#include "IXml.h"
 
 #if defined(AZ_PLATFORM_WINDOWS)
 // Standard C headers.

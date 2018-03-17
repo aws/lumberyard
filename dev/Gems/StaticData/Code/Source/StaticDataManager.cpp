@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "StaticData_precompiled.h"
 #include <StaticDataManager.h>
 #include <CSVStaticData.h>
 #include <StaticDataInterface.h>

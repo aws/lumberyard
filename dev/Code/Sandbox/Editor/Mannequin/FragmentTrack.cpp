@@ -921,7 +921,7 @@ const char* CClipKey::GetDBAPath() const
 
 void CClipKey::SetAnimation(const QString& animName, const IAnimationSet* animSet)
 {
-    animRef.SetByString(animName.toLatin1().data());
+    animRef.SetByString(animName.toUtf8().data());
     const int id = animSet ? animSet->GetAnimIDByCRC(animRef.crc) : -1;
     m_animSet = animSet;
     if (id >= 0)
@@ -930,7 +930,7 @@ void CClipKey::SetAnimation(const QString& animName, const IAnimationSet* animSe
         string animPath = animSet->GetFilePathByID(id);
         m_fileName = animPath.substr(animPath.find_last_of('/') + 1);
         m_filePath = animPath.substr(0, animPath.find_last_of('/') + 1);
-        m_fileName = PathUtil::ReplaceExtension(m_fileName.toLatin1().data(), "");
+        m_fileName = PathUtil::ReplaceExtension(m_fileName.toUtf8().data(), "");
         animExtension = animPath.substr(animPath.find_last_of('.') + 1);
 
         m_animCache.Set(id, animSet);
@@ -2200,7 +2200,7 @@ void CParamTrack::SerializeKey(CParamKey& key, XmlNodeRef& keyNode, bool bLoadin
         keyNode->setAttr("paramQuatVec", key.parameter.value.q.v);
         keyNode->setAttr("paramQuatScalar", key.parameter.value.q.w);
         keyNode->setAttr("paramVec", key.parameter.value.t);
-        keyNode->setAttr("name", key.name.toLatin1().data());
+        keyNode->setAttr("name", key.name.toUtf8().data());
         keyNode->setAttr("historyItem", key.historyItem);
         keyNode->setAttr("isLocation", key.isLocation);
     }

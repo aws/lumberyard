@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,9 +10,9 @@
 *
 */
 
-#include <memory>
-#include <cassert>
-#include "fbxsdk.h"
+#pragma once
+
+#include <fbxsdk.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 
 namespace AZ
@@ -41,5 +39,5 @@ namespace AZ
             FbxBlendShapeChannelWrapper() = default;
             FbxBlendShapeChannel* m_fbxBlendShapeChannel;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

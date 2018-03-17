@@ -23,8 +23,8 @@
 #endif
 
 // QT
-#include <QtWidgets/qwidget.h>
-#include <QtWidgets/qframe.h>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QFrame>
 #include <QtGui/qevent.h>
 #include <QtWidgets/qcombobox.h>
 #include <QtWidgets/qtoolbutton.h>
@@ -35,3 +35,11 @@
 #include <QtWidgets/qinputdialog.h>
 #include <QtCore/qbasictimer.h>
 #include <QtCore/qobjectdefs.h>
+
+#ifdef Q_OS_MACOS
+typedef void* HWND;
+typedef void* HMODULE;
+typedef quint32 DWORD;
+#define _MAX_PATH 260
+#define MAX_PATH 260
+#endif

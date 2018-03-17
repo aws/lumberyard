@@ -1145,7 +1145,7 @@ struct Matrix34_tpl
     *  Example 2:
     *   Matrix34 im34 = m34.GetInverted();
     */
-    ILINE void Invert(void)
+    void Invert(void)
     {
         //rescue members
         Matrix34_tpl<F> m = *this;
@@ -1163,21 +1163,22 @@ struct Matrix34_tpl
         m13 = (m.m12 * m.m23 * m.m00 + m.m22 * m.m03 * m.m10 + m.m02 * m.m13 * m.m20) - (m.m22 * m.m13 * m.m00 + m.m02 * m.m23 * m.m10 + m.m12 * m.m03 * m.m20);
         m23 = (m.m20 * m.m11 * m.m03 + m.m00 * m.m21 * m.m13 + m.m10 * m.m01 * m.m23) - (m.m10 * m.m21 * m.m03 + m.m20 * m.m01 * m.m13 + m.m00 * m.m11 * m.m23);
         // calculate determinant
-        F det = 1.0f / (m.m00 * m00 + m.m10 * m01 + m.m20 * m02);
+        F det = m.m00 * m00 + m.m10 * m01 + m.m20 * m02;
         assert(fabs_tpl(det) > (F)0.00000001);
+        F rcpDet = 1.0f / det;
         // calculate matrix inverse/
-        m00 *= det;
-        m01 *= det;
-        m02 *= det;
-        m03 *= det;
-        m10 *= det;
-        m11 *= det;
-        m12 *= det;
-        m13 *= det;
-        m20 *= det;
-        m21 *= det;
-        m22 *= det;
-        m23 *= det;
+        m00 *= rcpDet;
+        m01 *= rcpDet;
+        m02 *= rcpDet;
+        m03 *= rcpDet;
+        m10 *= rcpDet;
+        m11 *= rcpDet;
+        m12 *= rcpDet;
+        m13 *= rcpDet;
+        m20 *= rcpDet;
+        m21 *= rcpDet;
+        m22 *= rcpDet;
+        m23 *= rcpDet;
     }
     ILINE Matrix34_tpl<F> GetInverted() const
     {

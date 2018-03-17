@@ -305,10 +305,6 @@
                                 "dynamodb:GetItem",
                                 "dynamodb:DeleteItem",
                                 "dynamodb:UpdateItem"
-                            ],
-                            "ResourceSuffix": [
-                                "",
-                                "/*"
                             ]
                         },
                         {
@@ -320,16 +316,15 @@
                                 "dynamodb:GetItem",
                                 "dynamodb:DeleteItem",
                                 "dynamodb:UpdateItem"
-                            ],
-                            "ResourceSuffix": [
-                                "",
-                                "/*"
                             ]
                         }
                     ]
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "survey_id",
@@ -351,7 +346,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "ServiceApi": {
             "Metadata": {
@@ -501,6 +496,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "survey_id",
@@ -553,7 +551,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "Questions": {
             "Metadata": {
@@ -568,10 +566,6 @@
                                 "dynamodb:GetItem",
                                 "dynamodb:DeleteItem",
                                 "dynamodb:UpdateItem"
-                            ],
-                            "ResourceSuffix": [
-                                "",
-                                "/*"
                             ]
                         },
                         {
@@ -583,16 +577,15 @@
                                 "dynamodb:GetItem",
                                 "dynamodb:DeleteItem",
                                 "dynamodb:UpdateItem"
-                            ],
-                            "ResourceSuffix": [
-                                "",
-                                "/*"
                             ]
                         }
                     ]
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "survey_id",
@@ -622,7 +615,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "AnswersDynamoDbStreamLambda": {
             "Properties": {

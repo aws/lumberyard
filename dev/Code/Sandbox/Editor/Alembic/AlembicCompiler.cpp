@@ -32,7 +32,7 @@ bool CAlembicCompiler::CompileAlembic(const QString& fullPath)
 {
     bool compileConfigFileSaved = false;
     const QString configPath = Path::ReplaceExtension(fullPath, "cbc");
-    XmlNodeRef config = XmlHelpers::LoadXmlFromFile(configPath.toLatin1().data());
+    XmlNodeRef config = XmlHelpers::LoadXmlFromFile(configPath.toUtf8().data());
 
     CAlembicCompileDialog dialog(config);
 
@@ -55,19 +55,19 @@ bool CAlembicCompiler::CompileAlembic(const QString& fullPath)
             configChanged = true;
         }
 
-        if (strcmp(config->getAttr("UpAxis"), upAxis.toLatin1().data()) != 0)
+        if (strcmp(config->getAttr("UpAxis"), upAxis.toUtf8().data()) != 0)
         {
-            config->setAttr("UpAxis", upAxis.toLatin1().data());
+            config->setAttr("UpAxis", upAxis.toUtf8().data());
             configChanged = true;
         }
-        if (strcmp(config->getAttr("MeshPrediction"), meshPrediction.toLatin1().data()) != 0)
+        if (strcmp(config->getAttr("MeshPrediction"), meshPrediction.toUtf8().data()) != 0)
         {
-            config->setAttr("MeshPrediction", meshPrediction.toLatin1().data());
+            config->setAttr("MeshPrediction", meshPrediction.toUtf8().data());
             configChanged = true;
         }
-        if (strcmp(config->getAttr("UseBFrames"), useBFrames.toLatin1().data()) != 0)
+        if (strcmp(config->getAttr("UseBFrames"), useBFrames.toUtf8().data()) != 0)
         {
-            config->setAttr("UseBFrames", useBFrames.toLatin1().data());
+            config->setAttr("UseBFrames", useBFrames.toUtf8().data());
             configChanged = true;
         }
         if (atoi(config->getAttr("IndexFrameDistance")) != indexFrameDistance)
@@ -75,14 +75,14 @@ bool CAlembicCompiler::CompileAlembic(const QString& fullPath)
             config->setAttr("IndexFrameDistance", indexFrameDistance);
             configChanged = true;
         }
-        if (strcmp(config->getAttr("BlockCompressionFormat"), blockCompressionFormat.toLatin1().data()) != 0)
+        if (strcmp(config->getAttr("BlockCompressionFormat"), blockCompressionFormat.toUtf8().data()) != 0)
         {
-            config->setAttr("BlockCompressionFormat", blockCompressionFormat.toLatin1().data());
+            config->setAttr("BlockCompressionFormat", blockCompressionFormat.toUtf8().data());
             configChanged = true;
         }
-        if (strcmp(config->getAttr("PlaybackFromMemory"), playbackFromMemory.toLatin1().data()) != 0)
+        if (strcmp(config->getAttr("PlaybackFromMemory"), playbackFromMemory.toUtf8().data()) != 0)
         {
-            config->setAttr("PlaybackFromMemory", playbackFromMemory.toLatin1().data());
+            config->setAttr("PlaybackFromMemory", playbackFromMemory.toUtf8().data());
             configChanged = true;
         }
         if (atof(config->getAttr("PositionPrecision")) != positionPrecision)

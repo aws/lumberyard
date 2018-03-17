@@ -43,7 +43,7 @@ QString AddS3Bucket::GetResourceName() const
 bool AddS3Bucket::TypeSpecificValidateResource(const QString& resourceName)
 {
     // note that QValidator can't handle this complexity in its regexp, so it needs to be in post accept validation
-    if (resourceName.left(1).contains(QRegExp("[^a-z]")))
+    if (!resourceName.at(0).isLower())
     {
         QMessageBox::critical(this, tr("Invalid resource name"), tr("S3 bucket name must begin with a lowercase a-z"));
         return false;
@@ -53,7 +53,8 @@ bool AddS3Bucket::TypeSpecificValidateResource(const QString& resourceName)
         QMessageBox::critical(this, tr("Invalid resource name"), tr("S3 bucket name cannot contain '-'"));
         return false;
     }
-    if (resourceName.right(1).contains(QRegExp("[^a-z0-9]")))
+    const QChar last = resourceName.at(resourceName.size() - 1);
+    if (!last.isLower() && !last.isDigit())
     {
         QMessageBox::critical(this, tr("Invalid resource name"), tr("S3 bucket name must end with a lowercase a-z or digit"));
         return false;

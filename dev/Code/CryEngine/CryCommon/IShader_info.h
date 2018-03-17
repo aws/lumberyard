@@ -17,7 +17,14 @@
 
 #include <IShader.h> // <> required for Interfuscator
 
-#if !defined(LINUX) && !defined(APPLE) && !defined(ORBIS)
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(IShader_info_h)
+#elif !defined(LINUX) && !defined(APPLE)
+#define ISHADER_INFO_H_TRAIT_DEFINE_ETEX_INFO 1
+#endif
+
+#if ISHADER_INFO_H_TRAIT_DEFINE_ETEX_INFO
 ENUM_INFO_BEGIN(ETEX_Format)
 ENUM_ELEM_INFO(, eTF_Unknown)
 ENUM_ELEM_INFO(, eTF_R8G8B8A8S)

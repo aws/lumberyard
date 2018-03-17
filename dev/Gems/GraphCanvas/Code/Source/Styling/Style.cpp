@@ -320,7 +320,7 @@ namespace GraphCanvas
             static bool reflected = false;
 
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-            if (!serializeContext || reflected)
+            if (!serializeContext || (reflected && !serializeContext->IsRemovingReflection()))
             {
                 return;
             }

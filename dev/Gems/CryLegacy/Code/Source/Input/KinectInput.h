@@ -31,7 +31,7 @@ class CKinectXboxSyncThread;
 #include <BoostHelpers.h>
 
 
-DECLARE_BOOST_POINTERS(CryCriticalSection);
+DECLARE_SMART_POINTERS(CryCriticalSection);
 
 #ifdef KINECT_USE_HANDLES
 struct SKinGripInternal

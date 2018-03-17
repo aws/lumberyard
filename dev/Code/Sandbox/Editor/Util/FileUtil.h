@@ -16,7 +16,6 @@
 #include "CryThread.h"
 #include "StringUtils.h"
 #include "../Include/SandboxAPI.h"
-#include "dll_string.h"
 #include <QString>
 #include <QFileInfo>
 #include "../Include/IFileUtil.h"
@@ -71,11 +70,17 @@ public:
     //! Discard changes to a file from source control API.  Blocks until completed
     static bool RevertFile(const char* filename, QWidget* parentWindow = nullptr);
 
+    //! Renames (moves) a file through the source control API.  Blocks until completed
+    static bool RenameFile(const char* sourceFile, const char* targetFile, QWidget* parentWindow = nullptr);
+
     //! Deletes a file using source control API.  Blocks until completed.
     static bool DeleteFromSourceControl(const char* filename, QWidget* parentWindow = nullptr);
 
+    //! Attempts to get the latest version of a file from source control.  Blocks until completed
+    static bool GetLatestFromSourceControl(const char* filename, QWidget* parentWindow = nullptr);
+
     //! Gather information about a file using the source control API.  Blocks until completed
-    static bool GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr);
+    static bool GetFileInfoFromSourceControl(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr);
 
     //! Creates this directory if it doesn't exist. Returns false if the director doesn't exist and couldn't be created.
     static bool CreateDirectory(const char* dir);
@@ -133,9 +138,6 @@ public:
     // THIS FUNCTION IS NOT DESIGNED FOR MULTI-THREADED USAGE
     static IFileUtil::ECopyTreeResult   MoveTree(const QString& strSourceDirectory, const QString& strTargetDirectory, bool boRecurse = true, bool boConfirmOverwrite = false);
 
-    //
-    static IFileUtil::ECopyTreeResult   MoveFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false);
-
     // Show Popup Menu with file commands include Source Control commands
     // filename: a name of file without path
     // fullGamePath: a game path to folder like "/Game/Objects" without filename
@@ -149,7 +151,6 @@ public:
     static void PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filename, const QString& fullGamePath, bool* pIsSelected = nullptr);
 
     static void GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, bool bMakeLowerCase = false, bool bMakeUnixPath = false);
-    static void GatherAssetFilenamesFromLevel(DynArray<dll_string>& rOutFilenames);
 
     // Get file attributes include source control attributes if available
     static uint32 GetAttributes(const char* filename, bool bUseSourceControl = true);

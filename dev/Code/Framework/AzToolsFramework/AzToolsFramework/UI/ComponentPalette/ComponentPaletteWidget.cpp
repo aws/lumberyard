@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "ComponentPaletteModel.hxx"
 #include "ComponentPaletteUtil.hxx"

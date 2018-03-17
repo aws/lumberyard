@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "EditorEntityIconComponent.h"
 
@@ -186,9 +186,15 @@ namespace AzToolsFramework
             if (firstComponentId != AZ::InvalidComponentId)
             {
                 AZ::Entity* entity = GetEntity();
-                AZ::Component* component = entity->FindComponent(firstComponentId);
-                AZ::Uuid componentType = AzToolsFramework::GetUnderlyingComponentType(*component);
-                AzToolsFramework::EditorRequestBus::BroadcastResult(entityIconPath, &AzToolsFramework::EditorRequestBus::Events::GetComponentIconPath, componentType, AZ::Edit::Attributes::ViewportIcon, component);
+                if (entity)
+                {
+                    AZ::Component* component = entity->FindComponent(firstComponentId);
+                    if (component)
+                    {
+                        AZ::Uuid componentType = AzToolsFramework::GetUnderlyingComponentType(*component);
+                        AzToolsFramework::EditorRequestBus::BroadcastResult(entityIconPath, &AzToolsFramework::EditorRequestBus::Events::GetComponentIconPath, componentType, AZ::Edit::Attributes::ViewportIcon, component);
+                    }
+                }
             }
 
             if (entityIconPath.empty())

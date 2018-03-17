@@ -123,11 +123,17 @@ struct IFileUtil
     //! Discard changes to a file from source control API.  Blocks until completed
     virtual bool RevertFile(const char* filename, QWidget* parentWindow = nullptr) = 0;
 
+    //! Renames (moves) a file through the source control API.  Blocks until completed
+    virtual bool RenameFile(const char* sourceFile, const char* targetFile, QWidget* parentWindow = nullptr) = 0;
+
     //! Deletes a file using source control API.  Blocks until completed
     virtual bool DeleteFromSourceControl(const char* filename, QWidget* parentWindow = nullptr) = 0;
 
+    //! Attempts to get the latest version of a file from source control.  Blocks until completed
+    virtual bool GetLatestFromSourceControl(const char* filename, QWidget* parentWindow = nullptr) = 0;
+
     //! Gather information about a file using the source control API.  Blocks until completed
-    virtual bool GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr) = 0;
+    virtual bool GetFileInfoFromSourceControl(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow = nullptr) = 0;
 
     //! Creates this directory.
     virtual void CreateDirectory(const char* dir) = 0;
@@ -178,9 +184,6 @@ struct IFileUtil
     // It doesn't move the source folder to the target folder, only it's contents.
     // THIS FUNCTION IS NOT DESIGNED FOR MULTI-THREADED USAGE
     virtual ECopyTreeResult MoveTree(const QString& strSourceDirectory, const QString& strTargetDirectory, bool boRecurse = true, bool boConfirmOverwrite = false) = 0;
-
-    //
-    virtual ECopyTreeResult MoveFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite = false) = 0;
 
     virtual void GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, bool bMakeLowerCase = false, bool bMakeUnixPath = false) = 0;
 

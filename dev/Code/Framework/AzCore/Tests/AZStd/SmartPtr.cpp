@@ -2839,10 +2839,10 @@ namespace SharedPtr
     // Shared ptr multithread test
     class SharedPointerMultiThreadTest
     {
-#if   defined(AZ_PLATFORM_ANDROID)
+#if defined(AZ_PLATFORM_ANDROID)
         static int const n = 256 * 1024;
         static const int numThreads = 4;
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
+#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
         static int const n = 1024 * 1024;
         static const int numThreads = 16;
 #endif
@@ -2862,9 +2862,9 @@ namespace SharedPtr
         {
             AZ::SystemAllocator::Descriptor desc;
             desc.m_heap.m_numMemoryBlocks = 1;
-#if   defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+#if   defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
             desc.m_heap.m_memoryBlocksByteSize[0] = 800 * 1024 * 1024;
-#elif defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_ANDROID) // ACCEPTED_USE
+#elif defined(AZ_PLATFORM_ANDROID)
             desc.m_heap.m_memoryBlocksByteSize[0] = 400 * 1024 * 1024;
 #endif
             m_memBlock = UnitTest::DebugAlignAlloc(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);

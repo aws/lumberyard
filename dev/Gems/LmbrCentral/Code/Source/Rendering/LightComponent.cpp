@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -138,7 +138,7 @@ namespace LmbrCentral
                 ->Event("SetProbeAttenuationFalloff", &LightComponentRequestBus::Events::SetProbeAttenuationFalloff, { { { "Falloff", "Smoothness of the falloff around the probe's bounds" } } })
                 ->VirtualProperty("ProbeAttenuationFalloff", "GetProbeAttenuationFalloff", "SetProbeAttenuationFalloff")
                 ->Event("GetProbeFade", &LightComponentRequestBus::Events::GetProbeFade)
-                ->Event("SetProbeFade", &LightComponentRequestBus::Events::SetProbeFade, { { { "Fade", "Multiplier for fading out a probe [0-1]", AZ::BehaviorMakeDefaultValue(1.0f) } } })
+                ->Event("SetProbeFade", &LightComponentRequestBus::Events::SetProbeFade, { { { "Fade", "Multiplier for fading out a probe [0-1]", behaviorContext->MakeDefaultValue(1.0f) } } })
                 ->VirtualProperty("ProbeFade", "GetProbeFade", "SetProbeFade")
                 ;
 
@@ -155,7 +155,7 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<LightConfiguration>()
-                ->Version(6, &VersionConverter)
+                ->Version(7, &VersionConverter)
                 ->Field("LightType", &LightConfiguration::m_lightType)
                 ->Field("Visible", &LightConfiguration::m_visible)
                 ->Field("OnInitially", &LightConfiguration::m_onInitially)
@@ -188,7 +188,7 @@ namespace LmbrCentral
                 ->Field("MinimumSpec", &LightConfiguration::m_minSpec)
                 ->Field("CastShadowsSpec", &LightConfiguration::m_castShadowsSpec)
                 ->Field("VoxelGIMode", &LightConfiguration::m_voxelGIMode)
-                ->Field("IgnoreVisAreas", &LightConfiguration::m_ignoreVisAreas)
+                ->Field("UseVisAreas", &LightConfiguration::m_useVisAreas)
                 ->Field("IndoorOnly", &LightConfiguration::m_indoorOnly)
                 ->Field("AffectsThisAreaOnly", &LightConfiguration::m_affectsThisAreaOnly)
                 ->Field("VolumetricFogOnly", &LightConfiguration::m_volumetricFogOnly)
@@ -330,6 +330,33 @@ namespace LmbrCentral
             AZ::Color colorVal(colorVec.GetX(), colorVec.GetY(), colorVec.GetZ(), colorVec.GetW());
             color.Convert<AZ::Color>(context);
             color.SetData(context, colorVal);
+        }
+
+        // conversion from version 6 to version 7:
+        // - Need to rename IgnoreVisAreas to UseVisAreas
+        // UseVisAreas is the Inverse of IgnoreVisAreas
+        if (classElement.GetVersion() <= 6)
+        {
+            int ignoreVisAreasIndex = classElement.FindElement(AZ_CRC("IgnoreVisAreas", 0x01823201));
+
+            if (ignoreVisAreasIndex < 0)
+            {
+                return false;
+            }
+
+            AZ::SerializeContext::DataElementNode& useVisAreasNode = classElement.GetSubElement(ignoreVisAreasIndex);
+            useVisAreasNode.SetName("UseVisAreas");
+
+            bool ignoreVisAreas = true;
+            if (!useVisAreasNode.GetData<bool>(ignoreVisAreas))
+            {
+                return false;
+            }
+
+            if (!useVisAreasNode.SetData<bool>(context, !ignoreVisAreas))
+            {
+                return false;
+            }
         }
 
         return true;
@@ -793,7 +820,7 @@ namespace LmbrCentral
         , m_diffuseMultiplier(1.f)
         , m_specMultiplier(1.f)
         , m_affectsThisAreaOnly(true)
-        , m_ignoreVisAreas(false)
+        , m_useVisAreas(true)
         , m_volumetricFog(true)
         , m_volumetricFogOnly(false)
         , m_indoorOnly(false)

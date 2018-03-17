@@ -265,7 +265,7 @@ namespace AZStd
     }
 }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if defined(AZ_PLATFORM_WINDOWS)
     #include <AzCore/std/parallel/internal/thread_win.h>
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     #include <AzCore/std/parallel/internal/thread_linux.h>

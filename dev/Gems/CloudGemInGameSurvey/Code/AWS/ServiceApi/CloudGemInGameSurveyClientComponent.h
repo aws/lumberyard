@@ -34,7 +34,7 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
-#include "StdAfx.h"
+#include "CloudGemInGameSurvey_precompiled.h"
 
 namespace CloudGemInGameSurvey {
 namespace ServiceAPI {

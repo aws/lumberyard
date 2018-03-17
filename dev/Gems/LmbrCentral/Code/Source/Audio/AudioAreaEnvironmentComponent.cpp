@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "AudioAreaEnvironmentComponent.h"
 
 #include <AzCore/Component/Entity.h>

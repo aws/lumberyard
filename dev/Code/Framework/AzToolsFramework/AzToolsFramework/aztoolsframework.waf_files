@@ -2,8 +2,8 @@
     "none": {
         "Root": [
             "newoverride.inl",
-            "stdafx.h",
-            "stdafx.cpp"
+            "StdAfx.h",
+            "StdAfx.cpp"
         ],
         "AssetEditor": [
             "AssetEditor/AssetEditorBus.h",
@@ -16,10 +16,6 @@
         ],
         "UI/PropertyEditor/Resources": [
             "UI/PropertyEditor/Resources/Icons.qrc"
-        ],
-        "UI/Qt": [
-            "UI/Qt/FlowLayout.h",
-            "UI/Qt/FlowLayout.cpp"
         ],
         "UI/SearchWidget": [
             "UI/SearchWidget/SearchCriteriaWidget.hxx",
@@ -258,6 +254,8 @@
             "SourceControl/LocalFileSCComponent.h",
             "SourceControl/PerforceComponent.cpp",
             "SourceControl/PerforceComponent.h",
+            "SourceControl/PerforceConnection.cpp",
+            "SourceControl/PerforceConnection.h",
             "SourceControl/QtSourceControlNotificationHandler.cpp",
             "SourceControl/QtSourceControlNotificationHandler.h",
             "SourceControl/SourceControlAPI.h"
@@ -383,7 +381,7 @@
             "UI/PropertyEditor/PropertyDoubleSpinCtrl.hxx",
             "UI/PropertyEditor/PropertyDoubleSpinCtrl.cpp",
             "UI/PropertyEditor/PropertyEditor_UITypes.h",
-            "UI/PropertyEditor/PropertyEditorApi.h",
+            "UI/PropertyEditor/PropertyEditorAPI.h",
             "UI/PropertyEditor/PropertyEditorApi.cpp",
             "UI/PropertyEditor/PropertyEditorAPI_Internals.h",
             "UI/PropertyEditor/PropertyEditorAPI_Internals_Impl.h",
@@ -438,8 +436,6 @@
             "UI/UICore/ProgressShield.hxx",
             "UI/UICore/ProgressShield.cpp",
             "UI/UICore/ProgressShield.ui",
-            "UI/UICore/QBetterLabel.cpp",
-            "UI/UICore/QBetterLabel.h",
             "UI/UICore/QTreeViewStateSaver.hxx",
             "UI/UICore/QTreeViewStateSaver.cpp",
             "UI/UICore/QWidgetSavedState.h",

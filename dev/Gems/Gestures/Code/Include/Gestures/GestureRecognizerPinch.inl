@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Gestures_precompiled.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Gestures::RecognizerPinch::RecognizerPinch(Gestures::IPinchListener& listener, const Config& config)

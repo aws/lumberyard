@@ -35,7 +35,7 @@
 #   define SD_SEND     SHUT_WR
 #   define SD_BOTH     SHUT_RDWR
 
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#elif AZ_TRAIT_USE_WINSOCK_API
 
 #   include <stdio.h>
 #   include <WinSock2.h>

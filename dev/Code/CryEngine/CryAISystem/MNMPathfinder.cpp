@@ -168,16 +168,17 @@ void MNM::PathfinderUtils::QueuedRequest::SetupGroupMatesAvoidance()
 
 void ProcessPathRequestJob(MNM::PathfinderUtils::ProcessingContext* pProcessingContext)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AI);
+
     gAIEnv.pMNMPathfinder->ProcessPathRequest(*pProcessingContext);
 }
-DECLARE_JOB("PathProcessing", PathfinderProcessingJob, ProcessPathRequestJob);
 
 void ConstructPathIfWayWasFoundJob(MNM::PathfinderUtils::ProcessingContext* pProcessingContext)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AI);
+
     gAIEnv.pMNMPathfinder->ConstructPathIfWayWasFound(*pProcessingContext);
 }
-DECLARE_JOB("PathConstruction", PathConstructionJob, ConstructPathIfWayWasFoundJob);
-
 
 CMNMPathfinder::CMNMPathfinder()
 {
@@ -372,7 +373,6 @@ void CMNMPathfinder::SetupNewValidPathRequests()
         MNM::PathfinderUtils::QueuedRequest requestToServe = m_requestedPathsQueue.front();
         m_requestedPathsQueue.pop_front();
 
-        MNM::PathfinderUtils::ProcessingContextsPool::PoolIterator pProcessingContext;
         MNM::PathfinderUtils::ProcessingContextId id;
         id = m_processingContextsPool.GetFirstAvailableContextId();
         if (id != MNM::PathfinderUtils::kInvalidProcessingContextId)
@@ -450,14 +450,15 @@ void CMNMPathfinder::ExecuteAppropriateOperationIfPossible(MNM::PathfinderUtils:
 
 void CMNMPathfinder::SpawnPathfinderProcessingJob(MNM::PathfinderUtils::ProcessingContext& processingContext)
 {
-    CRY_ASSERT_MESSAGE(processingContext.status == MNM::PathfinderUtils::ProcessingContext::InProgress, "PathfinderProcessingJob is spawned even if the process is not 'InProgress'.");
+    CRY_ASSERT_MESSAGE(processingContext.status == MNM::PathfinderUtils::ProcessingContext::InProgress, "Pathfinder processing job is spawned even if the process is not 'InProgress'.");
 
-    CRY_ASSERT_MESSAGE(!processingContext.jobState.IsRunning(), "The job is still running and we are spawning a new one.");
+    CRY_ASSERT_MESSAGE(!processingContext.jobExecutor.IsRunning(), "The job is still running and we are spawning a new one.");
 
-    PathfinderProcessingJob job(&processingContext);
-    job.RegisterJobState(&processingContext.jobState);
-    job.SetPriorityLevel(JobManager::eRegularPriority);
-    job.Run();
+    MNM::PathfinderUtils::ProcessingContext* pProcessingContext = &processingContext;
+    processingContext.jobExecutor.StartJob([pProcessingContext]()
+    {
+        ProcessPathRequestJob(pProcessingContext);
+    }); // Legacy JobManager priority: eRegularPriority
 }
 
 void CMNMPathfinder::WaitForJobsToFinish()
@@ -468,7 +469,7 @@ void CMNMPathfinder::WaitForJobsToFinish()
 
 void CMNMPathfinder::WaitForJobToFinish(MNM::PathfinderUtils::ProcessingContext& processingContext)
 {
-    gEnv->GetJobManager()->WaitForJob(processingContext.jobState);
+    processingContext.jobExecutor.WaitForCompletion();
 }
 
 void CMNMPathfinder::DispatchResults()
@@ -800,14 +801,15 @@ void CMNMPathfinder::ConstructPathIfWayWasFound(MNM::PathfinderUtils::Processing
 
 void CMNMPathfinder::SpawnPathConstructionJob(MNM::PathfinderUtils::ProcessingContext& processingContext)
 {
-    CRY_ASSERT_MESSAGE(processingContext.status == MNM::PathfinderUtils::ProcessingContext::FindWayCompleted, "PathConstructionJob spawned even if the status is not 'FindWayCompleted'");
+    CRY_ASSERT_MESSAGE(processingContext.status == MNM::PathfinderUtils::ProcessingContext::FindWayCompleted, "Path construction job spawned even if the status is not 'FindWayCompleted'");
 
-    CRY_ASSERT_MESSAGE(!processingContext.jobState.IsRunning(), "The job is still running and we are spawning a new one.");
+    CRY_ASSERT_MESSAGE(!processingContext.jobExecutor.IsRunning(), "The job is still running and we are spawning a new one.");
 
-    PathConstructionJob job(&processingContext);
-    job.RegisterJobState(&processingContext.jobState);
-    job.SetPriorityLevel(JobManager::eRegularPriority);
-    job.Run();
+    MNM::PathfinderUtils::ProcessingContext* pProcessingContext = &processingContext;
+    processingContext.jobExecutor.StartJob([pProcessingContext]()
+    {
+        ConstructPathIfWayWasFoundJob(pProcessingContext);
+    }); // Legacy JobManager priority: eRegularPriority
 }
 
 void CMNMPathfinder::PathRequestFailed(MNM::QueuedPathID requestID, const MNM::PathfinderUtils::QueuedRequest& request)

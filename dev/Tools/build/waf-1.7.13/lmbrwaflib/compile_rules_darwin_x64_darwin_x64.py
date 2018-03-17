@@ -41,6 +41,8 @@ def load_debug_darwin_x64_darwin_x64_settings(conf):
     conf.load_debug_clang_settings()
     conf.load_debug_darwin_settings()
 
+    conf.register_darwin_external_ly_identity('Debug')
+    conf.register_darwin_external_ly_metrics('Debug')
 
 @conf
 def load_profile_darwin_x64_darwin_x64_settings(conf):
@@ -55,6 +57,8 @@ def load_profile_darwin_x64_darwin_x64_settings(conf):
     conf.load_profile_clang_settings()
     conf.load_profile_darwin_settings()
 
+    conf.register_darwin_external_ly_identity('Release')
+    conf.register_darwin_external_ly_metrics('Release')
 
 @conf
 def load_performance_darwin_x64_darwin_x64_settings(conf):

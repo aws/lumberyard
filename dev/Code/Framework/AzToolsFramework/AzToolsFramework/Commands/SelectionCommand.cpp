@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "SelectionCommand.h"
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 

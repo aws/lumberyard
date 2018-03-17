@@ -43,7 +43,7 @@
 
 #include <QThread>
 #include <QDebug>
-#include <Qsettings>
+#include <QSettings>
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -482,7 +482,7 @@ void PyGameSubMaterial::UpdateSubMaterial()
     for (auto &iter : m_matTextures )
     {
         uint16          nSlot = iter.first;
-        shdResources.m_TexturesResourcesMap[nSlot].m_Name = iter.second->GetName().toLatin1().data();
+        shdResources.m_TexturesResourcesMap[nSlot].m_Name = iter.second->GetName().toUtf8().data();
     }
 
     // Check for updates to all material public variables.
@@ -651,7 +651,7 @@ void PyGameTexture::UpdateTexture()
 
     if (QString::compare(m_texName, pTexture->m_Name.c_str()) != 0)
     {
-        pTexture->m_Name = m_texName.toLatin1().data();
+        pTexture->m_Name = m_texName.toUtf8().data();
     }
 }
 
@@ -1274,37 +1274,37 @@ void PyGameEntity::UpdateEntity()
     {
         if (iter->second->type == SPyWrappedProperty::eType_Bool)
         {
-            if (iter->second->property.boolValue != pEntity->GetEntityPropertyBool(iter->first.toLatin1().data()))
+            if (iter->second->property.boolValue != pEntity->GetEntityPropertyBool(iter->first.toUtf8().data()))
             {
-                pEntity->SetEntityPropertyBool(iter->first.toLatin1().data(), iter->second->property.boolValue);
+                pEntity->SetEntityPropertyBool(iter->first.toUtf8().data(), iter->second->property.boolValue);
             }
         }
         else if (iter->second->type == SPyWrappedProperty::eType_Int)
         {
             if (iter->first.compare("Mass") == 0)
             {
-                pEntity->SetEntityPropertyFloat(iter->first.toLatin1().data(), (float)iter->second->property.intValue);
+                pEntity->SetEntityPropertyFloat(iter->first.toUtf8().data(), (float)iter->second->property.intValue);
             }
             else
             {
-                if (iter->second->property.intValue != pEntity->GetEntityPropertyInteger(iter->first.toLatin1().data()))
+                if (iter->second->property.intValue != pEntity->GetEntityPropertyInteger(iter->first.toUtf8().data()))
                 {
-                    pEntity->SetEntityPropertyInteger(iter->first.toLatin1().data(), iter->second->property.intValue);
+                    pEntity->SetEntityPropertyInteger(iter->first.toUtf8().data(), iter->second->property.intValue);
                 }
             }
         }
         else if (iter->second->type == SPyWrappedProperty::eType_Float)
         {
-            if (iter->second->property.floatValue != pEntity->GetEntityPropertyFloat(iter->first.toLatin1().data()))
+            if (iter->second->property.floatValue != pEntity->GetEntityPropertyFloat(iter->first.toUtf8().data()))
             {
-                pEntity->SetEntityPropertyFloat(iter->first.toLatin1().data(), iter->second->property.floatValue);
+                pEntity->SetEntityPropertyFloat(iter->first.toUtf8().data(), iter->second->property.floatValue);
             }
         }
         else if (iter->second->type == SPyWrappedProperty::eType_String)
         {
-            if (iter->second->stringValue != pEntity->GetEntityPropertyString(iter->first.toLatin1().data()))
+            if (iter->second->stringValue != pEntity->GetEntityPropertyString(iter->first.toUtf8().data()))
             {
-                pEntity->SetEntityPropertyString(iter->first.toLatin1().data(), iter->second->stringValue);
+                pEntity->SetEntityPropertyString(iter->first.toUtf8().data(), iter->second->stringValue);
             }
         }
     }
@@ -2612,7 +2612,7 @@ namespace PyScript
             QString command = "> ";
             command += buffer;
             command += "\r\n";
-            pScriptTermDialog->AppendText(command.toLatin1().data());
+            pScriptTermDialog->AppendText(command.toUtf8().data());
         }
 
         AcquirePythonLock();
@@ -2823,11 +2823,11 @@ namespace PyScript
 #endif
         }
 
-        CLogFile::WriteLine(QString("Using LY_PYTHONHOME=" + pythonHome).toLatin1().data());
+        CLogFile::WriteLine(QString("Using LY_PYTHONHOME=" + pythonHome).toUtf8().data());
 
         if (!pythonHome.isEmpty())
         {
-            Py_SetPythonHome(qstrdup(pythonHome.toLatin1().data()));
+            Py_SetPythonHome(qstrdup(pythonHome.toUtf8().data()));
         }
 
         // Initialize python

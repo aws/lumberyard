@@ -10,11 +10,10 @@
 *
 */
 
-#include "StdAfx.h"
+#include "PhysX_precompiled.h"
 
 #ifdef AZ_TESTS_ENABLED
 
-#include <LmbrCentral/Shape/SphereShapeComponentBus.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Physics/SystemComponent.h>
@@ -22,14 +21,12 @@
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
-#include <Physics/PhysicsTests.h>
-#include <Physics/PhysicsTests.inl>
 #include <Tests/TestTypes.h>
 
 namespace Physics
 {
-    class PhysXTestEnvironment
-        : public PhysicsTestEnvironment
+    class PhysXEditorTestEnvironment
+        : public AZ::Test::ITestEnvironment
     {
     protected:
         void SetupEnvironment() override;
@@ -41,9 +38,22 @@ namespace Physics
         AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
     };
 
-    void PhysXTestEnvironment::SetupEnvironment()
+    class PhysXEditorTest
+        : public ::testing::Test
     {
-        PhysicsTestEnvironment::SetupEnvironment();
+    protected:
+        void SetUp() override
+        {
+        }
+
+        void TearDown() override
+        {
+        }
+    };
+
+    void PhysXEditorTestEnvironment::SetupEnvironment()
+    {
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
 
         // Create application and descriptor
         m_application = aznew AZ::ComponentApplication;
@@ -74,38 +84,19 @@ namespace Physics
         m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
     }
 
-    void PhysXTestEnvironment::TeardownEnvironment()
+    void PhysXEditorTestEnvironment::TeardownEnvironment()
     {
         m_transformComponentDescriptor.release();
         m_serializeContext.release();
         delete m_application;
-        PhysicsTestEnvironment::TeardownEnvironment();
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
     }
 
-    AZ::Entity* GenericPhysicsInterfaceTest::AddTestSphere(const AZ::Vector3& position, float radius)
+    TEST_F(PhysXEditorTest, EditorDummyTest_NoState_TrivialPass)
     {
-        auto entity = aznew AZ::Entity("TestSphereEntity");
-        auto transformComponent = static_cast<AzFramework::TransformComponent*>(entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")));
-
-        entity->CreateComponent(AZ::Uuid::CreateString("{E24CBFF0-2531-4F8D-A8AB-47AF4D54BCD2}")); // SphereShapeComponent
-        entity->Init();
-
-        // TODO: Remove this Activate/Deactivate magic when handling the shape change is implemented in the collider component
-        entity->Activate();
-
-        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
-
-        EBUS_EVENT_ID(entity->GetId(), LmbrCentral::SphereShapeComponentRequestsBus, SetRadius, radius);
-
-        entity->Deactivate();
-
-        entity->CreateComponent(AZ::Uuid::CreateString("{C53C7C88-7131-4EEB-A602-A7DF5B47898E}")); // PhysXPrimitiveColliderComponent
-        entity->CreateComponent(AZ::Uuid::CreateString("{D4E52A70-BDE1-4819-BD3C-93AB3F4F3BE3}")); // PhysXRigidPhysicsComponent
-
-        entity->Activate();
-        return entity;
+        EXPECT_TRUE(true);
     }
 
-    AZ_UNIT_TEST_HOOK(new PhysXTestEnvironment);
+    AZ_UNIT_TEST_HOOK(new PhysXEditorTestEnvironment);
 } // namespace Physics
 #endif // AZ_TESTS_ENABLED

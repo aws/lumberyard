@@ -171,7 +171,7 @@ void SmoothingGroupManager::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool b
                     QString attrStr;
                     attrStr = QStringLiteral("Polygon%1").arg(nCount++);
                     GUID guid;
-                    if (!pSmoothingGroupNode->getAttr(attrStr.toLatin1().data(), guid))
+                    if (!pSmoothingGroupNode->getAttr(attrStr.toUtf8().data(), guid))
                     {
                         break;
                     }
@@ -204,7 +204,7 @@ void SmoothingGroupManager::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool b
                 CD::PolygonPtr pPolygon = pSmoothingGroupPtr->GetPolygon(i);
                 QString attrStr;
                 attrStr = QStringLiteral("Polygon%1").arg(i);
-                pSmoothingGroupNode->setAttr(attrStr.toLatin1().data(), pPolygon->GetGUID());
+                pSmoothingGroupNode->setAttr(attrStr.toUtf8().data(), pPolygon->GetGUID());
             }
         }
     }

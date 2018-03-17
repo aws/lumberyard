@@ -400,13 +400,13 @@ void CAsyncIOFileRequest::Cancel()
 void CAsyncIOFileRequest::SyncWithDecrypt()
 {
 #if defined(STREAMENGINE_SUPPORT_DECRYPT)
-    m_DecryptJob.Wait();
+    m_decryptJobExecutor.WaitForCompletion();
 #endif  //STREAMENGINE_SUPPORT_DECRYPT
 }
 
 void CAsyncIOFileRequest::SyncWithDecompress()
 {
-    m_DecompJob.Wait();
+    m_decompJobExecutor.WaitForCompletion();
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-var session = require('./session-helper.js');
+var session = require('../session-helper.js');
 
 var num_messages = 7;
 
@@ -7,28 +7,24 @@ var num_messages = 7;
  * For this to run correctly delete all your messages from Active and Planned sections
  */
 describe('Authentication welcome page', function () {
-    var until = protractor.ExpectedConditions;
-    beforeAll(function() {
-        browser.get('http://localhost:3000');        
+    var page = {
+        header: $('div.modal-header h2'),
+        welcomeIcon1: $('#welcome-option1-img'),
+        welcomeIcon2: $('#welcome-option2-img'),
+        submit: $('#modal-dismiss')
+
+    }
+    beforeAll(function () {
+        browser.get(browser.params.url);
+        console.log("Waiting for the Cloud Gem Portal to load.")
+        browser.wait(until.urlContains(session.loginPath), 10000, "urlContains"); // Checks that the current URL contains the expected text           
     }); 
 
-    afterAll(function() {
-        
-    });
     describe('integration tests', function() {
-        it('should display a welcome modal', function() {
-            browser.wait(until.presenceOf($('div.modal-header h2')), 20000, "Missing welcome modal header");            
-            $('div.modal-header h2').getText().then(
-                function(text){                                        
-                    expect(text).toEqual("First time Cloud Gem Portal user")
-                    expect(element(by.id('welcome-option1-img')).isDisplayed()).toEqual(true)
-                    expect(element(by.id('welcome-option2-img')).isDisplayed()).toEqual(true)
-                    $('#modal-dismiss').click();
-                },
-                function(err){                    
-                    console.log(err)
-                }
-                );    
+        it('should display a welcome modal', function () {
+            browser.wait(until.presenceOf(page.header), 5000, "Modal header")                  
+            expect(page.welcomeIcon1.isDisplayed()).toEqual(true)
+            expect(page.welcomeIcon2.isDisplayed()).toEqual(true)           
         });
     });
 });

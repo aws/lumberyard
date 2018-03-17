@@ -235,7 +235,7 @@ namespace ScriptCanvasEditor
         m_scriptCanvasAssetFileInfo.emplace(assetId, AZStd::move(scFileInfo));
 
         AZ::Data::AssetBus::MultiHandler::BusConnect(assetId);
-        auto loadingAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
+        auto loadingAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, azrtti_typeid<ScriptCanvasAsset>(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
 
         Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendMetric, ScriptCanvasEditor::Metrics::Events::Canvas::OpenGraph);
 
@@ -257,6 +257,7 @@ namespace ScriptCanvasEditor
         DocumentContextNotificationBus::Event(assetId, &DocumentContextNotifications::OnAssetModificationStateChanged, scFileInfo.m_fileModificationState);
 
         DocumentContextNotificationBus::Event(asset.GetId(), &DocumentContextNotifications::OnScriptCanvasAssetReady, asset);
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect(assetId);
     }
 
     void DocumentContext::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -271,11 +272,15 @@ namespace ScriptCanvasEditor
     void DocumentContext::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         AZ_Error("Script Canvas", asset.IsReady(), "Failed to load graph asset with id \"%s\".", asset.GetId().ToString<AZStd::string>().data());
+        const AZ::Data::AssetId* busId = AZ::Data::AssetBus::GetCurrentBusId();
+        const AZ::Data::AssetId assetId = busId ? *busId : asset.GetId();
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect(assetId);
     }
 
     void DocumentContext::OnAssetUnloaded(const AZ::Data::AssetId assetId, const AZ::Data::AssetType)
     {
         DocumentContextNotificationBus::Event(assetId, &DocumentContextNotifications::OnScriptCanvasAssetUnloaded, assetId);
+        AZ::Data::AssetBus::MultiHandler::BusDisconnect(assetId);
     }
 
     void DocumentContext::SourceFileChanged(AZStd::string relPath, AZStd::string scanFolder, AZ::Uuid sourceAssetId)
@@ -308,7 +313,6 @@ namespace ScriptCanvasEditor
         if (registeredFileInfo == m_scriptCanvasAssetFileInfo.end())
         {
             m_scriptCanvasAssetFileInfo.emplace(assetId, assetFileInfo);
-            AZ::Data::AssetBus::MultiHandler::BusConnect(assetId);
             return true;
         }
 
@@ -318,7 +322,6 @@ namespace ScriptCanvasEditor
 
     bool DocumentContext::UnregisterScriptCanvasAsset(const AZ::Data::AssetId& assetId)
     {
-        AZ::Data::AssetBus::MultiHandler::BusDisconnect(assetId);
         auto registeredFileInfo = m_scriptCanvasAssetFileInfo.find(assetId);
         if (registeredFileInfo != m_scriptCanvasAssetFileInfo.end())
         {

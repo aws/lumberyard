@@ -446,7 +446,7 @@ XmlNodeRef VehicleXml::GetXmlNodeDefinitionByVariable(const XmlNodeRef& definiti
         IVariable* pCurrentVar = varHirerarchy[ i ];
         QString nameToSearch = pCurrentVar->GetName();
 
-        currentNode = FindChildDefinitionByName(currentNode, nameToSearch.toLatin1().data());
+        currentNode = FindChildDefinitionByName(currentNode, nameToSearch.toUtf8().data());
         if (!currentNode)
         {
             return XmlNodeRef();
@@ -488,7 +488,7 @@ void VehicleXml::GetXmlNodeChildDefinitionsByVariable(const XmlNodeRef& definiti
     {
         // Array parent properties cannot have child property definitions but they store the definitions of the
         // elements they can have so we have to check if we're looking at the elementNode or the parent...
-        bool isArrayParent = HasNodeNameEqualTo(varDefinitionNode, pVar->GetName().toLatin1().data());
+        bool isArrayParent = HasNodeNameEqualTo(varDefinitionNode, pVar->GetName().toUtf8().data());
         if (isArrayParent)
         {
             return;
@@ -552,7 +552,7 @@ void VehicleXml::GetXmlNodeFromVariable(IVariable* pVar, XmlNodeRef& xmlNode)
         for (int i = 0; i < pVar->GetNumVariables(); ++i)
         {
             IVariable* pTempVar = pVar->GetVariable(i);
-            XmlNodeRef pTempNode = GetISystem()->CreateXmlNode(pTempVar->GetName().toLatin1().data());
+            XmlNodeRef pTempNode = GetISystem()->CreateXmlNode(pTempVar->GetName().toUtf8().data());
 
             if (pTempVar->GetType() == IVariable::ARRAY)
             {
@@ -563,14 +563,14 @@ void VehicleXml::GetXmlNodeFromVariable(IVariable* pVar, XmlNodeRef& xmlNode)
             }
             else
             {
-                pTempNode->setAttr(pTempVar->GetName().toLatin1().data(), pTempVar->GetDisplayValue().toLatin1().data());
+                pTempNode->setAttr(pTempVar->GetName().toUtf8().data(), pTempVar->GetDisplayValue().toUtf8().data());
             }
             xmlNode->addChild(pTempNode);
         }
     }
     else
     {
-        xmlNode->setAttr(pVar->GetName().toLatin1().data(), pVar->GetDisplayValue().toLatin1().data());
+        xmlNode->setAttr(pVar->GetName().toUtf8().data(), pVar->GetDisplayValue().toUtf8().data());
     }
 }
 
@@ -795,7 +795,7 @@ void VehicleXml::SetExtendedVarProperties(IVariable* pVar, const XmlNodeRef& nod
         QString description;
         if (node->getAttr("desc", description))
         {
-            pVar->SetDescription(description.toLatin1().data());
+            pVar->SetDescription(description);
         }
     }
 
@@ -809,7 +809,7 @@ void VehicleXml::SetExtendedVarProperties(IVariable* pVar, const XmlNodeRef& nod
     }
 
     QString varName = pVar->GetName();
-    if (IsArrayParentNode(node, varName.toLatin1().data()))
+    if (IsArrayParentNode(node, varName.toUtf8().data()))
     {
         int extendable = 0;
         node->getAttr("extendable", extendable);

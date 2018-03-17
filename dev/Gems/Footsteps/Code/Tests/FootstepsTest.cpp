@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "Footsteps_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

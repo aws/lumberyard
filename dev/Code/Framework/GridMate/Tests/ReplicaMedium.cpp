@@ -38,13 +38,13 @@ namespace UnitTest {
 #define GM_REPLICA_TEST_SESSION_CHANNEL 1
 
 // Example: DataSet<int> Data1 = { "Data1", 1 };
-#define MAKE_DATASET(N) DataSet<int> Data ## N = { "Data" ## #N, N };
+#define MAKE_DATASET(N) DataSet<int> Data ## N = { "Data" #N, N };
 
 // Example: DataSet<bool> Data1 = { "Data1", false };
-#define MAKE_BOOLDATASET(N) DataSet<bool> Data ## N = { "Data" ## #N, false }
+#define MAKE_BOOLDATASET(N) DataSet<bool> Data ## N = { "Data" #N, false }
 
 // Example: DataSet<bool> Data1 = { "Data1", false };
-#define MAKE_U8DATASET(N) DataSet<AZ::u8> Data ## N = { "Data" ## #N, 0 }
+#define MAKE_U8DATASET(N) DataSet<AZ::u8> Data ## N = { "Data" #N, 0 }
 
 template<typename T1>
 class IntrospectableRPC

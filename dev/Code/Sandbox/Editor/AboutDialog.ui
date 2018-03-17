@@ -1,183 +1,153 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
-    <class>CAboutDialog</class>
-    <widget class="QWidget" name="CAboutDialog">
+ <class>CAboutDialog</class>
+ <widget class="QWidget" name="CAboutDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>305</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>About Lumberyard Editor</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: transparent</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="m_transparentVersion">
+       <property name="text">
+        <string>Lumberyard Editor</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="m_transparentDevelopedBy">
+       <property name="text">
+        <string>Development version</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+       </property>
+       <widget class="QLabel" name="m_transparentCopyright">
         <property name="geometry">
-            <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>600</width>
-                <height>305</height>
-            </rect>
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>180</width>
+          <height>0</height>
+         </rect>
         </property>
-        <property name="windowTitle">
-            <string>About Lumberyard Editor</string>
+        <property name="text">
+         <string/>
         </property>
-        <widget class="QLabel" name="AboutPixmap">
-            <property name="geometry">
-                <rect>
-                    <x>0</x>
-                    <y>0</y>
-                    <width>600</width>
-                    <height>305</height>
-                </rect>
-            </property>
-            <property name="styleSheet">
-                <string notr="true">background-color: transparent</string>
-            </property>
-            <widget class="QLabel" name="m_transparentVersion">
-                <property name="geometry">
-                    <rect>
-                        <x>402</x>
-                        <y>29</y>
-                        <width>180</width>
-                        <height>13</height>
-                    </rect>
-                </property>
-                <property name="text">
-                    <string>Lumberyard Editor</string>
-                </property>
-                <property name="alignment">
-                    <set>Qt::AlignTop|Qt::AlignRight</set>
-                </property>
-            </widget>
-            <widget class="QLabel" name="m_transparentDevelopedBy">
-                <property name="geometry">
-                    <rect>
-                        <x>402</x>
-                        <y>46</y>
-                        <width>180</width>
-                        <height>13</height>
-                    </rect>
-                </property>
-                <property name="text">
-                    <string>Development version</string>
-                </property>
-                <widget class="QLabel" name="m_transparentCopyright">
-                    <property name="geometry">
-                        <rect>
-                            <x>0</x>
-                            <y>0</y>
-                            <width>180</width>
-                            <height>0</height>
-                        </rect>
-                    </property>
-                    <property name="text">
-                        <string></string>
-                    </property>
-                    <property name="alignment">
-                        <set>Qt::AlignTop|Qt::AlignRight</set>
-                    </property>
-                </widget>
-                <property name="alignment">
-                    <set>Qt::AlignTop|Qt::AlignRight</set>
-                </property>
-            </widget>
-            <widget class="QLabel" name="m_transparentBeta">
-                <property name="geometry">
-                    <rect>
-                        <x>402</x>
-                        <y>181</y>
-                        <width>180</width>
-                        <height>13</height>
-                    </rect>
-                </property>
-                <property name="text">
-                    <string>Beta</string>
-                </property>
-                <property name="alignment">
-                    <set>Qt::AlignTop|Qt::AlignRight</set>
-                </property>
-            </widget>
-            <widget class="ClickableLabel" name="m_transparentNotice">
-                <property name="geometry">
-                    <rect>
-                        <x>402</x>
-                        <y>214</y>
-                        <width>180</width>
-                        <height>13</height>
-                    </rect>
-                </property>
-                <property name="text">
-                    <string>Privacy Notice</string>
-                </property>
-                <property name="alignment">
-                    <set>Qt::AlignTop|Qt::AlignRight</set>
-                </property>
-                <property name="showDecoration">
-                    <bool>true</bool>
-                </property>
-            </widget>
-            <widget class="ClickableLabel" name="m_transparentAgreement">
-                <property name="geometry">
-                    <rect>
-                        <x>402</x>
-                        <y>198</y>
-                        <width>180</width>
-                        <height>13</height>
-                    </rect>
-                </property>
-                <property name="text">
-                    <string>AWS Customer Agreement</string>
-                </property>
-                <property name="alignment">
-                    <set>Qt::AlignTop|Qt::AlignRight</set>
-                </property>
-                <property name="showDecoration">
-                    <bool>true</bool>
-                </property>
-            </widget>
-            <widget class="QLabel" name="m_transparentTrademarks">
-                <property name="geometry">
-                    <rect>
-                        <x>402</x>
-                        <y>62</y>
-                        <width>180</width>
-                        <height>31</height>
-                    </rect>
-                </property>
-                <property name="text">
-                    <string></string>
-                </property>
-                <property name="alignment">
-                    <set>Qt::AlignTop|Qt::AlignRight</set>
-                </property>
-            </widget>
-            <widget class="QLabel" name="m_transparentAllRightReserved">
-                <property name="geometry">
-                    <rect>
-                        <x>12</x>
-                        <y>247</y>
-                        <width>576</width>
-                        <height>57</height>
-                    </rect>
-                </property>
-                <property name="text">
-                    <string>Lumberyard and related materials Copyright © 2017 Amazon Web Services, Inc., its affiliates or licensors. By accessing or using these materials, you agree to the terms of the AWS Customer Agreement.</string>
-                </property>
-                <property name="alignment">
-                    <set>Qt::AlignTop|Qt::AlignHCenter</set>
-                </property>
-                <property name="wordWrap">
-                    <bool>true</bool>
-                </property>
-            </widget>
-            <property name="wordWrap">
-                <bool>true</bool>
-            </property>
-            <property name="alignment">
-                <set>Qt::AlignCenter</set>
-            </property>
-            <property name="pixmap">
-                <pixmap>0</pixmap>
-            </property>
-        </widget>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+        </property>
+       </widget>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="m_transparentTrademarks">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>100</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="m_transparentBeta">
+       <property name="text">
+        <string>Beta</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="ClickableLabel" name="m_transparentAgreement">
+       <property name="text">
+        <string>AWS Customer Agreement</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+       </property>
+       <property name="showDecoration" stdset="0">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="ClickableLabel" name="m_transparentNotice">
+       <property name="text">
+        <string>Privacy Notice</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTop|Qt::AlignTrailing</set>
+       </property>
+       <property name="showDecoration" stdset="0">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="m_transparentAllRightReserved">
+     <property name="text">
+      <string>Lumberyard and related materials Copyright © 2018 Amazon Web Services, Inc., its affiliates or licensors. By accessing or using these materials, you agree to the terms of the AWS Customer Agreement.</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignHCenter|Qt::AlignTop</set>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
     </widget>
-    <customwidgets>
-        <customwidget>
-            <class>ClickableLabel</class>
-            <extends>QLabel</extends>
-            <header>QtUI/ClickableLabel.h</header>
-        </customwidget>
-    </customwidgets>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ClickableLabel</class>
+   <extends>QLabel</extends>
+   <header>QtUI/ClickableLabel.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
 </ui>

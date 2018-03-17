@@ -10,9 +10,9 @@ namespace ScriptCanvasTests
 
         // We require an EditContext to be created as early as possible
         // as we rely on EditContext attributes for detecting Graph entry points.
-        void CreateSerializeContext() override
+        void CreateReflectionManager() override
         {
-            AZ::ComponentApplication::CreateSerializeContext();
+            AZ::ComponentApplication::CreateReflectionManager();
             GetSerializeContext()->CreateEditContext();
         }
     };

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "GlobalAnimationHeaderAIM.h"
 #include "CGF/ChunkData.h"
 #include "../CryEngine/Cry3DEngine/CGF/ChunkFile.h"

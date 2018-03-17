@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "StartingPointMovement_precompiled.h"
 #include <platform_impl.h>
 
 #include <AzCore/Module/Module.h>

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <Multiplayer_precompiled.h>
 #include <ISystem.h>
 #include <CryString.h>
 #include <Multiplayer/FlowMultiplayerNodes.h>

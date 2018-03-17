@@ -190,7 +190,10 @@ namespace AzToolsFramework
         /// This should only be fired if all of the entities now belong to the same slice or all now belong to no slice
         virtual void OnEditorEntitiesSliceOwnershipChanged(const AzToolsFramework::EntityIdList& /*entityIdList*/) {}
 
-        //! Fired when the editor goes into 'Simulation' mode
+        //! Fired when the editor begins going into 'Simulation' mode.
+        virtual void OnStartPlayInEditorBegin() {}
+
+        //! Fired when the editor finishes going into 'Simulation' mode.
         virtual void OnStartPlayInEditor() {}
 
         //! Fired when the editor comes out of 'Simulation' mode

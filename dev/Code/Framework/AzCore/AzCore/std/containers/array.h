@@ -198,13 +198,13 @@ namespace AZStd
 
         AZ_FORCE_INLINE reference operator[](size_type)
         {
-            AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0")
+            AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0");
             return m_elements[0];
         }
 
         AZ_FORCE_INLINE const_reference operator[](size_type) const
         {
-            AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0")
+            AZSTD_CONTAINER_ASSERT(false, "out of range. Cannot access elements in an array of size 0");
             return m_elements[0];
         }
 
@@ -250,34 +250,6 @@ namespace AZStd
         return !(a == b);
     }
     //#pragma endregion
-
-    template<size_t I, class T, size_t N>
-    T& get(AZStd::array<T, N>& arr)
-    {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
-        return arr[I];
-    };
-
-    template<size_t I, class T, size_t N>
-    const T& get(const AZStd::array<T, N>& arr)
-    {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
-        return arr[I];
-    };
-
-    template<size_t I, class T, size_t N>
-    T&& get(AZStd::array<T, N>&& arr)
-    {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
-        return AZStd::move(arr[I]);
-    };
-
-    template<size_t I, class T, size_t N>
-    const T&& get(const AZStd::array<T, N>&& arr)
-    {
-        AZ_STATIC_ASSERT(I < N, "AZStd::get has been called on array with an index that is out of bounds");
-        return AZStd::move(arr[I]);
-    };
 }
 
 #endif // AZSTD_ARRAY_H

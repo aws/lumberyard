@@ -171,7 +171,7 @@ public:
     virtual void SetLayerId(uint16 nLayerId) { m_nLayerId = nLayerId; }
     virtual uint16 GetLayerId() { return m_nLayerId; }
 
-    void Render_JobEntry(SRendParams rParam, SRenderingPassInfo passInfo, SRendItemSorter rendItemSorter);
+    void Render_JobEntry(const SRendParams& rParam, const SRenderingPassInfo& passInfo, SRendItemSorter rendItemSorter);
 
     void Transform(const Vec3& localOrigin, const Matrix34& l2w);
     virtual IRenderNode* Clone() const;

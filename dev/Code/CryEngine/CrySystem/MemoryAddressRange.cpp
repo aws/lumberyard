@@ -13,6 +13,7 @@
 
 #include "StdAfx.h"
 #include "MemoryAddressRange.h"
+#include "System.h"
 
 #if defined(APPLE) || defined(LINUX)
 #include <sys/mman.h>
@@ -46,7 +47,7 @@ size_t CMemoryAddressRange::GetPageSize() const
     return m_nPageSize;
 }
 
-#if defined(WIN32) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_MEMADDRESSRANGE_WINDOWS_STYLE
 
 void* CMemoryAddressRange::ReserveSpace(size_t capacity)
 {

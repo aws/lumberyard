@@ -22,7 +22,7 @@ namespace MCore
 {
     // a job function
     class Job;
-    typedef std::function<void(const Job* job)> JobFunction;
+    typedef AZStd::function<void(const Job* job)> JobFunction;
 
     class MCORE_API Job
     {

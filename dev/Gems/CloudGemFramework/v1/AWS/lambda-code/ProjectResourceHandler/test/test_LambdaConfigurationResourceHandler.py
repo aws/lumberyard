@@ -10,23 +10,31 @@
 #
 # $Revision: #1 $
 
-import unittest
-import mock
-import boto3
-import StringIO
-import zipfile
+# Python
 import json
-import types
+import mock
 import os
-import role_utils
-
+import StringIO
+import types
+import unittest
+import zipfile
 from time import time, sleep
+
+# Boto3
+import boto3
 from botocore.exceptions import ClientError
 
-from resource_manager_common import stack_info
-import custom_resource_response
-
+# ProjectResourceHandler
+from cgf_utils import properties
 import LambdaConfigurationResourceHandler
+from cgf_utils.test.mock_properties import PropertiesMatcher
+
+# ServiceClient
+import cgf_service_client.mock
+
+# ResourceManagerCommon
+from resource_manager_common import stack_info
+
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResourceHandler(unittest.TestCase):
 
@@ -45,14 +53,48 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
                 'Settings': {
                     'TestSettingKey1': 'TestSettingValue1',
                     'TestSettingKey2': 'TestSettingValue2'
-                }
+                },
+                'Services': [
+                    {
+                        "InterfaceId": "Gem_TestInterface1_1_0_0",
+                        "Optional": True
+                    },
+                    {
+                        "InterfaceId": "Gem_TestInterface2_1_0_0",
+                        "Optional": True
+                    }
+                ]
             },
             'StackId': 'arn:aws:cloudformation:TestRegion:TestAccount:stack/TestStack/TestUUID',
             'LogicalResourceId': 'TestLogicalResourceId'
         }
 
 
-    def test_handler_create(self):
+    @mock.patch('cgf_utils.custom_resource_response.succeed')
+    @mock.patch('cgf_utils.role_utils.create_access_control_role')
+    @mock.patch('cgf_utils.role_utils.get_access_control_role_name')
+    @mock.patch('LambdaConfigurationResourceHandler._inject_settings')
+    @mock.patch('LambdaConfigurationResourceHandler._add_built_in_settings')
+    @mock.patch('LambdaConfigurationResourceHandler._get_project_service_lambda_arn')
+    @mock.patch('LambdaConfigurationResourceHandler._get_input_key')
+    @mock.patch('LambdaConfigurationResourceHandler._add_services_settings')
+    @mock.patch('LambdaConfigurationResourceHandler._add_service_access_policy_to_role')
+    @mock.patch('resource_manager_common.stack_info.StackInfoManager')
+    def test_handler_create(
+        self,
+        mock_StackInfoManager,
+        mock_add_service_access_policy_to_role,
+        mock_add_services_settings,
+        mock_get_input_key,
+        mock_get_project_service_lambda_arn,
+        mock_add_built_in_settings,
+        mock_inject_settings,
+        mock_get_access_control_role_name,
+        mock_create_role,
+        mock_custom_resource_handler_response_succeed
+    ):
+
+        mock_get_stack_info = mock_StackInfoManager.return_value.get_stack_info
 
         self.event['RequestType'] = 'Create'
 
@@ -61,49 +103,91 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
           'ConfigurationKey': 'TestOutputKey',
           'Runtime': 'TestRuntime',
           'Role': 'TestRole',
-          'RoleName': 'TestRoleName'
+          'RoleName': 'TestRoleName',
+          'ComposedLambdaConfiguration': {
+              'Code': {
+                  'S3Bucket': 'TestBucket',
+                  'S3Key': 'TestOutputKey'
+              },
+              'Role': 'TestRole',
+              'Runtime': 'TestRuntime'
+          }
         }
 
         expected_physical_id = 'TestStack-TestLogicalResourceId::{}'
 
-        with mock.patch.object(custom_resource_response, 'succeed') as mock_custom_resource_handler_response_succeed:
-            with mock.patch.object(role_utils, 'create_access_control_role') as mock_create_role:
-                mock_create_role.return_value = expected_data['Role']
-                with mock.patch.object(role_utils, 'get_access_control_role_name') as mock_get_access_control_role_name:
-                    mock_get_access_control_role_name.return_value = expected_data['RoleName']
-                    with mock.patch.object(LambdaConfigurationResourceHandler, '_inject_settings') as mock_inject_settings:
-                        with mock.patch.object(LambdaConfigurationResourceHandler, '_add_built_in_settings') as mock_add_built_in_settings:
-                            with mock.patch.object(LambdaConfigurationResourceHandler, '_get_project_service_lambda_arn') as mock_get_project_service_lambda_arn:
-                                with mock.patch.object(LambdaConfigurationResourceHandler, '_get_input_key') as mock_get_input_key:
-                                    mock_get_input_key.return_value = '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey'])
-                                    mock_inject_settings.return_value = expected_data['ConfigurationKey']
-                                    mock_get_project_service_lambda_arn.return_value = None
-                                    LambdaConfigurationResourceHandler.handler(self.event, self.context)
-                                    mock_custom_resource_handler_response_succeed.assert_called_once_with(
-                                        self.event, 
-                                        self.context, 
-                                        expected_data, 
-                                        expected_physical_id)
-                                    mock_create_role.assert_called_once_with(
-                                        {},
-                                        self.event['StackId'], 
-                                        self.event['ResourceProperties']['FunctionName'],
-                                        'lambda.amazonaws.com',
-                                        default_policy = LambdaConfigurationResourceHandler.get_default_policy(None))
-                                    mock_inject_settings.assert_called_once_with(
-                                        self.event['ResourceProperties']['Settings'], 
-                                        self.event['ResourceProperties']['Runtime'], 
-                                        self.event['ResourceProperties']['ConfigurationBucket'],
-                                        '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey']),
-                                        'TestFunction')
-                                    mock_add_built_in_settings.assert_called_once_with(
-                                        self.event['ResourceProperties']['Settings'],
-                                        self.event['StackId'])
-                                    mock_get_project_service_lambda_arn.assert_called_once_with(
-                                        self.event['StackId'])
+        mock_create_role.return_value = expected_data['Role']
+        mock_get_access_control_role_name.return_value = expected_data['RoleName']
+        mock_get_input_key.return_value = '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey'])
+        mock_inject_settings.return_value = expected_data['ConfigurationKey']
+        mock_get_project_service_lambda_arn.return_value = None
+
+        LambdaConfigurationResourceHandler.handler(self.event, self.context)
+
+        mock_custom_resource_handler_response_succeed.assert_called_once_with(
+            self.event,
+            self.context,
+            expected_data,
+            expected_physical_id)
+
+        mock_create_role.assert_called_once_with(
+            mock_StackInfoManager.return_value,
+            {},
+            self.event['StackId'],
+            self.event['ResourceProperties']['FunctionName'],
+            'lambda.amazonaws.com',
+            default_policy = LambdaConfigurationResourceHandler.get_default_policy(None))
+
+        mock_inject_settings.assert_called_once_with(
+            self.event['ResourceProperties']['Settings'],
+            self.event['ResourceProperties']['Runtime'],
+            self.event['ResourceProperties']['ConfigurationBucket'],
+            '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey']),
+            'TestFunction')
+
+        mock_add_built_in_settings.assert_called_once_with(
+            self.event['ResourceProperties']['Settings'],
+            mock_get_stack_info.return_value)
+
+        mock_get_project_service_lambda_arn.assert_called_once_with(
+            mock_get_stack_info.return_value)
+
+        mock_get_stack_info.assert_called_once_with(
+            self.event['StackId'])
+
+        mock_add_services_settings.assert_called_once_with(
+            mock_get_stack_info.return_value,
+            self.event['ResourceProperties']['Settings'],
+            [PropertiesMatcher(i) for i in self.event['ResourceProperties']['Services']])
+
+        mock_add_service_access_policy_to_role.assert_called_once_with(
+            expected_data['Role'],
+            mock_add_services_settings.return_value)
 
 
-    def test_handler_update(self):
+    @mock.patch('cgf_utils.custom_resource_response.succeed')
+    @mock.patch('cgf_utils.role_utils.get_access_control_role_arn')
+    @mock.patch('cgf_utils.role_utils.get_access_control_role_name')
+    @mock.patch('LambdaConfigurationResourceHandler._inject_settings')
+    @mock.patch('LambdaConfigurationResourceHandler._add_built_in_settings')
+    @mock.patch('LambdaConfigurationResourceHandler._get_input_key')
+    @mock.patch('LambdaConfigurationResourceHandler._add_services_settings')
+    @mock.patch('LambdaConfigurationResourceHandler._add_service_access_policy_to_role')
+    @mock.patch('resource_manager_common.stack_info.StackInfoManager')
+    def test_handler_update(
+        self,
+        mock_StackInfoManager,
+        mock_add_service_access_policy_to_role,
+        mock_add_services_settings,
+        mock_get_input_key,
+        mock_add_built_in_settings,
+        mock_inject_settings,
+        mock_get_access_control_role_name,
+        mock_get_access_control_role_arn,
+        mock_custom_resource_handler_response_succeed
+    ):
+
+        mock_get_stack_info = mock_StackInfoManager.return_value.get_stack_info
 
         self.event['RequestType'] = 'Update'
         self.event['PhysicalResourceId'] = 'TestStack-TestLogicalResourceId'
@@ -113,42 +197,67 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
           'ConfigurationKey': 'TestKey/lambda-function-code.zip',
           'Runtime': 'TestRuntime',
           'Role': 'TestRole',
-          'RoleName': 'TestRoleName'
+          'RoleName': 'TestRoleName',
+          'ComposedLambdaConfiguration': {
+              'Code': {
+                  'S3Bucket': 'TestBucket',
+                  'S3Key': 'TestKey/lambda-function-code.zip'
+              },
+              'Role': 'TestRole',
+              'Runtime': 'TestRuntime'
+          }
         }
 
         expected_physical_id = self.event['PhysicalResourceId'] + "::{}"
-                
-        with mock.patch.object(custom_resource_response, 'succeed') as mock_custom_resource_handler_response_succeed:
-            with mock.patch.object(role_utils, 'get_access_control_role_arn') as mock_get_access_control_role_arn:
-                mock_get_access_control_role_arn.return_value = expected_data['Role']
-                with mock.patch.object(role_utils, 'get_access_control_role_name') as mock_get_access_control_role_name:
-                    mock_get_access_control_role_name.return_value = expected_data['RoleName']
-                    with mock.patch.object(LambdaConfigurationResourceHandler, '_inject_settings') as mock_inject_settings:
-                        with mock.patch.object(LambdaConfigurationResourceHandler, '_add_built_in_settings') as mock_add_built_in_settings:
-                            with mock.patch.object(LambdaConfigurationResourceHandler, '_get_input_key') as mock_get_input_key:
-                                mock_get_input_key.return_value = '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey'])
-                                mock_inject_settings.return_value = expected_data['ConfigurationKey']
-                                LambdaConfigurationResourceHandler.handler(self.event, self.context)
-                                mock_custom_resource_handler_response_succeed.assert_called_once_with(
-                                    self.event, 
-                                    self.context, 
-                                    expected_data, 
-                                    expected_physical_id)
-                                mock_get_access_control_role_arn.assert_called_once_with(
-                                    {}, 
-                                    self.event['ResourceProperties']['FunctionName'])
-                                mock_inject_settings.assert_called_once_with(
-                                    self.event['ResourceProperties']['Settings'], 
-                                    self.event['ResourceProperties']['Runtime'], 
-                                    self.event['ResourceProperties']['ConfigurationBucket'], 
-                                    '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey']),
-                                    'TestFunction')
-                                mock_add_built_in_settings.assert_called_once_with(
-                                    self.event['ResourceProperties']['Settings'],
-                                    self.event['StackId'])
+
+        mock_get_access_control_role_arn.return_value = expected_data['Role']
+        mock_get_access_control_role_name.return_value = expected_data['RoleName']
+        mock_get_input_key.return_value = '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey'])
+        mock_inject_settings.return_value = expected_data['ConfigurationKey']
+
+        LambdaConfigurationResourceHandler.handler(self.event, self.context)
+
+        mock_custom_resource_handler_response_succeed.assert_called_once_with(
+            self.event,
+            self.context,
+            expected_data,
+            expected_physical_id)
+
+        mock_get_access_control_role_arn.assert_called_once_with(
+            {},
+            self.event['ResourceProperties']['FunctionName'])
+
+        mock_inject_settings.assert_called_once_with(
+            self.event['ResourceProperties']['Settings'],
+            self.event['ResourceProperties']['Runtime'],
+            self.event['ResourceProperties']['ConfigurationBucket'],
+            '{}/lambda-function-code.zip'.format(self.event['ResourceProperties']['ConfigurationKey']),
+            'TestFunction')
+
+        mock_add_built_in_settings.assert_called_once_with(
+            self.event['ResourceProperties']['Settings'],
+            mock_get_stack_info.return_value)
+
+        mock_get_stack_info.assert_called_once_with(
+            self.event['StackId'])
+
+        mock_add_services_settings.assert_called_once_with(
+            mock_get_stack_info.return_value,
+            self.event['ResourceProperties']['Settings'],
+            [PropertiesMatcher(i) for i in self.event['ResourceProperties']['Services']])
+
+        mock_add_service_access_policy_to_role.assert_called_once_with(
+            expected_data['Role'],
+            mock_add_services_settings.return_value)
 
 
-    def test_handler_delete(self):
+    @mock.patch('cgf_utils.custom_resource_response.succeed')
+    @mock.patch('cgf_utils.role_utils.delete_access_control_role')
+    def test_handler_delete(
+        self,
+        mock_delete_role,
+        mock_custom_resource_handler_response_succeed
+    ):
 
         self.event['RequestType'] = 'Delete'
         self.event['PhysicalResourceId'] = 'TestStack-TestLogicalResourceId'
@@ -156,14 +265,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
         expected_data = {}
 
         expected_physical_id = self.event['PhysicalResourceId'] + "::{}"
-                
-        with mock.patch.object(custom_resource_response, 'succeed') as mock_custom_resource_handler_response_succeed:
-            with mock.patch.object(role_utils, 'delete_access_control_role') as mock_delete_role:
-                LambdaConfigurationResourceHandler.handler(self.event, self.context)
-                mock_custom_resource_handler_response_succeed.assert_called_once_with(self.event, self.context, expected_data, expected_physical_id)
-                mock_delete_role.assert_called_once_with(
-                    {}, 
-                    self.event['ResourceProperties']['FunctionName'])
+
+        LambdaConfigurationResourceHandler.handler(self.event, self.context)
+
+        mock_custom_resource_handler_response_succeed.assert_called_once_with(self.event, self.context, expected_data, expected_physical_id)
+        mock_delete_role.assert_called_once_with(
+            {},
+            self.event['ResourceProperties']['FunctionName'])
 
 
     def test_inject_settings(self):
@@ -201,18 +309,16 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
 
 
     def test_inject_settings_python(self):
-        
+
         expected_settings = self.event['ResourceProperties']['Settings']
-        expected_zip_name = 'CloudCanvas/settings.py'
+        expected_zip_name = 'cgf_lambda_settings/settings.json'
 
         zip_file = zipfile.ZipFile(StringIO.StringIO(), 'w')
 
-        LambdaConfigurationResourceHandler._inject_settings_python(zip_file, expected_settings)                        
+        LambdaConfigurationResourceHandler._inject_settings_python(zip_file, expected_settings)
 
         with zip_file.open(expected_zip_name, 'r') as zip_content_file:
-            globals = {}
-            exec(zip_content_file.read(), globals)
-            actual_settings = globals['settings']
+            actual_settings = json.load(zip_content_file)
             self.assertEquals(expected_settings, actual_settings)
 
 
@@ -234,9 +340,141 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_LambdaConfigurationResou
             LambdaConfigurationResourceHandler._get_settings_injector('something')
 
 
- 
+    def test_add_services_setting_with_no_services(self):
+
+        del self.event['ResourceProperties']['Services']
+
+        props = properties.load(self.event, LambdaConfigurationResourceHandler.PROPERTIES_SCHEMA)
+        settings = props.Settings.__dict__
+        services =  props.Services
+        stack = mock.MagicMock('stack')
+
+        actual_permittd_arns = LambdaConfigurationResourceHandler._add_services_settings(
+            settings,
+            services,
+            stack
+        )
+
+        self.assertEquals(actual_permittd_arns, [])
+
+
+    @mock.patch('LambdaConfigurationResourceHandler._add_service_settings')
+    @mock.patch('LambdaConfigurationResourceHandler.ServiceDirectory')
+    def test_add_services_settings(self, mock_ServiceDirectory, mock_add_service_settings):
+
+        props = properties.load(self.event, LambdaConfigurationResourceHandler.PROPERTIES_SCHEMA)
+
+        settings = props.Settings.__dict__
+        services =  props.Services
+
+        stack = mock.MagicMock(name = 'stack')
+
+        actual_permitted_arns = LambdaConfigurationResourceHandler._add_services_settings(
+            stack,
+            settings,
+            services
+        )
+
+        self.assertEquals(actual_permitted_arns, [])
+
+        mock_ServiceDirectory.assert_called_once_with(stack.project.configuration_bucket)
+
+        mock_add_service_settings.assert_has_calls(
+            [ mock.call(stack, mock_ServiceDirectory.return_value, service, settings['Services'], actual_permitted_arns) for service in services ]
+        )
+
+
+    @mock.patch('LambdaConfigurationResourceHandler._add_permitted_arns')
+    def test_add_service_setting(self, mock_add_permitted_arns):
+
+        interface = {
+            'InterfaceId': 'gem_test-interface_1_0_0',
+            'InterfaceUrl': 'test-interface-url',
+            'InterfaceSwagger': 'test-interface-swagger'
+        }
+
+        stack = mock.MagicMock(name = 'stack')
+        service_directory = mock.MagicMock(name = 'ServiceDirectory')
+        service_directory.get_interface_services.return_value = [interface]
+
+        props = properties.load(self.event, LambdaConfigurationResourceHandler.PROPERTIES_SCHEMA)
+        services =  props.Services
+        service = services[0]
+
+        service_settings = {}
+
+        permitted_arns = []
+
+        LambdaConfigurationResourceHandler._add_service_settings(stack, service_directory, service, service_settings, permitted_arns)
+
+        service_directory.get_interface_services.assert_called_once_with(stack.deployment.deployment_name, service.InterfaceId)
+
+        self.assertEquals(service_settings[service.InterfaceId], interface)
+
+        mock_add_permitted_arns.assert_called_once_with(stack, interface, permitted_arns)
+
+
+    @mock.patch('LambdaConfigurationResourceHandler._parse_interface_url')
+    def test_add_permitted_arns(self, mock_parse_interface_url):
+
+        stack = mock.MagicMock(name = 'stack')
+        stack.account_id = 'test-account-id'
+
+        valid_operations = ['get', 'put', 'delete', 'post', 'head', 'options', 'patch', 'trace']
+        invalid_operations = ['foo', 'bar']
+
+        all_operations = []
+        all_operations.extend(valid_operations)
+        all_operations.extend(invalid_operations)
+
+        paths = ['/path/a', '/path/b']
+
+        swagger = {
+            'paths': {
+                path: {
+                    operation: {
+                    } for operation in all_operations
+                } for path in paths
+            }
+        }
+
+        interface = {
+            'InterfaceId': 'test-interface-id',
+            'InterfaceUrl': 'test-interface-url',
+            'InterfaceSwagger': json.dumps(swagger)
+        }
+
+        actual_permitted_arns = []
+
+        interface_url_parts = LambdaConfigurationResourceHandler.InterfaceUrlParts(
+            api_id = 'test-app-id',
+            region = 'test-region',
+            stage_name = 'test-stage',
+            path = 'test-interface-path'
+        )
+
+        mock_parse_interface_url.return_value = interface_url_parts
+
+        LambdaConfigurationResourceHandler._add_permitted_arns(stack, interface, actual_permitted_arns)
+
+        expected_permitted_arns = [
+            'arn:aws:execute-api:{region}:{account_id}:{api_id}/{stage_name}/{HTTP_VERB}/{interface_path}/*'.format(
+                region = interface_url_parts.region,
+                account_id = stack.account_id,
+                api_id = interface_url_parts.api_id,
+                stage_name = interface_url_parts.stage_name,
+                HTTP_VERB = operation.upper(),
+                interface_path = interface_url_parts.path
+            )
+            for operation in valid_operations
+                for path in paths
+        ]
+
+        self.assertEquals(actual_permitted_arns, AnyOrderListMatcher(expected_permitted_arns))
+
+
 class AnyZipFileObject(object):
-     
+
     def __init__(self):
         pass
 
@@ -245,7 +483,7 @@ class AnyZipFileObject(object):
 
 
 class AnyValidZipFileContent(object):
-     
+
     def __init__(self):
         pass
 
@@ -254,4 +492,13 @@ class AnyValidZipFileContent(object):
         return zip_file.testzip() is None
 
 
+class AnyOrderListMatcher(object):
 
+    def __init__(self, expected_value):
+        self.__expected_value = expected_value
+
+    def __eq__(self, other):
+        return sorted(other) == sorted(self.__expected_value)
+
+    def __repr__(self):
+        return str(self.__expected_value) + ' (in any order)'

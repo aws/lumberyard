@@ -18,8 +18,8 @@
 namespace MysticQt
 {
     // the constructor
-    DockWidget::DockWidget(const QString& name)
-        : QDockWidget(name)
+    DockWidget::DockWidget(QWidget* parent, const QString& name)
+        : QDockWidget(name, parent)
     {
     }
 

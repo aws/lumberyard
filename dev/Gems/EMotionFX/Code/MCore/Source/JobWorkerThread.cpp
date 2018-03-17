@@ -33,7 +33,7 @@ namespace MCore
         mFinishedJobs.Reserve(4096);
 
         // init the thread
-        std::function<void()> func = std::bind(&MCore::JobWorkerThread::MainFunction, this);
+        AZStd::function<void()> func = AZStd::bind(&MCore::JobWorkerThread::MainFunction, this);
         mThread.Init(func);
     }
 
@@ -97,7 +97,7 @@ namespace MCore
         while (mMustExit == false)
         {
             // yield to other threads
-            std::this_thread::yield();
+            AZStd::this_thread::yield();
 
             // get the next job to execute
             JobList*    jobList = nullptr;

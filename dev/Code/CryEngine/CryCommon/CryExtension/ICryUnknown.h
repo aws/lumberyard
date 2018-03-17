@@ -54,43 +54,43 @@ namespace InterfaceCastSemantics
     namespace Internal
     {
         template <class Dst, class Src>
-        struct cryinterface_cast_boost_helper;
+        struct cryinterface_cast_shared_ptr_helper;
 
         template <class Dst, class Src>
-        struct cryinterface_cast_boost_helper
+        struct cryinterface_cast_shared_ptr_helper
         {
-            static boost::shared_ptr<Dst> Op(const boost::shared_ptr<Src>& p)
+            static AZStd::shared_ptr<Dst> Op(const AZStd::shared_ptr<Src>& p)
             {
                 Dst* dp = cryinterface_cast<Dst>(p.get());
-                return dp ? boost::shared_ptr<Dst>(p, dp) : boost::shared_ptr<Dst>();
+                return dp ? AZStd::shared_ptr<Dst>(p, dp) : AZStd::shared_ptr<Dst>();
             }
         };
 
         template <class Src>
-        struct cryinterface_cast_boost_helper<ICryUnknown, Src>
+        struct cryinterface_cast_shared_ptr_helper<ICryUnknown, Src>
         {
-            static boost::shared_ptr<ICryUnknown> Op(const boost::shared_ptr<Src>& p)
+            static AZStd::shared_ptr<ICryUnknown> Op(const AZStd::shared_ptr<Src>& p)
             {
                 ICryUnknown* dp = cryinterface_cast<ICryUnknown>(p.get());
-                return dp ? boost::shared_ptr<ICryUnknown>(*((const boost::shared_ptr<ICryUnknown>*) & p), dp) : boost::shared_ptr<ICryUnknown>();
+                return dp ? AZStd::shared_ptr<ICryUnknown>(*((const AZStd::shared_ptr<ICryUnknown>*) & p), dp) : AZStd::shared_ptr<ICryUnknown>();
             }
         };
 
         template <class Src>
-        struct cryinterface_cast_boost_helper<const ICryUnknown, Src>
+        struct cryinterface_cast_shared_ptr_helper<const ICryUnknown, Src>
         {
-            static boost::shared_ptr<const ICryUnknown> Op(const boost::shared_ptr<Src>& p)
+            static AZStd::shared_ptr<const ICryUnknown> Op(const AZStd::shared_ptr<Src>& p)
             {
                 const ICryUnknown* dp = cryinterface_cast<const ICryUnknown>(p.get());
-                return dp ? boost::shared_ptr<const ICryUnknown>(*((const boost::shared_ptr<const ICryUnknown>*) & p), dp) : boost::shared_ptr<const ICryUnknown>();
+                return dp ? AZStd::shared_ptr<const ICryUnknown>(*((const AZStd::shared_ptr<const ICryUnknown>*) & p), dp) : AZStd::shared_ptr<const ICryUnknown>();
             }
         };
     } // namespace Internal
 
     template <class Dst, class Src>
-    boost::shared_ptr<Dst> cryinterface_cast(const boost::shared_ptr<Src>& p)
+    AZStd::shared_ptr<Dst> cryinterface_cast(const AZStd::shared_ptr<Src>& p)
     {
-        return Internal::cryinterface_cast_boost_helper<Dst, Src>::Op(p);
+        return Internal::cryinterface_cast_shared_ptr_helper<Dst, Src>::Op(p);
     }
 
 #define _BEFRIEND_CRYINTERFACE_CAST()                                   \
@@ -99,7 +99,7 @@ namespace InterfaceCastSemantics
     template <class Dst, class Src>                                     \
     friend Dst * InterfaceCastSemantics::cryinterface_cast(const Src*); \
     template <class Dst, class Src>                                     \
-    friend boost::shared_ptr<Dst> InterfaceCastSemantics::cryinterface_cast(const boost::shared_ptr<Src>&);
+    friend AZStd::shared_ptr<Dst> InterfaceCastSemantics::cryinterface_cast(const AZStd::shared_ptr<Src>&);
 } // namespace InterfaceCastSemantics
 
 using InterfaceCastSemantics::cryiidof;
@@ -113,19 +113,19 @@ bool CryIsSameClassInstance(S* p0, T* p1)
 }
 
 template <class S, class T>
-bool CryIsSameClassInstance(const boost::shared_ptr<S>& p0, T* p1)
+bool CryIsSameClassInstance(const AZStd::shared_ptr<S>& p0, T* p1)
 {
     return CryIsSameClassInstance(p0.get(), p1);
 }
 
 template <class S, class T>
-bool CryIsSameClassInstance(S* p0, const boost::shared_ptr<T>& p1)
+bool CryIsSameClassInstance(S* p0, const AZStd::shared_ptr<T>& p1)
 {
     return CryIsSameClassInstance(p0, p1.get());
 }
 
 template <class S, class T>
-bool CryIsSameClassInstance(const boost::shared_ptr<S>& p0, const boost::shared_ptr<T>& p1)
+bool CryIsSameClassInstance(const AZStd::shared_ptr<S>& p0, const AZStd::shared_ptr<T>& p1)
 {
     return CryIsSameClassInstance(p0.get(), p1.get());
 }
@@ -134,51 +134,54 @@ bool CryIsSameClassInstance(const boost::shared_ptr<S>& p0, const boost::shared_
 namespace CompositeQuerySemantics
 {
     template <class Src>
-    boost::shared_ptr<ICryUnknown> crycomposite_query(Src* p, const char* name, bool* pExposed = 0)
+    AZStd::shared_ptr<ICryUnknown> crycomposite_query(Src* p, const char* name, bool* pExposed = 0)
     {
         void* pComposite = p ? p->QueryComposite(name) : 0;
         pExposed ? *pExposed = pComposite != 0 : 0;
-        return pComposite ? *static_cast<boost::shared_ptr<ICryUnknown>*>(pComposite) : boost::shared_ptr<ICryUnknown>();
+        return pComposite ? *static_cast<AZStd::shared_ptr<ICryUnknown>*>(pComposite) : AZStd::shared_ptr<ICryUnknown>();
     }
 
     template <class Src>
-    boost::shared_ptr<const ICryUnknown> crycomposite_query(const Src* p, const char* name, bool* pExposed = 0)
+    AZStd::shared_ptr<const ICryUnknown> crycomposite_query(const Src* p, const char* name, bool* pExposed = 0)
     {
         void* pComposite = p ? p->QueryComposite(name) : 0;
         pExposed ? *pExposed = pComposite != 0 : 0;
-        return pComposite ? *static_cast<boost::shared_ptr<const ICryUnknown>*>(pComposite) : boost::shared_ptr<const ICryUnknown>();
+        return pComposite ? *static_cast<AZStd::shared_ptr<const ICryUnknown>*>(pComposite) : AZStd::shared_ptr<const ICryUnknown>();
     }
 
     template <class Src>
-    boost::shared_ptr<ICryUnknown> crycomposite_query(const boost::shared_ptr<Src>& p, const char* name, bool* pExposed = 0)
+    AZStd::shared_ptr<ICryUnknown> crycomposite_query(const AZStd::shared_ptr<Src>& p, const char* name, bool* pExposed = 0)
     {
         return crycomposite_query(p.get(), name, pExposed);
     }
 
     template <class Src>
-    boost::shared_ptr<const ICryUnknown> crycomposite_query(const boost::shared_ptr<const Src>& p, const char* name, bool* pExposed = 0)
+    AZStd::shared_ptr<const ICryUnknown> crycomposite_query(const AZStd::shared_ptr<const Src>& p, const char* name, bool* pExposed = 0)
     {
         return crycomposite_query(p.get(), name, pExposed);
     }
 
 #define _BEFRIEND_CRYCOMPOSITE_QUERY()                                                                                                    \
     template <class Src>                                                                                                                  \
-    friend boost::shared_ptr<ICryUnknown> CompositeQuerySemantics::crycomposite_query(Src*, const char*, bool*);                          \
+    friend AZStd::shared_ptr<ICryUnknown> CompositeQuerySemantics::crycomposite_query(Src*, const char*, bool*);                          \
     template <class Src>                                                                                                                  \
-    friend boost::shared_ptr<const ICryUnknown> CompositeQuerySemantics::crycomposite_query(const Src*, const char*, bool*);              \
+    friend AZStd::shared_ptr<const ICryUnknown> CompositeQuerySemantics::crycomposite_query(const Src*, const char*, bool*);              \
     template <class Src>                                                                                                                  \
-    friend boost::shared_ptr<ICryUnknown> CompositeQuerySemantics::crycomposite_query(const boost::shared_ptr<Src>&, const char*, bool*); \
+    friend AZStd::shared_ptr<ICryUnknown> CompositeQuerySemantics::crycomposite_query(const AZStd::shared_ptr<Src>&, const char*, bool*); \
     template <class Src>                                                                                                                  \
-    friend boost::shared_ptr<const ICryUnknown> CompositeQuerySemantics::crycomposite_query(const boost::shared_ptr<const Src>&, const char*, bool*);
+    friend AZStd::shared_ptr<const ICryUnknown> CompositeQuerySemantics::crycomposite_query(const AZStd::shared_ptr<const Src>&, const char*, bool*);
 } // namespace CompositeQuerySemantics
 
 using CompositeQuerySemantics::crycomposite_query;
 
 
-#define _BEFRIEND_DELETER() \
-    template <class T>      \
-    friend void boost::checked_delete(T * x);
-
+#define _BEFRIEND_MAKE_SHARED() \
+    template <class T>                                      \
+    friend class AZStd::Internal::sp_ms_deleter;            \
+    template <class T>                                      \
+    friend AZStd::shared_ptr<T> AZStd::make_shared();       \
+    template <class T, class A>                             \
+    friend AZStd::shared_ptr<T> AZStd::allocate_shared(A const& a);
 
 // prevent explicit destruction from client side (exception is boost::checked_delete which gets befriended)
 #define _PROTECTED_DTOR(iname) \
@@ -192,7 +195,7 @@ protected:                     \
     _BEFRIEND_CRYIIDOF()                                                               \
     _BEFRIEND_CRYINTERFACE_CAST()                                                      \
     _BEFRIEND_CRYCOMPOSITE_QUERY()                                                     \
-    _BEFRIEND_DELETER()                                                                \
+    _BEFRIEND_MAKE_SHARED()                                                            \
     _PROTECTED_DTOR(iname)                                                             \
                                                                                        \
 private:                                                                               \
@@ -215,7 +218,7 @@ protected:
     virtual void* QueryComposite(const char* name) const = 0;
 };
 
-DECLARE_BOOST_POINTERS(ICryUnknown);
+DECLARE_SMART_POINTERS(ICryUnknown);
 
 
 #endif // CRYINCLUDE_CRYEXTENSION_ICRYUNKNOWN_H

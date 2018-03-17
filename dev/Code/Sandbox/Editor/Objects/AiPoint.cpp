@@ -14,7 +14,7 @@
 // Description : CAIPoint implementation.
 
 #include "StdAfx.h"
-#include "AIPoint.h"
+#include "AiPoint.h"
 #include "ErrorReport.h"
 
 #include "../AIPointPanel.h"

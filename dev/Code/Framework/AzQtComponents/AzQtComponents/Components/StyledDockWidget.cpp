@@ -14,6 +14,7 @@
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
+#include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 
 #include <QMainWindow>
 #include <QMouseEvent>
@@ -28,25 +29,49 @@
 
 namespace AzQtComponents
 {
+    static bool forceSkipTitleBarOverdraw()
+    {
+#ifdef Q_OS_WIN
+        static bool isWin10 = QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
+        if (!isWin10)
+        {
+            // non-win10 never uses title bar overdraw
+            return true;
+        }
+
+        return false;
+#else
+        // Non-windows never uses title bar overdraw
+        return true;
+#endif
+    }
+
     StyledDockWidget::StyledDockWidget(const QString& name, QWidget* parent)
+        : StyledDockWidget(name, false, parent)
+    {
+    }
+
+    StyledDockWidget::StyledDockWidget(const QString& name, bool skipTitleBarDrawing, QWidget* parent)
         : QDockWidget(name, parent)
+        , m_skipTitleBarOverdraw(skipTitleBarDrawing || forceSkipTitleBarOverdraw())
     {
         init();
     }
 
     StyledDockWidget::StyledDockWidget(QWidget* parent)
-        : QDockWidget(parent)
+        : StyledDockWidget(QString(), parent)
     {
-        init();
     }
 
     void StyledDockWidget::init()
     {
-        EditorProxyStyle::addTitleBarOverdrawWidget(this);
+        if (doesTitleBarOverdraw())
+        {
+            TitleBarOverdrawHandler::getInstance()->addTitleBarOverdrawWidget(this);
+        }
+
         connect(this, &QDockWidget::topLevelChanged, this, &StyledDockWidget::onFloatingChanged);
         createCustomTitleBar();
-        // Workaround intel driver bug visible when a QOpenGLWidget is used with custom window margins
-        setAttribute(Qt::WA_NativeWindow);
     }
 
     StyledDockWidget::~StyledDockWidget()
@@ -105,13 +130,10 @@ namespace AzQtComponents
             titleBar->setDrawSideBorders(!isFloating());
         }
 
-#ifdef Q_OS_WIN32
         if (isFloating())
         {
             fixFramelessFlags();
         }
-
-#endif
 
         QDockWidget::showEvent(event);
     }
@@ -153,11 +175,21 @@ namespace AzQtComponents
         }
     }
 
+    bool StyledDockWidget::doesTitleBarOverdraw() const
+    {
+        return !m_skipTitleBarOverdraw;
+    }
+
+    bool StyledDockWidget::skipTitleBarOverdraw() const
+    {
+        return m_skipTitleBarOverdraw;
+    }
+
     void StyledDockWidget::fixFramelessFlags()
     {
         // This ensures we have native frames (but no native titlebar)
         QWindow* w = windowHandle();
-        if (w && (w->flags() & Qt::FramelessWindowHint) && isFloating())
+        if (doesTitleBarOverdraw() && w && (w->flags() & Qt::FramelessWindowHint) && isFloating())
         {
             w->setFlags(WindowDecorationWrapper::specialFlagsForOS() | Qt::Tool);
         }

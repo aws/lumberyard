@@ -560,7 +560,7 @@ namespace UnitTest
                 AZ::Data::AssetBus::MultiHandler::BusConnect(assetId);
             }
         }
-        void OnAssetError(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+        void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override
         {
             AZ::Data::AssetBus::MultiHandler::BusDisconnect(asset.GetId());
 
@@ -573,7 +573,7 @@ namespace UnitTest
             }
         }
 
-        void OnAssetReady(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+        void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override
         {
             AZ::Data::AssetBus::MultiHandler::BusDisconnect(asset.GetId());
 

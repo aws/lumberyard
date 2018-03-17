@@ -208,7 +208,7 @@ void QFileSelectResourceWidget::onOpenSelectDialog()
     }
     case ePropertyModel:
     case ePropertyAudioTrigger:
-        newPath = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, currPath.toStdString().c_str()).c_str();
+        newPath = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, currPath);
         break;
     default:
         break;

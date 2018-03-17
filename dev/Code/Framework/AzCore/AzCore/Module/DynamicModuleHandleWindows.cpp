@@ -13,7 +13,7 @@
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_ENABLE_WINDOWS_DLLS
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/PlatformIncl.h>
 
@@ -125,6 +125,6 @@ namespace AZ
     }
 } // namespace AZ
 
-#endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_XBONE // ACCEPTED_USE
+#endif // AZ_TRAIT_COMPILER_ENABLE_WINDOWS_DLLS
 
 #endif // #ifndef AZ_UNITY_BUILD

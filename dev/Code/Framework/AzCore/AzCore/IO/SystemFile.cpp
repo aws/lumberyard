@@ -44,7 +44,7 @@ namespace
     //  Internal utility to avoid code duplication. Returns result of win32
     //  GetFileAttributes
     //=========================================================================
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     DWORD
     GetAttributes(const char* fileName)
     {
@@ -71,7 +71,7 @@ namespace
     //  Internal utility to avoid code duplication. Returns result of win32
     //  SetFileAttributes
     //=========================================================================
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     BOOL
     SetAttributes(const char* fileName, DWORD fileAttributes)
     {
@@ -101,7 +101,7 @@ namespace
     //   * GetLastError() on Windows-like platforms
     //   * errno on Unix platforms
     //=========================================================================
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
 #   if defined(_UNICODE)
     bool
     CreateDirRecursive(wchar_t* dirPath)
@@ -232,9 +232,9 @@ namespace
     }
 #endif
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = INVALID_HANDLE_VALUE;
-#elif defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_USE_SYSTEMFILE_HANDLE
     static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = (SystemFile::FileHandleType) -1;
 #elif defined(AZ_PLATFORM_ANDROID)
     static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = nullptr;
@@ -295,7 +295,7 @@ SystemFile::Open(const char* fileName, int mode, int platformFlags)
 
     AZ_Assert(!IsOpen(), "This file (%s) is already open!", m_fileName);
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     DWORD dwDesiredAccess = 0;
     DWORD dwShareMode = FILE_SHARE_READ;
     DWORD dwFlagsAndAttributes = platformFlags;
@@ -565,7 +565,7 @@ SystemFile::Close()
         }
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         if (!CloseHandle(m_handle))
@@ -606,7 +606,7 @@ SystemFile::Seek(SizeType offset, SeekMode mode)
         }
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         DWORD dwMoveMethod = mode;
@@ -644,7 +644,7 @@ SystemFile::Seek(SizeType offset, SeekMode mode)
 //=========================================================================
 SystemFile::SizeType SystemFile::Tell()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         LARGE_INTEGER distToMove;
@@ -690,7 +690,7 @@ SystemFile::SizeType SystemFile::Tell()
 //=========================================================================
 bool SystemFile::Eof()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         LARGE_INTEGER zero;
@@ -749,7 +749,7 @@ bool SystemFile::Eof()
 //=========================================================================
 AZ::u64 SystemFile::ModificationTime()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         FILE_BASIC_INFO fileInfo;
@@ -804,7 +804,7 @@ SystemFile::Read(SizeType byteSize, void* buffer)
         }
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         DWORD dwNumBytesRead = 0;
@@ -865,7 +865,7 @@ SystemFile::Write(const void* buffer, SizeType byteSize)
         }
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         DWORD dwNumBytesWritten = 0;
@@ -912,7 +912,7 @@ SystemFile::Write(const void* buffer, SizeType byteSize)
 //=========================================================================
 void SystemFile::Flush()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         if (!FlushFileBuffers(m_handle))
@@ -946,7 +946,7 @@ void SystemFile::Flush()
 SystemFile::SizeType
 SystemFile::Length() const
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         LARGE_INTEGER size;
@@ -1010,6 +1010,9 @@ SystemFile::IsOpen() const
 SystemFile::SizeType
 SystemFile::DiskOffset() const
 {
+#if AZ_TRAIT_DOES_NOT_SUPPORT_FILE_DISK_OFFSET
+    #pragma message("--- File Disk Offset is not available ---")
+#endif
     return 0;
 }
 
@@ -1020,7 +1023,7 @@ SystemFile::DiskOffset() const
 bool
 SystemFile::Exists(const char* fileName)
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     return GetAttributes(fileName) != INVALID_FILE_ATTRIBUTES;
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     return access(fileName, F_OK) == 0;
@@ -1047,7 +1050,7 @@ SystemFile::Exists(const char* fileName)
 void
 SystemFile::FindFiles(const char* filter, FindFileCB cb)
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     WIN32_FIND_DATA fd;
     HANDLE hFile;
     int lastError;
@@ -1152,7 +1155,7 @@ SystemFile::FindFiles(const char* filter, FindFileCB cb)
 //=========================================================================
 AZ::u64 SystemFile::ModificationTime(const char* fileName)
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     HANDLE handle = nullptr;
 
 #   ifdef _UNICODE
@@ -1209,7 +1212,7 @@ SystemFile::SizeType
 SystemFile::Length(const char* fileName)
 {
     SizeType len = 0;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
     BOOL result = FALSE;
 
@@ -1287,7 +1290,7 @@ SystemFile::Delete(const char* fileName)
         return false;
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
 
 #   ifdef _UNICODE
     wchar_t fileNameW[AZ_MAX_PATH_LEN];
@@ -1337,7 +1340,7 @@ SystemFile::Rename(const char* sourceFileName, const char* targetFileName, bool 
         return false;
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
 
 #   ifdef _UNICODE
     wchar_t sourceFileNameW[AZ_MAX_PATH_LEN];
@@ -1384,7 +1387,7 @@ SystemFile::Rename(const char* sourceFileName, const char* targetFileName, bool 
 bool
 SystemFile::IsWritable(const char* sourceFileName)
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     auto fileAttr = GetAttributes(sourceFileName);
     return !((fileAttr == INVALID_FILE_ATTRIBUTES) || (fileAttr & FILE_ATTRIBUTE_DIRECTORY) || (fileAttr & FILE_ATTRIBUTE_READONLY));
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
@@ -1401,7 +1404,7 @@ SystemFile::IsWritable(const char* sourceFileName)
 bool
 SystemFile::SetWritable(const char* sourceFileName, bool writable)
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
     auto fileAttr = GetAttributes(sourceFileName);
     if ((fileAttr == INVALID_FILE_ATTRIBUTES) || (fileAttr & FILE_ATTRIBUTE_DIRECTORY))
     {
@@ -1468,7 +1471,7 @@ SystemFile::CreateDir(const char* dirName)
 {
     if (dirName)
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
 #   if defined(_UNICODE)
         wchar_t dirPath[AZ_MAX_PATH_LEN];
         size_t numCharsConverted;

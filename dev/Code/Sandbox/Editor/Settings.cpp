@@ -70,6 +70,28 @@ private:
     const QString m_group;
 };
 
+namespace
+{
+
+    class QtApplicationListener
+        : public AzToolsFramework::EditorEvents::Bus::Handler
+    {
+    public:
+        QtApplicationListener()
+        {
+            AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
+        }
+
+        void NotifyQtApplicationAvailable(QApplication* application) override
+        {
+            gSettings.viewports.nDragSquareSize = application->startDragDistance();
+            AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+            delete this;
+        }
+    };
+
+}
+
 //////////////////////////////////////////////////////////////////////////
 SGizmoSettings::SGizmoSettings()
 {
@@ -133,7 +155,7 @@ SEditorSettings::SEditorSettings()
     viewports.bTopMapSwapXY = false;
     viewports.bShowGridGuide = true;
     viewports.bHideMouseCursorWhenCaptured = true;
-    viewports.nDragSquareSize = qApp->startDragDistance();
+    viewports.nDragSquareSize = 0; // We must initialize this after the Qt application object is available; see QtApplicationListener
     viewports.bEnableContextMenu = true;
     viewports.fWarningIconsDrawDistance = 50.0f;
     viewports.bShowScaleWarnings = false;
@@ -176,10 +198,22 @@ SEditorSettings::SEditorSettings()
     freezeReadOnly = true;
     frozenSelectable = false;
 
+#if defined(AZ_PLATFORM_APPLE)
+    textEditorForScript = "TextEdit";
+    textEditorForShaders = "TextEdit";
+    textEditorForBspaces = "TextEdit";
+    textureEditor = "Photoshop";
+#elif defined(AZ_PLATFORM_WINDOWS)
     textEditorForScript = "notepad++.exe";
     textEditorForShaders = "notepad++.exe";
     textEditorForBspaces = "notepad++.exe";
     textureEditor = "Photoshop.exe";
+#else
+    textEditorForScript = "";
+    textEditorForShaders = "";
+    textEditorForBspaces = "";
+    textureEditor = "";
+#endif
     animEditor = "";
 
     terrainTextureExport = "";
@@ -236,6 +270,10 @@ SEditorSettings::SEditorSettings()
     g_TemporaryLevelName = nullptr;
 
     sMetricsSettings.bEnableMetricsTracking = true;
+
+    bEnableUI2 = false;
+
+    new QtApplicationListener(); // Deletes itself when it's done.
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -293,7 +331,7 @@ void SEditorSettings::SaveValue(const char* sSection, const char* sKey, const QS
     {
         if (GetIEditor()->GetSettingsManager())
         {
-            GetIEditor()->GetSettingsManager()->SaveSetting(sSection, sKey, value.toLatin1().data());
+            GetIEditor()->GetSettingsManager()->SaveSetting(sSection, sKey, value);
         }
     }
 }
@@ -701,6 +739,12 @@ void SEditorSettings::Save()
     //////////////////////////////////////////////////////////////////////////
     SaveValue("Settings\\Metrics", "EnableMetricsTracking",    sMetricsSettings.bEnableMetricsTracking);
 
+
+    //////////////////////////////////////////////////////////////////////////
+    // UI 2.0 Settings
+    //////////////////////////////////////////////////////////////////////////
+    SaveValue("Settings", "EnableUI20", bEnableUI2);
+
     /*
     //////////////////////////////////////////////////////////////////////////
     // Save paths.
@@ -1005,6 +1049,11 @@ void SEditorSettings::Load()
     LoadValue("Settings\\Metrics", "EnableMetricsTracking",    sMetricsSettings.bEnableMetricsTracking);
 
     //////////////////////////////////////////////////////////////////////////
+    // UI 2.0 Settings
+    //////////////////////////////////////////////////////////////////////////
+    LoadValue("Settings", "EnableUI20", bEnableUI2);
+
+    //////////////////////////////////////////////////////////////////////////
     // Load paths.
     //////////////////////////////////////////////////////////////////////////
     for (int id = 0; id < EDITOR_PATH_LAST; id++)
@@ -1019,7 +1068,7 @@ void SEditorSettings::Load()
         {
             const QString key = QStringLiteral("Path_%1_%2").arg(id, 2, 10, QLatin1Char('.')).arg(i, 2, 10, QLatin1Char('.'));
             QString path;
-            LoadValue("Paths", key.toLatin1().data(), path);
+            LoadValue("Paths", key.toUtf8().data(), path);
             if (path.isEmpty())
             {
                 break;
@@ -1095,7 +1144,7 @@ bool SEditorSettings::BrowseTerrainTexture(bool bIsSave)
     else
     {
         fileName = "terraintex.bmp";
-        strcpy(path, Path::GamePathToFullPath("").toLatin1().data());
+        strcpy(path, Path::GamePathToFullPath("").toUtf8().data());
     }
 
     if (bIsSave)

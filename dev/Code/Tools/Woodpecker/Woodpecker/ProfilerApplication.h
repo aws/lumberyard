@@ -20,6 +20,9 @@ namespace Driller
     class Application
         : public Woodpecker::BaseApplication
     {
+    public:
+        Application(int &argc, char **argv) : BaseApplication(argc, argv) {}
+
     protected:
         void RegisterCoreComponents() override;
         void CreateApplicationComponents() override;

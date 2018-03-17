@@ -34,7 +34,7 @@ namespace AzQtComponents
 
     void StylesheetPreprocessor::ReadVariables(const QString& jsonString)
     {
-        QJsonDocument doc = QJsonDocument::fromJson(jsonString.toLatin1());
+        QJsonDocument doc = QJsonDocument::fromJson(jsonString.toUtf8());
         QJsonObject rootObject = doc.object();
 
         //load in the stylesheet variables

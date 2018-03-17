@@ -120,7 +120,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         if (request->m_assetId.IsValid())
         {
             AZStd::string rootFolder;
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAssetInfoById, request->m_assetId, request->m_assetType, response.m_assetInfo, rootFolder );
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetSourceInfoBySourceUUID, request->m_assetId.m_guid, response.m_assetInfo, rootFolder );
             response.m_rootFolder = rootFolder.c_str();
             AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
         }

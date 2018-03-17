@@ -308,9 +308,9 @@ namespace AzFramework
                 // Queue Slice deletion until next tick. This prevents deleting a dynamic slice from an active entity within that slice.
                 AZStd::function<void()> destroySlice = [this, sliceInstance]()
                 {
-                    if (AZ::SliceComponent* rootSlice = GetRootSlice())
+                    if (AZ::SliceComponent* queuedRootSlice = GetRootSlice())
                     {
-                        rootSlice->RemoveSliceInstance(sliceInstance);
+                        queuedRootSlice->RemoveSliceInstance(sliceInstance);
                     }
                 };
 

@@ -12,7 +12,7 @@
 *
 */
 
-#include <AzCore/EBus/ebus.h>
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/set.h>

@@ -21,7 +21,6 @@ def build(bld):
         configurations          = ['test_all'],
         use                     = ['AzTest', 'AzCore'],
         msvc_cxxflags           = ['/W4'],
-        clang_cxxflags          = ['-Wall', '-Werror'],
     )
 
     bld.CryEngineSharedLibrary(
@@ -34,7 +33,6 @@ def build(bld):
         use                     = ['AzTest', 'AzCore', 'BENCHMARK'],
         win_lib                 = ['shlwapi'],
         msvc_cxxflags           = ['/W4'],
-        clang_cxxflags          = ['-Wall', '-Werror'],
     )
 
 

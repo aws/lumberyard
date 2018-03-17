@@ -35,10 +35,6 @@ namespace Visibility
             virtual bool GetDisplayFilled() = 0;
             virtual void SetAffectedBySun(const bool value) = 0;
             virtual bool GetAffectedBySun() = 0;
-            virtual void SetIgnoreSkyColor(const bool value) = 0;
-            virtual bool GetIgnoreSkyColor() = 0;
-            virtual void SetIgnoreGI(const bool value) = 0;
-            virtual bool GetIgnoreGI() = 0;
             virtual void SetViewDistRatio(const float value) = 0;
             virtual float GetViewDistRatio() = 0;
             virtual void SetSkyOnly(const bool value) = 0;

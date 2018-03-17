@@ -39,7 +39,7 @@ WAF_EXECUTABLE = 'lmbr_waf.bat'
 #############################################################################
 # Helper method for getting the host platform's command line character limit 
 def get_command_line_limit():
-    arg_max = 8192 # windows command line length limit
+    arg_max = 16384 # windows command line length limit
 
     if Utils.unversioned_sys_platform() != "win32":
         arg_max = int(subprocess.check_output(["getconf", "ARG_MAX"]).strip())
@@ -258,7 +258,7 @@ def parse_json_file(conf, file_node):
 
 ###############################################################################
 # Function to generate the EXE_VERSION_INFO defines
-@after_method('apply_incpaths')
+@before_method('process_source')
 @feature('c', 'cxx')
 def apply_version_info(self):
 
@@ -281,11 +281,10 @@ def apply_version_info(self):
         parsed_version_parts[3] if len(parsed_version_parts) > 3 else '0'
     ]
 
-    for t in getattr(self, 'compiled_tasks', []):
-        t.env.append_value('DEFINES', 'EXE_VERSION_INFO_0=' + version_parts[0])
-        t.env.append_value('DEFINES', 'EXE_VERSION_INFO_1=' + version_parts[1])
-        t.env.append_value('DEFINES', 'EXE_VERSION_INFO_2=' + version_parts[2])
-        t.env.append_value('DEFINES', 'EXE_VERSION_INFO_3=' + version_parts[3])
+    self.env.append_value('DEFINES', 'EXE_VERSION_INFO_0=' + version_parts[0])
+    self.env.append_value('DEFINES', 'EXE_VERSION_INFO_1=' + version_parts[1])
+    self.env.append_value('DEFINES', 'EXE_VERSION_INFO_2=' + version_parts[2])
+    self.env.append_value('DEFINES', 'EXE_VERSION_INFO_3=' + version_parts[3])
 
 
 ###############################################################################

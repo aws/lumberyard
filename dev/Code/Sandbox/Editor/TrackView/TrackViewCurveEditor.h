@@ -19,7 +19,7 @@
 #include "TrackViewDopeSheetBase.h"
 #include "TrackViewSplineCtrl.h"
 #include "Controls/TimelineCtrl.h"
-#include "TrackViewTimeLine.h"
+#include "TrackViewTimeline.h"
 
 #include <QWidget>
 

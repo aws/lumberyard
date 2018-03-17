@@ -92,6 +92,7 @@ namespace AssetProcessor
         void UpdateQueuedEvents() override;
         bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) override;
         bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
+        bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
         ////////////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -127,7 +128,8 @@ namespace AssetProcessor
         bool ConnectToDatabase();
 
         //! List of AssetTypes that should return info for the source instead of the product
-        AZStd::unordered_map<AZ::Data::AssetType, AZStd::string> m_sourceAssetTypes;
+        AZStd::unordered_set<AZ::Data::AssetType> m_sourceAssetTypes;
+        AZStd::unordered_map<AZStd::string, AZ::Data::AssetType> m_sourceAssetTypeFilters;
         AZStd::mutex m_sourceAssetTypesMutex;
 
         //! Used to protect access to the database connection, only one thread can use it at a time

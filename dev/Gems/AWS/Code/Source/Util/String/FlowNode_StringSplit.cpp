@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #include <Util/String/FlowNode_StringSplit.h>
 #include <aws/core/utils/StringUtils.h>
 

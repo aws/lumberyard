@@ -34,7 +34,7 @@ public:
 
     void ResetUIState();
 
-    CVarBlock* CreateVars();
+    CVarBlockPtr CreateVars();
 
     void SetFromParticles(CParticleItem* pParticles, SLodInfo* pLevelOfDetail = nullptr);
 

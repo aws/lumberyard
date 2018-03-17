@@ -301,7 +301,7 @@ namespace AZ
 AZSTD_DECLARE_POD_TYPE(AZ::Matrix3x3);
 #endif
 
-#if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
+#if AZ_TRAIT_USE_PLATFORM_SIMD
     #include <AzCore/Math/Internal/Matrix3x3Win32.inl>
 #else
     #include <AzCore/Math/Internal/Matrix3x3Fpu.inl>

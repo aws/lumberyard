@@ -952,16 +952,17 @@ namespace UnitTest
         ComponentApplication::Descriptor appDesc;
         appDesc.m_memoryBlocksByteSize = 10 * 1024 * 1024;
         Entity* systemEntity = app.Create(appDesc);
+    
+        systemEntity->CreateComponent<MemoryComponent>();
+        systemEntity->CreateComponent<StreamerComponent>(); // note that this component is what registers the streamer driller
+
+        systemEntity->Init();
+        systemEntity->Activate();
 
         AZ_TEST_ASSERT(app.GetDrillerManager() != NULL);
         DrillerSession* drillerSession = app.GetDrillerManager()->Start(fs, drillersToDrill);
         AZ_TEST_ASSERT(drillerSession != NULL);
 
-        systemEntity->CreateComponent<MemoryComponent>();
-        systemEntity->CreateComponent<StreamerComponent>();
-
-        systemEntity->Init();
-        systemEntity->Activate();
 
         const int numOfFrames = 10000;
         void* memory = NULL;

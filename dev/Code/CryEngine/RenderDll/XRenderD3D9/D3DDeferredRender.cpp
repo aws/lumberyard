@@ -317,45 +317,44 @@ void CD3D9Renderer::FX_DeferredShadowPass(const SRenderLight* pLight, ShadowMapF
         Matrix44 mViewProjInv = mViewProj.GetInverted();
         gRenDev->m_TempMatrices[0][0] = mViewProjInv.GetTransposed();
         
-        if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
-        {
-            FX_SetVStream(0, m_pUnitFrustumVB[SHAPE_SIMPLE_PROJECTOR], 0, sizeof(SVF_P3F_C4B_T2F));
-            FX_SetIStream(m_pUnitFrustumIB[SHAPE_SIMPLE_PROJECTOR], 0, (kUnitObjectIndexSizeof == 2 ? Index16 : Index32));
+        FX_SetVStream(0, m_pUnitFrustumVB[SHAPE_SIMPLE_PROJECTOR], 0, sizeof(SVF_P3F_C4B_T2F));
+        FX_SetIStream(m_pUnitFrustumIB[SHAPE_SIMPLE_PROJECTOR], 0, (kUnitObjectIndexSizeof == 2 ? Index16 : Index32));
             
-            if (!CV_r_ShadowsUseClipVolume || !RenderCapabilities::SupportsDepthClipping())
-            {
-                FX_StencilCullPass(nLod, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR], pShader, DS_STENCIL_VOLUME_CLIP, DS_STENCIL_VOLUME_CLIP_FRONTFACING);
-            }
-            else
-            {
-                FX_StencilCullPass(nLod, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR], pShader, DS_STENCIL_VOLUME_CLIP);
-            }
+        if (!CV_r_ShadowsUseClipVolume || !RenderCapabilities::SupportsDepthClipping())
+        {
+            FX_StencilCullPass(nLod, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR], pShader, DS_STENCIL_VOLUME_CLIP, DS_STENCIL_VOLUME_CLIP_FRONTFACING);
+        }
+        else
+        {
+            FX_StencilCullPass(nLod, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR], pShader, DS_STENCIL_VOLUME_CLIP);
+        }
                 
-            // camera might be outside cached frustum => do front facing pass as well
-            if (pShadowFrustum->IsCached())
+        // camera might be outside cached frustum => do front facing pass as well
+        if (pShadowFrustum->IsCached())
+        {
+            Vec4 vCamPosShadowSpace = Vec4(GetViewParameters().vOrigin, 1.f) * mViewProj;
+            vCamPosShadowSpace /= vCamPosShadowSpace.w;                
+            if (abs(vCamPosShadowSpace.x) > 1.0f || abs(vCamPosShadowSpace.y) > 1.0f || vCamPosShadowSpace.z < 0 || vCamPosShadowSpace.z > 1)
             {
-                Vec4 vCamPosShadowSpace = Vec4(GetViewParameters().vOrigin, 1.f) * mViewProj;
-                vCamPosShadowSpace /= vCamPosShadowSpace.w;
-                
-                if (abs(vCamPosShadowSpace.x) > 1.0f || abs(vCamPosShadowSpace.y) > 1.0f || vCamPosShadowSpace.z < 0 || vCamPosShadowSpace.z > 1)
+			
+                pShader->FXBeginPass(DS_STENCIL_VOLUME_CLIP);
+                if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
                 {
-                    pShader->FXBeginPass(DS_STENCIL_VOLUME_CLIP);
-                    
                     D3DSetCull(eCULL_Back);
                     FX_SetStencilState(
-                        STENC_FUNC(FSS_STENCFUNC_ALWAYS) |
-                        STENCOP_FAIL(FSS_STENCOP_KEEP) |
-                        STENCOP_ZFAIL(FSS_STENCOP_ZERO) |
-                        STENCOP_PASS(FSS_STENCOP_KEEP),
-                            nLod, 0xFFFFFFFF, 0xFFFF
-                            );
-                    
+                                       STENC_FUNC(FSS_STENCFUNC_ALWAYS) |
+                                       STENCOP_FAIL(FSS_STENCOP_KEEP) |
+                                       STENCOP_ZFAIL(FSS_STENCOP_ZERO) |
+                                       STENCOP_PASS(FSS_STENCOP_KEEP),
+                                       nLod, 0xFFFFFFFF, 0xFFFF
+                                       );
                     
                     FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, m_UnitFrustVBSize[SHAPE_SIMPLE_PROJECTOR], 0, m_UnitFrustIBSize[SHAPE_SIMPLE_PROJECTOR]);
-                    pShader->FXEndPass();
                 }
+                pShader->FXEndPass();
             }
         }
+        
     }
     //////////////////////////////////////////////////////////////////////////
 
@@ -717,6 +716,16 @@ void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInd
 {
     //Render pass for back facing triangles
     pShader->FXBeginPass(backFacePass);
+    
+    //We can only check for vertexDeclaration after setting the pass. We have techniques with
+    //multiple passes that can use different input layout. This way we ensure we are matching against
+    //the correct input layout of the correct pass
+    if (FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
+    {
+        AZ_Assert(false, "Skipping the draw inside FX_StencilCullPass as the vertex declaration for shader %s pass %i failed", pShader->m_NameShader.c_str(), backFacePass);
+        pShader->FXEndPass();
+        return;
+    }
     SetBackFacingStencillState(nStencilID);
     FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, nNumVers, 0, nNumInds);       
     pShader->FXEndPass();
@@ -740,6 +749,17 @@ void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInd
 {
     //Render pass for back facing triangles
     pShader->FXBeginPass(backFacePass);
+    
+    //We can only check for vertexDeclaration after setting the pass. We have techniques with
+    //multiple passes that can use different input layout. This way we ensure we are matching against
+    //the correct input layout of the correct pass
+    if (FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
+    {
+        AZ_Assert(false, "Skipping the draw inside FX_StencilCullPass as the vertex declaration for shader %s pass %i failed", pShader->m_NameShader.c_str(), backFacePass);
+        pShader->FXEndPass();
+        return;
+    }
+    
     SetBackFacingStencillState(nStencilID);
 
     // Don't clip pixels beyond far clip plane
@@ -839,17 +859,14 @@ void CD3D9Renderer::FX_StencilFrustumCull(int nStencilID, const SRenderLight* pL
             FX_SetVStream(0, m_pUnitFrustumVB[meshType], 0, sizeof(SVF_P3F_C4B_T2F));
             FX_SetIStream(m_pUnitFrustumIB[meshType], 0, (kUnitObjectIndexSizeof == 2 ? Index16 : Index32));
        
-            if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
+            if (!RenderCapabilities::SupportsDepthClipping())
             {
-                if (!RenderCapabilities::SupportsDepthClipping())
-                {
-                    FX_StencilCullPass(nStencilID == -4 ? -4 : -1, m_UnitFrustVBSize[meshType], m_UnitFrustIBSize[meshType], pShader, DS_SHADOW_CULL_PASS, DS_SHADOW_CULL_PASS_FRONTFACING);
-                }
-                else
-                {
-                    FX_StencilCullPass(nStencilID == -4 ? -4 : -1, m_UnitFrustVBSize[meshType], m_UnitFrustIBSize[meshType], pShader, DS_SHADOW_CULL_PASS);                    
-                }
-            }           
+                FX_StencilCullPass(nStencilID == -4 ? -4 : -1, m_UnitFrustVBSize[meshType], m_UnitFrustIBSize[meshType], pShader, DS_SHADOW_CULL_PASS, DS_SHADOW_CULL_PASS_FRONTFACING);
+            }
+            else
+            {
+                FX_StencilCullPass(nStencilID == -4 ? -4 : -1, m_UnitFrustVBSize[meshType], m_UnitFrustIBSize[meshType], pShader, DS_SHADOW_CULL_PASS);
+            }
 
             m_RP.m_TI[m_RP.m_nProcessThreadID].m_matView = origMatView;
 
@@ -903,16 +920,13 @@ void CD3D9Renderer::FX_StencilFrustumCull(int nStencilID, const SRenderLight* pL
     pShader->FXSetTechnique(StencilCullTechName);
     pShader->FXBegin(&nPassCount, FEF_DONTSETSTATES);        
    
-    if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
+    if (!RenderCapabilities::SupportsDepthClipping())
     {
-        if (!RenderCapabilities::SupportsDepthClipping())
-        {
-            FX_StencilCullPass(nStencilID, m_UnitFrustVBSize[nPrimitiveID], m_UnitFrustIBSize[nPrimitiveID], pShader, DS_SHADOW_FRUSTUM_CULL_PASS, DS_SHADOW_FRUSTUM_CULL_PASS_FRONTFACING);
-        }
-        else
-        {
-            FX_StencilCullPass(nStencilID, m_UnitFrustVBSize[nPrimitiveID], m_UnitFrustIBSize[nPrimitiveID], pShader, DS_SHADOW_FRUSTUM_CULL_PASS);
-        }
+        FX_StencilCullPass(nStencilID, m_UnitFrustVBSize[nPrimitiveID], m_UnitFrustIBSize[nPrimitiveID], pShader, DS_SHADOW_FRUSTUM_CULL_PASS, DS_SHADOW_FRUSTUM_CULL_PASS_FRONTFACING);
+    }
+    else
+    {
+        FX_StencilCullPass(nStencilID, m_UnitFrustVBSize[nPrimitiveID], m_UnitFrustIBSize[nPrimitiveID], pShader, DS_SHADOW_FRUSTUM_CULL_PASS);
     }
 
     pShader->FXEnd();

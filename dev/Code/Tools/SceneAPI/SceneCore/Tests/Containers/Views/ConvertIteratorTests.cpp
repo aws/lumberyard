@@ -93,27 +93,33 @@ namespace AZ
                 // MakeConvertIterator
                 TYPED_TEST_P(ConvertIteratorTests, MakeConvertIterator_FunctionComparedWithExplicitlyDeclaredIterator_IteratorsAreEqual)
                 {
-                    auto lhsIterator = MakeConvertIterator(GetBaseIterator(0), ConvertIntToFloat);
-                    auto rhsIterator = ConvertIterator<BaseIterator, float>(GetBaseIterator(0), ConvertIntToFloat);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    auto lhsIterator = MakeConvertIterator(this->GetBaseIterator(0), ConvertIntToFloat);
+                    auto rhsIterator = ConvertIterator<BaseIterator, float>(this->GetBaseIterator(0), ConvertIntToFloat);
                     EXPECT_EQ(lhsIterator, rhsIterator);
                 }
 
                 // MakeConvertView
                 TYPED_TEST_P(ConvertIteratorTests, MakeConvertView_IteratorVersionComparedWithExplicitlyDeclaredIterators_ViewHasEquivalentBeginAndEnd)
                 {
-                    auto view = MakeConvertView(m_testCollection.begin(), m_testCollection.end(), ConvertIntToFloat);
-                    auto begin = ConvertIterator<BaseIterator, float>(m_testCollection.begin(), ConvertIntToFloat);
-                    auto end = ConvertIterator<BaseIterator, float>(m_testCollection.end(), ConvertIntToFloat);
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    auto view = MakeConvertView(this->m_testCollection.begin(), this->m_testCollection.end(), ConvertIntToFloat);
+                    auto begin = ConvertIterator<BaseIterator, float>(this->m_testCollection.begin(), ConvertIntToFloat);
+                    auto end = ConvertIterator<BaseIterator, float>(this->m_testCollection.end(), ConvertIntToFloat);
                     EXPECT_EQ(view.begin(), begin);
                     EXPECT_EQ(view.end(), end);
                 }
 
                 TYPED_TEST_P(ConvertIteratorTests, MakeConvertView_ViewVersionComparedWithExplicitlyDeclaredIterators_ViewHasEquivalentBeginAndEnd)
                 {
-                    auto sourceView = MakeView(m_testCollection.begin(), m_testCollection.end());
+                    using BaseIterator = typename IteratorTypedTestsBase<TypeParam>::BaseIterator;
+
+                    auto sourceView = MakeView(this->m_testCollection.begin(), this->m_testCollection.end());
                     auto view = MakeConvertView(sourceView, ConvertIntToFloat);
-                    auto begin = ConvertIterator<BaseIterator, float>(m_testCollection.begin(), ConvertIntToFloat);
-                    auto end = ConvertIterator<BaseIterator, float>(m_testCollection.end(), ConvertIntToFloat);
+                    auto begin = ConvertIterator<BaseIterator, float>(this->m_testCollection.begin(), ConvertIntToFloat);
+                    auto end = ConvertIterator<BaseIterator, float>(this->m_testCollection.end(), ConvertIntToFloat);
                     EXPECT_EQ(view.begin(), begin);
                     EXPECT_EQ(view.end(), end);
                 }

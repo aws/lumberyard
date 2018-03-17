@@ -10,6 +10,7 @@
 *
 */
 #include "StdAfx.h"
+#include "Resource.h"
 #include "MainWindow.h"
 #include "Core/LevelEditorMenuHandler.h"
 #include "ShortcutDispatcher.h"
@@ -18,7 +19,7 @@
 #include <AssetImporter/AssetImporterManager/AssetImporterManager.h>
 #include <AssetImporter/AssetImporterManager/AssetImporterDragAndDropHandler.h>
 #include "CryEdit.h"
-#include "Controls/Rollupbar.h"
+#include "Controls/RollupBar.h"
 #include "Controls/ConsoleSCB.h"
 #include "AI/AIManager.h"
 #include "Grid.h"
@@ -296,7 +297,7 @@ namespace
         std::vector<std::string> classNames;
         for (auto iter = classDescs.begin(); iter != classDescs.end(); ++iter)
         {
-            classNames.push_back((*iter)->ClassName().toLatin1().data());
+            classNames.push_back((*iter)->ClassName().toUtf8().data());
         }
 
         return classNames;
@@ -304,7 +305,13 @@ namespace
 
     void PyExit()
     {
-        MainWindow::instance()->close();
+        // Adding a single-shot QTimer to PyExit delays the QApplication::closeAllWindows call until
+        // all the events in the event queue have been processed. This resolves a deadlock in
+        // PyScript::AcquirePythonLock as PyScript::ShutdownPython was trying to aquire the lock
+        // already obtained by CScriptTermDialog::ExecuteAndPrint.
+        // Calling QApplication::closeAllWindows instead of MainWindow::close ensures the Metal
+        // render window is cleaned up on macOS.
+        QTimer::singleShot(0, qApp, &QApplication::closeAllWindows);
     }
 }
 
@@ -548,6 +555,11 @@ MainWindow::MainWindow(QWidget* parent)
     addAction(escapeAction);
 
     connect(escapeAction, &QAction::triggered, this, &MainWindow::OnEscapeAction);
+    const QSize minSize(800, 600);
+    if (size().height() < minSize.height() || size().width() < minSize.width())
+    {
+        resize(size().expandedTo(minSize));
+    }
 }
 
 void MainWindow::SystemTick()
@@ -731,7 +743,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
     SaveConfig();
 
     // Some of the panes may ask for confirmation to save changes before closing.
-    if (!QtViewPaneManager::instance()->CloseAllPanes() ||
+    if (!QtViewPaneManager::instance()->ClosePanesWithRollback(QVector<QString>()) ||
         !GetIEditor() ||
         (GetIEditor()->GetDocument() && !GetIEditor()->GetDocument()->CanCloseFrame(nullptr)) ||
         !GetIEditor()->GetLevelIndependentFileMan()->PromptChangedFiles())
@@ -796,12 +808,12 @@ void MainWindow::InitActions()
     am->AddAction(ID_TOOLBAR_SEPARATOR, QString());
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_TOOLBAR_WIDGET_SELECTION_MASK, QString());
+        am->AddAction(ID_TOOLBAR_WIDGET_SELECTION_MASK, QString());
     }
     am->AddAction(ID_TOOLBAR_WIDGET_REF_COORD, QString());
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_TOOLBAR_WIDGET_SELECT_OBJECT, QString());
+        am->AddAction(ID_TOOLBAR_WIDGET_SELECT_OBJECT, QString());
     }
     am->AddAction(ID_TOOLBAR_WIDGET_UNDO, QString());
     am->AddAction(ID_TOOLBAR_WIDGET_REDO, QString());
@@ -842,16 +854,18 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "FileMenuImportFBX");
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_SELECTION_LOAD, tr("&Load Object(s)..."))
-        .SetIcon(EditorProxyStyle::icon("Load"))
-        .SetShortcut(tr("Shift+Ctrl+L"))
-        .SetMetricsIdentifier("MainEditor", "LoadObjects")
-        .SetStatusTip(tr("Load Objects"));
-    am->AddAction(ID_SELECTION_SAVE, tr("&Save Object(s)..."))
-        .SetIcon(EditorProxyStyle::icon("Save"))
-        .SetStatusTip(tr("Save Selected Objects"))
-        .SetMetricsIdentifier("MainEditor", "SaveSelectedObjects")
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelected);
+        am->AddAction(ID_SELECTION_LOAD, tr("&Load Object(s)..."))
+            .SetIcon(EditorProxyStyle::icon("Load"))
+        .SetApplyHoverEffect()
+            .SetShortcut(tr("Shift+Ctrl+L"))
+            .SetMetricsIdentifier("MainEditor", "LoadObjects")
+            .SetStatusTip(tr("Load Objects"));
+        am->AddAction(ID_SELECTION_SAVE, tr("&Save Object(s)..."))
+            .SetIcon(EditorProxyStyle::icon("Save"))
+        .SetApplyHoverEffect()
+            .SetStatusTip(tr("Save Selected Objects"))
+            .SetMetricsIdentifier("MainEditor", "SaveSelectedObjects")
+            .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelected);
     }
     am->AddAction(ID_PROJECT_CONFIGURATOR_PROJECTSELECTION, tr("Switch Projects"))
         .SetMetricsIdentifier("MainEditor", "SwitchGems");
@@ -948,12 +962,14 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Undo last operation"))
         //.SetMenu(new QMenu("FIXME"))
         .SetIcon(EditorProxyStyle::icon("undo"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "Undo")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateUndo);
     am->AddAction(ID_REDO, tr("&Redo"))
         .SetShortcut(tr("Ctrl+Shift+Z"))
         //.SetMenu(new QMenu("FIXME"))
         .SetIcon(EditorProxyStyle::icon("Redo"))
+        .SetApplyHoverEffect()
         .SetStatusTip(tr("Redo last undo operation"))
         .SetMetricsIdentifier("MainEditor", "Redo")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateRedo);
@@ -986,6 +1002,7 @@ void MainWindow::InitActions()
         .SetShortcut(tr("Ctrl+Shift+I"));
     am->AddAction(ID_SELECT_OBJECT, tr("&Object(s)..."))
         .SetIcon(EditorProxyStyle::icon("Object_list"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "SelectObjectsDialog")
         .SetStatusTip(tr("Select Object(s)"));
     am->AddAction(ID_LOCK_SELECTION, tr("Lock Selection")).SetShortcut(tr("Ctrl+Shift+Space"))
@@ -1006,10 +1023,10 @@ void MainWindow::InitActions()
 
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_MODIFY_LINK, tr("Link"))
-        .SetMetricsIdentifier("MainEditor", "LinkSelectedObjects");
-    am->AddAction(ID_MODIFY_UNLINK, tr("Unlink"))
-        .SetMetricsIdentifier("MainEditor", "UnlinkSelectedObjects");
+        am->AddAction(ID_MODIFY_LINK, tr("Link"))
+            .SetMetricsIdentifier("MainEditor", "LinkSelectedObjects");
+        am->AddAction(ID_MODIFY_UNLINK, tr("Unlink"))
+            .SetMetricsIdentifier("MainEditor", "UnlinkSelectedObjects");
     }
     else
     {
@@ -1044,9 +1061,11 @@ void MainWindow::InitActions()
     am->AddAction(ID_EDIT_FREEZE, tr("Lock Selection")).SetShortcut(tr("L"))
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditFreeze)
         .SetMetricsIdentifier("MainEditor", "FreezeSelectedObjects")
-        .SetIcon(EditorProxyStyle::icon("Freeze"));
+        .SetIcon(EditorProxyStyle::icon("Freeze"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_EDIT_UNFREEZEALL, tr("Unlock All")).SetShortcut(tr("Ctrl+L"))
         .SetIcon(EditorProxyStyle::icon("Unfreeze_all"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "UnfreezeAllObjects");
     am->AddAction(ID_EDIT_HOLD, tr("&Hold")).SetShortcut(tr("Ctrl+Alt+H"))
         .SetMetricsIdentifier("MainEditor", "Hold")
@@ -1095,6 +1114,7 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Rename Object"));
     am->AddAction(ID_EDITMODE_SELECT, tr("Select Mode"))
         .SetIcon(EditorProxyStyle::icon("Select"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("1"))
         .SetCheckable(true)
         .SetStatusTip(tr("Select Object(s)"))
@@ -1102,6 +1122,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditmodeSelect);
     am->AddAction(ID_EDITMODE_MOVE, tr("Move"))
         .SetIcon(EditorProxyStyle::icon("Move"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("2"))
         .SetCheckable(true)
         .SetStatusTip(tr("Select and Move Selected Object(s)"))
@@ -1109,6 +1130,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditmodeMove);
     am->AddAction(ID_EDITMODE_ROTATE, tr("Rotate"))
         .SetIcon(EditorProxyStyle::icon("Translate"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("3"))
         .SetCheckable(true)
         .SetStatusTip(tr("Select and Rotate Selected Object(s)"))
@@ -1116,6 +1138,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditmodeRotate);
     am->AddAction(ID_EDITMODE_SCALE, tr("Scale"))
         .SetIcon(EditorProxyStyle::icon("Scale"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("4"))
         .SetCheckable(true)
         .SetStatusTip(tr("Select and Scale Selected Object(s)"))
@@ -1123,6 +1146,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditmodeScale);
     am->AddAction(ID_EDITMODE_SELECTAREA, tr("Select Terrain"))
         .SetIcon(EditorProxyStyle::icon("Select_terrain"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("5"))
         .SetCheckable(true)
         .SetStatusTip(tr("Switch to Terrain selection mode"))
@@ -1130,6 +1154,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditmodeSelectarea);
     am->AddAction(ID_SELECT_AXIS_X, tr("Constrain to X Axis"))
         .SetIcon(EditorProxyStyle::icon("X_axis"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("Ctrl+1"))
         .SetCheckable(true)
         .SetStatusTip(tr("Lock movement on X axis"))
@@ -1137,6 +1162,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisX);
     am->AddAction(ID_SELECT_AXIS_Y, tr("Constrain to Y Axis"))
         .SetIcon(EditorProxyStyle::icon("Y_axis"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("Ctrl+2"))
         .SetCheckable(true)
         .SetStatusTip(tr("Lock movement on Y axis"))
@@ -1144,6 +1170,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisY);
     am->AddAction(ID_SELECT_AXIS_Z, tr("Constrain to Z Axis"))
         .SetIcon(EditorProxyStyle::icon("Z_axis"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("Ctrl+3"))
         .SetCheckable(true)
         .SetStatusTip(tr("Lock movement on Z axis"))
@@ -1151,6 +1178,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisZ);
     am->AddAction(ID_SELECT_AXIS_XY, tr("Constrain to XY Plane"))
         .SetIcon(EditorProxyStyle::icon("XY2_copy"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("Ctrl+4"))
         .SetCheckable(true)
         .SetStatusTip(tr("Lock movement on XY plane"))
@@ -1158,6 +1186,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisXy);
     am->AddAction(ID_SELECT_AXIS_TERRAIN, tr("Constrain to Terrain/Geometry"))
         .SetIcon(EditorProxyStyle::icon("Object_follow_terrain"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("Ctrl+5"))
         .SetCheckable(true)
         .SetStatusTip(tr("Lock object movement to follow terrain"))
@@ -1165,24 +1194,29 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisTerrain);
     am->AddAction(ID_SELECT_AXIS_SNAPTOALL, tr("Follow Terrain and Snap to Objects"))
         .SetIcon(EditorProxyStyle::icon("Follow_terrain"))
+        .SetApplyHoverEffect()
         .SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToggleSnapToObjectsAndTerrain")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisSnapToAll);
     am->AddAction(ID_OBJECTMODIFY_ALIGNTOGRID, tr("Align To Grid"))
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelected)
         .SetMetricsIdentifier("MainEditor", "ToggleAlignToGrid")
-        .SetIcon(EditorProxyStyle::icon("Align_to_grid"));
+        .SetIcon(EditorProxyStyle::icon("Align_to_grid"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_OBJECTMODIFY_ALIGN, tr("Align To Object")).SetCheckable(true)
         .SetStatusTip(tr("Ctrl: Align an object to a bounding box, Alt : Keep Rotation of the moved object, Shift : Keep Scale of the moved object"))
         .SetMetricsIdentifier("MainEditor", "ToggleAlignToObjects")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateAlignObject)
-        .SetIcon(EditorProxyStyle::icon("Align_to_Object"));
+        .SetIcon(EditorProxyStyle::icon("Align_to_Object"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_MODIFY_ALIGNOBJTOSURF, tr("Align Object to Surface")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToggleAlignToSurfaceVoxels")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateAlignToVoxel)
-        .SetIcon(EditorProxyStyle::icon("Align_object_to_surface"));
+        .SetIcon(EditorProxyStyle::icon("Align_object_to_surface"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_SNAP_TO_GRID, tr("Snap to Grid"))
         .SetIcon(EditorProxyStyle::icon("Grid"))
+        .SetApplyHoverEffect()
         .SetShortcut(tr("G"))
         .SetStatusTip(tr("Toggles Snap to Grid"))
         .SetCheckable(true)
@@ -1190,6 +1224,7 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(this, &MainWindow::OnUpdateSnapToGrid);
     am->AddAction(ID_SNAPANGLE, tr("Snap Angle"))
         .SetIcon(EditorProxyStyle::icon("Angle"))
+        .SetApplyHoverEffect()
         .SetStatusTip(tr("Snap Angle"))
         .SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToggleSnapToAngle")
@@ -1211,6 +1246,7 @@ void MainWindow::InitActions()
     am->AddAction(ID_RULER, tr("Ruler"))
         .SetCheckable(true)
         .SetIcon(EditorProxyStyle::icon("Measure"))
+        .SetApplyHoverEffect()
         .SetStatusTip(tr("Create temporary Ruler to measure distance"))
         .SetMetricsIdentifier("MainEditor", "CreateTemporaryRuler")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateRuler);
@@ -1340,11 +1376,9 @@ void MainWindow::InitActions()
     am->AddAction(ID_AI_NAVIGATION_VISUALIZE_ACCESSIBILITY, tr("Visualize Navigation Accessibility")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToggleNavigationVisualizeAccessibility")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnVisualizeNavigationAccessibilityUpdate);
-    am->AddAction(ID_AI_NAVIGATION_DISPLAY_AGENT, tr("Debug Agent Type"))
+    am->AddAction(ID_AI_NAVIGATION_DISPLAY_AGENT, tr("View Agent Type"))
         .SetStatusTip(tr("Toggle navigation debug display"))
-        .SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToggleNavigationDebugDisplay")
-        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnAINavigationDisplayAgentUpdate)
         .SetMenu(new CNavigationAgentTypeMenu);
     am->AddAction(ID_AI_GENERATECOVERSURFACES, tr("Generate Cover Surfaces"))
         .SetMetricsIdentifier("MainEditor", "AIGenerateCoverSurfaces");
@@ -1379,7 +1413,13 @@ void MainWindow::InitActions()
     am->AddAction(ID_VIEW_SWITCHTOGAME, tr("Play &Game")).SetShortcut(tr("Ctrl+G"))
         .SetStatusTip(tr("Activate the game input mode"))
         .SetIcon(EditorProxyStyle::icon("Play"))
-        .SetMetricsIdentifier("MainEditor", "ToggleGameMode");
+        .SetApplyHoverEffect()
+        .SetMetricsIdentifier("MainEditor", "ToggleGameMode")
+        .SetCheckable(true);
+    am->AddAction(ID_SWITCH_PHYSICS, tr("Enable Physics/AI")).SetShortcut(tr("Ctrl+P")).SetCheckable(true)
+        .SetStatusTip(tr("Enable processing of Physics and AI."))
+        .SetMetricsIdentifier("MainEditor", "TogglePhysicsAndAI")
+        .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnSwitchPhysicsUpdate);
     am->AddAction(ID_TERRAIN_COLLISION, tr("Terrain Collision")).SetShortcut(tr("Q")).SetCheckable(true)
         .SetStatusTip(tr("Enable collision of camera with terrain."))
         .SetMetricsIdentifier("MainEditor", "ToggleTerrainCameraCollision")
@@ -1448,6 +1488,7 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "TerrainExportOrImportMegaterrainTexture");
     am->AddAction(ID_GENERATORS_LIGHTING, tr("&Sun Trajectory Tool"))
         .SetIcon(EditorProxyStyle::icon("LIghting"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "SunTrajectoryToolDialog")
         .SetStatusTip(tr("Bring up the terrain lighting dialog"));
     am->AddAction(ID_TERRAIN_TIMEOFDAY, tr("Time Of Day"))
@@ -1634,20 +1675,24 @@ void MainWindow::InitActions()
     // Editors Toolbar actions
     am->AddAction(ID_OPEN_ASSET_BROWSER, tr("Asset browser"))
         .SetToolTip(tr("Open Asset Browser"))
-        .SetIcon(EditorProxyStyle::icon("Asset_Browser"));
+        .SetIcon(EditorProxyStyle::icon("Asset_Browser"))
+        .SetApplyHoverEffect();
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_OPEN_LAYER_EDITOR, tr(LyViewPane::LegacyLayerEditor))
-        .SetToolTip(tr("Open Layer Editor"))
-        .SetIcon(EditorProxyStyle::icon("layer_editor"));
+        am->AddAction(ID_OPEN_LAYER_EDITOR, tr(LyViewPane::LegacyLayerEditor))
+            .SetToolTip(tr("Open Layer Editor"))
+        .SetIcon(EditorProxyStyle::icon("layer_editor"))
+        .SetApplyHoverEffect();
     }
     am->AddAction(ID_OPEN_MATERIAL_EDITOR, tr(LyViewPane::MaterialEditor))
         .SetToolTip(tr("Open Material Editor"))
-        .SetIcon(EditorProxyStyle::icon("Material"));
+        .SetIcon(EditorProxyStyle::icon("Material"))
+        .SetApplyHoverEffect();
 #ifdef ENABLE_LEGACY_ANIMATION
     am->AddAction(ID_OPEN_CHARACTER_TOOL, tr(LyViewPane::LegacyGeppetto))
         .SetToolTip(tr("Open Geppetto"))
-        .SetIcon(EditorProxyStyle::icon("Gepetto"));
+        .SetIcon(EditorProxyStyle::icon("Gepetto"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_MANNEQUIN_EDITOR, tr("Mannequin"))
         .SetToolTip(tr("Open Mannequin (LEGACY)"))
         .SetIcon(EditorProxyStyle::icon("Mannequin"));
@@ -1660,55 +1705,68 @@ void MainWindow::InitActions()
     {
         QAction* action = am->AddAction(ID_OPEN_EMOTIONFX_EDITOR, tr("Animation Editor"))
             .SetToolTip(tr("Open Animation Editor (PREVIEW)"))
-            .SetIcon(QIcon("Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32.png"));
+            .SetIcon(QIcon("Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32.png"))
+			.SetApplyHoverEffect();
         QObject::connect(action, &QAction::triggered, this, [this]() {
             QtViewPaneManager::instance()->OpenPane(LyViewPane::AnimationEditor);
         });
     }
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_OPEN_FLOWGRAPH, tr(LyViewPane::LegacyFlowGraph))
-        .SetToolTip(tr("Open Flow Graph (LEGACY)"))
-        .SetIcon(EditorProxyStyle::icon("Flowgraph"));
-    am->AddAction(ID_OPEN_AIDEBUGGER, tr(LyViewPane::AIDebugger))
-        .SetToolTip(tr("Open AI Debugger"))
-        .SetIcon(QIcon(":/MainWindow/toolbars/standard_views_toolbar-08.png"));
+        am->AddAction(ID_OPEN_FLOWGRAPH, tr(LyViewPane::LegacyFlowGraph))
+            .SetToolTip(tr("Open Flow Graph (LEGACY)"))
+        .SetIcon(EditorProxyStyle::icon("Flowgraph"))
+        .SetApplyHoverEffect();
+        am->AddAction(ID_OPEN_AIDEBUGGER, tr(LyViewPane::AIDebugger))
+            .SetToolTip(tr("Open AI Debugger"))
+        .SetIcon(QIcon(":/MainWindow/toolbars/standard_views_toolbar-08.png"))
+        .SetApplyHoverEffect();
     }
     am->AddAction(ID_OPEN_TRACKVIEW, tr("TrackView"))
         .SetToolTip(tr("Open TrackView"))
-        .SetIcon(EditorProxyStyle::icon("Trackview"));
+        .SetIcon(EditorProxyStyle::icon("Trackview"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, tr("Audio Controls Editor"))
         .SetToolTip(tr("Open Audio Controls Editor"))
-        .SetIcon(EditorProxyStyle::icon("Audio"));
+        .SetIcon(EditorProxyStyle::icon("Audio"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_TERRAIN_EDITOR, tr(LyViewPane::TerrainEditor))
         .SetToolTip(tr("Open Terrain Editor"))
-        .SetIcon(EditorProxyStyle::icon("Terrain"));
+        .SetIcon(EditorProxyStyle::icon("Terrain"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, tr("Terrain Texture Layers Editor"))
         .SetToolTip(tr("Open Terrain Texture Layers Editor"))
-        .SetIcon(EditorProxyStyle::icon("Terrain_Texture"));
+        .SetIcon(EditorProxyStyle::icon("Terrain_Texture"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_PARTICLE_EDITOR, tr("Particle Editor"))
         .SetToolTip(tr("Open Particle Editor"))
-        .SetIcon(EditorProxyStyle::icon("particle"));
+        .SetIcon(EditorProxyStyle::icon("particle"))
+        .SetApplyHoverEffect();
     am->AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, tr("Time of Day Editor"))
         .SetToolTip(tr("Open Time of Day Editor"))
-        .SetIcon(EditorProxyStyle::icon("Time_of_Day"));
+        .SetIcon(EditorProxyStyle::icon("Time_of_Day"))
+        .SetApplyHoverEffect();
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_OPEN_DATABASE, tr(LyViewPane::DatabaseView))
-        .SetToolTip(tr("Open Database View"))
-        .SetIcon(EditorProxyStyle::icon("Database_view"));
+        am->AddAction(ID_OPEN_DATABASE, tr(LyViewPane::DatabaseView))
+            .SetToolTip(tr("Open Database View"))
+        .SetIcon(EditorProxyStyle::icon("Database_view"))
+        .SetApplyHoverEffect();
     }
     am->AddAction(ID_OPEN_UICANVASEDITOR, tr("UI Editor"))
         .SetToolTip(tr("Open UI Editor"))
-        .SetIcon(EditorProxyStyle::icon("UI_editor"));
+        .SetIcon(EditorProxyStyle::icon("UI_editor"))
+        .SetApplyHoverEffect();
 
     // Edit Mode Toolbar Actions
     am->AddAction(ID_EDITTOOL_LINK, tr("Link an object to parent"))
         .SetIcon(EditorProxyStyle::icon("add_link"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "ToolLinkObjectToParent")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditToolLink);
     am->AddAction(ID_EDITTOOL_UNLINK, tr("Unlink all selected objects"))
         .SetIcon(EditorProxyStyle::icon("remove_link"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "ToolUnlinkSelection")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateEditToolUnlink);
     am->AddAction(IDC_SELECTION_MASK, tr("Selected Object Types"))
@@ -1722,30 +1780,35 @@ void MainWindow::InitActions()
 
     if (m_enableLegacyCryEntities)
     {
-    am->AddAction(ID_SELECTION_DELETE, tr("Delete named selection"))
-        .SetIcon(EditorProxyStyle::icon("Delete_named_selection"))
-        .SetMetricsIdentifier("MainEditor", "DeleteNamedSelection")
-        .Connect(&QAction::triggered, this, &MainWindow::DeleteSelection);
+        am->AddAction(ID_SELECTION_DELETE, tr("Delete named selection"))
+            .SetIcon(EditorProxyStyle::icon("Delete_named_selection"))
+        .SetApplyHoverEffect()
+            .SetMetricsIdentifier("MainEditor", "DeleteNamedSelection")
+            .Connect(&QAction::triggered, this, &MainWindow::DeleteSelection);
     }
 
     am->AddAction(ID_LAYER_SELECT, tr(""))
         .SetToolTip(tr("Select Current Layer"))
         .SetIcon(EditorProxyStyle::icon("layers"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "LayerSelect")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateCurrentLayer);
 
     // Object Toolbar Actions
     am->AddAction(ID_GOTO_SELECTED, tr("Goto Selected Object"))
         .SetIcon(EditorProxyStyle::icon("select_object"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "GotoSelection")
         .Connect(&QAction::triggered, this, &MainWindow::OnGotoSelected);
     am->AddAction(ID_OBJECTMODIFY_SETHEIGHT, tr("Set Object(s) Height"))
         .SetIcon(QIcon(":/MainWindow/toolbars/object_toolbar-03.png"))
+        .SetApplyHoverEffect()
         .SetMetricsIdentifier("MainEditor", "SetObjectHeight")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelected);
     am->AddAction(ID_OBJECTMODIFY_VERTEXSNAPPING, tr("Vertex Snapping"))
         .SetMetricsIdentifier("MainEditor", "ToggleVertexSnapping")
-        .SetIcon(EditorProxyStyle::icon("Vertex_snapping"));
+        .SetIcon(EditorProxyStyle::icon("Vertex_snapping"))
+        .SetApplyHoverEffect();
 
     // Misc Toolbar Actions
     am->AddAction(ID_GAMEP1_AUTOGEN, tr(""))
@@ -1753,7 +1816,8 @@ void MainWindow::InitActions()
 
     am->AddAction(ID_OPEN_SUBSTANCE_EDITOR, tr("Open Substance Editor"))
         .SetMetricsIdentifier("MainEditor", "OpenSubstanceEditor")
-        .SetIcon(EditorProxyStyle::icon("Substance"));
+        .SetIcon(EditorProxyStyle::icon("Substance"))
+        .SetApplyHoverEffect();
 }
 
 void MainWindow::InitToolActionHandlers()
@@ -2124,7 +2188,7 @@ void MainWindow::OpenViewPane(QtViewPane* pane)
 {
     if (pane && pane->IsValid())
     {
-        GetIEditor()->ExecuteCommand("general.open_pane '%s'", pane->m_name.toLatin1().constData());
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.open_pane '%1'").arg(pane->m_name));
     }
     else
     {
@@ -2168,7 +2232,7 @@ void MainWindow::AdjustToolBarIconSize()
     }
 }
 
-void MainWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
+void MainWindow::OnGameModeChanged(bool inGameMode)
 {
     auto setRollUpBarDisabled = [this](bool disabled)
     {
@@ -2179,6 +2243,16 @@ void MainWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
         }
     };
 
+    menuBar()->setDisabled(inGameMode);
+    setRollUpBarDisabled(inGameMode);
+    QAction* action = m_actionManager->GetAction(ID_VIEW_SWITCHTOGAME);
+    action->blockSignals(true); // avoid a loop
+    action->setChecked(inGameMode);
+    action->blockSignals(false);
+}
+
+void MainWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
+{
     switch (ev)
     {
     case eNotify_OnEndSceneOpen:
@@ -2198,12 +2272,10 @@ void MainWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
         InvalidateControls();
         break;
     case eNotify_OnBeginGameMode:
-        menuBar()->setDisabled(true);
-        setRollUpBarDisabled(true);
+        OnGameModeChanged(true);
         break;
     case eNotify_OnEndGameMode:
-        menuBar()->setDisabled(false);
-        setRollUpBarDisabled(false);
+        OnGameModeChanged(false);
         break;
     }
 
@@ -2427,11 +2499,18 @@ void MainWindow::OnRefreshAudioSystem()
         sLevelName = QString();
     }
 
-    Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toLatin1().data());
-}
+    Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toUtf8().data());}
 
 void MainWindow::SaveLayout()
 {
+    const int MAX_LAYOUTS = ID_VIEW_LAYOUT_LAST - ID_VIEW_LAYOUT_FIRST + 1;
+
+    if (m_viewPaneManager->LayoutNames(true).count() >= MAX_LAYOUTS)
+    {
+        QMessageBox::critical(this, tr("Maximum number of layouts reached"), tr("Please delete a saved layout before creating another."));
+        return;
+    }
+
     QString layoutName = QInputDialog::getText(this, tr("Layout Name"), QString()).toLower();
     if (layoutName.isEmpty())
     {
@@ -2693,12 +2772,12 @@ void MainWindow::RegisterOpenWndCommands()
         s_openViewCmds.push_back(pCmd);
 
         CCommand0::SUIInfo cmdUI;
-        cmdUI.caption = className.toLatin1().data();
-        cmdUI.tooltip = (QString("Open ") + className).toLatin1().data();
-        cmdUI.iconFilename = className.toLatin1().data();
-        GetIEditor()->GetCommandManager()->RegisterUICommand("editor", openCommandName.toLatin1().data(),
+        cmdUI.caption = className.toUtf8().data();
+        cmdUI.tooltip = (QString("Open ") + className).toUtf8().data();
+        cmdUI.iconFilename = className.toUtf8().data();
+        GetIEditor()->GetCommandManager()->RegisterUICommand("editor", openCommandName.toUtf8().data(),
             "", "", functor(*pCmd, &CEditorOpenViewCommand::Execute), cmdUI);
-        GetIEditor()->GetCommandManager()->GetUIInfo("editor", openCommandName.toLatin1().data(), cmdUI);
+        GetIEditor()->GetCommandManager()->GetUIInfo("editor", openCommandName.toUtf8().data(), cmdUI);
     }
 }
 
@@ -2730,6 +2809,24 @@ bool MainWindow::nativeEventFilter(const QByteArray &eventType, void *message, l
     return false;
 }
 #endif
+
+bool MainWindow::event(QEvent* event)
+{
+#ifdef Q_OS_MAC
+    if (event->type() == QEvent::HoverMove)
+    {
+        // this fixes a problem on macOS where the mouse cursor was not
+        // set when hovering over the splitter handles between dock widgets
+        // it might be fixed in future Qt versions
+        auto mouse = static_cast<QHoverEvent*>(event);
+        bool result = QMainWindow::event(event);
+        void setCocoaMouseCursor(QWidget*);
+        setCocoaMouseCursor(childAt(mouse->pos()));
+        return result;
+    }
+#endif
+    return QMainWindow::event(event);
+}
 
 void MainWindow::ToggleConsole()
 {
@@ -2797,15 +2894,7 @@ void MainWindow::ConnectivityStateChanged(const AzToolsFramework::SourceControlS
 
 void MainWindow::OnGotoSelected()
 {
-    int numViews = GetIEditor()->GetViewManager()->GetViewCount();
-    for (int i = 0; i < numViews; ++i)
-    {
-        CViewport* viewport = GetIEditor()->GetViewManager()->GetView(i);
-        if (viewport)
-        {
-            viewport->CenterOnSelection();
-        }
-    }
+    EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, GoToSelectedOrHighlightedEntitiesInViewports);
 }
 
 void MainWindow::ShowCustomizeToolbarDialog()

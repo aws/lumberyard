@@ -54,7 +54,7 @@ public:
 
     bool OnPreAssert(const char* fileName, int line, const char* func, const char* message) override
     {
-#if defined(USE_CRY_ASSERT) && (defined(WIN32) || defined(DURANGO) || defined(APPLE) || defined(LINUX))
+#if defined(USE_CRY_ASSERT) && AZ_LEGACY_CRYSYSTEM_TRAIT_DO_PREASSERT
         AZ::Crc32 crc;
         crc.Add(&line, sizeof(line));
         if (fileName)
@@ -103,7 +103,7 @@ public:
         AZ_UNUSED(func);
         AZ_UNUSED(message);
         return false; // allow AZCore to do its default behavior.   This usually results in an application shutdown.
-#endif // defined(USE_CRY_ASSERT) && (defined(WIN32) || defined(DURANGO) || defined(APPLE) || defined(LINUX))
+#endif
     }
 
     bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message) override

@@ -13,7 +13,9 @@ enum
     FOURCC_PCSG = FOURCC('P', 'C', 'S', 'G'),
     FOURCC_SHDR = FOURCC('S', 'H', 'D', 'R'),
     FOURCC_SHEX = FOURCC('S', 'H', 'E', 'X'),
-    FOURCC_GLSL = FOURCC('G', 'L', 'S', 'L')
+    FOURCC_GLSL = FOURCC('G', 'L', 'S', 'L'),
+    FOURCC_ISG1 = FOURCC('I', 'S', 'G', '1'), // When lower precision float/int/uint is used
+    FOURCC_OSG1 = FOURCC('O', 'S', 'G', '1'), // When lower precision float/int/uint is used
 };
 
 #undef FOURCC
@@ -235,6 +237,8 @@ inline uint32_t DXBCSizeOutputChunk(uint32_t uCode, uint32_t uSizeIn)
     case FOURCC_ISGN:
     case FOURCC_OSGN:
     case FOURCC_PCSG:
+    case FOURCC_OSG1:
+    case FOURCC_ISG1:
         // Preserve entire chunk
         uSizeOut = uSizeIn;
         break;

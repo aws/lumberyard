@@ -106,13 +106,6 @@ namespace ScriptCanvasEditor
         //! Notification which fires after an ScriptCanvasDocumentContext has received it's on AssetReady callback
         //! \param AssetId AssetId of unloaded ScriptCanvas
         virtual void OnScriptCanvasAssetUnloaded(const AZ::Data::AssetId& /*assetId*/) {}
-
-        //! Notification which fires after an ScriptCanvasDocumentContext has received an onAssetSaved callback
-        //! \param scriptCanvasAsset Script Canvas asset which was attempted to be saved
-        //! \param isSuccessful specified where the Script Canvas asset was successfully saved
-        virtual void OnScriptCanvasAssetSaved(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/, bool /*isSuccessful*/) {}
-
-        
     };
 
     using DocumentContextNotificationBus = AZ::EBus<DocumentContextNotifications>;

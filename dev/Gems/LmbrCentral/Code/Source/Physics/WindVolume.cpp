@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "WindVolumeComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Math/Transform.h>

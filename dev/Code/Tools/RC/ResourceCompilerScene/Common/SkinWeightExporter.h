@@ -15,7 +15,7 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
-#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 
 namespace AZ
 {
@@ -33,12 +33,12 @@ namespace AZ
         struct MeshNodeExportContext;
 
         class SkinWeightExporter
-            : public SceneAPI::SceneCore::ExportingComponent
+            : public SceneAPI::SceneCore::RCExportingComponent
         {
         public:
             using BoneNameIdMap = AZStd::unordered_map<AZStd::string, int>;
 
-            AZ_COMPONENT(SkinWeightExporter, "{97C7D185-14F5-4BB1-AAE0-120A722882D1}", SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(SkinWeightExporter, "{97C7D185-14F5-4BB1-AAE0-120A722882D1}", SceneAPI::SceneCore::RCExportingComponent);
 
             SkinWeightExporter();
             ~SkinWeightExporter() override = default;

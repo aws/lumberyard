@@ -37,6 +37,8 @@ namespace GraphicsReflectContext
     public:
         ScriptCanvas_In(ScriptCanvas_In::Name("In", "Activate the color grading"));
 
+        ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Color grading activated"));
+
         ScriptCanvas_Property(AZStd::string,
             ScriptCanvas_Property::Name("Texture Name", "The name of a color chart texture")
             ScriptCanvas_Property::Input);

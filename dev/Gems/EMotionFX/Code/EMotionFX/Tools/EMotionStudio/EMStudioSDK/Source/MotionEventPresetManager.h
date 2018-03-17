@@ -58,7 +58,7 @@ namespace EMStudio
     {
         MCORE_MEMORYOBJECTCATEGORY(MotionEventPresetManager, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK);
     public:
-        MotionEventPresetManager(QWidget* parent);
+        MotionEventPresetManager();
         ~MotionEventPresetManager();
 
         size_t GetNumPresets() const;
@@ -70,6 +70,7 @@ namespace EMStudio
 
         void Load(const AZStd::string& filename);
         void Load()                                                             { Load(mFileName); }
+        void LoadFromSettings();
         void SaveAs(const AZStd::string& filename, bool showNotification=true);
         void Save(bool showNotification=true)                                   { SaveAs(mFileName, showNotification); }
 
@@ -86,11 +87,9 @@ namespace EMStudio
         AZStd::vector<MotionEventPreset*>           mEventPresets;
         AZStd::string                               mFileName;
         bool                                        mDirtyFlag;
-        QWidget*                                    mParent;
         static const AZ::u32                        m_unknownEventColor;
 
         void SaveToSettings();
-        void LoadFromSettings();
         void CreateDefaultPresets();
         bool CheckIfHasPreset(const char* eventType) const;
     };

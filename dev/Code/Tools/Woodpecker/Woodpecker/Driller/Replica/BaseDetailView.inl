@@ -16,7 +16,7 @@ namespace Driller
     void BaseDetailView<Key>::DrawActiveGraph()
     {
         const BandwidthUsageContainer emptyContainer;
-        const ReplicaBandwidthChartData<Key>::BandwidthUsageMap s_emptyMap;
+        const typename ReplicaBandwidthChartData<Key>::BandwidthUsageMap s_emptyMap;
 
         ConfigureGraphAxis();
 
@@ -27,12 +27,12 @@ namespace Driller
             ConfigureBaseDetailDisplayHelper(detailDisplayHelper);
         }        
         
-        const ReplicaBandwidthChartData<Key>::FrameMap& frameMap = GetFrameData();
+        const typename ReplicaBandwidthChartData<Key>::FrameMap& frameMap = GetFrameData();
 
         for (FrameNumberType frameId = m_replicaDataView->GetStartFrame(); frameId <= m_replicaDataView->GetEndFrame(); ++frameId)
         {            
-            ReplicaBandwidthChartData<Key>::FrameMap::const_iterator frameIter = frameMap.find(frameId);
-            const ReplicaBandwidthChartData<Key>::BandwidthUsageMap* usageMap = nullptr;
+            typename ReplicaBandwidthChartData<Key>::FrameMap::const_iterator frameIter = frameMap.find(frameId);
+            const typename ReplicaBandwidthChartData<Key>::BandwidthUsageMap* usageMap = nullptr;
             
             if (frameIter != frameMap.end())
             {
@@ -52,7 +52,7 @@ namespace Driller
             for (const Key& currentId : m_activeIds)
             {
                 const BandwidthUsageContainer* usageContainer = &emptyContainer;
-                ReplicaBandwidthChartData<Key>::BandwidthUsageMap::const_iterator usageIter = usageMap->find(currentId);
+                typename ReplicaBandwidthChartData<Key>::BandwidthUsageMap::const_iterator usageIter = usageMap->find(currentId);
 
                 if (usageIter != usageMap->end())
                 {
@@ -224,12 +224,12 @@ namespace Driller
 
         ConfigureBaseDetailDisplayHelper(aggregateDisplayHelper);
 
-        const ReplicaBandwidthChartData<Key>::FrameMap& frameMap = GetFrameData();            
+        const typename ReplicaBandwidthChartData<Key>::FrameMap& frameMap = GetFrameData();            
 
         for (FrameNumberType frameId = m_replicaDataView->GetStartFrame(); frameId <= m_replicaDataView->GetEndFrame(); ++frameId)
         {            
-            ReplicaBandwidthChartData<Key>::FrameMap::const_iterator frameIter = frameMap.find(frameId);
-            const ReplicaBandwidthChartData<Key>::BandwidthUsageMap* usageMap = nullptr;
+            typename ReplicaBandwidthChartData<Key>::FrameMap::const_iterator frameIter = frameMap.find(frameId);
+            const typename ReplicaBandwidthChartData<Key>::BandwidthUsageMap* usageMap = nullptr;
             
             if (frameIter != frameMap.end())
             {
@@ -237,7 +237,7 @@ namespace Driller
             }
             else
             {
-                static ReplicaBandwidthChartData<Key>::BandwidthUsageMap s_emptyMap;
+                static typename ReplicaBandwidthChartData<Key>::BandwidthUsageMap s_emptyMap;
                 usageMap = &s_emptyMap;
             }
 
@@ -260,7 +260,7 @@ namespace Driller
             for (const Key& currentId : m_activeIds)
             {
                 const BandwidthUsageContainer* usageContainer = nullptr;
-                ReplicaBandwidthChartData<Key>::BandwidthUsageMap::const_iterator usageIter = usageMap->find(currentId);
+                typename ReplicaBandwidthChartData<Key>::BandwidthUsageMap::const_iterator usageIter = usageMap->find(currentId);
 
                 if (usageIter != usageMap->end())
                 {

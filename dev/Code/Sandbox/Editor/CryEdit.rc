@@ -1,6 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "resource.h"
+#include "Resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -1120,6 +1120,9 @@ BEGIN
     EDITTEXT        IDC_MOVE_SPEED,432,2,28,12,ES_AUTOHSCROLL | NOT WS_BORDER,WS_EX_STATICEDGE
     LTEXT           "Speed:",IDC_STATIC,408,4,24,8
     PUSHBUTTON      "Coll",IDC_TERRAIN_COLLISION,503,2,16,12,NOT WS_TABSTOP
+    PUSHBUTTON      "AI/Physics",IDC_PHYSICS,523,2,50,12,NOT WS_TABSTOP
+    PUSHBUTTON      "||",IDC_SINGLE_STEP_PHYS,573,2,12,12,NOT WS_TABSTOP
+    PUSHBUTTON      "|>",IDC_DO_STEP_PHYS,585,2,12,12,NOT WS_TABSTOP
     PUSHBUTTON      "No Sync Player",IDC_SYNCPLAYER,601,2,55,12,NOT WS_TABSTOP
     PUSHBUTTON      "Goto position",IDC_GOTOPOSITION,657,2,55,12,NOT WS_TABSTOP
     PUSHBUTTON      ".1",IDC_SPEED_01,461,2,11,12,NOT WS_TABSTOP
@@ -4816,7 +4819,7 @@ IDR_VIEW                BITMAP                  "res\\mainfram.bmp"
 IDR_EDIT_MODE           BITMAP                  "res\\bmp00011.bmp"
 IDB_ABOUT_DARK          BITMAP                  "res\\about_dark.bmp"
 IDB_TREE_VIEW           BITMAP                  "res\\TreeView.bmp"
-IDB_TABPANEL            BITMAP                  "res\\TabPanel.bmp"
+IDB_TABPANEL            BITMAP                  "res\\tabPanel.bmp"
 IDB_LIGHTBULB           BITMAP                  "res\\litebulb.bmp"
 IDB_LOCK_SELECTION_UP   BITMAP                  "res\\lock_sel.bmp"
 IDB_LOCK_SELECTION_DOWN BITMAP                  "res\\bmp00009.bmp"
@@ -5724,6 +5727,7 @@ BEGIN
     "L",            ID_SELECTION_LOAD,      VIRTKEY, SHIFT, CONTROL, NOINVERT
     "S",            ID_SELECTION_SAVE,      VIRTKEY, SHIFT, CONTROL, NOINVERT
     "G",            ID_SNAP_TO_GRID,        VIRTKEY, NOINVERT
+    "P",            ID_SWITCH_PHYSICS,      VIRTKEY, CONTROL, NOINVERT
     VK_OEM_3,       ID_SWITCHCAMERA_NEXT,   VIRTKEY, CONTROL, NOINVERT
     VK_F1,          ID_TAG_LOC1,            VIRTKEY, CONTROL, NOINVERT
     VK_F10,         ID_TAG_LOC10,           VIRTKEY, CONTROL, NOINVERT
@@ -6556,7 +6560,7 @@ END
 
 1 TEXTINCLUDE 
 BEGIN
-    "resource.h\0"
+    "Resource.h\0"
 END
 
 2 TEXTINCLUDE 
@@ -6835,6 +6839,7 @@ BEGIN
     POPUP "Game"
     BEGIN
         MENUITEM "Switch to &Game", ID_VIEW_SWITCHTOGAME
+        MENUITEM "Enable Physics/AI", ID_SWITCH_PHYSICS
         MENUITEM "Terrain Collision", ID_TERRAIN_COLLISION
         MENUITEM "Synchronize Player with Camera", ID_GAME_SYNCPLAYER
         MENUITEM "&Edit Equipment-Packs...", ID_TOOLS_EQUIPPACKSEDIT
@@ -8088,6 +8093,7 @@ BEGIN
     ID_LAYER_FROZEN         "Toggle Layer Frozen\nFreeze Leyer"
     ID_LAYER_SELECT         "Select Current Layer\nSelect Current Layer"
     ID_LAYER_CURRENT        "Current Active Layer\nActive Layer"
+    ID_SWITCH_PHYSICS       "Enable processing of Physics and AI."
     ID_REF_COORDS_SYS       "RefCoords\nReference coordinate system"
     ID_TV_ADDKEY            "Add Keys\nAdd Keys"
     ID_TV_DELKEY            "Delete Key\nDelete Key"
@@ -8990,7 +8996,7 @@ BEGIN
     ID_ONLINE_DOCUMENTATION_LINK "https://[link to online documentation]"
     ID_ONLINE_DOCUMENTATION_MESSAGE 
                             "Please refer to the ""docs"" folder for official Lumberyard documentation."
-    ID_CONFIDENTIAL_NOTICE  "Lumberyard and related materials Copyright © 2017 Amazon Web Services, Inc., its affiliates or licensors. By accessing or using these materials, you agree to the terms of the AWS Customer Agreement (aws.amazon.com/agreement)."
+    ID_CONFIDENTIAL_NOTICE  "Lumberyard and related materials Copyright © 2018 Amazon Web Services, Inc., its affiliates or licensors. By accessing or using these materials, you agree to the terms of the AWS Customer Agreement (aws.amazon.com/agreement)."
     ID_AWS_SIGNUP           "Sign up for AWS"
     ID_AWS_SIGNUP_LINK      "https://aws.amazon.com/"
     ID_AWS_CONSOLE_LINK      "https://console.aws.amazon.com/"

@@ -449,7 +449,7 @@ bool CVehicleEditorDialog::ApplyToVehicle(QString filename, bool mergeFile)
     }*/
 
     QString absDir = Path::GamePathToFullPath(VEHICLE_XML_PATH);
-    CFileUtil::CreateDirectory(absDir.toLatin1().data()); // make sure dir exist
+    CFileUtil::CreateDirectory(absDir.toUtf8().data()); // make sure dir exist
     QString targetFile = absDir + filename;
     XmlNodeRef node;
 
@@ -457,20 +457,20 @@ bool CVehicleEditorDialog::ApplyToVehicle(QString filename, bool mergeFile)
     {
         const XmlNodeRef& vehicleDef = CVehicleData::GetXMLDef();
         DefinitionTable::ReloadUseReferenceTables(vehicleDef);
-        node = VehicleDataMergeAndSave(targetFile.toLatin1().data(), vehicleDef, m_pVehicle->GetVehicleData());
+        node = VehicleDataMergeAndSave(targetFile.toUtf8().data(), vehicleDef, m_pVehicle->GetVehicleData());
     }
     else
     {
-        node = VehicleDataSave(VEHICLE_XML_DEF.toLatin1().data(), m_pVehicle->GetVehicleData());
+        node = VehicleDataSave(VEHICLE_XML_DEF.toUtf8().data(), m_pVehicle->GetVehicleData());
     }
 
-    if (node != 0 && XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), node, targetFile.toLatin1().data()))
+    if (node != 0 && XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), node, targetFile.toUtf8().data()))
     {
-        Log("[CVehicleEditorDialog]: saved to %s.", targetFile.toLatin1().data());
+        Log("[CVehicleEditorDialog]: saved to %s.", targetFile.toUtf8().data());
     }
     else
     {
-        Log("[CVehicleEditorDialog]: not saved!", targetFile.toLatin1().data());
+        Log("[CVehicleEditorDialog]: not saved!", targetFile.toUtf8().data());
         return false;
     }
 

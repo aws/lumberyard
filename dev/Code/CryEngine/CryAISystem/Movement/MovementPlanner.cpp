@@ -317,7 +317,7 @@ namespace Movement
             TPathPoints::const_iterator curr = fullPath.begin();
             TPathPoints::const_iterator end = fullPath.end();
 
-            boost::shared_ptr<UseSmartObject> lastAddedSmartObjectBlock;
+            AZStd::shared_ptr<UseSmartObject> lastAddedSmartObjectBlock;
 
             assert(curr != end);
 
@@ -367,7 +367,7 @@ namespace Movement
                     assert(!path.Empty());
                     if (isSmartObject)
                     {
-                        boost::shared_ptr<UseSmartObject> useSmartObjectBlock(new UseSmartObject(path, point.offMeshLinkData, m_request.style));
+                        AZStd::shared_ptr<UseSmartObject> useSmartObjectBlock = AZStd::make_shared<UseSmartObject>(path, point.offMeshLinkData, m_request.style); //(new UseSmartObject(path, point.offMeshLinkData, m_request.style));
                         lastAddedSmartObjectBlock = useSmartObjectBlock;
                         m_plan.AddBlock(useSmartObjectBlock);
                     }

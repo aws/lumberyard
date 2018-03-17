@@ -150,11 +150,11 @@ void CGotoPositionDlg::accept()
 
     QString cmdTxt = QString::fromLatin1("general.set_current_view_position %1 %2 %3")
             .arg(m_ui->m_dymX->value()).arg(m_ui->m_dymY->value()).arg(m_ui->m_dymZ->value());
-    GetIEditor()->GetCommandManager()->Execute(cmdTxt.toLatin1().data());
+    GetIEditor()->GetCommandManager()->Execute(cmdTxt.toUtf8().data());
 
     cmdTxt = QString::fromLatin1("general.set_current_view_rotation %1 %2 %3")
             .arg(m_ui->m_dymAngleX->value()).arg(m_ui->m_dymAngleY->value()).arg(m_ui->m_dymAngleZ->value());
-    GetIEditor()->GetCommandManager()->Execute(cmdTxt.toLatin1().data());
+    GetIEditor()->GetCommandManager()->Execute(cmdTxt.toUtf8().data());
 
     QDialog::accept();
 }

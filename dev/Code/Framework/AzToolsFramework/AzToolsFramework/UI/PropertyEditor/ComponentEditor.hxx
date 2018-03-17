@@ -70,6 +70,8 @@ namespace AzToolsFramework
         void SetDropTarget(bool dropTarget);
         bool IsDropTarget() const;
 
+        bool HasComponentWithId(AZ::ComponentId componentId);
+
         ComponentEditorHeader* GetHeader();
         ReflectedPropertyEditor* GetPropertyEditor();
         AZStd::vector<AZ::Component*>& GetComponents();

@@ -1275,6 +1275,8 @@ namespace UnitTest
         m_jobContext = aznew JobContext(*m_jobManager);
         JobContext::SetGlobalContext(m_jobContext);
 
+        m_singleHandler.m_callCount = 0;
+        m_multiHandler.m_callCount = 0;
         const int NumCalls = 5000;
         QueueTestMultiBus::Bind(m_multiPtr, 0);
         m_multiHandler.BusConnect(0);

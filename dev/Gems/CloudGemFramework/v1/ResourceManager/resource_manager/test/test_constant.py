@@ -36,3 +36,9 @@ ATTR_PC_CACHE_DIR = "PcCacheDir"
 ATTR_GAME_NAME = "GameName"
 ATTR_USERS = "Users"
 ATTR_ALTERNATE_CONTEXTS = "AlternateContexts"
+
+# local project setting schema items
+SET = 'Set'
+DEFAULT = 'default'
+PENDING_PROJECT_STACK_ID = 'PendingProjectStackId'
+PROJECT_STACK_ID = 'ProjectStackId'

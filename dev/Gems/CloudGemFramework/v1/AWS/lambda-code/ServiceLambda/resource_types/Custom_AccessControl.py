@@ -10,64 +10,19 @@
 #
 # $Revision: #6 $
 
-import properties
-import custom_resource_response
+from cgf_utils import properties
+from cgf_utils import custom_resource_response
 import boto3
 import json
 import time
 
-from resource_manager_common import aws_utils
+from cgf_utils import aws_utils
+from cgf_utils import role_utils
 from resource_manager_common import stack_info
-
-import role_utils
 
 from botocore.exceptions import ClientError
 
 PROPAGATION_DELAY_SECONDS = 10
-
-DEFAULT_PERMISSION_METADATA_BY_RESOURCE_TYPE = {
-    'Custom::ServiceApi': {
-        'AbstractRole': [ 'DeploymentAdmin', 'ProjectAdmin' ],
-        'Action': 'execute-api:*',
-        'ResourceSuffix': '/*'
-    }
-}
-
-PERMISSION_RESTRICTIONS_BY_RESOURCE_TYPE = {
-    "Custom::Polly": [	
-        "polly:SynthesizeSpeech",
-        "polly:DescribeVoices"
-    ],
-    "Custom::Lex": [
-        'lex:PostText',
-        'lex:PostContent',
-        'lex:GetBots',
-        'lex:GetBot',
-        'lex:CreateBotVersion',
-        'lex:PutBotAlias',
-        'lex:PutSlotType',
-        'lex:PutIntent',
-        'lex:PutBot',
-        'lex:GetIntent',
-        'lex:GetSlotType',
-        'lex:DeleteBot',
-        'lex:CreateIntentVersion',
-        'lex:CreateSlotTypeVersion',
-        'lex:GetBuiltinIntents',
-        'lex:GetBuiltinSlotTypes',
-        'lex:GetIntents',
-        'lex:GetSlotTypes',
-        'lex:DeleteIntent',
-        'lex:DeleteSlotType',
-        'lex:GetBotAliases',
-        'lex:DeleteBotAlias',
-        'lex:GetBotVersions',
-        'lex:GetBotAlias',
-        'lex:GetIntentVersions',
-        'lex:GetSlotTypeVersions',
-        'lex:GetBuiltinIntent'
-    ]
-}
 
 iam = aws_utils.ClientWrapper(boto3.client('iam'))
 
@@ -118,7 +73,8 @@ def handler(event, context):
 
     # Get stack_info for the AccessControl resource's stack.
     stack_arn = event['StackId']
-    stack = stack_info.get_stack_info(stack_arn)
+    stack_manager = stack_info.StackInfoManager()
+    stack = stack_manager.get_stack_info(stack_arn)
 
     # Physical ID is always the same.
     physical_resource_id = aws_utils.get_stack_name_from_stack_arn(stack_arn) + '-' + event['LogicalResourceId']
@@ -149,7 +105,7 @@ def handler(event, context):
         time.sleep(PROPAGATION_DELAY_SECONDS)
     
     # Successful execution.
-    custom_resource_response.succeed(event, context, data, physical_resource_id)
+    return custom_resource_response.success_response(data, physical_resource_id)
 
 
 def _apply_resource_group_access_control(request_type, resource_group, problems):
@@ -349,6 +305,7 @@ def _get_permissions(resource_info, problems):
 
     '''
 
+    resource_definitions = resource_info.resource_definitions
     permissions = {}
     print 'Permission context: ', resource_info.permission_context_name
     for resource in resource_info.resources:
@@ -362,31 +319,37 @@ def _get_permissions(resource_info, problems):
             permission_list.extend(_get_permission_list(resource_info.permission_context_name, resource.logical_id, permission_metadata, problems))
             problems.pop_prefix()
 
-        default_permission_metadata = DEFAULT_PERMISSION_METADATA_BY_RESOURCE_TYPE.get(resource.type)
-        if default_permission_metadata:
+        resource_type = resource_definitions.get(resource.type, None)
+        permission_metadata = None if resource_type is None else resource_type.permission_metadata
+        default_role_mappings = None if permission_metadata is None else permission_metadata.get('DefaultRoleMappings', None)
+        if default_role_mappings:
             print 'Found default permission metadata for stack {} resource {} with type {}: {}.'.format(resource_info.stack_name, resource.logical_id, resource.type, permission_metadata)
             problems.push_prefix('Stack {} resource {} default ', resource_info.stack_name, resource.logical_id)
-            permission_list.extend(_get_permission_list(resource_info.permission_context_name, resource.logical_id, default_permission_metadata, problems))
+            permission_list.extend(_get_permission_list(resource_info.permission_context_name, resource.logical_id, default_role_mappings, problems))
             problems.pop_prefix()
 
         if permission_list:
             try:
                 # A type to ARN format mapping may not be available.
-                permissions[resource.resource_arn] = permission_list
+                resource_arn_type = resource.resource_arn
+                existing_list = permissions.get(resource_arn_type, [])
+                existing_list.extend(permission_list)
+                permissions[resource_arn_type] = existing_list
             except Exception as e:
                 problems.append('type {} is not supported by the Custom::AccessControl resource: {}'.format(
                     resource.type,
                     e.message))
 
-        _check_restrictions(resource, permission_list, problems)
+        _check_restrictions(resource, permission_metadata, permission_list, problems)
 
     return permissions
 
 
-def _check_restrictions(resource, permission_list, problems):
-    restrictions = PERMISSION_RESTRICTIONS_BY_RESOURCE_TYPE.get(resource.type)
+def _check_restrictions(resource, permission_metadata, permission_list, problems):
+    restrictions = None if permission_metadata is None else permission_metadata.get('RestrictActions', None)
     if restrictions is None:
         return
+    restrictions = set(restrictions)
     for permission in permission_list:
         for action in permission["Action"]:
             if action not in restrictions:

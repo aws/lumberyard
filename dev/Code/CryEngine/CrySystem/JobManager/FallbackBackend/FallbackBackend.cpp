@@ -48,8 +48,11 @@ void JobManager::FallBackBackEnd::CFallBackBackEnd::AddJob(JobManager::CJobDeleg
 
         Invoker pInvoker = pJobManager->GetJobInvoker(pAddPacketData->nInvokerIndex);
 
-        // call delegator function to invoke job entry
-        (*pInvoker)(pParamMem);
+        {
+            // call delegator function to invoke job entry
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::System, "JobManager::FallBackBackEnd:RunJob");
+            (*pInvoker)(pParamMem);
+        }
 
 
         // mark job as finished

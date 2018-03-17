@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include "ShapeComponentConverters.h"
 
@@ -57,7 +57,7 @@ namespace LmbrCentral
                 int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).GetDataHierarchy<LmbrCentral::SphereShapeConfig>(context, configuration);
+                    classElement.GetSubElement(configIndex).GetData(configuration);
                 }
 
                 // Convert to EditorSphereShapeComponent
@@ -108,7 +108,7 @@ namespace LmbrCentral
                 int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).GetDataHierarchy<LmbrCentral::BoxShapeConfig>(context, configuration);
+                    classElement.GetSubElement(configIndex).GetData(configuration);
                 }
 
                 // Convert to EditorBoxShapeComponent
@@ -159,7 +159,7 @@ namespace LmbrCentral
                 int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).GetDataHierarchy<LmbrCentral::CylinderShapeConfig>(context, configuration);
+                    classElement.GetSubElement(configIndex).GetData(configuration);
                 }
 
                 // Convert to EditorCylinderShapeComponent
@@ -211,7 +211,7 @@ namespace LmbrCentral
                 int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).GetDataHierarchy<LmbrCentral::CapsuleShapeConfig>(context, configuration);
+                    classElement.GetSubElement(configIndex).GetData(configuration);
                 }
 
                 // Convert to EditorCapsuleShapeComponent
@@ -239,7 +239,7 @@ namespace LmbrCentral
                 int configIndex = classElement.FindElement(AZ_CRC("Configuration", 0xa5e2a5d7));
                 if (configIndex != -1)
                 {
-                    classElement.GetSubElement(configIndex).GetDataHierarchy<LmbrCentral::PolygonPrismCommon>(context, configuration);
+                    classElement.GetSubElement(configIndex).GetData(configuration);
                 }
 
                 // Convert to EditorPolygonPrismComponent

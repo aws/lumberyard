@@ -10,7 +10,7 @@
 
 #if 0
 // \note g_numVectors and g_numVectors should be the same.
-#if (defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3)) && !defined(_DEBUG) // ACCEPTED_USE
+#if defined(AZ_PLATFORM_WINDOWS) && !defined(_DEBUG)
 const int g_numTransforms = 1000;
 const int g_numVectors = 100000;
 const int g_numVectorFloats = 100000;

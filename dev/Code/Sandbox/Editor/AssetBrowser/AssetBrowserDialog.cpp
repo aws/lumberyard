@@ -107,7 +107,7 @@ QVariant CAssetBrowserModel::data(const QModelIndex& index, int role) const
     auto item = m_assetViewer->GetAssetItems().at(index.row());
     if (role == Qt::DisplayRole)
     {
-        return CAssetViewer::GetAssetFieldDisplayValue(item, m_allFields[index.column()].m_fieldName.toLatin1().data());
+        return CAssetViewer::GetAssetFieldDisplayValue(item, m_allFields[index.column()].m_fieldName.toUtf8().data());
     }
     else
     {
@@ -135,7 +135,7 @@ QVariant CAssetBrowserModel::headerData(int section, Qt::Orientation orientation
 void CAssetBrowserModel::sort(int column, Qt::SortOrder order)
 {
     layoutAboutToBeChanged();
-    m_pAssetBrowserDlg->SortAssets(m_allFields[column].m_fieldName.toLatin1().data(), order == Qt::DescendingOrder);
+    m_pAssetBrowserDlg->SortAssets(m_allFields[column].m_fieldName.toUtf8().data(), order == Qt::DescendingOrder);
     layoutChanged();
 }
 
@@ -893,7 +893,7 @@ void CAssetBrowserDialog::OnAssetBrowserSelectInViewport()
     for (size_t i = 0, iCount = items.size(); i < iCount; ++i)
     {
         IAssetItem* pAsset = items[i];
-        QString strFullPath = PathUtil::AddSlash(pAsset->GetRelativePath().toLatin1().data()) + pAsset->GetFilename();
+        QString strFullPath = PathUtil::AddSlash(pAsset->GetRelativePath().toUtf8().data()) + pAsset->GetFilename();
 
         for (size_t j = 0, jCount = objArr.size(); j < jCount; ++j)
         {

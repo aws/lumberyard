@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "TransformComponent.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -221,33 +221,6 @@ namespace AzToolsFramework
             }
         }
 
-        void TransformComponent::OnTransformChanged()
-        {
-            if (!m_suppressTransformChangedEvent)
-            {
-                auto parent = GetParentTransformComponent();
-                if (parent)
-                {
-                    OnTransformChanged(parent->GetLocalTM(), parent->GetWorldTM());
-                }
-                else
-                {
-                    OnTransformChanged(AZ::Transform::Identity(), AZ::Transform::Identity());
-                }
-            }
-        }
-
-        // This is called when our transform changes static state.
-        void TransformComponent::OnStaticChanged(bool isStatic)
-        {
-            if (GetEntity())
-            {
-                SetDirty();
-                AZ::TransformNotificationBus::Event(GetEntityId(), &AZ::TransformNotificationBus::Events::OnStaticChanged, isStatic);
-            }
-        }
-
-
         void TransformComponent::UpdateCachedWorldTransform()
         {
             const AZ::Transform& worldTransform = GetWorldTM();
@@ -320,7 +293,7 @@ namespace AzToolsFramework
             m_editorTransform.m_rotate = rot;
             m_editorTransform.m_scale = scale;
 
-            OnTransformChanged();
+            TransformChanged();
         }
 
         const EditorTransform& TransformComponent::GetLocalEditorTransform()
@@ -332,7 +305,7 @@ namespace AzToolsFramework
         {
             m_editorTransform = dest;
 
-            OnTransformChanged();
+            TransformChanged();
         }
 
         const AZ::Transform& TransformComponent::GetWorldTM()
@@ -765,7 +738,7 @@ namespace AzToolsFramework
             auto oldParentId = m_parentEntityId;
 
             // SetLocalTM calls below can confuse listeners, because transforms are mathematically
-            // detached before the ParentChanged events are dispatched. Suppress OnTransformChanged()
+            // detached before the ParentChanged events are dispatched. Suppress TransformChanged()
             // until the transaction is complete.
             m_suppressTransformChangedEvent = true;
 
@@ -817,7 +790,7 @@ namespace AzToolsFramework
             EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, UpdateTransformParentEntity, GetEntityId(), parentId, oldParentId);
             EBUS_EVENT_ID(GetEntityId(), AZ::TransformNotificationBus, OnParentChanged, oldParentId, parentId);
 
-            OnTransformChanged();
+            TransformChanged();
         }
 
         void TransformComponent::SetParent(AZ::EntityId parentId)
@@ -1001,17 +974,33 @@ namespace AzToolsFramework
 
         AZ::u32 TransformComponent::TransformChanged()
         {
-            OnTransformChanged();
+            if (!m_suppressTransformChangedEvent)
+            {
+                auto parent = GetParentTransformComponent();
+                if (parent)
+                {
+                    OnTransformChanged(parent->GetLocalTM(), parent->GetWorldTM());
+                }
+                else
+                {
+                    OnTransformChanged(AZ::Transform::Identity(), AZ::Transform::Identity());
+                }
+            }
             return AZ::Edit::PropertyRefreshLevels::None;
         }
 
+        // This is called when our transform changes static state.
         AZ::u32 TransformComponent::StaticChanged()
         {
             AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
                 &AzToolsFramework::ToolsApplicationEvents::Bus::Events::InvalidatePropertyDisplay,
                 AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
 
-            OnStaticChanged(m_isStatic);
+            if (GetEntity())
+            {
+                SetDirty();
+                AZ::TransformNotificationBus::Event(GetEntityId(), &AZ::TransformNotificationBus::Events::OnStaticChanged, m_isStatic);
+            }
 
             return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
         }
@@ -1027,7 +1016,7 @@ namespace AzToolsFramework
 
             vec += delta;
 
-            OnTransformChanged();
+            TransformChanged();
         }
 
         void TransformComponent::TranslateBy(const AZ::Vector3& data)

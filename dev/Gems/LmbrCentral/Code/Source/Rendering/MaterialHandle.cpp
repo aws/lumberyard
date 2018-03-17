@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include <LmbrCentral/Rendering/MaterialHandle.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -371,8 +371,8 @@ namespace LmbrCentral
                 ->Attribute(AZ::Script::Attributes::ToolTip, "Creates a copy of the given Material.")
             ->Method("FindSubMaterial", &MaterialHandleFunctions::FindSubMaterial, 
                 { { { "Name", "Full path name of the Material Group to get a Sub-Material from" },
-                    { "MaterialID", "The ID of a Sub-Material to access. IDs start at 1.",  AZ::BehaviorMakeDefaultValue(1) },
-                    { "ShouldLoad", "Whether to load the Material Group or not if it's not loaded",  AZ::BehaviorMakeDefaultValue(true) } } })
+                    { "MaterialID", "The ID of a Sub-Material to access. IDs start at 1.",  behaviorContext->MakeDefaultValue(1) },
+                    { "ShouldLoad", "Whether to load the Material Group or not if it's not loaded",  behaviorContext->MakeDefaultValue(true) } } })
                 ->Attribute(AZ::Script::Attributes::ToolTip, "Find a Sub-Material from a Material Group by specified Material ID. Returns Invalid if the Material Group could not be found or loaded or the Sub-Material could not be found.")
             ->Method("SetParamVector4", &MaterialHandleFunctions::SetParamVector4, 
                 { { setMaterialDetails,setParamNameDetails,{ "Vector4", newValueTooltip } } })

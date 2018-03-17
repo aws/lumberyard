@@ -561,6 +561,8 @@ namespace AZ
 #   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)8 * 1024 * 1024 * 1024)
 #elif defined(AZ_PLATFORM_LINUX)
 #   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)8 * 1024 * 1024 * 1024)
+#elif AZ_TRAIT_MAX_ALLOCATOR_SIZE_4GB
+#   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)4 * 1024 * 1024 * 1024)
 #else
 #   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)10 * 1024 * 1024)
 #endif

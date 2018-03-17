@@ -82,6 +82,57 @@ namespace AZ
     AZ_MATH_FORCE_INLINE Vector3 Color::GetAsVector3() const { return m_color.GetAsVector3(); }
     AZ_MATH_FORCE_INLINE Vector4 Color::GetAsVector4() const { return m_color; }
 
+    AZ_MATH_FORCE_INLINE void Color::SetFromHSVRadians(float hueRadians, float saturation, float value)
+    {
+        float alpha = GetA();
+
+        // Saturation and value outside of [0-1] are invalid, so clamp them to valid values.
+        saturation = GetClamp(saturation, 0.0f, 1.0f);
+        value = GetClamp(value, 0.0f, 1.0f);
+
+        hueRadians = fmodf(hueRadians, AZ::Constants::TwoPi);
+        if (hueRadians < 0)
+        {
+            hueRadians += AZ::Constants::TwoPi;
+        }
+
+        // https://en.wikipedia.org/wiki/HSL_and_HSV#Converting_to_RGB
+        float hue = fmodf(hueRadians / AZ::DegToRad(60.0f), 6.0f);
+        const int hueSexant = static_cast<int>(hue);
+        const float hueSexantRemainder = hue - hueSexant;
+
+        const float offColor = value * (1.0f - saturation);
+        const float fallingColor = value * (1.0f - (saturation * hueSexantRemainder));
+        const float risingColor = value * (1.0f - (saturation * (1.0f - hueSexantRemainder)));
+
+        switch (hueSexant)
+        {
+        case 0:
+            Set(value, risingColor, offColor, alpha);
+            break;
+        case 1:
+            Set(fallingColor, value, offColor, alpha);
+            break;
+        case 2:
+            Set(offColor, value, risingColor, alpha);
+            break;
+        case 3:
+            Set(offColor, fallingColor, value, alpha);
+            break;
+        case 4:
+            Set(risingColor, offColor, value, alpha);
+            break;
+        case 5:
+            Set(value, offColor, fallingColor, alpha);
+            break;
+        default:
+            AZ_Assert(true, 
+                "SetFromHSV has generated invalid data from these parameters : H %.5f, S %.5f, V %.5f.",
+                hueRadians,
+                saturation,
+                value);
+        }
+    }
 
     AZ_MATH_FORCE_INLINE bool Color::IsClose(const Color& v, const VectorFloat& tolerance) const
     {

@@ -2287,7 +2287,7 @@ namespace AZ
             ->Method<void(VectorFloat, VectorFloat&, VectorFloat&)>("GetSinCos", &GetSinCos<VectorFloat>)
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::MethodOverride, &Internal::VectorFloatGetSinCosMultipleReturn)
-            ->Method<bool(double, double, double)>("IsClose", &AZ::IsClose, BehaviorMakeDefaultValues(static_cast<double>(g_fltEps)))
+            ->Method<bool(double, double, double)>("IsClose", &AZ::IsClose, context.MakeDefaultValues(static_cast<double>(g_fltEps)))
              ;
 
         // Vector2
@@ -2346,19 +2346,19 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("NormalizeWithLength", &Vector2::NormalizeWithLength)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("NormalizeSafe", &Vector2::NormalizeSafe, BehaviorMakeDefaultValues(static_cast<float>(g_simdTolerance)))->
+            Method("NormalizeSafe", &Vector2::NormalizeSafe, context.MakeDefaultValues(static_cast<float>(g_simdTolerance)))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("NormalizeSafeWithLength", &Vector2::NormalizeSafeWithLength, BehaviorMakeDefaultValues(static_cast<float>(g_simdTolerance)))->
+            Method("NormalizeSafeWithLength", &Vector2::NormalizeSafeWithLength, context.MakeDefaultValues(static_cast<float>(g_simdTolerance)))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsNormalized", &Vector2::IsNormalized, BehaviorMakeDefaultValues(static_cast<float>(g_simdTolerance)))->
+            Method("IsNormalized", &Vector2::IsNormalized, context.MakeDefaultValues(static_cast<float>(g_simdTolerance)))->
             Method("GetDistance", &Vector2::GetDistance)->
             Method("GetDistanceSq", &Vector2::GetDistanceSq)->
             Method("Lerp", &Vector2::Lerp)->
             Method("Slerp", &Vector2::Slerp)->
             Method("Dot", &Vector2::Dot)->
             Method("GetPerpendicular", &Vector2::GetPerpendicular)->
-            Method("IsClose", &Vector2::IsClose, BehaviorMakeDefaultValues(static_cast<float>(g_simdTolerance)))->
-            Method("IsZero", &Vector2::IsZero, BehaviorMakeDefaultValues(static_cast<float>(g_fltEps)))->
+            Method("IsClose", &Vector2::IsClose, context.MakeDefaultValues(static_cast<float>(g_simdTolerance)))->
+            Method("IsZero", &Vector2::IsZero, context.MakeDefaultValues(static_cast<float>(g_fltEps)))->
             Method("IsLessThan", &Vector2::IsLessThan)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("IsLessEqualThan", &Vector2::IsLessEqualThan)->
@@ -2379,9 +2379,11 @@ namespace AZ
             Method("GetProjectedOnNormal", &Vector2::GetProjectedOnNormal)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("IsFinite", &Vector2::IsFinite)->
-            Method("CreateAxisX", &Vector2::CreateAxisX, BehaviorMakeDefaultValues(1.0f))->
+            Method("CreateAxisX", &Vector2::CreateAxisX, context.MakeDefaultValues(1.0f))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("CreateAxisY", &Vector2::CreateAxisY, BehaviorMakeDefaultValues(1.0f))->
+            Method("CreateAxisY", &Vector2::CreateAxisY, context.MakeDefaultValues(1.0f))->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
+            Method("CreateFromAngle", &Vector2::CreateFromAngle, context.MakeDefaultValues(0.0f))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("CreateOne", &Vector2::CreateOne)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
@@ -2460,12 +2462,12 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("NormalizeWithLength", &Vector3::NormalizeWithLengthExact)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("GetNormalizedSafe", &Vector3::GetNormalizedSafeExact, BehaviorMakeDefaultValues(g_simdTolerance))->
-            Method("NormalizeSafe", &Vector3::NormalizeSafeExact, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("GetNormalizedSafe", &Vector3::GetNormalizedSafeExact, context.MakeDefaultValues(g_simdTolerance))->
+            Method("NormalizeSafe", &Vector3::NormalizeSafeExact, context.MakeDefaultValues(g_simdTolerance))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("NormalizeSafeWithLength", &Vector3::NormalizeSafeWithLengthExact, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("NormalizeSafeWithLength", &Vector3::NormalizeSafeWithLengthExact, context.MakeDefaultValues(g_simdTolerance))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsNormalized", &Vector3::IsNormalized, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("IsNormalized", &Vector3::IsNormalized, context.MakeDefaultValues(g_simdTolerance))->
             Method("SetLength", &Vector3::SetLength)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("SetLengthApprox", &Vector3::SetLengthApprox)->
@@ -2487,8 +2489,8 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("ZAxisCross", &Vector3::ZAxisCross)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsClose", &Vector3::IsClose, BehaviorMakeDefaultValues(g_simdTolerance))->
-            Method("IsZero", &Vector3::IsZero, BehaviorMakeDefaultValues(g_fltEps))->
+            Method("IsClose", &Vector3::IsClose, context.MakeDefaultValues(g_simdTolerance))->
+            Method("IsZero", &Vector3::IsZero, context.MakeDefaultValues(g_fltEps))->
             Method("IsLessThan", &Vector3::IsLessThan)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("IsLessEqualThan", &Vector3::IsLessEqualThan)->
@@ -2518,7 +2520,7 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Madd", &Vector3::Madd)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsPerpendicular", &Vector3::IsPerpendicular, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("IsPerpendicular", &Vector3::IsPerpendicular, context.MakeDefaultValues(g_simdTolerance))->
             Method("Project", &Vector3::Project)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("ProjectOnNormal", &Vector3::ProjectOnNormal)->
@@ -2527,11 +2529,11 @@ namespace AZ
             Method("GetProjectedOnNormal", &Vector3::GetProjectedOnNormal)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("IsFinite", &Vector3::IsFinite)->
-            Method("CreateAxisX", &Vector3::CreateAxisX, BehaviorMakeDefaultValues(VectorFloat::CreateOne()))->
+            Method("CreateAxisX", &Vector3::CreateAxisX, context.MakeDefaultValues(VectorFloat::CreateOne()))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("CreateAxisY", &Vector3::CreateAxisY, BehaviorMakeDefaultValues(VectorFloat::CreateOne()))->
+            Method("CreateAxisY", &Vector3::CreateAxisY, context.MakeDefaultValues(VectorFloat::CreateOne()))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("CreateAxisZ", &Vector3::CreateAxisZ, BehaviorMakeDefaultValues(VectorFloat::CreateOne()))->
+            Method("CreateAxisZ", &Vector3::CreateAxisZ, context.MakeDefaultValues(VectorFloat::CreateOne()))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("CreateOne", &Vector3::CreateOne)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
@@ -2596,12 +2598,12 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("NormalizeWithLength", &Vector4::NormalizeWithLengthExact)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("GetNormalizedSafe", &Vector4::GetNormalizedSafeExact, BehaviorMakeDefaultValues(g_simdTolerance))->
-            Method("NormalizeSafe", &Vector4::NormalizeSafeExact, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("GetNormalizedSafe", &Vector4::GetNormalizedSafeExact, context.MakeDefaultValues(g_simdTolerance))->
+            Method("NormalizeSafe", &Vector4::NormalizeSafeExact, context.MakeDefaultValues(g_simdTolerance))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("NormalizeSafeWithLength", &Vector4::NormalizeSafeWithLengthExact, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("NormalizeSafeWithLength", &Vector4::NormalizeSafeWithLengthExact, context.MakeDefaultValues(g_simdTolerance))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsNormalized", &Vector4::IsNormalized, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("IsNormalized", &Vector4::IsNormalized, context.MakeDefaultValues(g_simdTolerance))->
             Method("Dot", &Vector4::Dot)->
             Method("Dot3", &Vector4::Dot3)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
@@ -2609,8 +2611,8 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("GetHomogenized", &Vector4::GetHomogenized)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsClose", &Vector4::IsClose, BehaviorMakeDefaultValues(g_simdTolerance))->
-            Method("IsZero", &Vector4::IsZero, BehaviorMakeDefaultValues(g_fltEps))->
+            Method("IsClose", &Vector4::IsClose, context.MakeDefaultValues(g_simdTolerance))->
+            Method("IsZero", &Vector4::IsZero, context.MakeDefaultValues(g_fltEps))->
             Method("IsLessThan", &Vector4::IsLessThan)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("IsLessEqualThan", &Vector4::IsLessEqualThan)->
@@ -2622,13 +2624,13 @@ namespace AZ
             Method("GetAbs", &Vector4::GetAbs)->
             Method("GetReciprocal", &Vector4::GetReciprocal)->
             Method("IsFinite", &Vector4::IsFinite)->
-            Method("CreateAxisX", &Vector4::CreateAxisX, BehaviorMakeDefaultValues(VectorFloat::CreateOne()))->
+            Method("CreateAxisX", &Vector4::CreateAxisX, context.MakeDefaultValues(VectorFloat::CreateOne()))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("CreateAxisY", &Vector4::CreateAxisY, BehaviorMakeDefaultValues(VectorFloat::CreateOne()))->
+            Method("CreateAxisY", &Vector4::CreateAxisY, context.MakeDefaultValues(VectorFloat::CreateOne()))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("CreateAxisZ", &Vector4::CreateAxisZ, BehaviorMakeDefaultValues(VectorFloat::CreateOne()))->
+            Method("CreateAxisZ", &Vector4::CreateAxisZ, context.MakeDefaultValues(VectorFloat::CreateOne()))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("CreateAxisW", &Vector4::CreateAxisW, BehaviorMakeDefaultValues(VectorFloat::CreateOne()))->
+            Method("CreateAxisW", &Vector4::CreateAxisW, context.MakeDefaultValues(VectorFloat::CreateOne()))->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("CreateFromVector3", &Vector4::CreateFromVector3)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
@@ -2698,8 +2700,8 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Dot3", &Color::Dot3)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsClose", &Color::IsClose, BehaviorMakeDefaultValues(g_simdTolerance))->
-            Method("IsZero", &Color::IsZero, BehaviorMakeDefaultValues(g_fltEps))->
+            Method("IsClose", &Color::IsClose, context.MakeDefaultValues(g_simdTolerance))->
+            Method("IsZero", &Color::IsZero, context.MakeDefaultValues(g_fltEps))->
             Method("IsLessThan", &Color::IsLessThan)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("IsLessEqualThan", &Color::IsLessEqualThan)->
@@ -2790,9 +2792,9 @@ namespace AZ
             Method("InvertFull", &Quaternion::InvertFull)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Dot", &Quaternion::Dot)->
-            Method("IsClose", &Quaternion::IsClose, BehaviorMakeDefaultValues(g_simdTolerance))->
-            Method("IsIdentity", &Quaternion::IsIdentity, BehaviorMakeDefaultValues(g_simdTolerance))->
-            Method("IsZero", &Quaternion::IsZero, BehaviorMakeDefaultValues(g_fltEps))->
+            Method("IsClose", &Quaternion::IsClose, context.MakeDefaultValues(g_simdTolerance))->
+            Method("IsIdentity", &Quaternion::IsIdentity, context.MakeDefaultValues(g_simdTolerance))->
+            Method("IsZero", &Quaternion::IsZero, context.MakeDefaultValues(g_fltEps))->
             Method("GetImaginary", &Quaternion::GetImaginary)->
             Method("IsFinite", &Quaternion::IsFinite)->
             Method("GetAngle", &Quaternion::GetAngle)->
@@ -2889,11 +2891,11 @@ namespace AZ
             Method<const Matrix3x3(Matrix3x3::*)()const>("GetPolarDecomposition", &Matrix3x3::GetPolarDecomposition)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::Matrix3x3GetPolarDecompositionMultipleReturn)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsOrthogonal", &Matrix3x3::IsOrthogonal, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("IsOrthogonal", &Matrix3x3::IsOrthogonal, context.MakeDefaultValues(g_simdTolerance))->
             Method("GetOrthogonalized", &Matrix3x3::GetOrthogonalized)->
             Method("Orthogonalize", &Matrix3x3::Orthogonalize)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsClose", &Matrix3x3::IsClose, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("IsClose", &Matrix3x3::IsClose, context.MakeDefaultValues(g_simdTolerance))->
             Method("SetRotationPartFromQuaternion", &Matrix3x3::SetRotationPartFromQuaternion)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("GetDiagonal", &Matrix3x3::GetDiagonal)->
@@ -3002,7 +3004,7 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("MultiplyByScale", &Matrix4x4::MultiplyByScale)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-            Method("IsClose", &Matrix4x4::IsClose, BehaviorMakeDefaultValues(g_simdTolerance))->
+            Method("IsClose", &Matrix4x4::IsClose, context.MakeDefaultValues(g_simdTolerance))->
             Method("SetRotationPartFromQuaternion", &Matrix4x4::SetRotationPartFromQuaternion)->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("GetDiagonal", &Matrix4x4::GetDiagonal)->
@@ -3113,11 +3115,11 @@ namespace AZ
                 Method<const Transform(Transform::*)() const>("GetPolarDecomposition", &Transform::GetPolarDecomposition)->
                     Attribute(AZ::Script::Attributes::MethodOverride, &Internal::TransformGetPolarDecompositionMultipleReturn)->
                     Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-                Method("IsOrthogonal", &Transform::IsOrthogonal, BehaviorMakeDefaultValues(g_simdTolerance))->
+                Method("IsOrthogonal", &Transform::IsOrthogonal, context.MakeDefaultValues(g_simdTolerance))->
                 Method("GetOrthogonalized", &Transform::GetOrthogonalized)->
                 Method("Orthogonalize", &Transform::Orthogonalize)->
                     Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
-                Method("IsClose", &Transform::IsClose, BehaviorMakeDefaultValues(g_simdTolerance))->
+                Method("IsClose", &Transform::IsClose, context.MakeDefaultValues(g_simdTolerance))->
                 Method("SetRotationPartFromQuaternion", &Transform::SetRotationPartFromQuaternion)->
                     Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
                     Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
@@ -3199,7 +3201,7 @@ namespace AZ
 
         // Aabb
         context.Class<Aabb>()->
-            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::AabbDefaultConstructor)->
             Property("min", &Aabb::GetMin, &Aabb::SetMin)->

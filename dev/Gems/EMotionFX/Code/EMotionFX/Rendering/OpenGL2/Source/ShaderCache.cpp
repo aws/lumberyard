@@ -10,7 +10,7 @@
 *
 */
 
-#include "ShaderCache.h"
+#include "shadercache.h"
 
 
 namespace RenderGL

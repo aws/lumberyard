@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "InAppPurchases_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

@@ -49,7 +49,7 @@ bool CProtEntityObject::Init(IEditor* ie, CBaseObject* prev, const QString& file
     }
     else if (!file.isEmpty())
     {
-        SetPrototype(GuidUtil::FromString(file.toLatin1().data()));
+        SetPrototype(GuidUtil::FromString(file.toUtf8().data()));
         SetUniqueName(m_prototypeName);
     }
 
@@ -127,7 +127,7 @@ void CProtEntityObject::PostSpawnEntity()
                         }
                         else
                         {
-                            Log("[EDITOR][CEntity::SpawnEntity()]Failed to load material %s", strPrototypeMaterial.toLatin1().data());
+                            Log("[EDITOR][CEntity::SpawnEntity()]Failed to load material %s", strPrototypeMaterial.toUtf8().data());
                         }
                     }
                 }
@@ -163,7 +163,7 @@ void CProtEntityObject::SetPrototype(REFGUID guid, bool bForceReload)
     SetPrototype(prototype, bForceReload);
 
     IEntityPoolManager* pPoolManager = gEnv->pEntitySystem->GetIEntityPoolManager();
-    if (pPoolManager && pPoolManager->IsClassDefaultBookmarked(prototype->GetEntityClassName().toLatin1().data()))
+    if (pPoolManager && pPoolManager->IsClassDefaultBookmarked(prototype->GetEntityClassName().toUtf8().data()))
     {
         mv_createdThroughPool = true;
     }
@@ -285,19 +285,19 @@ void CProtEntityObject::SyncVariablesFromPrototype(bool bOnlyDisabled)
     if (m_prototype)
     {
         CVarBlock* pVarsInPrototype = m_prototype->GetObjectVarBlock();
-        mv_castShadow.CopyValue(pVarsInPrototype->FindVariable(mv_castShadow.GetName().toLatin1().data()));
-        mv_castShadowMinSpec->CopyValue(pVarsInPrototype->FindVariable(mv_castShadowMinSpec->GetName().toLatin1().data()));
-        mv_ratioLOD.CopyValue(pVarsInPrototype->FindVariable(mv_ratioLOD.GetName().toLatin1().data()));
-        mv_viewDistanceMultiplier.CopyValue(pVarsInPrototype->FindVariable(mv_viewDistanceMultiplier.GetName().toLatin1().data()));
-        mv_recvWind.CopyValue(pVarsInPrototype->FindVariable(mv_recvWind.GetName().toLatin1().data()));
-        mv_obstructionMultiplier.CopyValue(pVarsInPrototype->FindVariable(mv_obstructionMultiplier.GetName().toLatin1().data()));
+        mv_castShadow.CopyValue(pVarsInPrototype->FindVariable(mv_castShadow.GetName().toUtf8().data()));
+        mv_castShadowMinSpec->CopyValue(pVarsInPrototype->FindVariable(mv_castShadowMinSpec->GetName().toUtf8().data()));
+        mv_ratioLOD.CopyValue(pVarsInPrototype->FindVariable(mv_ratioLOD.GetName().toUtf8().data()));
+        mv_viewDistanceMultiplier.CopyValue(pVarsInPrototype->FindVariable(mv_viewDistanceMultiplier.GetName().toUtf8().data()));
+        mv_recvWind.CopyValue(pVarsInPrototype->FindVariable(mv_recvWind.GetName().toUtf8().data()));
+        mv_obstructionMultiplier.CopyValue(pVarsInPrototype->FindVariable(mv_obstructionMultiplier.GetName().toUtf8().data()));
         if (!bOnlyDisabled)
         {
-            mv_outdoor.CopyValue(pVarsInPrototype->FindVariable(mv_outdoor.GetName().toLatin1().data()));
-            mv_hiddenInGame.CopyValue(pVarsInPrototype->FindVariable(mv_hiddenInGame.GetName().toLatin1().data()));
-            mv_renderNearest.CopyValue(pVarsInPrototype->FindVariable(mv_renderNearest.GetName().toLatin1().data()));
-            mv_noDecals.CopyValue(pVarsInPrototype->FindVariable(mv_noDecals.GetName().toLatin1().data()));
-            mv_createdThroughPool.CopyValue(pVarsInPrototype->FindVariable(mv_createdThroughPool.GetName().toLatin1().data()));
+            mv_outdoor.CopyValue(pVarsInPrototype->FindVariable(mv_outdoor.GetName().toUtf8().data()));
+            mv_hiddenInGame.CopyValue(pVarsInPrototype->FindVariable(mv_hiddenInGame.GetName().toUtf8().data()));
+            mv_renderNearest.CopyValue(pVarsInPrototype->FindVariable(mv_renderNearest.GetName().toUtf8().data()));
+            mv_noDecals.CopyValue(pVarsInPrototype->FindVariable(mv_noDecals.GetName().toUtf8().data()));
+            mv_createdThroughPool.CopyValue(pVarsInPrototype->FindVariable(mv_createdThroughPool.GetName().toUtf8().data()));
         }
     }
 }

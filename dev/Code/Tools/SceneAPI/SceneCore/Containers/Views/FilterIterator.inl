@@ -197,7 +197,7 @@ namespace AZ
                         AZStd::advance(super::m_iterator, -1);
                     }
 
-                    while (super::m_iterator != m_begin && !m_predicate(*super::m_iterator))
+                    while (super::m_iterator != m_begin && !super::m_predicate(*super::m_iterator))
                     {
                         AZStd::advance(super::m_iterator, -1);
                     }

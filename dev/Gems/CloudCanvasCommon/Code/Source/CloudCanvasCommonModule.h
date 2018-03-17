@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "StdAfx.h"
+#include "CloudCanvasCommon_precompiled.h"
 
 #include <CloudCanvasCommonSystemComponent.h>
 

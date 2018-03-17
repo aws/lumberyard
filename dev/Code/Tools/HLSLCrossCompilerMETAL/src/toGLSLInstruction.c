@@ -179,7 +179,7 @@ static void AddComparision(HLSLCrossCompilerContext* psContext, Instruction* psI
 	// OPCODE_LT, _GT, _NE etc: inputs are floats, outputs UINT 0xffffffff or 0. typeflag: TO_FLAG_NONE
 	// OPCODE_ILT, _IGT etc: comparisons are signed ints, outputs UINT 0xffffffff or 0 typeflag TO_FLAG_INTEGER
 	// _ULT, UGT etc: inputs unsigned ints, outputs UINTs typeflag TO_FLAG_UNSIGNED_INTEGER
-	// 
+	//
 	// Additional complexity: if dest swizzle element count is 1, we can use normal comparison operators, otherwise glsl intrinsics.
 
 
@@ -187,7 +187,7 @@ static void AddComparision(HLSLCrossCompilerContext* psContext, Instruction* psI
 	const uint32_t destElemCount = GetNumSwizzleElements(&psInst->asOperands[0]);
 	const uint32_t s0ElemCount = GetNumSwizzleElements(&psInst->asOperands[1]);
 	const uint32_t s1ElemCount = GetNumSwizzleElements(&psInst->asOperands[2]);
-	
+
 	int floatResult = 0;
 	int needsParenthesis = 0;
 
@@ -357,7 +357,7 @@ static void AddMOVCBinaryOp(HLSLCrossCompilerContext* psContext, const Operand *
 		{
 			bcatcstr(glsl, " != 0) ? ");
 		}
-	
+
 		if (s1ElemCount == 1 && destElemCount > 1)
 			TranslateOperand(psContext, src1, SVTTypeToFlag(eDestType) | ElemCountToAutoExpandFlag(destElemCount) );
 		else
@@ -532,7 +532,7 @@ static void CallHelper3(HLSLCrossCompilerContext* psContext, const char* name, I
 
 
 	AddIndentation(psContext);
-	
+
 	AddAssignToDest(psContext, &psInst->asOperands[dest], SVT_FLOAT, dstSwizCount, &numParenthesis);
 
 	bformata(glsl, "%s(", name);
@@ -983,7 +983,7 @@ static void TranslateTextureSample(HLSLCrossCompilerContext* psContext, Instruct
 	uint32_t ui32Flags)
 {
 	bstring glsl = *psContext->currentShaderString;
-	uint32_t numParenthesis = 0;
+	int numParenthesis = 0;
 
 	const char* funcName = "texture";
 	const char* offset = "";
@@ -1712,7 +1712,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_IADD\n");
-#endif     
+#endif
 		func = "atomicAdd";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1725,7 +1725,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_IADD\n");
-#endif  
+#endif
 		func = "atomicAdd";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];
@@ -1737,7 +1737,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_AND\n");
-#endif     
+#endif
 		func = "atomicAnd";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1750,7 +1750,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_AND\n");
-#endif  
+#endif
 		func = "atomicAnd";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];
@@ -1762,7 +1762,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_OR\n");
-#endif     
+#endif
 		func = "atomicOr";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1775,7 +1775,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_OR\n");
-#endif  
+#endif
 		func = "atomicOr";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];
@@ -1787,7 +1787,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_XOR\n");
-#endif     
+#endif
 		func = "atomicXor";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1800,7 +1800,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_XOR\n");
-#endif  
+#endif
 		func = "atomicXor";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];
@@ -1813,7 +1813,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_EXCH\n");
-#endif     
+#endif
 		func = "atomicExchange";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1826,7 +1826,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_CMP_EXC\n");
-#endif     
+#endif
 		func = "atomicCompSwap";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1840,7 +1840,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_CMP_STORE\n");
-#endif     
+#endif
 		func = "atomicCompSwap";
 		previousValue = 0;
 		dest = &psInst->asOperands[0];
@@ -1854,7 +1854,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_UMIN\n");
-#endif     
+#endif
 		func = "atomicMin";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1867,7 +1867,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_UMIN\n");
-#endif  
+#endif
 		func = "atomicMin";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];
@@ -1879,7 +1879,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_IMIN\n");
-#endif     
+#endif
 		func = "atomicMin";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1892,7 +1892,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_IMIN\n");
-#endif  
+#endif
 		func = "atomicMin";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];
@@ -1904,7 +1904,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_UMAX\n");
-#endif     
+#endif
 		func = "atomicMax";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1917,7 +1917,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_UMAX\n");
-#endif  
+#endif
 		func = "atomicMax";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];
@@ -1929,7 +1929,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//IMM_ATOMIC_IMAX\n");
-#endif     
+#endif
 		func = "atomicMax";
 		previousValue = &psInst->asOperands[0];
 		dest = &psInst->asOperands[1];
@@ -1942,7 +1942,7 @@ void TranslateAtomicMemOp(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #ifdef _DEBUG
 		AddIndentation(psContext);
 		bcatcstr(glsl, "//ATOMIC_IMAX\n");
-#endif  
+#endif
 		func = "atomicMax";
 		dest = &psInst->asOperands[0];
 		destAddr = &psInst->asOperands[1];

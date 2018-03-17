@@ -171,14 +171,6 @@
                 "CloudCanvas": {
                     "Permissions": [
                         {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "polly:SynthesizeSpeech"
-                        },
-                        {
-                            "AbstractRole": "ServiceLambda",
-                            "Action": "polly:DescribeVoices"
-                        },
-                        {
                             "AbstractRole": "PackageVoiceLines",
                             "Action": "polly:SynthesizeSpeech"
                         }
@@ -260,7 +252,7 @@
                         ]
                     }
                 },
-                "Handler": "service.dispatch",
+                "Handler": "cgf_lambda_service.dispatch",
                 "Role": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration",
@@ -328,6 +320,9 @@
                 }
             },
             "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
                 "AttributeDefinitions": [
                     {
                         "AttributeName": "character",
@@ -357,7 +352,7 @@
                     }
                 }
             },
-            "Type": "AWS::DynamoDB::Table"
+            "Type": "Custom::DynamoDBTable"
         },
         "characterdefs": {
             "Metadata": {

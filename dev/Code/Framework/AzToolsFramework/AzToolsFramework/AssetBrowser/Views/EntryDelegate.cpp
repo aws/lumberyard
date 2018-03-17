@@ -33,6 +33,16 @@ namespace AzToolsFramework
 
         EntryDelegate::~EntryDelegate() = default;
 
+        QSize EntryDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
+        {
+            QSize baseHint = QStyledItemDelegate::sizeHint(option, index);
+            if (baseHint.height() < m_iconSize)
+            {
+                baseHint.setHeight(m_iconSize);
+            }
+            return baseHint;
+        }
+
         void EntryDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
         {
             auto data = index.data(AssetBrowserModel::Roles::EntryRole);

@@ -71,7 +71,7 @@ namespace AZ
                 auto ConvertIterator<Iterator, ReturnType, AZStd::input_iterator_tag>::GetPointer(AZStd::true_type castablePointer)->typename super::pointer
                 {
                     AZ_Assert(super::m_converter, "No valid conversion function set for ConvertIterator.");
-                    return &(m_converter(*super::m_iterator));
+                    return &(super::m_converter(*super::m_iterator));
                 }
 
                 template<typename Iterator, typename ReturnType>
@@ -162,7 +162,7 @@ namespace AZ
                 auto ConvertIterator<Iterator, ReturnType, AZStd::random_access_iterator_tag>::operator[](size_t index)->typename super::reference
                 {
                     AZ_Assert(super::m_converter, "No valid conversion function set for ConvertIterator.");
-                    return m_converter(super::m_iterator[index]);
+                    return super::m_converter(super::m_iterator[index]);
                 }
 
                 template<typename Iterator, typename ReturnType>

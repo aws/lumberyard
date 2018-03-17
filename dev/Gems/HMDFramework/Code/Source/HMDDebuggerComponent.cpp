@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "HMDFramework_precompiled.h"
 #include "HMDDebuggerComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>

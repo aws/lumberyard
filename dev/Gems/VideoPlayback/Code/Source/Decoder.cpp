@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "VideoPlayback_precompiled.h"
 
 #include "Decoder.h"
 #include <AzCore/std/functional.h>

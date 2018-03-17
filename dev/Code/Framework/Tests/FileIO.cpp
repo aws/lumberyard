@@ -171,7 +171,7 @@ namespace UnitTest
                 }
 
                 char currentDir[AZ_MAX_PATH_LEN];
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_FILE_API
                 GetCurrentDirectoryA(AZ_MAX_PATH_LEN, currentDir);
 #else
                 getcwd(currentDir, AZ_MAX_PATH_LEN);

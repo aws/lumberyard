@@ -28,14 +28,7 @@ def build(bld):
         uselib              = ['LUA'],
 
         # Compiler Specific
-        msvc_cxxflags       = [
-                               '/W4', # warning level
-                              ],
-
-        clang_cxxflags      = [
-                               '-Werror',  # warnings as errors
-                               '-Wall',    # warning level
-                             ],
+        msvc_cxxflags       = ['/W4'],
 
         # Platform Specific
         win_file_list       = ['azframework_win.waf_files'],

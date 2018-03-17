@@ -6,7 +6,7 @@
     <ProjectGuid>{34ace887-d4eb-4729-9d6f-ad77bf9864da}</ProjectGuid>
     <ProjectHome />
     <StartupFile>cloud_gem_portal.py</StartupFile>
-    <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\ResourceManager\;lib\</SearchPath>
+    <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\..\ResourceManager\;lib\;..\common-code\Utils\;..\common-code\RequestsAws4Auth\;..\common-code\ServiceClient_Python\;..\common-code\ResourceManagerCommon\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
@@ -30,13 +30,19 @@
     </Compile>
     <Compile Include="resource_management.py" />
     <Compile Include="swagger_json_navigator.py" />
-    <Compile Include="swagger_processor.py" />
+    <Compile Include="swagger_processor\interface.py" />
+    <Compile Include="swagger_processor\lambda_dispatch.py" />
+    <Compile Include="swagger_processor\__init__.py" />
+    <Compile Include="test\mock_swagger_json_navigator.py" />
     <Compile Include="test\test_unit_component_code_gen.py" />
     <Compile Include="test\test_unit_swagger_processor.py" />
+    <Compile Include="test\test_unit_swagger_processor_interfaces.py" />
+    <Compile Include="test\test_unit_swagger_processor_lambda_dispatch.py" />
     <Compile Include="test\__init__.py" />
     <Compile Include="update.py" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="swagger_processor\" />
     <Folder Include="templates\" />
     <Folder Include="templates\component-client\" />
     <Folder Include="test" />

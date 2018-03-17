@@ -10,15 +10,18 @@
 #
 ########################################################################################
 
+import os
 
 def build(bld):
+    java_src_root = bld.path.make_node(os.path.join('Source', 'Android', 'java'))
+
     bld.DefineGem(
         # File lists
-        # android_file_list   = ['microphone_android.waf_files'],
+        android_file_list   = ['microphone_android.waf_files'],
         # appletv_file_list   = ['microphone_appletv.waf_files'],
-        # darwin_file_list    = ['microphone_darwin.waf_files'],
+        darwin_file_list    = ['microphone_darwin.waf_files'],
         #
-        # ios_file_list       = ['microphone_ios.waf_files'],
+        ios_file_list       = ['microphone_ios.waf_files'],
         # linux_file_list     = ['microphone_linux.waf_files'],
         #
         win_file_list       = ['microphone_win.waf_files'],
@@ -26,6 +29,10 @@ def build(bld):
         # Add custom build options here
         includes            = [bld.Path('Code/CryEngine/CrySoundSystem/Common')],
 
+        android_java_src_path = [ java_src_root.abspath() ],
+        android_use           = ['SDL2_Android'],
+
         win_features        = ['crcfix'],
         win_lib             = ['ole32', 'libsamplerate'],
+
     )

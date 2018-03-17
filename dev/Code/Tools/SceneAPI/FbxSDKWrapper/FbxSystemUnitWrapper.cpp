@@ -13,7 +13,7 @@
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Trace.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include "FbxSystemUnitWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FbxSystemUnitWrapper.h>
 
 namespace AZ
 {
@@ -104,5 +104,5 @@ namespace AZ
             }
             return aznumeric_caster(m_fbxSystemUnit.GetConversionFactorTo(targetUnit));
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

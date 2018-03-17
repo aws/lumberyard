@@ -15,6 +15,7 @@ from errors import HandledError
 
 import os
 import imp
+import importlib
 import sys
 import os.path
 import traceback
@@ -135,8 +136,11 @@ class HookModule(object):
                 if self.__module is not None:
                     imp.release_lock()
                     return
-                added_paths = self.__add_plugin_paths()
+                added_paths, multi_imports = self.__add_plugin_paths()
                 try:
+                    for module, imported_gem_names in multi_imports.iteritems():
+                        loader = MultiImportModuleLoader(module, imported_gem_names)
+                        loader.load_module(module)
                     self.__module = imp.load_source(self.__hook_module_name, self.__module_path)
                 finally:
                     self.__remove_plugin_paths(added_paths)
@@ -160,9 +164,10 @@ class HookModule(object):
 
     def __add_plugin_paths(self):
         added_paths = [self.__module_directory, self.__module_lib_directory]
-        added_paths.extend(common_code.resolve_imports(self.context, self.__module_directory))
+        imported_paths, multi_imports = common_code.resolve_imports(self.context, self.__module_directory)
+        added_paths.extend(imported_paths)
         sys.path.extend(added_paths)
-        return added_paths
+        return added_paths, multi_imports
 
     def __remove_plugin_paths(self, added_paths):
         for added_path in added_paths: 
@@ -204,3 +209,51 @@ class HookModule(object):
         '''Path to the resource group or Gem directory where the hook is defined.'''
         return self.__module_directory
 
+class MultiImportModuleLoader(object):
+
+    '''A module loader that handles loading multiple sub-modules from different directories that need to be imported into a single module namespace.
+    The implementation here should be the local workspace equivalent of how zip_and_upload_lambda_function_code in uploader.py handles multi-imports.'''
+
+    def __init__(self, import_package_name, imported_gem_names):
+        self.__import_package_name = import_package_name
+        self.__imported_gem_names = sorted(imported_gem_names)
+
+    def load_module(self, fullname):
+        if fullname != self.__import_package_name:
+            raise ImportError('Unable to load {}. This loader only supports loading {}'.format(fullname, self.__import_package_name))
+
+        imp.acquire_lock()
+        try:
+            module_name = self.__import_package_name
+            module = sys.modules.get(module_name)
+            if module is not None:
+                return module
+
+            module = imp.new_module(module_name)
+            module.__file__ = '<CloudCanvas::import::{}>'.format(self.__import_package_name)
+            module.__loader__ = self
+            module.__path__ = []
+            module.__package__ = module_name
+
+            # Define __all__ for "from package import *".
+            module.__all__ = self.__imported_gem_names
+
+            module.imported_modules = {}
+
+            for gem_name in self.__imported_gem_names:
+                top_level_name = '{}__{}'.format(module_name, gem_name)
+                try:
+                    imported_module = importlib.import_module(top_level_name)
+                except:
+                    raise HandledError('Failed to import {} while importing "*.{}". {}'.format(top_level_name, module_name, traceback.format_exc()))
+
+                # Import each top level module ( MyModule__CloudGemName ) using the gem name as the sub-module name ( MyModule.CloudGemName ).
+                setattr(module, gem_name, imported_module)
+
+                # A dictionary of gem name to loaded module for easy iterating ( imported_modules = { CloudGemName: <the_loaded_CloudGemName_module> } ).
+                module.imported_modules[gem_name] = imported_module
+
+            sys.modules[module_name] = module
+            return module
+        finally:
+            imp.release_lock()

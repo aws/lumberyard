@@ -42,10 +42,6 @@ MCORE_INLINE float Quaternion::Length() const
 // normalizes the quaternion using approximation
 MCORE_INLINE Quaternion& Quaternion::Normalize()
 {
-#if   defined(MCORE_PLATFORM_WII)
-    PSQUATNormalize((::Quaternion*)this, (::Quaternion*)this);
-    return *this;
-#else
     // calculate 1.0 / length
     //  const float ooLen = 1.0f / Math::FastSqrt(x*x + y*y + z*z + w*w);
     //  const float ooLen = Math::FastInvSqrt(x*x + y*y + z*z + w*w);
@@ -58,7 +54,6 @@ MCORE_INLINE Quaternion& Quaternion::Normalize()
     w *= ooLen;
 
     return *this;
-#endif
 }
 
 

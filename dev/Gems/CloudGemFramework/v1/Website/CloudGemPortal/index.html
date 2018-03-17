@@ -24,11 +24,27 @@
 
     <script src="https://m.media-amazon.com/images/G/01/cloudcanvas/momentjs/moment.min._V511042353_.js"></script>    
 
-    <script src="cgp_bootstrap.js"></script>
+    <script>        
+        var parts = location.href.split("#")
+        var fragment, app, dependencies = ""
 
+        if(parts.length >= 2){
+            fragment = parts[1]
+            var f_parts = fragment.split("&")            
+            if(f_parts.length >= 2){
+                app = atob(f_parts[0])
+                dependencies = atob(f_parts[1])                
+            }
+        }
+    </script>
+
+    <script id='bootstrap'>
+        var bootstrap = { }
+    </script>    
+    
     <script src="config.js"></script>
 
-    <script>
+    <script id="systemjs_load">
         System.import('systemjs-hot-reloader').then((connect) => {
             connect({ host: '//localhost:3000' })
             System.import('app')

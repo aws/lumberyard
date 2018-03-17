@@ -31,6 +31,7 @@ def build(bld):
                            'QT5QML',
                            'QT5GUI',
                            'QT5WIDGETS',
+                           'QT5NETWORK', # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
                            'AWS_CPP_SDK_IDENTITY_METRICS',
                            ],
         includes        = [ bld.Path('Code/Sandbox'),

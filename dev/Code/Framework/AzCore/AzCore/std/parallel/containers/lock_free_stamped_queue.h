@@ -104,7 +104,7 @@ namespace AZStd
         //allocator must allow stale read access, as queue can access a node which has been deallocated
         AZ_Assert(m_allocator.is_stale_read_allowed(), "Allocator for lock_free_queue must allow stale reads");
 
-        node_type* sentinel = reinterpret_cast<node_ptr_type>(m_allocator.allocate(sizeof(node_type), alignment_of<node_type>::value));
+        node_type* sentinel = create_node();
         stamped_node_ptr nullStamp;
         nullStamp.m_node = NULL;
         nullStamp.m_stamp = 0;

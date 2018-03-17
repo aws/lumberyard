@@ -178,7 +178,7 @@ bool CStroboscope::SampleThreads(const SThreadInfo::TThreads& threads, float del
 ////////////////////////////////////////////////////////////////////////////
 bool CStroboscope::SampleThread(const SThreadInfo::SThreadHandle& thread, float delta, int frameId)
 {
-#if !defined(LINUX) && !defined(APPLE) && !defined(ORBIS)// No SuspendThread / ResumeThread with pthreads natively
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_STROBOSCOPE_PTHREADS// No SuspendThread / ResumeThread with pthreads natively
     if (SuspendThread(thread.Handle) != -1)
     {
         SStrobosopeSamplingData::SCallstackSampling callstack;

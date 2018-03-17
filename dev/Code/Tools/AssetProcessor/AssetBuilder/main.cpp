@@ -16,15 +16,18 @@
 int main(int argc, char** argv)
 {
     AssetBuilderApplication app(&argc, &argv);
-    TraceMessageHook traceMessageHook; // Hook AZ Debug messages and redirect them to stdout
+    AssetBuilder::TraceMessageHook traceMessageHook; // Hook AZ Debug messages and redirect them to stdout
+    traceMessageHook.EnableTraceContext(true);
     AZ::Debug::Trace::HandleExceptions(true);
 
     app.Start(AzFramework::Application::Descriptor());
+    traceMessageHook.EnableDebugMode(app.IsInDebugMode());
 
     bool result = false;
 
     BuilderBus::BroadcastResult(result, &BuilderBus::Events::Run);
 
+    traceMessageHook.EnableTraceContext(false);
     app.Stop();
     
     return result ? 0 : 1;

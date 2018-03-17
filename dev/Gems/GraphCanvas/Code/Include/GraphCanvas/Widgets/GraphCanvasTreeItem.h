@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <qabstractitemmodel.h>
+#include <QAbstractItemModel>
 
 #include <AzCore/std/functional_basic.h>
 

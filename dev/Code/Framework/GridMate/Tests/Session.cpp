@@ -9,11 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <AzCore/PlatformDef.h>
-#ifdef AZ_PLATFORM_WINDOWS
-#   define WIN32_LEAN_AND_MEAN
-#   include <Windows.h>
-#endif
+#include <AzCore/PlatformIncl.h>
 
 #include "Tests.h"
 
@@ -222,13 +218,13 @@ namespace UnitTest
                 , m_connections(0) {}
 
             // Callback that notifies the title when a game search's query have completed.
-            virtual void OnGridSearchComplete(GridSearch* gridSearch)
+            void OnGridSearchComplete(GridSearch* gridSearch) override
             {
                 AZ_TEST_ASSERT(gridSearch->IsDone() == true);
             }
 
             // Callback that notifies the title when a new player joins the game session.
-            virtual void OnMemberJoined(GridSession* session, GridMember* member)
+            void OnMemberJoined(GridSession* session, GridMember* member) override
             {
                 if (session == m_session)
                 {
@@ -239,7 +235,7 @@ namespace UnitTest
                 }
             }
             // Callback that notifies the title that a player is leaving the game session. member pointer is NOT valid after the callback returns.
-            virtual void OnMemberLeaving(GridSession* session, GridMember* member)
+            void OnMemberLeaving(GridSession* session, GridMember* member) override
             {
                 if (session == m_session)
                 {
@@ -250,13 +246,14 @@ namespace UnitTest
                 }
             }
             /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-            virtual void OnMemberKicked(GridSession* session, GridMember* member)
+            void OnMemberKicked(GridSession* session, GridMember* member, AZ::u8 reason) override
             {
                 (void)session;
                 (void)member;
+                (void)reason;
             }
 
-            virtual void OnSessionError(GridSession* session, const string& /*errorMsg*/)
+            void OnSessionError(GridSession* session, const string& /*errorMsg*/) override
             {
                 (void)session;
 #ifndef AZ_LAN_TEST_MAIN_THREAD_BLOCKED  // we will receive an error is we block for a long time
@@ -264,7 +261,7 @@ namespace UnitTest
 #endif
             }
             // Callback that notifies the title when a session will be left. session pointer is NOT valid after the callback returns.
-            virtual void OnSessionDelete(GridSession* session)
+            void OnSessionDelete(GridSession* session) override
             {
                 if (session == m_session)
                 {
@@ -591,35 +588,36 @@ namespace UnitTest
         IGridMate*   m_gridMates[k_numMachines];
     public:
         // Callback that notifies the title when a game search's query have completed.
-        virtual void OnGridSearchComplete(GridSearch* gridSearch)
+        void OnGridSearchComplete(GridSearch* gridSearch) override
         {
             AZ_TEST_ASSERT(gridSearch->IsDone() == true);
         }
         // Callback that notifies the title when a new player joins the game session.
-        virtual void OnMemberJoined(GridSession* session, GridMember* member)
+        void OnMemberJoined(GridSession* session, GridMember* member) override
         {
             (void)session;
             (void)member;
         }
         // Callback that notifies the title that a player is leaving the game session. member pointer is NOT valid after the callback returns.
-        virtual void OnMemberLeaving(GridSession* session, GridMember* member)
+        void OnMemberLeaving(GridSession* session, GridMember* member) override
         {
             (void)session;
             (void)member;
         }
         /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-        virtual void OnMemberKicked(GridSession* session, GridMember* member)
+        void OnMemberKicked(GridSession* session, GridMember* member, AZ::u8 reason) override
         {
             (void)session;
             (void)member;
+            (void)reason;
         }
-        virtual void OnSessionError(GridSession* session, const string& /*errorMsg*/)
+        void OnSessionError(GridSession* session, const string& /*errorMsg*/) override
         {
             (void)session;
             AZ_TEST_ASSERT(false);
         }
         // Callback that notifies the title when a session will be left. session pointer is NOT valid after the callback returns.
-        virtual void OnSessionDelete(GridSession* session)
+        void OnSessionDelete(GridSession* session) override
         {
             int i;
             for (i = 0; i < k_numMachines; ++i)
@@ -825,29 +823,30 @@ namespace UnitTest
         IGridMate*     m_gridMates[k_numMachines];
     public:
         // Callback that notifies the title when a game search's query have completed.
-        virtual void OnGridSearchComplete(GridSearch* gridSearch)
+        void OnGridSearchComplete(GridSearch* gridSearch) override
         {
             AZ_TEST_ASSERT(gridSearch->IsDone() == true);
         }
         // Callback that notifies the title when a new player joins the game session.
-        virtual void OnMemberJoined(GridSession* session, GridMember* member)
+        void OnMemberJoined(GridSession* session, GridMember* member) override
         {
             (void)session;
             (void)member;
         }
         // Callback that notifies the title that a player is leaving the game session. member pointer is NOT valid after the callback returns.
-        virtual void OnMemberLeaving(GridSession* session, GridMember* member)
+        void OnMemberLeaving(GridSession* session, GridMember* member) override
         {
             (void)session;
             (void)member;
         }
         /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-        virtual void OnMemberKicked(GridSession* session, GridMember* member)
+        void OnMemberKicked(GridSession* session, GridMember* member, AZ::u8 reason) override
         {
             (void)session;
             (void)member;
+            (void)reason;
         }
-        virtual void OnSessionError(GridSession* session, const string& /*errorMsg*/)
+        void OnSessionError(GridSession* session, const string& /*errorMsg*/) override
         {
             (void)session;
 #ifndef AZ_LAN_TEST_MAIN_THREAD_BLOCKED  // we will receive an error is we block for a long time
@@ -855,7 +854,7 @@ namespace UnitTest
 #endif
         }
         // Callback that notifies the title when a session will be left. session pointer is NOT valid after the callback returns.
-        virtual void OnSessionDelete(GridSession* session)
+        void OnSessionDelete(GridSession* session) override
         {
             int i;
             for (i = 0; i < k_numMachines; ++i)
@@ -1194,18 +1193,18 @@ namespace UnitTest
         int m_numUpdates;
     public:
         // Callback that notifies the title when a game search's query have completed.
-        virtual void OnGridSearchComplete(GridSearch* gridSearch)
+        void OnGridSearchComplete(GridSearch* gridSearch) override
         {
             AZ_TEST_ASSERT(gridSearch->IsDone() == true);
         }
         // Callback that notifies the title when a new player joins the game session.
-        virtual void OnMemberJoined(GridSession* session, GridMember* member)
+        void OnMemberJoined(GridSession* session, GridMember* member) override
         {
             (void)session;
             (void)member;
         }
         // Callback that notifies the title that a player is leaving the game session. member pointer is NOT valid after the callback returns.
-        virtual void OnMemberLeaving(GridSession* session, GridMember* member)
+        void OnMemberLeaving(GridSession* session, GridMember* member) override
         {
             (void)member;
             if (session->GetNumberOfMembers() == 2) // if the last member (not us) is leaving kill the session!
@@ -1214,18 +1213,19 @@ namespace UnitTest
             }
         }
         /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-        virtual void OnMemberKicked(GridSession* session, GridMember* member)
+        void OnMemberKicked(GridSession* session, GridMember* member, AZ::u8 reason) override
         {
             (void)session;
             (void)member;
+            (void)reason;
         }
-        virtual void OnSessionError(GridSession* session, const string& /*errorMsg*/)
+        void OnSessionError(GridSession* session, const string& /*errorMsg*/) override
         {
             (void)session;
             AZ_TEST_ASSERT(false);
         }
         // Callback that notifies the title when a session will be left. session pointer is NOT valid after the callback returns.
-        virtual void OnSessionDelete(GridSession* session)
+        void OnSessionDelete(GridSession* session) override
         {
             int i;
             for (i = 0; i < k_numMachines; ++i)
@@ -1240,18 +1240,18 @@ namespace UnitTest
             m_sessions[i] = nullptr;
         }
 
-        virtual void OnMigrationStart(GridSession* session)
+        void OnMigrationStart(GridSession* session) override
         {
             (void)session;
             AZ_TracePrintf("GridMate", "Migration start on %s at frame %d\n", session->GetMyMember()->GetId().ToAddress().c_str(), m_numUpdates);
         }
-        virtual void OnMigrationElectHost(GridSession* session, GridMember*& newHost)
+        void OnMigrationElectHost(GridSession* session, GridMember*& newHost) override
         {
             (void)session;
             (void)newHost;
             AZ_TracePrintf("GridMate", "Migration elect host on %s at frame %d\n", session->GetMyMember()->GetId().ToAddress().c_str(), m_numUpdates);
         }
-        virtual void OnMigrationEnd(GridSession* session, GridMember* newHost)
+        void OnMigrationEnd(GridSession* session, GridMember* newHost) override
         {
             (void)session;
             (void)newHost;
@@ -1507,18 +1507,18 @@ namespace UnitTest
         int m_numUpdates;
     public:
         // Callback that notifies the title when a game search's query have completed.
-        virtual void OnGridSearchComplete(GridSearch* gridSearch)
+        void OnGridSearchComplete(GridSearch* gridSearch) override
         {
             AZ_TEST_ASSERT(gridSearch->IsDone() == true);
         }
         // Callback that notifies the title when a new player joins the game session.
-        virtual void OnMemberJoined(GridSession* session, GridMember* member)
+        void OnMemberJoined(GridSession* session, GridMember* member) override
         {
             (void)session;
             (void)member;
         }
         // Callback that notifies the title that a player is leaving the game session. member pointer is NOT valid after the callback returns.
-        virtual void OnMemberLeaving(GridSession* session, GridMember* member)
+        void OnMemberLeaving(GridSession* session, GridMember* member) override
         {
             (void)member;
             if (session->GetNumberOfMembers() == 2) // if the last member (not us) is leaving kill the session!
@@ -1527,19 +1527,20 @@ namespace UnitTest
             }
         }
         /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-        virtual void OnMemberKicked(GridSession* session, GridMember* member)
+        void OnMemberKicked(GridSession* session, GridMember* member, AZ::u8 reason) override
         {
             (void)session;
             (void)member;
+            (void)reason;
         }
-        virtual void OnSessionError(GridSession* session, const string& /*errorMsg*/)
+        void OnSessionError(GridSession* session, const string& /*errorMsg*/) override
         {
             (void)session;
             // On this test we will get a open port error because we have multiple hosts. This is ok, since we test migration here!
             //AZ_TEST_ASSERT(false);
         }
         // Callback that notifies the title when a session will be left. session pointer is NOT valid after the callback returns.
-        virtual void OnSessionDelete(GridSession* session)
+        void OnSessionDelete(GridSession* session) override
         {
             int i;
             for (i = 0; i < k_numMachines; ++i)
@@ -1554,18 +1555,18 @@ namespace UnitTest
             m_sessions[i] = nullptr;
         }
 
-        virtual void OnMigrationStart(GridSession* session)
+        void OnMigrationStart(GridSession* session) override
         {
             (void)session;
             AZ_TracePrintf("GridMate", "Migration start on %s at frame %d\n", session->GetMyMember()->GetId().ToAddress().c_str(), m_numUpdates);
         }
-        virtual void OnMigrationElectHost(GridSession* session, GridMember*& newHost)
+        void OnMigrationElectHost(GridSession* session, GridMember*& newHost) override
         {
             (void)session;
             (void)newHost;
             AZ_TracePrintf("GridMate", "Migration elect host on %s at frame %d\n", session->GetMyMember()->GetId().ToAddress().c_str(), m_numUpdates);
         }
-        virtual void OnMigrationEnd(GridSession* session, GridMember* newHost)
+        void OnMigrationEnd(GridSession* session, GridMember* newHost) override
         {
             (void)session;
             (void)newHost;
@@ -1846,18 +1847,18 @@ namespace UnitTest
         int m_numUpdates;
     public:
         // Callback that notifies the title when a game search's query have completed.
-        virtual void OnGridSearchComplete(GridSearch* gridSearch)
+        void OnGridSearchComplete(GridSearch* gridSearch) override
         {
             AZ_TEST_ASSERT(gridSearch->IsDone() == true);
         }
         // Callback that notifies the title when a new player joins the game session.
-        virtual void OnMemberJoined(GridSession* session, GridMember* member)
+        void OnMemberJoined(GridSession* session, GridMember* member) override
         {
             (void)session;
             (void)member;
         }
         // Callback that notifies the title that a player is leaving the game session. member pointer is NOT valid after the callback returns.
-        virtual void OnMemberLeaving(GridSession* session, GridMember* member)
+        void OnMemberLeaving(GridSession* session, GridMember* member) override
         {
             (void)member;
             if (session->GetNumberOfMembers() == 2) // if the last member (not us) is leaving kill the session!
@@ -1866,19 +1867,20 @@ namespace UnitTest
             }
         }
         /// Callback that host decided to kick a member. You will receive a OnMemberLeaving when the actual member leaves the session.
-        virtual void OnMemberKicked(GridSession* session, GridMember* member)
+        void OnMemberKicked(GridSession* session, GridMember* member, AZ::u8 reason) override
         {
             (void)session;
             (void)member;
+            (void)reason;
         }
-        virtual void OnSessionError(GridSession* session, const string& /*errorMsg*/)
+        void OnSessionError(GridSession* session, const string& /*errorMsg*/) override
         {
             (void)session;
             // On this test we will get a open port error because we have multiple hosts. This is ok, since we test migration here!
             //AZ_TEST_ASSERT(false);
         }
         // Callback that notifies the title when a session will be left. session pointer is NOT valid after the callback returns.
-        virtual void OnSessionDelete(GridSession* session)
+        void OnSessionDelete(GridSession* session) override
         {
             int i;
             for (i = 0; i < k_numMachines; ++i)
@@ -1892,18 +1894,18 @@ namespace UnitTest
             AZ_TEST_ASSERT(i < k_numMachines);
             m_sessions[i] = nullptr;
         }
-        virtual void OnMigrationStart(GridSession* session)
+        void OnMigrationStart(GridSession* session) override
         {
             (void)session;
             AZ_TracePrintf("GridMate", "Migration start on %s at frame %d\n", session->GetMyMember()->GetId().ToAddress().c_str(), m_numUpdates);
         }
-        virtual void OnMigrationElectHost(GridSession* session, GridMember*& newHost)
+        void OnMigrationElectHost(GridSession* session, GridMember*& newHost) override
         {
             (void)session;
             (void)newHost;
             AZ_TracePrintf("GridMate", "Migration elect host on %s at frame %d\n", session->GetMyMember()->GetId().ToAddress().c_str(), m_numUpdates);
         }
-        virtual void OnMigrationEnd(GridSession* session, GridMember* newHost)
+        void OnMigrationEnd(GridSession* session, GridMember* newHost) override
         {
             (void)session;
             (void)newHost;
@@ -1946,7 +1948,7 @@ namespace UnitTest
             //StartDrilling("lanmigration2");
         }
 
-        virtual ~Integ_LANSessionMigarationTestTest3()
+        ~Integ_LANSessionMigarationTestTest3() override
         {
             StopGridMateService<LANSessionService>(m_gridMates[0]);
 

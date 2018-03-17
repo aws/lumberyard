@@ -13,6 +13,8 @@
 #include <AzFramework/Input/Devices/VirtualKeyboard/InputDeviceVirtualKeyboard.h>
 #include <AzFramework/Input/Utils/ProcessRawInputEventQueues.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
@@ -35,6 +37,33 @@ namespace AzFramework
         EditEnter,
         NavigationBack
     }};
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboard::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // Unfortunately it doesn't seem possible to reflect anything through BehaviorContext
+            // using lambdas which capture variables from the enclosing scope. So we are manually
+            // reflecting all input channel names, instead of just iterating over them like this:
+            //
+            //  auto classBuilder = behaviorContext->Class<InputDeviceVirtualKeyboard>();
+            //  for (const InputChannelId& channelId : Command::All)
+            //  {
+            //      const char* channelName = channelId.GetName();
+            //      classBuilder->Constant(channelName, [channelName]() { return channelName; });
+            //  }
+
+            behaviorContext->Class<InputDeviceVirtualKeyboard>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Constant("name", BehaviorConstant(Id.GetName()))
+
+                ->Constant(Command::EditClear.GetName(), BehaviorConstant(Command::EditClear.GetName()))
+                ->Constant(Command::EditEnter.GetName(), BehaviorConstant(Command::EditEnter.GetName()))
+                ->Constant(Command::NavigationBack.GetName(), BehaviorConstant(Command::NavigationBack.GetName()))
+            ;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceVirtualKeyboard::InputDeviceVirtualKeyboard()

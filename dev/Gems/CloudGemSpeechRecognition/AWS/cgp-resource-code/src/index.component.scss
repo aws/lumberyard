@@ -97,46 +97,43 @@ div.sidebar {
     width: 13%;
     padding-top: 10px;
     .add-intent {
-        height: 20px;
+        min-height: 20px;
+        overflow: hidden;
         .add-button{
             margin-top: 1px;
         }
         .add-button:hover{
             color: $white;
         }
-    }  
-}
-
-div.sidebar .option-button {
-    display: inline;
-    background-color: inherit;
-    color: black;
-    padding: 5px;
-    width: 100%;
-    border: none;
-    outline: none;
-    text-align: left;
-    cursor: pointer;
-    transition: 0.3s;
-    .remove-intent {
-        display: none;
     }
-}
-
-div.sidebar button:hover {
-    color: $primary-color;
-    .remove-intent {
-        padding-top: 3px;
+    .option-button {
+        background-color: inherit;
+        color: black;
+        padding: 5px;
+        width: 100%;
+        border: none;
+        outline: none;
+        text-align: left;
         cursor: pointer;
-        display: inline;
-        color: $black;
+        transition: 0.3s;
+        .remove-intent {
+            display: none;
+        }
     }
-}
-
-div.sidebar button.active {
-    color: $primary-color;
-    font-weight: bold;
-    border-left: 4px solid $primary-color;
+    .option-button:hover {
+        color: $primary-color;
+        .remove-intent {
+            padding-top: 3px;
+            cursor: pointer;
+            display: inline;
+            color: $black;
+        }
+    }
+    .option-button.active {
+        color: $primary-color;
+        font-weight: bold;
+        border-left: 4px solid $primary-color;
+    }
 }
 
 .sidebar-section {

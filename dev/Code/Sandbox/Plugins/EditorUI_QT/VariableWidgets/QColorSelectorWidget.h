@@ -13,17 +13,17 @@
 #define QColorSelectorWidget_h__
 
 #include <QWidget>
-#include "qgridlayout.h"
-#include "qpushbutton.h"
-#include "qbrush.h"
-#include "qlabel.h"
-#include "qcombobox.h"
-#include "qlineedit.h"
-#include "qbuttongroup.h"
-#include "qscrollarea.h"
+#include <QGridLayout>
+#include <QPushButton>
+#include <QBrush>
+#include <QLabel>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QButtonGroup>
+#include <QScrollArea>
 #include <QScrollBar>
-#include "qgroupbox.h"
-#include "qmenu.h"
+#include <QGroupBox>
+#include <QMenu>
 
 #include <functional>
 #include "QPresetSelectorWidget.h"

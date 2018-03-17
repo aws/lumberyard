@@ -32,7 +32,7 @@ BetterPseudoRandom::BetterPseudoRandom()
         AZ_Warning("System", false, "CryptAcquireContext failed with 0x%08x\n", GetLastError());
         m_generatorHandle = 0;
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_PS4)
+#elif AZ_TRAIT_PSUEDO_RANDOM_USE_FILE
     m_generatorHandle = fopen("/dev/urandom", "r");
 #endif
 }
@@ -48,7 +48,7 @@ BetterPseudoRandom::~BetterPseudoRandom()
     {
         CryptReleaseContext(m_generatorHandle, 0);
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_PS4)
+#elif AZ_TRAIT_PSUEDO_RANDOM_USE_FILE
     if (m_generatorHandle)
     {
         fclose(m_generatorHandle);
@@ -72,7 +72,7 @@ bool BetterPseudoRandom::GetRandom(void* data, size_t dataSize)
         AZ_TracePrintf("System", "Failed to call CryptGenRandom!");
         return false;
     }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_PS4)
+#elif AZ_TRAIT_PSUEDO_RANDOM_USE_FILE
     if (!m_generatorHandle)
     {
         return false;

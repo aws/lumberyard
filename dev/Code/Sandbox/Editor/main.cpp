@@ -13,15 +13,6 @@
 #include <Include/SandboxAPI.h>
 #include <platform_impl.h>
 
-#if defined(AZ_PLATFORM_WINDOWS)
-#pragma comment(lib, "Shell32.lib")
-#ifdef _DEBUG
-#pragma comment(lib, "qtmaind.lib")
-#else
-#pragma comment(lib, "qtmain.lib")
-#endif
-#endif
-
 int SANDBOX_API CryEditMain(int argc, char* argv[]);
 
 int main(int argc, char* argv[])

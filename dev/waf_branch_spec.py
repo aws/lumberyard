@@ -51,7 +51,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
     ENGINE_JSON_DATA = json.load(ENGINE_FILE)
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
-LUMBERYARD_BUILD = 526767
+LUMBERYARD_BUILD = 570429
 LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
 
 # validate the Lumberyard version string above
@@ -130,8 +130,7 @@ PLATFORM_CONFIGURATION_FILTER = {
                                                                             'android_armv7_clang',
                                                                             'android_armv8_clang',
                                                                             'ios',
-                                                                            'appletv',
-                                                                            'linux_x64')
+                                                                            'appletv')
 }
 
 ## what conditions do you want a monolithic build ?  Uses the same matching rules as other settings

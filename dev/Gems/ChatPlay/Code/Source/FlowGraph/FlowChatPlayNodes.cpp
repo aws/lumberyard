@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #include <ChatPlay/ChatPlayTypes.h>
@@ -257,7 +257,7 @@ namespace ChatPlay
         if (!ChatPlayUtils::IsValidChannelName(m_channelId))
         {
             // Don't do anything else if the channel name is not valid
-            AZ_Warning("ChatPlay", false, "The entered Channel name %s is invalid.", m_channelId);
+            AZ_Warning("ChatPlay", false, "The entered Channel name %s is invalid.", m_channelId.c_str());
             return false;
         }
 

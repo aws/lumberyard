@@ -75,6 +75,8 @@
     <file>res/ball_offline.ico</file>
     <file>res/ball_online.ico</file>
     <file>res/ball_pending.ico</file>
+    <file>res/p4.ico</file>
+    <file>res/p4_error.ico</file>
     <file>res/source_control.ico</file>
   </qresource>
   <qresource prefix="/Application">

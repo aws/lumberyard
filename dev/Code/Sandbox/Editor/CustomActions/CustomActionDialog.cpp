@@ -94,7 +94,7 @@ bool CCustomActionDialog::OpenViewForCustomAction()
     CRY_ASSERT(pCustomActionManager != NULL);
     if (pCustomActionManager)
     {
-        ICustomAction* pCustomAction = pCustomActionManager->GetCustomActionFromLibrary(m_customAction.toLatin1().data());
+        ICustomAction* pCustomAction = pCustomActionManager->GetCustomActionFromLibrary(m_customAction.toUtf8().data());
         if (pCustomAction)
         {
             CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
@@ -120,7 +120,7 @@ void CCustomActionDialog::OnNewBtn()
 
     if (GetIEditor()->GetCustomActionManager()->NewCustomAction(filename))
     {
-        m_customAction = PathUtil::GetFileName(filename.toLatin1().data());
+        m_customAction = PathUtil::GetFileName(filename.toUtf8().data());
 
         bool bResult = OpenViewForCustomAction();
         if (bResult)

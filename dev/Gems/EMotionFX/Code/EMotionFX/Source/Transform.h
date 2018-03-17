@@ -14,6 +14,7 @@
 
 // include required headers
 #include "EMotionFXConfig.h"
+#include <MCore/Source/MemoryCategoriesCore.h>
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Matrix4.h>
@@ -27,7 +28,7 @@ namespace EMotionFX
 
     class EMFX_API MCORE_ALIGN_PRE(16) Transform
     {
-        MCORE_MEMORYOBJECTCATEGORY(Transform, EMFX_SIMD_ALIGNMENT, EMFX_MEMCATEGORY_TRANSFORM);
+        MCORE_MEMORYOBJECTCATEGORY(Transform, MCore::MCORE_SIMD_ALIGNMENT, EMFX_MEMCATEGORY_TRANSFORM);
 
     public:
         MCORE_INLINE Transform()

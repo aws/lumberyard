@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRY3DENGINE_TERRAIN_WATER_H
 #pragma once
 
+#include <AzCore/Math/Vector2.h>
+
 #define CYCLE_BUFFERS_NUM    4
 
 class COcean
@@ -98,6 +100,7 @@ private:
 
     float m_fRECustomData[12]; // used for passing data to renderer
     float m_fREOceanBottomCustomData[8]; // used for passing data to renderer
+    AZ::Vector2 m_windUvTransform; // used for texture offset due to wind
     bool m_bOceanFFT;
 
     // Ocean fog related members

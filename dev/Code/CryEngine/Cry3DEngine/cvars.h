@@ -182,6 +182,7 @@ struct CVars
     int e_CoverageBufferReproj;
     int e_CoverageBufferRastPolyLimit;
     int e_CoverageBufferShowOccluder;
+    int e_CoverageBufferNumberFramesLatency;
     DeclareConstFloatCVar(e_ViewDistRatioPortals);
     DeclareConstIntCVar(e_ParticlesLights, 1);
     DeclareConstFloatCVar(e_CoverageBufferOccludersLodRatio);

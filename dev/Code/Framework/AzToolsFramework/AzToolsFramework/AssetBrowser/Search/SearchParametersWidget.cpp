@@ -12,7 +12,7 @@
 
 #include "SearchParametersWidget.h"
 #include "AssetBrowser/Search/ui_SearchParametersWidget.h"
-#include <UI/UICore/QBetterLabel.h>
+#include <AzQtComponents/Components/ExtendedLabel.h>
 
 namespace AzToolsFramework
 {
@@ -25,7 +25,7 @@ namespace AzToolsFramework
         {
             m_ui->setupUi(this);
             hide();
-            connect(m_ui->m_clearFiltersButton, &QBetterLabel::clicked, this, &SearchParametersWidget::ClearAllSignal);
+            connect(m_ui->m_clearFiltersButton, &AzQtComponents::ExtendedLabel::clicked, this, &SearchParametersWidget::ClearAllSignal);
         }
 
         SearchParametersWidget::~SearchParametersWidget() = default;

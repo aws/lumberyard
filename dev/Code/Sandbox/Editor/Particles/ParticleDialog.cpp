@@ -51,8 +51,6 @@
 #include <QKeyEvent>
 #include <QSettings>
 
-#define IDC_PARTICLES_TREE AFX_IDW_PANE_FIRST
-
 #define EDITOR_OBJECTS_PATH QString("Editor/Objects/")
 
 //////////////////////////////////////////////////////////////////////////
@@ -302,7 +300,7 @@ bool CParticleDialog::AddItem(bool bFromParent)
     }
 
     const QString fullName = m_pItemManager->MakeFullItemName(m_pLibrary, dlg.GetGroup(), dlg.GetString());
-    if (m_pItemManager->FindItemByName(fullName.toLatin1().data()))
+    if (m_pItemManager->FindItemByName(fullName))
     {
         QMessageBox::warning(this, QString(), tr("Item with name %1 already exists").arg(fullName));
         return false;
@@ -313,7 +311,7 @@ bool CParticleDialog::AddItem(bool bFromParent)
     if (!dlg.GetGroup().isEmpty())
     {
         const QString parentName = m_pLibrary->GetName() + QStringLiteral(".") + dlg.GetGroup();
-        if (CParticleItem* pParent = (CParticleItem*)m_pPartManager->FindItemByName(parentName.toLatin1().data()))
+        if (CParticleItem* pParent = (CParticleItem*)m_pPartManager->FindItemByName(parentName))
         {
             pParticles->SetParent(pParent);
         }
@@ -1080,7 +1078,7 @@ CParticleDialog* CParticleDialog::GetCurrentInstance()
 }
 
 //////////////////////////////////////////////////////////////////////////
-dll_string ParticleResourceSelector(const SResourceSelectorContext& x, const char* previousValue)
+QString ParticleResourceSelector(const SResourceSelectorContext& x, const QString& previousValue)
 {
     QStringList items;
     const char* openLibraryText = "[ Open Particle Database ]";
@@ -1110,7 +1108,7 @@ dll_string ParticleResourceSelector(const SResourceSelectorContext& x, const cha
         }
         else
         {
-            return dialog.GetSelectedItem().toLatin1().constData();
+            return dialog.GetSelectedItem().toUtf8().constData();
         }
     }
     return previousValue;

@@ -435,14 +435,11 @@ namespace LUAEditor
 
             if (checkWriteIsWrong)
             {
-                DWORD dwAttrib = GetFileAttributesA(newInfo.m_sourceControlInfo.m_filePath.c_str());
-            	if (dwAttrib != INVALID_FILE_ATTRIBUTES)
-            	{
-                    if (!(dwAttrib & FILE_ATTRIBUTE_READONLY))
-            		{
-            			statusString += tr(" But Writable?");
-            		}
-            	}
+                QFileInfo fi(newInfo.m_sourceControlInfo.m_filePath.c_str());
+                if (fi.exists() && fi.isWritable())
+                {
+                    statusString += tr(" But Writable?");
+                }
             }
 
             if ((!newInfo.m_bSourceControl_BusyRequestingEdit) && (!m_Info.m_bSourceControl_BusyGettingStats))

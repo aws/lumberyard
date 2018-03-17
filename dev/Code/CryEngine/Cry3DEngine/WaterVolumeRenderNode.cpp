@@ -23,8 +23,6 @@
 #include <AzCore/Math/Plane.h>
 #include <AzCore/Math/Vector2.h>
 
-DECLARE_JOB("CWaterVolume_Render", TCWaterVolume_Render, CWaterVolumeRenderNode::Render_JobEntry);
-
 //////////////////////////////////////////////////////////////////////////
 // private triangulation code
 namespace WaterVolumeRenderNodeUtils
@@ -996,7 +994,7 @@ void CWaterVolumeRenderNode::Render(const SRendParams& rParam, const SRenderingP
     Render_JobEntry(rParam, passInfo, SRendItemSorter(rParam.rendItemSorter));
 }
 
-void CWaterVolumeRenderNode::Render_JobEntry(SRendParams rParam, SRenderingPassInfo passInfo, SRendItemSorter rendItemSorter)
+void CWaterVolumeRenderNode::Render_JobEntry(const SRendParams& rParam, const SRenderingPassInfo& passInfo, SRendItemSorter rendItemSorter)
 {
     FUNCTION_PROFILER_3DENGINE;
 

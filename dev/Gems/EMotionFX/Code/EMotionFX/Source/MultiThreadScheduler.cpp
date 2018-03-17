@@ -230,7 +230,7 @@ namespace EMotionFX
                     continue;
                 }
 
-                MCore::Job* newJob = MCore::Job::CreateWithoutLock( [this, c, timePassedInSeconds, actorInstance](const MCore::Job* job)
+                MCore::Job* newJob = MCore::Job::CreateWithoutLock( [this, timePassedInSeconds, actorInstance](const MCore::Job* job)
                         {
                             actorInstance->SetThreadIndex(job->GetThreadIndex());
 

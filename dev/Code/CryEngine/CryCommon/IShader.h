@@ -62,12 +62,11 @@ struct SSkinningData;
 struct SSTexSamplerFX;
 struct SShaderTextureSlot;
 
-namespace JobManager {
-    struct SJobState;
-}
 
 namespace AZ
 {
+    class LegacyJobExecutor;
+
     namespace Vertex
     {
         class Format;
@@ -769,8 +768,8 @@ _MS_ALIGN(16) struct SSkinningData
     DualQuat*               pBoneQuatsS;
     Matrix34*               pBoneMatrices;
     JointIdType*            pRemapTable;
-    JobManager::SJobState*  pAsyncJobs;
-    JobManager::SJobState*  pAsyncDataJobs;
+    AZ::LegacyJobExecutor*  pAsyncJobExecutor;
+    AZ::LegacyJobExecutor*  pAsyncDataJobExecutor;
     SSkinningData*          pPreviousSkinningRenderData; // used for motion blur
     uint32                  remapGUID;
     void*                   pCharInstCB; // used if per char instance cbs are available in renderdll (d3d11+);
@@ -3112,10 +3111,10 @@ struct SRenderLight
 
     float m_fFogRadialLobe;                         // The blend ratio of two radial lobe for volumetric fog.
 
-    uint8 m_nAnimSpeed;
-    uint8 m_nLightStyle;
-    uint8 m_nLightPhase;
-    uint8 m_LensOpticsFrustumAngle;                 // from 0 to 255, The range will be adjusted from 0 to 360 when used.
+    AZ::u8 m_nAnimSpeed;
+    AZ::u8 m_nLightStyle;
+    AZ::u8 m_nLightPhase;
+    AZ::u8 m_LensOpticsFrustumAngle;                 // from 0 to 255, The range will be adjusted from 0 to 360 when used.
 
     IClipVolume* m_pClipVolumes[2];
 

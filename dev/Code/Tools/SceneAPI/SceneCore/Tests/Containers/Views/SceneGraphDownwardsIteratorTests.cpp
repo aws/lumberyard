@@ -92,32 +92,36 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, MakeSceneGraphDownwardsIterator_FunctionComparedWithExplicitlyDeclaredIterator_IteratorsAreEqual)
                 {
-                    auto lhsIterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, m_graph.GetNameStorage().begin());
-                    auto rhsIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(m_graph, m_graph.GetNameStorage().begin());
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto lhsIterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->m_graph.GetNameStorage().begin());
+                    auto rhsIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     EXPECT_EQ(lhsIterator, rhsIterator);
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, MakeSceneGraphDownwardsIterator_ExtendedFunctionComparedWithExplicitlyDeclaredIterator_IteratorsAreEqual)
                 {
-                    auto lhsIterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetRootHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
-                    auto rhsIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(m_graph, GetRootHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto lhsIterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetRootHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
+                    auto rhsIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(this->m_graph, this->GetRootHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
                     EXPECT_EQ(lhsIterator, rhsIterator);
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, MakeSceneGraphDownwardsIterator_NodeAndHierarchyVersions_IteratorsAreEqual)
                 {
-                    SceneGraph::NodeIndex index = m_graph.Find("A.C");
-                    auto hierarchy = m_graph.ConvertToHierarchyIterator(index);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    SceneGraph::NodeIndex index = this->m_graph.Find("A.C");
+                    auto hierarchy = this->m_graph.ConvertToHierarchyIterator(index);
 
-                    auto indexIterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, index, m_graph.GetNameStorage().begin(), true);
-                    auto hierarchyIterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, hierarchy, m_graph.GetNameStorage().begin(), true);
+                    auto indexIterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, index, this->m_graph.GetNameStorage().begin(), true);
+                    auto hierarchyIterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, hierarchy, this->m_graph.GetNameStorage().begin(), true);
                     EXPECT_EQ(indexIterator, hierarchyIterator);
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, MakeSceneGraphDownwardsView_FunctionComparedWithExplicitlyDeclaredIterators_ViewHasEquivalentBeginAndEnd)
                 {
-                    auto view = MakeSceneGraphDownwardsView<Traversal>(m_graph, m_graph.GetNameStorage().begin());
-                    auto beginIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(m_graph, m_graph.GetNameStorage().begin());
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto view = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, this->m_graph.GetNameStorage().begin());
+                    auto beginIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     auto endIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>();
 
                     EXPECT_EQ(view.begin(), beginIterator);
@@ -126,8 +130,9 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, MakeSceneGraphDownwardsView_ExtendedFunctionComparedWithExplicitlyDeclaredIterators_ViewHasEquivalentBeginAndEnd)
                 {
-                    auto view = MakeSceneGraphDownwardsView<Traversal>(m_graph, GetRootHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
-                    auto beginIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(m_graph, GetRootHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto view = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, this->GetRootHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
+                    auto beginIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>(this->m_graph, this->GetRootHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
                     auto endIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>();
 
                     EXPECT_EQ(view.begin(), beginIterator);
@@ -136,11 +141,12 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, MakeSceneGraphDownwardsView_NodeAndHierarchyVersions_IteratorsInViewsAreEqual)
                 {
-                    SceneGraph::NodeIndex index = m_graph.Find("A.C");
-                    auto hierarchy = m_graph.ConvertToHierarchyIterator(index);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    SceneGraph::NodeIndex index = this->m_graph.Find("A.C");
+                    auto hierarchy = this->m_graph.ConvertToHierarchyIterator(index);
 
-                    auto indexView = MakeSceneGraphDownwardsView<Traversal>(m_graph, index, m_graph.GetNameStorage().begin(), true);
-                    auto hierarchyView = MakeSceneGraphDownwardsView<Traversal>(m_graph, hierarchy, m_graph.GetNameStorage().begin(), true);
+                    auto indexView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, index, this->m_graph.GetNameStorage().begin(), true);
+                    auto hierarchyView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, hierarchy, this->m_graph.GetNameStorage().begin(), true);
 
                     EXPECT_EQ(indexView.begin(), hierarchyView.begin());
                     EXPECT_EQ(indexView.end(), hierarchyView.end());
@@ -148,34 +154,39 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, Dereference_GetRootIteratorValue_ReturnsRelativeValueFromGivenValueIterator)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetRootHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetRootHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
                     EXPECT_STREQ("", (*iterator).GetPath());
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, Dereference_GetDeepestIteratorValue_ReturnsRelativeValueFromGivenValueIterator)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetDeepestHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetDeepestHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
                     EXPECT_STREQ("A.C.F", (*iterator).GetPath());
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, Dereference_ValueIteratorNotSyncedWithHierarchyIteratorIfNotRequested_ReturnedValueMatchesOriginalValueIterator)
                 {
-                    auto valueIterator = m_graph.GetNameStorage().begin() + 2;
-                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetDeepestHierarchyIterator(), valueIterator, false);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto valueIterator = this->m_graph.GetNameStorage().begin() + 2;
+                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetDeepestHierarchyIterator(), valueIterator, false);
                     EXPECT_STREQ((*valueIterator).GetPath(), (*iterator).GetPath());
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, Dereference_DereferencingThroughStarAndArrowOperator_ValuesAreEqual)
                 {
-                    auto valueIterator = m_graph.GetNameStorage().begin();
-                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetDeepestHierarchyIterator(), valueIterator, true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto valueIterator = this->m_graph.GetNameStorage().begin();
+                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetDeepestHierarchyIterator(), valueIterator, true);
                     EXPECT_STREQ(iterator->GetPath(), (*iterator).GetPath());
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, IncrementOperator_MovePastEnd_ReturnsEndIterator)
                 {
-                    auto valueIterator = m_graph.GetNameStorage().begin();
-                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetDeepestHierarchyIterator(), valueIterator, true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto valueIterator = this->m_graph.GetNameStorage().begin();
+                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetDeepestHierarchyIterator(), valueIterator, true);
                     iterator++;
                     auto endIterator = SceneGraphDownwardsIterator<SceneGraph::NameStorage::const_iterator, Traversal>();
                     EXPECT_EQ(endIterator, iterator);
@@ -183,20 +194,22 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, GetHierarchyIterator_MatchesWithNodeInformationAfterMove_NameEqualToNodeIndexedName)
                 {
-                    auto valueIterator = m_graph.GetNameStorage().begin();
-                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetRootHierarchyIterator(), valueIterator, true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto valueIterator = this->m_graph.GetNameStorage().begin();
+                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetRootHierarchyIterator(), valueIterator, true);
                     iterator++;
 
                     SceneGraph::HierarchyStorageConstIterator hierarchyIterator = iterator.GetHierarchyIterator();
-                    SceneGraph::NodeIndex index = m_graph.ConvertToNodeIndex(hierarchyIterator);
+                    SceneGraph::NodeIndex index = this->m_graph.ConvertToNodeIndex(hierarchyIterator);
 
-                    EXPECT_STREQ(m_graph.GetNodeName(index).GetPath(), iterator->GetPath());
+                    EXPECT_STREQ(this->m_graph.GetNodeName(index).GetPath(), iterator->GetPath());
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, GetHierarchyIterator_MovePastEnd_GetEmptyDefaultNode)
                 {
-                    auto valueIterator = m_graph.GetNameStorage().begin();
-                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(m_graph, GetDeepestHierarchyIterator(), valueIterator, true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto valueIterator = this->m_graph.GetNameStorage().begin();
+                    auto iterator = MakeSceneGraphDownwardsIterator<Traversal>(this->m_graph, this->GetDeepestHierarchyIterator(), valueIterator, true);
                     iterator++;
 
                     SceneGraph::HierarchyStorageConstIterator hierarchyIterator = iterator.GetHierarchyIterator();
@@ -205,6 +218,7 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, EmptyGraph_CanDetectEmptyGraph_BeginPlusOneAndEndIteratorAreEqual)
                 {
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
                     SceneGraph emptyGraph;
 
                     auto beginIterator = MakeSceneGraphDownwardsIterator<Traversal>(emptyGraph, emptyGraph.GetHierarchyStorage().begin(), emptyGraph.GetNameStorage().begin(), true);
@@ -215,6 +229,7 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, EmptyGraph_CanDetectEmptyGraphFromView_BeginPlusOneAndEndIteratorAreEqual)
                 {
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
                     SceneGraph emptyGraph;
 
                     auto view = MakeSceneGraphDownwardsView<Traversal>(emptyGraph, emptyGraph.GetHierarchyStorage().begin(), emptyGraph.GetNameStorage().begin(), true);
@@ -223,7 +238,8 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, Algorithm_RangeForLoop_CanSuccesfullyRun)
                 {
-                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(m_graph, GetRootHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, this->GetRootHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
                     for (auto& it : sceneView)
                     {
                     }
@@ -231,10 +247,11 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, IncrementOperator_TouchesAllNodes_NumberOfIterationStepsMatchesNumberOfNodesInGraph)
                 {
-                    size_t entryCount = m_graph.GetHierarchyStorage().end() - m_graph.GetHierarchyStorage().begin();
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    size_t entryCount = this->m_graph.GetHierarchyStorage().end() - this->m_graph.GetHierarchyStorage().begin();
                     size_t localCount = 0;
 
-                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(m_graph, GetRootHierarchyIterator(), m_graph.GetNameStorage().begin(), true);
+                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, this->GetRootHierarchyIterator(), this->m_graph.GetNameStorage().begin(), true);
                     for (auto& it : sceneView)
                     {
                         localCount++;
@@ -244,14 +261,15 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, ValueIterator_NonSceneGraphIterator_ExternalIteratorValuesMatchSceneGraphValues)
                 {
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
                     // Commonly containers in the scene graph will be used, but it is possible to specify other containers that shadow
                     //      the scene graph but don't belong to it. This test checks if this works correctly by comparing the values
                     //      stored in the scene graph with the same values stored in an external container.
                     //      (See constructor of SceneGraphUpwardsIterator for more details on arguments.)
                     AZStd::vector<int> values = { 0, 1, 2, 3, 4, 5, 6 };
 
-                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(m_graph, m_graph.GetContentStorage().begin());
-                    auto valuesView = MakeSceneGraphDownwardsView<Traversal>(m_graph, values.begin());
+                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, this->m_graph.GetContentStorage().begin());
+                    auto valuesView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, values.begin());
 
                     auto sceneIterator = sceneView.begin();
                     auto valuesIterator = valuesView.begin();
@@ -272,7 +290,8 @@ namespace AZ
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, Algorithms_Find_AlgorithmFindsRequestedName)
                 {
-                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(m_graph, m_graph.GetNameStorage().begin());
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     auto convertView = MakeConvertView(sceneView,
                         [](const SceneGraph::Name& name) -> const char*
                         {
@@ -280,15 +299,16 @@ namespace AZ
                         });
                     // Needs AZStd::string for comparing otherwise two pointers will be compared instead of string content.
                     auto result = AZStd::find(convertView.begin(), convertView.end(), AZStd::string("A.C"));
-                    auto compare = m_graph.ConvertToHierarchyIterator(m_graph.Find("A.C"));
+                    auto compare = this->m_graph.ConvertToHierarchyIterator(this->m_graph.Find("A.C"));
 
                     EXPECT_EQ(compare, result.GetBaseIterator().GetHierarchyIterator());
                 }
 
                 TYPED_TEST_P(SceneGraphDownwardsIteratorContext, Algorithms_FindIf_FindsValue3InNodeAdotC)
                 {
-                    SceneGraph::NodeIndex index = m_graph.Find("A.C");
-                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(m_graph, m_graph.GetContentStorage().begin());
+                    using Traversal = typename SceneGraphDownwardsIteratorContext<TypeParam>::Traversal;
+                    SceneGraph::NodeIndex index = this->m_graph.Find("A.C");
+                    auto sceneView = MakeSceneGraphDownwardsView<Traversal>(this->m_graph, this->m_graph.GetContentStorage().begin());
                     auto result = AZStd::find_if(sceneView.begin(), sceneView.end(),
                         [](const AZStd::shared_ptr<DataTypes::IGraphObject>& object) -> bool
                         {
@@ -330,7 +350,7 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, DepthFirst_IncrementOperator_MoveDownTheTree_IteratorReturnsParentOfPreviousIteration)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     EXPECT_STREQ("", iterator->GetPath());
                     EXPECT_STREQ("A", (++iterator)->GetPath());
                     EXPECT_STREQ("A.B", (++iterator)->GetPath());
@@ -342,7 +362,7 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, BreadthFirst_IncrementOperator_MoveDownTheTree_IteratorReturnsParentOfPreviousIteration)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     EXPECT_STREQ("", iterator->GetPath());
                     EXPECT_STREQ("A", (++iterator)->GetPath());
                     EXPECT_STREQ("A.B", (++iterator)->GetPath());
@@ -354,7 +374,7 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, DepthFirst_IncrementOperator_BlockCsChildren_AllNodesIteratedExceptEandF)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     EXPECT_STREQ("", iterator->GetPath());
                     EXPECT_STREQ("A", (++iterator)->GetPath());
                     EXPECT_STREQ("A.B", (++iterator)->GetPath());
@@ -367,7 +387,7 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, BreadthFirst_IncrementOperator_BlockCsChildren_AllNodesIteratedExceptEandF)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     EXPECT_STREQ("", iterator->GetPath());
                     EXPECT_STREQ("A", (++iterator)->GetPath());
                     EXPECT_STREQ("A.B", (++iterator)->GetPath());
@@ -380,8 +400,8 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, BreadthFirst_IncrementOperator_SiblingsAreIgnored_SiblingNodesBandDareNotReturned)
                 {
-                    SceneGraph::NodeIndex index = m_graph.Find("A.C");
-                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(m_graph, index, m_graph.GetNameStorage().begin(), true);
+                    SceneGraph::NodeIndex index = this->m_graph.Find("A.C");
+                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(this->m_graph, index, this->m_graph.GetNameStorage().begin(), true);
                     EXPECT_STREQ("A.C", iterator->GetPath());
                     EXPECT_STREQ("A.C.E", (++iterator)->GetPath());
                     EXPECT_STREQ("A.C.F", (++iterator)->GetPath());
@@ -391,8 +411,8 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, DepthFirst_IncrementOperator_SiblingsAreIgnored_SiblingNodesBandDareNotReturned)
                 {
-                    SceneGraph::NodeIndex index = m_graph.Find("A.C");
-                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(m_graph, index, m_graph.GetNameStorage().begin(), true);
+                    SceneGraph::NodeIndex index = this->m_graph.Find("A.C");
+                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(this->m_graph, index, this->m_graph.GetNameStorage().begin(), true);
                     EXPECT_STREQ("A.C", iterator->GetPath());
                     EXPECT_STREQ("A.C.E", (++iterator)->GetPath());
                     EXPECT_STREQ("A.C.F", (++iterator)->GetPath());
@@ -402,7 +422,7 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, DepthFirst_IncrementOperator_BlockAllChildren_NoNodesListedAfterRoot)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto iterator = MakeSceneGraphDownwardsIterator<DepthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     EXPECT_STREQ("", iterator->GetPath());
                     iterator.IgnoreNodeDescendants();
                     ++iterator;
@@ -411,7 +431,7 @@ namespace AZ
 
                 TEST_F(SceneGraphDownwardsIteratorTest, BreadthFirst_IncrementOperator_BlockAllChildren_NoNodesListedAfterRoot)
                 {
-                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto iterator = MakeSceneGraphDownwardsIterator<BreadthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     EXPECT_STREQ("", iterator->GetPath());
                     iterator.IgnoreNodeDescendants();
                     ++iterator;
@@ -421,7 +441,7 @@ namespace AZ
                 TEST_F(SceneGraphDownwardsIteratorTest, DepthFirst_Algorithms_Copy_AllValuesCopiedToNewArray)
                 {
                     AZStd::vector<AZStd::string> names(7);
-                    auto sceneView = MakeSceneGraphDownwardsView<DepthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto sceneView = MakeSceneGraphDownwardsView<DepthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     auto convertView = MakeConvertView(sceneView,
                         [](const SceneGraph::Name& name) -> AZStd::string
                         {
@@ -441,7 +461,7 @@ namespace AZ
                 TEST_F(SceneGraphDownwardsIteratorTest, BreadthFirst_Algorithms_Copy_AllValuesCopiedToNewArray)
                 {
                     AZStd::vector<AZStd::string> names(7);
-                    auto sceneView = MakeSceneGraphDownwardsView<BreadthFirst>(m_graph, m_graph.GetNameStorage().begin());
+                    auto sceneView = MakeSceneGraphDownwardsView<BreadthFirst>(this->m_graph, this->m_graph.GetNameStorage().begin());
                     auto convertView = MakeConvertView(sceneView,
                         [](const SceneGraph::Name& name) -> AZStd::string
                         {

@@ -14,7 +14,7 @@
 
 #include "AWSBehaviorBase.h"
 
-#include <StdAfx.h>
+#include <CloudGemAWSScriptBehaviors_precompiled.h>
 #include <AzCore/EBus/EBus.h>
 
 namespace CloudGemAWSScriptBehaviors

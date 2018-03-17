@@ -42,9 +42,6 @@
 #include <QDebug>
 
 
-#define IDC_PROTOTYPES_TREE AFX_IDW_PANE_FIRST
-#define IDC_DESCRIPTION_EDITBOX AFX_IDW_PANE_FIRST + 1
-
 
 #if (_WIN32_WINNT < 0x0600)
 
@@ -189,12 +186,6 @@ void CEntityProtLibDialog::OnInitDialog()
     // Attach it to the control
     m_wndVSplitter->addWidget(GetTreeCtrl());
 
-    QRect scriptDlgRc = QRect(0, 0, 400, 300);
-    //m_scriptDialog.Create( CEntityScriptDialog::IDD,&m_wndScriptPreviewSplitter );
-    //m_scriptDialog.ShowWindow( SW_SHOW );
-    //m_scriptDialog.GetClientRect( scriptDlgRc );
-    //m_scriptDialog.SetOnReloadScript( functor(*this,&CEntityProtLibDialog::OnReloadEntityScript) );
-
     m_previewCtrl = new CPreviewModelCtrl(m_wndScriptPreviewSplitter);
 
     //m_previewCtrl.Create( WS_VISIBLE|WS_CHILD,rc,&m_wndHSplitter,1 );
@@ -249,9 +240,6 @@ void CEntityProtLibDialog::OnInitDialog()
 
     ReloadLibs();
     ReloadItems();
-
-    //m_scriptDialog.Invalidate();
-    //m_scriptDialog.ShowWindow( SW_SHOW );
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -406,7 +394,7 @@ void CEntityProtLibDialog::MarkFieldsThatDifferFromScriptDefaults(CVarBlock* pAr
         for (int i = 0; i < pArchetypeVarBlock->GetNumVariables(); i++)
         {
             IVariable* varArchetype = pArchetypeVarBlock->GetVariable(i);
-            IVariable* varEntScript = pEntScriptVarBlock->FindVariable(varArchetype ? varArchetype->GetName().toLatin1().data() : "");
+            IVariable* varEntScript = pEntScriptVarBlock->FindVariable(varArchetype ? varArchetype->GetName().toUtf8().data() : "");
             MarkFieldsThatDifferFromScriptDefaults(varArchetype, varEntScript);
         }
     }
@@ -600,32 +588,6 @@ void CEntityProtLibDialog::SpawnEntity(CEntityPrototype* prototype)
             return;
         }
     }
-
-    /*
-    CEntityDesc ed;
-    ed.ClassId = script->GetClsId();
-    ed.name = prototype->GetName();
-
-    m_entity = m_pEntitySystem->SpawnEntity( ed,false );
-    if (m_entity)
-    {
-        if (prototype->GetProperties())
-        {
-            // Assign to entity properties of prototype.
-            script->SetProperties( m_entity,prototype->GetProperties(),false );
-        }
-        // Initialize properties.
-        if (!m_pEntitySystem->InitEntity( m_entity,ed ))
-            m_entity = 0;
-
-        //////////////////////////////////////////////////////////////////////////
-        // Make visual object for this entity.
-        //////////////////////////////////////////////////////////////////////////
-        m_visualObject = script->GetVisualObject();
-
-        m_scriptDialog.SetScript( script,m_entity );
-    }
-    */
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -641,7 +603,6 @@ void CEntityProtLibDialog::ReleaseEntity()
     }
     */
     m_entity = 0;
-    //m_scriptDialog.SetScript( 0,0 );
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -678,7 +639,7 @@ void CEntityProtLibDialog::OnUpdateProperties(IVariable* var)
         prototype->Update();
 
         CVarBlock* pEntScriptVarBlock = script ? script->GetDefaultProperties() : NULL;
-        IVariable* varEntScript = pEntScriptVarBlock ? pEntScriptVarBlock->FindVariable(var ? var->GetName().toLatin1().data() : "") : NULL;
+        IVariable* varEntScript = pEntScriptVarBlock ? pEntScriptVarBlock->FindVariable(var ? var->GetName().toUtf8().data() : "") : NULL;
         if (var && varEntScript && MarkOrUnmarkPropertyField(var, varEntScript))
         {
             // If flags have been changed for this field, make sure the item gets redrawn.

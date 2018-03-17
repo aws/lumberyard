@@ -68,11 +68,11 @@ void CParticleItem::SetName(const QString& name)
         if (!m_pEffect->GetParent())
         {
             QString fullname = GetLibrary()->GetName() + "." + name;
-            m_pEffect->SetName(fullname.toLatin1().data());
+            m_pEffect->SetName(fullname.toUtf8().data());
         }
         else
         {
-            m_pEffect->SetName(name.toLatin1().data());
+            m_pEffect->SetName(name.toUtf8().data());
         }
     }
     CBaseLibraryItem::SetName(name); 

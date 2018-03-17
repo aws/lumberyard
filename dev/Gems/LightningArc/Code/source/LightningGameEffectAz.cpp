@@ -10,9 +10,9 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 
-#include "LightningGameEffectAZ.h"
+#include "LightningGameEffectAz.h"
 
 #include "LightningNode.h"
 #include "IAttachment.h"
@@ -63,50 +63,50 @@ void LightningArcParams::EditorReflect(AZ::ReflectContext* context)
                 ->ClassElement(AZ::Edit::ClassElements::Group, "Lightning")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_lightningDeviation, "Deviation", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_lightningDeviation, "Deviation", "The lower the value the more smooth an arc will appear.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_lightningFuzziness, "Fuzziness", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_lightningFuzziness, "Fuzziness", "The amount of noise applied to an arc.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_lightningVelocity, "Velocity", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_lightningVelocity, "Velocity", "The upwards velocity of an arc.")
 
                 ->ClassElement(AZ::Edit::ClassElements::Group, "Branch")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_branchMaxLevel, "Max Level", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_branchMaxLevel, "Max Level", "The max number of branches allowed to spawn off of an arc.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_branchProbability, "Probability", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_branchProbability, "Probability", "How likely it is for a child branch to spawn off an arc.")
 
                 ->ClassElement(AZ::Edit::ClassElements::Group, "Strike")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeTimeMin, "Time Min", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeTimeMin, "Time Min", "The minimum amount of time that an arc is kept alive.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeTimeMax, "Time Max", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeTimeMax, "Time Max", "The maximum amount of time that an arc is kept alive.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeFadeOut, "Fade Out", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeFadeOut, "Fade Out", "How long it takes for an arc to fade out.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeNumSegments, "Segment Count", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeNumSegments, "Segment Count", "The number of segments in an arc.")
                 ->Attribute(AZ::Edit::Attributes::Min, 1) //Allowing 0 causes a crash
                 ->Attribute(AZ::Edit::Attributes::Max, MAX_STRIKE_SEGMENT_COUNT)
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeNumPoints, "Point Count", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_strikeNumPoints, "Point Count", "The number of points per segment in an arc.")
                 ->Attribute(AZ::Edit::Attributes::Min, 1) //Allowing 0 causes a crash
                 ->Attribute(AZ::Edit::Attributes::Max, MAX_STRIKE_POINT_COUNT)
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_maxNumStrikes, "Max Strike Count", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_maxNumStrikes, "Max Strike Count", "Sets how many arcs can be alive at one time from this component.")
 
                 ->ClassElement(AZ::Edit::ClassElements::Group, "Beam")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamSize, "Size", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamSize, "Size", "The size (width) of the generated arcs.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexTiling, "Tex Tiling", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexTiling, "Tex Tiling", "The amount of texture tiling based on the size of the arc beam.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexShift, "Tex Shift", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexShift, "Tex Shift", "How fast to move through textures in the arc's animation.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexFrames, "Tex Frames", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexFrames, "Tex Frames", "How many frames are in the arc's animation.")
 
-                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexFPS, "Tex FPS", "")
+                ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcParams::m_beamTexFPS, "Tex FPS", "How many frames per second are in the arc's animation.")
                 ;
         }
     }

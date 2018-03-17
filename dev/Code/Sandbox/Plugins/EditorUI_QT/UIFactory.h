@@ -16,7 +16,7 @@
 #include "api.h"
 #include <QPair>
 #include <QVector>
-#include "qcolor.h"
+#include <QColor>
 #include "Utils.h"
 
 class QWidget;

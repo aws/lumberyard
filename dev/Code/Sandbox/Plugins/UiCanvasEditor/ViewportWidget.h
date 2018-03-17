@@ -112,6 +112,18 @@ private: // data
 
     void resizeEvent(QResizeEvent* ev) override;
 
+    double WidgetToViewportFactor() const
+    {
+#if defined(AZ_PLATFORM_WINDOWS)
+        // Needed for high DPI mode on windows
+        return devicePixelRatioF();
+#else
+        return 1.0f;
+#endif
+    }
+
+    QPointF WidgetToViewport(const QPointF &point) const;
+
     EditorWindow* m_editorWindow;
 
     std::unique_ptr< ViewportInteraction > m_viewportInteraction;

@@ -66,13 +66,13 @@ namespace CharacterTool
             m_loadedFiles.reserve(m_loadedFiles.size() + files.size());
             for (IFileUtil::FileDesc& fileFound : files)
             {
-                if (!CryStringUtils::MatchWildcard(fileFound.filename.toLatin1().data(), mask.c_str()))
+                if (!CryStringUtils::MatchWildcard(fileFound.filename.toUtf8().data(), mask.c_str()))
                 {
                     continue;
                 }
 
                 ScanLoadedFile file;
-                file.scannedFile = fileFound.filename.toLatin1().data();
+                file.scannedFile = fileFound.filename.toUtf8().data();
                 file.scannedFile.replace("\\", "/");
                 file.fromPak = gEnv->pCryPak->IsFileExist(file.scannedFile.c_str(), ICryPak::eFileLocation_InPak);
                 file.fromDisk = gEnv->pCryPak->IsFileExist(file.scannedFile.c_str(), ICryPak::eFileLocation_OnDisk);

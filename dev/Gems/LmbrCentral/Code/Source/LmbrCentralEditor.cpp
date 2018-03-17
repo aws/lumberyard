@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include "LmbrCentralEditor.h"
 
@@ -51,6 +51,7 @@
 #include "Animation/EditorMannequinComponent.h"
 #include "Scripting/EditorLookAtComponent.h"
 #include "Scripting/EditorRandomTimedSpawnerComponent.h"
+#include "Scripting/EditorSpawnerComponent.h"
 #include "Scripting/EditorTagComponent.h"
 #include "Scripting/EditorTriggerAreaComponent.h"
 
@@ -117,6 +118,7 @@ namespace LmbrCentral
             EditorFogVolumeComponent::CreateDescriptor(),
             EditorRandomTimedSpawnerComponent::CreateDescriptor(),
             EditorGeometryCacheComponent::CreateDescriptor(),
+            EditorSpawnerComponent::CreateDescriptor(),
             #ifdef METRICS_SYSTEM_COMPONENT_ENABLED
                 LyEditorMetrics::LyEditorMetricsSystemComponent::CreateDescriptor(),
             #endif // #ifdef METRICS_SYSTEM_COMPONENT_ENABLED

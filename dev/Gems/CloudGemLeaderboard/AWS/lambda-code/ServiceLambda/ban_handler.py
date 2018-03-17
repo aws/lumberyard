@@ -13,6 +13,9 @@ import CloudCanvas
 import boto3
 from errors import ClientError
 import time
+import cgf_lambda_settings
+import cgf_service_client
+import identity_validator
 
 
 BAN_TABLE = None
@@ -75,6 +78,10 @@ def lift_ban(user):
 
 def is_player_banned(user):
     global BAN_TABLE
+    interface_url = cgf_lambda_settings.get_service_url(
+        "CloudGemPlayerAccount_banplayer_1_0_0")
+    if interface_url:
+        return check_player_account_gem_for_ban(interface_url, user)
     __init_globals
     player_ban = __get_player_ban(user)
     if not player_ban:
@@ -92,3 +99,13 @@ def get_banned_players():
         for item in response.get("Items", []):
             banned_players.append(item["user"])
     return banned_players
+
+
+def check_player_account_gem_for_ban(interface_url, user):
+    # get cognito id from identity map
+    cognito_id = identity_validator.get_id_from_user(user)
+    client = cgf_service_client.for_url(
+        interface_url, verbose=True, session=boto3._get_default_session())
+    result = client.navigate('accountinfo', cognito_id).GET()
+    # ask player account if that player is banned
+    return result.DATA.get('AccountBlacklisted', False)

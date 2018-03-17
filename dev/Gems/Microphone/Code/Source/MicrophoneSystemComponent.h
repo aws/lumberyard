@@ -53,7 +53,7 @@ namespace Audio
         bool StartSession() override;
         void EndSession() override;
 
-        bool IsCapturing() const override;
+        bool IsCapturing() override;
 
         SAudioInputConfig GetFormatConfig() const override;
         AZStd::size_t GetData(void** outputData, AZStd::size_t numFrames, const SAudioInputConfig& targetConfig, bool shouldDeinterleave) override;

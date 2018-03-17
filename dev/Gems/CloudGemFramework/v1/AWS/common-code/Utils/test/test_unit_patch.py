@@ -11,14 +11,12 @@
 
 import unittest
 
-import patch
+from cgf_utils import patch
 
-print '=============== got', patch.__file__
-
-class UnitTest_CloudGemFramework_ProjectCode_patch_OperationListBuilder(unittest.TestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_patch_OperationListBuilder(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(UnitTest_CloudGemFramework_ProjectCode_patch_OperationListBuilder, self).__init__(*args, **kwargs)
+        super(UnitTest_CloudGemFramework_ProjectResourceHandler_patch_OperationListBuilder, self).__init__(*args, **kwargs)
         self.maxDiff = None
 
     def test_diff_with_no_changes(self):

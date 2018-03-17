@@ -80,8 +80,8 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
     ui->pageTree->setColumnCount(1);
     connect(ui->pageTree, &QTreeWidget::currentItemChanged, this, &EditorPreferencesDialog::OnTreeCurrentItemChanged);
 
-    connect(ui->OK_BTN, &QPushButton::clicked, this, &EditorPreferencesDialog::OnAccept);
-    connect(ui->CANCEL_BTN, &QPushButton::clicked, this, &EditorPreferencesDialog::OnReject);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &EditorPreferencesDialog::OnAccept);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &EditorPreferencesDialog::OnReject);
     connect(ui->MANAGE_BTN, &QPushButton::clicked, this, &EditorPreferencesDialog::OnManage);
 }
 

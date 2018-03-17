@@ -113,20 +113,14 @@ public:
         SAuxDrawObjParams()
         {
             m_matWorld.SetIdentity();
+            m_matWorldRotation.SetIdentity();
             m_color = 0;
             m_size = 0;
             m_shaded = false;
         }
 
-        SAuxDrawObjParams(const Matrix34& matWorld, const uint32& color, float size, bool shaded)
-            : m_matWorld(matWorld)
-            , m_color(color)
-            , m_size(size)
-            , m_shaded(shaded)
-        {
-        }
-
         Matrix34 m_matWorld;
+        Matrix33 m_matWorldRotation;
         uint32 m_color;
         float m_size;
         bool m_shaded;

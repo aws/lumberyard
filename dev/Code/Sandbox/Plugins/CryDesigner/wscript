@@ -42,10 +42,8 @@ def build(bld):
                            'DISABLE_UVMAPPING_WINDOW'],
         includes        = [ '.',
                             '..'],
-        win_defines     = ['KDAB_MAC_PORT'],
 
         darwin_enable_rtti = True,
-        darwin_cxxflags = ['-Wno-unused-local-typedef'],
         darwin_x64_lib  = ['python2.7'],
 
         # Testing

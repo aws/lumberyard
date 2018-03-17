@@ -55,21 +55,18 @@
 */
 
 #include <stdio.h>
+#include <AzCore/PlatformDef.h>
 
-#if defined(WIN32)  || defined(DURANGO)
-#ifdef WIN32
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #include AZ_RESTRICTED_FILE(CryLibrary_h)
+#elif defined(WIN32)
     #if !defined(WIN32_LEAN_AND_MEAN)
         #define WIN32_LEAN_AND_MEAN
     #endif
     #include <CryWindows.h>
     #define CryLoadLibrary(libName) ::LoadLibraryA(libName)
-#endif //WIN32
-    #define CrySharedLibrarySupported true
-    #define CrySharedLibraryPrefix ""
-    #define CrySharedLibraryExtension ".dll"
-    #define CryGetProcAddress(libHandle, procName) ::GetProcAddress((HMODULE)(libHandle), procName)
-    #define CryFreeLibrary(libHandle) ::FreeLibrary((HMODULE)(libHandle))
-#elif ((defined(LINUX) || defined(AZ_PLATFORM_APPLE)))
+    #define CRYLIBRARY_H_TRAIT_USE_WINDOWS_DLL 1
+#elif defined(LINUX) || defined(AZ_PLATFORM_APPLE)
     #include <dlfcn.h>
     #include <stdlib.h>
     #include <libgen.h>
@@ -113,16 +110,19 @@ static HMODULE CryLoadLibrary(const char* libName, bool bLazy = false, bool bInM
         {
             modulePath = ".";
             #if defined(LINUX)
-                char exePath[MAX_PATH];
-                if (readlink("/proc/self/exe", exePath, MAX_PATH) != -1)
+                char exePath[MAX_PATH + 1] = { 0 };
+                int len = readlink("/proc/self/exe", exePath, MAX_PATH);
+                if (len != -1)
                 {
+                    exePath[len] = 0;
                     modulePath = dirname(exePath);
                 }
             #elif defined(AZ_PLATFORM_APPLE)
                 uint32_t bufsize = MAX_PATH;
-                char exePath[MAX_PATH] = { 0 };
+                char exePath[MAX_PATH + 1] = { 0 };
                 if (_NSGetExecutablePath(exePath, &bufsize) == 0)
                 {
+                    exePath[bufsize] = 0;
                     modulePath = dirname(exePath);
                 }
             #endif
@@ -141,7 +141,15 @@ static HMODULE CryLoadLibrary(const char* libName, bool bLazy = false, bool bInM
     AZ_Warning("LMBR", retVal, "Can't load library [%s]: %s", libName, dlerror());
     return retVal;
 }
-#else
+#endif
+
+#if CRYLIBRARY_H_TRAIT_USE_WINDOWS_DLL
+#define CrySharedLibrarySupported true
+#define CrySharedLibraryPrefix ""
+#define CrySharedLibraryExtension ".dll"
+#define CryGetProcAddress(libHandle, procName) ::GetProcAddress((HMODULE)(libHandle), procName)
+#define CryFreeLibrary(libHandle) ::FreeLibrary((HMODULE)(libHandle))
+#elif !defined(CrySharedLibrarySupported)
 #define CrySharedLibrarySupported false
 #define CrySharedLibraryPrefix ""
 #define CrySharedLibraryExtension ""

@@ -10,15 +10,15 @@
 *
 */
 
-#include "stdafx.h"
+#include "CloudGemDynamicContent_precompiled.h"
 
 #include <QDrag>
 #include <QPainter>
 
-#include "FileWatcherView.h"
+#include "fileWatcherView.h"
 #include "ManifestTableKeys.h"
 #include "FileWatcherModel.h"
-#include <FileWatcherView.moc>
+#include <fileWatcherView.moc>
 
 namespace DynamicContent
 {

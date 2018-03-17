@@ -102,20 +102,6 @@ namespace AZ
                 return ProcessingResult::Ignored;
             }
 
-            AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadScene(const AZStd::string& assetFilePath, RequestingApplication requester)
-            {
-                AZStd::shared_ptr<Containers::Scene> result;
-                SceneSerializationBus::BroadcastResult(result, &SceneSerializationBus::Events::LoadScene, assetFilePath, Uuid::CreateNull());
-                return result;
-            }
-
-            AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadScene(const AZStd::string& assetFilePath, const Uuid& sourceGuid, RequestingApplication /*requester*/)
-            {
-                AZStd::shared_ptr<Containers::Scene> result;
-                SceneSerializationBus::BroadcastResult(result, &SceneSerializationBus::Events::LoadScene, assetFilePath, sourceGuid);
-                return result;
-            }
-
             AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadSceneFromVerifiedPath(const AZStd::string& assetFilePath, const Uuid& sourceGuid,
                 RequestingApplication requester)
             {

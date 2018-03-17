@@ -563,7 +563,7 @@ void CVegetationMap::RegisterInstance(CVegetationInstance* obj)
 
         decalProperties.m_pos = wtm.TransformPoint(Vec3(0, 0, 0));
         decalProperties.m_normal = wtm.TransformVector(Vec3(0, 0, 1));
-        QByteArray name = obj->object->m_pMaterialGroundDecal->GetName().toLatin1();
+        QByteArray name = obj->object->m_pMaterialGroundDecal->GetName().toUtf8();
         decalProperties.m_pMaterialName = name.data();
         decalProperties.m_radius = decalProperties.m_normal.GetLength();
         decalProperties.m_explicitRightUpFront = rotation;
@@ -1388,8 +1388,11 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
         int hy = ftoi(x / unitSize);
         int hx = ftoi(y / unitSize);
 
-        float currHeight = pHeightmap->GetXY(hx, hy);
-        // Check if height valie is within brush min/max altitude.
+        // Use the safe method for retrieving the height, or else the Editor
+        // will crash if the x/y values are out of range
+        float currHeight = pHeightmap->GetSafeXY(hx, hy);
+
+        // Check if height value is within brush min/max altitude.
         if (currHeight < AltMin || currHeight > AltMax)
         {
             continue;
@@ -3146,7 +3149,7 @@ void CVegetationMap::UpdateConfigSpec()
 //////////////////////////////////////////////////////////////////////////
 void CVegetationMap::Save()
 {
-    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kVegetationMapFile).toLatin1());
+    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kVegetationMapFile).toUtf8());
 
     CXmlArchive xmlAr;
     Serialize(xmlAr);

@@ -12,7 +12,7 @@
 
 #pragma once
 #include "api.h"
-#include "QWidget.h"
+#include <QWidget>
 #include <QSettings>
 
 struct IParticleEffect;

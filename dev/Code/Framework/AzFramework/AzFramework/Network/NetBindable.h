@@ -93,6 +93,7 @@ namespace AzFramework
     class NetBindableFieldBase
     {
     public:
+        virtual ~NetBindableFieldBase() = default;
         virtual void Bind(DataSetBase* dataSet) = 0;
     };
 
@@ -115,6 +116,7 @@ namespace AzFramework
             : m_dataSet(nullptr)
             , m_value(value)
         {}
+        ~Field() override = default;
 
         operator const DataType&() const
         {
@@ -211,10 +213,11 @@ namespace AzFramework
         BoundField(const DataType& value = DataType())
             : NetBindable::Field<DataType, MarshalerType, ThrottlerType>(value)
         {}
+        ~BoundField() override = default;
 
         void Bind(DataSetBase* dataSet) override
         {
-            BindDataSet(static_cast<DataSetType*>(dataSet));
+            this->BindDataSet(static_cast<DataSetType*>(dataSet));
         }
 
         static void ConstructDataSet(void* mem, const char* name)

@@ -59,7 +59,7 @@ namespace ScriptCanvas
 
             AZ::SerializeContext::DataElementNode& entityElement = rootElement.GetSubElement(connectionsIndex);
             AZStd::unordered_set<AZ::Entity*> entitiesSet;
-            if (!entityElement.GetDataHierarchy(context, entitiesSet))
+            if (!entityElement.GetData(entitiesSet))
             {
                 return false;
             }

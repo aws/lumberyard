@@ -10,4 +10,4 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Microphone_precompiled.h"

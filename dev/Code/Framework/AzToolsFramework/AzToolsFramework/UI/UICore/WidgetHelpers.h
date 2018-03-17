@@ -14,6 +14,8 @@
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
+#include <QApplication>
+
 namespace AzToolsFramework
 {
     /// Gets the currently active window, or the Editor's main window if there is no active window.

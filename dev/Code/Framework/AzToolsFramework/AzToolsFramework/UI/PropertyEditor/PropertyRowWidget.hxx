@@ -111,6 +111,7 @@ namespace AzToolsFramework
         PropertyRowWidget* GetParentRow() const { return m_parentRow; }
 
         AZStd::vector<PropertyRowWidget*>& GetChildrenRows() { return m_childrenRows; }
+        bool HasChildRows() const;
 
         // check if theres a notification function.
         PropertyModificationRefreshLevel DoPropertyNotify();

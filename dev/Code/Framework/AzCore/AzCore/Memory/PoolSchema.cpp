@@ -1091,7 +1091,7 @@ ThreadPoolSchemaImpl::ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& d
     : m_allocator(desc)
 #endif
 {
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#   if AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
     // In memory allocation case (usually tools) we might have high contention,
     // using spin lock will improve performance.
     SetCriticalSectionSpinCount(m_mutex.native_handle(), 4000);

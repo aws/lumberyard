@@ -18,6 +18,7 @@
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/AssetDatabase/AssetDatabaseConnection.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/std/algorithm.h>
 
 // make the internal calls public for the purposes of the unit test!
 class UnitTestPlatformConfiguration : public AssetProcessor::PlatformConfiguration
@@ -140,7 +141,7 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolder)
     ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
     ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
 
-    ASSERT_EQ(config.GetScanFolderCount(), 2);
+    ASSERT_EQ(config.GetScanFolderCount(), 3); // the two, and then the one that has the same data as prior but different identifier.
     ASSERT_EQ(config.GetScanFolderAt(0).GetDisplayName(), QString("SamplesProject Scan Folder"));
     ASSERT_EQ(config.GetScanFolderAt(0).GetOutputPrefix(), QString());
     ASSERT_EQ(config.GetScanFolderAt(0).RecurseSubFolders(), true);
@@ -152,9 +153,60 @@ TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolder)
     ASSERT_EQ(config.GetScanFolderAt(1).GetOutputPrefix(), QString("featuretestsoutputfolder")); // to prove its not related to display name
     ASSERT_EQ(config.GetScanFolderAt(1).RecurseSubFolders(), false);
     ASSERT_EQ(config.GetScanFolderAt(1).GetOrder(), 5000);
-    // this proves that the featuretestsoutputfolder is used, which is the output folder, not the name, when present
-    ASSERT_EQ(config.GetScanFolderAt(1).GetPortableKey(), QString("from-ini-file-featuretestsoutputfolder"));
+    // this proves that the featuretests name is used instead of the output prefix
+    ASSERT_EQ(config.GetScanFolderAt(1).GetPortableKey(), QString("from-ini-file-FeatureTests"));
+
+    ASSERT_EQ(config.GetScanFolderAt(2).GetDisplayName(), QString("FeatureTests2"));
+    ASSERT_EQ(config.GetScanFolderAt(2).GetOutputPrefix(), QString("featuretestsoutputfolder")); // to prove its not related to display name
+    ASSERT_EQ(config.GetScanFolderAt(2).RecurseSubFolders(), false);
+    ASSERT_EQ(config.GetScanFolderAt(2).GetOrder(), 6000);
+    // this proves that the featuretests name is used instead of the output prefix
+    ASSERT_EQ(config.GetScanFolderAt(2).GetPortableKey(), QString("from-ini-file-FeatureTests2"));
 }
+
+TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularScanfolderPlatformSpecific)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    const char* configFileName = ":/testdata/config_regular_platform_scanfolder.ini";
+    UnitTestPlatformConfiguration config;
+    m_absorber.Clear();
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
+
+    ASSERT_EQ(config.GetScanFolderCount(), 5);
+    ASSERT_EQ(config.GetScanFolderAt(0).GetDisplayName(), QString("gameoutput"));
+    AZStd::vector<AssetBuilderSDK::PlatformInfo>& platforms = config.GetScanFolderAt(0).GetPlatforms();
+    ASSERT_EQ(platforms.size(), 4);
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AssetProcessor::CURRENT_PLATFORM, AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("es3", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("ios", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("server", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+
+    ASSERT_EQ(config.GetScanFolderAt(1).GetDisplayName(), QString("editoroutput"));
+    platforms = config.GetScanFolderAt(1).GetPlatforms();
+    ASSERT_EQ(platforms.size(), 2);
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AssetProcessor::CURRENT_PLATFORM, AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("es3", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+
+    ASSERT_EQ(config.GetScanFolderAt(2).GetDisplayName(), QString("folder1output"));
+    platforms = config.GetScanFolderAt(2).GetPlatforms();
+    ASSERT_EQ(platforms.size(), 1);
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("es3", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+
+    ASSERT_EQ(config.GetScanFolderAt(3).GetDisplayName(), QString("folder2output"));
+    platforms = config.GetScanFolderAt(3).GetPlatforms();
+    ASSERT_EQ(platforms.size(), 3);
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo(AssetProcessor::CURRENT_PLATFORM, AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("ios", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    ASSERT_TRUE(AZStd::find(platforms.begin(), platforms.end(), AssetBuilderSDK::PlatformInfo("server", AZStd::unordered_set<AZStd::string>{})) != platforms.end());
+    
+    ASSERT_EQ(config.GetScanFolderAt(4).GetDisplayName(), QString("folder3output"));
+    platforms = config.GetScanFolderAt(4).GetPlatforms();
+    ASSERT_EQ(platforms.size(), 0);
+}
+
 
 TEST_F(PlatformConfigurationUnitTests, TestFailReadConfigFile_RegularExcludes)
 {
@@ -309,8 +361,8 @@ TEST_F(PlatformConfigurationUnitTests, Test_GemHandling)
 
     // note that it is expected that the gems system gives us absolute paths.
     QList<AssetProcessor::GemInformation> fakeGems;
-    fakeGems.push_back({ "0fefab3f13364722b2eab3b96ce2bf20", tempPath.absoluteFilePath("Gems/LyShine").toUtf8().constData(), "Gems/LyShine", "LyShine", true });// true = pretend this is a game gem.
-    fakeGems.push_back({ "ff06785f7145416b9d46fde39098cb0c", tempPath.absoluteFilePath("Gems/LmbrCentral/v2").toUtf8().constData(), "Gems/LmbrCentral/v2", "LmbrCentral", false });
+    fakeGems.push_back({ "0fefab3f13364722b2eab3b96ce2bf20", tempPath.absoluteFilePath("Gems/LyShine").toUtf8().constData(), "Gems/LyShine", "LyShine", true, false });// true = pretend this is a game gem.
+    fakeGems.push_back({ "ff06785f7145416b9d46fde39098cb0c", tempPath.absoluteFilePath("Gems/LmbrCentral/v2").toUtf8().constData(), "Gems/LmbrCentral/v2", "LmbrCentral", false, false });
 
     // reading gems via the Gems System is already to be tested in the actual Gems API tests.
     // to avoid trying to load those DLLs we avoid calling the acutal ReadGems function

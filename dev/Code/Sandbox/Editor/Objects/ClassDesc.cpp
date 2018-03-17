@@ -23,7 +23,7 @@ int CObjectClassDesc::GetTextureIconId()
 
         if (!pTexName.isEmpty())
         {
-            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(pTexName.toLatin1().data());
+            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(pTexName.toUtf8().data());
         }
     }
 

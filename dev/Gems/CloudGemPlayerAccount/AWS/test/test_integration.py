@@ -9,7 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import resource_manager.constant as constant
+import resource_manager_common.constant as constant
 import boto3
 from botocore.exceptions import ClientError
 from copy import deepcopy

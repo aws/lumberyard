@@ -222,8 +222,8 @@ void CModelViewport::SaveDebugOptions() const
     {
         IVariable* var = vb->GetVariable(i);
         IVariable::EType vType = var->GetType();
-        sprintf_s(keyType, "DebugOption_%s_type", var->GetName().toLatin1().data());
-        sprintf_s(keyValue, "DebugOption_%s_value", var->GetName().toLatin1().data());
+        sprintf_s(keyType, "DebugOption_%s_type", var->GetName().toUtf8().data());
+        sprintf_s(keyValue, "DebugOption_%s_value", var->GetName().toUtf8().data());
         switch (vType)
         {
         case IVariable::UNKNOWN:
@@ -326,11 +326,11 @@ void CModelViewport::RestoreDebugOptions()
     {
         IVariable* var = vb->GetVariable(i);
         IVariable::EType vType = var->GetType();
-        sprintf_s(keyType, "DebugOption_%s_type", var->GetName().toLatin1().data());
+        sprintf_s(keyType, "DebugOption_%s_type", var->GetName().toUtf8().data());
 
         int32 iType = settings.value(keyType, 0).toInt();
 
-        sprintf_s(keyValue, "DebugOption_%s_value", var->GetName().toLatin1().data());
+        sprintf_s(keyValue, "DebugOption_%s_value", var->GetName().toUtf8().data());
         switch (iType)
         {
         case IVariable::UNKNOWN:
@@ -459,7 +459,7 @@ void CModelViewport::LoadObject(const QString& fileName, float scale)
     // Enables display of warning after model have been loaded.
     CErrorsRecorder errRecorder;
 
-    if (IsPreviewableFileType(file.toLatin1().data()))
+    if (IsPreviewableFileType(file.toUtf8().data()))
     {
         const QString fileExt = QFileInfo(file).completeSuffix();
         // Try Load character.
@@ -469,7 +469,7 @@ void CModelViewport::LoadObject(const QString& fileName, float scale)
         const bool isCDF = (0 == fileExt.compare(CRY_CHARACTER_DEFINITION_FILE_EXT, Qt::CaseInsensitive));
         if (isSKEL || isSKIN || isCGA || isCDF)
         {
-            m_pCharacterBase = m_pAnimationSystem->CreateInstance(file.toLatin1().data());
+            m_pCharacterBase = m_pAnimationSystem->CreateInstance(file.toUtf8().data());
             if (GetCharacterBase())
             {
                 f32  radius = GetCharacterBase()->GetAABB().GetRadius();
@@ -528,7 +528,7 @@ void CModelViewport::LoadStaticObject(const QString& file)
     }
 
     // Load Static object.
-    m_object = m_engine->LoadStatObjUnsafeManualRef(file.toLatin1().data(), 0, 0, false);
+    m_object = m_engine->LoadStatObjUnsafeManualRef(file.toUtf8().data(), 0, 0, false);
 
     if (!m_object)
     {
@@ -730,7 +730,7 @@ void CModelViewport::AttachObjectToBone(const QString& model, const QString& bon
     }
 
     IAttachmentObject* pBindable = NULL;
-    m_attachedCharacter = m_pAnimationSystem->CreateInstance(model.toLatin1().data());
+    m_attachedCharacter = m_pAnimationSystem->CreateInstance(model.toUtf8().data());
     if (m_attachedCharacter)
     {
         m_attachedCharacter->AddRef();
@@ -743,7 +743,7 @@ void CModelViewport::AttachObjectToBone(const QString& model, const QString& bon
 
     if (!m_attachedCharacter)
     {
-        m_weaponModel = m_engine->LoadStatObjUnsafeManualRef(model.toLatin1().data(), 0, 0, false);
+        m_weaponModel = m_engine->LoadStatObjUnsafeManualRef(model.toUtf8().data(), 0, 0, false);
         m_weaponModel->AddRef();
     }
 
@@ -752,14 +752,14 @@ void CModelViewport::AttachObjectToBone(const QString& model, const QString& bon
     {
         const QString str = QStringLiteral("Loading of weapon model %1 failed.").arg(model);
         QMessageBox::critical(this, QString(), str);
-        CLogFile::WriteLine(str.toLatin1().data());
+        CLogFile::WriteLine(str.toUtf8().data());
         return;
     }
 
     IAttachmentManager* pIAttachments = GetCharacterBase()->GetIAttachmentManager();
     if (!m_attachedCharacter)
     {
-        IAttachment* pAttachment = pIAttachments->CreateAttachment("BoneAttachment", CA_BONE, bone.toLatin1().data());
+        IAttachment* pAttachment = pIAttachments->CreateAttachment("BoneAttachment", CA_BONE, bone.toUtf8().data());
         assert(pAttachment);
         pAttachment->AddBinding(pBindable);
     }
@@ -779,14 +779,14 @@ void CModelViewport::AttachObjectToFace(const QString& model)
     }
 
     IAttachmentObject* pBindable = NULL;
-    m_weaponModel = m_engine->LoadStatObjUnsafeManualRef(model.toLatin1().data(), 0, 0, false);
+    m_weaponModel = m_engine->LoadStatObjUnsafeManualRef(model.toUtf8().data(), 0, 0, false);
     m_weaponModel->AddRef();
 
     if (!pBindable)
     {
         const QString str = QStringLiteral("Loading of weapon model %1 failed.").arg(model);
         QMessageBox::critical(this, QString(), str);
-        CLogFile::WriteLine(str.toLatin1().data());
+        CLogFile::WriteLine(str.toUtf8().data());
         return;
     }
     IAttachmentManager* pAttachments = GetCharacterBase()->GetIAttachmentManager();
@@ -1204,7 +1204,7 @@ void CModelViewport::DrawModel(const SRenderingPassInfo& passInfo)
                 sMaterial = GetMaterial()->GetMatInfo()->GetSafeSubMtl(nMatId)->GetName();
             }
 
-            ISurfaceType* pSurfaceType = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceType(hit.surface_idx, m_loadedFile.toLatin1().data());
+            ISurfaceType* pSurfaceType = gEnv->p3DEngine->GetMaterialManager()->GetSurfaceType(hit.surface_idx, m_loadedFile.toUtf8().data());
             if (pSurfaceType)
             {
                 float color[4] = {1, 1, 1, 1};

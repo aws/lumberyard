@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyDoubleSpinCtrl.hxx"
 #include "DHQSpinbox.hxx"
 #include "PropertyQTConstants.h"
@@ -36,7 +36,6 @@ namespace AzToolsFramework
 
         m_pSpinBox->setFocusPolicy(Qt::StrongFocus);
         m_multiplier = 1;
-        setDecimals(4);//kind of arbitrary... 4 seems good :)
 
         setLayout(pLayout);
         pLayout->setContentsMargins(0, 0, 0, 0);
@@ -138,6 +137,11 @@ namespace AzToolsFramework
     void PropertyDoubleSpinCtrl::setDecimals(int precision)
     {
         m_pSpinBox->setDecimals(precision);
+    }
+
+    void PropertyDoubleSpinCtrl::setDisplayDecimals(int displayDecimals)
+    {
+        m_pSpinBox->SetDisplayDecimals(displayDecimals);
     }
 
     double PropertyDoubleSpinCtrl::value() const
@@ -258,7 +262,7 @@ namespace AzToolsFramework
             }
             return;
         }
-        else if (attrib == AZ_CRC("Decimals", 0x7252f046))
+        else if (attrib == AZ::Edit::Attributes::Decimals)
         {
             int intValue = 0;
             if (attrValue->Read<int>(intValue))
@@ -269,6 +273,20 @@ namespace AzToolsFramework
             {
                 // emit a warning!
                 AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Decimals' attribute from property '%s' into Spin Box", debugName);
+            }
+            return;
+        }
+        else if (attrib == AZ::Edit::Attributes::DisplayDecimals)
+        {
+            int intValue = 0;
+            if (attrValue->Read<int>(intValue))
+            {
+                GUI->setDisplayDecimals(intValue);
+            }
+            else
+            {
+                // emit a warning!
+                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'DisplayDecimals' attribute from property '%s' into Spin Box", debugName);
             }
             return;
         }

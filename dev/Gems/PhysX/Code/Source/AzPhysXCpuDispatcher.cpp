@@ -10,11 +10,9 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 #include <AzPhysXCpuDispatcher.h>
 #include <AzPhysXJob.h>
-#include <AzCore/Memory/Memory.h>
-#include <AzCore/Debug/Profiler.h>
 
 namespace PhysX
 {
@@ -37,9 +35,10 @@ namespace PhysX
         azJob->Start();
     }
 
-    void AzPhysXCpuDispatcher::release()
+
+    physx::PxU32 AzPhysXCpuDispatcher::getWorkerCount() const
     {
-        delete this;
+        return AZ::JobContext::GetGlobalContext()->GetJobManager().GetNumWorkerThreads();
     }
 } // namespace PhysX
 

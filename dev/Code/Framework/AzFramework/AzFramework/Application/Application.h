@@ -148,14 +148,7 @@ namespace AzFramework
         //////////////////////////////////////////////////////////////////////////
         //! NetSystemEventBus::Handler
         //////////////////////////////////////////////////////////////////////////
-        NetworkContext* GetNetworkContext() override { return m_networkContext.get(); }
-
-        //////////////////////////////////////////////////////////////////////////
-        //! ComponentApplicationRequests
-        //////////////////////////////////////////////////////////////////////////
-        void RegisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor) override;
-        void UnregisterComponentDescriptor(const AZ::ComponentDescriptor* descriptor) override;
-        //////////////////////////////////////////////////////////////////////////
+        NetworkContext* GetNetworkContext() override;
 
         /** ReflectModulesFromAppDescriptor - Utility function to load all the modules in the app descriptor file
         * And ensure that their components are reflected.
@@ -207,7 +200,7 @@ namespace AzFramework
 
         virtual const char* GetCurrentConfigurationName() const;
 
-        void CreateNetworkContext();
+        void CreateReflectionManager() override;
 
         AzFramework::CommandLine m_commandLine;
         char m_configFilePath[AZ_MAX_PATH_LEN];
@@ -218,7 +211,6 @@ namespace AzFramework
         char m_engineRoot[AZ_MAX_PATH_LEN]; ///> Location of the engine root folder that this application is based on
 
         AZStd::unique_ptr<AZ::IO::LocalFileIO> m_defaultFileIO; ///> Default file IO instance is a LocalFileIO.
-        AZStd::unique_ptr<NetworkContext> m_networkContext;
         AZStd::unique_ptr<Implementation> m_pimpl;
 
         bool m_exitMainLoopRequested = false;

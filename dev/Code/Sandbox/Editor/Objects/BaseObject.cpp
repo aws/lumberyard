@@ -782,7 +782,7 @@ bool CBaseObject::SetPos(const Vec3& pos, int flags)
     {
         CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING,
             "Object %s, SetPos called with invalid position: (%f,%f,%f)",
-            GetName().toLatin1().data(), pos.x, pos.y, pos.z);
+            GetName().toUtf8().data(), pos.x, pos.y, pos.z);
         return false;
     }
 
@@ -884,7 +884,7 @@ bool CBaseObject::SetScale(const Vec3& scale, int flags)
     // Check if scale is bad.
     if (scale.x < 0.01f || scale.y < 0.01f || scale.z < 0.01f)
     {
-        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Object %s, SetScale called with invalid scale: (%f,%f,%f)", GetName().toLatin1().data(), scale.x, scale.y, scale.z);
+        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Object %s, SetScale called with invalid scale: (%f,%f,%f)", GetName().toUtf8().data(), scale.x, scale.y, scale.z);
         return false;
     }
     //////////////////////////////////////////////////////////////////////////
@@ -1032,7 +1032,7 @@ void CBaseObject::BeginEditParams(IEditor* ie, int flags)
     {
         s_objectPanel = new CObjectPanel();
         bool bCollapse = flags & OBJECT_COLLAPSE_OBJECTPANEL ? true : false;
-        s_rollupIndex = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, GetTypeName().toLatin1().data(), s_objectPanel, -1, !bCollapse);
+        s_rollupIndex = GetIEditor()->AddRollUpPage(ROLLUP_OBJECTS, GetTypeName(), s_objectPanel, -1, !bCollapse);
         if (s_rollupIndex == 0)
         {
             delete s_objectPanel;
@@ -1055,7 +1055,7 @@ void CBaseObject::BeginEditParams(IEditor* ie, int flags)
         s_varsPanel->AddVars(GetVarBlock());
         if (!s_varsIndex)
         {
-            s_varsIndex = AddUIPage((GetTypeName() + " Params").toLatin1().data(), s_varsPanel);
+            s_varsIndex = AddUIPage((GetTypeName() + " Params").toUtf8().data(), s_varsPanel);
         }
 
         if (s_varsPanel)
@@ -1122,7 +1122,7 @@ void CBaseObject::BeginEditMultiSelParams(bool bAllOfSameType)
     if (!s_objectPanel)
     {
         s_objectPanel = new CObjectPanel();
-        s_rollupIndex = AddUIPage(GetTypeName().toLatin1().data(), s_objectPanel);
+        s_rollupIndex = AddUIPage(GetTypeName().toUtf8().data(), s_objectPanel);
         s_objectPanel->SetMultiSelect(true);
     }
 
@@ -1152,7 +1152,7 @@ void CBaseObject::BeginEditMultiSelParams(bool bAllOfSameType)
             }
             if (!s_varsIndex)
             {
-                s_varsIndex = AddUIPage((GetTypeName() + " Params").toLatin1().data(), s_varsPanel);
+                s_varsIndex = AddUIPage((GetTypeName() + " Params").toUtf8().data(), s_varsPanel);
             }
 
             if (s_varsPanel)
@@ -1597,20 +1597,20 @@ void CBaseObject::DrawDimensionsImpl(DisplayContext& dc, const AABB& localBoundB
     if (bVisiableText[0])
     {
         str = QString::number(xLength, 'f', 3);
-        DrawTextOn2DBox(dc, textPos[0], str.toLatin1().data(), fTextScale, kXColor, TextBoxColor);
+        DrawTextOn2DBox(dc, textPos[0], str.toUtf8().data(), fTextScale, kXColor, TextBoxColor);
     }
     if (!bHave2Axis)
     {
         if (bVisiableText[2])
         {
             str = QString::number(zLength, 'f', 3);
-            DrawTextOn2DBox(dc, textPos[2], str.toLatin1().data(), fTextScale, kZColor, TextBoxColor);
+            DrawTextOn2DBox(dc, textPos[2], str.toUtf8().data(), fTextScale, kZColor, TextBoxColor);
         }
     }
     if (bVisiableText[1])
     {
         str = QString::number(yLength, 'f', 3);
-        DrawTextOn2DBox(dc, textPos[1], str.toLatin1().data(), fTextScale, kYColor, TextBoxColor);
+        DrawTextOn2DBox(dc, textPos[1], str.toUtf8().data(), fTextScale, kYColor, TextBoxColor);
     }
 
     dc.SetState(backupstate | e_DepthTestOn);
@@ -1850,7 +1850,7 @@ void CBaseObject::DrawLabel(DisplayContext& dc, const Vec3& pos, const QColor& l
         }
 
         dc.SetColor(col[0], col[1], col[2], col[3] * alpha);
-        dc.DrawTextLabel(pos, size, GetName().toLatin1().data());
+        dc.DrawTextLabel(pos, size, GetName().toUtf8().data());
     }
 }
 
@@ -2411,11 +2411,11 @@ void CBaseObject::Serialize(CObjectArchive& ar)
         const bool isPartOfPrefab = IsPartOfPrefab();
 
         // This attributed only readed by ObjectManager.
-        xmlNode->setAttr("Type", GetTypeName().toLatin1().data());
+        xmlNode->setAttr("Type", GetTypeName().toUtf8().data());
 
         if (m_layer)
         {
-            xmlNode->setAttr("Layer", m_layer->GetName().toLatin1().data());
+            xmlNode->setAttr("Layer", m_layer->GetName().toUtf8().data());
             xmlNode->setAttr("LayerGUID", m_layer->GetGUID());
         }
 
@@ -2426,7 +2426,7 @@ void CBaseObject::Serialize(CObjectArchive& ar)
             xmlNode->setAttr("IdInPrefab", m_guidInPrefab);
         }
 
-        xmlNode->setAttr("Name", GetName().toLatin1().data());
+        xmlNode->setAttr("Name", GetName().toUtf8().data());
         xmlNode->setAttr("HideOrder", m_hideOrder);
 
         if (m_parent)
@@ -2468,7 +2468,7 @@ void CBaseObject::Serialize(CObjectArchive& ar)
 
         if (m_pMaterial)
         {
-            xmlNode->setAttr("Material", GetMaterialName().toLatin1().data());
+            xmlNode->setAttr("Material", GetMaterialName().toUtf8().data());
         }
 
         if (m_nMinSpec != 0)
@@ -2488,12 +2488,12 @@ XmlNodeRef CBaseObject::Export(const QString& levelPath, XmlNodeRef& xmlNode)
 {
     XmlNodeRef objNode = xmlNode->newChild("Object");
 
-    objNode->setAttr("Type", GetTypeName().toLatin1().data());
-    objNode->setAttr("Name", GetName().toLatin1().data());
+    objNode->setAttr("Type", GetTypeName().toUtf8().data());
+    objNode->setAttr("Name", GetName().toUtf8().data());
 
     if (m_pMaterial)
     {
-        objNode->setAttr("Material", m_pMaterial->GetName().toLatin1().data());
+        objNode->setAttr("Material", m_pMaterial->GetName().toUtf8().data());
     }
 
     Vec3 pos, scale;
@@ -2589,7 +2589,7 @@ QString CBaseObject::GetTypeName() const
         return "";
     }
     QString className = m_classDesc->ClassName();
-    QString subClassName = strstr(className.toLatin1().data(), "::");
+    QString subClassName = strstr(className.toUtf8().data(), "::");
     if (subClassName.isEmpty())
     {
         return className;
@@ -3768,7 +3768,7 @@ QString CBaseObject::GetMaterialName() const
 void CBaseObject::SetMaterial(const QString& materialName)
 {
     GetIEditor()->GetMissingAssetResolver()->CancelRequest(functor(*this, &CBaseObject::OnMtlResolved));
-    GetIEditor()->GetMissingAssetResolver()->AddResolveRequest(materialName.toLatin1().data(), functor(*this, &CBaseObject::OnMtlResolved), IVariable::DT_MATERIAL);
+    GetIEditor()->GetMissingAssetResolver()->AddResolveRequest(materialName.toUtf8().data(), functor(*this, &CBaseObject::OnMtlResolved), IVariable::DT_MATERIAL);
     CMaterial* pMaterial = NULL;
     CMaterialManager* pManager = GetIEditor()->GetMaterialManager();
     if (!materialName.isEmpty() && pManager != NULL)

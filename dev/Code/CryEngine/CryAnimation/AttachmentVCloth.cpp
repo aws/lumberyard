@@ -53,10 +53,13 @@ uint32 CAttachmentVCLOTH::AddBinding(IAttachmentObject* pIAttachmentObject, _sma
         if (pSkinningData
             && pSkinningData->nNumBones == expectedNumBones
             && pSkinningData->pPreviousSkinningRenderData
-            && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones
-            && pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+            && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones)
         {
-            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+            AZ::LegacyJobExecutor* pAsyncJobExecutor = pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor;
+            if (pAsyncJobExecutor)
+            {
+                pAsyncJobExecutor->WaitForCompletion();
+            }
         }
     }
     memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
@@ -488,9 +491,9 @@ CAttachmentVCLOTH::~CAttachmentVCLOTH()
     int nList = nFrameID % 3;
     if (m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_arrSkinningRendererData[nList].pSkinningData)
     {
-        if (m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobs)
+        if (m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor)
         {
-            gEnv->pJobManager->WaitForJob(*m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobs);
+            m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor->WaitForCompletion();
         }
     }
 
@@ -941,7 +944,7 @@ void CAttachmentVCLOTH::DrawAttachment(SRendParams& RendParams, const SRendering
             vertexSkinData.pVertexPositionsPrevious = strided_pointer<const Vec3>(NULL);
             if (pD->m_pSkinningData->pPreviousSkinningRenderData)
             {
-                gEnv->pJobManager->WaitForJob(*pD->m_pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+                pD->m_pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor->WaitForCompletion();
             }
             _smart_ptr<IRenderMesh>& pRenderMeshPrevious = m_pRenderMeshsSW[1 - iCurrentRenderMeshID];
             if (pRenderMeshPrevious != NULL)
@@ -1007,7 +1010,7 @@ void CAttachmentVCLOTH::DrawAttachment(SRendParams& RendParams, const SRendering
             SSkinningData* pCurrentJobSkinningData = *pD->m_pSkinningData->pMasterSkinningDataList;
             if (pCurrentJobSkinningData == NULL)
             {
-                pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobs);
+                pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobExecutor);
             }
             else
             {
@@ -1018,7 +1021,7 @@ void CAttachmentVCLOTH::DrawAttachment(SRendParams& RendParams, const SRendering
                 // in case we failed (job has finished in the meantime), we need to start the job from the main thread
                 if (pUpdatedJobSkinningData == NULL)
                 {
-                    pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobs);
+                    pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobExecutor);
                 }
             }
 
@@ -1074,7 +1077,7 @@ void CAttachmentVCLOTH::DrawAttachment(SRendParams& RendParams, const SRendering
             if (tang || bitang || norm || wire)
             {
                 CModelMesh* pModelMesh = m_pRenderSkin->GetModelMesh(nRenderLOD);
-                gEnv->pJobManager->WaitForJob(*pD->m_pSkinningData->pAsyncJobs);
+                pD->m_pSkinningData->pAsyncJobExecutor->WaitForCompletion();
                 //SoftwareSkinningDQ(pModelMesh, pObj->m_II.m_Matrix,   tang,bitang,norm,wire, pD->m_pSkinningData->pBoneQuatsS);
                 SoftwareSkinningDQ_VS_Emulator(pModelMesh, pObj->m_II.m_Matrix, tang, bitang, norm, wire, pD->m_pSkinningData->pBoneQuatsS);
             }
@@ -1203,9 +1206,9 @@ SSkinningData* CAttachmentVCLOTH::GetVertexTransformationData(bool bVertexAnimat
     {
         pSkinningData->nHWSkinningFlags |= eHWS_MotionBlured;
         pSkinningData->pPreviousSkinningRenderData = m_arrSkinningRendererData[nPrevList].pSkinningData;
-        if (pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+        if (pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor)
         {
-            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+            pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor->WaitForCompletion();
         }
     }
     else
@@ -2617,9 +2620,9 @@ void CClothPiece::WaitForJob(bool bPrev)
     int nList = nFrameID % 3;
     if (m_pVClothAttachment->m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_pVClothAttachment->m_arrSkinningRendererData[nList].pSkinningData)
     {
-        if (m_pVClothAttachment->m_arrSkinningRendererData[nList].pSkinningData->pAsyncDataJobs)
+        if (m_pVClothAttachment->m_arrSkinningRendererData[nList].pSkinningData->pAsyncDataJobExecutor)
         {
-            gEnv->pJobManager->WaitForJob(*m_pVClothAttachment->m_arrSkinningRendererData[nList].pSkinningData->pAsyncDataJobs);
+            m_pVClothAttachment->m_arrSkinningRendererData[nList].pSkinningData->pAsyncDataJobExecutor->WaitForCompletion();
         }
     }
 }
@@ -2673,7 +2676,7 @@ bool CClothPiece::PrepareCloth(CSkeletonPose& skeletonPose, const Matrix34& worl
     //  {
     //      // software skin the sim mesh
     //      SSkinningData* pSkinningData = m_pSimAttachment->GetVertexTransformationData(true,lod);
-    //      gEnv->pJobManager->WaitForJob( *pSkinningData->pAsyncJobs ); // stall still the skinning related jobs have finished
+    //      pSkinningData->pAsyncJobExecutor->WaitForCompletion(); // stall still the skinning related jobs have finished
     //      UpdateSimulation(pSkinningData->pBoneQuatsS, pSkinningData->nNumBones);
     //  }
     //  m_pRenderAttachment->m_vertexAnimation.SetClothData(this);

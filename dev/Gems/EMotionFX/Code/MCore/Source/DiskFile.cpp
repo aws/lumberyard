@@ -14,7 +14,11 @@
 #include "DiskFile.h"
 #include "UnicodeString.h"
 
-
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(DiskFile_cpp)
+#else
+#define DISKFILE_CPP_TRAIT_USE_POSIX 1
+#endif
 namespace MCore
 {
     // constructor
@@ -166,7 +170,7 @@ namespace MCore
         #else
         return ftell(mFile);
         #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && !defined(ORBIS)
+    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
         return ftello(mFile);
     #else
         return ftell(mFile);
@@ -206,7 +210,7 @@ namespace MCore
             return false;
         }
         #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && !defined(ORBIS)
+    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
         if (fseeko(mFile, numBytes, SEEK_CUR) != 0)
         {
             return false;
@@ -239,7 +243,7 @@ namespace MCore
             return false;
         }
         #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && !defined(ORBIS)
+    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
         if (fseeko(mFile, offset, SEEK_SET) != 0)
         {
             return false;
@@ -304,7 +308,7 @@ namespace MCore
         #else
         fseek(mFile, 0, SEEK_END);
         #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && !defined(ORBIS)
+    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
         fseeko(mFile, 0, SEEK_END);
     #else
         fseek(mFile, 0, SEEK_END);
@@ -320,7 +324,7 @@ namespace MCore
         #else
         fseek(mFile, (long)curPos, SEEK_SET);
         #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && !defined(ORBIS)
+    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
         fseeko(mFile, curPos, SEEK_SET);
     #else
         fseek(mFile, (long)curPos, SEEK_SET);

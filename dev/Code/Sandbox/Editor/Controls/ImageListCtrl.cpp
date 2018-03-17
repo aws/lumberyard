@@ -496,7 +496,14 @@ void QImageListDelegate::paint(QPainter* painter,
     if (index.data(Qt::DecorationRole).isValid())
     {
         const QPixmap& p = index.data(Qt::DecorationRole).value<QPixmap>();
-        painter->drawPixmap(innerRect, p);
+        if (p.isNull() || p.size() == QSize(1, 1))
+        {
+            emit InvalidPixmapGenerated(index);
+        }
+        else
+        {
+            painter->drawPixmap(innerRect, p);
+        }
     }
 
     /* draw text */

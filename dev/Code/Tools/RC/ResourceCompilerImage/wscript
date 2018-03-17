@@ -90,10 +90,9 @@ def build(bld):
         
 
         darwin_cflags               = ['-Wno-shift-count-overflow',
-                                    '-Wno-sometimes-uninitialized',
                                     '-Wno-shift-negative-value'],
         darwin_cxxflags             = ['-Wno-shift-count-overflow',
-                                    '-Wno-sometimes-uninitialized',
+                                    '-Wno-sometimes-uninitialized', # required fpr squish library to compile
                                     '-Wno-shift-negative-value'],
 
                                     

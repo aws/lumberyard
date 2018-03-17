@@ -22,7 +22,6 @@
             "FbxBlendShapeWrapper.cpp",
             "FbxBlendShapeChannelWrapper.cpp",
             "FbxLayerElementUtilities.inl",
-            "stdafx.cpp",
             "FbxSceneWrapper.h",
             "FbxAnimStackWrapper.h",
             "FbxAnimLayerWrapper.h",
@@ -41,8 +40,22 @@
             "FbxUVWrapper.h",
             "FbxBlendShapeWrapper.h",
             "FbxBlendShapeChannelWrapper.h",
-            "FbxLayerElementUtilities.h",
-            "stdafx.h"
+            "FbxLayerElementUtilities.h"
+        ],
+        "Test Mocks":
+        [
+            "Mocks/MockFbxAnimStackWrapper.h",
+            "Mocks/MockFbxAxisSystemWrapper.h",
+            "Mocks/MockFbxMaterialWrapper.h",
+            "Mocks/MockFbxMeshWrapper.h",
+            "Mocks/MockFbxNodeWrapper.h",
+            "Mocks/MockFbxPropertyWrapper.h",
+            "Mocks/MockFbxSceneWrapper.h",
+            "Mocks/MockFbxSkinWrapper.h",
+            "Mocks/MockFbxSystemUnitWrapper.h",
+            "Mocks/MockFbxTimeWrapper.h",
+            "Mocks/MockFbxUVWrapper.h",
+            "Mocks/MockFbxVertexColorWrapper.h"
         ]
     }
 }

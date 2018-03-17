@@ -43,7 +43,7 @@ void CParticleUIDefinition::ResetUIState()
     m_CanForceUpdate = true;
 }
 
-CVarBlock* CParticleUIDefinition::CreateVars()
+CVarBlockPtr CParticleUIDefinition::CreateVars()
 {
     m_vars = new CVarBlock;
 

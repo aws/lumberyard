@@ -85,7 +85,7 @@ namespace Driller
 		AZ::u64 m_filterThreadID;
 		int m_viewType;
 		AZ::u32 m_treeStateCRC;
-		AZStd::unordered_map<char*,int> m_chartTypeStringToViewType;
+		AZStd::unordered_map<const char*,int> m_chartTypeStringToViewType;
 
 	public:
 

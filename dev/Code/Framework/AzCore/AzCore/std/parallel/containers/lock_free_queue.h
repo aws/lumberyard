@@ -92,7 +92,7 @@ namespace AZStd
         AZ_Assert(m_allocator.is_delayed_recycling(),   "Allocator for lock_free_queue must not recycle"
             "allocations, use lock_free_stamped_queue to relax this restriction");
 
-        node_type* sentinel = reinterpret_cast<node_ptr_type>(m_allocator.allocate(sizeof(node_type), alignment_of<node_type>::value));
+        node_type* sentinel = create_node();
         sentinel->m_next.store(NULL, memory_order_release);
         m_head.store(sentinel, memory_order_release);
         m_tail.store(sentinel, memory_order_release);

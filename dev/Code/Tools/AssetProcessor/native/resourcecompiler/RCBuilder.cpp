@@ -451,25 +451,10 @@ namespace AssetProcessor
 
     bool InternalRecognizerBasedBuilder::FindRC(QString& systemRootOut, QString& rcAbsolutePathOut)
     {
-        QDir systemRootDir;
-        bool computeRootResult = AssetUtilities::ComputeEngineRoot(systemRootDir);
-        AZ_Assert(computeRootResult, "AssetUtilities::ComputeEngineRoot failed");
+        QDir currentExePath(QCoreApplication::applicationDirPath());
+        systemRootOut = QCoreApplication::applicationDirPath();
+        rcAbsolutePathOut = systemRootOut + QString(LEGACY_RC_RELATIVE_PATH);
 
-        QString testRcPath = systemRootDir.absoluteFilePath(QString(BINFOLDER_NAME LEGACY_RC_RELATIVE_PATH));
-
-        if (AZ::IO::SystemFile::Exists(testRcPath.toUtf8().data()))
-        {
-            systemRootOut = systemRootDir.absolutePath();
-            rcAbsolutePathOut = testRcPath;
-        }
-        else
-        {
-            AZ_Warning(AssetProcessor::ConsoleChannel, false, "Unable to find rc.exe from the engine root (%s).  Attempting to locate in the relative rc subfolder", systemRootDir.absolutePath().toUtf8().data());
-            QDir currentExePath(QCoreApplication::applicationDirPath());
-            systemRootOut = currentExePath.absolutePath();
-            rcAbsolutePathOut = currentExePath.absoluteFilePath(LEGACY_RC_RELATIVE_PATH);
-            
-        }
         return AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data());
     }
 
@@ -598,7 +583,8 @@ namespace AssetProcessor
 
     bool InternalRecognizerBasedBuilder::GetMatchingRecognizers(const AZStd::vector<AssetBuilderSDK::PlatformInfo>& platformInfos, const QString& fileName, InternalRecognizerPointerContainer& output) const
     {
-        AZ_Assert(fileName.contains('\\') == false, "fileName must not contain backslashes: %s", fileName.toUtf8().constData());
+        QByteArray fileNameUtf8 = fileName.toUtf8();
+        AZ_Assert(fileName.contains('\\') == false, "fileName must not contain backslashes: %s", fileNameUtf8.constData());
 
         bool foundAny = false;
         // assetRecognizerDictionary is a key value pair dictionary where
@@ -608,7 +594,7 @@ namespace AssetProcessor
         for (const InternalAssetRecognizer* recognizer : m_assetRecognizerDictionary)
         {
             // so this platform is supported.  Check if the file matches the regex in MatchesPath.
-            if (recognizer->m_patternMatcher.MatchesPath(fileName))
+            if (recognizer->m_patternMatcher.MatchesPath(fileNameUtf8.constData()))
             {
                 // this recognizer does match that particular file name.
                 // do we know how to compile it for any of the platforms?
@@ -656,6 +642,10 @@ namespace AssetProcessor
         if (!GetMatchingRecognizers(request.m_enabledPlatforms, normalizedPath, recognizers))
         {
             AssetBuilderSDK::BuilderLog(m_internalRecognizerBuilderUuid, "Cannot find recognizer for %s.", request.m_sourceFile.c_str());
+            if (request.m_enabledPlatforms.empty())
+            {
+                response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
+            }
             return;
         }
 

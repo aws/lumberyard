@@ -32,7 +32,7 @@ namespace AzToolsFramework
 
         class AssetBrowserModel
             : public QAbstractTableModel
-            , public AssetBrowserModelRequestsBus::Handler
+            , public AssetBrowserModelRequestBus::Handler
             , public AZ::TickBus::Handler
         {
             Q_OBJECT
@@ -60,7 +60,7 @@ namespace AzToolsFramework
             QModelIndex parent(const QModelIndex& child) const override;
 
             //////////////////////////////////////////////////////////////////////////
-            // AssetBrowserModelRequestsBus
+            // AssetBrowserModelRequestBus
             //////////////////////////////////////////////////////////////////////////
             bool IsLoaded() const override;
             void BeginAddEntry(AssetBrowserEntry* parent) override;

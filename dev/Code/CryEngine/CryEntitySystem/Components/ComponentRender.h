@@ -513,7 +513,7 @@ public:
     virtual void SetPhysics(IPhysicalEntity* pPhys) {}
     virtual void PreloadInstanceResources(Vec3 vPrevPortalPos, float fPrevPortalDistance, float fTime) {}
 
-    void Render_JobEntry(const SRendParams inRenderParams, const SRenderingPassInfo passInfo);
+    void Render_JobEntry(const SRendParams& inRenderParams, const SRenderingPassInfo& passInfo);
 
     virtual float GetMaxViewDist();
 

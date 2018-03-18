@@ -47,7 +47,6 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
 
     virtual void SetUserData(const char* key, void* userData);
 
@@ -78,7 +77,6 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
 
     virtual void SetUserData(const char* key, void* userData);
     virtual void BeginEditParams(IEditor* ie, int flags) {};
@@ -105,7 +103,6 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
 
     virtual void SetUserData(const char* key, void* userData);
     virtual void BeginEditParams(IEditor* ie, int flags) {};

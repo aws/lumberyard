@@ -40,7 +40,6 @@ public:
 protected:
 
     bool OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point);
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
 
     void SetMaterial(_smart_ptr<IMaterial> pMaterial);
 

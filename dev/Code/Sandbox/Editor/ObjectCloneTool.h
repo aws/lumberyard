@@ -44,7 +44,6 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
     virtual void BeginEditParams(IEditor* ie, int flags) override;
     virtual void EndEditParams() override;
 

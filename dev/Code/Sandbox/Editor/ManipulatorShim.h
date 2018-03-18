@@ -35,7 +35,6 @@ public:
     void EndEditParams() override {}
     void Display(DisplayContext& dc) override {}
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
-    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override { return false; }
     bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
     bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override { return true; }
     void DeleteThis() override { delete this; }

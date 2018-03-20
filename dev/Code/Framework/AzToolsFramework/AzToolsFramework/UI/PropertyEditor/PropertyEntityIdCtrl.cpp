@@ -107,6 +107,7 @@ namespace AzToolsFramework
             EditorPickModeRequests::Bus::Handler::BusConnect();
         }
         EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+        m_pickButton->setChecked(true);
     }
 
     void PropertyEntityIdCtrl::StopObjectPickMode()
@@ -115,6 +116,7 @@ namespace AzToolsFramework
         {
             EditorPickModeRequests::Bus::Handler::BusDisconnect();
         }
+        m_pickButton->setChecked(false);
     }
 
     void PropertyEntityIdCtrl::OnPickModeSelect(AZ::EntityId id)

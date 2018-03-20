@@ -86,6 +86,21 @@ namespace AzToolsFramework
         m_pComboBox->blockSignals(false);
     }
 
+    void PropertyStringComboBoxCtrl::Add(const AZStd::pair<AZStd::string, AZStd::string>& value)
+    {
+        m_pComboBox->blockSignals(true);
+        m_values.push_back(value.first);
+        if (value.first != "---")
+        {
+            m_pComboBox->addItem(value.second.c_str());
+        }
+        else
+        {
+            m_pComboBox->insertSeparator(m_pComboBox->count());
+        }
+        m_pComboBox->blockSignals(false);
+    }
+
     void PropertyStringComboBoxCtrl::Add(const AZStd::vector<AZStd::string>& vals)
     {
         m_pComboBox->blockSignals(true);
@@ -154,6 +169,20 @@ namespace AzToolsFramework
             {
                 (void)debugName;
                 AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'StringList' attribute from property '%s' into string combo box. Expected string vector.", debugName);
+            }
+        }
+        else if (attrib == AZ::Edit::InternalAttributes::EnumValue)
+        {
+            // Handle "enumValue" attribute, used by Lua scripts
+            AZStd::pair<AZStd::string, AZStd::string> enumValue;
+            if (attrValue->Read<AZStd::pair<AZStd::string, AZStd::string>>(enumValue))
+            {
+                GUI->Add(enumValue);
+            }
+            else
+            {
+                // emit a warning!
+                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'EnumValue' attribute from property '%s' into enum combo box", debugName);
             }
         }
         else if (attrib == AZ::Edit::Attributes::ComboBoxEditable)

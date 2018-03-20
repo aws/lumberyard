@@ -21,6 +21,7 @@
 #include <GeomQuery.h>
 #include "Shaders/Vertex.h"
 #include <AzCore/Jobs/LegacyJobExecutor.h>
+#include <AzCore/std/parallel/atomic.h>
 
 // Enable the below to get fatal error is some holds a rendermesh buffer lock for longer than 1 second
 //#define RM_CATCH_EXCESSIVE_LOCKS
@@ -155,6 +156,7 @@ private:
     int   m_nFrameRequestCachePos;
 
     std::vector<Vec2*> m_UVCache;         // float UVs (cached)
+    AZStd::atomic<size_t> m_UVCacheSize;  // Thread-safe UVCache resizing
     int   m_nFrameRequestCacheUVs;
 
     CRenderMesh* m_pVertexContainer;

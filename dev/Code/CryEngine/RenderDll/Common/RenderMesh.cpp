@@ -367,6 +367,7 @@ int CRenderMesh::Release()
 }
 
 CRenderMesh::CRenderMesh()
+    : m_UVCacheSize(0)
 {
 #if defined(USE_VBIB_PUSH_DOWN)
     m_VBIBFramePushID = 0;
@@ -394,6 +395,7 @@ CRenderMesh::CRenderMesh()
 }
 
 CRenderMesh::CRenderMesh (const char* szType, const char* szSourceName, bool bLock)
+    : m_UVCacheSize(0)
 {
     memset(m_VBStream, 0x0, sizeof(m_VBStream));
 
@@ -2142,7 +2144,18 @@ bool CRenderMesh::CreateUVCache(byte* source, uint32 sourceStride, uint flags, u
             // Increase the size of the cached uvs vector if it is not big enough for the given uv set, and fill any new slots with nullptr
             if (uvSetIndex >= m_UVCache.size())
             {
-                m_UVCache.resize(uvSetIndex + 1, nullptr);
+                size_t uvCacheSize = m_UVCacheSize.load(AZStd::memory_order_relaxed); // Cheap optimistic case check
+                if (uvSetIndex >= uvCacheSize)
+                {
+                    // We need to resize m_UVCacheSize in a thread-safe way
+                    SREC_AUTO_LOCK(m_sResLock);
+                    uvCacheSize = m_UVCacheSize.load(); // Load with memory_order_seq_cst to ensure we have the latest value (another thread might have resized our vector already)
+                    if (uvSetIndex >= uvCacheSize)
+                    {
+                        m_UVCache.resize(uvSetIndex + 1, nullptr);
+                        m_UVCacheSize = uvSetIndex + 1;
+                    }
+                }
             }
 
             // Return true if the uv cache has already been created and does not need to be updated

@@ -339,6 +339,28 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // GameEntityContextRequestBus::CloneDynamicSliceByEntity
+    //=========================================================================
+    AZ::SliceComponent::SliceInstanceAddress GameEntityContextComponent::CloneDynamicSliceByEntity(const AZ::EntityId& entityId, AZ::SliceComponent::EntityIdToEntityIdMap& entityIdMap)
+    {
+        AZ::SliceComponent* rootSlice = GetRootSlice();
+        if (rootSlice)
+        {
+            auto address = rootSlice->FindSlice(entityId);
+            if (address.second)
+            {
+                auto cloneAddress = CloneSliceInstance(address, entityIdMap);
+                if (cloneAddress.second)
+                {
+                    HandleEntitiesAdded(cloneAddress.second->GetInstantiated()->m_entities);
+                    return cloneAddress;
+                }
+            }
+        }
+        return AZ::SliceComponent::SliceInstanceAddress();
+    }
+
+    //=========================================================================
     // GameEntityContextRequestBus::InstantiateDynamicSlice
     //=========================================================================
     SliceInstantiationTicket GameEntityContextComponent::InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper)

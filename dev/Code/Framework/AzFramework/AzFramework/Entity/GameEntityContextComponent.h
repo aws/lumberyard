@@ -60,6 +60,7 @@ namespace AzFramework
         bool DestroyDynamicSliceByEntity(const AZ::EntityId&) override;
         void ActivateGameEntity(const AZ::EntityId&) override;
         void DeactivateGameEntity(const AZ::EntityId&) override;
+        AZ::SliceComponent::SliceInstanceAddress CloneDynamicSliceByEntity(const AZ::EntityId&, AZ::SliceComponent::EntityIdToEntityIdMap&) override;
         SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper) override;
         void CancelDynamicSliceInstantiation(const SliceInstantiationTicket& ticket) override;
         bool LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds) override;

@@ -1297,12 +1297,24 @@ namespace AzFramework
         {
             ScriptPropertyDataSet& dataSet = m_propertyDataSets[i];
 
-            dataSet.Modify([](AZ::ScriptProperty*& scriptProperty)
+            // If this dataset is bound to a network table value, unbind it.
+            // This will transfer the script property ownership to the reserver,
+            // so it should not be deleted here.
+            if (dataSet.IsReserved())
             {
-                delete scriptProperty;
-                scriptProperty =  nullptr;
-                return false;
-            });
+                AZ_Assert(dataSet.m_reserver->GetDataSet() == &dataSet, "Invalid ScriptProperty <-> DataSet binding detected!");
+                dataSet.m_reserver->UnbindFromDataSet();
+            }
+            else
+            {
+                // No Lua network table value is bound to this dataset - delete the script property
+                dataSet.Modify([](AZ::ScriptProperty*& scriptProperty)
+                {
+                    delete scriptProperty;
+                    scriptProperty = nullptr;
+                    return false;
+                });
+            }
         }
     }
 

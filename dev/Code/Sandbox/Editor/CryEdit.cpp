@@ -2016,11 +2016,24 @@ void CCryEditApp::InitDirectory()
     QString szExeFileName = qApp->applicationDirPath();
 
     // Remove Bin32/Bin64 folder/
-    szExeFileName.remove(QRegularExpression(R"((\\|/)Bin32.*)"));
-
-    const QString bin = QRegularExpression::escape(BINFOLDER_NAME);
-    const QString reg = QStringLiteral("(\\\\|/)%1.*").arg(bin);
-    szExeFileName.remove(QRegularExpression(reg));
+    // Replaced regex-replace string modification with a simpler one (endsWith() + chop()).
+    // There were two issues with the regex:
+    //  1) It was case-sensitive, and failed when executable path was using lower case(i.e. app path used bin32 instead on Bin32)
+    //  2) The regex would replace all occurrences of Bin32/Bin64 instead of only the one at the end of the path.
+    szExeFileName.replace('/', '\\');
+    QString binFolderName = QString('\\').append(BINFOLDER_NAME); // BINFOLDER_NAME is the Bin64 editor executable name
+    if (szExeFileName.endsWith(binFolderName, Qt::CaseInsensitive))
+    {
+        szExeFileName.chop(binFolderName.length());
+    }
+    else
+    {
+        QString bin32FolderName("\\Bin32");
+        if (szExeFileName.endsWith(bin32FolderName, Qt::CaseInsensitive))
+        {
+            szExeFileName.chop(bin32FolderName.length());
+        }
+    }
 
     QDir::setCurrent(szExeFileName);
 }

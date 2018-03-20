@@ -721,8 +721,16 @@ bool ResourceCompiler::CollectFilesToCompile(const string& filespec, std::vector
                             sourceLeftPath = sourceRoot;
                             sourceInnerPathAndName = PathHelpers::Join(PathHelpers::GetDirectory(tokens[t]), filenames[i]);
                         }
-                        AddRcFile(files, addedFiles, sourceRootsReversed, sourceLeftPath, sourceInnerPathAndName, targetLeftPath);
-                    }
+
+                        const DWORD dwFileSpecAttr = GetFileAttributes(PathHelpers::Join(sourceLeftPath, sourceInnerPathAndName));
+                        if (dwFileSpecAttr & FILE_ATTRIBUTE_DIRECTORY)
+                        {
+                            RCLog("Skipping adding file '%s' matched by wildcard '%s' because it is a directory", sourceInnerPathAndName, filespec.c_str());
+                        }
+                        else
+                        {
+                            AddRcFile(files, addedFiles, sourceRootsReversed, sourceLeftPath, sourceInnerPathAndName, targetLeftPath);
+                        }
                 }
             }
 

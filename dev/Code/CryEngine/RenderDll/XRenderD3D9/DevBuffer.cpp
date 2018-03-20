@@ -3425,16 +3425,19 @@ namespace AzRHI
             hr = gcpRendD3D->m_DevMan.CreateD3D11Buffer(&bd, NULL, &m_buffer, "ConstantBuffer");
             CHECK_HRESULT(hr);
 
-            m_used = 1;
+            m_used = (hr == S_OK);
         }
         if (m_dynamic)
         {
-            AZ_Assert(m_base_ptr == nullptr, "Already mapped when mapping");
-            D3D11_MAPPED_SUBRESOURCE mappedResource;
-            HRESULT hr = gcpRendD3D->GetDeviceContext().Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-            AZ_Assert(hr == S_OK, "Map buffer failed");
-            m_base_ptr = mappedResource.pData;
-            return mappedResource.pData;
+            if (m_used && m_buffer)
+            {
+                AZ_Assert(m_base_ptr == nullptr, "Already mapped when mapping");
+                D3D11_MAPPED_SUBRESOURCE mappedResource;
+                HRESULT hr = gcpRendD3D->GetDeviceContext().Map(m_buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+                AZ_Assert(hr == S_OK, "Map buffer failed");
+                m_base_ptr = mappedResource.pData;
+                return mappedResource.pData;
+            }
         }
         else
         {

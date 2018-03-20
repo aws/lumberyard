@@ -920,7 +920,22 @@ namespace AZ
                 // The Asset ClassId is handled directly within the LoadClass function so don't replace it
                 if (m_version == 2 && element.m_id != GetAssetClassId())
                 {
-                    if (parent && parent->m_container)
+                    // #SMART_POINTERS_V2_LOADING_FIX:
+                    // Check if this element is a smart pointer, and correct the specializedTypeId if so.
+                    // Smart pointer's specializedTypeId changed in 1.11 from being just the type of the element the pointer points to to a unique typeId per smart pointer template instantiation.
+                    // This meant that the data files created with LY1.10 or earlier contained wrong typeIds after the upgrade.
+                    // They still loaded, though, as there was a fallback mechanism in place whereby the element type was looked up in the parent element by name, and its typeId was updated.
+                    // This changed in LY1.12 when the object stream v3 was introduced, in which the specializedTypeId fields were deprecated. The fallback mechanism for typeId patching up
+                    // was modified and no longer handled the smart pointers correctly. The code below effectively does what made LY1.11 did to load older data files with smart pointers correctly:
+                    //  * If the element is a smart pointer v2 find its reflection data using serializeContext (sc.FindClassData()), passing in the parent and element name crc along with the element id
+                    //  * Element id is no longer valid (because the typeId changed), but FindClassData() falls back to using the parent's reflection data and looks up the element's class data by name crc
+                    //  * Element's class data contains the up-to-date typeId. Use it to overwrite the speclizedTypeId (and ultimately the element id), so that data can be loaded correctly.
+                    const auto elementClassData = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
+                    if (elementClassData && elementClassData->m_container && elementClassData->m_container->IsSmartPointer())
+                    {
+                        specializedId = elementClassData->m_typeId;
+                    }
+                    else if (parent && parent->m_container)
                     {
                         const SerializeContext::ClassElement* classElement = parent->m_container->GetElement(element.m_nameCrc);
                         if (classElement && classElement->m_genericClassInfo)
@@ -1040,7 +1055,14 @@ namespace AZ
                     {
                         // The Asset ClassId is handled directly within the LoadClass function
                         Uuid specializedId(valueIt->value.GetString());
-                        if (parent && parent->m_container)
+
+                        // SMART_POINTERS_V2_LOADING_FIX: See the extended comment higher up (in the xml loading section) for more details
+                        const auto elementClassData = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
+                        if (elementClassData && elementClassData->m_container && elementClassData->m_container->IsSmartPointer())
+                        {
+                            specializedId = elementClassData->m_typeId;
+                        }
+                        else if (parent && parent->m_container)
                         {
                             const SerializeContext::ClassElement* classElement = parent->m_container->GetElement(element.m_nameCrc);
                             if (classElement && classElement->m_genericClassInfo)
@@ -1159,7 +1181,13 @@ namespace AZ
                     // The Asset ClassId is handled directly within the LoadClass function
                     if (element.m_id != GetAssetClassId())
                     {
-                        if (parent && parent->m_container)
+                        // SMART_POINTERS_V2_LOADING_FIX: See the extended comment higher up (in the xml loading section) for more details
+                        const auto elementClassData = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
+                        if (elementClassData && elementClassData->m_container && elementClassData->m_container->IsSmartPointer())
+                        {
+                            specializedId = elementClassData->m_typeId;
+                        }
+                        else if (parent && parent->m_container)
                         {
                             const SerializeContext::ClassElement* classElement = parent->m_container->GetElement(element.m_nameCrc);
                             if (classElement && classElement->m_genericClassInfo)

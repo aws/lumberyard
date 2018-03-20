@@ -33,9 +33,21 @@ namespace AZ
                 m_requiresUninitializeFunction = false;
                 return false;
             case LoadStatus::AlreadyLoaded:
-                return true;
+                //return true;  ///< Don't return true in case the module was automatically loaded by the OS, in that case it will still need initializing
             case LoadStatus::LoadSuccess:
                 break;
+        }
+
+        // Use the IsInitialized function to determine if the module needs initialization
+        bool isInitialized = status == LoadStatus::AlreadyLoaded;   ///< Assume initialized if the module was already loaded, this is the same as the old behavior if the IsInitialized function is not exported by the module.
+        auto isInitFunc = GetFunction<IsInitializedDynamicModuleFunction>(IsInitializedDynamicModuleFunctionName);
+        if (isInitFunc)
+        {
+            isInitialized = isInitFunc();
+        }
+        if (isInitialized)      // If the library was already loaded (without an IsInitialized function) or it was already initialized then return immediately
+        {
+            return true;
         }
 
         // Call module's initialize function.

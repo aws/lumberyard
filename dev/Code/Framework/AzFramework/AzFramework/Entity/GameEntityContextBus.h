@@ -123,6 +123,14 @@ namespace AzFramework
         virtual bool DestroyDynamicSliceByEntity(const AZ::EntityId& /*id*/) = 0;
         
         /**
+        * Clone an entire dynamic slice instance given the ID of any entity within the slice.
+        * @param entityId The ID of the entity whose dynamic slice instance you want to clone.
+        * @param entityIdMap A reference to a map that will be filled with source->copy entity ID mappings.
+        * @return Cloned slice address if the dynamic slice instance was successfully cloned, null address otherwise.
+        */
+        virtual AZ::SliceComponent::SliceInstanceAddress CloneDynamicSliceByEntity(const AZ::EntityId& /*entityId*/, AZ::SliceComponent::EntityIdToEntityIdMap& /*entityIdMap*/) { return AZ::SliceComponent::SliceInstanceAddress(); }
+
+        /**
          * Instantiates a dynamic slice asynchronously.
          * @param sliceAsset A reference to the slice asset data.
          * @param worldTransform A reference to the world transform to apply to the slice. 

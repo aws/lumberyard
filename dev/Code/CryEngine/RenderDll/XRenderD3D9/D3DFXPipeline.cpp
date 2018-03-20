@@ -2149,8 +2149,10 @@ SDepthTexture* CD3D9Renderer::FX_CreateDepthSurface(int nWidth, int nHeight, boo
         pSrf->pTarget->SetPrivateData(WKPDID_D3DDebugObjectName, strlen("Dynamically requested Depth-Buffer"), "Dynamically requested Depth-Buffer");
 #endif
 
-        const float clearValue = (gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) ? 0.f : 1.f;
-        GetDeviceContext().ClearDepthStencilView(pSrf->pSurf, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, clearValue, 0);
+        /*
+            ClearDepthStencilView was being called from the main thread by UiCanvasComponent::CreateRenderTarget. This was corrupting the D3D context, resulting in missing fences (hang) or GPU corruption (crashes).
+            Fix is to not issue a ClearDepthStencilView from FX_CreateDepthSurface - There should be no reason that a depth target needs to be cleared upon creation, as it should be cleared or filled every frame.
+        */
     }
     else
     {

@@ -646,14 +646,26 @@ namespace AZ
 
 #ifdef AZ_MONOLITHIC_BUILD
 #define AZ_DECLARE_MODULE_INITIALIZATION
+#define AZ_DEFAULT_MODDULE_IS_INITIALIZED_METHOD        ///< Add dummy define for monolithic builds
 #else
+
+  /// Default implementation for dll IsInitialized function
+  /// For more details see:
+  /// \ref AZ::IsInitializedDynamicModuleFunction
+#define AZ_DEFAULT_MODDULE_IS_INITIALIZED_METHOD \
+    extern "C" AZ_DLL_EXPORT bool IsInitializedDynamicModule() \
+    { \
+        return AZ::Internal::EnvironmentInterface::s_environment != nullptr; \
+    }
 
 /// Default implementations of functions invoked upon loading a dynamic module.
 /// For dynamic modules which define a \ref AZ::Module class, use \ref AZ_DECLARE_MODULE_CLASS instead.
 ///
 /// For more details see:
 /// \ref AZ::InitializeDynamicModuleFunction, \ref AZ::UninitializeDynamicModuleFunction
+/// Auto included default IsInitialized function in to all AZ modules
 #define AZ_DECLARE_MODULE_INITIALIZATION \
+        AZ_DEFAULT_MODDULE_IS_INITIALIZED_METHOD \
     extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env) \
     { \
         AZ_Assert(!AZ::Internal::EnvironmentInterface::s_environment, "This module already has an attached environment"); \

@@ -107,6 +107,12 @@ extern "C" AZ_DLL_EXPORT void DestroyDLLTestVirtualClass()
 }
 //////////////////////////////////////////////////////////////////////////
 
+/// Added IsInitialized function to the test dll
+extern "C" AZ_DLL_EXPORT bool IsInitializedDynamicModule()
+{
+    AZ_Printf("DLL", "IsInitializedDynamicModule called");
+    return AZ::Internal::EnvironmentInterface::s_environment != nullptr;
+}
 
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* azEnvironmentInstance)
 {

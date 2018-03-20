@@ -99,6 +99,15 @@ namespace AZ
      * to find in a dynamic module.
      */
 
+     /// \code
+     /// extern "C" AZ_DLL_EXPORT
+     /// bool IsInitializedDynamicModule()
+     /// \endcode
+     /// Used to determine if a dynamic module that is loaded is initialized, modules auto laoded by the OS may not be initialized
+     /// Implementations should return true if initialized, false otherwise
+    using IsInitializedDynamicModuleFunction = bool(*)();
+    const char IsInitializedDynamicModuleFunctionName[] = "IsInitializedDynamicModule";
+    
     /// \code
     /// extern "C" AZ_DLL_EXPORT
     /// void InitializeDynamicModule(void* sharedEnvironment)

@@ -33,6 +33,8 @@
 static AZ::SceneAPI::FbxSceneImporter::FbxImportRequestHandler* g_fbxImporter = nullptr;
 static AZStd::vector<AZ::ComponentDescriptor*> g_componentDescriptors;
 
+AZ_DEFAULT_MODDULE_IS_INITIALIZED_METHOD    ///< Add default IsInitialized function to the dll
+
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
     using namespace AZ::SceneAPI;

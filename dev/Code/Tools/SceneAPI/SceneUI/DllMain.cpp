@@ -28,6 +28,8 @@
 static AZ::SceneAPI::UI::GraphMetaInfoHandler* g_graphMetaInfoHandler = nullptr;
 static AZ::SceneAPI::UI::ManifestMetaInfoHandler* g_manifestMetaInfoHandler = nullptr;
 
+AZ_DEFAULT_MODDULE_IS_INITIALIZED_METHOD    ///< Add default IsInitialized function to the dll
+
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
     AZ::Environment::Attach(static_cast<AZ::EnvironmentInstance>(env));

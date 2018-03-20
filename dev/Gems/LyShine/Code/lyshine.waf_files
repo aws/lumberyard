@@ -41,7 +41,7 @@
             "Source/UiDropdownComponent.cpp",
             "Source/UiDropdownComponent.h",
             "Source/UiDropdownOptionComponent.cpp",
-            "Source/UiDropdownOptionComponent.h", 
+            "Source/UiDropdownOptionComponent.h",
             "Source/UiDynamicLayoutComponent.cpp",
             "Source/UiDynamicLayoutComponent.h",
             "Source/UiDynamicScrollBoxComponent.cpp",
@@ -107,8 +107,10 @@
             "Source/UiTooltipDisplayComponent.cpp",
             "Source/UiTooltipDisplayComponent.h",
             "Source/UiTransform2dComponent.cpp",
-            "Source/UiTransform2dComponent.h"
-		],
+            "Source/UiTransform2dComponent.h",
+            "Source/UiClipboard.cpp",
+            "Source/UiClipboard.h"
+        ],
         "Source/Sprite Support":
         [
             "Source/Sprite.cpp",

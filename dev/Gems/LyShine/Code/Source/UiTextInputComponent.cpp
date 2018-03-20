@@ -36,6 +36,7 @@
 #include "UiSerialize.h"
 #include "Sprite.h"
 #include "StringUtfUtils.h"
+#include "UiClipboard.h"
 
 namespace
 {
@@ -176,6 +177,7 @@ UiTextInputComponent::UiTextInputComponent()
     , m_replacementCharacter(defaultReplacementChar)
     , m_isPasswordField(false)
     , m_clipInputText(true)
+    , m_enableClipboard(true)
 {
 }
 
@@ -411,6 +413,8 @@ bool UiTextInputComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
     int oldTextSelectionStartPos = m_textSelectionStartPos;
 
     const bool isShiftModifierActive = (static_cast<int>(activeModifierKeys) & static_cast<int>(AzFramework::ModifierKeyMask::ShiftAny)) != 0;
+    const bool isLCTRLModifierActive = (static_cast<int>(activeModifierKeys) & static_cast<int>(AzFramework::ModifierKeyMask::CtrlL)) != 0;
+
     const UiNavigationHelpers::Command command = UiNavigationHelpers::MapInputChannelIdToUiNavigationCommand(inputSnapshot.m_channelId, activeModifierKeys);
     if (command == UiNavigationHelpers::Command::Enter)
     {
@@ -601,6 +605,83 @@ bool UiTextInputComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
         if (!isShiftModifierActive)
         {
             m_textSelectionStartPos = m_textCursorPos;
+        }
+    }
+    else if (m_enableClipboard && (inputSnapshot.m_channelId == AzFramework::InputDeviceKeyboard::Key::AlphanumericC) && isLCTRLModifierActive)
+    {
+        AZStd::string textString;
+        EBUS_EVENT_ID_RESULT(textString, m_textEntity, UiTextBus, GetText);
+        if (textString.length() > 0)
+        {
+            // If a range is selected then copy only the selected text, otherwise copy all text
+            if (m_textCursorPos != m_textSelectionStartPos)
+            {
+                int left = min(m_textCursorPos, m_textSelectionStartPos);
+                int right = max(m_textCursorPos, m_textSelectionStartPos);
+                UiClipboard::SetText(textString.substr(left, right - left));
+            }
+            else
+            {
+                UiClipboard::SetText(textString);
+            }
+        }
+    }
+    else if (m_enableClipboard && (inputSnapshot.m_channelId == AzFramework::InputDeviceKeyboard::Key::AlphanumericX) && isLCTRLModifierActive)
+    {
+        AZStd::string textString;
+        EBUS_EVENT_ID_RESULT(textString, m_textEntity, UiTextBus, GetText);
+        if (textString.length() > 0)
+        {
+            // If a range is selected then cut only the selected text, otherwise cut all text
+            if (m_textCursorPos != m_textSelectionStartPos)
+            {
+                int left = min(m_textCursorPos, m_textSelectionStartPos);
+                int right = max(m_textCursorPos, m_textSelectionStartPos);
+                UiClipboard::SetText(textString.substr(left, right - left));
+                textString.erase(left, right - left);
+                m_textCursorPos = m_textSelectionStartPos = left;
+            }
+            else
+            {
+                UiClipboard::SetText(textString);
+                textString.clear();
+                m_textCursorPos = m_textSelectionStartPos = 0;
+            }
+
+            ChangeText(textString);
+            ResetCursorBlink();
+        }
+    }
+    else if (m_enableClipboard && (inputSnapshot.m_channelId == AzFramework::InputDeviceKeyboard::Key::AlphanumericV) && isLCTRLModifierActive)
+    {
+        auto clipboardText = UiClipboard::GetText();
+        if (clipboardText.length() > 0)
+        {
+            AZStd::string textString;
+            EBUS_EVENT_ID_RESULT(textString, m_textEntity, UiTextBus, GetText);
+
+            // If a range is selected then erase that first
+            if (m_textCursorPos != m_textSelectionStartPos)
+            {
+                int left = min(m_textCursorPos, m_textSelectionStartPos);
+                int right = max(m_textCursorPos, m_textSelectionStartPos);
+                textString.erase(left, right - left);
+                m_textCursorPos = m_textSelectionStartPos = left;
+            }
+
+            // Append text from clipboard
+            textString.insert(m_textCursorPos, clipboardText);
+            m_textCursorPos += clipboardText.length();
+            m_textSelectionStartPos = m_textCursorPos;
+
+            // If max length is set, remove extra characters
+            if (m_maxStringLength >= 0 && textString.length() > m_maxStringLength)
+            {
+                textString.resize(m_maxStringLength);
+            }
+
+            ChangeText(textString);
+            ResetCursorBlink();
         }
     }
     else
@@ -1207,6 +1288,7 @@ void UiTextInputComponent::Reflect(AZ::ReflectContext* context)
             ->Field("IsPasswordField", &UiTextInputComponent::m_isPasswordField)
             ->Field("ReplacementCharacter", &UiTextInputComponent::m_replacementCharacter)
             ->Field("ClipInputText", &UiTextInputComponent::m_clipInputText)
+            ->Field("EnableClipboard", &UiTextInputComponent::m_enableClipboard)
         // Actions group
             ->Field("ChangeAction", &UiTextInputComponent::m_changeAction)
             ->Field("EndEditAction", &UiTextInputComponent::m_endEditAction)
@@ -1261,6 +1343,8 @@ void UiTextInputComponent::Reflect(AZ::ReflectContext* context)
                     ->Attribute(AZ::Edit::Attributes::Visibility, &UiTextInputComponent::GetIsPasswordField);
                 editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiTextInputComponent::m_clipInputText,
                     "Clip input text", "When checked, the input text is clipped to this element's rect.");
+                editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiTextInputComponent::m_enableClipboard, 
+                    "Enable clipboard", "When checked, Ctrl-C, Ctrl-X, and Ctrl-V events will be handled");
             }
 
             // Actions group

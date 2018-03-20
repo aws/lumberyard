@@ -211,4 +211,6 @@ private: // data
     bool m_isPasswordField;             //!< True if m_textEntity should be treated as a password field, false otherwise
 
     bool m_clipInputText;               //!< True if input text should be visually clipped to child text element, false otherwise.
+
+    bool m_enableClipboard;             //!< True if copy/cut/paste should be supported, false otherwise.
 };

@@ -1962,8 +1962,12 @@ bool CD3D9Renderer::CheckSSAAChange()
 {
     const int width = m_CVWidth ? m_CVWidth->GetIVal() : m_width;
     const int height = m_CVHeight ? m_CVHeight->GetIVal() : m_height;
-    const int maxSamples = min(m_MaxTextureSize / width, m_MaxTextureSize / height);
-    const int numSSAASamples = clamp_tpl(CV_r_Supersampling, 1, maxSamples);
+    int numSSAASamples = 1;
+    if (width > 0 && height > 0)
+    {
+        const int maxSamples = min(m_MaxTextureSize / width, m_MaxTextureSize / height);
+        numSSAASamples = clamp_tpl(CV_r_Supersampling, 1, maxSamples);
+    }
     if (m_numSSAASamples != numSSAASamples)
     {
         m_numSSAASamples = numSSAASamples;

@@ -16,7 +16,7 @@
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 
-#include "StdAfx.h"
+#include "CloudGemMessageOfTheDay_precompiled.h"
 
 
 #include "AWS/ServiceAPI/CloudGemMessageOfTheDayClientComponent.h"

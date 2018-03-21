@@ -25,6 +25,18 @@
 #   error MEMORY ALLOCATION_ALIGNMENT is not defined
 #endif
 
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(BucketAllocatorPolicy_h)
+#else
+#if defined(WIN32)
+#define BUCKETALLOCATORPOLICY_H_TRAIT_USE_INTERLOCKED_FREELISTHEADER 1
+#endif
+#if defined(APPLE) || defined(LINUX)
+#define BUCKETALLOCATORPOLICY_H_TRAIT_USE_LEGACY_FREELISTHEADER 1
+#endif
+#endif
+
 namespace BucketAllocatorDetail
 {
     struct AllocHeader
@@ -40,7 +52,7 @@ namespace BucketAllocatorDetail
     {
 #if defined(_WIN32)
         typedef SLIST_HEADER FreeListHeader;
-#elif defined(APPLE) || defined(LINUX) || defined(ORBIS)
+#elif BUCKETALLOCATORPOLICY_H_TRAIT_USE_LEGACY_FREELISTHEADER
         typedef SLockFreeSingleLinkedListHeader FreeListHeader;
 #endif
 
@@ -62,7 +74,7 @@ namespace BucketAllocatorDetail
             SyncPolicyLocked& m_policy;
         };
 
-#if defined(APPLE) || defined(LINUX) || defined(ORBIS)
+#if BUCKETALLOCATORPOLICY_H_TRAIT_USE_LEGACY_FREELISTHEADER
 
         static void PushOnto(FreeListHeader& list, AllocHeader* ptr)
         {
@@ -100,7 +112,7 @@ namespace BucketAllocatorDetail
             return list.pNext == 0;
         }
 
-#elif defined(WIN32) || defined(DURANGO)
+#elif BUCKETALLOCATORPOLICY_H_TRAIT_USE_INTERLOCKED_FREELISTHEADER
 
         static void PushOnto(FreeListHeader& list, AllocHeader* ptr)
         {

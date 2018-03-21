@@ -50,7 +50,7 @@ namespace AZ
             SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<BlendShapeExporter, SceneAPI::SceneCore::ExportingComponent>()->Version(1);
+                serializeContext->Class<BlendShapeExporter, SceneAPI::SceneCore::RCExportingComponent>()->Version(1);
             }
         }
 

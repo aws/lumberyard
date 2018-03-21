@@ -43,7 +43,7 @@ namespace Movement
             CNavPath m_path;
             MovementStyle m_style;
             Movement::Helpers::StuckDetector m_stuckDetector;
-            boost::shared_ptr<Vec3> m_lookTarget;
+            AZStd::shared_ptr<Vec3> m_lookTarget;
             float m_finishBlockEndDistance;
             float m_accumulatedPathFollowerFailureTime;
             bool m_endsInCover;

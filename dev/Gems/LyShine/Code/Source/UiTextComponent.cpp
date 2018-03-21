@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "UiTextComponent.h"
 
 #include <AzCore/Math/Crc.h>
@@ -779,7 +779,7 @@ UiTextComponent::UiTextComponent()
     , m_wrapTextSetting(WrapTextSetting::NoWrap)
     , m_clipOffset(0.0f)
     , m_clipOffsetMultiplier(1.0f)
-    , m_postActivate(false)
+    , m_elementSizeReady(false)
 {
     static const AZStd::string DefaultUi("default-ui");
     m_fontFilename.SetAssetPath(DefaultUi.c_str());
@@ -1015,6 +1015,18 @@ void UiTextComponent::Render()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::Update(float deltaTime)
+{
+    AssignSizeReadyFlag();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::UpdateInEditor()
+{
+    AssignSizeReadyFlag();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 AZStd::string UiTextComponent::GetText()
 {
     return m_text;
@@ -1027,7 +1039,7 @@ void UiTextComponent::SetText(const AZStd::string& text)
 
     // Since display routines use m_locText, we place the text here as well,
     // even though it didn't get translated via localization.
-    if (m_postActivate)
+    if (m_elementSizeReady)
     {
         PrepareDisplayedTextInternal(PrepareTextOption::IgnoreLocalization);
     }
@@ -1057,7 +1069,7 @@ void UiTextComponent::SetTextWithFlags(const AZStd::string& text, SetTextFlags f
 
     // Since display routines use m_locText, we place the text here as well,
     // even though it didn't get translated via localization.
-    if (m_postActivate)
+    if (m_elementSizeReady)
     {
         PrepareDisplayedTextInternal(prepareOption);
     }
@@ -1659,7 +1671,7 @@ void UiTextComponent::OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTr
         // string's contents via the loc system
 
         // Show xml warnings on the initial call to OnCanvasSpaceRectChanged while suppressing xml warnings on all subsequent calls
-        bool suppressXmlWarnings = m_postActivate;
+        bool suppressXmlWarnings = m_elementSizeReady;
 
         PrepareDisplayedTextInternal(PrepareTextOption::Localize, suppressXmlWarnings, false);
     }
@@ -1668,7 +1680,7 @@ void UiTextComponent::OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTr
     // Since OnCanvasSpaceRectChanged is called on the first canvas update, we know that the component has been activated
     // at this time, and the element size can be retrieved. We can't use InGamePostActivate because it is only available
     // at runtime. We also need word-wrap to occur in the editor, so we use a simple boolean variable instead.
-    m_postActivate = true;
+    AssignSizeReadyFlag();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1903,6 +1915,7 @@ void UiTextComponent::Activate()
 {
     UiVisualBus::Handler::BusConnect(m_entity->GetId());
     UiRenderBus::Handler::BusConnect(m_entity->GetId());
+    UiUpdateBus::Handler::BusConnect(m_entity->GetId());
     UiTextBus::Handler::BusConnect(m_entity->GetId());
     UiAnimateEntityBus::Handler::BusConnect(m_entity->GetId());
     UiTransformChangeNotificationBus::Handler::BusConnect(m_entity->GetId());
@@ -1915,6 +1928,7 @@ void UiTextComponent::Deactivate()
 {
     UiVisualBus::Handler::BusDisconnect();
     UiRenderBus::Handler::BusDisconnect();
+    UiUpdateBus::Handler::BusDisconnect();
     UiTextBus::Handler::BusDisconnect();
     UiAnimateEntityBus::Handler::BusDisconnect();
     UiTransformChangeNotificationBus::Handler::BusDisconnect();
@@ -1966,7 +1980,7 @@ void UiTextComponent::ChangeFont(const AZStd::string& fontFileName)
         // need to know the element's size for word-wrapping. ChangeFont may
         // be called prior to activation, so guard against that (batches will
         // be re-built regardless on first render iteration - "post-activate").
-        if (m_postActivate)
+        if (m_elementSizeReady)
         {
             PrepareDisplayedTextInternal(PrepareTextOption::Localize, true);
         }
@@ -2656,6 +2670,13 @@ void UiTextComponent::InvalidateLayout() const
 void UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties() const
 {
     UiLayoutHelpers::CheckFitterAndRefreshEditorTransformProperties(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTextComponent::AssignSizeReadyFlag()
+{
+    m_elementSizeReady = true;
+    UiUpdateBus::Handler::BusDisconnect();
 }
 
 #include "Tests/internal/test_UiTextComponent.cpp"

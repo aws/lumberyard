@@ -270,6 +270,8 @@ def _build_dev_sources_map(source_root, destination_root):
         'engine.json',
         'engineroot.txt',
         'lmbr_waf.sh',
+        'lmbr_test.sh',
+        'lmbr_test_blacklist.txt',
         'LyzardConfig.xml',
         'SetupAssistantConfig.json',
         'SetupAssistantUserPreferences.ini',

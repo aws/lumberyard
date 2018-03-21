@@ -819,13 +819,13 @@ namespace MannUtils
             xmlNode->getAttr("fragmentTags", fragmentTagsString);
 
             // Set global flags
-            contDef.m_tags.TagListToFlags(globalTagsString.toLatin1().data(), tagState.globalTags);
+            contDef.m_tags.TagListToFlags(globalTagsString.toUtf8().data(), tagState.globalTags);
 
             // Set fragment tags
             const CTagDefinition* pFragTagDef = contDef.GetFragmentTagDef(fragID);
             if (pFragTagDef)
             {
-                pFragTagDef->TagListToFlags(fragmentTagsString.toLatin1().data(), tagState.fragmentTags);
+                pFragTagDef->TagListToFlags(fragmentTagsString.toUtf8().data(), tagState.fragmentTags);
             }
         }
         else
@@ -992,7 +992,7 @@ namespace MannUtils
 
 void CFragmentHistory::LoadSequence(const QString& sequence)
 {
-    LoadSequence(GetISystem()->LoadXmlFromFile(sequence.toLatin1().data()));
+    LoadSequence(GetISystem()->LoadXmlFromFile(sequence.toUtf8().data()));
 }
 
 void CFragmentHistory::LoadSequence(XmlNodeRef root)
@@ -1249,7 +1249,7 @@ void CFragmentHistory::SaveSequence(const QString& filename)
         break;
         case SHistoryItem::Param:
         {
-            event->setAttr("ParamName", item.paramName.toLatin1().data());
+            event->setAttr("ParamName", item.paramName.toUtf8().data());
             event->setAttr("Type", "Location");
             XmlNodeRef valueXML = GetISystem()->CreateXmlNode("Value");
             event->addChild(valueXML);
@@ -1274,7 +1274,7 @@ void CFragmentHistory::SaveSequence(const QString& filename)
     _ASSERTE(_CrtCheckMemory());
 #endif // WIN32
 
-    root->saveToFile(filename.toLatin1().data());
+    root->saveToFile(filename.toUtf8().data());
 
 #if defined(AZ_PLATFORM_WINDOWS)
     _ASSERTE(_CrtCheckMemory());
@@ -1387,7 +1387,7 @@ void CTagControl::RemoveTag(CVarBlock* pVarBlock, TagID tagID)
 
 void CTagControl::AddTag(CVarBlock* pVarBlock, const QString& name)
 {
-    AddTag(pVarBlock, m_tagVarList.size(), name.toLatin1().data());
+    AddTag(pVarBlock, m_tagVarList.size(), name.toUtf8().data());
 }
 
 void CTagControl::AddTag(CVarBlock* pVarBlock, TagID tagID, const char* tagName)

@@ -16,9 +16,7 @@
 #include <AzCore/std/typetraits/function_traits.h>
 
 // As of version 0.92 the BIND implementation has missing features (missing operator() const version, issues with resolving overloads, etc.)
-//#if /*defined(AZ_PLATFORM_PS4) ||*/ defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
 //# define AZ_CORE_STD_SYSTEM_BIND
-//#endif
 
 #if defined(AZ_CORE_STD_SYSTEM_BIND)
 

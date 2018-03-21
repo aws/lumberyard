@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 
 namespace AZ
 {
@@ -21,10 +21,10 @@ namespace AZ
         struct ContainerExportContext;
 
         class ContainerSettingsExporter
-            : public SceneAPI::SceneCore::ExportingComponent
+            : public SceneAPI::SceneCore::RCExportingComponent
         {
         public:
-            AZ_COMPONENT(ContainerSettingsExporter, "{878C641C-6614-413A-A174-EDFF84D8B119}", SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(ContainerSettingsExporter, "{878C641C-6614-413A-A174-EDFF84D8B119}", SceneAPI::SceneCore::RCExportingComponent);
 
             ContainerSettingsExporter();
             ~ContainerSettingsExporter() override = default;

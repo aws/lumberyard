@@ -25,11 +25,12 @@
 #pragma once
 
 class QSlider;
-class QDoubleSpinBox;
 class QToolButton;
 
 namespace AzToolsFramework
 {
+    class DHQDoubleSpinbox;
+
     class DHPropertyDoubleSlider
         : public QWidget
     {
@@ -80,7 +81,7 @@ namespace AzToolsFramework
         int m_sliderMin;
         int m_sliderMax;
         int m_sliderCurrent;
-        QDoubleSpinBox* m_pSpinBox;
+        DHQDoubleSpinbox* m_pSpinBox;
         double m_minimum;
         double m_maximum;
         double m_pageStep;
@@ -183,6 +184,7 @@ namespace AzToolsFramework
         void setTracking(bool enable);
         bool hasTracking() const { return m_tracking; }
         void setDecimals(int decimals);
+        void setDisplayDecimals(int displayDecimals);
 
         void setSliderDown(bool);
         bool isSliderDown() const { return m_pressed; }

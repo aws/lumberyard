@@ -45,8 +45,8 @@ namespace AzToolsFramework
         */
         class AssetBrowserComponent
             : public AZ::Component
-            , public AssetBrowserComponentRequestsBus::Handler
-            , public AssetDatabaseLocationNotificationsBus::Handler
+            , public AssetBrowserComponentRequestBus::Handler
+            , public AssetDatabaseLocationNotificationBus::Handler
             , public AzFramework::AssetCatalogEventBus::Handler
             , public AZ::TickBus::Handler
             , public AssetSystemBus::Handler
@@ -65,12 +65,12 @@ namespace AzToolsFramework
             static void Reflect(AZ::ReflectContext* context);
 
             //////////////////////////////////////////////////////////////////////////
-            // AssetDatabaseLocationNotificationsBus
+            // AssetDatabaseLocationNotificationBus
             //////////////////////////////////////////////////////////////////////////
             void OnDatabaseInitialized() override;
 
             //////////////////////////////////////////////////////////////////////////
-            // AssetBrowserComponentRequestsBus
+            // AssetBrowserComponentRequestBus
             //////////////////////////////////////////////////////////////////////////
             AssetBrowserModel* GetAssetBrowserModel() override;
 

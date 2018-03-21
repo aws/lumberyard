@@ -107,8 +107,8 @@ void CTextEditorCtrl::LoadFile(const QString& sFileName)
 
     clear();
 
-    CCryFile file(sFileName.toLatin1().data(), "rb");
-    if (file.Open(sFileName.toLatin1().data(), "rb"))
+    CCryFile file(sFileName.toUtf8().data(), "rb");
+    if (file.Open(sFileName.toUtf8().data(), "rb"))
     {
         size_t length = file.GetLength();
 
@@ -130,7 +130,7 @@ void CTextEditorCtrl::SaveFile(const QString& sFileName)
         return;
     }
 
-    if (!CFileUtil::OverwriteFile(sFileName.toLatin1().data()))
+    if (!CFileUtil::OverwriteFile(sFileName.toUtf8().data()))
     {
         return;
     }
@@ -138,7 +138,7 @@ void CTextEditorCtrl::SaveFile(const QString& sFileName)
     QFile file(sFileName);
     file.open(QFile::WriteOnly);
 
-    file.write(toPlainText().toLatin1());
+    file.write(toPlainText().toUtf8());
 
     m_bModified = false;
 }

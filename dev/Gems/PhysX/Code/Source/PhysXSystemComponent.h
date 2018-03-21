@@ -17,7 +17,6 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzFramework/Physics/Action.h>
@@ -27,18 +26,18 @@
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
-#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <foundation/PxAllocatorCallback.h>
 #include <foundation/PxErrorCallback.h>
-#include <Include/PhysX/PhysXBus.h>
 #include <Include/PhysX/PhysXSystemComponentBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <Terrain/Bus/LegacyTerrainBus.h>
 #include <PhysXWorld.h>
 
+#ifdef PHYSX_EDITOR
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#endif
 
 // for the PhysX visual debugger
-// TODO get the IP and port from project configurator
 #define PVD_HOST "127.0.0.1"
 
 namespace PhysX
@@ -117,12 +116,14 @@ namespace PhysX
     */
     class PhysXSystemComponent
         : public AZ::Component
-        , protected PhysXRequestBus::Handler
         , public AZ::TickBus::Handler
         , public LegacyTerrain::LegacyTerrainNotificationBus::Handler
+        , public LegacyTerrain::LegacyTerrainRequestBus::Handler
         , public PhysXSystemRequestBus::Handler
         , public Physics::SystemRequestBus::Handler
+#ifdef PHYSX_EDITOR
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
+#endif
         , private AZ::Data::AssetManagerNotificationBus::Handler
     {
     public:
@@ -161,16 +162,13 @@ namespace PhysX
         AZ::u32                                m_numTerrainTiles = 0;
         AZ::u32                                m_terrainTileSize = 0;
 
-        // PhysXRequestBus interface implementation
-
         // PhysXSystemComponentRequestBus interface implementation
         void AddActor(physx::PxActor& actor) override;
         void RemoveActor(physx::PxActor& actor) override;
-        physx::PxScene* CreateScene(const physx::PxSceneDesc& sceneDesc) override;
+        physx::PxScene* CreateScene( physx::PxSceneDesc& sceneDesc) override;
         physx::PxConvexMesh* CreateConvexMesh(const void* vertices, AZ::u32 vertexNum, AZ::u32 vertexStride) override; // should we use AZ::Vector3* or physx::PxVec3 here?
         physx::PxConvexMesh* CreateConvexMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) override;
         physx::PxTriangleMesh* CreateTriangleMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) override;
-        AzPhysXCpuDispatcher* GetCpuDispatcher() override;
 
         // AZ::Component interface implementation
         void Init() override;
@@ -184,9 +182,12 @@ namespace PhysX
         void SetNumTiles(const AZ::u32 numTiles, const AZ::u32 tileSize) override;
         void UpdateTile(const AZ::u32 tileX, const AZ::u32 tileY, const AZ::u16* heightMap, const float heightMin, const float heightScale, const AZ::u32 tileSize, const AZ::u32 heightMapUnitSize) override;
 
+#ifdef PHYSX_EDITOR
         // AzToolsFramework::EditorEntityContextNotificationBus implementation
         void OnStartPlayInEditor() override;
         void OnStopPlayInEditor() override;
+#endif
+        bool GetTerrainHeight(const AZ::u32 x, const AZ::u32 y, float& height) const override;
 
         // Physics::SystemRequestBus::Handler
         Physics::Ptr<Physics::World> CreateWorldByName(const char* worldName, const Physics::Ptr<Physics::WorldSettings>& settings) override;
@@ -201,14 +202,12 @@ namespace PhysX
         Physics::Ptr<Physics::Character> CreateCharacter(const Physics::Ptr<Physics::CharacterSettings>& settings) override;
         Physics::Ptr<Physics::Action> CreateBuoyancyAction(const Physics::ActionSettings& settings) override;
 
-        bool GetTerrainHeight(const AZ::u32 x, const AZ::u32 y, float& height) const;
-
         using WorldMap = AZStd::unordered_map<AZ::Crc32, Physics::Ptr<PhysXWorld>>;
         WorldMap m_worlds;
         WorldMap m_worldsToUpdate;
 
-        // Assets related data        
-        AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler> > m_assetHandlers;
+        // Assets related data
+        AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler>> m_assetHandlers;
 
     private:
         bool    m_createDefaultWorld;   ///< If true, a default world will be created by the system component.

@@ -52,7 +52,7 @@ public:
     bool Initialize(SSystemGlobalEnvironment&, const SSystemInitParams&) override final { return true; }
 };
 
-DECLARE_BOOST_POINTERS(IGem)
+DECLARE_SMART_POINTERS(IGem)
 
 #define _GEM_IMPLEMENT_BEGIN()      \
     CRYINTERFACE_BEGIN()            \

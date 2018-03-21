@@ -13,5 +13,5 @@ import service
 import speech_lib
 
 @service.api
-def post(request, tags):
-    return { "entries": speech_lib.get_speech_lib(tags["tags"]) }
+def post(request, filterConditions):
+    return { "entries": speech_lib.get_speech_lib(filterConditions["tags"], filterConditions["characters"], filterConditions['logic']) }

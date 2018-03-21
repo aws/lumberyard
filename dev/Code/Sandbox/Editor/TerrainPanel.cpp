@@ -22,7 +22,7 @@
 #include "EnvironmentTool.h"
 #include "TerrainTexturePainter.h"
 #include "TerrainMoveTool.h"
-#include "TerrainMinimapTool.h"
+#include "TerrainMiniMapTool.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CTerrainPanel dialog

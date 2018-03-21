@@ -213,6 +213,13 @@ namespace AzClass
             Category(const char* category) {}
         };
 
+        struct HelpPageURL
+        {
+            HelpPageURL(const char* url) {}
+            template <class Function>
+            HelpPageURL(Function getter) {}
+        };
+        
         struct HideIcon
         {
             HideIcon(bool hide=true) {}

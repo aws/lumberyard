@@ -375,7 +375,7 @@ namespace AzToolsFramework
     {
         auto notification = CreateNotification(message);
         auto featureButton = aznew QPushButton(tr("Add Required Component \342\226\276"), notification);
-        connect(featureButton, &QPushButton::clicked, this, [this, notification, featureButton, services]()
+        connect(featureButton, &QPushButton::clicked, this, [this, featureButton, services]()
         {
             QRect screenRect(qApp->desktop()->availableGeometry(featureButton));
             QRect menuRect(
@@ -809,6 +809,18 @@ namespace AzToolsFramework
         return m_components;
     }
 
+    bool ComponentEditor::HasComponentWithId(AZ::ComponentId componentId)
+    {
+        for (AZ::Component* component : m_components)
+        {
+            if (component->GetId() == componentId)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 
 #include <UI/PropertyEditor/ComponentEditor.moc>

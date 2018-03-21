@@ -13,19 +13,21 @@
 #define TO_FLAG_DESTINATION 0x8 //Operand is being written to by assignment.
 #define TO_FLAG_UNSIGNED_INTEGER 0x10
 #define TO_FLAG_DOUBLE 0x20
+#define TO_FLAG_FLOAT16 0x40
 // --- TO_AUTO_BITCAST_TO_FLOAT ---
 //If the operand is an integer temp variable then this flag
 //indicates that the temp has a valid floating point encoding
 //and that the current expression expects the operand to be floating point
 //and therefore intBitsToFloat must be applied to that variable.
-#define TO_AUTO_BITCAST_TO_FLOAT 0x40
-#define TO_AUTO_BITCAST_TO_INT 0x80
-#define TO_AUTO_BITCAST_TO_UINT 0x100
+#define TO_AUTO_BITCAST_TO_FLOAT 0x80
+#define TO_AUTO_BITCAST_TO_INT 0x100
+#define TO_AUTO_BITCAST_TO_UINT 0x200
+#define TO_AUTO_BITCAST_TO_FLOAT16 0x400
 // AUTO_EXPAND flags automatically expand the operand to at least (i/u)vecX
 // to match HLSL functionality.
-#define TO_AUTO_EXPAND_TO_VEC2 0x200
-#define TO_AUTO_EXPAND_TO_VEC3 0x400
-#define TO_AUTO_EXPAND_TO_VEC4 0x800
+#define TO_AUTO_EXPAND_TO_VEC2 0x800
+#define TO_AUTO_EXPAND_TO_VEC3 0x1000
+#define TO_AUTO_EXPAND_TO_VEC4 0x2000
 
 
 void TranslateOperand(HLSLCrossCompilerContext* psContext, const Operand* psOperand, uint32_t ui32TOFlag);

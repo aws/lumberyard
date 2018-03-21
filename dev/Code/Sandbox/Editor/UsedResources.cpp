@@ -35,17 +35,17 @@ void CUsedResources::Validate(IErrorReport* pReport)
     {
         const QString& filename = *it;
 
-        bool fileExists = pPak->IsFileExist(filename.toLatin1().data());
+        bool fileExists = pPak->IsFileExist(filename.toUtf8().data());
 
         if (!fileExists)
         {
             for (int i = 0; !fileExists && i < IResourceCompilerHelper::GetNumEngineImageFormats(); ++i)
             {
-                fileExists = gEnv->pCryPak->IsFileExist(PathUtil::ReplaceExtension(filename.toLatin1().data(), IResourceCompilerHelper::GetEngineImageFormat(i, true)));
+                fileExists = gEnv->pCryPak->IsFileExist(PathUtil::ReplaceExtension(filename.toUtf8().data(), IResourceCompilerHelper::GetEngineImageFormat(i, true)));
             }
             for (int i = 0; !fileExists && i < IResourceCompilerHelper::GetNumSourceImageFormats(); ++i)
             {
-                fileExists = gEnv->pCryPak->IsFileExist(PathUtil::ReplaceExtension(filename.toLatin1().data(), IResourceCompilerHelper::GetSourceImageFormat(i, true)));
+                fileExists = gEnv->pCryPak->IsFileExist(PathUtil::ReplaceExtension(filename.toUtf8().data(), IResourceCompilerHelper::GetSourceImageFormat(i, true)));
             }
         }
 

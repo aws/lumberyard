@@ -76,6 +76,7 @@ namespace CloudGemPlayerAccount
 
         ////////////////////////////////////////////////////////////////////////
         // CloudGemPlayerAccountRequestBus interface implementation
+        virtual AZ::u32 GetServiceStatus() override;
         virtual AZ::u32 GetCurrentUser() override;
 
         virtual bool HasCachedCredentials(const AZStd::string& username) override;

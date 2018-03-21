@@ -145,7 +145,7 @@ bool CPrefabObject::Init(IEditor* ie, CBaseObject* prev, const QString& file)
     }
     else if (!file.isEmpty())
     {
-        SetPrefab(GuidUtil::FromString(file.toLatin1().data()), false);
+        SetPrefab(GuidUtil::FromString(file.toUtf8().data()), false);
     }
     return res;
 }
@@ -239,7 +239,7 @@ void CPrefabObject::ConvertToProceduralObject()
     if (!pObject)
     {
         QString sError = "Could not convert prefab to " + this->GetName();
-        CryMessageBox(sError.toLatin1().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
+        CryMessageBox(sError.toUtf8().data(), "Conversion Failure", MB_OKCANCEL | MB_ICONERROR);
         return;
     }
 
@@ -405,7 +405,7 @@ void CPrefabObject::Serialize(CObjectArchive& ar)
     else
     {
         ar.node->setAttr("PrefabGUID", m_prefabGUID);
-        ar.node->setAttr("PrefabName", m_prefabName.toLatin1().data());
+        ar.node->setAttr("PrefabName", m_prefabName.toUtf8().data());
     }
 }
 
@@ -1430,7 +1430,7 @@ namespace
         }
         else
         {
-            throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toUtf8().data());
             return result;
         }
 
@@ -1496,7 +1496,7 @@ namespace
         for (int i = 0; i < pPrefabManager->GetLibraryCount(); i++)
         {
             IDataBaseLibrary* pPrefabLibrary = pPrefabManager->GetLibrary(i);
-            results.push_back(pPrefabLibrary->GetName().toLatin1().data());
+            results.push_back(pPrefabLibrary->GetName().toUtf8().data());
         }
         return results;
     }
@@ -1524,7 +1524,7 @@ namespace
         for (int i = 0; i < pPrefabLibrary->GetItemCount(); i++)
         {
             CPrefabItem* pPrefabItem = static_cast<CPrefabItem*>(pPrefabLibrary->GetItem(i));
-            stl::push_back_unique(results, pPrefabItem->GetGroupName().toLatin1().data());
+            stl::push_back_unique(results, pPrefabItem->GetGroupName().toUtf8().data());
         }
         return results;
     }
@@ -1555,7 +1555,7 @@ namespace
             CPrefabItem* pPrefabItem = static_cast<CPrefabItem*>(pPrefabLibrary->GetItem(i));
             if (pPrefabItem->GetGroupName() == pGroupName)
             {
-                stl::push_back_unique(results, pPrefabItem->GetShortName().toLatin1().data());
+                stl::push_back_unique(results, pPrefabItem->GetShortName().toUtf8().data());
             }
         }
         return results;
@@ -1574,7 +1574,7 @@ namespace
         }
         else
         {
-            throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pObjName + "\" is an invalid object.").toUtf8().data());
             return boost::python::make_tuple(false);
         }
 

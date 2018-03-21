@@ -94,7 +94,7 @@ struct CSequencerKey
         relativePath = m_filePath;
         fileName = m_fileName;
 
-        QString fullPath = Path::AddSlash(m_filePath.toLatin1().data());
+        QString fullPath = Path::AddSlash(m_filePath.toUtf8().data());
         fullPath += m_fileName;
 
         paths.reserve(extensions.size());

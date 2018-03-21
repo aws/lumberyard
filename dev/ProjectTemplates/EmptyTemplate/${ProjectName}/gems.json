@@ -38,6 +38,12 @@
             "_comment": "Maestro"
         },
         {
+            "Path": "Gems/SceneProcessing",
+            "Uuid": "7c2578f634df4345aca98d671e39b8ab",
+            "Version": "0.1.0",
+            "_comment": "SceneProcessing"
+        },
+        {
             "Path" : "${ProjectName}/Gem",
             "Uuid" : "${GemId}",
             "Version" : "${GemVersion}",

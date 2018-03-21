@@ -1589,7 +1589,12 @@ void CLodParticle::Serialize(XmlNodeRef node, bool bLoading, bool bAll, CParticl
         if (parentEffect != nullptr)
         {          
             pLod = static_cast<CLodInfo*>(parentEffect->GetLevelOfDetailByDistance(distance));
-            AZ_Assert(pLod, "Parent effect's lod info doesn't exist");
+            // skip serialization if parent doesn't have Lod.
+            // this could happen if a particle is moved to a parent which doesn't have Lod.
+            if (pLod == nullptr)
+            {
+                return;
+            }
         }
         else
         {            

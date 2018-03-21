@@ -20,6 +20,7 @@ class CBaseObjectsCache;
 class QPoint;
 class CCamera;
 struct AABB;
+class CViewport;
 
 // Viewport functionality required for DisplayContext
 struct IDisplayViewport
@@ -57,6 +58,8 @@ struct IDisplayViewport
 
     virtual void ScreenToClient(QPoint& pt) const = 0;
     virtual void GetDimensions(int* width, int* height) const = 0;
+
+    virtual CViewport *asCViewport() { return nullptr; }
 };
 
 #endif // CRYINCLUDE_EDITOR_INCLUDE_IDISPLAYVIEWPORT_H

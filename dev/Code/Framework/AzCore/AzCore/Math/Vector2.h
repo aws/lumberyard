@@ -14,8 +14,8 @@
 
 #include <AzCore/Math/Internal/MathTypes.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/Math/VectorFloat.h>
 #include <AzCore/RTTI/TypeInfo.h>
-
 #include <math.h>
 
 namespace AZ
@@ -45,6 +45,15 @@ namespace AZ
 
         static AZ_MATH_FORCE_INLINE const Vector2 CreateAxisX(float length = 1.0f) { return Vector2(length, 0.0f); }
         static AZ_MATH_FORCE_INLINE const Vector2 CreateAxisY(float length = 1.0f) { return Vector2(0.0f, length); }
+
+        ///Creates a normalized Vector2 from an angle in radians.
+        static AZ_MATH_FORCE_INLINE const Vector2 CreateFromAngle(float angle = 0.0f)
+        {
+            VectorFloat sin = 0.0f;
+            VectorFloat cos = 0.0f;
+            VectorFloat(angle).GetSinCos(sin, cos);
+            return Vector2(sin, cos);
+        }
 
         ///operation r.x = (cmp1.x == cmp2.x) ? vA.x : vB.x per component
         static AZ_MATH_FORCE_INLINE const Vector2 CreateSelectCmpEqual(const Vector2& cmp1, const Vector2& cmp2, const Vector2& vA, const Vector2& vB)

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Math/Transform.h>
 #include <AzFramework/Math/MathUtils.h>
@@ -304,17 +304,21 @@ void CCompoundSplineTrack::UpdateKeyDataAfterParentChanged(const AZ::Transform& 
         }
     }
 
-    // Set or create key data for each time gathered from the keys.
+    // Don't actually set the key data until we are done calculating all the new values.
+    // In the case where not all 3 tracks have key data, data from other keys may be referenced
+    // and used. So we don't want to muck with those other keys until we are done transforming all of
+    // the key data.
+    AZStd::vector<AZStd::pair<float, float>> newKeyValues;
+
+    // Calc new key data for each time gathered from the keys.
     for (float time : allTimes)
     {
-        IAnimTrack* subTrack[3]{ m_subTracks[0].get(), m_subTracks[1].get(), m_subTracks[2].get() };
-
         // Create a 3 float vector with values from the 3 tracks.
         AZ::Vector3 vector;
         for (int i = 0; i < 3; i++)
         {
             float value = 0;
-            subTrack[i]->GetValue(time, value);
+            m_subTracks[i]->GetValue(time, value);
             vector.SetElement(i, value);
         }
 
@@ -360,12 +364,24 @@ void CCompoundSplineTrack::UpdateKeyDataAfterParentChanged(const AZ::Transform& 
 
         }
 
+        // Store the new key data in a list to be set to keys later.
+        for (int i = 0; i < 3; i++)
+        {
+            newKeyValues.push_back(AZStd::make_pair(time, vector.GetElement(i)));
+        }
+    }
+
+    // Set or create key data for each time gathered from the keys.
+    assert(allTimes.size() * 3 == newKeyValues.size());
+    int newKeyValuesIndex = 0;
+    for (float time : allTimes)
+    {
         // Update all of the tracks with the new float values.
         // This may create a new key if there was not one before.
         for (int i = 0; i < 3; i++)
         {
-            // Update track key data
-            subTrack[i]->SetValue(time, vector.GetElement(i));
+            auto valuePair = newKeyValues.at(newKeyValuesIndex++);
+            m_subTracks[i]->SetValue(valuePair.first, valuePair.second);
         }
     }
 }

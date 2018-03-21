@@ -6,7 +6,8 @@
         ],
         "Source":
         [
-            "Source/MicrophoneSystemComponent_windows.inl"
+            "Source/MicrophoneSystemComponent_windows.inl",
+            "Source/SimpleDownsample.cpp"
         ]
     }
 }

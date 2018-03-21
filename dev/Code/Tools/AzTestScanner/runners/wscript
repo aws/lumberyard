@@ -22,13 +22,14 @@ def build(bld):
         target              = 'AzTestRunner',
         vs_filter           = 'Tools/AzTestRunner',
         file_list           = 'aztestscanner.waf_files',
-        platforms           = ['win', 'darwin_x64'],
+        platforms           = ['win', 'linux_x64', 'darwin_x64'],
         configurations      = ['test_all'],
         use                 = ['AzTest'],
         uselib              = ['GMOCK'],
 
         # Platform Specific
         win_file_list       = 'aztestscanner_win.waf_files',
+        linux_file_list     = 'aztestscanner_linux.waf_files',
         darwin_file_list    = 'aztestscanner_osx.waf_files',
         darwin_rpath        = ['@executable_path', '@executable_path/rc', '@executable_path/qtlibs/lib'],
     )

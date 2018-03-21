@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #include <SQS/FlowNode_SQSPush.h>
 #include <aws/sqs/model/SendMessageRequest.h>
 #include <aws/sqs/model/GetQueueUrlRequest.h>

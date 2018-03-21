@@ -203,7 +203,7 @@ void ListSelectionDialog::AddRowColumn(const char* text)
     ++m_currentColumn;
 }
 
-const char* ListSelectionDialog::ChooseItem(const char* currentValue)
+QString ListSelectionDialog::ChooseItem(const QString& currentValue)
 {
     m_tree->expandAll();
 

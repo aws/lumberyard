@@ -40,12 +40,14 @@
 
 #include "MaterialUtils.h"
 
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/std/string/wildcard.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
 static const char* MATERIALS_LIBS_PATH = "Materials/";
 static unsigned int s_highlightUpdateCounter = 0;
@@ -55,7 +57,7 @@ static unsigned int s_highlightUpdateCounter = 0;
 static QString UnifyMaterialName(const QString& source)
 {
     char tempBuffer[AZ_MAX_PATH_LEN];
-    azstrncpy(tempBuffer, AZ_ARRAY_SIZE(tempBuffer), source.toLatin1().data(), AZ_ARRAY_SIZE(tempBuffer) - 1);
+    azstrncpy(tempBuffer, AZ_ARRAY_SIZE(tempBuffer), source.toUtf8().data(), AZ_ARRAY_SIZE(tempBuffer) - 1);
     MaterialUtils::UnifyMaterialName(tempBuffer);
     return QString(tempBuffer);
 }
@@ -92,6 +94,22 @@ private:
     typedef std::map<CMaterial*, SHighlightOptions> Materials;
     Materials m_materials;
 };
+
+AZStd::string DccMaterialToSourcePath(const AZStd::string& relativeDccMaterialPath)
+{
+    AZStd::string fullSourcePath;
+    bool sourcePathFound = false;
+
+    // Get source path using relative .dccmtl path
+    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourcePathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, relativeDccMaterialPath, fullSourcePath);
+
+    if (sourcePathFound)
+    {
+        // Set source path extension to ".mtl"
+        AzFramework::StringFunc::Path::ReplaceExtension(fullSourcePath, MATERIAL_FILE_EXT);
+    }
+    return fullSourcePath;
+}
 
 
 void CMaterialHighlighter::Start(CMaterial* pMaterial, int modeFlag)
@@ -235,10 +253,16 @@ boost::python::list PyGetMaterials(QString materialName = "", bool selectedOnly 
     return result;
 }
 
+#pragma warning(disable: 4068)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
+
 BOOST_PYTHON_FUNCTION_OVERLOADS(pyGetMaterialsOverload, PyGetMaterials, 0, 2);
 REGISTER_PYTHON_OVERLOAD_COMMAND(PyGetMaterials, general, get_materials, pyGetMaterialsOverload,
     "Get all, subgroup, or selected materials in the material editor.",
     "general.get_materials(str materialName=\'\', selectedOnly=False, levelOnly=False)");
+
+#pragma clang diagnostic pop
 
 //////////////////////////////////////////////////////////////////////////
 // CMaterialManager implementation.
@@ -247,26 +271,40 @@ CMaterialManager::CMaterialManager(CRegistrationContext& regCtx)
     : m_pHighlighter(new CMaterialHighlighter)
     , m_highlightMask(eHighlight_All)
     , m_currentFolder("")
+    , m_joinThreads(false)
 {
     m_bUniqGuidMap = false;
     m_bUniqNameMap = true;
 
-    m_bMaterialsLoaded = false;
+    m_bEditorUiReady = false;
+    m_bSourceControlErrorReported = false;
+    m_sourceControlFunctionQueued = false;
     m_pLevelLibrary = (CBaseLibrary*)AddLibrary("Level", true);
 
     m_MatSender = new CMaterialSender(true);
 
-    EBusFindAssetTypeByName result("Material"); //from MaterialAssetTypeInfo.cpp, case insensitive
-    AZ::AssetTypeInfoBus::BroadcastResult(result, &AZ::AssetTypeInfo::GetAssetType);
-    m_materialAssetType = result.GetAssetType();
+    EBusFindAssetTypeByName materialResult("Material"); //from MaterialAssetTypeInfo.cpp, case insensitive
+    AZ::AssetTypeInfoBus::BroadcastResult(materialResult, &AZ::AssetTypeInfo::GetAssetType);
+    m_materialAssetType = materialResult.GetAssetType();
+
+    EBusFindAssetTypeByName dccMaterialResult("DccMaterial"); //from MaterialAssetTypeInfo.cpp, case insensitive
+    AZ::AssetTypeInfoBus::BroadcastResult(dccMaterialResult, &AZ::AssetTypeInfo::GetAssetType);
+    m_dccMaterialAssetType = dccMaterialResult.GetAssetType();
 
     RegisterCommands(regCtx);
-    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusConnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusConnect();
+    AzFramework::AssetCatalogEventBus::Handler::BusConnect();
+    AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////////
 CMaterialManager::~CMaterialManager()
 {
+    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusDisconnect();
+    AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
+    AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+
     delete m_pHighlighter;
     m_pHighlighter = 0;
 
@@ -279,6 +317,14 @@ CMaterialManager::~CMaterialManager()
     {
         delete m_MatSender;
         m_MatSender = 0;
+    }
+
+    // Terminate thread that saves dcc materials.
+    m_joinThreads = true;
+    if (m_bEditorUiReady)
+    {
+        m_dccMaterialSaveSemaphore.release();
+        m_dccMaterialSaveThread.join();
     }
 }
 
@@ -336,7 +382,7 @@ void CMaterialManager::Export(XmlNodeRef& node)
         XmlNodeRef libNode = libs->newChild("Library");
 
         // Export library.
-        libNode->setAttr("Name", pLib->GetName().toLatin1().data());
+        libNode->setAttr("Name", pLib->GetName().toUtf8().data());
     }
 }
 
@@ -345,8 +391,8 @@ int CMaterialManager::ExportLib(CMaterialLibrary* pLib, XmlNodeRef& libNode)
 {
     int num = 0;
     // Export library.
-    libNode->setAttr("Name", pLib->GetName().toLatin1().data());
-    libNode->setAttr("File", pLib->GetFilename().toLatin1().data());
+    libNode->setAttr("Name", pLib->GetName().toUtf8().data());
+    libNode->setAttr("File", pLib->GetFilename().toUtf8().data());
     char version[50];
     GetIEditor()->GetFileVersion().ToString(version, AZ_ARRAY_SIZE(version));
     libNode->setAttr("SandboxVersion", version);
@@ -363,7 +409,7 @@ int CMaterialManager::ExportLib(CMaterialLibrary* pLib, XmlNodeRef& libNode)
         }
 
         XmlNodeRef itemNode = libNode->newChild("Material");
-        itemNode->setAttr("Name", pMtl->GetName().toLatin1().data());
+        itemNode->setAttr("Name", pMtl->GetName().toUtf8().data());
         num++;
     }
     return num;
@@ -565,12 +611,26 @@ CMaterial* CMaterialManager::LoadMaterial(const QString& sMaterialName, bool bMa
     return LoadMaterialInternal(sMaterialNameClear, fullSourcePath, relativePath, bMakeIfNotFound);
 }
 
+//////////////////////////////////////////////////////////////////////////
+XmlNodeRef CMaterialManager::LoadXmlNode(const QString &fullSourcePath, const QString &relativeFilePath)
+{
+    XmlNodeRef materialNode = GetISystem()->LoadXmlFromFile(fullSourcePath.toUtf8().data());
+    if (!materialNode)
+    {
+        // try again with the product file in case its present
+        materialNode = GetISystem()->LoadXmlFromFile(relativeFilePath.toUtf8().data());
+    }
+    return materialNode;
+}
+
+//////////////////////////////////////////////////////////////////////////
 CMaterial* CMaterialManager::LoadMaterialWithFullSourcePath(const QString& relativeFilePath, const QString& fullSourcePath, bool makeIfNotFound /*= true*/)
 {
     QString materialNameClear = UnifyMaterialName(relativeFilePath);
     return LoadMaterialInternal(materialNameClear, fullSourcePath, relativeFilePath, makeIfNotFound);
 }
 
+//////////////////////////////////////////////////////////////////////////
 CMaterial* CMaterialManager::LoadMaterialInternal(const QString &materialNameClear, const QString &fullSourcePath, const QString &relativeFilePath, bool makeIfNotFound)
 {    
     // Note:  We are loading from source files here, not from compiled assets, so there is no need to query the asset system for compilation status, etc.
@@ -593,13 +653,7 @@ CMaterial* CMaterialManager::LoadMaterialInternal(const QString &materialNameCle
         return pMaterial;
     }
 
-
-    XmlNodeRef mtlNode = GetISystem()->LoadXmlFromFile(fullSourcePath.toUtf8().data());
-    if (!mtlNode)
-    {
-        // try again with the product file in case its present
-        mtlNode = GetISystem()->LoadXmlFromFile(relativeFilePath.toUtf8().data());
-    }
+    XmlNodeRef mtlNode = LoadXmlNode(fullSourcePath, relativeFilePath);
 
     if (mtlNode)
     {
@@ -618,7 +672,6 @@ CMaterial* CMaterialManager::LoadMaterialInternal(const QString &materialNameCle
             GetIEditor()->GetErrorReport()->ReportError(err);
         }
     }
-    //
 
     return pMaterial;
 }
@@ -629,6 +682,7 @@ CMaterial* CMaterialManager::LoadMaterial(const char* sMaterialName, bool bMakeI
     return LoadMaterial(QString(sMaterialName), bMakeIfNotFound);
 }
 
+//////////////////////////////////////////////////////////////////////////
 void CMaterialManager::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
 {
     using namespace AzToolsFramework;
@@ -732,7 +786,7 @@ int CMaterialManager::GetHighlightFlags(CMaterial* pMaterial) const
 
     if (ISurfaceTypeManager* pSurfaceManager = GetIEditor()->Get3DEngine()->GetMaterialManager()->GetSurfaceTypeManager())
     {
-        const ISurfaceType* pSurfaceType =  pSurfaceManager->GetSurfaceTypeByName(surfaceTypeName.toLatin1().data());
+        const ISurfaceType* pSurfaceType =  pSurfaceManager->GetSurfaceTypeByName(surfaceTypeName.toUtf8().data());
         if (pSurfaceType && pSurfaceType->GetBreakability() != 0)
         {
             result |= eHighlight_Breakable;
@@ -872,6 +926,7 @@ void CMaterialManager::OnDeleteMaterial(_smart_ptr<IMaterial> pMaterial)
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
 bool CMaterialManager::IsCurrentMaterial(_smart_ptr<IMaterial> pMaterial) const
 {
     if (!pMaterial)
@@ -943,7 +998,8 @@ QString CMaterialManager::MaterialToFilename(const QString& sMaterialName)
 {
     QString materialWithExtension = Path::ReplaceExtension(sMaterialName, MATERIAL_FILE_EXT);
     QString fileName = Path::GamePathToFullPath(materialWithExtension);
-    if (fileName.right(4).toLower() != MATERIAL_FILE_EXT)
+    const int mtlExtensionLength = strlen(MATERIAL_FILE_EXT);
+    if (fileName.right(mtlExtensionLength).toLower() != MATERIAL_FILE_EXT)
     {
         // we got something back which is not a mtl, fall back heuristic:
         AZStd::string pathName(fileName.toUtf8().data());
@@ -957,6 +1013,7 @@ QString CMaterialManager::MaterialToFilename(const QString& sMaterialName)
     return fileName;
 }
 
+//////////////////////////////////////////////////////////////////////////
 const AZ::Data::AssetType& CMaterialManager::GetMaterialAssetType()
 {
     return m_materialAssetType;
@@ -992,6 +1049,7 @@ void CMaterialManager::DeleteMaterial(CMaterial* pMtl)
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
 void CMaterialManager::RemoveMaterialFromDisk(const char * fileName)
 {
     using namespace AzToolsFramework;
@@ -1057,14 +1115,14 @@ CMaterial* CMaterialManager::SelectNewMaterial(int nMtlFlags, const char* sStart
 {
     QString path = m_pCurrentMaterial ? Path::GetPath(m_pCurrentMaterial->GetFilename()) : m_currentFolder;
     QString itemName;
-    if (!SelectSaveMaterial(itemName, path.toLatin1().data()))
+    if (!SelectSaveMaterial(itemName, path.toUtf8().data()))
     {
         return 0;
     }
 
     if (FindItemByName(itemName))
     {
-        Warning("Material with name %s already exist", itemName.toLatin1().data());
+        Warning("Material with name %s already exist", itemName.toUtf8().data());
         return 0;
     }
 
@@ -1132,7 +1190,7 @@ void CMaterialManager::Command_Duplicate()
         if ((attrib & SCC_FILE_ATTRIBUTE_INPAK) &&  (attrib & SCC_FILE_ATTRIBUTE_MANAGED) && !(attrib & SCC_FILE_ATTRIBUTE_NORMAL))
         {
             // Get latest for making folders with right case
-            GetIEditor()->GetSourceControl()->GetLatestVersion(pSrcMtl->GetFilename().toLatin1().data());
+            CFileUtil::GetLatestFromSourceControl(pSrcMtl->GetFilename().toUtf8().data());
         }
     }
 
@@ -1140,7 +1198,7 @@ void CMaterialManager::Command_Duplicate()
     {
         QString name = MakeUniqueItemName(pSrcMtl->GetName());
         // Create a new material.
-        _smart_ptr<CMaterial> pMtl = DuplicateMaterial(name.toLatin1().data(), pSrcMtl);
+        _smart_ptr<CMaterial> pMtl = DuplicateMaterial(name.toUtf8().data(), pSrcMtl);
         if (pMtl)
         {
             pMtl->Save();
@@ -1172,6 +1230,7 @@ CMaterial* CMaterialManager::DuplicateMaterial(const char* newName, CMaterial* p
     return CreateMaterial(newName, node, pOriginal->GetFlags());
 }
 
+//////////////////////////////////////////////////////////////////////////
 void CMaterialManager::GenerateUniqueSubmaterialName(const CMaterial* pSourceMaterial, const CMaterial* pTargetMaterial, QString& uniqueSubmaterialName) const
 {
     QString sourceMaterialName = pSourceMaterial->GetName();
@@ -1201,6 +1260,7 @@ void CMaterialManager::GenerateUniqueSubmaterialName(const CMaterial* pSourceMat
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
 bool CMaterialManager::DuplicateAsSubMaterialAtIndex(CMaterial* pSourceMaterial, CMaterial* pTargetMaterial, int subMaterialIndex)
 {
     if (pSourceMaterial && pTargetMaterial && pTargetMaterial->GetSubMaterialCount() > subMaterialIndex)
@@ -1213,7 +1273,7 @@ bool CMaterialManager::DuplicateAsSubMaterialAtIndex(CMaterial* pSourceMaterial,
         int sourceMaterialFlags = pSourceMaterial->GetFlags();
         pSourceMaterial->SetFlags(sourceMaterialFlags | MTL_FLAG_PURE_CHILD);
 
-        CMaterial* pNewSubMaterial = DuplicateMaterial(newSubMaterialName.toLatin1().data(), pSourceMaterial);
+        CMaterial* pNewSubMaterial = DuplicateMaterial(newSubMaterialName.toUtf8().data(), pSourceMaterial);
         pTargetMaterial->SetSubMaterial(subMaterialIndex, pNewSubMaterial);
 
         // Reset the flags of the source material to their original values
@@ -1233,7 +1293,7 @@ void CMaterialManager::Command_Merge()
     {
         defaultMaterialPath = Path::GetPath(m_pCurrentMaterial->GetFilename());
     }
-    if (!SelectSaveMaterial(itemName, defaultMaterialPath.toLatin1().data()))
+    if (!SelectSaveMaterial(itemName, defaultMaterialPath.toUtf8().data()))
     {
         return;
     }
@@ -1446,8 +1506,8 @@ void CMaterialManager::PickPreviewMaterial()
         data->setAttr("Flag_2Sided", 1);
     }
 
-    data->setAttr("Name", pMtl->GetName().toLatin1().data());
-    data->setAttr("FileName", pMtl->GetFilename().toLatin1().data());
+    data->setAttr("Name", pMtl->GetName().toUtf8().data());
+    data->setAttr("FileName", pMtl->GetFilename().toUtf8().data());
 
     XmlNodeRef node = data->newChild("Material");
 
@@ -1466,7 +1526,7 @@ void CMaterialManager::PickPreviewMaterial()
                 QString file;
                 if (texNode->getAttr("File", file))
                 {
-                    texNode->setAttr("File", Path::GamePathToFullPath(file).toLatin1().data());
+                    texNode->setAttr("File", Path::GamePathToFullPath(file).toUtf8().data());
                 }
             }
         }
@@ -1489,7 +1549,7 @@ void CMaterialManager::PickPreviewMaterial()
                         QString file;
                         if (texNode->getAttr("File", file))
                         {
-                            texNode->setAttr("File", Path::GamePathToFullPath(file).toLatin1().data());
+                            texNode->setAttr("File", Path::GamePathToFullPath(file).toUtf8().data());
                         }
                     }
                 }
@@ -1548,7 +1608,7 @@ void CMaterialManager::SyncMaterialEditor()
             nMtlFlags |= MTL_FLAG_2SIDED;
         }
 
-        _smart_ptr<CMaterial> pMtl = SelectNewMaterial(nMtlFlags, Path::GetPath(sMaxFile).toLatin1().data());
+        _smart_ptr<CMaterial> pMtl = SelectNewMaterial(nMtlFlags, Path::GetPath(sMaxFile).toUtf8().data());
 
         if (!pMtl)
         {
@@ -1573,7 +1633,7 @@ void CMaterialManager::SyncMaterialEditor()
                         {
                             file = newfile;
                         }
-                        texNode->setAttr("File", file.toLatin1().data());
+                        texNode->setAttr("File", file.toUtf8().data());
                     }
                 }
             }
@@ -1603,7 +1663,7 @@ void CMaterialManager::SyncMaterialEditor()
                                 {
                                     file = newfile;
                                 }
-                                texNode->setAttr("File", file.toLatin1().data());
+                                texNode->setAttr("File", file.toUtf8().data());
                             }
                         }
                     }
@@ -1741,5 +1801,334 @@ void CMaterialManager::GetHighlightColor(ColorF* color, float* intensity, int fl
 {
     MAKE_SURE(m_pHighlighter, return );
     m_pHighlighter->GetHighlightColor(color, intensity, flags);
+}
+
+///////////////////////////////////////////////////////////////////////////
+// This will be called when the editor welcome screen is displayed.
+// At this point the editor is ready for UI events, which means we can
+// process .dccmtl paths and display error to the user if necessary
+bool CMaterialManager::SkipEditorStartupUI()
+{
+    // Editor started
+    m_bEditorUiReady = true;
+
+    // If we have any file paths buffered
+    if (m_sourceControlBuffer.size() > 0)
+    {
+        // Start queuing
+        QueueSourceControlTick();
+    }
+
+    // Launch thread responsible for saving cached
+    // .dccmtl files as source .mtl files
+    StartDccMaterialSaveThread();
+
+    // Never want to skip Startup UI
+    return false;
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Queues the function TickSourceControl() to be exectued next frame
+void CMaterialManager::QueueSourceControlTick()
+{
+    // If TickSourceControl is not currently queued
+    if (!m_sourceControlFunctionQueued)
+    {
+        // Queue it
+        AZStd::function<void()> tickFunction = [this]()
+        {
+            TickSourceControl();
+        };
+        AZ::SystemTickBus::QueueFunction(tickFunction);
+
+        // Stop further queues as TickSourceControl will queue itself 
+        // until there are no more paths in the buffer to process
+        m_sourceControlFunctionQueued = true;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Takes a single path from m_sourceControlBuffer and passes it to
+// DccMaterialSourceControlCheck(). Then if there are more paths
+// remaining in the buffer, it will queue itself for execution next
+// frame. The reason for doing only one material every tick is to avoid
+// flooding source control with too many requests and stalling the editor
+void CMaterialManager::TickSourceControl()
+{
+    m_sourceControlFunctionQueued = false;
+    AZStd::string filePath;
+    bool moreRemaining = false;
+
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_sourceControlBufferMutex);
+
+        if (m_sourceControlBuffer.size() < 1)
+        {
+            return;
+        }
+
+        filePath = m_sourceControlBuffer.back();
+        m_sourceControlBuffer.pop_back();
+        moreRemaining = !m_sourceControlBuffer.empty();
+    }
+
+    // Process it
+    DccMaterialSourceControlCheck(filePath);
+
+    // If there are more paths to check
+    if (moreRemaining)
+    {
+        // Queue again
+        QueueSourceControlTick();
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Launches new thread running the DccMaterialSaveThreadFunc() function
+void CMaterialManager::StartDccMaterialSaveThread()
+{
+    AZStd::thread_desc threadDesc;
+    threadDesc.m_name = "Dcc Material Save Thread";
+
+    m_dccMaterialSaveThread = AZStd::thread(
+        [this]()
+        {
+            DccMaterialSaveThreadFunc();
+        },
+        &threadDesc);
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Will save all the .dccmtl file paths in the buffer to source .mtl 
+// Runs on a separate thread so as not to stall the main thread
+void CMaterialManager::DccMaterialSaveThreadFunc()
+{
+    while (true)
+    {
+        m_dccMaterialSaveSemaphore.acquire();
+
+        // Exit condition, set to true in destructor
+        if (m_joinThreads)
+        {
+            return;
+        }
+
+        AZStd::vector<AZStd::string> dccMaterialPaths;
+
+        // Lock the buffer and copy file paths locally
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_dccMaterialSaveMutex);
+            dccMaterialPaths.reserve(m_dccMaterialSaveBuffer.size());
+            for (AZStd::string& fileName : m_dccMaterialSaveBuffer)
+            {
+                dccMaterialPaths.push_back(fileName);
+            }
+            m_dccMaterialSaveBuffer.clear();
+        }
+
+        // Save all the buffered .dccmtl files 
+        for (AZStd::string& fileName : dccMaterialPaths)
+        {
+            SaveDccMaterial(fileName);
+        }
+
+        // Clear local strings
+        dccMaterialPaths.clear();
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Async source control request. If successful, the callback will add the
+// file name to the buffer for processing by the Dcc Material Save Thread
+void CMaterialManager::DccMaterialSourceControlCheck(const AZStd::string& relativeDccMaterialPath)
+{
+    AZStd::string fullSourcePath = DccMaterialToSourcePath(relativeDccMaterialPath);
+
+    if (!DccMaterialRequiresSave(relativeDccMaterialPath, fullSourcePath))
+    {
+        // Source .mtl update not required, early out
+        return;
+    }
+
+    // Create callback for source control operation (see SCCommandBus::Broadcast below)
+    AzToolsFramework::SourceControlResponseCallback callback =
+        [this, relativeDccMaterialPath, fullSourcePath](bool success, const AzToolsFramework::SourceControlFileInfo& info)
+    {
+        if (success || !info.IsReadOnly())
+        {
+            // File needs saving, add it to the buffer for processing by the dcc material thread
+
+            // Lock access to the buffer
+            AZStd::lock_guard<AZStd::mutex> lock(m_dccMaterialSaveMutex);
+
+            // Add file path
+            m_dccMaterialSaveBuffer.push_back(relativeDccMaterialPath);
+
+            // Notify thread there's work to do
+            m_dccMaterialSaveSemaphore.release();
+        }
+        else
+        {
+            QString errorMessage = QObject::tr("Could not check out read-only file %s in source control. Either check your source control configuration or disable source control.", fullSourcePath.c_str());
+
+            // Alter error message slightly if source control is disabled
+            bool isSourceControlActive = false;
+            AzToolsFramework::SourceControlConnectionRequestBus::BroadcastResult(isSourceControlActive, &AzToolsFramework::SourceControlConnectionRequestBus::Events::IsActive);
+
+            if (!isSourceControlActive)
+            {
+                errorMessage = QObject::tr("Could not check out read-only file %s because source control is disabled. Either enable source control or check out the file manually to make it writable.", fullSourcePath.c_str());
+            }
+
+            // Pop open an error message box if this is the first error we encounter
+            if (!m_bSourceControlErrorReported)
+            {
+                // Report warning in message box
+                QString errorTitle = QStringLiteral("Dcc Material Error");
+                QMessageBox::warning(QApplication::activeWindow(), errorTitle, errorMessage, QMessageBox::Cancel);
+
+                // Only report source control error box to the user once,
+                // no need to spam them for every material
+                m_bSourceControlErrorReported = true;
+            }
+
+            AZ_Error("Rendering", false, errorMessage.toUtf8().data());
+        }
+    };
+
+    // Request edit from source control (happens asynchronously)
+    using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
+    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, fullSourcePath.c_str(), true, callback);
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Handles when .dccmtl is created
+void CMaterialManager::EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* assetEntry)
+{
+    if (assetEntry->GetEntryType() != AzToolsFramework::AssetBrowser::AssetBrowserEntry::AssetEntryType::Product)
+    {
+        // Ignore non-product entries
+        return;
+    }
+    const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productAssetEntry = azrtti_cast<const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry*>(assetEntry);
+    if (productAssetEntry && productAssetEntry->GetAssetType() != m_dccMaterialAssetType)
+    {
+        // Ignore types that aren't .dccmtl
+        return;
+    }
+
+    AddDccMaterialPath(productAssetEntry->GetRelativePath());
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Handles when .dccmtl is edited
+void CMaterialManager::OnCatalogAssetChanged(const AZ::Data::AssetId& assetId)
+{
+    AZ::Data::AssetInfo assetInfo;
+    EBUS_EVENT_RESULT(assetInfo, AZ::Data::AssetCatalogRequestBus, GetAssetInfoById, assetId);
+    
+    if (assetInfo.m_assetType != m_dccMaterialAssetType)
+    {    
+        // Ignore types that aren't .dccmtl
+        return;
+    }
+
+    AddDccMaterialPath(assetInfo.m_relativePath);
+}
+
+///////////////////////////////////////////////////////////////////////////
+void CMaterialManager::AddDccMaterialPath(const AZStd::string relativeDccMaterialPath)
+{
+    // Lock access to the buffer
+    AZStd::lock_guard<AZStd::mutex> lock(m_sourceControlBufferMutex);
+    
+    // Add file path
+    m_sourceControlBuffer.push_back(relativeDccMaterialPath);
+
+    if (m_bEditorUiReady)
+    {
+        QueueSourceControlTick();
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Given the path of a .dccmtl in cache, save it as a source .mtl
+void CMaterialManager::SaveDccMaterial(const AZStd::string& relativeDccMaterialPath)
+{
+    // __________________________________________________
+    // Load .dccmtl
+
+    XmlNodeRef dccNode = GetISystem()->LoadXmlFromFile(relativeDccMaterialPath.c_str());
+
+    if (!dccNode)
+    {
+        AZ_Error("MaterialManager", false, "CMaterialManager::SaveDccMaterial: Failed to load XML node from .dccmtl file: %s", relativeDccMaterialPath.c_str());
+        return;
+    }
+
+    // __________________________________________________
+    // Save as source .mtl file
+
+    AZStd::string fullSourcePath = DccMaterialToSourcePath(relativeDccMaterialPath);
+    bool saveSuccessful = dccNode->saveToFile(fullSourcePath.c_str());
+
+    if (!saveSuccessful)
+    {
+        AZ_Error("MaterialManager", false, "CMaterialManager::SaveDccMaterial: Failed to save source .mtl from .dccmtl file: %s", relativeDccMaterialPath.c_str());
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Compares the hash values from .dccmtl and source .mtl to determine if
+// .dccmtl has changed and needs to be saved.
+bool CMaterialManager::DccMaterialRequiresSave(const AZStd::string& relativeDccMaterialPath, const AZStd::string& fullSourcePath)
+{
+    // __________________________________________________
+    // Get Source Hash
+
+    AZ::u32 sourceHash = 0;
+
+    // Check if material is already loaded
+    QString unifiedName = UnifyMaterialName(QString(relativeDccMaterialPath.c_str()));
+    CMaterial* sourceMaterial = (CMaterial*)FindItemByName(unifiedName);
+
+    if (sourceMaterial && !sourceMaterial->IsDummy())
+    {
+        sourceHash = sourceMaterial->GetDccMaterialHash();
+    }
+    else
+    {
+        XmlNodeRef sourceNode = GetISystem()->LoadXmlFromFile(fullSourcePath.c_str());
+        if (sourceNode)
+        {
+            sourceNode->getAttr("DccMaterialHash", sourceHash);
+        }
+        else
+        {
+            // Couldn't find source node or material, so we need to save the dcc material as a source material
+            // No need to check the dcc material hash, just return true
+            return true;
+        }
+    }
+
+    // __________________________________________________
+    // Get DCC material Hash
+
+    AZ::u32 dccHash = 0;
+    XmlNodeRef dccNode = GetISystem()->LoadXmlFromFile(relativeDccMaterialPath.c_str());
+
+    if (!dccNode)
+    {
+        AZ_Error("MaterialManager", false, "CMaterialManager::DccMaterialRequiresSave: Failed to load XML node from .dccmtl file: %s", relativeDccMaterialPath.c_str());
+        return false;
+    }
+
+    dccNode->getAttr("DccMaterialHash", dccHash);
+
+    // __________________________________________________
+    // Compare hash values
+
+    // Only update if .dccmtl hash is different from the source hash
+    return (dccHash != sourceHash);
 }
 

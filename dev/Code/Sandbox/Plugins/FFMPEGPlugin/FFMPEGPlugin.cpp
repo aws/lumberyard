@@ -90,9 +90,9 @@ static void Command_FFMPEGEncode(const char* input, const char* output, const ch
         for (int idx = 0; idx < 3; ++idx)
         {
 #if defined(AZ_PLATFORM_WINDOWS)
-            checkPath = QStringLiteral("%s/%s.exe").arg(path, possibleLocations[idx]);
+            checkPath = QStringLiteral("%1/%2.exe").arg(path, possibleLocations[idx]);
 #else
-            checkPath = QStringLiteral("%s/%s").arg(path, possibleLocations[idx]);
+            checkPath = QStringLiteral("%1/%2").arg(path, possibleLocations[idx]);
 #endif
             if (QFile::exists(checkPath))
             {
@@ -114,7 +114,7 @@ static void Command_FFMPEGEncode(const char* input, const char* output, const ch
 
     QString ffmpegCmdLine = QStringLiteral("\"%1\" -r %2 -i \"%3\" -vcodec %4 -b %5k -r %6 %7 -strict experimental -y \"%8\"")
         .arg(ffmpegEXEPath, QString::number(fps), input, codec, QString::number(bitRateinKb), QString::number(fps), etc, output);
-    GetIEditor()->GetSystem()->GetILog()->Log("Executing \"%s\" from FFMPEGPlugin...", ffmpegCmdLine.toLatin1().data());
+    GetIEditor()->GetSystem()->GetILog()->Log("Executing \"%s\" from FFMPEGPlugin...", ffmpegCmdLine.toUtf8().data());
     GetIEditor()->ExecuteConsoleApp(ffmpegCmdLine, outTxt, true, true);
     GetIEditor()->GetSystem()->GetILog()->Log("FFMPEG execution done.");
 }

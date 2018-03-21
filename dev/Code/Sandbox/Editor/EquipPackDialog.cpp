@@ -38,7 +38,7 @@ CEquipPackDialog::CEquipPackDialog(QWidget* pParent /*=NULL*/)
 {
     ui->setupUi(this);
     m_AmmoPropWnd = ui->PROPERTIES;
-    m_OkBtn = ui->BTNOK;
+    m_OkBtn = ui->buttonBox->button(QDialogButtonBox::Ok);
     m_ExportBtn = ui->BTNEXPORT;
     m_AddBtn = ui->BTNADD;
     m_DeleteBtn = ui->BTNDELETE;
@@ -186,7 +186,7 @@ void CEquipPackDialog::AddEquipmentListItem(const SEquipment& equip)
     parent->setCheckState(0, Qt::Unchecked);
     m_EquipList->addTopLevelItem(parent);
 
-    IEquipmentSystemInterface::IEquipmentItemIteratorPtr accessoryIter = GetIEditor()->GetGameEngine()->GetIEquipmentSystemInterface()->CreateEquipmentAccessoryIterator(equip.sName.toLatin1().data());
+    IEquipmentSystemInterface::IEquipmentItemIteratorPtr accessoryIter = GetIEditor()->GetGameEngine()->GetIEquipmentSystemInterface()->CreateEquipmentAccessoryIterator(equip.sName.toUtf8().data());
 
     if (accessoryIter)
     {
@@ -239,7 +239,7 @@ CVarBlockPtr CEquipPackDialog::CreateVarBlock(CEquipPack* pEquip)
     for (TAmmoVec::iterator iter = ammoVec.begin(); iter != ammoVec.end(); ++iter)
     {
         // check if var block contains all variables
-        IVariablePtr pVar = pVarBlock->FindVariable(iter->sName.toLatin1().data());
+        IVariablePtr pVar = pVarBlock->FindVariable(iter->sName.toUtf8().data());
         if (pVar == 0)
         {
             // pVar = new CVariable<int>;
@@ -249,7 +249,7 @@ CVarBlockPtr CEquipPackDialog::CreateVarBlock(CEquipPack* pEquip)
         }
         else
         {
-            pVar->SetName(iter->sName.toLatin1().data());
+            pVar->SetName(iter->sName.toUtf8().data());
             pVar->Set(iter->nAmount);
         }
     }
@@ -261,7 +261,7 @@ CVarBlockPtr CEquipPackDialog::CreateVarBlock(CEquipPack* pEquip)
         TAmmoVec::iterator iterEnd = notFoundAmmoVec.end();
         while (iter != iterEnd)
         {
-            notFoundString += QString("'%s'\r\n").arg(iter->sName);
+            notFoundString += QString("'%1'\r\n").arg(iter->sName);
             ++iter;
         }
 
@@ -282,7 +282,7 @@ CVarBlockPtr CEquipPackDialog::CreateVarBlock(CEquipPack* pEquip)
             iter = notFoundAmmoVec.begin();
             while (iter != iterEnd)
             {
-                IVariablePtr pVar = pVarBlock->FindVariable(iter->sName.toLatin1().data());
+                IVariablePtr pVar = pVarBlock->FindVariable(iter->sName.toUtf8().data());
                 if (pVar == 0)
                 {
                     pVar = new CVariable<int>();

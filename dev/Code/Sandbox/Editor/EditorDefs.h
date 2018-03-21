@@ -62,13 +62,12 @@
 //////////////////////////////////////////////////////////////////////////
 // C runtime lib includes
 //////////////////////////////////////////////////////////////////////////
-#include <stdlib.h>
-#include <memory.h>
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
-#include <float.h>
-#include <limits.h>
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
+#include <cmath>
+#include <cfloat>
+#include <climits>
 
 /////////////////////////////////////////////////////////////////////////////
 // STL
@@ -158,7 +157,7 @@
 #include "Util/XmlTemplate.h"
 
 // Utility classes.
-#include "Util/BitArray.h"
+#include "Util/bitarray.h"
 #include "Util/FunctorMulticaster.h"
 #include "Util/RefCountBase.h"
 #include "Util/TRefCountBase.h"

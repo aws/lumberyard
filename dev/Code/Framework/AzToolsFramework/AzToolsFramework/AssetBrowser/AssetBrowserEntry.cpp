@@ -112,31 +112,52 @@ namespace AzToolsFramework
 
             UpdateChildPaths(child);
 
-            AssetBrowserModelRequestsBus::Broadcast(&AssetBrowserModelRequests::BeginAddEntry, this);
+            AssetBrowserModelRequestBus::Broadcast(&AssetBrowserModelRequests::BeginAddEntry, this);
+            child->m_row = static_cast<int>(m_children.size());
             m_children.push_back(child);
-            AssetBrowserModelRequestsBus::Broadcast(&AssetBrowserModelRequests::EndAddEntry, this);
-            AssetBrowserModelNotificationsBus::Broadcast(&AssetBrowserModelNotifications::EntryAdded, child);
+            AssetBrowserModelRequestBus::Broadcast(&AssetBrowserModelRequests::EndAddEntry, this);
+            AssetBrowserModelNotificationBus::Broadcast(&AssetBrowserModelNotifications::EntryAdded, child);
         }
 
         void AssetBrowserEntry::RemoveChild(AssetBrowserEntry* child)
         {
-            auto it = AZStd::find(m_children.begin(), m_children.end(), child);
-            if (it != m_children.end())
+            if (!child)
             {
-                AssetBrowserModelRequestsBus::Broadcast(&AssetBrowserModelRequests::BeginRemoveEntry, child);
-                m_children.erase(it);
-                child->m_parentAssetEntry = nullptr;
-                AssetBrowserModelRequestsBus::Broadcast(&AssetBrowserModelRequests::EndRemoveEntry);
-                AssetBrowserModelNotificationsBus::Broadcast(&AssetBrowserModelNotifications::EntryRemoved, child);
-                delete child;
+                return;
             }
+
+            if (child->m_row >= m_children.size())
+            {
+                return;
+            }
+
+            if (child != m_children[child->m_row])
+            {
+                return;
+            }
+
+            AssetBrowserModelRequestBus::Broadcast(&AssetBrowserModelRequests::BeginRemoveEntry, child);
+            auto it = m_children.erase(m_children.begin() + child->m_row);
+
+            // decrement the row of all children after the removed child
+            while (it != m_children.end())
+            {
+                (*it++)->m_row--;
+            }
+
+            child->m_parentAssetEntry = nullptr;
+            AssetBrowserModelRequestBus::Broadcast(&AssetBrowserModelRequests::EndRemoveEntry);
+            AssetBrowserModelNotificationBus::Broadcast(&AssetBrowserModelNotifications::EntryRemoved, child);
+
+            delete child;
         }
 
         void AssetBrowserEntry::RemoveChildren()
         {
             while (!m_children.empty())
             {
-                RemoveChild(m_children[0]);
+                // child entries are removed from the end of the list, because this will incur minimum effort to update their rows
+                RemoveChild(*m_children.rbegin());
             }
         }
 
@@ -155,13 +176,7 @@ namespace AzToolsFramework
 
         int AssetBrowserEntry::row() const
         {
-            if (m_parentAssetEntry)
-            {
-                return AZStd::find(m_parentAssetEntry->m_children.begin(), m_parentAssetEntry->m_children.end(), this) -
-                       m_parentAssetEntry->m_children.begin();
-            }
-
-            return 0;
+            return m_row;
         }
 
         bool AssetBrowserEntry::FromMimeData(const QMimeData* mimeData, AZStd::vector<AssetBrowserEntry*>& entries)
@@ -219,6 +234,7 @@ namespace AzToolsFramework
                 serializeContext->Class<AssetBrowserEntry>()
                     ->Field("m_name", &AssetBrowserEntry::m_name)
                     ->Field("m_children", &AssetBrowserEntry::m_children)
+                    ->Field("m_row", &AssetBrowserEntry::m_row)
                     ->Version(1);
             }
         }
@@ -347,7 +363,7 @@ namespace AzToolsFramework
                 source = cache->m_sourceIdMap[sourceUuid];
             }
 
-            if (!source || source->GetChildCount()) // if child count above 0, source file is being moved
+            if (!source)
             {
                 return;
             }
@@ -508,12 +524,17 @@ namespace AzToolsFramework
 
             parent = CreateFolders(sourcePath.c_str(), parent);
 
-            // if entry already exists remove it
+            // if entry already exists don't add it
             AssetBrowserEntry* source;
             auto it = AZStd::find_if(parent->m_children.begin(), parent->m_children.end(),
                     [&](const AssetBrowserEntry* child)
                     {
-                        return child->m_name.compare((sourceName + sourceExtension).c_str()) == 0;
+                        auto sourceChild = azrtti_cast<const SourceAssetBrowserEntry*>(child);
+                        if (sourceChild)
+                        {
+                            return sourceChild->GetSourceUuid() == combinedDatabaseEntry.m_sourceGuid;
+                        }
+                        return false;
                     });
             if (it == parent->m_children.end())
             {
@@ -985,7 +1006,6 @@ namespace AzToolsFramework
                     cache->m_dirtyThumbnailsSet.insert(m_parentAssetEntry);
                 }
             }
-            
         }
 
         SharedThumbnailKey AssetBrowser::ProductAssetBrowserEntry::GetThumbnailKey() const

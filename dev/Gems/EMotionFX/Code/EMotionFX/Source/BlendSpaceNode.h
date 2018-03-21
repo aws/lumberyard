@@ -99,6 +99,8 @@ namespace EMotionFX
         void DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 masterIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
             EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data);
 
+        void RewindMotions(MotionInfos& motionInfos);
+
         static AZ::u32 GetIndexOfMotionInBlendInfos(const BlendInfos& blendInfos, AZ::u32 motionIndex);
 
         static void ClearMotionInfos(MotionInfos& motionInfos);

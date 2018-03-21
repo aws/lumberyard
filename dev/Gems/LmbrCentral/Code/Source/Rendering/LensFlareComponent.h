@@ -36,6 +36,7 @@ namespace LmbrCentral
         virtual ~LensFlareConfiguration() {};
 
         static void Reflect(AZ::ReflectContext* context);
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         //! Settings common to all LY engine lights
         EngineSpec m_minSpec;
@@ -55,7 +56,7 @@ namespace LmbrCentral
 
         float m_viewDistMultiplier;
         bool m_affectsThisAreaOnly;
-        bool m_ignoreVisAreas;
+        bool m_useVisAreas;
         bool m_indoorOnly;
         bool m_attachToSun;
 

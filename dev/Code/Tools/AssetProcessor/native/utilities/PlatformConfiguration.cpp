@@ -17,6 +17,7 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzCore/std/algorithm.h>
 #include <GemRegistry/IGemRegistry.h>
 
 #include <QCoreApplication>
@@ -46,12 +47,13 @@ namespace
 
 namespace AssetProcessor
 {
-    GemInformation::GemInformation(const char* identifier, const char* absolutePath, const char* relativePath, const char* displayName, bool isGameGem)
+    GemInformation::GemInformation(const char* identifier, const char* absolutePath, const char* relativePath, const char* displayName, bool isGameGem, bool assetOnlyGem)
         : m_identifier(QString::fromUtf8(identifier))
         , m_absolutePath(QString::fromUtf8(absolutePath))
         , m_relativePath(QString::fromUtf8(relativePath))
         , m_displayName(QString::fromUtf8(displayName))
         , m_isGameGem(isGameGem)
+        , m_assetOnly(assetOnlyGem)
     {
     }
 
@@ -86,6 +88,8 @@ namespace AssetProcessor
             // we cannot continue.
             return false;
         }
+
+        m_gemInfoList = gemInformations;
 
         // append to the end of the list all the config files from gems.
         bool foundGameGem = false;
@@ -320,6 +324,54 @@ namespace AssetProcessor
         }
     }
 
+    void PlatformConfiguration::PopulatePlatformsForScanFolder(AZStd::vector<AssetBuilderSDK::PlatformInfo>& platformsList, QStringList includeTagsList, QStringList excludeTagsList)
+    {
+        if (includeTagsList.isEmpty())
+        {
+            // Add all enabled platforms
+            for (const AssetBuilderSDK::PlatformInfo& platform : m_enabledPlatforms)
+            {
+                if (AZStd::find(platformsList.begin(), platformsList.end(), platform) == platformsList.end())
+                {
+                    platformsList.push_back(platform);
+                }
+            }
+        }
+        else
+        {
+            for (QString identifier : includeTagsList)
+            {
+                for (const AssetBuilderSDK::PlatformInfo& platform : m_enabledPlatforms)
+                {
+                    bool addPlatform = (QString::compare(identifier, platform.m_identifier.c_str(), Qt::CaseInsensitive) == 0) ||
+                        platform.m_tags.find(identifier.toLower().toUtf8().data()) != platform.m_tags.end();
+
+                    if (addPlatform)
+                    {
+                        if (AZStd::find(platformsList.begin(), platformsList.end(), platform) == platformsList.end())
+                        {
+                            platformsList.push_back(platform);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (QString identifier : excludeTagsList)
+        {
+            for (const AssetBuilderSDK::PlatformInfo& platform : m_enabledPlatforms)
+            {
+                bool removePlatform = (QString::compare(identifier, platform.m_identifier.c_str(), Qt::CaseInsensitive) == 0) ||
+                     platform.m_tags.find(identifier.toLower().toUtf8().data()) != platform.m_tags.end();
+
+                if (removePlatform)
+                {
+                    platformsList.erase(AZStd::remove(platformsList.begin(), platformsList.end(), platform), platformsList.end());
+                }
+            }
+        }
+    }
+
     bool PlatformConfiguration::ReadRecognizersFromConfigFile(QString iniPath)
     {
         QDir assetRoot;
@@ -356,16 +408,30 @@ namespace AssetProcessor
                     watchFolder.replace("@GAMENAME@", gameName, Qt::CaseInsensitive);
                     watchFolder.replace("@engineroot@", normalizedEngineRoot, Qt::CaseInsensitive);
                     watchFolder = AssetUtilities::NormalizeDirectoryPath(watchFolder);
+                    
+                    QVariant includeParams = loader.value("include", QString());
+                    QVariant excludeParams = loader.value("exclude", QString());
+                    
+                    QString includeTagString = includeParams.type() == QVariant::StringList ? includeParams.toStringList().join(",") : includeParams.toString();
+                    QString excludeTagString = excludeParams.type() == QVariant::StringList ? excludeParams.toStringList().join(",") : excludeParams.toString();
+
+                    QStringList includeIdentifiers = includeTagString.split(QChar(','), QString::SkipEmptyParts);
+                    QStringList excludeIdentifiers = excludeTagString.split(QChar(','), QString::SkipEmptyParts);
+
+                    AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+                    PopulatePlatformsForScanFolder(platforms, includeIdentifiers, excludeIdentifiers);
+
+                    QString outputPrefix = loader.value("output", QString()).toString();
 
                     // note that the old way of computing the scan folder portable key is retained below
                     // for purposes of database compatibility - so that assets are not recompiled unnecessarily
                     // this does mean that for old compatibility you may not have a watch folder configuration that has non-unique first part
-                    // after the ScanFolder section hear, meaning the following would be in conflict:
+                    // after the ScanFolder section here, meaning the following would be in conflict:
                     // [ScanFolder My Game]
                     // [ScanFolder My Gem]
-                    // since the legacy portable key would both be 'from-ini-file-my'
-                    QString outputPrefix = loader.value("output", QString()).toString();
-                    QString oldDisplayName = !outputPrefix.isEmpty() ? outputPrefix : group.split(" ", QString::SkipEmptyParts)[1];
+                    // the portable key should absolutely not include the outputprefix becuase you can map
+                    // multiple folders into the same output prefix, it is not a suitable unique identifier.
+                    QString oldDisplayName = group.split(" ", QString::SkipEmptyParts)[1];
                     QString scanFolderPortableKey = QString("from-ini-file-%1").arg(oldDisplayName);
 
                     // the new way of computing the display name involves taking everything after the "[ScanFolder " section name.
@@ -393,7 +459,7 @@ namespace AssetProcessor
 
                     if (!watchFolder.isEmpty())
                     {
-                        AddScanFolder(ScanFolderInfo(watchFolder, scanFolderDisplayName, scanFolderPortableKey, outputPrefix, isRoot, recurse, order));
+                        AddScanFolder(ScanFolderInfo(watchFolder, scanFolderDisplayName, scanFolderPortableKey, outputPrefix, isRoot, recurse, platforms, order));
                     }
 
                     loader.endGroup();
@@ -413,7 +479,7 @@ namespace AssetProcessor
                         pattern = loader.value("glob", QString()).toString();
                     }
                     AZStd::string excludePattern(pattern.toUtf8().data());
-                    excludeRecognizer.m_patternMatcher = AssetUtilities::FilePatternMatcher(excludePattern, patternType);
+                    excludeRecognizer.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher(excludePattern, patternType);
                     m_excludeAssetRecognizers[excludeRecognizer.m_name] = excludeRecognizer;
                     loader.endGroup();
                 }
@@ -544,7 +610,7 @@ namespace AssetProcessor
         }
         for (const AssetRecognizer& recognizer : m_assetRecognizers)
         {
-            if (recognizer.m_patternMatcher.MatchesPath(fileName))
+            if (recognizer.m_patternMatcher.MatchesPath(fileName.toUtf8().constData()))
             {
                 // found a match
                 output.push_back(&recognizer);
@@ -557,6 +623,11 @@ namespace AssetProcessor
     int PlatformConfiguration::GetScanFolderCount() const
     {
         return m_scanFolders.count();
+    }
+
+    QList<AssetProcessor::GemInformation> PlatformConfiguration::GetGemsInformation() const
+    {
+        return m_gemInfoList;
     }
 
     AssetProcessor::ScanFolderInfo& PlatformConfiguration::GetScanFolderAt(int index)
@@ -578,7 +649,7 @@ namespace AssetProcessor
         // Find and remove any previous matching entry, last entry wins
         auto it = std::find_if(m_scanFolders.begin(), m_scanFolders.end(), [&source](const ScanFolderInfo& info)
                 {
-                    return info.ScanPath() == source.ScanPath();
+                    return info.GetPortableKey().toLower() == source.GetPortableKey().toLower();
                 });
         if (it != m_scanFolders.end())
         {
@@ -639,6 +710,8 @@ namespace AssetProcessor
                     relativeName += relPath;
                 }
             }
+            relativeName.replace('\\', '/');
+            scanFolderName.replace('\\', '/');
 
             return true;
         }
@@ -804,7 +877,7 @@ namespace AssetProcessor
         else
         {
             // we have provided a non-empty one, override the existing one.
-            target.m_patternMatcher = AssetUtilities::FilePatternMatcher(AZStd::string(pattern.toUtf8().data()), patternType);
+            target.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher(AZStd::string(pattern.toUtf8().data()), patternType);
 
             if (!target.m_patternMatcher.IsValid())
             {
@@ -1033,7 +1106,20 @@ namespace AssetProcessor
             AZStd::string gemId = desc->GetID().ToString<AZStd::string>(false, false).c_str();
             AZStd::to_lower(gemId.begin(), gemId.end());
 
-            gemInfoList.push_back({ gemId.c_str(), desc->GetAbsolutePath().c_str(), desc->GetPath().c_str(), desc->GetName().c_str(), desc->IsGameGem() });
+            Gems::ModuleDefinitionVector moduleList = desc->GetModules();
+            
+            bool assetOnlyGem = true;
+            
+            for (Gems::ModuleDefinitionConstPtr moduleDef : moduleList)
+            {
+                if (moduleDef->m_linkType != Gems::LinkType::NoCode)
+                {
+                    assetOnlyGem = false;
+                    break;
+                }
+            }
+
+            gemInfoList.push_back({ gemId.c_str(), desc->GetAbsolutePath().c_str(), desc->GetPath().c_str(), desc->GetName().c_str(), desc->IsGameGem(), assetOnlyGem });
         }
 
         registry->DestroyProjectSettings(projectSettings);
@@ -1080,6 +1166,8 @@ namespace AssetProcessor
         int readGems = 0;
         int gemOrder = g_gemStartingOrder;
         int gemGameOrder = 1; // game gems are very high priority, start at 1 onwards.
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        PopulatePlatformsForScanFolder(platforms);
 
         for (const GemInformation& gemElement : gemInfoList)
         {
@@ -1110,7 +1198,7 @@ namespace AssetProcessor
             int order = gemElement.m_isGameGem ? gemGameOrder++ : gemOrder++;
 
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Adding GEM assets folder for monitoring / scanning: %s.\n", gemFolder.toUtf8().data());
-            AddScanFolder(ScanFolderInfo(gemFolder, assetBrowserDisplayName, portableKey, outputPrefix, isRoot, isRecursive, order));
+            AddScanFolder(ScanFolderInfo(gemFolder, assetBrowserDisplayName, portableKey, outputPrefix, isRoot, isRecursive, platforms, order));
 
             // add the gem folder itself for the root metadata (non-recursive)
             // note that these root folders only exist to make sure "gem.json" is in the cache at the path @root@/Gems/GemName/Gem.json
@@ -1132,7 +1220,7 @@ namespace AssetProcessor
             order = gemElement.m_isGameGem ? gemGameOrder++ : gemOrder++;
 
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Adding GEM folder for gem.json: %s.\n", gemFolder.toUtf8().data());
-            AddScanFolder(ScanFolderInfo(gemFolder, gemDisplayName, portableKey, outputPrefix, isRoot, isRecursive, order));
+            AddScanFolder(ScanFolderInfo(gemFolder, gemDisplayName, portableKey, outputPrefix, isRoot, isRecursive, platforms, order));
         }
     }
 
@@ -1164,7 +1252,7 @@ namespace AssetProcessor
     {
         for (const ExcludeAssetRecognizer& excludeRecognizer : m_excludeAssetRecognizers)
         {
-            if (excludeRecognizer.m_patternMatcher.MatchesPath(fileName))
+            if (excludeRecognizer.m_patternMatcher.MatchesPath(fileName.toUtf8().constData()))
             {
                 return true;
             }

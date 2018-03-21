@@ -72,7 +72,7 @@ namespace RADTelemetry
     {
         (void)id;
         (void)desc;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_THREADS
         if (!desc)
         {
             // Skip unnamed threads
@@ -114,7 +114,7 @@ namespace RADTelemetry
     void ProfileTelemetryComponent::OnThreadExit(const AZStd::thread_id& id)
     {
         (void)id;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_THREADS
         {
             ScopedLock lock(m_threadNameLock);
 
@@ -188,7 +188,7 @@ namespace RADTelemetry
                 m_running = true;
                 AZ_Printf(ProfileChannel, "Connected to the Telemetry server!");
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_THREADS
                 ScopedLock lock(m_threadNameLock);
                 for (const auto& threadNameEntry : m_threadNames)
                 {

@@ -15,7 +15,7 @@
 #define CRYINCLUDE_EDITOR_FBXEXPORTERDIALOG_H
 #pragma once
 
-#include "resource.h"
+#include "Resource.h"
 
 #include <QDialog>
 

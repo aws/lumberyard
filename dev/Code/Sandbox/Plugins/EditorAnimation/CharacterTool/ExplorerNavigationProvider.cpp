@@ -261,7 +261,7 @@ namespace CharacterTool
         return new ExplorerNavigationProvider(system);
     }
 
-    dll_string FileSelector(const SResourceSelectorContext& x, const char* previousValue)
+    QString FileSelector(const SResourceSelectorContext& x, const QString& previousValue)
     {
         AssetSelectionModel selection = AssetSelectionModel::AssetTypeSelection(ExplorerNavigationProvider::GetAssetTypeForType(x.typeName));
         AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
@@ -273,7 +273,7 @@ namespace CharacterTool
         }
         else
         {
-            return Path::FullPathToGamePath(previousValue).c_str();
+            return Path::FullPathToGamePath(previousValue);
         }
     }
     REGISTER_RESOURCE_SELECTOR("Animation", FileSelector, "Editor/Icons/animation/animation.png")

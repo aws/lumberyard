@@ -22,9 +22,9 @@
 //QT
 #include <QTimer>
 #include <QSettings>
-#include <qmessagebox.h>
-#include <qdebug.h>
-#include <qobject.h>
+#include <QMessageBox>
+#include <QDebug>
+#include <QObject>
 
 #define TIME_BETWEEN_BACKUPS 5 * 60 * 1000
 

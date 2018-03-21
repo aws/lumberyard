@@ -40,7 +40,7 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/Slice/SlicePushWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
@@ -219,6 +219,58 @@ namespace AzToolsFramework
         bool IsPushableItem() const 
         {
             return m_isEntityAdd || m_isEntityRemoval || childCount() == 0; // Either entity add/removal, or leaf item (for updates)
+        }
+
+        bool AllLeafNodesShareSelectedAsset(AZ::Data::AssetId targetAssetId) const
+        {
+            if (IsPushableItem())
+            {
+                return m_selectedAsset == targetAssetId;
+            }
+
+            for (int childIndex = 0; childIndex < childCount(); childIndex++)
+            {
+                FieldTreeItem* childItem = static_cast<FieldTreeItem*>(child(childIndex));
+                if (childItem)
+                {
+                    if (!childItem->AllLeafNodesShareSelectedAsset(targetAssetId))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        bool AllLeafNodesArePushableToThisAncestor(AZ::Entity& entity) const
+        {
+            if (IsPushableItem())
+            {
+                if (m_isEntityRemoval)
+                {
+                    return true; // Removal of entities is guaranteed to be pushable.
+                }
+                else
+                {
+                    return SliceUtilities::IsNodePushable(*m_node, SliceUtilities::IsRootEntity(entity));
+                }
+                
+            }
+
+            for (int childIndex = 0; childIndex < childCount(); childIndex++)
+            {
+                FieldTreeItem* childItem = static_cast<FieldTreeItem*>(child(childIndex));
+                if (childItem)
+                {
+                    if (!childItem->AllLeafNodesArePushableToThisAncestor(entity))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         // For (root) Entity-level items, contains the entities built IDH.
@@ -560,7 +612,10 @@ namespace AzToolsFramework
         for (auto iter = ancestors.begin(); iter != ancestors.end(); ++iter)
         {
             auto& ancestor = *iter;
-            validSliceAssets.push_back(ancestor.m_sliceAddress.first->GetSliceAsset());
+            if (item.AllLeafNodesArePushableToThisAncestor(*ancestor.m_entity))
+            {
+                validSliceAssets.push_back(ancestor.m_sliceAddress.first->GetSliceAsset());
+            }
         }
 
         // If the entity doesn't yet belong to a slice instance, allow targeting any of
@@ -673,7 +728,7 @@ namespace AzToolsFramework
                 m_sliceTree->setItemWidget(sliceItem, 0, selectButton);
 
                 // Auto-select the slice item associated with the currently assigned target slice Id.
-                if (item->IsPushableItem() && item->m_selectedAsset == sliceAssetId)
+                if ((item->IsPushableItem() && item->m_selectedAsset == sliceAssetId) || item->AllLeafNodesShareSelectedAsset(sliceAssetId))
                 {
                     selectButton->setChecked(true);
                 }

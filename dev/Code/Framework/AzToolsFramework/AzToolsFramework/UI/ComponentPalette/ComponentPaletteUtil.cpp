@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ComponentPaletteUtil.hxx"
 
 #include <AzCore/Debug/Profiler.h>

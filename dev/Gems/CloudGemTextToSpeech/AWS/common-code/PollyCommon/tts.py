@@ -59,19 +59,31 @@ def get_speech_marks(tts_info, from_cgp = False):
     return generate_presigned_url(tts_key)
 
 def add_prosody_tags_to_message(message, character_info):
-    ssml_tags = character_info.get("ssmlTags", {})
-    if ssml_tags:
-        prosody_tag = ""
-        for ssml_tag in ssml_tags:
-            prosody_tag += " " + ssml_tag
+    message_content = message
+    if "<speak>" in message:
+        start_index = message.find("<speak>")
+        end_index = message.find("</speak>")
+        message_content = message[start_index + 7 : end_index]
 
-        if "<speak>" in message:
-            start_index = message.find("<speak>")
-            end_index = message.find("</speak>")
-            message = "<speak><prosody" + prosody_tag + ">" + message[start_index + 7 : end_index] + "</prosody></speak>"
-        else:
-            message = "<speak><prosody" + prosody_tag + ">" + message + "</prosody></speak>"
+    if "ssmlLanguage" in character_info:
+        ssml_lang_tag = "lang=\"" + character_info.get("ssmlLanguage") + "\""
+        message_content = "<lang xml:" + ssml_lang_tag + ">" + message_content + "</lang>"
+
+    if "timbre" in character_info:
+        message_content = "<amazon:effect vocal-tract-length=\"" + \
+            str(character_info.get("timbre")) + "%\">" + \
+            message_content + "</amazon:effect>"
+
+    if "ssmlProsodyTags" in character_info:
+        ssml_prosody_tags = character_info.get("ssmlProsodyTags")
+        if len(ssml_prosody_tags) > 0:
+            prosody_tag = ""
+            for ssml_prosody_tag in ssml_prosody_tags:
+                prosody_tag += " " + ssml_prosody_tag
+            message_content = "<prosody" + prosody_tag + ">" + message_content + "</prosody>"
     
+    message = "<speak>" + message_content + "</speak>"
+
     return message
 
 def __get_speech_mark_types(speech_marks):
@@ -81,6 +93,8 @@ def __get_speech_mark_types(speech_marks):
         speech_mark_types.append('word')
     if 'V' in speech_marks:
         speech_mark_types.append('viseme')
+    if 'T' in speech_marks:
+        speech_mark_types.append('ssml')
     return speech_mark_types
 
 

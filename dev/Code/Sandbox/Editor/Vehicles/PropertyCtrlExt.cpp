@@ -110,7 +110,7 @@ void CPropertyCtrlExt::mouseReleaseEvent(QMouseEvent* event)
 
     if (VehicleXml::IsOptionalNode(nodeDefinition))
     {
-        if (!VehicleXml::IsArrayElementNode(nodeDefinition, pVar->GetName().toLatin1().data()))
+        if (!VehicleXml::IsArrayElementNode(nodeDefinition, pVar->GetName().toUtf8().data()))
         {
             menu.addAction(tr("Delete '%1'").arg(pVar->GetName()))->setData(PCEC_REMOVE_OPTIONAL_VAR);
         }
@@ -132,7 +132,7 @@ void CPropertyCtrlExt::mouseReleaseEvent(QMouseEvent* event)
             if (VehicleXml::IsOptionalNode(childProperty))
             {
                 QString propertyName = VehicleXml::GetNodeName(childProperty);
-                IVariable* pChildVar = GetChildVar(pVar, propertyName.toLatin1().data());
+                IVariable* pChildVar = GetChildVar(pVar, propertyName.toUtf8().data());
                 bool alreadyHasChildProperty = (pChildVar != NULL);
                 int contextOptionId = PCEC_CREATE_OPTIONAL_VAR_FIRST + i;
 
@@ -258,9 +258,9 @@ void CPropertyCtrlExt::SelectItem(ReflectedPropertyItem* item)
 
 
 //////////////////////////////////////////////////////////////////////////
-void CPropertyCtrlExt::OnItemChange(ReflectedPropertyItem* item)
+void CPropertyCtrlExt::OnItemChange(ReflectedPropertyItem* item, bool deferCallbacks)
 {
-    ReflectedPropertyControl::OnItemChange(item);
+    ReflectedPropertyControl::OnItemChange(item, deferCallbacks);
 
     // handle class-like items that need to insert/remove subitems
     if (item->GetType() == ePropertySelection && item->GetName() == "class")
@@ -297,7 +297,7 @@ void CPropertyCtrlExt::OnItemChange(ReflectedPropertyItem* item)
                     QString sEnumName = pEnumList->GetItemName(i);
                     // if sub variables for enum classes are found
                     // delete their property items and variables
-                    if (IVariable* pSubVar = GetChildVar(pMainVar, sEnumName.toLatin1().data()))
+                    if (IVariable* pSubVar = GetChildVar(pMainVar, sEnumName.toUtf8().data()))
                     {
                         pSubItem = pParentItem->findItem(pSubVar);
                         if (pSubItem)
@@ -309,7 +309,7 @@ void CPropertyCtrlExt::OnItemChange(ReflectedPropertyItem* item)
                 }
 
                 // now check if we have extra properties for that part class
-                if (IVariable* pSubProps = CreateDefaultVar(classname.toLatin1().data(), true))
+                if (IVariable* pSubProps = CreateDefaultVar(classname.toUtf8().data(), true))
                 {
                     // add new PropertyItem
                     pSubItem = new ReflectedPropertyItem(this, pParentItem);

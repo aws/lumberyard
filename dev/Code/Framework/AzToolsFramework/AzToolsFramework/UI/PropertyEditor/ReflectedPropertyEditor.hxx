@@ -45,9 +45,8 @@ namespace AzToolsFramework
      */
     class ReflectedPropertyEditor 
         : public QFrame
-        , private PropertyEditorGUIMessages::Bus::Handler
     {
-        Q_OBJECT;
+        Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(ReflectedPropertyEditor, AZ::SystemAllocator, 0);
 
@@ -88,7 +87,7 @@ namespace AzToolsFramework
         void ExpandAll();
         void CollapseAll();
 
-        const WidgetList& GetWidgets() const { return m_widgets; }
+        const WidgetList& GetWidgets() const;
 
         int GetContentHeight() const;
         int GetMaxLabelWidth() const;
@@ -106,8 +105,8 @@ namespace AzToolsFramework
 
         void SetValueComparisonFunction(const InstanceDataHierarchy::ValueComparisonFunction& valueComparisonFunction);
 
-        bool HasFilteredOutNodes() const { return m_hasFilteredOutNodes; }
-        bool HasVisibleNodes() const { return m_widgetsInDisplayOrder.size() > 0; }
+        bool HasFilteredOutNodes() const;
+        bool HasVisibleNodes() const;
 
         // if you want it to save its state, you need to give it a user settings label:
         //void SetSavedStateLabel(AZ::u32 label);
@@ -118,77 +117,12 @@ namespace AzToolsFramework
     signals:
         void OnExpansionContractionDone();
     private:
-        AZ::SerializeContext*               m_context;
-        IPropertyEditorNotify*              m_ptrNotify;
-        typedef AZStd::list<InstanceDataHierarchy> InstanceDataHierarchyList;
-        typedef AZStd::unordered_map<QWidget*, InstanceDataNode*> UserWidgetToDataMap;
-        typedef AZStd::vector<PropertyRowWidget*> RowContainerType;
-        InstanceDataHierarchyList           m_instances; ///< List of instance sets to display, other one can aggregate other instances.
-        InstanceDataHierarchy::ValueComparisonFunction m_valueComparisonFunction;
-        WidgetList m_widgets;
-        RowContainerType m_widgetsInDisplayOrder;
-        UserWidgetToDataMap m_userWidgetsToData;
-        void AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth);
+        class Impl;
+        std::unique_ptr<Impl> m_impl;
 
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Support for logical property groups / visual hierarchy.
-        PropertyRowWidget* GetOrCreateLogicalGroupWidget(InstanceDataNode* node, PropertyRowWidget* parent, int depth);
-        size_t CountRowsInAllDescendents(PropertyRowWidget* pParent);
-
-        using GroupWidgetList = AZStd::unordered_map<AZ::Crc32, PropertyRowWidget*>;
-        GroupWidgetList m_groupWidgets;
-        ////////////////////////////////////////////////////////////////////////////////////////
-
-        QVBoxLayout* m_rowLayout;
-        QScrollArea* m_mainScrollArea;
-        QWidget* m_containerWidget;
-
-        QSpacerItem* m_spacer;
-        AZStd::vector<PropertyRowWidget*> m_widgetPool;
-
-        PropertyRowWidget* CreateOrPullFromPool();
-        void ReturnAllToPool();
-
-        void SaveExpansion();
-        bool ShouldRowAutoExpand(PropertyRowWidget* widget) const;
-
-        void AdjustLabelWidth();
-
-        AZ::u32 m_savedStateKey;
-
-        int m_propertyLabelWidth;
-        bool m_autoResizeLabels;
-
-        PropertyRowWidget *m_selectedRow;
-        bool m_selectionEnabled;
-
-        //////////////////////////////////////////////////////////////////////
-        // PropertyEditorGUIMessages::Bus::Handler
-        virtual void RequestWrite(QWidget* editorGUI) override;
-        virtual void RequestRefresh(PropertyModificationRefreshLevel) override;
-        void RequestPropertyNotify(QWidget* editorGUI) override;
-        void OnEditingFinished(QWidget* editorGUI) override;
-        //////////////////////////////////////////////////////////////////////
-
-        AZStd::intrusive_ptr<ReflectedPropertyEditorState> m_savedState;
-
-        AZ::u32 CreatePathKey(PropertyRowWidget* widget) const;
-        bool CheckSavedExpandState(AZ::u32 pathKey) const;
-        bool HasSavedExpandState(AZ::u32 pathKey) const;
-
-        PropertyModificationRefreshLevel m_queuedRefreshLevel;
         virtual void paintEvent(QPaintEvent* event) override;
 
-        bool FilterNode(InstanceDataNode* node, const char* filter);
-        bool IsFilteredOut(InstanceDataNode* node);
-        bool m_hasFilteredOutNodes = false;
 
-        AZStd::unordered_map<InstanceDataNode*, bool> m_nodeFilteredOutState;
-
-        bool m_hideRootProperties;
-        bool m_queuedTabOrderRefresh;
-        int m_expansionDepth;
-        DynamicEditDataProvider m_dynamicEditDataProvider;
     private slots:
         void OnPropertyRowExpandedOrContracted(PropertyRowWidget* widget, InstanceDataNode* node, bool expanded, bool fromUserInteraction);
         void DoRefresh();

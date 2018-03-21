@@ -10,8 +10,9 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "EditorNavigationAreaComponent.h"
+#include "EditorNavigationUtil.h"
 
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/VectorConversions.h>
@@ -25,22 +26,22 @@
 
 namespace LmbrCentral
 {
-    static AZ_FORCE_INLINE bool NavAgentValid(NavigationAgentTypeID navAgentId)
+    static bool NavAgentValid(NavigationAgentTypeID navAgentId)
     {
         return navAgentId != NavigationAgentTypeID();
     }
 
-    static AZ_FORCE_INLINE bool NavVolumeValid(NavigationVolumeID navVolumeId)
+    static bool NavVolumeValid(NavigationVolumeID navVolumeId)
     {
         return navVolumeId != NavigationVolumeID();
     }
 
-    static AZ_FORCE_INLINE bool NavMeshValid(NavigationMeshID navMeshId)
+    static bool NavMeshValid(NavigationMeshID navMeshId)
     {
         return navMeshId != NavigationMeshID();
     }
 
-    /*static*/ void EditorNavigationAreaComponent::Reflect(AZ::ReflectContext* context)
+    void EditorNavigationAreaComponent::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
@@ -55,13 +56,14 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Category, "AI")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/NavigationArea.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/NavigationArea.png")
-                        //->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c)) Disabled for v1.12
-                        ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview) // Hidden for v1.12
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/nav-area-component")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorNavigationAreaComponent::m_exclusion, "Exclusion", "Does this area add or subtract from the Navigation Mesh")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorNavigationAreaComponent::m_agentTypes, "Agent Types", "All agents that could potentially be used with this area")
+                        ->ElementAttribute(AZ::Edit::UIHandlers::Handler, AZ::Edit::UIHandlers::ComboBox)
+                        ->ElementAttribute(AZ::Edit::Attributes::StringList, &PopulateAgentTypeList)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::AddNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged)
                         ->Attribute(AZ::Edit::Attributes::RemoveNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged)
@@ -88,6 +90,7 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
         ShapeComponentNotificationsBus::Handler::BusConnect(entityId);
         NavigationAreaRequestBus::Handler::BusConnect(entityId);
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
 
         // use the entity id as unique name to register area
         m_name = GetEntityId().ToString();
@@ -99,6 +102,9 @@ namespace LmbrCentral
                 aiNavigation->RegisterArea(m_name.c_str());
             }
         }
+        
+        // reset switching to game mode on activate
+        m_switchingToGameMode = false;
 
         // update the area to refresh the nav mesh
         UpdateGameArea();
@@ -106,12 +112,17 @@ namespace LmbrCentral
 
     void EditorNavigationAreaComponent::Deactivate()
     {
-        DestroyArea();
+        // only destroy the area if we know we're not currently switching to game mode
+        if (!m_switchingToGameMode)
+        {
+            DestroyArea();
+        }
 
         const AZ::EntityId entityId = GetEntityId();
         AZ::TransformNotificationBus::Handler::BusDisconnect(entityId);
         ShapeComponentNotificationsBus::Handler::BusDisconnect(entityId);
         NavigationAreaRequestBus::Handler::BusDisconnect(entityId);
+        AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
 
         EditorComponentBase::Deactivate();
     }
@@ -385,4 +396,8 @@ namespace LmbrCentral
         DestroyVolume();
     }
 
+    void EditorNavigationAreaComponent::OnStartPlayInEditorBegin()
+    {
+        m_switchingToGameMode = true;
+    }
 } // namespace LmbrCentral

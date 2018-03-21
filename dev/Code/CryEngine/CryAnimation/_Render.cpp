@@ -428,9 +428,9 @@ SSkinningData* CCharInstance::GetSkinningData()
     {
         pSkinningData->nHWSkinningFlags |= eHWS_MotionBlured;
         pSkinningData->pPreviousSkinningRenderData = arrSkinningRendererData[nPrevList].pSkinningData;
-        if (pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+        if (pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor)
         {
-            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+            pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor->WaitForCompletion();
         }
     }
     else

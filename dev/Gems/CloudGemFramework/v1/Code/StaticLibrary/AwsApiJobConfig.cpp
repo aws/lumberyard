@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 
 #include <CloudGemFramework/AwsApiJobConfig.h>
 #include <CloudGemFramework/CloudGemFrameworkBus.h>

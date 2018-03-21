@@ -290,7 +290,7 @@ IDataBaseLibrary* CBaseLibraryManager::LoadLibrary(const QString& inFilename, bo
     TSmartPtr<CBaseLibrary> pLib = MakeNewLibrary();
     if (!pLib->Load(MakeFilename(inFilename)))
     {
-        Error(QObject::tr("Failed to Load Item Library: %1").arg(inFilename).toLatin1().data());
+        Error(QObject::tr("Failed to Load Item Library: %1").arg(inFilename).toUtf8().data());
         return nullptr;
     }
 
@@ -380,7 +380,7 @@ bool CBaseLibraryManager::IsUniqueFilename(const QString& library)
     QString resultPath = MakeFilename(library);
     CCryFile xmlFile;
     // If we can find a file for the path
-    return !xmlFile.Open(resultPath.toLatin1().data(), "rb");
+    return !xmlFile.Open(resultPath.toUtf8().data(), "rb");
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -467,7 +467,7 @@ void CBaseLibraryManager::Serialize(XmlNodeRef& node, bool bLoading)
     QString rootNodeName = GetRootNodeName();
     if (bLoading)
     {
-        XmlNodeRef libs = node->findChild(rootNodeName.toLatin1().data());
+        XmlNodeRef libs = node->findChild(rootNodeName.toUtf8().data());
         if (libs)
         {
             for (int i = 0; i < libs->getChildCount(); i++)
@@ -502,7 +502,7 @@ void CBaseLibraryManager::Serialize(XmlNodeRef& node, bool bLoading)
     else
     {
         // Save all libraries.
-        XmlNodeRef libs = node->newChild(rootNodeName.toLatin1().data());
+        XmlNodeRef libs = node->newChild(rootNodeName.toUtf8().data());
         for (int i = 0; i < GetLibraryCount(); i++)
         {
             IDataBaseLibrary* pLib = GetLibrary(i);
@@ -516,7 +516,7 @@ void CBaseLibraryManager::Serialize(XmlNodeRef& node, bool bLoading)
             {
                 // Save only library name.
                 XmlNodeRef libNode = libs->newChild("Library");
-                libNode->setAttr("Name", pLib->GetName().toLatin1().data());
+                libNode->setAttr("Name", pLib->GetName().toUtf8().data());
             }
         }
         SaveAllLibs();

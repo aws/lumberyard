@@ -114,13 +114,13 @@ void CSoundKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
             {
                 QString sFilename = mv_startTrigger;
                 bChangedSoundFile = sFilename != soundKey.sStartTrigger.c_str();
-                soundKey.sStartTrigger = sFilename.toLatin1().data();
+                soundKey.sStartTrigger = sFilename.toUtf8().data();
             }
             else if (pVar == mv_stopTrigger.GetVar())
             {
                 QString sFilename = mv_stopTrigger;
                 bChangedSoundFile = sFilename != soundKey.sStopTrigger.c_str();
-                soundKey.sStopTrigger = sFilename.toLatin1().data();
+                soundKey.sStopTrigger = sFilename.toUtf8().data();
             }
 
             SyncValue(mv_duration, soundKey.fDuration, false, pVar);

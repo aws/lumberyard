@@ -19,7 +19,7 @@
 #include "IConvertor.h"
 #include "ICryXML.h"
 #include "NameConvertor.h"
-#include "XmlBinaryHeaders.h"
+#include "XMLBinaryHeaders.h"
 
 struct XMLFilterElement
 {

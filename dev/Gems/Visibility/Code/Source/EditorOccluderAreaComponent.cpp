@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Visibility_precompiled.h"
 #include "EditorOccluderAreaComponent.h"
 
 #include <AZCore/Math/Crc.h>
@@ -69,25 +69,25 @@ namespace Visibility
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_displayFilled, "DisplayFilled", "Display the Occlude Area as a filled quad")
+                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_displayFilled, "DisplayFilled", "Display the Occlude Area as a filled quad.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_cullDistRatio, "CullDistRatio", "The range of the culling effect")
+                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_cullDistRatio, "CullDistRatio", "The range of the culling effect.")
                     ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_useInIndoors, "UseInIndoors", "Should this occluder work inside VisAreas")
+                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_useInIndoors, "UseInIndoors", "Should this occluder work inside VisAreas.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_doubleSide, "DoubleSide", "Should this occlude from both sides")
+                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_doubleSide, "DoubleSide", "Should this occlude from both sides.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_vertices, "Vertices", "Points that make up the Occluder Area")
+                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_vertices, "Vertices", "Points that make up the Occluder Area.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnVerticesChange)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                 ;
@@ -106,7 +106,7 @@ namespace Visibility
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorOccluderAreaComponent>("OccluderArea", "")
+                editContext->Class<EditorOccluderAreaComponent>("OccluderArea", "An area that blocks objects behind it from rendering.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/OccluderArea.png")

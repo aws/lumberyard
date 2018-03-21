@@ -52,7 +52,7 @@ namespace
         SEfResTexture* pTex = pRes->GetTextureResource(nSlot);
         if (pTex)
         {
-            cry_strcat(outName, Path::GamePathToFullPath(pTex->m_Name.c_str()).toLatin1().data());
+            cry_strcat(outName, Path::GamePathToFullPath(pTex->m_Name.c_str()).toUtf8().data());
         }
     }
 
@@ -86,11 +86,11 @@ void Export::CMesh::SetMaterial(CMaterial* pMtl, CBaseObject* pBaseObj)
 {
     if (!pMtl)
     {
-        cry_strcpy(material.name, pBaseObj->GetName().toLatin1().data());
+        cry_strcpy(material.name, pBaseObj->GetName().toUtf8().data());
         return;
     }
 
-    cry_strcpy(material.name, pMtl->GetFullName().toLatin1().data());
+    cry_strcpy(material.name, pMtl->GetFullName().toUtf8().data());
 
     _smart_ptr<IMaterial> matInfo = pMtl->GetMatInfo();
     IRenderShaderResources* pRes = matInfo->GetShaderItem().m_pShaderResources;
@@ -467,7 +467,7 @@ void CExportManager::ProcessEntityAnimationTrack(const CBaseObject* pBaseObj, Ex
 
 void CExportManager::AddEntityAnimationData(CBaseObject* pBaseObj)
 {
-    Export::CObject* pObj = new Export::CObject(m_pBaseObj->GetName().toLatin1().data());
+    Export::CObject* pObj = new Export::CObject(m_pBaseObj->GetName().toUtf8().data());
 
     if (qobject_cast<CCameraObject*>(pBaseObj))
     {
@@ -479,7 +479,7 @@ void CExportManager::AddEntityAnimationData(CBaseObject* pBaseObj)
         {
             if (qobject_cast<CCameraObjectTarget*>(pLookAt))
             {
-                cry_strcpy(pObj->cameraTargetNodeName, pLookAt->GetName().toLatin1().data());
+                cry_strcpy(pObj->cameraTargetNodeName, pLookAt->GetName().toUtf8().data());
             }
         }
 
@@ -555,7 +555,7 @@ void CExportManager::AddMesh(Export::CObject* pObj, const IIndexedMesh* pIndMesh
 
     if (pMtl)
     {
-        pObj->SetMaterialName(pMtl->GetFullName().toLatin1().data());
+        pObj->SetMaterialName(pMtl->GetFullName().toUtf8().data());
     }
 
     if (pIndMesh->GetSubSetCount() && !(pIndMesh->GetSubSetCount() == 1 && pIndMesh->GetSubSet(0).nNumIndices == 0))
@@ -922,7 +922,7 @@ bool CExportManager::AddObject(CBaseObject* pBaseObj)
         return true;
     }
 
-    Export::CObject* pObj = new Export::CObject(m_pBaseObj->GetName().toLatin1().data());
+    Export::CObject* pObj = new Export::CObject(m_pBaseObj->GetName().toUtf8().data());
 
     AddPosRotScale(pObj, pBaseObj);
     m_data.m_objects.push_back(pObj);
@@ -1038,7 +1038,7 @@ bool CExportManager::ShowFBXExportDialog()
 
 bool CExportManager::ProcessObjectsForExport()
 {
-    Export::CObject* pObj = new Export::CObject(kMasterCameraName.toLatin1().data());
+    Export::CObject* pObj = new Export::CObject(kMasterCameraName.toUtf8().data());
     pObj->entityType = Export::eCamera;
     m_data.m_objects.push_back(pObj);
 
@@ -1212,7 +1212,7 @@ bool CExportManager::AddCameraTargetObject(CBaseObjectPtr pLookAt)
             return false;
         }
 
-        Export::CObject* pCameraTargetObject = new Export::CObject(pLookAt->GetName().toLatin1().data());
+        Export::CObject* pCameraTargetObject = new Export::CObject(pLookAt->GetName().toUtf8().data());
         pCameraTargetObject->entityType = Export::eCameraTarget;
         pCameraTargetObject->m_entityAnimData.reserve(m_numberOfExportFrames * kReserveCount);
         pCameraTargetObject->SetLastPtr(pLookAt);
@@ -1250,7 +1250,7 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
 
     if (numAllTracks > 0)
     {
-        XmlNodeRef objNode = writeNode->createNode(CleanXMLText(pObjectNode->GetName()).toLatin1().data());
+        XmlNodeRef objNode = writeNode->createNode(CleanXMLText(pObjectNode->GetName()).toUtf8().data());
         writeNode->setAttr("time", m_animTimeExportMasterSequenceCurrentTime);
 
         for (unsigned int trackID = 0; trackID < numAllTracks; ++trackID)
@@ -1268,7 +1268,7 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
                     continue;
                 }
 
-                XmlNodeRef subNode = objNode->createNode(childName.toLatin1().data());
+                XmlNodeRef subNode = objNode->createNode(childName.toUtf8().data());
                 CTrackViewKeyBundle keyBundle = childTrack->GetAllKeys();
                 uint keysNumber = keyBundle.GetKeyCount();
 
@@ -1317,7 +1317,7 @@ void CExportManager::FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* 
                         continue;
                     }
 
-                    XmlNodeRef keyNode = subNode->createNode(keyContentName.toLatin1().data());
+                    XmlNodeRef keyNode = subNode->createNode(keyContentName.toUtf8().data());
 
                     float keyGlobalTime = m_animTimeExportMasterSequenceCurrentTime + keyTime;
                     keyNode->setAttr("keyTime", keyGlobalTime);
@@ -1376,7 +1376,7 @@ bool CExportManager::AddObjectsFromSequence(CTrackViewSequence* pSequence, XmlNo
                 continue;
             }
 
-            Export::CObject* pObj = new Export::CObject(pEntityObject->GetName().toLatin1().data());
+            Export::CObject* pObj = new Export::CObject(pEntityObject->GetName().toUtf8().data());
 
             if (qobject_cast<CCameraObject*>(pEntityObject))
             {
@@ -1388,7 +1388,7 @@ bool CExportManager::AddObjectsFromSequence(CTrackViewSequence* pSequence, XmlNo
                 {
                     if (AddCameraTargetObject(pLookAt))
                     {
-                        cry_strcpy(pObj->cameraTargetNodeName, pLookAt->GetName().toLatin1().data());
+                        cry_strcpy(pObj->cameraTargetNodeName, pLookAt->GetName().toUtf8().data());
                     }
                 }
             }
@@ -1439,7 +1439,7 @@ bool CExportManager::AddObjectsFromSequence(CTrackViewSequence* pSequence, XmlNo
                     {
                         // In case of exporting animation/sound times data
                         const QString sequenceName = pSubSequence->GetName();
-                        XmlNodeRef subSeqNode = seqNode->createNode(sequenceName.toLatin1().data());
+                        XmlNodeRef subSeqNode = seqNode->createNode(sequenceName.toUtf8().data());
 
                         if (sequenceName == m_animTimeExportMasterSequenceName)
                         {
@@ -1804,7 +1804,7 @@ bool CExportManager::AddVegetation()
         QString name;
         name = QStringLiteral("VegetationInstance_%1").arg(iName++);
 
-        Export::CObject* pObj = new Export::CObject(name.toLatin1().data());
+        Export::CObject* pObj = new Export::CObject(name.toUtf8().data());
 
         Vec3 pos = pVegetationInstance->pos;
         pObj->pos.x = pos.x * m_fScale;
@@ -2078,7 +2078,7 @@ bool CExportManager::ImportFromFile(const char* filename)
 
 bool CExportManager::ExportSingleStatObj(IStatObj* pStatObj, const char* filename)
 {
-    Export::CObject* pObj = new Export::CObject(Path::GetFileName(filename).toLatin1().data());
+    Export::CObject* pObj = new Export::CObject(Path::GetFileName(filename).toUtf8().data());
     AddStatObj(pObj, pStatObj);
     m_data.m_objects.push_back(pObj);
     ExportToFile(filename, true);

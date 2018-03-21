@@ -76,6 +76,8 @@ namespace GraphicsReflectContext
         static void DisableEffectGroup(AZStd::string_view groupName);
         static void ApplyEffectGroupAtPosition(AZStd::string_view groupName, const AZ::Vector3& position);
 
+        static void SetColorChart(AZStd::string_view textureName, float fadeTime);
+
         static void ReflectBehaviorContext(AZ::BehaviorContext *behaviorContext);
 
     private:

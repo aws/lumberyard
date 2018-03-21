@@ -11,7 +11,6 @@
 */
 
 #include "stdafx.h"
-#include <shlobj.h>
 
 #include "DrillerMainWindow.hxx"
 #include <Woodpecker/Driller/DrillerMainWindow.moc>
@@ -354,28 +353,20 @@ namespace Driller
 
     void DrillerMainWindow::OnOpenDrillerFile()
     {
-        char capturePath[MAX_PATH] = {0};
+        QString capturePath;
 
         auto newState = AZ::UserSettings::CreateFind<DrillerMainWindowSavedState>(AZ_CRC("DRILLER MAIN WINDOW STATE", 0x9c98b7f6), AZ::UserSettings::CT_GLOBAL);
         if (!newState->m_priorOpenFolder.empty())
         {
-            strcpy_s(capturePath, MAX_PATH, newState->m_priorOpenFolder.data());
+            capturePath = newState->m_priorOpenFolder.data();
         }
         else
         {
-            WCHAR* capturePathFromSystem = nullptr;
+            capturePath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
 
-            if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents,
-                        KF_FLAG_CREATE,
-                        NULL,
-                        &capturePathFromSystem)))
+            if (capturePath.isEmpty())
             {
-                GetTempPathA(MAX_PATH, capturePath);
-            }
-            else
-            {
-                size_t charsConverted = 0;
-                wcstombs_s(&charsConverted, capturePath, MAX_PATH, capturePathFromSystem, MAX_PATH);
+                capturePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
             }
         }
 
@@ -405,28 +396,19 @@ namespace Driller
 
     void DrillerMainWindow::OnOpenWorkspaceFile()
     {
-        char capturePath[MAX_PATH] = {0};
+        QString capturePath;
 
         auto newState = AZ::UserSettings::CreateFind<DrillerMainWindowSavedState>(AZ_CRC("DRILLER MAIN WINDOW STATE", 0x9c98b7f6), AZ::UserSettings::CT_GLOBAL);
         if (!newState->m_priorOpenFolder.empty())
         {
-            strcpy_s(capturePath, MAX_PATH, newState->m_priorOpenFolder.data());
+            capturePath = newState->m_priorOpenFolder.data();
         }
         else
         {
-            WCHAR* capturePathFromSystem = nullptr;
-
-            if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents,
-                        KF_FLAG_CREATE,
-                        NULL,
-                        &capturePathFromSystem)))
+            capturePath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+            if (capturePath.isEmpty())
             {
-                GetTempPathA(MAX_PATH, capturePath);
-            }
-            else
-            {
-                size_t charsConverted = 0;
-                wcstombs_s(&charsConverted, capturePath, MAX_PATH, capturePathFromSystem, MAX_PATH);
+                capturePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
             }
         }
 
@@ -455,28 +437,19 @@ namespace Driller
 
     void DrillerMainWindow::OnApplyWorkspaceFile()
     {
-        char capturePath[MAX_PATH] = {0};
+        QString capturePath;
 
         auto newState = AZ::UserSettings::CreateFind<DrillerMainWindowSavedState>(AZ_CRC("DRILLER MAIN WINDOW STATE", 0x9c98b7f6), AZ::UserSettings::CT_GLOBAL);
         if (!newState->m_priorOpenFolder.empty())
         {
-            strcpy_s(capturePath, MAX_PATH, newState->m_priorOpenFolder.data());
+            capturePath = newState->m_priorOpenFolder.data();
         }
         else
         {
-            WCHAR* capturePathFromSystem = nullptr;
-
-            if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents,
-                        KF_FLAG_CREATE,
-                        NULL,
-                        &capturePathFromSystem)))
+            capturePath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+            if (capturePath.isEmpty())
             {
-                GetTempPathA(MAX_PATH, capturePath);
-            }
-            else
-            {
-                size_t charsConverted;
-                wcstombs_s(&charsConverted, capturePath, MAX_PATH, capturePathFromSystem, MAX_PATH);
+                capturePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
             }
         }
 
@@ -489,28 +462,19 @@ namespace Driller
 
     void DrillerMainWindow::OnSaveWorkspaceFile()
     {
-        char capturePath[MAX_PATH] = {0};
+        QString capturePath;
 
         auto newState = AZ::UserSettings::CreateFind<DrillerMainWindowSavedState>(AZ_CRC("DRILLER MAIN WINDOW STATE", 0x9c98b7f6), AZ::UserSettings::CT_GLOBAL);
         if (!newState->m_priorOpenFolder.empty())
         {
-            strcpy_s(capturePath, MAX_PATH, newState->m_priorOpenFolder.data());
+            capturePath = newState->m_priorOpenFolder.data();
         }
         else
         {
-            WCHAR* capturePathFromSystem = nullptr;
-
-            if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents,
-                        KF_FLAG_CREATE,
-                        NULL,
-                        &capturePathFromSystem)))
+            capturePath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+            if (capturePath.isEmpty())
             {
-                GetTempPathA(MAX_PATH, capturePath);
-            }
-            else
-            {
-                size_t charsCovnerted;
-                wcstombs_s(&charsCovnerted, capturePath, MAX_PATH, capturePathFromSystem, MAX_PATH);
+                capturePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
             }
         }
 

@@ -114,7 +114,8 @@ namespace Audio
                 // write operation won't wrap the buffer
                 if (sourceBuffer)
                 {
-                    ::memcpy(&m_buffer[m_write], sourceBuffer, numSamples * s_bytesPerSample);
+                    size_t copySize = numSamples * s_bytesPerSample;
+                    ::memcpy(&m_buffer[m_write], sourceBuffer, copySize);
                 }
                 else
                 {
@@ -248,8 +249,10 @@ namespace Audio
         void ResetBuffer() override
         {
             // no lock!  should only be called inside api that has already locked the buffer.
-            ::memset(m_buffer, 0, m_size * s_bytesPerSample);
-            m_write = (m_size >> 1);    // start write index halfway into buffer
+            // 0xAA is used rather than 0 to intitialze the buffer to make debugging easier as samples often
+            // lead with 0's, it's more obvious when and where data is being written
+            ::memset(m_buffer, 0xAA, m_size * s_bytesPerSample);
+            m_write = 0;
             m_read = 0;
         }
 

@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/CryLegacyAnimation_precompiled.cpp",
+            "Source/CryLegacyAnimation_precompiled.h"
         ]
     },
     "auto": {

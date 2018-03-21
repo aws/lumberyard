@@ -70,7 +70,7 @@ void CD3DStereoRenderer::SelectDefaultDevice()
 {
     EStereoDevice device = STEREO_DEVICE_NONE;
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_PS4)
+#if D3DSTEREO_CPP_TRAIT_SELECTDEFAULTDEVICE_STEREODEVICEDRIVER
     device = STEREO_DEVICE_DRIVER;
 #elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
     device = STEREO_DEVICE_FRAMECOMP;

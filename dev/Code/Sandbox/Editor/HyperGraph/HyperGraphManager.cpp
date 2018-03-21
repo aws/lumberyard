@@ -117,7 +117,7 @@ CHyperNode* CHyperGraphManager::CreateNode(CHyperGraph* pGraph, const char* sNod
     }
     else if (bAllowMissing)
     {
-        gEnv->pLog->LogError("Missing Node: %s, Referenced in FlowGraph %s", sNodeClass, pGraph->GetName().toLatin1().data());
+        gEnv->pLog->LogError("Missing Node: %s, Referenced in FlowGraph %s", sNodeClass, pGraph->GetName().toUtf8().data());
         pNode = new CMissingNode(sNodeClass);
         pNode->m_id = nodeId;
         pNode->SetGraph(pGraph);

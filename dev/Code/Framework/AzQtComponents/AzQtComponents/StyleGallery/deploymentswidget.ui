@@ -167,7 +167,7 @@ you would like to add these resurces.</string>
   <customwidget>
    <class>AzQtComponents::TitleBar</class>
    <extends>QWidget</extends>
-   <header>AzQtComponents/Components/TitleBar.h</header>
+   <header>AzQtComponents/Components/Titlebar.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

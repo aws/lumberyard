@@ -184,6 +184,7 @@
   },
   "devDependencies": {
     "@angular/platform-browser": "^4.4.4",
+    "@types/jasmine-expect": "^3.6.1",
     "browser-sync": "2.18.6",
     "concurrently": "3.1.0",
     "del": "2.2.2",
@@ -207,6 +208,7 @@
     "gulp-uglify": "^2.1.0",
     "gulp4": "^4.0.1",
     "http-server": "^0.9.0",
+    "jasmine-expect": "^3.7.1",
     "jspm": "^0.16.53",
     "lite-server": "2.2.2",
     "map-stream": "0.0.7",

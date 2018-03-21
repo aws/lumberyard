@@ -24,6 +24,11 @@
 #include <sys/mman.h> //mmap, munmap
 #endif
 
+// Section dictionary
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define BUCKETALLOCATORIMPL_H_SECTION_TRAITS 1
+#define BUCKETALLOCATORIMPL_H_SECTION_IMPL 2
+#endif
 
 #define PROFILE_BUCKET_CLEANUP 0
 
@@ -404,7 +409,15 @@ bool BucketAllocator<TraitsT>::Refill(uint8 bucket)
 
     typename SyncingPolicy::FreeListHeader& freeList = m_freeLists[bucket * NumGenerations + NumGenerations - 1];
 
-#if defined(_WIN32) || defined(LINUX) || defined(APPLE) || defined(ORBIS)
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BUCKETALLOCATORIMPL_H_SECTION_TRAITS
+#include AZ_RESTRICTED_FILE(BucketAllocatorImpl_h)
+#elif defined(_WIN32) || defined(LINUX) || defined(APPLE)
+#define BUCKETALLOCATORIMPL_H_TRAIT_TRACK_BUCKET_ALLOCATOR 1
+#endif
+
+#if BUCKETALLOCATORIMPL_H_TRAIT_TRACK_BUCKET_ALLOCATOR
 
     for (size_t item = 0; item != (numItems - 1); ++item)
     {
@@ -1232,6 +1245,9 @@ inline void BucketAllocatorDetail::SystemAllocator::CleanupAllocator::Free(void*
     // Will be freed automatically when the allocator is destroyed
 }
 
+#elif defined(AZ_RESTRICTED_FILE)
+#define AZ_RESTRICTED_SECTION BUCKETALLOCATORIMPL_H_SECTION_IMPL
+#include AZ_RESTRICTED_FILE(BucketAllocatorImpl_h)
 #elif defined(APPLE) || defined(LINUX)
 inline UINT_PTR BucketAllocatorDetail::SystemAllocator::ReserveAddressSpace(size_t numPages, size_t pageLen)
 {

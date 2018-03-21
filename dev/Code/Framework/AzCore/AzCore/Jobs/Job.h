@@ -158,7 +158,7 @@ namespace AZ
          * Dependency counter functions, these should not usually be used, unless you know what you're doing.
          */
         /*@{*/
-        unsigned int GetDependentCount();
+        unsigned int GetDependentCount() const;
         void IncrementDependentCount();
         void DecrementDependentCount();
         /*@}*/
@@ -403,7 +403,7 @@ namespace AZ
         return m_context;
     }
 
-    AZ_FORCE_INLINE unsigned int Job::GetDependentCount()
+    AZ_FORCE_INLINE unsigned int Job::GetDependentCount() const
     {
         return (GetDependentCountAndFlags() & FLAG_DEPENDENTCOUNT_MASK);
     }

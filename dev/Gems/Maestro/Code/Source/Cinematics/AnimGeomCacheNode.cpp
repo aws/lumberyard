@@ -14,7 +14,7 @@
 // Description : CryMovie animation node for geometry caches
 
 
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #if defined(USE_GEOM_CACHES)
 #include "AnimGeomCacheNode.h"
 #include "TimeRangesTrack.h"

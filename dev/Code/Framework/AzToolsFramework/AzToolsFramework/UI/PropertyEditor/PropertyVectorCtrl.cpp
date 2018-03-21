@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyVectorCtrl.hxx"
 #include "DHQSpinbox.hxx"
 #include "PropertyQTConstants.h"
@@ -203,6 +203,16 @@ namespace AzToolsFramework
         }
     }
 
+    void PropertyVectorCtrl::setDisplayDecimals(int value)
+    {
+        for (size_t i = 0; i < m_elementCount; ++i)
+        {
+            m_elements[i]->GetSpinBox()->blockSignals(true);
+            m_elements[i]->GetSpinBox()->SetDisplayDecimals(value);
+            m_elements[i]->GetSpinBox()->blockSignals(false);
+        }
+    }
+
     void PropertyVectorCtrl::OnValueChangedInElement(double newValue, int elementIndex)
     {
         Q_EMIT valueChanged(newValue);
@@ -333,6 +343,23 @@ namespace AzToolsFramework
 
                 // emit a warning!
                 AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Decimals' attribute from property '%s' into Vector", debugName);
+            }
+            return;
+        }
+        else if (attrib == AZ::Edit::Attributes::DisplayDecimals)
+        {
+            int intValue = 0;
+            if (attrValue->Read<int>(intValue))
+            {
+                GUI->setDisplayDecimals(intValue);
+            }
+            else
+            {
+                // debugName is unused in release...
+                Q_UNUSED(debugName);
+
+                // emit a warning!
+                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'DisplayDecimals' attribute from property '%s' into Vector", debugName);
             }
             return;
         }

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Microphone_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -20,6 +20,12 @@
 // Pimpls...
 #if defined(AZ_PLATFORM_WINDOWS)
     #include "MicrophoneSystemComponent_windows.inl"
+#elif defined(AZ_PLATFORM_ANDROID)
+    #include "MicrophoneSystemComponent_android.inl"
+#elif defined(AZ_PLATFORM_APPLE_IOS)
+    #include "MicrophoneSystemComponent_ios.inl"
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    #include "MicrophoneSystemComponent_macos.inl"
 //#elif ...
 #else
     #include "MicrophoneSystemComponent_null.h"
@@ -140,7 +146,7 @@ namespace Audio
         }
     }
 
-    bool MicrophoneSystemComponent::IsCapturing() const
+    bool MicrophoneSystemComponent::IsCapturing()
     {
         if (m_impl && m_initialized)
         {

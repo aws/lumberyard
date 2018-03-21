@@ -14,21 +14,8 @@
    <string>Edit Equipment-Packs</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="2" column="0">
-    <widget class="QListWidget" name="EQUIPAVAILLST"/>
-   </item>
    <item row="2" column="3" colspan="2">
     <widget class="ReflectedPropertyControl" name="PROPERTIES" native="true"/>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="AVAILABLE_EQUIPMENT">
-     <property name="text">
-      <string>Available Equipment</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-     </property>
-    </widget>
    </item>
    <item row="1" column="3">
     <widget class="QLabel" name="AMMUNITION">
@@ -40,20 +27,16 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="3">
-    <widget class="QPushButton" name="BTNCANCEL">
-     <property name="text">
-      <string>Cancel</string>
-     </property>
-     <property name="autoDefault">
-      <bool>false</bool>
-     </property>
-    </widget>
+   <item row="2" column="0">
+    <widget class="QListWidget" name="EQUIPAVAILLST"/>
    </item>
-   <item row="4" column="4">
-    <widget class="QPushButton" name="BTNOK">
+   <item row="1" column="0">
+    <widget class="QLabel" name="AVAILABLE_EQUIPMENT">
      <property name="text">
-      <string>OK</string>
+      <string>Available Equipment</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
      </property>
     </widget>
    </item>
@@ -73,46 +56,53 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="2" rowspan="2">
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="1" column="0" colspan="2">
-      <widget class="QTreeWidget" name="EQUIPUSEDLST">
-       <property name="frameShape">
-        <enum>QFrame::Box</enum>
+   <item row="3" column="0" colspan="5">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
        </property>
-       <attribute name="headerVisible">
-        <bool>false</bool>
-       </attribute>
-       <column>
-        <property name="text">
-         <string notr="true">1</string>
-        </property>
-       </column>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QPushButton" name="MOVEUP">
-       <property name="text">
-        <string>Move Up</string>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
        </property>
-      </widget>
+      </spacer>
      </item>
-     <item row="2" column="1">
-      <widget class="QPushButton" name="MOVEDOWN">
+     <item>
+      <widget class="QLabel" name="PRIMARY_STATIC">
        <property name="text">
-        <string>Move Down</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0" colspan="2">
-      <widget class="QLabel" name="STATIC">
-       <property name="text">
-        <string>Used Equipment</string>
+        <string>Primary:</string>
        </property>
        <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
        </property>
       </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="PRIMARY">
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
     </layout>
    </item>
@@ -188,53 +178,46 @@
      </item>
     </layout>
    </item>
-   <item row="3" column="0" colspan="5">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <spacer name="horizontalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+   <item row="1" column="2" rowspan="2">
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="1" column="0" colspan="2">
+      <widget class="QTreeWidget" name="EQUIPUSEDLST">
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
+       <column>
+        <property name="text">
+         <string notr="true">1</string>
+        </property>
+       </column>
+      </widget>
      </item>
-     <item>
-      <widget class="QLabel" name="PRIMARY_STATIC">
+     <item row="2" column="0">
+      <widget class="QPushButton" name="MOVEUP">
        <property name="text">
-        <string>Primary:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        <string>Move Up</string>
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QLineEdit" name="PRIMARY">
-       <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
+     <item row="2" column="1">
+      <widget class="QPushButton" name="MOVEDOWN">
+       <property name="text">
+        <string>Move Down</string>
        </property>
       </widget>
      </item>
-     <item>
-      <spacer name="horizontalSpacer_3">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+     <item row="0" column="0" colspan="2">
+      <widget class="QLabel" name="STATIC">
+       <property name="text">
+        <string>Used Equipment</string>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
        </property>
-      </spacer>
+      </widget>
      </item>
     </layout>
    </item>
@@ -315,6 +298,13 @@
      </item>
     </layout>
    </item>
+   <item row="4" column="3" colspan="2">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -328,34 +318,34 @@
  <resources/>
  <connections>
   <connection>
-   <sender>BTNCANCEL</sender>
-   <signal>clicked()</signal>
-   <receiver>CEquipPackDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>482</x>
-     <y>332</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>411</x>
-     <y>351</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>BTNOK</sender>
-   <signal>clicked()</signal>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
    <receiver>CEquipPackDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>577</x>
-     <y>330</y>
+     <x>594</x>
+     <y>323</y>
     </hint>
     <hint type="destinationlabel">
-     <x>555</x>
-     <y>350</y>
+     <x>567</x>
+     <y>300</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>CEquipPackDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>608</x>
+     <y>326</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>590</x>
+     <y>291</y>
     </hint>
    </hints>
   </connection>

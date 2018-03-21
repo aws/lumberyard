@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyColorCtrl.hxx"
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QSlider>
@@ -123,7 +123,7 @@ namespace AzToolsFramework
         if (m_pColorDialog != nullptr)
         {
             m_pColorDialog->setCurrentColor(m_color);
-            m_pColorDialog->open();
+            m_pColorDialog->exec();
         }
     }
 

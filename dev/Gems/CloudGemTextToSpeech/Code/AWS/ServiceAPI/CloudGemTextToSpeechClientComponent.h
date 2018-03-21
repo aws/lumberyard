@@ -34,7 +34,7 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
-#include "StdAfx.h"
+#include "CloudGemTextToSpeech_precompiled.h"
 
 namespace CloudGemTextToSpeech {
 namespace ServiceAPI {

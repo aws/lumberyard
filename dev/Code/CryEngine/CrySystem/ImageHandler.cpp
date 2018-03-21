@@ -15,6 +15,7 @@
 #include <numeric>
 #include "ScopeGuard.h"
 #include "Algorithm.h"
+#include "System.h"
 
 
 #if !(defined(ANDROID) || defined(IOS) || defined(APPLETV) || defined(LINUX)) // Rally US1050 - Compile libtiff for Android and IOS
@@ -45,7 +46,7 @@ namespace
         unsigned int m_height;
         std::vector<unsigned char> m_data;
     };
-#if !(defined(ANDROID) || defined(IOS) || defined(APPLETV) || defined(DURANGO) || defined(LINUX) || defined(ORBIS))
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_IMAGEHANDLER_TIFFIO
     struct TiffIO
     {
         static tsize_t Read(thandle_t handle, tdata_t buffer, tsize_t size)
@@ -125,7 +126,7 @@ std::unique_ptr<IImageHandler::IImage> ImageHandler::CreateImage(std::vector<uns
 
 std::unique_ptr<IImageHandler::IImage> ImageHandler::LoadImage(const char* filename) const
 {
-#if !(defined(ANDROID) || defined(IOS) || defined(APPLETV) || defined(DURANGO) || defined(LINUX) || defined(ORBIS))
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_IMAGEHANDLER_TIFFIO
 
     AZ::IO::HandleType fileHandle;
     AZ::IO::FileIOBase::GetDirectInstance()->Open(filename, AZ::IO::GetOpenModeFromStringMode("rb"), fileHandle);
@@ -170,7 +171,7 @@ std::unique_ptr<IImageHandler::IImage> ImageHandler::LoadImage(const char* filen
 
 bool ImageHandler::SaveImage(IImageHandler::IImage* image, const char* filename) const
 {
-#if !(defined(ANDROID) || defined(IOS) || defined(APPLETV) || defined(DURANGO) || defined(LINUX) || defined(ORBIS))
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_IMAGEHANDLER_TIFFIO
 
     AZ::IO::HandleType fileHandle;
     AZ::IO::FileIOBase::GetDirectInstance()->Open(filename, AZ::IO::GetOpenModeFromStringMode("wb"), fileHandle);

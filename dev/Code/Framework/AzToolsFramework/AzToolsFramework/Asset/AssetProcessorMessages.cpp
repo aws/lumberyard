@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -65,6 +65,12 @@ namespace AzToolsFramework
             : m_isSuccess(isSuccess)
         {
             m_jobList.swap(jobList);
+        }
+
+        AssetJobsInfoResponse::AssetJobsInfoResponse(AssetSystem::JobInfoContainer&& jobList, bool isSuccess)
+            : m_isSuccess(isSuccess)
+            , m_jobList(AZStd::move(jobList))
+        {
         }
 
         unsigned int AssetJobsInfoResponse::GetMessageType() const

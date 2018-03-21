@@ -65,11 +65,7 @@ namespace AZ
                     , m_numMemoryBlocks(0)
                     , m_subAllocator(0)
                 {}
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) // ACCEPTED_USE
-                static const int        m_defaultPageSize = 64 * 1024;
-#else
-                static const int        m_defaultPageSize = 4 * 1024;
-#endif
+                static const int        m_defaultPageSize = AZ_TRAIT_OS_DEFAULT_PAGE_SIZE;
                 static const int        m_defaultPoolPageSize = 4 * 1024;
                 static const int        m_memoryBlockAlignment = m_defaultPageSize;
                 static const int        m_maxNumBlocks = 3;

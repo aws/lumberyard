@@ -16,9 +16,9 @@
 #include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QPoint>
-#include <qscrollbar.h>
+#include <QScrollBar>
 #include <QScopedValueRollback>
-#include <qtimer.h>
+#include <QTimer>
 #include <QWheelEvent>
 
 #include <AzCore/Component/ComponentApplicationBus.h>

@@ -27,6 +27,8 @@
 #include "LevelHeap.h"
 #include "MemoryManager.h"
 
+#include "System.h"
+
 
 
 volatile bool g_replayCleanedUp = false;
@@ -674,7 +676,7 @@ CRYMEMORYMANAGER_API void* CrySystemCrtMalloc(size_t size)
         CrySystemCrtInitialiseHeap();
     }
     return dlmspace_malloc(s_dlHeap, size);
-#elif defined(ORBIS) || defined(ANDROID)
+#elif AZ_LEGACY_CRYSYSTEM_TRAIT_SIZET_MEM
     size_t* allocSize = (size_t*)malloc(size + 2 * sizeof(size_t));
     *allocSize = size;
     ret = (void*)(allocSize + 2);
@@ -700,7 +702,7 @@ CRYMEMORYMANAGER_API void* CrySystemCrtRealloc(void* p, size_t size)
     }
 #endif
     return dlmspace_realloc(s_dlHeap, p, size);
-#elif defined(ORBIS) || defined(ANDROID)
+#elif AZ_LEGACY_CRYSYSTEM_TRAIT_SIZET_MEM
     size_t* origPtr = (size_t*)p;
     size_t* newPtr = (size_t*)realloc(origPtr - 2, size + 2 * sizeof(size_t));
     *newPtr = size;
@@ -729,9 +731,9 @@ CRYMEMORYMANAGER_API size_t CrySystemCrtFree(void* p)
         return size;
     }
     return 0;
-#elif defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#elif AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MSIZE
     n = _msize(p);
-#elif defined(ORBIS) || defined(ANDROID)
+#elif AZ_LEGACY_CRYSYSTEM_TRAIT_SIZET_MEM
     size_t* ptr = (size_t*)p;
     ptr -= 2;
     n = *ptr;
@@ -750,9 +752,9 @@ CRYMEMORYMANAGER_API size_t CrySystemCrtSize(void* p)
 #ifdef CRT_IS_DLMALLOC
     AUTO_LOCK(s_dlMallocLock);
     return dlmspace_usable_size(p);
-#elif defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#elif AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MSIZE
     return _msize(p);
-#elif defined(ORBIS) || defined(ANDROID)
+#elif AZ_LEGACY_CRYSYSTEM_TRAIT_SIZET_MEM
     size_t* ptr = (size_t*)p;
     return *(ptr - 2);
 #elif defined(APPLE)

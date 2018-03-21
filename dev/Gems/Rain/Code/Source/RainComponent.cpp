@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Rain_precompiled.h"
 #include "RainComponent.h"
 
 #include <AzCore/Component/TransformBus.h>
@@ -49,9 +49,9 @@ namespace Rain
 
                 ->Event("IsEnabled", &RainComponentRequestBus::Events::IsEnabled)
 
-                ->Event("SetIgnoreVisAreas", &RainComponentRequestBus::Events::SetIgnoreVisAreas)
-                ->Event("GetIgnoreVisAreas", &RainComponentRequestBus::Events::GetIgnoreVisAreas)
-                ->VirtualProperty("IgnoreVisAreas", "GetIgnoreVisAreas", "SetIgnoreVisAreas")
+                ->Event("SetUseVisAreas", &RainComponentRequestBus::Events::SetUseVisAreas)
+                ->Event("GetUseVisAreas", &RainComponentRequestBus::Events::GetUseVisAreas)
+                ->VirtualProperty("UseVisAreas", "GetUseVisAreas", "SetUseVisAreas")
 
                 ->Event("SetDisableOcclusion", &RainComponentRequestBus::Events::SetDisableOcclusion)
                 ->Event("GetDisableOcclusion", &RainComponentRequestBus::Events::GetDisableOcclusion)
@@ -114,8 +114,8 @@ namespace Rain
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<RainOptions>()
-                ->Version(1, &VersionConverter)
-                ->Field("IgnoreVisAreas", &RainOptions::m_ignoreVisAreas)
+                ->Version(2, &VersionConverter)
+                ->Field("UseVisAreas", &RainOptions::m_useVisAreas)
                 ->Field("Disable Occlusion", &RainOptions::m_disableOcclusion)
                 ->Field("Radius", &RainOptions::m_radius)
                 ->Field("Amount", &RainOptions::m_amount)
@@ -132,8 +132,7 @@ namespace Rain
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Class<RainOptions>()
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
-                ->Property("IgnoreVisAreas", BehaviorValueProperty(&RainOptions::m_ignoreVisAreas))
+                ->Property("UseVisAreas", BehaviorValueProperty(&RainOptions::m_useVisAreas))
                 ->Property("DisableOcclusion", BehaviorValueProperty(&RainOptions::m_disableOcclusion))
                 ->Property("Radius", BehaviorValueProperty(&RainOptions::m_radius))
                 ->Property("Amount", BehaviorValueProperty(&RainOptions::m_amount))
@@ -149,9 +148,35 @@ namespace Rain
         }
     }
 
-    bool RainOptions::VersionConverter(AZ::SerializeContext& context,
-        AZ::SerializeContext::DataElementNode& classElement)
+    bool RainOptions::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
+        // conversion from version 1 to version 2:
+        // - Need to rename IgnoreVisAreas to UseVisAreas
+        // UseVisAreas is the Inverse of IgnoreVisAreas
+        if (classElement.GetVersion() <= 1)
+        {
+            int ignoreVisAreasIndex = classElement.FindElement(AZ_CRC("IgnoreVisAreas", 0x3fbb253e));
+
+            if (ignoreVisAreasIndex < 0)
+            {
+                return false;
+            }
+
+            AZ::SerializeContext::DataElementNode& useVisAreasNode = classElement.GetSubElement(ignoreVisAreasIndex);
+            useVisAreasNode.SetName("UseVisAreas");
+
+            bool ignoreVisAreas = true;
+            if (!useVisAreasNode.GetData<bool>(ignoreVisAreas))
+            {
+                return false;
+            }
+
+            if (!useVisAreasNode.SetData<bool>(context, !ignoreVisAreas))
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -175,7 +200,7 @@ namespace Rain
         params.qRainRotation = rotation;
         params.fCurrentAmount = options.m_amount;
 
-        params.bIgnoreVisareas = options.m_ignoreVisAreas;
+        params.bIgnoreVisareas = !options.m_useVisAreas;
         params.bDisableOcclusion = options.m_disableOcclusion;
         params.fRadius = options.m_radius;
         params.fAmount = options.m_amount;
@@ -262,9 +287,9 @@ namespace Rain
         UpdateRain();
     }
 
-    void RainComponent::SetIgnoreVisAreas(bool ignoreVisAreas)
+    void RainComponent::SetUseVisAreas(bool useVisAreas)
     {
-        m_rainOptions.m_ignoreVisAreas = ignoreVisAreas;
+        m_rainOptions.m_useVisAreas = useVisAreas;
         UpdateRain();
     }
 

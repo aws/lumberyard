@@ -234,7 +234,7 @@ public:
     virtual bool IsFlowgraphTypeIgnored(IFlowGraph::EFlowGraphType type) = 0;
 };
 
-DECLARE_BOOST_POINTERS(IFlowGraphDebugger);
+DECLARE_SMART_POINTERS(IFlowGraphDebugger);
 
 static IFlowGraphDebuggerPtr GetIFlowGraphDebuggerPtr()
 {

@@ -14,7 +14,7 @@
 // Description : Calculate the reference frame for sub-object selections.
 
 #include "StdAfx.h"
-#include "SubObjectSelectioNReferenceFrameCalculator.h"
+#include "SubObjectSelectionReferenceFrameCalculator.h"
 
 SubObjectSelectionReferenceFrameCalculator::SubObjectSelectionReferenceFrameCalculator(ESubObjElementType selectionType)
     :   bAnySelected(false)

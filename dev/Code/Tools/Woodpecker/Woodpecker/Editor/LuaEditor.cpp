@@ -14,16 +14,20 @@
 #include "LuaEditor.h"
 #include <Woodpecker/LuaIDEApplication.h>
 
+#if defined(AZ_PLATFORM_WINDOWS)
+#include "resource.h"
+#endif
+
+#include <QtCore/QCoreApplication>
+
 #if defined(EXTERNAL_CRASH_REPORTING)
 #include <ToolsCrashHandler.h>
 #endif
 
 // Editor.cpp : Defines the entry point for the application.
 
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
-    (void)argc;
-    (void)argv;
     // here we free the console (and close the console window) in release.
 
     int exitCode = 0;
@@ -37,17 +41,17 @@ int _tmain(int argc, _TCHAR* argv[])
         AZStd::unique_ptr<AZ::IO::LocalFileIO> fileIO = AZStd::unique_ptr<AZ::IO::LocalFileIO>(aznew AZ::IO::LocalFileIO());
         AZ::IO::FileIOBase::SetInstance(fileIO.get());
 
-        LUAEditor::Application app;
+        QCoreApplication::addLibraryPath(QDir::current().absoluteFilePath("qtlibs/plugins"));
 
-        char procPath[256];
-        char procName[256];
-        DWORD ret = GetModuleFileNameA(NULL, procPath, 256);
-        if (ret > 0)
+        LUAEditor::Application app(argc, argv);
+
+        QString procName;
         {
-            ::_splitpath_s(procPath, 0, 0, 0, 0, procName, 256, 0, 0);
+            QCoreApplication qca(argc, argv);
+            procName = QFileInfo(qca.applicationFilePath()).fileName();
         }
 
-        LegacyFramework::ApplicationDesc desc(procName);
+        LegacyFramework::ApplicationDesc desc(procName.toUtf8().data());
         desc.m_applicationModule = NULL;
         desc.m_enableProjectManager = false;
 

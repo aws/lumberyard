@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "EditorCommentComponent.h"
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/EditContext.h>

@@ -70,16 +70,23 @@ namespace AzQtComponents
         : public QObject
     {
     public:
-        ClickEventFilterPrivate(StyledDoubleSpinBox* spinBox)
+        ClickEventFilterPrivate(StyledDoubleSpinBox* spinBox, QSlider* slider)
             : QObject(spinBox)
-            , m_spinBox(spinBox) {}
+            , m_spinBox(spinBox)
+        {
+            if (slider)
+            {
+                connect(slider, &QSlider::sliderPressed, this, [this] { m_dragging = true; });
+                connect(slider, &QSlider::sliderReleased, this, [this] { m_dragging = false; });
+            }
+        }
         ~ClickEventFilterPrivate() {}
     signals:
         void clickOnApplication(const QPoint& pos);
     protected:
         bool eventFilter(QObject* obj, QEvent* event)
         {
-            if (event->type() == QEvent::MouseButtonRelease)
+            if (event->type() == QEvent::MouseButtonRelease && !m_dragging)
             {
                 m_spinBox->handleClickOnApp(QCursor::pos());
             }
@@ -88,6 +95,7 @@ namespace AzQtComponents
         }
     private:
         StyledDoubleSpinBox* m_spinBox;
+        bool m_dragging = false;
     };
 
     StyledDoubleSpinBox::StyledDoubleSpinBox(QWidget* parent)
@@ -393,8 +401,8 @@ namespace AzQtComponents
             return;
         }
 
-        m_slider = new StyledSliderPrivate;
-        m_slider->setWindowFlags(Qt::WindowFlags(Qt::Window) | Qt::WindowFlags(Qt::FramelessWindowHint) | Qt::WindowFlags(Qt::ToolTip));
+        m_slider = new StyledSliderPrivate(this);
+        m_slider->setWindowFlags(Qt::WindowFlags(Qt::Window) | Qt::WindowFlags(Qt::FramelessWindowHint));
 
         QObject::connect(this, static_cast<void(StyledDoubleSpinBox::*)(double)>(&StyledDoubleSpinBox::valueChanged),
             this, &StyledDoubleSpinBox::updateSliderValue);
@@ -404,7 +412,7 @@ namespace AzQtComponents
 
         // These event filters will be automatically removed when our spin box is deleted
         // since they are parented to it
-        qApp->installEventFilter(new ClickEventFilterPrivate(this));
+        qApp->installEventFilter(new ClickEventFilterPrivate(this, m_slider));
         installEventFilter(new FocusInEventFilterPrivate(this));
     }
 
@@ -541,8 +549,8 @@ namespace AzQtComponents
         return newVal;
     }
 
-    StyledSliderPrivate::StyledSliderPrivate()
-        : QSlider()
+    StyledSliderPrivate::StyledSliderPrivate(QWidget* parent /*= nullptr*/)
+        : QSlider(parent)
     {
         setAttribute(Qt::WA_TranslucentBackground);
         setOrientation(Qt::Horizontal);

@@ -244,13 +244,14 @@ Q_SIGNALS:
         void ProcessGetAssetJobsInfoRequest(AssetJobsInfoRequest& request, AssetJobsInfoResponse& response);
         void ProcessGetAssetJobLogRequest(const AssetJobLogRequest& request, AssetJobLogResponse& response);
         void ScheduleNextUpdate();
+        void RemoveEmptyFolders();
 
     private:
         template <class R>
         bool Recv(unsigned int connId, QByteArray payload, R& request);
         void AssessFileInternal(QString fullFile, bool isDelete);
         void CheckSource(const FileEntry& source);
-        void CheckMissingJobs(QString relativeSourceFile, const AZStd::vector<JobDetails>& jobsThisTime);
+        void CheckMissingJobs(QString relativeSourceFile, const ScanFolderInfo* scanFolder, const AZStd::vector<JobDetails>& jobsThisTime);
         void CheckDeletedProductFile(QString normalizedPath);
         void CheckDeletedSourceFile(QString normalizedPath, QString relativeSourceFile);
         void CheckModifiedSourceFile(QString normalizedPath, QString relativeSourceFile);
@@ -269,7 +270,7 @@ Q_SIGNALS:
         // given a file name and a root to not go beyond, add the parent folder and its parent folders recursively
         // to the list of known folders.
         void AddKnownFoldersRecursivelyForFile(QString file, QString root);
-        void CleanEmptyFoldersForFile(QString file, QString root);
+        void CleanEmptyFolder(QString folder, QString root);
 
         void ProcessBuilders(QString normalizedPath, QString relativePathToFile, const ScanFolderInfo* scanFolder, const AssetProcessor::BuilderInfoList& builderInfoList);
 
@@ -366,6 +367,7 @@ Q_SIGNALS:
         AZ::s64 m_highestJobRunKeySoFar = 0;
         AZStd::vector<JobToProcessEntry> m_jobsToProcessLater;
         AZStd::multimap<AZStd::string, AssetProcessor::SourceFileDependencyInternal> m_sourceFileDependencyInfoMap;
+        QSet<QString> m_checkFoldersToRemove; //!< List of folders that needs to be checked for removal later by AP  
         //! List of all scanfolders that are present in the database but not currently watched by AP
         AZStd::unordered_map<AZStd::string, AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry> m_scanFoldersInDatabase;
         AZStd::multimap<QString, QString> m_dependsOnSourceToSourceMap; //multimap since different source files can declare dependency on the same file

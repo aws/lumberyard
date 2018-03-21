@@ -16,8 +16,12 @@
 #pragma once
 
 // Suppress warning in pymath.h where a conflict with round exists with VS 12.0 math.h ::  pymath.h(22) : warning C4273: 'round' : inconsistent dll linkage
-#pragma warning( disable: 4273)
+#pragma warning(disable: 4273)
+#pragma warning(disable: 4068) // Disable unknown pragma, it's worthless
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
 #include <boost/python.hpp>
+#pragma clang diagnostic pop
 #pragma warning( default: 4273)
 
 // Forward Declarations

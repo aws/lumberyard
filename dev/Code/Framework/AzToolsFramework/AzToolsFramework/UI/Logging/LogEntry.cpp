@@ -10,7 +10,7 @@
 *
 */
 
-#include <QDateTime.h>
+#include <QDateTime>
 #include <AzToolsFramework/UI/Logging/LogEntry.h>
 #include <AzToolsFramework/UI/Logging/LogLine.h>
 

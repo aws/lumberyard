@@ -708,7 +708,7 @@ bool CBaseLibraryDialog::SetItemName(CBaseLibraryItem* item, const QString& grou
     if (pOtherItem && pOtherItem != item)
     {
         // Ensure uniqness of name.
-        Warning("Duplicate Item Name %s", name.toLatin1().data());
+        Warning("Duplicate Item Name %s", name.toUtf8().data());
         return false;
     }
     else

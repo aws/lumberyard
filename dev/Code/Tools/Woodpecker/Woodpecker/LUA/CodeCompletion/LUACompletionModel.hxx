@@ -13,9 +13,9 @@
 #ifndef LUAEDITOR_LUACOMPLETIONMODEL_H
 #define LUAEDITOR_LUACOMPLETIONMODEL_H
 
-#include <AzCore\base.h>
-#include <QtCore\qstringlistmodel.h>
-#include <Woodpecker\LUA\LUAEditorStyleMessages.h>
+#include <AzCore/base.h>
+#include <QtCore/QStringListModel>
+#include <Woodpecker/LUA/LUAEditorStyleMessages.h>
 #include <QRegularExpression>
 
 #pragma once

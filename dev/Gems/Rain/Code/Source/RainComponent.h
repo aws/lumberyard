@@ -31,7 +31,7 @@ namespace Rain
 
         AZ_TYPE_INFO(RainOptions, "{44EEA846-4252-405F-BB66-0B8696DF5D36}");
 
-        bool m_ignoreVisAreas = false; ///< Ignore vis area volumes
+        bool m_useVisAreas = true; ///< Use vis area volumes
         bool m_disableOcclusion = false; ///< Ignore occlusion volumes
         float m_radius = 10000.0f; ///< Radius of the rain volume (Range: 0 to 10,000; Step: 1)
         float m_amount = 1.0f; ///< Overall amount of rain (Range: 0 to 100; Step: 0.1)
@@ -47,8 +47,7 @@ namespace Rain
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        static bool VersionConverter(AZ::SerializeContext& context,
-            AZ::SerializeContext::DataElementNode& classElement);
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
     };
 
     /**
@@ -106,8 +105,8 @@ namespace Rain
             more than once. 
         */
 
-        bool GetIgnoreVisAreas() override { return m_rainOptions.m_ignoreVisAreas; }
-        void SetIgnoreVisAreas(bool ignoreVisAreas) override;
+        bool GetUseVisAreas() override { return m_rainOptions.m_useVisAreas; }
+        void SetUseVisAreas(bool useVisAreas) override;
 
         bool GetDisableOcclusion() override { return m_rainOptions.m_disableOcclusion; }
         void SetDisableOcclusion(bool disableOcclusion) override;

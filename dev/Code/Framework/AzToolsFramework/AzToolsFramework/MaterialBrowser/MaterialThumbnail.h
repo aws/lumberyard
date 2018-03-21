@@ -55,8 +55,8 @@ namespace AzToolsFramework
                     // check whether keys point to single or multimaterial asset type
                     bool multiMat1 = false;
                     bool multiMat2 = false;
-                    MaterialBrowserRequestsBus::BroadcastResult(multiMat1, &MaterialBrowserRequests::IsMultiMaterial, productThumbnailKey1->GetAssetId());
-                    MaterialBrowserRequestsBus::BroadcastResult(multiMat2, &MaterialBrowserRequests::IsMultiMaterial, productThumbnailKey2->GetAssetId());
+                    MaterialBrowserRequestBus::BroadcastResult(multiMat1, &MaterialBrowserRequests::IsMultiMaterial, productThumbnailKey1->GetAssetId());
+                    MaterialBrowserRequestBus::BroadcastResult(multiMat2, &MaterialBrowserRequests::IsMultiMaterial, productThumbnailKey2->GetAssetId());
                     return multiMat1 == multiMat2;
                 }
             };

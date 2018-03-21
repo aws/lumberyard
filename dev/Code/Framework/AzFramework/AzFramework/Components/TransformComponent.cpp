@@ -222,7 +222,7 @@ namespace AzFramework
         , m_interpolateRotation(copy.m_interpolateRotation)
         , m_netTargetTranslation()
         , m_netTargetRotation()
-        , m_netTargetScale(copy.m_netTargetScale)
+        , m_netTargetScale(copy.m_netTargetScale)        
     {
         CreateSamples();
         if (copy.m_netTargetTranslation)
@@ -1057,6 +1057,10 @@ namespace AzFramework
 
     void TransformComponent::SetParentImpl(AZ::EntityId parentId, bool isKeepWorldTM)
     {
+        // don't allow self-parenting bugs
+        if (parentId == GetEntityId())
+            return;
+
         AZ::EntityId oldParent = m_parentId;
         if (m_parentId.IsValid())
         {
@@ -1080,7 +1084,7 @@ namespace AzFramework
 
             if (isKeepWorldTM)
             {
-                SetWorldTM(m_worldTM);
+            SetWorldTM(m_worldTM);
             }
             else
             {

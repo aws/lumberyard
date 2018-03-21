@@ -16,6 +16,7 @@
 
 #include "ShadowUtils.h"
 #include <VectorSet.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #define OMNI_SIDES_NUM 6
 
@@ -125,11 +126,21 @@ struct ShadowMapFrustum
     {
         enum eUpdateStrategy
         {
+            // Renders the entire cached shadowmap in one pass.
+            // Generally used for a single frame when an event (script, level load, proximity to frustum border, etc.) requests an update of the cache.
+            // Will revert to one of the other methods after the update occurs.
             eFullUpdate,
-            eFullUpdateTimesliced,
-            eIncrementalUpdate, // Cached shadow frustums will constantly check if updates are required due to moving objects or proximity to the frustum border
-            eManualUpdate, // Updates must triggered manually via script
-            eManualOrDistanceUpdate // Updates may either be triggered manually by script or when the camera moves too close to the border of the shadow frustum
+
+            // Cached shadow frustums will constantly check if updates are required due to moving objects or proximity to the frustum border.
+            // Has potentially very high CPU overhead because each cached shadow map frustum culls the octree each frame.
+            // Potentially higher GPU overhead because may render extra dynamic or distant objects each frame.
+            eIncrementalUpdate, 
+
+            // Updates must triggered manually via script.  Most optimal solution, but requires manual setup.
+            eManualUpdate, 
+
+            // Updates may either be triggered manually by script or when the camera moves too close to the border of the shadow frustum
+            eManualOrDistanceUpdate 
         };
 
         ShadowCacheData() { Reset(); }
@@ -173,9 +184,7 @@ struct ShadowMapFrustum
         // make sure that the renderer isn't using this shadow frustum anymore
         threadID nThreadID = 0;
         gEnv->pRenderer->EF_Query(EFQ_RenderThreadList, nThreadID);
-        JobManager::SJobState* pJobState = gEnv->pRenderer->GetFinalizeShadowRendItemJobState(nThreadID);
-        assert(pJobState);
-        gEnv->pJobManager->WaitForJob(*pJobState);
+        gEnv->pRenderer->GetFinalizeShadowRendItemJobExecutor(nThreadID)->WaitForCompletion();
 
         delete pCastersList;
         delete pJobExecutedCastersList;

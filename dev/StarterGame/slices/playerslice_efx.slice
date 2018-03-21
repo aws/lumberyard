@@ -1,11 +1,9 @@
 <ObjectStream version="3">
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-			<Class name="AZ::u64" field="id" value="215123532361" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			<Class name="AZ::u64" field="id" value="2172203139150" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
-		<Class name="AZStd::string" field="Name" value="215123532361" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-		<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="AZStd::string" field="Name" value="2172203139150" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 		<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 			<Class name="SliceComponent" field="element" version="2" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
 				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -17,8 +15,6 @@
 							<Class name="AZ::u64" field="id" value="16625308606333" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="Camera" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -919,14 +915,14 @@
 								<Class name="Asset" field="ScriptAsset" value="id={8259DADC-88F7-52DD-BD30-262212127D98}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/input/held.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16629603573629" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LookAtTarget" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorDisabledCompositionComponent" field="element" type="{E77AE6AC-897D-4035-8353-637449B6DCFB}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -1053,14 +1049,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16633898540925" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="BarrelLocator" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -1156,14 +1152,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16638193508221" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightSpineBackL" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -1180,9 +1176,9 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="0.0800171 0.0953979 1.2632103" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									<Class name="Vector3" field="Rotate" value="8.9999990 0.0000005 360.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									<Class name="Vector3" field="Scale" value="1.0000004 1.0000002 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="0.0799561 0.0954590 1.2632065" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Rotate" value="8.9999981 0.0000005 360.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Scale" value="1.0000004 1.0000004 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
 								<Class name="Transform" field="Cached World Transform" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
 								<Class name="EntityId" field="Cached World Transform Parent" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
@@ -1226,7 +1222,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -1267,7 +1263,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -1360,14 +1356,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="Jack" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorEntitySortComponent" field="element" version="2" type="{6EA1E03D-68B2-466D-97F7-83998C8C27F0}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -2424,7 +2420,7 @@
 													<Class name="AZ::u64" field="id" value="455819407" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 													<Class name="AZStd::string" field="name" value="RotationSpeed" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 												</Class>
-												<Class name="double" field="value" value="155.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+												<Class name="double" field="value" value="270.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 											</Class>
 											<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 												<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
@@ -2483,14 +2479,14 @@
 															<Class name="AZ::u64" field="id" value="1556449976" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="JumpDoubleForce" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
-														<Class name="double" field="value" value="8.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="value" value="6.5000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
 															<Class name="AZ::u64" field="id" value="2080232625" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="JumpForce" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
-														<Class name="double" field="value" value="8.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="value" value="6.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
@@ -2517,7 +2513,7 @@
 															<Class name="AZ::u64" field="id" value="927156498" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="FallingHard" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
-														<Class name="double" field="value" value="0.5000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="value" value="1.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
@@ -2531,7 +2527,7 @@
 															<Class name="AZ::u64" field="id" value="2407633006" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="FallingMedium" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
-														<Class name="double" field="value" value="0.3000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="value" value="0.7500000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
@@ -2545,7 +2541,7 @@
 															<Class name="AZ::u64" field="id" value="1067084444" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="SlopeAngle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
-														<Class name="double" field="value" value="73.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="value" value="56.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 												</Class>
 												<Class name="AZStd::vector" field="Groups" type="{E3B6A07B-498D-50CE-A8E5-5AFDA2231792}">
@@ -2790,7 +2786,7 @@
 															<Class name="AZ::u64" field="id" value="2812222840" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 															<Class name="AZStd::string" field="name" value="AimDelay" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 														</Class>
-														<Class name="double" field="value" value="2.5000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
+														<Class name="double" field="value" value="0.0000000" type="{110C4B14-11A8-4E9D-8638-5051013A56AC}"/>
 													</Class>
 													<Class name="AzFramework::ScriptPropertyNumber" field="element" version="1" type="{5BCDFDEB-A75D-4E83-BB74-C45299CB9826}">
 														<Class name="AzFramework::ScriptProperty" field="BaseClass1" version="2" type="{D227D737-F1ED-4FB3-A1FB-38E4985D2E7A}">
@@ -4407,14 +4403,14 @@
 								</Class>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16646783442813" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightLegUpR" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -4434,7 +4430,7 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="0.0405884 -0.2986145 0.9903946" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="0.0405273 -0.2985229 0.9903946" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="270.0000000 360.0000000 179.9999847" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000004 1.0000000 1.0000004" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -4472,7 +4468,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -4513,7 +4509,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -4611,14 +4607,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16651078410109" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightFootL" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -4638,7 +4634,7 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="-0.1006470 0.0914307 0.0432549" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="-0.1005859 0.0914307 0.0432510" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="270.0000000 360.0000000 179.9999847" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000004 1.0000000 1.0000004" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -4676,7 +4672,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -4717,7 +4713,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -4815,14 +4811,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16655373377405" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="PlasmaRifle" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorTagComponent" field="element" version="1" type="{5272B56C-6CCC-4118-8539-D881F463ACD1}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -5411,14 +5407,14 @@
 								<Class name="Asset" field="ScriptAsset" value="id={927351EF-6E38-503D-A7A0-BE0B80856B1A}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/weapons/plasmarifle.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16659668344701" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightLegUpL" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -5435,7 +5431,7 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="-0.0406494 -0.2985840 0.9903946" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="-0.0407715 -0.2985229 0.9903946" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="270.0000000 360.0000000 179.9999847" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000004 1.0000000 1.0000004" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -5481,7 +5477,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -5522,7 +5518,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -5615,14 +5611,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16663963311997" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightFootR" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -5639,7 +5635,7 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="0.1005859 0.0914001 0.0432549" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="0.1005859 0.0914917 0.0432510" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="270.0000000 360.0000000 179.9999847" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000004 1.0000000 1.0000004" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -5685,7 +5681,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -5726,7 +5722,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -5819,14 +5815,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16668258279293" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="PlasmaLauncher" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorTagComponent" field="element" version="1" type="{5272B56C-6CCC-4118-8539-D881F463ACD1}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -6333,14 +6329,14 @@
 								<Class name="Asset" field="ScriptAsset" value="id={07C71734-A45B-55B3-B6E4-A4F30008F9A8}:2,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/weapons/plasmalauncher.lua}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16672553246589" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="ThrusterFootL" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -6357,7 +6353,7 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="-0.1006470 0.0765991 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="-0.1005859 0.0766602 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="0.0000093 360.0000000 180.0000153" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000004 1.0000004 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -6551,14 +6547,14 @@
 								<Class name="Asset" field="ScriptAsset" value="id={08078618-CF59-50AD-B18F-52BC5D091250}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/particles/particleplayer.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16676848213885" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightHead" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -6575,7 +6571,7 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="0.0000000 0.0116577 1.7907562" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="0.0000000 0.0117188 1.7907562" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="360.0000000 0.0000000 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000004 1.0000004 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -6621,7 +6617,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -6662,7 +6658,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -6755,14 +6751,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16681143181181" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="InputManager" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="GenericComponentWrapper" field="element" type="{68D358CA-89B9-4730-8BA6-E181DEA28FDE}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -6885,14 +6881,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16685438148477" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="ThrusterFootR" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorInspectorComponent" field="element" version="2" type="{47DE3DDA-50C5-4F50-B1DB-BA4AE66AB056}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -6953,7 +6949,7 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="0.1005859 0.0765991 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="0.1005859 0.0766602 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="0.0000093 360.0000000 180.0000153" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Scale" value="1.0000004 1.0000004 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
@@ -7103,14 +7099,14 @@
 								<Class name="Asset" field="ScriptAsset" value="id={08078618-CF59-50AD-B18F-52BC5D091250}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/particles/particleplayer.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16689733115773" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightSpineR" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -7127,9 +7123,9 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="-0.1300049 0.0708618 1.2361221" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="-0.1300049 0.0709229 1.2361221" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="5.9999986 0.0000004 360.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									<Class name="Vector3" field="Scale" value="1.0000004 1.0000002 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Scale" value="1.0000004 1.0000004 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
 								<Class name="Transform" field="Cached World Transform" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
 								<Class name="EntityId" field="Cached World Transform Parent" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
@@ -7173,7 +7169,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -7214,7 +7210,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -7307,14 +7303,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16694028083069" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="Drone" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorDisabledCompositionComponent" field="element" type="{E77AE6AC-897D-4035-8353-637449B6DCFB}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -7759,14 +7755,14 @@
 								<Class name="Asset" field="ScriptAsset" value="id={9DFAD561-5082-5DEB-8EF1-BFA726845734}:1,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/general/drone.luac}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16698323050365" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="Laser" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="SelectionComponent" field="element" type="{73B724FC-43D1-4C75-ACF5-79AA8A3BF89D}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -7893,14 +7889,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16702618017661" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightSpineL" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -7920,9 +7916,9 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="0.1298828 0.0708618 1.2361221" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="0.1300049 0.0709229 1.2361221" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 									<Class name="Vector3" field="Rotate" value="5.9999986 0.0000004 360.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									<Class name="Vector3" field="Scale" value="1.0000004 1.0000002 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Scale" value="1.0000004 1.0000004 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
 								<Class name="Transform" field="Cached World Transform" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
 								<Class name="EntityId" field="Cached World Transform Parent" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
@@ -7958,7 +7954,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -7999,7 +7995,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -8097,14 +8093,14 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16706912984957" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="PlayerSlice" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -8270,14 +8266,14 @@
 								</Class>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16711207952253" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LauncherMuzzleFlash" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -8451,14 +8447,14 @@
 								<Class name="Asset" field="ScriptAsset" value="id={4247CC45-A4C6-5843-ADC1-FB3DBEBAAD1D}:2,type={82557326-4AE3-416C-95D6-C70635AB7588},hint={scripts/particles/particlespawnrequester.lua}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 					<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 							<Class name="AZ::u64" field="id" value="16715502919549" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="LightSpineBackR" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 							<Class name="EditorVisibilityComponent" field="element" type="{88E08E78-5C2F-4943-9F73-C115E6FFAB43}">
 								<Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
@@ -8478,9 +8474,9 @@
 									<Class name="AZ::u64" field="id" value="16642488475517" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
-									<Class name="Vector3" field="Translate" value="-0.0800171 0.0953979 1.2632103" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									<Class name="Vector3" field="Rotate" value="8.9999990 0.0000005 360.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
-									<Class name="Vector3" field="Scale" value="1.0000004 1.0000002 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Translate" value="-0.0800781 0.0953979 1.2632065" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Rotate" value="8.9999981 0.0000005 360.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+									<Class name="Vector3" field="Scale" value="1.0000004 1.0000004 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
 								</Class>
 								<Class name="Transform" field="Cached World Transform" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
 								<Class name="EntityId" field="Cached World Transform Parent" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
@@ -8516,7 +8512,7 @@
 										</Class>
 									</Class>
 									<Class name="EditorLightConfiguration" field="EditorLightConfiguration" version="1" type="{1D3B114F-8FB2-47BD-9C21-E089F4F37861}">
-										<Class name="LightConfiguration" field="BaseClass1" version="6" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
+										<Class name="LightConfiguration" field="BaseClass1" version="7" type="{F4CC7BB4-C541-480C-88FC-C5A8F37CC67F}">
 											<Class name="unsigned int" field="LightType" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="bool" field="Visible" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="OnInitially" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -8557,7 +8553,7 @@
 											<Class name="unsigned int" field="MinimumSpec" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="unsigned int" field="CastShadowsSpec" value="4294967295" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
 											<Class name="int" field="VoxelGIMode" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
-											<Class name="bool" field="IgnoreVisAreas" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+											<Class name="bool" field="UseVisAreas" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="IndoorOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="AffectsThisAreaOnly" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 											<Class name="bool" field="VolumetricFogOnly" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
@@ -8655,6 +8651,8 @@
 								<Class name="AZStd::vector" field="ChildEntityOrderEntryArray" type="{BE163120-C1ED-5F69-A650-DC2528A8FF94}"/>
 							</Class>
 						</Class>
+						<Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					</Class>
 				</Class>
 				<Class name="AZStd::list" field="Prefabs" type="{DAD45EB6-5853-5645-B762-3A37F8775E12}"/>
@@ -8664,8 +8662,6 @@
 						<Class name="AZ::u64" field="id" value="16621013639037" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 					</Class>
 					<Class name="AZStd::string" field="Name" value="slices/playerslice_efx.slice" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
-					<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-					<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
 						<Class name="SliceMetadataInfoComponent" field="element" version="1" type="{25EE4D75-8A17-4449-81F4-E561005BAABD}">
 							<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
@@ -8746,9 +8742,13 @@
 							<Class name="bool" field="PersistenceFlag" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 						</Class>
 					</Class>
+					<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+					<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 				</Class>
 			</Class>
 		</Class>
+		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 	</Class>
 </ObjectStream>
 

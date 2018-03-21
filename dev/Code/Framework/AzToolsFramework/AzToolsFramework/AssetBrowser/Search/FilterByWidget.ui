@@ -74,7 +74,7 @@
     </spacer>
    </item>
    <item>
-    <widget class="AzToolsFramework::QBetterLabel" name="m_clearFiltersButton">
+    <widget class="AzQtComponents::ExtendedLabel" name="m_clearFiltersButton">
      <property name="text">
       <string>Reset</string>
      </property>
@@ -84,9 +84,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>AzToolsFramework::QBetterLabel</class>
+   <class>AzQtComponents::ExtendedLabel</class>
    <extends>QLabel</extends>
-   <header>AzToolsFramework/UI/UICore/QBetterLabel.h</header>
+   <header>AzQtComponents/Components/ExtendedLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>

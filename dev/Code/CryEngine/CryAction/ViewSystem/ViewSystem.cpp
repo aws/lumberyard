@@ -72,11 +72,15 @@ CViewSystem::CViewSystem(ISystem* pSystem)
     {
         CCryAction::GetCryAction()->GetILevelSystem()->AddListener(this);
     }
+
+    Camera::CameraSystemRequestBus::Handler::BusConnect();
 }
 
 //------------------------------------------------------------------------
 CViewSystem::~CViewSystem()
 {
+    Camera::CameraSystemRequestBus::Handler::BusDisconnect();
+
     ClearAllViews();
 
     IConsole* pConsole = gEnv->pConsole;

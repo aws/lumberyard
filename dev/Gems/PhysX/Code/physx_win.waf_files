@@ -1,7 +1,6 @@
 {
     "auto": {
         "Include": [
-            "Include/PhysX/PhysXBus.h",
             "Include/PhysX/PhysXSystemComponentBus.h",
             "Include/PhysX/PhysXColliderComponentBus.h",
             "Include/PhysX/PhysXNativeTypeIdentifiers.h",

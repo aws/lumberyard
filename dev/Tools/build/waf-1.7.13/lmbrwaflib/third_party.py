@@ -406,7 +406,7 @@ class ThirdPartyLibReader:
                 lib_configuration = self.configuration_key.split('_')[0]
             else:
                 # This is the common case where the library only has debug and release, which matches the engine's debug and non-debug configurations
-                is_debug = self.configuration_key.lower() in ["debug", "debug_dedicated", "debug_test"]
+                is_debug = self.configuration_key.lower() in ["debug", "debug_dedicated", "debug_test", "debug_test_dedicated"]
                 if is_debug:
                     lib_configuration = "debug"
                 else:

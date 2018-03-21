@@ -219,7 +219,7 @@ void CVarBlock::Serialize(XmlNodeRef vbNode, bool load)
             IVariable* var = *it;
             if (var->GetNumVariables())
             {
-                XmlNodeRef child = vbNode->findChild(var->GetName().toLatin1().data());
+                XmlNodeRef child = vbNode->findChild(var->GetName().toUtf8().data());
                 if (child)
                 {
                     var->Serialize(child, load);
@@ -239,7 +239,7 @@ void CVarBlock::Serialize(XmlNodeRef vbNode, bool load)
             IVariable* var = *it;
             if (var->GetNumVariables())
             {
-                XmlNodeRef child = vbNode->newChild(var->GetName().toLatin1().data());
+                XmlNodeRef child = vbNode->newChild(var->GetName().toUtf8().data());
                 var->Serialize(child, load);
             }
             else
@@ -374,7 +374,7 @@ void CVarBlock::GatherUsedResourcesInVar(IVariable* pVar, CUsedResources& resour
         pVar->Get(filename);
         if (!filename.isEmpty())
         {
-            resources.Add(filename.toLatin1().data());
+            resources.Add(filename.toUtf8().data());
         }
     }
 

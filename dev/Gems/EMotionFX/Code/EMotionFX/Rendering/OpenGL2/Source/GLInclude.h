@@ -22,7 +22,7 @@
     #include <OpenGL/glu.h>
 #else
 #ifdef _WIN32
-    #include <windows.h>
+    #include <AzCore/PlatformIncl.h>
 #endif
     #include <GL/gl.h>
     #include <GL/glu.h>

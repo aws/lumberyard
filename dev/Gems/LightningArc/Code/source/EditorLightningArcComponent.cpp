@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 #include "EditorLightningArcComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -45,7 +45,7 @@ namespace Lightning
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorLightningArcConfiguration::m_arcPresetName, "Arc Preset Name", "")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorLightningArcConfiguration::m_arcPresetName, "Arc Preset Name", "The name of the parameter presets to load.")
                     ->Attribute(AZ::Edit::Attributes::StringList, &EditorLightningArcComponent::GetPresetNames)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightningArcConfiguration::OnPresetNameChange)
 
@@ -56,23 +56,23 @@ namespace Lightning
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_enabled, "Enabled", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_enabled, "Enabled", "Sets if the lightning arc effect is enabled and will produce arcs.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_targets, "Targets", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_targets, "Targets", "Entities that arcs will randomly target.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_arcParams, "Arc Parameters", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_arcParams, "Arc Parameters", "A collection of parameters that describe the look and behavior of the arcs.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &LightningArcConfiguration::OnParamsChange)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_materialAsset, "Material", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningArcConfiguration::m_materialAsset, "Material", "The material used to render the lightning arcs.")
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Timing")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &LightningArcConfiguration::m_delay, "Delay", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &LightningArcConfiguration::m_delay, "Delay", "Time in seconds between arcs.")
                     ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &LightningArcConfiguration::m_delayVariation, "DelayVariation", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &LightningArcConfiguration::m_delayVariation, "DelayVariation", "A random variation applied to the Delay parameter.")
                     ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ;
@@ -126,7 +126,7 @@ namespace Lightning
             
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorLightningArcComponent>("Lightning Arc", "")
+                editContext->Class<EditorLightningArcComponent>("Lightning Arc", "Produces an arcing effect that jumps to a random target entity.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LightningArc.png")
@@ -137,7 +137,7 @@ namespace Lightning
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorLightningArcComponent::m_config, "m_config", "No Description")
 
-                    ->DataElement("Button", &EditorLightningArcComponent::m_refreshPresets, "RefreshPresets", "Reloads all presets off the disk")
+                    ->DataElement("Button", &EditorLightningArcComponent::m_refreshPresets, "RefreshPresets", "Reloads all presets off the disk.")
                     ->Attribute(AZ::Edit::Attributes::ButtonText, "Refresh Presets")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightningArcComponent::RefreshPresets)
                     ;

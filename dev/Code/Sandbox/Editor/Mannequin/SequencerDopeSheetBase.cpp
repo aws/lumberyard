@@ -1446,7 +1446,7 @@ bool CSequencerDopeSheetBase::IsPointValidForAnimationInLayerDrop(const QPoint& 
 
     CClipTrack* pClipTrack = static_cast<CClipTrack*> (pTrack);
 
-    int nAnimID = pClipTrack->GetContext()->animSet->GetAnimIDByName(animationName.toLatin1().data());
+    int nAnimID = pClipTrack->GetContext()->animSet->GetAnimIDByName(animationName.toUtf8().data());
     if (-1 == nAnimID)
     {
         return false;
@@ -1744,7 +1744,7 @@ void CSequencerDopeSheetBase::OnRButtonDown(const QPoint& point, Qt::KeyboardMod
                 }
                 else if (cmd == EXPLORE_KEY)
                 {
-                    CFileUtil::ShowInExplorer((relativePath + fileName + editableExtension).toLatin1().data());
+                    CFileUtil::ShowInExplorer((relativePath + fileName + editableExtension).toUtf8().data());
                 }
 
                 // Update flags, file will now be on HDD
@@ -1759,7 +1759,7 @@ void CSequencerDopeSheetBase::OnRButtonDown(const QPoint& point, Qt::KeyboardMod
                 }
                 else if (cmd == EXPLORE_KEY)
                 {
-                    CFileUtil::ShowInExplorer((relativePath + fileName + editableExtension).toLatin1().data());
+                    CFileUtil::ShowInExplorer((relativePath + fileName + editableExtension).toUtf8().data());
                 }
             }
             else
@@ -1809,9 +1809,9 @@ void CSequencerDopeSheetBase::OnRButtonDown(const QPoint& point, Qt::KeyboardMod
                         const uint32 attr = CFileUtil::GetAttributes(gamePath);
                         if (attr & SCC_FILE_ATTRIBUTE_MANAGED)
                         {
-                            if (GetIEditor()->GetSourceControl()->GetLatestVersion(gamePath))
+                            if (CFileUtil::GetLatestFromSourceControl(gamePath, this))
                             {
-                                vcs_success = GetIEditor()->GetSourceControl()->CheckOut(gamePath);
+                                vcs_success = CFileUtil::CheckoutFile(gamePath, this);
                             }
                         }
                     }
@@ -1860,7 +1860,7 @@ void CSequencerDopeSheetBase::TryOpenFile(const QString& relativePath, const QSt
     }
     else
     {
-        CFileUtil::ShowInExplorer(filePath.toLatin1().data());
+        CFileUtil::ShowInExplorer(filePath.toUtf8().data());
     }
 }
 
@@ -1921,7 +1921,7 @@ CSequencerDopeSheetBase::EDSSourceControlResponse CSequencerDopeSheetBase::TryGe
         for (QStringList::const_iterator iter = paths.begin(), itEnd = paths.end(); iter != itEnd; ++iter)
         {
             const QString workspacePath = Path::GamePathToFullPath((*iter).toUtf8().constData());
-            if (!pSourceControl->GetLatestVersion(workspacePath.toUtf8().constData()))
+            if (!CFileUtil::GetLatestFromSourceControl(workspacePath.toUtf8().constData(), this))
             {
                 vFailures.push_back(*iter);
             }

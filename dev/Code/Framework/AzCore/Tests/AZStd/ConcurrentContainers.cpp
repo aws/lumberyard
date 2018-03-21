@@ -711,7 +711,7 @@ namespace UnitTest
         }
 
     private:
-#if defined(_DEBUG) || defined(AZ_PLATFORM_WII)
+#if defined(_DEBUG)
         static const int NUM_ITERATIONS = 10000;
 #else
         static const int NUM_ITERATIONS = 500000;

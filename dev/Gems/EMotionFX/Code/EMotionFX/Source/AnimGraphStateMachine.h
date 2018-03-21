@@ -73,7 +73,7 @@ namespace EMotionFX
             AnimGraphNode*             mCurrentState;          /**< The current state. */
             AnimGraphNode*             mTargetState;           /**< The next state we want to move into. */
             AnimGraphNode*             mPreviousState;         /**< The previously used state, so the one used before the current one, the one from which we transitioned into the current one. */
-            bool                        mReachedExitState;      /**< True in case the state machine's current state is an exit state, false it not. */
+            bool                       mReachedExitState;      /**< True in case the state machine's current state is an exit state, false it not. */
         };
 
         static AnimGraphStateMachine* Create(AnimGraph* animGraph, const char* name = nullptr);

@@ -23,6 +23,7 @@
 #include <AzCore/std/string/tokenize.h>
 #include <AzCore/std/string/wildcard.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Asset/AssetRegistry.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -56,13 +57,14 @@ namespace AssetProcessor
         m_absoluteDevFolderPath[0] = 0;
         m_absoluteDevGameFolderPath[0] = 0;
 
-        QDir engineRoot;
-        if (AssetUtilities::ComputeEngineRoot(engineRoot))
-        {
-            azstrcpy(m_absoluteDevFolderPath, AZ_MAX_PATH_LEN, engineRoot.absolutePath().toUtf8().constData());
-            QString absoluteDevGameFolderPath = engineRoot.absoluteFilePath(AssetUtilities::ComputeGameName());
-            azstrcpy(m_absoluteDevGameFolderPath, AZ_MAX_PATH_LEN, absoluteDevGameFolderPath.toUtf8().constData());
-        }
+        AZStd::string appRoot;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
+        azstrcpy(m_absoluteDevFolderPath, AZ_MAX_PATH_LEN, appRoot.c_str());
+        
+        AZStd::string gameFolderPath;
+        AzFramework::StringFunc::Path::Join(appRoot.c_str(), AssetUtilities::ComputeGameName().toUtf8().constData(), gameFolderPath);
+        azstrcpy(m_absoluteDevGameFolderPath, AZ_MAX_PATH_LEN, gameFolderPath.c_str());
+
 
         AssetUtilities::ComputeProjectCacheRoot(m_cacheRootDir);
 
@@ -556,6 +558,40 @@ namespace AssetProcessor
         return GetQueuedAssetInfoByRelativeSourceName(relativeName.toUtf8().data(), assetInfo, watchFolder);
     }
 
+    bool AssetCatalog::GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
+    {
+        AZ::Data::AssetId partialId(sourceUuid, 0);
+        AZStd::string relativePath;
+
+        if (GetSourceFileInfoFromAssetId(partialId, watchFolder, relativePath))
+        {
+            AZStd::string sourceFileFullPath;
+            AzFramework::StringFunc::Path::Join(watchFolder.c_str(), relativePath.c_str(), sourceFileFullPath);
+            assetInfo.m_assetId = partialId;
+            assetInfo.m_assetType = AZ::Uuid::CreateNull(); // most source files don't have a type!
+            assetInfo.m_relativePath = relativePath;
+            assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(sourceFileFullPath.c_str());
+
+            // if the type has registered with a typeid, then supply it here
+            AZStd::lock_guard<AZStd::mutex> lock(m_sourceAssetTypesMutex);
+
+            // Go through the list of source assets and see if this asset's file path matches any of the filters
+            // if it does, we know what type it is (if not, the above call to CreateNull ensures it is null).
+            for (const auto& pair : m_sourceAssetTypeFilters)
+            {
+                if (AZStd::wildcard_match(pair.first, relativePath))
+                {
+                    assetInfo.m_assetType = pair.second;
+                    break;
+                }
+            }
+
+            return true;
+        }
+        // failed!
+        return false;
+    }
+
     bool ConvertDatabaseProductPathToProductFileName(QString dbPath, QString& productFileName)
     {
         QString gameName = AssetUtilities::ComputeGameName();
@@ -769,7 +805,15 @@ namespace AssetProcessor
     void AssetCatalog::RegisterSourceAssetType(const AZ::Data::AssetType& assetType, const char* assetFileFilter)
     {
         AZStd::lock_guard<AZStd::mutex> lock(m_sourceAssetTypesMutex);
-        m_sourceAssetTypes.insert({ assetType, assetFileFilter });
+        m_sourceAssetTypes.insert(assetType);
+        AZStd::vector<AZStd::string> tokens;
+        AZStd::string semicolonSeperated(assetFileFilter);
+        AZStd::tokenize(semicolonSeperated, AZStd::string(";"), tokens);
+
+        for (const auto& pattern : tokens)
+        {
+            m_sourceAssetTypeFilters[pattern] = assetType;
+        }
     }
 
     void AssetCatalog::UnregisterSourceAssetType(const AZ::Data::AssetType& assetType)
@@ -876,25 +920,19 @@ namespace AssetProcessor
                 AZStd::lock_guard<AZStd::mutex> lock(m_sourceAssetTypesMutex);
 
                 // Go through the list of source assets and see if this asset's file path matches any of the filters
-                for (const auto& pair : m_sourceAssetTypes)
+                for (const auto& pair : m_sourceAssetTypeFilters)
                 {
-                    AZStd::vector<AZStd::string> tokens;
-                    AZStd::tokenize(pair.second, AZStd::string(";"), tokens);
-
-                    for (const auto& pattern : tokens)
+                    if (AZStd::wildcard_match(pair.first, relativePath))
                     {
-                        if (AZStd::wildcard_match(pattern, relativePath))
-                        {
-                            AZStd::string sourceFileFullPath;
-                            AzFramework::StringFunc::Path::Join(rootFilePath.c_str(), relativePath.c_str(), sourceFileFullPath);
+                        AZStd::string sourceFileFullPath;
+                        AzFramework::StringFunc::Path::Join(rootFilePath.c_str(), relativePath.c_str(), sourceFileFullPath);
 
-                            assetInfo.m_assetId = id;
-                            assetInfo.m_assetType = pair.first;
-                            assetInfo.m_relativePath = relativePath;
-                            assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(sourceFileFullPath.c_str());
+                        assetInfo.m_assetId = id;
+                        assetInfo.m_assetType = pair.second;
+                        assetInfo.m_relativePath = relativePath;
+                        assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(sourceFileFullPath.c_str());
 
-                            return true;
-                        }
+                        return true;
                     }
                 }
             }

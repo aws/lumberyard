@@ -35,6 +35,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QUrl>
+#include <QDateTime>
 
 // CMannErrorReportDialog dialog
 
@@ -729,7 +730,7 @@ void CMannErrorReportDialog::SendInMail()
 
     std::vector<const char*> who;
     const QString subject = QString::fromLatin1("Level %1 Error Report").arg(GetIEditor()->GetGameEngine()->GetLevelName());
-    CMailer::SendMail(subject.toLatin1().data(), textMsg.toLatin1().data(), who, who, true);
+    CMailer::SendMail(subject.toUtf8().data(), textMsg.toUtf8().data(), who, who, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -740,7 +741,7 @@ void CMannErrorReportDialog::OpenInExcel()
 
     const QString levelName = Path::GetFileName(GetIEditor()->GetGameEngine()->GetLevelName());
 
-    const QString filename = QString::fromLatin1("ErrorList_%1.csv").arg(levelName);
+    const QString filename = QString::fromLatin1("ErrorList_%1_%2.csv").arg(levelName).arg(QDateTime::currentDateTime().toString("yyyy-MM-dd-HH-mm-ss"));
 
     // Save to temp file.
     QFile f(filename);
@@ -752,14 +753,14 @@ void CMannErrorReportDialog::OpenInExcel()
             QString text = err->GetErrorText();
             text.replace(',', '.');
             text.replace('\t', ',');
-            f.write((text + QString::fromLatin1("\n")).toLatin1().data());
+            f.write((text + QString::fromLatin1("\n")).toUtf8().data());
         }
         f.close();
         QDesktopServices::openUrl(QUrl::fromLocalFile(filename));
     }
     else
     {
-        Warning("Failed to save %s", (const char*)filename.toLatin1().data());
+        Warning("Failed to save %s", (const char*)filename.toUtf8().data());
     }
 }
 

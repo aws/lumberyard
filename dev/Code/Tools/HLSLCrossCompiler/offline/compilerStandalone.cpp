@@ -693,7 +693,7 @@ const char* PatchHLSLShaderFile(const char* path)
         fclose(patchedFile);
     }
 
-    delete data;
+    delete[] data;
     return result ? patchedFileName : NULL;
 }
 

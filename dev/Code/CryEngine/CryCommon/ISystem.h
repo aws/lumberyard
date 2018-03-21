@@ -786,7 +786,9 @@ struct SSystemInitParams
         memset(gameDLLName, 0, sizeof(gameDLLName));
         memset(branchToken, 0, sizeof(branchToken));
 
+        memset(remoteIP, 0, sizeof(remoteIP));
         azstrcpy(remoteIP, sizeof(remoteIP), "127.0.0.1");
+        memset(assetsPlatform, 0, sizeof(assetsPlatform));
         azstrcpy(assetsPlatform, sizeof(assetsPlatform), "pc");
 
         remotePort = 45643;
@@ -1297,6 +1299,7 @@ struct ISystem
     //   Host application (Editor) doesn't employ the Render cycle in ISystem,
     //   it may call this method to render the essential statistics.
     virtual void RenderStatistics () = 0;
+    virtual void RenderPhysicsHelpers() = 0;
     virtual void RenderPhysicsStatistics (IPhysicalWorld* pWorld) = 0;
 
     // Summary:

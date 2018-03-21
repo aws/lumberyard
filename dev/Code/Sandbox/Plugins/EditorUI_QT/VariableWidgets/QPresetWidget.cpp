@@ -11,11 +11,11 @@
 */
 #include "stdafx.h"
 #include "QPresetWidget.h"
-#include "qlabel.h"
-#include "qpushbutton.h"
-#include "qcoreevent.h"
-#include "qevent.h"
-#include "qboxlayout.h"
+#include <QLabel>
+#include <QPushButton>
+#include <qcoreevent.h>
+#include <QEvent>
+#include <QBoxLayout>
 
 
 #ifdef EDITOR_QT_UI_EXPORTS

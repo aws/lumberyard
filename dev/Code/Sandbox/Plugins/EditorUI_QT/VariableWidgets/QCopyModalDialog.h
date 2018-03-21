@@ -16,10 +16,10 @@
 #include "../api.h"
 
 #include <QWidget>
-#include "qdialog.h"
-#include "qpushbutton.h"
-#include "qgridlayout.h"
-#include "qlabel.h"
+#include <QDialog>
+#include <QPushButton>
+#include <QGridLayout>
+#include <QLabel>
 
  class EDITOR_QT_UI_API QCopyModalDialog
     : public QDialog

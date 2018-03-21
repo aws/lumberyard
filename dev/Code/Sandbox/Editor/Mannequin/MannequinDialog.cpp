@@ -474,7 +474,7 @@ bool CMannequinDialog::SavePreviewFile(const char* filename)
         XmlNodeRef contextDefNode = XmlHelpers::CreateXmlNode("contextData");
         SScopeContextData& contextDef = m_contexts.m_contextData[i];
 
-        contextDefNode->setAttr("name", contextDef.name.toLatin1().data());
+        contextDefNode->setAttr("name", contextDef.name.toUtf8().data());
         if (contextDef.startActive)
         {
             contextDefNode->setAttr("enabled", contextDef.startActive);
@@ -570,8 +570,8 @@ bool CMannequinDialog::SavePreviewFile(const char* filename)
                 SMannequinContexts::SProp& prop = m_contexts.backgroundProps[i];
 
                 XmlNodeRef xmlProp = XmlHelpers::CreateXmlNode("Prop");
-                xmlProp->setAttr("Name", prop.name.toLatin1().data());
-                xmlProp->setAttr("Entity", prop.entity.toLatin1().data());
+                xmlProp->setAttr("Name", prop.name.toUtf8().data());
+                xmlProp->setAttr("Entity", prop.entity.toUtf8().data());
                 xmlProps->addChild(xmlProp);
             }
         }
@@ -820,7 +820,7 @@ bool CMannequinDialog::InitialiseToPreviewFile(const char* previewFile)
 
                 SEntitySpawnParams params;
                 params.pClass = pEntityClass;
-                QByteArray name = (context.name + PAGE_POSTFIX[em]).toLatin1();
+                QByteArray name = (context.name + PAGE_POSTFIX[em]).toUtf8();
                 params.sName = name.data();
                 params.vPosition.Set(0.0f, 0.0f, 0.0f);
                 params.qRotation.SetIdentity();
@@ -1157,7 +1157,7 @@ void CMannequinDialog::OnInitDialog()
 
         if (!szDefaultPreviewFile.isEmpty())
         {
-            LoadNewPreviewFile(szDefaultPreviewFile.toLatin1().data());
+            LoadNewPreviewFile(szDefaultPreviewFile.toUtf8().data());
         }
 
         RefreshAndActivateErrorReport();
@@ -2107,7 +2107,7 @@ void CMannequinDialog::LoadMannequinFolder()
     CFileUtil::ScanDirectory(MANNEQUIN_FOLDER, "*.adb", adbFiles);
     for (IFileUtil::FileArray::const_iterator itAdbs = adbFiles.begin(); itAdbs != adbFiles.end(); ++itAdbs)
     {
-        mannequinSys.GetAnimationDatabaseManager().Load((MANNEQUIN_FOLDER + itAdbs->filename).toLatin1().data());
+        mannequinSys.GetAnimationDatabaseManager().Load((MANNEQUIN_FOLDER + itAdbs->filename).toUtf8().data());
     }
 
     // XMLs: can be tag definitions or controller definition files
@@ -2115,11 +2115,11 @@ void CMannequinDialog::LoadMannequinFolder()
     CFileUtil::ScanDirectory(MANNEQUIN_FOLDER, "*.xml", xmlFiles);
     for (IFileUtil::FileArray::const_iterator itXmls = xmlFiles.begin(); itXmls != xmlFiles.end(); ++itXmls)
     {
-        const CTagDefinition* pTagDef = mannequinSys.GetAnimationDatabaseManager().LoadTagDefs((MANNEQUIN_FOLDER + itXmls->filename).toLatin1().data(), true);
+        const CTagDefinition* pTagDef = mannequinSys.GetAnimationDatabaseManager().LoadTagDefs((MANNEQUIN_FOLDER + itXmls->filename).toUtf8().data(), true);
         if (!pTagDef)
         {
             // Failed to load as a tag definition: try as a controller definition file
-            mannequinSys.GetAnimationDatabaseManager().LoadControllerDef((MANNEQUIN_FOLDER + itXmls->filename).toLatin1().data());
+            mannequinSys.GetAnimationDatabaseManager().LoadControllerDef((MANNEQUIN_FOLDER + itXmls->filename).toUtf8().data());
         }
     }
 }
@@ -2266,7 +2266,7 @@ namespace MannequinInfoHelper
 
                 QString tagList;
                 MannUtils::FlagsToTagList(tagList, animAssetReport.tags, animAssetReport.fragID, *contexts.m_controllerDef, "");
-                pFile->write(tagList.toLatin1().data());
+                pFile->write(tagList.toUtf8().data());
                 pFile->write(",");
 
                 const char* const fragmentNameTo = animAssetReport.fragIDTo != FRAGMENT_ID_INVALID ? scopeContextData.database->GetFragmentDefs().GetTagName(animAssetReport.fragIDTo) : "";
@@ -2278,10 +2278,10 @@ namespace MannequinInfoHelper
                 {
                     MannUtils::FlagsToTagList(tagList, animAssetReport.tagsTo, animAssetReport.fragIDTo, *contexts.m_controllerDef, "");
                 }
-                pFile->write(tagListTo.toLatin1().data());
+                pFile->write(tagListTo.toUtf8().data());
                 pFile->write(",");
 
-                pFile->write(QString::number(animAssetReport.fragOptionID).toLatin1().data());
+                pFile->write(QString::number(animAssetReport.fragOptionID).toUtf8().data());
                 pFile->write(",");
 
                 pFile->write(contexts.previewFilename.c_str());

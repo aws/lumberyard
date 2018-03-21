@@ -209,7 +209,7 @@ void C3DEngine::CreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void C3DEngine::RenderRenderNode_ShadowPass(IShadowCaster* pShadowCaster, const SRenderingPassInfo& passInfo, JobManager::SJobState* pJobState)
+void C3DEngine::RenderRenderNode_ShadowPass(IShadowCaster* pShadowCaster, const SRenderingPassInfo& passInfo, AZ::LegacyJobExecutor* pJobExecutor)
 {
     assert(passInfo.IsShadowPass());
 
@@ -278,7 +278,7 @@ void C3DEngine::RenderRenderNode_ShadowPass(IShadowCaster* pShadowCaster, const 
         CBrush* pBrush = static_cast<CBrush*>(pRenderNode);
         pBrush->SetDrawFrame(passInfo.GetFrameID(), passInfo.GetRecursiveLevel());
         const CLodValue lodValue = pBrush->ComputeLod(wantedLod, passInfo);
-        pBrush->Render(lodValue, passInfo, NULL, pJobState, rendItemSorter);
+        pBrush->Render(lodValue, passInfo, NULL, pJobExecutor, rendItemSorter);
     }
     break;
     default:
@@ -563,7 +563,6 @@ Vec3 C3DEngine::GetEntityRegisterPoint(IRenderNode* pEnt)
     if (pEnt->m_dwRndFlags & ERF_REGISTER_BY_POSITION)
     {
         vPoint = pEnt->GetPos();
-        vPoint.z += 0.25f;
 
         if (pEnt->GetRenderNodeType() != eERType_Light)
         {

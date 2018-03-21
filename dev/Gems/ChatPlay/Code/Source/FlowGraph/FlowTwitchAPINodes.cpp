@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 
 #include <Broadcast/BroadcastAPI.h>

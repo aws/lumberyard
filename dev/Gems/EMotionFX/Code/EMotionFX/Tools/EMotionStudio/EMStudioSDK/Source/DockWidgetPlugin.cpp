@@ -23,14 +23,14 @@ namespace EMStudio
     // constructor
     DockWidgetPlugin::DockWidgetPlugin()
         : EMStudioPlugin()
+        , mDock()
     {
-        mDock = nullptr;
     }
 
     // destructor
     DockWidgetPlugin::~DockWidgetPlugin()
     {
-        if (mDock)
+        if (!mDock.isNull())
         {
             // Disconnecting all signals from mDock to this object since we are
             // destroying it. Some plugins connect to visibility change that gets
@@ -43,11 +43,15 @@ namespace EMStudio
         }
     }
 
+    void DockWidgetPlugin::OnMainWindowClosed()
+    {
+        GetPluginManager()->RemoveActivePlugin(this);
+    }
 
     // check if we have a window that uses this object name
     bool DockWidgetPlugin::GetHasWindowWithObjectName(const MCore::String& objectName)
     {
-        if (mDock == nullptr)
+        if (mDock.isNull())
         {
             return false;
         }
@@ -60,18 +64,46 @@ namespace EMStudio
     // create the base interface
     void DockWidgetPlugin::CreateBaseInterface(const char* objectName)
     {
+        if (!objectName)
+        {
+            QString newName = GetPluginManager()->GenerateObjectName();
+            SetObjectName(newName);
+        }
+        else
+        {
+            SetObjectName(objectName);
+        }
+    }
+
+
+    // set the interface title
+    void DockWidgetPlugin::SetInterfaceTitle(const char* name)
+    {
+        if (!mDock.isNull())
+        {
+            mDock->setWindowTitle(name);
+        }
+    }
+
+    MysticQt::DockWidget* DockWidgetPlugin::GetDockWidget() 
+    { 
+        if (!mDock.isNull())
+        {
+            return mDock;
+        }
+        
         // get the main window
         QMainWindow* mainWindow = GetMainWindow();
 
         // create a window for the plugin
-        mDock = new RemovePluginOnCloseDockWidget(GetName(), this);
+        mDock = new RemovePluginOnCloseDockWidget(mainWindow, GetName(), this);
         mDock->setAllowedAreas(Qt::AllDockWidgetAreas);
 
         // set the custom dock widget header
         MysticQt::DockHeader* titleBar = new MysticQt::DockHeader(mDock);
         mDock->setTitleBarWidget(titleBar);
 
-        QDockWidget::DockWidgetFeatures features  = QDockWidget::NoDockWidgetFeatures;
+        QDockWidget::DockWidgetFeatures features = QDockWidget::NoDockWidgetFeatures;
         if (GetIsClosable())
         {
             features |= QDockWidget::DockWidgetClosable;
@@ -91,30 +123,12 @@ namespace EMStudio
 
         mDock->setFeatures(features);
 
-        if (objectName == nullptr)
-        {
-            QString newName = GetPluginManager()->GenerateObjectName();
-            SetObjectName(newName);
-        }
-        else
-        {
-            SetObjectName(objectName);
-        }
-
         //  mDock->setFloating( true );
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mDock);
 
         titleBar->UpdateIcons();
-    }
 
-
-    // set the interface title
-    void DockWidgetPlugin::SetInterfaceTitle(const char* name)
-    {
-        if (mDock)
-        {
-            mDock->setWindowTitle(name);
-        }
+        return mDock;
     }
 }   // namespace EMStudio
 

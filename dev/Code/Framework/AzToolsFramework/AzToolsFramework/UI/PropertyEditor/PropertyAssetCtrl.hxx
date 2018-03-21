@@ -15,7 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <QtWidgets/QWidget>
-#include <QtWidgets/qpushbutton.h>
+#include <QtWidgets/QPushButton>
 #include "PropertyEditorAPI.h"
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Serialization/EditContext.h>

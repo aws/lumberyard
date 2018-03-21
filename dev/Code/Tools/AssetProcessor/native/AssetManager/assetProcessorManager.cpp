@@ -171,13 +171,13 @@ namespace AssetProcessor
                     {
                         QString encodedRelative = QString::fromUtf8(entry.m_sourceName.c_str()).toLower();
                         QString encodedScanFolder = QString::fromUtf8(scanFolder.m_scanFolder.c_str()).toLower();
-
+                        QString withoutOutputPrefix = encodedRelative;
                         if (!scanFolder.m_outputPrefix.empty())
                         {
-                            encodedRelative = encodedRelative.remove(0, static_cast<int>(scanFolder.m_outputPrefix.size()) + 1);
+                            withoutOutputPrefix = withoutOutputPrefix.remove(0, static_cast<int>(scanFolder.m_outputPrefix.size()) + 1);
                         }
 
-                        QString finalAbsolute = (QString("%1/%2").arg(encodedScanFolder).arg(encodedRelative)).toLower();
+                        QString finalAbsolute = (QString("%1/%2").arg(encodedScanFolder).arg(withoutOutputPrefix)).toLower();
                         m_SourceFilesInDatabase[finalAbsolute] = encodedRelative;
                     }
 
@@ -348,39 +348,44 @@ namespace AssetProcessor
 
     void AssetProcessorManager::ProcessGetAssetJobsInfoRequest(AssetJobsInfoRequest& request, AssetJobsInfoResponse& response)
     {
-        AzToolsFramework::AssetSystem::JobInfoContainer jobList;
-        AssetProcessor::JobIdEscalationList jobIdEscalationList;
-
         if (request.m_assetId.IsValid())
         {
             //If the assetId is valid than search both the database and the pending queue and update the searchTerm with the source name
-            AzToolsFramework::AssetDatabase::SourceDatabaseEntry entry;
-            if (m_stateData->GetSourceBySourceGuid(request.m_assetId.m_guid, entry))
+            bool found = false;
             {
-                request.m_searchTerm = entry.m_sourceName.c_str();
-            }
-            else
-            {
+                // First check the queue as this is the cheapest to do.
                 AZStd::lock_guard<AZStd::mutex> lock(m_sourceUUIDToSourceNameMapMutex);
-
                 auto foundSource = m_sourceUUIDToSourceNameMap.find(request.m_assetId.m_guid);
                 if (foundSource != m_sourceUUIDToSourceNameMap.end())
                 {
                     // if we are here it means that the database have no knowledge about this source asset but it is in the queue for processing
-                    request.m_searchTerm = m_sourceUUIDToSourceNameMap[request.m_assetId.m_guid].m_sourceName.toUtf8().data();
-                }
-                else
-                {
-                    // if we are here it means that this source asset is neither in the database nor in the queue for processing
-                    AZ_TracePrintf(AssetProcessor::DebugChannel, "ProcessGetAssetJobsInfoRequest: AssetProcessor unable to find the requested source asset having uuid (%s).\n", request.m_assetId.m_guid.ToString<AZStd::string>().c_str());
-                    response = AssetJobsInfoResponse(jobList, false);
-                    return;
+                    request.m_searchTerm = foundSource->second.m_sourceName.toUtf8().data();
+                    found = true;
                 }
             }
-
+            if (!found)
+            {
+                // If not found, then check the database.
+                AzToolsFramework::AssetDatabase::SourceDatabaseEntry entry;
+                if (m_stateData->GetSourceBySourceGuid(request.m_assetId.m_guid, entry))
+                {
+                    request.m_searchTerm = entry.m_sourceName.c_str();
+                    found = true;
+                }
+            }
+            if (!found)
+            {
+                // If still not found it means that this source asset is neither in the database nor in the queue for processing
+                AZ_TracePrintf(AssetProcessor::DebugChannel, "ProcessGetAssetJobsInfoRequest: AssetProcessor unable to find the requested source asset having uuid (%s).\n", 
+                    request.m_assetId.m_guid.ToString<AZStd::string>().c_str());
+                response = AssetJobsInfoResponse(AzToolsFramework::AssetSystem::JobInfoContainer(), false);
+                return;
+            }
         }
         QString normalizedInputAssetPath;
  
+        AzToolsFramework::AssetSystem::JobInfoContainer jobList;
+        AssetProcessor::JobIdEscalationList jobIdEscalationList;
         if (!request.m_isSearchTermJobKey)
         {
             normalizedInputAssetPath = AssetUtilities::NormalizeFilePath(request.m_searchTerm.c_str());
@@ -391,7 +396,7 @@ namespace AssetProcessor
                 QString relativePathToFile;
                 if (!m_platformConfig->ConvertToRelativePath(normalizedInputAssetPath, relativePathToFile, scanFolderName))
                 {
-                    response = AssetJobsInfoResponse(jobList, false);
+                    response = AssetJobsInfoResponse(AzToolsFramework::AssetSystem::JobInfoContainer(), false);
                     return;
                 }
 
@@ -401,7 +406,7 @@ namespace AssetProcessor
             //any queued or in progress jobs will be in the map:
             for (const auto& entry : m_jobRunKeyToJobInfoMap)
             {
-                if (entry.second.m_sourceFile == normalizedInputAssetPath.toUtf8().constData())
+                if (AzFramework::StringFunc::Equal(entry.second.m_sourceFile.c_str(), normalizedInputAssetPath.toUtf8().constData()))
                 {
                     jobList.push_back(entry.second);
                     if (request.m_escalateJobs)
@@ -413,7 +418,6 @@ namespace AssetProcessor
         }
         else
         {
-
             auto found = m_jobKeyToJobRunKeyMap.equal_range(request.m_searchTerm.c_str());
 
             for (auto iter = found.first; iter != found.second; ++iter)
@@ -436,15 +440,33 @@ namespace AssetProcessor
             Q_EMIT EscalateJobs(jobIdEscalationList);
         }
 
+        AzToolsFramework::AssetSystem::JobInfoContainer jobListDataBase;
         if (!request.m_isSearchTermJobKey)
         {
             //any succeeded or failed jobs will be in the table
-            m_stateData->GetJobInfoBySourceName(normalizedInputAssetPath.toUtf8().constData(), jobList);
+            m_stateData->GetJobInfoBySourceName(normalizedInputAssetPath.toUtf8().constData(), jobListDataBase);
         }
         else
         {
             //check the database for all jobs with that job key 
-            m_stateData->GetJobInfoByJobKey(request.m_searchTerm, jobList);
+            m_stateData->GetJobInfoByJobKey(request.m_searchTerm, jobListDataBase);
+        }
+
+        for (const AzToolsFramework::AssetSystem::JobInfo& job : jobListDataBase)
+        {
+            auto result = AZStd::find_if(jobList.begin(), jobList.end(),
+                [&job](AzToolsFramework::AssetSystem::JobInfo& entry) -> bool
+                {
+                    return
+                        AzFramework::StringFunc::Equal(entry.m_platform.c_str(), job.m_platform.c_str()) &&
+                        AzFramework::StringFunc::Equal(entry.m_jobKey.c_str(), job.m_jobKey.c_str()) &&
+                        AzFramework::StringFunc::Equal(entry.m_sourceFile.c_str(), job.m_sourceFile.c_str());
+                });
+            if (result == jobList.end())
+            {
+                // A job for this asset has already completed and was registered with the database so report that one as well.
+                jobList.push_back(job);
+            }
         }
 
         response = AssetJobsInfoResponse(jobList, true);
@@ -1047,8 +1069,8 @@ namespace AssetProcessor
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Removed lingering prior product %s\n", priorProduct.ToString().c_str());
                 }
 
-                // if the folder is empty we may as well clean that too.
-                CleanEmptyFoldersForFile(fullProductPath, m_normalizedCacheRootPath);
+                QString parentFolderName = QFileInfo(fullProductPath).absolutePath();
+                m_checkFoldersToRemove.insert(parentFolderName);
             }
 
             //trace that we are about to update the products in the database
@@ -1472,8 +1494,8 @@ namespace AssetProcessor
                     }
                     Q_EMIT AssetMessage(job.m_platform.c_str(), message);
 
-                    // if the folder is empty we may as well clean that too.
-                    CleanEmptyFoldersForFile(fullProductPath, m_normalizedCacheRootPath);
+                    QString parentFolderName = QFileInfo(fullProductPath).absolutePath();
+                    m_checkFoldersToRemove.insert(parentFolderName);
                 }
             }
             else
@@ -1499,6 +1521,9 @@ namespace AssetProcessor
         {
             for (const auto& source : sources)
             {
+                AzToolsFramework::AssetSystem::JobInfo jobInfo;
+                jobInfo.m_sourceFile = relativeSourceFile.toUtf8().constData();
+
                 AzToolsFramework::AssetDatabase::JobDatabaseEntryContainer jobs;
                 if (m_stateData->GetJobsBySourceID(source.m_sourceID, jobs))
                 {
@@ -1522,14 +1547,20 @@ namespace AssetProcessor
                             job.m_fingerprint = FAILED_FINGERPRINT;
                             m_stateData->SetJob(job);
                         }
+
+                        // notify the GUI to remove any failed jobs that are currently onscreen:
+                        jobInfo.m_platform = job.m_platform;
+                        jobInfo.m_jobKey = job.m_jobKey;
+                        Q_EMIT JobRemoved(jobInfo);
                     }
                 }
                 // delete the source from the database too since otherwise it believes we have no products.
                 m_stateData->RemoveSource(source.m_sourceID);
+               
             }
         }
 
-        Q_EMIT SourceDeleted(relativeSourceFile);
+        Q_EMIT SourceDeleted(relativeSourceFile);  // note that this removes it from the RC Queue Model, also
     }
 
     void AssetProcessorManager::AddKnownFoldersRecursivelyForFile(QString fullFile, QString root)
@@ -1560,7 +1591,7 @@ namespace AssetProcessor
         }
     }
 
-    void AssetProcessorManager::CheckMissingJobs(QString relativeSourceFile, const AZStd::vector<JobDetails>& jobsThisTime)
+    void AssetProcessorManager::CheckMissingJobs(QString relativeSourceFile, const ScanFolderInfo* scanFolder, const AZStd::vector<JobDetails>& jobsThisTime)
     {
         // Check to see if jobs were emitted last time by this builder, but are no longer being emitted this time - in which case we must eliminate old products.
         // whats going to be in the database is fingerprints for each job last time
@@ -1574,7 +1605,7 @@ namespace AssetProcessor
 
         // find all jobs from the last time of the platforms that are currently enabled
         JobInfoContainer jobsFromLastTime;
-        for (const AssetBuilderSDK::PlatformInfo& platformInfo : m_platformConfig->GetEnabledPlatforms())
+        for (const AssetBuilderSDK::PlatformInfo& platformInfo : scanFolder->GetPlatforms())
         {
             QString platform = QString::fromUtf8(platformInfo.m_identifier.c_str());
             m_stateData->GetJobInfoBySourceName(relativeSourceFile.toUtf8().constData(), jobsFromLastTime, AZ::Uuid::CreateNull(), QString(), platform);
@@ -1642,14 +1673,13 @@ namespace AssetProcessor
     }
 
     // clean all folders that are empty until you get to the root, or until you get to one that isn't empty.
-    void AssetProcessorManager::CleanEmptyFoldersForFile(QString fullFile, QString root)
+    void AssetProcessorManager::CleanEmptyFolder(QString folder, QString root)
     {
         QString normalizedRoot = AssetUtilities::NormalizeFilePath(root);
 
         // also track parent folders up to the specified root.
-        QString parentFolderName = QFileInfo(fullFile).absolutePath();
-        QString normalizedParentFolder = AssetUtilities::NormalizeFilePath(parentFolderName);
-        QDir parentDir(parentFolderName);
+        QString normalizedParentFolder = AssetUtilities::NormalizeFilePath(folder);
+        QDir parentDir(folder);
 
         // keep walking up the tree until we either run out of folders or hit the root.
         while ((normalizedParentFolder.compare(normalizedRoot, Qt::CaseInsensitive) != 0) && (parentDir.exists()))
@@ -2226,6 +2256,8 @@ namespace AssetProcessor
                 Q_EMIT NumRemainingJobsChanged(m_activeFiles.size() + m_filesToExamine.size() + aznumeric_cast<int>(m_jobsToProcessLater.size()));
                 Q_EMIT AssetProcessorManagerIdleState(true);
             }
+
+            QTimer::singleShot(20, this, SLOT(RemoveEmptyFolders()));
         }
         else
         {
@@ -2379,6 +2411,20 @@ namespace AssetProcessor
         }
     }
 
+    void AssetProcessorManager::RemoveEmptyFolders()
+    {
+        if (!m_AssetProcessorIsBusy)
+        {
+            if (m_checkFoldersToRemove.size())
+            {
+                QString dir = *m_checkFoldersToRemove.begin();
+                CleanEmptyFolder(dir, m_normalizedCacheRootPath);
+                m_checkFoldersToRemove.remove(dir);
+                QTimer::singleShot(20, this, SLOT(RemoveEmptyFolders()));
+            }
+        }
+    }
+
     void AssetProcessorManager::DispatchFileChange()
     {
         Q_ASSERT(m_activeFiles.size() > 0);
@@ -2438,7 +2484,7 @@ namespace AssetProcessor
     {
         bool sentSourceFileChangedMessage = false;
 
-        CheckMissingJobs(relativePathToFile, jobsToAnalyze);
+        CheckMissingJobs(relativePathToFile, scanFolder, jobsToAnalyze);
 
         for (JobDetails& newJob : jobsToAnalyze)
         {
@@ -2574,7 +2620,7 @@ namespace AssetProcessor
                 actualRelativePath = actualRelativePath.remove(0, static_cast<int>(scanFolder->GetOutputPrefix().length()) + 1);
             }
 
-            const AssetBuilderSDK::CreateJobsRequest createJobsRequest(builderInfo.m_busId, actualRelativePath.toUtf8().constData(), scanFolder->ScanPath().toUtf8().constData(), m_platformConfig->GetEnabledPlatforms(), sourceUUID);
+            const AssetBuilderSDK::CreateJobsRequest createJobsRequest(builderInfo.m_busId, actualRelativePath.toUtf8().constData(), scanFolder->ScanPath().toUtf8().constData(), scanFolder->GetPlatforms(), sourceUUID);
 
             AssetBuilderSDK::CreateJobsResponse createJobsResponse;
 
@@ -2591,7 +2637,7 @@ namespace AssetProcessor
 
             if (createJobsResponse.m_result == AssetBuilderSDK::CreateJobsResultCode::Failed)
             {
-                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Error processing file %s.\n", normalizedPath.toUtf8().constData());
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Createjobs Failed: %s.\n", normalizedPath.toUtf8().constData());
 
                 AZStd::string fullPathToLogFile = AssetUtilities::ComputeJobLogFolder();
                 fullPathToLogFile += "/";
@@ -2616,7 +2662,7 @@ namespace AssetProcessor
                 
                 AssetUtilities::ReadJobLog(resolvedBuffer, response);
                 jobdetail.m_jobParam[AZ_CRC(AutoFailLogFile)].swap(response.m_jobLog);
-                jobdetail.m_jobParam[AZ_CRC(AutoFailOmitFromDatabaseKey)] = "false"; // do not allow this job to be a real job that is added to the db, its fake for UI ony
+                jobdetail.m_jobParam[AZ_CRC(AutoFailOmitFromDatabaseKey)] = "true"; // omit this job from the database.
 
                 Q_EMIT AssetToProcess(jobdetail);// forwarding this job to rccontroller to fail it
 
@@ -2628,13 +2674,14 @@ namespace AssetProcessor
             }
             else
             {
-                if (createJobsResponse.m_createJobOutputs.empty())
+                // if we get here, we succeeded.
                 {
-                    JobDetails jobdetail;
-                    jobdetail.m_jobEntry = JobEntry(normalizedPath, actualRelativePath, builderInfo.m_busId, { "all", {} }, QString("CreateJobs_success_%1").arg(builderInfo.m_busId.ToString<AZStd::string>().c_str()), 0, runKey, sourceUUID);
-                    jobdetail.m_autoSucceed = true;
-
-                    Q_EMIT AssetToProcess(jobdetail);// forwarding this job to rccontroller to clear any failed jobs
+                    // if we succeeded, we can erase any jobs that had failed createjobs last time for this builder:
+                    AzToolsFramework::AssetSystem::JobInfo jobInfo;
+                    jobInfo.m_sourceFile = relativePathToFile.toUtf8().constData();
+                    jobInfo.m_platform = "all";
+                    jobInfo.m_jobKey = AZStd::string::format("CreateJobs_%s", builderInfo.m_busId.ToString<AZStd::string>().c_str());
+                    Q_EMIT JobRemoved(jobInfo);
                 }
 
                 for (AssetBuilderSDK::JobDescriptor& jobDescriptor : createJobsResponse.m_createJobOutputs)
@@ -3081,4 +3128,4 @@ namespace AssetProcessor
     }
 } // namespace AssetProcessor
 
-#include <native/AssetManager/AssetProcessorManager.moc>
+#include <native/AssetManager/assetProcessorManager.moc>

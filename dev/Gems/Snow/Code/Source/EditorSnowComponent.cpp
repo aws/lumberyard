@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Snow_precompiled.h"
 #include "EditorSnowComponent.h"
 
 #include <Editor/Objects/BaseObject.h>

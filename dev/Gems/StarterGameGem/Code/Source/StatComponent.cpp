@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StarterGameGem_precompiled.h"
 #include "StatComponent.h"
 
 #include "StarterGameUtility.h"

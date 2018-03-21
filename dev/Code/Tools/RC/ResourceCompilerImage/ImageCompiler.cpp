@@ -2015,7 +2015,7 @@ string CImageCompiler::GetInfoStringUI(const bool inbOrig) const
             .arg(dwMem / 1024.0f, 0, 'f', 1).arg(dwFinalReduce).arg(dwFinalImageFlags, 8, 16, QChar('0'));
     }
 
-    return str.toLatin1().data();
+    return str.toUtf8().data();
 }
 
 
@@ -2052,7 +2052,7 @@ string CImageCompiler::GetDestInfoString()
         "\t%8")     // AttachedMemInKB
         .arg(dwW).arg(dwH).arg(szAlpha).arg(dwNumMips).arg(dwMem / 1024.0f, 0, 'f', 1).arg(szName).arg(dwReduce).arg(dwAttachedMem / 1024.0f, 0, 'f', 1);
 
-    return str.toLatin1().data();
+    return str.toUtf8().data();
 }
 
 

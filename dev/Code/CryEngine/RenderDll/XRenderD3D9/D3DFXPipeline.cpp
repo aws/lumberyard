@@ -51,7 +51,13 @@ long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Fo
         pDeclCache->m_pDeclaration = CHWShader_D3D::s_pCurInstVS->GetCachedInputLayout(cacheID);
     }
 #else
-    SOnDemandD3DVertexDeclarationCache* pDeclCache = &m_RP.m_D3DVertexDeclarationCache[(StreamMask & 0xff) >> 1][bMorph || bInstanced][vertexFormat.GetCRC()];
+    AZ::u32 declCacheCRC = vertexFormat.GetCRC();
+    if (CHWShader_D3D::s_pCurInstVS)
+    {
+        declCacheCRC = CHWShader_D3D::s_pCurInstVS->GenerateVertexDeclarationCacheCRC(vertexFormat);
+    }
+
+    SOnDemandD3DVertexDeclarationCache* pDeclCache = &m_RP.m_D3DVertexDeclarationCache[(StreamMask & 0xff) >> 1][bMorph || bInstanced][declCacheCRC];
 
 #endif
 
@@ -469,7 +475,7 @@ void CD3D9Renderer::FX_ClearTarget(D3DSurface* pView, const ColorF& cClear, cons
         (const FLOAT*)&cClear,
         numRects,
         pRects);
-#elif defined(DEVICE_SUPPORTS_D3D11_1) && !defined(ORBIS)
+#elif defined(DEVICE_SUPPORTS_D3D11_1) && D3DFXPIPELINE_CPP_TRAIT_CLEARVIEW
     GetDeviceContext().ClearView(
         pView,
         (const FLOAT*)&cClear,
@@ -690,9 +696,9 @@ void CD3D9Renderer::FX_ClearTargets()
                     (nFlags & FRT_CLEAR_STENCIL ? D3D11_CLEAR_STENCIL : 0)
                     ) == nFlags);
 
-            if (nFlags)
+            AZ_Warning("CD3D9Renderer", m_pNewTarget[0]->m_pDepth != nullptr, "FX_ClearTargets: Depth texture of target was nullptr. The depth target will not be cleared.");
+            if (nFlags && m_pNewTarget[0]->m_pDepth != nullptr)
             {
-                assert(m_pNewTarget[0]->m_pDepth);
                 GetDeviceContext().ClearDepthStencilView(m_pNewTarget[0]->m_pDepth, nFlags, fClearDepth, nClearStencil);
             }
         }
@@ -717,7 +723,7 @@ void CD3D9Renderer::FX_ClearTargets()
                 }
             }
 
-            if (m_pNewTarget[0]->m_ClearFlags & (~CLEAR_RTARGET))
+            if (m_pNewTarget[0]->m_ClearFlags & (~CLEAR_RTARGET) && m_pNewTarget[0]->m_pSurfDepth != nullptr)
             {
                 m_RP.m_PS[m_RP.m_nProcessThreadID].m_RTCleared++;
                 m_RP.m_PS[m_RP.m_nProcessThreadID].m_RTClearedSize += CDeviceTexture::TextureDataSize(m_pNewTarget[0]->m_pSurfDepth->pSurf);

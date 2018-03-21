@@ -141,39 +141,39 @@ namespace AzToolsFramework
         translationManipulatorConfigurator(&m_translationManipulator->m_manipulator, vertex);
 
         // linear manipulator callbacks
-        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseDownCallback([this, index](
+        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseDownCallback([this](
             const LinearManipulator::Action& action)
         {
             InitializeVertexLookup(*m_translationManipulator, *GetVertices(), action.m_start.m_snapOffset);
         });
 
-        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseMoveCallback([this, index](
+        m_translationManipulator->m_manipulator.InstallLinearManipulatorMouseMoveCallback([this](
             const LinearManipulator::Action& action)
         {
             UpdateManipulatorsAndVerticesFromOffset(*m_translationManipulator, action.m_current.m_localOffset);
         });
 
         // planar manipulator callbacks
-        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseDownCallback([this, index](
+        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseDownCallback([this](
             const PlanarManipulator::Action& action)
         {
             InitializeVertexLookup(*m_translationManipulator, *GetVertices(), action.m_start.m_snapOffset);
         });
 
-        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseMoveCallback([this, index](
+        m_translationManipulator->m_manipulator.InstallPlanarManipulatorMouseMoveCallback([this](
             const PlanarManipulator::Action& action)
         {
             UpdateManipulatorsAndVerticesFromOffset(*m_translationManipulator, action.m_current.m_localOffset);
         });
 
         // surface manipulator callbacks
-        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseDownCallback([this, index](
+        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseDownCallback([this](
             const SurfaceManipulator::Action& action)
         {
             InitializeVertexLookup(*m_translationManipulator, *GetVertices(), action.m_start.m_snapOffset);
         });
 
-        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseMoveCallback([this, index](
+        m_translationManipulator->m_manipulator.InstallSurfaceManipulatorMouseMoveCallback([this](
             const SurfaceManipulator::Action& action)
         {
             UpdateManipulatorsAndVerticesFromOffset(*m_translationManipulator, action.m_current.m_localOffset);
@@ -499,7 +499,7 @@ namespace AzToolsFramework
             {
                 return AZ::Color(1.0f, 1.0f, 0.0f, opacity[mouseOver]);
             }
-            
+
             return AZ::Color(
                 defaultColor.GetR(), defaultColor.GetG(), defaultColor.GetB(), AZ::VectorFloat(opacity[mouseOver]));
         }));

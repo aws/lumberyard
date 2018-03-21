@@ -13,7 +13,6 @@
 // include required headers
 #include "Quaternion.h"
 
-
 namespace MCore
 {
     // spherical quadratic interpolation
@@ -28,25 +27,6 @@ namespace MCore
     // returns the approximately normalized linear interpolated result [t must be between 0..1]
     Quaternion Quaternion::NLerp(const Quaternion& to, float t) const
     {
-#ifdef MCORE_PLATFORM_WII
-        const float omt = 1.0f - t;
-        const float dot = PSQUATDotProduct((::Quaternion*)this, (::Quaternion*)&to);
-        if (dot < 0)
-        {
-            t = -t;
-        }
-
-        // calculate the interpolated values
-        // TODO: optimize this using some asm
-        const float newX = (omt * x + t * to.x);
-        const float newY = (omt * y + t * to.y);
-        const float newZ = (omt * z + t * to.z);
-        const float newW = (omt * w + t * to.w);
-
-        Quaternion result(newX, newY, newZ, newW);
-        result.Normalize();
-        return result;
-#else
     #ifdef MCORE_SSE_ENABLED
         __m128 num1, num2, num3, num4, fromVec, toVec;
         const float omt = 1.0f - t;
@@ -113,7 +93,6 @@ namespace MCore
             newZ * invLen,
             newW * invLen);
     #endif
-#endif
     }
 
 

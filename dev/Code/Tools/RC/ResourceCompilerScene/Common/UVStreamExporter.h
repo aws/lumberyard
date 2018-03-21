@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexUVData.h>
 
 namespace AZ
@@ -22,10 +22,10 @@ namespace AZ
         struct MeshNodeExportContext;
 
         class UVStreamExporter
-            : public SceneAPI::SceneCore::ExportingComponent
+            : public SceneAPI::SceneCore::RCExportingComponent
         {
         public:
-            AZ_COMPONENT(UVStreamExporter, "{3840C94B-C131-4C34-B35B-C8E8CFC5AFD1}", SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(UVStreamExporter, "{3840C94B-C131-4C34-B35B-C8E8CFC5AFD1}", SceneAPI::SceneCore::RCExportingComponent);
 
             UVStreamExporter();
             ~UVStreamExporter() override = default;

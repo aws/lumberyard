@@ -684,19 +684,19 @@ void CVolumetricFog::DestroyResources(bool destroyResolutionIndependentResources
 void CVolumetricFog::Clear()
 {
     ClearFogVolumes();
-
-    m_numTileLights = 0;
-    m_numFogVolumes = 0;
-
-    m_globalEnvProbeParam0 = Vec4(0.0f, 0.0f, 0.0f, 0.0f);
-    m_globalEnvProbeParam1 = Vec4(0.0f, 0.0f, 0.0f, 0.0f);
-    SAFE_RELEASE(m_globalEnvProveTex0);
-    SAFE_RELEASE(m_globalEnvProveTex1);
 }
 
 void CVolumetricFog::ClearAll()
 {
     Clear();
+
+    m_globalEnvProbeParam0 = Vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    m_globalEnvProbeParam1 = Vec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // ClearAll() is called during shutdown and post level unload 
+    // when we should not be rendering volumetric fog.
+    SAFE_RELEASE(m_globalEnvProveTex0);
+    SAFE_RELEASE(m_globalEnvProveTex1);
 
     ClearAllFogVolumes();
     m_Cleared = MaxFrameNum;

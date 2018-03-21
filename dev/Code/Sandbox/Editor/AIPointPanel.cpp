@@ -16,7 +16,6 @@
 
 #include "Objects/AIPoint.h"
 #include "IAgent.h"
-#include "./aipointpanel.h"
 
 #include "GameEngine.h"
 #include "AI/NavDataGeneration/Navigation.h"

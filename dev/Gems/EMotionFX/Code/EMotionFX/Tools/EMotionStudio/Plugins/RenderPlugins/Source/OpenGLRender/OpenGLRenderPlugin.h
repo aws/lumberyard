@@ -13,7 +13,7 @@
 #ifndef __EMSTUDIO_OPENGLRENDERPLUGIN_H
 #define __EMSTUDIO_OPENGLRENDERPLUGIN_H
 
-#include <EMotionFX/Rendering/OpenGL2/Source/GLActor.h>
+#include <EMotionFX/Rendering/OpenGL2/Source/glactor.h>
 #include <EMotionFX/Rendering/OpenGL2/Source/GraphicsManager.h>
 #include <EMotionFX/Rendering/OpenGL2/Source/GLRenderUtil.h>
 #include "../../../../EMStudioSDK/Source/RenderPlugin/RenderPlugin.h"

@@ -247,7 +247,7 @@ void SFileSystemSearchFolder::Process()
         _finddata_t fd;
 
         QString search = m_path + "/*.*";
-        intptr_t handle = pCryPak->FindFirst(search.toLatin1().data(), &fd);
+        intptr_t handle = pCryPak->FindFirst(search.toUtf8().data(), &fd);
         if (handle != -1)
         {
             int res = 0;
@@ -479,14 +479,14 @@ bool CFileSystemSearcher::Exists(const char* asset, int assetTypeId) const
         assetName += it->second.GetExt(0);
     }
 
-    bool fileExists = gEnv->pCryPak->IsFileExist(assetName.toLatin1().data());
+    bool fileExists = gEnv->pCryPak->IsFileExist(assetName.toUtf8().data());
 
     if (!fileExists && (it->second.GetVarType() == IVariable::DT_TEXTURE))
     {
         //check if the file exists under a different texture extension
         for (int i = 0; i < it->second.GetExtCount(); i++)
         {
-            fileExists = gEnv->pCryPak->IsFileExist(PathUtil::ReplaceExtension(assetName.toLatin1().data(), it->second.GetExt(i).toLatin1().data()));
+            fileExists = gEnv->pCryPak->IsFileExist(PathUtil::ReplaceExtension(assetName.toUtf8().data(), it->second.GetExt(i).toUtf8().data()));
             if (fileExists)
             {
                 break;
@@ -517,7 +517,7 @@ bool CFileSystemSearcher::GetReplacement(QString& replacement, int assetTypeId)
     {
         QFileInfo info(fullFileName);
         m_lastPath = info.path();
-        string gamePath = Path::FullPathToGamePath(fullFileName).toLatin1().data();
+        string gamePath = Path::FullPathToGamePath(fullFileName).toUtf8().data();
         gamePath = PathUtil::ToUnixPath(gamePath);
         replacement = gamePath.c_str();
         return true;
@@ -559,8 +559,8 @@ IAssetSearcher::TAssetSearchId CFileSystemSearcher::AddSearch(const char* asset,
     }
     assetName = assetName.toLower();
 
-    string file = PathUtil::GetFile(assetName.toLatin1().data());
-    string path = PathUtil::GetPath(assetName.toLatin1().data());
+    string file = PathUtil::GetFile(assetName.toUtf8().data());
+    string path = PathUtil::GetPath(assetName.toUtf8().data());
     path = PathUtil::ToUnixPath(path);
     path.TrimLeft('/');
     path.TrimRight('/');

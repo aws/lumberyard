@@ -27,7 +27,7 @@
 
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 #include <Editor/View/Widgets/PropertyGridContextMenu.h>
 #include <ScriptCanvas/Bus/RequestBus.h>

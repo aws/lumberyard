@@ -37,6 +37,7 @@ namespace AzToolsFramework
     }
 
     class PropertyAttributeReader;
+    class PropertyRowWidget;
     class InstanceDataNode;
 
     // if you embed a property editor control in one of your widgets, you can (optionally) set hooks to get these events.
@@ -210,7 +211,7 @@ namespace AzToolsFramework
     class PropertyHandlerBase
     {
         friend class ReflectedPropertyEditor;
-        friend class PropertyRowWidget;
+        friend PropertyRowWidget;
         friend class Components::PropertyManagerComponent;
 
     public:

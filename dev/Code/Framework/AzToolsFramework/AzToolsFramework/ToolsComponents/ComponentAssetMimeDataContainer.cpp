@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ComponentAssetMimeDataContainer.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/Component.h>
@@ -19,7 +19,7 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Serialization/ObjectStream.h>
 
-#include <QtCore/QMimeData.h>
+#include <QtCore/QMimeData>
 
 namespace AzToolsFramework
 {

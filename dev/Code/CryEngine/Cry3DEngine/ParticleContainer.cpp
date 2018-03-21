@@ -17,8 +17,6 @@
 #include "ParticleEmitter.h"
 #include "Particle.h"
 
-#include <IJobManager_JobDelegator.h>
-
 #define fMAX_STATIC_BB_RADIUS                   4096.f  // Static bounding box above this size forces dynamic BB
 #define fMAX_RELATIVE_TAIL_DEVIATION    0.1f
 

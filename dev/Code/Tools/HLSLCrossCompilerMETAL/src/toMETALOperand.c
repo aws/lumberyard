@@ -16,6 +16,7 @@
 #endif
 
 #define fpcheck(x) (isnan(x) || isinf(x))
+#define MAX_STR_LENGTH 128
 
 extern void AddIndentation(HLSLCrossCompilerContext* psContext);
 
@@ -33,6 +34,10 @@ uint32_t SVTTypeToFlagMETAL(const SHADER_VARIABLE_TYPE eType)
     {
         return TO_FLAG_INTEGER; // TODO bools?
     }
+    else if (eType == SVT_FLOAT16)
+    {
+        return TO_FLAG_FLOAT16;
+    }
     else
     {
         return TO_FLAG_NONE;
@@ -48,6 +53,10 @@ SHADER_VARIABLE_TYPE TypeFlagsToSVTTypeMETAL(const uint32_t typeflags)
     if (typeflags & (TO_FLAG_UNSIGNED_INTEGER | TO_AUTO_BITCAST_TO_UINT))
     {
         return SVT_UINT;
+    }
+    if (typeflags & (TO_FLAG_FLOAT16 | TO_AUTO_BITCAST_TO_FLOAT16))
+    {
+        return SVT_FLOAT16;
     }
     return SVT_FLOAT;
 }
@@ -69,6 +78,7 @@ const char* GetConstructorForTypeMETAL(const SHADER_VARIABLE_TYPE eType,
     static const char* const uintTypes[] = { " ", "uint", "uint2", "uint3", "uint4" };
     static const char* const intTypes[] = { " ", "int", "int2", "int3", "int4" };
     static const char* const floatTypes[] = { " ", "float", "float2", "float3", "float4" };
+    static const char* const float16Types[] = { " ", "half", "half2", "half3", "half4" };
 
     if (components < 1 || components > 4)
     {
@@ -83,6 +93,8 @@ const char* GetConstructorForTypeMETAL(const SHADER_VARIABLE_TYPE eType,
         return intTypes[components];
     case SVT_FLOAT:
         return floatTypes[components];
+    case SVT_FLOAT16:
+        return float16Types[components];
     default:
         return "ERROR UNSUPPORTED TYPE";
     }
@@ -968,7 +980,7 @@ void TranslateOperandIndexMADMETAL(HLSLCrossCompilerContext* psContext, const Op
 }
 
 // Returns nonzero if a direct constructor can convert src->dest
-static int CanDoDirectCast(HLSLCrossCompilerContext* psContext, SHADER_VARIABLE_TYPE src, SHADER_VARIABLE_TYPE dest)
+static int CanDoDirectCast( SHADER_VARIABLE_TYPE src, SHADER_VARIABLE_TYPE dest)
 {
     // uint<->int<->bool conversions possible
     if ((src == SVT_INT || src == SVT_UINT || src == SVT_BOOL) && (dest == SVT_INT || dest == SVT_UINT || dest == SVT_BOOL))
@@ -985,101 +997,62 @@ static int CanDoDirectCast(HLSLCrossCompilerContext* psContext, SHADER_VARIABLE_
     return 0;
 }
 
-static const char* GetBitcastOp(SHADER_VARIABLE_TYPE from, SHADER_VARIABLE_TYPE to, uint32_t numComponents)
+// Returns true if one of the src or dest is half float while the other is not
+static int IsHalfFloatCastNeeded(SHADER_VARIABLE_TYPE src, SHADER_VARIABLE_TYPE dest)
 {
-    if (to == SVT_FLOAT && from == SVT_INT)
+    // uint<->int<->bool conversions possible
+    if ((src == SVT_FLOAT16) && (dest != SVT_FLOAT16))
     {
-        if (numComponents == 1)
-        {
-            return "as_type<float>";
-        }
-        else if (numComponents == 2)
-        {
-            return "as_type<float2>";
-        }
-        else if (numComponents == 3)
-        {
-            return "as_type<float3>";
-        }
-        else if (numComponents == 4)
-        {
-            return "as_type<float4>";
-        }
-        else
-        {
-            ASSERT(0);
-        }
-    }
-    else if (to == SVT_FLOAT && from == SVT_UINT)
-    {
-        if (numComponents == 1)
-        {
-            return "as_type<float>";
-        }
-        else if (numComponents == 2)
-        {
-            return "as_type<float2>";
-        }
-        else if (numComponents == 3)
-        {
-            return "as_type<float3>";
-        }
-        else if (numComponents == 4)
-        {
-            return "as_type<float4>";
-        }
-        else
-        {
-            ASSERT(0);
-        }
-    }
-    else if (to == SVT_INT && from == SVT_FLOAT)
-    {
-        if (numComponents == 1)
-        {
-            return "as_type<int>";
-        }
-        else if (numComponents == 2)
-        {
-            return "as_type<int2>";
-        }
-        else if (numComponents == 3)
-        {
-            return "as_type<int3>";
-        }
-        else if (numComponents == 4)
-        {
-            return "as_type<int4>";
-        }
-        else
-        {
-            ASSERT(0);
-        }
-    }
-    else if (to == SVT_UINT && from == SVT_FLOAT)
-    {
-        if (numComponents == 1)
-        {
-            return "as_type<uint>";
-        }
-        else if (numComponents == 2)
-        {
-            return "as_type<uint2>";
-        }
-        else if (numComponents == 3)
-        {
-            return "as_type<uint3>";
-        }
-        else if (numComponents == 4)
-        {
-            return "as_type<uint4>";
-        }
-        else
-        {
-            ASSERT(0);
-        }
+        return 1;
     }
 
+    // float<->double possible
+    if ((src != SVT_FLOAT16) && (dest == SVT_FLOAT16))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+static const char* GetOpDestType(SHADER_VARIABLE_TYPE to)
+{
+    switch (to)
+    {
+    case SVT_FLOAT:
+        return "float";
+        break;
+    case SVT_FLOAT16:
+        return "half";
+        break;
+    case SVT_INT:
+        return "int";
+        break;
+    case SVT_UINT:
+        return "uint";
+        break;
+    default:
+        ASSERT(0);
+        return "";
+    }
+}
+
+static const char* GetOpCastType(SHADER_VARIABLE_TYPE from, SHADER_VARIABLE_TYPE to)
+{
+    if (to == SVT_FLOAT && (from == SVT_INT || from == SVT_UINT))
+    {
+        return "as_type";
+    }
+    else if (to == SVT_INT && (from == SVT_FLOAT || from == SVT_UINT))
+    {
+        return "as_type";
+    }
+    else if (to == SVT_UINT && (from == SVT_FLOAT || from == SVT_INT))
+    {
+        return "as_type";
+    }
+    
+    ASSERT(0);
     return "ERROR missing components in GetBitcastOp()";
 }
 
@@ -1089,13 +1062,24 @@ static void printImmediate32(HLSLCrossCompilerContext* psContext, uint32_t value
     bstring metal = *psContext->currentShaderString;
     int needsParenthesis = 0;
 
-    if (eType == SVT_FLOAT)
+    if (eType == SVT_FLOAT || eType == SVT_FLOAT16)
     {
         // Print floats as bit patterns.
-        bcatcstr(metal, "as_type<float>(");
+        switch (eType)
+        {
+        case SVT_FLOAT:
+            bcatcstr(metal, "as_type<float>(");
+            break;
+        case SVT_FLOAT16:
+            bcatcstr(metal, "static_cast<half>(");
+            break;
+        }
+        
         eType = SVT_INT;
         needsParenthesis = 1;
     }
+    
+
 
     switch (eType)
     {
@@ -1165,18 +1149,36 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
 
         if (eType != requestedType)
         {
-            if (CanDoDirectCast(psContext, eType, requestedType))
+            if (CanDoDirectCast(eType, requestedType))
             {
-                bformata(metal, "%s(", GetConstructorForTypeMETAL(requestedType, requestedComponents));
-                numParenthesis++;
+                bformata(metal, "%s(", GetConstructorForTypeMETAL(requestedType, requestedComponents));               
                 hasCtor = 1;
+            }
+            else if (IsHalfFloatCastNeeded(eType, requestedType))
+            {
+                // half float static cast needed
+                if (requestedComponents > 1)
+                {
+                    bformata(metal, "static_cast<%s%i>(", GetOpDestType(requestedType), requestedComponents);
+                }
+                else
+                {
+                    bformata(metal, "static_cast<%s>(", GetOpDestType(requestedType));
+                }                
             }
             else
             {
                 // Direct cast not possible, need to do bitcast.
-                bformata(metal, "%s(", GetBitcastOp(eType, requestedType, requestedComponents));
-                numParenthesis++;
+                if (requestedComponents > 1)
+                {
+                    bformata(metal, "%s<%s%i>(", GetOpCastType(eType, requestedType), GetOpDestType(requestedType), requestedComponents);
+                }
+                else
+                {
+                    bformata(metal, "%s<%s>(", GetOpCastType(eType, requestedType), GetOpDestType(requestedType));
+                }               
             }
+            numParenthesis++;
         }
 
         // Add ctor if needed (upscaling)
@@ -1352,6 +1354,10 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
         else if (eType == SVT_DOUBLE)
         {
             bcatcstr(metal, "_double");
+        }
+        else if (eType == SVT_FLOAT16)
+        {
+            bcatcstr(metal, "_half");
         }
         else if (eType == SVT_VOID &&
                  (ui32TOFlag & TO_FLAG_DESTINATION))
@@ -1960,6 +1966,13 @@ SHADER_VARIABLE_TYPE GetOperandDataTypeMETAL(HLSLCrossCompilerContext* psContext
 
 SHADER_VARIABLE_TYPE GetOperandDataTypeExMETAL(HLSLCrossCompilerContext* psContext, const Operand* psOperand, SHADER_VARIABLE_TYPE ePreferredTypeForImmediates)
 {
+
+    // The min precision qualifier overrides all of the stuff below
+    if (psOperand->eMinPrecision == OPERAND_MIN_PRECISION_FLOAT_16)
+    {   
+        return SVT_FLOAT16;    
+    }
+
     switch (psOperand->eType)
     {
     case OPERAND_TYPE_TEMP:

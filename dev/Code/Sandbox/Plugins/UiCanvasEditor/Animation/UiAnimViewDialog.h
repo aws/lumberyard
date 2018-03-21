@@ -169,11 +169,6 @@ private:
 
     void SaveZoomScrollSettings();
 
-#ifdef KDAB_TEMPORARILY_REMOVED
-    void ShowShortcutsCustomizeDlg(CXTPCommandBars* pCommandBars, UINT nMenuIDResource, const char* pSectionNameForSaving);
-    void AddShortCutMenu(CustomizeKeyboardPage& pageKeyboard, CToolBar* pToolBar, const CString& sToolBarName);
-#endif
-
     virtual void OnNodeSelectionChanged(CUiAnimViewSequence* pSequence) override;
     virtual void OnNodeRenamed(CUiAnimViewNode* pNode, const char* pOldName) override;
 

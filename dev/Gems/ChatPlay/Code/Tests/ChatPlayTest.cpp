@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

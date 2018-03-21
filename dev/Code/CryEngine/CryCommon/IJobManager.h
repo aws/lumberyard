@@ -1759,6 +1759,8 @@ retry:
 /////////////////////////////////////////////////////////////////////////////////
 inline void JobManager::SJobSyncVariable::SetRunning() volatile
 {
+    AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::System);
+
     SyncVar currentValue;
     SyncVar newValue;
 
@@ -1775,11 +1777,13 @@ inline void JobManager::SJobSyncVariable::SetRunning() volatile
 /////////////////////////////////////////////////////////////////////////////////
 inline bool JobManager::SJobSyncVariable::SetStopped() volatile
 {
+    AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::System);
+
     SyncVar currentValue;
     SyncVar newValue;
     SyncVar resValue;
 
-    // first use atomic operations to decrease the running counter
+    // first use atomic operations to decrease the running counter ("--syncVar.nRunningCounter")
     do
     {
         // volatile read

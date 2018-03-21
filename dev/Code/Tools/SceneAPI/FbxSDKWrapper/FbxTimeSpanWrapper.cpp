@@ -10,15 +10,13 @@
 *
 */
 #include <AzCore/Debug/Trace.h>
-#include "FbxTimeWrapper.h"
-#include "FbxTimeSpanWrapper.h"
-
+#include <SceneAPI/FbxSDKWrapper/FbxTimeWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxTimeSpanWrapper.h>
 
 namespace AZ
 {
     namespace FbxSDKWrapper
     {
-
         FbxTimeSpanWrapper::FbxTimeSpanWrapper(const FbxTimeSpan& fbxTimeSpan)
             : m_fbxTimeSpan(fbxTimeSpan)
         {
@@ -38,7 +36,5 @@ namespace AZ
         {
             return FbxTimeWrapper(m_fbxTimeSpan.GetStart()).GetFrameRate();
         }
-
-
     } // namespace FbxSDKWrapper
 } // namespace AZ

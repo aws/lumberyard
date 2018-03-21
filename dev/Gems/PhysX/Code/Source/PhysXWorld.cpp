@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 #include <PhysXWorld.h>
 #include <PhysXMathConversion.h>
 #include <PhysXSystemComponent.h>
@@ -20,7 +20,6 @@
 
 namespace PhysX
 {
-    //////////////////////////////////////////////////////////////////////////
     PhysXWorld::PhysXWorld(AZ::Crc32 id, const Physics::Ptr<Physics::WorldSettings>& settings)
         : Physics::World(settings)
         , m_worldId(id)
@@ -29,22 +28,14 @@ namespace PhysX
     {
         physx::PxTolerancesScale tolerancesScale = physx::PxTolerancesScale();
         physx::PxSceneDesc sceneDesc(tolerancesScale);
-
         sceneDesc.gravity = PxVec3FromLYVec3(settings->m_gravity);
-
-        // TODO use AZ task scheduler
-        AzPhysXCpuDispatcher* cpuDispatcher = nullptr;
-        EBUS_EVENT_RESULT(cpuDispatcher, PhysX::PhysXSystemRequestBus, GetCpuDispatcher);
-        AZ_Assert(cpuDispatcher, "PhysX CPU dispatcher was not created");
-
-        sceneDesc.cpuDispatcher = cpuDispatcher;
         sceneDesc.filterShader = physx::PxDefaultSimulationFilterShader;
-        EBUS_EVENT_RESULT(m_world, PhysX::PhysXSystemRequestBus, CreateScene, sceneDesc);
+
+        PhysXSystemRequestBus::BroadcastResult(m_world, &PhysXSystemRequests::CreateScene, sceneDesc);
 
         m_worldCollisionFilter = nullptr;
     }
 
-    //////////////////////////////////////////////////////////////////////////
     PhysXWorld::~PhysXWorld()
     {
         if (m_world)
@@ -54,11 +45,7 @@ namespace PhysX
         }
     }
 
-    //////////////////////////////////////////////////////////////////////////
     // Physics::World
-    //////////////////////////////////////////////////////////////////////////
-
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result)
     {
         auto orig = PxVec3FromLYVec3(request.m_start);
@@ -86,19 +73,16 @@ namespace PhysX
             }
 
             hitResult.m_hitBody = nullptr; // Get this from the entity
-            // hitResult.m_hitShapeIdHierarchy = ??? // todo: figure out how this can be set
             result.m_hits.push_back(hitResult);
-
-            // PxHitFlags, faceIndex, (u,v) coords, PxRigidActor* and PxShape* are also here. Not used in generic API for some reason
         }
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::ShapeCast(const Physics::ShapeCastRequest& request, Physics::ShapeCastResult& result)
     {
         if (request.m_nonLinear)
         {
-            AZ_Assert(false, "PhysX does not support non-linear shape casts.");
+            AZ_Error("PhysX World", false, "PhysX does not support non-linear shape casts.");
+            return;
         }
 
         physx::PxTransform pose(physx::PxIdentity);
@@ -150,7 +134,8 @@ namespace PhysX
             Physics::ConvexHullShapeConfiguration* convexConfiguration = static_cast<Physics::ConvexHullShapeConfiguration*>(request.m_shapeConfiguration.get());
 
             physx::PxConvexMesh* convexMesh = nullptr;
-            EBUS_EVENT_RESULT(convexMesh, PhysX::PhysXSystemRequestBus, CreateConvexMesh, convexConfiguration->m_vertexData, convexConfiguration->m_vertexCount, convexConfiguration->m_vertexStride);
+            PhysXSystemRequestBus::BroadcastResult(convexMesh, &PhysXSystemRequests::CreateConvexMesh,
+                convexConfiguration->m_vertexData, convexConfiguration->m_vertexCount, convexConfiguration->m_vertexStride);
 
             physx::PxConvexMeshGeometry convex(convexMesh);
             m_world->sweep(convex, pose, dir, distance, pxResult);
@@ -160,7 +145,7 @@ namespace PhysX
             break;
         }
         default:
-            AZ_Assert(false, "PhysXWorld::ShapeCast error. Invalid shapeType");
+            AZ_Error("PhysX World", false, "Unsupported shape type in shape cast request.");
             break;
         }
 
@@ -183,28 +168,21 @@ namespace PhysX
 
             hitResult.m_hitBody = nullptr; // Get this from the entity
 
-            // TODO: Not sure how to get these. Any ideas?
-            //    ShapeIdHierarchy    m_shapeIdHierarchySelf;                                         ///< Shape Id hierarchy of the casted body at the hit location.
-            //    ShapeIdHierarchy    m_shapeIdHierarchyHit;                                          ///< Shape Id hierarchy of the hit body at the hit location.
-
             result.m_hits.push_back(hitResult);
         }
     }
 
-    //////////////////////////////////////////////////////////////////////////
     AZ::u32 PhysXWorld::QueueRayCast(const Physics::RayCastRequest& request, const Physics::RayCastResultCallback& callback)
     {
         AZ_Warning("PhysX World", false, "Not implemented.");
         return 0;
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::CancelQueuedRayCast(AZ::u32 queueHandle)
     {
         AZ_Warning("PhysX World", false, "Not implemented.");
     }
 
-    //////////////////////////////////////////////////////////////////////////
     AZ::u32 PhysXWorld::QueueShapeCast(const Physics::ShapeCastRequest& request, const Physics::ShapeCastResultCallback& callback)
     {
         AZ_Warning("PhysX World", false, "Not implemented.");
@@ -250,13 +228,11 @@ namespace PhysX
         AZ_Warning("PhysX World", false, "Not implemented.");
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::SetCollisionFilter(const Physics::Ptr<Physics::WorldCollisionFilter>& collisionFilter)
     {
         AZ_Warning("PhysX World", false, "Not implemented.");
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::Update(float deltaTime)
     {
         deltaTime = AZ::GetClamp(deltaTime, 0.0f, m_maxDeltaTime);
@@ -278,42 +254,32 @@ namespace PhysX
             m_world->fetchResults(true);
         }
 
-        EBUS_EVENT(EntityPhysXEventBus, OnPostStep);
+        EntityPhysXEventBus::Broadcast(&EntityPhysXEvents::OnPostStep);
     }
 
-    //////////////////////////////////////////////////////////////////////////
     AZ::Crc32 PhysXWorld::GetNativeType() const
     {
         return PhysX::NativeTypeIdentifiers::PhysXWorld;
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void* PhysXWorld::GetNativePointer() const
     {
         return m_world;
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::OnAddBody(const Physics::Ptr<Physics::WorldBody>& body)
     {
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::OnRemoveBody(const Physics::Ptr<Physics::WorldBody>& body)
     {
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::OnAddAction(const Physics::Ptr<Physics::Action>& action)
     {
     }
 
-    //////////////////////////////////////////////////////////////////////////
     void PhysXWorld::OnRemoveAction(const Physics::Ptr<Physics::Action>& action)
     {
     }
-
-    //////////////////////////////////////////////////////////////////////////
-    // end of Physics::World
-    //////////////////////////////////////////////////////////////////////////
 } // namespace PhysX

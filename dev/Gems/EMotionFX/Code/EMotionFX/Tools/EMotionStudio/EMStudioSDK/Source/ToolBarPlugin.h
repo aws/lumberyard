@@ -19,7 +19,7 @@
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
 #include <QToolBar>
-#include <assert.h>
+#include <QPointer>
 
 
 namespace EMStudio
@@ -31,12 +31,14 @@ namespace EMStudio
     class EMSTUDIO_API ToolBarPlugin
         : public EMStudioPlugin
     {
+        Q_OBJECT
         MCORE_MEMORYOBJECTCATEGORY(ToolBarPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
     public:
         ToolBarPlugin();
         virtual ~ToolBarPlugin();
 
         EMStudioPlugin::EPluginType GetPluginType() const override          { return EMStudioPlugin::PLUGINTYPE_TOOLBAR; }
+        virtual void OnMainWindowClosed();
 
         virtual bool GetIsFloatable() const                                 { return true;  }
         virtual bool GetIsVertical() const                                  { return false; }
@@ -47,17 +49,17 @@ namespace EMStudio
         virtual void SetInterfaceTitle(const char* name);
         virtual void CreateBaseInterface(const char* objectName) override;
 
-        virtual QString GetObjectName() const override                      { MCORE_ASSERT(mBar); return mBar->objectName(); }
-        virtual void SetObjectName(const QString& name) override            { mBar->setObjectName(name); }
+        virtual QString GetObjectName() const override                      { AZ_Assert(!mBar.isNull(), "Unexpected null bar"); return mBar->objectName(); }
+        virtual void SetObjectName(const QString& name) override            { GetToolBar()->setObjectName(name); }
 
         virtual bool GetHasWindowWithObjectName(const MCore::String& objectName) override;
 
         virtual Qt::ToolBarArea GetToolBarCreationArea() const              { return Qt::BottomToolBarArea; }
 
-        MCORE_INLINE QToolBar* GetToolBar()                                 { return mBar; }
+        QToolBar* GetToolBar();
 
     protected:
-        QToolBar*   mBar;
+        QPointer<QToolBar>   mBar;
     };
 }   // namespace EMStudio
 

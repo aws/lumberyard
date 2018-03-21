@@ -1165,6 +1165,8 @@ struct I3DEngine
         float fWavesSpeed;
         float fWavesAmount;
         float fWavesSize;
+        float fWindDirectionU;
+        float fWindDirectionV;
     };
 
     struct SStremaingBandwidthData
@@ -1558,15 +1560,6 @@ struct I3DEngine
     
     // Summary:
     //     Gets ocean animation parameters.
-    // Return Value:
-    //     2 Vec4 which constain:
-    //     0: x = ocean wind direction, y = wind speed, z = waves speed, w = waves amount
-    //     1: x = waves size, y = free, z = free, w = free
-
-    virtual void GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const = 0;
-
-    // Summary:
-    //     Gets ocean animation parameters.
     virtual OceanAnimationData GetOceanAnimationParams() const = 0;
 
     // Summary:
@@ -1592,8 +1585,40 @@ struct I3DEngine
     virtual void DeleteDecalsInRange(AABB* pAreaBox, IRenderNode* pEntity) = 0;
 
     // Summary:
-    //     Sets the current sun color.
+    //     Sets the current sun base color.
     virtual void SetSunColor(Vec3 vColor) = 0;
+
+    // Summary:
+    //     Gets the current sun animated color.
+    virtual Vec3 GetSunAnimColor() = 0;
+
+    // Summary:
+    //     Sets the current sun animated color.
+    virtual void SetSunAnimColor(const Vec3& color) = 0;
+
+    // Summary:
+    //     Sets the current sun animation speed.
+    virtual float GetSunAnimSpeed() = 0;
+
+    // Summary:
+    //     Sets the current sun animation speed.
+    virtual void SetSunAnimSpeed(float sunAnimSpeed) = 0;
+
+    // Summary:
+    //     Gets the current sun animation phase.
+    virtual AZ::u8 GetSunAnimPhase() = 0;
+
+    // Summary:
+    //     Sets the current sun animation phase.
+    virtual void SetSunAnimPhase(AZ::u8 sunAnimPhase) = 0;
+
+    // Summary:
+    //     Gets the current sun animation index.
+    virtual AZ::u8 GetSunAnimIndex() = 0;
+
+    // Summary:
+    //     Sets the current sun animation index.
+    virtual void SetSunAnimIndex(AZ::u8 sunAnimIndex) = 0;
 
     // Summary:
     //     Sets current rain parameters.
@@ -2339,7 +2364,7 @@ struct I3DEngine
 
     virtual bool IsAreaActivationInUse() = 0;
 
-    virtual void RenderRenderNode_ShadowPass(IShadowCaster* pRNode, const SRenderingPassInfo& passInfo, JobManager::SJobState* pJobState) = 0;
+    virtual void RenderRenderNode_ShadowPass(IShadowCaster* pRNode, const SRenderingPassInfo& passInfo, AZ::LegacyJobExecutor* pJobExecutor) = 0;
 
     virtual IParticleManager* GetParticleManager() = 0;
 

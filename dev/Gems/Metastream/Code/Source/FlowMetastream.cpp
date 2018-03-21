@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Metastream_precompiled.h"
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <Metastream/MetastreamBus.h>
 #include <sstream>

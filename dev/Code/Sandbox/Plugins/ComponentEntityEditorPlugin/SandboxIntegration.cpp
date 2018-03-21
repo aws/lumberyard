@@ -39,7 +39,7 @@
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <MathConversion.h>
 
@@ -327,6 +327,58 @@ void SandboxIntegrationManager::PopulateEditorGlobalContextMenu(QMenu* menu, con
     menu->addSeparator();
     SetupFlowGraphContextMenu(menu);
     menu->addSeparator();
+
+    if (selected.size() > 0)
+    {
+        action = menu->addAction(QObject::tr("Open pinned Inspector"));
+        QObject::connect(action, &QAction::triggered, [this, selected]
+        {
+            OpenPinnedInspector(selected);
+        });
+        menu->addSeparator();
+    }
+}
+
+void SandboxIntegrationManager::OpenPinnedInspector(const AzToolsFramework::EntityIdList& entities)
+{
+    QDockWidget* dockWidget = InstanceViewPane(LyViewPane::EntityInspectorPinned);
+    if (dockWidget)
+    {
+        QComponentEntityEditorInspectorWindow* editor = static_cast<QComponentEntityEditorInspectorWindow*>(dockWidget->widget());
+        if (editor && editor->GetPropertyEditor())
+        {
+            editor->GetPropertyEditor()->SetOverrideEntityIds(entities);
+
+            AZStd::string widgetTitle;
+            if (entities.size() == 1)
+            {
+                AZStd::string entityName;
+                AZ::ComponentApplicationBus::BroadcastResult(entityName, &AZ::ComponentApplicationBus::Events::GetEntityName, entities[0]);
+                widgetTitle = AZStd::string::format("%s Inspector", entityName.c_str());
+            }
+            else
+            {
+                widgetTitle = AZStd::string::format("%d Entities - Inspector", entities.size());
+            }
+
+            dockWidget->setWindowTitle(widgetTitle.c_str());
+        }
+    }
+}
+
+void SandboxIntegrationManager::ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* editor)
+{
+    QWidget* currentWidget = editor->parentWidget();
+    while (currentWidget)
+    {
+        QDockWidget* dockWidget = qobject_cast<QDockWidget*>(currentWidget);
+        if (dockWidget)
+        {
+            QtViewPaneManager::instance()->ClosePaneInstance(LyViewPane::EntityInspectorPinned, dockWidget);
+            return;
+        }
+        currentWidget = currentWidget->parentWidget();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -339,9 +391,28 @@ void SandboxIntegrationManager::SetupSliceContextMenu(QMenu* menu)
 
     if (!selectedEntities.empty())
     {
+        bool anySelectedEntityFromExistingSlice = false;
+        for (AZ::EntityId entityId : selectedEntities)
+        {
+            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+            AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
+            if (sliceAddress.first)
+            {
+                anySelectedEntityFromExistingSlice = true;
+                break;
+            }
+        }
+
         QAction* createAction = menu->addAction(QObject::tr("Create slice..."));
         createAction->setToolTip(QObject::tr("Creates a slice out of the currently selected entities"));
         QObject::connect(createAction, &QAction::triggered, [this, selectedEntities] { ContextMenu_InheritSlice(selectedEntities); });
+
+        if (anySelectedEntityFromExistingSlice)
+        {
+            QAction* createAction = menu->addAction(QObject::tr("Create detached slice..."));
+            createAction->setToolTip(QObject::tr("Creates a slice out of the currently selected entities. This action does not nest any existing slice that might be associated with the selected entities."));
+            QObject::connect(createAction, &QAction::triggered, [this, selectedEntities] { ContextMenu_MakeSlice(selectedEntities); });
+        }
     }
 
     QAction* instantiateAction = menu->addAction(QObject::tr("Instantiate slice..."));
@@ -875,6 +946,44 @@ bool SandboxIntegrationManager::DestroyEditorRepresentation(AZ::EntityId entityI
     return false;
 }
 
+void SandboxIntegrationManager::GoToSelectedOrHighlightedEntitiesInViewports()
+{
+    AzToolsFramework::EntityIdList entityIds;
+    GetSelectedOrHighlightedEntities(entityIds);
+
+    if (entityIds.size() == 0)
+    {
+        return;
+    }
+
+    AABB b;
+    AABB box;
+    box.Reset();
+
+    for (const AZ::EntityId& entityId : entityIds)
+    {
+        CEntityObject* object = nullptr;
+        EBUS_EVENT_ID_RESULT(object, entityId, AzToolsFramework::ComponentEntityEditorRequestBus, GetSandboxObject);
+
+        if (object)
+        {
+            object->GetBoundBox(b);
+            box.Add(b.min);
+            box.Add(b.max);
+        }
+    }
+
+    int numViews = GetIEditor()->GetViewManager()->GetViewCount();
+    for (int i = 0; i < numViews; ++i)
+    {
+        CViewport* viewport = GetIEditor()->GetViewManager()->GetView(i);
+        if (viewport)
+        {
+            viewport->CenterOnAABB(box);
+        }
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 void GetDuplicationSet(AzToolsFramework::EntityIdSet& output, bool includeDescendants)
 {
@@ -1168,8 +1277,7 @@ void SandboxIntegrationManager::SetEditTool(const char* tool)
 //////////////////////////////////////////////////////////////////////////
 void SandboxIntegrationManager::LaunchLuaEditor(const char* files)
 {
-    AZStd::string cmd = AZStd::string::format("general.launch_lua_editor \'%s\'", files);
-    GetIEditor()->ExecuteCommand("%s", cmd.c_str());
+    GetIEditor()->ExecuteCommand(QStringLiteral("general.launch_lua_editor \'%1\'").arg(files));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1185,8 +1293,8 @@ AZStd::string SandboxIntegrationManager::SelectResource(const AZStd::string& res
     context.parentWidget = GetMainWindow();
     context.typeName = resourceType.c_str();
 
-    dll_string resource = GetEditor()->GetResourceSelectorHost()->SelectResource(context, previousValue.c_str());
-    return AZStd::string(resource.c_str());
+    QString resource = GetEditor()->GetResourceSelectorHost()->SelectResource(context, previousValue.c_str());
+    return AZStd::string(resource.toUtf8().constData());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1245,6 +1353,20 @@ void SandboxIntegrationManager::GenerateNavigationArea(const AZStd::string& name
     }
 }
 
+AZStd::vector<AZStd::string> SandboxIntegrationManager::GetAgentTypes()
+{
+    CAIManager* manager = GetIEditor()->GetAI();
+    
+    AZStd::vector<AZStd::string> agentTypes;
+    size_t agentTypeCount = manager->GetNavigationAgentTypeCount();
+    for (size_t i = 0; i < agentTypeCount; i++)
+    {
+        agentTypes.push_back(manager->GetNavigationAgentTypeName(i));
+    }
+    
+    return agentTypes;
+}
+
 //////////////////////////////////////////////////////////////////////////
 void SandboxIntegrationManager::OnContextReset()
 {
@@ -1269,7 +1391,7 @@ AZStd::string SandboxIntegrationManager::GetHyperGraphName(IFlowGraph* runtimeGr
     CHyperGraph* hyperGraph = GetIEditor()->GetFlowGraphManager()->FindGraph(runtimeGraphPtr);
     if (hyperGraph)
     {
-        return hyperGraph->GetName().toLatin1().data();
+        return hyperGraph->GetName().toUtf8().data();
     }
 
     return AZStd::string();
@@ -1606,33 +1728,33 @@ void SandboxIntegrationManager::BuildSerializedFlowGraph(IFlowGraph* flowGraph, 
                     case IVariable::UNKNOWN:
                     case IVariable::FLOW_CUSTOM_DATA:
                     {
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Unknown,
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Unknown,
                             aznew SerializedFlowGraph::InputValueVoid());
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::INT:
                     {
                         auto* value = aznew SerializedFlowGraph::InputValueInt();
                         port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Int, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Int, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::BOOL:
                     {
                         auto* value = aznew SerializedFlowGraph::InputValueBool();
                         port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Bool, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Bool, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::FLOAT:
                     {
                         auto* value = aznew SerializedFlowGraph::InputValueFloat();
                         port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Float, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Float, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::VECTOR2:
@@ -1640,8 +1762,8 @@ void SandboxIntegrationManager::BuildSerializedFlowGraph(IFlowGraph* flowGraph, 
                         Vec2 temp;
                         port.pVar->Get(temp);
                         auto* value = aznew SerializedFlowGraph::InputValueVec2(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Vector2, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Vector2, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::VECTOR:
@@ -1649,8 +1771,8 @@ void SandboxIntegrationManager::BuildSerializedFlowGraph(IFlowGraph* flowGraph, 
                         Vec3 temp;
                         port.pVar->Get(temp);
                         auto* value = aznew SerializedFlowGraph::InputValueVec3(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Vector3, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Vector3, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::VECTOR4:
@@ -1658,8 +1780,8 @@ void SandboxIntegrationManager::BuildSerializedFlowGraph(IFlowGraph* flowGraph, 
                         Vec4 temp;
                         port.pVar->Get(temp);
                         auto* value = aznew SerializedFlowGraph::InputValueVec4(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Vector4, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Vector4, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::QUAT:
@@ -1667,8 +1789,8 @@ void SandboxIntegrationManager::BuildSerializedFlowGraph(IFlowGraph* flowGraph, 
                         Quat temp;
                         port.pVar->Get(temp);
                         auto* value = aznew SerializedFlowGraph::InputValueQuat(temp);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Quat, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Quat, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::STRING:
@@ -1676,17 +1798,17 @@ void SandboxIntegrationManager::BuildSerializedFlowGraph(IFlowGraph* flowGraph, 
                         auto* value = aznew SerializedFlowGraph::InputValueString();
                         QString temp;
                         port.pVar->Get(temp);
-                        value->m_value = temp.toLatin1().data();
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::String, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        value->m_value = temp.toUtf8().data();
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::String, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     case IVariable::DOUBLE:
                     {
                         auto* value = aznew SerializedFlowGraph::InputValueDouble();
                         port.pVar->Get(value->m_value);
-                        nodeData.m_inputs.emplace_back(port.GetName().toLatin1().data(), port.GetHumanName().toLatin1().data(), FlowVariableType::Double, value);
-                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toLatin1().data());
+                        nodeData.m_inputs.emplace_back(port.GetName().toUtf8().data(), port.GetHumanName().toUtf8().data(), FlowVariableType::Double, value);
+                        nodeData.m_inputs.back().m_persistentId = AZ::Crc32(port.GetName().toUtf8().data());
                     }
                     break;
                     }
@@ -2115,7 +2237,12 @@ void SandboxIntegrationManager::GenerateCubemapForEntity(AZ::EntityId entityId, 
             QString texturename = QStringLiteral("%1_cm.tif").arg(static_cast<qulonglong>(componentEntity->GetAssociatedEntityId()));
             texturename = texturename.toLower();
 
-            QString relFolder = QString("Textures\\cubemaps\\") + levelname;
+            QString relFolder = QString("textures\\cubemaps\\") + levelname;
+            if (!QFile::exists(fullGameFolder + relFolder))
+            {
+                relFolder = QString("Textures\\cubemaps\\") + levelname;
+            }
+
             QString relFilename = relFolder + "\\" + texturename;
             QString fullFolder = fullGameFolder + relFolder + "\\";
             QString fullFilename = fullGameFolder + relFilename;

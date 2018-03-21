@@ -20,7 +20,7 @@
 #include "CryUtils.h"
 
 #define INCLUDED_FROM_SYSTEM_THREADING_CPP
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#if defined(WIN32) || defined(WIN64)
     #include "CryThreadUtil_win32_thread.h"
 #else
     #include "CryThreadUtil_pthread.h"
@@ -114,7 +114,7 @@ public:
     }
     // </interfuscator:shuffle>
 private:
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#if defined(WIN32) || defined(WIN64)
     static unsigned __stdcall RunThread(void* thisPtr);
 #else
     static void* RunThread(void* thisPtr);
@@ -155,7 +155,7 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#if defined(WIN32) || defined(WIN64)
 unsigned __stdcall CThreadManager::RunThread(void* thisPtr)
 #else
 void* CThreadManager::RunThread(void* thisPtr)

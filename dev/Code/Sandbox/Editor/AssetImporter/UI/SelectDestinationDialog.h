@@ -52,6 +52,7 @@ private:
     void UpdateMessage(QString message);
     void InitializeButtons();
     void SetPreviousDestinationDirectory();
+    QString DestinationDirectory() const;
 
     QScopedPointer<Ui::SelectDestinationDialog> m_ui;
     QValidator* m_validator;

@@ -21,14 +21,18 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="api-definition\DirectoryServiceLookup_1_0_0.json" />
+    <Content Include="api-definition\ResourceInfo_1_0_0.json" />
+    <Content Include="api-definition\ServiceStatus_1_0_0.json" />
     <Content Include="swagger.json" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="test\test_integration.py" />
-    <Compile Include="test\__init__.py" />
+    <Folder Include="api-definition\" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="test" />
+    <Compile Include="api-definition\DirectoryServiceRegistration_1_0_0.json">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

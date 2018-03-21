@@ -28,7 +28,7 @@
 #include "SubObjectSelectionReferenceFrameCalculator.h"
 #include "ITransformManipulator.h"
 #include "DisplaySettings.h"
-#include "Objects/AIPoint.h"
+#include "Objects/AiPoint.h"
 #include "Objects/ParticleEffectObject.h"
 #include "Objects/PrefabObject.h"
 
@@ -200,7 +200,7 @@ void CObjectMode::DrawSelectionPreview(struct DisplayContext& dc, CBaseObject* d
 
 void CObjectMode::DisplaySelectionPreview(struct DisplayContext& dc)
 {
-    CViewport* view = GetIEditor()->GetViewManager()->GetView(0);
+    CViewport* view = dc.view->asCViewport();
     IObjectManager* objMan = GetIEditor()->GetObjectManager();
 
     if (!view)
@@ -232,7 +232,7 @@ void CObjectMode::DisplaySelectionPreview(struct DisplayContext& dc)
             }
 
             selCountStr = QString::number(m_PreviewGUIDs.size() - childNo);
-            GetIEditor()->SetStatusText(tr("Selection Candidates Count: %1").arg(selCountStr).toLatin1().data());
+            GetIEditor()->SetStatusText(tr("Selection Candidates Count: %1").arg(selCountStr));
 
             // Draw Preview for objects
             for (size_t i = 0; i < m_PreviewGUIDs.size(); ++i)
@@ -361,7 +361,7 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
     QPoint ptCoord;
     int iCurSel = -1;
 
-    if (GetIEditor()->IsInGameMode())
+    if (GetIEditor()->IsInGameMode() || GetIEditor()->IsInSimulationMode())
     {
         // Ignore clicks while in game.
         return false;
@@ -657,7 +657,7 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnLButtonUp(CViewport* view, int nFlags, const QPoint& point)
 {
-    if (GetIEditor()->IsInGameMode())
+    if (GetIEditor()->IsInGameMode() || GetIEditor()->IsInSimulationMode())
     {
         // Ignore clicks while in game.
         return true;
@@ -1019,7 +1019,7 @@ void CObjectMode::MoveSelectionToPos(CViewport* view, Vec3& pos, bool align, con
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
 {
-    if (GetIEditor()->IsInGameMode())
+    if (GetIEditor()->IsInGameMode() || GetIEditor()->IsInSimulationMode())
     {
         // Ignore while in game.
         return true;
@@ -1180,7 +1180,7 @@ bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnMouseLeave(CViewport* view)
 {
-    if (GetIEditor()->IsInGameMode())
+    if (GetIEditor()->IsInGameMode() || GetIEditor()->IsInSimulationMode())
     {
         // Ignore while in game.
         return true;
@@ -1323,7 +1323,7 @@ void CObjectMode::SetObjectCursor(CViewport* view, CBaseObject* hitObj, bool bCh
     }
 
     AZ::u32 cursorId = static_cast<AZ::u32>(cursor);
-    AZStd::string cursorStr = m_cursorStr.toLatin1().data();
+    AZStd::string cursorStr = m_cursorStr.toUtf8().data();
     EBUS_EVENT(AzToolsFramework::EditorRequests::Bus,
         UpdateObjectModeCursor,
         cursorId,

@@ -9,22 +9,21 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
-#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Component/Entity.h>
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/Script/ScriptContextAttributes.h>
 #include <AzCore/std/sort.h>
 
-#include <AzFramework/Entity/EntityContextBus.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
 
 #include "SpawnerComponent.h"
+
+#ifdef LMBR_CENTRAL_EDITOR
+#include "EditorSpawnerComponent.h"
+#endif
 
 namespace LmbrCentral
 {
@@ -56,36 +55,74 @@ namespace LmbrCentral
         }
     };
 
+    // Convert any instances of the old SampleComponent data into the appropriate
+    // modern editor-component or game-component.
+    bool ConvertLegacySpawnerComponent(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& classNode)
+    {
+        // To determine whether we want an editor or runtime component, we check
+        // if the old component was contained within GenericComponentWrapper::m_template.
+        bool isEditorComponent = (classNode.GetName() == AZ::Crc32("m_template"));
+
+        // Get Component::m_id from the base class.
+        AZ::u64 componentId = 0;
+        if (auto baseClassNode = classNode.FindSubElement(AZ::Crc32("BaseClass1")))
+        {
+            baseClassNode->GetChildData(AZ::Crc32("Id"), componentId);
+        }
+
+        // Get data values.
+        SpawnerConfig config;
+
+        classNode.GetChildData(AZ::Crc32("Slice"), config.m_sliceAsset);
+        classNode.GetChildData(AZ::Crc32("SpawnOnActivate"), config.m_spawnOnActivate);
+        classNode.GetChildData(AZ::Crc32("DestroyOnDeactivate"), config.m_destroyOnDeactivate);
+
+        // Convert this node into the appropriate component-type.
+        // Note that converting the node will clear all child data nodes.
+#ifdef LMBR_CENTRAL_EDITOR
+        if (isEditorComponent)
+        {
+            classNode.Convert(serializeContext, azrtti_typeid<EditorSpawnerComponent>());
+
+            // Create a temporary editor-component and write its contents to this node
+            EditorSpawnerComponent component;
+            component.SetId(componentId);
+            component.SetConfiguration(config);
+
+            classNode.SetData(serializeContext, component);
+        }
+        else
+#endif // LMBR_CENTRAL_EDITOR
+        {
+            classNode.Convert(serializeContext, azrtti_typeid<SpawnerComponent>());
+
+            // Create a temporary game-component and write its contents to this classNode
+            SpawnerComponent component;
+            component.SetId(componentId);
+            component.SetConfiguration(config);
+
+            classNode.SetData(serializeContext, component);
+        }
+
+        return true;
+    }
+
     //=========================================================================
     void SpawnerComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
+            serializeContext->ClassDeprecate("SpawnerComponent", DeprecatedSpawnerComponentTypeId, ConvertLegacySpawnerComponent);
+
             serializeContext->Class<SpawnerComponent, AZ::Component>()
                 ->Version(1)
                 ->Field("Slice", &SpawnerComponent::m_sliceAsset)
                 ->Field("SpawnOnActivate", &SpawnerComponent::m_spawnOnActivate)
                 ->Field("DestroyOnDeactivate", &SpawnerComponent::m_destroyOnDeactivate)
                 ;
-            
-            AZ::EditContext* editContext = serializeContext->GetEditContext();
-            if (editContext)
-            {
-                editContext->Class<SpawnerComponent>("Spawner", "The Spawner component allows an entity to spawn a design-time or run-time dynamic slice (*.dynamicslice) at the entity's location with an optional offset")
-                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Gameplay")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Spawner.png")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Spawner.png")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-spawner.html")
-                    ->DataElement(0, &SpawnerComponent::m_sliceAsset, "Dynamic slice", "The slice to spawn")
-                    ->DataElement(0, &SpawnerComponent::m_spawnOnActivate, "Spawn on activate", "Should the component spawn the selected slice upon activation?")
-                    ->DataElement(0, &SpawnerComponent::m_destroyOnDeactivate, "Destroy on deactivate", "Upon deactivation, should the component destroy any slices it spawned?")
-                    ;
-            }
         }
+ 
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
@@ -121,6 +158,10 @@ namespace LmbrCentral
         provided.push_back(AZ_CRC("SpawnerService", 0xd2f1d7a3));
     }
 
+    //=========================================================================
+    void SpawnerComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType&)
+    {
+    }
 
     //=========================================================================
     void SpawnerComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)

@@ -26,9 +26,9 @@
 
 
 template <class T>
-bool CryCreateClassInstance(const CryClassID& cid, boost::shared_ptr<T>& p)
+bool CryCreateClassInstance(const CryClassID& cid, AZStd::shared_ptr<T>& p)
 {
-    p = boost::shared_ptr<T>();
+    p = AZStd::shared_ptr<T>();
     ICryFactoryRegistry* pFactoryReg = gEnv->pSystem->GetCryFactoryRegistry();
     if (pFactoryReg)
     {
@@ -36,7 +36,7 @@ bool CryCreateClassInstance(const CryClassID& cid, boost::shared_ptr<T>& p)
         if (pFactory && pFactory->ClassSupports(cryiidof<T>()))
         {
             ICryUnknownPtr pUnk = pFactory->CreateClassInstance();
-            boost::shared_ptr<T> pT = cryinterface_cast<T>(pUnk);
+            AZStd::shared_ptr<T> pT = cryinterface_cast<T>(pUnk);
             if (pT)
             {
                 p = pT;
@@ -48,9 +48,9 @@ bool CryCreateClassInstance(const CryClassID& cid, boost::shared_ptr<T>& p)
 
 
 template <class T>
-bool CryCreateClassInstance(const char* cname, boost::shared_ptr<T>& p)
+bool CryCreateClassInstance(const char* cname, AZStd::shared_ptr<T>& p)
 {
-    p = boost::shared_ptr<T>();
+    p = AZStd::shared_ptr<T>();
     ICryFactoryRegistry* pFactoryReg = gEnv->pSystem->GetCryFactoryRegistry();
     if (pFactoryReg)
     {
@@ -58,7 +58,7 @@ bool CryCreateClassInstance(const char* cname, boost::shared_ptr<T>& p)
         if (pFactory != NULL && pFactory->ClassSupports(cryiidof<T>()))
         {
             ICryUnknownPtr pUnk = pFactory->CreateClassInstance();
-            boost::shared_ptr<T> pT = cryinterface_cast<T>(pUnk);
+            AZStd::shared_ptr<T> pT = cryinterface_cast<T>(pUnk);
             if (pT)
             {
                 p = pT;
@@ -70,9 +70,9 @@ bool CryCreateClassInstance(const char* cname, boost::shared_ptr<T>& p)
 
 
 template <class T>
-bool CryCreateClassInstanceForInterface(const CryInterfaceID& iid, boost::shared_ptr<T>& p)
+bool CryCreateClassInstanceForInterface(const CryInterfaceID& iid, AZStd::shared_ptr<T>& p)
 {
-    p = boost::shared_ptr<T>();
+    p = AZStd::shared_ptr<T>();
     ICryFactoryRegistry* pFactoryReg = gEnv->pSystem->GetCryFactoryRegistry();
     if (pFactoryReg)
     {
@@ -82,7 +82,7 @@ bool CryCreateClassInstanceForInterface(const CryInterfaceID& iid, boost::shared
         if (numFactories == 1 && pFactory)
         {
             ICryUnknownPtr pUnk = pFactory->CreateClassInstance();
-            boost::shared_ptr<T> pT = cryinterface_cast<T>(pUnk);
+            AZStd::shared_ptr<T> pT = cryinterface_cast<T>(pUnk);
             if (pT)
             {
                 p = pT;

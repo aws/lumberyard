@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "EMotionFX_precompiled.h"
 #include <Integration/Assets/AnimGraphAsset.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 

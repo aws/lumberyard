@@ -123,7 +123,7 @@ struct ICryPerfHUD
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(ICryPerfHUD);
+DECLARE_SMART_POINTERS(ICryPerfHUD);
 
 void CryPerfHUDWarning(float duration, const char*, ...) PRINTF_PARAMS(2, 3);
 inline void CryPerfHUDWarning(float duration, const char* format, ...)

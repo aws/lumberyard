@@ -1,20 +1,5 @@
 {
     "none": {
-        "Mocks": 
-        [
-            "../FbxSDKWrapper/Mocks/MockFbxAnimStackWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxMeshWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxNodeWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxPropertyWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxSceneWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxSkinWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxMaterialWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxTimeWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxSystemUnitWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxAxisSystemWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxVertexColorWrapper.h",
-            "../FbxSDKWrapper/Mocks/MockFbxUVWrapper.h"
-        ],
         "Tests": [
             "Tests/TestsMain.cpp"
         ],

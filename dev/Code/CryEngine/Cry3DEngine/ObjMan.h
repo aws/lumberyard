@@ -195,6 +195,18 @@ struct IObjManager
     virtual Vec3 GetSunColor() = 0;
     virtual void SetSunColor(const Vec3& color) = 0;
 
+    virtual Vec3 GetSunAnimColor() = 0;
+    virtual void SetSunAnimColor(const Vec3& color) = 0;
+
+    virtual float GetSunAnimSpeed() = 0;
+    virtual void SetSunAnimSpeed(float sunAnimSpeed) = 0;
+
+    virtual AZ::u8 GetSunAnimPhase() = 0;
+    virtual void SetSunAnimPhase(AZ::u8 sunAnimPhase) = 0;
+
+    virtual AZ::u8 GetSunAnimIndex() = 0;
+    virtual void SetSunAnimIndex(AZ::u8 sunAnimIndex) = 0;
+
     virtual float GetSSAOAmount() = 0;
     virtual void SetSSAOAmount(float amount) = 0;
 
@@ -483,6 +495,18 @@ public:
     virtual Vec3 GetSunColor() override { return m_vSunColor; }
     virtual void SetSunColor(const Vec3& color) override { m_vSunColor = color; }
 
+    Vec3 GetSunAnimColor() override { return m_sunAnimColor; }
+    void SetSunAnimColor(const Vec3& color) override { m_sunAnimColor = color; }
+
+    float GetSunAnimSpeed() override { return m_sunAnimSpeed; }
+    void SetSunAnimSpeed(float sunAnimSpeed) override { m_sunAnimSpeed = sunAnimSpeed; }
+
+    AZ::u8 GetSunAnimPhase() override { return m_sunAnimPhase; }
+    void SetSunAnimPhase(AZ::u8 sunAnimPhase) override { m_sunAnimPhase = sunAnimPhase; }
+
+    AZ::u8 GetSunAnimIndex() override { return m_sunAnimIndex; }
+    void SetSunAnimIndex(AZ::u8 sunAnimIndex) override { m_sunAnimIndex = sunAnimIndex; }
+
     virtual float GetSSAOAmount() override { return m_fSSAOAmount;  }
     virtual void SetSSAOAmount(float amount) override { m_fSSAOAmount = amount; }
 
@@ -702,7 +726,12 @@ public:
     static int m_nUpdateStreamingPrioriryRoundIdFast;
     static int s_nLastStreamingMemoryUsage;                 //For streaming tools in editor
 
-    Vec3                    m_vSunColor;                //
+    Vec3    m_vSunColor;    //Similar to CDLight's m_BaseColor
+    Vec3    m_sunAnimColor; //Similar to CDLight's m_Color
+    float   m_sunAnimSpeed;
+    AZ::u8  m_sunAnimPhase;
+    AZ::u8  m_sunAnimIndex;
+
     float                   m_fILMul;
     float                   m_fSSAOAmount;
     float                   m_fSSAOContrast;

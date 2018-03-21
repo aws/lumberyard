@@ -15,7 +15,8 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 //////////////////////////////////////////////////////////////////////////
 class CGotoKeyUIControls
@@ -87,9 +88,9 @@ bool CGotoKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys)
 // Called when UI variable changes.
 void CGotoKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!pSequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
     {
         return;
     }
@@ -106,8 +107,24 @@ void CGotoKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& select
             keyHandle.GetKey(&discreteFloatKey);
             SyncValue(mv_command, discreteFloatKey.m_fValue, false, pVar);
 
-            CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-            keyHandle.SetKey(&discreteFloatKey);
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&discreteFloatKey);
+            }
+            else if (isDuringUndo)
+            {
+                keyHandle.SetKey(&discreteFloatKey);
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key Value");
+                keyHandle.SetKey(&discreteFloatKey);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
         }
     }
 }

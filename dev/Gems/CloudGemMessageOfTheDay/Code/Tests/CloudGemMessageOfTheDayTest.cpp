@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemMessageOfTheDay_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

@@ -344,15 +344,6 @@ void CSplineCtrl::OnRButtonDown(const QPoint& point, Qt::KeyboardModifiers modif
     {
         return;
     }
-
-#ifdef KDAB_TEMPORARILY_REMOVED
-    NMHDR nmh;
-    nmh.hwndFrom = m_hWnd;
-    nmh.idFrom = ::GetDlgCtrlID(m_hWnd);
-    nmh.code = NM_RCLICK;
-
-    GetOwner()->SendMessage(WM_NOTIFY, (WPARAM)GetDlgCtrlID(), (LPARAM)&nmh);
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////

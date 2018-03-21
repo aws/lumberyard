@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #include "AnimLightNode.h"
 #include <IScriptSystem.h>
 #include "Maestro/Types/AnimNodeType.h"

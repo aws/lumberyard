@@ -15,10 +15,10 @@
 #include "SkyLightManager.h"
 #include "SkyLightNishita.h"
 #include <CRESky.h>
-#include <IJobManager_JobDelegator.h>
 
-DECLARE_JOB("SkyUpdate", TSkyJob, CSkyLightManager::UpdateInternal);
-static JobManager::SJobState g_JobState;
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
+static AZ::LegacyJobExecutor s_jobExecutor;
 
 CSkyLightManager::CSkyLightManager()
     : m_pSkyLightNishita(CryAlignedNew<CSkyLightNishita>())
@@ -71,7 +71,7 @@ CSkyLightManager::~CSkyLightManager()
 
 inline static void Sync()
 {
-    gEnv->GetJobManager()->WaitForJob(g_JobState);
+    s_jobExecutor.WaitForCompletion();
 }
 
 void CSkyLightManager::PushUpdateParams()
@@ -93,10 +93,10 @@ void CSkyLightManager::FullUpdate()
 {
     Sync();
     PushUpdateParams();
-    TSkyJob job(GetRenderer()->GetFrameID(false), SSkyLightRenderParams::skyDomeTextureSize, (int)1);
-    job.SetClassInstance(this);
-    job.RegisterJobState(&g_JobState);
-    job.Run();
+
+    s_jobExecutor.Reset();
+    s_jobExecutor.StartJob([this]() { this->UpdateInternal(GetRenderer()->GetFrameID(false), SSkyLightRenderParams::skyDomeTextureSize, (int)1); });
+
     m_needRenderParamUpdate = true;
     m_bFlushFullUpdate = true;
 }
@@ -119,10 +119,8 @@ void CSkyLightManager::IncrementalUpdate(f32 updateRatioPerFrame, const SRenderi
         }
         PushUpdateParams();
 
-        TSkyJob job(passInfo.GetMainFrameID(), numUpdate, (int)0);
-        job.SetClassInstance(this);
-        job.RegisterJobState(&g_JobState);
-        job.Run();
+        s_jobExecutor.Reset();
+        s_jobExecutor.StartJob([this, passInfo, numUpdate]() { this->UpdateInternal(passInfo.GetMainFrameID(), numUpdate, (int)0); });
     }
 }
 

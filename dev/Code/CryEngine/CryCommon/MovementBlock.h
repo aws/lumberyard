@@ -43,7 +43,7 @@ namespace Movement
         virtual const char* GetName() const = 0;
     };
 
-    typedef boost::shared_ptr<Movement::Block> BlockPtr;
+    typedef AZStd::shared_ptr<Movement::Block> BlockPtr;
     typedef Functor3wRet<const INavPath&, const PathPointDescriptor::OffMeshLinkData&, const MovementStyle&, BlockPtr> CustomNavigationBlockCreatorFunction;
 }
 

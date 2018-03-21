@@ -11,8 +11,8 @@
     },
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Camera_precompiled.cpp",
+            "Source/Camera_precompiled.h"
         ]
     }
 }

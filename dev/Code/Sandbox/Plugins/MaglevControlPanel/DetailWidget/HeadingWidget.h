@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <QFrame.h>
+#include <QFrame>
 
 class QLabel;
 class QPushButton;

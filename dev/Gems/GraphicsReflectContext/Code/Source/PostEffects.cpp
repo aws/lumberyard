@@ -21,6 +21,7 @@
 #include <MathConversion.h>
 #include <IPostEffectGroup.h>
 #include <I3DEngine.h>
+#include <ColorGradingBus.h>
 
 namespace GraphicsReflectContext
 {
@@ -263,6 +264,13 @@ namespace GraphicsReflectContext
     {
         return gEnv->p3DEngine->GetPostEffectGroups()->GetGroup(groupName);
     }
+    
+    void PostEffects::SetColorChart(AZStd::string_view textureName, float fadeTime)
+    {
+        const uint32 COLORCHART_TEXFLAGS = FT_NOMIPS | FT_DONT_STREAM | FT_STATE_CLAMP;
+        gEnv->pRenderer->EF_LoadTexture(textureName.data(), COLORCHART_TEXFLAGS);
+        AZ::ColorGradingRequestBus::Broadcast(&AZ::ColorGradingRequests::FadeInColorChart, textureName, fadeTime);
+    }
 
     void PostEffects::ReflectBehaviorContext(AZ::BehaviorContext *behaviorContext)
     {
@@ -272,7 +280,7 @@ namespace GraphicsReflectContext
             ->Method("EnableWaterDroplets", 
                 &PostEffects::EnableWaterDroplets, 
                 { {
-                    { "Amount", "Amount of water",   AZ::BehaviorMakeDefaultValue(5.0f) }
+                    { "Amount", "Amount of water",   behaviorContext->MakeDefaultValue(5.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Draws sheets of water running down the screen, like when the camera emerges from a pool of water")
             ->Method("DisableWaterDroplets", &PostEffects::DisableWaterDroplets)
@@ -280,11 +288,11 @@ namespace GraphicsReflectContext
             ->Method("EnableDepthOfField",
                 &PostEffects::EnableDepthOfField,
                 { { 
-                    { "FocusDistance",  "Set focus distance",                  AZ::BehaviorMakeDefaultValue(3.5f) },
-                    { "FocusRange",     "Set focus range",                     AZ::BehaviorMakeDefaultValue(5.0f) },
-                    { "BlurAmount",     "Set blurring amount",                 AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "ScaleCoC",       "Set circle of confusion scale",       AZ::BehaviorMakeDefaultValue(12.0f) },
-                    { "CenterWeight",   "Set central samples weight",          AZ::BehaviorMakeDefaultValue(1.0f) }
+                    { "FocusDistance",  "Set focus distance",                  behaviorContext->MakeDefaultValue(3.5f) },
+                    { "FocusRange",     "Set focus range",                     behaviorContext->MakeDefaultValue(5.0f) },
+                    { "BlurAmount",     "Set blurring amount",                 behaviorContext->MakeDefaultValue(1.0f) },
+                    { "ScaleCoC",       "Set circle of confusion scale",       behaviorContext->MakeDefaultValue(12.0f) },
+                    { "CenterWeight",   "Set central samples weight",          behaviorContext->MakeDefaultValue(1.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Applies a depth-of-field effect")
             ->Method("DisableDepthOfField", &PostEffects::DisableDepthOfField)
@@ -292,7 +300,7 @@ namespace GraphicsReflectContext
             ->Method("EnableBlur",
                 &PostEffects::EnableBlur,
                 { {
-                    { "Amount", "Amount of blurring",           AZ::BehaviorMakeDefaultValue(1.0f) }
+                    { "Amount", "Amount of blurring",           behaviorContext->MakeDefaultValue(1.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Applies a blur filter")
             ->Method("DisableBlur", &PostEffects::DisableBlur)
@@ -300,9 +308,9 @@ namespace GraphicsReflectContext
             ->Method("EnableRadialBlur",
                 &PostEffects::EnableRadialBlur,
                 { {
-                    { "Amount",     "Amount of blurring",                        AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "ScreenPos",  "Screen position of the center of the blur", AZ::BehaviorMakeDefaultValue(AZ::Vector2(0.5f, 0.5f)) },
-                    { "Radius",     "Blurring radius",                           AZ::BehaviorMakeDefaultValue(1.0f) }
+                    { "Amount",     "Amount of blurring",                        behaviorContext->MakeDefaultValue(1.0f) },
+                    { "ScreenPos",  "Screen position of the center of the blur", behaviorContext->MakeDefaultValue(AZ::Vector2(0.5f, 0.5f)) },
+                    { "Radius",     "Blurring radius",                           behaviorContext->MakeDefaultValue(1.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Applies a radial blur filter")
             ->Method("DisableRadialBlur", &PostEffects::DisableRadialBlur)
@@ -311,14 +319,14 @@ namespace GraphicsReflectContext
                 &PostEffects::EnableColorCorrection,
                 //name and tooltips
                 { {
-                    { "Cyan",       "Adjust Cyan to enhance color of scene",                                    AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "Magenta",    "Adjust Magenta to enhance color of scene",                                 AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "Yellow",     "Adjust Yellow to enhance color of scene",                                  AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "Luminance",  "Adjust Luminance to enhance the light intensity of scene",                 AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "Brightness", "Adjust Brightness to enhance light and darkness of scene",                 AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "Contrast",   "Adjust Contrast to enhance the bias of highlights and shadows of scene",   AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "Saturation", "Adjust Saturation to enhance the color intensity of scene",                AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "Hue",        "Adjust Hue to enhance the color globally",                                 AZ::BehaviorMakeDefaultValue(0.0f) }
+                    { "Cyan",       "Adjust Cyan to enhance color of scene",                                    behaviorContext->MakeDefaultValue(0.0f) },
+                    { "Magenta",    "Adjust Magenta to enhance color of scene",                                 behaviorContext->MakeDefaultValue(0.0f) },
+                    { "Yellow",     "Adjust Yellow to enhance color of scene",                                  behaviorContext->MakeDefaultValue(0.0f) },
+                    { "Luminance",  "Adjust Luminance to enhance the light intensity of scene",                 behaviorContext->MakeDefaultValue(0.0f) },
+                    { "Brightness", "Adjust Brightness to enhance light and darkness of scene",                 behaviorContext->MakeDefaultValue(1.0f) },
+                    { "Contrast",   "Adjust Contrast to enhance the bias of highlights and shadows of scene",   behaviorContext->MakeDefaultValue(1.0f) },
+                    { "Saturation", "Adjust Saturation to enhance the color intensity of scene",                behaviorContext->MakeDefaultValue(1.0f) },
+                    { "Hue",        "Adjust Hue to enhance the color globally",                                 behaviorContext->MakeDefaultValue(0.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Sets color correction parameters")
             ->Method("DisableColorCorrection", &PostEffects::DisableColorCorrection)
@@ -326,8 +334,8 @@ namespace GraphicsReflectContext
             ->Method("EnableFrost",
                 &PostEffects::EnableFrost,
                 { {
-                    { "Amount",        "Amount of frost",                     AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "CenterAmount",  "Amount of frost at center of screen", AZ::BehaviorMakeDefaultValue(1.0f) }
+                    { "Amount",        "Amount of frost",                     behaviorContext->MakeDefaultValue(0.0f) },
+                    { "CenterAmount",  "Amount of frost at center of screen", behaviorContext->MakeDefaultValue(1.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Displays splats of frost on the screen")
             ->Method("DisableFrost", &PostEffects::DisableFrost)
@@ -335,7 +343,7 @@ namespace GraphicsReflectContext
             ->Method("EnableWaterFlow",
                 &PostEffects::EnableWaterFlow,
                 { {
-                    { "Amount",  "Amount of water",   AZ::BehaviorMakeDefaultValue(1.0f) }
+                    { "Amount",  "Amount of water",   behaviorContext->MakeDefaultValue(1.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Draws water flowing down the entire screen")
             ->Method("DisableWaterFlow", &PostEffects::DisableWaterFlow)
@@ -343,7 +351,7 @@ namespace GraphicsReflectContext
             ->Method("EnableGhosting",
                 &PostEffects::EnableGhosting,
                 { {
-                    { "Amount",  "Strength of ghosting effect",   AZ::BehaviorMakeDefaultValue(0.0f) }
+                    { "Amount",  "Strength of ghosting effect",   behaviorContext->MakeDefaultValue(0.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Ghosting effect")
             ->Method("DisableGhosting", &PostEffects::DisableGhosting)
@@ -351,10 +359,10 @@ namespace GraphicsReflectContext
             ->Method("EnableVolumetricScattering",
                 &PostEffects::EnableVolumetricScattering,
                 { {
-                    { "Amount", "Sets volumetric scattering amount",           AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "Tiling", "Sets volumetric scattering tiling",           AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "Speed",  "Sets volumetric scattering animation speed",  AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "Color",  "Sets volumetric scattering color tint",       AZ::BehaviorMakeDefaultValue(AZ::Color(0.6f, 0.75f, 1.0f, 1.0f)) }
+                    { "Amount", "Sets volumetric scattering amount",           behaviorContext->MakeDefaultValue(1.0f) },
+                    { "Tiling", "Sets volumetric scattering tiling",           behaviorContext->MakeDefaultValue(1.0f) },
+                    { "Speed",  "Sets volumetric scattering animation speed",  behaviorContext->MakeDefaultValue(1.0f) },
+                    { "Color",  "Sets volumetric scattering color tint",       behaviorContext->MakeDefaultValue(AZ::Color(0.6f, 0.75f, 1.0f, 1.0f)) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Volumetric scattering effect")
             ->Method("DisableVolumetricScattering", &PostEffects::DisableVolumetricScattering)
@@ -362,10 +370,10 @@ namespace GraphicsReflectContext
             ->Method("EnableRainDrops",
                 &PostEffects::EnableRainDrops,
                 { {
-                    { "Amount",            "Amount of rain drops",                 AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "SpawTimeDistance",  "Sets rain drops spawn time distance",  AZ::BehaviorMakeDefaultValue(0.35f) },
-                    { "Size",              "Sets rain drops size",                 AZ::BehaviorMakeDefaultValue(5.0f) },
-                    { "SizeVariation",     "Sets rain drops size variation",       AZ::BehaviorMakeDefaultValue(2.5f) }
+                    { "Amount",            "Amount of rain drops",                 behaviorContext->MakeDefaultValue(1.0f) },
+                    { "SpawTimeDistance",  "Sets rain drops spawn time distance",  behaviorContext->MakeDefaultValue(0.35f) },
+                    { "Size",              "Sets rain drops size",                 behaviorContext->MakeDefaultValue(5.0f) },
+                    { "SizeVariation",     "Sets rain drops size variation",       behaviorContext->MakeDefaultValue(2.5f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Draws small drops of rain on the screen")
             ->Method("DisableRainDrops", &PostEffects::DisableRainDrops)
@@ -373,7 +381,7 @@ namespace GraphicsReflectContext
             ->Method("EnableSharpen",
                 &PostEffects::EnableSharpen,
                 { {
-                    { "Amount",  "Amount of sharpening",  AZ::BehaviorMakeDefaultValue(1.0f) }
+                    { "Amount",  "Amount of sharpening",  behaviorContext->MakeDefaultValue(1.0f) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Applies a sharpen filter")
             ->Method("DisableSharpen", &PostEffects::DisableSharpen)
@@ -381,7 +389,7 @@ namespace GraphicsReflectContext
             ->Method("EnableDirectionalBlur",
                 &PostEffects::EnableDirectionalBlur,
                 { {
-                    { "Direction",  "Indicates the direction (in screen space) and strength of the blur",  AZ::BehaviorMakeDefaultValue(AZ::Vector2(0.0f, 0.0f)) }
+                    { "Direction",  "Indicates the direction (in screen space) and strength of the blur",  behaviorContext->MakeDefaultValue(AZ::Vector2(0.0f, 0.0f)) }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Applies a directional blur filter")
             ->Method("DisableDirectionalBlur", &PostEffects::DisableDirectionalBlur)
@@ -389,17 +397,17 @@ namespace GraphicsReflectContext
             ->Method("EnableVisualArtifacts",
                 &PostEffects::EnableVisualArtifacts,
                 { {
-                    { "VSync",               "Amount of vsync visible",        AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "VSyncFrequency",      "Vsync frequency",                AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "Interlacing",         "Amount of interlacing visible",  AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "InterlacingTiling",   "Interlacing tiling",             AZ::BehaviorMakeDefaultValue(1.0f) },
-                    { "InterlacingRotation", "Interlacing rotation",           AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "SyncWavePhase",       "Sync wave phase",                AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "SyncWaveFrequency",   "Sync wave frequency",            AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "SyncWaveAmplitude",   "Amount of vsync visible",        AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "ChromaShift",         "Chroma shift",                   AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "Grain",               "Image grain amount",             AZ::BehaviorMakeDefaultValue(0.0f) },
-                    { "ColorTint",           "Color tint",                     AZ::BehaviorMakeDefaultValue(AZ::Color(1.0f, 1.0f, 1.0f, 1.0f)) },
+                    { "VSync",               "Amount of vsync visible",        behaviorContext->MakeDefaultValue(0.0f) },
+                    { "VSyncFrequency",      "Vsync frequency",                behaviorContext->MakeDefaultValue(1.0f) },
+                    { "Interlacing",         "Amount of interlacing visible",  behaviorContext->MakeDefaultValue(0.0f) },
+                    { "InterlacingTiling",   "Interlacing tiling",             behaviorContext->MakeDefaultValue(1.0f) },
+                    { "InterlacingRotation", "Interlacing rotation",           behaviorContext->MakeDefaultValue(0.0f) },
+                    { "SyncWavePhase",       "Sync wave phase",                behaviorContext->MakeDefaultValue(0.0f) },
+                    { "SyncWaveFrequency",   "Sync wave frequency",            behaviorContext->MakeDefaultValue(0.0f) },
+                    { "SyncWaveAmplitude",   "Amount of vsync visible",        behaviorContext->MakeDefaultValue(0.0f) },
+                    { "ChromaShift",         "Chroma shift",                   behaviorContext->MakeDefaultValue(0.0f) },
+                    { "Grain",               "Image grain amount",             behaviorContext->MakeDefaultValue(0.0f) },
+                    { "ColorTint",           "Color tint",                     behaviorContext->MakeDefaultValue(AZ::Color(1.0f, 1.0f, 1.0f, 1.0f)) },
                     { "TextureName",         "Visual artifacts mask texture" }
                 } } )
             ->Attribute(AZ::Script::Attributes::ToolTip, "Applies visual artifacts that are commonly assocaited with CRT monitors")
@@ -408,25 +416,34 @@ namespace GraphicsReflectContext
             ->Method("EnableEffectGroup",
                 &PostEffects::EnableEffectGroup,
                 { {
-                    { "GroupName",  "Game path of the post effect group xml",  AZ::BehaviorMakeDefaultValue(AZStd::string_view()) }
+                    { "GroupName",  "Game path of the post effect group xml",  behaviorContext->MakeDefaultValue(AZStd::string_view()) }
                 } })
             ->Attribute(AZ::Script::Attributes::ToolTip, "Enables a post effect group")
 
             ->Method("DisableEffectGroup",
                 &PostEffects::DisableEffectGroup,
                 { {
-                    { "GroupName",  "Game path of the post effect group xml",  AZ::BehaviorMakeDefaultValue(AZStd::string_view()) }
+                    { "GroupName",  "Game path of the post effect group xml",  behaviorContext->MakeDefaultValue(AZStd::string_view()) }
                 } })
             ->Attribute(AZ::Script::Attributes::ToolTip, "Disables a post effect group")
 
             ->Method("ApplyEffectGroupAtPosition",
                 &PostEffects::ApplyEffectGroupAtPosition,
                 { {
-                    { "GroupName",  "Game path of the post effect group xml",         AZ::BehaviorMakeDefaultValue(AZStd::string_view()) },
-                    { "Position",   "Used to calculate the distance between camera",  AZ::BehaviorMakeDefaultValue(AZ::Vector3()) },
+                    { "GroupName",  "Game path of the post effect group xml",         behaviorContext->MakeDefaultValue(AZStd::string_view()) },
+                    { "Position",   "Used to calculate the distance between camera",  behaviorContext->MakeDefaultValue(AZ::Vector3()) },
                 } })
             ->Attribute(AZ::Script::Attributes::ToolTip, 
                 "Applies an effect group at a specific position in the world. Only applies to effect groups with the fadeDistance attribute set. Must be called every frame to maintain the effect.")
+                    
+            ->Method("SetColorChart",
+                &PostEffects::SetColorChart,
+                { {
+                    { "TextureName",  "The name of a color chart texture",                 behaviorContext->MakeDefaultValue(AZStd::string_view()) },
+                    { "FadeTime",     "Number of seconds to fade into the color grading",  behaviorContext->MakeDefaultValue(0.0f) },
+                } })
+            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All) // Exclude from ScriptCanvas because ScriptCanvas already has ScreenFaderNode
+            ->Attribute(AZ::Script::Attributes::ToolTip, "Applies a color chart texture for color grading")
         ;    
     }
 }

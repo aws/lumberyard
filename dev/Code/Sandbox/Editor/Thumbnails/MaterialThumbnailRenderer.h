@@ -22,7 +22,7 @@ class CPreviewModelCtrl;
 
 //! Loads thumbnails that require acccess to renderer
 class MaterialThumbnailRenderer
-    : public AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::Handler
+    : public AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestBus::Handler
     , public AZ::SystemTickBus::Handler
 {
 public:

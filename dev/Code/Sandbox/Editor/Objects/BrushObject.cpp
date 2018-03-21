@@ -258,7 +258,7 @@ void CBrushObject::BeginEditParams(IEditor* ie, int flags)
     if (!s_brushPanel)
     {
         s_brushPanel = new CBrushPanel;
-        s_brushPanelId = AddUIPage(tr("Brush Parameters").toLatin1().data(), s_brushPanel);
+        s_brushPanelId = AddUIPage(tr("Brush Parameters").toUtf8().data(), s_brushPanel);
     }
 
     if (gSettings.bGeometryBrowserPanel)
@@ -273,7 +273,7 @@ void CBrushObject::BeginEditParams(IEditor* ie, int flags)
             }
             if (s_treePanelId == 0)
             {
-                s_treePanelId = AddUIPage(tr("Prefab").toLatin1().data(), s_treePanelPtr);
+                s_treePanelId = AddUIPage(tr("Prefab").toUtf8().data(), s_treePanelPtr);
             }
         }
 
@@ -320,7 +320,7 @@ void CBrushObject::BeginEditMultiSelParams(bool bAllOfSameType)
         if (!s_brushPanel)
         {
             s_brushPanel = new CBrushPanel;
-            s_brushPanelId = AddUIPage(tr("Brush Parameters").toLatin1().data(), s_brushPanel);
+            s_brushPanelId = AddUIPage(tr("Brush Parameters").toUtf8().data(), s_brushPanel);
         }
         if (s_brushPanel)
         {
@@ -405,7 +405,7 @@ void CBrushObject::Display(DisplayContext& dc)
         if (nagCount < 100)
         {
             const QString&  geomName = mv_geometryFile;
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Brush '%s' (%s) does not have geometry!", GetName().toLatin1().data(), geomName.toLatin1().data());
+            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Brush '%s' (%s) does not have geometry!", GetName().toUtf8().data(), geomName.toUtf8().data());
             nagCount++;
         }
     }
@@ -536,7 +536,7 @@ void CBrushObject::Serialize(CObjectArchive& ar)
             QString mesh = mv_geometryFile;
             if (!mesh.isEmpty())
             {
-                CreateBrushFromMesh(mesh.toLatin1().data());
+                CreateBrushFromMesh(mesh.toUtf8().data());
             }
         }
 
@@ -705,7 +705,7 @@ void CBrushObject::OnGeometryChange(IVariable* var)
     // Load new prefab model.
     QString objName = mv_geometryFile;
 
-    CreateBrushFromMesh(objName.toLatin1().data());
+    CreateBrushFromMesh(objName.toUtf8().data());
     InvalidateTM(0);
 
     m_statObjValidator.Validate(GetIStatObj(), GetRenderMaterial(), m_pRenderNode ? m_pRenderNode->GetPhysics() : 0);
@@ -1173,7 +1173,7 @@ void CBrushObject::GatherUsedResources(CUsedResources& resources)
     QString geomFile = mv_geometryFile;
     if (!geomFile.isEmpty())
     {
-        resources.Add(geomFile.toLatin1().data());
+        resources.Add(geomFile.toUtf8().data());
     }
     if (m_pGeometry && m_pGeometry->GetIStatObj())
     {
@@ -1292,11 +1292,11 @@ void CBrushObject::SaveToCGF(const QString& filename)
     {
         if (GetMaterial())
         {
-            m_pGeometry->SaveToCGF(filename.toLatin1().data(), NULL, GetMaterial()->GetMatInfo());
+            m_pGeometry->SaveToCGF(filename.toUtf8().data(), NULL, GetMaterial()->GetMatInfo());
         }
         else
         {
-            m_pGeometry->SaveToCGF(filename.toLatin1().data());
+            m_pGeometry->SaveToCGF(filename.toUtf8().data());
         }
     }
     mv_geometryFile = Path::MakeGamePath(filename);

@@ -115,6 +115,10 @@ namespace AZ
         ///Sets r,g,b components from a Vector3, specify a separately
         void Set(const Vector3& v, const VectorFloat& a);
 
+        /// Sets the R G B values of this Color based on a passed in
+        /// hue, saturation, and value. Leaves alpha alone.
+        void SetFromHSVRadians(float hueRadians, float saturation, float value);
+
         //===============================================================
         // Comparisons
         //===============================================================

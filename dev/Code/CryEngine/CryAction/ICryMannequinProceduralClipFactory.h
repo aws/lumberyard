@@ -17,10 +17,10 @@
 #include "ICryMannequinDefs.h" // Needed for SCRCRef
 
 class IProceduralClip;
-DECLARE_BOOST_POINTERS(IProceduralClip);
+DECLARE_SMART_POINTERS(IProceduralClip);
 
 struct IProceduralParams;
-DECLARE_BOOST_POINTERS(IProceduralParams);
+DECLARE_SMART_POINTERS(IProceduralParams);
 
 
 struct SProceduralClipFactoryRegistrationInfo

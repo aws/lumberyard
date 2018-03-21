@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "OSVR_precompiled.h"
 #include <platform_impl.h>
 #include <IGem.h>
 #include <FlowSystem/Nodes/FlowBaseNode.h>

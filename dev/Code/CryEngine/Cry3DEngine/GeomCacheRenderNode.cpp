@@ -22,9 +22,7 @@
 #include "GeomCacheManager.h"
 #include "MatMan.h"
 
-#include <IJobManager_JobDelegator.h>
-
-DECLARE_JOB("GeomCacheUpdateMesh", TGeomCacheUpdateMeshJob, CGeomCacheRenderNode::UpdateMesh_JobEntry);
+#include <AzCore/Jobs/JobFunction.h>
 
 namespace
 {
@@ -665,10 +663,8 @@ bool CGeomCacheRenderNode::FillFrameAsync(const char* const pFloorFrameData, con
 
             if (GeomCacheDecoder::PrepareFillMeshData(*pUpdateContext, *pStaticMeshData, pFloorMeshData, pCeilMeshData, offsetToNextMesh, meshLerpFactor))
             {
-                TGeomCacheUpdateMeshJob meshUpdateJob(pUpdateContext, pStaticMeshData, pFloorMeshData, pCeilMeshData, meshLerpFactor);
-                meshUpdateJob.SetClassInstance(this);
-                meshUpdateJob.SetPriorityLevel(JobManager::eRegularPriority);
-                meshUpdateJob.Run();
+                AZ::Job* job = AZ::CreateJobFunction([this, pUpdateContext, pStaticMeshData, pFloorMeshData, pCeilMeshData, meshLerpFactor]() { this->UpdateMesh_JobEntry(pUpdateContext, pStaticMeshData, pFloorMeshData, pCeilMeshData, meshLerpFactor); }, true, nullptr);
+                job->Start();
             }
             else
             {
@@ -691,7 +687,7 @@ bool CGeomCacheRenderNode::FillFrameAsync(const char* const pFloorFrameData, con
     return true;
 }
 
-void CGeomCacheRenderNode::UpdateMesh_JobEntry(SGeomCacheRenderMeshUpdateContext* pUpdateContext, SGeomCacheStaticMeshData* pStaticMeshData,
+void CGeomCacheRenderNode::UpdateMesh_JobEntry(SGeomCacheRenderMeshUpdateContext *pUpdateContext, const SGeomCacheStaticMeshData *pStaticMeshData,
     const char* pFloorMeshData, const char* pCeilMeshData, float lerpFactor)
 {
     GeomCacheDecoder::FillMeshDataFromDecodedFrame(m_bFilledFrameOnce, *pUpdateContext, *pStaticMeshData, pFloorMeshData, pCeilMeshData, lerpFactor);

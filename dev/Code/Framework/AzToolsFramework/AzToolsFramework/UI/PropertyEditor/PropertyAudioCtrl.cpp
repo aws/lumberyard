@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "PropertyAudioCtrl.h"
 #include "PropertyQTConstants.h"
@@ -249,7 +249,7 @@ namespace AzToolsFramework
         Q_UNUSED(node);
         CReflectedVarAudioControl val;
         val.m_propertyType = gui->GetPropertyType();
-        val.m_controlName = gui->GetControlName().toLatin1().data();
+        val.m_controlName = gui->GetControlName().toUtf8().data();
         instance = static_cast<property_t>(val);
     }
 

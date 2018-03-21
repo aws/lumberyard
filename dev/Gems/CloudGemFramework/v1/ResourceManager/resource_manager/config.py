@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 import os
 import json
@@ -16,15 +16,17 @@ import shutil
 import util
 import imp
 import re
-import constant 
+from resource_manager_common import constant 
 import copy
 import file_util
 import collections
+import time
 
 from StringIO import StringIO
 from errors import HandledError
 from ConfigParser import RawConfigParser
 from botocore.exceptions import ClientError
+from cgf_utils.version_utils import Version
 
 RESOURCE_MANAGER_PATH = os.path.dirname(__file__)
 
@@ -86,9 +88,10 @@ class ConfigContext(object):
 
         self.base_resource_group_directory_path = os.path.join(self.aws_directory_path, 'resource-group')
         self.gem_directory_path = os.path.join(self.root_directory_path, constant.PROJECT_GEMS_DIRECTORY_NAME)
-
-        self.local_project_settings = LocalProjectSettings(self.context, self.join_aws_directory_path(constant.PROJECT_LOCAL_SETTINGS_FILENAME))
-
+        
+        self.region = args.region_override if args.region_override else args.region
+        self.local_project_settings = LocalProjectSettings(self.context, self.join_aws_directory_path(constant.PROJECT_LOCAL_SETTINGS_FILENAME), self.region)
+        
 
 
     def initialize(self, args):
@@ -118,7 +121,8 @@ class ConfigContext(object):
         self.resource_name_validation_config_path = os.path.join(self.resource_manager_path, "config", constant.RESOURCE_NAME_VALIDATION_CONFIG_FILENAME)
         self.resource_name_validation_config = self.load_json(self.resource_name_validation_config_path)
 
-    # returns a dict consisting of a boolean indicating if it's valid and the help string
+    # returns a dict consisting of a boolean indicating if it's valid and the
+    # help string
     def validate_resource(self, resource_type, field, resource):
         resource_type_data = self.resource_name_validation_config.get(resource_type, None)
         field_data = resource_type_data.get(field, None)
@@ -142,7 +146,7 @@ class ConfigContext(object):
         with open(self.gui_refresh_file_path, 'w') as file:
             file.write('This file is written when the Cloud Canvas Resource Manager GUI should be refreshed.')
 
-    def load_json(self, path, default = None):
+    def load_json(self, path, default=None):
         '''Reads JSON format data from a file on disk and returns it as dictionary.'''
         self.context.view.loading_file(path)
         obj = default
@@ -184,14 +188,22 @@ class ConfigContext(object):
     @property
     def no_prompt(self):
         return self.__no_prompt
-        
-    
+      
+    @property
+    def project_stack_id(self):
+        id = self.local_project_settings.get(constant.PROJECT_STACK_ID, None)         
+        if id is None:
+            id = self.local_project_settings.get(constant.PENDING_PROJECT_STACK_ID, None) 
+        return id
+
+    @property
+    def project_initialized(self):         
+        id = self.local_project_settings.get(constant.PROJECT_STACK_ID, None)        
+        return id != None
+
     def __load_aws_directory(self):
 
         self.has_aws_directory_content = os.path.exists(self.aws_directory_path) and os.listdir(self.aws_directory_path)
-
-        self.project_stack_id = self.local_project_settings.get('ProjectStackId', None)
-        self.project_initialized = self.project_stack_id is not None
 
         self.__project_template_aggregator = None
         self.__deployment_template_aggregator = None
@@ -199,7 +211,8 @@ class ConfigContext(object):
 
     @property
     def framework_aws_directory_path(self):
-        # Assumes RESOURCE_MANAGER_PATH is  ...\Gems\CloudGemFramework\v?\ResourceManager\resource_manager.
+        # Assumes RESOURCE_MANAGER_PATH is
+        # ...\Gems\CloudGemFramework\v?\ResourceManager\resource_manager.
         # We want ...\Gems\CloudGemFramework\v?\AWS.
         return os.path.abspath(os.path.join(RESOURCE_MANAGER_PATH, '..', '..', 'AWS'))
 
@@ -235,8 +248,12 @@ class ConfigContext(object):
 
     @property
     def project_default_deployment(self):
-        return self.project_settings.get_project_default_deployment()
-
+        deployment = self.project_settings.get_project_default_deployment()
+        if deployment and deployment not in self.deployment_names:
+            self.context.view.invalid_project_default_deployment_clearing(deployment)
+            self.set_project_default_deployment(None)
+            return None
+        return deployment
 
     @project_default_deployment.setter
     def project_default_deployment(self, deployment):
@@ -244,7 +261,13 @@ class ConfigContext(object):
 
     @property
     def user_default_deployment(self):
-       return self.user_settings.get('DefaultDeployment', None)
+        deployment = self.user_settings.get('DefaultDeployment', None)
+        if deployment and deployment not in self.deployment_names:
+            self.context.view.invalid_user_default_deployment_clearing(deployment)
+            self.set_user_default_deployment(None)
+            return None
+        return deployment
+  
 
     @user_default_deployment.setter
     def user_default_deployment(self, deployment):
@@ -280,16 +303,13 @@ class ConfigContext(object):
 
             self.__configuration_bucket_name = self.__project_resources.get('Configuration', {}).get('PhysicalResourceId', None)
             if not self.__configuration_bucket_name:
-                raise HandledError('The project stack {} is missing the required Configuration resource. Has {} been modified to remove this resource?'.format(
-                    self.project_stack_id,
+                raise HandledError('The project stack {} is missing the required Configuration resource. Has {} been modified to remove this resource?'.format(self.project_stack_id,
                     self.project_template_aggregator.base_file_path))
 
             # If the project is initialized, we load our project file from S3
-            self.__project_settings = CloudProjectSettings(
-                self.context, 
+            self.__project_settings = CloudProjectSettings(self.context, 
                 self.configuration_bucket_name, 
-                verbose = self.__verbose
-            )
+                verbose = self.__verbose)
 
             # If a role was specified, start using it now. All AWS activity other than what is needed
             # to load the project settings and resources should happen after this point. 
@@ -339,12 +359,10 @@ class ConfigContext(object):
 
         project_resource_handler_name = self.project_resources.get('ProjectResourceHandler', {}).get('PhysicalResourceId', None)
         if project_resource_handler_name is None:
-            raise HandledError('The project stack {} is missing the required ProjectResourceHandler resource. Has {} been modified to remove this resource?'.format(
-                self.project_stack_id,
+            raise HandledError('The project stack {} is missing the required ProjectResourceHandler resource. Has {} been modified to remove this resource?'.format(self.project_stack_id,
                 self.project_template_aggregator.base_file_path))
 
-        return 'arn:aws:lambda:{region}:{account_id}:function:{function_name}'.format(
-            region=util.get_region_from_arn(self.project_stack_id),
+        return 'arn:aws:lambda:{region}:{account_id}:function:{function_name}'.format(region=util.get_region_from_arn(self.project_stack_id),
             account_id=util.get_account_id_from_arn(self.project_stack_id),
             function_name=project_resource_handler_name)
 
@@ -354,12 +372,10 @@ class ConfigContext(object):
 
         token_exchange_handler_name = self.project_resources.get('PlayerAccessTokenExchange', {}).get('PhysicalResourceId', None)
         if token_exchange_handler_name is None:
-            raise HandledError('The project stack {} is missing the required PlayerAccessTokenExchange resource. Has {} been modified to remove this resource?'.format(
-                self.project_stack_id,
+            raise HandledError('The project stack {} is missing the required PlayerAccessTokenExchange resource. Has {} been modified to remove this resource?'.format(self.project_stack_id,
                 self.project_template_aggregator.base_file_path))
 
-        return 'arn:aws:lambda:{region}:{account_id}:function:{function_name}'.format(
-            region=util.get_region_from_arn(self.project_stack_id),
+        return 'arn:aws:lambda:{region}:{account_id}:function:{function_name}'.format(region=util.get_region_from_arn(self.project_stack_id),
             account_id=util.get_account_id_from_arn(self.project_stack_id),
             function_name=token_exchange_handler_name)
 
@@ -405,24 +421,22 @@ class ConfigContext(object):
 
 
     def set_pending_project_stack_id(self, project_stack_id):
-        self.local_project_settings['PendingProjectStackId'] = project_stack_id
+        self.local_project_settings[constant.PENDING_PROJECT_STACK_ID] = project_stack_id
         self.local_project_settings.save()
 
     def get_pending_project_stack_id(self):
-        return self.local_project_settings.get('PendingProjectStackId', None)
+        return self.local_project_settings.get(constant.PENDING_PROJECT_STACK_ID, None)
 
     def save_pending_project_stack_id(self):
-        if 'PendingProjectStackId' in self.local_project_settings:
-            self.project_stack_id = self.local_project_settings['PendingProjectStackId']
-            del self.local_project_settings['PendingProjectStackId']
-            self.local_project_settings['ProjectStackId'] = self.project_stack_id
-            self.project_initialized = True
+        if self.local_project_settings.get(constant.PENDING_PROJECT_STACK_ID, None) is not None:
+            project_stack_id = self.local_project_settings[constant.PENDING_PROJECT_STACK_ID]
+            del self.local_project_settings[constant.PENDING_PROJECT_STACK_ID]
+            self.local_project_settings[constant.PROJECT_STACK_ID] = project_stack_id           
             self.local_project_settings.save()
 
     def clear_project_stack_id(self):
-        self.project_stack_id = None
-        self.project_initialized = False
-        self.local_project_settings.pop('ProjectStackId', None) # safe delete
+        if constant.PROJECT_STACK_ID in self.local_project_settings:
+            del self.local_project_settings[constant.PROJECT_STACK_ID]                      
         self.local_project_settings.save()
 
     def save_project_settings(self):
@@ -473,7 +487,7 @@ class ConfigContext(object):
 
 
     @property
-    def __default_resource_group_content_directory_path (self):
+    def __default_resource_group_content_directory_path(self):
         return os.path.join(RESOURCE_MANAGER_PATH, 'default-resource-group-content')
 
     def copy_default_resource_group_content(self, destination_path):
@@ -635,7 +649,7 @@ class ConfigContext(object):
 
 
     def get_protected_depolyment_names(self):
-        deployments =  self.project_settings.get_deployments()
+        deployments = self.project_settings.get_deployments()
         return [name for name in deployments if name != '*' and 'Protected' in deployments[name]]
 
 
@@ -661,12 +675,10 @@ class ConfigContext(object):
 
         settings_default_content = { "deployment": { "*": { "resource-group": {}} } }
 
-        self.__project_settings = CloudProjectSettings(
-            self.context, 
+        self.__project_settings = CloudProjectSettings(self.context, 
             self.configuration_bucket_name, 
             initial_settings = settings_default_content, 
-            verbose = self.__verbose
-        )
+            verbose = self.__verbose)
         self.project_settings.save()
 
 
@@ -683,10 +695,9 @@ class ConfigContext(object):
         return self.__configuration_bucket_name
 
 
-    def verify_framework_version(self):
+    def verify_framework_version(self):        
         if self.__context.gem.framework_gem.version != self.local_project_settings.framework_version:
-            raise HandledError('The project\'s AWS resources are from CloudGemFramework version {} but version {} of the CloudGemFramework gem is now enabled for the project. You must use the command "lmbr_aws project update-framework-version" to update to the framework version used by the project\'s AWS resources.'.format(
-                self.local_project_settings.framework_version, self.__context.gem.framework_gem.version))
+            raise HandledError('The project\'s AWS resources are from CloudGemFramework version {} but version {} of the CloudGemFramework gem is now enabled for the project. You must use the command "lmbr_aws project update-framework-version" to update to the framework version used by the project\'s AWS resources.'.format(self.local_project_settings.framework_version, self.__context.gem.framework_gem.version))
 
         
     @property
@@ -706,37 +717,68 @@ class ConfigContext(object):
 
 
 '''A dict-like class that persists a python dictionary to disk.'''
-class LocalProjectSettings(dict):
+class LocalProjectSettings():
 
-    FRAMEWORK_VERSION_KEY = 'FrameworkVersion'
-
-    def __init__(self, context, settings_path):
-        
+    def __init__(self, context, settings_path, region=None):
+          
         self.__path = settings_path
-        self.__context = context
+        self.__context = context                
+        self.__default = None        
+        self.__framework_version = None
         
         self.__context.view.loading_file(settings_path)
         settings = util.load_json(settings_path, optional=True, default=None)
 
-        if settings is None:
+        self.__dict = dict(settings) if settings else None
 
-            settings = {
-                self.FRAMEWORK_VERSION_KEY: str(self.__context.gem.framework_gem.version),
-                constant.ENABLED_RESOURCE_GROUPS_KEY: []
-            }
+        if self.__dict is None:
+            #new local_project_settings file              
+            self.__dict = dict({})         
+            self.create_default_section()
+            self.__framework_version = self.__context.gem.framework_gem.version
+        elif self.default_set() is not None:
+            self.default(self.default_set()[constant.SET])            
+        
+        self.__context.view.loading_file(region)
+        if region is not None and constant.DEFAULT.lower() in self.__dict:            
+            is_lazy_migration = self.__dict[self.default_set()[constant.SET]].get(constant.LAZY_MIGRATION, False) if self.default_set() is not None and self.default_set()[constant.SET] in self.__dict else False            
+            migration_set = self.__dict[self.default_set()[constant.SET]] if is_lazy_migration else {}
+            self.default(region)
+            if is_lazy_migration:
+                self.migrate_to_default_set(migration_set)
+                migration_set.pop(constant.LAZY_MIGRATION, None)
+                self.save()
 
-        else:
-
-            # 1.0.0 is only supported version without this property
-            settings.setdefault(self.FRAMEWORK_VERSION_KEY, '1.0.0') 
-
-        self.__framework_version = util.Version(settings[self.FRAMEWORK_VERSION_KEY])
-
-        super(LocalProjectSettings, self).__init__(settings)
-
+        if self.__framework_version is None:
+            self.__framework_version = Version( self.__default[constant.FRAMEWORK_VERSION_KEY] if self.__default != None and constant.FRAMEWORK_VERSION_KEY in self.__default else self.__dict[constant.FRAMEWORK_VERSION_KEY] if constant.FRAMEWORK_VERSION_KEY in self.__dict else "1.0.0")                        
+        
     @property
     def path(self):
         return self.__path
+
+    @property
+    def framework_version(self):
+        return self.__framework_version
+
+    @framework_version.setter
+    def framework_version(self, value):
+        if not isinstance(value, Version):
+            value = Version(value)
+        self.__framework_version = value
+        self[constant.FRAMEWORK_VERSION_KEY] = str(value)
+
+    def is_default_set(self):
+        return self.__dict is not None and constant.DEFAULT.lower() in self.__dict
+
+    def project_stack_exists(self):
+        return constant.PROJECT_STACK_ID in self.__default or constant.PENDING_PROJECT_STACK_ID in self.__default
+
+    def create_default_section(self):
+        self.__default = self.__dict.setdefault(constant.DEFAULT.lower(), {})        
+        self.__dict[constant.DEFAULT.lower()][constant.SET] = constant.DEFAULT.lower()   
+
+    def raw_dict(self):
+        return self.__dict
 
     def save(self):
         try:
@@ -745,26 +787,82 @@ class LocalProjectSettings(dict):
             if not os.path.exists(dir):
                 os.makedirs(dir)
             with open(self.path, 'w') as file:
-                return json.dump(self, file, indent=4)
+                return json.dump(self.__dict, file, indent=4)
         except Exception as e:
             raise HandledError('Could not save {}.'.format(self.path), e)
+            
+    def default(self, value):                
+        self.__default = self.__dict.setdefault(value.lower(), {})        
+        self.__dict[constant.DEFAULT.lower()][constant.SET] = str(value).lower()
+        self.__default.setdefault(constant.FRAMEWORK_VERSION_KEY, str(self.__context.gem.framework_gem.version))         
 
-    @property
-    def framework_version(self):
-        return self.__framework_version
+    def default_set(self):        
+        if constant.DEFAULT.lower() in self.__dict:            
+            return self.__dict[constant.DEFAULT.lower()]
 
-    @framework_version.setter
-    def framework_version(self, value):
-        if not isinstance(value, util.Version):
-            value = util.Version(value)
-        self.__framework_version = value
-        self[self.FRAMEWORK_VERSION_KEY] = str(value)
+        return None
 
+    def get(self, key, default=None):
+        return self.__default.get(key, default)
+
+    def is_default_set_to_region(self):
+        return self.__dict[constant.DEFAULT] != self.__default
+
+    def set(self, key, value):
+        if self.__dict[constant.DEFAULT] == self.__default:
+            raise HandledError("You are attempting to post '{}' with value '{}' to the default local project setting schema.  It should be posted to the region section of the local project settings.".format(key,value))
+        self.__default[key] = value
+
+    def pop(self, key, default=None):
+        self.__dict.pop(key, default)
+
+    '''Dictionary overrides'''
+    def __setitem__(self, key, value):
+        self.set(key,value)
+
+    def __getitem__(self, key):        
+        return self.__default.get(key, None)
+
+    def __delitem__(self, key):        
+        del self.__default[key]
+
+    def __len__(self):
+        return len(self.__default)
+
+    def __contains__(self, key):
+        return key in self.__default
+
+    def __iter__(self):
+        for key in self.__default:
+            yield key
+
+    def setdefault(self, key, default=None):
+        return self.__default.setdefault(key, default)
+
+    def migrate_to_default_set(self, migration_set):        
+        if constant.ENABLED_RESOURCE_GROUPS_KEY in migration_set:
+            del migration_set[constant.ENABLED_RESOURCE_GROUPS_KEY]            
+        
+        if constant.DISABLED_RESOURCE_GROUPS_KEY in migration_set:
+            self[constant.DISABLED_RESOURCE_GROUPS_KEY] = migration_set[constant.DISABLED_RESOURCE_GROUPS_KEY]
+            migration_set.pop(constant.DISABLED_RESOURCE_GROUPS_KEY, None)            
+
+        if constant.PROJECT_STACK_ID in migration_set:
+            self[constant.PROJECT_STACK_ID] = migration_set[constant.PROJECT_STACK_ID]
+            migration_set.pop(constant.PROJECT_STACK_ID, None)            
+
+        if constant.PENDING_PROJECT_STACK_ID in migration_set:
+            self[constant.PENDING_PROJECT_STACK_ID] = migration_set[constant.PENDING_PROJECT_STACK_ID]
+            migration_set.pop(constant.PENDING_PROJECT_STACK_ID, None)            
+
+
+        
+        
 
 '''Client abstraction for project settings '''
 class CloudProjectSettings(dict):
 
-    def __init__(self, context, bucket, initial_settings = None, verbose = False):
+    def __init__(self, context, bucket, initial_settings=None, verbose=False):
 
         self.__bucket = bucket
         self.__key = constant.PROJECT_SETTINGS_FILENAME
@@ -778,8 +876,7 @@ class CloudProjectSettings(dict):
                 initial_settings = json.loads(settings)
                 self.__context.view.loaded_project_settings(initial_settings)
             except Exception as e:
-                raise HandledError('Cloud not read project settings from bucket {} object {}: {}'.format(
-                    self.__bucket,
+                raise HandledError('Cloud not read project settings from bucket {} object {}: {}'.format(self.__bucket,
                     self.__key,
                     e.message))
 
@@ -852,7 +949,7 @@ class TemplateAggregator(object):
     }
 
 
-    def __init__(self, context, base_file_name, extension_file_name, gem_file_name = None):
+    def __init__(self, context, base_file_name, extension_file_name, gem_file_name=None):
         '''Initializes the object with the specified file names but does not load any content from those files.
 
         Arguments:
@@ -1065,7 +1162,7 @@ class TemplateAggregator(object):
     # element in a list. The container field identifies the container that holds the 
     # value and the key field identifies the key that can be provided to that container 
     # when setting a value. The value field will be the actual value.
-    __LValue = collections.namedtuple('LValue', [ 'container', 'key', 'value' ])
+    __LValue = collections.namedtuple('LValue', ['container', 'key', 'value'])
 
 
     def __get_merge_fn_path_list(self, path, target, source_path):
@@ -1147,7 +1244,7 @@ class TemplateAggregator(object):
 
         '''
 
-        # TODO: this could be replaced with a json path libary to enable 
+        # TODO: this could be replaced with a json path libary to enable
         # a lot more functionality without breaking exising uses.
 
         previous_target = None
@@ -1160,8 +1257,7 @@ class TemplateAggregator(object):
                 current_target = current_target.get(property_name, None)
                 if current_target is not None:
                     continue
-            raise HandledError('MergeFn path {} could not be applied to {} as requested by {}. The property {} does not exist in {}.'.format(
-                path, target, source_path, property_name, previous_target))
+            raise HandledError('MergeFn path {} could not be applied to {} as requested by {}. The property {} does not exist in {}.'.format(path, target, source_path, property_name, previous_target))
 
         last_property_name = property_names[-1]
         result = self.__LValue(current_target, last_property_name, current_target.get(last_property_name, None))
@@ -1172,7 +1268,7 @@ class TemplateAggregator(object):
 
     def __update_access_control_dependencies(self, target):
 
-        # The AccessControl resource, if there is one, depends on all resources that 
+        # The AccessControl resource, if there is one, depends on all resources that
         # don't directly depend on it.
 
         access_control_definition = target.get('Resources', {}).get('AccessControl')
@@ -1227,10 +1323,9 @@ class ProjectTemplateAggregator(TemplateAggregator):
             if os.path.isfile(path):
                 template = util.load_json(path)
                 self._copy_parameters(effective_template, template, path)
-                self._copy_resources(effective_template, template, path, self._get_attribution(path))
+                self._copy_resources(effective_template, template, path, gem.name)
                 self._copy_outputs(effective_template, template, path)
         # End deprecated code
-
 
 class DeploymentTemplateAggregator(TemplateAggregator):
     
@@ -1242,11 +1337,19 @@ class DeploymentTemplateAggregator(TemplateAggregator):
         super(DeploymentTemplateAggregator, self)._add_effective_content(effective_template, attribution)
 
         resources = effective_template.setdefault('Resources', {})
-        last_rg_name = ""
+
+        enabled_resource_group_names = [r.name for r in self.context.resource_groups.values() if r.is_enabled]
+        inter_gem_deps_map = {}
+        resolver_dependencies = set()
         for resource_group in self.context.resource_groups.values():
 
             if not resource_group.is_enabled:
                 continue
+
+            cross_gem_comms_dependencies = []
+            for dep in resource_group.get_inter_gem_dependencies():
+                if dep["gem"] in enabled_resource_group_names:
+                    cross_gem_comms_dependencies.append(dep)
 
             configuration_name = resource_group.name + 'Configuration'
 
@@ -1263,11 +1366,11 @@ class DeploymentTemplateAggregator(TemplateAggregator):
             resources[resource_group.name] = {
                 "Type": "AWS::CloudFormation::Stack",
                 "Properties": {
-                    "TemplateURL": { "Fn::GetAtt": [ configuration_name, "TemplateURL" ] },
+                    "TemplateURL": { "Fn::GetAtt": [configuration_name, "TemplateURL"] },
                     "Parameters": {
                         "ProjectResourceHandler": { "Ref": "ProjectResourceHandler" },
-                        "ConfigurationBucket": { "Fn::GetAtt": [ configuration_name, "ConfigurationBucket" ] },
-                        "ConfigurationKey": { "Fn::GetAtt": [ configuration_name, "ConfigurationKey" ] },
+                        "ConfigurationBucket": { "Fn::GetAtt": [configuration_name, "ConfigurationBucket"] },
+                        "ConfigurationKey": { "Fn::GetAtt": [configuration_name, "ConfigurationKey"] },
                         "DeploymentStackArn": { "Ref": "AWS::StackId" },
                         "DeploymentName": { "Ref": "DeploymentName" },
                         "ResourceGroupName": resource_group.name
@@ -1275,10 +1378,22 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                 }
             }
 
-            if last_rg_name:
-                resources[resource_group.name]["DependsOn"] = last_rg_name
-            last_rg_name = resource_group.name
+            if cross_gem_comms_dependencies:
+                inter_gem_deps_map[resource_group.name] = cross_gem_comms_dependencies
+                resolver_dependencies.add(resource_group.name)
+                for dep in cross_gem_comms_dependencies:
+                    resolver_dependencies.add(dep["gem"])
 
+        if inter_gem_deps_map:
+            resources["CrossGemCommunicationInterfaceResolver"] = {
+                "Type": "Custom::InterfaceDependencyResolver",
+                "Properties": {
+                    "UpdateTime": time.gmtime() * 1000, # We need this to force an update
+                    "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                    "InterfaceDependencies": inter_gem_deps_map
+                },
+                "DependsOn": list(resolver_dependencies)
+            }
         # CloudFormation doesn't like an empty Resources list.
         if len(resources) == 0:
             resources['EmptyDeployment'] = {

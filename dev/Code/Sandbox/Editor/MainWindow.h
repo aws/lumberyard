@@ -178,6 +178,7 @@ public:
 #ifdef Q_OS_WIN
     bool nativeEventFilter(const QByteArray& eventType, void* message, long* result) override;
 #endif
+    bool event(QEvent* event) override;
 
 Q_SIGNALS:
     void ToggleRefCoordSys();
@@ -197,6 +198,7 @@ protected:
     bool focusNextPrevChild(bool next) override;
 
 private:
+    void OnGameModeChanged(bool inGameMode);
     QWidget* CreateToolbarWidget(int id);
     void ShowCustomizeToolbarDialog();
     void OnGotoSelected();

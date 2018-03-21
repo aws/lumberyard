@@ -93,7 +93,7 @@ public:
         {
             for (std::vector<TMissingAssetResolveCallback>::const_iterator it = requests.begin(), end = requests.end(); it != end; ++it)
             {
-                (*it)(id, success, orgFile.toLatin1().data(), newFile.toLatin1().data());
+                (*it)(id, success, orgFile.toUtf8().data(), newFile.toUtf8().data());
             }
         }
 

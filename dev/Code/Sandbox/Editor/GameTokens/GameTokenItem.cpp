@@ -302,7 +302,7 @@ CGameTokenItem::~CGameTokenItem()
 {
     if (m_pTokenSystem)
     {
-        IGameToken* pToken = m_pTokenSystem->FindToken(m_cachedFullName.toLatin1().data());
+        IGameToken* pToken = m_pTokenSystem->FindToken(m_cachedFullName.toUtf8().data());
         if (pToken)
         {
             m_pTokenSystem->DeleteToken(pToken);
@@ -316,18 +316,18 @@ void CGameTokenItem::SetName(const QString& name)
     IGameToken* pToken = NULL;
     if (m_pTokenSystem)
     {
-        m_pTokenSystem->FindToken(GetFullName().toLatin1().data());
+        m_pTokenSystem->FindToken(GetFullName().toUtf8().data());
     }
     CBaseLibraryItem::SetName(name);
     if (m_pTokenSystem)
     {
         if (pToken)
         {
-            m_pTokenSystem->RenameToken(pToken, GetFullName().toLatin1().data());
+            m_pTokenSystem->RenameToken(pToken, GetFullName().toUtf8().data());
         }
         else
         {
-            m_pTokenSystem->SetOrCreateToken(GetFullName().toLatin1().data(), m_value);
+            m_pTokenSystem->SetOrCreateToken(GetFullName().toUtf8().data(), m_value);
         }
     }
     m_cachedFullName = GetFullName();
@@ -370,7 +370,7 @@ void CGameTokenItem::Serialize(SerializeContext& ctx)
     }
     else
     {
-        node->setAttr("Name", m_name.toLatin1().data());
+        node->setAttr("Name", m_name.toUtf8().data());
         // Saving.
         const char* sTypeName = FlowTypeToName((EFlowDataTypes)m_value.GetType());
         if (*sTypeName != 0)
@@ -381,7 +381,7 @@ void CGameTokenItem::Serialize(SerializeContext& ctx)
         node->setAttr("Value", sValue);
         if (!m_description.isEmpty())
         {
-            node->setAttr("Description", m_description.toLatin1().data());
+            node->setAttr("Description", m_description.toUtf8().data());
         }
 
         int localOnly = m_localOnly ? 1 : 0;
@@ -427,7 +427,7 @@ void CGameTokenItem::SetValue(const TFlowInputData& data, bool bUpdateGTS)
     m_value = data;
     if (bUpdateGTS && m_pTokenSystem)
     {
-        IGameToken* pToken = m_pTokenSystem->FindToken(m_cachedFullName.toLatin1().data());
+        IGameToken* pToken = m_pTokenSystem->FindToken(m_cachedFullName.toUtf8().data());
         if (pToken)
         {
             pToken->SetValue(m_value);
@@ -470,7 +470,7 @@ bool CGameTokenItem::SetTypeName(const char* typeName)
         // Unknown type.
         return false;
     }
-    SetValueString(prevVal.toLatin1().data());
+    SetValueString(prevVal.toUtf8().data());
     return true;
 }
 
@@ -483,7 +483,7 @@ void CGameTokenItem::Update()
     if (m_pTokenSystem)
     {
         // Recreate the game token with new default value, and set flags
-        if (IGameToken* pToken = m_pTokenSystem->SetOrCreateToken(GetFullName().toLatin1().data(), m_value))
+        if (IGameToken* pToken = m_pTokenSystem->SetOrCreateToken(GetFullName().toUtf8().data(), m_value))
         {
             if (m_localOnly)
             {

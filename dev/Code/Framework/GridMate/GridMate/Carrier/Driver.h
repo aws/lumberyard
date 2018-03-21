@@ -19,7 +19,7 @@
 #include <AzCore/std/delegate/delegate.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
 #   define AZ_SOCKET_IPV6_SUPPORT       // Enable IPV6 functionality if supported
 #endif
 

@@ -10,7 +10,7 @@
  *
  */
 
-#include "StdAfx.h"
+#include "Visibility_precompiled.h"
 #include "EditorPortalComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -47,47 +47,41 @@ namespace Visibility
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_height, "Height", "How tall the Portal is")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_height, "Height", "How tall the Portal is.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_displayFilled, "DisplayFilled", "Display the Portal as a filled volume")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_displayFilled, "DisplayFilled", "Display the Portal as a filled volume.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_affectedBySun, "AffectedBySun", "Allows sunlight to affect objects inside the Portal")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_affectedBySun, "AffectedBySun", "Allows sunlight to affect objects inside the Portal.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_ignoreSkyColor, "IgnoreSkyColor", "Objects inside the Portal will not take the Sky color into account when rendering")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_ignoreGI, "IgnoreGI", "Objects inside the Portal will not be affected by Global Illumination")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_viewDistRatio, "ViewDistRatio", "Specifies how far the Portal is rendered")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_viewDistRatio, "ViewDistRatio", "Specifies how far the Portal is rendered.")
                     ->Attribute(AZ::Edit::Attributes::Max, 100.000000)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.000000)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_skyOnly, "SkyOnly", "Only the Sky Box will render when looking outside the Portal")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_skyOnly, "SkyOnly", "Only the Sky Box will render when looking outside the Portal.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_oceanIsVisible, "OceanIsVisible", "Ocean will be visible when looking outside the Portal")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_oceanIsVisible, "OceanIsVisible", "Ocean will be visible when looking outside the Portal.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_useDeepness, "UseDeepness", "Portal will be treated as an object with volume rather than a plane")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_useDeepness, "UseDeepness", "Portal will be treated as an object with volume rather than a plane.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_doubleSide, "DoubleSide", "Cameras will be able to look through the portal from both sides")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_doubleSide, "DoubleSide", "Cameras will be able to look through the portal from both sides.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_lightBlending, "LightBlending", "Light from neighboring VisAreas will blend into the Portal")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_lightBlending, "LightBlending", "Light from neighboring VisAreas will blend into the Portal.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_lightBlendValue, "LightBlendValue", "How much to blend lights from neighboring VisAreas")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_lightBlendValue, "LightBlendValue", "How much to blend lights from neighboring VisAreas.")
                     ->Attribute(AZ::Edit::Attributes::Max, 1.000000)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.000000)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnChange)
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_vertices, "Vertices", "Points that make up the floor of the Portal")
+                        AZ::Edit::UIHandlers::Default, &PortalConfiguration::m_vertices, "Vertices", "Points that make up the floor of the Portal.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &PortalConfiguration::OnVerticesChange)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                 ;
@@ -106,7 +100,7 @@ namespace Visibility
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorPortalComponent>("Portal", "")
+                editContext->Class<EditorPortalComponent>("Portal", "An area that describes a visibility portal between VisAreas.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Portal.png")
@@ -203,14 +197,12 @@ namespace Visibility
             SVisAreaInfo info;
             info.vAmbientColor = Vec3(ZERO);
             info.bAffectedByOutLights = m_config.m_affectedBySun;
-            info.bIgnoreSkyColor = m_config.m_ignoreSkyColor;
             info.bSkyOnly = m_config.m_skyOnly;
             info.fViewDistRatio = m_config.m_viewDistRatio;
             info.bDoubleSide = m_config.m_doubleSide;
             info.bUseDeepness = m_config.m_useDeepness;
             info.bUseInIndoors = true; //Does not apply to Portals (Portals are only in VisAreas)
             info.bOceanIsVisible = m_config.m_oceanIsVisible;
-            info.bIgnoreGI = m_config.m_ignoreGI;
             info.fPortalBlending = -1.0f;
 
             if (m_config.m_lightBlending)
@@ -604,8 +596,6 @@ namespace Visibility
             conversionSuccess &= ConvertVarBus<PortalRequestBus, float>("Height", varBlock, &PortalRequestBus::Events::SetHeight, newEntityId);
             conversionSuccess &= ConvertVarBus<PortalRequestBus, bool>("DisplayFilled", varBlock, &PortalRequestBus::Events::SetDisplayFilled, newEntityId);
             conversionSuccess &= ConvertVarBus<PortalRequestBus, bool>("AffectedBySun", varBlock, &PortalRequestBus::Events::SetAffectedBySun, newEntityId);
-            conversionSuccess &= ConvertVarBus<PortalRequestBus, bool>("IgnoreSkyColor", varBlock, &PortalRequestBus::Events::SetIgnoreSkyColor, newEntityId);
-            conversionSuccess &= ConvertVarBus<PortalRequestBus, bool>("IgnoreGI", varBlock, &PortalRequestBus::Events::SetIgnoreGI, newEntityId);
             conversionSuccess &= ConvertVarBus<PortalRequestBus, float>("ViewDistRatio", varBlock, &PortalRequestBus::Events::SetViewDistRatio, newEntityId);
             conversionSuccess &= ConvertVarBus<PortalRequestBus, bool>("SkyOnly", varBlock, &PortalRequestBus::Events::SetSkyOnly, newEntityId);
             conversionSuccess &= ConvertVarBus<PortalRequestBus, bool>("OceanIsVisible", varBlock, &PortalRequestBus::Events::SetOceanIsVisible, newEntityId);

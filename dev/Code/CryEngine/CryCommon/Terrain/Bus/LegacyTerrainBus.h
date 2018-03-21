@@ -16,6 +16,27 @@
 namespace LegacyTerrain
 {
     /**
+     * Requests for legacy terrain.
+     */
+    class LegacyTerrainRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~LegacyTerrainRequests() = default;
+
+        /**
+         * Gets the terrain height at specified height map indices (clamped if outside terrain).
+         * @param x index in the x direction.
+         * @param y index in the y direction.
+         * @param[out] height height value at the specified indices.
+         * return true if the height query succeeded, otherwise false.
+         */
+        virtual bool GetTerrainHeight(const AZ::u32 x, const AZ::u32 y, float& height) const = 0;
+    };
+
+    using LegacyTerrainRequestBus = AZ::EBus<LegacyTerrainRequests>;
+
+    /**
      * Broadcast legacy terrain notifications.
      */
     class LegacyTerrainNotifications

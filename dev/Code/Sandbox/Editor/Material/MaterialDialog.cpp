@@ -903,7 +903,7 @@ void CMaterialUI::GetTextureResources(SInputShaderResources& sr, int tex, int pr
     textureVars[tex]->Get(texFilename);
     texFilename = Path::ToUnixPath(texFilename);
 
-    pTextureRes->m_Name = texFilename.toLatin1().data();
+    pTextureRes->m_Name = texFilename.toUtf8().data();
 
     //pTextureRes->m_Amount = textures[tex].amount;
     pTextureRes->m_bUTile = *textures[tex].is_tile[0];
@@ -1580,6 +1580,12 @@ void CMaterialDialog::InitToolbar(UINT nToolbarResID)
     previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_preview_active.png" }, QIcon::Active);
     previewIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_preview_disabled.png" }, QIcon::Disabled);
     m_previewAction = m_toolbar->addAction(previewIcon, tr("Open Large Material Preview Window"), this, SLOT(OnMaterialPreview()));
+    m_toolbar->addSeparator();
+    QIcon resetViewportIcon;
+    resetViewportIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_reset_viewport_normal.png" }, QIcon::Normal);
+    resetViewportIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_reset_viewport_active.png" }, QIcon::Active);
+    resetViewportIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/materialdialog_reset_viewport_disabled.png" }, QIcon::Disabled);
+    m_resetViewporAction = m_toolbar->addAction(resetViewportIcon, tr("Reset Material Viewport"), this, SLOT(OnResetMaterialViewport()));
 
     UpdateActions();
     setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
@@ -2132,60 +2138,6 @@ void CMaterialDialog::UpdateActions()
     }
 }
 
-#ifdef KDAB_PORT
-void CMaterialDialog::OnUpdateMtlSelected(CCmdUI* pCmdUI)
-{
-    if (GetSelectedMaterial())
-    {
-        pCmdUI->Enable(TRUE);
-    }
-    else
-    {
-        pCmdUI->Enable(FALSE);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CMaterialDialog::OnUpdateMtlSaved(CCmdUI* pCmdUI)
-{
-    CMaterial* mtl = GetSelectedMaterial();
-    if (mtl && mtl->CanModify(false))
-    {
-        pCmdUI->Enable(TRUE);
-    }
-    else
-    {
-        pCmdUI->Enable(FALSE);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CMaterialDialog::OnUpdateAssignMtlToSelection(CCmdUI* pCmdUI)
-{
-    if (GetSelectedMaterial() && (!GetIEditor()->GetSelection()->IsEmpty() || GetIEditor()->IsInPreviewMode()))
-    {
-        pCmdUI->Enable(TRUE);
-    }
-    else
-    {
-        pCmdUI->Enable(FALSE);
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CMaterialDialog::OnUpdateObjectSelected(CCmdUI* pCmdUI)
-{
-    if (!GetIEditor()->GetSelection()->IsEmpty() || GetIEditor()->IsInPreviewMode())
-    {
-        pCmdUI->Enable(TRUE);
-    }
-    else
-    {
-        pCmdUI->Enable(FALSE);
-    }
-}
-#endif
-
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnPickMtl()
 {
@@ -2199,21 +2151,6 @@ void CMaterialDialog::OnPickMtl()
     }
     UpdateActions();
 }
-
-#ifdef KDAB_PORT
-//////////////////////////////////////////////////////////////////////////
-void CMaterialDialog::OnUpdatePickMtl(CCmdUI* pCmdUI)
-{
-    if (GetIEditor()->GetEditTool() && GetIEditor()->GetEditTool()->GetClassDesc() && strcmp(GetIEditor()->GetEditTool()->GetClassDesc()->ClassName(), "EditTool.PickMaterial") == 0)
-    {
-        pCmdUI->SetCheck(1);
-    }
-    else
-    {
-        pCmdUI->SetCheck(0);
-    }
-}
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnCopy()
@@ -2247,7 +2184,7 @@ bool CMaterialDialog::SetItemName(CBaseLibraryItem* item, const QString& groupNa
     if (pOtherItem && pOtherItem != item)
     {
         // Ensure uniqness of name.
-        Warning("Duplicate Item Name %s", fullName.toLatin1().data());
+        Warning("Duplicate Item Name %s", fullName.toUtf8().data());
         return false;
     }
     else
@@ -2299,8 +2236,8 @@ void CMaterialDialog::OnUndo(IVariable* pVar)
     {
         if (!CUndo::IsSuspended())
         {
-            CUndo undo(undoName.toLatin1().data());
-            m_pMatManager->GetCurrentMaterial()->RecordUndo(undoName.toLatin1().data(), true);
+            CUndo undo(undoName.toUtf8().data());
+            m_pMatManager->GetCurrentMaterial()->RecordUndo(undoName.toUtf8().data(), true);
         }
     }
     UpdateActions();
@@ -2327,6 +2264,11 @@ void CMaterialDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
     {
         UpdateActions();
     }
+}
+
+void CMaterialDialog::OnResetMaterialViewport()
+{
+    m_pMaterialImageListCtrl->LoadModel();
 }
 
 #include <Material/MaterialDialog.moc>

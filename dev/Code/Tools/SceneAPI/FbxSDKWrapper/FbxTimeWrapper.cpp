@@ -12,7 +12,7 @@
 
 #include <AzCore/Debug/Trace.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include "FbxTimeWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FbxTimeWrapper.h>
 
 namespace AZ
 {
@@ -70,5 +70,5 @@ namespace AZ
                 return FbxTime::eDefaultMode;
             }
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

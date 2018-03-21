@@ -40,7 +40,7 @@ namespace ScriptCanvas
 
                         // This contains the Slot class elements stored in Node class
                         auto slotElements = AZ::Utils::FindDescendantElements(serializeContext, *slotContainerElements.front(), AZStd::vector<AZ::Crc32>{AZ_CRC("m_slots", 0x84838ab4), AZ_CRC("element", 0x41405e39)});
-                        
+
                         AZStd::string slotName;
                         for (auto slotNameToIndexElement : slotNameToIndexElements)
                         {
@@ -84,7 +84,7 @@ namespace ScriptCanvas
                     for (AZ::SerializeContext::DataElementNode* ebusEventEntryElement : ebusEventEntryElements)
                     {
                         EBusEventEntry eventEntry;
-                        if (!ebusEventEntryElement->GetDataHierarchy(serializeContext, eventEntry))
+                        if (!ebusEventEntryElement->GetData(eventEntry))
                         {
                             return false;
                         }
@@ -101,7 +101,7 @@ namespace ScriptCanvas
 
                     return true;
                 }
-                
+
                 if (rootElement.GetVersion() == 0)
                 {
                     auto slotContainerElements = AZ::Utils::FindDescendantElements(serializeContext, rootElement, AZStd::vector<AZ::Crc32>{AZ_CRC("BaseClass1", 0xd4925735), AZ_CRC("Slots", 0xc87435d0)});
@@ -214,7 +214,7 @@ namespace ScriptCanvas
                             }
                         }
                     }
-                    
+
                 }
                 if (!IsIDRequired() || busIdParameter.GetValueAddress())
                 {
@@ -497,9 +497,9 @@ namespace ScriptCanvas
                     const auto& value = *(parameters + parameterIndex);
                     const Datum input = Datum::CreateFromBehaviorContextValue(value);
 
-                    auto callable = [this, &input](Node& node, const SlotId& slotID)
+                    auto callable = [&input](Node& node, const SlotId& slotID)
                     {
-                        SetInput(node, slotID, input);
+                        Node::SetInput(node, slotID, input);
                     };
 
                     ForEachConnectedNode(*slot, AZStd::move(callable));

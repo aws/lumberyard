@@ -515,7 +515,7 @@ void CShapeObject::DisplayNormal(DisplayContext& dc)
         QString msg("\n\n");
         msg += GetName();
         msg += " (see log)";
-        dc.DrawTextLabel(wtm.GetTranslation(), 1.2f, msg.toLatin1().data(), true);
+        dc.DrawTextLabel(wtm.GetTranslation(), 1.2f, msg.toUtf8().data(), true);
     }
 
     if (m_points.size() > 1)
@@ -811,7 +811,7 @@ void CShapeObject::DisplaySoundInfo(DisplayContext& dc)
         QString msg("\n\n");
         msg += GetName();
         msg += " (see log)";
-        dc.DrawTextLabel(wtm.GetTranslation(), 1.2f, msg.toLatin1().data(), true);
+        dc.DrawTextLabel(wtm.GetTranslation(), 1.2f, msg.toUtf8().data(), true);
     }
 
     if (m_points.size() > 1)
@@ -2474,15 +2474,15 @@ void CAIPathObject::UpdateGameArea(bool bRemove)
     {
         if (m_updateSucceed && !m_lastGameArea.isEmpty())
         {
-            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toLatin1().data());
-            ai->DeleteNavigationShape(m_lastGameArea.toLatin1().data());
+            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toUtf8().data());
+            ai->DeleteNavigationShape(m_lastGameArea.toUtf8().data());
         }
         if (bRemove)
         {
             return;
         }
 
-        if (GetNavigation()->DoesNavigationShapeExists(GetName().toLatin1().data(), AREATYPE_PATH, m_bRoad))
+        if (GetNavigation()->DoesNavigationShapeExists(GetName().toUtf8().data(), AREATYPE_PATH, m_bRoad))
         {
             gEnv->pSystem->GetILog()->LogError("AI Path: Path '%s' already exists in AIsystem, please rename the path.", GetName());
             m_updateSucceed = false;
@@ -2501,8 +2501,8 @@ void CAIPathObject::UpdateGameArea(bool bRemove)
         {
             CAIManager* pAIMgr = GetIEditor()->GetAI();
             QString anchorType(m_anchorType);
-            int type = pAIMgr->AnchorActionToId(anchorType.toLatin1().data());
-            QByteArray lastGameArea = m_lastGameArea.toLatin1();
+            int type = pAIMgr->AnchorActionToId(anchorType.toUtf8().data());
+            QByteArray lastGameArea = m_lastGameArea.toUtf8();
             SNavigationShapeParams params(lastGameArea, AREATYPE_PATH, m_bRoad, mv_closed, &worldPts[0], worldPts.size(), 0, m_navType, type);
             m_updateSucceed = GetNavigation()->CreateNavigationShape(params);
             ai->CreateNavigationShape(params);
@@ -2689,7 +2689,7 @@ void CAIPathObject::Display(DisplayContext& dc)
 
         QString msg("");
         msg = tr(" Length: %1m").arg(l, 0, 'f', 2);
-        dc.DrawTextLabel(wtm.GetTranslation(), 1.2f, msg.toLatin1().data(), true);
+        dc.DrawTextLabel(wtm.GetTranslation(), 1.2f, msg.toUtf8().data(), true);
     }
 
     CShapeObject::Display(dc);
@@ -2757,14 +2757,14 @@ void CAIShapeObject::UpdateGameArea(bool bRemove)
     {
         if (m_updateSucceed && !m_lastGameArea.isEmpty())
         {
-            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toLatin1().data());
+            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toUtf8().data());
         }
         if (bRemove)
         {
             return;
         }
 
-        if (GetNavigation()->DoesNavigationShapeExists(GetName().toLatin1().data(), AREATYPE_GENERIC))
+        if (GetNavigation()->DoesNavigationShapeExists(GetName().toUtf8().data(), AREATYPE_GENERIC))
         {
             gEnv->pSystem->GetILog()->LogError("AI Shape: Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
             m_updateSucceed = false;
@@ -2783,8 +2783,8 @@ void CAIShapeObject::UpdateGameArea(bool bRemove)
         {
             CAIManager* pAIMgr = GetIEditor()->GetAI();
             QString anchorType(m_anchorType);
-            int type = pAIMgr->AnchorActionToId(anchorType.toLatin1().data());
-            SNavigationShapeParams params(m_lastGameArea.toLatin1().data(), AREATYPE_GENERIC, false, mv_closed, &worldPts[0], worldPts.size(),
+            int type = pAIMgr->AnchorActionToId(anchorType.toUtf8().data());
+            SNavigationShapeParams params(m_lastGameArea.toUtf8().data(), AREATYPE_GENERIC, false, mv_closed, &worldPts[0], worldPts.size(),
                 GetHeight(), 0, type, (EAILightLevel)(int)m_lightLevel);
             m_updateSucceed = GetNavigation()->CreateNavigationShape(params);
         }
@@ -2821,15 +2821,15 @@ void CAIOcclusionPlaneObject::UpdateGameArea(bool bRemove)
     {
         if (m_updateSucceed && !m_lastGameArea.isEmpty())
         {
-            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toLatin1().data());
-            ai->DeleteNavigationShape(m_lastGameArea.toLatin1().data());
+            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toUtf8().data());
+            ai->DeleteNavigationShape(m_lastGameArea.toUtf8().data());
         }
         if (bRemove)
         {
             return;
         }
 
-        if (GetNavigation()->DoesNavigationShapeExists(GetName().toLatin1().data(), AREATYPE_OCCLUSION_PLANE))
+        if (GetNavigation()->DoesNavigationShapeExists(GetName().toUtf8().data(), AREATYPE_OCCLUSION_PLANE))
         {
             gEnv->pSystem->GetILog()->LogError("OcclusionPlane: Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
             m_updateSucceed = false;
@@ -2846,7 +2846,7 @@ void CAIOcclusionPlaneObject::UpdateGameArea(bool bRemove)
         m_lastGameArea = GetName();
         if (!worldPts.empty())
         {
-            SNavigationShapeParams params(m_lastGameArea.toLatin1().data(), AREATYPE_OCCLUSION_PLANE, false, mv_closed, &worldPts[0], worldPts.size(), GetHeight());
+            SNavigationShapeParams params(m_lastGameArea.toUtf8().data(), AREATYPE_OCCLUSION_PLANE, false, mv_closed, &worldPts[0], worldPts.size(), GetHeight());
             m_updateSucceed = GetNavigation()->CreateNavigationShape(params);
             ai->CreateNavigationShape(params);
         }
@@ -2898,7 +2898,7 @@ void CAIPerceptionModifierObject::UpdateGameArea(bool bRemove)
     {
         if (!m_lastGameArea.isEmpty())
         {
-            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toLatin1().data());
+            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toUtf8().data());
         }
         if (bRemove)
         {
@@ -2915,7 +2915,7 @@ void CAIPerceptionModifierObject::UpdateGameArea(bool bRemove)
         m_lastGameArea = GetName();
         if (!worldPts.empty())
         {
-            SNavigationShapeParams params(m_lastGameArea.toLatin1().data(), AREATYPE_PERCEPTION_MODIFIER, false, mv_closed, &worldPts[0], worldPts.size(), GetHeight());
+            SNavigationShapeParams params(m_lastGameArea.toUtf8().data(), AREATYPE_PERCEPTION_MODIFIER, false, mv_closed, &worldPts[0], worldPts.size(), GetHeight());
             params.fReductionPerMetre = m_fReductionPerMetre;
             params.fReductionMax = m_fReductionMax;
             GetNavigation()->CreateNavigationShape(params);
@@ -2949,7 +2949,7 @@ void CAITerritoryObject::BeginEditParams(IEditor* ie, int flags)
     if (!CEntityObject::m_panel)
     {
         CEntityObject::m_panel = new CAITerritoryPanel;
-        CEntityObject::m_rollupId = AddUIPage((QString("Entity: ") + m_entityClass).toLatin1().data(), CEntityObject::m_panel);
+        CEntityObject::m_rollupId = AddUIPage((QString("Entity: ") + m_entityClass).toUtf8().data(), CEntityObject::m_panel);
     }
     if (CEntityObject::m_panel && CEntityObject::m_panel->isVisible())
     {
@@ -2967,7 +2967,7 @@ void CAITerritoryObject::BeginEditMultiSelParams(bool bAllOfSameType)
     if (!CEntityObject::m_panel)
     {
         CEntityObject::m_panel = new CAITerritoryPanel;
-        CEntityObject::m_rollupId = AddUIPage((QString(m_entityClass) + " and other Entities").toLatin1().data(), CEntityObject::m_panel);
+        CEntityObject::m_rollupId = AddUIPage((QString(m_entityClass) + " and other Entities").toUtf8().data(), CEntityObject::m_panel);
     }
     if (CEntityObject::m_panel && CEntityObject::m_panel->isVisible())
     {
@@ -3039,7 +3039,7 @@ void CAITerritoryObject::UpdateGameArea(bool bRemove)
     {
         if (!m_lastGameArea.isEmpty())
         {
-            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toLatin1().data());
+            GetNavigation()->DeleteNavigationShape(m_lastGameArea.toUtf8().data());
         }
         if (bRemove)
         {
@@ -3056,7 +3056,7 @@ void CAITerritoryObject::UpdateGameArea(bool bRemove)
         m_lastGameArea = GetName();
         if (!worldPts.empty())
         {
-            SNavigationShapeParams params(m_lastGameArea.toLatin1().data(), AREATYPE_GENERIC, false, mv_closed, &worldPts[0], worldPts.size(), GetHeight(), 0, AIANCHOR_COMBAT_TERRITORY);
+            SNavigationShapeParams params(m_lastGameArea.toUtf8().data(), AREATYPE_GENERIC, false, mv_closed, &worldPts[0], worldPts.size(), GetHeight(), 0, AIANCHOR_COMBAT_TERRITORY);
             GetNavigation()->CreateNavigationShape(params);
         }
     }
@@ -3621,7 +3621,7 @@ void CNavigationAreaObject::PostLoad(CObjectArchive& ar)
     {
         if (INavigationSystem* aiNavigation = aiSystem->GetNavigationSystem())
         {
-            aiNavigation->RegisterArea(GetName().toLatin1().data());
+            aiNavigation->RegisterArea(GetName().toUtf8().data());
         }
     }
 
@@ -3636,7 +3636,7 @@ void CNavigationAreaObject::Done()
     {
         if (INavigationSystem* aiNavigation = aiSystem->GetNavigationSystem())
         {
-            aiNavigation->UnRegisterArea(GetName().toLatin1().data());
+            aiNavigation->UnRegisterArea(GetName().toUtf8().data());
         }
     }
 }
@@ -3742,7 +3742,7 @@ void CNavigationAreaObject::UpdateMeshes()
                 NavigationAgentTypeID agentTypeID = aiSystem->GetNavigationSystem()->GetAgentTypeID(i);
 
                 INavigationSystem::CreateMeshParams params; // TODO: expose at least the tile size
-                meshID = aiSystem->GetNavigationSystem()->CreateMesh(GetName().toLatin1().data(), agentTypeID, params);
+                meshID = aiSystem->GetNavigationSystem()->CreateMesh(GetName().toUtf8().data(), agentTypeID, params);
                 aiSystem->GetNavigationSystem()->SetMeshBoundaryVolume(meshID, m_volume);
 
                 AABB aabb;
@@ -3803,7 +3803,7 @@ void CNavigationAreaObject::RelinkWithMesh(bool bUpdateGameArea)
     }
 
     INavigationSystem* pAINavigation = pAISystem->GetNavigationSystem();
-    m_volume = pAINavigation->GetAreaId(GetName().toLatin1().data());
+    m_volume = pAINavigation->GetAreaId(GetName().toUtf8().data());
 
     if (!mv_exclusion)
     {
@@ -3813,7 +3813,7 @@ void CNavigationAreaObject::RelinkWithMesh(bool bUpdateGameArea)
         for (size_t i = 0; i < agentTypeCount; ++i)
         {
             NavigationAgentTypeID agentTypeID = pAINavigation->GetAgentTypeID(i);
-            m_meshes[i] = pAINavigation->GetMeshID(GetName().toLatin1().data(), agentTypeID);
+            m_meshes[i] = pAINavigation->GetMeshID(GetName().toUtf8().data(), agentTypeID);
         }
     }
 
@@ -3836,10 +3836,10 @@ void CNavigationAreaObject::CreateVolume(Vec3* points, size_t pointsSize, Naviga
         {
             m_volume = aiNavigation->CreateVolume(points, pointsSize, mv_height, requestedID);
 
-            aiNavigation->RegisterListener(this, GetName().toLatin1().data());
+            aiNavigation->RegisterListener(this, GetName().toUtf8().data());
             if (requestedID == NavigationVolumeID())
             {
-                aiNavigation->SetAreaId(GetName().toLatin1().data(), m_volume);
+                aiNavigation->SetAreaId(GetName().toUtf8().data(), m_volume);
             }
         }
     }
@@ -3939,12 +3939,12 @@ void CNavigationAreaObject::SetName(const QString& name)
     if (IAISystem* aiSystem = GetIEditor()->GetSystem()->GetAISystem())
     {
         INavigationSystem* pNavigationSystem = aiSystem->GetNavigationSystem();
-        pNavigationSystem->UpdateAreaNameForId(m_volume, name.toLatin1().data());
+        pNavigationSystem->UpdateAreaNameForId(m_volume, name.toUtf8().data());
         for (size_t i = 0; i < m_meshes.size(); ++i)
         {
             if (m_meshes[i])
             {
-                pNavigationSystem->SetMeshName(m_meshes[i], name.toLatin1().data());
+                pNavigationSystem->SetMeshName(m_meshes[i], name.toUtf8().data());
             }
         }
     }
@@ -3995,7 +3995,7 @@ namespace
         }
         else
         {
-            throw std::logic_error((QString("\"") + objName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + objName + "\" is an invalid object.").toUtf8().data());
         }
 
         if (qobject_cast<CNavigationAreaObject*>(pObject))

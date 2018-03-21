@@ -11,9 +11,9 @@
 */
 
 #include <AzCore/Casting/numeric_cast.h>
-#include "FbxVertexColorWrapper.h"
-#include "FbxLayerElementUtilities.h"
-#include "FbxTypeConverter.h"
+#include <SceneAPI/FbxSDKWrapper/FbxVertexColorWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxLayerElementUtilities.h>
+#include <SceneAPI/FbxSDKWrapper/FbxTypeConverter.h>
 
 namespace AZ
 {
@@ -75,5 +75,5 @@ namespace AZ
         {
             return m_fbxVertexColor != nullptr;
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

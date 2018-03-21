@@ -124,7 +124,4 @@ extern IComponentPtr CreateScriptComponent(IEntity* pEntity, IEntityScript* pScr
 #define ENTITY_PROFILER FUNCTION_PROFILER_FAST(GetISystem(), PROFILE_ENTITY, g_bProfilerEnabled);
 #define ENTITY_PROFILER_NAME(str) FRAME_PROFILER_FAST(str, GetISystem(), PROFILE_ENTITY, g_bProfilerEnabled);
 
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
 #endif // !defined(AFX_STDAFX_H__2E966576_9327_4B66_9CFD_329F604BE709__INCLUDED_)

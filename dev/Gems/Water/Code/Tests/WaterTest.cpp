@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Water_precompiled.h"
 
 #include <AzTest/AzTest.h>
 #include <Mocks/ITimerMock.h>
@@ -22,6 +22,7 @@
 #include <AzCore/Math/Random.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/std/chrono/clocks.h>
 
@@ -74,7 +75,7 @@ TEST(WaterTest, ComponentsWithComponentApplication)
     AZ::Entity* waterEntity = aznew AZ::Entity("water_entity");
     waterEntity->CreateComponent<Water::WaterOceanComponent>();
     app.AddEntity(waterEntity);
-    
+
     app.Destroy();
     ASSERT_TRUE(true);
 }
@@ -203,7 +204,7 @@ TEST_F(WaterTestApp, Ocean_WaterOceanComponentMatchesConfiguration)
     cfg.SetWaterTessellationAmount(13);
     cfg.SetOceanMaterialName("fake.mtl");
     cfg.SetGodRaysEnabled((rand.GetRandom() % 2) == 0);
-    cfg.SetUnderwaterDistortion(16.0f); 
+    cfg.SetUnderwaterDistortion(16.0f);
 
     waterEntity->CreateComponent<Water::WaterOceanComponent>(cfg);
 
@@ -243,7 +244,7 @@ TEST_F(WaterTestApp, Ocean_ScriptingOceanEnvironmentRequestBus)
     waterEntity->CreateComponent<Water::WaterOceanComponent>();
     waterEntity->Init();
     waterEntity->Activate();
-    
+
     // OceanEnvironmentRequestBus.Broadcast tests
     const char luaCode[] =
         R"LUA(
@@ -275,7 +276,7 @@ TEST_F(WaterTestApp, Ocean_ScriptingOceanEnvironmentRequestBus)
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.SetFogColor(Color(1.0,2.0,3.0)) or true);
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColor() == Color(1.0,2.0,3.0));
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.SetFogColorMulitplier(2.0) or true);
-            ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColorMulitplier() == 2.0); 
+            ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColorMulitplier() == 2.0);
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColorPremultiplied() == Color(2.0,4.0,6.0,2.0));
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.SetNearFogColor(Color(1.1,2.2,3.3)) or true);
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetNearFogColor() == Color(1.1,2.2,3.3));

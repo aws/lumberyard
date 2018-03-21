@@ -659,7 +659,7 @@ void CFragmentIDUIControls::OnUIChange(IVariable* pVar, SelectedKeys& selectedKe
 
             if (pVar == mv_fragmentID.GetVar())
             {
-                key.fragmentID = fragDefs.Find(fragment.toLatin1().data());
+                key.fragmentID = fragDefs.Find(fragment.toUtf8().data());
 
                 const CTagDefinition* fragTagDef = (key.fragmentID == FRAGMENT_ID_INVALID) ? NULL : contDef.GetFragmentTagDef(key.fragmentID);
                 RecreateVars(fragTagDef, key.transition);
@@ -975,7 +975,7 @@ void CProcClipUIControls::OnUIChange(IVariable* pVar, SelectedKeys& selectedKeys
 
             if (pVar == mv_procType.GetVar())
             {
-                key.typeNameHash = IProceduralClipFactory::THash(procType.toLatin1().data());
+                key.typeNameHash = IProceduralClipFactory::THash(procType.toUtf8().data());
 
                 const EntityId entityId = selectedKey.pNode->GetEntity() ? selectedKey.pNode->GetEntity()->GetId() : 0;
                 UpdateProcType(key, entityId);

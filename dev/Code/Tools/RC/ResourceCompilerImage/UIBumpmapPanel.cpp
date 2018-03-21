@@ -185,7 +185,7 @@ void CUIBumpmapPanel::GetDataFromDialog(CBumpProperties& rBumpProp)
 
         str = dlgitem->text();
 
-        rBumpProp.SetBumpmapName(str.toLatin1().data());
+        rBumpProp.SetBumpmapName(str.toUtf8().data());
     }
 }
 

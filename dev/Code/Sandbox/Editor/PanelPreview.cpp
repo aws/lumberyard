@@ -47,7 +47,7 @@ static IParticleEffect* FindUpperValidParticleEffect(const QString& effectName)
         return NULL;
     }
 
-    IParticleEffect* pEffect = gEnv->pParticleManager->FindEffect(effectName.toLatin1().data());
+    IParticleEffect* pEffect = gEnv->pParticleManager->FindEffect(effectName.toUtf8().data());
     if (pEffect)
     {
         return pEffect;
@@ -102,7 +102,7 @@ bool CPanelPreview::LoadParticleEffect(const QString& effectName)
         return false;
     }
 
-    _smart_ptr<IParticleEffect> pEffect = gEnv->pParticleManager->FindEffect(effectName.toLatin1().data());
+    _smart_ptr<IParticleEffect> pEffect = gEnv->pParticleManager->FindEffect(effectName.toUtf8().data());
     if (pEffect == NULL)
     {
         IParticleEffect* pParentEffect = FindUpperValidParticleEffect(effectName);

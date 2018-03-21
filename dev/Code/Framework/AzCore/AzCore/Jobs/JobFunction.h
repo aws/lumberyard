@@ -36,7 +36,7 @@ namespace AZ
         {
         }
 
-        virtual void Process()
+        void Process() override
         {
             m_function();
         }
@@ -47,7 +47,7 @@ namespace AZ
         Function m_function;
     };
 
-    /// Convenience function to create (aznew JobFunction with any function signature). You should delte the function with delete (or isAutoDelete set to true)
+	/// Convenience function to create (aznew JobFunction with any function signature). You should delte the function with delete (or isAutoDelete set to true)
     template<class Function>
     inline JobFunction<Function>* CreateJobFunction(const Function& processFunction, bool isAutoDelete, JobContext* context = nullptr)
     {

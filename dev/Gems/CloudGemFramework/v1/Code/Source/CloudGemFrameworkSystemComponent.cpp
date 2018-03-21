@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>

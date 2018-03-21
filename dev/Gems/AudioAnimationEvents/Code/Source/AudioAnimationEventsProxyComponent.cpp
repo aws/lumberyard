@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "AudioAnimationEvents_precompiled.h"
 #include "AudioAnimationEventsProxyComponent.h"
 
 #include <ISystem.h>

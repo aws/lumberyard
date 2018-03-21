@@ -41,11 +41,6 @@ public:
 
     void SetParticleEffectEntity(class CParticleEffectObject* entity);
 
-	// Overrides
-	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CParticleEffectPanel)
-	//}}AFX_VIRTUAL
-    // Implementation
 private:
 	CParticleEffectObject* m_pEntity;
 

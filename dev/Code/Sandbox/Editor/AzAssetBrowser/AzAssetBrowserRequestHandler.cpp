@@ -243,13 +243,13 @@ namespace AzAssetBrowserRequestHandlerPrivate
 
 AzAssetBrowserRequestHandler::AzAssetBrowserRequestHandler()
 {
-    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusConnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
     AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(AzQtComponents::DragAndDropContexts::EditorViewport);
 }
 
 AzAssetBrowserRequestHandler::~AzAssetBrowserRequestHandler()
 {
-    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusDisconnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
     AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect();
 }
 
@@ -291,7 +291,7 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
         // for example, custom data formats that are made by Lumberyard that can not have a program associated in the operating system to view them.
         // If the only opener that can open that file has no m_opener, then its not openable.
         SourceFileOpenerList openers;
-        AssetBrowserInteractionNotificationsBus::Broadcast(&AssetBrowserInteractionNotificationsBus::Events::AddSourceFileOpeners, fullFilePath.c_str(), sourceID, openers);
+        AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowserInteractionNotificationBus::Events::AddSourceFileOpeners, fullFilePath.c_str(), sourceID, openers);
         bool foundNonNullOpener = false;
         for (const SourceFileOpenerDetails& openerDetails : openers)
         {
@@ -309,7 +309,7 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
             menu->addAction(QObject::tr("Open"), [this, sourceID]()
             {
                 bool someoneHandledIt = false;
-                AssetBrowserInteractionNotificationsBus::Broadcast(&AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, sourceID, someoneHandledIt);
+                AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, sourceID, someoneHandledIt);
             });
         }
         
@@ -447,25 +447,11 @@ bool AzAssetBrowserRequestHandler::CanAcceptDragAndDropEvent(QDropEvent* event, 
     // is it something we know how to spawn?
     bool canSpawn = false;
 
-    bool dragFromFBX = IsDragOfFBX(event->mimeData());
-
     AzToolsFramework::AssetBrowser::AssetBrowserEntry::ForEachEntryInMimeData<ProductAssetBrowserEntry>(event->mimeData(),
         [&](const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product)
         {
             if (CanSpawnEntityForProduct(product))
             {
-                if (dragFromFBX)
-                {
-                    // don't spawn materials that come from FBX files.
-                    EBusFindAssetTypeByName materialAssetTypeResult("Material");
-                    AZ::AssetTypeInfoBus::BroadcastResult(materialAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
-                    AZ::Data::AssetType materialAssetType = materialAssetTypeResult.GetAssetType();
-                    if ((!materialAssetType.IsNull()) && (product->GetAssetType() == materialAssetType))
-                    {
-                        return; // we are in a lambda, so this return just exits this iteration of the ForEach and goes to the next.
-                    }
-                }
-
                 canSpawn = true;
             }
         });
@@ -524,25 +510,11 @@ void AzAssetBrowserRequestHandler::Drop(QDropEvent* event, AzQtComponents::DragA
     // make a scoped undo that covers the ENTIRE operation.
     ScopedUndoBatch undo("Create entities from asset");
 
-    // FBX products are 'special' in that if there are meshes in the FBX pipeline, we'd prefer not to spawn materials as decals.
-    bool dragFromFBX = IsDragOfFBX(event->mimeData());
-
     AssetBrowserEntry::ForEachEntryInMimeData<ProductAssetBrowserEntry>(event->mimeData(),
         [&](const ProductAssetBrowserEntry* product)
         {
             if (CanSpawnEntityForProduct(product))
             {
-                if (dragFromFBX)
-                {
-                    // don't spawn materials that come from FBX's.
-                    EBusFindAssetTypeByName materialAssetTypeResult("Material");
-                    AZ::AssetTypeInfoBus::BroadcastResult(materialAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
-                    AZ::Data::AssetType materialAssetType = materialAssetTypeResult.GetAssetType();
-                    if ((!materialAssetType.IsNull()) && (product->GetAssetType() == materialAssetType))
-                    {
-                        return; // don't spawn this one. Calling 'return' may seem odd, but we're in a lambda, it will just continue to the next call.
-                    }
-                }
                 SpawnEntityAtPoint(product, viewportDragContext, spawnedEntities, spawnTicket);
             }
         });
@@ -554,9 +526,15 @@ void AzAssetBrowserRequestHandler::Drop(QDropEvent* event, AzQtComponents::DragA
     }
 }
 
-void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& /*sourceUUID*/, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
+void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
 {
     using namespace AzToolsFramework;
+
+    //Get asset group to support a variety of file extensions
+    const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* fullDetails = AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry::GetSourceByAssetId(sourceUUID);
+    QString assetGroup;
+    AZ::AssetTypeInfoBus::EventResult(assetGroup, fullDetails->GetPrimaryAssetType(), &AZ::AssetTypeInfo::GetGroup);
+
     if (AZStd::wildcard_match("*.lua", fullSourceFileName))
     {
         AZStd::string fullName(fullSourceFileName);
@@ -579,6 +557,24 @@ void AzAssetBrowserRequestHandler::AddSourceFileOpeners(const char* fullSourceFi
         // that we have taken care of this, don't show menus or anything.  This will be ignored if there are other openers.
         openers.push_back({"Lumberyard_Slice", "", QIcon(), nullptr });
     }
+#if defined(AZ_PLATFORM_WINDOWS)
+    else if (assetGroup.compare("Texture", Qt::CaseInsensitive) == 0)
+    {
+        //Open the texture in RC editor
+        openers.push_back(
+        {
+            "Lumberyard_Resource_Compiler",
+            "Open in Resource Compiler...",
+            QIcon(":/PropertyEditor/Resources/edit-asset.png"),
+            [this](const char* fullSourceFileNameInCallback, const AZ::Uuid& /*sourceUUID*/)
+            {
+                gEnv->pResourceCompilerHelper->CallResourceCompiler(fullSourceFileNameInCallback, "/userdialog", NULL, false, IResourceCompilerHelper::eRcExePath_currentFolder, true, false, L".");
+            }
+        });
+    }
+#endif //  AZ_PLATFORM_WINDOWS
+
+
 }
 
 void AzAssetBrowserRequestHandler::OpenAssetInAssociatedEditor(const AZ::Data::AssetId& assetId, bool& alreadyHandled)
@@ -607,7 +603,7 @@ void AzAssetBrowserRequestHandler::OpenAssetInAssociatedEditor(const AZ::Data::A
     AzToolsFramework::EditorRequestBus::BroadcastResult(mainWindow, &AzToolsFramework::EditorRequests::GetMainWindow);
 
     SourceFileOpenerList openers;
-    AssetBrowserInteractionNotificationsBus::Broadcast(&AssetBrowserInteractionNotificationsBus::Events::AddSourceFileOpeners, fullEntryPath.c_str(), sourceID, openers);
+    AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowserInteractionNotificationBus::Events::AddSourceFileOpeners, fullEntryPath.c_str(), sourceID, openers);
 
     // did anyone actually accept it?
     if (!openers.empty())

@@ -172,7 +172,7 @@ bool CDialogEditorDialog::DoSourceControlOp(CEditorDialogScript* script, ESource
         needsLoad = true;
         break;
     case ESCM_GETLATEST:
-        result = GetIEditor()->GetSourceControl()->GetLatestVersion(path.toLatin1().data());
+        result = CFileUtil::GetLatestFromSourceControl(path.toUtf8().data(), this);
         needsLoad = true;
         break;
     }
@@ -205,6 +205,10 @@ static QString GetSCStatusText(uint32 scStatus)
     if (scStatus & SCC_FILE_ATTRIBUTE_INPAK)
     {
         return QObject::tr("[In PAK]");
+    }
+    else if (scStatus & SCC_FILE_ATTRIBUTE_ADD)
+    {
+        return QObject::tr("[Marked For Add]");
     }
     else if (scStatus & SCC_FILE_ATTRIBUTE_CHECKEDOUT)
     {
@@ -387,7 +391,7 @@ void CDialogEditorDialog::CreateScript()
         QRegularExpression regex(QStringLiteral(R"([:./])"));
         if (groupName.contains(regex) || itemName.contains(regex))
         {
-            Error(tr("Group/Name may not contain characters :./").toLatin1().data());
+            Error(tr("Group/Name may not contain characters :./").toUtf8().data());
         }
         else
         {
@@ -402,7 +406,7 @@ void CDialogEditorDialog::CreateScript()
             CEditorDialogScript* newScript = m_dialogManager->GetScript(id, false);
             if (newScript != nullptr)
             {
-                Error(tr("Dialog with ID '%1' already exists.").arg(id).toLatin1().data());
+                Error(tr("Dialog with ID '%1' already exists.").arg(id).toUtf8().data());
             }
             else
             {
@@ -525,7 +529,7 @@ void CDialogEditorDialog::RenameScript()
                     "\nOld: %s"
                     "\nNew: %s", oldPath, newPath);
 
-                if (!GetIEditor()->GetSourceControl()->Rename(oldPath.toLatin1().data(), newPath.toLatin1().data(), "Lumberyard - DialogEditor Rename", (RENAME_WITHOUT_REVERT | RENAME_WITHOUT_SUBMIT)))
+                if (!CFileUtil::RenameFile(oldPath.toUtf8().data(), newPath.toUtf8().data()))
                 {
                     QMessageBox box(this);
                     box.setText(tr("Could not rename file in Source Control."));
@@ -840,7 +844,7 @@ ScriptTreeView::ScriptTreeView(CDialogEditorDialog* editor, QWidget* parent)
     layout->addWidget(m_label);
     layout->setMargin(4);
     m_label->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    m_label->setText(tr("No Dialogs yet.\nUse[Add Dialog] to create new one."));
+    m_label->setText(tr("No Dialogs yet.\nUse [Add Dialog] to create new one."));
     updateLabel();
 }
 

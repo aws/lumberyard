@@ -27,8 +27,6 @@
 
 #include "Clipboard.h"
 
-//#include <afxcolordialog.h>
-
 #include <QColorDialog>
 #include <QMenu>
 #include <QPainter>

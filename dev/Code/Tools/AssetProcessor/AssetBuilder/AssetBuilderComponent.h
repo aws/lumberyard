@@ -52,6 +52,8 @@ public:
     AssetBuilderComponent() = default;
     ~AssetBuilderComponent() override = default;
 
+    void PrintHelp();
+
     // AZ::Component overrides
     void Activate() override;
     void Deactivate() override;
@@ -65,6 +67,8 @@ public:
     
     //EngineConnectionEvents Handler
     void Disconnected(AzFramework::SocketConnection* connection) override;
+
+    static bool IsInDebugMode(const AzFramework::CommandLine& commandLine);
 protected:
 
     AZ_DISABLE_COPY_MOVE(AssetBuilderComponent);
@@ -98,11 +102,15 @@ protected:
 
     //! Hooks up net job request handling and keeps the AssetBuilder running indefinitely
     bool RunInResidentMode();
+    bool RunDebugTask(AZStd::string&& debugFile, bool runCreateJobs, bool runProcessJob);
+    bool RunOneShotTask(const AZStd::string& task);
 
     template<typename TNetRequest, typename TNetResponse>
     void ResidentJobHandler(AZ::u32 serial, const void* data, AZ::u32 dataLength, JobType jobType);
     void CreateJobsResidentHandler(AZ::u32 typeId, AZ::u32 serial, const void* data, AZ::u32 dataLength);
     void ProcessJobResidentHandler(AZ::u32 typeId, AZ::u32 serial, const void* data, AZ::u32 dataLength);
+
+    bool IsBuilderForFile(const AZStd::string& filePath, const AssetBuilderSDK::AssetBuilderDesc& builderDescription) const;
 
     //! Run by a separate thread to avoid blocking the net recv thread
     //! Handles calling the appropriate builder job function for the incoming job
@@ -110,6 +118,9 @@ protected:
 
     //! Handles a builder registration request
     bool HandleRegisterBuilder(const AZStd::string& inputFilePath, const AZStd::string& outputFilePath) const;
+
+    //! If needed looks at collected data and updates the result code from the job accordingly.
+    void UpdateResultCode(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const;
 
     //! Handles reading the request from file, passing it to the specified function and writing the response to file
     template<typename TRequest, typename TResponse>

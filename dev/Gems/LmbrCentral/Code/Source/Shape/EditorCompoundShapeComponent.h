@@ -18,6 +18,7 @@ namespace LmbrCentral
 {
     class EditorCompoundShapeComponent
         : public EditorBaseShapeComponent
+        , private CompoundShapeComponentRequestsBus::Handler
     {
     public:
 
@@ -31,7 +32,8 @@ namespace LmbrCentral
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         ////////////////////////////////////////////////////////////////////////
 
-    protected:
+        void Activate() override;
+        void Deactivate() override;
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
@@ -39,7 +41,19 @@ namespace LmbrCentral
             provided.push_back(AZ_CRC("CompoundShapeService", 0x4f7c640a));
         }
 
+        
+        AZ::u32 ConfigurationChanged();
+
     private:
+
+        //////////////////////////////////////////////////////////////////////////
+        // CompoundShapeComponentRequestsBus::Handler implementation
+        CompoundShapeConfiguration GetCompoundShapeConfiguration() override
+        {
+            return m_configuration;
+        }
+        bool HasShapeComponentReferencingEntityId(const AZ::EntityId& entityId) override;
+        ////////////////////////////////////////////////////////////////////////
 
         //! Stores configuration for this component
         CompoundShapeConfiguration m_configuration;

@@ -17,6 +17,7 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 #include <SceneAPI/SceneCore/Events/ProcessingResult.h>
 
 namespace AZ
@@ -48,29 +49,60 @@ namespace AZ
         namespace Export
         {
             //! Scene exporting component that exports materials to the cache if needed before any processing happens.
-            class MaterialExporterComponent : public SceneCore::ExportingComponent
+            class BaseMaterialExporterComponent
             {
             public:
-                AZ_COMPONENT(MaterialExporterComponent, "{6976CB4F-BA87-4CBF-A49D-0E602BFDC3B2}", SceneCore::ExportingComponent);
+                virtual ~BaseMaterialExporterComponent() = default;
+
+            protected:
+                //! Prepares for processing and exporting by looking at all the groups and generating materials for them in the temp dir
+                //! if needed. If there's already a material in the source folder this step will be ignored.
+                virtual Events::ProcessingResult ExportMaterialsToTempDir(Events::PreExportEventContext& context, bool registerProducts) const;
+                // Gets the root path that all texture paths have to be relative to, which is usually the game projects root.
+                virtual AZStd::string GetTextureRootPath() const;
+            };
+
+            class MaterialExporterComponent
+                : public SceneCore::ExportingComponent
+                , protected BaseMaterialExporterComponent
+            {
+            public:
+                AZ_COMPONENT(MaterialExporterComponent, "{F49A1534-05D9-4153-A86E-BF329CAAB543}", SceneCore::ExportingComponent);
 
                 MaterialExporterComponent();
                 ~MaterialExporterComponent() override = default;
 
-                static void Reflect(ReflectContext* context);
-
-                /// @cond EXCLUDE_DOCS
-                // Prepares for processing and exporting by looking at all the groups and generating materials for them in the cache
-                //      if needed and if there isn't already a material in the source folder.
                 Events::ProcessingResult ExportMaterials(Events::PreExportEventContext& context) const;
-                // Gets the root path that all texture paths have to be relative to, which is usually the game projects root.
-                AZStd::string GetTextureRootPath() const;
-                /// @endcond
+
+                static void Reflect(ReflectContext* context);
 
             protected:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
                 // Workaround for VS2013 - Delete the copy constructor and make it private
                 // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
                 MaterialExporterComponent(const MaterialExporterComponent&) = delete;
+#endif
+            };
+
+            class RCMaterialExporterComponent
+                : public SceneCore::RCExportingComponent
+                , protected BaseMaterialExporterComponent
+            {
+            public:
+                AZ_COMPONENT(RCMaterialExporterComponent, "{EB643AB1-E68E-4297-8334-BB458383A327}", SceneCore::RCExportingComponent);
+
+                RCMaterialExporterComponent();
+                ~RCMaterialExporterComponent() override = default;
+
+                Events::ProcessingResult ExportMaterials(Events::PreExportEventContext& context) const;
+
+                static void Reflect(ReflectContext* context);
+
+            protected:
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+                // Workaround for VS2013 - Delete the copy constructor and make it private
+                // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+                RCMaterialExporterComponent(const RCMaterialExporterComponent&) = delete;
 #endif
             };
 

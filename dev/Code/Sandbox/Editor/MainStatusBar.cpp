@@ -207,7 +207,6 @@ void MainStatusBar::Init()
         500
     };                                             //in ms, so 2 FPS
 
-    SetItem(QStringLiteral("source_control"), QString(), tr("No source control provided"), QPixmap(":/statusbar/res/source_control.ico").scaledToHeight(16));
     QString strGameInfo;
     ICVar* pCVar = gEnv->pConsole->GetCVar("sys_game_folder");
     if (pCVar)
@@ -277,8 +276,14 @@ QWidget* MainStatusBar::GetItem(QString indicatorName)
 
 SourceControlItem::SourceControlItem(QString name, MainStatusBar* parent)
     : StatusBarItem(name, true, parent)
+    , m_sourceControlAvailable(false)
 {
-    AzToolsFramework::SourceControlNotificationBus::Handler::BusConnect();
+    if (AzToolsFramework::SourceControlConnectionRequestBus::HasHandlers())
+    {
+        AzToolsFramework::SourceControlNotificationBus::Handler::BusConnect();
+        m_sourceControlAvailable = true;
+    }
+
     InitMenu();
     connect(this, &StatusBarItem::clicked, this, &SourceControlItem::UpdateAndShowMenu);
 }
@@ -290,8 +295,11 @@ SourceControlItem::~SourceControlItem()
 
 void SourceControlItem::UpdateAndShowMenu()
 {
-    UpdateMenuItems();
-    m_menu->popup(QCursor::pos());
+    if (m_sourceControlAvailable)
+    {
+        UpdateMenuItems();
+        m_menu->popup(QCursor::pos());
+    }
 }
 
 void SourceControlItem::ConnectivityStateChanged(const AzToolsFramework::SourceControlState state)
@@ -302,29 +310,40 @@ void SourceControlItem::ConnectivityStateChanged(const AzToolsFramework::SourceC
 
 void SourceControlItem::InitMenu()
 {
-    m_menu = std::make_unique<QMenu>();
-
-    m_settingsAction = m_menu->addAction(tr("Settings"));
-    m_enableAction = m_menu->addAction(tr("Enable"));
-    m_disableAction = m_menu->addAction(tr("Disable"));
-
-    m_enableAction->setEnabled(true);
-    m_disableAction->setEnabled(true);
-
+    if (m_sourceControlAvailable)
     {
-        using namespace AzToolsFramework;
-        m_SourceControlState = SourceControlState::Disabled;
-        SourceControlConnectionRequestBus::BroadcastResult(m_SourceControlState, &SourceControlConnectionRequestBus::Events::GetSourceControlState);
-        UpdateMenuItems();
-    }
+        m_menu = std::make_unique<QMenu>();
 
-    connect(m_settingsAction, &QAction::triggered, [&]()
+        m_settingsAction = m_menu->addAction(tr("Settings"));
+        m_enableAction = m_menu->addAction(tr("Enable"));
+        m_disableAction = m_menu->addAction(tr("Disable"));
+
+        m_enableAction->setEnabled(true);
+        m_disableAction->setEnabled(true);
+
+        m_scIconOk = QPixmap(":statusbar/res/p4.ico");
+        m_scIconError = QPixmap(":statusbar/res/p4_error.ico");
+
+        {
+            using namespace AzToolsFramework;
+            m_SourceControlState = SourceControlState::Disabled;
+            SourceControlConnectionRequestBus::BroadcastResult(m_SourceControlState, &SourceControlConnectionRequestBus::Events::GetSourceControlState);
+            UpdateMenuItems();
+        }
+
+        connect(m_settingsAction, &QAction::triggered, [&]()
         {
             GetIEditor()->GetSourceControl()->ShowSettings();
         });
 
-    connect(m_enableAction,  &QAction::triggered, [this](){SetSourceControlEnabledState(true); });
-    connect(m_disableAction, &QAction::triggered, [this](){SetSourceControlEnabledState(false); });
+        connect(m_enableAction, &QAction::triggered, [this]() {SetSourceControlEnabledState(true); });
+        connect(m_disableAction, &QAction::triggered, [this]() {SetSourceControlEnabledState(false); });
+    }
+    else
+    {
+        SetIcon(QPixmap(":/statusbar/res/source_control.ico").scaledToHeight(16));
+        SetToolTip(tr("No source control provided"));
+    }
 }
 
 void SourceControlItem::SetSourceControlEnabledState(bool state)
@@ -335,11 +354,32 @@ void SourceControlItem::SetSourceControlEnabledState(bool state)
 
 void SourceControlItem::UpdateMenuItems()
 {
-    bool disabled = (m_SourceControlState == AzToolsFramework::SourceControlState::Disabled);
+    QString toolTip;
+    bool disabled = false;
+    bool errorIcon = false;
+
+    switch (m_SourceControlState)
+    {
+    case AzToolsFramework::SourceControlState::Disabled:
+        toolTip = "Perforce disabled";
+        disabled = true;
+        errorIcon = true;
+        break;
+    case AzToolsFramework::SourceControlState::ConfigurationInvalid:
+        errorIcon = true;
+        toolTip = "Perforce configuration invalid";
+        break;
+    case AzToolsFramework::SourceControlState::Active:
+        toolTip = "Perforce connected";
+        break;
+    }
 
     m_settingsAction->setEnabled(!disabled);
     m_disableAction->setVisible(!disabled);
     m_enableAction->setVisible(disabled);
+
+    SetIcon(errorIcon ? m_scIconError : m_scIconOk);
+    SetToolTip(toolTip);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -360,7 +400,7 @@ void MemoryStatusItem::updateStatus()
     ProcessMemInfo mi;
     CProcessInfo::QueryMemInfo(mi);
 
-    uint64 nSizeMb = (uint64)(mi.PagefileUsage / (1024 * 1024));
+    uint64 nSizeMb = (uint64)(mi.WorkingSet / (1024 * 1024));
 
     SetText(QString("%1 Mb").arg(nSizeMb));
 }

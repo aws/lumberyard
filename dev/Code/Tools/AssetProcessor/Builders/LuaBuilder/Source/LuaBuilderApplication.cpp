@@ -29,8 +29,9 @@ namespace LuaBuilder
 
         //////////////////////////////////////////////////////////////////////////
         // AZ::Component
-        AZ_COMPONENT(BuilderPluginComponent, "{F85990CF-BF5F-4C02-9188-4C8698F20843}")
-            static void Reflect(AZ::ReflectContext* context)
+        AZ_COMPONENT(BuilderPluginComponent, "{F85990CF-BF5F-4C02-9188-4C8698F20843}");
+        
+        static void Reflect(AZ::ReflectContext* context)
         {
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
@@ -51,12 +52,11 @@ namespace LuaBuilder
             builderDescriptor.m_processJobFunction = AZStd::bind(&LuaBuilderWorker::ProcessJob, &m_luaBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
             m_luaBuilder.BusConnect(builderDescriptor.m_busId);
 
-            EBUS_EVENT(AssetBuilderSDK::AssetBuilderBus, RegisterBuilderInformation, builderDescriptor);
+            AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation, builderDescriptor);
         }
 
         void Deactivate() override
         {
-            m_luaBuilder.ShutDown();
             m_luaBuilder.BusDisconnect();
         }
         //////////////////////////////////////////////////////////////////////////

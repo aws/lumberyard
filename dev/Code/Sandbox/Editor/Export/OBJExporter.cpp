@@ -52,7 +52,7 @@ bool COBJExporter::ExportToFile(const char* filename, const Export::IData* pExpo
     materialFilename = Path::GetFile(materialFilename);
 
     // Write material library import statement
-    fprintf(hFile, "mtllib %s\n", materialFilename.toLatin1().data());
+    fprintf(hFile, "mtllib %s\n", materialFilename.toUtf8().data());
     fprintf(hFile, "#\n");
 
     int numObjects = pExportData->GetObjectCount();
@@ -160,7 +160,7 @@ bool COBJExporter::ExportToFile(const char* filename, const Export::IData* pExpo
     materialFilename = Path::ReplaceExtension(filename, "mtl");
 
     // Open the material file
-    hFile = fopen(materialFilename.toLatin1().data(), "w");
+    hFile = fopen(materialFilename.toUtf8().data(), "w");
     if (!hFile)
     {
         CLogFile::FormatLine("Error while opening file '%s'!", materialFilename.toUtf8().data());

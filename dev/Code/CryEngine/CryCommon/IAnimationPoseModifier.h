@@ -73,6 +73,8 @@ struct IAnimationPoseModifier
     : public ICryUnknown
 {
     CRYINTERFACE_DECLARE(IAnimationPoseModifier, 0x22fe47755e42447f, 0xbab6274ed39af449)
+    template<class T>
+    friend void AZStd::checked_delete(T* x);
 
     // <interfuscator:shuffle>
     // Command Buffer. Pose data will not be available at this stage.
@@ -91,7 +93,7 @@ struct IAnimationPoseModifier
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(IAnimationPoseModifier);
+DECLARE_SMART_POINTERS(IAnimationPoseModifier);
 
 //
 
@@ -123,7 +125,7 @@ struct IAnimationOperatorQueue
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(IAnimationOperatorQueue);
+DECLARE_SMART_POINTERS(IAnimationOperatorQueue);
 
 //
 
@@ -147,7 +149,7 @@ struct IAnimationPoseBlenderDir
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(IAnimationPoseBlenderDir);
+DECLARE_SMART_POINTERS(IAnimationPoseBlenderDir);
 
 //
 
@@ -159,7 +161,7 @@ struct IAnimationGroundAlignment
     virtual void SetData(const bool bAlignSkeletonVertical, const f32 rootHeight, const Plane& planeLeft, const Plane& planeRight) = 0;
 };
 
-DECLARE_BOOST_POINTERS(IAnimationGroundAlignment);
+DECLARE_SMART_POINTERS(IAnimationGroundAlignment);
 
 //
 
@@ -198,7 +200,7 @@ struct IAnimationPoseAlignerChain
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(IAnimationPoseAlignerChain);
+DECLARE_SMART_POINTERS(IAnimationPoseAlignerChain);
 
 //
 
@@ -213,7 +215,7 @@ struct IAnimationPoseMatching
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(IAnimationPoseMatching);
+DECLARE_SMART_POINTERS(IAnimationPoseMatching);
 
 //
 
@@ -234,6 +236,6 @@ struct IAnimationPoseAligner
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(IAnimationPoseAligner);
+DECLARE_SMART_POINTERS(IAnimationPoseAligner);
 
 #endif // CRYINCLUDE_CRYCOMMON_IANIMATIONPOSEMODIFIER_H

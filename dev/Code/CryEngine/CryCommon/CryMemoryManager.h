@@ -26,7 +26,42 @@
 #define MEMORY_ENABLE_DEBUG_HEAP 0
 #endif
 
+// Section dictionary
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define CRYMEMORYMANAGER_H_SECTION_TRAITS 1
+#define CRYMEMORYMANAGER_H_SECTION_ALLOCPOLICY 2
+#define CRYMEMORYMANAGER_H_SECTION_THROW 3
+#endif
+
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_TRAITS
+#include AZ_RESTRICTED_FILE(CryMemoryManager_h)
+#else
+#if !defined(APPLE)
+#define CRYMEMORYMANAGER_H_TRAIT_INCLUDE_MALLOC_H 1
+#endif
+#if defined(LINUX) || defined(APPLE)
+#define CRYMEMORYMANAGER_H_TRAIT_INCLUDE_NEW_NOT_NEW_H 1
+#endif
+#if !defined(LINUX) && !defined(APPLE)
+#define CRYMEMORYMANAGER_H_TRAIT_INCLUDE_CRTDBG_H 1
+#endif
+#if !defined(APPLE)
+#define CRYMEMORYMANAGER_H_TRAIT_USE_CRTCHECKMEMORY 1
+#endif
+#endif
+
+// Throw
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_THROW
+#include AZ_RESTRICTED_FILE(CryMemoryManager_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #define CRYMM_THROW throw()
+#endif
 
 #if !defined(RELEASE)
 #define CRYMM_THROW_BAD_ALLOC throw(std::bad_alloc)
@@ -79,12 +114,12 @@ struct _HeapChecker
 
 #define _CRY_DEFAULT_MALLOC_ALIGNMENT 4
 
-#if !defined(APPLE) && !defined(ORBIS)
+#if CRYMEMORYMANAGER_H_TRAIT_INCLUDE_MALLOC_H
     #include <malloc.h>
 #endif
 
 #if defined(__cplusplus)
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if CRYMEMORYMANAGER_H_TRAIT_INCLUDE_NEW_NOT_NEW_H
     #include <new>
 #else
     #include <new.h>
@@ -105,7 +140,7 @@ struct _HeapChecker
     #endif
 #endif //DEBUG_MEMORY_MANAGER
 
-#if defined(_DEBUG) && !defined(LINUX) && !defined(APPLE) && !defined(ORBIS)
+#if defined(_DEBUG) && CRYMEMORYMANAGER_H_TRAIT_INCLUDE_CRTDBG_H
     #include <crtdbg.h>
 #endif //_DEBUG
 
@@ -115,7 +150,7 @@ namespace CryMemory
     // returns non-0 if it's valid and 0 if not valid
     ILINE int IsHeapValid()
     {
-    #if (defined(_DEBUG) && !defined(RELEASE_RUNTIME) && !defined(APPLE) && !defined(ORBIS)) || (defined(DEBUG_MEMORY_MANAGER))
+    #if (defined(_DEBUG) && !defined(RELEASE_RUNTIME) && CRYMEMORYMANAGER_H_TRAIT_USE_CRTCHECKMEMORY) || (defined(DEBUG_MEMORY_MANAGER))
         return _CrtCheckMemory();
     #else
         return true;
@@ -173,6 +208,10 @@ struct IMemoryManager
         eapDefaultAllocator,
         eapPageMapped,
         eapCustomAlignment,
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_ALLOCPOLICY
+#include AZ_RESTRICTED_FILE(CryMemoryManager_h)
+#endif
     };
 
     virtual ~IMemoryManager(){}

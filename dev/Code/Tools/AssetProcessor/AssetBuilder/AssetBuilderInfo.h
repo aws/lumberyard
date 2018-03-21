@@ -42,12 +42,9 @@ namespace AssetBuilder
     {
     public:
         ExternalModuleAssetBuilderInfo(const QString& modulePath);
-        virtual ~ExternalModuleAssetBuilderInfo() = default;
+        virtual ~ExternalModuleAssetBuilderInfo();
 
         const QString& GetName() const;
-
-        //! Perform a load of the external module, this is required before initialize.
-        bool Load();
 
         //! Sanity check for the module's status
         bool IsLoaded() const;
@@ -64,6 +61,9 @@ namespace AssetBuilder
         //! Register a component descriptor to track as part of this builders lifecycle managementg
         void RegisterComponentDesc(AZ::ComponentDescriptor* descriptor);
     protected:
+        void Load();
+        void Unload();
+
         AZStd::set<AZ::Uuid>    m_registeredBuilderDescriptorIDs;
 
         typedef void(* InitializeModuleFunction)(AZ::EnvironmentInstance sharedEnvironment);

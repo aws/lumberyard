@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "CloudGemDynamicContent_precompiled.h"
 
 #include "FileWatcherModel.h"
 #include "ManifestTableKeys.h"

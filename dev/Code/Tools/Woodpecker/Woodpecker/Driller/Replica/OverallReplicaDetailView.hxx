@@ -51,13 +51,34 @@ namespace Driller
     class ReplicaChunkDataEvent;
     class ReplicaChunkReceivedDataEvent;
     class ReplicaChunkSentDataEvent;
-    
+
+    class AbstractOverallReplicaDetailView
+        : public QDialog
+    {
+        template<typename Key>
+        friend class BaseOverallTreeViewModel;
+
+        friend class OverallReplicaTreeViewModel;
+        friend class OverallReplicaChunkTypeTreeViewModel;
+
+        Q_OBJECT
+    public:
+        virtual int GetFrameRange() const = 0;
+        virtual int GetFPS() const = 0;
+
+    protected:
+        virtual OverallReplicaDetailDisplayHelper* FindReplicaDisplayHelper(AZ::u64 replicaId) = 0;
+        virtual ReplicaChunkDetailDisplayHelper* FindReplicaChunkTypeDisplayHelper(const AZStd::string& chunkTypeName) = 0;
+
+        BandwidthUsageAggregator m_totalUsageAggregator;
+    };
+
     template<typename Key>
     class BaseOverallTreeViewModel : public ReplicaTreeViewModel
     {
     public:
         AZ_CLASS_ALLOCATOR(BaseOverallTreeViewModel, AZ::SystemAllocator,0);
-        BaseOverallTreeViewModel(OverallReplicaDetailView* overallDetailView)
+        BaseOverallTreeViewModel(AbstractOverallReplicaDetailView* overallDetailView)
             : m_overallReplicaDetailView(overallDetailView)
         {
         }
@@ -266,9 +287,9 @@ namespace Driller
             return QVariant();
         }
         
-        OverallReplicaDetailView* m_overallReplicaDetailView;        
+        AbstractOverallReplicaDetailView* m_overallReplicaDetailView;
     };
-    
+
     class OverallReplicaTreeViewModel : public BaseOverallTreeViewModel<AZ::u64>
     {
     public:
@@ -298,7 +319,7 @@ namespace Driller
         };
         
         AZ_CLASS_ALLOCATOR(OverallReplicaTreeViewModel, AZ::SystemAllocator,0);
-        OverallReplicaTreeViewModel(OverallReplicaDetailView* overallDetailView);
+        OverallReplicaTreeViewModel(AbstractOverallReplicaDetailView* overallDetailView);
         
         int columnCount(const QModelIndex& parentIndex = QModelIndex()) const override;
         QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
@@ -336,7 +357,7 @@ namespace Driller
         };
         
         AZ_CLASS_ALLOCATOR(OverallReplicaChunkTypeTreeViewModel, AZ::SystemAllocator,0);
-        OverallReplicaChunkTypeTreeViewModel(OverallReplicaDetailView* overallDetailView);
+        OverallReplicaChunkTypeTreeViewModel(AbstractOverallReplicaDetailView* overallDetailView);
         
         int columnCount(const QModelIndex& parentIndex = QModelIndex()) const override;
         QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
@@ -345,9 +366,9 @@ namespace Driller
     protected:
         const BaseDisplayHelper* FindDisplayHelperAtRoot(int row) const;
     };
-    
+
     class OverallReplicaDetailView
-        : public QDialog                
+        : public AbstractOverallReplicaDetailView
     {
     private:
 
@@ -372,8 +393,8 @@ namespace Driller
         OverallReplicaDetailView(ReplicaDataView* dataView, const ReplicaDataAggregator& dataAggregator);
         ~OverallReplicaDetailView();
 
-        int GetFrameRange() const;
-        int GetFPS() const;
+        int GetFrameRange() const override;
+        int GetFPS() const override;
 
         void SignalDataViewDestroyed(ReplicaDataView* replicaDataView);
         
@@ -429,7 +450,6 @@ namespace Driller
         const ReplicaDataAggregator& m_dataAggregator;
 
         // Cached data
-        BandwidthUsageAggregator m_totalUsageAggregator;
         int m_frameRange;
 
         // UX niceties

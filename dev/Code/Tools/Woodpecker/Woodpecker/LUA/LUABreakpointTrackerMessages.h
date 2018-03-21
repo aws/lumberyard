@@ -33,6 +33,8 @@ namespace LUAEditor
         AZ_RTTI(Breakpoint, "{6E203CB5-C09B-433D-BA31-177762F574B8}");
         AZ_CLASS_ALLOCATOR(Breakpoint, AZ::SystemAllocator, 0);
 
+        virtual ~Breakpoint() = default;
+
         AZ::Uuid m_breakpointId; // a globally unique ID for every breakpoint.
         AZStd::string m_assetId; // the assetId of the document that the breakpoint was created for;
         int m_documentLine; // the line in the document that the breakpoint was set on.

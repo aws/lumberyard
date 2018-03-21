@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/OSVR_precompiled.cpp",
+            "Source/OSVR_precompiled.h"
         ]
     },
     "auto": {

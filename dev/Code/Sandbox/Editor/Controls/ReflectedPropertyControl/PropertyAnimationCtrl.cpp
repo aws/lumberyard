@@ -121,7 +121,7 @@ void AnimationPropertyCtrl::OnApplyClicked()
         QString& rstrCurrentAnimAction = cSelectedAnimations[nCurrentAnimation];
         if (!rstrCurrentAnimAction.isEmpty())
         {
-            m_animation.m_animation = rstrCurrentAnimAction.toLatin1().data();
+            m_animation.m_animation = rstrCurrentAnimAction.toUtf8().data();
             m_animationLabel->setText(m_animation.m_animation.c_str());
             emit ValueChanged(m_animation);
         }

@@ -16,6 +16,7 @@
 #include <AzCore/JSON/stringbuffer.h>
 #include <AzCore/JSON/prettywriter.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/std/functional.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include "CommandManager.h"
 
@@ -33,7 +34,7 @@ namespace MCore
     AZStd::string FileSystem::mSecureSavePath;
 
     // Save to file secured by a backup file.
-    bool FileSystem::SaveToFileSecured(const char* filename, const std::function<bool()>& saveFunction, CommandManager* commandManager)
+    bool FileSystem::SaveToFileSecured(const char* filename, const AZStd::function<bool()>& saveFunction, CommandManager* commandManager)
     {
         // If the secure save path is not set, simply call the save function.
         if (mSecureSavePath.empty())

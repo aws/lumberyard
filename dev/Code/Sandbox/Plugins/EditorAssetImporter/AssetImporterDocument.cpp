@@ -77,28 +77,16 @@ void AssetImporterDocument::SaveScene(AZStd::shared_ptr<AZ::ActionOutput>& outpu
 
     // Add a no-op saver to put the FBX into source control. The benefit of doing it this way
     //  rather than invoking the SourceControlCommands bus directly is that we enable ourselves
-    //  to have a single callback point for fbx, materials & the manifest.
+    //  to have a single callback point for fbx & the manifest.
     auto fbxNoOpSaver = m_saveRunner->GenerateController();
     fbxNoOpSaver->AddSaveOperation(m_scene->GetSourceFilename(), nullptr);
-
-    // When first processed the SceneAPI will produce a material file in the cache where needed. This prevents the user
-    //      from editing the material though. If a version is found in the case the material editor can bring it to
-    //      the source folder however, so SaveMaterials serves two purposes. 1) if there's no material file, create
-    //      a new one for the groups that require it and 2) if there already is a material file update it as per the
-    //      instructions in the material rule.
-    bool allMaterialSavesSuccessful = SaveMaterials(output);
 
     // Save the manifest
     SaveManifest();
 
     m_saveRunner->Run(output,
-        [this, onSaveComplete, allMaterialSavesSuccessful](bool success)
+        [this, onSaveComplete](bool success)
         {
-            // Sometimes we don't initiate saves because they fail before we even get to the stage
-            //  where we've produced a save operation for the save runner. The only way to know if
-            // the operation was ultimately successful is to take that into account.
-            success &= allMaterialSavesSuccessful;
-
             if (onSaveComplete)
             {
                 onSaveComplete(success);
@@ -154,68 +142,6 @@ void AssetImporterDocument::SaveManifest()
 
             return true;
         });
-}
-
-bool AssetImporterDocument::SaveMaterials(AZStd::shared_ptr<AZ::ActionOutput>& output)
-{
-    auto manifestStorage = m_scene->GetManifest().GetValueStorage();
-    auto view = AZ::SceneAPI::Containers::MakeDerivedFilterView<AZ::SceneAPI::DataTypes::ISceneNodeGroup>(manifestStorage);
-    if (view.begin() == view.end())
-    {
-        return true;
-    }
-
-    // Note: the SceneCore library doesn't have access to PathUtil in Editor, this is a work around to provide the
-    // game folder absolute path that is needed to generate relative path of textures by material exporter
-    AZStd::string gameRootFolder = Path::GetEditingGameDataFolder();
-    AZStd::shared_ptr<AZ::SaveOperationController> saveController = m_saveRunner->GenerateController();
-
-    AZStd::string sourceFolder;
-    if (!AzFramework::StringFunc::Path::GetFullPath(m_scene->GetSourceFilename().c_str(), sourceFolder))
-    {
-        output->AddError("Unable to determine source folder of scene file.", m_scene->GetSourceFilename());
-        return false;
-    }
-
-    bool allSuccessful = true;
-    for (const auto& group : view)
-    {
-        AZStd::string targetFilePath = AZ::SceneAPI::Utilities::FileUtilities::CreateOutputFileName(group.GetName(), sourceFolder,
-            AZ::GFxFramework::MaterialExport::g_mtlExtension);
-        if (targetFilePath.empty())
-        {
-            output->AddError("Unable to create name for material output file.", group.GetName());
-            return false;
-        }
-
-        auto materialExporter = AZStd::make_shared<AZ::SceneAPI::Export::MtlMaterialExporter>();
-        AZ::SceneAPI::Export::MtlMaterialExporter::SaveMaterialResult result = 
-            materialExporter->SaveMaterialGroup(group, *m_scene, gameRootFolder);
-        if (result == AZ::SceneAPI::Export::MtlMaterialExporter::SaveMaterialResult::Failure)
-        {
-            allSuccessful = false;
-            output->AddError("Failed to convert material", group.GetName());
-            continue;
-        }
-        else if (result == AZ::SceneAPI::Export::MtlMaterialExporter::SaveMaterialResult::Success)
-        {
-            saveController->AddSaveOperation(targetFilePath,
-                [this, materialExporter](const AZStd::string& fullPath, const AZStd::shared_ptr<AZ::ActionOutput>& actionOutput) -> bool
-                {
-                    // Write the material
-                    if (!materialExporter->WriteToFile(fullPath.c_str(), true) && actionOutput)
-                    {
-                        actionOutput->AddError("Failed to save converted material to file.", fullPath);
-                        return false;
-                    }
-
-                    return true;
-                }
-            );
-        }
-    }
-
-    return allSuccessful;
 }
 
 AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene>& AssetImporterDocument::GetScene()

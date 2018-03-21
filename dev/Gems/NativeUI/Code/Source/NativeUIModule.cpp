@@ -10,7 +10,7 @@
  *
  */
 
-#include "StdAfx.h"
+#include "NativeUI_precompiled.h"
 
 #include "NativeUISystemComponent.h"
 #include <platform_impl.h>

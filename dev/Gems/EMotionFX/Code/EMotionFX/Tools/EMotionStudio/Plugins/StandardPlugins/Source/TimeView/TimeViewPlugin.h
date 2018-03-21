@@ -60,7 +60,7 @@ namespace EMStudio
         : public EMStudio::DockWidgetPlugin
     {
         Q_OBJECT
-                           MCORE_MEMORYOBJECTCATEGORY(TimeViewPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+        MCORE_MEMORYOBJECTCATEGORY(TimeViewPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
         friend class TrackDataWidget;
         friend class TimeViewWidget;
@@ -217,7 +217,7 @@ namespace EMStudio
         TrackHeaderWidget*  mTrackHeaderWidget;
         TimeInfoWidget*     mTimeInfoWidget;
         QScrollBar*         mVerticalScrollBar;
-        QMainWindow*        mMainWindow;
+        QWidget*            mMainWidget;
         QBasicTimer         mTimer;
 
         EMotionFX::Motion*                  mMotion;

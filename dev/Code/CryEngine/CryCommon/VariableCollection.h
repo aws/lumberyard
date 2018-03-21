@@ -749,7 +749,7 @@ namespace Variables
         int m_rootID;
     };
 
-    DECLARE_BOOST_POINTERS(Expression)
+    DECLARE_SMART_POINTERS(Expression)
 
     /*
     A simple mechanism to flip variable values based on signal fire and conditions.

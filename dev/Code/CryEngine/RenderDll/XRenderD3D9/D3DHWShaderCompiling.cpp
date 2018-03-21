@@ -3225,6 +3225,7 @@ bool CHWShader_D3D::mfUploadHW(LPD3D10BLOB pShader, SHWSInstance* pInst, CShader
                 pInst->m_pShaderData = new byte[nSize];
                 pInst->m_nDataSize = nSize;
                 memcpy(pInst->m_pShaderData, pCode, nSize);
+                pInst->m_uniqueNameCRC = AZ::Crc32(GetName());
             }
         }
         if (!bResult)
@@ -3306,6 +3307,17 @@ bool CHWShader_D3D::mfActivateCacheItem(CShader* pSH, SShaderCacheHeaderItem* pI
         pInst->m_Handle.SetShader(pHandle);
         pInst->m_Handle.AddRef();
 
+#if D3DHWSHADERCOMPILING_CPP_TRAIT_VERTEX_FORMAT
+        if (m_eSHClass == eHWSC_Vertex)
+        {
+            ID3D10Blob* pS = NULL;
+            D3D10CreateBlob(nSize, (LPD3D10BLOB*)&pS);
+            DWORD* pBuffer = (DWORD*)pS->GetBufferPointer();
+            memcpy(pBuffer, pBuf, nSize);
+            mfVertexFormat(pInst, this, pS);
+            SAFE_RELEASE(pS);
+        }
+#endif
         if ((m_eSHClass == eHWSC_Vertex) && (!(nFlags & HWSF_PRECACHE) || gRenDev->m_cEF.m_bActivatePhase) && !pInst->m_bFallback)
         {
             mfUpdateFXVertexFormat(pInst, pSH);
@@ -3319,6 +3331,17 @@ bool CHWShader_D3D::mfActivateCacheItem(CShader* pSH, SShaderCacheHeaderItem* pI
         }
         else
         {
+#if D3DHWSHADERCOMPILING_CPP_TRAIT_VERTEX_FORMAT
+            if (m_eSHClass == eHWSC_Vertex)
+            {
+                ID3D10Blob* pS = NULL;
+                D3D10CreateBlob(nSize, (LPD3D10BLOB*)&pS);
+                DWORD* pBuffer = (DWORD*)pS->GetBufferPointer();
+                memcpy(pBuffer, pBuf, nSize);
+                mfVertexFormat(pInst, this, pS);
+                SAFE_RELEASE(pS);
+            }
+#endif
 
             bResult = mfUploadHW(pInst, pBuf, nSize, pSH, nFlags);
         }
@@ -3344,6 +3367,7 @@ bool CHWShader_D3D::mfActivateCacheItem(CShader* pSH, SShaderCacheHeaderItem* pI
         pInst->m_pShaderData = new byte[nSize];
         pInst->m_nDataSize = nSize;
         memcpy(pInst->m_pShaderData, pBuf, nSize);
+        pInst->m_uniqueNameCRC = AZ::Crc32(GetName());
     }
     assert(hr == S_OK);
     bResult &= (hr == S_OK);
@@ -4020,7 +4044,7 @@ bool CHWShader_D3D::mfCompileHLSL_Int(CShader* pSH, char* prog_text, LPD3D10BLOB
         return bRes;
 #   endif
     }
-#endif // #if defined(WIN32) || defined(WIN64) || defined(DURANGO)
+#endif // #if defined(WIN32) || defined(WIN64)
 
     return false;
 }

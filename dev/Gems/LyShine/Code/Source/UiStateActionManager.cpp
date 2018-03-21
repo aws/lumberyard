@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "UiStateActionManager.h"
 
 #include <LyShine/Bus/UiVisualBus.h>

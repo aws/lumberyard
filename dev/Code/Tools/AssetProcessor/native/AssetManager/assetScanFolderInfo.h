@@ -22,7 +22,7 @@ namespace AssetProcessor
     class ScanFolderInfo
     {
     public:
-        ScanFolderInfo(QString path, QString displayName, QString portableKey, QString prefix, bool isRoot, bool recurseSubFolders, int order = 0, AZ::s64 scanFolderID = 0)
+        ScanFolderInfo(QString path, QString displayName, QString portableKey, QString prefix, bool isRoot, bool recurseSubFolders, AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms = AZStd::vector<AssetBuilderSDK::PlatformInfo>{}, int order = 0, AZ::s64 scanFolderID = 0)
             : m_scanPath(path)
             , m_displayName(displayName)
             , m_portableKey (portableKey)
@@ -31,6 +31,7 @@ namespace AssetProcessor
             , m_recurseSubFolders(recurseSubFolders)
             , m_order(order)
             , m_scanFolderID(scanFolderID)
+            , m_platforms(platforms)
         {
             // note that m_scanFolderID is 0 unless its filled in from the DB.
         }
@@ -78,6 +79,11 @@ namespace AssetProcessor
             return m_portableKey;
         }
 
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> GetPlatforms() const
+        {
+            return m_platforms;
+        }
+
         void SetScanFolderID(AZ::s64 scanFolderID)
         {
             m_scanFolderID = scanFolderID;
@@ -92,6 +98,7 @@ namespace AssetProcessor
         bool m_recurseSubFolders = true; 
         int m_order = 0;
         AZ::s64 m_scanFolderID = 0; // this is filled in by the database - don't modify it.
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> m_platforms; // This contains the list of platforms that are enabled for the particular scanfolder
     };
 } // end namespace AssetProcessor
 

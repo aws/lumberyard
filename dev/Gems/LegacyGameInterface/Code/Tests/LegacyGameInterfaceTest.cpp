@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "LegacyGameInterface_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

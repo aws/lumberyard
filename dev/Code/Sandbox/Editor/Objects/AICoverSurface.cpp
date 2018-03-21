@@ -524,7 +524,7 @@ void CAICoverSurface::SerializeVarEnum<QString>(CObjectArchive& archive, const c
         QString current;
         value->Get(current);
 
-        archive.node->setAttr(name, current.toLatin1().data());
+        archive.node->setAttr(name, current.toUtf8().data());
     }
 };
 
@@ -556,7 +556,7 @@ void CAICoverSurface::SerializeValue<QString>(CObjectArchive& archive, const cha
     }
     else
     {
-        archive.node->setAttr(name, value.toLatin1().data());
+        archive.node->setAttr(name, value.toUtf8().data());
     }
 };
 
@@ -621,7 +621,7 @@ void CAICoverSurface::BeginEditParams(IEditor* editor, int flags)
 
     if (!s_propertiesID)
     {
-        s_propertiesID = AddUIPage(QString(GetTypeName() + " Properties").toLatin1().data(), s_properties);
+        s_propertiesID = AddUIPage(QString(GetTypeName() + " Properties").toUtf8().data(), s_properties);
     }
 
     if (s_properties)
@@ -666,7 +666,7 @@ void CAICoverSurface::BeginEditMultiSelParams(bool allSameType)
         s_properties->DeleteVars();
     }
 
-    s_propertiesID = AddUIPage(QString(GetTypeName() + " Properties").toLatin1().data(), s_properties);
+    s_propertiesID = AddUIPage(QString(GetTypeName() + " Properties").toUtf8().data(), s_properties);
 
     if (m_propertyVars.get())
     {
@@ -682,7 +682,7 @@ void CAICoverSurface::BeginEditMultiSelParams(bool allSameType)
 
         if (!s_propertiesID)
         {
-            s_propertiesID = AddUIPage(QString(GetTypeName() + " Properties").toLatin1().data(), s_properties);
+            s_propertiesID = AddUIPage(QString(GetTypeName() + " Properties").toUtf8().data(), s_properties);
         }
     }
 

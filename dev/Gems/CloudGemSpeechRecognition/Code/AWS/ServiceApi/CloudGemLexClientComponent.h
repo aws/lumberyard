@@ -34,7 +34,7 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
-#include "StdAfx.h"
+#include "CloudGemSpeechRecognition_precompiled.h"
 
 namespace CloudGemLex {
 namespace ServiceAPI {

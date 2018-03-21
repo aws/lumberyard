@@ -45,7 +45,7 @@ namespace PhysX
         // Transform notification bus listener
         // Called when the local transform of the entity has changed. Local transform update always implies world transform change too.
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        
+
         // PhysXMeshShapeComponentRequestBus implementation
         AZ::Data::Asset<Pipeline::PhysXMeshAsset> GetMeshAsset() override
         {
@@ -75,5 +75,4 @@ namespace PhysX
         AZ::Data::Asset<Pipeline::PhysXMeshAsset> m_meshColliderAsset;
         AZ::Transform m_currentTransform; ///< Caches the current transform for the entity on which this component lives.
     };
-
 } // namespace PhysX

@@ -24,7 +24,7 @@ namespace AzToolsFramework
 {
     class SliceDependencyBrowserComponent
         : public AZ::Component
-        , private AssetBrowser::AssetDatabaseLocationNotificationsBus::Handler
+        , private AssetBrowser::AssetDatabaseLocationNotificationBus::Handler
         , private SliceDependencyBrowserRequestsBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
     {
@@ -47,7 +47,7 @@ namespace AzToolsFramework
         static void Reflect(AZ::ReflectContext* context);
 
         //////////////////////////////////////////////////////////////////////////
-        // AssetDatabaseLocationNotificationsBus
+        // AssetDatabaseLocationNotificationBus
         //////////////////////////////////////////////////////////////////////////
         void OnDatabaseInitialized() override;
 

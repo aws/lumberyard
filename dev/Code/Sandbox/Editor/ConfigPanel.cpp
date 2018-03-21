@@ -179,7 +179,7 @@ void CConfigPanel::OnTextChanged(const QString& text)
         case Config::IConfigVar::eType_STRING:
         {
             // get text from the window
-            const string newValue(text.toLatin1().constData());
+            const string newValue(text.toUtf8().constData());
             pItem->m_pVar->Set(&newValue);
             OnConfigValueChanged(pItem->m_pVar);
 

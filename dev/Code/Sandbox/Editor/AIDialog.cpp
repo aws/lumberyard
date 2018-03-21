@@ -15,8 +15,8 @@
 #include "AIDialog.h"
 
 #include "AI/AIManager.h"
-#include "AI/AIGoalLibrary.h"
-#include "AI/AIBehaviorLibrary.h"
+#include "AI/AiGoalLibrary.h"
+#include "AI/AiBehaviorLibrary.h"
 
 #include <QStringListModel>
 

@@ -58,6 +58,7 @@ namespace EMotionFX
 
     float BlendSpaceParamEvaluatorNone::ComputeParamValue(const MotionInstance& motionInstance)
     {
+        MCORE_UNUSED(motionInstance);
         return 0;
     }
 

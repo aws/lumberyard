@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/std/string/string.h>
-#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 #include <SceneAPI/SceneCore/Containers/SceneGraph.h>
 
 struct CryBoneDescData;
@@ -31,10 +31,10 @@ namespace AZ
         struct AddBonesToSkinningInfoContext;
 
         class SkeletonExporter
-            : public SceneAPI::SceneCore::ExportingComponent
+            : public SceneAPI::SceneCore::RCExportingComponent
         {
         public:
-            AZ_COMPONENT(SkeletonExporter, "{FDEC2360-3D9C-4027-BCFB-E8C99CAADB43}", SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(SkeletonExporter, "{FDEC2360-3D9C-4027-BCFB-E8C99CAADB43}", SceneAPI::SceneCore::RCExportingComponent);
 
             SkeletonExporter();
             ~SkeletonExporter() override = default;

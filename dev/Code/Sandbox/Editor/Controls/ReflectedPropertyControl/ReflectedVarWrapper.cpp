@@ -53,8 +53,8 @@ namespace {
 
 void ReflectedVarIntAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarInt(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarInt(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
     UpdateRangeLimits(pVariable);
     Prop::Description desc(pVariable);
     m_valueMultiplier = desc.m_valueMultiplier;
@@ -92,8 +92,8 @@ void ReflectedVarIntAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarFloatAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarFloat(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarFloat(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
     UpdateRangeLimits(pVariable);
     Prop::Description desc(pVariable);
     m_valueMultiplier = desc.m_valueMultiplier;
@@ -120,15 +120,15 @@ void ReflectedVarFloatAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarStringAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarString(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarString(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
 }
 
 void ReflectedVarStringAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
 {
     QString value;
     pVariable->Get(value);
-    m_reflectedVar->m_value = value.toLatin1().data();
+    m_reflectedVar->m_value = value.toUtf8().data();
 }
 
 void ReflectedVarStringAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
@@ -141,8 +141,8 @@ void ReflectedVarStringAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarBoolAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarBool(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarBool(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
 }
 
 void ReflectedVarBoolAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
@@ -170,8 +170,8 @@ void ReflectedVarEnumAdapter::SetVariable(IVariable *pVariable)
     m_pVariable = pVariable;
     Prop::Description desc(pVariable);
     m_enumList = desc.m_enumList;
-    m_reflectedVar.reset(new CReflectedVarEnum<AZStd::string>(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarEnum<AZStd::string>(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
     UpdateReflectedVarEnums();
 }
 
@@ -198,7 +198,7 @@ bool ReflectedVarEnumAdapter::UpdateReflectedVarEnums()
         for (uint i = 0; !m_enumList->GetItemName(i).isNull(); i++)
         {
             QString sEnumName = m_enumList->GetItemName(i);
-            enums.push_back(AZStd::pair<AZStd::string, AZStd::string>(sEnumName.toLatin1().data(), sEnumName.toLatin1().data()));
+            enums.push_back(AZStd::pair<AZStd::string, AZStd::string>(sEnumName.toUtf8().data(), sEnumName.toUtf8().data()));
 
         }
         m_reflectedVar->setEnums(enums);
@@ -215,7 +215,7 @@ bool ReflectedVarEnumAdapter::UpdateReflectedVarEnums()
 
 void ReflectedVarEnumAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
 {
-    const AZStd::string value = pVariable->GetDisplayValue().toLatin1().data();
+    const AZStd::string value = pVariable->GetDisplayValue().toUtf8().data();
     m_reflectedVar->setEnumByName(value);
 }
 
@@ -342,21 +342,21 @@ void ReflectedVarDBEnumAdapter::SetVariable(IVariable *pVariable)
 {
     Prop::Description desc(pVariable);
     m_pEnumDBItem = desc.m_pEnumDBItem;
-    m_reflectedVar.reset(new CReflectedVarEnum<AZStd::string>(pVariable->GetHumanName().toLatin1().data()));
+    m_reflectedVar.reset(new CReflectedVarEnum<AZStd::string>(pVariable->GetHumanName().toUtf8().data()));
     if (m_pEnumDBItem)
     {
         for (int i = 0; i < m_pEnumDBItem->strings.size(); i++)
         {
             QString name = m_pEnumDBItem->strings[i];
-            m_reflectedVar->addEnum( m_pEnumDBItem->NameToValue(name).toLatin1().data(), name.toLatin1().data() );
+            m_reflectedVar->addEnum( m_pEnumDBItem->NameToValue(name).toUtf8().data(), name.toUtf8().data() );
         }
     }
 }
 
 void ReflectedVarDBEnumAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
 {
-    const AZStd::string valueStr = pVariable->GetDisplayValue().toLatin1().data();
-    const AZStd::string value = m_pEnumDBItem ? AZStd::string(m_pEnumDBItem->ValueToName(valueStr.c_str()).toLatin1().data()) : valueStr;
+    const AZStd::string valueStr = pVariable->GetDisplayValue().toUtf8().data();
+    const AZStd::string value = m_pEnumDBItem ? AZStd::string(m_pEnumDBItem->ValueToName(valueStr.c_str()).toUtf8().data()) : valueStr;
     m_reflectedVar->setEnumByName(value);
 
 }
@@ -375,8 +375,8 @@ void ReflectedVarDBEnumAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarVector2Adapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarVector2(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarVector2(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
     UpdateRangeLimits(pVariable);
 }
 
@@ -395,8 +395,8 @@ void ReflectedVarVector2Adapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarVector3Adapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarVector3(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarVector3(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
     UpdateRangeLimits(pVariable);
 }
 
@@ -415,8 +415,8 @@ void ReflectedVarVector3Adapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarVector4Adapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarVector4(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarVector4(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
     UpdateRangeLimits(pVariable);
 }
 
@@ -435,8 +435,8 @@ void ReflectedVarVector4Adapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarColorAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarColor(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarColor(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
 }
 
 void ReflectedVarColorAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
@@ -478,14 +478,14 @@ void ReflectedVarColorAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarAnimationAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarAnimation(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarAnimation(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
 }
 
 void ReflectedVarAnimationAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
 {
     m_reflectedVar->m_entityID = static_cast<AZ::EntityId>(pVariable->GetUserData().value<AZ::u64>());
-    m_reflectedVar->m_animation = pVariable->GetDisplayValue().toLatin1().data();
+    m_reflectedVar->m_animation = pVariable->GetDisplayValue().toUtf8().data();
 }
 
 void ReflectedVarAnimationAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
@@ -497,15 +497,15 @@ void ReflectedVarAnimationAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
 
 void ReflectedVarResourceAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarResource(pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarResource(pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
 }
 
 void ReflectedVarResourceAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
 {
     QString path;
     pVariable->Get(path);
-    m_reflectedVar->m_path = path.toLatin1().data();
+    m_reflectedVar->m_path = path.toUtf8().data();
     Prop::Description desc(pVariable);
     m_reflectedVar->m_propertyType = desc.m_type;
 
@@ -527,8 +527,8 @@ ReflectedVarGenericPropertyAdapter::ReflectedVarGenericPropertyAdapter(PropertyT
 
 void ReflectedVarGenericPropertyAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarGenericProperty(m_propertyType, pVariable->GetHumanName().toLatin1().data()));
-    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+    m_reflectedVar.reset(new CReflectedVarGenericProperty(m_propertyType, pVariable->GetHumanName().toUtf8().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toUtf8().data();
 }
 
 void ReflectedVarGenericPropertyAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
@@ -538,7 +538,7 @@ void ReflectedVarGenericPropertyAdapter::SyncReflectedVarToIVar(IVariable *pVari
     if (m_reflectedVar->m_propertyType == ePropertyMaterial)
         value.replace('\\', '/');
 
-    m_reflectedVar->m_value = value.toLatin1().data();
+    m_reflectedVar->m_value = value.toUtf8().data();
 }
 
 void ReflectedVarGenericPropertyAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
@@ -548,14 +548,14 @@ void ReflectedVarGenericPropertyAdapter::SyncIVarToReflectedVar(IVariable *pVari
 
 void ReflectedVarUserAdapter::SetVariable(IVariable *pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarUser( pVariable->GetHumanName().toLatin1().data()));
+    m_reflectedVar.reset(new CReflectedVarUser( pVariable->GetHumanName().toUtf8().data()));
 }
 
 void ReflectedVarUserAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
 {
     QString value;
     pVariable->Get(value);
-    m_reflectedVar->m_value = value.toLatin1().data();
+    m_reflectedVar->m_value = value.toUtf8().data();
 
     //extract the list of custom items from the IVariable user data
     IVariable::IGetCustomItems* pGetCustomItems = static_cast<IVariable::IGetCustomItems*> (pVariable->GetUserData().value<void *>());
@@ -570,15 +570,15 @@ void ReflectedVarUserAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
             m_reflectedVar->m_enableEdit = true;
             m_reflectedVar->m_useTree = pGetCustomItems->UseTree();
             m_reflectedVar->m_treeSeparator = pGetCustomItems->GetTreeSeparator();
-            m_reflectedVar->m_dialogTitle = dlgTitle.toLatin1().data();
+            m_reflectedVar->m_dialogTitle = dlgTitle.toUtf8().data();
             m_reflectedVar->m_itemNames.resize(items.size());
             m_reflectedVar->m_itemDescriptions.resize(items.size());
 
             QByteArray ba;
             int i = -1;
-            std::generate(m_reflectedVar->m_itemNames.begin(), m_reflectedVar->m_itemNames.end(), [&items, &i, &ba]() { ++i; ba = items[i].name.toLatin1(); return ba.data(); });
+            std::generate(m_reflectedVar->m_itemNames.begin(), m_reflectedVar->m_itemNames.end(), [&items, &i, &ba]() { ++i; ba = items[i].name.toUtf8(); return ba.data(); });
             i = -1;
-            std::generate(m_reflectedVar->m_itemDescriptions.begin(), m_reflectedVar->m_itemDescriptions.end(), [&items, &i, &ba]() { ++i; ba = items[i].desc.toLatin1(); return ba.data(); });
+            std::generate(m_reflectedVar->m_itemDescriptions.begin(), m_reflectedVar->m_itemDescriptions.end(), [&items, &i, &ba]() { ++i; ba = items[i].desc.toUtf8(); return ba.data(); });
 
         }
     }
@@ -603,7 +603,7 @@ ReflectedVarSplineAdapter::ReflectedVarSplineAdapter(ReflectedPropertyItem *pare
 
 void ReflectedVarSplineAdapter::SetVariable(IVariable* pVariable)
 {
-    m_reflectedVar.reset(new CReflectedVarSpline(m_propertyType, pVariable->GetHumanName().toLatin1().data()));
+    m_reflectedVar.reset(new CReflectedVarSpline(m_propertyType, pVariable->GetHumanName().toUtf8().data()));
 
 }
 

@@ -1868,6 +1868,7 @@ void CAuxGeomCB::DrawSphere(const Vec3& pos, float radius, const ColorB& col, bo
         AddObject(pDrawParams, CreateObjectRenderFlags(eDOT_Sphere));
 
         pDrawParams->m_matWorld = Matrix34::CreateTranslationMat(pos) * Matrix33::CreateScale(Vec3(radius, radius, radius));
+        pDrawParams->m_matWorldRotation.SetIdentity();
         pDrawParams->m_color = PackColor(col);
         pDrawParams->m_size = radius;
         pDrawParams->m_shaded = drawShaded;
@@ -1892,6 +1893,7 @@ void CAuxGeomCB::DrawCone(const Vec3& pos, const Vec3& dir, float radius, float 
         matRot.SetColumn(2, orthogonal.Cross(direction));
 
         pDrawParams->m_matWorld = Matrix34::CreateTranslationMat(pos) * matRot * Matrix33::CreateScale(Vec3(radius, height, radius));
+        pDrawParams->m_matWorldRotation = matRot;
         pDrawParams->m_color = PackColor(col);
         pDrawParams->m_size = max(radius, height * 0.5f);
         pDrawParams->m_shaded = drawShaded;
@@ -1916,6 +1918,7 @@ void CAuxGeomCB::DrawCylinder(const Vec3& pos, const Vec3& dir, float radius, fl
         matRot.SetColumn(2, orthogonal.Cross(direction));
 
         pDrawParams->m_matWorld = Matrix34::CreateTranslationMat(pos) * matRot * Matrix33::CreateScale(Vec3(radius, height, radius));
+        pDrawParams->m_matWorldRotation = matRot;
         pDrawParams->m_color = PackColor(col);
         pDrawParams->m_size = max(radius, height * 0.5f);
         pDrawParams->m_shaded = drawShaded;

@@ -13,13 +13,13 @@
 
 //QT
 #include <QSettings>
-#include "qlabel.h"
-#include "qspinbox.h"
-#include "qpushbutton.h"
-#include "qgridlayout.h"
-#include "qsizepolicy.h"
-#include "qcheckbox.h"
-#include "qscrollarea.h"
+#include <QLabel>
+#include <QSpinBox>
+#include <QPushButton>
+#include <QGridLayout>
+#include <QSizePolicy>
+#include <QCheckBox>
+#include <QScrollArea>
 
 //Editor
 #include <IEditor.h>
@@ -651,7 +651,7 @@ void DockableLODPanel::Init(const QString& panelName)
     m_LodWidget = new LodWidget(m_centralWidget);
     m_layout = new QVBoxLayout(m_centralWidget);
     m_defaultView = new DefaultViewWidget(m_centralWidget);
-    m_titleBarMenu = new QMenu(this);
+    m_titleBarMenu = new QMenu;
 
     DecorateDefaultView();
     m_titleBar->SetupLabel(panelName);
@@ -1049,4 +1049,4 @@ void DockableLODPanel::HideDefaultView()
     m_LodWidget->show();
 }
 
-#include <Qt/DockableLODPanel.moc>
+#include <QT/DockableLODPanel.moc>

@@ -192,6 +192,41 @@ namespace UnitTestInternal
         AZStd::mutex m_mutex;
         AZStd::vector<DelayedFreeItem> m_delayedFreeItems;
     };
+
+    struct MyLifetimeTrackedClass
+    {
+        MyLifetimeTrackedClass() = default;
+        MyLifetimeTrackedClass(MyLifetimeTrackedClass&& rhs)
+            : m_bool(rhs.m_bool)
+        {
+            m_moved = true;
+        }
+
+        MyLifetimeTrackedClass& operator=(MyLifetimeTrackedClass&& rhs)
+        {
+            m_moveassigned = true;
+            m_bool = rhs.m_bool;
+            return *this;
+        }
+
+        MyLifetimeTrackedClass(const MyLifetimeTrackedClass& rhs)
+            : m_bool(rhs.m_bool)
+        {
+            m_copied = true;
+        }
+        MyLifetimeTrackedClass& operator=(const MyLifetimeTrackedClass& rhs)
+        {
+            m_bool = rhs.m_bool;
+            m_assigned = true;
+            return *this;
+        }
+
+        bool m_bool = false;
+        bool m_moved = false;
+        bool m_moveassigned = false;
+        bool m_copied = false;
+        bool m_assigned = false;
+    };
 }
 
 // Without compiler help we should help a little. If the compiler support TR1 this will not be necessary.

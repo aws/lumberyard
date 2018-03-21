@@ -130,6 +130,10 @@ private:
     bool IsLevelDocumentOpen() override;
     AZStd::string SelectResource(const AZStd::string& resourceType, const AZStd::string& previousValue) override;
     void GenerateNavigationArea(const AZStd::string& name, const AZ::Vector3& position, const AZ::Vector3* points, size_t numPoints, float height) override;
+    AZStd::vector<AZStd::string> GetAgentTypes() override;
+    void OpenPinnedInspector(const AzToolsFramework::EntityIdList& entities) override;
+    void ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* editor) override;
+    void GoToSelectedOrHighlightedEntitiesInViewports() override;
 
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::EditorEvents::Bus::Handler overrides

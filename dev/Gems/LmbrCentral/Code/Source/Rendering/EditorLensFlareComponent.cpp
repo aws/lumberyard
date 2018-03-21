@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -120,7 +120,7 @@ namespace LmbrCentral
                     DataElement(0, &LensFlareConfiguration::m_attachToSun, "Attach to sun", "Attach this flare to the sun")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
 
-                    DataElement(0, &LensFlareConfiguration::m_ignoreVisAreas, "Ignore vis areas", "Ignore vis areas")->
+                    DataElement(0, &LensFlareConfiguration::m_useVisAreas, "Use VisAreas", "Lens Flares is affected by VisAreas")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
 
                     DataElement(0, &LensFlareConfiguration::m_indoorOnly, "Indoor only", "Indoor only")->
@@ -239,8 +239,15 @@ namespace LmbrCentral
     {
         Base::Activate();
 
-        //trigger asset loading so the the editor could show right content for the dropdown.
-        OnAssetChanged();
+        //Trigger asset loading so the the editor could show right content for the dropdown.
+        //Don't call OnAssetChanged because we don't need to clear any serialized data
+        //nor do we need to check for bus connection.
+        if (m_asset.GetId().IsValid())
+        {
+            //load LensFlare asset
+            AZ::Data::AssetBus::Handler::BusConnect(m_asset.GetId());
+            m_asset.QueueLoad();
+        }
 
         m_selectedLensFlareLibrary = GetLibraryNameFromAsset();
         m_selectedLensFlareName = GetFlareNameFromPath(m_configuration.m_lensFlare);
@@ -266,6 +273,7 @@ namespace LmbrCentral
         //Check to see if we need to disconnect from the LightSettingsNotificationBus
         m_configuration.SyncAnimationChanged();
 
+        AZ::Data::AssetBus::Handler::BusDisconnect();
         EditorLensFlareComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
@@ -456,6 +464,7 @@ namespace LmbrCentral
     void EditorLensFlareComponent::OnAssetChanged()
     {
         m_selectedLensFlareLibrary.clear();
+        m_selectedLensFlareName.clear(); //Clear this so that when the asset is ready we will always pull a new flare from the new library
 
         if (AZ::Data::AssetBus::Handler::BusIsConnected())
         {

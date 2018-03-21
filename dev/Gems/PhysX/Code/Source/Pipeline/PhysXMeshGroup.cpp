@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -36,9 +36,9 @@ namespace PhysX
             physx::PxConvexMeshDesc defaultconvexDesc;
 
             m_areaTestEpsilon = defaultCookingParams.areaTestEpsilon;
-           
+
             m_planeTolerance = defaultCookingParams.planeTolerance;
-            m_use16bitIndices = (static_cast<AZ::u32>( defaultconvexDesc.flags ) & physx::PxConvexFlag::e16_BIT_INDICES) != 0;
+            m_use16bitIndices = (static_cast<AZ::u32>(defaultconvexDesc.flags) & physx::PxConvexFlag::e16_BIT_INDICES) != 0;
             m_checkZeroAreaTriangles = (static_cast<AZ::u32>(defaultconvexDesc.flags) & physx::PxConvexFlag::eCHECK_ZERO_AREA_TRIANGLES) != 0;
             m_quantizeInput = (static_cast<AZ::u32>(defaultconvexDesc.flags) & physx::PxConvexFlag::eQUANTIZE_INPUT) != 0;
             m_usePlaneShifting = (static_cast<AZ::u32>(defaultconvexDesc.flags) & physx::PxConvexFlag::ePLANE_SHIFTING) != 0;
@@ -94,15 +94,15 @@ namespace PhysX
         void PhysXMeshGroup::Reflect(AZ::ReflectContext* context)
         {
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-                
-            // Check if the context is serialized and has PhysXMeshGroup class data. 
+
+            // Check if the context is serialized and has PhysXMeshGroup class data.
             if (serializeContext)
             {
                 serializeContext->Class<PhysXMeshGroup, AZ::SceneAPI::DataTypes::ISceneNodeGroup>()->Version(0)
                     ->Field("name", &PhysXMeshGroup::m_name)
                     ->Field("export as convex", &PhysXMeshGroup::m_exportAsConvex)
 
-                    // Convex params
+                // Convex params
                     ->Field("AreaTestEpsilon", &PhysXMeshGroup::m_areaTestEpsilon)
                     ->Field("PlaneTolerance", &PhysXMeshGroup::m_planeTolerance)
                     ->Field("Use16bitIndices", &PhysXMeshGroup::m_use16bitIndices)
@@ -112,7 +112,7 @@ namespace PhysX
                     ->Field("ShiftVertices", &PhysXMeshGroup::m_shiftVertices)
                     ->Field("GaussMapLimit", &PhysXMeshGroup::m_gaussMapLimit)
 
-                    // trimesh params
+                // trimesh params
                     ->Field("WeldVertices", &PhysXMeshGroup::m_weldVertices)
                     ->Field("DisableCleanMesh", &PhysXMeshGroup::m_disableCleanMesh)
                     ->Field("Force32BitIndices", &PhysXMeshGroup::m_force32BitIndices)
@@ -137,90 +137,90 @@ namespace PhysX
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
 
                         ->DataElement(AZ_CRC("ManifestName", 0x5215b349), &PhysXMeshGroup::m_name, "Name PhysX Mesh",
-                            "Name for the group. This name will also be used as a part of the name for the generated file.")
+                        "<span>Name for the group. This name will also be used as a part of the name for the generated file.</span>")
 
                         ->DataElement(AZ_CRC("ExportAsConvex", 0x18b516d9), &PhysXMeshGroup::m_exportAsConvex, "Export Mesh As Convex",
-                            "This will say the cooking process to build the mesh as a convex. This will make it available for dynamic objects.")
+                        "<span>This will say the cooking process to build the mesh as a convex. This will make it available for dynamic objects.</span>")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
 
-                        // Convex params
-                        ->DataElement(AZ_CRC("AreaTestEpsilon", 0x3c6f6877), &PhysXMeshGroup::m_areaTestEpsilon, "Area Test Epsilon", 
-                            "If the area of a triangle of the hull is below this value, the triangle will be rejected. This test is done only if Check Zero Area Triangles is used.")
+                    // Convex params
+                        ->DataElement(AZ_CRC("AreaTestEpsilon", 0x3c6f6877), &PhysXMeshGroup::m_areaTestEpsilon, "Area Test Epsilon",
+                        "<span>If the area of a triangle of the hull is below this value, the triangle will be rejected. This test is done only if Check Zero Area Triangles is used.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->DataElement(AZ_CRC("PlaneTolerance", 0xa8640bac), &PhysXMeshGroup::m_planeTolerance, "Plane Tolerance", 
-                            "The value is used during hull construction. When a new point is about to be added to the hull it gets dropped when the point is closer to the hull than the planeTolerance. "
-                            "The Plane Tolerance is increased according to the hull size.\nIf 0.0f is set all points are accepted when the convex hull is created. This may lead to edge cases where the "
-                            "new points may be merged into an existing polygon and the polygons plane equation might slightly change therefore.\nThis might lead to failures during polygon merging phase "
-                            "in the hull computation. It is recommended to use the default value, however if it is required that all points needs to be accepted or huge thin convexes are created, it "
-                            "might be required to lower the default value.")
+                        ->DataElement(AZ_CRC("PlaneTolerance", 0xa8640bac), &PhysXMeshGroup::m_planeTolerance, "Plane Tolerance",
+                        "<span>The value is used during hull construction. When a new point is about to be added to the hull it gets dropped when the point is closer to the hull than the planeTolerance. "
+                        "The Plane Tolerance is increased according to the hull size. If 0.0f is set all points are accepted when the convex hull is created. This may lead to edge cases where the "
+                        "new points may be merged into an existing polygon and the polygons plane equation might slightly change therefore. This might lead to failures during polygon merging phase "
+                        "in the hull computation. It is recommended to use the default value, however if it is required that all points needs to be accepted or huge thin convexes are created, it "
+                        "might be required to lower the default value.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                        ->DataElement(AZ_CRC("Use16bitIndices", 0xb81adbfa), &PhysXMeshGroup::m_use16bitIndices, "Use 16-bit Indices", 
-                            "Denotes the use of 16-bit vertex indices in Convex triangles or polygons. Otherwise, 32-bit indices are assumed.")
+                        ->DataElement(AZ_CRC("Use16bitIndices", 0xb81adbfa), &PhysXMeshGroup::m_use16bitIndices, "Use 16-bit Indices",
+                        "<span>Denotes the use of 16-bit vertex indices in Convex triangles or polygons. Otherwise, 32-bit indices are assumed.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
-                        ->DataElement(AZ_CRC("CheckZeroAreaTriangles", 0xa8b649c4), &PhysXMeshGroup::m_checkZeroAreaTriangles, "Check Zero Area Triangles", 
-                            "Checks and removes almost zero-area triangles during convex hull computation. The rejected area size is specified in Area Test Epsilon.")
+                        ->DataElement(AZ_CRC("CheckZeroAreaTriangles", 0xa8b649c4), &PhysXMeshGroup::m_checkZeroAreaTriangles, "Check Zero Area Triangles",
+                        "<span>Checks and removes almost zero-area triangles during convex hull computation. The rejected area size is specified in Area Test Epsilon.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
-                        ->DataElement(AZ_CRC("QuantizeInput", 0xe64b9553), &PhysXMeshGroup::m_quantizeInput, "Quantize Input", "Quantizes the input vertices using the k-means clustering.")
+                        ->DataElement(AZ_CRC("QuantizeInput", 0xe64b9553), &PhysXMeshGroup::m_quantizeInput, "Quantize Input", "<span>Quantizes the input vertices using the k-means clustering.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
-                        ->DataElement(AZ_CRC("UsePlaneShifting", 0xa10bad2e), &PhysXMeshGroup::m_usePlaneShifting, "Use Plane Shifting", 
-                            "Enables plane shifting vertex limit algorithm. Plane shifting is an alternative algorithm for the case when the computed hull has more vertices than the specified vertex limit."
-                            "\nThe default algorithm computes the full hull, and an OBB around the input vertices. This OBB is then sliced with the hull planes until the vertex limit is reached."
-                            "\nThe default algorithm requires the vertex limit to be set to at least 8, and typically produces results that are much better quality than are produced by plane shifting."
-                            "\nWhen plane shifting is enabled, the hull computation stops when vertex limit is reached. The hull planes are then shifted to contain all input vertices, and the new plane "
-                            "intersection points are then used to generate the final hull with the given vertex limit.\nPlane shifting may produce sharp edges to vertices very far away from the input cloud,"
-                            " and does not guarantee that all input vertices are inside the resulting hull. However, it can be used with a vertex limit as low as 4.")
+                        ->DataElement(AZ_CRC("UsePlaneShifting", 0xa10bad2e), &PhysXMeshGroup::m_usePlaneShifting, "Use Plane Shifting",
+                        "<span>Enables plane shifting vertex limit algorithm. Plane shifting is an alternative algorithm for the case when the computed hull has more vertices than the specified vertex limit."
+                        " The default algorithm computes the full hull, and an OBB around the input vertices. This OBB is then sliced with the hull planes until the vertex limit is reached."
+                        " The default algorithm requires the vertex limit to be set to at least 8, and typically produces results that are much better quality than are produced by plane shifting."
+                        " When plane shifting is enabled, the hull computation stops when vertex limit is reached. The hull planes are then shifted to contain all input vertices, and the new plane "
+                        "intersection points are then used to generate the final hull with the given vertex limit. Plane shifting may produce sharp edges to vertices very far away from the input cloud,"
+                        " and does not guarantee that all input vertices are inside the resulting hull. However, it can be used with a vertex limit as low as 4.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
-                        ->DataElement(AZ_CRC("ShiftVertices", 0x580b6169), &PhysXMeshGroup::m_shiftVertices, "Shift Vertices", 
-                            "Convex hull input vertices are shifted to be around origin to provide better computation stability. It is recommended to provide input vertices around the origin, "
-                            "otherwise use this flag to improve numerical stability.")
+                        ->DataElement(AZ_CRC("ShiftVertices", 0x580b6169), &PhysXMeshGroup::m_shiftVertices, "Shift Vertices",
+                        "<span>Convex hull input vertices are shifted to be around origin to provide better computation stability. It is recommended to provide input vertices around the origin, "
+                        "otherwise use this flag to improve numerical stability.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
-                        ->DataElement(AZ_CRC("GaussMapLimit", 0x409f655e), &PhysXMeshGroup::m_gaussMapLimit, "Gauss Map Limit", 
-                            "Vertex limit beyond which additional acceleration structures are computed for each convex mesh. Increase that limit to reduce memory usage. "
-                            "Computing the extra structures all the time does not guarantee optimal performance. There is a per-platform break - "
-                            "even point below which the extra structures actually hurt performance.")
+                        ->DataElement(AZ_CRC("GaussMapLimit", 0x409f655e), &PhysXMeshGroup::m_gaussMapLimit, "Gauss Map Limit",
+                        "<span>Vertex limit beyond which additional acceleration structures are computed for each convex mesh. Increase that limit to reduce memory usage. "
+                        "Computing the extra structures all the time does not guarantee optimal performance. There is a per-platform break - "
+                        "even point below which the extra structures actually hurt performance.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
 
-                        // trimesh params
-                        ->DataElement(AZ_CRC("WeldVertices", 0xe4e0c33c), &PhysXMeshGroup::m_weldVertices, "Weld Vertices", "When set, mesh welding is performed. Clean mesh must be enabled.")
+                    // trimesh params
+                        ->DataElement(AZ_CRC("WeldVertices", 0xe4e0c33c), &PhysXMeshGroup::m_weldVertices, "Weld Vertices", "<span>When set, mesh welding is performed. Clean mesh must be enabled.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
-                        ->DataElement(AZ_CRC("DisableCleanMesh", 0xc720ef8e), &PhysXMeshGroup::m_disableCleanMesh, "Disable Clean Mesh", 
-                            "When set, mesh cleaning is disabled. This makes cooking faster. When clean mesh is not performed, mesh welding is also not performed.")
+                        ->DataElement(AZ_CRC("DisableCleanMesh", 0xc720ef8e), &PhysXMeshGroup::m_disableCleanMesh, "Disable Clean Mesh",
+                        "<span>When set, mesh cleaning is disabled. This makes cooking faster. When clean mesh is not performed, mesh welding is also not performed.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
-                        ->DataElement(AZ_CRC("Force32BitIndices", 0x640dfd70), &PhysXMeshGroup::m_force32BitIndices, "Force 32-Bit Indices", 
-                            "When set, 32-bit indices will always be created regardless of triangle count.")
+                        ->DataElement(AZ_CRC("Force32BitIndices", 0x640dfd70), &PhysXMeshGroup::m_force32BitIndices, "Force 32-Bit Indices",
+                        "<span>When set, 32-bit indices will always be created regardless of triangle count.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
-                        ->DataElement(AZ_CRC("SuppressTriangleMeshRemapTable", 0x8b818a60), &PhysXMeshGroup::m_suppressTriangleMeshRemapTable, "Suppress Triangle Mesh Remap Table", 
-                            "When true, the face remap table is not created. This saves a significant amount of memory, but the SDK will not be able to provide the remap information "
-                            "for internal mesh triangles returned by collisions, sweeps or raycasts hits.")
+                        ->DataElement(AZ_CRC("SuppressTriangleMeshRemapTable", 0x8b818a60), &PhysXMeshGroup::m_suppressTriangleMeshRemapTable, "Suppress Triangle Mesh Remap Table",
+                        "<span>When true, the face remap table is not created. This saves a significant amount of memory, but the SDK will not be able to provide the remap information "
+                        "for internal mesh triangles returned by collisions, sweeps or raycasts hits.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
-                        ->DataElement(AZ_CRC("BuildTriangleAdjacencies", 0xbb5a9b49), &PhysXMeshGroup::m_buildTriangleAdjacencies, "Build Triangle Adjacencies", 
-                            "When true, the triangle adjacency information is created. You can get the adjacency triangles for a given triangle from getTriangle.")
+                        ->DataElement(AZ_CRC("BuildTriangleAdjacencies", 0xbb5a9b49), &PhysXMeshGroup::m_buildTriangleAdjacencies, "Build Triangle Adjacencies",
+                        "<span>When true, the triangle adjacency information is created. You can get the adjacency triangles for a given triangle from getTriangle.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
-                        ->DataElement(AZ_CRC("MeshWeldTolerance", 0x37df452d), &PhysXMeshGroup::m_meshWeldTolerance, "Mesh Weld Tolerance", 
-                            "Mesh weld tolerance. If mesh welding is enabled, this controls the distance at which vertices are welded. If mesh welding is not enabled, this value defines "
-                            "the acceptance distance for mesh validation.\nProvided no two vertices are within this distance, the mesh is considered to be clean. If not, a warning will be emitted. "
-                            "Having a clean, welded mesh is required to achieve the best possible performance. The default vertex welding uses a snap-to-grid approach."
-                            "\nThis approach effectively truncates each vertex to integer values using Mesh Weld Tolerance. Once these snapped vertices are produced, "
-                            "all vertices that snap to a given vertex on the grid are remapped to reference a single vertex.\nFollowing this, all triangles indices are remapped to reference "
-                            "this subset of clean vertices. It should be noted that the vertices that we do not alter the position of the vertices; the snap-to-grid is only performed to identify"
-                            " nearby vertices.\nThe mesh validation approach also uses the same snap-to-grid approach to identify nearby vertices. If more than one vertex snaps to a given "
-                            "grid coordinate, we ensure that the distance between the vertices is at least Mesh Weld Tolerance. If this is not the case, a warning is emitted.")
+                        ->DataElement(AZ_CRC("MeshWeldTolerance", 0x37df452d), &PhysXMeshGroup::m_meshWeldTolerance, "Mesh Weld Tolerance",
+                        "<span>Mesh weld tolerance. If mesh welding is enabled, this controls the distance at which vertices are welded. If mesh welding is not enabled, this value defines "
+                        "the acceptance distance for mesh validation. Provided no two vertices are within this distance, the mesh is considered to be clean. If not, a warning will be emitted. "
+                        "Having a clean, welded mesh is required to achieve the best possible performance. The default vertex welding uses a snap-to-grid approach."
+                        " This approach effectively truncates each vertex to integer values using Mesh Weld Tolerance. Once these snapped vertices are produced, "
+                        "all vertices that snap to a given vertex on the grid are remapped to reference a single vertex. Following this, all triangles indices are remapped to reference "
+                        "this subset of clean vertices. It should be noted that the vertices that we do not alter the position of the vertices; the snap-to-grid is only performed to identify"
+                        " nearby vertices. The mesh validation approach also uses the same snap-to-grid approach to identify nearby vertices. If more than one vertex snaps to a given "
+                        "grid coordinate, we ensure that the distance between the vertices is at least Mesh Weld Tolerance. If this is not the case, a warning is emitted.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
-                        ->DataElement(AZ_CRC("NumTrisPerLeaf", 0x391bf6d1), &PhysXMeshGroup::m_numTrisPerLeaf, "Number of Triangles Per Leaf", 
-                            "Mesh cooking hint for max triangles per leaf limit. Fewer triangles per leaf produces larger meshes with better runtime performance and worse cooking performance."
-                            " More triangles per leaf results in faster cooking speed and smaller mesh sizes, but with worse runtime performance.")
+                        ->DataElement(AZ_CRC("NumTrisPerLeaf", 0x391bf6d1), &PhysXMeshGroup::m_numTrisPerLeaf, "Number of Triangles Per Leaf",
+                        "<span>Mesh cooking hint for max triangles per leaf limit. Fewer triangles per leaf produces larger meshes with better runtime performance and worse cooking performance."
+                        " More triangles per leaf results in faster cooking speed and smaller mesh sizes, but with worse runtime performance.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
                         ->Attribute(AZ::Edit::Attributes::Min, 4)
                         ->Attribute(AZ::Edit::Attributes::Max, 15)
 
-                        // Both convex and trimesh
-                        ->DataElement(AZ_CRC("BuildGPUData", 0x0b7b0568), &PhysXMeshGroup::m_buildGPUData, "Build GPU Data", 
-                            "When true, addigional information required for GPU-accelerated rigid body simulation is created. This can increase memory usage and cooking times for convex meshes "
-                            "and triangle meshes. Convex hulls are created with respect to GPU simulation limitations. Vertex limit is set to 64 and vertex limit per face is internally set to 32.")
-                        
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &PhysXMeshGroup::m_nodeSelectionList, "Select meshes", "Select the meshes to be included in the mesh group.")
+                    // Both convex and trimesh
+                        ->DataElement(AZ_CRC("BuildGPUData", 0x0b7b0568), &PhysXMeshGroup::m_buildGPUData, "Build GPU Data",
+                        "<span>When true, addigional information required for GPU-accelerated rigid body simulation is created. This can increase memory usage and cooking times for convex meshes "
+                        "and triangle meshes. Convex hulls are created with respect to GPU simulation limitations. Vertex limit is set to 64 and vertex limit per face is internally set to 32.</span>")
+
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PhysXMeshGroup::m_nodeSelectionList, "Select meshes", "<span>Select the meshes to be included in the mesh group.</span>")
                         ->Attribute("FilterName", "meshes")
                         ->Attribute("FilterType", AZ::SceneAPI::DataTypes::IMeshData::TYPEINFO_Uuid());
                 }

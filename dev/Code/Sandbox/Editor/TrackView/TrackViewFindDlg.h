@@ -65,7 +65,4 @@ protected:
     QScopedPointer<Ui::TrackViewFindDlg> ui;
 };
 
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_TRACKVIEWFINDDLG_H

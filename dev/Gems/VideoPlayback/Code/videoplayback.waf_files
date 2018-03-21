@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/VideoPlayback_precompiled.cpp",
+            "Source/VideoPlayback_precompiled.h"
         ]
     },
     "auto": {

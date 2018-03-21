@@ -167,26 +167,26 @@ void CEquipPack::Load(XmlNodeRef node)
 
 bool CEquipPack::Save(XmlNodeRef node)
 {
-    node->setAttr("name", m_name.toLatin1().data());
+    node->setAttr("name", m_name.toUtf8().data());
 
     if (m_equipmentVec.empty() == false)
     {
-        node->setAttr("primary", m_equipmentVec.begin()->sName.toLatin1().data());
+        node->setAttr("primary", m_equipmentVec.begin()->sName.toUtf8().data());
     }
     XmlNodeRef itemsNode = node->newChild("Items");
     for (TEquipmentVec::iterator iter = m_equipmentVec.begin(); iter != m_equipmentVec.end(); ++iter)
     {
         const SEquipment& equip = *iter;
-        XmlNodeRef equipNode = itemsNode->newChild(equip.sName.toLatin1().data());
-        equipNode->setAttr("type", equip.sType.toLatin1().data());
-        equipNode->setAttr("setup", equip.sSetup.toLatin1().data());
+        XmlNodeRef equipNode = itemsNode->newChild(equip.sName.toUtf8().data());
+        equipNode->setAttr("type", equip.sType.toUtf8().data());
+        equipNode->setAttr("setup", equip.sSetup.toUtf8().data());
     }
     XmlNodeRef ammosNode = node->newChild("Ammos");
     for (TAmmoVec::iterator iter = m_ammoVec.begin(); iter != m_ammoVec.end(); ++iter)
     {
         const SAmmo& ammo = *iter;
         XmlNodeRef ammoNode = ammosNode->newChild("Ammo");
-        ammoNode->setAttr("name", ammo.sName.toLatin1().data());
+        ammoNode->setAttr("name", ammo.sName.toUtf8().data());
         ammoNode->setAttr("amount", ammo.nAmount);
     }
     return true;

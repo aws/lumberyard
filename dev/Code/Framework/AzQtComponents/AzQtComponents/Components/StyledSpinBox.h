@@ -27,7 +27,7 @@ namespace AzQtComponents
         Q_OBJECT
 
     public:
-        explicit StyledSliderPrivate();
+        explicit StyledSliderPrivate(QWidget* parent = nullptr);
     };
 
     class AZ_QT_COMPONENTS_API StyledDoubleSpinBox

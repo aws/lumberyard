@@ -270,7 +270,7 @@ def materialfx():
 	set_auxiliary_cvar('mfx_DebugVisual', 0, 2)
 	
 	mfxDebug.next_value()
-	
+
 # to be reinstated using ATL
 # def soundfx():
 	# '''Sound fx related debug views.'''
@@ -298,6 +298,8 @@ def main():
 				this = sys.modules[__name__]
 				if function in dir(this):
 					getattr(this, function)()
+			elif function == 'default_view':
+				reset_cvars()
 
 if __name__ == '__main__':
 	# GLOBAL NOTE: 

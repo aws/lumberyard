@@ -58,6 +58,7 @@ class SANDBOX_API CRenderViewport
     , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , public AzFramework::InputSystemCursorConstraintRequestBus::Handler
     , public AzToolsFramework::ViewportInteractionRequestBus::Handler
+    , public AzToolsFramework::EditorEvents::Bus::Handler
 {
     Q_OBJECT
 public:
@@ -138,6 +139,7 @@ public:
     virtual bool HitTest(const QPoint& point, HitContext& hitInfo);
     virtual bool IsBoundsVisible(const AABB& box) const;
     virtual void CenterOnSelection();
+    virtual void CenterOnAABB(const AABB& aabb);
 
     void focusOutEvent(QFocusEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
@@ -287,8 +289,6 @@ protected:
 
     void SetViewTM(const Matrix34& tm, bool bMoveOnly);
 
-    virtual void SetViewFocus() {}
-
     virtual float GetCameraMoveSpeed() const;
     virtual float GetCameraRotateSpeed() const;
     virtual bool  GetCameraInvertYRotation() const;
@@ -313,6 +313,10 @@ protected:
     void DrawAxis();
     void DrawBackground();
     void InitDisplayContext();
+    void ResetCursor();
+
+    // We use this to determine when the viewport context menu is being displayed so we can exit move mode
+    void PopulateEditorGlobalContextMenu(QMenu* /*menu*/, const AZ::Vector2& /*point*/, int /*flags*/) override;
 
     struct SPreviousContext
     {
@@ -552,6 +556,8 @@ protected:
     // AzFramework::InputSystemCursorConstraintRequestBus::Handler
     void* GetSystemCursorConstraintWindow() const override { return renderOverlayHWND(); }
 
+    void BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QPoint& pt) override;
+
 private:
     void ProcessKeyRelease(QKeyEvent* event);
     void PushDisableRendering();
@@ -586,8 +592,5 @@ private:
 };
 
 /////////////////////////////////////////////////////////////////////////////
-
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
 #endif // CRYINCLUDE_EDITOR_RENDERVIEWPORT_H

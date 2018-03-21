@@ -99,6 +99,7 @@ public:
     CEditorCommandManager* GetCommandManager() { return m_pCommandManager; };
     ICommandManager* GetICommandManager() { return m_pCommandManager; }
     void ExecuteCommand(const char* sCommand, ...);
+    void ExecuteCommand(const QString& command);
     void SetDocument(CCryEditDoc* pDoc);
     CCryEditDoc* GetDocument() const;
     void SetModifiedFlag(bool modified = true);
@@ -113,7 +114,7 @@ public:
     IGame*      GetGame();
     I3DEngine*  Get3DEngine();
     IRenderer*  GetRenderer();
-    void WriteToConsole(const char* pszString) { CLogFile::WriteLine(pszString); };
+    void WriteToConsole(const QString& string) { CLogFile::WriteLine(string); };
     // Change the message in the status bar
     void SetStatusText(const QString& pszString);
     virtual IMainStatusBar* GetMainStatusBar() override;
@@ -140,6 +141,7 @@ public:
     bool ExecuteConsoleApp(const QString& CommandLine, QString& OutputText, bool bNoTimeOut = false, bool bShowWindow = false);
     virtual bool IsInGameMode() override;
     virtual void SetInGameMode(bool inGame) override;
+    virtual bool IsInSimulationMode() override;
     virtual bool IsInTestMode() override;
     virtual bool IsInPreviewMode() override;
     virtual bool IsInConsolewMode() override;
@@ -384,7 +386,7 @@ public:
     // Console federation helper
     virtual void LaunchAWSConsole(QString destUrl) override;
 
-    virtual bool ToProjectConfigurator(const char* msg, const char* caption, const char* location) override;
+    virtual bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location) override;
 
     virtual QQmlEngine* GetQMLEngine() const;
     void UnloadPlugins(bool shuttingDown = false) override;
@@ -531,7 +533,7 @@ protected:
     AssetDatabase::AssetDatabaseLocationListener* m_pAssetDatabaseLocationListener;
     AzAssetBrowserRequestHandler* m_pAssetBrowserRequestHandler;
     AssetEditorRequestsHandler* m_assetEditorRequestsHandler;
-    AZStd::vector<AZStd::unique_ptr<AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::Handler>> m_thumbnailRenderers;
+    AZStd::vector<AZStd::unique_ptr<AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestBus::Handler>> m_thumbnailRenderers;
 
     IAssetBrowser* m_pAssetBrowser; // Vladimir@Conffx
     IImageUtil* m_pImageUtil;  // Vladimir@conffx

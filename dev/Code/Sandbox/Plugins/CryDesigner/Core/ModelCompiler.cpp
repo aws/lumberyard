@@ -522,7 +522,7 @@ namespace CD
         {
             QString generatedFilename;
             static_cast<DesignerObject*>(pBaseObject)->GenerateGameFilename(generatedFilename);
-            m_pStatObj[shelfID]->SetFilePath(generatedFilename.toLatin1().constData());
+            m_pStatObj[shelfID]->SetFilePath(generatedFilename.toUtf8().constData());
         }
 
         Matrix34A mtx = pBaseObject->GetWorldTM();

@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/Component.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <Include/PhysX/PhysXColliderComponentBus.h>
@@ -26,7 +25,6 @@ namespace PhysX
     class PhysXColliderComponent
         : public AZ::Component
         , private LmbrCentral::ShapeComponentNotificationsBus::Handler
-        , public AZ::EntityBus::MultiHandler
         , public PhysXColliderComponentRequestBus::Handler
     {
     public:
@@ -59,9 +57,6 @@ namespace PhysX
 
         // ShapeComponentNotificationsBus::Handler
         void OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons) override;
-
-        // EntityEvents
-        void OnEntityActivated(const AZ::EntityId& entityId) override;
 
         // PhysXColliderComponentBus
         Physics::Ptr<Physics::ShapeConfiguration> GetShapeConfigFromEntity() override;

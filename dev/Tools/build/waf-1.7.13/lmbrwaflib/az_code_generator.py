@@ -587,7 +587,7 @@ class az_code_gen(Task.Task):
         # Include file that contains code generation tag definitions
         codegen_tags = self.env['CODE_GENERATOR_TAGS']
         if not codegen_tags:
-            codegen_tags = 'Code/Framework/AZCore/AZCore/Preprocessor/CodeGen.h'
+            codegen_tags = 'Code/Framework/AzCore/AzCore/Preprocessor/CodeGen.h'
         self.add_argument('-force-include "{}"'.format(clean_path(self.generator.bld.CreateRootRelativePath(codegen_tags))))
 
         if self.error_output_file_node:

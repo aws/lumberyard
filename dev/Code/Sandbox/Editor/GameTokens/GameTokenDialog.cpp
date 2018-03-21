@@ -267,7 +267,7 @@ public:
             {
                 return true;
             }
-            item->SetValueString(data.toString().toLatin1().data());
+            item->SetValueString(data.toString().toUtf8().data());
             item->Update();
             emit dataChanged(index, index);
             return true;
@@ -276,7 +276,7 @@ public:
             {
                 return true;
             }
-            item->SetTypeName(data.toString().toLatin1().data());
+            item->SetTypeName(data.toString().toUtf8().data());
             item->Update();
             emit dataChanged(index.sibling(index.row(), VALUE_TREE_ITEMS_COLUMN), index);
             return true;
@@ -592,7 +592,7 @@ void CGameTokenDialog::OnAddItem()
 
         if (m_pItemManager->FindItemByName(fullName))
         {
-            Warning("Item with name %s already exist", fullName.toLatin1().data());
+            Warning("Item with name %s already exist", fullName.toUtf8().data());
             return;
         }
 

@@ -18,6 +18,8 @@
 
 #include "IDefragAllocator.h"
 
+#include "System.h"
+
 #ifndef _RELEASE
 #define CDBA_DEBUG
 #endif
@@ -619,7 +621,7 @@ private:
     {
         UINT_PTR dstChunkBase = dstChunk.ptr;
         UINT_PTR dstChunkEnd = dstChunkBase + dstChunk.attr.GetSize();
-#if defined(WIN64) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_BIT64
         UINT_PTR allocAlign = BIT64(srcChunk.logAlign);
 #else
         UINT_PTR allocAlign = BIT(srcChunk.logAlign);

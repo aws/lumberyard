@@ -64,11 +64,13 @@ void AssetScannerUnitTest::StartTest()
     expectedFiles.remove(tempPath.absoluteFilePath("subfolder3/aaa/bbb/ccc/basefile.txt"));
 
     PlatformConfiguration config;
-    //                                               PATH               DisplayName  PortKey outputfolder  root  recurse
-    config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),         "temp",       "ap1",   "",        true,  false));  // note:  "Recurse" set to false.
-    config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "",           "ap2",   "",        false, true));
-    config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "",           "ap3",   "",        false, true));
-    config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "",           "ap4",   "",        false, false)); // note:  "Recurse" set to false.
+    AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+    config.PopulatePlatformsForScanFolder(platforms);
+    //                                               PATH               DisplayName  PortKey outputfolder  root recurse  platforms
+    config.AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),         "temp",       "ap1",   "",        true,  false, platforms));  // note:  "Recurse" set to false.
+    config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "",           "ap2",   "",       false,  true,  platforms));
+    config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "",           "ap3",   "",       false,  true,  platforms));
+    config.AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "",           "ap4",   "",       false,  false, platforms)); // note:  "Recurse" set to false.
     AssetScanner scanner(&config);
 
     QList<QString> actuallyFound;

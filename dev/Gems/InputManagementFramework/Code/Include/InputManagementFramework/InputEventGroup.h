@@ -10,7 +10,11 @@
 *
 */
 #pragma once
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/RTTI.h>
+
+// CryCommon
 #include <InputEventBus.h>
 
 namespace Input
@@ -67,7 +71,7 @@ namespace Input
         {
             return m_eventName.empty() ? "<Unspecified Event>" : m_eventName;
         }
-    private:
+
         AZStd::vector<InputSubComponent*> m_inputHandlers;
         AZStd::string m_eventName;
     };

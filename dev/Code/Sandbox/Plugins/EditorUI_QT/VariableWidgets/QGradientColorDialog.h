@@ -18,13 +18,13 @@
 #include <QPushButton>
 #include <QMap>
 #include "CurveEditorContent.h"
-#include "qbrush.h"
-#include "qdockwidget.h"
-#include "qwidgetaction.h"
-#include "qcoreevent.h"
-#include "qlineedit.h"
-#include "qpushbutton.h"
-#include "qmenu.h"
+#include <QBrush>
+#include <QDockWidget>
+#include <QWidgetAction>
+#include <qcoreevent.h>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QMenu>
 #include <Controls/QToolTipWidget.h>
 
 struct ISplineInterpolator;

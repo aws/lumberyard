@@ -37,9 +37,9 @@ CFlowGraphProperties::CFlowGraphProperties(QWidget* parentWidget)
     layout->addWidget(m_graphProps);
     ui->propertyTree->setLayout(layout);
 
-    m_varEnabled->SetDescription(tr("Enable/Disable the FlowGraph").toLatin1().data());
+    m_varEnabled->SetDescription(tr("Enable/Disable the FlowGraph"));
 
-    m_varMultiPlayer->SetDescription(tr("MultiPlayer Option of the FlowGraph (Default: ServerOnly)").toLatin1().data());
+    m_varMultiPlayer->SetDescription(tr("MultiPlayer Option of the FlowGraph (Default: ServerOnly)"));
     m_varMultiPlayer->AddEnumItem("ServerOnly", (int) CFlowGraph::eMPT_ServerOnly);
     m_varMultiPlayer->AddEnumItem("ClientOnly", (int) CFlowGraph::eMPT_ClientOnly);
     m_varMultiPlayer->AddEnumItem("ClientServer", (int) CFlowGraph::eMPT_ClientServer);
@@ -122,27 +122,6 @@ void CFlowGraphProperties::ResizeProps(bool bHide)
     ui->propertyTree->setFixedHeight(h);
     ui->propertyTree->setVisible(!bHide);
 }
-
-#ifdef KDAB_PORT
-// don't think is used as the edit area is read only
-void CFlowGraphProperties::OnGraphDescriptionChange()
-{
-    CHyperGraph* pGraph = m_pGraph;
-    if (!pGraph)
-    {
-        return;
-    }
-
-    CString str;
-    m_graphDescriptionEdit.GetWindowText(str);
-
-    str.Replace("\r", "");
-    str.Replace("\n", "\\n");
-
-    pGraph->SetDescription(str);
-    pGraph->SetModified(true);
-}
-#endif
 
 void CFlowGraphProperties::OnVarChange(IVariable* pVar)
 {

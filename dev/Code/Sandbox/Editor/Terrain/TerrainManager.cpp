@@ -323,7 +323,7 @@ void CTerrainManager::SerializeLayerSettings(CXmlArchive& xmlAr)
             // Fill the layer with the data
             GetLayer(i)->Serialize(ar);
 
-            CryLog("  loaded editor layer %d  name='%s' LayerID=%d", i, GetLayer(i)->GetLayerName().toLatin1().data(), GetLayer(i)->GetCurrentLayerId());
+            CryLog("  loaded editor layer %d  name='%s' LayerID=%d", i, GetLayer(i)->GetLayerName().toUtf8().data(), GetLayer(i)->GetCurrentLayerId());
         }
 
         // If surface type ids are unassigned, assign them.
@@ -608,7 +608,7 @@ CRGBLayer* CTerrainManager::GetRGBLayer()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::Save()
 {
-    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kHeightmapFile).toLatin1().data());
+    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kHeightmapFile).toUtf8().data());
 
     CXmlArchive xmlAr;
     SerializeTerrain(xmlAr);
@@ -650,13 +650,13 @@ void CTerrainManager::SaveTexture()
         return;
     }
 
-    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kTerrainTextureFile).toLatin1().data());
+    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kTerrainTextureFile).toUtf8().data());
 
     XmlNodeRef root;
     GetRGBLayer()->Serialize(root, false);
     if (root)
     {
-        root->saveToFile(helper.GetTempFilePath().toLatin1().data());
+        root->saveToFile(helper.GetTempFilePath().toUtf8().data());
     }
 
     helper.UpdateFile(false);
@@ -667,7 +667,7 @@ void CTerrainManager::SaveTexture()
 bool CTerrainManager::LoadTexture()
 {
     QString filename = GetIEditor()->GetLevelDataFolder() + kTerrainTextureFile;
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
     if (root)
     {
         GetRGBLayer()->Serialize(root, true);

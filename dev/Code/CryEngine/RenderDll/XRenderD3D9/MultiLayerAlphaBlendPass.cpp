@@ -69,11 +69,14 @@ bool MultiLayerAlphaBlendPass::IsSupported()
             m_supported = SupportLevel::SUPPORTED;
         }
         else
-        #endif
         {
             m_supported = SupportLevel::NOT_SUPPORTED;
-            AZ_Warning("Rendering", false, "Multi-Layer Alpha Blending is not supported on this device.");
+            AZ_Warning("Rendering", false, "Multi-Layer Alpha Blending is not supported on this GPU.");
         }
+        #else
+            m_supported = SupportLevel::NOT_SUPPORTED;
+            AZ_Warning("Rendering", false, "Multi-Layer Alpha Blending requires Lumberyard to have been built with the Windows 10 SDK or higher.");
+        #endif
     }
 
     return m_supported == SupportLevel::SUPPORTED;

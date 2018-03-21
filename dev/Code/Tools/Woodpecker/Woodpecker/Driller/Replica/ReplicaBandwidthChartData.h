@@ -88,8 +88,8 @@ namespace Driller
 
         void Reset();
 
-        size_t m_bytesSent;
-        size_t m_bytesReceived;
+        quint64 m_bytesSent;
+        quint64 m_bytesReceived;
     };
 
     struct BandwidthUsage
@@ -167,13 +167,13 @@ namespace Driller
 
         virtual ~ReplicaBandwidthChartData()
         {
-            for (FrameMap::iterator frameIter = m_frameMapping.begin();
+            for (typename FrameMap::iterator frameIter = m_frameMapping.begin();
                  frameIter != m_frameMapping.end();
                  ++frameIter)
             {
                 BandwidthUsageMap* bandwidthUsageMap = frameIter->second;
 
-                for (BandwidthUsageMap::iterator usageIter = bandwidthUsageMap->begin();
+                for (typename BandwidthUsageMap::iterator usageIter = bandwidthUsageMap->begin();
                      usageIter != bandwidthUsageMap->end();
                      ++usageIter)
                 {
@@ -227,7 +227,7 @@ namespace Driller
         {
             static const BandwidthUsageMap emptyMap;
 
-            FrameMap::const_iterator frameIter = m_frameMapping.find(frameId);
+            typename FrameMap::const_iterator frameIter = m_frameMapping.find(frameId);
 
             if (frameIter == m_frameMapping.end())
             {
@@ -336,7 +336,7 @@ namespace Driller
         {
             BandwidthUsageMap* retVal = nullptr;
 
-            FrameMap::iterator frameIter = m_frameMapping.find(frameId);
+            typename FrameMap::iterator frameIter = m_frameMapping.find(frameId);
 
             if (frameIter == m_frameMapping.end())
             {
@@ -344,7 +344,7 @@ namespace Driller
 
                 if (retVal)
                 {
-                    m_frameMapping.insert(FrameMap::value_type(frameId, retVal));
+                    m_frameMapping.insert(typename FrameMap::value_type(frameId, retVal));
                 }
             }
             else
@@ -363,7 +363,7 @@ namespace Driller
             if (usageMap)
             {
                 T usageKey = GetKeyFromEvent(chunkEvent);
-                BandwidthUsageMap::iterator chunkIter = usageMap->find(usageKey);
+                typename BandwidthUsageMap::iterator chunkIter = usageMap->find(usageKey);
 
                 if (chunkIter == usageMap->end())
                 {
@@ -371,7 +371,7 @@ namespace Driller
 
                     if (chunkContainer)
                     {
-                        usageMap->insert(BandwidthUsageMap::value_type(usageKey, chunkContainer));
+                        usageMap->insert(typename BandwidthUsageMap::value_type(usageKey, chunkContainer));
                     }
                 }
                 else

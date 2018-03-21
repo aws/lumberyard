@@ -38,7 +38,7 @@ namespace EMotionFX
     // destructor
     AnimGraphObjectDataPool::SubPool::~SubPool()
     {
-        MCore::Free(mData);
+        MCore::AlignedFree(mData);
         mData = nullptr;
     }
 
@@ -73,7 +73,7 @@ namespace EMotionFX
 
         // create the temp object data from the object
         mObjectData = objectFactory->GetRegisteredObject(objectIndex)->CreateObjectData();
-        mObjectDataSize = mObjectData->GetClassSize();
+        mObjectDataSize = AZ_SIZE_ALIGN(mObjectData->GetClassSize(), 16);
     }
 
 
@@ -84,7 +84,7 @@ namespace EMotionFX
 
         if (mPoolType == POOLTYPE_STATIC)
         {
-            MCore::Free(mData);
+            MCore::AlignedFree(mData);
             mData = nullptr;
             mFreeList.Clear();
         }
@@ -174,7 +174,7 @@ namespace EMotionFX
         // if we have a static pool
         if (poolType == POOLTYPE_STATIC)
         {
-            pool->mData = (uint8*)MCore::Allocate(numInitialObjectDatas * pool->mObjectDataSize, EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTDATAPOOL); // alloc space
+            pool->mData = (uint8*)MCore::AlignedAllocate(numInitialObjectDatas * pool->mObjectDataSize, pool->mObjectData->GetMemoryAlignment(), EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTDATAPOOL); // alloc space
 
             pool->mFreeList.ResizeFast(numInitialObjectDatas);
             for (uint32 i = 0; i < numInitialObjectDatas; ++i)
@@ -191,7 +191,7 @@ namespace EMotionFX
             pool->mSubPools.Reserve(32);
 
             SubPool* subPool = new SubPool();
-            subPool->mData  = (uint8*)MCore::Allocate(numInitialObjectDatas * pool->mObjectDataSize, EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTDATAPOOL);// alloc space
+            subPool->mData  = (uint8*)MCore::AlignedAllocate(numInitialObjectDatas * pool->mObjectDataSize, pool->mObjectData->GetMemoryAlignment(), EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTDATAPOOL);// alloc space
             subPool->mNumObjectDatas = numInitialObjectDatas;
             subPool->mObjectDataSize = pool->mObjectDataSize;
 
@@ -248,7 +248,7 @@ namespace EMotionFX
             pool->mNumObjectDatas += numObjectDatas;
 
             SubPool* subPool = new SubPool();
-            subPool->mData  = (uint8*)MCore::Allocate(numObjectDatas * pool->mObjectDataSize, EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTDATAPOOL);// alloc space
+            subPool->mData  = (uint8*)MCore::AlignedAllocate(numObjectDatas * pool->mObjectDataSize, pool->mObjectData->GetMemoryAlignment(), EMFX_MEMCATEGORY_ANIMGRAPH_OBJECTDATAPOOL);// alloc space
             subPool->mNumObjectDatas = numObjectDatas;
             subPool->mObjectDataSize = pool->mObjectDataSize;
 

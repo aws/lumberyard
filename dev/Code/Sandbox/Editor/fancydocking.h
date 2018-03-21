@@ -13,10 +13,10 @@
 #pragma once
 
 #include <AzQtComponents/Components/DockTabWidget.h>
+#include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/FancyDockingDropZoneWidget.h>
 
 #include "Include/EditorCoreAPI.h"
-#include <QtWidgets/QDockWidget>
 #include <QtWidgets/QMainWindow>
 #include <QColor>
 #include <QMetaType>
@@ -137,7 +137,7 @@ private:
     void setupDropZones(QWidget* dock, const QPoint& globalPos = QPoint());
     void raiseDockWidgets();
     void dropDockWidget(QDockWidget* dock, QWidget* onto, Qt::DockWidgetArea area);
-    QMainWindow* createFloatingMainWindow(const QString& name, const QRect& geometry);
+    QMainWindow* createFloatingMainWindow(const QString& name, const QRect& geometry, bool skipTitleBarDrawing = false);
     AzQtComponents::DockTabWidget* createTabWidget(QMainWindow* mainWindow, QDockWidget* widgetToReplace, QString name = QString());
     QString getUniqueDockWidgetName(const char* prefix);
     void destroyIfUseless(QMainWindow* mw);

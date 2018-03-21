@@ -29,8 +29,10 @@ export class CharacterEntry {
     voiceList: string[];
     isEditing: boolean;
     isUploaded: boolean;
-    ssmlTags: string[];
-    ssmlTagMappings: Object;
+    ssmlProsodyTags: string[];
+    ssmlProsodyTagMappings: Object;
+    ssmlLanguage: string;
+    timbre: number;
     previewLabelText: string;
 
     constructor(characterInfo: any) {
@@ -40,8 +42,10 @@ export class CharacterEntry {
         this.speechMarksStatus = characterInfo.speechMarksStatus;
         this.speechMarks = characterInfo.speechMarks;
         this.voiceList = characterInfo.voiceList;
-        this.ssmlTags = characterInfo.ssmlTags;
-        this.ssmlTagMappings = characterInfo.ssmlTagMappings;
+        this.ssmlProsodyTags = characterInfo.ssmlProsodyTags;
+        this.ssmlProsodyTagMappings = characterInfo.ssmlProsodyTagMappings;
+        this.ssmlLanguage = characterInfo.ssmlLanguage;
+        this.timbre = characterInfo.timbre;
         this.isEditing = false;
         this.isUploaded = false;
         this.previewLabelText = characterInfo.previewLabelText;

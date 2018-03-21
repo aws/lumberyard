@@ -158,12 +158,12 @@ QSize JointSelectionDialog::sizeHint() const
     return QSize(600, 900);
 }
 
-bool JointSelectionDialog::chooseJoint(QString* name, IDefaultSkeleton* skeleton)
+bool JointSelectionDialog::chooseJoint(QString &name, IDefaultSkeleton* skeleton)
 {
     m_skeletonLabel->setText(skeleton ? skeleton->GetModelFilePath() : "No character loaded");
     if (skeleton)
     {
-        QString selectedName = name ? *name : QString();
+        QString selectedName = name;
 
         typedef std::vector<QList<QStandardItem*> > JointIDToItem;
         JointIDToItem jointToItem;
@@ -232,7 +232,7 @@ bool JointSelectionDialog::chooseJoint(QString* name, IDefaultSkeleton* skeleton
         QStandardItem* item = m_model->itemFromIndex(sourceCurrentIndex);
         if (item)
         {
-            *name = item->data().toString();
+            name = item->data().toString();
             return true;
         }
     }
@@ -241,15 +241,15 @@ bool JointSelectionDialog::chooseJoint(QString* name, IDefaultSkeleton* skeleton
 }
 
 // ---------------------------------------------------------------------------
-dll_string JointNameSelector(const SResourceSelectorContext& x, const char* previousValue, IDefaultSkeleton* defaultSkeleton)
+QString JointNameSelector(const SResourceSelectorContext& x, const QString& previousValue, IDefaultSkeleton* defaultSkeleton)
 {
     QWidget parent(x.parentWidget);
     parent.setWindowModality(Qt::ApplicationModal);
     JointSelectionDialog dialog(&parent);
 
     QString jointName = previousValue;
-    dialog.chooseJoint(&jointName, defaultSkeleton);
-    return jointName.toUtf8().constData();
+    dialog.chooseJoint(jointName, defaultSkeleton);
+    return jointName;
 }
 REGISTER_RESOURCE_SELECTOR("Joint", JointNameSelector, "Editor/Icons/animation/bone.png")
 

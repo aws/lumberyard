@@ -12,8 +12,8 @@
 *
 */
 
-#include <QWidget.h>
-#include <QTabWidget.h>
+#include <QWidget>
+#include <QTabWidget>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/containers/unordered_map.h>

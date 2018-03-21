@@ -186,21 +186,21 @@ void CMission::Serialize(CXmlArchive& ar, bool bParts)
     }
     else
     {
-        ar.root->setAttr("Name", m_name.toLatin1().data());
-        ar.root->setAttr("Description", m_description.toLatin1().data());
+        ar.root->setAttr("Name", m_name.toUtf8().data());
+        ar.root->setAttr("Description", m_description.toUtf8().data());
 
         //time_t time = m_time.GetTime();
         //ar.root->setAttr( "Time",time );
 
-        ar.root->setAttr("PlayerEquipPack", m_sPlayerEquipPack.toLatin1().data());
-        ar.root->setAttr("MusicScript", m_sMusicScript.toLatin1().data());
-        ar.root->setAttr("Script", m_pScript->GetFilename().toLatin1().data());
+        ar.root->setAttr("PlayerEquipPack", m_sPlayerEquipPack.toUtf8().data());
+        ar.root->setAttr("MusicScript", m_sMusicScript.toUtf8().data());
+        ar.root->setAttr("Script", m_pScript->GetFilename().toUtf8().data());
 
         QString timeStr;
         int nHour = floor(m_time);
         int nMins = (m_time - floor(m_time)) * 60.0f;
         timeStr = QStringLiteral("%1:%2").arg(nHour, 2, 10, QLatin1Char('0')).arg(nMins, 2, 10, QLatin1Char('0'));
-        ar.root->setAttr("MissionTime", timeStr.toLatin1().data());
+        ar.root->setAttr("MissionTime", timeStr.toUtf8().data());
 
         // Saving.
         XmlNodeRef layers = m_layers->clone();
@@ -224,7 +224,7 @@ void CMission::Serialize(CXmlArchive& ar, bool bParts)
         for (int i = 0; i < m_usedWeapons.size(); i++)
         {
             XmlNodeRef weapon = usedWeapons->newChild("Weapon");
-            weapon->setAttr("Name", m_usedWeapons[i].toLatin1().data());
+            weapon->setAttr("Name", m_usedWeapons[i].toUtf8().data());
         }
         weapons->addChild(m_weaponsAmmo->clone());
 
@@ -243,18 +243,18 @@ void CMission::Serialize(CXmlArchive& ar, bool bParts)
 void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
 {
     // Also save exported objects data.
-    root->setAttr("Name", m_name.toLatin1().data());
-    root->setAttr("Description", m_description.toLatin1().data());
+    root->setAttr("Name", m_name.toUtf8().data());
+    root->setAttr("Description", m_description.toUtf8().data());
 
     QString timeStr;
     int nHour = floor(m_time);
     int nMins = (m_time - floor(m_time)) * 60.0f;
     timeStr = QStringLiteral("%1:%2").arg(nHour, 2, 10, QLatin1Char('0')).arg(nMins, 2, 10, QLatin1Char('0'));
-    root->setAttr("Time", timeStr.toLatin1().data());
+    root->setAttr("Time", timeStr.toUtf8().data());
 
-    root->setAttr("PlayerEquipPack", m_sPlayerEquipPack.toLatin1().data());
-    root->setAttr("MusicScript", m_sMusicScript.toLatin1().data());
-    root->setAttr("Script", m_pScript->GetFilename().toLatin1().data());
+    root->setAttr("PlayerEquipPack", m_sPlayerEquipPack.toUtf8().data());
+    root->setAttr("MusicScript", m_sMusicScript.toUtf8().data());
+    root->setAttr("Script", m_pScript->GetFilename().toUtf8().data());
 
     // Saving.
     //XmlNodeRef objects = m_exportData->clone();
@@ -282,8 +282,8 @@ void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
     for (int i = 0; i < m_usedWeapons.size(); i++)
     {
         XmlNodeRef weapon = usedWeapons->newChild("Weapon");
-        weapon->setAttr("Name", m_usedWeapons[i].toLatin1().data());
-        IEntity* pEnt = GetIEditor()->GetSystem()->GetIEntitySystem()->FindEntityByName(m_usedWeapons[i].toLatin1().data());
+        weapon->setAttr("Name", m_usedWeapons[i].toUtf8().data());
+        IEntity* pEnt = GetIEditor()->GetSystem()->GetIEntitySystem()->FindEntityByName(m_usedWeapons[i].toUtf8().data());
         if (pEnt)
         {
             weapon->setAttr("id", pEnt->GetId());
@@ -322,7 +322,7 @@ void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
 void CMission::ExportLegacyAnimations(XmlNodeRef& root)
 {
     XmlNodeRef mission = XmlHelpers::CreateXmlNode("Mission");
-    mission->setAttr("Name", m_name.toLatin1().data());
+    mission->setAttr("Name", m_name.toUtf8().data());
 
     XmlNodeRef movieDataNode = XmlHelpers::CreateXmlNode("MovieData");
     GetIEditor()->GetMovieSystem()->Serialize(movieDataNode, false);
@@ -364,7 +364,7 @@ void CMission::SyncContent(bool bRetrieve, bool bIgnoreObjects, bool bSkipLoadin
         CXmlTemplate::GetValues(m_doc->GetEnvironmentTemplate(), m_environment);
 
         UpdateUsedWeapons();
-        gameEngine->SetPlayerEquipPack(m_sPlayerEquipPack.toLatin1().data());
+        gameEngine->SetPlayerEquipPack(m_sPlayerEquipPack.toUtf8().data());
 
         gameEngine->ReloadEnvironment();
 
@@ -483,9 +483,9 @@ void CMission::SaveParts()
 {
     // Save Time of Day
     {
-        CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kTimeOfDayFile).toLatin1().data());
+        CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kTimeOfDayFile).toUtf8().data());
 
-        m_timeOfDay->saveToFile(helper.GetTempFilePath().toLatin1().data());
+        m_timeOfDay->saveToFile(helper.GetTempFilePath().toUtf8().data());
 
         if (!helper.UpdateFile(false))
         {
@@ -496,11 +496,11 @@ void CMission::SaveParts()
 
     // Save Environment
     {
-        CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kEnvironmentFile).toLatin1().data());
+        CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kEnvironmentFile).toUtf8().data());
 
         XmlNodeRef root = m_environment->clone();
         root->setTag(kEnvironmentRoot);
-        root->saveToFile(helper.GetTempFilePath().toLatin1().data());
+        root->saveToFile(helper.GetTempFilePath().toUtf8().data());
 
         if (!helper.UpdateFile(false))
         {
@@ -516,7 +516,7 @@ void CMission::LoadParts()
     // Load Time of Day
     {
         QString filename = GetIEditor()->GetLevelDataFolder() + kTimeOfDayFile;
-        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
         if (root && !_stricmp(root->getTag(), kTimeOfDayRoot))
         {
             m_timeOfDay = root;
@@ -527,7 +527,7 @@ void CMission::LoadParts()
     // Load Environment
     {
         QString filename = GetIEditor()->GetLevelDataFolder() + kEnvironmentFile;
-        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
         if (root && !_stricmp(root->getTag(), kEnvironmentRoot))
         {
             m_environment = root;

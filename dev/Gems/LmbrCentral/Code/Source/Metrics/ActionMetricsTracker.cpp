@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #ifdef METRICS_SYSTEM_COMPONENT_ENABLED
 

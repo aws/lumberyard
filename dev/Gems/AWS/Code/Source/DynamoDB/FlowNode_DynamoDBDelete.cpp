@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #include <DynamoDB/FlowNode_DynamoDBDelete.h>
 #include <aws/dynamodb/model/DeleteItemRequest.h>
 #include <aws/core/utils/Outcome.h>

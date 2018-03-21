@@ -30,6 +30,19 @@ namespace LmbrCentral
     };
 
     /*!
+    * FBX Material asset type configuration.
+    * Reflect as: AzFramework::SimpleAssetReference<FbxMaterialAsset>
+    */
+    class DccMaterialAsset
+    {
+    public:
+        AZ_TYPE_INFO(DccMaterialAsset, "{C88469CF-21E7-41EB-96FD-BF14FBB05EDC}")
+            static const char* GetFileFilter() {
+            return "*.dccmtl";
+        }
+    };
+
+    /*!
      * Texture asset type configuration.
      * Reflect as: AzFramework::SimpleAssetReference<TextureAsset>
      */
@@ -47,5 +60,6 @@ namespace LmbrCentral
 namespace AZ
 {
     AZ_TYPE_INFO_SPECIALIZE(AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset>, "{B7B8ECC7-FF89-4A76-A50E-4C6CA2B6E6B4}")
+    AZ_TYPE_INFO_SPECIALIZE(AzFramework::SimpleAssetReference<LmbrCentral::DccMaterialAsset>, "{E865C742-A063-47A3-BCE1-E724A8D4B66D}")
     AZ_TYPE_INFO_SPECIALIZE(AzFramework::SimpleAssetReference<LmbrCentral::TextureAsset>, "{68E92460-5C0C-4031-9620-6F1A08763243}")
 }

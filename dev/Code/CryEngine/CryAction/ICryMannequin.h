@@ -40,7 +40,7 @@ class CAnimationDatabase;
 struct AnimEventInstance;
 
 struct IProceduralParams;
-DECLARE_BOOST_POINTERS(IProceduralParams);
+DECLARE_SMART_POINTERS(IProceduralParams);
 
 namespace Serialization
 {
@@ -85,7 +85,7 @@ struct SAnimationEntry
 
 #define IProceduralParamsComparerDefaultName "ProceduralParamsComparerDefault"
 struct IProceduralParamsComparer;
-typedef boost::shared_ptr< IProceduralParamsComparer > IProceduralParamsComparerPtr;
+typedef AZStd::shared_ptr< IProceduralParamsComparer > IProceduralParamsComparerPtr;
 
 struct IProceduralParamsComparer
     : public ICryUnknown
@@ -1999,7 +1999,7 @@ bool ILINE IAction::IsDifferent(const FragmentID fragID, const TagState& fragmen
 }
 
 class IProceduralClip;
-DECLARE_BOOST_POINTERS(IProceduralClip);
+DECLARE_SMART_POINTERS(IProceduralClip);
 
 struct SProceduralParams
     : public IProceduralParams

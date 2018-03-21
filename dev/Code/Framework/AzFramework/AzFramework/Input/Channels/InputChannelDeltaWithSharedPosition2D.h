@@ -30,6 +30,10 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputChannelDeltaWithSharedPosition2D, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelDeltaWithSharedPosition2D, "{F7EC8D6F-DC27-4CDF-80F4-EFA7DCC33837}", InputChannel);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputChannelId Id of the input channel being constructed
         //! \param[in] inputDevice Input device that owns the input channel

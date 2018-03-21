@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "ComponentPaletteModelFilter.hxx"
 #include <AzCore/Serialization/SerializeContext.h>
 

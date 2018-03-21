@@ -953,7 +953,10 @@ void CCryEditDoc::OnFileSaveAs()
     CLevelFileDialog levelFileDialog(false);
     if (levelFileDialog.exec() == QDialog::Accepted)
     {
-        OnSaveDocument(levelFileDialog.GetFileName());
+        if (OnSaveDocument(levelFileDialog.GetFileName()))
+        {
+            CCryEditApp::instance()->AddToRecentFileList(levelFileDialog.GetFileName());
+        }
     }
 }
 
@@ -1749,7 +1752,7 @@ CMission*   CCryEditDoc::FindMission(const QString& name) const
 {
     for (int i = 0; i < m_missions.size(); i++)
     {
-        if (QString::compare(name.toUtf8().data(), m_missions[i]->GetName(), Qt::CaseInsensitive) == 0)
+        if (QString::compare(name, m_missions[i]->GetName(), Qt::CaseInsensitive) == 0)
         {
             return m_missions[i];
         }

@@ -159,7 +159,7 @@ namespace AZ
                 template<typename FirstIterator, typename SecondIterator>
                 auto PairIterator<FirstIterator, SecondIterator, AZStd::random_access_iterator_tag>::operator[](size_t index)->typename super::reference
                 {
-                    return reference(super::m_first[index], super::m_second[index]);
+                    return typename super::reference(super::m_first[index], super::m_second[index]);
                 }
 
                 template<typename FirstIterator, typename SecondIterator>

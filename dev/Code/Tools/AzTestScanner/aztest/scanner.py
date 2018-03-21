@@ -27,6 +27,8 @@ if sys.platform.startswith("darwin"):
     from aztest.platform.osx import Scanner
 elif sys.platform.startswith("win32"):
     from aztest.platform.win import Scanner
+elif sys.platform.startswith("linux"):
+    from aztest.platform.linux import Scanner
 else:
     logger.error("Unrecognized platform: {}".format(sys.platform))
     exit()

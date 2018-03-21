@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #include <Configuration/FlowNode_ConfigureAnonymousCognito.h>
 #include <aws/identity-management/auth/CognitoCachingCredentialsProvider.h>
 #include <aws/identity-management/auth/PersistentCognitoIdentityProvider.h>

@@ -235,7 +235,7 @@ bool CDialogManager::ReloadScripts()
     CFileUtil::ScanDirectory(path, "*.dlg", files, true);
     for (int iFile = 0; iFile < files.size(); ++iFile)
     {
-        string dlgID = PathUtil::ToUnixPath(files[iFile].filename.toLatin1().data());
+        string dlgID = PathUtil::ToUnixPath(files[iFile].filename.toUtf8().data());
         PathUtil::RemoveExtension(dlgID);
         MakeID(dlgID);
 
@@ -245,7 +245,7 @@ bool CDialogManager::ReloadScripts()
         // testing
         QString sID = FilenameToScript(files[iFile].filename);
 
-        XmlNodeRef node = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+        XmlNodeRef node = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
         if (node && node->isTag("DialogScript"))
         {
             CEditorDialogScript* pScript = new CEditorDialogScript (dlgID);
@@ -374,7 +374,7 @@ CEditorDialogScript* CDialogManager::GetScript(const string& name, bool bForceCr
 ////////////////////////////////////////////////////////////////////////////
 CEditorDialogScript* CDialogManager::GetScript(const QString& name, bool bForceCreate)
 {
-    string sName = name.toLatin1().data();
+    string sName = name.toUtf8().data();
     return GetScript(sName, bForceCreate);
 }
 
@@ -535,7 +535,7 @@ bool CEditorDialogScriptSerializer::Load(XmlNodeRef node)
 bool CEditorDialogScriptSerializer::Save(XmlNodeRef node)
 {
     node->setAttr("Name", m_pScript->m_id);
-    node->setAttr("Description", m_pScript->m_description.toLatin1().data());
+    node->setAttr("Description", m_pScript->m_description.toUtf8().data());
     int nLineCount = m_pScript->GetNumLines();
     for (int i = 0; i < nLineCount; ++i)
     {

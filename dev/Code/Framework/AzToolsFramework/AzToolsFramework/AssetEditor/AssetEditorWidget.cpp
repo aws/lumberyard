@@ -64,7 +64,7 @@ namespace AzToolsFramework
                 {
                     using SCCommandBus = SourceControlCommandBus;
                     SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, assetFullPath.c_str(), true,
-                        [id, asset, assetFullPath, serializeContext, callback](bool /*success*/, const SourceControlFileInfo& info)
+                        [asset, assetFullPath, serializeContext, callback](bool /*success*/, const SourceControlFileInfo& info)
                         {
                             if (!info.IsReadOnly())
                             {
@@ -157,6 +157,10 @@ namespace AzToolsFramework
             }
             else
             {
+                m_dirty = false;
+                m_saveAssetAction->setEnabled(false);
+                m_propertyEditor->ClearInstances();
+
                 OnAssetOpenedSignal(AZ::Data::Asset<AZ::Data::AssetData>());
             }
         }
@@ -165,7 +169,6 @@ namespace AzToolsFramework
         {
             m_dirty = false;
             m_saveAssetAction->setEnabled(false);
-
             m_propertyEditor->ClearInstances();
 
             m_asset = AZ::Data::AssetManager::Instance().CreateAsset(AZ::Data::AssetId(AZ::Uuid::CreateRandom()), asset.GetType());
@@ -223,7 +226,7 @@ namespace AzToolsFramework
                 if (savedCallback)
                 {
                     auto conn = AZStd::make_shared<QMetaObject::Connection>();
-                    *conn = connect(this, &AssetEditorWidget::OnAssetSavedSignal, [this, conn, savedCallback]()
+                    *conn = connect(this, &AssetEditorWidget::OnAssetSavedSignal, [conn, savedCallback]()
                             {
                                 disconnect(*conn);
                                 savedCallback();

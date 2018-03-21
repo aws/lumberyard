@@ -99,7 +99,7 @@ bool ClipVolumeObject::CreateGameObject()
 
     if (m_pEntity)
     {
-        auto gameFileName = GenerateGameFilename().toLatin1();
+        auto gameFileName = GenerateGameFilename().toUtf8();
         SEntitySpawnParams spawnParams;
         spawnParams.pUserData = (void*)gameFileName.data();
 

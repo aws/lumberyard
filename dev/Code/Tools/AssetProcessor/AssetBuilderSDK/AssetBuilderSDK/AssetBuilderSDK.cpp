@@ -16,6 +16,7 @@
 //////////////////////////////////////////////////////////////////////////
 //currently only needed for GETFAKEASSETYPE
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/std/string/wildcard.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/XML/rapidxml.h>
 #include <AzCore/XML/rapidxml_print.h>
@@ -149,6 +150,88 @@ namespace AssetBuilderSDK
         }
     }
 
+    FilePatternMatcher::FilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern)
+        : m_pattern(pattern)
+    {
+        if (pattern.m_type == AssetBuilderSDK::AssetBuilderPattern::Regex)
+        {
+            m_isRegex = true;
+            m_isValid = FilePatternMatcher::ValidatePatternRegex(pattern.m_pattern, m_errorString);
+            if (m_isValid)
+            {
+                this->m_regex = RegexType(pattern.m_pattern.c_str(), RegexType::flag_type::icase | RegexType::flag_type::ECMAScript);
+            }
+        }
+        else
+        {
+            m_isValid = true;
+            m_isRegex = false;
+        }
+    }
+
+    FilePatternMatcher::FilePatternMatcher(const AZStd::string& pattern, AssetBuilderSDK::AssetBuilderPattern::PatternType type)
+        : FilePatternMatcher(AssetBuilderSDK::AssetBuilderPattern(pattern, type))
+    {
+    }
+
+    FilePatternMatcher::FilePatternMatcher(const FilePatternMatcher& copy)
+        : m_pattern(copy.m_pattern)
+        , m_regex(copy.m_regex)
+        , m_isRegex(copy.m_isRegex)
+        , m_isValid(copy.m_isValid)
+        , m_errorString(copy.m_errorString)
+    {
+    }
+
+    FilePatternMatcher& FilePatternMatcher::operator=(const FilePatternMatcher& copy)
+    {
+        this->m_pattern = copy.m_pattern;
+        this->m_regex = copy.m_regex;
+        this->m_isRegex = copy.m_isRegex;
+        this->m_isValid = copy.m_isValid;
+        this->m_errorString = copy.m_errorString;
+        return *this;
+    }
+
+    bool FilePatternMatcher::MatchesPath(const AZStd::string& assetPath) const
+    {
+        bool matches = false;
+        if (this->m_isRegex)
+        {
+            matches = AZStd::regex_match(assetPath.c_str(), this->m_regex);
+        }
+        else
+        {
+            matches = AZStd::wildcard_match(this->m_pattern.m_pattern, assetPath);
+        }
+        return matches;
+    }
+
+    bool FilePatternMatcher::IsValid() const
+    {
+        return this->m_isValid;
+    }
+
+    AZStd::string FilePatternMatcher::GetErrorString() const
+    {
+        return m_errorString;
+    }
+
+    const AssetBuilderSDK::AssetBuilderPattern& FilePatternMatcher::GetBuilderPattern() const
+    {
+        return this->m_pattern;
+    }
+
+    bool FilePatternMatcher::ValidatePatternRegex(const AZStd::string& pattern, AZStd::string& errorString)
+    {
+        AssertAbsorber absorber;
+        AZStd::regex validate_regex(pattern.c_str(),
+            AZStd::regex::flag_type::icase |
+            AZStd::regex::flag_type::ECMAScript);
+
+        return absorber.m_assertMessage.empty();
+    }
+
     /**
     * New constructor - uses the platform Identifier from the PlatformInfo passed into Create Jobs.
     */
@@ -180,7 +263,7 @@ namespace AssetBuilderSDK
         }
 #if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
         m_platform = LEGACY_ConvertNewPlatformIdentifierToOldPlatform(platformIdentifier);
-#endif
+#endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
     }
 
     const AZStd::string& JobDescriptor::GetPlatformIdentifier() const
@@ -246,7 +329,8 @@ namespace AssetBuilderSDK
                 Field("Critical", &JobDescriptor::m_critical)->
                 Field("Priority", &JobDescriptor::m_priority)->
                 Field("Job Parameters", &JobDescriptor::m_jobParameters)->
-                Field("Check Exclusive Lock", &JobDescriptor::m_checkExclusiveLock);
+                Field("Check Exclusive Lock", &JobDescriptor::m_checkExclusiveLock)->
+                Field("Fail On Error", &JobDescriptor::m_failOnError);
         }
     }
 
@@ -349,6 +433,11 @@ namespace AssetBuilderSDK
         return m_tags.find(tag) != m_tags.end();
     }
 
+    bool PlatformInfo::operator==(const PlatformInfo& other)
+    {
+        return (this->m_identifier == other.m_identifier);
+    }
+
     void PlatformInfo::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -360,6 +449,20 @@ namespace AssetBuilderSDK
         }
     }
 
+    AZStd::string PlatformInfo::PlatformVectorAsString(const AZStd::vector<PlatformInfo>& platforms)
+    {
+        AZStd::string platformString;
+        for (const auto& platformInfo : platforms)
+        {
+            if (!platformString.empty())
+            {
+                platformString.append(", ");
+            }
+            platformString.append(platformInfo.m_identifier.c_str());
+        }
+
+        return platformString;
+    }
 
     void CreateJobsRequest::Reflect(AZ::ReflectContext* context)
     {
@@ -1146,4 +1249,29 @@ namespace AssetBuilderSDK
     {
         return ProcessJobNetRequest::MessageType();
     }
+
+    AssertAbsorber::AssertAbsorber()
+    {
+        // only absorb asserts when this object is on scope in the thread that this object is on scope in.
+        s_onAbsorbThread = true;
+        BusConnect();
+    }
+
+    AssertAbsorber::~AssertAbsorber()
+    {
+        s_onAbsorbThread = false;
+        BusDisconnect();
+    }
+
+    bool AssertAbsorber::OnAssert(const char* message)
+    {
+        if (s_onAbsorbThread)
+        {
+            m_assertMessage = message;
+            return true; // I handled this, do not forward it
+        }
+        return false;
+    }
+
+    AZ_THREAD_LOCAL bool AssertAbsorber::s_onAbsorbThread = false;
 }

@@ -749,7 +749,7 @@ void CPlanningTextureStreamer::SyncWithJob_Locked()
 {
     FUNCTION_PROFILER_RENDERER;
 
-    m_JobState.Wait();
+    m_jobExecutor.WaitForCompletion();
 
     if (m_state == S_QueuedForSync)
     {

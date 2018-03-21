@@ -10,9 +10,10 @@
 *
 */
 
-#define _SCL_SECURE_NO_WARNINGS
-
 #include <AzTest/AzTest.h>
+
+#if defined(AZ_COMPILER_MSVC)
+#define _SCL_SECURE_NO_WARNINGS
 #include <algorithm>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/list.h>
@@ -103,35 +104,37 @@ namespace AZ
 
                 TYPED_TEST_P(PairIteratorTests, MakePairIterator_BuildFromTwoSeparateIterators_StoredIteratorsMatchTheGivenIterators)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
-                    EXPECT_EQ(iterator.GetFirstIterator(), m_firstContainer.begin());
-                    EXPECT_EQ(iterator.GetSecondIterator(), m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
+                    EXPECT_EQ(iterator.GetFirstIterator(), this->m_firstContainer.begin());
+                    EXPECT_EQ(iterator.GetSecondIterator(), this->m_secondContainer.begin());
                 }
 
                 TYPED_TEST_P(PairIteratorTests, MakePairIterator_BuildFromTwoSeparateIterators_FirstAndSecondInContainersCanBeAccessedThroughIterator)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
-                    EXPECT_EQ(iterator->first, *m_firstContainer.begin());
-                    EXPECT_EQ(iterator->second, *m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
+                    auto first = iterator->first;
+                    auto second = iterator->second;
+                    EXPECT_EQ(first, *this->m_firstContainer.begin());
+                    EXPECT_EQ(second, *this->m_secondContainer.begin());
                 }
 
                 TYPED_TEST_P(PairIteratorTests, MakePairView_CreateFromIterators_IteratorsInViewMatchExplicitlyCreatedIterators)
                 {
-                    auto begin = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
-                    auto end = MakePairIterator(m_firstContainer.end(), m_secondContainer.end());
+                    auto begin = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
+                    auto end = MakePairIterator(this->m_firstContainer.end(), this->m_secondContainer.end());
 
-                    auto view = MakePairView(m_firstContainer.begin(), m_firstContainer.end(), m_secondContainer.begin(), m_secondContainer.end());
+                    auto view = MakePairView(this->m_firstContainer.begin(), this->m_firstContainer.end(), this->m_secondContainer.begin(), this->m_secondContainer.end());
                     EXPECT_EQ(view.begin(), begin);
                     EXPECT_EQ(view.end(), end);
                 }
 
                 TYPED_TEST_P(PairIteratorTests, MakePairView_CreateFromViews_IteratorsInViewMatchExplicitlyCreatedIterators)
                 {
-                    auto firstView = MakeView(m_firstContainer.begin(), m_firstContainer.end());
-                    auto secondView = MakeView(m_secondContainer.begin(), m_secondContainer.end());
+                    auto firstView = MakeView(this->m_firstContainer.begin(), this->m_firstContainer.end());
+                    auto secondView = MakeView(this->m_secondContainer.begin(), this->m_secondContainer.end());
 
-                    auto begin = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
-                    auto end = MakePairIterator(m_firstContainer.end(), m_secondContainer.end());
+                    auto begin = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
+                    auto end = MakePairIterator(this->m_firstContainer.end(), this->m_secondContainer.end());
 
                     auto view = MakePairView(firstView, secondView);
                     EXPECT_EQ(view.begin(), begin);
@@ -140,44 +143,44 @@ namespace AZ
 
                 TYPED_TEST_P(PairIteratorTests, OperatorStar_DereferencingChangesFirst_FirstChangeIsPassedToContainer)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
                     (*iterator).first = 4;
 
-                    EXPECT_EQ(4, *m_firstContainer.begin());
+                    EXPECT_EQ(4, *this->m_firstContainer.begin());
                 }
 
                 TYPED_TEST_P(PairIteratorTests, OperatorStar_DereferencingChangesSecond_SecondsChangeIsPassedToContainer)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
                     (*iterator).second = 4;
 
-                    EXPECT_EQ(4, *m_secondContainer.begin());
+                    EXPECT_EQ(4, *this->m_secondContainer.begin());
                 }
 
 
                 TYPED_TEST_P(PairIteratorTests, OperatorArrow_DereferencingChangesFirst_FirstChangeIsPassedToContainer)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
                     iterator->first = 4;
 
-                    EXPECT_EQ(4, *m_firstContainer.begin());
+                    EXPECT_EQ(4, *this->m_firstContainer.begin());
                 }
 
                 TYPED_TEST_P(PairIteratorTests, OperatorArrow_DereferencingChangesSecond_SecondsChangeIsPassedToContainer)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
                     iterator->second = 4;
 
-                    EXPECT_EQ(4, *m_secondContainer.begin());
+                    EXPECT_EQ(4, *this->m_secondContainer.begin());
                 }
 
                 TYPED_TEST_P(PairIteratorTests, PreIncrementOperator_IncrementingMovesBothIterators_BothStoredIteratorsMoved)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
                     ++iterator;
 
-                    auto cmpFirst = m_firstContainer.begin();
-                    auto cmpSecond = m_secondContainer.begin();
+                    auto cmpFirst = this->m_firstContainer.begin();
+                    auto cmpSecond = this->m_secondContainer.begin();
                     ++cmpFirst;
                     ++cmpSecond;
 
@@ -187,11 +190,11 @@ namespace AZ
 
                 TYPED_TEST_P(PairIteratorTests, PostIncrementOperator_IncrementingMovesBothIterators_BothStoredIteratorsMoved)
                 {
-                    auto iterator = MakePairIterator(m_firstContainer.begin(), m_secondContainer.begin());
+                    auto iterator = MakePairIterator(this->m_firstContainer.begin(), this->m_secondContainer.begin());
                     iterator++;
 
-                    auto cmpFirst = m_firstContainer.begin();
-                    auto cmpSecond = m_secondContainer.begin();
+                    auto cmpFirst = this->m_firstContainer.begin();
+                    auto cmpSecond = this->m_secondContainer.begin();
                     ++cmpFirst;
                     ++cmpSecond;
 
@@ -201,22 +204,22 @@ namespace AZ
 
                 TYPED_TEST_P(PairIteratorTests, Algorithms_Generate_FirstContainerFilledWithTheFirstAndSecondContainerFilledWithSecondInGivenPair)
                 {
-                    Clear();
-                    m_firstContainer.resize(10);
-                    m_secondContainer.resize(10);
+                    this->Clear();
+                    this->m_firstContainer.resize(10);
+                    this->m_secondContainer.resize(10);
 
-                    auto view = MakePairView(m_firstContainer.begin(), m_firstContainer.end(), m_secondContainer.begin(), m_secondContainer.end());
+                    auto view = MakePairView(this->m_firstContainer.begin(), this->m_firstContainer.end(), this->m_secondContainer.begin(), this->m_secondContainer.end());
                     AZStd::generate(view.begin(), view.end(),
                         []() -> AZStd::pair<int, int>
                         {
                             return AZStd::make_pair(3, 9);
                         });
 
-                    for (auto it : m_firstContainer)
+                    for (auto it : this->m_firstContainer)
                     {
                         EXPECT_EQ(3, it);
                     }
-                    for (auto it : m_secondContainer)
+                    for (auto it : this->m_secondContainer)
                     {
                         EXPECT_EQ(9, it);
                     }
@@ -301,3 +304,4 @@ namespace AZ
 } // AZ
 
 #undef _SCL_SECURE_NO_WARNINGS
+#endif // AZ_COMPILER_MSVC

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Water_precompiled.h"
 
 #include <platform_impl.h>
 

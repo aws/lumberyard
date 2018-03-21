@@ -67,15 +67,31 @@ class winrc(Task.Task):
 	color   = 'BLUE'
 
 	def scan(self):
+		resolved_nodes = self.generator.bld.node_deps.get(self.uid(), [])
+		unresolved_names = self.generator.bld.raw_deps.get(self.uid(), [])
+		return (resolved_nodes, unresolved_names)
+
+
+	def post_run(self):
+		# parse dependencies
 		tmp = rc_parser(self.generator.includes_nodes)
 		tmp.start(self.inputs[0], self.env)
-		nodes = tmp.nodes
-		names = tmp.names
 
 		if Logs.verbose:
-			Logs.debug('deps: deps for %s: %r; unresolved %r' % (str(self), nodes, names))
+			Logs.debug('deps: deps for %s: %r; unresolved %r' % (str(self), tmp.nodes, tmp.names))
 
-		return (nodes, names)
+		# save dependencies
+		self.generator.bld.node_deps[self.uid()] = tmp.nodes
+		self.generator.bld.raw_deps[self.uid()] = tmp.names
+
+		# delete signature to force a rebuild of signature.  Scan() will be called to gather the deps
+		try:
+			del self.cache_sig
+		except:
+			pass
+
+		Task.Task.post_run(self)
+
 
 def configure(conf):
 	"""
@@ -96,5 +112,5 @@ def configure(conf):
 	if not conf.env.WINRC:
 		conf.fatal('winrc was not found!')
 
-	v['WINRCFLAGS'] = []
+	v['WINRCFLAGS'] = ['/nologo']
 

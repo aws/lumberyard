@@ -37,6 +37,7 @@ namespace EMStudio
 
     public:
         NotificationWindow(QWidget* parent, EType type, const QString& Message);
+        ~NotificationWindow();
 
     protected:
         void paintEvent(QPaintEvent* event) override;

@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/LegacyTimeDemoRecorder_precompiled.cpp",
+            "Source/LegacyTimeDemoRecorder_precompiled.h"
         ]
     },
     "auto": {

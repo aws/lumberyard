@@ -16,7 +16,7 @@
     @copyright Allegorithmic. All rights reserved.
 */
 
-#include "stdafx.h"
+#include "StaticData_precompiled.h"
 
 #include <platform.h>
 #include <platform_impl.h>

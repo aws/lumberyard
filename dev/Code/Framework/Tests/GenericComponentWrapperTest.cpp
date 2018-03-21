@@ -14,6 +14,7 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 
 // Test that editor-components wrapped within a GenericComponentWrapper
 // are moved out of the wrapper when a slice is loaded.
@@ -112,5 +113,101 @@ TEST_F(WrappedEditorComponentTest, Component_IsNotGenericComponentWrapper)
 // The swapped component should have adopted the GenericComponentWrapper's ComponentId.
 TEST_F(WrappedEditorComponentTest, ComponentId_MatchesWrapperId)
 {
-    EXPECT_EQ(m_componentFromSlice->GetId(), 11874523501682509824);
+    EXPECT_EQ(m_componentFromSlice->GetId(), 11874523501682509824u);
 }
+
+const AZ::Uuid InGameOnlyComponentTypeId = "{1D538623-2052-464F-B0DA-D000E1520333}";
+class InGameOnlyComponent
+    : public AZ::Component
+{
+public:
+    AZ_COMPONENT(InGameOnlyComponent, InGameOnlyComponentTypeId);
+
+    void Activate() override {}
+    void Deactivate() override {}
+
+    static void Reflect(AZ::ReflectContext* reflection)
+    {
+        if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
+        {
+            serializeContext->Class<InGameOnlyComponent>()->SerializerForEmptyClass();
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+            {
+                editContext->Class<InGameOnlyComponent>("InGame Only", "")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"));
+            }
+        }
+    }
+};
+
+const AZ::Uuid NoneEditorComponentTypeId = "{AE3454BA-D785-4EE2-A55B-A089F2B2916A}";
+class NoneEditorComponent
+    : public AZ::Component
+{
+public:
+    AZ_COMPONENT(NoneEditorComponent, NoneEditorComponentTypeId);
+
+    void Activate() override {}
+    void Deactivate() override {}
+
+    static void Reflect(AZ::ReflectContext* reflection)
+    {
+        if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
+        {
+            serializeContext->Class<NoneEditorComponent>()->SerializerForEmptyClass();
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+            {
+                editContext->Class<NoneEditorComponent>("None Editor", "")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"));
+            }
+        }
+    }
+};
+
+class FindWrappedComponentsTest
+    : public ::testing::Test
+{
+public:
+    void SetUp() override
+    {
+        m_app.Start(AzFramework::Application::Descriptor());
+
+        m_app.RegisterComponentDescriptor(InGameOnlyComponent::CreateDescriptor());
+        m_app.RegisterComponentDescriptor(NoneEditorComponent::CreateDescriptor());
+
+        m_entity = new AZ::Entity("Entity1");
+
+        AZ::Component* inGameOnlyComponent = nullptr;
+        AZ::ComponentDescriptorBus::EventResult(inGameOnlyComponent, InGameOnlyComponentTypeId, &AZ::ComponentDescriptorBus::Events::CreateComponent);
+        AZ::Component* genericComponent0 = aznew AzToolsFramework::Components::GenericComponentWrapper(inGameOnlyComponent);
+        m_entity->AddComponent(genericComponent0);
+
+        AZ::Component* noneEditorComponent = nullptr;
+        AZ::ComponentDescriptorBus::EventResult(noneEditorComponent, NoneEditorComponentTypeId, &AZ::ComponentDescriptorBus::Events::CreateComponent);
+        AZ::Component* genericComponent1 = aznew AzToolsFramework::Components::GenericComponentWrapper(noneEditorComponent);
+        m_entity->AddComponent(genericComponent1);
+
+        m_entity->Init();
+    }
+
+    void TearDown() override
+    {
+        m_app.Stop();
+    }
+
+    AzToolsFramework::ToolsApplication m_app;
+
+    AZ::Entity* m_entity = nullptr;
+};
+
+TEST_F(FindWrappedComponentsTest, found)
+{
+    InGameOnlyComponent* ingameOnlyComponent = AzToolsFramework::FindWrappedComponentForEntity<InGameOnlyComponent>(m_entity);
+    EXPECT_NE(ingameOnlyComponent, nullptr);
+
+    NoneEditorComponent* noneEditorComponent = AzToolsFramework::FindWrappedComponentForEntity<NoneEditorComponent>(m_entity);
+    EXPECT_NE(noneEditorComponent, nullptr);
+}
+

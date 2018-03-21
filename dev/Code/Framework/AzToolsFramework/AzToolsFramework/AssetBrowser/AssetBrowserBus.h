@@ -51,7 +51,7 @@ namespace AzToolsFramework
         };
         class AssetBrowserEntry;
 
-        using AssetDatabaseLocationNotificationsBus = AZ::EBus<AssetDatabaseLocationNotifications>;
+        using AssetDatabaseLocationNotificationBus = AZ::EBus<AssetDatabaseLocationNotifications>;
 
         //! Sends requests to AssetBrowserComponent
         class AssetBrowserComponentRequests
@@ -66,7 +66,7 @@ namespace AzToolsFramework
             virtual AssetBrowserModel* GetAssetBrowserModel() = 0;
         };
 
-        using AssetBrowserComponentRequestsBus = AZ::EBus<AssetBrowserComponentRequests>;
+        using AssetBrowserComponentRequestBus = AZ::EBus<AssetBrowserComponentRequests>;
 
         //////////////////////////////////////////////////////////////////////////
         // Interaction
@@ -150,7 +150,7 @@ namespace AzToolsFramework
             }
         };
 
-        using AssetBrowserInteractionNotificationsBus = AZ::EBus<AssetBrowserInteractionNotifications>;
+        using AssetBrowserInteractionNotificationBus = AZ::EBus<AssetBrowserInteractionNotifications>;
 
         //////////////////////////////////////////////////////////////////////////
         // AssetBrowserModel
@@ -172,7 +172,7 @@ namespace AzToolsFramework
             virtual void EndRemoveEntry() = 0;
         };
 
-        using AssetBrowserModelRequestsBus = AZ::EBus<AssetBrowserModelRequests>;
+        using AssetBrowserModelRequestBus = AZ::EBus<AssetBrowserModelRequests>;
 
         //! Notifies when AssetBrowserModel is updated
         class AssetBrowserModelNotifications
@@ -185,6 +185,6 @@ namespace AzToolsFramework
             virtual void EntryRemoved(const AssetBrowserEntry* /*entry*/) {}
         };
 
-        using AssetBrowserModelNotificationsBus = AZ::EBus<AssetBrowserModelNotifications>;
+        using AssetBrowserModelNotificationBus = AZ::EBus<AssetBrowserModelNotifications>;
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

@@ -548,7 +548,7 @@ void CSequenceBatchRenderDialog::OnSequenceSelected()
 {
     // Get the selected sequence.
     const QString seqName = m_ui->m_sequenceCombo->currentText();
-    IAnimSequence* pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toLatin1().data());
+    IAnimSequence* pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toUtf8().data());
 
     // Adjust the frame range.
     float sFrame = pSequence->GetTimeRange().start * m_fpsForTimeToFrameConversion;
@@ -839,13 +839,13 @@ void CSequenceBatchRenderDialog::OnCaptureItemStarting()
     // Set up the custom config cvars for this item.
     for (size_t i = 0; i < renderItem.cvars.size(); ++i)
     {
-        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString(renderItem.cvars[i].toLatin1().data());
+        GetIEditor()->GetSystem()->GetIConsole()->ExecuteString(renderItem.cvars[i].toUtf8().data());
     }
 
     // Set specific capture options for this item.
     m_renderContext.captureOptions.timeStep = 1.0f / renderItem.fps;
     m_renderContext.captureOptions.captureBufferIndex = renderItem.bufferIndex;
-    m_renderContext.captureOptions.prefix = renderItem.prefix.toLatin1().data();
+    m_renderContext.captureOptions.prefix = renderItem.prefix.toUtf8().data();
     switch (renderItem.formatIndex)
     {
     case ICaptureKey::Jpg:
@@ -880,7 +880,7 @@ void CSequenceBatchRenderDialog::OnCaptureItemStarting()
         finalFolder += suffix;
         ++i;
     }
-    m_renderContext.captureOptions.folder = finalFolder.toLatin1().data();
+    m_renderContext.captureOptions.folder = finalFolder.toUtf8().data();
 
     /// Change the resolution.
     const int renderWidth = getResWidth(renderItem.resW);
@@ -898,7 +898,7 @@ void CSequenceBatchRenderDialog::OnCaptureItemStarting()
     else
     {
         // Otherwise, try to adjust the viewport resolution accordingly.
-        GetIEditor()->ExecuteCommand("general.resize_viewport %d %d", renderWidth, renderHeight);
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.resize_viewport %1 %2").arg(renderWidth).arg(renderHeight));
     }
 
     // turn off debug info if requested
@@ -982,17 +982,28 @@ void CSequenceBatchRenderDialog::OnCaptureItemEnd(IAnimSequence* pSequence)
         auto future = QtConcurrent::run(
             [&renderItem, &outputFolder]
         {
-            QString inputFile, outputFile = outputFolder;
+            QString outputFile = outputFolder;
             outputFile += "\\";
             outputFile += renderItem.prefix;
-            inputFile = outputFile;
+            QString inputFile = outputFile;
             outputFile += ".mp4";
+
+            // Use a placeholder for the input file, will expand it with replace.
+            QString inputFileDefine = "__input_file__";
+
+            QString command = QStringLiteral("plugin.ffmpeg_encode '%1' '%2' '%3' %4 %5 '-vf crop=%6:%7:0:0'")
+                .arg(inputFileDefine).arg(outputFile).arg("mpeg4")
+                .arg(10240).arg(renderItem.fps).arg(getResWidth(renderItem.resW)).arg(getResHeight(renderItem.resH));
+
+            // Create the input file string, leave the %06d unexpanded for the mpeg tool.
             inputFile += "%06d.";
             inputFile += imageFormats[renderItem.formatIndex];
-            GetIEditor()->ExecuteCommand(
-                "plugin.ffmpeg_encode '%s' '%s' '%s' %d %d '-vf crop=%d:%d:0:0'",
-                inputFile.toLocal8Bit().data(), outputFile.toLocal8Bit().data(), "mpeg4",
-                10240, renderItem.fps, getResWidth(renderItem.resW), getResHeight(renderItem.resH));
+
+            // Replace the input file
+            command = command.replace(inputFileDefine, inputFile);
+
+            // Run the command
+            GetIEditor()->ExecuteCommand(command);
         }
         );
         do
@@ -1157,7 +1168,7 @@ void CSequenceBatchRenderDialog::OnLoadBatch()
 
             // sequence
             const QString seqName = itemNode->getAttr("sequence");
-            item.pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toLatin1().data());
+            item.pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toUtf8().data());
             if (item.pSequence == NULL)
             {
                 QMessageBox::warning(this, tr("Sequence not found"), tr("A sequence of '%1' not found! This'll be skipped.").arg(seqName));
@@ -1260,18 +1271,18 @@ void CSequenceBatchRenderDialog::OnSaveBatch()
             itemNode->setAttr("bufferstocapture", item.bufferIndex);
 
             // prefix
-            itemNode->setAttr("prefix", item.prefix.toLatin1().data());
+            itemNode->setAttr("prefix", item.prefix.toUtf8().data());
 
             // create_video
             itemNode->setAttr("createvideo", item.bCreateVideo);
 
             // folder
-            itemNode->setAttr("folder", item.folder.toLatin1().data());
+            itemNode->setAttr("folder", item.folder.toUtf8().data());
 
             // cvars
             for (size_t k = 0; k < item.cvars.size(); ++k)
             {
-                itemNode->newChild("cvar")->setContent(item.cvars[k].toLatin1().data());
+                itemNode->newChild("cvar")->setContent(item.cvars[k].toUtf8().data());
             }
         }
 
@@ -1291,7 +1302,7 @@ bool CSequenceBatchRenderDialog::SetUpNewRenderItem(SRenderItem& item)
         return false;
     }
     // sequence
-    item.pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toLatin1().data());
+    item.pSequence = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(seqName.toUtf8().data());
     assert(item.pSequence);
     // director
     for (int i = 0; i < item.pSequence->GetNodeCount(); ++i)

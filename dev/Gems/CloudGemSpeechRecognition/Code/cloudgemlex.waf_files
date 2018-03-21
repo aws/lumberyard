@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/CloudGemSpeechRecognition_precompiled.cpp",
+            "Source/CloudGemSpeechRecognition_precompiled.h"
         ]
     },
     "auto": {

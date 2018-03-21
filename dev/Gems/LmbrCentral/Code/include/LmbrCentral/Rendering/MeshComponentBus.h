@@ -15,11 +15,9 @@
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Asset/AssetCommon.h>
-#include <IMaterial.h>
 
 struct IStatObj;
 struct ICharacterInstance;
-
 
 namespace LmbrCentral
 {

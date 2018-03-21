@@ -45,7 +45,7 @@ namespace AzToolsFramework
 
     AZStd::string GrowTextEdit::GetText() const
     {
-        return AZStd::string(toPlainText().toLatin1());
+        return AZStd::string(toPlainText().toUtf8());
     }
 
     void GrowTextEdit::setVisible(bool visible)

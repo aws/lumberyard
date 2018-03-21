@@ -58,7 +58,7 @@ WIN_HWND CNULLRenderer::Init(int x, int y, int width, int height, unsigned int c
     gRenDev->m_cEF.mfInit();
     EF_Init();
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS) || defined(DURANGO)
+#if NULL_SYSTEM_TRAIT_INIT_RETURNTHIS
     return (WIN_HWND)this;//it just get checked against NULL anyway
 #else
     return (WIN_HWND)GetDesktopWindow();

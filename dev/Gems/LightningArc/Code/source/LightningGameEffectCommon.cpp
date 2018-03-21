@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 
 #include "LightningGameEffectCommon.h"
 

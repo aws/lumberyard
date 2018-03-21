@@ -339,7 +339,7 @@ public:
             QString value;
             var->Get(value);
 
-            m_propertyHandler->SetProperty(m_entity, var->GetUserData().toInt(), value.toLatin1().data());
+            m_propertyHandler->SetProperty(m_entity, var->GetUserData().toInt(), value.toUtf8().data());
         }
     }
 
@@ -852,7 +852,7 @@ bool CEntityScript::Load()
         if (classIcon && classIcon[0] && !m_nTextureIcon)
         {
             QString iconfile = Path::Make("Editor/ObjectIcons", classIcon);
-            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(iconfile.toLatin1().data());
+            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(iconfile.toUtf8().data());
         }
 
         m_bValid = true;
@@ -869,7 +869,7 @@ bool CEntityScript::ParseScript()
     IScriptSystem* script = GetIEditor()->GetSystem()->GetIScriptSystem();
 
     SmartScriptTable pEntity(script, true);
-    if (!script->GetGlobalValue(GetName().toLatin1().data(), pEntity))
+    if (!script->GetGlobalValue(GetName().toUtf8().data(), pEntity))
     {
         return false;
     }
@@ -998,7 +998,7 @@ bool CEntityScript::ParseScript()
         if (pEditorTable->GetValue("Icon", iconName))
         {
             QString iconfile = Path::Make("Editor/ObjectIcons", iconName);
-            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(iconfile.toLatin1().data());
+            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(iconfile.toUtf8().data());
         }
 
         bool bIconOnTop = false;
@@ -1079,26 +1079,26 @@ void CEntityScript::Reload()
 void CEntityScript::GotoMethod(const QString& method)
 {
     QString line;
-    line = QStringLiteral("%s:%s").arg(GetName(), method);
+    line = QStringLiteral("%1:%2").arg(GetName(), method);
 
     // Search this line in script file.
     int lineNum = FindLineNum(line);
     if (lineNum >= 0)
     {
         // Open UltraEdit32 with this line.
-        CFileUtil::EditTextFile(GetFile().toLatin1().data(), lineNum);
+        CFileUtil::EditTextFile(GetFile().toUtf8().data(), lineNum);
     }
 }
 
 void CEntityScript::AddMethod(const QString& method)
 {
     // Add a new method to the file. and start Editing it.
-    FILE* f = fopen(GetFile().toLatin1().data(), "at");
+    FILE* f = fopen(GetFile().toUtf8().data(), "at");
     if (f)
     {
         fprintf(f, "\n");
         fprintf(f, "-------------------------------------------------------\n");
-        fprintf(f, "function %s:%s()\n", m_pClass->GetName(), method.toLatin1().data());
+        fprintf(f, "function %s:%s()\n", m_pClass->GetName(), method.toUtf8().data());
         fprintf(f, "end\n");
         fclose(f);
     }
@@ -1111,7 +1111,7 @@ const QString& CEntityScript::GetDisplayPath()
         IScriptSystem* script = GetIEditor()->GetSystem()->GetIScriptSystem();
 
         SmartScriptTable pEntity(script, true);
-        if (!script->GetGlobalValue(GetName().toLatin1().data(), pEntity))
+        if (!script->GetGlobalValue(GetName().toUtf8().data(), pEntity))
         {
             m_userPath = "Default/" + GetName();
             return m_userPath;
@@ -1134,7 +1134,7 @@ const QString& CEntityScript::GetDisplayPath()
 //////////////////////////////////////////////////////////////////////////
 int CEntityScript::FindLineNum(const QString& line)
 {
-    FILE* fileHandle = fopen(GetFile().toLatin1().data(), "rb");
+    FILE* fileHandle = fopen(GetFile().toUtf8().data(), "rb");
     if (!fileHandle)
     {
         return -1;
@@ -1154,7 +1154,7 @@ int CEntityScript::FindLineNum(const QString& line)
     char* token = strtok(text, "\n");
     while (token)
     {
-        if (strstr(token, line.toLatin1().data()) != 0)
+        if (strstr(token, line.toUtf8().data()) != 0)
         {
             lineFound = lineNum;
             break;
@@ -1255,14 +1255,14 @@ void CEntityScript::VarToScriptTable(IVariable* pVariable, IScriptTable* pScript
 
     if (pVariable->GetType() == IVariable::ARRAY)
     {
-        int type = pScriptTable->GetValueType(pVariable->GetName().toLatin1().data());
+        int type = pScriptTable->GetValueType(pVariable->GetName().toUtf8().data());
         if (type != svtObject)
         {
             return;
         }
 
         SmartScriptTable table(pScriptSystem, true);
-        if (pScriptTable->GetValue(pVariable->GetName().toLatin1().data(), table))
+        if (pScriptTable->GetValue(pVariable->GetName().toUtf8().data(), table))
         {
             for (int i = 0; i < pVariable->GetNumVariables(); i++)
             {
@@ -1274,31 +1274,31 @@ void CEntityScript::VarToScriptTable(IVariable* pVariable, IScriptTable* pScript
     }
 
     QString name = pVariable->GetName();
-    int type = pScriptTable->GetValueType(name.toLatin1().data());
+    int type = pScriptTable->GetValueType(name.toUtf8().data());
 
     if (type == svtString)
     {
         QString value;
         pVariable->Get(value);
-        pScriptTable->SetValue(name.toLatin1().data(), value.toLatin1().data());
+        pScriptTable->SetValue(name.toUtf8().data(), value.toUtf8().data());
     }
     else if (type == svtNumber)
     {
         float val = 0;
         pVariable->Get(val);
-        pScriptTable->SetValue(name.toLatin1().data(), val);
+        pScriptTable->SetValue(name.toUtf8().data(), val);
     }
     else if (type == svtBool)
     {
         bool val = false;
         pVariable->Get(val);
-        pScriptTable->SetValue(name.toLatin1().data(), val);
+        pScriptTable->SetValue(name.toUtf8().data(), val);
     }
     else if (type == svtObject)
     {
         // Probably Color/Vector.
         SmartScriptTable table(pScriptSystem, true);
-        if (pScriptTable->GetValue(name.toLatin1().data(), table))
+        if (pScriptTable->GetValue(name.toUtf8().data(), table))
         {
             if (pVariable->GetType() == IVariable::VECTOR)
             {
@@ -1377,14 +1377,14 @@ void CEntityScript::ScriptTableToVar(IScriptTable* pScriptTable, IVariable* pVar
 
     if (pVariable->GetType() == IVariable::ARRAY)
     {
-        int type = pScriptTable->GetValueType(pVariable->GetName().toLatin1().data());
+        int type = pScriptTable->GetValueType(pVariable->GetName().toUtf8().data());
         if (type != svtObject)
         {
             return;
         }
 
         SmartScriptTable table(pScriptSystem, true);
-        if (pScriptTable->GetValue(pVariable->GetName().toLatin1().data(), table))
+        if (pScriptTable->GetValue(pVariable->GetName().toUtf8().data(), table))
         {
             for (int i = 0; i < pVariable->GetNumVariables(); i++)
             {
@@ -1396,31 +1396,31 @@ void CEntityScript::ScriptTableToVar(IScriptTable* pScriptTable, IVariable* pVar
     }
 
     QString name = pVariable->GetName();
-    int type = pScriptTable->GetValueType(name.toLatin1().data());
+    int type = pScriptTable->GetValueType(name.toUtf8().data());
 
     if (type == svtString)
     {
         const char* value;
-        pScriptTable->GetValue(name.toLatin1().data(), value);
+        pScriptTable->GetValue(name.toUtf8().data(), value);
         pVariable->Set(value);
     }
     else if (type == svtNumber)
     {
         float val = 0;
-        pScriptTable->GetValue(name.toLatin1().data(), val);
+        pScriptTable->GetValue(name.toUtf8().data(), val);
         pVariable->Set(val);
     }
     else if (type == svtBool)
     {
         bool val = false;
-        pScriptTable->GetValue(name.toLatin1().data(), val);
+        pScriptTable->GetValue(name.toUtf8().data(), val);
         pVariable->Set(val);
     }
     else if (type == svtObject)
     {
         // Probably Color/Vector.
         SmartScriptTable table(pScriptSystem, true);
-        if (pScriptTable->GetValue(name.toLatin1().data(), table))
+        if (pScriptTable->GetValue(name.toUtf8().data(), table))
         {
             if (pVariable->GetType() == IVariable::VECTOR)
             {
@@ -1466,7 +1466,7 @@ void    CEntityScript::RunMethod(IEntity* pEntity, const QString& method)
 
     IScriptSystem* scriptSystem = GetIEditor()->GetSystem()->GetIScriptSystem();
 
-    Script::CallMethod(scriptTable, method.toLatin1().data());
+    Script::CallMethod(scriptTable, method.toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1474,14 +1474,14 @@ void    CEntityScript::SendEvent(IEntity* pEntity, const QString& method)
 {
     if (IEntityEventHandler* pEventHandler = m_pClass->GetEventHandler())
     {
-        pEventHandler->SendEvent(pEntity, method.toLatin1().data());
+        pEventHandler->SendEvent(pEntity, method.toUtf8().data());
     }
 
     // Fire event on Entity.
     IComponentScriptPtr scriptComponent = pEntity->GetComponent<IComponentScript>();
     if (scriptComponent)
     {
-        scriptComponent->CallEvent(method.toLatin1().data());
+        scriptComponent->CallEvent(method.toUtf8().data());
     }
 }
 
@@ -1534,7 +1534,7 @@ void    CEntityScript::SetEventsTable(CEntityObject* pEntity)
         SmartScriptTable pTrgEvents(scriptSystem, false);
         QString sourceEvent = *it;
 
-        pEvents->SetValue(sourceEvent.toLatin1().data(), *pTrgEvents);
+        pEvents->SetValue(sourceEvent.toUtf8().data(), *pTrgEvents);
 
         // Put target events to table.
         int trgEventIndex = 1;
@@ -1560,7 +1560,7 @@ void    CEntityScript::SetEventsTable(CEntityObject* pEntity)
                 idHandle.n = entityId;
 
                 pTrgEvent->SetAt(1, idHandle);
-                pTrgEvent->SetAt(2, et.event.toLatin1().data());
+                pTrgEvent->SetAt(2, et.event.toUtf8().data());
             }
         }
     }
@@ -1581,7 +1581,7 @@ void CEntityScript::UpdateTextureIcon(IEntity* pEntity)
             iconData->GetValue("Icon", iconName);
 
             QString iconfile = Path::Make("Editor/ObjectIcons", iconName);
-            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(iconfile.toLatin1().data());
+            m_nTextureIcon = GetIEditor()->GetIconManager()->GetIconTexture(iconfile.toUtf8().data());
         }
     }
 }
@@ -1640,7 +1640,7 @@ void CEntityScriptRegistry::Insert(CEntityScript* pEntityScript)
     CEntityScriptPtr temp;
     if (m_scripts.Find(pEntityScript->GetName(), temp))
     {
-        Error("Inserting duplicate Entity Script %s", pEntityScript->GetName().toLatin1().data());
+        Error("Inserting duplicate Entity Script %s", pEntityScript->GetName().toUtf8().data());
         return;
     }
     m_scripts[pEntityScript->GetName()] = pEntityScript;
@@ -1653,7 +1653,7 @@ void CEntityScriptRegistry::SetClassCategory(CEntityScript* script)
     IScriptSystem* scriptSystem = GetIEditor()->GetSystem()->GetIScriptSystem();
 
     SmartScriptTable pEntity(scriptSystem, true);
-    if (!scriptSystem->GetGlobalValue(script->GetName().toLatin1().data(), pEntity))
+    if (!scriptSystem->GetGlobalValue(script->GetName().toUtf8().data(), pEntity))
     {
         return;
     }

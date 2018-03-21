@@ -12,7 +12,7 @@
 #include "precompiled.h"
 
 #include <QGraphicsLinearLayout>
-#include <qgraphicsscenedragdropevent>
+#include <QGraphicsSceneDragDropEvent>
 #include <qgraphicsproxywidget.h>
 #include <QGraphicsView>
 #include <QMimeData>
@@ -93,8 +93,8 @@ namespace GraphCanvas
     void ReadOnlyVectorControl::UpdateDisplay()
     {
         double value = m_dataInterface.GetValue(m_index);
-        
-        AZStd::string displayValue = AZStd::string::format("%.*f%s", m_dataInterface.GetDecimalPlaces(m_index), value, m_dataInterface.GetSuffix(m_index));
+
+        AZStd::string displayValue = AZStd::string::format("%.*f%s", m_dataInterface.GetDisplayDecimalPlaces(m_index), value, m_dataInterface.GetSuffix(m_index));
 
         m_valueLabel->SetLabel(displayValue);
     }
@@ -160,6 +160,7 @@ namespace GraphCanvas
             m_propertyVectorCtrl->setMinimum(m_dataInterface->GetMinimum(i));
             m_propertyVectorCtrl->setMaximum(m_dataInterface->GetMaximum(i));
             m_propertyVectorCtrl->setDecimals(m_dataInterface->GetDecimalPlaces(i));
+            m_propertyVectorCtrl->setDisplayDecimals(m_dataInterface->GetDisplayDecimalPlaces(i));
             m_propertyVectorCtrl->setSuffix(m_dataInterface->GetSuffix(i));
 
             elements[i]->GetSpinBox()->installEventFilter(aznew VectorEventFilter(this));

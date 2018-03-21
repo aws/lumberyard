@@ -2482,7 +2482,14 @@ for configuration in ['debug', 'profile', 'release']:
 
 
             def user_message(self, message):
-                Logs.pprint('CYAN', message)
+                Logs.pprint('CYAN', '[INFO] {}'.format(message))
+
+
+            def log_error(self, message):
+                if self.options.from_editor_deploy:
+                    self.fatal(message)
+                else:
+                    Logs.error(message)
 
 
         class DeployAndroid(DeployAndroidContext):
@@ -2514,35 +2521,27 @@ def prepare_to_deploy_android(tsk_gen):
         bld.user_message('Skipping Android Deployment...')
         return
 
-    # make sure the adb server is running first before we execute any other commands
-    # special case how these error messages are handled to only be truely fatal when 
-    # executed from the editor
-    log_error = Logs.error
-    if bld.options.from_editor_deploy:
-        log_error = bld.fatal
-
-    if adb_call('start-server') is None:
-        log_error('[ERROR] Failed to start adb server, unable to perform the deploy')
-        return
-
-    devices = get_list_of_android_devices()
-    if len(devices) == 0:
-        adb_call('kill-server')
-        log_error('[ERROR] No Android devices detected, unable to deploy')
-        return
-
     # determine the selected asset deploy mode
     asset_deploy_mode = bld.get_asset_deploy_mode()
     Logs.debug('android_deploy: Using asset mode - {}'.format(asset_deploy_mode))
 
     if bld.get_asset_cache() is None:
         asset_dir = bld.get_asset_cache_path()
-        bld.fatal('[ERROR] There is no asset cache to read from at {}.  Please run AssetProcessor / AssetProcessorBatch from '
-                   'the Bin64vc120 / Bin64vc140 / BinMac64 directory with "es3" assets enabled in the AssetProcessorPlatformConfig.ini'.format(asset_dir))
+        bld.log_error('[ERROR] There is no asset cache to read from at {}.  Please run AssetProcessor / AssetProcessorBatch from '
+                      'the Bin64vc120 / Bin64vc140 / BinMac64 directory with "es3" assets enabled in the AssetProcessorPlatformConfig.ini'.format(asset_dir))
+        return
 
     game = bld.get_bootstrap_game()
     executable_name = bld.get_executable_name(game)
     assets = bld.get_bootstrap_assets("android")
+
+    # attempt to get a list of connceted devices, they are only required for pulling the shaders in release mode
+    # if no devices are found, it will fail naturally when the shader paks can't be generated
+    devices = []
+    if adb_call('start-server') is not None:
+        devices = get_list_of_android_devices()
+        if len(devices) == 0:
+            adb_call('kill-server')
 
     # handle the asset pre-processing
     if (asset_deploy_mode == ASSET_DEPLOY_PAKS) or (asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS):
@@ -2669,6 +2668,16 @@ def deploy_to_devices(tsk_gen):
     platform = bld.env['PLATFORM']
     configuration = bld.env['CONFIGURATION']
 
+    if adb_call('start-server') is None:
+        bld.log_error('[ERROR] Failed to start adb server, unable to perform the deploy')
+        return
+
+    devices = get_list_of_android_devices()
+    if len(devices) == 0:
+        adb_call('kill-server')
+        bld.log_error('[ERROR] No Android devices detected, unable to deploy')
+        return
+
     game = bld.get_bootstrap_game()
     executable_name = bld.get_executable_name(game)
 
@@ -2685,10 +2694,15 @@ def deploy_to_devices(tsk_gen):
     else:
         apk_name = Options.options.apk_path
 
+    layout_node = bld.get_layout_node()
+
     do_clean = bld.is_option_true('deploy_android_clean_device')
     deploy_executable = bld.is_option_true('deploy_android_executable')
     deploy_assets = (asset_deploy_mode == ASSET_DEPLOY_LOOSE) or (asset_deploy_mode == ASSET_DEPLOY_PAKS)
-    layout_node = bld.get_layout_node()
+
+    # no sense in pushing the assets if we are cleaning the device and not reinstalling the APK
+    if do_clean and not deploy_executable:
+        deploy_assets = False
 
     Logs.debug('android_deploy: deploy options: do_clean {}, deploy_exec {}, deploy_assets {}'.format(do_clean, deploy_executable, deploy_assets))
 
@@ -2745,7 +2759,7 @@ def deploy_to_devices(tsk_gen):
             bld.user_message('Target Cleaned...')
 
             package_name = bld.get_android_package_name(game)
-            if len(package_name) != 0 and deploy_executable:
+            if len(package_name) != 0:
                 bld.user_message('Uninstalling package ' + package_name)
                 adb_call('uninstall', package_name, device = android_device)
 

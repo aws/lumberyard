@@ -13,17 +13,17 @@
 #define QPresetSelectorWidget_h__
 
 #include <QWidget>
-#include "qgridlayout.h"
-#include "qpushbutton.h"
-#include "qbrush.h"
-#include "qlabel.h"
-#include "qcombobox.h"
+#include <QGridLayout>
+#include <QPushButton>
+#include <QBrush>
+#include <QLabel>
+#include <QComboBox>
 #include "QAmazonLineEdit.h"
-#include "qbuttongroup.h"
-#include "qscrollarea.h"
+#include <QButtonGroup>
+#include <QScrollArea>
 #include <QScrollBar>
-#include "qgroupbox.h"
-#include "qmenu.h"
+#include <QGroupBox>
+#include <QMenu>
 #include "QPresetWidget.h"
 #include <Controls/QToolTipWidget.h>
 

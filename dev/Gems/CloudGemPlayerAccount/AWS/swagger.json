@@ -13,7 +13,7 @@
         },
         "AccountResponse": {
             "properties": {
-                "AccountId": {					
+                "AccountId": {
                     "type": "string"
                 },
                 "PlayerName": {
@@ -48,15 +48,15 @@
         "AdminUpdateAccountRequest": {
             "properties": {
                 "AccountBlacklisted": {
-					"description": "Setting this to true will reject requests from the player for reading and updating account data.  If the account is linked to a user in the Cognito user pool, it will also globally sign out and prevent them from signing in again.",
+                    "description": "Setting this to true will reject requests from the player for reading and updating account data.  If the account is linked to a user in the Cognito user pool, it will also globally sign out and prevent them from signing in again.",
                     "type": "boolean"
                 },
                 "CognitoUsername": {
-					"description": "For accounts linked to a Cognito user pool, this is the username that was used to sign into the pool.",
+                    "description": "For accounts linked to a Cognito user pool, this is the username that was used to sign into the pool.",
                     "type": "string"
                 },
                 "PlayerName": {
-					"description": "The players in game display name.  This field is always available regardless of if the player is authenticated or anonymous.",
+                    "description": "The players in game display name.  This field is always available regardless of if the player is authenticated or anonymous.",
                     "type": "string"
                 },
                 "IdentityProviders": {
@@ -68,75 +68,75 @@
         "CognitoUser": {
             "properties": {
                 "address": {
-					"description": "End-User's preferred postal address.",
+                    "description": "End-User's preferred postal address.",
                     "type": "string"
                 },
                 "birthdate": {
-					"description": "End-User's birthday, represented as an ISO 8601:2004 YYYY-MM-DD format. The year MAY be 0000, indicating that it is omitted. To represent only the year, YYYY format is allowed. Note that depending on the underlying platform's date related function, providing just year can result in varying month and day, so the implementers need to take this factor into account to correctly process the dates.",
+                    "description": "End-User's birthday, represented as an ISO 8601:2004 YYYY-MM-DD format. The year MAY be 0000, indicating that it is omitted. To represent only the year, YYYY format is allowed. Note that depending on the underlying platform's date related function, providing just year can result in varying month and day, so the implementers need to take this factor into account to correctly process the dates.",
                     "type": "string"
                 },
                 "create_date": {
-					"description": "The date when the account was created.",
+                    "description": "The date when the account was created.",
                     "type": "number"
                 },
                 "email": {
-					"description": "End-User's preferred e-mail address. Its value MUST conform to the RFC 5322 addr-spec syntax. ",
+                    "description": "End-User's preferred e-mail address. Its value MUST conform to the RFC 5322 addr-spec syntax. ",
                     "type": "string"
                 },
                 "enabled": {
-					"description": "The status of the account.",
+                    "description": "The status of the account.",
                     "type": "boolean"
                 },
                 "family_name": {
-					"description": "Surname(s) or last name(s) of the End-User. Note that in some cultures, people can have multiple family names or no family name; all can be present, with the names being separated by space characters.",
+                    "description": "Surname(s) or last name(s) of the End-User. Note that in some cultures, people can have multiple family names or no family name; all can be present, with the names being separated by space characters.",
                     "type": "string"
                 },
                 "gender": {
-					"description": "End-User's gender. Values defined by this specification are female and male.  Options are [Male | Female | Both | None].",
+                    "description": "End-User's gender. Values defined by this specification are female and male.  Options are [Male | Female | Both | None].",
                     "type": "string"
                 },
                 "given_name": {
-					"description": "Given name(s) or first name(s) of the End-User. Note that in some cultures, people can have multiple given names; all can be present, with the names being separated by space characters.",
+                    "description": "Given name(s) or first name(s) of the End-User. Note that in some cultures, people can have multiple given names; all can be present, with the names being separated by space characters.",
                     "type": "string"
                 },
                 "last_modified_date": {
-					"description": "The date when the account was last modified.",
+                    "description": "The date when the account was last modified.",
                     "type": "number"
                 },
                 "locale": {
-					"description": "End-User's locale, represented as a BCP47 language tag. This is typically an ISO 639-1 Alpha-2 language code in lowercase and an ISO 3166-1 Alpha-2 country code in uppercase, separated by a dash. For example, en-US or fr-CA. As a compatibility note, some implementations have used an underscore as the separator rather than a dash, for example, en_US; Relying Parties MAY choose to accept this locale syntax as well.",
+                    "description": "End-User's locale, represented as a BCP47 language tag. This is typically an ISO 639-1 Alpha-2 language code in lowercase and an ISO 3166-1 Alpha-2 country code in uppercase, separated by a dash. For example, en-US or fr-CA. As a compatibility note, some implementations have used an underscore as the separator rather than a dash, for example, en_US; Relying Parties MAY choose to accept this locale syntax as well.",
                     "type": "string"
                 },
                 "middle_name": {
-					"description": "Middle name(s) of the End-User. Note that in some cultures, people can have multiple middle names; all can be present, with the names being separated by space characters. Also note that in some cultures, middle names are not used.",
+                    "description": "Middle name(s) of the End-User. Note that in some cultures, people can have multiple middle names; all can be present, with the names being separated by space characters. Also note that in some cultures, middle names are not used.",
                     "type": "string"
                 },
                 "nickname": {
-					"description": "Casual name of the End-User that may or may not be the same as the given_name. For instance, a nickname value of Mike might be returned alongside a given_name value of Michael.",
+                    "description": "Casual name of the End-User that may or may not be the same as the given_name. For instance, a nickname value of Mike might be returned alongside a given_name value of Michael.",
                     "type": "string"
                 },
                 "phone_number": {
-					"description": "End-User's preferred telephone number. Example, +1 (425) 555-1212 or +56 (2) 687 2400. If the phone number contains an extension, it is RECOMMENDED that the extension be represented using the RFC 3966 extension syntax, for example, +1 (604) 555-1234;ext=5678.",
+                    "description": "End-User's preferred telephone number. Example, +1 (425) 555-1212 or +56 (2) 687 2400. If the phone number contains an extension, it is RECOMMENDED that the extension be represented using the RFC 3966 extension syntax, for example, +1 (604) 555-1234;ext=5678.",
                     "type": "string"
                 },
                 "picture": {
-					"description": "URL of the End-User's profile picture. This URL MUST refer to an image file (for example, a PNG, JPEG, or GIF image file), rather than to a Web page containing an image. Note that this URL SHOULD specifically reference a profile photo of the End-User suitable for displaying when describing the End-User, rather than an arbitrary photo taken by the End-User.",
+                    "description": "URL of the End-User's profile picture. This URL MUST refer to an image file (for example, a PNG, JPEG, or GIF image file), rather than to a Web page containing an image. Note that this URL SHOULD specifically reference a profile photo of the End-User suitable for displaying when describing the End-User, rather than an arbitrary photo taken by the End-User.",
                     "type": "string"
                 },
                 "profile": {
-					"description": "URL of the End-User's profile page. The contents of this Web page SHOULD be about the End-User.",
-                    "type": "string"					
+                    "description": "URL of the End-User's profile page. The contents of this Web page SHOULD be about the End-User.",
+                    "type": "string"                    
                 },
                 "username": {
-					"description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
+                    "description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
                     "type": "string"
                 },
                 "website": {
-					"description": "URL of the End-User's Web page or blog. This Web page SHOULD contain information published by the End-User or an organization that the End-User is affiliated with.",
+                    "description": "URL of the End-User's Web page or blog. This Web page SHOULD contain information published by the End-User or an organization that the End-User is affiliated with.",
                     "type": "string"
                 },
                 "zoneinfo": {
-					"description": "String from zoneinfo time zone database representing the End-User's time zone. For example, Europe/Paris or America/Los_Angeles.",
+                    "description": "String from zoneinfo time zone database representing the End-User's time zone. For example, Europe/Paris or America/Los_Angeles.",
                     "type": "string"
                 }
             },
@@ -162,7 +162,7 @@
         },
         "IdentityProviderResponse": {
             "properties": {
-                "EstimatedNumberOfUsers": {				
+                "EstimatedNumberOfUsers": {                
                     "type": "integer"
                 }
             },
@@ -230,7 +230,7 @@
         "UpdateAccountRequest": {
             "properties": {
                 "PlayerName": {
-					"description": "The players in game display name.",
+                    "description": "The players in game display name.",
                     "type": "string"
                 }
             },
@@ -239,59 +239,59 @@
         "UpdateCognitoUser": {
             "properties": {
                 "address": {
-					"description": "End-User's preferred postal address.",
+                    "description": "End-User's preferred postal address.",
                     "type": "string"
                 },
                 "birthdate": {
-					"description": "End-User's birthday, represented as an ISO 8601:2004 YYYY-MM-DD format. The year MAY be 0000, indicating that it is omitted. To represent only the year, YYYY format is allowed. Note that depending on the underlying platform's date related function, providing just year can result in varying month and day, so the implementers need to take this factor into account to correctly process the dates.",
+                    "description": "End-User's birthday, represented as an ISO 8601:2004 YYYY-MM-DD format. The year MAY be 0000, indicating that it is omitted. To represent only the year, YYYY format is allowed. Note that depending on the underlying platform's date related function, providing just year can result in varying month and day, so the implementers need to take this factor into account to correctly process the dates.",
                     "type": "string"
                 },
                 "email": {
-					"description": "End-User's preferred e-mail address. Its value MUST conform to the RFC 5322 addr-spec syntax. ",
+                    "description": "End-User's preferred e-mail address. Its value MUST conform to the RFC 5322 addr-spec syntax. ",
                     "type": "string"
                 },
                 "family_name": {
-					"description": "Surname(s) or last name(s) of the End-User. Note that in some cultures, people can have multiple family names or no family name; all can be present, with the names being separated by space characters.",
+                    "description": "Surname(s) or last name(s) of the End-User. Note that in some cultures, people can have multiple family names or no family name; all can be present, with the names being separated by space characters.",
                     "type": "string"
                 },
                 "gender": {
-					"description": "End-User's gender. Values defined by this specification are female and male.  Options are [Male | Female | Both | None].",
+                    "description": "End-User's gender. Values defined by this specification are female and male.  Options are [Male | Female | Both | None].",
                     "type": "string"
                 },
                 "given_name": {
-					"description": "Given name(s) or first name(s) of the End-User. Note that in some cultures, people can have multiple given names; all can be present, with the names being separated by space characters.",
+                    "description": "Given name(s) or first name(s) of the End-User. Note that in some cultures, people can have multiple given names; all can be present, with the names being separated by space characters.",
                     "type": "string"
                 },
                 "locale": {
-					"description": "End-User's locale, represented as a BCP47 language tag. This is typically an ISO 639-1 Alpha-2 language code in lowercase and an ISO 3166-1 Alpha-2 country code in uppercase, separated by a dash. For example, en-US or fr-CA. As a compatibility note, some implementations have used an underscore as the separator rather than a dash, for example, en_US; Relying Parties MAY choose to accept this locale syntax as well.",
+                    "description": "End-User's locale, represented as a BCP47 language tag. This is typically an ISO 639-1 Alpha-2 language code in lowercase and an ISO 3166-1 Alpha-2 country code in uppercase, separated by a dash. For example, en-US or fr-CA. As a compatibility note, some implementations have used an underscore as the separator rather than a dash, for example, en_US; Relying Parties MAY choose to accept this locale syntax as well.",
                     "type": "string"
                 },
                 "middle_name": {
-					"description": "Middle name(s) of the End-User. Note that in some cultures, people can have multiple middle names; all can be present, with the names being separated by space characters. Also note that in some cultures, middle names are not used.",
+                    "description": "Middle name(s) of the End-User. Note that in some cultures, people can have multiple middle names; all can be present, with the names being separated by space characters. Also note that in some cultures, middle names are not used.",
                     "type": "string"
                 },
                 "nickname": {
-					"description": "Casual name of the End-User that may or may not be the same as the given_name. For instance, a nickname value of Mike might be returned alongside a given_name value of Michael.",
+                    "description": "Casual name of the End-User that may or may not be the same as the given_name. For instance, a nickname value of Mike might be returned alongside a given_name value of Michael.",
                     "type": "string"
                 },
                 "phone_number": {
-					"description": "End-User's preferred telephone number. Example, +1 (425) 555-1212 or +56 (2) 687 2400. If the phone number contains an extension, it is RECOMMENDED that the extension be represented using the RFC 3966 extension syntax, for example, +1 (604) 555-1234;ext=5678.",
+                    "description": "End-User's preferred telephone number. Example, +1 (425) 555-1212 or +56 (2) 687 2400. If the phone number contains an extension, it is RECOMMENDED that the extension be represented using the RFC 3966 extension syntax, for example, +1 (604) 555-1234;ext=5678.",
                     "type": "string"
                 },
                 "picture": {
-					"description": "URL of the End-User's profile picture. This URL MUST refer to an image file (for example, a PNG, JPEG, or GIF image file), rather than to a Web page containing an image. Note that this URL SHOULD specifically reference a profile photo of the End-User suitable for displaying when describing the End-User, rather than an arbitrary photo taken by the End-User.",
+                    "description": "URL of the End-User's profile picture. This URL MUST refer to an image file (for example, a PNG, JPEG, or GIF image file), rather than to a Web page containing an image. Note that this URL SHOULD specifically reference a profile photo of the End-User suitable for displaying when describing the End-User, rather than an arbitrary photo taken by the End-User.",
                     "type": "string"
                 },
                 "profile": {
-					"description": "URL of the End-User's profile page. The contents of this Web page SHOULD be about the End-User.",
-                    "type": "string"					
+                    "description": "URL of the End-User's profile page. The contents of this Web page SHOULD be about the End-User.",
+                    "type": "string"                    
                 },
                 "website": {
-					"description": "URL of the End-User's Web page or blog. This Web page SHOULD contain information published by the End-User or an organization that the End-User is affiliated with.",
+                    "description": "URL of the End-User's Web page or blog. This Web page SHOULD contain information published by the End-User or an organization that the End-User is affiliated with.",
                     "type": "string"
                 },
                 "zoneinfo": {
-					"description": "String from zoneinfo time zone database representing the End-User's time zone. For example, Europe/Paris or America/Los_Angeles.",
+                    "description": "String from zoneinfo time zone database representing the End-User's time zone. For example, Europe/Paris or America/Los_Angeles.",
                     "type": "string"
                 }
             },
@@ -367,7 +367,7 @@
                 "parameters": [
                     {
                         "in": "path",
-						"description": "The players account UUID. Example: f55f0038-fc24-4fe1-b369-49f9c6d94283",
+                        "description": "The players account UUID. Example: f55f0038-fc24-4fe1-b369-49f9c6d94283",
                         "name": "AccountId",
                         "required": true,
                         "type": "string"
@@ -388,7 +388,7 @@
                     {
                         "in": "path",
                         "name": "AccountId",
-						"description": "The players account UUID. Example: f55f0038-fc24-4fe1-b369-49f9c6d94283",
+                        "description": "The players account UUID. Example: f55f0038-fc24-4fe1-b369-49f9c6d94283",
                         "required": true,
                         "type": "string"
                     },
@@ -418,30 +418,30 @@
                     {
                         "in": "query",
                         "name": "StartPlayerName",
-						"description": "The player's in game display name starting characters.  Example:  breakawa",
+                        "description": "The player's in game display name starting characters.  Example:  breakawa",
                         "type": "string"
                     },
                     {
                         "in": "query",
                         "name": "CognitoIdentityId",
-						"description": "The player's cognito id following the format <region>:<uuid>.  Example:  us-east-1:657bc361-d111-41c2-8341-f6c2ca777f71",
+                        "description": "The player's cognito id following the format <region>:<uuid>.  Example:  us-east-1:657bc361-d111-41c2-8341-f6c2ca777f71",
                         "type": "string"
                     },
                     {
                         "in": "query",
-						"description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
+                        "description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
                         "name": "CognitoUsername",
                         "type": "string"
                     },
                     {
                         "in": "query",
-						"description": "End-User's preferred e-mail address. Its value MUST conform to the RFC 5322 addr-spec syntax. Example: lumberyard-feedback@amazon.com",
+                        "description": "End-User's preferred e-mail address. Its value MUST conform to the RFC 5322 addr-spec syntax. Example: lumberyard-feedback@amazon.com",
                         "name": "Email",
                         "type": "string"
                     },
                     {
                         "in": "query",
-						"description": "The next or previous page token returned from a previous search.",
+                        "description": "The next or previous page token returned from a previous search.",
                         "name": "PageToken",
                         "type": "string"
                     }                
@@ -462,7 +462,7 @@
                 "parameters": [
                     {
                         "in": "path",
-						"description": "The Cognito identity provider. Currently the only provider supported is Cognito.  Example:  Cognito",
+                        "description": "The Cognito identity provider. Currently the only provider supported is Cognito.  Example:  Cognito",
                         "name": "IdentityProviderId",
                         "required": true,
                         "type": "string"
@@ -484,7 +484,7 @@
                 "parameters": [
                     {
                         "in": "path",
-						"description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
+                        "description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
                         "name": "cognitoUsername",
                         "required": true,
                         "type": "string"
@@ -504,7 +504,7 @@
                 "parameters": [
                     {
                         "in": "path",
-						"description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
+                        "description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
                         "name": "cognitoUsername",
                         "required": true,
                         "type": "string"
@@ -534,7 +534,7 @@
                 "parameters": [
                     {
                         "in": "path",
-						"description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
+                        "description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
                         "name": "cognitoUsername",
                         "required": true,
                         "type": "string"
@@ -556,7 +556,7 @@
                 "parameters": [
                     {
                         "in": "path",
-						"description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
+                        "description": "The immutable username of the account.  Not to be mistaken for the players in game display name.",
                         "name": "cognitoUsername",
                         "required": true,
                         "type": "string"
@@ -570,6 +570,11 @@
                         }
                     }
                 }
+            }
+        },
+        "/ban": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "interface": "CloudGemPlayerAccount_banplayer_1_0_0"
             }
         },
         "/service/status": {

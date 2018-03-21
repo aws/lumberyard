@@ -194,7 +194,7 @@ namespace Config
                     QString readValue(currentValue.c_str());
                     if (node->getAttr(szName, readValue))
                     {
-                        currentValue = readValue.toLatin1().data();
+                        currentValue = readValue.toUtf8().data();
                         var->Set(&currentValue);
                     }
                     break;

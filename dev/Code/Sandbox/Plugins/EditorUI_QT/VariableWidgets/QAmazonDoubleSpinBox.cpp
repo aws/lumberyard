@@ -13,9 +13,9 @@
 
 #include <QLineEdit>
 #include <QMouseEvent>
-#include <qdebug.h>
-#include <QApplication.h>
-#include <QtWidgets/QDesktopWidget.h>
+#include <QDebug>
+#include <QApplication>
+#include <QtWidgets/QDesktopWidget>
 
 
 QAmazonDoubleSpinBox::QAmazonDoubleSpinBox(QWidget* parent)

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CloudGemTextToSpeech_precompiled.h"
 
 #include "CloudGemTextToSpeech/TextToSpeech.h"
 
@@ -86,7 +86,17 @@ namespace CloudGemTextToSpeech
         if (characterInfo.ValueExists("voice"))
         {
             return characterInfo.GetString("voice").c_str();
-        }      
+        }
+        return "";
+    }
+
+    AZStd::string TextToSpeech::GetSpeechMarksFromCharacter(const AZStd::string& character)
+    {
+        auto characterInfo = LoadCharacterFromMappingsFile(character);
+        if (characterInfo.ValueExists("speechMarks"))
+        {
+            return characterInfo.GetString("speechMarks").c_str();
+        }
         return "";
     }
 
@@ -111,6 +121,28 @@ namespace CloudGemTextToSpeech
             }
         }
         return tags;
+    }
+
+    AZStd::string TextToSpeech::GetLanguageOverrideFromCharacter(const AZStd::string& character)
+    {
+        auto characterInfo = LoadCharacterFromMappingsFile(character);
+        if (characterInfo.ValueExists("ssmlLanguage"))
+        {
+            return characterInfo.GetString("ssmlLanguage").c_str();
+        }
+
+        return "";
+    }
+
+    int TextToSpeech::GetTimbreFromCharacter(const AZStd::string& character)
+    {
+        auto characterInfo = LoadCharacterFromMappingsFile(character);
+        if (characterInfo.ValueExists("timbre"))
+        {
+            return characterInfo.GetInteger("timbre");
+        }
+
+        return 100;
     }
 
 

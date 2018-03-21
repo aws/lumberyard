@@ -5,6 +5,10 @@
     text-align: center;
 }
 
+.delete-button {
+    margin-right: 5px;
+}
+
 .number{
     margin-top: 8px;
     margin-right: 5px;
@@ -54,6 +58,11 @@
 
 .filtered {
     color: $primary-color;
+    cursor: pointer;
+}
+
+.filter-input {
+    width: 100%;
 }
 
 .fa-filter:hover {
@@ -102,7 +111,7 @@ table.table {
             width: 10%;
         }
         .speechmark-column {
-            width: 20%;
+            width: 30%;
         }
         .voice-column {
             width: 20%;
@@ -146,9 +155,16 @@ table.table {
         .dropdown-menu-hide {
             display: none;
         }
-        .filter-parting-line {
-            margin-top: 5px;
+        .filter-list {
+            height: 200px;
+            overflow: auto;
+            list-style-type: none;
+            padding: 10px 10px 0px 0px;
+            margin-top: 10px;
             margin-bottom: 0px;
+        }
+        .dropdown-element {
+            width: 100%;
         }
     }
 }
@@ -168,4 +184,13 @@ table.table {
 
 .capitalize {
     text-transform: capitalize;
+}
+
+.timbre-range, .timbre-range:hover{
+    padding: 0 0;
+    border: 0;
+}
+
+.reset-timbre {
+    margin-top:8px;
 }

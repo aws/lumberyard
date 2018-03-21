@@ -75,7 +75,7 @@ namespace Input
             m_inputEventGroups.swap(other->m_inputEventGroups);
         }
 
-    private:
+    protected:
         AZStd::vector<InputEventGroup> m_inputEventGroups;
     };
 

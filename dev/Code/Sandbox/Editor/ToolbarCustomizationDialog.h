@@ -57,7 +57,7 @@ private:
     void AddToolbarItem(const AmazonToolbar&, bool forceVisible = false);
     void OnToolbarSelected();
 
-    void NewToolbar();
+    void NewToolbar(const QString &initialName = QString());
     void DeleteToolbar();
     void RenameToolbar();
     void ResetToolbar();

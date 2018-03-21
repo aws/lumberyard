@@ -51,6 +51,9 @@ def ok_project_stack(permissions = {}):
             'ConfigurationBucketPolicy': {
                 'ResourceType': 'AWS::S3::BucketPolicy'
             },
+            'CoreResourceTypes': {
+                'ResourceType': 'Custom::ResourceTypes'
+            },
             'Logs': {
                 'ResourceType': 'AWS::S3::Bucket'
             },

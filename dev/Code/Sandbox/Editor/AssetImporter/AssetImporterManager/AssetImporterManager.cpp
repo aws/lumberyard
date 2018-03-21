@@ -25,6 +25,7 @@ namespace AssetImporterManagerPrivate
     const char* g_selectFilesPath = "AssetImporter/SelectFilesPath";
     const char* g_selectDestinationFilesPath = "AssetImporter/SelectDestinationFilesPath";
     const char* g_errorMessageBoxTitle = "File failed to process.";
+    const char* g_crateError = "Crate files cannot be imported.";
     static const char* s_crateFileExtension = "crate";
 };
 
@@ -91,6 +92,7 @@ void AssetImporterManager::OnDragAndDropFiles(const QStringList* fileList)
         // the whole process should stop
         if (!GetAndCheckAllFilesInFolder(fileList->at(i)))
         {
+            QMessageBox::warning(AzToolsFramework::GetActiveWindow(), AssetImporterManagerPrivate::g_errorMessageBoxTitle, AssetImporterManagerPrivate::g_crateError);
             reject();
             return;
         }
@@ -140,6 +142,7 @@ bool AssetImporterManager::OnBrowseFiles()
         return false;
     }
 
+    bool encounteredCrate = false;
     for (QString path : fileDialog.selectedFiles())
     {
         QString fileName = GetFileName(path);
@@ -152,6 +155,15 @@ bool AssetImporterManager::OnBrowseFiles()
             // store paths into the map.
             m_pathMap[path] = fileName;
         }
+        else
+        {
+            encounteredCrate = true;
+        }
+    }
+
+    if (encounteredCrate)
+    {
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), AssetImporterManagerPrivate::g_errorMessageBoxTitle, AssetImporterManagerPrivate::g_crateError);
     }
 
     currentAbsolutePath = fileDialog.directory().absolutePath();

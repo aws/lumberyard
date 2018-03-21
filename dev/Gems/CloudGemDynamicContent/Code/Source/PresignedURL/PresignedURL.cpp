@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <CloudGemDynamicContent_precompiled.h>
 
 #include <PresignedURL/PresignedURL.h>
 

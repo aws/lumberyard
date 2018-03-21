@@ -191,6 +191,7 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
     if (g_componentDescriptors.empty())
     {
         g_componentDescriptors.push_back(AZ::SceneAPI::Export::MaterialExporterComponent::CreateDescriptor());
+        g_componentDescriptors.push_back(AZ::SceneAPI::Export::RCMaterialExporterComponent::CreateDescriptor());
         for (AZ::ComponentDescriptor* descriptor : g_componentDescriptors)
         {
             AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Handler::RegisterComponentDescriptor, descriptor);

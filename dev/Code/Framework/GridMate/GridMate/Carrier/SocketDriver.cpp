@@ -184,9 +184,9 @@ namespace GridMate
 
     bool IsValidSocket(SocketDriverCommon::SocketType s)
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
         return s != INVALID_SOCKET;
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID) // ACCEPTED_USE
+#elif AZ_TRAIT_OS_USE_POSIX_SOCKETS
         return s >= 0;
 #else
 #   error Not implemented
@@ -195,9 +195,9 @@ namespace GridMate
 
     SocketDriverCommon::SocketType GetInvalidSocket()
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
         return INVALID_SOCKET;
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID) // ACCEPTED_USE
+#elif AZ_TRAIT_OS_USE_POSIX_SOCKETS
         return -1;
 #else
 #   error Not implemented
@@ -206,9 +206,9 @@ namespace GridMate
 
     bool IsSocketError(AZ::s64 result)
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
         return result == SOCKET_ERROR;
-#elif defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID) // ACCEPTED_USE
+#elif AZ_TRAIT_OS_USE_POSIX_SOCKETS
         return result < 0;
 #else
 #   error Not implemented
@@ -217,9 +217,9 @@ namespace GridMate
 
     int GetSocketError()
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
         return WSAGetLastError();
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID)
+#elif defined(AZ_TRAIT_OS_USE_POSIX_SOCKETS)
         return errno;
 #else
 #   error Not implemented
@@ -349,7 +349,7 @@ namespace GridMate
             flags &= ~O_NONBLOCK;
             flags |= (blocking ? 0 : O_NONBLOCK);
             result = ::fcntl(sock, F_SETFL, flags);
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#elif defined(AZ_PLATFORM_WINDOWS)
             AZ::s64 result = SOCKET_ERROR;
             u_long val = blocking ? 0 : 1;
             result = ioctlsocket(sock, FIONBIO, &val);
@@ -416,7 +416,7 @@ namespace GridMate
             }
 #if   defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
             AZ::s32 msgNoSignal = MSG_NOSIGNAL;
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_WINDOWS)
             AZ::s32 msgNoSignal = 0;
 #endif
             AZ::s32 result = send(sock, buf, static_cast<AZ::u32>(bufLen), msgNoSignal);
@@ -599,7 +599,7 @@ namespace GridMate
         timeval GetTimeValue(AZStd::chrono::microseconds timeOut)
         {
             timeval t;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if defined(AZ_PLATFORM_WINDOWS)
             t.tv_sec = static_cast<long>(timeOut.count() / 1000000);
             t.tv_usec = static_cast<long>(timeOut.count() % 1000000);
 #else
@@ -992,9 +992,7 @@ namespace GridMate
     unsigned int
     SocketDriverCommon::GetPacketOverheadSize() const
     {
-        {
-            return 8 /* standard UDP*/ + 20 /* min for IPv4 */;
-        }
+        return 8 /* standard UDP*/ + 20 /* min for IPv4 */;
     }
 
     //=========================================================================
@@ -1055,7 +1053,7 @@ namespace GridMate
             sockResult = setsockopt(m_socket, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast<char*>(&sock_opt), sizeof(sock_opt));
             AZ_Error("GridMate", sockResult == 0, "Failed to stop using ipv6 only. Error: %d", GetSocketError());
 
-    #if !defined(AZ_PLATFORM_XBONE) && !defined(AZ_PLATFORM_APPLE) // XBone doesn't allow multicast. Apple is TODO // ACCEPTED_USE
+    #if AZ_TRAIT_OS_ALLOW_MULTICAST
             // we emulate broadcast support over ipv6 (todo enable multicast support with an address too)
             addrinfo hints;
             memset(&hints, 0, sizeof(hints));
@@ -1090,7 +1088,7 @@ namespace GridMate
             }
         }
 
-    #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+    #if AZ_TRAIT_OS_USE_FASTER_WINDOWS_SOCKET_CLOSE
         // faster socket close
         linger l;
         l.l_onoff = 0;
@@ -1124,7 +1122,7 @@ namespace GridMate
             }
         }
 
-    #endif // AZ_PLATFORM_WINDOWS
+    #endif // AZ_TRAIT_OS_USE_FASTER_WINDOWS_SOCKET_CLOSE
 
         return EC_OK;
     }
@@ -1391,7 +1389,7 @@ namespace GridMate
         FD_ZERO(&fdread);
         FD_SET(m_socket, &fdread);
         timeval t;
-    #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+    #if defined(AZ_PLATFORM_WINDOWS)
         t.tv_sec = static_cast<long>(timeOut.count() / 1000000);
         t.tv_usec = static_cast<long>(timeOut.count() % 1000000);
     #else

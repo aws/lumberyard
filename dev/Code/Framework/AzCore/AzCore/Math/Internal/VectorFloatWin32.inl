@@ -10,8 +10,9 @@
 *
 */
 
-#include <math.h>
 #include <AzCore/Math/MathUtils.h>
+#include <math.h>
+#include <xmmintrin.h>
 
 namespace AZ
 {

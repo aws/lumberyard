@@ -244,14 +244,13 @@ typedef uintptr_t uintPointer;
 
 // setup if we support SSE or not
 // we assume here that all x86 machines support SSE today
-#if (defined(MCORE_PLATFORM_WINDOWS) /* && (MCORE_COMPILER == MCORE_COMPILER_MSVC || MCORE_COMPILER == MCORE_COMPILER_INTELC)*/)
+#if (defined(MCORE_PLATFORM_WINDOWS) && (MCORE_COMPILER == MCORE_COMPILER_MSVC || MCORE_COMPILER == MCORE_COMPILER_INTELC))
     #define MCORE_SSE_ENABLED
 #endif
 
 #ifndef NULL
     #define NULL 0
 #endif
-
 
 // alignment macro
 #if (MCORE_COMPILER == MCORE_COMPILER_MSVC || MCORE_COMPILER == MCORE_COMPILER_INTELC)
@@ -296,19 +295,8 @@ typedef uintptr_t uintPointer;
 #endif
 
 
-// enable using the special PS instructions for matrices etc on the Wii
-#if (defined(MCORE_PLATFORM_WII))
-    #ifndef GEKKO
-        #define GEKKO
-    #endif
-    #ifndef MTX_USE_PS
-        #define MTX_USE_PS
-    #endif
-#endif
-
-
 // check if fast float math operations such as sinf etc are available, or if we need to stick with standard calls to sin etc
-#if   ((defined(MCORE_PLATFORM_WII) || defined(MCORE_PLATFORM_WINDOWS) || defined(MCORE_PLATFORM_MAC) || defined(MCORE_PLATFORM_IPHONE) || defined(MCORE_PLATFORM_ANDROID)))
+#if   ((defined(MCORE_PLATFORM_WINDOWS) || defined(MCORE_PLATFORM_MAC) || defined(MCORE_PLATFORM_IPHONE) || defined(MCORE_PLATFORM_ANDROID)))
     #define MCORE_FASTFLOAT_MATH
 #endif
 

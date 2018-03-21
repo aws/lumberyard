@@ -13,6 +13,7 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Utils/ProcessRawInputEventQueues.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,6 +56,39 @@ namespace AzFramework
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputChannelId InputDeviceMouse::SystemCursorPosition("mouse_system_cursor_position");
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceMouse::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // Unfortunately it doesn't seem possible to reflect anything through BehaviorContext
+            // using lambdas which capture variables from the enclosing scope. So we are manually
+            // reflecting all input channel names, instead of just iterating over them like this:
+            //
+            //  auto classBuilder = behaviorContext->Class<InputDeviceMouse>();
+            //  for (const InputChannelId& channelId : Button::All)
+            //  {
+            //      const char* channelName = channelId.GetName();
+            //      classBuilder->Constant(channelName, [channelName]() { return channelName; });
+            //  }
+
+            behaviorContext->Class<InputDeviceMouse>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Constant("name", BehaviorConstant(Id.GetName()))
+
+                ->Constant(Button::Left.GetName(), BehaviorConstant(Button::Left.GetName()))
+                ->Constant(Button::Right.GetName(), BehaviorConstant(Button::Right.GetName()))
+                ->Constant(Button::Middle.GetName(), BehaviorConstant(Button::Middle.GetName()))
+                ->Constant(Button::Other1.GetName(), BehaviorConstant(Button::Other1.GetName()))
+                ->Constant(Button::Other2.GetName(), BehaviorConstant(Button::Other2.GetName()))
+
+                ->Constant(Movement::X.GetName(), BehaviorConstant(Movement::X.GetName()))
+                ->Constant(Movement::Y.GetName(), BehaviorConstant(Movement::Y.GetName()))
+                ->Constant(Movement::Z.GetName(), BehaviorConstant(Movement::Z.GetName()))
+            ;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceMouse::InputDeviceMouse()

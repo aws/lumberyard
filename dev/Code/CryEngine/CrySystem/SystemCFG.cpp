@@ -189,7 +189,7 @@ void CSystem::LogVersion()
 #elif defined(MAC)
     CryLogAlways("Running 64 bit Mac version");
 #endif
-#if !defined(LINUX) && !defined(APPLE) && !defined(DURANGO) && !defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_SYSTEMCFG_MODULENAME
     GetModuleFileName(NULL, s, sizeof(s));
     CryLogAlways("Executable: %s", s);
 #endif

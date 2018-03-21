@@ -97,7 +97,7 @@ namespace AZStd
 
 //////////////////////////////////////////////////////////////////////////
 // Overload global new and delete to make sure we don't new anything
-#if !defined(AZ_PLATFORM_XBONE) && !defined(AZ_PLATFORM_APPLE_IOS) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
+#if AZ_TRAIT_DEFINE_STUBBED_OPERATOR_NEW_OVERRIDES
 void* operator new(std::size_t size, const char* fileName, int lineNum, const AZ::Internal::AllocatorDummy&)
 {
     (void)size;

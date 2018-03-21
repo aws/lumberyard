@@ -71,6 +71,34 @@ namespace AssetBuilderSDK
 
     typedef AZ::EBus<AssetBuilderBusTraits> AssetBuilderBus;
 
+    //! This EBus provides builders access to the Asset Builders issue tracking facilities.
+    class AssetBuilderTraceTraits
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        
+        virtual ~AssetBuilderTraceTraits() = default;
+
+        //! The next <count> requests that the Asset Builder gets to forward errors to the console
+        //! will be ignored.
+        virtual void IgnoreNextErrors(AZ::u32 count) = 0;
+        //! The next <count> requests that the Asset Builder gets to forward warnings to the console
+        //! will be ignored.
+        virtual void IgnoreNextWarning(AZ::u32 count) = 0;
+        //! The next <count> requests that the Asset Builder gets to forward prints to the console
+        //! will be ignored.
+        virtual void IgnoreNextPrintf(AZ::u32 count) = 0;
+
+        virtual void ResetWarningCount() = 0;
+        virtual void ResetErrorCount() = 0;
+        virtual AZ::u32 GetWarningCount() = 0;
+        virtual AZ::u32 GetErrorCount() = 0;
+    };
+
+    typedef AZ::EBus<AssetBuilderTraceTraits> AssetBuilderTraceBus;
+
     //! This EBUS is used to send commands from the assetprocessor to a specific job
     class JobCommandTraits
         : public AZ::EBusTraits

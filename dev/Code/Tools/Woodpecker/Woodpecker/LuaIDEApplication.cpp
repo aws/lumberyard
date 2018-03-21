@@ -31,14 +31,14 @@ namespace LUAEditor
     {
         Woodpecker::BaseApplication::RegisterCoreComponents();
 
-        LUAEditor::Context::CreateDescriptor();
-        LUADebugger::Component::CreateDescriptor();
-        AzFramework::CreateScriptDebugAgentFactory();
-        AzToolsFramework::PerforceComponent::CreateDescriptor();
-        AzFramework::AssetCatalogComponent::CreateDescriptor();
+        RegisterComponentDescriptor(LUAEditor::Context::CreateDescriptor());
+        RegisterComponentDescriptor(LUADebugger::Component::CreateDescriptor());
+        RegisterComponentDescriptor(AzFramework::CreateScriptDebugAgentFactory());
+        RegisterComponentDescriptor(AzToolsFramework::PerforceComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzFramework::AssetCatalogComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzToolsFramework::Components::PropertyManagerComponent::CreateDescriptor());
-        AzFramework::AssetSystem::AssetSystemComponent::CreateDescriptor();
-        AzToolsFramework::AssetSystem::AssetSystemComponent::CreateDescriptor();
+        RegisterComponentDescriptor(AzFramework::AssetSystem::AssetSystemComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::AssetSystem::AssetSystemComponent::CreateDescriptor());
 
         RegisterComponentDescriptor(AzFramework::CreateScriptDebugAgentFactory());
     }

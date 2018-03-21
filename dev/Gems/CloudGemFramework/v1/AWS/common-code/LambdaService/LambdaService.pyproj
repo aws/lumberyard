@@ -6,33 +6,36 @@
     <ProjectGuid>{f1d10c38-eea4-48e6-8e01-ded5b550547e}</ProjectGuid>
     <ProjectHome />
     <StartupFile />
-    <SearchPath>..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\</SearchPath>
+    <SearchPath>.;..\LambdaSettings\;..\ServiceClient_Python\;..\Utils\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId />
-    <InterpreterVersion />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <PropertyGroup>
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
-    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
     <Content Include=".ignore" />
+    <Content Include=".import">
+      <SubType>Code</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="cgf_lambda_service\" />
     <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="cgf_lambda_service\dispatcher.py" />
+    <Compile Include="cgf_lambda_service\error.py" />
+    <Compile Include="cgf_lambda_service\__init__.py" />
     <Compile Include="errors.py" />
     <Compile Include="service.py" />
     <Compile Include="test\mock_handler.py" />
     <Compile Include="test\test_unit_dispatch.py" />
     <Compile Include="test\__init__.py" />
   </ItemGroup>
-  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

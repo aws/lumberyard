@@ -137,7 +137,7 @@ void CRoadObject::BeginEditParams(IEditor* ie, int flags)
     if (!m_panel)
     {
         m_panel = new CRoadPanel;
-        m_rollupId = ie->AddRollUpPage(ROLLUP_OBJECTS, (GetClassDesc()->ClassName() + " Parameters").toLatin1().data(), m_panel);
+        m_rollupId = ie->AddRollUpPage(ROLLUP_OBJECTS, (GetClassDesc()->ClassName() + " Parameters"), m_panel);
     }
     if (m_panel)
     {

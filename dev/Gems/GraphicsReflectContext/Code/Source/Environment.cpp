@@ -154,8 +154,8 @@ namespace GraphicsReflectContext
                 ->Method("SetMoonLatitude",
                     &SetMoonLatitude,
                     { {
-                        { "Latitude",       "Moon's Latitude to be set ",                                    AZ::BehaviorMakeDefaultValue(0.0f) },
-                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        { "Latitude",       "Moon's Latitude to be set ",                                    behaviorContext->MakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", behaviorContext->MakeDefaultValue(false) }
                         } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Moon's Latitude in the sky")
                 ->Method("GetMoonLatitude", &GetMoonLatitude, { {} })
@@ -163,8 +163,8 @@ namespace GraphicsReflectContext
                 ->Method("SetMoonLongitude",
                     &SetMoonLongitude,
                     { {
-                        { "Longitude",      "Moon's Longitude to be set ",                                   AZ::BehaviorMakeDefaultValue(0.0f) },
-                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        { "Longitude",      "Moon's Longitude to be set ",                                   behaviorContext->MakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", behaviorContext->MakeDefaultValue(false) }
                         } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Moon's Longitude in the sky")
                 ->Method("GetMoonLongitude", &GetMoonLongitude, { {} })
@@ -172,8 +172,8 @@ namespace GraphicsReflectContext
                 ->Method("SetSunLatitude",
                     &SetSunLatitude,
                     { {
-                        { "Latitude",       "Sun's Latitude to be set ",                                     AZ::BehaviorMakeDefaultValue(0.0f) },
-                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        { "Latitude",       "Sun's Latitude to be set ",                                     behaviorContext->MakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", behaviorContext->MakeDefaultValue(false) }
                         } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Sun's Latitude in the sky")
                 ->Method("GetSunLatitude", &GetSunLatitude, { {} })
@@ -181,8 +181,8 @@ namespace GraphicsReflectContext
                 ->Method("SetSunLongitude",
                     &SetSunLongitude,
                     { {
-                        { "Longitude",      "Sun's Longitude to be set ",                                    AZ::BehaviorMakeDefaultValue(0.0f) },
-                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", AZ::BehaviorMakeDefaultValue(false) }
+                        { "Longitude",      "Sun's Longitude to be set ",                                    behaviorContext->MakeDefaultValue(0.0f) },
+                        { "ForceUpdate",    "Indicates whether the whole sky should be updated immediately", behaviorContext->MakeDefaultValue(false) }
                         } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets Sun's Longitude in the sky")
                 ->Method("GetSunLongitude", &GetSunLongitude, { {} })
@@ -190,7 +190,7 @@ namespace GraphicsReflectContext
                 ->Method("SetWindDirection",
                     &SetWindDirection,
                      { { 
-                        { "Wind Direction", "Global wind direction to be set",                            AZ::BehaviorMakeDefaultValue(AZ::Vector3::CreateZero())}
+                        { "Wind Direction", "Global wind direction to be set",                            behaviorContext->MakeDefaultValue(AZ::Vector3::CreateZero())}
                         } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets global wind's direction")
                 ->Method("GetWindDirection", &GetWindDirection, { {} })

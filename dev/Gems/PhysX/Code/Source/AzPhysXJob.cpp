@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 #include <AzPhysXJob.h>
 #include <AzCore/Debug/Profiler.h>
 

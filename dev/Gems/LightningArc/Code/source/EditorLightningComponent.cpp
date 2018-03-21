@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 #include "EditorLightningComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -59,41 +59,41 @@ namespace Lightning
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_startOnActivate, "Start on Activate", "Should the lightning effect start on component activation or when StartEffect is called.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_relativeToPlayer, "Relative To Player", "Will the effect be rendered relative to the player camera")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_relativeToPlayer, "Relative To Player", "Will the effect be rendered relative to the player camera.")
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightningDuration, "Duration", "The duration of the entire lightning effect")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightningDuration, "Duration", "The duration of the entire lightning effect.")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.000000)
                     
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Lightning Bolt")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightningParticleEntity, "Particle Entity", "Entity with a particle component that provides the bolt")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightningParticleEntity, "Particle Entity", "Entity with a particle component that provides the bolt.")
                     ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("ParticleService"))
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_particleSizeVariation, "Size Variation", "Random particle size variation from 0% to 100%")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_particleSizeVariation, "Size Variation", "Random particle size variation from 0% to 100%.")
                     ->Attribute(AZ::Edit::Attributes::Max, 1.000000)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.000000)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "SkyHighlight")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_skyHighlightEntity, "Sky Highlight Entity", "Entity with a sky highlight component")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_skyHighlightEntity, "Sky Highlight Entity", "Entity with a sky highlight component.")
                     ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("SkyHighlightService"))
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Light")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightEntity, "Light Entity", "Entity with a point light component")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightEntity, "Light Entity", "Entity with a point light component.")
                     ->Attribute(AZ::Edit::Attributes::RequiredService, AZ_CRC("LightService"))
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightRadiusVariation, "Radius Variation", "Random light radius variation from 0% to 100%")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightRadiusVariation, "Radius Variation", "Random light radius variation from 0% to 100%.")
                     ->Attribute(AZ::Edit::Attributes::Max, 1.000000)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.000000)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightIntensityVariation, "Intensity Variation", "Random light intensity variation from 0% to 100%")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_lightIntensityVariation, "Intensity Variation", "Random light intensity variation from 0% to 100%.")
                     ->Attribute(AZ::Edit::Attributes::Max, 1.000000)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.000000)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Audio")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_audioThunderEntity, "Audio Entity", "Entity with Audio Trigger, Audio Proxy and Audio RTPC components")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_audioThunderEntity, "Audio Entity", "Entity with Audio Trigger, Audio Proxy and Audio RTPC components.")
                     ->Attribute(AZ::Edit::Attributes::RequiredService, requiredAudioServices)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_speedOfSoundScale, "Speed Of Sound Scale", "Scale to apply to the speed of sound for this affect")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &LightningConfiguration::m_speedOfSoundScale, "Speed Of Sound Scale", "Scale to apply to the speed of sound for this affect.")
                     ->Attribute(AZ::Edit::Attributes::Max, 100.000000)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.000000)
                     ;
@@ -113,7 +113,7 @@ namespace Lightning
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
             {
-                editContext->Class<EditorLightningComponent>("Lightning", "")
+                editContext->Class<EditorLightningComponent>("Lightning", "Controls timings of other components to produce a lightning bolt effect.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Environment")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Lightning.png")

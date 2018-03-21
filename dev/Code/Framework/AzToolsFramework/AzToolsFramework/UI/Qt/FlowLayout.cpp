@@ -38,8 +38,7 @@
 **
 ****************************************************************************/
 
-#include <StdAfx.h>
-#include <QtWidgets/qwidget.h>
+#include <QtWidgets/QWidget>
 #include <AzToolsFramework/UI/Qt/FlowLayout.h>
 
 FlowLayout::FlowLayout(QWidget* parent, int margin, int hSpacing, int vSpacing)

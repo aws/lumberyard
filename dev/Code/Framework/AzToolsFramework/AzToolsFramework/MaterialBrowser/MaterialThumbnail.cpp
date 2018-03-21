@@ -31,7 +31,7 @@ namespace AzToolsFramework
             AZ_Assert(productKey, "Incorrect key type, excpected ProductThumbnailKey");
 
             bool multiMat = false;
-            MaterialBrowserRequestsBus::BroadcastResult(multiMat, &MaterialBrowserRequests::IsMultiMaterial, productKey->GetAssetId());
+            MaterialBrowserRequestBus::BroadcastResult(multiMat, &MaterialBrowserRequests::IsMultiMaterial, productKey->GetAssetId());
 
             QString iconPath = multiMat ? MULTI_MATERIAL_ICON_PATH : SIMPLE_MATERIAL_ICON_PATH;
             m_pixmap = QPixmap(iconPath).scaled(m_thumbnailSize, m_thumbnailSize, Qt::KeepAspectRatio);

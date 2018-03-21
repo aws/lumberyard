@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/base.h>
-#include <AzCore/ipc/sharedmemory.h>
+#include <AzCore/IPC/SharedMemory.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/Component.h>
@@ -31,7 +31,7 @@ namespace LegacyFramework
         , private IPCCommandBus::Handler
     {
     public:
-        AZ_COMPONENT(IPCComponent, "{798D5FE3-034B-406A-9830-A6ED2AF05E26}")
+        AZ_COMPONENT(LegacyFramework::IPCComponent, "{798D5FE3-034B-406A-9830-A6ED2AF05E26}")
 
         IPCComponent();
         virtual ~IPCComponent();

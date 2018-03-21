@@ -15,7 +15,7 @@
 #include "XMLCPB_ZLibCompressor.h"
 #include "CryActionCVars.h"
 #include <IZLibCompressor.h>
-
+#include "CryActionTraits.h"
 
 namespace XMLCPB
 {
@@ -289,10 +289,11 @@ namespace XMLCPB
         }
         s_pCompressorThread = new CCompressorThread;
 
-#if defined(WIN32) || defined(ORBIS)
+#if AZ_LEGACY_CRYACTION_TRAIT_USE_ZLIB_COMPRESSOR_THREAD
         s_pCompressorThread->Start(0, "ZLibCompressor");
-#elif defined(LINUX) || defined(APPLE)
-        s_pCompressorThread->Start(0, "ZLibCompressor");
+#if AZ_LEGACY_CRYACTION_TRAIT_SET_COMPRESSOR_THREAD_PRIORITY
+        SetThreadPriority(s_pCompressorThread->GetHandle(), THREAD_PRIORITY_ABOVE_NORMAL);
+#endif
 #else
         //Platform not supported
         COMPILE_TIME_ASSERT(0);

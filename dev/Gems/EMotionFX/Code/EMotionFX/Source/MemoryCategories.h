@@ -21,9 +21,7 @@ namespace EMotionFX
     /**
      * The default alignment of returned memory addresses, in bytes.
      */
-#define EMFX_DEFAULT_ALIGNMENT  4
-#define EMFX_SIMD_ALIGNMENT 16
-
+    #define EMFX_DEFAULT_ALIGNMENT  4
 
 
     /**

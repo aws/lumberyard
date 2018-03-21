@@ -106,7 +106,7 @@ void CGameTokenManager::Export(XmlNodeRef& node)
         // For Non-Level libs (Global) we save a reference (name)
         // as these are stored in the Game/Libs directory
         XmlNodeRef libNode = libs->newChild("Library");
-        libNode->setAttr("Name", pLib->GetName().toLatin1().data());
+        libNode->setAttr("Name", pLib->GetName().toUtf8().data());
     }
 }
 
@@ -138,11 +138,11 @@ void CGameTokenManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
 //////////////////////////////////////////////////////////////////////////
 void CGameTokenManager::Save()
 {
-    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kGameTokensFile).toLatin1().data());
+    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kGameTokensFile).toUtf8().data());
 
     XmlNodeRef root = XmlHelpers::CreateXmlNode(kGameTokensRoot);
     Serialize(root, false);
-    root->saveToFile(helper.GetTempFilePath().toLatin1().data());
+    root->saveToFile(helper.GetTempFilePath().toUtf8().data());
 
     helper.UpdateFile(false);
 }
@@ -152,7 +152,7 @@ void CGameTokenManager::Save()
 bool CGameTokenManager::Load()
 {
     QString filename = GetIEditor()->GetLevelDataFolder() + kGameTokensFile;
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
     if (root && !_stricmp(root->getTag(), kGameTokensRoot))
     {
         Serialize(root, true);

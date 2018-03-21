@@ -16,8 +16,7 @@
 
 #include <AzCore/base.h>
 
-#if !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_LINUX) \
- && !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_WINDOWS) && !defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if !AZ_TRAIT_OS_USE_SOCKETS
 #   error Platform not supported!
 #endif
 

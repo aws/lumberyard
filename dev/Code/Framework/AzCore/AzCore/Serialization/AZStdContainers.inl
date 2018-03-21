@@ -549,7 +549,7 @@ namespace AZ
                 }
                 else
                 {
-                    AZ_Warning("Serialization", false, "AZStdArrayEvents::OnWriteEnd called too often.");
+                    AZ_Warning("Serialization", false, "Mismatch in the number of calls of AZStdArrayEvents::OnWriteEnd compared to AZStdArrayEvents::OnWriteBegin.");
                 }
 
             }

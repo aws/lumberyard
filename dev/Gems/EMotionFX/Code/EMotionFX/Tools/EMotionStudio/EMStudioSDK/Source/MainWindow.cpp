@@ -32,7 +32,6 @@
 #include <QTextEdit>
 #include <QDir>
 #include <QMessageBox>
-#include <QToolBar>
 #include <QLineEdit>
 #include <QLabel>
 #include <QFileDialog>
@@ -1180,7 +1179,7 @@ namespace EMStudio
             connect(generalPropertyWidget, SIGNAL(ValueChanged(MysticQt::PropertyWidget::Property*)), this, SLOT(OnValueChanged(MysticQt::PropertyWidget::Property*)));
 
             mMaxRecentFilesProperty             = generalPropertyWidget->AddIntProperty("", "Maximum Recent Files", GetMaxRecentFiles(), 16, 1, 99);
-            mMaxHistoryItemsProperty            = generalPropertyWidget->AddIntProperty("", "Undo History Size", GetCommandManager()->GetMaxHistoryItems(), 256, 0, 9999);
+            mMaxHistoryItemsProperty            = generalPropertyWidget->AddIntProperty("", "Undo History Size", GetCommandManager()->GetMaxHistoryItems(), 256, 1, 9999);
             mNotificationVisibleTimeProperty    = generalPropertyWidget->AddIntProperty("", "Notification Visible Time", mNotificationVisibleTime, 5, 1, 10);
             mAutosaveIntervalProperty           = generalPropertyWidget->AddIntProperty("", "Autosave Interval (Minutes)", mAutosaveInterval, 10, 1, 60);
             mAutosaveNumberOfFilesProperty      = generalPropertyWidget->AddIntProperty("", "Autosave Number Of Files", mAutosaveNumberOfFiles, 5, 1, 99);
@@ -2647,13 +2646,6 @@ namespace EMStudio
             mAutosaveTimer->stop();
 
             PluginManager* pluginManager = GetPluginManager();
-            const uint32 numPlugins = pluginManager->GetNumActivePlugins();
-            for (uint32 p = 0; p < numPlugins; ++p)
-            {
-                EMStudioPlugin* plugin = pluginManager->GetActivePlugin(p);
-                AZ_Assert(plugin, "Unexpected null active plugin");
-                plugin->OnMainWindowClosed();
-            }
 
             // The close event does not hide floating widgets, so we are doing that manually here
             const QList<MysticQt::DockWidget*> dockWidgetList = findChildren<MysticQt::DockWidget*>();
@@ -2663,6 +2655,15 @@ namespace EMStudio
                 {
                     dockWidget->hide();
                 }
+            }
+
+            // get a copy of the active plugins since some plugins may choose
+            // to get inactive when the main window closes
+            const AZStd::vector<EMStudioPlugin*> activePlugins = pluginManager->GetActivePlugins();
+            for (EMStudioPlugin* activePlugin : activePlugins)
+            {
+                AZ_Assert(activePlugin, "Unexpected null active plugin");
+                activePlugin->OnMainWindowClosed();
             }
 
             QMainWindow::closeEvent(event);

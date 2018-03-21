@@ -104,6 +104,12 @@ void STexStreamInState::CopyMips()
             if (0)
             {
             }
+#if TEXTURESTREAMING_CPP_TRAIT_COPYMIPS_MOVEENGINE && !defined(NULL_RENDERER)
+            else if (!gRenDev->m_pRT->IsRenderThread())
+            {
+                m_copyMipsFence = CTexture::StreamCopyMipsTexToTex_MoveEngine(tp->m_pFileTexMips->m_pPoolItem, 0, m_pNewPoolItem, 0 + nNewMipOffset, nNumMips);
+            }
+#endif
             else
             {
                 CTexture::StreamCopyMipsTexToTex(tp->m_pFileTexMips->m_pPoolItem, 0, m_pNewPoolItem, 0 + nNewMipOffset, nNumMips);
@@ -227,6 +233,10 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
 #if defined(TEXSTRM_ASYNC_UPLOAD)
         tp->StreamUploadMip(pStream, nMip, m_nHigherUploadedMip, m_pNewPoolItem, mipState);
         mipState.m_bUploaded = true;
+#define TEXTURESTREAMING_CPP_SECTION_IMPLEMENTED
+#endif
+#if defined(TEXTURESTREAMING_CPP_SECTION_IMPLEMENTED)
+#undef TEXTURESTREAMING_CPP_SECTION_IMPLEMENTED
 #else
         if (!mipState.m_bStreamInPlace)
         {
@@ -325,7 +335,7 @@ bool STexStreamInState::TryCommit()
     {
         STexPoolItem*& pNewPoolItem = m_pNewPoolItem;
 
-#if !defined(TEXSTRM_ASYNC_UPLOAD) && !defined(DURANGO)
+#if !defined(TEXSTRM_ASYNC_UPLOAD) && TEXTURESTREAMING_CPP_TRAIT_TRYCOMMIT_COPYMIPS
         for (size_t i = 0, c = m_nLowerUploadedMip - m_nHigherUploadedMip + 1; i != c; ++i)
         {
             STexStreamInMipState& mipState = m_mips[i];
@@ -1348,11 +1358,14 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
 #if defined(SUPPORTS_INPLACE_TEXTURE_STREAMING)
     if (CRenderer::CV_r_texturesstreamingInPlace)
     {
+#if TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_ETT_2D_EARLY_OUT
         if (m_eTT != eTT_2D)
         {
             return false;
         }
+#endif
 
+#if TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_FORMATCOMPATIBLE
         bool bFormatCompatible = false;
 
         switch (m_eTFSrc)
@@ -1415,8 +1428,16 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
         {
             return false;
         }
+#endif
 
 
+#if TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_SRCTILEMODE_CHECK && !defined(NULL_RENDERER)
+        CDeviceTexture* pDevTex = pNewPoolItem->m_pDevTexture;
+        if (m_eSrcTileMode != eTM_LinearPadded || !pDevTex->IsInPool() || !m_pFileTexMips->m_pMipHeader[nMip].m_InPlaceStreamable)
+        {
+            return false;
+        }
+#endif
 
         return true;
     }
@@ -1779,7 +1800,7 @@ void CTexture::RT_FlushAllStreamingTasks(const bool bAbort /* = false*/)
                 {
                     os.m_bAborted = true;
                 }
-                os.m_jobState.Wait();
+                os.m_jobExecutor.WaitForCompletion();
             }
         }
     }
@@ -1865,7 +1886,7 @@ void CTexture::AbortStreamingTasks(CTexture* pTex)
             streamState.m_bAborted = true;
             if (!streamState.m_bDone)
             {
-                streamState.m_jobState.Wait();
+                streamState.m_jobExecutor.WaitForCompletion();
             }
             while (!streamState.TryCommit())
             {

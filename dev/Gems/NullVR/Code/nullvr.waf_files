@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/NullVR_precompiled.cpp",
+            "Source/NullVR_precompiled.h"
         ]
     },
     "auto": {

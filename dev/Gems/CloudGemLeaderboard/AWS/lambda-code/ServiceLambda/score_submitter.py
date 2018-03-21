@@ -51,13 +51,13 @@ def validate_request_data(score_data, cognito_id):
         print("Provided score ({}) is invalid for stat ({})".format(score_data["value"], score_data["stat"]))
         raise errors.ClientError("Invalid score")
 
-    if not leaderboard_utils.is_user_valid(score_data["user"]):
-        print("The user ({}) is invalid for stat ({})".format(score_data["user"], score_data["stat"]))
-        raise errors.ClientError("Invalid user")
-
     if not identity_validator.validate_user(score_data["user"], cognito_id):
         print("The user {} provided incorrect cognito ID {}".format(score_data["user"], cognito_id))
         raise errors.ClientError("This client is not authorized to submit scores for user {}".format(score_data["user"]))
+
+    if not leaderboard_utils.is_user_valid(score_data["user"]):
+        print("The user ({}) is invalid for stat ({})".format(score_data["user"], score_data["stat"]))
+        raise errors.ClientError("Invalid user")
 
 
 

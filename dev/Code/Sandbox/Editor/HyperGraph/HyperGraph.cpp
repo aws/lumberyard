@@ -190,8 +190,8 @@ bool CHyperGraphSerializer::Serialize(XmlNodeRef& node,
     if (!m_bLoading)
     {
         // Save
-        node->setAttr("Description", m_pGraph->GetDescription().toLatin1().data());
-        node->setAttr("Group", m_pGraph->GetGroupName().toLatin1().data());
+        node->setAttr("Description", m_pGraph->GetDescription().toUtf8().data());
+        node->setAttr("Group", m_pGraph->GetGroupName().toUtf8().data());
 
         // sort nodes by their IDs to make a pretty output file (suitable for merging)
         typedef std::set<THyperNodePtr, sortNodesById > TSortedNodesSet;
@@ -241,8 +241,8 @@ bool CHyperGraphSerializer::Serialize(XmlNodeRef& node,
             XmlNodeRef edgeXml = edgesXml->newChild("Edge");
             edgeXml->setAttr("nodeIn", pEdge->nodeIn);
             edgeXml->setAttr("nodeOut", pEdge->nodeOut);
-            edgeXml->setAttr("portIn", pEdge->portIn.toLatin1().data());
-            edgeXml->setAttr("portOut", pEdge->portOut.toLatin1().data());
+            edgeXml->setAttr("portIn", pEdge->portIn.toUtf8().data());
+            edgeXml->setAttr("portOut", pEdge->portOut.toUtf8().data());
             edgeXml->setAttr("enabled", pEdge->enabled);
         }
     }
@@ -293,7 +293,7 @@ bool CHyperGraphSerializer::Serialize(XmlNodeRef& node,
                     nodeId = newId;
                 }
 
-                CHyperNode* pNode = pManager->CreateNode(m_pGraph, nodeclass.toLatin1().data(), nodeId, QPointF(0.f, 0.f), NULL, !bIsPaste);
+                CHyperNode* pNode = pManager->CreateNode(m_pGraph, nodeclass.toUtf8().data(), nodeId, QPointF(0.f, 0.f), NULL, !bIsPaste);
                 if (!pNode)
                 {
                     continue;
@@ -317,8 +317,8 @@ bool CHyperGraphSerializer::Serialize(XmlNodeRef& node,
                             gEnv->pLog->LogWarning("Missing Port: [%s] with Value [%s] On Node [%s], Referenced in FlowGraph [%s]. Saving this level may result in loss of data.",
                                 key,
                                 value,
-                                pNode->GetClassName().toLatin1().data(),
-                                m_pGraph->GetName().toLatin1().data());
+                                pNode->GetClassName().toUtf8().data(),
+                                m_pGraph->GetName().toUtf8().data());
                         }
                     }
                 }
@@ -387,8 +387,8 @@ bool CHyperGraphSerializer::Serialize(XmlNodeRef& node,
                         if (!pCVarFlowGraphWarnings || (pCVarFlowGraphWarnings && pCVarFlowGraphWarnings->GetIVal() == 1))
                         {
                             Warning("Loading Graph '%s': Can't connect edge <%d,%s> -> <%d,%s> because %s",
-                                m_pGraph->GetName().toLatin1().data(), nodeOut, portOut.toLatin1().data(), nodeIn, portIn.toLatin1().data(),
-                                cause.toLatin1().data());
+                                m_pGraph->GetName().toUtf8().data(), nodeOut, portOut.toUtf8().data(), nodeIn, portIn.toUtf8().data(),
+                                cause.toUtf8().data());
                         }
                         continue;
                     }
@@ -399,14 +399,14 @@ bool CHyperGraphSerializer::Serialize(XmlNodeRef& node,
                     {
                         if (!pPortIn)
                         {
-                            pPortIn = pNodeIn->CreateMissingPort(portIn.toLatin1().data(), true);
-                            gEnv->pLog->LogError("Missing Port: %s, Referenced in FlowGraph %s, on node %s", portIn.toLatin1().data(), m_pGraph->GetName().toUtf8().constData(), pNodeIn->GetClassName().toUtf8().constData());
+                            pPortIn = pNodeIn->CreateMissingPort(portIn.toUtf8().data(), true);
+                            gEnv->pLog->LogError("Missing Port: %s, Referenced in FlowGraph %s, on node %s", portIn.toUtf8().data(), m_pGraph->GetName().toUtf8().constData(), pNodeIn->GetClassName().toUtf8().constData());
                         }
 
                         if (!pPortOut)
                         {
-                            pPortOut = pNodeOut->CreateMissingPort(portOut.toLatin1().data(), false);
-                            gEnv->pLog->LogError("Missing Port: %s, Referenced in FlowGraph %s, on node %s", portOut.toLatin1().data(), m_pGraph->GetName().toUtf8().constData(), pNodeOut->GetClassName().toUtf8().constData());
+                            pPortOut = pNodeOut->CreateMissingPort(portOut.toUtf8().data(), false);
+                            gEnv->pLog->LogError("Missing Port: %s, Referenced in FlowGraph %s, on node %s", portOut.toUtf8().data(), m_pGraph->GetName().toUtf8().constData(), pNodeOut->GetClassName().toUtf8().constData());
                         }
                     }
 
@@ -438,8 +438,8 @@ bool CHyperGraphSerializer::Serialize(XmlNodeRef& node,
                         if (!pCVarFlowGraphWarnings || (pCVarFlowGraphWarnings && pCVarFlowGraphWarnings->GetIVal() == 1))
                         {
                             Warning("Loading Graph '%s': Can't connect edge <%d,%s> -> <%d,%s> because %s",
-                                m_pGraph->GetName().toLatin1().data(), nodeOut, portOut.toLatin1().data(), nodeIn, portIn.toLatin1().data(),
-                                cause.toLatin1().data());
+                                m_pGraph->GetName().toUtf8().data(), nodeOut, portOut.toUtf8().data(), nodeIn, portIn.toUtf8().data(),
+                                cause.toUtf8().data());
                         }
                         continue;
                     }

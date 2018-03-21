@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "InAppPurchases_precompiled.h"
 
 #include <FlowSystem/Nodes/FlowBaseNode.h>
 

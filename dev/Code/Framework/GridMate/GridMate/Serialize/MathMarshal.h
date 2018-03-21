@@ -13,6 +13,7 @@
 #define GM_UTILS_MATH_MARSHAL
 
 #include <GridMate/Serialize/DataMarshal.h>
+#include <AzCore/Math/Color.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Quaternion.h>
@@ -75,6 +76,37 @@ namespace GridMate
             marshaler.Unmarshal(y, rb);
             marshaler.Unmarshal(z, rb);
             vec.Set(x, y, z);
+        }
+    };
+
+    /**
+    * Color Marshaler uses 16 bytes.
+    */
+    template<>
+    class Marshaler<AZ::Color>
+    {
+    public:
+        typedef AZ::Color DataType;
+
+        static const AZStd::size_t MarshalSize = sizeof(float) * 4;
+
+        void Marshal(WriteBuffer& wb, const AZ::Color& color) const
+        {
+            Marshaler<float> marshaler;
+            marshaler.Marshal(wb, color.GetR());
+            marshaler.Marshal(wb, color.GetG());
+            marshaler.Marshal(wb, color.GetB());
+            marshaler.Marshal(wb, color.GetA());
+        }
+        void Unmarshal(AZ::Color& color, ReadBuffer& rb) const
+        {
+            float r, g, b, a;
+            Marshaler<float> marshaler;
+            marshaler.Unmarshal(r, rb);
+            marshaler.Unmarshal(g, rb);
+            marshaler.Unmarshal(b, rb);
+            marshaler.Unmarshal(a, rb);
+            color.Set(r, g, b, a);
         }
     };
 

@@ -32,7 +32,7 @@
 # define MTSAFE_DEFAULT_ALIGNMENT 8
 # define MTSAFE_USE_GENERAL_HEAP 1
 # define MTSAFE_GENERAL_HEAP_SIZE ((1U << 20) + (1U << 19))
-#elif defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(MAC) || defined(ORBIS)  // PC
+#elif defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(MAC)
 # define MTSAFE_TEMPORARY_POOL_SIZE (0U)
 # define MTSAFE_TEMPORARY_POOL_MINALLOC (512U)
 # define MTSAFE_TEMPORARY_POOL_MAXALLOC (14U << 20)

@@ -4,18 +4,18 @@
 //QT
 #include <QSettings>
 #include <QVBoxLayout>
-#include "qlabel.h"
-#include "qspinbox.h"
-#include "qpushbutton.h"
-#include "qgridlayout.h"
-#include "qsizepolicy.h"
-#include "qcheckbox.h"
-#include "qscrollarea.h"
-#include "qtreewidget.h"
-#include "qmenu.h"
-#include "qaction.h"
-#include "qdebug.h"
-#include "qheaderview.h"
+#include <QLabel>
+#include <QSpinBox>
+#include <QPushButton>
+#include <QGridLayout>
+#include <QSizePolicy>
+#include <QCheckBox>
+#include <QScrollArea>
+#include <QTreeWidget>
+#include <QMenu>
+#include <QAction>
+#include <QDebug>
+#include <QHeaderView>
 
 //Editor
 #include <IEditor.h>
@@ -528,4 +528,4 @@ SLodInfo* LODLevelWidget::GetLod()
     return m_Lod;
 }
 
-#include <Qt/LodLevelWidget.moc>
+#include <QT/LODLevelWidget.moc>

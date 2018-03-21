@@ -1,4 +1,3 @@
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -14,7 +13,7 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include "FBXSceneWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FBXSceneWrapper.h>
 
 namespace AZ
 {
@@ -36,7 +35,7 @@ namespace AZ
             , m_fbxImporter(nullptr)
             , m_fbxIOSettings(nullptr)
         {
-            assert(fbxScene);
+            AZ_Assert(fbxScene, "FbxSceneWrapper should have a valid scene to initialize.");
         }
 
         FbxSceneWrapper::~FbxSceneWrapper()
@@ -184,7 +183,7 @@ namespace AZ
             return true;
         }
 
-        bool FbxSceneWrapper::LoadSceneFromFile(const std::string& fileName)
+        bool FbxSceneWrapper::LoadSceneFromFile(const AZStd::string& fileName)
         {
             return LoadSceneFromFile(fileName.c_str());
         }
@@ -201,6 +200,5 @@ namespace AZ
         {
             return m_fbxScene;
         }
-
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

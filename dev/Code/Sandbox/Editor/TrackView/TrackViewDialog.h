@@ -194,11 +194,6 @@ private:
     bool processRawInput(MSG* pMsg);
 #endif
 
-#ifdef KDAB_TEMPORARILY_REMOVED
-    void ShowShortcutsCustomizeDlg(CXTPCommandBars* pCommandBars, UINT nMenuIDResource, const char* pSectionNameForSaving);
-    void AddShortCutMenu(CustomizeKeyboardPage& pageKeyboard, CToolBar* pToolBar, const CString& sToolBarName);
-#endif
-
     virtual void OnNodeSelectionChanged(CTrackViewSequence* pSequence) override;
     virtual void OnNodeRenamed(CTrackViewNode* pNode, const char* pOldName) override;
 

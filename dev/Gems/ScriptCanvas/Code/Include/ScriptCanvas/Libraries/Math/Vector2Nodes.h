@@ -36,7 +36,13 @@ namespace ScriptCanvas
             return lhs + rhs;
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Add, "Math/Vector2", "{24E5FD67-43D7-44C0-B9E8-0CA02A43777A}", "returns the vector sum of A and B", "A", "B");
-        
+
+        AZ_INLINE Vector2Type Angle(NumberType angle)
+        {
+            return Vector2Type::CreateFromAngle(ToVectorFloat(angle));
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Angle, "Math/Vector2", "{4D77F825-C4CE-455C-802F-34F6C8B7A1C8}", "returns a unit length vector from an angle in radians", "Angle");
+
         AZ_INLINE Vector2Type Clamp(const Vector2Type source, const Vector2Type min, const Vector2Type max)
         {
             return source.GetClamp(min, max);
@@ -238,6 +244,7 @@ namespace ScriptCanvas
         using Registrar = RegistrarGeneric
             < AbsoluteNode
             , AddNode
+            , AngleNode
             , ClampNode
             , DistanceNode
             , DistanceSquaredNode

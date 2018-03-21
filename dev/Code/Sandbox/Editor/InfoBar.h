@@ -84,6 +84,9 @@ protected:
     void OnBnClickedSetVector();
     void OnUpdateMoveSpeed();
     void OnBnClickedTerrainCollision();
+    void OnBnClickedPhysics();
+    void OnBnClickedSingleStepPhys();
+    void OnBnClickedDoStepPhys();
     void OnBnClickedMuteAudio();
     void OnBnClickedEnableVR();
     void OnInitDialog();
@@ -128,8 +131,5 @@ protected:
 
     bool m_idleUpdateEnabled = true;
 };
-
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
 #endif // CRYINCLUDE_EDITOR_INFOBAR_H

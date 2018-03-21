@@ -98,8 +98,8 @@ namespace EMotionFX
         RegisterObjectType(BlendTree::Create(nullptr));
         RegisterObjectType(BlendTreeFinalNode::Create(nullptr));
         RegisterObjectType(AnimGraphMotionNode::Create(nullptr));
-        RegisterObjectType(BlendSpace2DNode::Create(nullptr));
         RegisterObjectType(BlendSpace1DNode::Create(nullptr));
+        RegisterObjectType(BlendSpace2DNode::Create(nullptr));
         RegisterObjectType(BlendTreeBlend2Node::Create(nullptr));
         RegisterObjectType(BlendTreeBlendNNode::Create(nullptr));
         RegisterObjectType(BlendTreeParameterNode::Create(nullptr));

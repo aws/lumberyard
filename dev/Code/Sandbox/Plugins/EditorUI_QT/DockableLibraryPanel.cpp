@@ -172,7 +172,7 @@ void DockableLibraryPanel::Init(const QString& panelName, CBaseLibraryManager* l
     m_libraryTitleBar->SetupLabel(panelName);
     m_libraryTitleBar->SetShowMenuContextMenuCallback([&] { return GetTitleBarMenu();
         });
-    m_titleBarMenu = new QMenu(this);
+    m_titleBarMenu = new QMenu;
 
     setAllowedAreas(Qt::AllDockWidgetAreas);
 }
@@ -740,7 +740,7 @@ void DockableLibraryPanel::OnLibraryAdded(IDataBaseLibrary* addLib)
     CRY_ASSERT(addLib);
     DockableLibraryTreeView* dock = m_libraryTreeViews[QString(addLib->GetName())];
     CRY_ASSERT(dock);
-    dock->setWindowTitle(tr(addLib->GetName().toLatin1().data()));
+    dock->setWindowTitle(tr(addLib->GetName().toUtf8().data()));
     dock->Init(addLib);
     SelectSingleLibrary(addLib->GetName());
 }
@@ -1259,9 +1259,9 @@ CLibraryTreeViewItem* DockableLibraryPanel::AddDuplicateTreeItem(const QString& 
 
     // Validate Item Name
     QString newItemFullName = destLib + "." + newItemName;
-    if (m_libraryManager->FindItemByName(newItemFullName.toUtf8().data()) != nullptr)
+    if (m_libraryManager->FindItemByName(newItemFullName) != nullptr)
     {
-        newItemName = m_libraryManager->MakeUniqueItemName(newItemName.toUtf8().data(), destLib.toUtf8().data());
+        newItemName = m_libraryManager->MakeUniqueItemName(newItemName, destLib);
     }
     
     CBaseLibraryItem* item = destLibDock->AddItem(newItemName);

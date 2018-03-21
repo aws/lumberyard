@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "MainWindowSavedState.h"
 #include <AzCore/Serialization/SerializeContext.h>

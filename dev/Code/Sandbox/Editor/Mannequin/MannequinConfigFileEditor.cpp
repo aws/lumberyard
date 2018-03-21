@@ -139,7 +139,7 @@ bool MannequinConfigFileHelper::CreateNewConfig(AZStd::string& generatedPreviewF
         }
 
         //Do not allow creating a preview with an existing name
-        const AZStd::string previewsFileName = MannequinConfig(prefixStr.toLatin1().data()).PreviewFilePath();
+        const AZStd::string previewsFileName = MannequinConfig(prefixStr.toUtf8().data()).PreviewFilePath();
         if (isValidFileName && CFileUtil::FileExists(previewsFileName.c_str(), nullptr))
         {
             isValidFileName = false;
@@ -148,7 +148,7 @@ bool MannequinConfigFileHelper::CreateNewConfig(AZStd::string& generatedPreviewF
     }
 
     AZStd::vector<AZStd::string> generatedAssets;
-    const AZStd::string prefix = prefixStr.toLatin1().data();
+    const AZStd::string prefix = prefixStr.toUtf8().data();
     CMannequinConfigFileEditor editor(prefix, parent);
     
     editor.setMinimumSize(425, 600);
@@ -923,7 +923,7 @@ void FileSelectorHandler::ConsumeAttribute(FileSelectorPropertyWidget* GUI, AZ::
 void FileSelectorHandler::WriteGUIValuesIntoProperty(size_t /*index*/, FileSelectorPropertyWidget* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* /*node*/)
 {
     AZStd::string val;
-    val = GUI->GetValue().toLatin1().data();
+    val = GUI->GetValue().toUtf8().data();
     instance = static_cast<property_t>(val);
 }
 

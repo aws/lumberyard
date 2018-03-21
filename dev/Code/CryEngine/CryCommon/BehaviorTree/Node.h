@@ -235,7 +235,7 @@ namespace BehaviorTree
 #endif // DEBUG_MODULAR_BEHAVIOR_TREE
     };
 
-    DECLARE_BOOST_POINTERS(Node);
+    DECLARE_SMART_POINTERS(Node);
 
     // An object of this class will help out when reporting warnings and
     // errors from within the modular behavior tree code. If possible, it

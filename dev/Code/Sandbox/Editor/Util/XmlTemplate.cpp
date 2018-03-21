@@ -41,7 +41,7 @@ void CXmlTemplate::GetValues(XmlNodeRef& node, const XmlNodeRef& fromNode)
             QString value;
             if (fromNode->getAttr(prop->getTag(), value))
             {
-                prop->setAttr("Value", value.toLatin1().data());
+                prop->setAttr("Value", value.toUtf8().data());
             }
         }
         else
@@ -88,7 +88,7 @@ void CXmlTemplate::SetValues(const XmlNodeRef& node, XmlNodeRef& toNode)
             {
                 QString value;
                 prop->getAttr("Value", value);
-                toNode->setAttr(prop->getTag(), value.toLatin1().data());
+                toNode->setAttr(prop->getTag(), value.toUtf8().data());
             }
         }
         else
@@ -123,7 +123,7 @@ bool CXmlTemplate::SetValues(const XmlNodeRef& node, XmlNodeRef& toNode, const X
             {
                 QString value;
                 prop->getAttr("Value", value);
-                toNode->setAttr(prop->getTag(), value.toLatin1().data());
+                toNode->setAttr(prop->getTag(), value.toUtf8().data());
                 return true;
             }
         }
@@ -196,7 +196,7 @@ void CXmlTemplateRegistry::LoadTemplates(const QString& path)
     {
         XmlNodeRef child;
         // Construct the full filepath of the current file
-        XmlNodeRef node = XmlHelpers::LoadXmlFromFile((dir + files[k].filename).toLatin1().data());
+        XmlNodeRef node = XmlHelpers::LoadXmlFromFile((dir + files[k].filename).toUtf8().data());
         if (node != 0 && node->isTag("Templates"))
         {
             QString name;

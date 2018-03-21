@@ -12,39 +12,7 @@
 
 #include <MacLumberyardApplication.h>
 
-#include <AzFramework/API/ApplicationAPI_darwin.h>
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 @implementation MacLumberyardApplicationDelegate
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)applicationWillBecomeActive: (NSNotification*)notification
-{
-    EBUS_EVENT(AzFramework::DarwinLifecycleEvents::Bus, OnWillBecomeActive);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)applicationDidBecomeActive: (NSNotification*)notification
-{
-    EBUS_EVENT(AzFramework::DarwinLifecycleEvents::Bus, OnDidBecomeActive);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)applicationWillResignActive: (NSNotification*)notification
-{
-    EBUS_EVENT(AzFramework::DarwinLifecycleEvents::Bus, OnWillResignActive);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)applicationDidResignActive: (NSNotification*)notification
-{
-    EBUS_EVENT(AzFramework::DarwinLifecycleEvents::Bus, OnDidResignActive);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)applicationWillTerminate: (NSNotification*)notification
-{
-    EBUS_EVENT(AzFramework::DarwinLifecycleEvents::Bus, OnWillTerminate);
-}
 
 @end // MacLumberyardApplicationDelegate Implementation

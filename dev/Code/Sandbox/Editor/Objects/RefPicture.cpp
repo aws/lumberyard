@@ -34,7 +34,7 @@ _smart_ptr<IMaterial> GetRefPictureMaterial()
     {
         QString filename = Path::MakeGamePath(REFERENCE_PICTURE_MATERAIL_TEMPLATE);
 
-        XmlNodeRef mtlNode = GetISystem()->LoadXmlFromFile(filename.toLatin1().data());
+        XmlNodeRef mtlNode = GetISystem()->LoadXmlFromFile(filename.toUtf8().data());
         if (mtlNode)
         {
             // Create a template material without registering DB.
@@ -308,7 +308,7 @@ void CRefPicture::UpdateImage(const QString& picturePath)
     SInputShaderResources   isr(si.m_pShaderResources);
 
     // The following will create the diffuse slot if did not exist
-    isr.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = picturePath.toLatin1().data();
+    isr.m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = picturePath.toUtf8().data();
 
     SShaderItem siDst(GetIEditor()->GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask()));
     m_pMaterial->AssignShaderItem(siDst);

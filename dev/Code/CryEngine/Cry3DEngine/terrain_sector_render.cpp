@@ -21,10 +21,8 @@
 #include "ObjMan.h"
 #include "terrain_water.h"
 #include "CryThread.h"
-#include <IJobManager_JobDelegator.h>
 
-DECLARE_JOB("Terrain_BuildIndices", TBuildIndicesJob, CTerrainNode::BuildIndices_Wrapper);
-DECLARE_JOB("Terrain_BuildVertices", TBuildVerticesJob, CTerrainNode::BuildVertices_Wrapper);
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 template<typename Type>
 class InPlaceArray
@@ -113,8 +111,7 @@ public:
 class BuildMeshData
 {
 public:
-    JobManager::SJobState m_JobStateBuildIndices;
-    JobManager::SJobState m_JobStateBuildVertices;
+    AZ::LegacyJobExecutor m_jobExecutor;
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
@@ -216,19 +213,13 @@ bool CTerrainUpdateDispatcher::AddJob(CTerrainNode* pNode, bool executeAsJob, co
         executeAsJob &= !gEnv->IsEditor();
         executeAsJob &= !passInfo.IsShadowPass();
 
-        if (executeAsJob)
+        if(executeAsJob)
         {
             ScopedSwitchToGlobalHeap useGlobalHeap;
 
-            TBuildIndicesJob jobIndice(passInfo);
-            jobIndice.SetClassInstance(pNode);
-            jobIndice.RegisterJobState(&meshData->m_JobStateBuildIndices);
-            jobIndice.Run();
-
-            TBuildVerticesJob jobVertices;
-            jobVertices.SetClassInstance(pNode);
-            jobVertices.RegisterJobState(&meshData->m_JobStateBuildVertices);
-            jobVertices.Run();
+            meshData->m_jobExecutor.Reset();
+            meshData->m_jobExecutor.StartJob([pNode, passInfo]() { pNode->BuildIndices_Wrapper(passInfo); });
+            meshData->m_jobExecutor.StartJob([pNode]() { pNode->BuildVertices_Wrapper(); });
         }
         else
         {
@@ -282,7 +273,8 @@ void CTerrainUpdateDispatcher::SyncAllJobs(bool bForceAll, const SRenderingPassI
             BuildMeshData* pTempStorage = pNode->m_MeshData;
             assert(pTempStorage);
             PREFAST_ASSUME(pTempStorage);
-            if (!pTempStorage->m_JobStateBuildIndices.IsRunning() && !pTempStorage->m_JobStateBuildVertices.IsRunning())
+
+            if (!pTempStorage->m_jobExecutor.IsRunning())
             {
                 // Finish the render mesh update
                 pNode->RenderSectorUpdate_Finish(passInfo);
@@ -867,8 +859,7 @@ void CTerrainNode::RenderSectorUpdate_Finish(const SRenderingPassInfo& passInfo)
     if (passInfo.IsGeneralPass())
     {
         FRAME_PROFILER("Sync_UpdateTerrain", GetSystem(), PROFILE_3DENGINE);
-        gEnv->GetJobManager()->WaitForJob(m_MeshData->m_JobStateBuildIndices);
-        gEnv->GetJobManager()->WaitForJob(m_MeshData->m_JobStateBuildVertices);
+        m_MeshData->m_jobExecutor.WaitForCompletion();
     }
 
     m_CurrentLOD = m_QueuedLOD;
@@ -951,7 +942,7 @@ void CTerrainNode::RenderSectorUpdate_Finish(const SRenderingPassInfo& passInfo)
     DrawArray(passInfo);
 }
 
-void CTerrainNode::BuildIndices_Wrapper(SRenderingPassInfo passInfo)
+void CTerrainNode::BuildIndices_Wrapper(const SRenderingPassInfo& passInfo)
 {
     AZ_TRACE_METHOD();
     BuildMeshData* meshData = m_MeshData;

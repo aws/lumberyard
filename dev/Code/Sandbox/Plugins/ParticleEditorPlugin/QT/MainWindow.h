@@ -83,7 +83,7 @@ private:
     bool ShortcutEvent(QShortcutEvent* e);
     ////////////////////////////////////////////////////////
 
-    bool OnWindowCloseCheck();
+    bool OnCloseWindowCheck();
     void CleanupOnClose();
     void OnAddNewLayout(QString path, bool loading);
     void OnRefreshViewMenu();
@@ -210,6 +210,7 @@ private: // Internal particle editor members
     bool m_RequestedClose;
     bool m_isFirstSceneSinceLaunch;
     bool m_needLibraryRefresh;
+    bool m_requireLayoutReload;
 
     EditorUIPlugin::EditorLibraryUndoManager *m_undoManager;
 

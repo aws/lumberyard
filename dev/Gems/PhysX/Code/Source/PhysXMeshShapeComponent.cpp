@@ -10,9 +10,11 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 
 #include <PhysXMeshShapeComponent.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 namespace PhysX
 {
@@ -33,7 +35,7 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                     ->DataElement(0, &PhysXMeshShapeComponent::m_meshColliderAsset, "PxMesh", "PhysX Mesh Collider asset")
-                    ;
+                ;
             }
         }
     }
@@ -42,7 +44,7 @@ namespace PhysX
     {
         m_currentTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(m_currentTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-        
+
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         PhysXMeshShapeComponentRequestBus::Handler::BusConnect(GetEntityId());
         LmbrCentral::ShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
@@ -61,7 +63,7 @@ namespace PhysX
         LmbrCentral::ShapeComponentNotificationsBus::Event(GetEntityId(), &LmbrCentral::ShapeComponentNotificationsBus::Events::OnShapeChanged, LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons::TransformChanged);
     }
 
-    // Default implementation for the shape bus 
+    // Default implementation for the shape bus
     AZ::Aabb PhysXMeshShapeComponent::GetEncompassingAabb()
     {
         AZ_Error("PhysX", false, "GetEncompassingAabb: Shape interface not implemented in PhysXMeshShapeComponent.");
@@ -79,4 +81,4 @@ namespace PhysX
         AZ_Error("PhysX", false, "DistanceSquaredFromPoint: Shape interface not implemented in PhysXMeshShapeComponent.");
         return (m_currentTransform.GetPosition().GetDistanceSq(point));
     }
-} // namespace LmbrCentral
+} // namespace PhysX

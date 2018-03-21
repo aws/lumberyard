@@ -19,7 +19,7 @@
 #include <AzCore/std/typetraits/is_base_of.h> // use by ConstIteratorCast
 
 #ifdef AZSTD_CHECKED_ITERATORS_IN_MULTI_THREADS
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) // ACCEPTED_USE
+#   if defined(AZ_PLATFORM_WINDOWS)
 // we use internal global lock
 #       include <xutility>
 #       define AZ_GLOBAL_SCOPED_LOCK(_MUTEX)    std::_Lockit    l(_LOCK_DEBUG)
@@ -862,7 +862,7 @@ namespace AZStd
                 }
             }
 
-#if defined(AZSTD_CHECKED_ITERATORS_IN_MULTI_THREADS) && !defined(AZ_PLATFORM_WINDOWS) && !defined(AZ_PLATFORM_X360) // ACCEPTED_USE
+#if defined(AZSTD_CHECKED_ITERATORS_IN_MULTI_THREADS) && !defined(AZ_PLATFORM_WINDOWS)
             static AZStd::mutex& get_global_section()
             {
                 static mutex section;

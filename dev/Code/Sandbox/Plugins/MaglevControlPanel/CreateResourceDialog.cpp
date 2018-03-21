@@ -66,7 +66,7 @@ void CreateResourceDialog::OnSourceStatusUpdated()
 
         if (reply == QMessageBox::Yes)
         {
-            QObject::connect(&*m_sourceStatus, &IFileSourceControlModel::SourceControlStatusChanged, this, &CreateResourceDialog::OnSourceStatusChanged);
+            QObject::connect(&*m_sourceStatus, &IFileSourceControlModel::SourceControlStatusUpdated, this, &CreateResourceDialog::OnSourceStatusChanged);
             AWSResourceManager::RequestEditSourceModel(m_sourceStatus, m_templateModel);
             return;
         }

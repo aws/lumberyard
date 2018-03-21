@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #include "SequenceComponent.h"
 
 #include <AzCore/Serialization/SerializeContext.h>

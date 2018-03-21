@@ -128,34 +128,34 @@ def upload_project_content_post(hook_module, project_uploader):
 
 import os
 
-def log_resource_group_hook_call(base_name, hook, deployment_name, resource_group_name, resource_group_uploader):
+def log_resource_group_hook_call(base_name, hook, deployment_name, resource_group_name, resource_group_uploader, **kwargs):
     file_path = os.path.join(os.path.dirname(__file__), base_name + '_{HOOK_NAME}_' + resource_group_name + '.txt')
     print '>>>>>>>>>>> ' + base_name + '_{HOOK_NAME}_' + resource_group_name, file_path
     with open(file_path, 'a') as f:
         f.write(hook.context.config.root_directory_path + ',' + resource_group_uploader.key + ',' + resource_group_name + ',' + deployment_name + '\\n')
 
-def before_this_resource_group_updated(hook, deployment_name, resource_group_name, resource_group_uploader):
+def before_this_resource_group_updated(hook, deployment_name, resource_group_name, resource_group_uploader, **kwargs):
     log_resource_group_hook_call('before_this_resource_group_updated', hook, deployment_name, resource_group_name, resource_group_uploader)
 
-def after_this_resource_group_updated(hook,  deployment_name, resource_group_name, resource_group_uploader):
+def after_this_resource_group_updated(hook,  deployment_name, resource_group_name, resource_group_uploader, **kwargs):
     log_resource_group_hook_call('after_this_resource_group_updated', hook, deployment_name, resource_group_name, resource_group_uploader)
     
-def before_resource_group_updated(hook, deployment_name, resource_group_name, resource_group_uploader):
+def before_resource_group_updated(hook, deployment_name, resource_group_name, resource_group_uploader, **kwargs):
     log_resource_group_hook_call('before_resource_group_updated', hook, deployment_name, resource_group_name, resource_group_uploader)
 
-def after_resource_group_updated(hook,  deployment_name, resource_group_name, resource_group_uploader):
+def after_resource_group_updated(hook,  deployment_name, resource_group_name, resource_group_uploader, **kwargs):
     log_resource_group_hook_call('after_resource_group_updated', hook, deployment_name, resource_group_name, resource_group_uploader)
 
-def log_project_hook_call(base_name, hook, project_uploader):
+def log_project_hook_call(base_name, hook, project_uploader, **kwargs):
     file_path = os.path.join(os.path.dirname(__file__), base_name + '_{HOOK_NAME}.txt')
     print '>>>>>>>>>>> ' + base_name + '_{HOOK_NAME}', file_path
     with open(file_path, 'a') as f:
         f.write(hook.context.config.root_directory_path + ',' + project_uploader.key + '\\n')
     
-def before_project_updated(hook, project_uploader):
+def before_project_updated(hook, project_uploader, **kwargs):
     log_project_hook_call('before_project_updated', hook, project_uploader)
     
-def after_project_updated(hook, project_uploader):
+def after_project_updated(hook, project_uploader, **kwargs):
     log_project_hook_call('after_project_updated', hook, project_uploader)
 
 '''

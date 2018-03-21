@@ -14,8 +14,8 @@ import unittest
 import mock
 from resource_manager_common import constant
 
-import ResourceGroupConfigurationResourceHandler
-import custom_resource_response
+from resource_types import Custom_ResourceGroupConfiguration
+from cgf_utils import custom_resource_response
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_ResourceGroupConfiguration(unittest.TestCase):
 
@@ -39,12 +39,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_ResourceGroupConfigurati
         expected_data = {
             'ConfigurationBucket': 'TestBucket',
             'ConfigurationKey': 'TestKey/resource-group/TestResourceGroup',
-            'TemplateURL': 'https://s3.amazonaws.com/TestBucket/TestKey/resource-group/TestResourceGroup/'+constant.GEM_RESOURCE_GROUP_TEMPLATE_FILENAME
+            'TemplateURL': 'https://s3.amazonaws.com/TestBucket/TestKey/resource-group/TestResourceGroup/'+constant.RESOURCE_GROUP_TEMPLATE_FILENAME
         }
 
         expected_physical_id = 'CloudCanvas:LambdaConfiguration:TestStack:TestResourceGroup'
                 
-        with mock.patch.object(custom_resource_response, 'succeed') as mock_custom_resource_response_succeed:
-            ResourceGroupConfigurationResourceHandler.handler(self.event, self.context)
-            mock_custom_resource_response_succeed.assert_called_with(self.event, self.context, expected_data, expected_physical_id)
+        with mock.patch.object(custom_resource_response, 'success_response') as mock_custom_resource_response_succeed:
+            Custom_ResourceGroupConfiguration.handler(self.event, self.context)
+            mock_custom_resource_response_succeed.assert_called_with(expected_data, expected_physical_id)
 

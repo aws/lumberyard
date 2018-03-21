@@ -1,6 +1,4 @@
 <RCC>
   <qresource prefix="/">
-    <file>res/p4.ico</file>
-    <file>res/p4_error.ico</file>
   </qresource>
 </RCC>

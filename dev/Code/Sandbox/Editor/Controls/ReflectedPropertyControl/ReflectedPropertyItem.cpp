@@ -24,7 +24,7 @@ static ColorF StringToColor(const QString &value)
 {
     ColorF color;
     float r, g, b, a;
-    int res = sscanf(value.toLatin1().data(), "%f,%f,%f,%f", &r, &g, &b, &a);
+    int res = sscanf(value.toUtf8().data(), "%f,%f,%f,%f", &r, &g, &b, &a);
     if (res == 4)
     {
         color.Set(r, g, b, a);
@@ -36,7 +36,7 @@ static ColorF StringToColor(const QString &value)
     else
     {
         unsigned abgr;
-        sscanf(value.toLatin1().data(), "%u", &abgr);
+        sscanf(value.toUtf8().data(), "%u", &abgr);
         color = ColorF(abgr);
     }
     return color;
@@ -106,8 +106,8 @@ private:
 
     void UpdateCommon(IVariable *nameVariable, IVariableContainer *childContainer)
     {
-        m_containerVar->m_varName = nameVariable->GetHumanName().toLatin1().data();
-        m_containerVar->m_description = nameVariable->GetDescription().toLatin1().data();
+        m_containerVar->m_varName = nameVariable->GetHumanName().toUtf8().data();
+        m_containerVar->m_description = nameVariable->GetDescription().toUtf8().data();
         if (m_extraVariableAdapter)
         {
             m_containerVar->AddProperty(m_extraVariableAdapter->GetReflectedVar());
@@ -134,7 +134,7 @@ private:
     void updateContainerText(IVariable *pVariable, bool updateAttributes)
     {
         //set text of the container to the value of the main variable.  If it's empty, use space, otherwise ReflectedPropertyEditor doesn't update it!
-        m_containerVar->SetValueText(pVariable->GetDisplayValue().isEmpty() ? AZStd::string(" ") : AZStd::string(pVariable->GetDisplayValue().toLatin1().data()));
+        m_containerVar->SetValueText(pVariable->GetDisplayValue().isEmpty() ? AZStd::string(" ") : AZStd::string(pVariable->GetDisplayValue().toUtf8().data()));
         if (updateAttributes)
             m_propertyCtrl->InvalidateCtrl();
     }
@@ -458,7 +458,7 @@ void ReflectedPropertyItem::OnReflectedVarChanged()
         if (!CUndo::IsRecording())
         {
             if (!m_propertyCtrl->CallUndoFunc(this))
-                undo.reset(new CUndo((m_pVariable->GetHumanName() + " Modified").toLatin1().data()));
+                undo.reset(new CUndo((m_pVariable->GetHumanName() + " Modified").toUtf8().data()));
         }
 
         m_reflectedVarAdapter->SyncIVarToReflectedVar(m_pVariable);
@@ -545,10 +545,6 @@ void ReflectedPropertyItem::ReloadValues()
 {
     m_modified = false;
 
-#ifdef KDAB_PROPERTYCTRL_PORT_TODO
-    if (m_node)
-        ParseXmlNode(false);
-#endif
     if (m_pVariable)
         SetVariable(m_pVariable);
 
@@ -652,7 +648,7 @@ void ReflectedPropertyItem::SetValue(const QString& sValue, bool bRecordUndo, bo
     {
         if (!m_propertyCtrl->CallUndoFunc(this))
         {
-            undo.reset(new CUndo((GetName() + " Modified").toLatin1().data()));
+            undo.reset(new CUndo((GetName() + " Modified").toUtf8().data()));
         }
     }
 

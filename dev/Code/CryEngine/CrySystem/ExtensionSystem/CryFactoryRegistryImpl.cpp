@@ -164,7 +164,7 @@ bool CCryFactoryRegistryImpl::GetInsertionPos(ICryFactory* pFactory, FactoriesBy
                 pKnownFactory, pKnownFactory ? CryGUIDHelper::Print(pKnownFactory->GetClassID()).c_str() : "$unknown$", pKnownFactory ? pKnownFactory->GetName() : "$unknown$",
                 pNewFactory, pNewFactory ? CryGUIDHelper::Print(pNewFactory->GetClassID()).c_str() : "$unknown$", pNewFactory ? pNewFactory->GetName() : "$unknown$");
 
-#if defined(ORBIS) || defined(APPLE) || defined(LINUX)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_FACTORY_REGISTRY_USE_PRINTF_FOR_FATAL
             printf("\n!!! Fatal error !!!\n");
             printf(err);
             printf("\n");

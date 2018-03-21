@@ -156,7 +156,7 @@ namespace UnitTest
 
     inline void* DebugAlignAlloc(size_t byteSize, size_t alignment)
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_SUPPORT_WINDOWS_ALIGNED_MALLOC
         return _aligned_offset_malloc(byteSize, alignment, 0);
 #else
         return memalign(alignment, byteSize);
@@ -165,7 +165,7 @@ namespace UnitTest
 
     inline void DebugAlignFree(void* ptr)
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_SUPPORT_WINDOWS_ALIGNED_MALLOC
         _aligned_free(ptr);
 #else
         free(ptr);

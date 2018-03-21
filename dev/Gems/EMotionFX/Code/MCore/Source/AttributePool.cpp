@@ -34,7 +34,7 @@ namespace MCore
     // destructor
     AttributePool::SubPool::~SubPool()
     {
-        MCore::Free(mAttributeData);
+        MCore::AlignedFree(mAttributeData);
         mAttributeData = nullptr;
     }
 
@@ -64,7 +64,7 @@ namespace MCore
         }
 
         mAttribute = GetAttributeFactory().GetRegisteredAttribute(attribIndex);
-        mAttributeSize = mAttribute->GetClassSize();
+        mAttributeSize = AZ_SIZE_ALIGN(mAttribute->GetClassSize(), 16);
     }
 
 
@@ -73,7 +73,7 @@ namespace MCore
     {
         if (mPoolType == POOLTYPE_STATIC)
         {
-            MCore::Free(mAttributeData);
+            MCore::AlignedFree(mAttributeData);
             mAttributeData = nullptr;
             mFreeList.Clear();
         }
@@ -164,7 +164,7 @@ namespace MCore
         // if we have a static pool
         if (poolType == POOLTYPE_STATIC)
         {
-            pool->mAttributeData    = (uint8*)MCore::Allocate(numAttribs * pool->mAttributeSize, MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
+            pool->mAttributeData    = (uint8*)MCore::AlignedAllocate(numAttribs * pool->mAttributeSize, pool->mAttribute->GetMemoryAlignment(), MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
 
             // call the constructors on each of the attributes
             // also init the free list
@@ -181,7 +181,7 @@ namespace MCore
             pool->mSubPools.Reserve(32);
 
             SubPool* subPool = new SubPool();
-            subPool->mAttributeData = (uint8*)MCore::Allocate(numAttribs * pool->mAttributeSize, MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
+            subPool->mAttributeData = (uint8*)MCore::AlignedAllocate(numAttribs * pool->mAttributeSize, pool->mAttribute->GetMemoryAlignment(), MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
             subPool->mNumAttributes = numAttribs;
             subPool->mAttributeSize = pool->mAttributeSize;
 
@@ -237,7 +237,7 @@ namespace MCore
             pool->mNumAttributes += numAttribs;
 
             SubPool* subPool = new SubPool();
-            subPool->mAttributeData = (uint8*)MCore::Allocate(numAttribs * pool->mAttributeSize, MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
+            subPool->mAttributeData = (uint8*)MCore::AlignedAllocate(numAttribs * pool->mAttributeSize, pool->mAttribute->GetMemoryAlignment(), MCORE_MEMCATEGORY_ATTRIBUTEPOOL);  // alloc space
             subPool->mNumAttributes = numAttribs;
             subPool->mAttributeSize = pool->mAttributeSize;
 

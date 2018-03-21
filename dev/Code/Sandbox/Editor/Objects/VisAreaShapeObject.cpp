@@ -146,7 +146,7 @@ void CVisAreaShapeObject::UpdateGameArea(bool bRemove)
             info.bIgnoreGI = mv_bIgnoreGI;
             info.fPortalBlending = -1;
 
-            GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), GetName().toLatin1().data(), info, true);
+            GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), GetName().toUtf8().data(), info, true);
         }
     }
     m_bAreaModified = false;
@@ -228,7 +228,7 @@ void CPortalShapeObject::UpdateGameArea(bool bRemove)
                 info.fPortalBlending = mv_fPortalBlendValue;
             }
 
-            GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.toLatin1().data(), info, true);
+            GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.toUtf8().data(), info, true);
         }
     }
     m_bAreaModified = false;
@@ -302,7 +302,7 @@ void COccluderPlaneObject::UpdateGameArea(bool bRemove)
                 info.bOceanIsVisible = false;
                 info.fPortalBlending = -1;
 
-                GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.toLatin1().data(), info, false);
+                GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.toUtf8().data(), info, false);
             }
         }
     }
@@ -387,7 +387,7 @@ void COccluderAreaObject::UpdateGameArea(bool bRemove)
                 info.bOceanIsVisible = false;
                 info.fPortalBlending = -1;
 
-                GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.toLatin1().data(), info, false);
+                GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.toUtf8().data(), info, false);
             }
         }
     }

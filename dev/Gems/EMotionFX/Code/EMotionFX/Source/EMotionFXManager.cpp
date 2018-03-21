@@ -428,7 +428,6 @@ namespace EMotionFX
         // TODO: Remove the following code as soon as the Systems team has fixed the folder path capitalisation of AZ::IO::FileIOBase::GetInstance()->GetAlias().
         //       To work around it we'll lower case the media root folder and lower case the same amount of characters for the filename to be actually able to remove the media root from the absolute file path.
         const size_t baseFolderPathSize = baseFolderPath.size();
-        AZStd::string::iterator iterator = baseFolderPath.begin();
         AZStd::to_lower(baseFolderPath.begin(), baseFolderPath.begin() + baseFolderPathSize);
         AZStd::to_lower(filename.begin(), filename.begin() + baseFolderPathSize);
 

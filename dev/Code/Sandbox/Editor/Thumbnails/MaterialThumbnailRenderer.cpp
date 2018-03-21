@@ -32,19 +32,19 @@ MaterialThumbnailRenderer::MaterialThumbnailRenderer()
     AZ::AssetTypeInfoBus::BroadcastResult(result, &AZ::AssetTypeInfo::GetAssetType);
     m_assetType = result.GetAssetType();
 
-    AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::Handler::BusConnect(m_assetType);
+    AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestBus::Handler::BusConnect(m_assetType);
     AZ::SystemTickBus::Handler::BusConnect();
 }
 
 MaterialThumbnailRenderer::~MaterialThumbnailRenderer()
 {
-    AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::Handler::BusDisconnect();
+    AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestBus::Handler::BusDisconnect();
     AZ::SystemTickBus::Handler::BusDisconnect();
 }
 
 void MaterialThumbnailRenderer::OnSystemTick()
 {
-    AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestsBus::ExecuteQueuedEvents();
+    AzToolsFramework::Thumbnailer::ThumbnailerRendererRequestBus::ExecuteQueuedEvents();
 }
 
 void MaterialThumbnailRenderer::RenderThumbnail(AZ::Data::AssetId assetId, int thumbnailSize)
@@ -62,12 +62,12 @@ void MaterialThumbnailRenderer::RenderThumbnail(AZ::Data::AssetId assetId, int t
 
     if (Render(thumbnail, assetId, thumbnailSize))
     {
-        AzToolsFramework::Thumbnailer::ThumbnailerRendererNotificationsBus::Event(assetId,
+        AzToolsFramework::Thumbnailer::ThumbnailerRendererNotificationBus::Event(assetId,
             &AzToolsFramework::Thumbnailer::ThumbnailerRendererNotifications::ThumbnailRendered, thumbnail);
     }
     else
     {
-        AzToolsFramework::Thumbnailer::ThumbnailerRendererNotificationsBus::Event(assetId,
+        AzToolsFramework::Thumbnailer::ThumbnailerRendererNotificationBus::Event(assetId,
             &AzToolsFramework::Thumbnailer::ThumbnailerRendererNotifications::ThumbnailFailedToRender);
     }
 }

@@ -284,6 +284,8 @@ uint32_t DecodeOperand (const uint32_t* pui32Tokens, Operand* psOperand)
     psOperand->psSubOperand[1] = 0;
     psOperand->psSubOperand[2] = 0;
 
+    psOperand->eMinPrecision = OPERAND_MIN_PRECISION_DEFAULT;
+
     /* Check if this instruction is extended.  If it is,
      * we need to print the information first */
     if (psOperand->iExtended)
@@ -1495,7 +1497,7 @@ const uint32_t* DecodeShaderPhase(const uint32_t* pui32Tokens,
     return pui32CurrentToken;
 }
 
-const void AllocateHullPhaseArrays(const uint32_t* pui32Tokens,
+void AllocateHullPhaseArrays(const uint32_t* pui32Tokens,
     ShaderData* psShader,
     uint32_t ui32Phase,
     OPCODE_TYPE ePhaseOpcode)

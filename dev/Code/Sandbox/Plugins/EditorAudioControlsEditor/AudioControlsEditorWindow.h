@@ -68,10 +68,10 @@ namespace AudioControls
         void UpdateAudioSystemData();
         void StartWatchingFolder(const string& folder);
 
-        CATLControlsModel* m_pATLModel;
-        CATLControlsPanel* m_pATLControlsPanel;
-        CInspectorPanel* m_pInspectorPanel;
-        CAudioSystemPanel* m_pAudioSystemPanel;
+        CATLControlsModel* m_pATLModel = nullptr;
+        CATLControlsPanel* m_pATLControlsPanel = nullptr;
+        CInspectorPanel* m_pInspectorPanel = nullptr;
+        CAudioSystemPanel* m_pAudioSystemPanel = nullptr;
         QFileSystemWatcher m_fileSystemWatcher;
     };
 } // namespace AudioControls

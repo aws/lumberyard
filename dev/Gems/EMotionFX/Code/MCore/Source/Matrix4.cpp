@@ -20,9 +20,6 @@ namespace MCore
     // set the matrix to identity
     void Matrix::Identity()
     {
-    #ifdef MCORE_PLATFORM_WII
-        PSMTX44Identity(m44);
-    #else
         TMAT(0, 0) = 1.0f;
         TMAT(0, 1) = 0.0f;
         TMAT(0, 2) = 0.0f;
@@ -39,7 +36,6 @@ namespace MCore
         TMAT(3, 1) = 0.0f;
         TMAT(3, 2) = 0.0f;
         TMAT(3, 3) = 1.0f;
-    #endif
     }
 
 
@@ -91,22 +87,19 @@ namespace MCore
     {
         Matrix r;
 
-#ifdef MCORE_PLATFORM_WII
-        PSMTX44Concat(m44, right.m44, r.m44);
-#else
     #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = r.m16;
 
-        register __m128 x0;
-        register __m128 x1;
-        register __m128 x2;
-        register __m128 x3;
-        register __m128 x4;
-        register __m128 x5;
-        register __m128 x6;
-        register __m128 x7;
+        __m128 x0;
+        __m128 x1;
+        __m128 x2;
+        __m128 x3;
+        __m128 x4;
+        __m128 x5;
+        __m128 x6;
+        __m128 x7;
         x0 = _mm_loadu_ps(&m[0]);
         x1 = _mm_loadu_ps(&m[4]);
         x2 = _mm_loadu_ps(&m[8]);
@@ -170,7 +163,6 @@ namespace MCore
             MMAT(r, i, 3) = TMAT(i, 0) * MMAT(right, 0, 3) + TMAT(i, 1) * MMAT(right, 1, 3) + TMAT(i, 2) * MMAT(right, 2, 3) + TMAT(i, 3) * MMAT(right, 3, 3);
         }
     #endif
-#endif
 
         return r;
     }
@@ -220,22 +212,19 @@ namespace MCore
 
     Matrix& Matrix::operator *= (const Matrix& right)
     {
-#ifdef MCORE_PLATFORM_WII
-        PSMTX44Concat(m44, right.m44, m44);
-#else
     #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
 
-        register __m128 x0;
-        register __m128 x1;
-        register __m128 x2;
-        register __m128 x3;
-        register __m128 x4;
-        register __m128 x5;
-        register __m128 x6;
-        register __m128 x7;
+        __m128 x0;
+        __m128 x1;
+        __m128 x2;
+        __m128 x3;
+        __m128 x4;
+        __m128 x5;
+        __m128 x6;
+        __m128 x7;
         x0 = _mm_loadu_ps(&m[0]);
         x1 = _mm_loadu_ps(&m[4]);
         x2 = _mm_loadu_ps(&m[8]);
@@ -304,7 +293,6 @@ namespace MCore
             TMAT(i, 3) = v[0] * MMAT(right, 0, 3) + v[1] * MMAT(right, 1, 3) + v[2] * MMAT(right, 2, 3) + v[3] * MMAT(right, 3, 3);
         }
     #endif
-#endif
 
         return *this;
     }
@@ -686,22 +674,19 @@ namespace MCore
 
     void Matrix::MultMatrix(const Matrix& right)
     {
-#ifdef MCORE_PLATFORM_WII
-        PSMTX44Concat(m44, right.m44, m44);
-#else
     #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
 
-        register __m128 x0;
-        register __m128 x1;
-        register __m128 x2;
-        register __m128 x3;
-        register __m128 x4;
-        register __m128 x5;
-        register __m128 x6;
-        register __m128 x7;
+        __m128 x0;
+        __m128 x1;
+        __m128 x2;
+        __m128 x3;
+        __m128 x4;
+        __m128 x5;
+        __m128 x6;
+        __m128 x7;
         x0 = _mm_loadu_ps(&m[0]);
         x1 = _mm_loadu_ps(&m[4]);
         x2 = _mm_loadu_ps(&m[8]);
@@ -770,7 +755,6 @@ namespace MCore
             TMAT(i, 3) = v[0] * MMAT(right, 0, 3) + v[1] * MMAT(right, 1, 3) + v[2] * MMAT(right, 2, 3) + v[3] * MMAT(right, 3, 3);
         }
     #endif
-#endif
     }
 
 
@@ -1249,22 +1233,19 @@ namespace MCore
 
     void Matrix::MultMatrix4x3(const Matrix& right)
     {
-#if   defined(MCORE_PLATFORM_WII)
-        PSMTX44Concat(m44, right.m44, m44);
-#else
     #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
 
-        register __m128 x0;
-        register __m128 x1;
-        register __m128 x2;
-        register __m128 x3;
-        register __m128 x4;
-        register __m128 x5;
-        register __m128 x6;
-        register __m128 x7;
+        __m128 x0;
+        __m128 x1;
+        __m128 x2;
+        __m128 x3;
+        __m128 x4;
+        __m128 x5;
+        __m128 x6;
+        __m128 x7;
         x0 = _mm_loadu_ps(&m[0]);
         x1 = _mm_loadu_ps(&m[4]);
         x2 = _mm_loadu_ps(&m[8]);
@@ -1336,29 +1317,25 @@ namespace MCore
         TMAT(3, 1) += MMAT(right, 3, 1);
         TMAT(3, 2) += MMAT(right, 3, 2);
     #endif
-#endif
     }
 
 
     // *this = left * right
     void Matrix::MultMatrix(const Matrix& left, const Matrix& right)
     {
-#if   defined(MCORE_PLATFORM_WII)
-        PSMTX44Concat(left.m44, right.m44, m44);
-#else
     #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = left.m16;
         float* t = this->m16;
 
-        register __m128 x0;
-        register __m128 x1;
-        register __m128 x2;
-        register __m128 x3;
-        register __m128 x4;
-        register __m128 x5;
-        register __m128 x6;
-        register __m128 x7;
+        __m128 x0;
+        __m128 x1;
+        __m128 x2;
+        __m128 x3;
+        __m128 x4;
+        __m128 x5;
+        __m128 x6;
+        __m128 x7;
         x0 = _mm_loadu_ps(&m[0]);
         x1 = _mm_loadu_ps(&m[4]);
         x2 = _mm_loadu_ps(&m[8]);
@@ -1427,28 +1404,25 @@ namespace MCore
             TMAT(i, 3) = v[0] * MMAT(right, 0, 3) + v[1] * MMAT(right, 1, 3) + v[2] * MMAT(right, 2, 3) + v[3] * MMAT(right, 3, 3);
         }
     #endif
-#endif
     }
 
 
 
     void Matrix::MultMatrix4x3(const Matrix& left, const Matrix& right)
     {
-    #if   defined(MCORE_PLATFORM_WII)
-        PSMTX44Concat(left.m44, right.m44, m44);
-    #elif (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = left.m16;
         float* t = this->m16;
 
-        register __m128 x0;
-        register __m128 x1;
-        register __m128 x2;
-        register __m128 x3;
-        register __m128 x4;
-        register __m128 x5;
-        register __m128 x6;
-        register __m128 x7;
+        __m128 x0;
+        __m128 x1;
+        __m128 x2;
+        __m128 x3;
+        __m128 x4;
+        __m128 x5;
+        __m128 x6;
+        __m128 x7;
         x0 = _mm_loadu_ps(&m[0]);
         x1 = _mm_loadu_ps(&m[4]);
         x2 = _mm_loadu_ps(&m[8]);

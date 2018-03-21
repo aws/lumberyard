@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <StaticData_precompiled.h>
 #include <Nodes/FlowNode_GetStaticData.h>
 #include "IGemManager.h"
 #include <StaticData/StaticDataBus.h>

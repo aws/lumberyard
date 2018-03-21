@@ -48,7 +48,7 @@ namespace AZ
 #endif // ONLY64
 
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_PSUEDO_RANDOM_USE_SIMD
         /**
          * This function represents the recursion formula.
          * @param a a 128-bit part of the internal state array

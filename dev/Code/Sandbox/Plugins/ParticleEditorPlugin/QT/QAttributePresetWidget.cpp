@@ -5,7 +5,7 @@
 #include <qmenu.h>
 #include <qsettings.h>
 
-#include <Qt/QAttributePresetWidget.moc>
+#include <QT/QAttributePresetWidget.moc>
 
 
 QAttributePresetWidget::QAttributePresetWidget(QWidget* parent)

@@ -93,7 +93,7 @@ namespace BehaviorTree
         typedef AZStd::unordered_map<BehaviorTreeName, BehaviorTreeTemplatePtr, stl::hash_string_caseless<string>, stl::equality_string_caseless<string> > BehaviorTreeCache;
         BehaviorTreeCache m_behaviorTreeCache;
 
-        std::unique_ptr<NodeFactory> m_nodeFactory;
+        AZStd::unique_ptr<NodeFactory> m_nodeFactory;
 
         typedef VectorMap<AZ::EntityId, BehaviorTreeInstancePtr> Instances;
         Instances m_instances;
@@ -104,7 +104,7 @@ namespace BehaviorTree
 #endif // DEBUG_MODULAR_BEHAVIOR_TREE
 
 #ifdef USING_BEHAVIOR_TREE_EXECUTION_STACKS_FILE_LOG
-        typedef boost::shared_ptr<ExecutionStackFileLogger> ExecutionStackFileLoggerPtr;
+        typedef AZStd::shared_ptr<ExecutionStackFileLogger> ExecutionStackFileLoggerPtr;
         typedef VectorMap<AZ::EntityId, ExecutionStackFileLoggerPtr> ExecutionStackFileLoggerInstances;
         ExecutionStackFileLoggerInstances m_executionStackFileLoggerInstances;
 #endif

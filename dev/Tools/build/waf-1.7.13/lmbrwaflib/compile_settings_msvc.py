@@ -61,8 +61,8 @@ def load_msvc_common_settings(conf):
     v['PCH_USE_ST']     = '/Yu%s'
     
     v['ARCH_ST']        = ['/arch:']
-    
-    # Linker
+
+   # Linker
     v['CCLNK_SRC_F'] = v['CXXLNK_SRC_F'] = []
     v['CCLNK_TGT_F'] = v['CXXLNK_TGT_F'] = '/OUT:'
     
@@ -103,14 +103,15 @@ def load_msvc_common_settings(conf):
         '/Gy',          # Enable Function-Level Linking
         '/GF',          # Enable string pooling
         '/Gm-',         # Disable minimal rebuild (causes issues with IB)
-        '/fp:fast',     # Use fast (but not as precisce floatin point model)    
-        '/Zc:wchar_t',  # Use compiler native wchar_t               
+        '/fp:fast',     # Use fast (but not as precisce floatin point model)
+        '/Zc:wchar_t',  # Use compiler native wchar_t
         '/Zc:forScope', # Force Conformance in for Loop Scope
-        '/GR-',         # Disable RTTI      
+        '/GR-',         # Disable RTTI
         '/Gd',          # Use _cdecl calling convention for all functions
 #        '/FC'      #debug
-        '/wd4530',		# Known issue, Disabling "C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc" until it is fixed
-        '/wd4351'		# Default initialization of array warning.  This is a mostly minor issue, but MSVC made it L1.
+        '/wd4573',      # Known issue, disabling "C2220: the usage of 'X' requires the compiler to capture 'this' but the current default capture mode does not allow it"
+        '/wd4530',      # Known issue, Disabling "C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc" until it is fixed
+        '/wd4351',      # Default initialization of array warning.  This is a mostly minor issue, but MSVC made it L1.
         ]
         
     # Enable timing reports in the output

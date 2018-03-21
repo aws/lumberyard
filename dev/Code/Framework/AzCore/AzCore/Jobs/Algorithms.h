@@ -23,7 +23,7 @@
 #endif
 
 // A reasonable define for a stack allocator size for the high level jobs.
-#define AZ_JOBS_DEFAULT_STACK_ALLOCATOR_SIZE 2048
+#define AZ_JOBS_DEFAULT_STACK_ALLOCATOR_SIZE AZStd::GetMax<unsigned>(2048,512 * AZStd::thread::hardware_concurrency())
 
 // Enable this process iterations in slit ranges, this should improve cache access
 // otherwise if not enabled all threads will work over the same area (which seems

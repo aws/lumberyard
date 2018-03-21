@@ -208,8 +208,8 @@ namespace LmbrCentral
         void SetAttenuationFalloffMax(float attenFalloffMax);
         float GetAttenuationFalloffMax();
 
-        void SetIgnoreVisAreas(bool ignoreVisAreas) override;
-        bool GetIgnoreVisAreas() override;
+        void SetUseVisAreas(bool useVisAreas) override;
+        bool GetUseVisAreas() override;
 
         void SetAffectsThisAreaOnly(bool affectsThisAreaOnly) override;
         bool GetAffectsThisAreaOnly() override;

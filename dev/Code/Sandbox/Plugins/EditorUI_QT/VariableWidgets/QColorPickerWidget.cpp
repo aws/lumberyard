@@ -16,13 +16,13 @@
 #ifdef EDITOR_QT_UI_EXPORTS
 #include <VariableWidgets/QColorPickerWidget.moc>
 #endif
-#include "qcoreevent.h"
-#include "qlineedit.h"
-#include "qevent.h"
-#include "qpainter.h"
-#include "qpixmap.h"
-#include "qbitmap.h"
-#include "qicon.h"
+#include <qcoreevent.h>
+#include <QLineEdit>
+#include <QEvent>
+#include <QPainter>
+#include <QPixmap>
+#include <QBitmap>
+#include <QIcon>
 #include "../ContextMenu.h"
 #include "IEditorParticleUtils.h"
 #include "QAmazonLineEdit.h"

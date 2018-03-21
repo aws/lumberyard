@@ -29,7 +29,6 @@ def build(bld):
                                 'QT5GUI',
                                 'QT5WIDGETS'],
         msvc_cxxflags       = ['/W4'],
-        clang_cxxflags      = ['-Wall', '-Werror'],
     )
     
     bld.recurse(SUBFOLDERS)

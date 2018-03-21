@@ -1301,21 +1301,18 @@ bool CAnimationDatabaseLibrary::XMLToFragment(CFragment& fragment, XmlNodeRef ro
             sequence.resize(numClips);
 
             uint32 clipNumber = 0;
-            if (animationNumber > 0)
+            for (uint32 e = 0; e < numEntries; ++e)
             {
-                for (uint32 e = 0; e < numEntries; ++e)
+                XmlNodeRef xmlChild = xmlLayer->getChild(e);
+                SAnimClip& animClip = sequence[clipNumber];
+                if (strcmp(xmlChild->getTag(), "Blend") == 0)
                 {
-                    XmlNodeRef xmlChild = xmlLayer->getChild(e);
-                    SAnimClip& animClip = sequence[clipNumber];
-                    if (strcmp(xmlChild->getTag(), "Blend") == 0)
-                    {
-                        XMLToBlend(animClip.blend, xmlChild);
-                    }
-                    else if (strcmp(xmlChild->getTag(), "Animation") == 0)
-                    {
-                        XMLToAnimEntry(animClip.animation, xmlChild);
-                        ++clipNumber;
-                    }
+                    XMLToBlend(animClip.blend, xmlChild);
+                }
+                else if (strcmp(xmlChild->getTag(), "Animation") == 0)
+                {
+                    XMLToAnimEntry(animClip.animation, xmlChild);
+                    ++clipNumber;
                 }
             }
 
@@ -1342,23 +1339,21 @@ bool CAnimationDatabaseLibrary::XMLToFragment(CFragment& fragment, XmlNodeRef ro
             sequence.resize(numClips);
 
             uint32 clipNumber = 0;
-            if (proceduralNumber > 0)
+            for (uint32 e = 0; e < numEntries; ++e)
             {
-                for (uint32 e = 0; e < numEntries; ++e)
+                XmlNodeRef xmlChild = xmlLayer->getChild(e);
+                SProceduralEntry& proceduralEntry = sequence[clipNumber];
+                if (strcmp(xmlChild->getTag(), "Procedural") == 0)
                 {
-                    XmlNodeRef xmlChild = xmlLayer->getChild(e);
-                    SProceduralEntry& proceduralEntry = sequence[clipNumber];
-                    if (strcmp(xmlChild->getTag(), "Procedural") == 0)
-                    {
-                        XmlToProcedural(xmlChild, proceduralEntry);
-                        clipNumber++;
-                    }
-                    else if (strcmp(xmlChild->getTag(), "Blend") == 0)
-                    {
-                        XMLToBlend(proceduralEntry.blend, xmlChild);
-                    }
+                    XmlToProcedural(xmlChild, proceduralEntry);
+                    clipNumber++;
+                }
+                else if (strcmp(xmlChild->getTag(), "Blend") == 0)
+                {
+                    XMLToBlend(proceduralEntry.blend, xmlChild);
                 }
             }
+
             ++procLayer;
         }
     }

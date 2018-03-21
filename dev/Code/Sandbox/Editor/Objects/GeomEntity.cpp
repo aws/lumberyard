@@ -67,7 +67,7 @@ void CGeomEntity::OnGeometryFileChange(IVariable* pVar)
         {
             m_pEntity->Hide(false);    // Unhide to clear hidden state
         }
-        QByteArray filename = static_cast<QString>(mv_geometry).toLatin1();
+        QByteArray filename = static_cast<QString>(mv_geometry).toUtf8();
         const char* ext = PathUtil::GetExt(filename);
         if (_stricmp(ext, CRY_SKEL_FILE_EXT) == 0 || _stricmp(ext, CRY_CHARACTER_DEFINITION_FILE_EXT) == 0 || _stricmp(ext, CRY_ANIM_GEOMETRY_FILE_EXT) == 0)
         {
@@ -176,7 +176,7 @@ void CGeomEntity::BeginEditParams(IEditor* ie, int flags)
             }
             if (ms_treePanelId == 0)
             {
-                ms_treePanelId = AddUIPage(tr("Geometry").toLatin1().data(), ms_pTreePanel);
+                ms_treePanelId = AddUIPage(tr("Geometry").toUtf8().data(), ms_pTreePanel);
             }
         }
 
@@ -225,7 +225,7 @@ XmlNodeRef CGeomEntity::Export(const QString& levelPath, XmlNodeRef& xmlNode)
     XmlNodeRef node = CEntityObject::Export(levelPath, xmlNode);
     if (node)
     {
-        node->setAttr("Geometry", static_cast<QString>(mv_geometry).toLatin1().data());
+        node->setAttr("Geometry", static_cast<QString>(mv_geometry).toUtf8().data());
     }
     return node;
 }

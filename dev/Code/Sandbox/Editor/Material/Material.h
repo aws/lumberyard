@@ -181,6 +181,8 @@ public:
     void SetSubMaterialCount(int nSubMtlsCount);
     //! Get sub material child by index.
     CMaterial* GetSubMaterial(int index) const;
+    //! Find sub material index by name
+    int FindMaterialIndex(const QString& name);
     // Set a material to the sub materials slot.
     // Use NULL material pointer to clear slot.
     void SetSubMaterial(int nSlot, CMaterial* mtl);
@@ -234,6 +236,9 @@ public:
     bool LayerActivationAllowed() const { return m_allowLayerActivation; }
     void SetLayerActivation(bool allowed) { m_allowLayerActivation = allowed; }
 
+    uint32 GetDccMaterialHash() const { return m_dccMaterialHash; }
+    void SetDccMaterialHash(AZ::u32 hash) { m_dccMaterialHash = hash; }
+
 private:
     void UpdateMatInfo();
     void CheckSpecialConditions();
@@ -255,6 +260,10 @@ private:
 
     //! Material flags.
     int m_mtlFlags;
+
+    // Hash for DCC material attributes, used to check if .dccmtl has changed
+    // If so, the source .mtl file will need to be rebuilt
+    uint32 m_dccMaterialHash;
 
     // Parent material, Only valid for Pure Childs.
     CMaterial* m_pParent;

@@ -17,9 +17,67 @@
 #include <AzFramework/Input/Buses/Notifications/InputTextNotificationBus.h>
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    class InputDeviceNotificationBusBehaviorHandler
+        : public InputDeviceNotificationBus::Handler
+        , public AZ::BehaviorEBusHandler
+    {
+    public:
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        AZ_EBUS_BEHAVIOR_BINDER(InputDeviceNotificationBusBehaviorHandler
+            , "{95C1315E-C568-458B-B29F-8FC610B25EF7}"
+            , AZ::SystemAllocator
+            , OnInputDeviceConnectedEvent
+            , OnInputDeviceDisonnectedEvent
+        );
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        void OnInputDeviceConnectedEvent(const InputDevice& inputDevice) override
+        {
+            Call(FN_OnInputDeviceConnectedEvent, inputDevice);
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        void OnInputDeviceDisonnectedEvent(const InputDevice& inputDevice)
+        {
+            Call(FN_OnInputDeviceDisonnectedEvent, inputDevice);
+        }
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDevice::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<InputDevice>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Property("deviceName", [](InputDevice* thisPtr) { return thisPtr->GetInputDeviceId().GetName(); }, nullptr)
+                ->Property("deviceIndex", [](InputDevice* thisPtr) { return thisPtr->GetInputDeviceId().GetIndex(); }, nullptr)
+                ->Method("IsSupported", &InputDevice::IsSupported)
+                ->Method("IsConnected", &InputDevice::IsConnected)
+            ;
+
+            behaviorContext->EBus<InputDeviceNotificationBus>("InputDeviceNotificationBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Handler<InputDeviceNotificationBusBehaviorHandler>()
+            ;
+
+            behaviorContext->EBus<InputDeviceRequestBus>("InputDeviceRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Event("GetInputDevice", &InputDeviceRequestBus::Events::GetInputDevice)
+            ;
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDevice::InputDevice(const InputDeviceId& inputDeviceId)
         : m_inputDeviceId(inputDeviceId)

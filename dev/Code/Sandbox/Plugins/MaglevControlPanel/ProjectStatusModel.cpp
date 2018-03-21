@@ -68,7 +68,9 @@ bool ProjectStatusModel::UpdateStack()
         QVariantMap args;
         args["confirm_aws_usage"] = true;
         args["confirm_resource_deletion"] = true;
-        args["confirm_security_change"] = true;
+        args["confirm_security_change"] = true;        
+        args["cognito_prod"] = ResourceManager()->GetIdentityId().c_str();
+        
         ResourceManager()->ExecuteAsync(GetStackEventsModelInternal()->GetRequestId(), "update-project-stack", args);
         return true;
     }

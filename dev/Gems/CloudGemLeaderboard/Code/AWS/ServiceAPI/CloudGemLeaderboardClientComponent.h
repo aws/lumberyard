@@ -34,7 +34,7 @@
 
 #include <CloudGemFramework/ServiceRequestJob.h>
 
-#include "StdAfx.h"
+#include "CloudGemLeaderboard_precompiled.h"
 
 namespace CloudGemLeaderboard {
 namespace ServiceAPI {

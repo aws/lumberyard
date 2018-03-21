@@ -434,7 +434,7 @@ namespace Driller
 
                             if (depEvt->m_stream->m_isCompressed)
                             {
-                                if (depEvt->m_type == TRANSFER_EVENT_COMPRESSOR_READ || depEvt->m_type == TRANSFER_EVENT_COMPRESSOR_WRITE)
+                                if (static_cast<TransferEventType>(depEvt->m_type) == TRANSFER_EVENT_COMPRESSOR_READ || static_cast<TransferEventType>(depEvt->m_type) == TRANSFER_EVENT_COMPRESSOR_WRITE)
                                 {
                                     m_frameInfo.back().m_transferInfo.back().m_byteCount = depEvt->m_bytesTransferred;
                                     m_frameInfo.back().m_computedThroughput += depEvt->m_bytesTransferred;

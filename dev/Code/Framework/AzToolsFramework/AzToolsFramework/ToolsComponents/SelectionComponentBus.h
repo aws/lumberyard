@@ -14,7 +14,7 @@
 
 #include <AzCore/base.h>
 #include <AzCore/EBus/EBus.h>
-#include <AzCore/Math/aabb.h>
+#include <AzCore/Math/Aabb.h>
 #pragma once
 
 namespace AzToolsFramework

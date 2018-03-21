@@ -11,7 +11,7 @@
 # $Revision: #1 $
 
 import os
-import constant
+from resource_manager_common import constant
 
 from errors import HandledError
 from util import Args

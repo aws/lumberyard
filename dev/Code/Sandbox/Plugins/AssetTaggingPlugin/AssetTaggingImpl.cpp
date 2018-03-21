@@ -57,7 +57,7 @@ int CAssetTaggingImpl::CreateTag(const char* tag, const char* category)
         return 0;
     }
 
-    return AssetTagging_CreateTag(tag, category, GetProjectName().toLatin1().data());
+    return AssetTagging_CreateTag(tag, category, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::CreateAsset(const char* path, const char* project)
@@ -87,7 +87,7 @@ void CAssetTaggingImpl::AddAssetsToTag(const char* tag, const char* category, co
         return;
     }
 
-    AssetTagging_AddAssetsToTag(tag, category, GetProjectName().toLatin1().data(), assets, nAssets);
+    AssetTagging_AddAssetsToTag(tag, category, GetProjectName().toUtf8().data(), assets, nAssets);
 }
 
 void CAssetTaggingImpl::RemoveAssetsFromTag(const char* tag, const char* category, const char* project, char** assets, int nAssets)
@@ -97,7 +97,7 @@ void CAssetTaggingImpl::RemoveAssetsFromTag(const char* tag, const char* categor
         return;
     }
 
-    AssetTagging_RemoveAssetsFromTag(tag, category, GetProjectName().toLatin1().data(), assets, nAssets);
+    AssetTagging_RemoveAssetsFromTag(tag, category, GetProjectName().toUtf8().data(), assets, nAssets);
 }
 
 void CAssetTaggingImpl::RemoveTagFromAsset(const char* tag, const char* category, const char* project, const char* asset)
@@ -116,7 +116,7 @@ int CAssetTaggingImpl::GetNumTagsForAsset(const char* asset)
     {
         return 0;
     }
-    return AssetTagging_GetNumTagsForAsset(asset, GetProjectName().toLatin1().data());
+    return AssetTagging_GetNumTagsForAsset(asset, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetTagsForAsset(char** tags, int nTags, const char* asset)
@@ -126,7 +126,7 @@ int CAssetTaggingImpl::GetTagsForAsset(char** tags, int nTags, const char* asset
         return 0;
     }
 
-    return AssetTagging_GetTagsForAsset(tags, nTags, asset, GetProjectName().toLatin1().data());
+    return AssetTagging_GetTagsForAsset(tags, nTags, asset, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetTagForAssetInCategory(char* tag, const char* asset, const char* category)
@@ -136,7 +136,7 @@ int CAssetTaggingImpl::GetTagForAssetInCategory(char* tag, const char* asset, co
         return 0;
     }
 
-    return AssetTagging_GetTagForAssetInCategory(tag, asset, category, GetProjectName().toLatin1().data());
+    return AssetTagging_GetTagForAssetInCategory(tag, asset, category, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetNumAssetsForTag(const char* tag)
@@ -146,7 +146,7 @@ int CAssetTaggingImpl::GetNumAssetsForTag(const char* tag)
         return 0;
     }
 
-    return AssetTagging_GetNumAssetsForTag(tag, GetProjectName().toLatin1().data());
+    return AssetTagging_GetNumAssetsForTag(tag, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetAssetsForTag(char** assets, int nAssets, const char* tag)
@@ -156,7 +156,7 @@ int CAssetTaggingImpl::GetAssetsForTag(char** assets, int nAssets, const char* t
         return 0;
     }
 
-    return AssetTagging_GetAssetsForTag(assets, nAssets, tag, GetProjectName().toLatin1().data());
+    return AssetTagging_GetAssetsForTag(assets, nAssets, tag, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetNumAssetsWithDescription(const char* description)
@@ -185,7 +185,7 @@ int CAssetTaggingImpl::GetNumTags()
     {
         return 0;
     }
-    return AssetTagging_GetNumTags(GetProjectName().toLatin1().data());
+    return AssetTagging_GetNumTags(GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetAllTags(char** tags, int nTags)
@@ -194,7 +194,7 @@ int CAssetTaggingImpl::GetAllTags(char** tags, int nTags)
     {
         return 0;
     }
-    return AssetTagging_GetAllTags(tags, nTags, GetProjectName().toLatin1().data());
+    return AssetTagging_GetAllTags(tags, nTags, GetProjectName().toUtf8().data());
 }
 
 void CAssetTaggingImpl::DestroyTag(const char* tag)
@@ -204,7 +204,7 @@ void CAssetTaggingImpl::DestroyTag(const char* tag)
         return;
     }
 
-    AssetTagging_DestroyTag(tag, GetProjectName().toLatin1().data());
+    AssetTagging_DestroyTag(tag, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetNumCategories()
@@ -213,7 +213,7 @@ int CAssetTaggingImpl::GetNumCategories()
     {
         return 0;
     }
-    return AssetTagging_GetNumCategories(GetProjectName().toLatin1().data());
+    return AssetTagging_GetNumCategories(GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetAllCategories(char** categories, int nCategories)
@@ -222,7 +222,7 @@ int CAssetTaggingImpl::GetAllCategories(char** categories, int nCategories)
     {
         return 0;
     }
-    return AssetTagging_GetAllCategories(GetProjectName().toLatin1().data(), categories, nCategories);
+    return AssetTagging_GetAllCategories(GetProjectName().toUtf8().data(), categories, nCategories);
 }
 
 int CAssetTaggingImpl::GetNumTagsForCategory(const char* category)
@@ -231,7 +231,7 @@ int CAssetTaggingImpl::GetNumTagsForCategory(const char* category)
     {
         return 0;
     }
-    return AssetTagging_GetNumTagsForCategory(category, GetProjectName().toLatin1().data());
+    return AssetTagging_GetNumTagsForCategory(category, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::GetTagsForCategory(const char* category, char** tags, int nTags)
@@ -240,7 +240,7 @@ int CAssetTaggingImpl::GetTagsForCategory(const char* category, char** tags, int
     {
         return 0;
     }
-    return AssetTagging_GetTagsForCategory(category, GetProjectName().toLatin1().data(), tags, nTags);
+    return AssetTagging_GetTagsForCategory(category, GetProjectName().toUtf8().data(), tags, nTags);
 }
 
 int CAssetTaggingImpl::TagExists(const char* tag, const char* category)
@@ -250,7 +250,7 @@ int CAssetTaggingImpl::TagExists(const char* tag, const char* category)
         return 0;
     }
 
-    return AssetTagging_TagExists(tag, category, GetProjectName().toLatin1().data());
+    return AssetTagging_TagExists(tag, category, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::AssetExists(const char* relpath)
@@ -260,7 +260,7 @@ int CAssetTaggingImpl::AssetExists(const char* relpath)
         return 0;
     }
 
-    return AssetTagging_AssetExists(relpath, GetProjectName().toLatin1().data());
+    return AssetTagging_AssetExists(relpath, GetProjectName().toUtf8().data());
 }
 
 int CAssetTaggingImpl::ProjectExists(const char* project)
@@ -309,7 +309,7 @@ bool CAssetTaggingImpl::GetAssetDescription(const char* relpath, char* descripti
         return 0;
     }
 
-    return AssetTagging_GetAssetDescription(relpath, GetProjectName().toLatin1().data(), description, nChars);
+    return AssetTagging_GetAssetDescription(relpath, GetProjectName().toUtf8().data(), description, nChars);
 }
 
 void CAssetTaggingImpl::SetAssetDescription(const char* relpath, const char* project, const char* description)

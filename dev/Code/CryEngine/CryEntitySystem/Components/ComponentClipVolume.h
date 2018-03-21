@@ -70,6 +70,6 @@ private:
     string m_GeometryFileName;
 };
 
-DECLARE_BOOST_POINTERS(CComponentClipVolume)
+DECLARE_SMART_POINTERS(CComponentClipVolume)
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_COMPONENTS_COMPONENTCLIPVOLUME_H

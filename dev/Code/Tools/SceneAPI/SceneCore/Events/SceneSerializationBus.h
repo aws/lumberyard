@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <AzCore/EBus/ebus.h>
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>

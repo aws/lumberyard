@@ -40,7 +40,7 @@ namespace AzToolsFramework
         //! A thumbnail type for processed assets
         class ProductThumbnail
             : public Thumbnail
-            , public ThumbnailerRendererNotificationsBus::Handler
+            , public ThumbnailerRendererNotificationBus::Handler
         {
             Q_OBJECT
         public:

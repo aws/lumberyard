@@ -21,7 +21,7 @@
 #include <QAction>
 #include <QMenu>
 #include <QToolBar>
-#include <QICon>
+#include <QIcon>
 #include <QWidgetAction>
 
 #include <QSet>
@@ -112,6 +112,7 @@ public:
         ActionWrapper& SetMenu(DynamicMenu* menu);
         ActionWrapper& SetMetricsIdentifier(const QString& metricsIdentifier);
         ActionWrapper& SetMetricsIdentifier(const QString& group, const QString& metricsIdentifier);
+        ActionWrapper& SetApplyHoverEffect();
 
         operator QAction*() const {
             return m_action;

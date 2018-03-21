@@ -26,19 +26,24 @@ namespace AzFramework
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Allocator
-        AZ_CLASS_ALLOCATOR(InputChannelAxis3D, AZ::SystemAllocator, 0);
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Custom data struct for three dimensional axis data
         struct AxisData3D : public InputChannel::CustomData
         {
-            AZ_RTTI(AxisData3D, "{ABD4447B-34C6-4D17-B4E8-5B62209C14EA}");
+            AZ_CLASS_ALLOCATOR(AxisData3D, AZ::SystemAllocator, 0);
+            AZ_RTTI(AxisData3D, "{ABD4447B-34C6-4D17-B4E8-5B62209C14EA}", CustomData);
             ~AxisData3D() override = default;
 
             AZ::Vector3 m_values = AZ::Vector3::CreateZero();
             AZ::Vector3 m_deltas = AZ::Vector3::CreateZero();
         };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Allocator
+        AZ_CLASS_ALLOCATOR(InputChannelAxis3D, AZ::SystemAllocator, 0);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelAxis3D, "{40CE7BF6-12C3-4B88-AEB7-B3D63E686650}", InputChannel);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor

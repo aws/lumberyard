@@ -23,7 +23,7 @@
 //Local
 #include <PreviewWindowView.h>
 #include <Controls/QToolTipWidget.h>
-#include "VariableWidgets/QAmazonDoubleSpinbox.h"
+#include "VariableWidgets/QAmazonDoubleSpinBox.h"
 #include "VariableWidgets/QCustomColorDialog.h"
 #include "UIFactory.h"
 #include "Utils.h"
@@ -32,13 +32,13 @@
 
 //QT
 #include "Particles/ParticleItem.h"
-#include "qsettings.h"
-#include "qpushbutton.h"
-#include "qframe.h"
-#include "QPainter"
-#include "QDateTime"
-#include "QWidgetAction"
-#include "QShortcutEvent"
+#include <QSettings>
+#include <QPushButton>
+#include <QFrame>
+#include <QPainter>
+#include <QDateTime>
+#include <QWidgetAction>
+#include <QShortcutEvent>
 #include <QMessageBox>
 
 CPreviewWindowView::CPreviewWindowView(QWidget* parent)
@@ -53,13 +53,14 @@ CPreviewWindowView::CPreviewWindowView(QWidget* parent)
     /////////////////////////////////////////////////////////////////////////////////////////////
     customEmitterMenu = new ContextMenu(this);
     loadEmitterMenu = new ContextMenu(this);
-    m_PreviewMenu = new QMenu(this);
+    m_PreviewMenu = new QMenu;
     connect(m_PreviewMenu, SIGNAL(triggered(QAction*)), this, SLOT(OnMenuActionClicked(QAction*)));
 }
 
 CPreviewWindowView::~CPreviewWindowView()
 {
     delete m_tooltip;
+    delete m_PreviewMenu;
     delete m_previewModelView;
 }
 

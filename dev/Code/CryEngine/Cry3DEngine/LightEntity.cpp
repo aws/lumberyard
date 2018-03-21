@@ -183,6 +183,10 @@ void C3DEngine::UpdateSun(const SRenderingPassInfo& passInfo)
             ((m_bSunShadows && passInfo.RenderShadows()) ? DLF_CASTSHADOW_MAPS : 0);
         DynLight.m_sName = "Sun";
 
+        DynLight.m_nLightStyle = gEnv->p3DEngine->GetSunAnimIndex();
+        DynLight.SetAnimSpeed(gEnv->p3DEngine->GetSunAnimSpeed());
+        DynLight.m_nLightPhase = gEnv->p3DEngine->GetSunAnimPhase();
+
         m_pSun->SetLightProperties(DynLight);
 
         m_pSun->SetBBox(AABB(
@@ -191,9 +195,15 @@ void C3DEngine::UpdateSun(const SRenderingPassInfo& passInfo)
 
         m_pSun->SetRndFlags(ERF_OUTDOORONLY, true);
 
+        CDLight* lightProps = &m_pSun->GetLightProperties(); //We want the address of the CDLight stored in the sun, not the address of DynLight
+        GetRenderer()->EF_UpdateDLight(lightProps);
+
+        //Update the sun's animated color with the color calculated in EF_UpdateDLight
+        gEnv->p3DEngine->SetSunAnimColor(Vec3(lightProps->m_Color.r, lightProps->m_Color.g, lightProps->m_Color.b));
+
         RegisterEntity(m_pSun);
 
-        SetupLightScissors(&m_pSun->GetLightProperties(), passInfo);
+        SetupLightScissors(lightProps, passInfo);
     }
     else if (m_pSun)
     {

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Plane.h>

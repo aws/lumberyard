@@ -1,0 +1,54 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "Service Status Interface Definition",
+        "description": "API for retrieving service status."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+
+        "/service/status": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_status"
+            },
+            "get": {
+                "operationId": "get_service_status",
+                "description": "Returns the service's status. Useful for testing connectivity.",
+                "responses": {
+                    "200": {
+                        "description": "A successful service status response.",
+                        "schema": {
+                            "$ref": "#/definitions/ServiceStatus"
+                        }
+                    }
+                }
+            }
+        }
+
+    },
+
+    "definitions": {
+
+        "ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        }
+
+    }
+}

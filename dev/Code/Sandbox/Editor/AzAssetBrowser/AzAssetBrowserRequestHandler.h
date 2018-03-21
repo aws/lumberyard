@@ -25,7 +25,7 @@ namespace AzQtComponents
 }
 
 class AzAssetBrowserRequestHandler
-    : protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    : protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     , protected AzQtComponents::DragAndDropEventsBus::Handler
 {
 public:
@@ -33,7 +33,7 @@ public:
     ~AzAssetBrowserRequestHandler() override;
 
     //////////////////////////////////////////////////////////////////////////
-    // AssetBrowserInteractionNotificationsBus
+    // AssetBrowserInteractionNotificationBus
     //////////////////////////////////////////////////////////////////////////
     void AddContextMenuActions(QWidget* caller, QMenu* menu, const AZStd::vector<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>& entries) override;
     void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;

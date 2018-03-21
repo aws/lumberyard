@@ -86,7 +86,7 @@ export class LyMetricService {
             || eventName == "ApiServiceRequested") { 
             if (!attribute.Identifier)
                 return false;
-            let identifier = attribute.Identifier.toLowerCase()
+            let identifier = attribute.Identifier.trim().replace(' ', '').toLowerCase()
             for (let index in environment.metricWhiteListedCloudGem) {
                 let normalizedName = environment.metricWhiteListedCloudGem[index].trim().replace(' ', '').toLowerCase()
                 if (identifier.indexOf(normalizedName) >= 0) {

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Visibility_precompiled.h"
 #include "EditorVisAreaComponent.h"
 
 #include <AzCore/Math/Crc.h>
@@ -58,44 +58,32 @@ namespace Visibility
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_Height, "Height", "How tall the VisArea is")
+                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_Height, "Height", "How tall the VisArea is.")
                     ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeHeight)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_DisplayFilled, "DisplayFilled", "Display the VisArea as a filled volume")
+                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_DisplayFilled, "DisplayFilled", "Display the VisArea as a filled volume.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeDisplayFilled)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_AffectedBySun, "AffectedBySun", "Allows sunlight to affect objects inside the VisArea")
+                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_AffectedBySun, "AffectedBySun", "Allows sunlight to affect objects inside the VisArea.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeAffectedBySun)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_IgnoreSkyColor, "IgnoreSkyColor", "Objects inside the VisArea will not take the Sky color into account when rendering")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeIgnoreSkyColor)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_IgnoreGI, "IgnoreGI", "Objects inside the VisArea will not be affected by Global Illumination")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeIgnoreGI)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_ViewDistRatio, "ViewDistRatio", "Specifies how far the VisArea is rendered")
+                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_ViewDistRatio, "ViewDistRatio", "Specifies how far the VisArea is rendered.")
                     ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeViewDistRatio)
 
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_SkyOnly, "SkyOnly", "Only the Sky Box will render when looking outside the VisArea")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeSkyOnly)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_OceanIsVisible, "OceanIsVisible", "Ocean will be visible when looking outside the VisArea")
+                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_OceanIsVisible, "OceanIsVisible", "Ocean will be visible when looking outside the VisArea.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeOceanIsVisible)
 
                     //Note: This will not work as expected. See Activate where we set the callbacks on the vertex container directly
                     ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_vertexContainer, "Vertices", "Points that make up the floor of the VisArea")
+                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_vertexContainer, "Vertices", "Points that make up the floor of the VisArea.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeVertexContainer)
                     ;
             }
@@ -113,7 +101,7 @@ namespace Visibility
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorVisAreaComponent>("VisArea", "")
+                editContext->Class<EditorVisAreaComponent>("VisArea", "An area where only objects inside the area will be visible.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/VisArea.png")
@@ -149,22 +137,7 @@ namespace Visibility
         m_component->UpdateVisArea();
     }
 
-    void EditorVisAreaConfiguration::ChangeIgnoreSkyColor()
-    {
-        m_component->UpdateVisArea();
-    }
-
-    void EditorVisAreaConfiguration::ChangeIgnoreGI()
-    {
-        m_component->UpdateVisArea();
-    }
-
     void EditorVisAreaConfiguration::ChangeViewDistRatio()
-    {
-        m_component->UpdateVisArea();
-    }
-
-    void EditorVisAreaConfiguration::ChangeSkyOnly()
     {
         m_component->UpdateVisArea();
     }
@@ -315,17 +288,17 @@ namespace Visibility
 
                 SVisAreaInfo info;
                 info.fHeight = GetHeight();
-                info.vAmbientColor = Vec3(ZERO);
                 info.bAffectedByOutLights = m_config.m_AffectedBySun;
-                info.bIgnoreSkyColor = m_config.m_IgnoreSkyColor;
-                info.bSkyOnly = m_config.m_SkyOnly;
                 info.fViewDistRatio = m_config.m_ViewDistRatio;
+                info.bOceanIsVisible = m_config.m_OceanIsVisible;
+
+                //Unconfigurable; these values are used by other area types
+                //We set them just so that debugging later it's clear that these
+                //aren't being used because this is a VisArea.
+                info.fPortalBlending = -1;
                 info.bDoubleSide = true;
                 info.bUseDeepness = false;
                 info.bUseInIndoors = false;
-                info.bOceanIsVisible = m_config.m_OceanIsVisible;
-                info.bIgnoreGI = m_config.m_IgnoreGI;
-                info.fPortalBlending = -1;
 
                 const AZStd::string name = AZStd::string("visarea_") + GetEntity()->GetName();
 
@@ -580,10 +553,7 @@ namespace Visibility
             conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, float>("Height", varBlock, &VisAreaComponentRequestBus::Events::SetHeight, newEntityId);
             conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("DisplayFilled", varBlock, &VisAreaComponentRequestBus::Events::SetDisplayFilled, newEntityId);
             conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("AffectedBySun", varBlock, &VisAreaComponentRequestBus::Events::SetAffectedBySun, newEntityId);
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("IgnoreSkyColor", varBlock, &VisAreaComponentRequestBus::Events::SetIgnoreSkyColor, newEntityId);
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("IgnoreGI", varBlock, &VisAreaComponentRequestBus::Events::SetIgnoreGI, newEntityId);
             conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, float>("ViewDistRatio", varBlock, &VisAreaComponentRequestBus::Events::SetViewDistRatio, newEntityId);
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("SkyOnly", varBlock, &VisAreaComponentRequestBus::Events::SetSkyOnly, newEntityId);
             conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("OceanIsVisible", varBlock, &VisAreaComponentRequestBus::Events::SetOceanIsVisible, newEntityId);
         }
 

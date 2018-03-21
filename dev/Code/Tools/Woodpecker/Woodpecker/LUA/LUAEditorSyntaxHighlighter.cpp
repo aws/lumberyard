@@ -48,6 +48,7 @@ namespace LUAEditor
         class BaseParserState
         {
         public:
+            virtual ~BaseParserState() {}
             virtual bool IsMultilineState(LUASyntaxHighlighter::StateMachine& machine) const { (void*)&machine; return false; }
             virtual void StartState(LUASyntaxHighlighter::StateMachine& machine) { (void*)&machine; }
             //note you only get 13 bits of usable space here. see QTBlockState m_syntaxHighlighterStateExtra

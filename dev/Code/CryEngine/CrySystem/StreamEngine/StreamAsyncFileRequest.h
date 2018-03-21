@@ -19,6 +19,7 @@
 #pragma once
 
 #include <IStreamEngineDefs.h>
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 #include "TimeValue.h"
 
 #define STREAMENGINE_LL_ALIGN _MS_ALIGN(MEMORY_ALLOCATION_ALIGNMENT)
@@ -276,9 +277,9 @@ public:
     IReadStreamPtr m_pReadStream;
 
 #if defined(STREAMENGINE_SUPPORT_DECRYPT)
-    JobManager::SJobState   m_DecryptJob;
+    AZ::LegacyJobExecutor m_decryptJobExecutor;
 #endif  //STREAMENGINE_SUPPORT_DECRYPT
-    JobManager::SJobState   m_DecompJob;
+    AZ::LegacyJobExecutor m_decompJobExecutor;
 
     // Only POD data should exist beyond this point - will be memsetted to 0 on Reset !
 

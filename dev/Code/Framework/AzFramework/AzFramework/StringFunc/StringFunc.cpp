@@ -150,6 +150,9 @@ errno_t _splitpath_s (const char* path,
 }
 #endif
 
+// Some platforms define NAME_MAX but Windows doesn't and the AZ headers provide no equivalent
+#define MAX_NAME_LEN 255
+
 namespace AzFramework
 {
     namespace StringFunc
@@ -2437,7 +2440,7 @@ namespace AzFramework
                     {
                         elementStart = walk;
                     }
-    #if defined(AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
                     else if (*walk == AZ_FILESYSTEM_DRIVE_SEPARATOR) //is this the drive separator
                     {
@@ -2487,7 +2490,7 @@ namespace AzFramework
                             }
                             *errors += "] has hit the MAX_PATH_COMPONENT_LEN = ";
 
-    #if !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX) // ACCEPTED_USE
+    #if !AZ_TRAIT_OS_ALLOW_UNLIMITED_PATH_COMPONENT_LENGTH
                             char buf[64];
                             _itoa_s(MAX_PATH_COMPONENT_LEN, buf, 10);
                             *errors += buf;
@@ -2511,7 +2514,7 @@ namespace AzFramework
                         *errors += in;
                         *errors += "] is over the AZ_MAX_PATH_LEN = ";
 
-    #if !defined(AZ_PLATFORM_PS4) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_LINUX) // ACCEPTED_USE
+    #if !AZ_TRAIT_OS_ALLOW_UNLIMITED_PATH_COMPONENT_LENGTH
                         char buf[64];
                         _itoa_s(AZ_MAX_PATH_LEN, buf, 10);
                         *errors += buf;
@@ -3121,7 +3124,7 @@ namespace AzFramework
                     return false;
                 }
 
-    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
                 //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
                 if (const char* pFirstDriveSep = strchr(in, AZ_FILESYSTEM_DRIVE_SEPARATOR))
@@ -3833,7 +3836,7 @@ namespace AzFramework
                     return false;
                 }
 
-    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
                 //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
                 size_t pos = inout.find_first_of(AZ_FILESYSTEM_DRIVE_SEPARATOR);
@@ -3862,22 +3865,22 @@ namespace AzFramework
 
             void StripPath(AZStd::string& inout)
             {
-                char b1[256], b2[256];
-                _splitpath_s(inout.c_str(), nullptr, 0, nullptr, 0, b1, 256, b2, 256);
+                char b1[MAX_NAME_LEN], b2[MAX_NAME_LEN];
+                _splitpath_s(inout.c_str(), nullptr, 0, nullptr, 0, b1, MAX_NAME_LEN, b2, MAX_NAME_LEN);
                 inout = AZStd::string::format("%s%s", b1, b2);
             }
 
             void StripFullName(AZStd::string& inout)
             {
-                char b1[256], b2[256];
-                _splitpath_s(inout.c_str(), b1, 256, b2, 256, nullptr, 0, nullptr, 0);
+                char b1[MAX_NAME_LEN], b2[AZ_MAX_PATH_LEN];
+                _splitpath_s(inout.c_str(), b1, MAX_NAME_LEN, b2, AZ_MAX_PATH_LEN, nullptr, 0, nullptr, 0);
                 inout = AZStd::string::format("%s%s", b1, b2);
             }
 
             void StripExtension(AZStd::string& inout)
             {
-                char b1[256], b2[256], b3[256];
-                _splitpath_s(inout.c_str(), b1, 256, b2, 256, b3, 256, nullptr, 0);
+                char b1[MAX_NAME_LEN], b2[AZ_MAX_PATH_LEN], b3[MAX_NAME_LEN];
+                _splitpath_s(inout.c_str(), b1, MAX_NAME_LEN, b2, AZ_MAX_PATH_LEN, b3, MAX_NAME_LEN, nullptr, 0);
                 inout = AZStd::string::format("%s%s%s", b1, b2, b3);
             }
 
@@ -3972,7 +3975,7 @@ namespace AzFramework
                     in = tempIn.c_str();
                 }
 
-    #if defined (AZ_PLATFORM_X360) || defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_XBONE) // ACCEPTED_USE
+    #if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
                 //find the first AZ_FILESYSTEM_DRIVE_SEPARATOR
                 if (const char* pFirstDriveSep = strchr(in, AZ_FILESYSTEM_DRIVE_SEPARATOR))

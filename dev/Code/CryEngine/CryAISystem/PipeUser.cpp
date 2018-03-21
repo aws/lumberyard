@@ -3005,9 +3005,9 @@ void DeleteLookTarget(Vec3* lookTarget)
     delete lookTarget;
 }
 
-boost::shared_ptr<Vec3> CPipeUser::CreateLookTarget()
+AZStd::shared_ptr<Vec3> CPipeUser::CreateLookTarget()
 {
-    boost::shared_ptr<Vec3> lookTarget(new Vec3(ZERO), DeleteLookTarget);
+    AZStd::shared_ptr<Vec3> lookTarget(new Vec3(ZERO), DeleteLookTarget);
     m_lookTargets.push_back(lookTarget);
     return lookTarget;
 }

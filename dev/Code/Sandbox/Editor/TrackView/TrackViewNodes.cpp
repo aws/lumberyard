@@ -145,7 +145,7 @@ protected:
                 }
             }
 
-            if (!bAllValidReparenting)
+            if (!(bAllValidReparenting && !nodes.isEmpty()))
             {
                 event->ignore();
             }
@@ -156,28 +156,28 @@ protected:
 
     void dropEvent(QDropEvent* event)
     {
-        CTrackViewNodesCtrl::CRecord* pRecord = (CTrackViewNodesCtrl::CRecord*) itemAt(event->pos());
-        if (!pRecord)
+        CTrackViewNodesCtrl::CRecord* record = (CTrackViewNodesCtrl::CRecord*) itemAt(event->pos());
+        if (!record)
         {
             return;
         }
-        CTrackViewNode* pTargetNode = pRecord->GetNode();
+        CTrackViewNode* targetNode = record->GetNode();
 
-        if (pTargetNode && pTargetNode->IsGroupNode() /*&& !m_draggedNodes.DoesContain(pTargetNode)*/)
+        if (targetNode && targetNode->IsGroupNode())
         {
-            CTrackViewAnimNode* pDragTarget = static_cast<CTrackViewAnimNode*>(pTargetNode);
-            bool bAllValidReparenting = true;
+            CTrackViewAnimNode* dragTarget = static_cast<CTrackViewAnimNode*>(targetNode);
+            bool allValidReparenting = true;
             QList<CTrackViewAnimNode*> nodes = draggedNodes(event);
-            Q_FOREACH(CTrackViewAnimNode * pDraggedNode, nodes)
+            Q_FOREACH(CTrackViewAnimNode * draggedNode, nodes)
             {
-                if (!pDraggedNode->IsValidReparentingTo(pDragTarget))
+                if (!draggedNode->IsValidReparentingTo(dragTarget))
                 {
-                    bAllValidReparenting = false;
+                    allValidReparenting = false;
                     break;
                 }
             }
 
-            if (bAllValidReparenting)
+            if (allValidReparenting && !nodes.isEmpty())
             {
                 QTreeWidget::dropEvent(event);
                 if (!event->isAccepted())
@@ -185,10 +185,29 @@ protected:
                     return;
                 }
 
-                CUndo undo("Drag and Drop TrackView Nodes");
-                Q_FOREACH(CTrackViewAnimNode * pDraggedNode, nodes)
+                if (nodes.size() > 0)
                 {
-                    pDraggedNode->SetNewParent(pDragTarget);
+                    // All nodes are from the same sequence
+                    CTrackViewSequence* sequence = nodes[0]->GetSequence();
+                    AZ_Assert(nullptr != sequence, "GetSequence() should never be null");
+
+                    if (sequence->GetSequenceType() == SequenceType::Legacy)
+                    {
+                        CUndo undo("Drag and Drop TrackView Nodes");
+                        Q_FOREACH(CTrackViewAnimNode * draggedNode, nodes)
+                        {
+                            draggedNode->SetNewParent(dragTarget);
+                        }
+                    }
+                    else
+                    {
+                        AzToolsFramework::ScopedUndoBatch undoBatch("Drag and Drop TrackView Nodes");
+                        Q_FOREACH(CTrackViewAnimNode * draggedNode, nodes)
+                        {
+                            draggedNode->SetNewParent(dragTarget);
+                            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+                        }
+                    }
                 }
             }
         }
@@ -832,7 +851,7 @@ void CTrackViewNodesCtrl::UpdateAnimNodeRecord(CRecord* pRecord, CTrackViewAnimN
         _smart_ptr<IMaterial> pMaterial = nullptr;
         QString matName;
         int subMtlIndex = GetMatNameAndSubMtlIndexFromName(matName, pAnimNode->GetName());
-        pMaterial = gEnv->p3DEngine->GetMaterialManager()->FindMaterial(matName.toLatin1().data());
+        pMaterial = gEnv->p3DEngine->GetMaterialManager()->FindMaterial(matName.toUtf8().data());
         if (pMaterial)
         {
             bool bMultiMat = pMaterial->GetSubMtlCount() > 0;
@@ -1054,7 +1073,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
             if (!path.isEmpty())
             {
                 pExportManager->SetBakedKeysSequenceExport(false);
-                pExportManager->Export(path.toLatin1().data(), "", "", false, false, false, false, true);
+                pExportManager->Export(path.toUtf8().data(), "", "", false, false, false, false, true);
             }
         }
     }
@@ -1306,7 +1325,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 StringDlg dlg(tr("Material Name"));
                 if (dlg.exec() == QDialog::Accepted && !dlg.GetString().isEmpty())
                 {
-                    if (pGroupNode->GetAnimNodesByName(dlg.GetString().toLatin1().data()).GetCount() == 0)
+                    if (pGroupNode->GetAnimNodesByName(dlg.GetString().toUtf8().data()).GetCount() == 0)
                     {
                         if (isLegacySequence)
                         {
@@ -1471,7 +1490,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
             {
                 const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
                 QString name = dlg.GetString();
-                sequenceManager->RenameNode(animNode, name.toLatin1().data());
+                sequenceManager->RenameNode(animNode, name.toUtf8().data());
                 UpdateNodeRecord(pRecord);
             }
         }
@@ -1565,7 +1584,7 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
             QString newMatName;
             newMatName = tr("%1.[%2]").arg(matName).arg(cmd - eMI_SelectSubmaterialBase + 1);
             CUndo undo("Rename TrackView node");
-            pAnimNode->SetName(newMatName.toLatin1().data());
+            pAnimNode->SetName(newMatName.toUtf8().data());
             pAnimNode->SetSelected(true);
             UpdateNodeRecord(pRecord);
         }
@@ -1903,7 +1922,7 @@ void CTrackViewNodesCtrl::AddGroupNodeAddItems(SContextMenu& contextMenu, CTrack
     CObjectLayerManager* pLayerManager = GetIEditor()->GetObjectManager()->GetLayersManager();
     CObjectLayer* pLayer = pLayerManager->GetCurrentLayer();
     const QString name = pLayer->GetName();
-    if (pDirector->GetAnimNodesByName(name.toLatin1().data()).GetCount() > 0)
+    if (pDirector->GetAnimNodesByName(name.toUtf8().data()).GetCount() > 0)
     {
         contextMenu.main.addAction("Add Current Layer")->setData(eMI_AddCurrentLayer);
     }

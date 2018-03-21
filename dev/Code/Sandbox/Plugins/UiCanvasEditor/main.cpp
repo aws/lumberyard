@@ -43,7 +43,7 @@ static bool IsCanvasEditorEnabled()
 
 class CUiCanvasEditorPlugin
     : public IPlugin
-    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
 {
 public:
     CUiCanvasEditorPlugin(IEditor* editor)
@@ -78,7 +78,7 @@ public:
             opt.sendViewPaneNameBackToAmazonAnalyticsServers = true;
             AzToolsFramework::RegisterViewPane<EditorWindow>(UICANVASEDITOR_NAME_LONG, LyViewPane::CategoryTools, opt);
             CUiAnimViewSequenceManager::Create();
-            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusConnect();
+            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
         }
     }
 
@@ -86,7 +86,7 @@ public:
     {
         if (IsCanvasEditorEnabled())
         {
-            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusDisconnect();
+            AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
             AzToolsFramework::UnregisterViewPane(UICANVASEDITOR_NAME_LONG);
             CUiAnimViewSequenceManager::Destroy();
         }
@@ -102,7 +102,7 @@ public:
     void OnEditorNotify(EEditorNotifyEvent aEventId) override {}
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& /*sourceUUID*/, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override
     {
         using namespace AzToolsFramework;

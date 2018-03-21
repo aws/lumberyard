@@ -209,7 +209,6 @@ protected:
 
     ReflectedPropertyControl* m_wndProps;
     CSequencerTrackPropsDlg* m_wndTrackProps;
-    //CTcbPreviewCtrl m_wndTcbPreview;
 
     CSequencerDopeSheetBase* m_keysCtrl;
 

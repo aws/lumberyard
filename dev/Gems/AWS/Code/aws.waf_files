@@ -1,8 +1,8 @@
 {
     "none": {
         "Root": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/AWS_precompiled.cpp",
+            "Source/AWS_precompiled.h"
         ],
         "Source": [
             "Source/AWSModule.cpp"

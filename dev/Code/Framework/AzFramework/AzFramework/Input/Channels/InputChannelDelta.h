@@ -28,6 +28,10 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputChannelDelta, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannelDelta, "{3AE8E55C-08E2-4258-B42E-3C3B6304B5D2}", InputChannel);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputChannelId Id of the input channel being constructed
         //! \param[in] inputDevice Input device that owns the input channel

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "EditorGeomCacheComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -80,7 +80,7 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::Default, &GeometryCacheCommon::m_standin, "Stand-in", "The entity that should stand in for this GeomCache when the viewer is past the Stand-in Distance.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeometryCacheCommon::OnStandinChanged)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &GeometryCacheCommon::m_standinDistance, "Stand-in Distance", "How close does the viewer need to be before the GeomCache replaces the Stand-in")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &GeometryCacheCommon::m_standinDistance, "Stand-in Distance", "How close does the viewer need to be before the GeomCache replaces the Stand-in.")
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Options")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
@@ -247,7 +247,7 @@ namespace LmbrCentral
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorGeometryCacheComponent>("Geometry Cache", "")
+                editContext->Class<EditorGeometryCacheComponent>("Geometry Cache", "Controls playback of baked vertex animations.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/GeometryCache.png")
@@ -327,8 +327,8 @@ namespace LmbrCentral
 
         dc->SetColor(AZ::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
-        dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_common.m_standinDistance);
-        dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_common.m_streamInDistance);
+        dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_common.GetStandInDistance());
+        dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_common.GetStreamInDistance());
 
         dc->PopMatrix();
     }

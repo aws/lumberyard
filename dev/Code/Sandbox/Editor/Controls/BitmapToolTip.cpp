@@ -150,7 +150,7 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
     QString convertedFileName = Path::GamePathToFullPath(Path::ReplaceExtension(imageFilename, ".dds"));
 
     CCryFile fileCheck;
-    if (!fileCheck.Open(convertedFileName.toLatin1().data(), "rb"))
+    if (!fileCheck.Open(convertedFileName.toUtf8().data(), "rb"))
     {
         // if we didn't find it, then default back to just using what we can find (if any)
         convertedFileName = imageFilename;

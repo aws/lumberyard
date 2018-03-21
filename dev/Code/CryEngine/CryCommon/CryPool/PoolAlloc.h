@@ -21,9 +21,15 @@
 #define ILINE           inline
 #endif
 
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PoolAlloc_h)
+#elif defined(APPLE) || defined(LINUX)
+#define POOLALLOC_H_TRAIT_USE_MEMALIGN 1
+#endif
 
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if POOLALLOC_H_TRAIT_USE_MEMALIGN
 #define CPA_ALLOC                           memalign
 #define CPA_FREE                            free
 #else

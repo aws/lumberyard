@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "CompoundShapeComponent.h"
 #include "EditorCompoundShapeComponent.h"
 
@@ -41,6 +41,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
                     ->DataElement(0, &EditorCompoundShapeComponent::m_configuration, "Configuration", "Compound Shape Configuration")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCompoundShapeComponent::ConfigurationChanged)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
                         ;
             }
@@ -54,6 +55,82 @@ namespace LmbrCentral
         {
             component->m_configuration = m_configuration;
         }
+    }
+
+    void EditorCompoundShapeComponent::Activate()
+    {
+        CompoundShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
+    }
+
+    void EditorCompoundShapeComponent::Deactivate()
+    {
+        CompoundShapeComponentRequestsBus::Handler::BusDisconnect(GetEntityId());
+    }
+    
+    bool EditorCompoundShapeComponent::HasShapeComponentReferencingEntityId(const AZ::EntityId& entityId)
+    {
+        const AZStd::list<AZ::EntityId>& childEntities = m_configuration.GetChildEntities();
+        auto it = AZStd::find(childEntities.begin(), childEntities.end(), entityId);
+        if (it != childEntities.end())
+        {
+            return true;
+        }
+
+        bool result = false;
+        for (const AZ::EntityId& childEntityId : childEntities)
+        {
+            if (childEntityId == GetEntityId())
+            {
+                // This can happen when we have multiple entities selected and use the picker to set the reference to one of the selected entities
+                return true;
+            }
+
+            if (childEntityId.IsValid())
+            {
+                CompoundShapeComponentRequestsBus::EventResult(result, childEntityId, &CompoundShapeComponentRequests::HasShapeComponentReferencingEntityId, entityId);
+
+                if (result)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    AZ::u32 EditorCompoundShapeComponent::ConfigurationChanged()
+    {
+        AZStd::list<AZ::EntityId>& childEntities = const_cast<AZStd::list<AZ::EntityId>&>(m_configuration.GetChildEntities());
+        auto selfIt = AZStd::find(childEntities.begin(), childEntities.end(), GetEntityId());
+        if (selfIt != childEntities.end())
+        {
+            QMessageBox(QMessageBox::Warning,
+                "Input Error",
+                "You cannot set a compound shape component to reference itself!",
+                QMessageBox::Ok, QApplication::activeWindow()).exec();
+
+            *selfIt = AZ::EntityId();
+            return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+        }
+
+        bool result = false;
+        for (auto childIt = childEntities.begin(); childIt != childEntities.end(); ++childIt)
+        {
+            CompoundShapeComponentRequestsBus::EventResult(result, *childIt, &CompoundShapeComponentRequests::HasShapeComponentReferencingEntityId, GetEntityId());
+            if (result)
+            {
+                QMessageBox(QMessageBox::Warning,
+                    "Endless Loop Warning",
+                    "Having circular references within a compound shape results in an endless loop!  Clearing the reference.",
+                    QMessageBox::Ok, QApplication::activeWindow()).exec();
+
+                *childIt = AZ::EntityId();
+                return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+            }
+        }
+
+        return AZ::Edit::PropertyRefreshLevels::None;
     }
 
 } // namespace LmbrCentral

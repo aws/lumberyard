@@ -90,8 +90,8 @@ void BooleanTool::BooleanOperation(CD::EBooleanOperationEnum booleanType)
         undoMsg += "Difference";
     }
 
-    CUndo undo(undoMsg.toLatin1().data());
-    designerObjList[0]->StoreUndo(undoMsg.toLatin1().data());
+    CUndo undo(undoMsg.toUtf8().data());
+    designerObjList[0]->StoreUndo(undoMsg.toUtf8().data());
     CD::ResetXForm(designerObjList[0], designerObjList[0]->GetModel());
 
     CD::GetDesigner()->SetBaseObject(NULL);
@@ -101,7 +101,7 @@ void BooleanTool::BooleanOperation(CD::EBooleanOperationEnum booleanType)
         BrushVec3 offset = designerObjList[i]->GetWorldTM().GetTranslation() - designerObjList[0]->GetWorldTM().GetTranslation();
         Matrix34 targetTM(designerObjList[i]->GetWorldTM());
         targetTM.SetTranslation(offset);
-        designerObjList[i]->StoreUndo(undoMsg.toLatin1().data());
+        designerObjList[i]->StoreUndo(undoMsg.toUtf8().data());
         designerObjList[i]->GetModel()->Transform(targetTM);
 
         if (booleanType == CD::eBOE_Union)

@@ -79,11 +79,15 @@ namespace BehaviorTree
 
     protected:
         typedef std::vector<ChildType> Children;
-        typedef typename Children::iterator ChildIterator;
         Children m_children;
     };
 
-    class CompositeWithChildLoader
+	// Workaround for VS2013 - ADL lookup issue with std::vector iterator, disabling ADL for iter_swap on this compiler
+	#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
+		AZSTD_ADL_FIX_FUNCTION_SPEC_1_2(iter_swap, AZStd::shared_ptr<INode>*);
+	#endif
+
+	class CompositeWithChildLoader
         : public Composite<INodePtr>
     {
         typedef Composite<INodePtr> BaseClass;

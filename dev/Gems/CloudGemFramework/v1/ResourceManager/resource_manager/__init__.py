@@ -15,7 +15,6 @@
 
 from context import Context
 from util import Args
-from constant import *
 
 import project
 import deployment

@@ -42,7 +42,7 @@ private:
     void LipSyncWithSound(const Audio::TAudioControlID nAudioTriggerId, bool bStop = false);
     EntityId m_entityId;
 };
-DECLARE_BOOST_POINTERS(CLipSyncProvider_FacialInstance);
+DECLARE_SMART_POINTERS(CLipSyncProvider_FacialInstance);
 
 
 class CLipSync_FacialInstance

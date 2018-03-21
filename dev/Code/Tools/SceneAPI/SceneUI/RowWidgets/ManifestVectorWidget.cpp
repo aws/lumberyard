@@ -10,9 +10,9 @@
 *
 */
 
-#include <QEvent.h>
-#include <QMenu.h>
-#include <QTimer.h>
+#include <QEvent>
+#include <QMenu>
+#include <QTimer>
 #include <QMessageBox>
 #include <RowWidgets/ui_ManifestVectorWidget.h>
 #include <AzCore/EBus/EBus.h>

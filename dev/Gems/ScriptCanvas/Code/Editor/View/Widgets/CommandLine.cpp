@@ -118,8 +118,7 @@ namespace ScriptCanvasEditor
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
             serializeContext->EnumerateDerived<ScriptCanvas::Node>(
-                [this, serializeContext]
-                    (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& classUuid) -> bool
+                [this](const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& classUuid) -> bool
                 {
                     if (classData && classData->m_editData)
                     {

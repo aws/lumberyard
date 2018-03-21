@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "UiCanvasManager.h"
 
 #include "UiCanvasFileObject.h"
@@ -405,9 +405,9 @@ void UiCanvasManager::ReleaseCanvasDeferred(AZ::EntityId canvasEntityId)
             // Queue UI canvas deletion until next tick. This prevents deleting a UI canvas from an active entity within that UI canvas
             AZStd::function<void()> destroyCanvas = [canvasEntityId]()
             {
-                AZ::Entity* canvasEntity = nullptr;
-                EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
-                delete canvasEntity;
+                AZ::Entity* queuedCanvasEntity = nullptr;
+                EBUS_EVENT_RESULT(queuedCanvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
+                delete queuedCanvasEntity;
             };
 
             AZ::TickBus::QueueFunction(destroyCanvas);

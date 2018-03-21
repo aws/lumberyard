@@ -587,8 +587,4 @@ char (*RtlpNumberOf( T (&)[N] ))[N];
 #undef FAILED
 #define FAILED(x) (!(SUCCEEDED(x)))
 
-// KDAB_MAC_PORT stubs
-
-#define GetFileAttributesA(f) 0
-
 #endif // CRYINCLUDE_CRYCOMMON_APPLESPECIFIC_H

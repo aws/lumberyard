@@ -552,7 +552,7 @@ CRenderMesh::~CRenderMesh()
             SMeshSubSetIndicesJobEntry& rSubSetJob = m_meshSubSetRenderMeshJobs[j][i];
             if (rSubSetJob.m_pSrcRM == this)
             {
-                gEnv->pJobManager->WaitForJob(rSubSetJob.jobState);
+                rSubSetJob.jobExecutor.WaitForCompletion();
                 rSubSetJob.m_pSrcRM = NULL;
             }
         }
@@ -5296,7 +5296,7 @@ CThreadSafeRendererContainer<CRenderMesh*> CRenderMesh::m_deferredSubsetGarbageC
 CThreadSafeRendererContainer<SMeshSubSetIndicesJobEntry> CRenderMesh::m_meshSubSetRenderMeshJobs[RT_COMMAND_BUF_COUNT];
 
 
-#if defined(ORBIS) || defined(DURANGO) || defined(CRY_USE_DX12)
+#if RENDERMESH_CPP_TRAIT_BUFFER_ENABLE_DIRECT_ACCESS || defined(CRY_USE_DX12)
 	#ifdef BUFFER_ENABLE_DIRECT_ACCESS
 		#undef BUFFER_ENABLE_DIRECT_ACCESS
 		#define BUFFER_ENABLE_DIRECT_ACCESS 1

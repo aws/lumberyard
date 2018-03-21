@@ -59,7 +59,7 @@ struct MovementActor
 
     CAIActor* GetAIActor();
 
-    boost::shared_ptr<Movement::IPlanner> planner;
+    AZStd::shared_ptr<Movement::IPlanner> planner;
     EntityId entityID;
     MovementRequestQueue requestQueue;
     MovementRequestID requestIdCurrentlyInPlanner;

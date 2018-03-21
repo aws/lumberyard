@@ -18,10 +18,10 @@
 #include "Utils.h"
 #include <QTreeWidget>
 #include <functional>
-#include "qpen.h"
-#include "qpainter.h"
+#include <QPen>
+#include <QPainter>
 #include <QMap>
-#include "QProxyStyle.h"
+#include <QProxyStyle>
 
 //TreeView Drop Indicator Color
 #define CTreeViewDropIndicatorColor  0x1b75cf

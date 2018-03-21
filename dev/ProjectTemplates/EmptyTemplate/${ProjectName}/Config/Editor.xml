@@ -32,6 +32,9 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Gem.Maestro.Editor.3b9a978ed6f742a1acb99f74379a342c.v0.1.0" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.SceneProcessing.Editor.7c2578f634df4345aca98d671e39b8ab.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}" value="Gem.${GemName}.${GemId}.v0.1.0" specializationTypeId="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
             <Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}" specializationTypeId="{D2932FA3-9942-4FD2-A703-2E750F57C003}">

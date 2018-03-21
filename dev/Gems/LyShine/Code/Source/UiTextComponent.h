@@ -19,6 +19,7 @@
 #include <LyShine/Bus/UiRenderBus.h>
 #include <LyShine/Bus/UiTextBus.h>
 #include <LyShine/Bus/UiLayoutCellDefaultBus.h>
+#include <LyShine/Bus/UiUpdateBus.h>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -45,6 +46,7 @@ class UiTextComponent
     : public AZ::Component
     , public UiVisualBus::Handler
     , public UiRenderBus::Handler
+    , public UiUpdateBus::Handler
     , public UiTextBus::Handler
     , public UiAnimateEntityBus::Handler
     , public UiTransformChangeNotificationBus::Handler
@@ -129,6 +131,11 @@ public: // member functions
     // UiRenderInterface
     void Render() override;
     // ~UiRenderInterface
+
+    // UiUpdateInterface
+    void Update(float deltaTime) override;
+    void UpdateInEditor() override;
+    // ~UiUpdateInterface
 
     // UiTextInterface
     AZStd::string GetText() override;
@@ -344,10 +351,15 @@ private: // member functions
     //! Refresh the transform properties in the editor's properties pane
     void CheckLayoutFitterAndRefreshEditorTransformProperties() const;
 
+    //! Sets "size ready" flag to true and disconnects from update bus.
+    //! Update bus is only used to set the flag to true on first update (when
+    //! its presumed that element size info is available by first update).
+    void AssignSizeReadyFlag();
+
 private: // data
 
     AZStd::string m_text;
-    AZStd::string m_locText;                  //!< Language-specific localized text (if applicable), keyed by m_text. May contain word-wrap formatting (if enabled).
+    AZStd::string m_locText;                        //!< Language-specific localized text (if applicable), keyed by m_text. May contain word-wrap formatting (if enabled).
 
     DrawBatchLines m_drawBatchLines;                //!< Lists of DrawBatches across multiple lines for rendering text.
 
@@ -398,5 +410,8 @@ private: // data
     float m_clipOffset;                             //!< Amount of pixels to adjust text draw call to account for clipping rect
     float m_clipOffsetMultiplier;                   //!< Used to adjust clip offset based on horizontal alignment settings
 
-    bool m_postActivate;                            //!< Provides similar functionality to InGamePostActivate, but works at run-time and in the editor
+    bool m_elementSizeReady;                        //!< Provides similar functionality to InGamePostActivate, but works at run-time and in the editor.
+                                                    //!< Text content can't be properly wrapped until the element's size is available. Also, scripts 
+                                                    //!< can make calls on the text component before other components (that text component depends on)
+                                                    //!< are ready, like canvas and transform components, which would result in warnings/errors.
 };

@@ -35,12 +35,10 @@ namespace Setup
 
         virtual Lyzard::StringOutcome RegisterSDKDownload(const AZStd::set<AZStd::string>& enabledTags) = 0;
 
-        // Asynchronous function - listen to SDKInstallationNotifications for notifications.
-        virtual Lyzard::StringOutcome StartSDKDownload() = 0;
-
-        virtual Lyzard::StringOutcome SetupSymlinks(
-            const AZStd::set<AZStd::string>& enabledCapabilities,
-            const AZStd::string& enginePath) = 0;
+        // Async function -listen to SDKInstallationNotifications for notifications.
+        virtual Lyzard::StringOutcome DownloadSDKAsync() = 0;
+        // Blocking version. Returns on error or finished.
+        virtual Lyzard::StringOutcome DownloadSDK() = 0;
     };
     using SDKInstallationRequestBus = AZ::EBus<SDKInstallationRequest>;
 

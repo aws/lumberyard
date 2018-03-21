@@ -148,7 +148,7 @@ IDataBaseLibrary* CLensFlareManager::LoadLibrary(const QString& filename, bool b
     TSmartPtr<CBaseLibrary> pLib = MakeNewLibrary();
     if (!pLib->Load(filename))
     {
-        Error(QObject::tr("Failed to Load Item Library: %1").arg(filename).toLatin1().data());
+        Error(QObject::tr("Failed to Load Item Library: %1").arg(filename).toUtf8().data());
         return NULL;
     }
 

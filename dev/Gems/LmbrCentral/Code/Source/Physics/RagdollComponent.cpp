@@ -9,10 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "RagdollComponent.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Component/TickBus.h>
 #include <Components/IComponentPhysics.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Physics/PhysicsComponentBus.h>
@@ -283,6 +284,14 @@ namespace LmbrCentral
 
     void RagdollComponent::CreateRagdollInternal()
     {
+        AZ::Vector3 initialVelocity = AZ::Vector3::CreateZero();
+        if (m_retainJointVelocity)
+        {
+            pe_status_dynamics currentPhysicsStatus;
+            EBUS_EVENT_ID(GetEntityId(), CryPhysicsComponentRequestBus, GetPhysicsStatus, currentPhysicsStatus);
+            initialVelocity = LYVec3ToAZVec3(currentPhysicsStatus.v);
+        }
+
         if (!m_physicalEntity)
         {
             CreateRagdollEntity();
@@ -291,6 +300,8 @@ namespace LmbrCentral
 
         CryPhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
         EntityPhysicsEventBus::Handler::BusConnect(GetEntityId());
+
+        RetainJointVelocities(initialVelocity);
     }
 
     void RagdollComponent::CreateRagdollEntity()
@@ -318,6 +329,8 @@ namespace LmbrCentral
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
         pe_params_pos positionParameters;
+        AZ::Vector3 scale = transform.ExtractScaleExact();
+        AZ_Warning("Ragdoll Component", scale.IsClose(AZ::Vector3::CreateOne()), "Ragdoll does not support scaling.  You will want to re-author your asset with this in mind.");
         Matrix34 cryTransform(AZTransformToLYTransform(transform));
         positionParameters.pMtx3x4 = &cryTransform;
         positionParameters.iSimClass = 2;
@@ -325,7 +338,7 @@ namespace LmbrCentral
 
         // create the ragdoll physics entity
         m_physicalEntity = gEnv->pPhysicalWorld->CreatePhysicalEntity(PE_ARTICULATED, &positionParameters, static_cast<uint64>(GetEntityId()), PHYS_FOREIGN_ID_COMPONENT_ENTITY);
-        AZ_Assert(m_physicalEntity, "new failed to create a physical entity for the ragdoll component");
+        AZ_Assert(m_physicalEntity, "new failed to create a physical entity for the ragdoll component.");
         m_physicalEntity->AddRef();
 
 
@@ -336,9 +349,6 @@ namespace LmbrCentral
             character->GetISkeletonPose()->BuildPhysicalEntity(m_physicalEntity, massToUse, -1, m_stiffnessScale, m_skeletalLevelOfDetail, 0);
             character->GetISkeletonPose()->CreateAuxilaryPhysics(m_physicalEntity, cryTransform, m_skeletalLevelOfDetail);
             character->GetISkeletonPose()->SetCharacterPhysics(m_physicalEntity);
-
-            // the position has already been set, but we need this to set the rotation
-            m_physicalEntity->SetParams(&positionParameters);
 
             // set the component entity up as foreign data for the skeleton
             pe_params_foreign_data foreignDataParams;
@@ -421,6 +431,63 @@ namespace LmbrCentral
         pe_action_awake awakeAction;
         awakeAction.bAwake = 1;
         m_physicalEntity->Action(&awakeAction);
+    }
+
+    void RagdollComponent::RetainJointVelocities(const AZ::Vector3& initialVelocity)
+    {
+        if (initialVelocity.IsZero())
+        {
+            return;
+        }
+        ICharacterInstance* character = nullptr;
+        EBUS_EVENT_ID_RESULT(character, GetEntityId(), SkinnedMeshComponentRequestBus, GetCharacterInstance);
+        if (!character)
+        {
+            return;
+        }
+        AZ::Vector3 position = AZ::Vector3::CreateZero();
+        AZ::TransformBus::EventResult(position, GetEntityId(), &AZ::TransformBus::Events::GetWorldTranslation);
+        // grab the gravity vector at the ragdoll's current location.  We will add this in since we will be queueing the set velocity.
+        Vec3 pos = AZVec3ToLYVec3(position);
+        Vec3 gravity = AZVec3ToLYVec3(AZ::Vector3::CreateZero());
+        pe_params_buoyancy unused;
+        gEnv->pPhysicalWorld->CheckAreas(pos, gravity, &unused);
+        AZ::TickBus::QueueFunction(
+            AZStd::function<void()>([this, character, initialVelocity, gravity]()
+        {
+            float deltaTime = 0.001f;
+            AZ::TickRequestBus::BroadcastResult(deltaTime, &AZ::TickRequestBus::Events::GetTickDeltaTime);
+            Vec3 cryVelocity = AZVec3ToLYVec3(initialVelocity);
+            // we are going to set velocity to every part of the character skeleton.
+            const IDefaultSkeleton& defaultSkeleton = character->GetIDefaultSkeleton();
+            uint32 numJoints = defaultSkeleton.GetJointCount();
+            pe_status_dynamics partStatusSource;
+
+            pe_action_set_velocity setVelocityAction;
+            // iterate over all of the joints in the character and set their velocity.
+            for (int i = numJoints - 1; i >= 0; i--)
+            {
+                if (defaultSkeleton.GetJointPhysGeom(i))
+                {
+                    partStatusSource.partid = i;
+                    if (!m_physicalEntity->GetStatus(&partStatusSource))
+                    {
+                        continue;
+                    }
+
+                    setVelocityAction.partid = i;
+                    setVelocityAction.v = partStatusSource.v + cryVelocity + (deltaTime * gravity);
+                    setVelocityAction.w = partStatusSource.w;
+                    m_physicalEntity->Action(&setVelocityAction);
+                    CryPhysicsComponentRequestBus::Event(GetEntityId(), &CryPhysicsComponentRequestBus::Events::ApplyPhysicsAction, setVelocityAction, false);
+
+                }
+            }
+        }));
+        float deltaTime = 0.001f;
+        AZ::TickRequestBus::BroadcastResult(deltaTime, &AZ::TickRequestBus::Events::GetTickDeltaTime);
+        // There is a slim chance that the physical entity is ready to receive this request at this moment, but it can happen.
+        AzFramework::PhysicsComponentRequestBus::Event(GetEntityId(), &AzFramework::PhysicsComponentRequestBus::Events::SetVelocity, initialVelocity + deltaTime*LYVec3ToAZVec3(gravity));
     }
 
 } // namespace LmbrCentral

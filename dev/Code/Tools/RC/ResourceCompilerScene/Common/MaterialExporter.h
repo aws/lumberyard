@@ -16,7 +16,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <GFxFramework/MaterialIO/IMaterial.h>
-#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 
 namespace AZ
 {
@@ -34,10 +34,10 @@ namespace AZ
         struct MeshNodeExportContext;
 
         class MaterialExporter
-            : public SceneAPI::SceneCore::ExportingComponent
+            : public SceneAPI::SceneCore::RCExportingComponent
         {
         public:
-            AZ_COMPONENT(MaterialExporter, "{F82300E0-ABE7-49F2-8BFF-1BFBD8BF3288}", SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(MaterialExporter, "{F82300E0-ABE7-49F2-8BFF-1BFBD8BF3288}", SceneAPI::SceneCore::RCExportingComponent);
 
             MaterialExporter();
             ~MaterialExporter() override = default;

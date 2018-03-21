@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
-#include "missionscript.h"
+#include "MissionScript.h"
 #include <IScriptSystem.h>
 
 #define EVENT_PREFIX "Event_"
@@ -57,17 +57,17 @@ bool CMissionScript::Load()
 
     // Parse .lua file.
     IScriptSystem* script = GetIEditor()->GetSystem()->GetIScriptSystem();
-    if (!script->ExecuteFile(m_sFilename.toLatin1().data(), true, true))
+    if (!script->ExecuteFile(m_sFilename.toUtf8().data(), true, true))
     {
         QString msg = QString("Unable to execute script '") + QString(GetIEditor()->GetMasterCDFolder()) + m_sFilename + "'. Check syntax ! Script not loaded.";
-        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, msg.toLatin1().data());
+        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, msg.toUtf8().data());
         return false;
     }
     SmartScriptTable pMission(script, true);
     if (!script->GetGlobalValue("Mission", pMission))
     {
         QString msg = "Unable to find script-table 'Mission'. Check mission script ! Mission Script not loaded.";
-        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, msg.toLatin1().data());
+        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, msg.toUtf8().data());
         return false;
     }
     CMissionScriptMethodsDump dump;
@@ -88,7 +88,7 @@ void CMissionScript::Edit()
         return;
     }
 
-    CFileUtil::EditTextFile(m_sFilename.toLatin1().data());
+    CFileUtil::EditTextFile(m_sFilename.toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////

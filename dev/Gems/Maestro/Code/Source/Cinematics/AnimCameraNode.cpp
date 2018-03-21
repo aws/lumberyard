@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #include "MathConversion.h"
 #include "AnimCameraNode.h"
 #include "SelectTrack.h"

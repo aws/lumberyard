@@ -67,6 +67,10 @@ namespace LmbrCentral
     {
     public:
         virtual CompoundShapeConfiguration GetCompoundShapeConfiguration() = 0;
+
+        // This method returns whether or not any entity referenced in the shape component (traversing the enitre reference tree through compound shape components) has a reference to the passed
+        // in entity id.  This is needed to detect circular references
+        virtual bool HasShapeComponentReferencingEntityId(const AZ::EntityId& /*entityId*/) { return false; }
     };
 
     // Bus to service the Compound Shape component event group

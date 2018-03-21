@@ -4,7 +4,7 @@
 	@date 09-14-2015
 	@copyright Allegorithmic. All rights reserved.
 */
-#include "stdafx.h"
+#include "CloudGemDynamicContent_precompiled.h"
 
 #include <platform.h>
 #include <platform_impl.h>

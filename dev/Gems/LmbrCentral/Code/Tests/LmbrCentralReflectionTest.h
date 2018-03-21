@@ -61,7 +61,11 @@ template<class ApplicationT, class ModuleT, class ObjectT>
 class LoadReflectedObjectTest
     : public ModuleReflectionTest<ApplicationT, ModuleT>
 {
+    typedef ModuleReflectionTest<ApplicationT, ModuleT> BaseType;
+
 protected:
+    using BaseType::GetApplication;
+
     void SetUp() override;
     void TearDown() override;
 
@@ -123,7 +127,11 @@ void LoadReflectedObjectTest<ApplicationT, ModuleT, ObjectT>::SetUp()
     const char* buffer = GetSourceDataBuffer();
     if (buffer)
     {
-        m_object.reset(AZ::Utils::LoadObjectFromBuffer<ObjectT>(buffer, strlen(buffer) + 1));
+        // don't load any assets referenced from the data
+        AZ::ObjectStream::FilterDescriptor filter;
+        filter.m_assetCB = [](const AZ::Data::Asset<AZ::Data::AssetData>&) { return false; };
+
+        m_object.reset(AZ::Utils::LoadObjectFromBuffer<ObjectT>(buffer, strlen(buffer) + 1, GetApplication()->GetSerializeContext(), filter));
     }
 }
 

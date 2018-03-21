@@ -77,6 +77,17 @@ namespace AzToolsFramework
             * returns false if it cannot find the source, true otherwise.
             */
             virtual bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) = 0;
+            
+            /**
+            * Given a UUID of a source file, retrieve its actual watch folder path and other details.
+            * @param sourceUUID is the UUID of a source file - If you have an AssetID, its the m_guid member of that assetId
+            * @param assetInfo is a /ref AZ::Data::AssetInfo filled out with details about the asset including its relative path to its watch folder
+            *           note that inside assetInfo is a AssetId, but only the UUID-part will ever have a value since we are dealing with a source file (no subid)
+            * @param watchFolder is the scan folder that it was found inside (the path in the assetInfo is relative to this folder).
+            *           If you Path::Join the watchFolder and the assetInfo relative path, you get the full path to the source file on physical media
+            * returns false if it cannot find the source, true otherwise.
+            */
+            virtual bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) = 0;
         };
         
 

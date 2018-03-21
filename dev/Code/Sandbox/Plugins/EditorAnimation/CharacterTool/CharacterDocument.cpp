@@ -708,7 +708,7 @@ namespace CharacterTool {
                 break;
             }
 
-            string fullPath = Path::GamePathToFullPath(filename).toLatin1().data();
+            string fullPath = Path::GamePathToFullPath(filename).toUtf8().data();
             if (!gEnv->pCryPak->IsFileExist(fullPath))
             {
                 QString message = "Character file is missing:\n    ";
@@ -889,7 +889,7 @@ namespace CharacterTool {
                 else if (CharacterDefinition* definition = GetLoadedCharacterDefinition())
                 {
                     string chrparamsFilenameForSkeleton = PathUtil::ReplaceExtension(definition->skeleton.c_str(), ".chrparams");
-                    if (gEnv->pCryPak->IsFileExist(Path::GamePathToFullPath(chrparamsFilenameForSkeleton.c_str()).toLatin1().data()))
+                    if (gEnv->pCryPak->IsFileExist(Path::GamePathToFullPath(chrparamsFilenameForSkeleton.c_str()).toUtf8().data()))
                     {
                         chrparamsFilename = chrparamsFilenameForSkeleton;
                     }

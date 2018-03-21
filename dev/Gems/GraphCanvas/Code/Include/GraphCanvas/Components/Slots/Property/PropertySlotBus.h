@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <qcolor.h>
+#include <QColor>
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>

@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <QtWidgets/QWidget.h>
+#include <QtWidgets/QWidget>
 
 namespace Driller
 {

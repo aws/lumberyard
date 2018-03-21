@@ -25,7 +25,7 @@
 #include "SoundObject.h"
 #include "ShapeObject.h"
 #include "ParticleEffectObject.h"
-#include "AIPoint.h"
+#include "AiPoint.h"
 #include "BrushObject.h"
 #include "CloudObject.h"
 #include "CloudGroup.h"
@@ -647,7 +647,7 @@ CBaseObject* CObjectManager::NewObject(CObjectArchive& ar, CBaseObject* pUndoObj
         CObjectClassDesc* cls = FindClass(typeName);
         if (!cls)
         {
-            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, "RuntimeClass %s not registered", typeName.toLatin1().data());
+            CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, "RuntimeClass %s not registered", typeName.toUtf8().data());
             return 0;
         }
 
@@ -678,7 +678,7 @@ CBaseObject* CObjectManager::NewObject(CObjectArchive& ar, CBaseObject* pUndoObj
             // If id is taken.
             QString error;
             error = QObject::tr("[Error] Object %1 already exists in the Object Manager and has been deleted as it is a duplicate of object %2 in layer %3.").arg(pObject->m_name, obj->GetName(), layerName);
-            CLogFile::WriteLine(error.toLatin1().data());
+            CLogFile::WriteLine(error.toUtf8().data());
 
             if (!GetIEditor()->IsInTestMode() && !GetIEditor()->IsInLevelLoadTestMode())
             {
@@ -746,7 +746,7 @@ CBaseObject* CObjectManager::NewObject(const QString& typeName, CBaseObject* pre
 
     if (!cls)
     {
-        GetIEditor()->GetSystem()->GetILog()->Log("Warning: RuntimeClass %s (as well as %s) not registered", typeName.toLatin1().data(), fullName.toLatin1().data());
+        GetIEditor()->GetSystem()->GetILog()->Log("Warning: RuntimeClass %s (as well as %s) not registered", typeName.toUtf8().data(), fullName.toUtf8().data());
         return 0;
     }
     CBaseObject* pObject = NewObject(cls, prev, file);
@@ -967,7 +967,7 @@ CBaseObject* CObjectManager::FindObject(REFGUID guid) const
 //////////////////////////////////////////////////////////////////////////
 CBaseObject* CObjectManager::FindObject(const QString& sName) const
 {
-    const AZ::Crc32 crc(sName.toLatin1().data(), sName.toLatin1().count(), true);
+    const AZ::Crc32 crc(sName.toUtf8().data(), sName.toUtf8().count(), true);
 
     auto iter = m_objectsByName.find(crc);
     if (iter != m_objectsByName.end())
@@ -1062,7 +1062,7 @@ bool CObjectManager::AddObject(CBaseObject* obj)
         }
     }
 
-    const AZ::Crc32 nameCrc(obj->GetName().toLatin1().data(), obj->GetName().toLatin1().count(), true);
+    const AZ::Crc32 nameCrc(obj->GetName().toUtf8().data(), obj->GetName().toUtf8().count(), true);
     m_objectsByName[nameCrc] = obj;
 
     RegisterObjectName(obj->GetName());
@@ -1090,9 +1090,6 @@ void CObjectManager::RemoveObject(CBaseObject* obj)
         }
     }
 
-    m_objects.erase(obj->GetId());
-    m_objectsByName.erase(AZ::Crc32(obj->GetName().toLatin1().data(), obj->GetName().toLatin1().count(), true));
-
     // Remove this object from selection groups.
     m_currSelection->RemoveObject(obj);
     std::vector<CSelectionGroup*> sel;
@@ -1101,6 +1098,11 @@ void CObjectManager::RemoveObject(CBaseObject* obj)
     {
         sel[i]->RemoveObject(obj);
     }
+
+    m_objectsByName.erase(AZ::Crc32(obj->GetName().toUtf8().data(), obj->GetName().toUtf8().count(), true));
+
+    // Need to erase this last since it is a smart pointer and can end up deleting the object if it is the last reference to it being kept
+    m_objects.erase(obj->GetId());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1147,7 +1149,7 @@ void CObjectManager::ShowDuplicationMsgWarning(CBaseObject* obj, const QString& 
         );
 
         // If id is taken.
-        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, sRenameWarning.toLatin1().data());
+        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, sRenameWarning.toUtf8().data());
 
         if (bShowMsgBox)
         {
@@ -1513,7 +1515,7 @@ void CObjectManager::SerializeNameSelection(XmlNodeRef& rootNode, bool bLoading)
     QString idStr("id");
     QString objAttrStr("obj");
 
-    XmlNodeRef startNode = rootNode->findChild(selRootStr.toLatin1().data());
+    XmlNodeRef startNode = rootNode->findChild(selRootStr.toUtf8().data());
 
     if (bLoading)
     {
@@ -1530,7 +1532,7 @@ void CObjectManager::SerializeNameSelection(XmlNodeRef& rootNode, bool bLoading)
                 {
                     GUID curID = GUID_NULL;
                     XmlNodeRef idNode = selNode->getChild(objIDNodeNo);
-                    if (!idNode->getAttr(idStr.toLatin1().data(), curID))
+                    if (!idNode->getAttr(idStr.toUtf8().data(), curID))
                     {
                         continue;
                     }
@@ -1547,7 +1549,7 @@ void CObjectManager::SerializeNameSelection(XmlNodeRef& rootNode, bool bLoading)
                 if (tmpGroup->GetCount() > 0)
                 {
                     QString nameStr;
-                    if (!selNode->getAttr(selNodeNameStr.toLatin1().data(), nameStr))
+                    if (!selNode->getAttr(selNodeNameStr.toUtf8().data(), nameStr))
                     {
                         continue;
                     }
@@ -1559,13 +1561,13 @@ void CObjectManager::SerializeNameSelection(XmlNodeRef& rootNode, bool bLoading)
     }
     else
     {
-        startNode = rootNode->newChild(selRootStr.toLatin1().data());
+        startNode = rootNode->newChild(selRootStr.toUtf8().data());
         CSelectionGroup* objSelection = 0;
 
         for (TNameSelectionMap::iterator it = m_selections.begin(); it != m_selections.end(); ++it)
         {
-            XmlNodeRef selectionNameNode = startNode->newChild(selNodeStr.toLatin1().data());
-            selectionNameNode->setAttr(selNodeNameStr.toLatin1().data(), it->first.toLatin1().data());
+            XmlNodeRef selectionNameNode = startNode->newChild(selNodeStr.toUtf8().data());
+            selectionNameNode->setAttr(selNodeNameStr.toUtf8().data(), it->first.toUtf8().data());
             objSelection = it->second;
 
             if (!objSelection)
@@ -1582,8 +1584,8 @@ void CObjectManager::SerializeNameSelection(XmlNodeRef& rootNode, bool bLoading)
             {
                 if (objSelection->GetObject(i))
                 {
-                    XmlNodeRef objNode = selectionNameNode->newChild(objAttrStr.toLatin1().data());
-                    objNode->setAttr(idStr.toLatin1().data(), GuidUtil::ToString(objSelection->GetObject(i)->GetId()));
+                    XmlNodeRef objNode = selectionNameNode->newChild(objAttrStr.toUtf8().data());
+                    objNode->setAttr(idStr.toUtf8().data(), GuidUtil::ToString(objSelection->GetObject(i)->GetId()));
                 }
             }
         }
@@ -2428,7 +2430,7 @@ void CObjectManager::RegisterObjectName(const QString& name)
     uint16 num = 1;
     if (len < nameLen)
     {
-        num = (uint16)atoi((const char*)name.toLatin1().data() + len) + 0;
+        num = (uint16)atoi((const char*)name.toUtf8().data() + len) + 0;
     }
 
     NameNumbersMap::iterator iNameNumber = m_nameNumbersMap.find(typeName);
@@ -2463,7 +2465,7 @@ void CObjectManager::UpdateRegisterObjectName(const QString& name)
     uint16 num = 1;
     if (len < nameLen)
     {
-        num = (uint16)atoi((const char*)name.toLatin1().data() + len) + 0;
+        num = (uint16)atoi((const char*)name.toUtf8().data() + len) + 0;
     }
 
     NameNumbersMap::iterator it = m_nameNumbersMap.find(typeName);
@@ -2534,7 +2536,7 @@ bool CObjectManager::EnableUniqObjectNames(bool bEnable)
 //////////////////////////////////////////////////////////////////////////
 CObjectClassDesc* CObjectManager::FindClass(const QString& className)
 {
-    IClassDesc* cls = CClassFactory::Instance()->FindClass(className.toLatin1().data());
+    IClassDesc* cls = CClassFactory::Instance()->FindClass(className.toUtf8().data());
     if (cls != NULL && cls->SystemClassID() == ESYSTEM_CLASS_OBJECT)
     {
         return (CObjectClassDesc*)cls;
@@ -2643,7 +2645,7 @@ void CObjectManager::LoadClassTemplates(const QString& path)
     for (int k = 0; k < files.size(); k++)
     {
         // Construct the full filepath of the current file
-        XmlNodeRef node = XmlHelpers::LoadXmlFromFile((dir + files[k].filename).toLatin1().data());
+        XmlNodeRef node = XmlHelpers::LoadXmlFromFile((dir + files[k].filename).toUtf8().data());
         if (node != 0 && node->isTag("ObjectTemplates"))
         {
             QString name;
@@ -2939,9 +2941,9 @@ CBaseObject* CObjectManager::FindAnimNodeOwner(CTrackViewAnimNode* pNode) const
 bool CObjectManager::ConvertToType(CBaseObject* pObject, const QString& typeName)
 {
     QString message = QString("Convert ") + pObject->GetName() + " to " + typeName;
-    CUndo undo(message.toLatin1().data());
+    CUndo undo(message.toUtf8().data());
 
-    CBaseObjectPtr pNewObject = GetIEditor()->NewObject(typeName.toLatin1().data());
+    CBaseObjectPtr pNewObject = GetIEditor()->NewObject(typeName.toUtf8().data());
     if (pNewObject)
     {
         if (pNewObject->ConvertFromObject(pObject))
@@ -2952,7 +2954,7 @@ bool CObjectManager::ConvertToType(CBaseObject* pObject, const QString& typeName
         DeleteObject(pNewObject);
     }
 
-    Log((message + " is failed.").toLatin1().data());
+    Log((message + " is failed.").toUtf8().data());
     return false;
 }
 
@@ -3625,10 +3627,10 @@ void CObjectManager::ResolveMissingObjects()
                         if (pModelVar && pModelVar->GetDataType() == IVariable::DT_FILE)
                         {
                             pModelVar->Get(geometryFile);
-                            QString ext = PathUtil::GetExt(geometryFile.toLatin1().data());
+                            QString ext = PathUtil::GetExt(geometryFile.toUtf8().data());
                             if (QString::compare(ext, CRY_GEOMETRY_FILE_EXT, Qt::CaseInsensitive) == 0 || QString::compare(ext, CRY_SKEL_FILE_EXT, Qt::CaseInsensitive) == 0 || QString::compare(ext, CRY_CHARACTER_DEFINITION_FILE_EXT, Qt::CaseInsensitive) == 0 || QString::compare(ext, CRY_ANIM_GEOMETRY_FILE_EXT, Qt::CaseInsensitive) == 0)
                             {
-                                if (!gEnv->pCryPak->IsFileExist(geometryFile.toLatin1().data()))
+                                if (!gEnv->pCryPak->IsFileExist(geometryFile.toUtf8().data()))
                                 {
                                     pEntity = pEntityObj;
                                     break;
@@ -3660,7 +3662,7 @@ void CObjectManager::ResolveMissingObjects()
             }
             else if (pBrush)
             {
-                pBrush->CreateBrushFromMesh(newFilename.toLatin1().data());
+                pBrush->CreateBrushFromMesh(newFilename.toUtf8().data());
                 if (pBrush->GetGeometry() && !((CEdMesh*)pBrush->GetGeometry())->IsDefaultObject())
                 {
                     pBrush->SetGeometryFile(newFilename);
@@ -3698,7 +3700,7 @@ void CObjectManager::ResolveMissingObjects()
         if (nKey == eYes || locationState == eYesForAll)
         {
             IFileUtil::FileArray cFiles;
-            QString filemask = PathUtil::GetFile(geometryFile.toLatin1().data());
+            QString filemask = PathUtil::GetFile(geometryFile.toUtf8().data());
             CFileUtil::ScanDirectory(Path::GetEditingGameDataFolder().c_str(), filemask, cFiles, true);
 
             if (cFiles.size())
@@ -3714,7 +3716,7 @@ void CObjectManager::ResolveMissingObjects()
                 }
                 else if (pBrush)
                 {
-                    pBrush->CreateBrushFromMesh(newFilename.toLatin1().data());
+                    pBrush->CreateBrushFromMesh(newFilename.toUtf8().data());
                     if (pBrush->GetGeometry() && !((CEdMesh*)pBrush->GetGeometry())->IsDefaultObject())
                     {
                         pBrush->SetGeometryFile(newFilename);
@@ -3821,7 +3823,7 @@ void CObjectManager::ResolveMissingMaterials()
         if (nKey == eYes || locationState == eYesForAll)
         {
             IFileUtil::FileArray cFiles;
-            QString filemask = PathUtil::GetFile(oldFilename.toLatin1().data());
+            QString filemask = PathUtil::GetFile(oldFilename.toUtf8().data());
             CFileUtil::ScanDirectory(Path::GetEditingGameDataFolder().c_str(), filemask, cFiles, true);
 
             if (cFiles.size())
@@ -3976,7 +3978,7 @@ namespace
         {
             if (className.isEmpty() || objects[i]->GetTypeDescription() == className)
             {
-                result.push_back(objects[i]->GetName().toLatin1().data());
+                result.push_back(objects[i]->GetName().toUtf8().data());
             }
         }
         return result;
@@ -3990,7 +3992,7 @@ namespace
         pLayerMgr->GetLayers(layers);
         for (size_t i = 0; i < layers.size(); ++i)
         {
-            result.push_back(layers[i]->GetName().toLatin1().data());
+            result.push_back(layers[i]->GetName().toUtf8().data());
         }
         return result;
     }
@@ -4003,7 +4005,7 @@ namespace
         result.reserve(selectionCount);
         for (int i = 0; i < selectionCount; i++)
         {
-            result.push_back(pSel->GetObject(i)->GetName().toLatin1().data());
+            result.push_back(pSel->GetObject(i)->GetName().toUtf8().data());
         }
         return result;
     }
@@ -4028,7 +4030,7 @@ namespace
         {
             if (!GetIEditor()->GetObjectManager()->FindObject(names[i].c_str()))
             {
-                throw std::logic_error((QString("\"") + names[i].c_str() + "\" is an invalid entity.").toLatin1().data());
+                throw std::logic_error((QString("\"") + names[i].c_str() + "\" is an invalid entity.").toUtf8().data());
             }
             pBaseObjects.push_back(GetIEditor()->GetObjectManager()->FindObject(names[i].c_str()));
         }
@@ -4048,7 +4050,7 @@ namespace
             pObject = GetIEditor()->GetObjectManager()->FindObject(names[i].c_str());
             if (!pObject)
             {
-                throw std::logic_error((QString("\"") + names[i].c_str() + "\" is an invalid entity.").toLatin1().data());
+                throw std::logic_error((QString("\"") + names[i].c_str() + "\" is an invalid entity.").toUtf8().data());
             }
             GetIEditor()->GetObjectManager()->SelectObject(pObject);
         }
@@ -4059,7 +4061,7 @@ namespace
         CBaseObject* pObject =  GetIEditor()->GetObjectManager()->FindObject(objName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + objName + "\" is an invalid object name.").toLatin1().data());
+            throw std::logic_error((QString("\"") + objName + "\" is an invalid object name.").toUtf8().data());
         }
         return pObject->IsHidden();
     }
@@ -4401,7 +4403,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         Vec3 position = pObject->GetPos();
         return boost::python::make_tuple(position.x, position.y, position.z);
@@ -4412,7 +4414,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         Vec3 position = pObject->GetWorldPos();
         return boost::python::make_tuple(position.x, position.y, position.z);
@@ -4423,7 +4425,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         CUndo undo("Set Object Base Position");
         pObject->SetPos(Vec3(fValueX, fValueY, fValueZ));
@@ -4434,7 +4436,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         Ang3 ang = RAD2DEG(Ang3(pObject->GetRotation()));
         return boost::python::make_tuple(ang.x, ang.y, ang.z);
@@ -4445,7 +4447,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         CUndo undo("Set Object Rotation");
         pObject->SetRotation(Quat(DEG2RAD(Ang3(fValueX, fValueY, fValueZ))));
@@ -4456,7 +4458,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         Vec3 scaleVec3 = pObject->GetScale();
         return boost::python::make_tuple(scaleVec3.x, scaleVec3.y, scaleVec3.z);
@@ -4467,7 +4469,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::logic_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         CUndo undo("Set Object Scale");
         pObject->SetScale(Vec3(fValueX, fValueY, fValueZ));
@@ -4486,7 +4488,7 @@ namespace
             {
                 if ((objectArray.at(i))->GetName() == names[j].c_str())
                 {
-                    tempSet.insert(std::string((objectArray.at(i))->GetLayer()->GetName().toLatin1().data()));
+                    tempSet.insert(std::string((objectArray.at(i))->GetLayer()->GetName().toUtf8().data()));
                 }
             }
         }
@@ -4544,7 +4546,7 @@ namespace
         {
             if ((objectArray.at(i))->GetLayer()->GetName() == QString(pLayerName))
             {
-                vectorObjects.push_back(static_cast<std::string>((objectArray.at(i))->GetName().toLatin1().data()));
+                vectorObjects.push_back(static_cast<std::string>((objectArray.at(i))->GetName().toUtf8().data()));
             }
         }
 
@@ -4556,7 +4558,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::runtime_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::runtime_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
 
         CBaseObject* pParentObject = pObject->GetParent();
@@ -4572,7 +4574,7 @@ namespace
         CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(pName);
         if (!pObject)
         {
-            throw std::runtime_error((QString("\"") + pName + "\" is an invalid object.").toLatin1().data());
+            throw std::runtime_error((QString("\"") + pName + "\" is an invalid object.").toUtf8().data());
         }
         std::vector<_smart_ptr<CBaseObject> > objectVector;
         std::vector<std::string> result;
@@ -4584,7 +4586,7 @@ namespace
 
         for (std::vector<_smart_ptr<CBaseObject> >::iterator it = objectVector.begin(); it != objectVector.end(); it++)
         {
-            result.push_back(static_cast<std::string>(it->get()->GetName().toLatin1().data()));
+            result.push_back(static_cast<std::string>(it->get()->GetName().toUtf8().data()));
         }
         return result;
     }

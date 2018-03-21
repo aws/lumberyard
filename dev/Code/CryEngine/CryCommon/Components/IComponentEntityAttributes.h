@@ -17,7 +17,7 @@
 
 struct IEntityAttribute;
 
-DECLARE_BOOST_POINTERS(IEntityAttribute)
+DECLARE_SMART_POINTERS(IEntityAttribute)
 
 typedef DynArray<IEntityAttributePtr> TEntityAttributeArray;
 

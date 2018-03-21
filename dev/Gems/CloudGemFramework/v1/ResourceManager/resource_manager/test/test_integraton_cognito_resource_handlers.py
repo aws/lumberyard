@@ -16,7 +16,7 @@ import unittest
 
 import boto3
 
-import resource_manager.constant
+import resource_manager_common.constant
 
 import lmbr_aws_test_support
 import test_constant
@@ -150,7 +150,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
         )
 
     def put_identity_pool_in_resource_group_template(self, gem_name, pool_name):
-        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+        with self.edit_gem_aws_json(gem_name, resource_manager_common.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             resources = template['Resources']
             resources[pool_name] = {
                 "Type": "Custom::CognitoIdentityPool",
@@ -167,11 +167,11 @@ class IntegrationTest_CloudGemFramework_ResourceManager_CognitoResourceHandlers(
             }
 
     def put_user_pool_in_resource_group_template(self, gem_name, pool_name, identities, client_apps):
-        with self.edit_gem_aws_json(gem_name, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
+        with self.edit_gem_aws_json(gem_name, resource_manager_common.constant.RESOURCE_GROUP_TEMPLATE_FILENAME) as template:
             self.put_user_pool_in_template(template, pool_name, identities, client_apps)
 
     def put_user_pool_in_deployment_access_template(self, pool_name, identities, client_apps):
-        with self.edit_project_aws_json(resource_manager.constant.DEPLOYMENT_ACCESS_TEMPLATE_EXTENSIONS_FILENAME) as template:
+        with self.edit_project_aws_json(resource_manager_common.constant.DEPLOYMENT_ACCESS_TEMPLATE_EXTENSIONS_FILENAME) as template:
             self.put_user_pool_in_template(template, pool_name, identities, client_apps)
 
     def put_user_pool_in_template(self, template, pool_name, identities, client_apps):

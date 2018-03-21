@@ -118,6 +118,7 @@ namespace LmbrCentral
         void CreateRagdollInternal();
         void CreateRagdollEntity();
         void AssignRagdollParameters();
+        void RetainJointVelocities(const AZ::Vector3& initialVelocity);
 
         //////////////////////////////////////////////////////////////////////////
         // Reflected Data

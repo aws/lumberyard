@@ -277,9 +277,9 @@ void CFragmentSequencePlayback::SetTime(float time, bool bForce)
                     break;
 
                 case CFragmentHistory::SHistoryItem::Param:
-                    m_actionController.SetParam(item.paramName.toLatin1().data(), item.param.value);
+                    m_actionController.SetParam(item.paramName.toUtf8().data(), item.param.value);
 
-                    EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toLatin1().data());
+                    EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toUtf8().data());
                     if (paramID != eMotionParamID_COUNT)
                     {
                         pViewPort->LockMotionParam(paramID, item.param.value.q.v.x);
@@ -376,9 +376,9 @@ void CFragmentSequencePlayback::Update(float timePassed, CMannequinModelViewport
 
             case CFragmentHistory::SHistoryItem::Param:
             {
-                m_actionController.SetParam(item.paramName.toLatin1().data(), item.param.value);
+                m_actionController.SetParam(item.paramName.toUtf8().data(), item.param.value);
 
-                EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toLatin1().data());
+                EMotionParamID paramID = MannUtils::GetMotionParam(item.paramName.toUtf8().data());
                 if (paramID != eMotionParamID_COUNT)
                 {
                     pViewPort->LockMotionParam(paramID, item.param.value.q.v.x);

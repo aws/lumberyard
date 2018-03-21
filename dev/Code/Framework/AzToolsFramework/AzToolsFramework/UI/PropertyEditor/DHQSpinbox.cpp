@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "DHQSpinbox.hxx"
 #include <AzFramework/Math/MathUtils.h> // for the Close function
 
@@ -18,6 +18,10 @@
 
 namespace AzToolsFramework
 {
+    // Decimal precision parameters
+    const int decimalPrecisonDefault = 7;
+    const int decimalDisplayPrecisionDefault = 3;
+
     void MouseEvent(QEvent* event, QAbstractSpinBox* spinBox, QPoint& lastMousePos, bool& isMouseCaptured)
     {
         switch (event->type())
@@ -153,6 +157,7 @@ namespace AzToolsFramework
 
     DHQDoubleSpinbox::DHQDoubleSpinbox(QWidget* parent)
         : QDoubleSpinBox(parent)
+        , m_displayDecimals(decimalDisplayPrecisionDefault)
     {
         setButtonSymbols(QAbstractSpinBox::NoButtons);
 
@@ -163,6 +168,15 @@ namespace AzToolsFramework
         connect(this, valueChanged, this, [this](double newValue){
             m_lastValue = newValue;
         });
+
+        // Set the default decimal precision we will store to a large number
+        // since we will be truncating the value displayed
+        setDecimals(decimalPrecisonDefault);
+
+        // Our tooltip will be the full decimal value, so keep it updated
+        // whenever our value changes
+        QObject::connect(this, static_cast<void(DHQDoubleSpinbox::*)(double)>(&DHQDoubleSpinbox::valueChanged), this, &DHQDoubleSpinbox::UpdateToolTip);
+        UpdateToolTip(value());
 
         EditorEvents::Bus::Handler::BusConnect();
     }
@@ -199,6 +213,7 @@ namespace AzToolsFramework
     {
         m_lastValue = value;
         QDoubleSpinBox::setValue(value);
+        UpdateToolTip(value);
     }
 
     void DHQDoubleSpinbox::OnEscape()
@@ -234,4 +249,77 @@ namespace AzToolsFramework
         size.setWidth(minimumWidth());
         return size;
     }
+
+    void DHQDoubleSpinbox::SetDisplayDecimals(int precision)
+    {
+        m_displayDecimals = precision;
+    }
+
+    QString DHQDoubleSpinbox::StringValue(double value, bool truncated) const
+    {
+        // Determine which decimal precision to use for displaying the value
+        int numDecimals = decimals();
+        if (truncated && m_displayDecimals < numDecimals)
+        {
+            numDecimals = m_displayDecimals;
+        }
+
+        QString stringValue = locale().toString(value, 'f', numDecimals);
+
+        // Handle special cases when we have decimals in our value
+        if (numDecimals > 0)
+        {
+            // Remove trailing zeros, since the locale conversion won't do
+            // it for us
+            QChar zeroDigit = locale().zeroDigit();
+            QString trailingZeros = QString("%1+$").arg(zeroDigit);
+            stringValue.remove(QRegExp(trailingZeros));
+
+            // It's possible we could be left with a decimal point on the end
+            // if we stripped the trailing zeros, so if that's the case, then
+            // add a zero digit on the end so that it is obvious that this is
+            // a float value
+            QChar decimalPoint = locale().decimalPoint();
+            if (stringValue.endsWith(decimalPoint))
+            {
+                stringValue.append(zeroDigit);
+            }
+        }
+
+        // Copied from the QDoubleSpinBox sub-class to handle removing the
+        // group separator if necessary
+        if (!isGroupSeparatorShown() && qAbs(value) >= 1000.0)
+        {
+            stringValue.remove(locale().groupSeparator());
+        }
+
+        return stringValue;
+    }
+
+    QString DHQDoubleSpinbox::textFromValue(double value) const
+    {
+        // If our widget is focused, then show the full decimal value, otherwise
+        // show the truncated value
+        return StringValue(value, !hasFocus());
+    }
+
+    void DHQDoubleSpinbox::UpdateToolTip(double value)
+    {
+        // Set our tooltip to the full decimal value
+        setToolTip(StringValue(value));
+    }
+
+    void DHQDoubleSpinbox::focusInEvent(QFocusEvent* event)
+    {
+        QDoubleSpinBox::focusInEvent(event);
+
+        // We need to set the special value text to an empty string, which
+        // effectively makes no change, but actually triggers the line edit
+        // display value to be updated so that when we receive focus to
+        // begin editing, we display the full decimal precision instead of
+        // the truncated display value
+        setSpecialValueText(QString());
+    }
 }
+
+#include <UI/PropertyEditor/DHQSpinbox.moc>

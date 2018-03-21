@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include "Heightmap.h"
 #include "TerrainTexGen.h"                                  // temporary needed
 #include "TerrainLightGen.h"
 #include "CryEditDoc.h"
@@ -1263,9 +1264,14 @@ bool CTerrainLightGen::RefreshAccessibility(const LightingSettings* inpLSettings
 
         //allocate in width unit resolution
         //m_TerrainAccMapRes =  width unit size
+        // We need to clamp the resolution at the default heightmap size,
+        // otherwise we can end up allocating up to a 4GB buffer just to
+        // generate the sky accessibility, which is much more detailed
+        // then we end up sampling, and can also result in crashes
         if (m_TerrainAccMapRes == 0)
         {
-            m_TerrainAccMapRes = m_heightmap->GetWidth() * m_heightmap->GetUnitSize();
+            int resolution = m_heightmap->GetWidth() * m_heightmap->GetUnitSize();
+            m_TerrainAccMapRes = min(resolution, DEFAULT_HEIGHTMAP_SIZE);
         }
         if (!m_SkyAccessiblity.Allocate(m_TerrainAccMapRes, m_TerrainAccMapRes))
         {

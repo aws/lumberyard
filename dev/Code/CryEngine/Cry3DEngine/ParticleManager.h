@@ -22,6 +22,8 @@
 #include "ParticleMemory.h"
 #include "IPerfHud.h"
 
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
 #if !defined(_RELEASE)
 // when not in release, collect information about vertice/indice pool usage
     #define PARTICLE_COLLECT_VERT_IND_POOL_USAGE
@@ -63,7 +65,6 @@ struct SVertexIndexPoolUsage
     const char* pContainerName;
 };
 
-
 //////////////////////////////////////////////////////////////////////////
 // Helper class for particle job management
 class CParticleBatchDataManager
@@ -78,7 +79,7 @@ public:
     // Free all memory used by manager
     void ResetData();
 
-    JobManager::SJobState* AddUpdateJob(CParticleEmitter* pEmitter);
+    AZ::LegacyJobExecutor* AddUpdateJob(CParticleEmitter *pEmitter);
 
     SAddParticlesToSceneJob& GetParticlesToSceneJob(const SRenderingPassInfo& passInfo)
     { return *m_ParticlesToScene[passInfo.ThreadID()].push_back(); }
@@ -93,25 +94,25 @@ public:
 
 private:
 
-    JobManager::SJobState* GetJobState()
+    AZ::LegacyJobExecutor* GetJobExecutor()
     {
-        assert(m_nUsedStates <= m_UpdateParticleStates.size());
-        if (m_nUsedStates == m_UpdateParticleStates.size())
+        assert(m_nUsedStates <= m_UpdateParticleJobExecutors.size());
+        if (m_nUsedStates == m_UpdateParticleJobExecutors.size())
         {
-            m_UpdateParticleStates.push_back(new JobManager::SJobState);
+            m_UpdateParticleJobExecutors.push_back(new AZ::LegacyJobExecutor);
         }
 
-        JobManager::SJobState* pJobState = m_UpdateParticleStates[m_nUsedStates++];
-        assert(pJobState);
-        ZeroStruct(*pJobState);
+        AZ::LegacyJobExecutor* pJobExecutor = m_UpdateParticleJobExecutors[m_nUsedStates++];
+        assert(pJobExecutor);
 
-        return pJobState;
+
+        return pJobExecutor;
     }
 
-    DynArray<SAddParticlesToSceneJob>           m_ParticlesToScene[RT_COMMAND_BUF_COUNT];
-    int                                                                     m_ParticlesJobStart[RT_COMMAND_BUF_COUNT][MAX_RECURSION_LEVELS];
-    DynArray<JobManager::SJobState*>            m_UpdateParticleStates;
-    int                                                                     m_nUsedStates;
+    DynArray<SAddParticlesToSceneJob> m_ParticlesToScene[RT_COMMAND_BUF_COUNT];
+    int                               m_ParticlesJobStart[RT_COMMAND_BUF_COUNT][MAX_RECURSION_LEVELS];
+    DynArray<AZ::LegacyJobExecutor*>        m_UpdateParticleJobExecutors;
+    int                               m_nUsedStates;
 };
 
 //////////////////////////////////////////////////////////////////////////

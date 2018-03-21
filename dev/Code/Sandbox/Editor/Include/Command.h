@@ -17,11 +17,10 @@
 #ifndef CRYINCLUDE_EDITOR_INCLUDE_COMMAND_H
 #define CRYINCLUDE_EDITOR_INCLUDE_COMMAND_H
 #pragma once
-#include "dll_string.h"
 
 inline string ToString(const QString& s)
 {
-    return s.toLatin1().data();
+    return s.toUtf8().data();
 }
 
 class CCommand
@@ -98,7 +97,7 @@ public:
     void SetAvailableInScripting() { m_bAlsoAvailableInScripting = true; };
     bool IsAvailableInScripting() const { return m_bAlsoAvailableInScripting; }
 
-    virtual dll_string Execute(const CArgs& args) = 0;
+    virtual QString Execute(const CArgs& args) = 0;
 
     // Only a command without any arguments and return value can be a UI command.
     virtual bool CanBeUICommand() const { return false; }
@@ -146,7 +145,7 @@ public:
             , commandId(0) {}
     };
 
-    inline dll_string Execute(const CArgs& args)
+    inline QString Execute(const CArgs& args)
     {
         assert(args.GetArgCount() == 0);
 
@@ -171,7 +170,7 @@ public:
         const string& description, const string& example,
         const Functor0wRet<RT>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -187,7 +186,7 @@ public:
         const string& description, const string& example,
         const Functor1<LIST(1, P)>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -203,7 +202,7 @@ public:
         const string& description, const string& example,
         const Functor1wRet<LIST(1, P), RT>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -219,7 +218,7 @@ public:
         const string& description, const string& example,
         const Functor2<LIST(2, P)>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -235,7 +234,7 @@ public:
         const string& description, const string& example,
         const Functor2wRet<LIST(2, P), RT>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -251,7 +250,7 @@ public:
         const string& description, const string& example,
         const Functor3<LIST(3, P)>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -267,7 +266,7 @@ public:
         const string& description, const string& example,
         const Functor3wRet<LIST(3, P), RT>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -283,7 +282,7 @@ public:
         const string& description, const string& example,
         const Functor4<LIST(4, P)>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -299,7 +298,7 @@ public:
         const string& description, const string& example,
         const Functor4wRet<LIST(4, P), RT>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -315,7 +314,7 @@ public:
         const string& description, const string& example,
         const Functor5<LIST(5, P)>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -331,7 +330,7 @@ public:
         const string& description, const string& example,
         const Functor6<LIST(6, P)>& functor);
 
-    dll_string Execute(const CArgs& args);
+    QString Execute(const CArgs& args);
 
 protected:
     friend class CEditorCommandManager;
@@ -350,7 +349,7 @@ CCommand0wRet<RT>::CCommand0wRet(const string& module, const string& name,
 }
 
 template <typename RT>
-dll_string CCommand0wRet<RT>::Execute(const CCommand::CArgs& args)
+QString CCommand0wRet<RT>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 0);
 
@@ -370,7 +369,7 @@ CCommand1<LIST(1, P)>::CCommand1(const string& module, const string& name,
 }
 
 template <LIST(1, typename P)>
-dll_string CCommand1<LIST(1, P)>::Execute(const CCommand::CArgs& args)
+QString CCommand1<LIST(1, P)>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 1);
     if (args.GetArgCount() < 1)
@@ -405,7 +404,7 @@ CCommand1wRet<LIST(1, P), RT>::CCommand1wRet(const string& module, const string&
 }
 
 template <LIST(1, typename P), typename RT>
-dll_string CCommand1wRet<LIST(1, P), RT>::Execute(const CCommand::CArgs& args)
+QString CCommand1wRet<LIST(1, P), RT>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 1);
     if (args.GetArgCount() < 1)
@@ -441,7 +440,7 @@ CCommand2<LIST(2, P)>::CCommand2(const string& module, const string& name,
 }
 
 template <LIST(2, typename P)>
-dll_string CCommand2<LIST(2, P)>::Execute(const CCommand::CArgs& args)
+QString CCommand2<LIST(2, P)>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 2);
     if (args.GetArgCount() < 2)
@@ -478,7 +477,7 @@ CCommand2wRet<LIST(2, P), RT>::CCommand2wRet(const string& module, const string&
 }
 
 template <LIST(2, typename P), typename RT>
-dll_string CCommand2wRet<LIST(2, P), RT>::Execute(const CCommand::CArgs& args)
+QString CCommand2wRet<LIST(2, P), RT>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 2);
     if (args.GetArgCount() < 2)
@@ -516,7 +515,7 @@ CCommand3<LIST(3, P)>::CCommand3(const string& module, const string& name,
 }
 
 template <LIST(3, typename P)>
-dll_string CCommand3<LIST(3, P)>::Execute(const CCommand::CArgs& args)
+QString CCommand3<LIST(3, P)>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 3);
     if (args.GetArgCount() < 3)
@@ -555,7 +554,7 @@ CCommand3wRet<LIST(3, P), RT>::CCommand3wRet(const string& module, const string&
 }
 
 template <LIST(3, typename P), typename RT>
-dll_string CCommand3wRet<LIST(3, P), RT>::Execute(const CCommand::CArgs& args)
+QString CCommand3wRet<LIST(3, P), RT>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 3);
     if (args.GetArgCount() < 3)
@@ -595,7 +594,7 @@ CCommand4<LIST(4, P)>::CCommand4(const string& module, const string& name,
 }
 
 template <LIST(4, typename P)>
-dll_string CCommand4<LIST(4, P)>::Execute(const CCommand::CArgs& args)
+QString CCommand4<LIST(4, P)>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 4);
     if (args.GetArgCount() < 4)
@@ -637,7 +636,7 @@ CCommand4wRet<LIST(4, P), RT>::CCommand4wRet(const string& module, const string&
 }
 
 template <LIST(4, typename P), typename RT>
-dll_string CCommand4wRet<LIST(4, P), RT>::Execute(const CCommand::CArgs& args)
+QString CCommand4wRet<LIST(4, P), RT>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 4);
     if (args.GetArgCount() < 4)
@@ -680,7 +679,7 @@ CCommand5<LIST(5, P)>::CCommand5(const string& module, const string& name,
 }
 
 template <LIST(5, typename P)>
-dll_string CCommand5<LIST(5, P)>::Execute(const CCommand::CArgs& args)
+QString CCommand5<LIST(5, P)>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 5);
     if (args.GetArgCount() < 5)
@@ -724,7 +723,7 @@ CCommand6<LIST(6, P)>::CCommand6(const string& module, const string& name,
 }
 
 template <LIST(6, typename P)>
-dll_string CCommand6<LIST(6, P)>::Execute(const CCommand::CArgs& args)
+QString CCommand6<LIST(6, P)>::Execute(const CCommand::CArgs& args)
 {
     assert(args.GetArgCount() == 6);
     if (args.GetArgCount() < 6)

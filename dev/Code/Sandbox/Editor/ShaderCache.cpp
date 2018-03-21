@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////
 bool CLevelShaderCache::Reload()
 {
-    return Load(m_filename.toLatin1().data());
+    return Load(m_filename.toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ bool CLevelShaderCache::LoadBuffer(const QString& textBuffer, bool bClearOld)
     }
 
     int numShaders = m_entries.size();
-    CLogFile::FormatLine("%d shader combination loaded for level %s", numShaders, GetIEditor()->GetGameEngine()->GetLevelPath().toLatin1().data());
+    CLogFile::FormatLine("%d shader combination loaded for level %s", numShaders, GetIEditor()->GetGameEngine()->GetLevelPath().toUtf8().data());
 
     return true;
 }
@@ -102,7 +102,7 @@ bool CLevelShaderCache::Save()
 
     Update();
 
-    FILE* f = fopen(m_filename.toLatin1().data(), "wt");
+    FILE* f = fopen(m_filename.toUtf8().data(), "wt");
     if (f)
     {
         for (Entries::iterator it = m_entries.begin(); it != m_entries.end(); ++it)

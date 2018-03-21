@@ -296,4 +296,50 @@
     <file alias="Editor/Style/EditorStylesheetVariables_Dark.json">../../../../Sandbox/Editor/Style/EditorStylesheetVariables_Dark.json</file>
     <file alias="Editor/Style/NewEditorStylesheet.qss">../../../../Sandbox/Editor/Style/NewEditorStylesheet.qss</file>
 </qresource>
+<qresource prefix="/AzQtComponents">
+    <file>Widgets/BaseStyleSheet.qss</file>
+    <file>Widgets/CheckBox.qss</file>
+    <file>Widgets/CheckBoxConfig.ini</file>
+    <file>Widgets/Menu.qss</file>
+    <file>Widgets/ProgressBarConfig.ini</file>
+    <file>Widgets/ProgressBar.qss</file>
+    <file>Widgets/PushButton.qss</file>
+    <file>Widgets/PushButtonConfig.ini</file>
+    <file>Widgets/RadioButton.qss</file>
+    <file>Widgets/RadioButtonConfig.ini</file>
+    <file>Widgets/Slider.qss</file>
+    <file>Widgets/SliderConfig.ini</file>
+    <file>Widgets/Text.qss</file>
+    <file>Widgets/ToolTip.qss</file>
+</qresource>
+<qresource prefix="/stylesheet">
+    <file>img/UI20/combo-checked.png</file>
+    <file>img/UI20/combo-checked-disabled.png</file>
+    <file>img/UI20/combo-checked-focus.png</file>
+    <file>img/UI20/combo-tristate.png</file>
+    <file>img/UI20/radio-checked.png</file>
+    <file>img/UI20/radio-checked-disabled.png</file>
+    <file>img/UI20/radio-checked-focus.png</file>
+    <file>img/UI20/radio-unchecked.png</file>
+    <file>img/UI20/radio-unchecked-disabled.png</file>
+    <file>img/UI20/radio-unchecked-focus.png</file>
+    <file>img/UI20/toggle-checked.png</file>
+    <file>img/UI20/toggle-checked-disabled.png</file>
+    <file>img/UI20/toggle-checked-focus.png</file>
+    <file>img/UI20/toggle-unchecked.png</file>
+    <file>img/UI20/toggle-unchecked-disabled.png</file>
+    <file>img/UI20/toggle-unchecked-focus.png</file>
+</qresource>
+<qresource prefix="/AzQtFonts">
+    <file>Fonts/Open_Sans/OpenSans-BoldItalic.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-ExtraBold.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-ExtraBoldItalic.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-Italic.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-Light.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-LightItalic.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-Regular.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-Semibold.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-SemiboldItalic.ttf</file>
+    <file>Fonts/Open_Sans/OpenSans-Bold.ttf</file>
+</qresource>
 </RCC>

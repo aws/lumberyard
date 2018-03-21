@@ -99,5 +99,9 @@ export class TextToSpeechApi extends ApiHandler {
     public getGeneratedPackages(): Observable<any> {
         return super.get("tts/generatedpackages");
     }
+
+    public deleteGeneratedPackage(key): Observable<any> {
+        return super.delete("tts/generatedpackage/" + key);
+    }
 }
 //end rest api handler

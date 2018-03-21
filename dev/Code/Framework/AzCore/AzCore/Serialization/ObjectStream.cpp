@@ -118,7 +118,7 @@ namespace AZ
             }
 
             /// Starts the operation
-            void Start();
+            bool Start();
 
             bool LoadClass(IO::GenericStream& stream, SerializeContext::DataElementNode& convertedClassElement, const SerializeContext::ClassData* parentClassInfo, void* parentClassPtr, int flags);
 
@@ -321,6 +321,8 @@ namespace AZ
         //=========================================================================
         bool ObjectStreamImpl::LoadClass(IO::GenericStream& stream, SerializeContext::DataElementNode& convertedClassElement, const SerializeContext::ClassData* parentClassInfo, void* parentClassPtr, int flags)
         {
+            bool result = true;
+
             SerializeContext::DataElement element;
 
             if (element.m_stream == nullptr)
@@ -390,6 +392,7 @@ namespace AZ
                             AZStd::string error = AZStd::string::format("Converter failed for element '%s'(0x%x) with deprecated class ID '%s'.",
                                 element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str());
                             m_errorLogger.ReportError(error.c_str());
+                            result = false;
                         }
 
                         SkipElement();
@@ -412,6 +415,7 @@ namespace AZ
                     {
                         AZStd::string error = AZStd::string::format("Element '%s'(0x%x) with class ID '%s' found in '%s' is not registered with the serializer!", element.m_name ? element.m_name : "NULL", element.m_nameCrc, element.m_id.ToString<AZStd::string>().c_str(), parentClassInfo ? parentClassInfo->m_name : "ROOT");
                         m_errorLogger.ReportError(error.c_str());
+                        result = false;
                     }
                     if (!isConvertedData)
                     {
@@ -427,7 +431,7 @@ namespace AZ
                 if (element.m_id == SerializeTypeInfo<DataOverlayInfo>::GetUuid())
                 {
                     DataOverlayInfo overlay;
-                    LoadClass(stream, *convertedNode, classData, &overlay, flags);
+                    result = LoadClass(stream, *convertedNode, classData, &overlay, flags) && result;
                     SerializeContext::DataElementNode overlaidNode;
                     overlaidNode.m_classData = parentClassInfo;
                     overlaidNode.m_element.m_stream = &stream;
@@ -440,7 +444,7 @@ namespace AZ
                         overlaidNode.GetSubElement(0).m_element.m_name = element.m_name;
                         overlaidNode.GetSubElement(0).m_element.m_nameCrc = element.m_nameCrc;
                         overlaidNode.GetSubElement(0).m_element.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                        LoadClass(overlaidNode.GetSubElement(0).m_element.m_byteStream, overlaidNode, overlaidNode.m_classData, parentClassPtr, flags);
+                        result = LoadClass(overlaidNode.GetSubElement(0).m_element.m_byteStream, overlaidNode, overlaidNode.m_classData, parentClassPtr, flags) && result;
                     }
                     continue;   // since we manually processed this node, there is no need to execute the rest of the code.
                 }
@@ -473,6 +477,7 @@ namespace AZ
                                     AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of pointers to type %s!"
                                         , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
                                     m_errorLogger.ReportError(error.c_str());
+                                    result = false;
 
                                     classElement = nullptr;
                                 }
@@ -484,6 +489,7 @@ namespace AZ
                                     AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of type %s!"
                                         , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
                                     m_errorLogger.ReportError(error.c_str());
+                                    result = false;
 
                                     classElement = nullptr;
                                 }
@@ -526,6 +532,7 @@ namespace AZ
                                                 element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
                                                 element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
                                         m_errorLogger.ReportError(error.c_str());
+                                        result = false;
                                     }
                                 }
                                 else
@@ -541,6 +548,7 @@ namespace AZ
                                                 element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
                                                 element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
                                         m_errorLogger.ReportError(error.c_str());
+                                        result = false;
                                     }
                                 }
                                 break;
@@ -589,6 +597,7 @@ namespace AZ
                                 "Instead use DeprecateClass for the old Uuid, provide a converter, and use that converter to designate a new type/uuid.",
                                 convertedClassElement.m_classData->m_typeId.ToString<AZStd::string>().c_str(), classData->m_typeId.ToString<AZStd::string>().c_str());
                             m_errorLogger.ReportError(error.c_str());
+                            result = false;
                         }
 
                         convertedClassElement.m_classData = nullptr;
@@ -619,6 +628,7 @@ namespace AZ
                             AZStd::string error = AZStd::string::format("Converter switched to type %s, which cannot be casted to base type %s.",
                                 classData->m_typeId.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
                             m_errorLogger.ReportError(error.c_str());
+                            result = false;
                             continue; // go to next element
                         }
                     }
@@ -639,6 +649,7 @@ namespace AZ
                         {
                             AZStd::string error = AZStd::string::format("Failed to reserve element in container. The container may be full. Element %u will not be added to container.", static_cast<unsigned int>(currentContainerElementIndex));
                             m_errorLogger.ReportError(error.c_str());
+                            result = false;
                         }
 
                         currentContainerElementIndex++;
@@ -756,6 +767,7 @@ namespace AZ
                                             asset->GetId().ToString<AZStd::string>().c_str(),
                                             asset->GetHint().c_str());
                                         m_errorLogger.ReportError(error.c_str());
+                                        result = false;
                                     }
                                 }
                                 else
@@ -788,6 +800,7 @@ namespace AZ
                         else
                         {
                             AZ_Error("Serialization", false, "Failed to read asset information for element \"%s\".", element.m_name);
+                            result = false;
                         }
                     }
                 }
@@ -810,11 +823,12 @@ namespace AZ
                     {
                         AZStd::string error = AZStd::string::format("Failed to load value for element '%s'(0x%x) of type '%s' found in '%s'!", element.m_name ? element.m_name : "NULL", element.m_nameCrc, classData->m_name, parentClassInfo->m_name);
                         m_errorLogger.ReportError(error.c_str());
+                        result = false;
                     }
                 }
 
                 // Read child nodes
-                LoadClass(stream, *convertedNode, classData, dataAddress, flags);
+                result = LoadClass(stream, *convertedNode, classData, dataAddress, flags) && result;
 
                 if (classContainer)
                 {
@@ -838,7 +852,7 @@ namespace AZ
 #endif // AZ_ENABLE_TRACING
             }
 
-            return true;
+            return result;
         }
 
         //=========================================================================
@@ -1706,11 +1720,13 @@ namespace AZ
         // Start
         // [6/12/2012]
         //=========================================================================
-        void ObjectStreamImpl::Start()
+        bool ObjectStreamImpl::Start()
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
 
             ++m_pending;
+
+            bool result = true;
 
             if (m_flags & OPF_SAVING)
             {
@@ -1768,13 +1784,14 @@ namespace AZ
 
                         if (m_version <= s_objectStreamVersion)
                         {
-                            LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags);
+                            result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
                         }
                         else
                         {
-                            auto newVersionError = AZStd::string::format("ObjectStream binary load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
+                            AZStd::string newVersionError = AZStd::string::format("ObjectStream binary load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
                                 s_objectStreamVersion, m_version);
-                            m_errorLogger.ReportError(newVersionError.data());
+                            m_errorLogger.ReportError(newVersionError.c_str());
+                            result = false;
                         }
                     }
                     else if (streamTag == s_xmlStreamTag)
@@ -1801,13 +1818,14 @@ namespace AZ
                             }
                             if (m_version <= s_objectStreamVersion)
                             {
-                                LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags);
+                                result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
                             }
                             else
                             {
-                                auto newVersionError = AZStd::string::format("ObjectStream XML load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
+                                AZStd::string newVersionError = AZStd::string::format("ObjectStream XML load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
                                     s_objectStreamVersion, m_version);
-                                m_errorLogger.ReportError(newVersionError.data());
+                                m_errorLogger.ReportError(newVersionError.c_str());
+                                result = false;
                             }
                         }
                         else
@@ -1821,6 +1839,7 @@ namespace AZ
                             {
                                 m_errorLogger.ReportError("ObjectStream XML is malformed.");
                             }
+                            result = false;
                         }
                     }
                     else if (streamTag == s_jsonStreamTag)
@@ -1839,6 +1858,7 @@ namespace AZ
                         if (jsonDocument.HasParseError())
                         {
                             AZ_Error("Serialize", false, "JSON parse error: %d (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
+                            result = false;
                         }
                         else
                         {
@@ -1852,13 +1872,14 @@ namespace AZ
                                 m_jsonReadValues.push_back(JSonReadNode(nullptr, m_jsonDoc));
                                 if (m_version <= s_objectStreamVersion)
                                 {
-                                    LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags);
+                                    result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
                                 }
                                 else
                                 {
-                                    auto newVersionError = AZStd::string::format("ObjectStream JSON load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
+                                    AZStd::string newVersionError = AZStd::string::format("ObjectStream JSON load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
                                         s_objectStreamVersion, m_version);
-                                    m_errorLogger.ReportError(newVersionError.data());
+                                    m_errorLogger.ReportError(newVersionError.c_str());
+                                    result = false;
                                 }
                             }
                             m_jsonDoc = nullptr;
@@ -1867,13 +1888,17 @@ namespace AZ
                     else
                     {
                         m_errorLogger.ReportError("Unknown stream tag (first byte): '\0' binary, '<' xml or '{' json!");
+                        result = false;
                     }
                 }
                 else
                 {
                     m_errorLogger.ReportError("Failed to read type tag from stream. Load aborted!");
+                    result = false;
                 }
             }
+
+            return result;
         }
 
         bool ObjectStreamImpl::Finalize()
@@ -1930,9 +1955,7 @@ namespace AZ
         ObjectStreamInternal::ObjectStreamImpl objectStream(stream, &sc, readyCB, CompletionCB(), filterDesc, 0, inplaceRootInfo);
 
         // This runs and completes (not asynchronous).
-        objectStream.Start();
-
-        return true;
+        return objectStream.Start();
     }
 
     //=========================================================================
@@ -1944,8 +1967,16 @@ namespace AZ
         AZ_Assert(stream != nullptr, "You are trying to serialize to a NULL stream!");
         ObjectStreamInternal::ObjectStreamImpl* objStream = aznew ObjectStreamInternal::ObjectStreamImpl(stream, &sc, ClassReadyCB(), CompletionCB(), FilterDescriptor(), ObjectStreamInternal::ObjectStreamImpl::OPF_SAVING, InplaceLoadRootInfoCB());
         objStream->SetType(fmt);
-        objStream->Start();
-        return objStream;
+        bool result = objStream->Start();
+        if (result)
+        {
+            return objStream;
+        }
+        else
+        {
+            delete objStream;
+            return nullptr;
+        }
     }
 
     //=========================================================================

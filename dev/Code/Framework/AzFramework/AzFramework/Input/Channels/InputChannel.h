@@ -17,7 +17,7 @@
 
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/std/typetraits/is_base_of.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,6 +87,7 @@ namespace AzFramework
         //! Base struct from which to derive all custom input data
         struct CustomData
         {
+            AZ_CLASS_ALLOCATOR(CustomData, AZ::SystemAllocator, 0);
             AZ_RTTI(CustomData, "{887E38BB-64AF-4F4E-A1AE-C1B02371F9EC}");
             virtual ~CustomData() = default;
         };
@@ -95,6 +96,7 @@ namespace AzFramework
         //! Custom data struct for input channels associated with a 2D position
         struct PositionData2D : public CustomData
         {
+            AZ_CLASS_ALLOCATOR(PositionData2D, AZ::SystemAllocator, 0);
             AZ_RTTI(PositionData2D, "{354437EC-6BFD-41D4-A0F2-7740018D3589}", CustomData);
             virtual ~PositionData2D() = default;
 
@@ -111,6 +113,14 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputChannel, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputChannel, "{1C88625D-D297-4A1C-AE07-E17F88D138F3}");
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Reflection
+        static void Reflect(AZ::ReflectContext* context);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputChannelId Id of the input channel
         //! \param[in] inputDevice Input device that owns the input channel
@@ -118,8 +128,11 @@ namespace AzFramework
                      const InputDevice& inputDevice);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying
+        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
+        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+    protected:
         AZ_DISABLE_COPY_MOVE(InputChannel);
+    public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
@@ -175,9 +188,10 @@ namespace AzFramework
         virtual const CustomData* GetCustomData() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Access to any custom data associated with the input channel
-        //! \return Pointer to the custom data if it exists and is of type T, nullptr othewise
-        template<class T> const T* GetCustomData() const;
+        //! Access to any custom data of a specific type provided by the input channel
+        //! \tparam CustomDataType The specific type of custom data to be returned if it exists
+        //! \return Pointer to the data if it exists and is of type CustomDataType, nullptr othewise
+        template<class CustomDataType> const CustomDataType* GetCustomData() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Update the channel's state based on whether it is active/engaged or inactive/idle, which
@@ -202,13 +216,13 @@ namespace AzFramework
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // Inline Implementation
-    template<class T>
-    inline const T* InputChannel::GetCustomData() const
+    template<class CustomDataType>
+    inline const CustomDataType* InputChannel::GetCustomData() const
     {
-        AZ_STATIC_ASSERT((AZStd::is_base_of<CustomData, T>::value),
+        AZ_STATIC_ASSERT((AZStd::is_base_of<CustomData, CustomDataType>::value),
             "Custom input data must inherit from InputChannel::CustomData");
 
         const CustomData* customData = GetCustomData();
-        return customData ? azdynamic_cast<const T*>(customData) : nullptr;
+        return customData ? azdynamic_cast<const CustomDataType*>(customData) : nullptr;
     }
 } // namespace AzFramework

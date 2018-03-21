@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/std/string/string.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
@@ -25,4 +26,9 @@ public:
     AZ::ComponentTypeList GetRequiredSystemComponents() const override;
     void RegisterCoreComponents() override;
     void StartCommon(AZ::Entity* systemEntity) override;
+
+    bool IsInDebugMode() const;
+
+private:
+    bool ReadGameFolderFromBootstrap(AZStd::string& result) const;
 };

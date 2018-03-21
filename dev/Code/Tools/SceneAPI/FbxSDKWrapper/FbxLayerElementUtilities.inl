@@ -70,5 +70,5 @@ namespace AZ
             }
             value = elements.GetAt(fbxElementIndex);
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

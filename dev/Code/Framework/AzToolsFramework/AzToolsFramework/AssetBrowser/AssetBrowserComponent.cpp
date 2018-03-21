@@ -61,8 +61,8 @@ namespace AzToolsFramework
             m_waitingForMore = false;
             m_thread = AZStd::thread(AZStd::bind(&AssetBrowserComponent::UpdateAssets, this));
 
-            AssetDatabaseLocationNotificationsBus::Handler::BusConnect();
-            AssetBrowserComponentRequestsBus::Handler::BusConnect();
+            AssetDatabaseLocationNotificationBus::Handler::BusConnect();
+            AssetBrowserComponentRequestBus::Handler::BusConnect();
             AzFramework::AssetCatalogEventBus::Handler::BusConnect();
             AZ::TickBus::Handler::BusConnect();
             AssetSystemBus::Handler::BusConnect();
@@ -70,10 +70,10 @@ namespace AzToolsFramework
             using namespace Thumbnailer;
             const char* contextName = "AssetBrowser";
             int thumbnailSize = qApp->style()->pixelMetric(QStyle::PM_SmallIconSize);
-            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterContext, contextName, thumbnailSize);
-            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(FolderThumbnailCache), contextName);
-            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(SourceThumbnailCache), contextName);
-            ThumbnailerRequestsBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(ProductThumbnailCache), contextName);
+            ThumbnailerRequestBus::Broadcast(&ThumbnailerRequests::RegisterContext, contextName, thumbnailSize);
+            ThumbnailerRequestBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(FolderThumbnailCache), contextName);
+            ThumbnailerRequestBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(SourceThumbnailCache), contextName);
+            ThumbnailerRequestBus::Broadcast(&ThumbnailerRequests::RegisterThumbnailProvider, MAKE_TCACHE(ProductThumbnailCache), contextName);
         }
 
         void AssetBrowserComponent::Deactivate()
@@ -85,8 +85,8 @@ namespace AzToolsFramework
                 m_thread.join(); // wait for the thread to finish
                 m_thread = AZStd::thread(); // destroy
             }
-            AssetDatabaseLocationNotificationsBus::Handler::BusDisconnect();
-            AssetBrowserComponentRequestsBus::Handler::BusDisconnect();
+            AssetDatabaseLocationNotificationBus::Handler::BusDisconnect();
+            AssetBrowserComponentRequestBus::Handler::BusDisconnect();
             AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
             AssetSystemBus::Handler::BusDisconnect();
@@ -127,6 +127,7 @@ namespace AzToolsFramework
                 NotifyUpdateThread();
             }
         }
+
         void AssetBrowserComponent::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
         {
             m_changeset->AddEntry(assetId);

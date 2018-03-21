@@ -26,7 +26,7 @@ SET skipaztests=0
 :doParse
 if NOT "%1" == "" (
     if "%1" == "--noaztests" (
-        SET skipaztests=0
+        SET skipaztests=1
         SHIFT
         GOTO :doParse
     )

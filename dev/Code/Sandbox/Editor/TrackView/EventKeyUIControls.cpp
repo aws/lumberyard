@@ -17,10 +17,11 @@
 #include "TrackViewUndo.h"
 #include "CryEditDoc.h"
 #include "Objects/EntityScript.h"
-#include "mission.h"
-#include "missionscript.h"
-#include "Maestro/Types/AnimNodeType.h"
-#include "Maestro/Types/AnimParamType.h"
+#include "Mission.h"
+#include "MissionScript.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 //////////////////////////////////////////////////////////////////////////
 class CEventKeyUIControls
@@ -156,9 +157,9 @@ bool CEventKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys
 // Called when UI variable changes.
 void CEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!pSequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
     {
         return;
     }
@@ -208,8 +209,24 @@ void CEventKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
                 }
             }
 
-            CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-            keyHandle.SetKey(&eventKey);
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&eventKey);
+            }
+            else if (isDuringUndo)
+            {
+                keyHandle.SetKey(&eventKey);
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key Value");
+                keyHandle.SetKey(&eventKey);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
         }
     }
 }

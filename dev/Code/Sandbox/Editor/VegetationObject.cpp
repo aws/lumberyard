@@ -218,7 +218,7 @@ void CVegetationObject::LoadObject()
             m_statObj->Release();
             m_statObj = 0;
         }
-        m_statObj = GetIEditor()->GetSystem()->GetI3DEngine()->LoadStatObjUnsafeManualRef(filename.toLatin1().data(), NULL, NULL, false);
+        m_statObj = GetIEditor()->GetSystem()->GetI3DEngine()->LoadStatObjUnsafeManualRef(filename.toUtf8().data(), NULL, NULL, false);
         if (m_statObj)
         {
             VegetationObjectBus::Handler::BusConnect(m_statObj);
@@ -488,7 +488,7 @@ void CVegetationObject::Serialize(const XmlNodeRef& node, bool bLoading)
         // Loading
         QString fileName;
         node->getAttr("FileName", fileName);
-        fileName = PathUtil::ToUnixPath(fileName.toLatin1().data()).c_str();
+        fileName = PathUtil::ToUnixPath(fileName.toUtf8().data()).c_str();
         node->getAttr("GUID", m_guid);
         node->getAttr("Hidden", m_bHidden);
         node->getAttr("Category", m_category);
@@ -530,11 +530,11 @@ void CVegetationObject::Serialize(const XmlNodeRef& node, bool bLoading)
     {
         // Save.
         node->setAttr("Id", m_id);
-        node->setAttr("FileName", GetFileName().toLatin1().data());
+        node->setAttr("FileName", GetFileName().toUtf8().data());
         node->setAttr("GUID", m_guid);
         node->setAttr("Hidden", m_bHidden);
         node->setAttr("Index", m_index);
-        node->setAttr("Category", m_category.toLatin1().data());
+        node->setAttr("Category", m_category.toUtf8().data());
 
         if (!m_terrainLayers.empty())
         {
@@ -542,7 +542,7 @@ void CVegetationObject::Serialize(const XmlNodeRef& node, bool bLoading)
             for (int i = 0; i < m_terrainLayers.size(); i++)
             {
                 XmlNodeRef layer = layers->newChild("Layer");
-                layer->setAttr("Name", m_terrainLayers[i].toLatin1().data());
+                layer->setAttr("Name", m_terrainLayers[i].toUtf8().data());
             }
         }
     }

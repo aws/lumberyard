@@ -14,15 +14,15 @@
 
 #include <QWidget>
 #include <functional>
-#include "qslider.h"
-#include "qgridlayout.h"
-#include "qpushbutton.h"
-#include "qlabel.h"
-#include "qimage.h"
-#include "qpixmap.h"
-#include <qmenu.h>
-#include <qwidgetaction.h>
-#include <qlineedit.h>
+#include <QSlider>
+#include <QGridLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QImage>
+#include <QPixmap>
+#include <QMenu>
+#include <QWidgetAction>
+#include <QLineEdit>
 #include <Controls/QToolTipWidget.h>
 
 class QColorEyeDropper;

@@ -49,7 +49,7 @@ namespace AZ
             SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<SkeletonExporter, SceneAPI::SceneCore::ExportingComponent>()->Version(1);
+                serializeContext->Class<SkeletonExporter, SceneAPI::SceneCore::RCExportingComponent>()->Version(1);
             }
         }
 

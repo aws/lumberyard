@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,8 +10,10 @@
 *
 */
 
-#include "fbxsdk.h"
-#include "FbxTimeWrapper.h"
+#pragma once
+
+#include <fbxsdk.h>
+#include <SceneAPI/FbxSDKWrapper/FbxTimeWrapper.h>
 
 namespace AZ
 {
@@ -30,5 +30,5 @@ namespace AZ
         protected:
             FbxAnimCurve* m_fbxAnimCurve;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

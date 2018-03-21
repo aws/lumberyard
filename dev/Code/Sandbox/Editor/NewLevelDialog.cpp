@@ -51,7 +51,7 @@ CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
     m_bIsResize = false;
 
     // Level name only supports ASCII characters
-    QRegExp rx("[_a-zA-Z][_a-zA-Z0-9-]*");
+    QRegExp rx("[_a-zA-Z0-9-]+");
     QValidator* validator = new QRegExpValidator(rx, this);
     ui->LEVEL->setValidator(validator);
 

@@ -13,8 +13,8 @@
 import unittest
 import mock
 
-import EmptyDeploymentResourceHandler
-import custom_resource_response
+from resource_types import Custom_EmptyDeployment
+from cgf_utils import custom_resource_response
 
 class UnitTest_CloudGemFramework_ProjectResourceHandler_EmptyDeploymentResourceHandler(unittest.TestCase):
 
@@ -35,7 +35,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_EmptyDeploymentResourceH
 
         expected_physical_id = 'CloudCanvas:EmptyDeployment:TestStack'
                 
-        with mock.patch.object(custom_resource_response, 'succeed') as mock_custom_resource_response_succeed:
-            EmptyDeploymentResourceHandler.handler(self.event, self.context)
-            mock_custom_resource_response_succeed.assert_called_with(self.event, self.context, expected_data, expected_physical_id)
+        with mock.patch.object(custom_resource_response, 'success_response') as mock_custom_resource_response_succeed:
+            Custom_EmptyDeployment.handler(self.event, self.context)
+            mock_custom_resource_response_succeed.assert_called_with(expected_data, expected_physical_id)
 

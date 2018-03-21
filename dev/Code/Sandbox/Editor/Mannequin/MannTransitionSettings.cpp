@@ -86,7 +86,7 @@ void CMannTransitionSettingsDlg::UpdateFragmentIDs()
         if (selIndex >= 0 && selIndex < ui->FRAGMENTID_FROM_COMBO->count())
         {
             QString fromName = ui->FRAGMENTID_FROM_COMBO->itemText(selIndex);
-            m_IDFrom = pControllerDef ? pControllerDef->m_fragmentIDs.Find(fromName.toLatin1().data()) : -1;
+            m_IDFrom = pControllerDef ? pControllerDef->m_fragmentIDs.Find(fromName.toUtf8().data()) : -1;
         }
     }
 
@@ -95,7 +95,7 @@ void CMannTransitionSettingsDlg::UpdateFragmentIDs()
         if (selIndex >= 0 && selIndex < ui->FRAGMENTID_TO_COMBO->count())
         {
             QString fromName = ui->FRAGMENTID_TO_COMBO->itemText(selIndex);
-            m_IDTo = pControllerDef ? pControllerDef->m_fragmentIDs.Find(fromName.toLatin1().data()) : -1;
+            m_IDTo = pControllerDef ? pControllerDef->m_fragmentIDs.Find(fromName.toUtf8().data()) : -1;
         }
     }
 }

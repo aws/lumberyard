@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #include <SNS/FlowNode_SNSMessageDeserialize.h>
 #include <aws/core/utils/json/JsonSerializer.h>
 

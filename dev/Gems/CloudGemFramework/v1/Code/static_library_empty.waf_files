@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "StaticLibrary/StdAfx.cpp",
-            "StaticLibrary/StdAfx.h"
+            "StaticLibrary/CloudGemFramework_precompiled.cpp",
+            "StaticLibrary/CloudGemFramework_precompiled.h"
         ]
     }
 }

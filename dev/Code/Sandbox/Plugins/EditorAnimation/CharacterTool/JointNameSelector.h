@@ -33,7 +33,7 @@ public:
     JointSelectionDialog(QWidget* parent);
     QSize sizeHint() const override;
 
-    bool chooseJoint(QString* name, IDefaultSkeleton* skeleton);
+    bool chooseJoint(QString& name, IDefaultSkeleton* skeleton);
 protected slots:
     void onActivated(const QModelIndex& index);
     void onFilterChanged(const QString&);

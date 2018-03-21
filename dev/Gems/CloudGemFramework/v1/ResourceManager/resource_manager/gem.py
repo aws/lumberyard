@@ -20,10 +20,11 @@ import subprocess
 import uuid
 
 # Resource manager modules...
-import constant
+from resource_manager_common import constant
 import file_util
 import util
 from errors import HandledError
+from cgf_utils.version_utils import Version
 
 class GemContext(object):
 
@@ -109,11 +110,19 @@ class GemContext(object):
 
 
     def __do_lmbr_gems_create(self, lmbr_exe_path_override, gem_name, relative_directory_path, asset_only, version):
+        gems_file_content = self.__get_gems_file_content()
+        gem_names = []
+        for gem in gems_file_content.get('Gems', []):
+            if gem.get('_comment', ''):
+                gem_names.append(gem['_comment'])
+        if gem_name in gem_names:
+            raise HandledError('Cloud gems named {} exists in the project. Cloud gems must have unique names within a project.'.format(gem_name))
+         
 
         if relative_directory_path is None:
             relative_directory_path = os.path.join(
                 gem_name,
-                'v' + str(util.Version(version).major))
+                'v' + str(Version(version).major))
 
         full_directory_path = os.path.join(
                 self.__context.config.root_directory_path,
@@ -313,7 +322,7 @@ class GemContext(object):
         try:
             self.__execute(args)
         except Exception as e:
-            raise HandledError('Gem disable failed. {}'.format(e.messsage))
+            raise HandledError('Gem {} disable failed.'.format(gem_name))
 
         # remove from gem list and resource group list, if needed
 
@@ -537,7 +546,7 @@ class Gem(object):
     @property
     def version(self):
         if self.__version is None:
-            self.__version = util.Version(self.__gem_file_object.get('Version', '0.0.0'))
+            self.__version = Version(self.__gem_file_object.get('Version', '0.0.0'))
         return self.__version
 
     @property
@@ -648,7 +657,6 @@ def build(bld):
 
         platforms = ['all'],
         uselib = $-USE-LIB-LIST-$,
-        shared_settings = ['awsgem.json'],
 
         use = ['CloudGemFrameworkStaticLibrary']
 

@@ -148,7 +148,7 @@ void CEntityPanel::OnEditScript()
     assert(m_entity != 0);
     CEntityScript* script = m_entity->GetScript();
 
-    AZStd::string cmd = AZStd::string::format("general.launch_lua_editor \'%s\'", script->GetFile().toLatin1().data());
+    AZStd::string cmd = AZStd::string::format("general.launch_lua_editor \'%s\'", script->GetFile().toUtf8().data());
     GetIEditor()->ExecuteCommand(cmd.c_str());
 }
 

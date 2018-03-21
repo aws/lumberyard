@@ -300,22 +300,22 @@ inline QColor String2Color(const QString& val)
 {
     unsigned int r = 0, g = 0, b = 0;
     int res = 0;
-    res = sscanf(val.toLatin1().data(), "R:%d,G:%d,B:%d", &r, &g, &b);
+    res = sscanf(val.toUtf8().data(), "R:%d,G:%d,B:%d", &r, &g, &b);
     if (res != 3)
     {
-        res = sscanf(val.toLatin1().data(), "R:%d G:%d B:%d", &r, &g, &b);
+        res = sscanf(val.toUtf8().data(), "R:%d G:%d B:%d", &r, &g, &b);
     }
     if (res != 3)
     {
-        res = sscanf(val.toLatin1().data(), "%d,%d,%d", &r, &g, &b);
+        res = sscanf(val.toUtf8().data(), "%d,%d,%d", &r, &g, &b);
     }
     if (res != 3)
     {
-        res = sscanf(val.toLatin1().data(), "%d %d %d", &r, &g, &b);
+        res = sscanf(val.toUtf8().data(), "%d %d %d", &r, &g, &b);
     }
     if (res != 3)
     {
-        sscanf(val.toLatin1().data(), "%x", &r);
+        sscanf(val.toUtf8().data(), "%x", &r);
         return r;
     }
 
@@ -353,7 +353,7 @@ inline QString TokenizeString(const QString& s, LPCSTR pszTokens, int& iStart)
 {
     assert(iStart >= 0);
 
-    QByteArray str = s.toLatin1();
+    QByteArray str = s.toUtf8();
 
     if (pszTokens == NULL)
     {

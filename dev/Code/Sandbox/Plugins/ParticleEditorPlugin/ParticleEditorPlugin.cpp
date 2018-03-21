@@ -58,13 +58,13 @@ CParticleEditorPlugin::CParticleEditorPlugin(IEditor* editor)
         options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
         AzToolsFramework::RegisterViewPane<CMainWindow>(m_RegisteredQtViewPaneName, LyViewPane::CategoryTools, options);
-        AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusConnect();
+        AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
     }
 }
 
 void CParticleEditorPlugin::Release()
 {
-    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler::BusDisconnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
     if (c_EnableParticleEditorMenuEntry)
     {
         AzToolsFramework::UnregisterViewPane(m_RegisteredQtViewPaneName);

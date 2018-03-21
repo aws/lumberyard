@@ -313,7 +313,7 @@ namespace AzFramework
 
         char categorybuffer[64] = {0};
         // format the thread-id based on platform.  On some platforms, its just a number:
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_OS_USE_WINDOWS_THREADS || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
         const char* printFormatter = m_machineReadable ? "~~%u~~%s~~" : "{0x%08X}[%14s]";
         unsigned long threadID = static_cast<unsigned long>(AZStd::this_thread::get_id().m_id);
 #else

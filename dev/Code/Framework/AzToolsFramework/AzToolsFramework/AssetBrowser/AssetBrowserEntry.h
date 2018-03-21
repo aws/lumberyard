@@ -97,9 +97,7 @@ namespace AzToolsFramework
             AZ_RTTI(AssetBrowserEntry, "{67679F9E-055D-43BE-A2D0-FB4720E5302A}");
 
             virtual ~AssetBrowserEntry();
-            virtual void AddChild(AssetBrowserEntry* child);
-            void RemoveChild(AssetBrowserEntry* child);
-            void RemoveChildren();
+
             virtual QVariant data(int column) const;
             int row() const;
             static bool FromMimeData(const QMimeData* mimeData, AZStd::vector<AssetBrowserEntry*>& entries);
@@ -148,6 +146,10 @@ namespace AzToolsFramework
             AZStd::vector<AssetBrowserEntry*> m_children;
             AssetBrowserEntry* m_parentAssetEntry = nullptr;
 
+            virtual void AddChild(AssetBrowserEntry* child);
+            void RemoveChild(AssetBrowserEntry* child);
+            void RemoveChildren();
+
             //! When child is added, its paths are updated relative to this entry
             virtual void UpdateChildPaths(AssetBrowserEntry* child) const;
             virtual void PathsUpdated();
@@ -157,6 +159,8 @@ namespace AzToolsFramework
 
         private:
             SharedThumbnailKey m_thumbnailKey;
+            //! index in its parent's m_children list
+            int m_row = 0;
 
             AZ_DISABLE_COPY_MOVE(AssetBrowserEntry);
         };
@@ -328,10 +332,9 @@ namespace AzToolsFramework
             AZ::Data::AssetType m_assetType;
             AZStd::string m_platform;
             AZStd::string m_assetTypeString;
-            
+
             AZ_DISABLE_COPY_MOVE(ProductAssetBrowserEntry);
         };
-
     } // namespace AssetBrowser
 } // namespace AzToolsFramework
 

@@ -12,7 +12,7 @@
 
 
 #include "StdAfx.h"
-#include "Colorbutton.h"
+#include "ColorButton.h"
 
 #include <QPainter>
 #include <QColorDialog>

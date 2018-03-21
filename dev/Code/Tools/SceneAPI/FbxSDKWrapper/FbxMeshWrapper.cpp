@@ -12,10 +12,10 @@
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
-#include "FbxMeshWrapper.h"
-#include "FbxSkinWrapper.h"
-#include "FbxBlendShapeWrapper.h"
-#include "FbxTypeConverter.h"
+#include <SceneAPI/FbxSDKWrapper/FbxMeshWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxSkinWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxBlendShapeWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxTypeConverter.h>
 
 namespace AZ
 {
@@ -123,5 +123,5 @@ namespace AZ
             normal = FbxTypeConverter::ToVector3(fbxNormal);
             return hasVertexNormal;
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

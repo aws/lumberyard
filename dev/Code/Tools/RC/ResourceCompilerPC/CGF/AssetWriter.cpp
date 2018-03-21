@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "../CryEngine/Cry3DEngine/CGF/ChunkFile.h"
 #include "StaticObjectCompiler.h"
 #include "StatCGFPhysicalize.h"

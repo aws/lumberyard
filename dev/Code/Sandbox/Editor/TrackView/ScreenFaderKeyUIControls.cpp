@@ -148,7 +148,7 @@ void CScreenFaderKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle&
             else if (pVar == mv_strTexture.GetVar())
             {
                 QString sTexture = mv_strTexture;
-                screenFaderKey.m_strTexture = sTexture.toLatin1().data();
+                screenFaderKey.m_strTexture = sTexture.toUtf8().data();
             }
             else if (pVar == mv_fadeType.GetVar())
             {

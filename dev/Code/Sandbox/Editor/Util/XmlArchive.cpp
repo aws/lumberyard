@@ -35,27 +35,61 @@ bool CXmlArchive::Load(const QString& file)
     QString str;
     ar >> str;
 
+    root = XmlHelpers::LoadXmlFromBuffer(str.toUtf8().data(), str.toUtf8().length());
+    if (!root)
+    {
+        // If we didn't extract valid XML, attempt to check the header to see if we're dealing with an improperly serialized archive
+        // When deserializing QStrings, we use readStringLength in EditorUtils, which mimics MFC's decoding.
+        // In this encoding, the length is first read as an unsigned 8-bit value, if that is 0xFF then the next two bytes are read
+        // If the 16 bit uint is 0xFFFF, then the next four bytes are read, etc. up to a final 64 bit value.
+
+        // In 1.09, there was a bug in which we'd serialize out the 32-bit length improperly like so:
+        // 0xFF 0xFF 0x00 <4 byte proper length>
+        
+        // Note that the header could also historically start with  0xFF 0xFF 0xFE to indicate wide strings prior to the length data
+        // but we don't have to deal with that here as the broken version of the code never prepended this
+        cFile.seek(0);
+        quint8 len8;
+        ar >> len8;
+
+        quint16 len16;
+        ar >> len16;
+
+        // Possible bad header, attempt to read 32 bit length.
+        if (len8 == 0xff && len16 == 0xff)
+        {
+            // This version of operator<< only serialized out UTF8 strings up to 32 bits of length, no need to 64-bit check or do wchar.
+            quint32 len32;
+            ar >> len32;
+
+            str = QString::fromUtf8(cFile.read(len32));
+            root = XmlHelpers::LoadXmlFromBuffer(str.toUtf8().data(), str.toUtf8().length());
+        }
+
+        if (!root)
+        {
+            CLogFile::FormatLine("Warning: Loading of %s failed", filename);
+            return false;
+        }
+    }
+
+    bool loaded;
     try
     {
-        pNamedData->Serialize(ar);
+        loaded = pNamedData->Serialize(ar);
     }
     catch (...)
+    {
+        loaded = false;
+    }
+
+    if (!loaded)
     {
         CLogFile::FormatLine("Error: Can't load xml file: '%s'! File corrupted. Binary file possibly was corrupted by Source Control if it was marked like text format.", filename);
         return false;
     }
 
-    root = XmlHelpers::LoadXmlFromBuffer(str.toUtf8().data(), str.toUtf8().length());
-    if (!root)
-    {
-        CLogFile::FormatLine("Warning: Loading of %s failed", filename);
-    }
-
-    if (root)
-    {
-        return true;
-    }
-    return false;
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -38,10 +38,6 @@ public:
     CAlphaBitmap();
     ~CAlphaBitmap();
 
-    //! load a bitmap file from a PNG or other alpha-capable format
-    bool            Load(const char* pFilename, bool bVerticalFlip = false);
-    //! save a bitmap to a file
-    bool            Save(const char* pFileName);
     //! creates the bitmap from raw 32bpp data
     //! \param pData the 32bpp raw image data, RGBA, can be NULL and it would create just an empty bitmap
     //! \param aWidth the bitmap width

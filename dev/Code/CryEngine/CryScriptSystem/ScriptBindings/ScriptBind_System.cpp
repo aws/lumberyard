@@ -586,7 +586,12 @@ int CScriptBind_System::GetLocalOSTime(IFunctionHandler* pH)
 {
     SCRIPT_CHECK_PARAMETERS(0);
     //! Get time.
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ScriptBind_System_cpp)
+#elif defined(LINUX) || defined(APPLE)
+#define SCRIPTBIND_SYSTEM_CPP_TRAIT_USE_UNIX_LOCALTIME 1
+#endif
+#if SCRIPTBIND_SYSTEM_CPP_TRAIT_USE_UNIX_LOCALTIME
     time_t long_time = time(NULL);
     struct tm* newtime = localtime(&long_time); /* Convert to local time. */
 #else

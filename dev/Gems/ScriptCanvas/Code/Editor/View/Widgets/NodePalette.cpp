@@ -17,11 +17,12 @@
 #include <QMenu>
 #include <QSignalBlocker>
 #include <QScrollBar>
-#include <qboxlayout.h>
-#include <qpainter.h>
-#include <qevent.h>
+#include <QBoxLayout>
+#include <QPainter>
+#include <QEvent>
 #include <QCoreApplication>
 #include <QCompleter>
+#include <QMouseEvent>
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/RTTI/BehaviorContext.h>

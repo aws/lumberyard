@@ -256,13 +256,6 @@ ASSETTAGGING_API int AssetTagging_MaxStringLen()
 
 ASSETTAGGING_API bool AssetTagging_Initialize(const char* localpath)
 {
-#if defined(AZ_PLATFORM_WINDOWS)
-#if defined(_DEBUG)
-    // disable time-consuming and pointless MFC dump of memory leaks
-    AfxEnableMemoryLeakDump(FALSE);
-#endif
-#endif
-
     if (GetDBCredentials())
     {
         if (OpenConnection(localpath))

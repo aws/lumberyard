@@ -152,7 +152,7 @@ namespace AudioControls
 
                     if (QFileInfo::exists(sFullFilePath.c_str()))
                     {
-                        const DWORD fileAttributes = GetFileAttributesA(sFullFilePath.c_str());
+                        const DWORD fileAttributes = GetFileAttributes(sFullFilePath.c_str());
                         if (fileAttributes & FILE_ATTRIBUTE_READONLY)
                         {
                             // file is read-only

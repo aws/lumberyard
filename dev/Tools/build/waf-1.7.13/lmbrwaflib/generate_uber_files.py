@@ -101,8 +101,7 @@ def map_uber_files(ctx, original_file_list, token, target_name=None):
     if 'auto' in original_file_list:
         for (filter_name, file_list) in original_file_list['auto'].items():
             for file in file_list:
-                file_lower = file.lower()
-                if ctx.is_cxx_file(file_lower):
+                if ctx.is_cxx_file(file):
                     if os.path.isabs(file):
                         file_node = ctx.root.make_node(file)
                     else:

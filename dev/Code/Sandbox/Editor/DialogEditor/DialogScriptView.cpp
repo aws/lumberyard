@@ -451,10 +451,10 @@ void DialogScriptView::OnBrowseAudioTrigger(int row)
     SResourceSelectorContext x;
     x.typeName = "AudioTrigger";
     x.parentWidget = this;
-    string value;
-    dll_string newValue = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, value);
-    value = newValue.c_str();
-    m_model->setData(m_model->index(row, DialogScriptModel::AudioIDColumn), QVariant(QtUtil::ToQString(value)), Qt::EditRole);
+
+    QString value;
+    value = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, value);
+    m_model->setData(m_model->index(row, DialogScriptModel::AudioIDColumn), value, Qt::EditRole);
 }
 
 struct MsgHelper
@@ -612,7 +612,7 @@ void DialogScriptView::OnBrowseFacial(int row)
         {
             valString = valString.mid(delim + 1);
         }
-        value = valString.toLatin1().data();
+        value = valString.toUtf8().data();
     }
 
     m_model->setData(m_model->index(row, DialogScriptModel::FacialExprColumn), QVariant(QtUtil::ToQString(value)), Qt::EditRole);

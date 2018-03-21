@@ -23,84 +23,79 @@ namespace AZ
     {
         namespace SceneUI
         {
-            const int JobWatcher::s_jobQueryInterval = 250; // ms
+            const int JobWatcher::s_jobQueryInterval = 750; // ms
 
             JobWatcher::JobWatcher(const AZStd::string& sourceAssetFullPath, Uuid traceTag)
                 : m_jobQueryTimer(new QTimer(this))
                 , m_sourceAssetFullPath(sourceAssetFullPath)
-                , m_hasReportedAvailableJobs(false)
                 , m_traceTag(traceTag)
             {
-                AZ_TraceContext("Tag", m_traceTag);
                 connect(m_jobQueryTimer, &QTimer::timeout, this, &JobWatcher::OnQueryJobs);
-                m_jobQueryTimer->start(s_jobQueryInterval);
             }
 
-            bool IsJobFinishedProcessing(const AzToolsFramework::AssetSystem::JobInfo& job)
+            void JobWatcher::StartMonitoring()
             {
-                return job.m_status == AzToolsFramework::AssetSystem::JobStatus::Completed
-                    || job.m_status == AzToolsFramework::AssetSystem::JobStatus::Failed
-                    || job.m_status == AzToolsFramework::AssetSystem::JobStatus::Failed_InvalidSourceNameExceedsMaxLimit;
+                m_jobQueryTimer->start(s_jobQueryInterval);
             }
 
             void JobWatcher::OnQueryJobs()
             {
+                using namespace AzToolsFramework;
+                using namespace AzToolsFramework::AssetSystem;
+
                 AZ_TraceContext("Tag", m_traceTag);
                 
                 // Query for the relevant jobs
-                Outcome<AzToolsFramework::AssetSystem::JobInfoContainer> result = Failure();
-                EBUS_EVENT_RESULT(result, AzToolsFramework::AssetSystemJobRequestBus, GetAssetJobsInfo, m_sourceAssetFullPath, true);
+                Outcome<AssetSystem::JobInfoContainer> result = Failure();
+                AssetSystemJobRequestBus::BroadcastResult(result, &AssetSystemJobRequestBus::Events::GetAssetJobsInfo, m_sourceAssetFullPath, true);
  
                 if (!result.IsSuccess())
                 {
                     m_jobQueryTimer->stop();
-                    emit JobQueryFailed();
+                    emit JobQueryFailed("Failed to retrieve job information from Asset Processor.");
                     return;
                 }
 
-                AzToolsFramework::AssetSystem::JobInfoContainer& allJobs = result.GetValue();
-
-                // Signal what jobs are pending (if we haven't yet)
-                if (!m_hasReportedAvailableJobs)
+                JobInfoContainer& allJobs = result.GetValue();
+                if (allJobs.empty())
                 {
-                    AZStd::vector<AZStd::string> jobPlatforms;
-                    for (const AzToolsFramework::AssetSystem::JobInfo& info : allJobs)
-                    {
-                        // Account for potential of duplicates
-                        if (AZStd::find(jobPlatforms.begin(), jobPlatforms.end(), info.m_platform) == jobPlatforms.end())
-                        {
-                            jobPlatforms.push_back(info.m_platform);
-                        }
-                    }
-
-                    emit JobsForSourceFileFound(jobPlatforms);
-                    m_hasReportedAvailableJobs = true;
+                    m_jobQueryTimer->stop();
+                    emit JobQueryFailed("Queued file didn't produce any jobs.");
+                    return;
                 }
 
-                // If all jobs are finished processing, then notify the user what the final status was
-                //  and give a full log of everything
-                if (AZStd::all_of(allJobs.begin(), allJobs.end(), IsJobFinishedProcessing))
+                bool allFinished = true;
+                for (const JobInfo& job : allJobs)
                 {
-                    for (const AzToolsFramework::AssetSystem::JobInfo& job : allJobs)
+                    AZ_Assert(job.m_status != JobStatus::Any,
+                        "The 'Any' status for job should be exclusive to the database and never be a result to a query.");
+                    if (job.m_status != JobStatus::Queued && job.m_status != JobStatus::InProgress)
                     {
-                        bool wasSuccessful = job.m_status == AzToolsFramework::AssetSystem::JobStatus::Completed;
+                        if (AZStd::find(m_reportedJobs.begin(), m_reportedJobs.end(), job.m_jobRunKey) == m_reportedJobs.end())
+                        {
+                            bool wasSuccessful = job.m_status == AzToolsFramework::AssetSystem::JobStatus::Completed;
 
-                        Outcome<AZStd::string> logFetchResult = Failure();
-                        EBUS_EVENT_RESULT(logFetchResult, AzToolsFramework::AssetSystemJobRequestBus, GetJobLog, job.m_jobRunKey);
+                            Outcome<AZStd::string> logFetchResult = Failure();
+                            AssetSystemJobRequestBus::BroadcastResult(logFetchResult, &AssetSystemJobRequestBus::Events::GetJobLog, job.m_jobRunKey);
+                            emit JobProcessingComplete(job.m_platform, job.m_jobRunKey, wasSuccessful,
+                                logFetchResult.IsSuccess() ? logFetchResult.GetValue() : "");
 
-                        emit JobProcessingComplete(
-                            job.m_platform, 
-                            job.m_jobRunKey, 
-                            wasSuccessful, 
-                            logFetchResult.IsSuccess() ? logFetchResult.GetValue() : "");
+                            m_reportedJobs.push_back(job.m_jobRunKey);
+                        }
                     }
-
+                    else
+                    {
+                        allFinished = false;
+                    }
+                }
+                if (allFinished)
+                {
                     m_jobQueryTimer->stop();
                     emit AllJobsComplete();
                 }
             }
-        } // SceneUI
-    } // SceneAPI
-} // AZ
+        } // namespace SceneUI
+    } // namespace SceneAPI
+} // namespace AZ
 
 #include <CommonWidgets/JobWatcher.moc>

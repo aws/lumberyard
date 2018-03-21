@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "StarterGameGem_precompiled.h"
 #include "StarterGameAIUtility.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>

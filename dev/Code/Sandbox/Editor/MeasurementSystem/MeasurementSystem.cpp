@@ -185,12 +185,12 @@ void CRoadObjectEnhanced::DrawMeasurementSystemInfo(DisplayContext& dc, const QC
             dc.SetLineWidth(1);
             Vec3 vsegmentlDistStrPos = p0;
             segmentDistanceStr = QStringLiteral("Segment %1 Length: %2").arg(i + 1).arg(segmentDistance, 0, 'f', 2, QLatin1Char('0'));
-            dc.DrawTextLabel(vsegmentlDistStrPos - sz, 1.3f, segmentDistanceStr.toLatin1().data());
+            dc.DrawTextLabel(vsegmentlDistStrPos - sz, 1.3f, segmentDistanceStr.toUtf8().data());
 
             vsegmentlDistStrPos = p0;
             vsegmentlDistStrPos = Vec3(vsegmentlDistStrPos.x, vsegmentlDistStrPos.y, vsegmentlDistStrPos.z + 0.3f);
             segmentDistanceStr = QStringLiteral("Total Length: %2").arg(totalDistance, 0, 'f', 2, QLatin1Char('0'));
-            dc.DrawTextLabel(vsegmentlDistStrPos - sz, 1.3f, segmentDistanceStr.toLatin1().data());
+            dc.DrawTextLabel(vsegmentlDistStrPos - sz, 1.3f, segmentDistanceStr.toUtf8().data());
 
             // Yellow
             dc.SetLineWidth(2);
@@ -291,7 +291,7 @@ void CRoadObjectEnhanced::DrawCenterLine(const int& startPosIndex, const int& en
                         if (k == int(kn / 2))
                         {
                             segmentNumberStr = QStringLiteral("Segment %1").arg(i + 1);
-                            dc.DrawTextLabel(p, 1.3f, segmentNumberStr.toLatin1().data());
+                            dc.DrawTextLabel(p, 1.3f, segmentNumberStr.toUtf8().data());
                         }
                     }
                     else
@@ -303,7 +303,7 @@ void CRoadObjectEnhanced::DrawCenterLine(const int& startPosIndex, const int& en
                             Vec3 vDispPos = p1 - p;
                             vDispPos = p + vDispPos / 2;
                             segmentNumberStr = QStringLiteral("Segment %1").arg(i + 1);
-                            dc.DrawTextLabel(vDispPos, 1.3f, segmentNumberStr.toLatin1().data());
+                            dc.DrawTextLabel(vDispPos, 1.3f, segmentNumberStr.toUtf8().data());
                         }
                     }
                 }

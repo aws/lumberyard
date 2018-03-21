@@ -582,20 +582,23 @@ namespace AZ
 
                 SceneGraph testSceneGraph;
 
-                static const int nodeValueA = 1;
-                static const int nodeValueB = 2;
-                static const int nodeValueC = 3;
-                static const int nodeValueD = 4;
-                static const int nodeValueE = 5;
-                static const int nodeValueF = 6;
-                static const int nodeValueG = 7;
-                static const int nodeValueH = 8;
-                static const int nodeValueI = 9;
-                static const int nodeValueJ = 10;
-                static const int nodeValueK = 11;
-                static const int nodeValueL = 12;
+                enum Constants : int 
+                {
+                    nodeValueA = 1,
+                    nodeValueB = 2,
+                    nodeValueC = 3,
+                    nodeValueD = 4,
+                    nodeValueE = 5,
+                    nodeValueF = 6,
+                    nodeValueG = 7,
+                    nodeValueH = 8,
+                    nodeValueI = 9,
+                    nodeValueJ = 10,
+                    nodeValueK = 11,
+                    nodeValueL = 12,
 
-                static const size_t totalNodeCount = 12 + 1; // +1 for the root node.
+                    totalNodeCount = 12 + 1 // +1 for the root node.
+                };
             };
 
             //Find's

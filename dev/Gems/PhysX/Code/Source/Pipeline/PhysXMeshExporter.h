@@ -57,7 +57,7 @@ namespace PhysX
         private:
             void WriteToFile(const void* assetData, AZ::u32 assetDataSize, const AZStd::string& filename, const Pipeline::PhysXMeshGroup& pxMeshGroup) const;
             bool ValidateCookedConvexMesh(void* assetData, AZ::u32 assetDataSize) const;
-            bool ValidateCookedTriangleMesh( void* assetData, AZ::u32 assetDataSize) const;
+            bool ValidateCookedTriangleMesh(void* assetData, AZ::u32 assetDataSize) const;
             AZ::SceneAPI::Events::ProcessingResult ExportMeshObject(AZ::SceneAPI::Events::ExportEventContext& context, const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData>& meshToExport, const AZStd::string& nodePath, const Pipeline::PhysXMeshGroup& pxMeshGroup) const;
 
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800

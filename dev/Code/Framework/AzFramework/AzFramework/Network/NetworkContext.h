@@ -921,7 +921,7 @@ namespace AzFramework
         {
             ReadBuffer ctorBuffer(m_ctorBuffer.GetEndianType(), m_ctorBuffer.Get(), m_ctorBuffer.Size());
             netContext->EnumerateCtorData(desc->GetChunkTypeId(),
-                [this, instance, &ctorBuffer](NetworkContext::CtorDataBase* ctorData)
+                [instance, &ctorBuffer](NetworkContext::CtorDataBase* ctorData)
                 {
                     ctorData->Unmarshal(ctorBuffer, instance);
                 });
@@ -944,13 +944,13 @@ namespace AzFramework
         NetworkContext* netContext = nullptr;
         EBUS_EVENT_RESULT(netContext, NetSystemRequestBus, GetNetworkContext);
         netContext->EnumerateFields(desc->GetChunkTypeId(),
-            [this, derivedInstance, desc](NetworkContext::FieldDescBase* field)
+            [derivedInstance](NetworkContext::FieldDescBase* field)
             {
                 NetBindableFieldBase* bindableField = reinterpret_cast<NetBindableFieldBase*>(reinterpret_cast<AZ::u8*>(derivedInstance) + field->GetOffset());
                 bindableField->Bind(nullptr);
             });
         netContext->EnumerateRpcs(desc->GetChunkTypeId(),
-            [this, derivedInstance, desc](NetworkContext::RpcDescBase* rpc)
+            [derivedInstance](NetworkContext::RpcDescBase* rpc)
             {
                 NetBindableRpcBase* bindableRpc = reinterpret_cast<NetBindableRpcBase*>(reinterpret_cast<AZ::u8*>(derivedInstance) + rpc->GetOffset());
                 bindableRpc->Bind(derivedInstance);

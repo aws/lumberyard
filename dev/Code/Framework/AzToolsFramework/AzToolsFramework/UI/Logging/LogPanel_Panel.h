@@ -27,6 +27,8 @@
 #include <QStyledItemDelegate>
 #include <QAbstractTableModel>
 
+#include <memory>
+
 class QTabWidget;
 class QTableView;
 class QLabel;
@@ -121,7 +123,7 @@ namespace AzToolsFramework
         class BaseLogPanel
             : public QWidget
         {
-            Q_OBJECT;
+            Q_OBJECT
         public:
             // class allocator intentionally removed so that QT can make us in their auto-gen code (from .ui files)
             //AZ_CLASS_ALLOCATOR(Panel, AZ::SystemAllocator, 0);
@@ -146,7 +148,7 @@ namespace AzToolsFramework
 
             static void Reflect(AZ::ReflectContext* reflection);
 
-Q_SIGNALS:
+        Q_SIGNALS:
             void TabsReset(); // all tabs have been deleted because user clicked Reset
             void onLinkActivated(const QString& link);
 
@@ -155,9 +157,8 @@ Q_SIGNALS:
             virtual QWidget* CreateTab(const TabSettings& settings) = 0;
 
         private:
-            QTabWidget* pTabWidget;
-            AZ::u32 m_storageID;
-            AZStd::unordered_map<QObject*, TabSettings> m_settingsForTabs;
+            struct Impl;
+            std::unique_ptr<Impl> m_impl;
 
         private Q_SLOTS:
             void onTabClosed(int whichTab);
@@ -174,7 +175,7 @@ Q_SIGNALS:
         class RingBufferLogDataModel
             : public QAbstractTableModel
         {
-            Q_OBJECT;
+            Q_OBJECT
         public:
             enum class DataRoles
             {
@@ -212,7 +213,7 @@ Q_SIGNALS:
         class ListLogDataModel
             : public QAbstractTableModel
         {
-            Q_OBJECT;
+            Q_OBJECT
         public:
             ListLogDataModel(QObject* pParent = nullptr);
             virtual ~ListLogDataModel();
@@ -259,7 +260,7 @@ Q_SIGNALS:
         class LogPanelLayout
             : public QLayout
         {
-            Q_OBJECT;
+            Q_OBJECT
         public:
             AZ_CLASS_ALLOCATOR(LogPanelLayout, AZ::SystemAllocator, 0);
             LogPanelLayout(QWidget* pParent);
@@ -283,7 +284,7 @@ Q_SIGNALS:
         class LogPanelItemDelegate
             : public QStyledItemDelegate
         {
-            Q_OBJECT;
+            Q_OBJECT
         public:
             AZ_CLASS_ALLOCATOR(LogPanelItemDelegate, AZ::SystemAllocator, 0);
             LogPanelItemDelegate(QWidget* pParent, int messageColumn);

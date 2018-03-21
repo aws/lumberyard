@@ -34,7 +34,7 @@ const IVariable* CVehicleData::GetDefaultVar()
 
     if (m_pDefaults == 0)
     {
-        IVehicleData* pData = VehicleDataLoad(GetXMLDef(), VEED_DEFAULTS.toLatin1().data());
+        IVehicleData* pData = VehicleDataLoad(GetXMLDef(), VEED_DEFAULTS.toUtf8().data());
         if (!pData)
         {
             Log("GetDefaultVar: returned zero!");
@@ -52,7 +52,7 @@ const IVariable* CVehicleData::GetDefaultVar()
 const XmlNodeRef& CVehicleData::GetXMLDef()
 {
     // Always force a reload
-    m_xmlDef = GetISystem()->LoadXmlFromFile(VEHICLE_XML_DEF.toLatin1().data());
+    m_xmlDef = GetISystem()->LoadXmlFromFile(VEHICLE_XML_DEF.toUtf8().data());
     return m_xmlDef;
 }
 
@@ -231,7 +231,7 @@ void CVehicleData::FillDefaults(IVariable* pVar, const char* defaultVar, const I
     // else rec. compare children and add missing vars
     for (int i = 0; i < pDef->GetNumVariables(); ++i)
     {
-        IVariable* pChild = GetChildVar(pVar, pDef->GetVariable(i)->GetName().toLatin1().data());
+        IVariable* pChild = GetChildVar(pVar, pDef->GetVariable(i)->GetName().toUtf8().data());
         if (!pChild)
         {
             // if null, just clone
@@ -241,7 +241,7 @@ void CVehicleData::FillDefaults(IVariable* pVar, const char* defaultVar, const I
         else
         {
             // if present, descent to children
-            FillDefaults(pChild, pChild->GetName().toLatin1().data(), pDef);
+            FillDefaults(pChild, pChild->GetName().toUtf8().data(), pDef);
         }
     }
 }
@@ -262,7 +262,7 @@ void DumpVariable(IVariable* pVar, int level /*=0*/)
 
     QString value;
     pVar->Get(value);
-    Log("%s<%s> = '%s'", tab.c_str(), pVar->GetName().toLatin1().data(), value.toLatin1().data());
+    Log("%s<%s> = '%s'", tab.c_str(), pVar->GetName().toUtf8().data(), value.toUtf8().data());
 
     for (int i = 0; i < pVar->GetNumVariables(); ++i)
     {

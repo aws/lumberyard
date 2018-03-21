@@ -208,7 +208,7 @@ namespace UnitTest
         {
             if (m_gridMate)
             {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
                 if (m_needWSA)
                 {
                     WSAData wsaData;
@@ -243,7 +243,7 @@ namespace UnitTest
 #endif
             }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
             if (m_needWSA)
             {
                 WSACleanup();

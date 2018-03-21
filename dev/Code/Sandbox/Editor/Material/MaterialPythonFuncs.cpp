@@ -87,7 +87,7 @@ namespace
         {
             if (pMaterial->GetSubMaterial(i))
             {
-                result.push_back((materialPath + "\\" + pMaterial->GetSubMaterial(i)->GetName()).toLatin1().data());
+                result.push_back((materialPath + "\\" + pMaterial->GetSubMaterial(i)->GetName()).toUtf8().data());
             }
         }
         return result;
@@ -128,7 +128,7 @@ namespace
 
             if (!pMaterial || !isSubMaterialExist)
             {
-                throw std::runtime_error((QString("\"") + subMaterialName + "\" is an invalid sub material.").toLatin1().data());
+                throw std::runtime_error((QString("\"") + subMaterialName + "\" is an invalid sub material.").toUtf8().data());
             }
         }
         GetIEditor()->GetMaterialManager()->SetCurrentMaterial(pMaterial);
@@ -803,7 +803,7 @@ namespace
                 subCategoryName != "[1] Custom"
                 )
             {
-                throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toLatin1().data());
+                throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toUtf8().data());
             }
         }
         else if (splittedPropertyPathSubCategory.size() == 4)
@@ -828,11 +828,11 @@ namespace
                 subSubCategoryName != "[1] Custom"
                 )
             {
-                throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toLatin1().data());
+                throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toUtf8().data());
             }
             else if (subCategoryName != "Tiling" && subCategoryName != "Rotator" && subCategoryName != "Oscillator")
             {
-                throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toLatin1().data());
+                throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toUtf8().data());
             }
         }
         else
@@ -854,12 +854,12 @@ namespace
                 // int: 0 < x < 100
                 if (value.type != SPyWrappedProperty::eType_Int)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
 
                 if (value.property.intValue < 0 || value.property.intValue > 100)
                 {
-                    throw std::runtime_error(errorMsgInvalidValue.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
                 }
                 return true;
             }
@@ -868,12 +868,12 @@ namespace
                 // int: 0 < x < 255
                 if (value.type != SPyWrappedProperty::eType_Int)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
 
                 if (value.property.intValue < iMinColorValue || value.property.intValue > iMaxColorValue)
                 {
-                    throw std::runtime_error(errorMsgInvalidValue.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
                 }
                 return true;
             }
@@ -882,12 +882,12 @@ namespace
                 // float: 0.0 < x < 4.0
                 if (value.type != SPyWrappedProperty::eType_Float)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
 
                 if (value.property.floatValue < 0.0f || value.property.floatValue > 4.0f)
                 {
-                    throw std::runtime_error(errorMsgInvalidValue.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
                 }
                 return true;
             }
@@ -922,12 +922,12 @@ namespace
                 // float: 0.0 < x < 100.0
                 if (value.type != SPyWrappedProperty::eType_Float)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
 
                 if (value.property.floatValue < 0.0f || value.property.floatValue > 100.0f)
                 {
-                    throw std::runtime_error(errorMsgInvalidValue.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidValue.toUtf8().data());
                 }
                 return true;
             }
@@ -936,20 +936,20 @@ namespace
                 // intVector(RGB): 0 < x < 255
                 if (value.type != SPyWrappedProperty::eType_Color)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
 
                 if (value.property.colorValue.r < iMinColorValue || value.property.colorValue.r > iMaxColorValue)
                 {
-                    throw std::runtime_error((errorMsgInvalidValue + " (red)").toLatin1().data());
+                    throw std::runtime_error((errorMsgInvalidValue + " (red)").toUtf8().data());
                 }
                 else if (value.property.colorValue.g < iMinColorValue || value.property.colorValue.g > iMaxColorValue)
                 {
-                    throw std::runtime_error((errorMsgInvalidValue + " (green)").toLatin1().data());
+                    throw std::runtime_error((errorMsgInvalidValue + " (green)").toUtf8().data());
                 }
                 else if (value.property.colorValue.b < iMinColorValue || value.property.colorValue.b > iMaxColorValue)
                 {
-                    throw std::runtime_error((errorMsgInvalidValue + " (blue)").toLatin1().data());
+                    throw std::runtime_error((errorMsgInvalidValue + " (blue)").toUtf8().data());
                 }
                 return true;
             }
@@ -977,7 +977,7 @@ namespace
                 // string
                 if (value.type != SPyWrappedProperty::eType_String)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
                 return true;
             }
@@ -1005,7 +1005,7 @@ namespace
                 // bool
                 if (value.type != SPyWrappedProperty::eType_Bool)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
                 return true;
             }
@@ -1014,7 +1014,7 @@ namespace
                 // string && valid shader
                 if (value.type != SPyWrappedProperty::eType_String)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
 
                 CShaderEnum* pShaderEnum = GetIEditor()->GetShaderEnum();
@@ -1036,7 +1036,7 @@ namespace
                 // FloatVec: undefined < x < undefined
                 if (value.type != SPyWrappedProperty::eType_Vec3)
                 {
-                    throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                    throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                 }
                 return true;
             }
@@ -1053,14 +1053,14 @@ namespace
                         // float: valid range (from script)
                         if (value.type != SPyWrappedProperty::eType_Float)
                         {
-                            throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                            throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                         }
                         std::map<QString, float> range = ParseValidRangeFromPublicParamsScript(shaderParams[i].m_Script);
                         if (value.property.floatValue < range["UIMin"] ||  value.property.floatValue > range["UIMax"])
                         {
                             QString errorMsg;
                             errorMsg = QStringLiteral("Invalid value for shader param \"%1\" (min: %2, max: %3)").arg(propertyName).arg(range["UIMin"]).arg(range["UIMax"]);
-                            throw std::runtime_error(errorMsg.toLatin1().data());
+                            throw std::runtime_error(errorMsg.toUtf8().data());
                         }
                         return true;
                     }
@@ -1069,20 +1069,20 @@ namespace
                         // intVector(RGB): 0 < x < 255
                         if (value.type != SPyWrappedProperty::eType_Color)
                         {
-                            throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                            throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                         }
 
                         if (value.property.colorValue.r < iMinColorValue || value.property.colorValue.r > iMaxColorValue)
                         {
-                            throw std::runtime_error((errorMsgInvalidValue + " (red)").toLatin1().data());
+                            throw std::runtime_error((errorMsgInvalidValue + " (red)").toUtf8().data());
                         }
                         else if (value.property.colorValue.g < iMinColorValue || value.property.colorValue.g > iMaxColorValue)
                         {
-                            throw std::runtime_error((errorMsgInvalidValue + " (green)").toLatin1().data());
+                            throw std::runtime_error((errorMsgInvalidValue + " (green)").toUtf8().data());
                         }
                         else if (value.property.colorValue.b < iMinColorValue || value.property.colorValue.b > iMaxColorValue)
                         {
-                            throw std::runtime_error((errorMsgInvalidValue + " (blue)").toLatin1().data());
+                            throw std::runtime_error((errorMsgInvalidValue + " (blue)").toUtf8().data());
                         }
                         return true;
                     }
@@ -1097,7 +1097,7 @@ namespace
                 {
                     if (value.type != SPyWrappedProperty::eType_Bool)
                     {
-                        throw std::runtime_error(errorMsgInvalidDataType.toLatin1().data());
+                        throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                     }
                     return true;
                 }
@@ -1105,7 +1105,7 @@ namespace
         }
         else
         {
-            throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toLatin1().data());
+            throw std::runtime_error((errorMsgInvalidPropertyPath + " (" + currentPath + ")").toUtf8().data());
         }
         return false;
     }
@@ -1156,7 +1156,7 @@ namespace
             }
             else
             {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid material setting.").toLatin1().data());
+                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid material setting.").toUtf8().data());
             }
         }
         // ########## Opacity Settings ##########
@@ -1181,7 +1181,7 @@ namespace
             }
             else
             {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid opacity setting.").toLatin1().data());
+                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid opacity setting.").toUtf8().data());
             }
         }
         // ########## Lighting Settings ##########
@@ -1238,7 +1238,7 @@ namespace
             }
             else
             {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid lighting setting.").toLatin1().data());
+                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid lighting setting.").toUtf8().data());
             }
         }
         // ########## Advanced ##########
@@ -1326,7 +1326,7 @@ namespace
             }
             else
             {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid advanced setting.").toLatin1().data());
+                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid advanced setting.").toUtf8().data());
             }
         }
         // ########## Texture Maps ##########
@@ -1379,7 +1379,7 @@ namespace
                     }
                     else
                     {
-                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toUtf8().data());
                     }
                 }
                 else
@@ -1444,7 +1444,7 @@ namespace
                         }
                         else
                         {
-                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toUtf8().data());
                         }
                     }
                     else if (subCategoryName == "Rotator")
@@ -1481,7 +1481,7 @@ namespace
                         }
                         else
                         {
-                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toUtf8().data());
                         }
                     }
                     else if (subCategoryName == "Oscillator")
@@ -1528,12 +1528,12 @@ namespace
                         }
                         else
                         {
-                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                            throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toUtf8().data());
                         }
                     }
                     else
                     {
-                        throw std::runtime_error((QString("\"") + subCategoryName + "\" is an invalid sub category.").toLatin1().data());
+                        throw std::runtime_error((QString("\"") + subCategoryName + "\" is an invalid sub category.").toUtf8().data());
                     }
                 }
                 else
@@ -1545,7 +1545,7 @@ namespace
             }
             else
             {
-                throw std::runtime_error(errorMsgInvalidPropertyPath.toLatin1().data());
+                throw std::runtime_error(errorMsgInvalidPropertyPath.toUtf8().data());
             }
         }
         // ########## Shader Params ##########
@@ -1583,7 +1583,7 @@ namespace
 
             if (!isPropertyFound)
             {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader param.").toLatin1().data());
+                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader param.").toUtf8().data());
             }
         }
         // ########## Shader Generation Params ##########
@@ -1603,7 +1603,7 @@ namespace
 
             if (!isPropertyFound)
             {
-                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader generation param.").toLatin1().data());
+                throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid shader generation param.").toUtf8().data());
             }
         }
         // ########## Vertex Deformation ##########
@@ -1646,7 +1646,7 @@ namespace
                 }
                 else
                 {
-                    throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                    throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toUtf8().data());
                 }
             }
             // ########## Vertex Deformation / [ Wave X | Wave Y | Wave Z | Wave W ] ##########
@@ -1699,17 +1699,17 @@ namespace
                     }
                     else
                     {
-                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toLatin1().data());
+                        throw std::runtime_error((QString("\"") + propertyName + "\" is an invalid property.").toUtf8().data());
                     }
                 }
                 else
                 {
-                    throw std::runtime_error((QString("\"") + categoryName + "\" is an invalid category.").toLatin1().data());
+                    throw std::runtime_error((QString("\"") + categoryName + "\" is an invalid category.").toUtf8().data());
                 }
             }
             else
             {
-                throw std::runtime_error(errorMsgInvalidPropertyPath.toLatin1().data());
+                throw std::runtime_error(errorMsgInvalidPropertyPath.toUtf8().data());
             }
         }
         // ########## Layer Presets ##########
@@ -1768,12 +1768,12 @@ namespace
             }
             else
             {
-                throw std::runtime_error(errorMsgInvalidPropertyPath.toLatin1().data());
+                throw std::runtime_error(errorMsgInvalidPropertyPath.toUtf8().data());
             }
         }
         else
         {
-            throw std::runtime_error(errorMsgInvalidPropertyPath.toLatin1().data());
+            throw std::runtime_error(errorMsgInvalidPropertyPath.toUtf8().data());
         }
 
         return value;
@@ -1796,8 +1796,8 @@ namespace
         }
 
         QString undoMsg = "Set Material Property";
-        CUndo undo(undoMsg.toLatin1().data());
-        pMaterial->RecordUndo(undoMsg.toLatin1().data(), true);
+        CUndo undo(undoMsg.toUtf8().data());
+        pMaterial->RecordUndo(undoMsg.toUtf8().data(), true);
 
         if (splittedPropertyPathCategory.size() == 3)
         {
@@ -1949,7 +1949,7 @@ namespace
             }
             else if (propertyName == "Link to Material")
             {
-                pMaterial->GetMatInfo()->SetMaterialLinkName(value.stringValue.toLatin1().data());
+                pMaterial->GetMatInfo()->SetMaterialLinkName(value.stringValue.toUtf8().data());
             }
             else if (propertyName == "Propagate Material Settings")
             {
@@ -2010,7 +2010,7 @@ namespace
                         nSlot, pMaterial->GetName().toStdString().c_str());
                 }
                 // notice that the following is an insertion operation if the index did not exist in the map
-                shaderResources.m_TexturesResourcesMap[nSlot].m_Name = value.stringValue.toLatin1().data();
+                shaderResources.m_TexturesResourcesMap[nSlot].m_Name = value.stringValue.toUtf8().data();
             }
             // ########## Texture Maps / [TexType | Filter | IsProjectedTexGen | TexGenType ] ##########
             else if (splittedPropertyPath.size() == 3)

@@ -32,16 +32,11 @@
     <Compile Include="api\admin_identityProviders_Cognito_users_resetUserPassword.py" />
     <Compile Include="api\service_status.py" />
     <Compile Include="api\__init__.py" />
-    <Compile Include="CloudCanvas\test\test_settings.py" />
-    <Compile Include="CloudCanvas\test\__init__.py" />
-    <Compile Include="CloudCanvas\__init__.py" />
     <Compile Include="custom_auth_flow.py" />
     <Compile Include="errors.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="api" />
-    <Folder Include="CloudCanvas" />
-    <Folder Include="CloudCanvas\test" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".ignore" />

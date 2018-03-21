@@ -53,7 +53,7 @@ namespace MCore
      */
     class MCORE_API Attribute
     {
-        MCORE_MEMORYOBJECTCATEGORY(Attribute, MCORE_DEFAULT_ALIGNMENT, MCORE_MEMCATEGORY_ATTRIBUTES);
+        MCORE_MEMORYOBJECTCATEGORY(Attribute, MCORE_SIMD_ALIGNMENT, MCORE_MEMCATEGORY_ATTRIBUTES);
 
         friend class AttributePool;
         friend class AttributeFactory;

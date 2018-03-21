@@ -9,6 +9,7 @@
             "testdata/config_broken_noscans.ini",
             "testdata/config_broken_recognizers.ini",
             "testdata/config_regular.ini",
+            "testdata/config_regular_platform_scanfolder.ini",
             "testdata/config_overrides.ini"
         ],
         "tests":

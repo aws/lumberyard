@@ -17,10 +17,10 @@
 #include <WelcomeScreen/ui_WelcomeScreenDialog.h>
 #include "LevelFileDialog.h"
 
-#include <qstringlistmodel.h>
-#include <qlistview.h>
-#include <qtooltip.h>
-#include <qmenu.h>
+#include <QStringListModel>
+#include <QListView>
+#include <QToolTip>
+#include <QMenu>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QTimer>
@@ -57,11 +57,7 @@ static int GetSmallestScreenHeight()
 }
 
 WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
-#ifdef Q_OS_WIN
     : QDialog(new WindowDecorationWrapper(WindowDecorationWrapper::OptionAutoAttach | WindowDecorationWrapper::OptionAutoTitleBarButtons, pParent), Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowCloseButtonHint | Qt::WindowTitleHint)
-#else
-    : QDialog(pParent, Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowCloseButtonHint | Qt::WindowTitleHint)
-#endif
     , ui(new Ui::WelcomeScreenDialog)
     , m_pRecentListModel(new QStringListModel(this))
     , m_pRecentList(nullptr)
@@ -90,16 +86,10 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
         QObject::connect(switchProjAction, &QAction::triggered, [this] {
             // close this dialog first before attempting to close the editor
             CCryEditApp* cryEdit = CCryEditApp::instance();
-            const char * closeMsg = "You must use the Project Configurator to set a new default project. \nDo you want to save your changes and close the editor before continuing to the Project Configurator?";
-            if (cryEdit->ToExternalToolPrompt(closeMsg, "Editor"))
+            if (cryEdit->OpenProjectConfiguratorSwitchProject())
             {
                 // close the dialog box before closing the editor
                 accept();
-                if (cryEdit->ToExternalToolSave() && cryEdit->OpenProjectConfigurator("Project Selection"))
-                {
-                    // close the window at the end of the qt event loop
-                    QTimer::singleShot(0, []() {MainWindow::instance()->close(); });
-                }
 
                 SendMetricsEvent("SwitchProjectButtonClicked");
             }
@@ -108,7 +98,9 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
         QObject::connect(openSAAction, &QAction::triggered, [this] {
             // close this dialog first before attempting to close the editor
             CCryEditApp* cryEdit = CCryEditApp::instance();
-            const char * closeMsg = "You must close the Editor before opening Setup Assistant. \nDo you want to save your changes?";
+
+            const QString closeMsg = tr(
+                "You must close the Editor before opening Setup Assistant.\nDo you want to close the editor before continuing to the Setup Assistant?");
             if (cryEdit->ToExternalToolPrompt(closeMsg, "Editor"))
             {
                 // close the dialog box before closing the editor
@@ -126,6 +118,7 @@ WelcomeScreenDialog::WelcomeScreenDialog(QWidget* pParent)
 
     ui->currentProjectButton->setMenu(currentProjectButtonMenu);
     ui->currentProjectButton->setText(gEnv->pConsole->GetCVar("sys_game_folder")->GetString());
+    ui->currentProjectButton->adjustSize();
     ui->currentProjectButton->setMinimumWidth(ui->currentProjectButton->width() + 40);
 
     ui->documentationLink->setCursor(Qt::PointingHandCursor);
@@ -219,7 +212,7 @@ void WelcomeScreenDialog::SetRecentFileList(RecentFileList* pList)
 
     m_pRecentList = pList;
 
-    QString gamePath = Path::GetExecutableParentDirectory() + QDir::separator().toLatin1() + gEnv->pConsole->GetCVar("sys_game_folder")->GetString();
+    QString gamePath = Path::GetExecutableParentDirectory() + QDir::separator() + gEnv->pConsole->GetCVar("sys_game_folder")->GetString();
     Path::ConvertSlashToBackSlash(gamePath);
     gamePath = Path::ToUnixPath(gamePath.toLower());
     gamePath = Path::AddSlash(gamePath);

@@ -181,9 +181,9 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
 
     std::vector<uint8> data;
     CCryFile file;
-    if (!file.Open(fileName.toLatin1().data(), "rb"))
+    if (!file.Open(fileName.toUtf8().data(), "rb"))
     {
-        CLogFile::FormatLine("File not found %s", fileName.toLatin1().data());
+        CLogFile::FormatLine("File not found %s", fileName.toUtf8().data());
         return false;
     }
     long filesize = file.GetLength();
@@ -196,7 +196,7 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
     /* Detect if this is a GIF file */
     if (strncmp ((char*)ptr, "GIF87a", 6) && strncmp ((char*)ptr, "GIF89a", 6))
     {
-        CLogFile::FormatLine("Bad GIF file format %s", fileName.toLatin1().data());
+        CLogFile::FormatLine("Bad GIF file format %s", fileName.toUtf8().data());
         return false;
     }
 
@@ -231,7 +231,7 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
     {
         if (strncmp((char*) ptr, id89, 6))
         {
-            CLogFile::FormatLine("Bad GIF file format %s",fileName.toLatin1().data());
+            CLogFile::FormatLine("Bad GIF file format %s",fileName.toUtf8().data());
             goto cleanup;
         }
     }
@@ -256,7 +256,7 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
 
     if (NEXTBYTE)           /* supposed to be NULL */
     {
-        CLogFile::FormatLine("Bad GIF file format %s", fileName.toLatin1().data());
+        CLogFile::FormatLine("Bad GIF file format %s", fileName.toUtf8().data());
         goto cleanup;
     }
 
@@ -284,7 +284,7 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
         i = ch;
         if (ch != START_EXTENSION)
         {
-            CLogFile::FormatLine("Bad GIF file format %s", fileName.toLatin1().data());
+            CLogFile::FormatLine("Bad GIF file format %s", fileName.toUtf8().data());
             goto cleanup;
         }
 
@@ -307,7 +307,7 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
             break;
         default:
         {
-            CLogFile::FormatLine("Invalid GIF89 extension %s", fileName.toLatin1().data());
+            CLogFile::FormatLine("Invalid GIF89 extension %s", fileName.toUtf8().data());
             goto cleanup;
         }
         }
@@ -382,7 +382,7 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
         }
         if ((ptr1 - Raster) > filesize)
         {
-            CLogFile::FormatLine("Corrupted GIF file (unblock) %s", fileName.toLatin1().data());
+            CLogFile::FormatLine("Corrupted GIF file (unblock) %s", fileName.toUtf8().data());
             goto cleanup;
         }
     }
@@ -436,7 +436,7 @@ bool CImageGif::Load(const QString& fileName, CImageEx& outImage)
             {
                 if (OutCount > 1024)
                 {
-                    CLogFile::FormatLine("Corrupted GIF file (OutCount) %s", fileName.toLatin1().data());
+                    CLogFile::FormatLine("Corrupted GIF file (OutCount) %s", fileName.toUtf8().data());
                     goto cleanup;
                 }
                 OutCode[OutCount++] = Suffix[CurCode];

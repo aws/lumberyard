@@ -23,7 +23,6 @@
 
 #include <StringUtils.h>
 #include <IStatoscope.h>
-#include <IJobManager_JobDelegator.h>
 #include <CryProfileMarker.h>
 #include <IZLibCompressor.h>
 
@@ -83,12 +82,12 @@ void CParticleBatchDataManager::ResetData()
         stl::free_container(m_ParticlesToScene[t]);
     }
 
-    for (int i = 0, end = m_UpdateParticleStates.size(); i < end; ++i)
+    for (int i = 0, end = m_UpdateParticleJobExecutors.size(); i < end; ++i)
     {
-        delete m_UpdateParticleStates[i];
+        delete m_UpdateParticleJobExecutors[i];
     }
 
-    stl::free_container(m_UpdateParticleStates);
+    stl::free_container(m_UpdateParticleJobExecutors);
     m_nUsedStates = 0;
 }
 
@@ -97,7 +96,7 @@ void CParticleBatchDataManager::SyncAllUpdateParticlesJobs()
     AZ_TRACE_METHOD();
     for (int i = 0; i < m_nUsedStates; ++i)
     {
-        gEnv->GetJobManager()->WaitForJob(*m_UpdateParticleStates[i]);
+        m_UpdateParticleJobExecutors[i]->WaitForCompletion();
     }
     m_nUsedStates = 0;
 }

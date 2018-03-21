@@ -97,7 +97,7 @@ bool CVariableIArchive::operator()(Serialization::IString& value, const char* na
     const bool readSuccess = VarUtil::ReadChildVariableAs< QString >(m_pVariable, m_childIndexOverride, name, stringValue);
     if (readSuccess)
     {
-        value.set(stringValue.toLatin1().data());
+        value.set(stringValue.toUtf8().data());
         return true;
     }
     return false;
@@ -243,7 +243,7 @@ bool CVariableIArchive::SerializeResourceSelector(const Serialization::SStruct& 
     const bool readSuccess = VarUtil::ReadChildVariableAs< QString >(m_pVariable, m_childIndexOverride, name, stringValue);
     if (readSuccess)
     {
-        pSelector->SetValue(stringValue.toLatin1().data());
+        pSelector->SetValue(stringValue.toUtf8().data());
         return true;
     }
     return false;

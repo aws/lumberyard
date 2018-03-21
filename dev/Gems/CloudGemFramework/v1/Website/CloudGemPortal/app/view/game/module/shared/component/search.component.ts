@@ -19,17 +19,7 @@ export class SearchResult {
     template: `
         <form class="form-inline">
             <div class="form-group">
-                <div *ngIf="dropdownOptions" class="d-inline-block" ngbDropdown>
-                    <button type="button" class="btn search-dropdown l-dropdown" ngbDropdownToggle>
-                        <span> {{dropdownPlaceholderText || currentDropdownOption.text }} </span>
-                        <i class="fa fa-caret-down" aria-hidden="true"></i>
-                    </button>
-                    <div class="dropdown-menu" aria-labelledby="priority-dropdown">
-                        <button (click)="changeDropdown(dropdownOption)" type="button" *ngFor="let dropdownOption of dropdownOptions" class="dropdown-item">
-                            {{ dropdownOption.text }}
-                        </button>
-                    </div>
-                </div>
+                <dropdown class="search-dropdown" (dropdownChanged)="changeDropdown($event)" [options]="dropdownOptions" [placeholderText]="dropdownPlaceholderText"> </dropdown>
                 <input (keyUp)="emitSearch($event)" [formControl]="searchTextControl" class="form-control search-text" type="text" [placeholder]="searchInputPlaceholder" />
             </div>
         </form>
@@ -38,13 +28,6 @@ export class SearchResult {
     styles: [`
        .search-dropdown {
            margin-right: 15px;
-           min-width: 125px;
-           max-width: 300px;
-           padding-right: 25px;
-       }
-       .search-dropdown > i {
-           position:absolute;
-           right: 25px;
        }
        input.search-text {
             width: 300px;
@@ -53,11 +36,11 @@ export class SearchResult {
 })
 export class SearchComponent implements OnInit {
     // Dropdown option hash.  Contains the text and the callback function to be used when the text input is used.
-    // Optionally args can be passed in to the callback function.  Otherwise the text of the dropdown will be returned 
+    // Optional args can be passed in to the callback function.  Otherwise the text of the dropdown will be returned
     @Input() dropdownOptions: [{ text: string, functionCb: Function, argsCb?: any }]
     // Placeholder text for the search dropdown.  If not specified the searchDropdownOption[0] dropdown name will be used instead.
     @Input() dropdownPlaceholderText: string;
-    // Placeholder for the text input.  This placeholder should be relevant for all dropdown cases.  
+    // Placeholder for the text input.  This placeholder should be relevant for all dropdown cases.
     // If none is specified the input placeholder will be blank
     @Input() searchInputPlaceholder: string = "";
     // Output for when the search input is updated.
@@ -95,14 +78,14 @@ export class SearchComponent implements OnInit {
 
     changeDropdown = function (dropdownOption) {
 
-        let triggerSearch = false;         
+        let triggerSearch = false;
         if (this.dropdownOption !== this.currentDropdownOption && this.searchTextControl.value === "") {
             triggerSearch = true;
         }
         if (dropdownOption !== this.currentDropdownOption && this.searchTextControl.value) {
             this.searchTextControl.setValue("");
         }
-        
+
         this.currentDropdownOption = dropdownOption;
 
         if (triggerSearch) this.search();

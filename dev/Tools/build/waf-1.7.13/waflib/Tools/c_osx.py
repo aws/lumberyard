@@ -157,12 +157,12 @@ def create_task_macplist(self):
 
 			self.plisttask = plisttask = self.create_task('macplist', [], n1)
 
-			if getattr(self, 'mac_plist', False):
-				node = self.path.find_resource(self.mac_plist)
-				if node:
-					plisttask.inputs.append(node)
-				else:
+			node = getattr(self, 'mac_plist', None)
+			if node:
+				if isinstance(node,str):
 					plisttask.code = self.mac_plist
+				else:
+					plisttask.inputs.extend(node)
 			else:
 				plisttask.code = app_info % self.link_task.outputs[0].name
 

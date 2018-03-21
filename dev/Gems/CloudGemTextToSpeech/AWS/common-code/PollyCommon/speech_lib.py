@@ -32,11 +32,21 @@ def __get_all_speech_entries():
         entries += response.get("Items", [])
     return entries
 
-def get_speech_lib(tags = []):
-    entries = __get_all_speech_entries()
-    exclude = []
-    for tag in tags:
-        entries = [e for e in entries if tag in e["tags"]]
+def get_speech_lib(tags = [], characters = [], logic = 'And'):
+    original_entries = __get_all_speech_entries()
+    if logic == 'And':
+        entries = original_entries
+        for tag in tags:
+            entries = [e for e in entries if tag in e["tags"]]
+    else:
+        if tags != []:
+            entries = []
+            for tag in tags:
+                entries = entries + [e for e in original_entries if tag in e["tags"]]
+        else:
+            entries = original_entries
+    if characters:
+        entries = [e for e in entries if e["character"] in characters]
     return entries
 
 def add_speech_entry(speech):

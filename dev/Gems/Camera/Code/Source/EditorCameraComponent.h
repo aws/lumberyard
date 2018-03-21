@@ -57,12 +57,14 @@ namespace Camera
 
         //////////////////////////////////////////////////////////////////////////
         // CameraRequestBus::Handler
-        float GetFov() override;
+        float GetFovDegrees() override;
+        float GetFovRadians() override;
         float GetNearClipDistance() override;
         float GetFarClipDistance() override;
         float GetFrustumWidth() override;
         float GetFrustumHeight() override;
-        void SetFov(float fov) override;
+        void SetFovDegrees(float fov) override;
+        void SetFovRadians(float fov) override;
         void SetNearClipDistance(float nearClipDistance) override;
         void SetFarClipDistance(float farClipDistance) override;
         void SetFrustumWidth(float width) override;

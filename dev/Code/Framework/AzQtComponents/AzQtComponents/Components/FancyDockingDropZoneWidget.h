@@ -126,6 +126,7 @@ namespace AzQtComponents
     class AZ_QT_COMPONENTS_API FancyDockingDropZoneWidget
         : public QWidget
     {
+        Q_OBJECT
     public:
         explicit FancyDockingDropZoneWidget(QMainWindow* mainWindow, QWidget* coordinatesRelativeTo, QScreen* screen, FancyDockingDropZoneState* dropZoneState);
         ~FancyDockingDropZoneWidget();

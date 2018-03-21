@@ -14,14 +14,6 @@
 #include "LogFile.h"
 #include <iostream>
 
-#ifdef MCORE_PLATFORM_WII
-    #include <revolution/os.h>
-#endif
-
-#ifdef MCORE_PLATFORM_MARMALADE
-    #include <s3eDebug.h>
-#endif
-
 
 namespace MCore
 {
@@ -48,9 +40,6 @@ namespace MCore
     #if (defined(MCORE_PLATFORM_WINDOWS))
         OutputDebugStringA(message);
         OutputDebugStringA("\n");
-    #elif (defined(MCORE_PLATFORM_WII))
-        OSReport(message);
-        OSReport("\n");
     #elif (defined(MCORE_PLATFORM_ANDROID))
         switch (logLevel)
         {
@@ -77,8 +66,6 @@ namespace MCore
             break;
         }
         ;
-    #elif (defined(MCORE_PLATFORM_MARMALADE))
-        s3eDebugOutputString(message);
     #else
         std::cout << message << "\n";
     #endif

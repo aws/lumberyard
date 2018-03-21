@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h",
+            "Source/CloudCanvasCommon_precompiled.cpp",
+            "Source/CloudCanvasCommon_precompiled.h",
             "Source/CloudCanvasCommonModule.cpp",
             "Source/CloudCanvasCommonModule.h"
         ]

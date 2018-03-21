@@ -10,9 +10,9 @@
 *
 */
 
-#include <AzCore\base.h>
-#include <QtWidgets\QPlainTextEdit>
-#include <QtWidgets\qcompleter.h>
+#include <AzCore/base.h>
+#include <QtWidgets/QPlainTextEdit>
+#include <QtWidgets/QCompleter>
 #include "AzToolsFramework/UI/UICore/PlainTextEdit.hxx"
 #include <AzCore/std/functional.h>
 

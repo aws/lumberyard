@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include <AzCore/std/string/regex.h>
-
 #include <cstdlib> // for size_t
 #include <QString>
 #include <AssetBuilderSDk/AssetBuilderSDK.h>
@@ -200,37 +198,8 @@ namespace AssetUtilities
 
     QString GuessProductNameInDatabase(QString path, AssetProcessor::AssetDatabaseConnection* databaseConnection);
 
-    //! This class represents a matching pattern that is based on AssetBuilderSDK::AssetBuilderPattern::PatternType, which can either be a regex
-    //! pattern or a wildcard (glob) pattern
-    class FilePatternMatcher
-    {
-    public:
-        FilePatternMatcher() = default;
-        FilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern);
-        FilePatternMatcher(const AZStd::string& pattern, AssetBuilderSDK::AssetBuilderPattern::PatternType type);
-        FilePatternMatcher(const FilePatternMatcher& copy);
-
-        typedef AZStd::regex RegexType;
-
-        FilePatternMatcher& operator=(const FilePatternMatcher& copy) = default;
-
-        bool MatchesPath(const AZStd::string& assetPath) const;
-        bool MatchesPath(const QString& assetPath) const;
-        bool IsValid() const;
-        AZStd::string GetErrorString() const;
-        const AssetBuilderSDK::AssetBuilderPattern& GetBuilderPattern() const;
-
-    protected:
-        AssetBuilderSDK::AssetBuilderPattern    m_pattern;
-        static bool ValidatePatternRegex(const AZStd::string& pattern, AZStd::string& errorString);
-        RegexType           m_regex;
-        bool                m_isRegex;
-        bool                m_isValid;
-        AZStd::string       m_errorString;
-    };
-
     class BuilderFilePatternMatcher
-        : public FilePatternMatcher
+        : public AssetBuilderSDK::FilePatternMatcher
     {
     public:
         BuilderFilePatternMatcher() = default;

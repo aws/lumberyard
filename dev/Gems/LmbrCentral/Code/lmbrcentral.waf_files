@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h",
+            "Source/LmbrCentral_precompiled.cpp",
+            "Source/LmbrCentral_precompiled.h",
             "Source/LmbrCentral.h",
             "Source/LmbrCentral.cpp"
         ]

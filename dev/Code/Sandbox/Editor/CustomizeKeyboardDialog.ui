@@ -74,12 +74,24 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QGroupBox" name="descriptionGroupBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="title">
         <string>Description:</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
          <widget class="QLabel" name="descriptionLabel">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="text">
            <string/>
           </property>

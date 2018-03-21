@@ -162,7 +162,7 @@ background: #6e7071;</string>
          </widget>
         </item>
         <item>
-         <widget class="AzToolsFramework::QBetterLabel" name="clearLabel">
+         <widget class="AzQtComponents::ExtendedLabel" name="clearLabel">
           <property name="font">
            <font>
             <pointsize>10</pointsize>
@@ -195,9 +195,9 @@ QLabel:hover
  </widget>
  <customwidgets>
   <customwidget>
-   <class>AzToolsFramework::QBetterLabel</class>
+   <class>AzQtComponents::ExtendedLabel</class>
    <extends>QLabel</extends>
-   <header>AzToolsFramework/UI/UICore/QBetterLabel.h</header>
+   <header>AzQtComponents/Components/ExtendedLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>

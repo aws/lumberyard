@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StarterGameGem_precompiled.h"
 #include "ConsoleVarListenerComponent.h"
 
 #include <AzCore/Serialization/EditContext.h>

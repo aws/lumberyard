@@ -141,7 +141,7 @@ private:
         SResourceSelectorContext x;
         x.parentWidget = this;
         x.typeName = Prop::GetPropertyTypeToResourceType(m_propertyType);
-        QString newPath = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, m_path.toStdString().c_str()).c_str();
+        QString newPath = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, m_path);
         SetPathAndEmit(newPath);
     }
 };
@@ -166,7 +166,7 @@ public:
 private:
     void OnClicked() override
     {
-        CFileUtil::EditTextureFile(m_path.toLatin1().data(), true);
+        CFileUtil::EditTextureFile(m_path.toUtf8().data(), true);
     }
 };
 
@@ -379,7 +379,7 @@ void FileResourceSelectorWidgetHandler::WriteGUIValuesIntoProperty(size_t index,
     Q_UNUSED(node);
     CReflectedVarResource val = instance;
     val.m_propertyType = GUI->GetPropertyType();
-    val.m_path = GUI->GetPath().toLatin1().data();
+    val.m_path = GUI->GetPath().toUtf8().data();
     instance = static_cast<property_t>(val);
 }
 

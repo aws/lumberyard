@@ -113,9 +113,9 @@ libtiffDummyCloseProc (thandle_t fd)
 bool CImageTIF::Load(const QString& fileName, CImageEx& outImage)
 {
     CCryFile file;
-    if (!file.Open(fileName.toLatin1().data(), "rb"))
+    if (!file.Open(fileName.toUtf8().data(), "rb"))
     {
-        CLogFile::FormatLine("File not found %s", fileName.toLatin1().data());
+        CLogFile::FormatLine("File not found %s", fileName.toUtf8().data());
         return false;
     }
 
@@ -384,7 +384,7 @@ bool CImageTIF::SaveRAW(const QString& fileName, const void* pData, int width, i
     bool bRet = false;
 
     CFileUtil::OverwriteFile(fileName);
-    TIFF* tif = TIFFOpen(fileName.toLatin1().data(), "wb");
+    TIFF* tif = TIFFOpen(fileName.toUtf8().data(), "wb");
     if (tif)
     {
         TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
@@ -457,9 +457,9 @@ const char* CImageTIF::GetPreset(const QString& fileName)
 {
     std::vector<uint8> data;
     CCryFile file;
-    if (!file.Open(fileName.toLatin1().data(), "rb"))
+    if (!file.Open(fileName.toUtf8().data(), "rb"))
     {
-        CLogFile::FormatLine("File not found %s", fileName.toLatin1().data());
+        CLogFile::FormatLine("File not found %s", fileName.toUtf8().data());
         return NULL;
     }
 

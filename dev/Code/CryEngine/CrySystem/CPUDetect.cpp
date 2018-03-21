@@ -112,12 +112,12 @@ struct SAutoMaxPriority
 #endif
 };
 
-#if defined(MAC) || (defined(LINUX) && !defined(ANDROID)) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_ASM_VOLATILE_CPUID
 static inline void __cpuid(int CPUInfo[4], int InfoType)
 {
     asm volatile("cpuid" : "=a" (*CPUInfo), "=b" (*(CPUInfo + 1)), "=c" (*(CPUInfo + 2)), "=d" (*(CPUInfo + 3)) : "a" (InfoType));
 }
-#endif // defined(MAC)
+#endif
 
 bool IsAMD()
 {
@@ -162,7 +162,7 @@ bool IsIntel()
 
 bool Has64bitExtension()
 {
-#if (defined(WIN32) && !defined(WIN64)) || (defined(LINUX) && !defined(ANDROID) && !defined(LINUX64)) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HAS64BITEXT
     int CPUInfo[4];
     __cpuid(CPUInfo, 0x80000001);   // Argument "Processor Signature and AMD Features"
     if (CPUInfo[3] & 0x20000000)        // Bit 29 in edx is set if 64-bit address extension is supported
@@ -182,7 +182,7 @@ bool Has64bitExtension()
 
 bool HTSupported()
 {
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HTSUPPORTED
     int CPUInfo[4];
     __cpuid(CPUInfo, 0x00000001);
     if (CPUInfo[3] & 0x10000000)        // Bit 28 in edx is set if HT is supported
@@ -198,38 +198,9 @@ bool HTSupported()
 #endif
 }
 
-/*
-//////////////////////////////////////////////////////////////////////////
-bool IsMultiCoreCPU()
-{
-#if defined(WIN32) || defined(WIN64)
-    int CPUInfo[4];
-    __cpuid( CPUInfo, 0x00000000 );
-    if( CPUInfo[0] != 0)        // Bit 28 in edx is set if HT is supported
-        return true;
-    else
-        return false;
-#else
-    return false;
-#endif
-}
-
-//////////////////////////////////////////////////////////////////////////
-int GetCoresPerCPU()
-{
-#if defined(WIN32) || defined(WIN64)
-    int CPUInfo[4];
-    __cpuid( CPUInfo, 0x00000004 );
-    return CPUInfo[0] + 1;
-#else
-    return 1;
-#endif
-}
-*/
-
 uint8 LogicalProcPerPhysicalProc()
 {
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HASCPUID
     int CPUInfo[4];
     __cpuid(CPUInfo, 0x00000001);
     // Bits 16-23 in ebx contain the number of logical processors per physical processor when execute cpuid with eax set to 1
@@ -241,7 +212,7 @@ uint8 LogicalProcPerPhysicalProc()
 
 uint8 GetAPIC_ID()
 {
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HASCPUID
     int CPUInfo[4];
     __cpuid(CPUInfo, 0x00000001);
     // Bits 24-31 in ebx contain the unique initial APIC ID for the processor this code is running on. Default value = 0xff if HT is not supported.
@@ -253,7 +224,7 @@ uint8 GetAPIC_ID()
 
 void GetCPUName(char* pName)
 {
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HASCPUID
     if (pName)
     {
         int CPUInfo[4];
@@ -293,7 +264,7 @@ void GetCPUName(char* pName)
 
 bool HasFPUOnChip()
 {
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HASCPUID
     int CPUInfo[4];
     __cpuid(CPUInfo, 0x00000001);
     // Bit 0 in edx indicates presents of on chip FPU
@@ -305,7 +276,7 @@ bool HasFPUOnChip()
 
 void GetCPUSteppingModelFamily(int& stepping, int& model, int& family)
 {
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HASCPUID
     int CPUInfo[4];
     __cpuid(CPUInfo, 0x00000001);
     stepping = CPUInfo[0] & 0xF; // Bit 0-3 in eax specifies stepping
@@ -318,7 +289,7 @@ void GetCPUSteppingModelFamily(int& stepping, int& model, int& family)
 #endif
 }
 
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HASCPUID
 unsigned long GetCPUFeatureSet()
 {
     unsigned long features = 0;
@@ -362,7 +333,7 @@ unsigned long GetCPUFeatureSet()
 }
 #endif
 
-#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS) // ACCEPTED USE
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_DEFINE_DETECT_PROCESSOR
 static unsigned long __stdcall DetectProcessor(void* arg)
 {
     const char hex_chars[16] =
@@ -1110,7 +1081,7 @@ static unsigned long __stdcall DetectProcessor(void* arg)
 
     return 1;
 }
-#endif //defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC) || defined(DURANGO) || defined(ORBIS) // ACCEPTED USE
+#endif //AZ_LEGACY_CRYSYSTEM_TRAIT_DEFINE_DETECT_PROCESSOR
 
 #if defined(MAC) || (defined(LINUX) && !defined(ANDROID))
 static void* DetectProcessorThreadProc(void* pData)
@@ -1120,88 +1091,7 @@ static void* DetectProcessorThreadProc(void* pData)
 }
 #endif // MAC LINUX
 
-/*
-#ifdef WIN64
-typedef BOOL (WINAPI *LPFN_GLPI)( PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
-
-int GetPhysicalCpuCount()
-{
-    BOOL done;
-    BOOL rc;
-    DWORD returnLength;
-    DWORD procCoreCount;
-    DWORD byteOffset;
-    PSYSTEM_LOGICAL_PROCESSOR_INFORMATION buffer;
-    LPFN_GLPI Glpi;
-
-    Glpi = (LPFN_GLPI) GetProcAddress( GetModuleHandle(TEXT("kernel32")),"GetLogicalProcessorInformation");
-    if (NULL == Glpi)
-    {
-        return (1);
-    }
-
-    done = FALSE;
-    buffer = NULL;
-    returnLength = 0;
-
-    while (!done)
-    {
-        rc = Glpi(buffer, &returnLength);
-
-        if (FALSE == rc)
-        {
-            if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-            {
-                if (buffer)
-                    free(buffer);
-
-                buffer=(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)malloc(returnLength);
-
-                if (NULL == buffer)
-                {
-                    return (1);
-                }
-            }
-            else
-            {
-                return (1);
-            }
-        }
-        else done = TRUE;
-    }
-
-    procCoreCount = 0;
-    byteOffset = 0;
-
-    while (byteOffset < returnLength)
-    {
-        switch (buffer->Relationship)
-        {
-        case RelationProcessorCore:
-            procCoreCount++;
-            break;
-
-        default:
-            break;
-        }
-        byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
-        buffer++;
-    }
-
-    free (buffer);
-
-    return procCoreCount;
-}
-#else //WIN64
-int GetPhysicalCpuCount()
-{
-    return 1;
-}
-#endif //WIN64
-*/
-
 // #define SQRT_TEST
-
 #ifdef SQRT_TEST
 /* ------------------------------------------------------------------------------ */
 
@@ -1446,7 +1336,7 @@ void CCpuFeatures::Detect(void)
     m_NumAvailProcessors = 0;
 
     //////////////////////////////////////////////////////////////////////////
-#if defined(WIN32) && !defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_HASAFFINITYMASK
     CryLogAlways("");
 
     DWORD_PTR process_affinity_mask;
@@ -1478,31 +1368,6 @@ void CCpuFeatures::Detect(void)
     m_bOS_ISSE = false;
     m_bOS_ISSE_EXCEPTIONS = false;
 #elif defined(LINUX)
-    /*    m_NumLogicalProcessors = m_NumSystemProcessors = sysconf(_SC_NPROCESSORS_CONF);
-        m_NumAvailProcessors = sysconf(_SC_NPROCESSORS_ONLN);
-
-      //since gdb does not like multiple thread with custom affinities, this only in release
-    #if defined(_RELEASE)
-      pthread_attr_t attr;
-      pthread_t threads[MAX_CPU];
-      cpu_set_t cpuset;
-      CPU_ZERO(&cpuset);
-
-       for( unsigned char c = 0; c < m_NumAvailProcessors; c++ )
-       {
-         pthread_attr_init(&attr);
-         CPU_ZERO(&cpuset);
-         CPU_SET(c+1,&cpuset);
-         pthread_attr_setaffinity_np(&attr,sizeof(cpuset),&cpuset);
-         pthread_create(&threads[c],&attr,&DetectProcessorThreadProc,(void *)&m_Cpu[c]);
-       }
-       for( unsigned char c = 0; c < m_NumSystemProcessors; c++ )
-       {
-         pthread_join(threads[c], NULL);
-       }
-    #endif
-    */
-
     // Retrieve information from /proc/cpuinfo
     FILE* cpu_info = fopen("/proc/cpuinfo", "r");
     if (!cpu_info)
@@ -1625,27 +1490,7 @@ void CCpuFeatures::Detect(void)
         CryLogAlways("Failed to detect cpu frequency , defaulting to 0");
         cpu_freq = 0;
     }
-    // Mac OS does not support specifying the processor where a process/thread will execute
-    // The only way to execute on all N processors is through Thread Affinity API to create N threads with N different affinity tags
-    /*pthread_t akThreads[MAX_CPU];
-    for( unsigned char c = 0; c < m_NumSystemProcessors; c++ )
-    {
-        pthread_create_suspended_np(&akThreads[c], NULL, &DetectProcessorThreadProc, &m_Cpu[c]);
 
-        thread_affinity_policy_data_t kPolicy;
-        kPolicy.affinity_tag = c + 1;   // Mask has to be non-zero or it will use the default affinity group
-        thread_policy_set(
-                          pthread_mach_thread_np(akThreads[c]),
-                          THREAD_AFFINITY_POLICY,
-                          (thread_policy_t) &kPolicy,
-                          THREAD_AFFINITY_POLICY_COUNT);
-        thread_resume(pthread_mach_thread_np(akThreads[c]));
-    }
-
-    for( unsigned char c = 0; c < m_NumSystemProcessors; c++ )
-    {
-        pthread_join(akThreads[c], NULL);
-    }*/
     // On macs, the processors are always the same model, so we can easily
     // calculate once and apply the settings for all.
     SCpu cpuInfo;

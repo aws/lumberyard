@@ -1068,7 +1068,7 @@ void CTimeOfDayDialog::OnExpandAll()
 //////////////////////////////////////////////////////////////////////////
 void CTimeOfDayDialog::OnResetToDefaultValues()
 {
-    auto answer = QMessageBox::question(this, "Reset Values", "Are you sure you want to reset all values to their default values?");
+    auto answer = QMessageBox::question(QApplication::activeWindow(), "Reset Values", "Are you sure you want to reset all values to their default values?");
 
     if (answer == QMessageBox::Yes)
     {
@@ -1082,7 +1082,7 @@ void CTimeOfDayDialog::OnResetToDefaultValues()
         }
         else
         {
-            QMessageBox::warning(this, "Reset Values", "Unable to read default time of day file (Editor/default_time_of_day.xml), initializing variables to default values.", QMessageBox::Ok);
+            QMessageBox::warning(QApplication::activeWindow(), "Reset Values", "Unable to read default time of day file (Editor/default_time_of_day.xml), initializing variables to default values.", QMessageBox::Ok);
 
             // If for some reason the file is  missing or corrupted, recreate the variables with their default states.
             // Note that these variables may be out of sync with the default_time_of_day.xml file.

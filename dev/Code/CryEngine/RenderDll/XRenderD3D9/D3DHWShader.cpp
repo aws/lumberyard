@@ -3508,7 +3508,7 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                         if (pMoonTex)
                         {
                             const static int texStateID = CTexture::GetTexState(STexState(FILTER_BILINEAR, TADDR_BORDER, TADDR_BORDER, TADDR_BORDER, 0));
-                            pMoonTex->Apply(nTUnit, texStateID);
+                            pMoonTex->Apply(nTUnit, texStateID, nTexMaterialSlot, nSUnit);
                             break;
                         }
                     }
@@ -5399,3 +5399,14 @@ void CHWShader_D3D::mfUpdatePreprocessFlags(SShaderTechnique* pTech)
     }
 }
 
+AZ::u32 CHWShader_D3D::SHWSInstance::GenerateVertexDeclarationCacheCRC(const AZ::Vertex::Format& vertexFormat)
+{
+    AZ::u32 fetchShaderCRC = vertexFormat.GetCRC();
+
+    // We cannot naively use the AZ::Vertex::Format CRC to cache the results of CreateInputLayout.
+    // CreateInputLayout compiles a fetch shader to associate the vertex format with the individual vertex shader instance.
+    // If the vertex shader does not reference one of the input semantics, then the fetch shader will not
+    fetchShaderCRC |= m_uniqueNameCRC;
+
+    return fetchShaderCRC;
+}

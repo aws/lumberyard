@@ -132,6 +132,14 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputDeviceGamepad, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputDeviceGamepad, "{16652E28-4B60-4852-BBD0-CB6A2D1B7377}", InputDevice);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Reflection
+        static void Reflect(AZ::ReflectContext* context);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         explicit InputDeviceGamepad();
 
@@ -141,8 +149,11 @@ namespace AzFramework
         explicit InputDeviceGamepad(AZ::u32 index);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying
+        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
+        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+    protected:
         AZ_DISABLE_COPY_MOVE(InputDeviceGamepad);
+    public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor

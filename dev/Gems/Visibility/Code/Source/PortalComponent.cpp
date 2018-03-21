@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Visibility_precompiled.h"
 #include "PortalComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -37,8 +37,6 @@ namespace Visibility
                 ->Field("Height", &PortalConfiguration::m_height)
                 ->Field("DisplayFilled", &PortalConfiguration::m_displayFilled)
                 ->Field("AffectedBySun", &PortalConfiguration::m_affectedBySun)
-                ->Field("IgnoreSkyColor", &PortalConfiguration::m_ignoreSkyColor)
-                ->Field("IgnoreGI", &PortalConfiguration::m_ignoreGI)
                 ->Field("ViewDistRatio", &PortalConfiguration::m_viewDistRatio)
                 ->Field("SkyOnly", &PortalConfiguration::m_skyOnly)
                 ->Field("OceanIsVisible", &PortalConfiguration::m_oceanIsVisible)
@@ -65,14 +63,6 @@ namespace Visibility
                 ->Event("SetAffectedBySun", &PortalRequestBus::Events::SetAffectedBySun)
                 ->Event("GetAffectedBySun", &PortalRequestBus::Events::GetAffectedBySun)
                 ->VirtualProperty("AffectedBySun", "GetAffectedBySun", "SetAffectedBySun")
-
-                ->Event("SetIgnoreSkyColor", &PortalRequestBus::Events::SetIgnoreSkyColor)
-                ->Event("GetIgnoreSkyColor", &PortalRequestBus::Events::GetIgnoreSkyColor)
-                ->VirtualProperty("IgnoreSkyColor", "GetIgnoreSkyColor", "SetIgnoreSkyColor")
-
-                ->Event("SetIgnoreGI", &PortalRequestBus::Events::SetIgnoreGI)
-                ->Event("GetIgnoreGI", &PortalRequestBus::Events::GetIgnoreGI)
-                ->VirtualProperty("IgnoreGI", "GetIgnoreGI", "SetIgnoreGI")
 
                 ->Event("SetViewDistRatio", &PortalRequestBus::Events::SetViewDistRatio)
                 ->Event("GetViewDistRatio", &PortalRequestBus::Events::GetViewDistRatio)
@@ -105,6 +95,20 @@ namespace Visibility
 
             behaviorContext->Class<PortalComponent>()->RequestBus("PortalRequestBus");
         }
+    }
+
+    bool PortalConfiguration::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        // conversion from version 1:
+        // - Remove IgnoreSkyColor
+        // - Remove IgnoreGI
+        if (classElement.GetVersion() <= 1)
+        {
+            classElement.RemoveElementByName(AZ_CRC("IgnoreSkyColor"));
+            classElement.RemoveElementByName(AZ_CRC("IgnoreGI"));
+        }
+
+        return true;
     }
 
     void PortalComponent::Reflect(AZ::ReflectContext* context)
@@ -162,26 +166,6 @@ namespace Visibility
     bool PortalComponent::GetAffectedBySun()
     {
         return m_config.m_affectedBySun;
-    }
-
-    void PortalComponent::SetIgnoreSkyColor(const bool value)
-    {
-        m_config.m_ignoreSkyColor = value;
-        Update();
-    }
-    bool PortalComponent::GetIgnoreSkyColor()
-    {
-        return m_config.m_ignoreSkyColor;
-    }
-
-    void PortalComponent::SetIgnoreGI(const bool value)
-    {
-        m_config.m_ignoreGI = value;
-        Update();
-    }
-    bool PortalComponent::GetIgnoreGI()
-    {
-        return m_config.m_ignoreGI;
     }
 
     void PortalComponent::SetViewDistRatio(const float value)

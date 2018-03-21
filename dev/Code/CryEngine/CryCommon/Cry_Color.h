@@ -20,6 +20,7 @@
 
 #include <CryHeaders.h>
 #include <platform.h>
+#include <AzCore/std/containers/array.h>
 
 ILINE float FClamp(float X, float Min, float Max)
 {
@@ -358,6 +359,12 @@ struct Color_tpl
     }
 
     void GetMemoryUsage(class ICrySizer* pSizer) const { /*nothing*/}
+
+    AZStd::array<T, 4> GetAsArray() const
+    {
+        AZStd::array<T, 4> primitiveArray = { { r, g, b, a } };
+        return primitiveArray;
+    }
 
     AUTO_STRUCT_INFO
 };

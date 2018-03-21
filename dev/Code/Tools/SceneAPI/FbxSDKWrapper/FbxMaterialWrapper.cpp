@@ -15,14 +15,15 @@
 #include <AzCore/Math/MathUtils.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include "FbxMaterialWrapper.h"
-#include "FbxPropertyWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FbxMaterialWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxPropertyWrapper.h>
 
 namespace
 {
     const char* s_physicalisedAttributeName = "physicalize";
     const char* s_proxyNoDraw = "ProxyNoDraw";
 }
+
 namespace AZ
 {
     namespace FbxSDKWrapper
@@ -38,7 +39,7 @@ namespace AZ
             m_fbxMaterial = nullptr;
         }
 
-        std::string FbxMaterialWrapper::GetName() const
+        AZStd::string FbxMaterialWrapper::GetName() const
         {
             return m_fbxMaterial->GetInitialName();
         }
@@ -129,7 +130,7 @@ namespace AZ
             return 1.f;
         }
 
-        std::string FbxMaterialWrapper::GetTextureFileName(const char* textureType) const
+        AZStd::string FbxMaterialWrapper::GetTextureFileName(const char* textureType) const
         {
             FbxFileTexture* fileTexture = nullptr;
             FbxProperty property = m_fbxMaterial->FindProperty(textureType);
@@ -155,15 +156,15 @@ namespace AZ
                 }
             }
 
-            return fileTexture ? fileTexture->GetFileName() : std::string();
+            return fileTexture ? fileTexture->GetFileName() : AZStd::string();
         }
 
-        std::string FbxMaterialWrapper::GetTextureFileName(const std::string& textureType) const
+        AZStd::string FbxMaterialWrapper::GetTextureFileName(const AZStd::string& textureType) const
         {
             return GetTextureFileName(textureType.c_str());
         }
 
-        std::string FbxMaterialWrapper::GetTextureFileName(MaterialMapType textureType) const
+        AZStd::string FbxMaterialWrapper::GetTextureFileName(MaterialMapType textureType) const
         {
             switch (textureType)
             {
@@ -176,8 +177,8 @@ namespace AZ
             default:
                 AZ_TraceContext("Unknown value", aznumeric_cast<int>(textureType));
                 AZ_TracePrintf(SceneAPI::Utilities::WarningWindow, "Unrecognized MaterialMapType retrieved");
-                return std::string();
+                return AZStd::string();
             }
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

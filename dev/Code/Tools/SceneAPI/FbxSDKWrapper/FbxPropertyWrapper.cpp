@@ -11,8 +11,8 @@
 */
 
 #include <AzCore/Casting/numeric_cast.h>
-#include "FbxPropertyWrapper.h"
-#include "FbxTypeConverter.h"
+#include <SceneAPI/FbxSDKWrapper/FbxPropertyWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxTypeConverter.h>
 
 namespace AZ
 {
@@ -53,5 +53,5 @@ namespace AZ
         {
             return m_fbxProperty->GetEnumValue(index);
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

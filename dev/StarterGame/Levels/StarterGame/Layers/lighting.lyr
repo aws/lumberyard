@@ -131,16 +131,6 @@
      <Style nAnimationPhase="0" fAnimationSpeed="1" bAttachToSun="0" flare_Flare="" bFlareEnable="1" fFlareFOV="360" lightanimation_LightAnimation="" nLightStyle="0" _fTimeScrubbed="0" bTimeScrubbingInTrackView="0"/>
     </Properties>
    </Object>
-   <Object Type="Entity" Layer="Lighting" LayerGUID="{43a2675f-45cf-49f5-a43f-5399c8f03831}" Id="{55ed573c-6947-4707-9b9c-352de49f995d}" Name="SunLensflare" HideOrder="0" Pos="875.93311,1088.8264,88.211525" FloorNumber="-1" Rotate="1,0,0,0" Material="engineassets/materials/lens_optics" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="5" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="Light">
-    <Properties bActive="1" fAttenuationBulbSize="0.05" Radius="10" _nVersion="0">
-     <Color clrDiffuse="1,1,1" fDiffuseMultiplier="1" fSpecularMultiplier="1"/>
-     <Options bAffectsThisAreaOnly="1" bAffectsVolumetricFogOnly="0" bAmbient="0" bFakeLight="1" fFogRadialLobe="0" bIgnoresVisAreas="0" bVolumetricFog="1"/>
-     <Projector fProjectorFov="90" fProjectorNearPlane="0" texture_Texture=""/>
-     <Shadows nCastShadows="0" fShadowBias="1" nShadowMinResPercent="0" fShadowResolutionScale="1" fShadowSlopeBias="1" fShadowUpdateMinRadius="10" fShadowUpdateRatio="1"/>
-     <Shape bAreaLight="0" fPlaneHeight="1" fPlaneWidth="1"/>
-     <Style nAnimationPhase="0" fAnimationSpeed="1" bAttachToSun="1" flare_Flare="SunLensFlare.LensFlares.ChromaticRing" bFlareEnable="1" fFlareFOV="360" lightanimation_LightAnimation="" nLightStyle="0" _fTimeScrubbed="0" bTimeScrubbingInTrackView="0"/>
-    </Properties>
-   </Object>
    <Object Type="Entity" Layer="Lighting" LayerGUID="{43a2675f-45cf-49f5-a43f-5399c8f03831}" Id="{5f46de3c-818a-48cb-9636-5bd06dcc9f09}" Name="LightCrystal12" HideOrder="0" Pos="1615.7019,1820.9735,62.60878" FloorNumber="-1" Rotate="1,0,0,0" OutdoorOnly="0" CastShadow="1" CastShadowMinspec="5" LodRatio="100" ViewDistanceMultiplier="1" HiddenInGame="0" RecvWind="0" RenderNearest="0" NoStaticDecals="0" CreatedThroughPool="0" ObstructionMultiplier="1" EntityClass="Light">
     <Properties bActive="1" fAttenuationBulbSize="0.05" Radius="40" _nVersion="0">
      <Color clrDiffuse="0.262251,0.564712,0.737911" fDiffuseMultiplier="6" fSpecularMultiplier="50"/>

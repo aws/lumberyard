@@ -21,12 +21,13 @@
 
 //#include <math.h>
 #include <Cry_Math.h>
+#include <Cry3DEngineTraits.h>
 
 namespace NVMath
 {
 #if defined(_CPU_NEON)
     #include "VMath_NEON.hpp"
-#elif (defined(WIN32) || defined(WIN64) || defined(DURANGO) || defined(ORBIS) || defined(LINUX) || defined(MAC) || defined(IOS_SIMULATOR)) && (defined(VEC4_SSE) || defined(VEC4_SSE4))
+#elif (AZ_LEGACY_3DENGINE_TRAIT_HAS_SSE || defined(IOS_SIMULATOR)) && (defined(VEC4_SSE) || defined(VEC4_SSE4))
     #include "VMath_SSE.hpp"
 #else
     #include "VMath_C.hpp"

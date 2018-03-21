@@ -2797,8 +2797,8 @@ void SRenderThread::ProcessCommands()
                 {
                     ////////////////////////////////////////////////
                     // wait till all SRendItems for this frame have finished preparing
-                    gEnv->pJobManager->WaitForJob(*gRenDev->GetFinalizeRendItemJobState(gRenDev->m_RP.m_nProcessThreadID));
-                    gEnv->pJobManager->WaitForJob(*gRenDev->GetFinalizeShadowRendItemJobState(gRenDev->m_RP.m_nProcessThreadID));
+                    gRenDev->GetFinalizeRendItemJobExecutor(gRenDev->m_RP.m_nProcessThreadID)->WaitForCompletion();
+                    gRenDev->GetFinalizeShadowRendItemJobExecutor(gRenDev->m_RP.m_nProcessThreadID)->WaitForCompletion();
 
                     ////////////////////////////////////////////////
                     // to non-thread safe remaing work for *::Render functions
@@ -3225,8 +3225,9 @@ void SRenderThread::Process()
                     {
                         ////////////////////////////////////////////////
                         // wait till all SRendItems for this frame have finished preparing
-                        gEnv->pJobManager->WaitForJob(*gRenDev->GetFinalizeRendItemJobState(gRenDev->m_RP.m_nProcessThreadID));
-                        gEnv->pJobManager->WaitForJob(*gRenDev->GetFinalizeShadowRendItemJobState(gRenDev->m_RP.m_nProcessThreadID));
+                        const threadID processThreadID = gRenDev->m_RP.m_nProcessThreadID;
+                        gRenDev->GetFinalizeRendItemJobExecutor(processThreadID)->WaitForCompletion();
+                        gRenDev->GetFinalizeShadowRendItemJobExecutor(processThreadID)->WaitForCompletion();
 
                         m_rdldLock.Lock();
 

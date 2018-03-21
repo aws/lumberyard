@@ -23,13 +23,6 @@
 #include "GeomCacheRenderNode.h"
 #include "Cry_Color.h"
 
-#include <IJobManager_JobDelegator.h>
-
-DECLARE_JOB("GeomCacheDecomp", TGeomCacheDecompressJob, CGeomCacheManager::DecompressFrame_JobEntry);
-DECLARE_JOB("GeomCacheIFrameDecode", TGeomCacheIFrameDecodeJob, CGeomCacheManager::DecodeIFrame_JobEntry)
-DECLARE_JOB("GeomCacheBFrameDecode", TGeomCacheBFrameDecodeJob, CGeomCacheManager::DecodeBFrame_JobEntry)
-DECLARE_JOB("GeomCacheFill", TGeomCacheFillRenderNodeAsyncJob, CGeomCacheManager::FillRenderNodeAsync_JobEntry);
-
 namespace
 {
     const uint kMinBufferSizeInMiB = 8;
@@ -328,10 +321,10 @@ void CGeomCacheManager::StreamingUpdate()
     {
         SGeomCacheStreamInfo& streamInfo = *m_streamInfos[i];
 
-        if (streamInfo.m_fillRenderNodeJobState.IsRunning())
+        if (streamInfo.m_fillRenderNodeJobExecutor.IsRunning())
         {
             FRAME_PROFILER("CGeomCacheManager::StreamingUpdate_WaitForLastFillJob", GetSystem(), PROFILE_3DENGINE);
-            gEnv->pJobManager->WaitForJob(streamInfo.m_fillRenderNodeJobState);
+            streamInfo.m_fillRenderNodeJobExecutor.WaitForCompletion();
         }
 
         // Update wanted playback frame
@@ -442,11 +435,9 @@ void CGeomCacheManager::LaunchStreamingJobs(const uint numStreams, const CTimeVa
         if (!bSameFrame || pStreamInfo->m_sameFrameFillCount < 2)
         {
             pRenderNode->StartAsyncUpdate();
-            TGeomCacheFillRenderNodeAsyncJob fillRenderNodeAsyncJob(pStreamInfo);
-            fillRenderNodeAsyncJob.SetClassInstance(this);
-            fillRenderNodeAsyncJob.RegisterJobState(&pStreamInfo->m_fillRenderNodeJobState);
-            fillRenderNodeAsyncJob.SetPriorityLevel(JobManager::eHighPriority);
-            fillRenderNodeAsyncJob.Run();
+            // Legacy priority - High
+            pStreamInfo->m_fillRenderNodeJobExecutor.StartJob([this, pStreamInfo]() { this->FillRenderNodeAsync_JobEntry(pStreamInfo); });
+
         }
     }
 }
@@ -461,10 +452,10 @@ void CGeomCacheManager::RetireRemovedStreams()
     {
         SGeomCacheStreamInfo* pStreamInfo = *iter;
 
-        gEnv->GetJobManager()->WaitForJob(pStreamInfo->m_fillRenderNodeJobState);
+        pStreamInfo->m_fillRenderNodeJobExecutor.WaitForCompletion();
         RetireAbortedHandles(*pStreamInfo);
 
-        if (pStreamInfo->m_fillRenderNodeJobState.IsRunning()
+        if (pStreamInfo->m_fillRenderNodeJobExecutor.IsRunning()
             || pStreamInfo->m_pReadAbortListHead || pStreamInfo->m_pDecompressAbortListHead)
         {
             ++iter;
@@ -626,7 +617,7 @@ void CGeomCacheManager::AbortStreamAndWait(SGeomCacheStreamInfo& streamInfo)
 
     AbortStream(streamInfo);
 
-    gEnv->pJobManager->WaitForJob(streamInfo.m_fillRenderNodeJobState);
+    streamInfo.m_fillRenderNodeJobExecutor.WaitForCompletion();
 
     CryMutex dummyCS;
 
@@ -1006,10 +997,10 @@ void CGeomCacheManager::LaunchDecompressJobs(SGeomCacheStreamInfo* pStreamInfo, 
                 CryInterlockedIncrement(&pNewDecompressBufferHandle->m_numJobReferences);
 
                 pStreamInfo->m_frameData[frameIndex % frameDataSize].m_bDecompressJobLaunched = true;
-                TGeomCacheDecompressJob decompressJob(pStreamInfo, i, pNewDecompressBufferHandle, pReadRequestHandle);
-                decompressJob.SetClassInstance(this);
-                decompressJob.SetPriorityLevel(JobManager::eStreamPriority);
-                decompressJob.Run();
+                // Legacy priority - stream
+                AZ::Job* job = AZ::CreateJobFunction([this, pStreamInfo, i, pNewDecompressBufferHandle, pReadRequestHandle]() { this->DecompressFrame_JobEntry(pStreamInfo, i, pNewDecompressBufferHandle, pReadRequestHandle); }, true, nullptr);
+                job->Start();
+
             }
         }
     }
@@ -1076,22 +1067,20 @@ void CGeomCacheManager::LaunchDecodeJob(SDecodeFrameJobData jobData)
 
     switch (frameType)
     {
-    case GeomCacheFile::eFrameType_IFrame:
-    {
-        TGeomCacheIFrameDecodeJob decodeJob(jobData);
-        decodeJob.SetClassInstance(this);
-        decodeJob.SetPriorityLevel(JobManager::eStreamPriority);
-        decodeJob.Run();
-        break;
-    }
-    case GeomCacheFile::eFrameType_BFrame:
-    {
-        TGeomCacheBFrameDecodeJob decodeJob(jobData);
-        decodeJob.SetClassInstance(this);
-        decodeJob.SetPriorityLevel(JobManager::eStreamPriority);
-        decodeJob.Run();
-        break;
-    }
+        case GeomCacheFile::eFrameType_IFrame:
+        {
+            // Legacy priority - stream
+            AZ::Job* job = AZ::CreateJobFunction([this, jobData]() { this->DecodeIFrame_JobEntry(jobData); }, true);
+            job->Start();
+            break;
+        }
+        case GeomCacheFile::eFrameType_BFrame:
+        {
+            // Legacy priority - stream
+            AZ::Job* job = AZ::CreateJobFunction([this, jobData]() { this->DecodeBFrame_JobEntry(jobData); }, true);
+            job->Start();
+            break;
+        }
     }
 }
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyEntityIdCtrl.hxx"
 #include "PropertyQTConstants.h"
 
@@ -26,7 +26,7 @@
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QFrame>
-#include <QtCore/qmimedata.h>
+#include <QtCore/QMimeData>
 
 //just a test to see how it would work to pop a dialog
 

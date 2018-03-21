@@ -17,8 +17,8 @@
 
 namespace EMStudio
 {
-    RemovePluginOnCloseDockWidget::RemovePluginOnCloseDockWidget(const QString& name, EMStudio::EMStudioPlugin* plugin)
-        : MysticQt::DockWidget(name)
+    RemovePluginOnCloseDockWidget::RemovePluginOnCloseDockWidget(QWidget* parent, const QString& name, EMStudio::EMStudioPlugin* plugin)
+        : MysticQt::DockWidget(parent, name)
         , mPlugin(plugin)
     {}
 

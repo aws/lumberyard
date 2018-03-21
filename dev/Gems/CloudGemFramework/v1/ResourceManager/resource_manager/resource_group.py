@@ -15,13 +15,10 @@ import os
 import util
 import json
 import copy
-import urllib2
-import constant
+from resource_manager_common import constant,service_interface
+
 import time
 import file_util
-
-from zipfile import ZipFile
-from StringIO import StringIO
 
 import mappings
 import project
@@ -117,6 +114,21 @@ class ResourceGroup(object):
         if self.__template is None:
             self.__template = util.load_json(self.template_path, optional=False)
         return self.__template
+
+    def get_inter_gem_dependencies(self):
+        dependencies = []
+        for resource_name, definition in self.template.get("Resources", {}).iteritems():
+            if not definition["Type"] == "Custom::LambdaConfiguration":
+                continue
+            services = definition.get("Properties", {}).get("Services", [])
+            for service in services:
+                target_gem_name, target_interface_name, target_interface_version = service_interface.parse_interface_id(service["InterfaceId"])
+                dependencies.append({
+                    "gem": target_gem_name,
+                    "id": service["InterfaceId"],
+                    "function":  definition.get("Properties", {}).get("FunctionName", "")
+                })
+        return dependencies
 
     def get_template_with_parameters(self, deployment_name):
 
@@ -228,7 +240,7 @@ class ResourceGroup(object):
             if not description["Type"] == "AWS::Lambda::Function":
                 continue
 
-            code_path, imported_paths = ResourceGroupUploader.get_lambda_function_code_paths(self.__context, self.name, name)
+            code_path, imported_paths, multi_imports = ResourceGroupUploader.get_lambda_function_code_paths(self.__context, self.name, name)
 
             lambda_function_content_paths.append(code_path)
             lambda_function_content_paths.extend(imported_paths)
@@ -685,68 +697,6 @@ def update_stack(context, args):
     )
 
 
-def update_lambda_code(context, args):
-    # Has the project been initialized?
-    if not context.config.project_initialized:
-        raise HandledError('The project has not been initialized.')
-
-    # The deployment exists
-    if args.deployment not in context.config.deployment_names:
-        HandledError('There is no {} deployment.'.format(args.deployment))
-
-    # The resource group exists?
-    context.resource_groups.get(args.resource_group)
-
-    deployment_name = args.deployment
-    resource_group_name = args.resource_group
-    function_name = args.function
-
-    project_uploader = ProjectUploader(context)
-    deployment_uploader = project_uploader.get_deployment_uploader(deployment_name)
-    resource_group_uploader = deployment_uploader.get_resource_group_uploader(resource_group_name)
-
-    #Create a client representing the lambda resource
-    deployment_stack_id = context.config.get_deployment_stack_id(args.deployment)
-    resource_region = util.get_region_from_arn(deployment_stack_id)
-    client = context.aws.client('lambda', region = resource_region)
-
-    #Get the resources description in the stack
-    resource_group_stack_id = context.config.get_resource_group_stack_id(deployment_name, resource_group_name)
-    resources = context.stack.describe_resources(resource_group_stack_id)
-
-    lambda_function_descriptions = []
-    if function_name:
-        description = resources.get(function_name, None)
-        if description is not None and description['ResourceType'] == 'AWS::Lambda::Function':
-            lambda_function_descriptions.append(description)
-        else:
-            raise HandledError('Lambda function {} does not exist.'.format(function_name))
-    else:
-        #If the function name isn't given, find the descriptions for all the Lambda functions
-        for logical_name, description in resources.iteritems():
-            if description['ResourceType'] == 'AWS::Lambda::Function':
-                lambda_function_descriptions.append(description)
-
-    for lambda_function_description in lambda_function_descriptions:
-        __update_function_code(context, resource_group_uploader, lambda_function_description, client)
-
-
-def __update_function_code(context, resource_group_uploader, lambda_function_description, client):
-    
-    # get settings content
-    settings_path, settings_content = __get_settings_content(context, client, lambda_function_description)
-    aggregated_content = {}
-    if settings_path:
-        aggregated_content[settings_path] = settings_content
-
-    # zip and send it to s3 in preparation for lambdas
-    function_name = lambda_function_description['LogicalResourceId']
-    key = resource_group_uploader.zip_and_upload_lambda_function_code(function_name, aggregated_content = aggregated_content)
-
-    # update the lambda function
-    client.update_function_code(FunctionName = lambda_function_description['PhysicalResourceId'], S3Bucket = resource_group_uploader.bucket, S3Key = key)
-
-
 def create_stack(context, args):
 
     # Does a "safe" create of a resource group stack. The existing deployment
@@ -999,34 +949,10 @@ def __zip_individual_lambda_code_folders(group, uploader):
 
     resources = group.template["Resources"]
     for name, description in  resources.iteritems():
-
-        if not description["Type"] == "AWS::Lambda::Function":
+        if not description["Type"] == "Custom::LambdaConfiguration":
             continue
 
-        uploader.zip_and_upload_lambda_function_code(name)
-
-
-def __get_settings_content(context, client, lambda_function_description):
-
-    settings_name = None
-    settings_content = None
-
-    context.view.downloading(lambda_function_description['LogicalResourceId'] + ' Lambda Function code to retrieve current settings')
-
-    res = client.get_function(FunctionName=lambda_function_description['PhysicalResourceId'])
-    location = res.get('Code', {}).get('Location', None)
-    if location:
-
-        zip_content = urllib2.urlopen(location)
-        zip_file = ZipFile(StringIO(zip_content.read()), 'r')
-
-        for name in zip_file.namelist():
-            if name in ['CloudCanvas/settings.py', 'CloudCanvas/settings.js']:
-                settings_name = name
-                settings_content = zip_file.open(settings_name, 'r').read()
-                break
-
-    return settings_name, settings_content
+        uploader.zip_and_upload_lambda_function_code(description["Properties"]["FunctionName"])
 
 
 def list(context, args):

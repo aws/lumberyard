@@ -16,10 +16,6 @@
 #pragma once
 
 #include "BaseLibraryDialog.h"
-// EntityScriptDialog was removed from the build
-#ifdef KDAB_REMOVED
-#include "EntityScriptDialog.h"
-#endif
 
 class QLabel;
 class QPreviewModelCtrl;
@@ -97,9 +93,6 @@ protected:
     QSplitter* m_wndSplitter4;
 
     //CModelPreview
-#ifdef KDAB_REMOVED
-    CEntityScriptDialog m_scriptDialog;
-#endif
     CPreviewModelCtrl* m_previewCtrl;
     ReflectedPropertyControl* m_propsCtrl;
     ReflectedPropertyControl* m_objectPropsCtrl;

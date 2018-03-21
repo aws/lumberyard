@@ -349,6 +349,17 @@ void CAbstractUndoAnimNodeTransaction::AddNode()
 
     // Release ownership and add node back to parent node
     CTrackViewNode* pNode = m_pStoredTrackViewNode.release();
+
+    // Reset the sequence ptr in the node. This isn't usually required, but it can
+    // be invalid in this case:
+    // - Add new Legacy sequence.
+    // - Add new node.
+    // - Undo add node.
+    // - Undo add sequence (sequence ptr in node is now invalid).
+    // - Redo add sequence.
+    // - Redo add node (this operation will have an invalid ptr to the deleted sequence).
+    m_pNode->m_pAnimSequence = m_pParentNode->m_pAnimSequence;
+
     m_pParentNode->AddNode(m_pNode);
 
     m_pNode->BindToEditorObjects();

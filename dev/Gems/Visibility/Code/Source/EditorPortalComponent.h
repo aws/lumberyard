@@ -136,26 +136,6 @@ namespace Visibility
             return m_config.m_affectedBySun;
         }
 
-        void SetIgnoreSkyColor(const bool value) override
-        {
-            m_config.m_ignoreSkyColor = value;
-            UpdateObject();
-        }
-        bool GetIgnoreSkyColor() override
-        {
-            return m_config.m_ignoreSkyColor;
-        }
-
-        void SetIgnoreGI(const bool value) override
-        {
-            m_config.m_ignoreGI = value;
-            UpdateObject();
-        }
-        bool GetIgnoreGI() override
-        {
-            return m_config.m_ignoreGI;
-        }
-
         void SetViewDistRatio(const float value) override
         {
             m_config.m_viewDistRatio = value;

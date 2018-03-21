@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 
 #include <AzCore/std/parallel/conditional_variable.h>
 #include <AzCore/IO/GenericStreams.h>

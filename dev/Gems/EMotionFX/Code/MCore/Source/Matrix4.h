@@ -900,7 +900,6 @@ namespace MCore
     } MCORE_ALIGN_POST(16);
 
 
-
     // include inline code
 #include "Matrix4.inl"
 }   // namespace MCore

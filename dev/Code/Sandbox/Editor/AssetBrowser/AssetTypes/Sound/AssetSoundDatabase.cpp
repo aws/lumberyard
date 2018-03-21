@@ -181,12 +181,12 @@ void CAssetSoundDatabase::CollectCachedEventgroup(XmlNodeRef& gr, const QString&
 
             poSoundDatabaseItem->SetFileSize(0);
             poSoundDatabaseItem->SetFilename(pNameEv);
-            poSoundDatabaseItem->SetRelativePath(fpath.toLatin1().data());
+            poSoundDatabaseItem->SetRelativePath(fpath.toUtf8().data());
             poSoundDatabaseItem->SetOwnerDatabase(this);
             poSoundDatabaseItem->SetFileExtension("fsb");
             poSoundDatabaseItem->SetFlag(IAssetItem::eFlag_Visible, true);
             fpath += pNameEv;
-            poSoundDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(fpath.toLatin1().data()));
+            poSoundDatabaseItem->SetHash(AssetBrowser::HashStringSbdm(fpath.toUtf8().data()));
             m_assets[fpath] = poSoundDatabaseItem;
         }
         else if (!strcmp(ev->getTag(), "eventgroup"))
@@ -233,10 +233,10 @@ void CAssetSoundDatabase::Refresh()
         strOutputSoundName = strIntermediateFilename;
         Path::ConvertBackSlashToSlash(strOutputSoundName);
 
-        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(strIntermediateFilename.toLatin1().data());
+        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(strIntermediateFilename.toUtf8().data());
 
         char path[_MAX_PATH];
-        strcpy(path, strIntermediateFilename.toLatin1().data());
+        strcpy(path, strIntermediateFilename.toUtf8().data());
         char* ch;
 
         while (ch = strchr(path, '\\'))

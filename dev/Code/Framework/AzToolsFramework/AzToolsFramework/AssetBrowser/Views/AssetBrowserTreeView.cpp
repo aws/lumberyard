@@ -214,6 +214,21 @@ namespace AzToolsFramework
             QTreeViewWithStateSaving::startDrag(supportedActions);
         }
 
+        void AssetBrowserTreeView::rowsAboutToBeRemoved(const QModelIndex& parent, int start, int end)
+        {
+            // if selected entry is being removed, clear selection so not to select (and attempt to preview) other entries potentially marked for deletion
+            if (selectionModel() && selectionModel()->selectedIndexes().size() == 1)
+            {
+                QModelIndex selectedIndex = selectionModel()->selectedIndexes().first();
+                QModelIndex parentSelectedIndex = selectedIndex.parent();
+                if (parentSelectedIndex == parent && selectedIndex.row() >= start && selectedIndex.row() <= end)
+                {
+                    selectionModel()->clear();
+                }
+            }
+            QTreeView::rowsAboutToBeRemoved(parent, start, end);
+        }
+
         void AssetBrowserTreeView::SetThumbnailContext(const char* thumbnailContext) const
         {
             m_delegate->SetThumbnailContext(thumbnailContext);
@@ -271,8 +286,8 @@ namespace AzToolsFramework
             }
 
             QMenu menu(this);
-            AssetBrowserInteractionNotificationsBus::Broadcast(
-                &AssetBrowserInteractionNotificationsBus::Events::AddContextMenuActions, this, &menu, selectedAssets);
+            AssetBrowserInteractionNotificationBus::Broadcast(
+                &AssetBrowserInteractionNotificationBus::Events::AddContextMenuActions, this, &menu, selectedAssets);
             if (!menu.isEmpty())
             {
                 menu.exec(QCursor::pos());

@@ -32,6 +32,8 @@
 #include <VectorMap.h>
 #include "IPerfHud.h"
 
+#include "System.h"
+
 #include <unordered_map> // remove after https://issues.labcollab.net/browse/LMBR-17710 is resolved
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
@@ -371,7 +373,7 @@ public:
     };
 
     // this defines which slash will be kept internally
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CRYPAK_POSIX
     enum
     {
         g_cNativeSlash = '/', g_cNonNativeSlash = '\\'

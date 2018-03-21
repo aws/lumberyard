@@ -13,8 +13,8 @@
 #define QFILESELECTWIDGET_H
 
 #include <QWidget>
-#include <qcombobox.h>
-#include <qpushbutton.h>
+#include <QComboBox>
+#include <QPushButton>
 
 namespace Ui {
     class QFileSelectWidget;

@@ -33,24 +33,19 @@ namespace Visibility
         virtual ~VisAreaConfiguration() = default;
 
         static void Reflect(AZ::ReflectContext* context);
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         float m_Height = 5.0f;
         bool m_DisplayFilled = false;
         bool m_AffectedBySun = false;
-        bool m_IgnoreSkyColor = false;
-        bool m_IgnoreGI = false;
         float m_ViewDistRatio = 100.0f;
-        bool m_SkyOnly = false;
         bool m_OceanIsVisible = false;
         AZ::VertexContainer<AZ::Vector3> m_vertexContainer;
 
         virtual void ChangeHeight() {}
         virtual void ChangeDisplayFilled() {}
         virtual void ChangeAffectedBySun() {}
-        virtual void ChangeIgnoreSkyColor() {}
-        virtual void ChangeIgnoreGI() {}
         virtual void ChangeViewDistRatio() {}
-        virtual void ChangeSkyOnly() {}
         virtual void ChangeOceanIsVisible() {}
         virtual void ChangeVertexContainer() {}
     };
@@ -85,14 +80,8 @@ namespace Visibility
         bool GetDisplayFilled() override;
         void SetAffectedBySun(const bool value) override;
         bool GetAffectedBySun() override;
-        void SetIgnoreSkyColor(const bool value) override;
-        bool GetIgnoreSkyColor() override;
-        void SetIgnoreGI(const bool value) override;
-        bool GetIgnoreGI() override;
         void SetViewDistRatio(const float value) override;
         float GetViewDistRatio() override;
-        void SetSkyOnly(const bool value) override;
-        bool GetSkyOnly() override;
         void SetOceanIsVisible(const bool value) override;
         bool GetOceanIsVisible() override;
         void SetVertices(const AZStd::vector<AZ::Vector3>& value) override;

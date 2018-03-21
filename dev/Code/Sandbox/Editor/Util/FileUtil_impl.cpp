@@ -74,14 +74,24 @@ bool CFileUtil_impl::RevertFile(const char* filename, QWidget* parentWindow)
     return CFileUtil::RevertFile(filename, parentWindow);
 }
 
+bool CFileUtil_impl::RenameFile(const char* sourceFile, const char* targetFile, QWidget* parentWindow)
+{
+    return CFileUtil::RenameFile(sourceFile, targetFile, parentWindow);
+}
+
 bool CFileUtil_impl::DeleteFromSourceControl(const char* filename, QWidget* parentWindow)
 {
     return CFileUtil::DeleteFromSourceControl(filename, parentWindow);
 }
 
-bool CFileUtil_impl::GetSccFileInfo(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow)
+bool CFileUtil_impl::GetLatestFromSourceControl(const char* filename, QWidget* parentWindow)
 {
-    return CFileUtil::GetSccFileInfo(filename, fileInfo, parentWindow);
+    return CFileUtil::GetLatestFromSourceControl(filename, parentWindow);
+}
+
+bool CFileUtil_impl::GetFileInfoFromSourceControl(const char* filename, AzToolsFramework::SourceControlFileInfo& fileInfo, QWidget* parentWindow)
+{
+    return CFileUtil::GetFileInfoFromSourceControl(filename, fileInfo, parentWindow);
 }
 
 void CFileUtil_impl::CreateDirectory(const char* dir)
@@ -157,11 +167,6 @@ IFileUtil::ECopyTreeResult CFileUtil_impl::CopyFile(const QString& strSourceFile
 IFileUtil::ECopyTreeResult CFileUtil_impl::MoveTree(const QString& strSourceDirectory, const QString& strTargetDirectory, bool boRecurse, bool boConfirmOverwrite)
 {
     return CFileUtil::MoveTree(strSourceDirectory, strTargetDirectory, boRecurse, boConfirmOverwrite);
-}
-
-IFileUtil::ECopyTreeResult CFileUtil_impl::MoveFile(const QString& strSourceFile, const QString& strTargetFile, bool boConfirmOverwrite)
-{
-    return CFileUtil::MoveFile(strSourceFile, strTargetFile, boConfirmOverwrite);
 }
 
 void CFileUtil_impl::GatherAssetFilenamesFromLevel(std::set<QString>& rOutFilenames, bool bMakeLowerCase, bool bMakeUnixPath)

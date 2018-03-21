@@ -337,6 +337,7 @@ CActionController::CActionController(IEntity* pEntity, SAnimationContext& contex
 
 CActionController::~CActionController()
 {
+    LmbrCentral::SkinnedMeshInformationBus::Handler::BusDisconnect();
     Unregister(this);
 
     if (!m_owningControllers.empty())
@@ -920,6 +921,23 @@ void CActionController::SetScopeContextInternal(uint32 scopeContextID, IEntity* 
     }
 }
 
+void CActionController::OnSkinnedMeshCreated(ICharacterInstance* characterInstance, const AZ::EntityId& entityId)
+{
+    if (m_ContextEntityId == entityId)
+    {
+        LmbrCentral::SkinnedMeshInformationBus::Handler::BusDisconnect();
+        SetScopeContextInternal(m_scopeContextID, nullptr, entityId, characterInstance, m_animDatabase);
+        m_animDatabase = nullptr;
+        AZ_Warning("Action Controller", characterInstance, "No character instance is available on this entity");
+    }
+}
+
+void CActionController::OnSkinnedMeshDestroyed(const AZ::EntityId& entityId)
+{
+    LmbrCentral::SkinnedMeshInformationBus::Handler::BusDisconnect();
+    m_animDatabase = nullptr;
+}
+
 void CActionController::SetScopeContext(uint32 scopeContextID, const AZ::EntityId& entityId, const IAnimationDatabase* animDatabase)
 {
     ICharacterInstance* newCharacterInstance = nullptr;
@@ -929,7 +947,13 @@ void CActionController::SetScopeContext(uint32 scopeContextID, const AZ::EntityI
     {
         SetScopeContextInternal(scopeContextID, nullptr, entityId, newCharacterInstance, animDatabase);
     }
-    AZ_Warning("Action Controller", newCharacterInstance, "No character instance is available on this entity");
+    else
+    {
+        m_ContextEntityId = entityId;
+        m_scopeContextID = scopeContextID;
+        m_animDatabase = animDatabase;
+        LmbrCentral::SkinnedMeshInformationBus::Handler::BusConnect();
+    }
 }
 
 void CActionController::ClearScopeContext(uint32 scopeContextID, bool flushAnimations)

@@ -335,7 +335,7 @@ namespace
             pos = s.indexOf('=', pos + 1);
             if (pos >= 0)
             {
-                sscanf(s.toLatin1().data() + pos + 1, "%f", &fValue);
+                sscanf(s.toUtf8().data() + pos + 1, "%f", &fValue);
             }
         }
         return fValue;
@@ -399,7 +399,7 @@ UIEnumType ParseUIConfig(const char* sUIConfig, std::map<QString, QString>& outE
         int pos1 = uiConfig.indexOf(':', pos + 1);
         if (pos1 < 0)
         {
-            Warning(QObject::tr("FlowGraphManager: Wrong enum_global_ref format while parsing UIConfig '%1'").arg(sUIConfig).toLatin1().data());
+            Warning(QObject::tr("FlowGraphManager: Wrong enum_global_ref format while parsing UIConfig '%1'").arg(sUIConfig).toUtf8().data());
             return eUI_None;
         }
 
@@ -407,7 +407,7 @@ UIEnumType ParseUIConfig(const char* sUIConfig, std::map<QString, QString>& outE
         QString enumPort = uiConfig.mid(pos1 + 1);
         if (enumFormat.isEmpty() || enumPort.isEmpty())
         {
-            Warning(QObject::tr("FlowGraphManager: Wrong enum_global_ref format while parsing UIConfig '%1'").arg(sUIConfig).toLatin1().data());
+            Warning(QObject::tr("FlowGraphManager: Wrong enum_global_ref format while parsing UIConfig '%1'").arg(sUIConfig).toUtf8().data());
             return eUI_None;
         }
         outEnumPairs[enumFormat] = enumPort;
@@ -573,7 +573,7 @@ IVariable* CFlowGraphManager::MakeInVar(const SInputPortConfig* pPortConfig, uin
                 QString dt = uiConfig.mid(pos + 3); // 3==strlen(prefix)
                 dt = dt.left(dt.indexOf(QRegularExpression("[ ,]")));
                 dt += "_";
-                mapEntry = FlowGraphVariables::FindEntry(dt.toLatin1().data());
+                mapEntry = FlowGraphVariables::FindEntry(dt.toUtf8().data());
             }
         }
         if (mapEntry == 0)
@@ -850,7 +850,7 @@ CFlowGraph* CFlowGraphManager::CreateGraphForModule(IFlowGraphModule* pModule)
         CFlowGraph* pFlowGraph = new CFlowGraph(this, pIGraph);
         pFlowGraph->GetIFlowGraph()->SetType(IFlowGraph::eFGT_Module);
         pFlowGraph->SetName(pModule->GetName());
-        pFlowGraph->Load(filename.toLatin1().data());
+        pFlowGraph->Load(filename.toUtf8().data());
 
         QString groupName = filename.toLower();
 
@@ -947,9 +947,9 @@ CFlowNode* CFlowGraphManager::CreateSelectedEntityNode(CFlowGraph* pFlowGraph, C
 //////////////////////////////////////////////////////////////////////////
 CFlowGraph* CFlowGraphManager::CreateGraphForMatFX(IFlowGraphPtr pFG, const QString& filename)
 {
-    CFlowGraph* pFlowGraph = new CFlowGraph(this, pFG.get(), PathUtil::GetFileName(filename.toLatin1().data()));
+    CFlowGraph* pFlowGraph = new CFlowGraph(this, pFG.get(), PathUtil::GetFileName(filename.toUtf8().data()));
     pFlowGraph->GetIFlowGraph()->SetType(IFlowGraph::eFGT_MaterialFx);
-    pFlowGraph->Load(filename.toLatin1().data());
+    pFlowGraph->Load(filename.toUtf8().data());
 
     return pFlowGraph;
 }

@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,9 +10,11 @@
 *
 */
 
-#include "fbxsdk.h"
+#pragma once
+
+#include <fbxsdk.h>
 #include <AzCore/Math/Vector2.h>
-#include "FbxLayerElementUtilities.h"
+#include <SceneAPI/FbxSDKWrapper/FbxLayerElementUtilities.h>
 
 namespace AZ
 {
@@ -33,5 +33,5 @@ namespace AZ
         protected:
             FbxGeometryElementUV* m_fbxUV;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

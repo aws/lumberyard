@@ -52,10 +52,10 @@ namespace Movement
         template <typename BlockType>
         void AddBlock()
         {
-            m_blocks.push_back(boost::shared_ptr<Block>(new BlockType()));
+            m_blocks.push_back(AZStd::shared_ptr<Block>(new BlockType()));
         }
 
-        void AddBlock(const boost::shared_ptr<Block>& block)
+        void AddBlock(const AZStd::shared_ptr<Block>& block)
         {
             m_blocks.push_back(block);
         }
@@ -71,7 +71,7 @@ namespace Movement
         const Block* GetBlock(uint32 index) const;
 
     private:
-        typedef std::vector<boost::shared_ptr<Block> > Blocks;
+        typedef std::vector<AZStd::shared_ptr<Block> > Blocks;
         Blocks m_blocks;
         uint32 m_current;
     };

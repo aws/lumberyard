@@ -12,8 +12,8 @@
 *
 */
 
-#include <QWidget.h>
-#include <QStackedLayout.h>
+#include <QWidget>
+#include <QStackedLayout>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/functional.h>

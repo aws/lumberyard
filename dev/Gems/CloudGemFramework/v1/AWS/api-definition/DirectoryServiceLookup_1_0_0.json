@@ -1,0 +1,82 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "Service Directory Interface Definition",
+        "description": "API for accessing Service Direcory ."
+   },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "paths": {
+
+        "/interface/{interface_id}/service": {
+            "parameters": [
+                {
+                    "name": "interface_id",
+                    "description": "The ID of a service interface.",
+                    "in": "path",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "get": {
+                "description": "Gets the services that implement an interface.",
+                "responses": {
+                    "200": {
+                        "description": "A collection of the services that implement an interface.",
+                        "schema": {
+                            "$ref": "#/definitions/InterfaceCollection"
+                        }
+                    }
+                }
+            }
+        }
+
+    },
+
+    "definitions": {
+
+        "Interface": {
+            "type": "object",
+            "properties": {
+                "InterfaceId": {
+                    "type": "string"
+                },
+                "InterfaceUrl": {
+                    "type": "string"
+                },
+                "InterfaceSwagger": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "InterfaceId",
+                "InterfaceUrl",
+                "InterfaceSwagger"
+            ]
+        },
+
+        "InterfaceCollection": {
+            "type": "object",
+            "properties": {
+                "Items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Interface"
+                    }
+                }
+            },
+            "required": [
+                "Items"
+            ]
+        }
+
+    }
+}

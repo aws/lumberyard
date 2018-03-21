@@ -17,6 +17,58 @@ from waflib.TaskGen import feature, after, after_method, before_method
 import waflib.Node
 
 
+# The compiler will issue a warning if some flags are specified more than once.
+# The command is constructed from subsets that may have conflicting flags
+# This list of lists contains all the set of flags that are made unique
+UNIQUE_FLAGS_LIST = [
+    ["/arch:IA32", "/arch:SSE", "/arch:SSE2", "/arch:AVX", "/arch:AVX2"],   # code gen for arch
+    ["/clr", "/clr:initialAppDomain", "/clr:noAssembly", "/clr:nostdlib", "/clr:pure", "/clr:safe"],    # common language runtime
+    ["/EHs", "/EHa", "/EHac", "/EHsc"],                                     # exception handling
+    ["/errorReport:none", "/errorReport:prompt", "/errorReport:queue", "/errorReport:send"],        # report internal compiler errors
+    ["/favor:blend", "/favor:ATOM", "/favor:AMD64", "/favor:INTEL64"],      # optimize for arch
+    ["/fp:precise", "/fp:except", "/fp:except-", "/fp:fast", "/fp:strict"], # floating point behavior
+    ["/Gd", "/Gr", "/Gv", "/Gz"],                                           # calling convention
+    ["/GL", "/GL-"],                                    # whole program optimization
+    ["/GR", "/GR-"],                                    # runtime type information
+    ["/GS", "/GS-"],                                    # buffer security checks
+    ["/Gs", "/Gs0", "/Gs4096"],                         # control stack checking calls
+    ["/Gw", "/Gw-"],                                    # global data optimization
+    ["/Gy", "/Gy-"],                                    # enable function level linking
+    ["/O1", "/O2", "/Od", "/Ox"],                       # optimization level
+    ["/Ob0", "/Ob1", "/Ob2"],                           # inline expansion
+    ["/Oi", "/Oi-"],                                    # intrinsics
+    ["/Os", "/Ot"],                                     # favor small code/ fast code
+    ["/Oy", "/Oy-"],                                    # frame pointer omission
+    ["/MD", "/MT", "/LD", "/MDd", "/MTd", "/LDd"],      # runtime library
+    ["/RTC1","/RTCc","/RTCs","/RTCu"],                  # runtime error checks
+    ["/volatile","/volatile:iso", "/volatile:ms"],      # volatile keyword handling
+    ["/vd0", "/vd1", "/vd2"],                           # disable construction displacements
+    ["/ZW", "/ZW:nostdlib"],                            # windows runtime compilation
+    ["/sdl", "/sdl-"],                                  # enable additional security checks
+    ["/vmb", "/vmg"],                                   # always declare a class before using a pointer to it
+    ["/vmm", "/vms", "/vmv"],                           # inheritance of yet-to-be-defined classes
+    ["/W0", "/W1", "/W2", "/W3", "/W4"],                # error level
+    ["/WX", "/WX-", "/WX:NO"],                          # treat warnings as errors
+    ["/Z7", "/Zi", "/ZI"],                              # debug information format
+    ["/Za", "/Ze"],                                     # disable language extensions
+    ["/Zc:forScope", "/Zc:forScope-"],                  # for loop scope conformance
+    ["/Zc:wchar_t", "/Zc:wchar_t-"],                    # wchar_t maps to __wchar_t
+    ["/Zc:auto", "/Zc:auto-"],                          # deduce variable type
+    ["/Zc:trigraphs", "/Zc:trigraphs-"],                # character substitutions if character isn't in charpage
+    ["/Zc:rvalueCast", "/Zc:rvalueCast-"],              # enforce type conversion rules
+    ["/Zc:strictStrings", "/Zc:strictStrings-"],        # disable string literal type conversion
+    ["/Zc:inline", "/Zc:inline-"],                      # remove unreferenced comdat sections
+    ["/Zp", "/Zp:1", "/Zp:2", "/Zp:4", "/Zp:8", "/Zp:16"]   # struct member alignment
+]
+
+# convert list of flags that must be unique to dictionary
+UNIQUE_FLAGS_DICT = {}
+for idx, flags in enumerate(UNIQUE_FLAGS_LIST):
+    assert(isinstance(flags,list))
+    for flag in flags:
+        UNIQUE_FLAGS_DICT[flag] = idx     # all flags from the list have the same value, just using index as a dummy unique val
+
+
 def exec_mf(self):
         """
         Create the manifest file
@@ -84,7 +136,7 @@ def exec_response_command(self, cmd, **kw):
     # not public yet
     try:
         tmp = None
-        if sys.platform.startswith('win') and isinstance(cmd, list) and len(' '.join(cmd)) >= 8192:
+        if sys.platform.startswith('win') and isinstance(cmd, list) and len(' '.join(cmd)) >= 16384:
                 tmp_files_folder = self.generator.bld.get_bintemp_folder_node().make_node('TempFiles')
                 program = cmd[0] #unquoted program name, otherwise exec_command will fail
                 cmd = [self.quote_response_command(x) for x in cmd]
@@ -291,6 +343,10 @@ def add_pch_to_dependencies(self):
     if not getattr(self, 'pch_object', ''):
         return
 
+    pch_abs_path = self.pch_file.abspath()
+    pch_flag = '/Fp' + pch_abs_path
+    pch_header = '/Yu' + self.pch_header_name
+
     # Append PCH File to each compile task
     for t in getattr(self, 'compiled_tasks', []):   
         input_file = t.inputs[0].abspath()
@@ -306,8 +362,6 @@ def add_pch_to_dependencies(self):
             if is_node_qt_rc_generated(self,t.inputs[0]):
                 t.env.append_value('CXXFLAGS', '/Y-')
             else:
-                pch_flag = '/Fp' + self.pch_file.abspath()
-                pch_header = '/Yu' + self.pch_header_name
                 t.env.append_value('CXXFLAGS', pch_header)
                 t.env.append_value('CXXFLAGS', pch_flag)
 
@@ -336,79 +390,29 @@ class pch_msvc(waflib.Task.Task):
     def exec_mf(self, *k, **kw):    
         return exec_mf(self, *k, **kw)
 
-def strip_all_but_last_dependent_options(env, strip_list):
-    # [CFLAGS] Delete all but last option in reverse as list size changes on each delete
-    indices = [i for i, e in enumerate(env.CFLAGS,) if e in strip_list] 
-    for idx in reversed(indices[:-1]):
-        del env.CFLAGS[idx]
-        
-    # [CXXFLAGS] Delete all but last option in reverse as list size changes on each delete
-    indices = [i for i, e in enumerate(env.CXXFLAGS,) if e in strip_list]   
-    for idx in reversed(indices[:-1]):
-        del env.CXXFLAGS[idx]
-        
-def strip_all_but_last_with_prefix(env, prefix):    
-    # [CFLAGS] Delete all but last option in reverse as list size changes on each delete
-    indices = [i for i, e in enumerate(env.CFLAGS,) if prefix in e] 
-    for idx in reversed(indices[:-1]):
-        del env.CFLAGS[idx]
-        
-    # [CXXFLAGS] Delete all but last option in reverse as list size changes on each delete
-    indices = [i for i, e in enumerate(env.CXXFLAGS,) if prefix in e]   
-    for idx in reversed(indices[:-1]):
-        del env.CXXFLAGS[idx]
-        
+
+def strip_all_but_last_dependent_options(flags):
+    seen = set()
+    delete = []
+    for idx, flag in enumerate(reversed(flags)):
+        try:
+            val = UNIQUE_FLAGS_DICT[flag]
+            if val not in seen:
+                seen.add(val)
+                continue
+            # mark for delete
+            delete.append(len(flags) -1 -idx)
+        except:
+            pass
+    for idx in reversed(delete):
+        del flags[idx]
+
+
 def verify_options_common(env):
-    #Optimization options
-    strip_all_but_last_dependent_options(env, ["/O1", "/O2", "/Od", "/Ox"]) 
-    strip_all_but_last_with_prefix(env, "/Ob")
-    strip_all_but_last_with_prefix(env, "/Oi")
-    strip_all_but_last_with_prefix(env, "/Os")
-    strip_all_but_last_with_prefix(env, "/Oy")
-    strip_all_but_last_with_prefix(env, "/favor")
+    strip_all_but_last_dependent_options(env.CFLAGS)
+    strip_all_but_last_dependent_options(env.CXXFLAGS)
 
-    #Code Generation               
-    strip_all_but_last_with_prefix(env, "/arch")
-    strip_all_but_last_with_prefix(env, "/clr")
-    strip_all_but_last_with_prefix(env, "/EH")
-    strip_all_but_last_with_prefix(env, "/fp")
-    strip_all_but_last_dependent_options(env, ["/Gd", "/Gr", "/Gv", "/Gz"])
-    strip_all_but_last_with_prefix(env, "/GL")
-    strip_all_but_last_with_prefix(env, "/GR")
-    strip_all_but_last_with_prefix(env, "/GS")
-    strip_all_but_last_with_prefix(env, "/Gs")
-    strip_all_but_last_with_prefix(env, "/Gw")
-    strip_all_but_last_with_prefix(env, "/Gy")
-    strip_all_but_last_with_prefix(env, "/Qpar")
-    strip_all_but_last_with_prefix(env, "/Qvec")
-    strip_all_but_last_with_prefix(env, "/RTC") 
-    strip_all_but_last_with_prefix(env, "/volatile")
 
-    #Language                               
-    strip_all_but_last_with_prefix(env, "/vd")
-    strip_all_but_last_dependent_options(env, ["/vmb", "/vmg"])
-    strip_all_but_last_dependent_options(env, ["/vmm", "/vms", "/vmv"])
-    strip_all_but_last_dependent_options(env, ["/Z7", "/Zi", "/ZI"])
-    strip_all_but_last_dependent_options(env, ["/Za", "/Ze"])
-    strip_all_but_last_with_prefix(env, "/Zp")
-    strip_all_but_last_with_prefix(env, "/ZW")
-    
-    #Linking
-    strip_all_but_last_dependent_options(env, ["/MD", "/MT", "/LD", "/MDd", "/MTd", "/LDd"])
-
-    #Misc
-    strip_all_but_last_with_prefix(env, "/errorReport")
-    strip_all_but_last_with_prefix(env, "/sdl")
-    strip_all_but_last_with_prefix(env, "/Zc:forScope")
-    strip_all_but_last_with_prefix(env, "/Zc:wchar_t")
-    strip_all_but_last_with_prefix(env, "/Zc:auto")
-    strip_all_but_last_with_prefix(env, "/Zc:trigraphs")
-    strip_all_but_last_with_prefix(env, "/Zc:rvalueCast")
-    strip_all_but_last_with_prefix(env, "/Zc:strictStrings")
-    strip_all_but_last_with_prefix(env, "/Zc:inline")
-    strip_all_but_last_with_prefix(env, "/WX")
-    strip_all_but_last_dependent_options(env, ["/W0", "/W1", "/W2", "/W3", "/W4"])
-    
 @feature('c', 'cxx')
 @after_method('apply_link')
 @after_method('add_pch_to_dependencies')
@@ -803,7 +807,7 @@ def gather_wsdk_versions(conf, windows_kit, versions):
                     pass
             versions.append(('wsdk ' + version[1:], targets))
     pass
-            
+
 @conf
 def find_msvc(conf):
     """Due to path format limitations, limit operation only to native Win32. Yeah it sucks."""
@@ -877,7 +881,14 @@ def find_msvc(conf):
         conf.find_program('MT', path_list=path, var='MT', silent_output=True)
         v['MTFLAGS'] = ['/NOLOGO']
 
+    # call configure on the waflib winres module to setup the environment for configure
+    # conf.load('winres') caches the environment as part of the module load key, and we just modified
+    # the environment, causing the cache to miss, and extra calls import/load the module
+    # winres is loaded
     try:
-        conf.load('winres')
-    except Errors.WafError:
-        warn('Resource compiler not found. Compiling resource file is disabled')        
+        module = sys.modules['waflib.Tools.winres']
+        func = getattr(module,'configure',None)
+        if func:
+            func(conf)
+    except Error as e:
+        warn('Resource compiler not found. Compiling resource file is disabled')

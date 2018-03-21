@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "StarterGameGem_precompiled.h"
 #include "StarterGameEntityUtility.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -88,10 +88,10 @@ namespace StarterGameGem
     {
         AZ::Entity* entity = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
-        //if (entity == nullptr)
-        //{
-        //    return false;
-        //}
+        if (!entity)
+        {
+            return false;
+        }
 
         const AZ::Entity::ComponentArrayType& components = entity->GetComponents();
 
@@ -112,18 +112,22 @@ namespace StarterGameGem
 
     bool StarterGameEntityUtility::AddTagComponentToEntity(const AZ::EntityId& entityId)
     {
-        bool res = true;
+        bool res = true; // succeed if component as already there
         if (!StarterGameEntityUtility::EntityHasComponent(entityId, "TagComponent"))
         {
             AZ::Entity* entity = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+            res = false; // component is not already there so we need to add it, only succeed if the add succeeds below
 
-            // For some reason I have to deactivate the entity to add a component to it.
-            entity->Deactivate();
-            AZ::Component* component;
-            AZ::ComponentDescriptorBus::EventResult(component, LmbrCentral::TagComponent::TYPEINFO_Uuid(), &AZ::ComponentDescriptorBus::Events::CreateComponent);
-            res = entity->AddComponent(component);
-            entity->Activate();
+            if (entity)
+            {
+                // For some reason I have to deactivate the entity to add a component to it.
+                entity->Deactivate();
+                AZ::Component* component;
+                AZ::ComponentDescriptorBus::EventResult(component, LmbrCentral::TagComponent::TYPEINFO_Uuid(), &AZ::ComponentDescriptorBus::Events::CreateComponent);
+                res = entity->AddComponent(component);
+                entity->Activate();
+            }
         }
 
         return res;

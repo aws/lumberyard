@@ -310,7 +310,7 @@ void SequenceIdPropertyEditor::onEditClicked()
         gtDlg.PreSelectItem(pSeq->GetName());
     if (gtDlg.exec() == QDialog::Accepted)
     {
-        pSeq = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(gtDlg.GetSelectedItem().toLatin1().data());
+        pSeq = GetIEditor()->GetMovieSystem()->FindLegacySequenceByName(gtDlg.GetSelectedItem().toUtf8().data());
         assert(pSeq);
         if (pSeq->GetId() > 0)	// This sequence is a new one with a valid ID.
         {

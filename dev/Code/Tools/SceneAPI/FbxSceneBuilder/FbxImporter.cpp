@@ -10,7 +10,6 @@
 *
 */
 
-#include <queue>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Math/Transform.h>

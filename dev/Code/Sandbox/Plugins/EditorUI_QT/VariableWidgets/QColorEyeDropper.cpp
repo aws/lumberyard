@@ -1,17 +1,19 @@
 #include "QColorEyeDropper.h"
 
 // Qt Libraries
-#include "qevent.h"
-#include "qapplication.h"
-#include "qcursor.h"
-#include "qtimer.h"
-#include "qdesktopwidget.h"
-#include "qscreen.h"
-#include "qimage.h"
-#include "qstyle.h"
-#include "qboxlayout.h"
-#include "qpainter.h"
-#include "qbitmap.h"
+#include <QEvent>
+#include <QApplication>
+#include <QCursor>
+#include <QTimer>
+#include <QDesktopWidget>
+#include <QScreen>
+#include <QImage>
+#include <QStyle>
+#include <QBoxLayout>
+#include <QPainter>
+#include <QBitmap>
+#include <QMouseEvent>
+#include <QKeyEvent>
 
 #define QTUI_EYEDROPPER_TIMER 10
 #define QTUI_EYEDROPPER_WIDTH 80

@@ -848,11 +848,7 @@ namespace MCore
         const char* with = AsChar();
         const char* what = (other) ? other : "";
 
-    #if (MCORE_COMPILER == MCORE_COMPILER_MSVC || MCORE_COMPILER == MCORE_COMPILER_INTELC)
-        return _stricmp(with, what);
-    #else
-        return strcasecmp(with, what);
-    #endif
+        return azstricmp(with, what);
     }
 
 
@@ -2091,30 +2087,6 @@ namespace MCore
     #else
         AsUTF32(output);
     #endif
-
-        /*
-            // if the string length is zero
-            if (mLength == 0 || mData == nullptr)
-            {
-                output->Resize( sizeof(wchar_t) );
-                ((wchar_t*)output->GetPointer())[0] = 0;
-                return;
-            }
-
-            #if (defined(MCORE_PLATFORM_MARMALADE) && (MCORE_COMPILER == MCORE_COMPILER_GCC))
-                //const uint32 numWChars = mbstowcs( nullptr, mData, UINT32_MAX);
-                const uint32 numWChars = mLength+1;
-            #else
-                const uint32 numWChars = (uint32)mbstowcs( nullptr, mData, UINT32_MAX) + 1;
-            #endif
-
-            if (numWChars == 0)
-                return;
-
-            output->Resize( numWChars * sizeof(wchar_t) );
-            const uint32 realLength = (uint32)mbstowcs( (wchar_t*)output->GetPointer(), mData, numWChars );
-            output->Resize( realLength );
-        */
     }
 
 
@@ -2414,7 +2386,7 @@ namespace MCore
 
 
     // generate a unique string
-    void UnicodeString::GenerateUniqueString(const char* prefix, const std::function<bool(const MCore::UnicodeString& value)>& validationFunction)
+    void UnicodeString::GenerateUniqueString(const char* prefix, const AZStd::function<bool(const MCore::UnicodeString& value)>& validationFunction)
     {
         MCORE_ASSERT(validationFunction);
 
@@ -2517,181 +2489,4 @@ namespace MCore
 
 
 
-    /*
-    //--------------------------------------------------------------------
-    #if (defined(MCORE_PLATFORM_MARMALADE) && (MCORE_COMPILER == MCORE_COMPILER_GCC))
-        wchar_t* ToWide(const char* str);
-        char* ToChar(const wchar_t* wide);
-        MCORE_INLINE char* NonConstNextUtf(char* pch, char* uch, int size_buffer)
-        {
-            if(pch == nullptr || *pch == '\0') return nullptr;
-
-            if((pch[0] & 0xE0) == 0xE0)
-            {
-                if(size_buffer < 4) return nullptr;
-                if(pch[1] == '\0' || pch[2] == '\0') return nullptr;
-                strncpy(uch,pch,3);
-                uch[3] = '\0';
-                return pch + 3;
-            }
-            else if((pch[0] & 0xC0) == 0xC0)
-            {
-                if (size_buffer < 3) return nullptr;
-                if (pch[1] == '\0') return nullptr;
-                strncpy(uch,pch,2);
-                uch[2] = '\0';
-                return pch + 2;
-            }
-            else
-            {
-                if(size_buffer < 2) return nullptr;
-                uch[0] = pch[0];
-                uch[1] = '\0';
-                return pch + 1;
-            };
-            return nullptr;
-        };
-
-
-        template <class T>
-        inline void H4XPrint(char*& buf, char*& format, const T data, char* fEnd)
-        {
-                char endChar = *fEnd;
-                *fEnd = '\0';
-                int add = sprintf(buf, format, data);
-                *fEnd = endChar;
-                format = fEnd;
-                buf += add;
-        }
-
-
-        int Custom_vswprintf(wchar_t* wcs, uint32 maxNumWChar, const wchar_t* format, va_list args)
-        {
-                char foo[4];
-                char fBuf[4096];
-                char fOut[4096];
-                int conv_ind = 0;
-                strcpy(fBuf, ToChar(format));
-                char* nextchar = fBuf;
-                int num_args = 0;
-                bool prevIsPercents = false;
-                va_list saveArgs = args;
-                char lengthFlag = '\0';
-                char *formatStart = fBuf;
-                char *outStart = fOut;
-
-                while (nextchar && *nextchar != '\0')
-                {
-                        if(prevIsPercents)
-                        {
-                                bool hasSpecifier = false;
-                                bool nowIsString = false;
-                                switch(*nextchar)
-                                {
-                                        case 's'://%s
-                                                {
-                                                        hasSpecifier = true;
-                                                        H4XPrint<const char *>(outStart, formatStart, ToChar(va_arg(args, wchar_t*)), NonConstNextUtf(nextchar, foo, 4));
-                                                        break;
-                                                };
-                                        case '%'://%%
-                                                hasSpecifier = true;
-                                                --num_args;
-                                                lengthFlag = '\0';
-                                                break;
-                                        case 'd':
-                                        case 'o':
-                                        case 'u':
-                                        case 'x':
-                                        case 'X':
-                                        case 'i'://integer
-                                                {
-                                                        switch(lengthFlag)
-                                                        {
-                                                                case 'h':
-                                                                        H4XPrint<int>(outStart, formatStart, va_arg(args, int), NonConstNextUtf(nextchar, foo, 4));
-                                                                        break;
-                                                                case 'l':
-                                                                        H4XPrint<long int>(outStart, formatStart, va_arg(args, long int), NonConstNextUtf(nextchar, foo, 4));
-                                                                        break;
-                                                                default:
-                                                                        H4XPrint<int>(outStart, formatStart, va_arg(args, int), NonConstNextUtf(nextchar, foo, 4));
-                                                                        break;
-                                                        }
-                                                        hasSpecifier = true;
-                                                        lengthFlag = '\0';
-                                                        break;
-                                                };
-                                        case 'c'://char
-                                                {
-                                                        hasSpecifier = true;
-                                                        H4XPrint<int>(outStart, formatStart, va_arg(args, int), NonConstNextUtf(nextchar, foo, 4));
-                                                        break;
-                                                };
-                                        case 'e':
-                                        case 'E':
-                                        case 'f':
-                                        case 'g':
-                                        case 'G'://float
-                                                {
-                                                        switch(lengthFlag)
-                                                        {
-                                                                case '':
-                                                                        H4XPrint<long double>(outStart, formatStart, va_arg(args, long double), NonConstNextUtf(nextchar, foo, 4));
-                                                                        break;
-                                                                default:
-                                                                        H4XPrint<double>(outStart, formatStart, va_arg(args, double), NonConstNextUtf(nextchar, foo, 4));
-                                                                        break;
-                                                        }
-                                                        hasSpecifier = true;
-                                                        lengthFlag = '\0';
-                                                        break;
-                                                };
-                                        default:
-                                                //well, ok
-                                                break;
-                                }
-                                if(conv_ind > 4096)
-                                {
-                                        MCORE_ASSERT(false);    // too long
-                                        return 0;
-                                }
-                                lengthFlag = *nextchar;
-
-
-                                if(hasSpecifier)
-                                {
-                                        prevIsPercents = false;
-                                }
-                        }
-                        if(!prevIsPercents)
-                                prevIsPercents = (*nextchar == '%');
-                        nextchar = NonConstNextUtf(nextchar, foo, 4);
-                }
-                if(*formatStart != '\0')
-                        strcpy(outStart, formatStart);
-                int ret = strlen(fOut);
-                wcscpy(wcs, ToWide(fOut));
-                return ret;
-        };
-
-
-        wchar_t* ToWide(const char* str)
-        {
-            static wchar_t wbuf[4096];
-            mbsrtowcs(wbuf, &str, 4096, nullptr);
-            return wbuf;
-        };
-
-
-        char* ToChar(const wchar_t* wide)
-        {
-            static char cbuf[4096];
-            mbstate_t state = 0;
-            wcsrtombs(cbuf, &wide, 4096, &state);
-            return cbuf;
-        };
-    #endif
-    //--------------------------------------------------------------------
-    */
 } // namespace MCore

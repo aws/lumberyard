@@ -163,10 +163,10 @@ bool PropertyRowResourceSelector::pickResource(QPropertyTree* tree)
 
     context_.typeName = type_.c_str();
     context_.parentWidget = tree;
-    dll_string filename = GetIEditor()->GetResourceSelectorHost()->SelectResource(context_, value_.c_str());
+    QString filename = GetIEditor()->GetResourceSelectorHost()->SelectResource(context_, value_.c_str());
 
     tree->model()->rowAboutToBeChanged(this);
-    value_ = filename.c_str();
+    value_ = filename.toUtf8().constData();
     tree->model()->rowChanged(this);
 
     return true;

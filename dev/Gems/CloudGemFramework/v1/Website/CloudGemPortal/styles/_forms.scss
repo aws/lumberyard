@@ -151,6 +151,14 @@ select option:hover {
 	background-color: $primary-color;
 }
 
+.d-inline-block {
+	position: relative;
+}
+
+.dropdown-menu {
+	position: absolute;
+}
+
 // remove padding from the dropdown menu and add it to the dropdown item so the
 // active & hover colors change the entire content box.
 .dropdown-menu {

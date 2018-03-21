@@ -230,6 +230,6 @@ struct SEntitySlotInfo
 };
 
 struct IShaderParamCallback;
-DECLARE_BOOST_POINTERS(IShaderParamCallback);
+DECLARE_SMART_POINTERS(IShaderParamCallback);
 
 #endif // CRYINCLUDE_CRYCOMMON_ICOMPONENT_H

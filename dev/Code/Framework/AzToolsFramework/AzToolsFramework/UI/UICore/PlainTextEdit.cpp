@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PlainTextEdit.hxx"
 
 #include <UI/UICore/PlainTextEdit.moc>

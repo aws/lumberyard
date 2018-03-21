@@ -145,8 +145,8 @@ AZ::Data::AssetId GetMaterialProductAssetIdFromAssetBrowserEntry(const AzToolsFr
 class MaterialBrowserFilterModel
     : public AzToolsFramework::AssetBrowser::AssetBrowserFilterModel
     , public MaterialBrowserSourceControlBus::Handler
-    , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler
-    , public AzToolsFramework::MaterialBrowser::MaterialBrowserRequestsBus::Handler
+    , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler
+    , public AzToolsFramework::MaterialBrowser::MaterialBrowserRequestBus::Handler
     , private AzFramework::AssetCatalogEventBus::Handler
 {
 public:
@@ -169,11 +169,11 @@ public:
     QModelIndex GetIndexFromMaterial(_smart_ptr<CMaterial> material) const;
     QModelIndex GetFilterModelIndex(const AZ::Data::AssetId &assetId) const;
 
-    // AssetBrowserModelNotificationsBus event handlers
+    // AssetBrowserModelNotificationBus event handlers
     void EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
     
     void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
-    // MaterialBrowserRequestsBus
+    // MaterialBrowserRequestBus
     bool HasRecord(const AZ::Data::AssetId& assetId) override;
     bool IsMultiMaterial(const AZ::Data::AssetId& assetId) override;
 

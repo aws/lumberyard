@@ -20,6 +20,7 @@
 #include <AzCore/std/parallel/spin_mutex.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/shared_mutex.h>
+#include <AzCore/std/parallel/conditional_variable.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/delegate/delegate.h>
@@ -95,7 +96,6 @@ namespace UnitTest
         void SetUp() override
         {
             AllocatorsFixture::SetUp();
-
         }
 
         void TearDown() override
@@ -786,15 +786,9 @@ namespace UnitTest
             while (m_currentValue < 100)
             {
                 {
-                    // get upgradeable access
-                    upgrade_lock<shared_mutex> lock(m_access);
-
-                    unsigned int currentValue = m_currentValue;
-
-                    // get exclusive access
-                    upgrade_to_unique_lock<shared_mutex> uniqueLock(lock);
-
+                    lock_guard<shared_mutex> lock(m_access);
                     // now we have exclusive access
+                    unsigned int currentValue = m_currentValue;                    
                     m_currentValue = currentValue + 1;
                 }
 
@@ -809,38 +803,23 @@ namespace UnitTest
                 shared_mutex rwlock;
 
                 // try exclusive lock
-                AZ_TEST_ASSERT(rwlock.try_lock() == true);
+                EXPECT_TRUE(rwlock.try_lock());
                 rwlock.unlock();
 
                 rwlock.lock(); // get the exclusive lock
                 // while exclusive lock is taken nobody else can get a lock
-                AZ_TEST_ASSERT(rwlock.try_lock() == false);
-                AZ_TEST_ASSERT(rwlock.try_lock_shared() == false);
-                AZ_TEST_ASSERT(rwlock.try_lock_upgrade() == false);
+                EXPECT_FALSE(rwlock.try_lock());
+                EXPECT_FALSE(rwlock.try_lock_shared());
                 rwlock.unlock();
 
                 // try shared lock
-                AZ_TEST_ASSERT(rwlock.try_lock_shared() == true);
-                rwlock.unlock();
+                EXPECT_TRUE(rwlock.try_lock_shared());
+                rwlock.unlock_shared();
 
                 rwlock.lock_shared(); // get the shared lock
-                AZ_TEST_ASSERT(rwlock.try_lock_shared() == true); // make sure we can have multiple shared locks
-                AZ_TEST_ASSERT(rwlock.try_lock_upgrade() == true); // we can get upgrade too
+                EXPECT_TRUE(rwlock.try_lock_shared()); // make sure we can have multiple shared locks
                 rwlock.unlock_shared();
                 rwlock.unlock_shared();
-                rwlock.unlock_upgrade();
-
-                // try upgrade lock
-                AZ_TEST_ASSERT(rwlock.try_lock_upgrade() == true);
-                AZ_TEST_ASSERT(rwlock.try_lock_upgrade() == false); // we can have only one upgrade lock at a time
-                AZ_TEST_ASSERT(rwlock.try_lock_shared() == true); // shared is fine
-                rwlock.unlock_shared();
-                rwlock.unlock_upgrade();
-
-                // lock upgrade lock
-                rwlock.lock_upgrade();
-                AZ_TEST_ASSERT(rwlock.try_lock_upgrade() == false);
-                AZ_TEST_ASSERT(rwlock.try_unlock_upgrade_and_lock() == true); // upgrade to exclusive
             }
 
             // spin threads and run test validity of operations
@@ -869,12 +848,12 @@ namespace UnitTest
                 t5.join();
                 t6.join();
 
-                AZ_TEST_ASSERT(m_currentValue == 100);
+                EXPECT_EQ(100, m_currentValue);
                 // Check for the range of the sums as we don't guarantee adding all numbers.
-                AZ_TEST_ASSERT(m_readSum[0] > 1000 && m_readSum[0] <= 5050);
-                AZ_TEST_ASSERT(m_readSum[1] > 1000 && m_readSum[1] <= 5050);
-                AZ_TEST_ASSERT(m_readSum[2] > 1000 && m_readSum[2] <= 5050);
-                AZ_TEST_ASSERT(m_readSum[3] > 1000 && m_readSum[3] <= 5050);
+                EXPECT_TRUE(m_readSum[0] > 1000 && m_readSum[0] <= 5050);
+                EXPECT_TRUE(m_readSum[1] > 1000 && m_readSum[1] <= 5050);
+                EXPECT_TRUE(m_readSum[2] > 1000 && m_readSum[2] <= 5050);
+                EXPECT_TRUE(m_readSum[3] > 1000 && m_readSum[3] <= 5050);
             }
         }
     };

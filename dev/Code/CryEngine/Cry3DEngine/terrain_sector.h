@@ -516,7 +516,7 @@ public:
     int FTell(uint8*& f);
     int FTell(AZ::IO::HandleType& fileHandle);
 
-    void BuildIndices_Wrapper(SRenderingPassInfo passInfo);
+    void BuildIndices_Wrapper(const SRenderingPassInfo& passInfo);
     void BuildVertices_Wrapper();
 
 private:

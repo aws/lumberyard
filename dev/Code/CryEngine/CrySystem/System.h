@@ -62,11 +62,147 @@ namespace minigui
 #define USE_NULLCONSOLE
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(System_h)
+#else
+#if defined(WIN32) || defined(LINUX) || defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE 1
+#endif
+#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_DEFINE_DETECT_PROCESSOR 1
+#endif
+
+//////////////////////////////////////////////////////////////////////////
+#if !defined(LINUX) && !defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_CREATE_AVI_READER 1
+#endif
+#if defined(WIN32) || defined(APPLE) || defined(LINUX)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_DO_PREASSERT 1
+#endif
+#if defined(MAC) || (defined(LINUX) && !defined(ANDROID))
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_ASM_VOLATILE_CPUID 1
+#endif
+#if (defined(WIN32) && !defined(WIN64)) || (defined(LINUX) && !defined(ANDROID) && !defined(LINUX64))
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_HAS64BITEXT 1
+#endif
+#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_HTSUPPORTED 1
+#endif
+#if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_HASCPUID 1
+#endif
+#if defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_HASAFFINITYMASK 1
+#endif
+
+#if defined(ANDROID)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_SIZET_MEM 1
+#endif
+#if defined(WIN32) || defined(WIN64)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MSIZE 1
+#endif
+
+#if defined(LINUX) || defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_CRYPAK_POSIX 1
+#endif
+
+#if defined(WIN64)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_BIT64 1
+#endif
+
+#if defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_PACKED_PEHEADER 1
+#endif
+#if defined(WIN32) || defined(LINUX)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_RENDERMEMORY_INFO 1
+#endif
+
+#if defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_HANDLER_SYNC_AFFINITY 1
+#endif
+
+#if defined(LINUX) || defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_FORWARD_EXCEPTION_POINTERS 1
+#endif
+
+#if !defined(_WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_DEBUGCALLSTACK_SINGLETON 1
+#endif
+#if !defined(LINUX) && !defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_DEBUGCALLSTACK_TRANSLATE 1
+#endif
+#if !defined(LINUX) && !defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_DEBUGCALLSTACK_APPEND_MODULENAME 1
+#endif
+
+#if !(defined(ANDROID) || defined(IOS) || defined(APPLETV) || defined(LINUX))
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_IMAGEHANDLER_TIFFIO 1
+#endif
+
+#if 1
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_JOBMANAGER_SIXWORKERTHREADS 0
+#endif
+
+#if defined (LINUX)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_MEMREPLAY_MODULE_STATE 0
+#endif
+
+#if defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_MEMADDRESSRANGE_WINDOWS_STYLE 1
+#endif
+
+#if !defined(LINUX) && !defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_STROBOSCOPE_PTHREADS 1
+#endif
+
+#if 1
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_EXCLUDEUPDATE_ON_CONSOLE 0
+#endif
+#if defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER 1
+#endif
+#if defined(WIN64) || defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_CAPTURESTACK 1
+#endif
+
+#if !defined(LINUX) && !defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_SYSTEMCFG_MODULENAME 1
+#endif
+
+#if defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_RENDERTHREADINFO 1
+#else
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_RENDERTHREADINFO 0
+#endif
+
+#if defined(WIN32) || defined(WIN64)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_THREADINFO_WINDOWS_STYLE 1
+#endif
+
+#if defined(WIN32)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_THREADTASK_EXCEPTIONS 1
+#endif
+//////////////////////////////////////////////////////////////////////////
+
+#if !defined(LINUX)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_SIMULATE_TASK 1
+#endif
+
+#if defined(APPLE) || defined(LINUX)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_FACTORY_REGISTRY_USE_PRINTF_FOR_FATAL 1
+#endif
+
+#if defined(LINUX) || defined(APPLE)
+#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_FTELL_NOT_FTELLI64 1
+#endif
+
+#endif
+
 #if defined(USE_UNIXCONSOLE) || defined(USE_ANDROIDCONSOLE) || defined(USE_WINDOWSCONSOLE) || defined(USE_IOSCONSOLE) || defined(USE_NULLCONSOLE)
 #define USE_DEDICATED_SERVER_CONSOLE
 #endif
 
-#if !defined(LINUX) && !defined(DURANGO) && !defined(APPLE) && !defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CREATE_AVI_READER
 #define DOWNLOAD_MANAGER
 #endif
 
@@ -317,9 +453,9 @@ public:
     //! Renders the statistics; this is called from RenderEnd, but if the
     //! Host application (Editor) doesn't employ the Render cycle in ISystem,
     //! it may call this method to render the essential statistics
-    void RenderStatistics ();
-    void RenderPhysicsHelpers();
-    void RenderPhysicsStatistics(IPhysicalWorld* pWorld);
+    void RenderStatistics () override;
+    void RenderPhysicsHelpers() override;
+    void RenderPhysicsStatistics(IPhysicalWorld* pWorld) override;
 
     uint32 GetUsedMemory();
 
@@ -673,7 +809,7 @@ private:
 
     WIN_HMODULE LoadDynamiclibrary(const char* dllName) const;
 
-#if defined(WIN32) && !defined(DURANGO)
+#if   defined(WIN32)
     bool GetWinGameFolder(char* szMyDocumentsPath, int maxPathSize);
 #endif
 

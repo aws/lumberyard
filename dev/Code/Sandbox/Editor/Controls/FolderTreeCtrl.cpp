@@ -361,11 +361,18 @@ void CFolderTreeCtrl::ShowInExplorer(const QString& path)
         absolutePath += QStringLiteral("/%1").arg(path);
     }
 
+#if defined(AZ_PLATFORM_WINDOWS)
     // Explorer command lines needs windows style paths
     absolutePath.replace('/', '\\');
 
     const QString parameters = "/select," + absolutePath;
     QProcess::startDetached(QStringLiteral("explorer.exe"), { parameters });
+#else
+    QProcess::startDetached("/usr/bin/osascript", {"-e",
+        QStringLiteral("tell application \"Finder\" to reveal POSIX file \"%1\"").arg(absolutePath)});
+    QProcess::startDetached("/usr/bin/osascript", {"-e",
+        QStringLiteral("tell application \"Finder\" to activate")});
+#endif
 }
 
 QPixmap CFolderTreeCtrl::GetPixmap(int image) const

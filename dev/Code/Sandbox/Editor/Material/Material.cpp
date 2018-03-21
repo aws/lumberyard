@@ -33,6 +33,7 @@ static SInputShaderResources defaultShaderResource;
 //////////////////////////////////////////////////////////////////////////
 CMaterial::CMaterial(const QString& name, int nFlags)
     : m_highlightFlags(0)
+    , m_dccMaterialHash(0)
 {
     m_scFileAttributes = SCC_FILE_ATTRIBUTE_NORMAL;
 
@@ -79,6 +80,7 @@ CMaterial::CMaterial(const CMaterial& rhs)
     , m_propagationFlags{rhs.m_propagationFlags}
     , m_allowLayerActivation{rhs.m_allowLayerActivation}
     , m_allowResolve{rhs.m_allowResolve}
+    , m_dccMaterialHash(rhs.m_dccMaterialHash)
 {
     ZeroStruct(m_shaderItem);
     m_name = rhs.m_name;
@@ -145,14 +147,14 @@ void CMaterial::SetName(const QString& name)
 
             if (m_pMatInfo)
             {
-                GetIEditor()->Get3DEngine()->GetMaterialManager()->RenameMaterial(m_pMatInfo, GetName().toLatin1().data());
+                GetIEditor()->Get3DEngine()->GetMaterialManager()->RenameMaterial(m_pMatInfo, GetName().toUtf8().data());
             }
         }
         else
         {
             if (m_pMatInfo)
             {
-                m_pMatInfo->SetName(m_name.toLatin1().data());
+                m_pMatInfo->SetName(m_name.toUtf8().data());
             }
         }
 
@@ -162,7 +164,7 @@ void CMaterial::SetName(const QString& name)
     if (m_shaderItem.m_pShaderResources)
     {
         // Only for correct warning message purposes.
-        m_shaderItem.m_pShaderResources->SetMaterialName(m_name.toLatin1().data());
+        m_shaderItem.m_pShaderResources->SetMaterialName(m_name.toUtf8().data());
     }
 }
 
@@ -187,7 +189,7 @@ int CMaterial::GetTextureFilenames(QStringList& outFilenames) const
         }
 
         // Collect image filenames
-        if (IResourceCompilerHelper::IsSourceImageFormatSupported(name.toLatin1().data()))
+        if (IResourceCompilerHelper::IsSourceImageFormatSupported(name.toUtf8().data()))
         {
             stl::push_back_unique(outFilenames, Path::GamePathToFullPath(name));
         }
@@ -362,9 +364,9 @@ bool CMaterial::LoadShader()
         sShader = "<Default>";
     }
 
-    QByteArray n = m_name.toLatin1();
+    QByteArray n = m_name.toUtf8();
     m_shaderResources.m_szMaterialName = n.data();
-    SShaderItem newShaderItem = GetIEditor()->GetRenderer()->EF_LoadShaderItem(sShader.toLatin1().data(), false, 0, &m_shaderResources, m_nShaderGenMask);
+    SShaderItem newShaderItem = GetIEditor()->GetRenderer()->EF_LoadShaderItem(sShader.toUtf8().data(), false, 0, &m_shaderResources, m_nShaderGenMask);
 
     // Shader not found
     if (newShaderItem.m_pShader && (newShaderItem.m_pShader->GetFlags() & EF_NOTFOUND) != 0)
@@ -477,7 +479,7 @@ bool CMaterial::LoadMaterialLayers()
                     continue;
                 }
 
-                IShader* pNewShader = GetIEditor()->GetRenderer()->EF_LoadShader(pCurrLayer->m_shaderName.toLatin1().data(), 0);
+                IShader* pNewShader = GetIEditor()->GetRenderer()->EF_LoadShader(pCurrLayer->m_shaderName.toUtf8().data(), 0);
 
                 // Check if shader loaded
                 if (!pNewShader || (pNewShader->GetFlags() & EF_NOTFOUND) != 0)
@@ -524,10 +526,10 @@ bool CMaterial::LoadMaterialLayers()
                 }
 
                 // Reload with proper flags
-                SShaderItem newShaderItem = GetIEditor()->GetRenderer()->EF_LoadShaderItem(pCurrLayer->m_shaderName.toLatin1().data(), false, 0, &pCurrLayer->m_shaderResources, nMaskGenLayer);
+                SShaderItem newShaderItem = GetIEditor()->GetRenderer()->EF_LoadShaderItem(pCurrLayer->m_shaderName.toUtf8().data(), false, 0, &pCurrLayer->m_shaderResources, nMaskGenLayer);
                 if (!newShaderItem.m_pShader || (newShaderItem.m_pShader->GetFlags() & EF_NOTFOUND) != 0)
                 {
-                    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Failed to load material layer shader \"%s\" in material \"%s\"", pCurrLayer->m_shaderName.toLatin1().data(), m_pMatInfo->GetName());
+                    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Failed to load material layer shader \"%s\" in material \"%s\"", pCurrLayer->m_shaderName.toUtf8().data(), m_pMatInfo->GetName());
                     if (!newShaderItem.m_pShader)
                     {
                         continue;
@@ -624,12 +626,12 @@ void CMaterial::UpdateMatInfo()
         // Mark material invalid.
         m_pMatInfo->SetFlags(m_mtlFlags);
         m_pMatInfo->SetShaderItem(m_shaderItem);
-        m_pMatInfo->SetSurfaceType(m_surfaceType.toLatin1().data());
+        m_pMatInfo->SetSurfaceType(m_surfaceType.toUtf8().data());
 
         LoadMaterialLayers();
         UpdateMaterialLayers();
 
-        m_pMatInfo->SetMaterialLinkName(m_linkedMaterial.toLatin1().data());
+        m_pMatInfo->SetMaterialLinkName(m_linkedMaterial.toUtf8().data());
 
         if (IsMultiSubMaterial())
         {
@@ -748,6 +750,10 @@ void CMaterial::Serialize(SerializeContext& ctx)
             m_mtlFlags |= (flags & (MTL_FLAGS_SAVE_MASK));
         }
 
+        uint32 dccMaterialHash = 0;
+        node->getAttr("DccMaterialHash", dccMaterialHash);
+        SetDccMaterialHash(dccMaterialHash);
+
         if (!IsMultiSubMaterial())
         {
             node->getAttr("Shader", m_shaderName);
@@ -767,18 +773,18 @@ void CMaterial::Serialize(SerializeContext& ctx)
             // Remap flags if needed
             if (!(m_mtlFlags & MTL_64BIT_SHADERGENMASK))
             {
-                m_nShaderGenMask = GetIEditor()->GetRenderer()->EF_GetRemapedShaderMaskGen(m_shaderName.toLatin1().data(), m_nShaderGenMask);
+                m_nShaderGenMask = GetIEditor()->GetRenderer()->EF_GetRemapedShaderMaskGen(m_shaderName.toUtf8().data(), m_nShaderGenMask);
                 m_mtlFlags |= MTL_64BIT_SHADERGENMASK;
             }
 
             if (node->getAttr("StringGenMask", m_pszShaderGenMask))
             {
-                m_nShaderGenMask = GetIEditor()->GetRenderer()->EF_GetShaderGlobalMaskGenFromString(m_shaderName.toLatin1().data(), m_pszShaderGenMask.toLatin1().data(), m_nShaderGenMask);           // get common mask gen
+                m_nShaderGenMask = GetIEditor()->GetRenderer()->EF_GetShaderGlobalMaskGenFromString(m_shaderName.toUtf8().data(), m_pszShaderGenMask.toUtf8().data(), m_nShaderGenMask);           // get common mask gen
             }
             else
             {
                 // version doens't has string gen mask yet ? Remap flags if needed
-                m_nShaderGenMask = GetIEditor()->GetRenderer()->EF_GetRemapedShaderMaskGen(m_shaderName.toLatin1().data(), m_nShaderGenMask, ((m_mtlFlags & MTL_64BIT_SHADERGENMASK) != 0));
+                m_nShaderGenMask = GetIEditor()->GetRenderer()->EF_GetRemapedShaderMaskGen(m_shaderName.toUtf8().data(), m_nShaderGenMask, ((m_mtlFlags & MTL_64BIT_SHADERGENMASK) != 0));
             }
             m_mtlFlags |= MTL_64BIT_SHADERGENMASK;
 
@@ -936,7 +942,7 @@ void CMaterial::Serialize(SerializeContext& ctx)
         {
             const QString& name = GetName();
             const size_t len = name.length();
-            if (len > 4 && strstri(name.toLatin1().data() + (len - 4), "_con"))
+            if (len > 4 && strstri(name.toUtf8().data() + (len - 4), "_con"))
             {
                 extFlags |= MTL_FLAG_CONSOLE_MAT;
             }
@@ -944,16 +950,17 @@ void CMaterial::Serialize(SerializeContext& ctx)
 
         // Saving.
         node->setAttr("MtlFlags", m_mtlFlags | extFlags);
+        node->setAttr("DccMaterialHash", GetDccMaterialHash());
 
         if (!IsMultiSubMaterial())
         {
             // store shader gen bit mask string
-            m_pszShaderGenMask = GetIEditor()->GetRenderer()->EF_GetStringFromShaderGlobalMaskGen(m_shaderName.toLatin1().data(), m_nShaderGenMask);
+            m_pszShaderGenMask = GetIEditor()->GetRenderer()->EF_GetStringFromShaderGlobalMaskGen(m_shaderName.toUtf8().data(), m_nShaderGenMask);
 
-            node->setAttr("Shader", m_shaderName.toLatin1().data());
+            node->setAttr("Shader", m_shaderName.toUtf8().data());
             node->setAttr("GenMask", m_nShaderGenMask);
-            node->setAttr("StringGenMask", m_pszShaderGenMask.toLatin1().data());
-            node->setAttr("SurfaceType", m_surfaceType.toLatin1().data());
+            node->setAttr("StringGenMask", m_pszShaderGenMask.toUtf8().data());
+            node->setAttr("SurfaceType", m_surfaceType.toUtf8().data());
 
             //if (!m_shaderName.IsEmpty() && (stricmp(m_shaderName,"nodraw") != 0))
             {
@@ -968,7 +975,7 @@ void CMaterial::Serialize(SerializeContext& ctx)
         if (!m_linkedMaterial.isEmpty())
         {
             XmlNodeRef pLinkName = node->newChild("MaterialLinkName");
-            pLinkName->setAttr("name", m_linkedMaterial.toLatin1().data());
+            pLinkName->setAttr("name", m_linkedMaterial.toUtf8().data());
         }
 
         if (m_propagationFlags)
@@ -1002,7 +1009,7 @@ void CMaterial::Serialize(SerializeContext& ctx)
                 if (pSubMtl && pSubMtl->IsPureChild())
                 {
                     XmlNodeRef mtlNode = childsNode->newChild("Material");
-                    mtlNode->setAttr("Name", pSubMtl->GetName().toLatin1().data());
+                    mtlNode->setAttr("Name", pSubMtl->GetName().toUtf8().data());
                     SerializeContext childCtx(ctx);
                     childCtx.node = mtlNode;
                     pSubMtl->Serialize(childCtx);
@@ -1012,7 +1019,7 @@ void CMaterial::Serialize(SerializeContext& ctx)
                     XmlNodeRef mtlNode = childsNode->newChild("MaterialRef");
                     if (pSubMtl)
                     {
-                        mtlNode->setAttr("Name", pSubMtl->GetName().toLatin1().data());
+                        mtlNode->setAttr("Name", pSubMtl->GetName().toUtf8().data());
                     }
                 }
             }
@@ -1053,7 +1060,7 @@ void CMaterial::Serialize(SerializeContext& ctx)
                 XmlNodeRef layerNode = mtlLayersNode->newChild("Layer");
                 if (!m_pMtlLayerResources[l].m_shaderName.isEmpty())
                 {
-                    layerNode->setAttr("Name", m_pMtlLayerResources[l].m_shaderName.toLatin1().data());
+                    layerNode->setAttr("Name", m_pMtlLayerResources[l].m_shaderName.toUtf8().data());
                     layerNode->setAttr("NoDraw", m_pMtlLayerResources[l].m_nFlags & MTL_LAYER_USAGE_NODRAW);
                     layerNode->setAttr("FadeOut", m_pMtlLayerResources[l].m_nFlags & MTL_LAYER_USAGE_FADEOUT);
 
@@ -1145,7 +1152,7 @@ bool CMaterial::IsBreakable2D() const
     const QString& surfaceTypeName = GetSurfaceTypeName();
     if (ISurfaceTypeManager* pSurfaceManager = GetIEditor()->Get3DEngine()->GetMaterialManager()->GetSurfaceTypeManager())
     {
-        ISurfaceType* pSurfaceType = pSurfaceManager->GetSurfaceTypeByName(surfaceTypeName.toLatin1().data());
+        ISurfaceType* pSurfaceType = pSurfaceManager->GetSurfaceTypeByName(surfaceTypeName.toUtf8().data());
         if (pSurfaceType && pSurfaceType->GetBreakable2DParams() != 0)
         {
             return true;
@@ -1295,6 +1302,20 @@ CMaterial* CMaterial::GetSubMaterial(int index) const
     }
 
     return m_subMaterials[index];
+}
+
+//////////////////////////////////////////////////////////////////////////
+int CMaterial::FindMaterialIndex(const QString& name)
+{
+    for (int i = 0; i < m_subMaterials.size(); ++i)
+    {
+        if (m_subMaterials[i]->GetName().compare(name) == 0)
+        {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1546,7 +1567,7 @@ bool CMaterial::Save(bool bSkipReadOnly)
     //char path[ICryPak::g_nMaxPath];
     //filename = gEnv->pCryPak->AdjustFileName( filename,path,0 );
 
-    if (XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), mtlNode, GetFilename().toLatin1().data()))
+    if (XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), mtlNode, GetFilename().toUtf8().data()))
     {
         // If material successfully saved, clear modified flag.
         SetModified(false);
@@ -1594,19 +1615,19 @@ _smart_ptr<IMaterial> CMaterial::GetMatInfo(bool bUseExistingEngineMaterial)
         {
             if (bUseExistingEngineMaterial)
             {
-                m_pMatInfo = GetIEditor()->Get3DEngine()->GetMaterialManager()->FindMaterial(GetName().toLatin1().data());
+                m_pMatInfo = GetIEditor()->Get3DEngine()->GetMaterialManager()->FindMaterial(GetName().toUtf8().data());
             }
 
             if (!m_pMatInfo)
             {
-                m_pMatInfo = GetIEditor()->Get3DEngine()->GetMaterialManager()->CreateMaterial(GetName().toLatin1().data(), m_mtlFlags);
+                m_pMatInfo = GetIEditor()->Get3DEngine()->GetMaterialManager()->CreateMaterial(GetName().toUtf8().data(), m_mtlFlags);
             }
         }
         else
         {
             // Pure child should not be registered with the name.
             m_pMatInfo = GetIEditor()->Get3DEngine()->GetMaterialManager()->CreateMaterial("", m_mtlFlags);
-            m_pMatInfo->SetName(GetName().toLatin1().data());
+            m_pMatInfo->SetName(GetName().toUtf8().data());
         }
         m_mtlFlags = m_pMatInfo->GetFlags();
         UpdateMatInfo();
@@ -1632,7 +1653,7 @@ void CMaterial::NotifyChanged()
     if (!CanModify() && !IsModified() && CUndo::IsRecording())
     {
         // Display Warning message.
-        Warning("Modifying read only material %s\r\nChanges will not be saved!", GetName().toLatin1().data());
+        Warning("Modifying read only material %s\r\nChanges will not be saved!", GetName().toUtf8().data());
     }
 
     SetModified();
@@ -1925,7 +1946,7 @@ void CMaterial::Reload()
         return;
     }
 
-    XmlNodeRef mtlNode = GetISystem()->LoadXmlFromFile(GetFilename().toLatin1().data());
+    XmlNodeRef mtlNode = GetISystem()->LoadXmlFromFile(GetFilename().toUtf8().data());
     if (!mtlNode)
     {
         return;

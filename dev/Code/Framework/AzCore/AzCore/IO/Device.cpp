@@ -28,7 +28,6 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/IO/Compressor.h>
 
-
 namespace AZ
 {
     namespace IO
@@ -230,6 +229,11 @@ namespace AZ
         void Device::UnRegisterStream(VirtualStream* stream)
         {
             AZ_Assert(stream, "Invalid stream");
+            if (stream)
+            {
+                stream->Close();
+            }
+
             UnRegisterStream(Uuid::CreateName(stream->GetFilename()));
         }
 

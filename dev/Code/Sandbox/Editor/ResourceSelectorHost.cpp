@@ -19,6 +19,7 @@
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 
 #include <QMessageBox>
+#include <QString>
 
 class CResourceSelectorHost
     : public IResourceSelectorHost
@@ -29,18 +30,12 @@ public:
         RegisterModuleResourceSelectors(this);
     }
 
-    dll_string SelectResource(const SResourceSelectorContext& context, const char* previousValue) override
+    QString SelectResource(const SResourceSelectorContext& context, const QString& previousValue) override
     {
         if (!context.typeName)
         {
             assert(false && "SResourceSelectorContext::typeName is not specified");
-            return dll_string();
-        }
-
-        if (!previousValue)
-        {
-            assert(false && "previousValue is null");
-            return dll_string();
+            return QString();
         }
 
         TTypeMap::iterator it = m_typeMap.find(context.typeName);
@@ -50,7 +45,7 @@ public:
             return previousValue;
         }
 
-        dll_string result = previousValue;
+        QString result = previousValue;
         if (it->second->function)
         {
             result = it->second->function(context, previousValue);
@@ -131,49 +126,49 @@ IResourceSelectorHost* CreateResourceSelectorHost()
 
 // ---------------------------------------------------------------------------
 
-dll_string SoundFileSelector(const SResourceSelectorContext& x, const char* previousValue)
+QString SoundFileSelector(const SResourceSelectorContext& x, const QString& previousValue)
 {
     AssetSelectionModel selection = AssetSelectionModel::AssetTypeSelection("Audio");
     AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
     if (selection.IsValid())
     {
-        return dll_string(Path::FullPathToGamePath(selection.GetResult()->GetFullPath().c_str()));
+        return Path::FullPathToGamePath(QString(selection.GetResult()->GetFullPath().c_str()));
     }
     else
     {
-        return dll_string(Path::FullPathToGamePath(previousValue));
+        return Path::FullPathToGamePath(previousValue);
     }
 }
 REGISTER_RESOURCE_SELECTOR("Sound", SoundFileSelector, "")
 
 // ---------------------------------------------------------------------------
-dll_string ModelFileSelector(const SResourceSelectorContext& x, const char* previousValue)
+QString ModelFileSelector(const SResourceSelectorContext& x, const QString& previousValue)
 {
     AssetSelectionModel selection = AssetSelectionModel::AssetGroupSelection("Geometry");
     AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
     if (selection.IsValid())
     {
-        return dll_string(Path::FullPathToGamePath(selection.GetResult()->GetFullPath().c_str()));
+        return Path::FullPathToGamePath(QString(selection.GetResult()->GetFullPath().c_str()));
     }
     else
     {
-        return dll_string(Path::FullPathToGamePath(previousValue));
+        return Path::FullPathToGamePath(previousValue);
     }
 }
 REGISTER_RESOURCE_SELECTOR("Model", ModelFileSelector, "")
 
 // ---------------------------------------------------------------------------
-dll_string GeomCacheFileSelector(const SResourceSelectorContext& x, const char* previousValue)
+QString GeomCacheFileSelector(const SResourceSelectorContext& x, const QString& previousValue)
 {
     AssetSelectionModel selection = AssetSelectionModel::AssetTypeSelection("Geom Cache");
     AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
     if (selection.IsValid())
     {
-        return dll_string(Path::FullPathToGamePath(selection.GetResult()->GetFullPath().c_str()));
+        return Path::FullPathToGamePath(QString(selection.GetResult()->GetFullPath().c_str()));
     }
     else
     {
-        return dll_string(Path::FullPathToGamePath(previousValue));
+        return Path::FullPathToGamePath(previousValue);
     }
 }
 

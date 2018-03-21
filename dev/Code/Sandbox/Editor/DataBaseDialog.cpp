@@ -97,10 +97,10 @@ void CDataBaseDialog::PostNcDestroy()
 
 BOOL CDataBaseDialog::OnInitDialog()
 {
-    auto addTab = [&](QWidget* widget, const QString& name)
+    auto addTab = [this](QWidget* widget, const QString& name)
     {
         // Since our tabs can get big enough to interfere with docking behavior, make sure we size down gracefully with scroll areas
-        QScrollArea* scrollArea = new QScrollArea;
+        QScrollArea* scrollArea = new QScrollArea(m_tabCtrl);
         scrollArea->setWidgetResizable(true);
         scrollArea->setWidget(widget);
         m_tabCtrl->addTab(scrollArea, name);

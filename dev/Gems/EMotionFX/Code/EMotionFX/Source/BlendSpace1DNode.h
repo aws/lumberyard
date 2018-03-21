@@ -153,6 +153,7 @@ namespace EMotionFX
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
+        void Rewind(AnimGraphInstance* animGraphInstance) override;
 
     private:
         BlendSpace1DNode(AnimGraph* animGraph);

@@ -26,13 +26,18 @@ AWS_PYTHON_SDK_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '.
 def load_resource_manager_module(framework_directory_path, module_name):
     '''Loads a module from the ResourceManager subdirectory of the specified CloudGemFramework directory.'''
     
+    framework_common_code_directory_path = get_framework_common_code_directory_path(framework_directory_path)
     resource_manager_directory_path = get_resource_manager_directory_path(framework_directory_path)
+    imported_paths = resolve_imports(framework_common_code_directory_path, resource_manager_directory_path)
     lib_directory_path = os.path.join(resource_manager_directory_path, 'lib')
     
-    sys.path.insert(0, AWS_PYTHON_SDK_PATH)
-    sys.path.insert(0, lib_directory_path)
-    sys.path.insert(0, resource_manager_directory_path)
-    
+    new_sys_path = [resource_manager_directory_path]
+    new_sys_path.extend(imported_paths)
+    new_sys_path.append(lib_directory_path)
+    new_sys_path.append(AWS_PYTHON_SDK_PATH)
+    new_sys_path.extend(sys.path)
+    sys.path = new_sys_path
+
     return importlib.import_module(module_name)
     
     
@@ -93,6 +98,78 @@ def get_resource_manager_directory_path(framework_directory_path):
         raise RuntimeError('The enabled CloudGemFramework version does not contain a ResourceManager directory: {}'.format(resource_manager_directory_path))
                 
     return resource_manager_directory_path
+
             
+def get_framework_common_code_directory_path(framework_directory_path):
+
+    path = os.path.join(framework_directory_path, 'AWS', 'common-code')
+    if not os.path.isdir(path):
+        raise RuntimeError('The enabled CloudGemFramework version does not contain a common-code directory: {}'.format(path))
+                
+    return path
+
+# There is also a simular function in resource_manager\common_code.py, but it works for gems other
+# than CloudGemFramework, which isn't easy or needed here.
+def resolve_imports(framework_common_code_directory_path, target_directory_path, imported_paths = None):
+    '''Determines the paths identified by an .import file in a specified path.
+
+    The .import file should contain one import name per line. An import name has
+    the format CloudGemFramework.{common-code-subdirectory-name}.
+
+    Imports are resolved recursivly in an arbitary order. 
+    
+    Arguments:
+
+        framework_common_code_directory_path: the path to the common-code directory
+        containing the imported directories.
+
+        target_directory_path: the path that may or may not contain an .import file.
+
+        imported_paths (optional): a set of paths that have already been imported.
+
+    Returns a set of full paths to imported directories. All the directories will 
+    have been verified to exist.
+
+    Raises a HandledError if the .import file contents are malformed, identify a gem
+    that does not exist or is not enabled, or identifies an common-code directory 
+    that does not exist.
+    '''
+
+    if imported_paths is None:
+        imported_paths = set()
+
+    imports_file_path = os.path.join(target_directory_path, '.import')
+    if os.path.isfile(imports_file_path):
+
+        with open(imports_file_path, 'r') as imports_file:
+            lines = imports_file.readlines()
+
+        for line in lines:
+
+            # parse the line
+            line = line.strip()
+            parts = line.split('.')
+            if len(parts) != 2 or not parts[0] or not parts[1]:
+                raise RuntimeError('Invalid import "{}" found in {}. Import should have the format <gem-name>.<common-code-subdirectory-name>.'.format(line, imports_file_path))
+
+            gem_name, import_directory_name = parts
+
+            if gem_name != 'CloudGemFramework':
+                raise RuntimeError('The {} gem is not supported for resource manager imports as requested by {}. Only modules from the CloudGemFramework gem can imported.'.format(gem_name, imports_file_path))
+
+            # get the identified common-code subdirectory
+
+            path = os.path.join(framework_common_code_directory_path, import_directory_name)
+            if not os.path.isdir(path):
+                raise RuntimeError('The {} gem does not provide the {} import as found in {}. The {} directory does not exist.'.format(gem_name, line, imports_file_path, path))
+
+            # add it to the set and recurse
+
+            if path not in imported_paths: # avoid infinte loops and extra work
+                imported_paths.add(path)
+                resolve_imports(framework_common_code_directory_path, path, imported_paths)
+
+    return imported_paths
+
     
             

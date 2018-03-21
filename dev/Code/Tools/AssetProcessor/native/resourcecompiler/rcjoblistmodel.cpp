@@ -200,48 +200,6 @@ namespace AssetProcessor
             isPending = true;
         }
         endInsertRows();
-
-        if (isPending)
-        {
-            EraseFailedJobs(rcJob->GetElementID());
-            // Remove any failed job caused by createjobs failing earlier
-            QueueElementID elementId(rcJob->GetInputFileRelativePath(), "all", QString("CreateJobs_%1").arg(rcJob->GetBuilderGuid().ToString<AZStd::string>().c_str()));
-            EraseFailedJobs(elementId);
-        }
-    }
-
-    void RCJobListModel::EraseFailedJobs(const QueueElementID& target)
-    {
-        // remove failed jobs:
-        auto foundInQueue = m_jobsFailedLookup.find(target);
-        if (foundInQueue != m_jobsFailedLookup.end())
-        {
-            QList<RCJob*> jobsToRemove;
-            while ((foundInQueue != m_jobsFailedLookup.end()) && foundInQueue.key() == target)
-            {
-                RCJob* job = foundInQueue.value();
-                jobsToRemove.push_back(job);
-                foundInQueue = m_jobsFailedLookup.erase(foundInQueue);
-            }
-
-            // there is at least one failed job in the queue for this same task, remove them!
-            for (int jobIndex = m_jobs.size() - 1; jobIndex >= 0; --jobIndex)
-            {
-                RCJob* jobAtIndex = m_jobs.at(jobIndex);
-                if (jobsToRemove.contains(jobAtIndex))
-                {
-                    beginRemoveRows(QModelIndex(), jobIndex, jobIndex);
-                    jobAtIndex->deleteLater();
-                    m_jobs.removeAt(jobIndex);
-                    endRemoveRows();
-                }
-            }
-        }
-    }
-
-    int RCJobListModel::FailedJobsCount()
-    {
-        return m_jobsFailedLookup.size();
     }
 
     void RCJobListModel::markAsProcessing(RCJob* rcJob)
@@ -301,32 +259,16 @@ namespace AssetProcessor
 
         m_jobsInFlight.remove(rcJob);
 
-        // If the job completed, remove it from the list and delete it
-        if (rcJob->GetState() == RCJob::completed || rcJob->GetState() == RCJob::cancelled)
+        // remove it from the list and delete it - there is a separate model that keeps track for the GUI so no need to keep jobs around.
         {
 #if defined(DEBUG_RCJOB_MODEL)
             AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace =>JobCompleted(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
-
             beginRemoveRows(QModelIndex(), jobIndex, jobIndex);
             m_jobs.removeAt(jobIndex);
             endRemoveRows();
 
-            EraseFailedJobs(rcJob->GetElementID());
-            // Remove any failed job caused by createjobs failing earlier
-            QueueElementID elementId(rcJob->GetInputFileRelativePath(), "all", QString("CreateJobs_%1").arg(rcJob->GetBuilderGuid().ToString<AZStd::string>().c_str()));
-            EraseFailedJobs(elementId);
-
             rcJob->deleteLater();
-        }
-        else
-        {
-#if defined(DEBUG_RCJOB_MODEL)
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace =>JobFailed(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
-#endif
-
-            m_jobsFailedLookup.insert(rcJob->GetElementID(), rcJob);
-            Q_EMIT dataChanged(index(jobIndex, 0, QModelIndex()), index(jobIndex, 0, QModelIndex()));
         }
     }
 
@@ -365,24 +307,13 @@ namespace AssetProcessor
             if (QString::compare(job->GetInputFileRelativePath(), relSourceFile, Qt::CaseInsensitive) == 0)
             {
                 const QueueElementID& target = job->GetElementID();
-                if (isInQueue(target))
+                if ((isInQueue(target))|| (isInFlight(target)))
                 {
-                    beginRemoveRows(QModelIndex(), jobIdx, jobIdx);
-                    job->deleteLater();
-                    m_jobs.removeAt(jobIdx);
-                    endRemoveRows();
-                }
-                else if (isInFlight(target))
-                {
+                    // Its important that this still follows the 'cancelled' flow, so that other parts of the code can update their "in progress" and other maps. 
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Cancelling Job [%s, %s, %s] because the source file no longer exists.\n", target.GetInputAssetName().toUtf8().data(), target.GetPlatform().toUtf8().data(), target.GetJobDescriptor().toUtf8().data());
                     job->SetState(RCJob::JobState::cancelled);
                     AssetBuilderSDK::JobCommandBus::Event(job->GetJobEntry().m_jobRunKey, &AssetBuilderSDK::JobCommandBus::Events::Cancel);
                     UpdateRow(jobIdx);
-                }
-                else if (job->GetState() == RCJob::failed)
-                {
-                    // remove failed job from the gui if the source is deleted
-                    EraseFailedJobs(target);
                 }
             }
         }

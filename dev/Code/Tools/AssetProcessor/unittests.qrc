@@ -5,6 +5,7 @@
     <file>testdata/config_broken_recognizers.ini</file>
     <file>testdata/config_broken_noplatform.ini</file>
     <file>testdata/config_regular.ini</file>
+    <file>testdata/config_regular_platform_scanfolder.ini</file>
     <file>testdata/config_overrides.ini</file>
   </qresource>
 </RCC>

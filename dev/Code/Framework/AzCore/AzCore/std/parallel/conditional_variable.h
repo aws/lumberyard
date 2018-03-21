@@ -93,7 +93,7 @@ namespace AZStd
     };
 }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_CONDITIONAL_VARIABLE
     #include <AzCore/std/parallel/internal/conditional_variable_win.h>
 #elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     #include <AzCore/std/parallel/internal/conditional_variable_linux.h>

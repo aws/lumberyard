@@ -48,7 +48,7 @@
         <file alias="callstack">callstack.png</file>
         <file alias="find_results">find_results.png</file>
         <file alias="watch_window">watch_window.png</file>
-        <file alias="lua_locals">blue-document-tRee.png</file>
+        <file alias="lua_locals">blue-document-tree.png</file>
         <file alias="control_play_remote">control_remote.png</file>
         <file alias="control_play_editor">control_in_editor.png</file>
         <file alias="document_save_all">document-save-all.png</file>

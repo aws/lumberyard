@@ -14,10 +14,6 @@
 #include "StdAfx.h"
 #include "PlanningTextureStreamer.h"
 
-#include <IJobManager_JobDelegator.h>
-
-DECLARE_JOB("TexStrmUpdate", TTexStrmUpdateJob, CPlanningTextureStreamer::Job_UpdateEntry)
-
 //#define PLAN_TEXSTRM_DEBUG
 #if defined(PLAN_TEXSTRM_DEBUG)
 #pragma optimize("",off)
@@ -259,11 +255,13 @@ void CPlanningTextureStreamer::Job_UpdateEntry()
 
 void CPlanningTextureStreamer::StartUpdateJob()
 {
-    TTexStrmUpdateJob job;
-    job.RegisterJobState(&m_JobState);
-    job.SetClassInstance(this);
-    job.SetPriorityLevel(JobManager::eRegularPriority);
-    job.Run();
+    m_jobExecutor.Reset();
+    m_jobExecutor.StartJob(	
+        [this]()
+        {
+            this->Job_UpdateEntry();
+        }
+    );
 }
 
 void CPlanningTextureStreamer::Job_UpdateMip(CTexture* pTexture, const float fMipFactor, const int nFlags, const int nUpdateId)
@@ -602,7 +600,7 @@ void CPlanningTextureStreamer::Job_InitKeys(SPlanningTextureOrderKey* pKeys, CTe
 
     for (size_t i = 0; i < nTextures; ++i)
     {
-#if defined(DURANGO) || defined(WIN64) || defined(ORBIS)
+#if PLANNINGTEXTURESTREAMER_JOBS_CPP_TRAIT_JOB_INITKEYS_PREFETCH
         if ((i + 32) < nTextures)
         {
             _mm_prefetch((char*)(pTexs[i + 32]) + 0x40, 0);

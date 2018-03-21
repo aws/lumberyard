@@ -13,17 +13,12 @@
 #pragma once
 
 /*
-    // possible platform defines (autodetected)
+    // possible non-restricted platform defines (autodetected)
     #define MCORE_PLATFORM_WINDOWS
     #define MCORE_PLATFORM_MAC
-    #define MCORE_PLATFORM_XBOX360 // ACCEPTED_USE
-    #define MCORE_PLATFORM_PS3 // ACCEPTED_USE
-    #define MCORE_PLATFORM_PS4 // ACCEPTED_USE
-    #define MCORE_PLATFORM_PSVITA
     #define MCORE_PLATFORM_IOS
     #define MCORE_PLATFORM_IOS_SIMULATOR
     #define MCORE_PLATFORM_ANDROID
-    #define MCORE_PLATFORM_MARMALADE
     #define MCORE_PLATFORM_LINUX
     #define MCORE_PLATFORM_UNIX
 
@@ -42,7 +37,13 @@
     #define MCORE_ARCHITECTURE_UNKNOWN
 */
 
-#if (defined(_WIN64) || defined(__WIN64__))
+#include <AzCore/PlatformDef.h>
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Platform_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif (defined(_WIN64) || defined(__WIN64__))
     #define MCORE_ARCHITECTURE_64BIT
     #define MCORE_PLATFORM_WINDOWS
     #define MCORE_LITTLE_ENDIAN
@@ -66,32 +67,9 @@
         #define MCORE_PLATFORM_MAC
         #define MCORE_PLATFORM_NAME "Mac"
     #endif
-#elif defined(_XBOX360) // ACCEPTED_USE
-    #define MCORE_ARCHITECTURE_64BIT
-    #define MCORE_PLATFORM_XBOX360 // ACCEPTED_USE
-    #define MCORE_BIG_ENDIAN
-    #define MCORE_PLATFORM_NAME "Xbox360" // ACCEPTED_USE
 #elif defined(__ANDROID__)
     #define MCORE_PLATFORM_ANDROID
     #define MCORE_PLATFORM_NAME "Android"
-#elif (defined(_PS4) || defined(__PS4__))
-    #define MCORE_ARCHITECTURE_64BIT
-    #define MCORE_PLATFORM_PS4 // ACCEPTED_USE
-    #define MCORE_LITTLE_ENDIAN
-    #define MCORE_PLATFORM_NAME "PS4" // ACCEPTED_USE
-#elif (defined(__arm__) && defined(__SNC__))
-    #define MCORE_ARCHITECTURE_64BIT
-    #define MCORE_PLATFORM_PSVITA // ACCEPTED_USE
-    #define MCORE_LITTLE_ENDIAN
-    #define MCORE_PLATFORM_NAME "PSVita" // ACCEPTED_USE
-#elif (defined(XBOXONE) || defined(_XBOXONE) || defined(_XBOX_ONE) || defined(XBOX_ONE)) // ACCEPTED_USE
-    #define MCORE_ARCHITECTURE_64BIT
-    #define MCORE_PLATFORM_XBOXONE // ACCEPTED_USE
-    #define MCORE_LITTLE_ENDIAN
-    #define MCORE_PLATFORM_NAME "XboxOne" // ACCEPTED_USE
-#elif defined(MARMALADE)
-    #define MCORE_PLATFORM_MARMALADE
-    #define MCORE_PLATFORM_NAME "Marmalade"
 #elif (defined(linux) || defined(__linux) || defined(__linux__) || defined(__CYGWIN__))
     #define MCORE_PLATFORM_LINUX
     #define MCORE_PLATFORM_NAME "Linux"

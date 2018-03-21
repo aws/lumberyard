@@ -17,32 +17,23 @@
 //This define specifies to use simd instructions on platforms which support them. Remove this define and the
 // math will use floats only.
 #define AZ_ALLOW_SIMD 1
-//declare 2 macros, AZ_SIMD which indicates we are using SIMD instructions of some kind, and AZ_SIMD_* to specify we
+//declare 2 macros, AZ_SIMD which indicates we are using SIMD instructions of some kind, and AZ_TRAIT_USE_PLATFORM_SIMD to specify we
 // are using SIMD on the specified platform.
 #if defined(AZ_ALLOW_SIMD)
-    #if defined(AZ_PLATFORM_WINDOWS)
-        #define AZ_SIMD 1
-//#define AZ_AVX 1 // TODO optimize for AVX
-        #define AZ_SIMD_WINDOWS 1
-    #elif defined(AZ_PLATFORM_LINUX)
-        #define AZ_SIMD 1
-//#define AZ_AVX
-        #define AZ_SIMD_LINUX 1
-    #elif defined(AZ_PLATFORM_ANDROID)
-// TODO: Add SIMD_SUPPORT
-    #elif defined(AZ_PLATFORM_APPLE_OSX)
-        #define AZ_SIMD 1
-//#define AZ_AVX
-        #define AZ_SIMD_APPLE_OSX 1
+    #if defined(AZ_RESTRICTED_PLATFORM)
+        #include AZ_RESTRICTED_FILE(MathTypes_h)
+    #elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+        #define AZ_TRAIT_USE_PLATFORM_SIMD 1
+    #endif
 
+    #if AZ_TRAIT_USE_PLATFORM_SIMD
+        #define AZ_SIMD 1
     #endif
 #endif
 
 //now include platform specific types
-#if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
+#if AZ_TRAIT_USE_PLATFORM_SIMD
     #include <AzCore/Math/Internal/MathTypesWin32.inl>
-#elif defined(AZ_SIMD_WII)
-    #include <AzCore/Math/Internal/MathTypesWii.inl>
 #else
     #include <AzCore/Math/Internal/MathTypesFpu.inl>
 #endif

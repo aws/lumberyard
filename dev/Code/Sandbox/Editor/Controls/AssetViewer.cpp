@@ -1125,7 +1125,7 @@ void CAssetViewer::OnRButtonUp(const QPoint& point, Qt::KeyboardModifiers modifi
         }
         else if (extraMenuItems.count() >= 3 && selectedTextIfAny == extraMenuItems[2])
         {
-            GetIEditor()->ExecuteCommand("lodtools.loadcgfintool '%s%s'", m_pClickedAsset->GetRelativePath().toUtf8().data(), m_pClickedAsset->GetFilename().toUtf8().data());
+            GetIEditor()->ExecuteCommand(QStringLiteral("lodtools.loadcgfintool '%1%2'").arg(m_pClickedAsset->GetRelativePath(), m_pClickedAsset->GetFilename()));
         }
     }
 
@@ -2176,9 +2176,9 @@ void CAssetViewer::ApplyFilters(const IAssetItemDatabase::TAssetFieldFiltersMap&
     for (auto iter = rFieldFilters.begin(); iter != rFieldFilters.end(); ++iter)
     {
         Log("FilterField: name:'%s', val:'%s', maxval:'%s', type:%d, cond:%d",
-            iter->second.m_fieldName.toLatin1().data(),
-            iter->second.m_filterValue.toLatin1().data(),
-            iter->second.m_maxFilterValue.toLatin1().data(),
+            iter->second.m_fieldName.toUtf8().data(),
+            iter->second.m_filterValue.toUtf8().data(),
+            iter->second.m_maxFilterValue.toUtf8().data(),
             iter->second.m_fieldType,
             iter->second.m_filterCondition
             );

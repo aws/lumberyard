@@ -58,6 +58,8 @@ public:
         return guid;
     }
 
+    AzToolsFramework::EntityPropertyEditor* GetPropertyEditor() { return m_propertyEditor; }
+
 private:
 
     AzToolsFramework::EntityPropertyEditor* m_propertyEditor;

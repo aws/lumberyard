@@ -17,7 +17,7 @@
 #include <Windows.h>
 
 #include "GridHub.hxx"
-#include <GridHub/GridHub.moc>
+#include <GridHub/gridhub.moc>
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/std/parallel/lock.h>

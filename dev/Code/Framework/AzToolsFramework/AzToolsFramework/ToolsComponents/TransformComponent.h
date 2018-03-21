@@ -62,10 +62,6 @@ namespace AzToolsFramework
             void Deactivate() override;
             //////////////////////////////////////////////////////////////////////////
 
-            AZ::u32 ParentChanged();
-            AZ::u32 TransformChanged();
-            AZ::u32 StaticChanged();
-
             //////////////////////////////////////////////////////////////////////////
             // AZ::TransformBus
             const AZ::Transform& GetLocalTM() override;
@@ -167,12 +163,6 @@ namespace AzToolsFramework
             bool IsStaticTransform() override;
 
             //////////////////////////////////////////////////////////////////////////
-            // AZ::TransformNotificationBus
-            void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-            void OnTransformChanged(); //convienence
-            void OnStaticChanged(bool isStatic) override;
-
-            //////////////////////////////////////////////////////////////////////////
             // TransformComponentMessages::Bus
             void TranslateBy(const AZ::Vector3&) override;
             void RotateBy(const AZ::Vector3&) override; // euler in degrees
@@ -216,6 +206,10 @@ namespace AzToolsFramework
         private:
 
             //////////////////////////////////////////////////////////////////////////
+            // AZ::TransformNotificationBus - Connected to parent's ID
+            void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+            //////////////////////////////////////////////////////////////////////////
             // TransformHierarchyInformationBus
             void GatherChildren(AZStd::vector<AZ::EntityId>& children) override;
             //////////////////////////////////////////////////////////////////////////
@@ -223,6 +217,10 @@ namespace AzToolsFramework
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
             static void Reflect(AZ::ReflectContext* context);
+
+            AZ::u32 ParentChanged();
+            AZ::u32 TransformChanged();
+            AZ::u32 StaticChanged();
 
             AZ::Transform GetLocalTranslationTM() const;
             AZ::Transform GetLocalRotationTM() const;

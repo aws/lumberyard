@@ -89,18 +89,18 @@ void CEditorFlowGraphModuleManager::SaveModuleGraph(CFlowGraph* pFG)
     //  it is not updated with new nodes). So allow the game-side module manager to
     //  add the ports to the xml from the editor flowgraph, then write to file.
 
-    QString filename = gEnv->pFlowSystem->GetIModuleManager()->GetModulePath(pFG->GetName().toLatin1().data());
+    QString filename = gEnv->pFlowSystem->GetIModuleManager()->GetModulePath(pFG->GetName().toUtf8().data());
     filename = Path::GamePathToFullPath(filename);
     XmlNodeRef rootNode = gEnv->pSystem->CreateXmlNode("Graph");
 
     IFlowGraphModuleManager* pModuleManager = gEnv->pFlowSystem->GetIModuleManager();
     if (pModuleManager)
     {
-        pModuleManager->SaveModule(pFG->GetName().toLatin1().data(), rootNode);
+        pModuleManager->SaveModule(pFG->GetName().toUtf8().data(), rootNode);
 
         pFG->Serialize(rootNode, false);
 
-        rootNode->saveToFile(filename.toLatin1().data());
+        rootNode->saveToFile(filename.toUtf8().data());
     }
 }
 
@@ -155,7 +155,7 @@ bool CEditorFlowGraphModuleManager::NewModule(QString& filename, IFlowGraphModul
 
     QString path(Path::Make(folderPath, file));
 
-    CFileUtil::CreateDirectory(Path::AddPathSlash(path).toLatin1().data());
+    CFileUtil::CreateDirectory(Path::AddPathSlash(path).toUtf8().data());
 
     QString userFile;
     if (!CFileUtil::SelectSaveFile(GRAPH_FILE_FILTER, "xml", path, userFile))
@@ -176,7 +176,7 @@ bool CEditorFlowGraphModuleManager::NewModule(QString& filename, IFlowGraphModul
 
     QString moduleName = Path::GetFileName(filename);
 
-    if (IFlowGraphModule* pModule = pModuleManager->GetModule(moduleName.toLatin1().data()))
+    if (IFlowGraphModule* pModule = pModuleManager->GetModule(moduleName.toUtf8().data()))
     {
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
             QObject::tr("Can not create Flowgraph Module"),
@@ -190,9 +190,9 @@ bool CEditorFlowGraphModuleManager::NewModule(QString& filename, IFlowGraphModul
     // serialize graph to file, with module flag set
     XmlNodeRef root = gEnv->pSystem->CreateXmlNode("Graph");
     root->setAttr("isModule", true);
-    root->setAttr("moduleName", moduleName.toLatin1().data());
+    root->setAttr("moduleName", moduleName.toUtf8().data());
     pGraph->Serialize(root, false);
-    bool saved = root->saveToFile(filename.toLatin1().data());
+    bool saved = root->saveToFile(filename.toUtf8().data());
 
     pGraph->Release();
     pGraph = NULL;
@@ -200,7 +200,7 @@ bool CEditorFlowGraphModuleManager::NewModule(QString& filename, IFlowGraphModul
     if (saved)
     {
         // load module into module manager
-        IFlowGraphModule* pModule = pModuleManager->LoadModuleFile(moduleName.toLatin1().data(), filename.toLatin1().data(), type);
+        IFlowGraphModule* pModule = pModuleManager->LoadModuleFile(moduleName.toUtf8().data(), filename.toUtf8().data(), type);
 
         CFlowGraph* pFG = GetIEditor()->GetFlowGraphManager()->FindGraph(pModule->GetRootGraph());
         if (pHyperGraph)
@@ -211,12 +211,12 @@ bool CEditorFlowGraphModuleManager::NewModule(QString& filename, IFlowGraphModul
         GetIEditor()->GetFlowGraphManager()->ReloadClasses();
 
         // now create a start node
-        string startName = pModuleManager->GetStartNodeName(pFG->GetName().toLatin1().data());
+        string startName = pModuleManager->GetStartNodeName(pFG->GetName().toUtf8().data());
         CHyperNode* pStartNode = (CHyperNode*)pFG->CreateNode(startName.c_str());
         pStartNode->SetPos(QPointF(80, 10));
 
         // and end node
-        string returnName = pModuleManager->GetReturnNodeName(pFG->GetName().toLatin1().data());
+        string returnName = pModuleManager->GetReturnNodeName(pFG->GetName().toUtf8().data());
         CHyperNode* pReturnNode = (CHyperNode*)pFG->CreateNode(returnName.c_str());
         pReturnNode->SetPos(QPointF(400, 10));
 
@@ -326,7 +326,7 @@ void CEditorFlowGraphModuleManager::DeleteModuleFlowGraph(CFlowGraph* pGraph)
         if (CFlowGraphManager* pFlowGraphManager = GetIEditor()->GetFlowGraphManager())
         {
             const int numFlowgraphs = pFlowGraphManager->GetFlowGraphCount();
-            const char* callerNodeName = pModuleManager->GetCallerNodeName(moduleGraphName.toLatin1().data());
+            const char* callerNodeName = pModuleManager->GetCallerNodeName(moduleGraphName.toUtf8().data());
 
             for (int i = 0; i < numFlowgraphs; ++i)
             {

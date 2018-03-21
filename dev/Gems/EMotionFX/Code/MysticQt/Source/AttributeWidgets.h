@@ -44,7 +44,7 @@ namespace MysticQt
 {
     class PropertyWidget;
 
-    typedef std::function<void(MCore::Attribute* attribute, MCore::AttributeSettings* settings)>    AttributeChangedFunction;
+    typedef AZStd::function<void(MCore::Attribute* attribute, MCore::AttributeSettings* settings)>    AttributeChangedFunction;
 
 
     class MYSTICQT_API AttributeWidget

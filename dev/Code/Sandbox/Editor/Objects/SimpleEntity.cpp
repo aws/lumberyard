@@ -115,7 +115,7 @@ void CSimpleEntity::BeginEditParams(IEditor* ie, int flags)
             }
             if (ms_treePanelId == 0)
             {
-                ms_treePanelId = AddUIPage(tr("Geometry").toLatin1().data(), ms_pTreePanel);
+                ms_treePanelId = AddUIPage(tr("Geometry").toUtf8().data(), ms_pTreePanel);
             }
         }
 

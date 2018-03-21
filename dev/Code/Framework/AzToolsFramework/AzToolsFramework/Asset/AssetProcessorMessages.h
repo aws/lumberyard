@@ -61,6 +61,7 @@ namespace AzToolsFramework
 
             AssetJobsInfoResponse() = default;
             AssetJobsInfoResponse(AssetSystem::JobInfoContainer& jobList, bool isSuccess);
+            AssetJobsInfoResponse(AssetSystem::JobInfoContainer&& jobList, bool isSuccess);
             unsigned int GetMessageType() const override;
             bool m_isSuccess = false;
             AssetSystem::JobInfoContainer m_jobList;

@@ -10,85 +10,60 @@
 #
 ########################################################################################
 
-
+from waflib.TaskGen import extension
 
 ########################################################################################
 #
 #
-# This wscript generates 3 targets:
+# This wscript generates the following multiple targets:
 #   * AzQtComponents - a shared library for the main LY Editor and plugins
-#   * AmazonStyle executable - an executable to showcase the above library
+#   * AmazonStyle executable - an (deprecated) executable to showcase the above library
+#   * AmazonQtControlGallery - an executable to showcase the above library
 #
 ########################################################################################
 
 
 def build(bld):
 
-    def CreateSettingsDictionary(**kw):
-        return kw
+    # using CryPipelineModule here, to prevent it from being linked monolithically in release builds.
+    bld.CryPipelineModule(
+        target          = 'AzQtComponents',
 
-    def MergeSettingsDictionaries(sharedSettings, **kw):
-        """
-        Merge two dictionaries, overriding sharedSettings with those in kw if there's a conflict
-        """
-        mergedSettings = sharedSettings.copy()
-        
-        for key in kw:
-            mergedSettings[key] = kw[key]
-
-        return mergedSettings
-
-    # we share the settings between both the static and the shared lib
-    sharedCompileSettings = CreateSettingsDictionary(
-        vs_filter       = 'AZ Framework',
+        vs_filter       = 'AZ Framework/AzQtComponents',
         file_list       = ['azqtcomponents.waf_files'],
         platforms       = ['win', 'darwin'],
         configurations  = ['all'],
         disable_pch     = True,
-        features        = ['qt5', 'link_running_program', 'crcfix'],
+        features        = ['qt5', 'link_running_program', 'crcfix', 'copy_to_lmbrsetup'],
         autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
-        use             = ['AzToolsFramework'],
-        includes        = ['..'],
+        use             = ['AzFramework'],
+        includes        = ['..', '../../AzToolsFramework'],
         export_includes = ['..'],
 
-        win_defines     = ['WIN64', 'KDAB_MAC_PORT'],
-        win_lib         = ['User32'],
+        win_defines     = ['WIN64'],
+        win_lib         = ['User32', 'Shell32'],
 
         msvc_cxxflags   = [
             '/W4', # warning level
             '/wd4127', # warning caused by QVector and QRect; disabling in this project because it's not useful
             '/wd4351', # warning caused by QVector and QPainter; disabling in this project because it's not useful
         ],
-        clang_cxxflags  = [
-            '-Werror', # warnings as errors
-            '-Wall', # warning level
-            '-Wno-non-pod-varargs', # ToDo: fixme (moved from the global clang settings)
-        ],
 
         darwin_enable_rtti = True,
-    )
 
-
-    sharedLibarySettings = MergeSettingsDictionaries(sharedCompileSettings,
-
-        target                  = 'AzQtComponents',
-        defines                 = ['QT_QML_DEBUG', 'AZ_QT_COMPONENTS_EXPORT_SYMBOLS'],
-        features                = ['qt5', 'copy_to_lmbrsetup'],
+        defines            = ['QT_QML_DEBUG', 'AZ_QT_COMPONENTS_EXPORT_SYMBOLS'],
 
         # Testing
-        test_all_file_list      = ['azqtcomponents_testing.waf_files']
+        test_all_file_list = ['azqtcomponents_testing.waf_files']
 
     )
-
-    # using CryPipelineModule here, to prevent it from being linked monolithically in release builds.
-    bld.CryPipelineModule(**sharedLibarySettings)
 
     bld.LumberyardApp(
         target          = 'AmazonStyle',
         file_list       = ['azqtcomponents_style.waf_files'],
         platforms       = ['win', 'darwin'],
         configurations  = ['debug_all', 'profile_all'],
-        vs_filter       = 'AZ Framework',
+        vs_filter       = 'AZ Framework/AzQtComponents/Deprecated',
 
         use             = ['AzQtComponents'],
         includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/StyleGallery')],
@@ -99,3 +74,30 @@ def build(bld):
 
         darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
     )
+
+    # for the moment, only build the AmazonQtControlGallery when doing a non-release build
+    # It's for internal consumption only, at this point
+    version = bld.get_lumberyard_version()
+    if version == "0.0.0.0":
+        bld.LumberyardApp(
+            target          = 'AmazonQtControlGallery',
+            file_list       = ['azqtcomponents_gallery.waf_files'],
+            platforms       = ['win', 'darwin'],
+            configurations  = ['debug_all', 'profile_all'],
+            vs_filter       = 'AZ Framework/AzQtComponents',
+
+            use             = ['AzQtComponents'],
+            includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/Gallery')],
+
+            features        = ['qt5'],
+
+            uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+
+            darwin_rpath    = ['@executable_path/../Bin64/qtlibs_mac/Frameworks']
+        )
+
+# make qss and ini files show up in generated projects, but don't process them as part of the build
+@extension('.qss')
+@extension('.ini')
+def style_file_dummy(tgen,node):
+    pass

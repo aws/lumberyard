@@ -24,6 +24,11 @@ namespace GraphCanvas
 
         virtual int GetDecimalPlaces() const
         {
+            return 7;
+        }
+
+        virtual int GetDisplayDecimalPlaces() const
+        {
             return 4;
         }
         

@@ -27,7 +27,8 @@ namespace PhysX
 {
     namespace Pipeline
     {
-        class PhysXMeshGroup : public AZ::SceneAPI::DataTypes::ISceneNodeGroup
+        class PhysXMeshGroup
+            : public AZ::SceneAPI::DataTypes::ISceneNodeGroup
         {
         public:
             AZ_RTTI(PhysXMeshGroup, "{5B03C8E6-8CEE-4DA0-A7FA-CD88689DD45B}", AZ::SceneAPI::DataTypes::ISceneNodeGroup);
@@ -44,7 +45,7 @@ namespace PhysX
 
             AZ::SceneAPI::Containers::RuleContainer& GetRuleContainer() override;
             const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const;
-                       
+
             AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetSceneNodeSelectionList() override;
             const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetSceneNodeSelectionList() const override;
 

@@ -230,11 +230,15 @@ void CEnvironementProbeObject::GenerateCubemap()
     QString fullGameFolder = (Path::GetEditingGameDataFolder() + "\\").c_str();
     QString texturename = (GetName() + QString("_cm.tif")).toLower();
 
-    QString relFolder = QString("Textures\\cubemaps\\") + levelname;
+    QString relFolder = QString("textures\\cubemaps\\") + levelname;
+    if (!QFile::exists(fullGameFolder + relFolder))
+    {
+        relFolder = QString("Textures\\cubemaps\\") + levelname;
+    }
+
     QString relFilename = relFolder + "\\" + texturename;
     QString fullFolder = fullGameFolder + relFolder + "\\";
     QString fullFilename = fullGameFolder + relFilename;
-
 
     CFileUtil::CreateDirectory(fullFolder.toUtf8().data());
 
@@ -271,10 +275,15 @@ void CEnvironementProbeTODObject::GenerateCubemap()
 {
     QString levelfolder = QString(GetIEditor()->GetGameEngine()->GetLevelPath());
     QString levelname = Path::GetFile(levelfolder).toLower();
-    QString relFolder = QString("Textures\\cubemaps\\") + levelname;
+    QString relFolder = QString("textures\\cubemaps\\") + levelname;
     QString fullGameFolder = (Path::GetEditingGameDataFolder() + "\\").c_str();
+    if (!QFile::exists(fullGameFolder + relFolder))
+    {
+        relFolder = QString("Textures\\cubemaps\\") + levelname;
+    }
+
     QString fullFolder = fullGameFolder + relFolder + "\\";
-    CFileUtil::CreateDirectory(fullFolder.toLatin1().data());
+    CFileUtil::CreateDirectory(fullFolder.toUtf8().data());
 
     int cubemapres = 256;
     m_cubemap_resolution->Get(cubemapres);

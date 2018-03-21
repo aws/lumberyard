@@ -93,7 +93,7 @@ public:
     virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight, bool bAA);
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf);
 
-    virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, int32 nSizeX, int32 nSizeY,  Matrix44* pmViewProj, Matrix44* pmCamBuffe);
+    virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffe);
     virtual void WaitForParticleBuffer(threadID nThreadId);
 
     virtual void GetVideoMemoryUsageStats(size_t& vidMemUsedThisFrame, size_t& vidMemUsedRecently, bool bGetPoolsSizes = false) {}

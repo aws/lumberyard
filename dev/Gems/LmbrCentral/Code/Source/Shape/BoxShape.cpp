@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "BoxShapeComponent.h"
 #include <Cry_GeoOverlap.h>
 #include <MathConversion.h>

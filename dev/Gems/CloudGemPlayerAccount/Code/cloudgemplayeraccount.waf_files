@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/CloudGemPlayerAccount_precompiled.cpp",
+            "Source/CloudGemPlayerAccount_precompiled.h"
         ]
     },
     "auto": {
@@ -31,6 +31,7 @@
             "Source/UserPoolTokenRetrievalStrategy.cpp",
             "Source/UserPoolTokenRetrievalStrategy.h",
             "AWS/ServiceAPI/CloudGemPlayerAccountClientComponent.cpp"
+
         ]
     }
 }

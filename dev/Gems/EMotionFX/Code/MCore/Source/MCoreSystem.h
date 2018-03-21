@@ -14,8 +14,8 @@
 
 // include required headers
 #include "Config.h"
-#include <functional>
 
+#include <AzCore/std/functional.h>
 #include <AzCore/Module/Environment.h>
 
 
@@ -34,10 +34,10 @@ namespace MCore
     class MemoryTracker;
     class Mutex;
 
-    typedef std::function<void(JobList* jobList, bool addSyncPointAfterList, bool waitForJobListToFinish)>                                  JobListExecuteFunctionType;
-    //typedef std::function<void*(size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr)>                 MemAllocateFunctionType;
-    //typedef std::function<void*(void* memory, size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr)>   MemReallocFunctionType;
-    //typedef std::function<void(void* memory)>                                                                                             MemFreeFunctionType;
+    typedef AZStd::function<void(JobList* jobList, bool addSyncPointAfterList, bool waitForJobListToFinish)>                                  JobListExecuteFunctionType;
+    //typedef AZStd::function<void*(size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr)>                 MemAllocateFunctionType;
+    //typedef AZStd::function<void*(void* memory, size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr)>   MemReallocFunctionType;
+    //typedef AZStd::function<void(void* memory)>                                                                                             MemFreeFunctionType;
 
     typedef void* (MCORE_CDECL * AllocateCallback)(size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr);
     typedef void* (MCORE_CDECL * ReallocCallback)(void* memory, size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr);

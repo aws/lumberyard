@@ -44,9 +44,9 @@ CSelectMissionObjectiveDialog::GetItems(std::vector<SItem>& outItems)
 {
     // load MOs
     QString path = (Path::GetEditingGameDataFolder() + "/Libs/UI/Objectives_new.xml").c_str();
-    GetItemsInternal(outItems, path.toLatin1().data(), false);
+    GetItemsInternal(outItems, path.toUtf8().data(), false);
     path = GetIEditor()->GetLevelDataFolder() + "Objectives.xml";
-    GetItemsInternal(outItems, path.toLatin1().data(), true);
+    GetItemsInternal(outItems, path.toUtf8().data(), true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -58,7 +58,7 @@ CSelectMissionObjectiveDialog::GetItemsInternal(std::vector<SItem>& outItems, co
     {
         if (!isOptional)
         {
-            Error(tr("Error while loading MissionObjective file '%1'").arg(path).toLatin1().data());
+            Error(tr("Error while loading MissionObjective file '%1'").arg(path).toUtf8().data());
         }
         return;
     }
@@ -87,7 +87,7 @@ CSelectMissionObjectiveDialog::GetItemsInternal(std::vector<SItem>& outItems, co
             }
             else if (!isOptional)
             {
-                Error(tr("Error while loading MissionObjective file '%1'").arg(path).toLatin1().data());
+                Error(tr("Error while loading MissionObjective file '%1'").arg(path).toUtf8().data());
                 return;
             }
         }
@@ -105,7 +105,7 @@ CSelectMissionObjectiveDialog::GetItemsInternal(std::vector<SItem>& outItems, co
         if (objText.startsWith(QChar('@')))
         {
             SLocalizedInfoGame locInfo;
-            const QByteArray objTextBuffer = objText.toLatin1(); // keeps the buffer alive
+            const QByteArray objTextBuffer = objText.toUtf8(); // keeps the buffer alive
             const char* key = objTextBuffer.constData() + 1;
             bool bFound = gEnv->pSystem->GetLocalizationManager()->GetLocalizedInfoByKey(key, locInfo);
 

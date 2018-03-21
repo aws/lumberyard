@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <LmbrCentral_precompiled.h>
 #include <Physics/BusForwarding/BusForwarding.h>
 #include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>

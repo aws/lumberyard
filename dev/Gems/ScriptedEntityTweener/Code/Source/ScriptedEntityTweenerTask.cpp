@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "ScriptedEntityTweener_precompiled.h"
 
 #include <ScriptedEntityTweener/ScriptedEntityTweenerBus.h>
 

@@ -90,7 +90,7 @@ export class AwsService {
         this._isInitialized = false;
         this._context = new AwsContext();
         this._context.authentication = new Authentication(this.context, this.metric);
-        this._context.userManagement = new UserManagement(this.context, this.router);
+        this._context.userManagement = new UserManagement(this.context, this.router, this.metric);
     }
 
     public init(userPoolId: string, clientId: string, identityPoolId: string, bucketid: string, region: string, definitions: DefinitionService): void {

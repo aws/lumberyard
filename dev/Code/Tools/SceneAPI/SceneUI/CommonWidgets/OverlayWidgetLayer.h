@@ -12,8 +12,8 @@
 *
 */
 
-#include <QWidget.h>
-#include <QFrame.h>
+#include <QWidget>
+#include <QFrame>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>

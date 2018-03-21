@@ -71,6 +71,7 @@ public:
     // Overrided from CViewport.
     void OnDragSelectRectangle(const QRect &rect, bool bNormalizeRect = false) override;
     void CenterOnSelection() override;
+    void CenterOnAABB(const AABB& aabb) override;
 
     /** Get 2D viewports origin.
     */

@@ -1,10 +1,10 @@
 #ifndef CRYINCLUDE_EDITORUI_QT_QColorEyeDropper_H
 #define CRYINCLUDE_EDITORUI_QT_QColorEyeDropper_H
 #pragma once
-#include "qwidget.h"
-#include "qlabel.h"
-#include "qdialog.h"
-#include "qelapsedtimer.h"
+#include <QWidget>
+#include <QLabel>
+#include <QDialog>
+#include <QElapsedTimer>
 
 class QColorEyeDropper
     : public QWidget

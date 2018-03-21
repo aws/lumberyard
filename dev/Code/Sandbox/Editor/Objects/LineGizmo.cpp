@@ -125,7 +125,7 @@ void CLineGizmo::Display(DisplayContext& dc)
                 if (pCharacter)
                 {
                     IDefaultSkeleton& rIDefaultSkeleton = pCharacter->GetIDefaultSkeleton();
-                    int jointID = rIDefaultSkeleton.GetJointIDByName(m_boneName.toLatin1().data());
+                    int jointID = rIDefaultSkeleton.GetJointIDByName(m_boneName.toUtf8().data());
                     if (jointID != -1)
                     {
                         m_point[1] = (QuatT(m_object[1]->GetWorldTM()) * pCharacter->GetISkeletonPose()->GetAbsJointByID(jointID)).t;
@@ -152,7 +152,7 @@ void CLineGizmo::Display(DisplayContext& dc)
                     col[3] = col[3] * (1.0f - (camDist - range) / range);
                 }
                 dc.SetColor(col[0], col[1], col[2], col[3]);
-                dc.DrawTextLabel(pos + Vec3(0, 0, 0.2f), 1.2f, m_name.toLatin1().data());
+                dc.DrawTextLabel(pos + Vec3(0, 0, 0.2f), 1.2f, m_name.toUtf8().data());
             }
         }
     }

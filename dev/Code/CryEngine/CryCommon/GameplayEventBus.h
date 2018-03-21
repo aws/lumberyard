@@ -14,7 +14,7 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/std/any.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace AZ
 {
@@ -36,7 +36,7 @@ namespace AZ
         GameplayNotificationId(const AZ::EntityId& entityChannel, AZ::Crc32 actionNameCrc)
             : GameplayNotificationId(entityChannel, actionNameCrc, AZ::Uuid::CreateNull())
         {
-            AZ_Warning("GameplayNotificationId", false, "You are using a deprecated constructor.  You must now create the bus id with the type you are expecting to send/recieve");
+            AZ_Warning("GameplayNotificationId", false, "You are using a deprecated constructor.  You must now create the bus id with the type you are expecting to send/receive");
         }
         GameplayNotificationId(const AZ::EntityId&  entityChannel, const char* actionName)
             : GameplayNotificationId(entityChannel, AZ::Crc32(actionName)) { }
@@ -46,11 +46,12 @@ namespace AZ
         GameplayNotificationId Clone() const { return *this; }
         AZStd::string ToString() const
         {
-            AZ::SerializeContext* serializeContext = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-            auto&& classData = serializeContext->FindClassData(m_payloadTypeId);
-            AZStd::string payloadType = classData ? classData->m_name : m_payloadTypeId.ToString<AZStd::string>();
-            return AZStd::string::format("%llu, %lu, %s", static_cast<AZ::u64>(m_channel), static_cast<AZ::u32>(m_actionNameCrc), payloadType.c_str()); 
+            AZ::BehaviorContext* behaviorContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
+            auto&& behaviorClassIterator = behaviorContext->m_typeToClassMap.find(m_payloadTypeId);
+            bool typeFound = behaviorClassIterator != behaviorContext->m_typeToClassMap.end();
+            AZStd::string payloadName = typeFound ? behaviorClassIterator->second->m_name : m_payloadTypeId.ToString<AZStd::string>();
+            return AZStd::string::format("(channel=%llu, actionNameCrc=%lu, payloadTypeId=%s)", static_cast<AZ::u64>(m_channel), static_cast<AZ::u32>(m_actionNameCrc), payloadName.c_str());
         }
 
         AZ::EntityId m_channel = AZ::EntityId(0);

@@ -18,6 +18,8 @@
 #include "RGBLayer.h"
 #include "Layer.h"
 
+#define DEFAULT_HEIGHTMAP_SIZE 4096
+
 // Heightmap data type
 // TODO: Move this type inside CHeightmap to scope it (or use a namespace)
 // Note: The code using this is mostly doing evil direct array access

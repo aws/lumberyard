@@ -43,11 +43,11 @@ namespace PhysX
 
         // Simulation parameters.
         float                                       m_mass = 1.f;
-        bool                                        m_computeInertiaDiagonal = false;
+        bool                                        m_computeInertiaDiagonal = true;
         AZ::Vector3                                 m_inertiaDiagonal = AZ::Vector3::CreateOne();
         float                                       m_linearDamping = 0.05f;
         float                                       m_angularDamping = 0.15f;
-        float                                       m_sleepMinEnergy = 0.5f;
+        float                                       m_sleepMinEnergy = 0.005f;
         bool                                        m_continuousCollisionDetection = false;
 
         // editor visibility
@@ -131,6 +131,13 @@ namespace PhysX
         virtual AZ::Crc32 GetNativeType() const override;
         virtual void* GetNativePointer() const override;
 
+        // Not in API but needed to support PhysicsComponentBus
+        float GetLinearDamping();
+        void SetLinearDamping(float damping);
+        float GetAngularDamping();
+        void SetAngularDamping(float damping);
+        float GetSleepThreshold();
+        void SetSleepThreshold(float threshold);
     private:
         physx::PxRigidActor*             m_pxRigidActor = nullptr;
         PhysXRigidBodyConfiguration   m_config;

@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "Footsteps_precompiled.h"
 #include <platform_impl.h>
 
 #include "FootstepsSystemComponent.h"

@@ -17,7 +17,6 @@
 
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>
 
 namespace AzToolsFramework
@@ -40,10 +39,10 @@ namespace AZ
 
             public:
                 JobWatcher(const AZStd::string& sourceAssetFullPath, Uuid traceTag);
+                void StartMonitoring();
 
             signals:
-                void JobQueryFailed();
-                void JobsForSourceFileFound(const AZStd::vector<AZStd::string>& jobPlatforms);
+                void JobQueryFailed(const char* message);
                 void JobProcessingComplete(const AZStd::string& platform, u64 jobId, bool success, const AZStd::string& fullLog);
                 void AllJobsComplete();
 
@@ -53,11 +52,11 @@ namespace AZ
             private:
                 static const int s_jobQueryInterval;
 
-                bool m_hasReportedAvailableJobs;
-                QTimer* m_jobQueryTimer;
+                AZStd::vector<u64> m_reportedJobs;
                 AZStd::string m_sourceAssetFullPath;
+                QTimer* m_jobQueryTimer;
                 Uuid m_traceTag;
             };
-        } // SceneUI
-    } //  SceneAPI
-} // AZ
+        } // namespace SceneUI
+    } //  namespace SceneAPI
+} // namespace AZ

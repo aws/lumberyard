@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "CloudGemDynamicContent_precompiled.h"
 #include <DynamicContentEditorPlugin.h>
 #include "IGemManager.h"
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>

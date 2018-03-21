@@ -20,6 +20,7 @@
 #include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 #include <AzToolsFramework/UI/SearchWidget/SearchWidgetTypes.hxx>
@@ -48,6 +49,7 @@ class OutlinerWidget
     , private AzToolsFramework::EntityHighlightMessages::Bus::Handler
     , private OutlinerModelNotificationBus::Handler
     , private AzToolsFramework::ToolsApplicationEvents::Bus::Handler
+    , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
 {
     Q_OBJECT;
 public:
@@ -85,6 +87,12 @@ private:
     void EntityCreated(const AZ::EntityId& entityId) override;
     //////////////////////////////////////////////////////////////////////////
 
+    //////////////////////////////////////////////////////////////////////////
+    /// AzToolsFramework::EditorEntityContextNotificationBus implementation
+    void OnStartPlayInEditor() override;
+    void OnStopPlayInEditor() override;
+    //////////////////////////////////////////////////////////////////////////
+
     // Build a selection object from the given entities. Entities already in the Widget's selection buffers are ignored.
     template <class EntityIdCollection>
     QItemSelection BuildSelectionFromEntities(const EntityIdCollection& entityIds);
@@ -106,6 +114,7 @@ private:
     void DoReparentSelection();
     void DoMoveEntityUp();
     void DoMoveEntityDown();
+    void GoToEntitiesInViewport();
     void SetupActions();
 
     QAction* m_actionToShowSlice;
@@ -116,6 +125,7 @@ private:
     QAction* m_actionToReparentSelection;
     QAction* m_actionToMoveEntityUp;
     QAction* m_actionToMoveEntityDown;
+    QAction* m_actionGoToEntitiesInViewport;
 
     void OnTreeItemClicked(const QModelIndex &index);
     void OnTreeItemExpanded(const QModelIndex &index);

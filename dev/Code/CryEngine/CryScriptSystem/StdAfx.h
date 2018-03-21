@@ -69,9 +69,6 @@ inline void ScriptWarning(const char* format, ...)
 }
 #endif
 
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
 #endif //__cplusplus
 
 #endif // !defined(AFX_STDAFX_H__844E5BAB_B810_40FC_8939_167146C07AED__INCLUDED_)

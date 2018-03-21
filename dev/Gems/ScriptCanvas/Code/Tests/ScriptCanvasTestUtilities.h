@@ -58,6 +58,8 @@ namespace ScriptCanvasTests
         return GetTestNode<t_NodeType>(graphUniqueId, entityOut);
     }
 
+    ScriptCanvas::Node* CreateDataNodeByType(const AZ::EntityId& graphUniqueId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout);
+
     template<typename t_Value>
     ScriptCanvas::Node* CreateDataNode(const AZ::EntityId& graphUniqueId, const t_Value& value, AZ::EntityId& nodeIDout)
     {
@@ -75,7 +77,6 @@ namespace ScriptCanvasTests
 
     ScriptCanvas::Nodes::Core::BehaviorContextObjectNode* CreateTestObjectNode(const AZ::EntityId& graphUniqueId, AZ::EntityId& entityOut, const AZ::Uuid& objectTypeID);
     AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, const AZStd::string& className, const AZStd::string& methodName);
-    ScriptCanvas::Node* CreateDataNodeByType(const AZ::EntityId& graphUniqueId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout);
     const char* SlotTypeToString(ScriptCanvas::SlotType type);
     void DumpSlots(const ScriptCanvas::Node& node);
     bool Connect(ScriptCanvas::Graph& graph, const AZ::EntityId& fromNodeID, const char* fromSlotName, const AZ::EntityId& toNodeID, const char* toSlotName, bool dumpSlotsOnFailure = true);

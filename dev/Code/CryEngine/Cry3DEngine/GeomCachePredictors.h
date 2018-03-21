@@ -19,6 +19,7 @@
 #pragma once
 
 #include "GeomCacheFileFormat.h"
+#include "Cry3DEngineTraits.h"
 
 namespace GeomCachePredictors
 {
@@ -293,21 +294,29 @@ namespace GeomCachePredictors
         }
     }
 
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO) || defined(ORBIS)
+#if AZ_LEGACY_3DENGINE_TRAIT_DEFINE_MM_MULLO_EPI32_EMU
     ILINE __m128i _mm_mullo_epi32_emu(const __m128i& a, const __m128i& b)
     {
+    #if AZ_LEGACY_3DENGINE_TRAIT_HAS_MM_MULLO_EPI32
+        return _mm_mullo_epi32(a, b);
+    #else
         __m128i tmp1 = _mm_mul_epu32(a, b);
         __m128i tmp2 = _mm_mul_epu32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4));
         return _mm_unpacklo_epi32(_mm_shuffle_epi32(tmp1, _MM_SHUFFLE(0, 0, 2, 0)), _mm_shuffle_epi32(tmp2, _MM_SHUFFLE(0, 0, 2, 0)));
+    #endif
     }
 
     ILINE __m128i _mm_packus_epi32_emu(__m128i& a, __m128i& b)
     {
+#if AZ_LEGACY_3DENGINE_TRAIT_HAS_MM_PACKUS_EPI32
+        return _mm_packus_epi32(a, b);
+#else
         a = _mm_slli_epi32(a, 16);
         b = _mm_slli_epi32(b, 16);
         a = _mm_srai_epi32(a, 16);
         b = _mm_srai_epi32(b, 16);
         return _mm_packs_epi32(a, b);
+#endif
     }
 
     ILINE __m128i Interpolate(__m128i a, __m128i b, __m128i c, const uint32 factor, const int shiftFactor)

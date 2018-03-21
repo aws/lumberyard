@@ -11,7 +11,7 @@
 */
 
 
-#include "StdAfx.h"
+#include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -291,16 +291,14 @@ namespace EMotionFX
             return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
         }
 
-
         //////////////////////////////////////////////////////////////////////////
         AZ::Crc32 EditorActorComponent::OnAttachmentTargetChanged()
         {
-            if (GetEntityId() == m_attachmentTarget)
+            if (!IsValidAttachment(GetEntityId(), m_attachmentTarget))
             {
                 m_attachmentTarget.SetInvalid();
-                AZ_Error("EMotionFX", false, "You cannot attach to yourself!\n");
+                AZ_Error("EMotionFX", false, "You cannot attach to yourself or create circular dependencies! Attachment cannot be performed.");
             }
-
             return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
         }
 
@@ -594,6 +592,41 @@ namespace EMotionFX
         float EditorActorComponent::GetRenderNodeRequestBusOrder() const
         {
             return s_renderNodeRequestBusOrder;
+        }
+
+        AZ::EntityId EditorActorComponent::GetAttachedToEntityId() const
+        {
+            return m_attachmentTarget;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        // Check if the given attachment is valid.
+        bool EditorActorComponent::IsValidAttachment(const AZ::EntityId& attachment, const AZ::EntityId& attachTo) const
+        {
+            // Cannot attach to yourself.
+            if (attachment == attachTo)
+            {
+                return false;
+            }
+
+            // Walk our way up to the root.
+            AZ::EntityId resultId;
+            EditorActorComponentRequestBus::EventResult(resultId, attachTo, &EditorActorComponentRequestBus::Events::GetAttachedToEntityId);
+            while (resultId.IsValid())
+            {
+                AZ::EntityId localResult;
+                EditorActorComponentRequestBus::EventResult(localResult, resultId, &EditorActorComponentRequestBus::Events::GetAttachedToEntityId);
+
+                // We detected a loop.
+                if (localResult == attachment)
+                {
+                    return false;
+                }
+
+                resultId = localResult;
+            }
+
+            return true;
         }
 
     } //namespace Integration

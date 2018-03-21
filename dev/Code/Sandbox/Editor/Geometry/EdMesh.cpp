@@ -143,10 +143,10 @@ void CEdMesh::Serialize(CObjectArchive& ar)
             if (pObj)
             {
                 QString levelPath = Path::AddPathSlash(GetIEditor()->GetLevelFolder());
-                CPakFile* pPakFile =  ar.GetGeometryPak((levelPath + "\\Geometry.pak").toLatin1().data());
+                CPakFile* pPakFile =  ar.GetGeometryPak((levelPath + "\\Geometry.pak").toUtf8().data());
                 if (pPakFile)
                 {
-                    SaveToCGF(m_filename.toLatin1().data(), pPakFile);
+                    SaveToCGF(m_filename.toUtf8().data(), pPakFile);
                 }
             }
             SetModified(false);
@@ -306,8 +306,8 @@ IIndexedMesh* CEdMesh::GetIndexedMesh(size_t idx)
         {
             // Load from CGF.
             QString sFilename = m_pStatObj->GetFilePath();
-            CContentCGF cgf(sFilename.toLatin1().data());
-            if (gEnv->p3DEngine->LoadChunkFileContent(&cgf, sFilename.toLatin1().data()))
+            CContentCGF cgf(sFilename.toUtf8().data());
+            if (gEnv->p3DEngine->LoadChunkFileContent(&cgf, sFilename.toUtf8().data()))
             {
                 for (int i = 0; i < cgf.GetNodeCount(); ++i)
                 {

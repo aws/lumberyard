@@ -1211,6 +1211,7 @@ namespace CommandSystem
     void DeleteNode(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* node, AZStd::vector<EMotionFX::AnimGraphNode*>& nodeList, AZStd::vector<EMotionFX::BlendTreeConnection*>& connectionList, AZStd::vector<EMotionFX::AnimGraphStateTransition*>& transitionList, bool recursive, bool firstRootIteration = true, bool autoChangeEntryStates = true)
     {
         MCORE_UNUSED(recursive);
+        MCORE_UNUSED(autoChangeEntryStates);
 
         if (!node)
         {

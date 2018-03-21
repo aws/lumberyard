@@ -26,6 +26,8 @@
 
 #include <ParseEngineConfig.h>
 
+#include <AzFramework/Application/Application.h>
+
 // We need shell api for Current Root Extraction.
 #include "shlwapi.h"
 #pragma comment(lib, "shlwapi.lib")
@@ -52,8 +54,9 @@ void ClearPlatformCVars(ISystem* pISystem)
     pISystem->GetIConsole()->ExecuteString("r_ShadersGLES3 = 0");
 }
 
-//////////////////////////////////////////////////////////////////////////
-int main(int argc, char* argv[])
+// wrapped main so that it can be inside the lifetime of an AZCore Application in the real main()
+// and all memory created on the stack here in main_wrapped can go out of scope before we stop the application
+int main_wrapped(int argc, char* argv[])
 {
     const char* commandLine = GetCommandLineA();
 
@@ -217,5 +220,19 @@ int main(int argc, char* argv[])
 
     CloseHandle(mutex);
     return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+int main(int argc, char* argv[])
+{
+    AzFramework::Application app;
+    AzFramework::Application::StartupParameters startupParams;
+    AzFramework::Application::Descriptor descriptor;
+    app.Start(descriptor, startupParams);
+
+    int returncode = main_wrapped(argc, argv);
+
+    app.Stop();
+    return returncode;
 }
 

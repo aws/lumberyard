@@ -74,7 +74,7 @@ namespace CharacterTool {
 
     bool CHRParamsLoader::Load(EntryBase* entryBase, const char* filename, LoaderContext* context)
     {
-        AZStd::string fullFilePath = Path::GamePathToFullPath(filename).toLatin1().data();
+        AZStd::string fullFilePath = Path::GamePathToFullPath(filename).toUtf8().data();
 
         SEntry<SkeletonContent>* entry = static_cast<SEntry<SkeletonContent>*>(entryBase);
 
@@ -92,7 +92,7 @@ namespace CharacterTool {
 
     bool CHRParamsLoader::Save(EntryBase* entryBase, const char* filename, LoaderContext* context, string& errorString)
     {
-        AZStd::string fullFilePath = Path::GamePathToFullPath(filename).toLatin1().data();
+        AZStd::string fullFilePath = Path::GamePathToFullPath(filename).toUtf8().data();
 
         SEntry<SkeletonContent>* entry = static_cast<SEntry<SkeletonContent>*>(entryBase);
         if (!entry->content.IsValid())
@@ -131,14 +131,14 @@ namespace CharacterTool {
 
     bool CDFLoader::Load(EntryBase* entryBase, const char* filename, LoaderContext* context)
     {
-        AZStd::string fullFileName = Path::GamePathToFullPath(filename).toLatin1().data();
+        AZStd::string fullFileName = Path::GamePathToFullPath(filename).toUtf8().data();
         SEntry<CharacterContent>* entry = static_cast<SEntry<CharacterContent>*>(entryBase);
         return entry->content.cdf.LoadFromXmlFile(fullFileName.c_str());
     }
 
     bool CDFLoader::Save(EntryBase* entryBase, const char* filename, LoaderContext* context, string&)
     {
-        AZStd::string fullFileName = Path::GamePathToFullPath(filename).toLatin1().data();
+        AZStd::string fullFileName = Path::GamePathToFullPath(filename).toUtf8().data();
         SEntry<CharacterContent>* entry = static_cast<SEntry<CharacterContent>*>(entryBase);
         if (!entry->content.cdf.Save(fullFileName.c_str()))
         {
@@ -198,7 +198,7 @@ namespace CharacterTool {
     }
 
     // ---------------------------------------------------------------------------
-    dll_string AttachmentNameSelector(const SResourceSelectorContext& x, const char* previousValue, ICharacterInstance* characterInstance)
+    QString AttachmentNameSelector(const SResourceSelectorContext& x, const QString& previousValue, ICharacterInstance* characterInstance)
     {
         if (!characterInstance)
         {

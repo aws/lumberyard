@@ -197,7 +197,7 @@ void CPreviewModelCtrl::LoadFile(const QString& modelFile, bool changeCamera)
     if (isCGA)
     {
         // Load CGA animated object.
-        m_pCharacter = m_pAnimationSystem->CreateInstance(modelFile.toLatin1().data());
+        m_pCharacter = m_pAnimationSystem->CreateInstance(modelFile.toUtf8().data());
         if (!m_pCharacter)
         {
             Warning("Loading of geometry object %s failed.", modelFile.toUtf8().constData());
@@ -216,7 +216,7 @@ void CPreviewModelCtrl::LoadFile(const QString& modelFile, bool changeCamera)
     if (isSKEL || isSKIN || isCDF)
     {
         // Load character.
-        m_pCharacter = m_pAnimationSystem->CreateInstance(modelFile.toLatin1().data(), CA_PreviewMode | CA_CharEditModel);
+        m_pCharacter = m_pAnimationSystem->CreateInstance(modelFile.toUtf8().data(), CA_PreviewMode | CA_CharEditModel);
         if (!m_pCharacter)
         {
             Warning("Loading of character %s failed.", modelFile.toUtf8().constData());

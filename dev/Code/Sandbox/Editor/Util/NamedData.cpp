@@ -155,7 +155,7 @@ CMemoryBlock* CNamedData::GetDataBlock(const QString& blockName, bool& bCompress
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CNamedData::Serialize(CArchive& ar)
+bool CNamedData::Serialize(CArchive& ar)
 {
     if (ar.IsStoring())
     {
@@ -206,7 +206,7 @@ void CNamedData::Serialize(CArchive& ar)
         int iSize;
         ar >> iSize;
 
-        for (int i = 0; i < iSize; i++)
+        for (int i = 0; i < iSize && ar.status() == QDataStream::Ok; i++)
         {
             QString key;
             unsigned int nSizeFlags = 0;
@@ -246,6 +246,8 @@ void CNamedData::Serialize(CArchive& ar)
             m_blocks[key] = pBlock;
         }
     }
+
+    return ar.status() == QDataStream::Ok;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -258,7 +260,7 @@ void CNamedData::Save(CPakFile& pakFile)
         if (!pBlock->bCompressed)
         {
             QString filename = key + ".editor_data";
-            pakFile.UpdateFile(filename.toLatin1().data(), pBlock->data, true, pBlock->bFastCompression ? ICryArchive::LEVEL_FASTEST : ICryArchive::LEVEL_BETTER);
+            pakFile.UpdateFile(filename.toUtf8().data(), pBlock->data, true, pBlock->bFastCompression ? ICryArchive::LEVEL_FASTEST : ICryArchive::LEVEL_BETTER);
         }
         else
         {
@@ -268,7 +270,7 @@ void CNamedData::Save(CPakFile& pakFile)
             memFile.Write(&nOriginalSize, sizeof(nOriginalSize));
             // Write compressed data.
             memFile.Write(pBlock->compressedData.GetBuffer(), pBlock->compressedData.GetSize());
-            pakFile.UpdateFile((key + ".editor_datac").toLatin1().data(), memFile, false);
+            pakFile.UpdateFile((key + ".editor_datac").toUtf8().data(), memFile, false);
         }
     }
 }
@@ -283,7 +285,7 @@ bool CNamedData::Load(const QString& levelPath, CPakFile& pakFile)
     {
         QString filename = files[i].filename;
         CCryFile cfile;
-        if (cfile.Open(Path::Make(levelPath, filename).toLatin1().data(), "rb"))
+        if (cfile.Open(Path::Make(levelPath, filename).toUtf8().data(), "rb"))
         {
             int fileSize = cfile.GetLength();
             if (fileSize > 0)
@@ -304,7 +306,7 @@ bool CNamedData::Load(const QString& levelPath, CPakFile& pakFile)
     {
         QString filename = files[i].filename;
         CCryFile cfile;
-        if (cfile.Open(Path::Make(levelPath, filename).toLatin1().data(), "rb"))
+        if (cfile.Open(Path::Make(levelPath, filename).toUtf8().data(), "rb"))
         {
             int fileSize = cfile.GetLength();
             if (fileSize > 0)
@@ -340,7 +342,7 @@ void CNamedData::SaveToFiles(const QString& rootPath)
         {
             filename += ".editor_datac";
 
-            CCryFile file(filename.toLatin1().data(), "wb");
+            CCryFile file(filename.toUtf8().data(), "wb");
 
             int nOriginalSize = pBlock->compressedData.GetUncompressedSize();
             file.Write(&nOriginalSize, sizeof(nOriginalSize));
@@ -349,7 +351,7 @@ void CNamedData::SaveToFiles(const QString& rootPath)
         else
         {
             filename += ".editor_data";
-            CCryFile file(filename.toLatin1().data(), "wb");
+            CCryFile file(filename.toUtf8().data(), "wb");
             file.Write(pBlock->data.GetBuffer(), pBlock->data.GetSize());
         }
     }

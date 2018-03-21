@@ -692,7 +692,6 @@ public:
     virtual float GetAccurateOceanHeight(const Vec3& pCurrPos) const;
 
     virtual CausticsParams GetCausticsParams() const;
-    virtual void GetOceanAnimationParams(Vec4& pParams0, Vec4& pParams1) const;
     virtual OceanAnimationData GetOceanAnimationParams() const override;
     virtual void GetHDRSetupParams(Vec4 pParams[5]) const;
     virtual void CreateDecal(const CryEngineDecalInfo& Decal);
@@ -708,6 +707,14 @@ public:
     virtual Vec3 GetSunDirNormalized() const;
     virtual Vec3 GetRealtimeSunDirNormalized() const;
     virtual void SetSunColor(Vec3 vColor);
+    Vec3 GetSunAnimColor() override;
+    void SetSunAnimColor(const Vec3& sunAnimColor) override;
+    float GetSunAnimSpeed() override;
+    void SetSunAnimSpeed(float sunAnimSpeed) override;
+    AZ::u8 GetSunAnimPhase() override;
+    void SetSunAnimPhase(AZ::u8 sunAnimPhase) override;
+    AZ::u8 GetSunAnimIndex() override;
+    void SetSunAnimIndex(AZ::u8 sunAnimIndex) override;
     virtual void SetSSAOAmount(float fMul);
     virtual void SetSSAOContrast(float fMul);
     virtual void SetRainParams(const SRainParams& rainParams);
@@ -1355,7 +1362,7 @@ public:
     void ReRegisterKilledVegetationInstances();
     Vec3 GetEntityRegisterPoint(IRenderNode* pEnt);
 
-    virtual void RenderRenderNode_ShadowPass(IShadowCaster* pRNode, const SRenderingPassInfo& passInfo, JobManager::SJobState* pJobState);
+    virtual void RenderRenderNode_ShadowPass(IShadowCaster* pRNode, const SRenderingPassInfo& passInfo, AZ::LegacyJobExecutor* pJobExecutor);
     void ProcessCVarsChange();
     ILINE int GetGeomDetailScreenRes()
     {

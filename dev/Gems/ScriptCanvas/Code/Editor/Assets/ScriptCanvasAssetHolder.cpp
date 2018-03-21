@@ -27,6 +27,7 @@
 #include <AzCore/Asset/AssetManager.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <LyViewPaneNames.h>
 
 namespace ScriptCanvasEditor
 {

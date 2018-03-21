@@ -19,7 +19,7 @@ from time import sleep
 
 from botocore.exceptions import ClientError
 
-import resource_manager.constant
+import resource_manager_common.constant
 
 import lmbr_aws_test_support
 import mock_specification
@@ -753,7 +753,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_Security(lmbr_aws_test_s
     def add_lambda_function_to_resource_group(self, resource_group_name, function_name):
 
         resource_group_path = self.get_gem_aws_path(resource_group_name)
-        resource_group_template_path = os.path.join(resource_group_path, resource_manager.constant.RESOURCE_GROUP_TEMPLATE_FILENAME)
+        resource_group_template_path = os.path.join(resource_group_path, resource_manager_common.constant.RESOURCE_GROUP_TEMPLATE_FILENAME)
 
         with open(resource_group_template_path, 'r') as f:
             resource_group_template = json.load(f)

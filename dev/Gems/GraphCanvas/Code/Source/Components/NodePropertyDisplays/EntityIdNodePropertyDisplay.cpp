@@ -11,8 +11,8 @@
 */
 #include "precompiled.h"
 
-#include <qgraphicsscenedragdropevent>
-#include <qgraphicsproxywidget.h>
+#include <QGraphicsSceneDragDropEvent>
+#include <QGraphicsProxyWidget>
 #include <QGraphicsView>
 #include <QMenu>
 #include <QMimeData>

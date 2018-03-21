@@ -11,6 +11,10 @@
 *
 */
 
+#pragma once
+
+#include <AzCore/Debug/TraceMessageBus.h>
+#include <AzCore/std/string/regex.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -19,8 +23,6 @@
 #include <AzCore/std/containers/bitset.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include "AssetBuilderBusses.h"
-
-#pragma once
 
 /** 
 * this define exists to turn on and off the support for legacy m_platformFlags and the concept of platforms as an enum
@@ -126,6 +128,35 @@ namespace AssetBuilderSDK
         static void Reflect(AZ::ReflectContext* context);
     };
 
+    //! This class represents a matching pattern that is based on AssetBuilderSDK::AssetBuilderPattern::PatternType, which can either be a regex
+    //! pattern or a wildcard (glob) pattern
+    class FilePatternMatcher
+    {
+    public:
+        FilePatternMatcher() = default;
+        explicit FilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern);
+        FilePatternMatcher(const AZStd::string& pattern, AssetBuilderSDK::AssetBuilderPattern::PatternType type);
+        FilePatternMatcher(const FilePatternMatcher& copy);
+
+        typedef AZStd::regex RegexType;
+
+        FilePatternMatcher& operator=(const FilePatternMatcher& copy);
+
+        bool MatchesPath(const AZStd::string& assetPath) const;
+        bool IsValid() const;
+        AZStd::string GetErrorString() const;
+        const AssetBuilderSDK::AssetBuilderPattern& GetBuilderPattern() const;
+
+    protected:
+        static bool ValidatePatternRegex(const AZStd::string& pattern, AZStd::string& errorString);
+        
+        AssetBuilderSDK::AssetBuilderPattern    m_pattern;
+        RegexType           m_regex;
+        AZStd::string       m_errorString;
+        bool                m_isRegex;
+        bool                m_isValid;
+    };
+
     //!Information that builders will send to the assetprocessor
     struct AssetBuilderDesc
     {
@@ -204,8 +235,14 @@ namespace AssetBuilderSDK
         AZ_CLASS_ALLOCATOR(JobDescriptor, AZ::SystemAllocator, 0);
         AZ_TYPE_INFO(JobDescriptor, "{bd0472a4-7634-41f3-97ef-00f3b239bae2}");
 
+        //! Any builder specific parameters to pass to the Process Job Request
+        JobParameterMap m_jobParameters;
+
         //! Any additional info that should be taken into account during fingerprinting for this job
         AZStd::string m_additionalFingerprintInfo;
+        
+        //! Job specific key, e.g. TIFF Job, etc
+        AZStd::string m_jobKey;
 
 #if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
         /**
@@ -216,28 +253,24 @@ namespace AssetBuilderSDK
         int m_platform = Platform_NONE;
 #endif // defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
 
-        //! Job specific key, e.g. TIFF Job, etc
-        AZStd::string m_jobKey;
-
-        //! Flag to determine if this is a critical job or not.  Critical jobs are given the higher priority in the processing queue than non-critical jobs
-        bool m_critical = false;
-
         //! Priority value for the jobs within the job queue.  If less than zero, than the priority of this job is not considered or or is lowest priority.
         //! If zero or greater, the value is prioritized by this number (the higher the number, the higher priority).  Note: priorities are set within critical
         //! and non-critical job separately.
         int m_priority = -1;
 
-        //! Any builder specific parameters to pass to the Process Job Request
-        JobParameterMap m_jobParameters;
+        //! Flag to determine if this is a critical job or not.  Critical jobs are given the higher priority in the processing queue than non-critical jobs
+        bool m_critical = false;
 
         //! Flag to determine whether we need to check the input file for exclusive lock before we process the job
         bool m_checkExclusiveLock = false;
 
+        //! If set to true, reported errors, asserts and exceptions will automatically cause the job to fail even is ProcessJobResult_Success is the result code.
+        bool m_failOnError = false;
+
         /** 
         * construct using a platformIdentifier from your CreateJobsRequest.  it is the m_identifier member of the PlatformInfo.
         */
-        JobDescriptor(const AZStd::string& additionalFingerprintInfo, AZStd::string jobKey, const char* platformIdentifier);
-        
+        JobDescriptor(const AZStd::string& additionalFingerprintInfo, AZStd::string jobKey, const char* platformIdentifier); 
         
 #if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
         /**
@@ -331,8 +364,9 @@ namespace AssetBuilderSDK
         PlatformInfo() = default;
         PlatformInfo(const PlatformInfo& other) = default;
         PlatformInfo& operator=(const PlatformInfo& other) = default;
+        bool operator==(const PlatformInfo& other);
 
-        // vs2013 compatability - no auto-generate of move ops.
+        // vs2013 compatibility - no auto-generate of move ops.
         PlatformInfo(PlatformInfo&& other)
         {
             if (this != &other)
@@ -351,13 +385,14 @@ namespace AssetBuilderSDK
             return *this;
         }
 
-        // because we specify this overloaded constructure, we must make sure to define the others above.
+        // because we specify this overloaded constructor, we must make sure to define the others above.
         PlatformInfo(const char* identifier, const AZStd::unordered_set<AZStd::string>& tags);
 
         ///! utility function.  It just searches the set for you:
         bool HasTag(const char* tag) const;
 
         static void Reflect(AZ::ReflectContext* context);
+        static AZStd::string PlatformVectorAsString(const AZStd::vector<PlatformInfo>& platforms);
     };
 
     //! CreateJobsRequest contains input job data that will be send by the AssetProcessor to the builder for creating jobs
@@ -697,6 +732,22 @@ namespace AssetBuilderSDK
 
     private:
         AZStd::atomic_bool m_cancelled;
+    };
+
+    // the Assert Absorber here is used to absorb asserts during regex creation.
+    // it only absorbs asserts spawned by this thread;
+    class AssertAbsorber
+        : public AZ::Debug::TraceMessageBus::Handler
+    {
+    public:
+        AssertAbsorber();
+        ~AssertAbsorber();
+
+        bool OnAssert(const char* message) override;
+                
+        AZStd::string m_assertMessage;
+        // only absorb messages for your thread!
+        static AZ_THREAD_LOCAL bool s_onAbsorbThread;
     };
 } // namespace AssetBuilderSDK
 

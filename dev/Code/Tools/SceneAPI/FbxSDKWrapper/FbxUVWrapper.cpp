@@ -10,9 +10,9 @@
 *
 */
 
-#include "FbxUVWrapper.h"
-#include "FbxLayerElementUtilities.h"
-#include "FbxTypeConverter.h"
+#include <SceneAPI/FbxSDKWrapper/FbxUVWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxLayerElementUtilities.h>
+#include <SceneAPI/FbxSDKWrapper/FbxTypeConverter.h>
 
 namespace AZ
 {
@@ -49,5 +49,5 @@ namespace AZ
         {
             return m_fbxUV != nullptr;
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

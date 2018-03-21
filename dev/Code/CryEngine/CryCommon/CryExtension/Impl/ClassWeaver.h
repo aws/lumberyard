@@ -24,7 +24,7 @@
 #include "RegFactoryNode.h"
 #include "../ICryUnknown.h"
 #include "../ICryFactory.h"
-
+#include <AzCore/Memory/Memory.h>
 
 namespace CW
 {
@@ -192,7 +192,7 @@ namespace CW
     }
 
     template <typename T>
-    void* CheckCompositeMatch(const char* name, const boost::shared_ptr<T>& composite, const char* compositeName)
+    void* CheckCompositeMatch(const char* name, const AZStd::shared_ptr<T>& composite, const char* compositeName)
     {
         typedef TC::SuperSubClass<ICryUnknown, T> Rel;
         COMPILE_TIME_ASSERT(Rel::exists);
@@ -310,7 +310,7 @@ public:
 public:
     virtual ICryUnknownPtr CreateClassInstance() const
     {
-        boost::shared_ptr<T> p(new T);
+        AZStd::shared_ptr<T> p = AZStd::make_shared<T>();
         return cryinterface_cast<ICryUnknown> (p);
     }
 
@@ -350,11 +350,30 @@ public:
     virtual ICryUnknownPtr CreateClassInstance() const
     {
         CryAutoLock<CryCriticalSection> lock(m_csCreateClassInstance);
-        static ICryUnknownPtr p = CFactory<T>::CreateClassInstance();
+        // override the allocator.  These function static instances are being destroyed after the AZ alloctor has been deleted.
+        // On win, TerminateProcess() prevents these destructors from being called, but that is not the case on OSX.
+        static typename AZStd::aligned_storage<sizeof(AZStd::Internal::sp_counted_impl_pda<T*, AZStd::Internal::sp_ms_deleter<T>,SingletonAllocator>), AZStd::alignment_of<T>::value>::type m_storage;
+        static ICryUnknownPtr p = AZStd::allocate_shared<T>(SingletonAllocator(AZStd::addressof(m_storage)));
         return p;
     }
 
     mutable CryCriticalSection m_csCreateClassInstance;
+
+    struct SingletonAllocator
+    {
+        SingletonAllocator(void* ptr) :
+            m_data(ptr)
+        {}
+        void* allocate(size_t /*byteSize*/, size_t /*alignment*/, int /*flags*/ = 0)
+        {
+            return m_data;
+        }
+        void deallocate(void* /*ptr*/, size_t /*byteSize*/, size_t /*alignment*/)
+        {
+            // nothing to see here
+        }
+        void* m_data;
+    };
 };
 
 #define _CRYFACTORY_DECLARE(implclassname) \
@@ -399,10 +418,10 @@ public:                                                                         
         static const CryClassID cid = {(uint64) cidHigh##LL, (uint64) cidLow##LL};                                        \
         return cid;                                                                                                       \
     }                                                                                                                     \
-    static boost::shared_ptr<implclassname> CreateClassInstance()                                                         \
+    static AZStd::shared_ptr<implclassname> CreateClassInstance()                                                         \
     {                                                                                                                     \
         ICryUnknownPtr p = s_factory.CreateClassInstance();                                                               \
-        return boost::shared_ptr<implclassname>(*static_cast<boost::shared_ptr<implclassname>*>(static_cast<void*>(&p))); \
+        return AZStd::shared_ptr<implclassname>(*static_cast<AZStd::shared_ptr<implclassname>*>(static_cast<void*>(&p))); \
     }                                                                                                                     \
                                                                                                                           \
 protected:                                                                                                                \
@@ -412,7 +431,7 @@ protected:                                                                      
 #define _BEFRIEND_OPS()            \
     _BEFRIEND_CRYINTERFACE_CAST()  \
     _BEFRIEND_CRYCOMPOSITE_QUERY() \
-    _BEFRIEND_DELETER()
+    _BEFRIEND_MAKE_SHARED()
 
 #define CRYGENERATE_CLASS(implclassname, cname, cidHigh, cidLow) \
     _CRYFACTORY_DECLARE(implclassname)                           \

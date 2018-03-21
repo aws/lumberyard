@@ -1,7 +1,7 @@
 {
     "auto": {
         "Tests": [
-            "Tests/PhysXTest.cpp"
+            "Tests/PhysXEditorTest.cpp"
         ]
     }
 }

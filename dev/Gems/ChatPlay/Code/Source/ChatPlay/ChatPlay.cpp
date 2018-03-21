@@ -10,7 +10,7 @@
 *
 */
 // Implementation of Twitch ChatPlay feature
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 
 #include <AzCore/std/sort.h>
 #include <AzCore/std/smart_ptr/enable_shared_from_this.h>

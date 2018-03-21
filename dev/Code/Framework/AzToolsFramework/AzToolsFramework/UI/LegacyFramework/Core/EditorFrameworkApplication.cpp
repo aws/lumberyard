@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "EditorFrameworkApplication.h"
 
 #include <time.h>
@@ -51,6 +51,14 @@
 #include "shlobj.h"
 #endif
 
+#if defined(AZ_PLATFORM_APPLE)
+#   include <mach-o/dyld.h>
+#endif
+
+#include <QFileInfo>
+#include <QSharedMemory>
+#include <QStandardPaths>
+
 namespace LegacyFramework
 {
     ApplicationDesc::ApplicationDesc(const char* name)
@@ -65,7 +73,7 @@ namespace LegacyFramework
         m_applicationName[0] = 0;
         if (name)
         {
-            strcpy_s(m_applicationName, _MAX_PATH, name);
+            qstrcpy(m_applicationName, name);
         }
     }
 
@@ -85,7 +93,7 @@ namespace LegacyFramework
         m_enableGUI = other.m_enableGUI;
         m_enableGridmate = other.m_enableGridmate;
         m_enablePerforce = other.m_enablePerforce;
-        strcpy_s(m_applicationName, _MAX_PATH, other.m_applicationName);
+        qstrcpy(m_applicationName, other.m_applicationName);
         m_enableProjectManager = other.m_enableProjectManager;
         m_shouldRunAssetProcessor = other.m_shouldRunAssetProcessor;
         m_saveUserSettings = other.m_saveUserSettings;
@@ -125,35 +133,17 @@ namespace LegacyFramework
         return GetExecutableFolder();
     }
 
+#ifdef AZ_PLATFORM_WINDOWS
     BOOL CTRL_BREAK_HandlerRoutine(DWORD /*dwCtrlType*/)
     {
         EBUS_EVENT(FrameworkApplicationMessages::Bus, SetAbortRequested);
         return TRUE;
     }
+#endif
 
     AZStd::string Application::GetApplicationGlobalStoragePath()
     {
-#ifdef AZ_PLATFORM_WINDOWS
-        WCHAR* capturePathFromSystem = nullptr;
-        char szPath[MAX_PATH] = {0};
-
-        if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData,
-                    0,
-                    NULL,
-                    &capturePathFromSystem)))
-        {
-            size_t charsConverted = 0;
-            wcstombs_s(&charsConverted, szPath, MAX_PATH, capturePathFromSystem, MAX_PATH);
-            return AZStd::string(szPath);
-        }
-        else
-        {
-            AZ_Error("FrameworkApplication", false, "Unable to get the user's AppData folder!");
-        }
-#else
-#error NOT IMPLEMENTED YET
-#endif
-        return AZStd::string();
+        return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation).toUtf8().data();
     }
 
     Application::~Application()
@@ -174,28 +164,41 @@ namespace LegacyFramework
             AZ::AllocatorInstance<AZ::OSAllocator>::Create();
         }
 
-        char appNameConcat[MAX_PATH];
-        sprintf_s(appNameConcat, MAX_PATH, "%s_GLOBALMUTEX", desc.m_applicationName);
-        ::CreateMutexA(NULL, TRUE, appNameConcat);
-        if (::GetLastError() == ERROR_ALREADY_EXISTS)
+        QString appNameConcat = QStringLiteral("%1_GLOBALMUTEX").arg(desc.m_applicationName);
         {
-            // you are not the initial app!
-            m_isMaster = false;
+            // If the application crashed before, it may have left behind shared memory
+            // We can go ahead and do a quick attach/deatch here to clean it up
+            QSharedMemory fix(appNameConcat);
+            fix.attach();
         }
-
+        QSharedMemory* shared = new QSharedMemory(appNameConcat);
+        if (qApp)
+        {
+            QObject::connect(qApp, &QCoreApplication::aboutToQuit, [shared]() { delete shared; });
+        }
+        m_isMaster = shared->create(1);
 
         m_desc = desc;
         // before we connect to the app bus, find out all the various stuff we need to cache:
+#ifdef AZ_PLATFORM_WINDOWS
         char szDir[_MAX_DIR];
         char szDrv[_MAX_DRIVE];
+#endif
         char configFilePath[_MAX_PATH];
 
         CalculateExecutablePath();
 
+#ifdef AZ_PLATFORM_WINDOWS
         GetModuleFileNameA(desc.m_applicationModule, m_applicationModule, _MAX_PATH);
         ::_splitpath_s(m_applicationModule, szDrv, _MAX_DRIVE, szDir, _MAX_DIR, NULL, 0, NULL, 0);
 
         ::_makepath_s(configFilePath, _MAX_PATH, szDrv, szDir, desc.m_applicationName, ".xml");
+#else
+        uint32_t bufSize = AZ_ARRAY_SIZE(m_applicationModule);
+        _NSGetExecutablePath(m_applicationModule, &bufSize);
+        QString path = QStringLiteral("%1/%2.xml").arg(m_exeDirectory, desc.m_applicationName);
+        qstrcpy(configFilePath, path.toUtf8().data());
+#endif
 
         // Enable next line to load from the last state
         // if left commented, we will start from scratch
@@ -206,11 +209,13 @@ namespace LegacyFramework
         FrameworkApplicationMessages::Handler::BusConnect();
         CoreMessageBus::Handler::BusConnect();
 
+#ifdef AZ_PLATFORM_WINDOWS
         // if we're in console mode, listen for CTRL+C
         ::SetConsoleCtrlHandler(CTRL_BREAK_HandlerRoutine, true);
+#endif
 
         // Initialize the app root to the exe folder
-        azstrncpy(m_appRoot, m_exeDirectory, AZ_MAX_PATH_LEN);
+        azstrncpy(m_appRoot, AZ_MAX_PATH_LEN, m_exeDirectory, AZ_MAX_PATH_LEN);
 
         m_ptrCommandLineParser = aznew AzFramework::CommandLine();
         m_ptrCommandLineParser->Parse();
@@ -219,14 +224,14 @@ namespace LegacyFramework
             auto appRootOverride = m_ptrCommandLineParser->GetSwitchValue("app-root", 0);
             if (!appRootOverride.empty())
             {
-                azstrncpy(m_appRoot, appRootOverride.c_str(), AZ_MAX_PATH_LEN);
+                azstrncpy(m_appRoot, AZ_MAX_PATH_LEN, appRootOverride.c_str(), AZ_MAX_PATH_LEN);
             }
         }
 
         // If we don't have one create a serialize context
         if (GetSerializeContext() == nullptr)
         {
-            CreateSerializeContext();
+            CreateReflectionManager();
         }
 
         CreateSystemComponents();
@@ -263,12 +268,12 @@ namespace LegacyFramework
             {
                 // Write the current state of the system components into cfg file.
                 // unless its not writeable!
-                DWORD fileAttribs = GetFileAttributesA(configFilePath);
+                QFileInfo fileAttribs(configFilePath);
                 bool writeIt = true;
-                if (fileAttribs != INVALID_FILE_ATTRIBUTES)
+                if (fileAttribs.exists())
                 {
                     // file is found.
-                    if ((fileAttribs & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SYSTEM)) != 0)
+                    if (fileAttribs.isHidden() || !fileAttribs.isWritable())
                     {
                         writeIt = false;
                     }
@@ -291,8 +296,10 @@ namespace LegacyFramework
         AZ::SystemTickBus::ExecuteQueuedEvents();
         AZ::TickBus::ExecuteQueuedEvents();
 
+#ifdef AZ_PLATFORM_WINDOWS
         // clean up!
         ::SetConsoleCtrlHandler(CTRL_BREAK_HandlerRoutine, false);
+#endif
 
         delete m_ptrCommandLineParser;
         m_ptrCommandLineParser = NULL;
@@ -332,7 +339,7 @@ namespace LegacyFramework
             // if the component already exists on the system entity, this is an error.
             if (auto comp = m_ptrSystemEntity->FindComponent(componentCRC))
             {
-                AZ_Warning("EditorFramework", NULL, "Attempt to add a component that already exists on the system entity: %s\n", comp->RTTI_TypeName());
+                AZ_Warning("EditorFramework", 0, "Attempt to add a component that already exists on the system entity: %s\n", comp->RTTI_TypeName());
                 return true;
             }
 
@@ -341,7 +348,7 @@ namespace LegacyFramework
             {
                 if (m_applicationEntity->GetState() != AZ::Entity::ES_CONSTRUCTED)
                 {
-                    AZ_Warning("EditorFramework", NULL, "Attempt to add a component 0x%08x to the application entity when the application entity has already been activated\n", componentCRC);
+                    AZ_Warning("EditorFramework", 0, "Attempt to add a component 0x%08x to the application entity when the application entity has already been activated\n", componentCRC);
                     return false;
                 }
                 m_applicationEntity->CreateComponent(componentCRC);
@@ -352,7 +359,7 @@ namespace LegacyFramework
 
         if (m_ptrSystemEntity->GetState() != AZ::Entity::ES_CONSTRUCTED)
         {
-            AZ_Warning("EditorFramework", NULL, "Attempt to add a component 0x%08x to the system entity when the system entity has already been activated\n", componentCRC);
+            AZ_Warning("EditorFramework", 0, "Attempt to add a component 0x%08x to the system entity when the system entity has already been activated\n", componentCRC);
             return false;
         }
 
@@ -373,7 +380,7 @@ namespace LegacyFramework
             {
                 if (m_applicationEntity->GetState() != AZ::Entity::ES_CONSTRUCTED)
                 {
-                    AZ_Warning("EditorFramework", NULL, "Attempt to remove a component %s (0x%08x) from the application entity when the application entity has already been activated\n", comp->RTTI_GetTypeName(), componentCRC);
+                    AZ_Warning("EditorFramework", 0, "Attempt to remove a component %s (0x%08x) from the application entity when the application entity has already been activated\n", comp->RTTI_GetTypeName(), componentCRC);
                     return true;
                 }
                 m_applicationEntity->RemoveComponent(comp);
@@ -389,7 +396,7 @@ namespace LegacyFramework
             {
                 if (m_ptrSystemEntity->GetState() != AZ::Entity::ES_CONSTRUCTED)
                 {
-                    AZ_Warning("EditorFramework", NULL, "Attempt to remove a component %s (0x%08x) from the system entity when the entity entity has already been activated\n", comp->RTTI_GetTypeName(), componentCRC);
+                    AZ_Warning("EditorFramework", 0, "Attempt to remove a component %s (0x%08x) from the system entity when the entity entity has already been activated\n", comp->RTTI_GetTypeName(), componentCRC);
                     return true;
                 }
                 m_ptrSystemEntity->RemoveComponent(comp);
@@ -409,7 +416,7 @@ namespace LegacyFramework
             return;
         }
         AZ_TracePrintf("EditorFramework", "Application::OnProjectSet -- Creating Application Entity.\n");
-        AZ_Assert(m_applicationEntity == NULL, "Attempt to set a project while the project is still set.");
+        AZ_Assert(m_applicationEntity == nullptr, "Attempt to set a project while the project is still set.");
 
         AZStd::string applicationFilePath;
         AzFramework::StringFunc::Path::Join(GetExecutableFolder(), appName(), applicationFilePath);
@@ -417,7 +424,7 @@ namespace LegacyFramework
         applicationFilePath.append("_app.xml");
 
         AZ_Assert(applicationFilePath.size() <= _MAX_PATH, "Application path longer than expected");
-        azstrcpy(m_applicationFilePath, applicationFilePath.c_str());
+        qstrcpy(m_applicationFilePath, applicationFilePath.c_str());
 
         // load all application entities, if present:
         AZ::IO::SystemFile cfg;
@@ -484,12 +491,12 @@ namespace LegacyFramework
         AzFramework::StringFunc::Path::Join(GetExecutableFolder(), appName(), applicationFilePath);
         applicationFilePath += "_app.xml";
 
-        DWORD fileAttribs = GetFileAttributesA(applicationFilePath.c_str());
+        QFileInfo fileAttribs(applicationFilePath.c_str());
         bool writeIt = true;
-        if (fileAttribs != INVALID_FILE_ATTRIBUTES)
+        if (fileAttribs.exists())
         {
             // file is found.
-            if ((fileAttribs & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SYSTEM)) != 0)
+            if (fileAttribs.isHidden() || !fileAttribs.isWritable())
             {
                 writeIt = false;
             }
@@ -502,14 +509,15 @@ namespace LegacyFramework
             tmpFileName += ".tmp";
 
             IO::VirtualStream* fileStream = IO::Streamer::Instance().RegisterFileStream(tmpFileName.c_str(), IO::OpenMode::ModeWrite, false);
-            if (fileStream == NULL)
+            if (fileStream == nullptr)
             {
                 return;
             }
 
+            AZ::SerializeContext* serializeContext = GetSerializeContext();
             IO::StreamerStream stream(fileStream, false);
-            AZ_Assert(m_serializeContext, "ComponentApplication::m_serializeContext is NULL!");
-            ObjectStream* objStream = ObjectStream::Create(&stream, *m_serializeContext, ObjectStream::ST_XML);
+            AZ_Assert(serializeContext, "ComponentApplication::m_serializeContext is NULL!");
+            ObjectStream* objStream = ObjectStream::Create(&stream, *serializeContext, ObjectStream::ST_XML);
 
             bool entityWriteOk = objStream->WriteClass(m_applicationEntity);
             AZ_Warning("ComponentApplication", entityWriteOk, "Failed to write application entity to application file %s!", applicationFilePath.c_str());
@@ -558,36 +566,34 @@ namespace LegacyFramework
 
     void Application::ReflectSerialize()
     {
-        if (m_serializeContext->GetEditContext() == NULL)
+        AZ::SerializeContext* serializeContext = GetSerializeContext();
+        if (serializeContext->GetEditContext() == nullptr)
         {
-            m_serializeContext->CreateEditContext(); // we are the editor make a serialize context.
+            serializeContext->CreateEditContext(); // we are the editor make a serialize context.
         }
         AZ::ComponentApplication::ReflectSerialize();
 
         ReflectSerializeDeprecated();
     }
 
-
-
     //=========================================================================
     // Create
     // [6/18/2012]
     //=========================================================================
-
     AZ::Entity*
-    Application::Create(const char* systemEntityFileName)
+    Application::Create(const char* systemEntityFileName, const StartupParameters& startupParameters)
     {
         if ((systemEntityFileName) && AZ::IO::SystemFile::Exists(systemEntityFileName))
         {
             // check if filename is valid
 
-            return ComponentApplication::Create(systemEntityFileName);
+            return ComponentApplication::Create(systemEntityFileName, startupParameters);
         }
         else
         {
             AZ::ComponentApplication::Descriptor appDesc;
 
-            AZ::Entity* success = ComponentApplication::Create(appDesc);
+            AZ::Entity* success = ComponentApplication::Create(appDesc, startupParameters);
             return success;
         }
     }
@@ -606,11 +612,11 @@ namespace LegacyFramework
     {
         ComponentApplication::RegisterCoreComponents();
 
-        AzFramework::BootstrapReaderComponent::CreateDescriptor();
-        AzFramework::TargetManagementComponent::CreateDescriptor();
-        AzFramework::DrillerNetworkConsoleComponent::CreateDescriptor();
-        AzFramework::DrillerNetworkAgentComponent::CreateDescriptor();
-        AzToolsFramework::Framework::CreateDescriptor();
+        RegisterComponentDescriptor(AzFramework::BootstrapReaderComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzFramework::TargetManagementComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzFramework::DrillerNetworkConsoleComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzFramework::DrillerNetworkAgentComponent::CreateDescriptor());
+        RegisterComponentDescriptor(AzToolsFramework::Framework::CreateDescriptor());
     }
 
     //=========================================================================

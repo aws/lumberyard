@@ -117,7 +117,7 @@ void CMaterialImageListCtrl::OnCreate()
     // This prevents an Editor freeze caused by constant resizing of the Material Editor when viewing
     // a high sub-material count material (LY-58389)
     m_resizeTimer = new QTimer(this);
-    connect(m_resizeTimer, SIGNAL(timeout()), this, SLOT(resizeTimeout()));
+    connect(m_resizeTimer, &QTimer::timeout, this, &CMaterialImageListCtrl::ResizeTimeout);
 }
 
 void CMaterialImageListCtrl::resizeEvent(QResizeEvent* event)
@@ -126,7 +126,7 @@ void CMaterialImageListCtrl::resizeEvent(QResizeEvent* event)
     m_resizeTimer->start(RESIZE_TIMEOUT);
 }
 
-void CMaterialImageListCtrl::resizeTimeout()
+void CMaterialImageListCtrl::ResizeTimeout()
 {
     m_resizeTimer->stop();
     updateGeometries();
@@ -547,7 +547,10 @@ void CMaterialImageListCtrl::setModel(QAbstractItemModel* model)
 
     CImageListCtrl::setModel(model);
 
-    connect(model, SIGNAL(dataChanged(const QModelIndex&, const QModelIndex&, const QVector<int>&)), this, SLOT(ModelDataChanged(const QModelIndex&)));
+    auto delegate = qobject_cast<QImageListDelegate*>(itemDelegate());
+    // in case the delegate misses a pixmap we can generate it (done only once not at every painting)
+    connect(delegate, SIGNAL(invalidPixmapGenerated(const QModelIndex&)), materialModel, SLOT(GenerateImage(const QModelIndex&)));
+    connect(model, &QAbstractItemModel::dataChanged, this, &CMaterialImageListCtrl::ModelDataChanged);
 }
 
 void CMaterialImageListCtrl::ModelDataChanged(const QModelIndex& index)

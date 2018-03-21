@@ -234,6 +234,7 @@ void MainWindow::Activate()
     connect(m_loggingPanel, &AzToolsFramework::LogPanel::BaseLogPanel::TabsReset, this, loggingPanelResetFunction);
     connect(m_guiApplicationManager->GetRCController(), &AssetProcessor::RCController::JobStatusChanged, m_jobsModel, &AssetProcessor::JobsModel::OnJobStatusChanged);
     connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::JobRemoved, m_jobsModel, &AssetProcessor::JobsModel::OnJobRemoved);
+    connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::SourceDeleted, m_jobsModel, &AssetProcessor::JobsModel::OnSourceRemoved);
     m_jobsModel->PopulateJobsFromDatabase();
 
 }
@@ -497,4 +498,4 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
     ui->APStatusValueLabel->setText(text);
 }
 
-#include <native/ui/mainwindow.moc>
+#include <native/ui/MainWindow.moc>

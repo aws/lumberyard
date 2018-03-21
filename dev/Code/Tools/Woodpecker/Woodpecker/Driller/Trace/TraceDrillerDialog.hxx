@@ -104,6 +104,8 @@ namespace Driller
 		virtual int GetMessageColumn() { return 2; }  // you may not return -1 for this one.
 		virtual int GetTimeColumn() { return -1; }
 
+       using AzToolsFramework::LogPanel::BaseLogView::rowsInserted;
+
 	public slots:
 		void  rowsAboutToBeInserted();
 		void  rowsInserted ();
@@ -123,7 +125,7 @@ namespace Driller
 		// QAbstractTableModel
 		virtual int rowCount(const QModelIndex& index = QModelIndex()) const;
 		virtual int columnCount(const QModelIndex& index = QModelIndex()) const;
-		virtual Qt::ItemFlags TraceDrillerLogModel::flags(const QModelIndex &index) const;
+		virtual Qt::ItemFlags flags(const QModelIndex &index) const;
 		virtual QVariant data(const QModelIndex& index, int role) const;
 		////////////////////////////////////////////////////////////////////////////////////////////////
 

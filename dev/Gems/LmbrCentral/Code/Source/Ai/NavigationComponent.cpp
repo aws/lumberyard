@@ -9,22 +9,22 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "NavigationComponent.h"
+#include "EditorNavigationUtil.h"
 
 #include <IPathfinder.h>
 #include <MathConversion.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
 namespace LmbrCentral
 {
-    // Behavior Context forwarder for NavigationComponentNotificationBus 
+    // Behavior Context forwarder for NavigationComponentNotificationBus
     class BehaviorNavigationComponentNotificationBusHandler : public NavigationComponentNotificationBus::Handler, public AZ::BehaviorEBusHandler
     {
     public:
@@ -64,9 +64,7 @@ namespace LmbrCentral
 
     void NavigationComponent::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-
-        if (serializeContext)
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<NavigationComponent, AZ::Component>()
                 ->Version(2)
@@ -77,9 +75,7 @@ namespace LmbrCentral
                 ->Field("Repath Threshold", &NavigationComponent::m_repathThreshold)
                 ->Field("Move Physically", &NavigationComponent::m_movesPhysically);
 
-            AZ::EditContext* editContext = serializeContext->GetEditContext();
-
-            if (editContext)
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<NavigationComponent>(
                     "Navigation", "The Navigation component provides basic pathfinding and pathfollowing services to an entity")
@@ -90,32 +86,34 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-navigation.html")
-                    ->DataElement(0, &NavigationComponent::m_agentSpeed, "Agent Speed",
-                    "The speed of the agent while navigating ")
-                    ->DataElement(0, &NavigationComponent::m_agentType, "Agent Type",
-                    "Describes the type of the Entity for navigation purposes. ")
-                    ->DataElement(0, &NavigationComponent::m_agentRadius, "Agent Radius",
-                    "Radius of this Navigation Agent")
-                    ->DataElement(0, &NavigationComponent::m_arrivalDistanceThreshold,
-                    "Arrival Distance Threshold", "Describes the distance from the end point that an entity needs to be before its movement is to be stopped and considered complete")
-                    ->DataElement(0, &NavigationComponent::m_repathThreshold,
-                    "Repath Threshold", "Describes the distance from its previously known location that a target entity needs to move before a new path is calculated")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_agentSpeed, "Agent Speed",
+                        "The speed of the agent while navigating ")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &NavigationComponent::m_agentType, "Agent Type",
+                        "Describes the type of the Entity for navigation purposes. ")
+#ifdef LMBR_CENTRAL_EDITOR
+                        ->Attribute(AZ::Edit::Attributes::StringList, &PopulateAgentTypeList)
+#endif
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_agentRadius, "Agent Radius",
+                        "Radius of this Navigation Agent")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_arrivalDistanceThreshold,
+                        "Arrival Distance Threshold", "Describes the distance from the end point that an entity needs to be before its movement is to be stopped and considered complete")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NavigationComponent::m_repathThreshold,
+                        "Repath Threshold", "Describes the distance from its previously known location that a target entity needs to move before a new path is calculated")
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &NavigationComponent::m_movesPhysically,
-                    "Move Physically", "Indicates whether the entity moves under physics or by modifying the Entity Transform");
+                        "Move Physically", "Indicates whether the entity moves under physics or by modifying the Entity Transform");
             }
         }
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
-        if (behaviorContext)
+
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<NavigationComponentRequestBus>("NavigationComponentRequestBus")
                 ->Event("FindPathToEntity", &NavigationComponentRequestBus::Events::FindPathToEntity)
                 ->Event("Stop", &NavigationComponentRequestBus::Events::Stop)
                 ->Event("GetAgentSpeed", &NavigationComponentRequestBus::Events::GetAgentSpeed)
                 ->Event("SetAgentSpeed", &NavigationComponentRequestBus::Events::SetAgentSpeed);
-            
+
             behaviorContext->EBus<NavigationComponentNotificationBus>("NavigationComponentNotificationBus")
                 ->Handler<BehaviorNavigationComponentNotificationBusHandler>();
-
         }
     }
 
@@ -323,11 +321,10 @@ namespace LmbrCentral
     //////////////////////////////////////////////////////////////////////////
 
     NavigationComponent::NavigationComponent()
-        : m_agentType("MediumSizedCharacters")
+        : m_agentSpeed(1.f)
         , m_agentRadius(4.f)
         , m_arrivalDistanceThreshold(0.25f)
         , m_repathThreshold(1.f)
-        , m_agentSpeed(1.f)
         , m_movesPhysically(true)
     {
     }
@@ -506,7 +503,7 @@ namespace LmbrCentral
         m_agentSpeed = agentSpeed;
 
         IPathFollowerPtr pathFollower = m_lastResponseCache.GetPathFollower();
-        
+
         if (pathFollower)
         {
             PathFollowerParams currentParams = pathFollower->GetParams();

@@ -42,7 +42,7 @@ struct IShaderParamCallback
     // </interfuscator:shuffle>
 };
 
-DECLARE_BOOST_POINTERS(IShaderParamCallback);
+DECLARE_SMART_POINTERS(IShaderParamCallback);
 
 // These macros are used to create an extra friendly-named class used to instantiate ShaderParamCallbacks based on lua properties
 

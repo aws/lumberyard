@@ -94,7 +94,10 @@ namespace CloudGemTextToSpeech
                     ->Event("ConvertTextToSpeechWithoutMarks", &TextToSpeechRequestBus::Events::ConvertTextToSpeechWithoutMarks)
                     ->Event("ConvertTextToSpeechWithMarks", &TextToSpeechRequestBus::Events::ConvertTextToSpeechWithMarks)
                     ->Event("GetVoiceFromCharacter", &TextToSpeechRequestBus::Events::GetVoiceFromCharacter)
+                    ->Event("GetSpeechMarksFromCharacter", &TextToSpeechRequestBus::Events::GetSpeechMarksFromCharacter)
                     ->Event("GetProsodyTagsFromCharacter", &TextToSpeechRequestBus::Events::GetProsodyTagsFromCharacter)
+                    ->Event("GetLanguageOverrideFromCharacter", &TextToSpeechRequestBus::Events::GetLanguageOverrideFromCharacter)
+                    ->Event("GetTimbreFromCharacter", &TextToSpeechRequestBus::Events::GetTimbreFromCharacter)
                     ;
                 behaviorContext->EBus<TextToSpeechPlaybackBus>("TextToSpeechPlaybackBus")
                     ->Event("PlaySpeech", &TextToSpeechPlaybackBus::Events::PlaySpeech)
@@ -119,7 +122,11 @@ namespace CloudGemTextToSpeech
         void ConvertTextToSpeechWithoutMarks(const AZStd::string& voice, const AZStd::string& text) override;
         void ConvertTextToSpeechWithMarks(const AZStd::string& voice, const AZStd::string& text, const AZStd::string& speechMarks) override;
         AZStd::string GetVoiceFromCharacter(const AZStd::string& character) override;
+        AZStd::string GetSpeechMarksFromCharacter(const AZStd::string& character) override;
+
         AZStd::vector<AZStd::string> GetProsodyTagsFromCharacter(const AZStd::string& character) override;
+        AZStd::string GetLanguageOverrideFromCharacter(const AZStd::string& character) override;
+        int GetTimbreFromCharacter(const AZStd::string& character) override;
 
         // ConversionNotificationBus::Handler
         void GotDownloadUrl(const AZStd::string& hash, const AZStd::string& url, const AZStd::string& speechMarks) override;

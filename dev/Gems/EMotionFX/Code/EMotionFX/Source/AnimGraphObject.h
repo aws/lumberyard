@@ -100,7 +100,7 @@ namespace EMotionFX
         virtual void GetTooltip(MCore::String* outResult) const;
         virtual ECategory GetPaletteCategory() const = 0;
         virtual AnimGraphObject* Clone(AnimGraph* animGraph) = 0;
-        virtual void PostClone(AnimGraphObject* sourceObject, AnimGraph* sourceAnimGraph) { }
+        virtual void PostClone(AnimGraphObject* sourceObject, AnimGraph* sourceAnimGraph) { MCORE_UNUSED(sourceObject); MCORE_UNUSED(sourceAnimGraph); }
         virtual AnimGraphObjectData* CreateObjectData() = 0;
         virtual AnimGraphObject* RecursiveClone(AnimGraph* animGraph, AnimGraphObject* parentObject);
 

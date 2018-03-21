@@ -58,6 +58,7 @@ namespace AzToolsFramework
         : public QDoubleSpinBox
         , public EditorEvents::Bus::Handler
     {
+        Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR(DHQDoubleSpinbox, AZ::SystemAllocator, 0);
 
@@ -75,12 +76,23 @@ namespace AzToolsFramework
         // EditorEvents
         void OnEscape() override;
 
+        void SetDisplayDecimals(int precision);
+        QString textFromValue(double value) const override;
+
     protected:
+        void focusInEvent(QFocusEvent* event) override;
+
         QPoint lastMousePosition;
         bool mouseCaptured = false;
 
+    private Q_SLOTS:
+        void UpdateToolTip(double value);
+
     private:
+        QString StringValue(double value, bool truncated = false) const;
+
         double m_lastValue;
+        int m_displayDecimals;
     };
 }
 

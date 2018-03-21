@@ -277,7 +277,6 @@ namespace EMotionFX
         {
             AnimGraphInstance* animGraphInstance = mAnimGraph->GetAnimGraphInstance(i);
 
-            UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
             OnUpdateUniqueData(animGraphInstance);
         }
 
@@ -631,8 +630,8 @@ namespace EMotionFX
         uint32 uniqueDataMotionIndex = 0;
         for (uint32 i = 0; i < attributeIndex; ++i)
         {
-            AttributeBlendSpaceMotion* motionAttribute = static_cast<AttributeBlendSpaceMotion*>(motionsAttribute->GetAttribute(i));
-            if (motionAttribute->TestFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
+            AttributeBlendSpaceMotion* theMotionAttribute = static_cast<AttributeBlendSpaceMotion*>(motionsAttribute->GetAttribute(i));
+            if (theMotionAttribute->TestFlag(AttributeBlendSpaceMotion::TypeFlags::InvalidMotion))
             {
                 continue;
             }
@@ -1067,5 +1066,12 @@ namespace EMotionFX
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         outputPose->InitFromBindPose(actorInstance);
     }
+
+    void BlendSpace2DNode::Rewind(AnimGraphInstance* animGraphInstance)
+    {
+        UniqueData* uniqueData = static_cast<BlendSpace2DNode::UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        RewindMotions(uniqueData->m_motionInfos);
+    }
+
 } // namespace EMotionFX
 

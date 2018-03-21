@@ -105,16 +105,6 @@ namespace UnitTest
         static TestFileIOBase m_fileIO;
         static AZ::IO::FileIOBase* m_prevFileIO;
     public:
-        static void SetUpTestCase()
-        {
-            m_prevFileIO = FileIOBase::GetInstance();
-            FileIOBase::SetInstance(&m_fileIO);
-        }
-
-        static void TearDownTestCase()
-        {
-            FileIOBase::SetInstance(m_prevFileIO);
-        }
 
         void SetUp() override
         {
@@ -122,12 +112,18 @@ namespace UnitTest
 
             AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+            
+            m_prevFileIO = FileIOBase::GetInstance();
+            FileIOBase::SetInstance(&m_fileIO);
 
             BusConnect();
         }
 
         void TearDown() override
         {
+            BusDisconnect();
+            FileIOBase::SetInstance(m_prevFileIO);
+
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
             AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
 
@@ -185,11 +181,17 @@ namespace UnitTest
             SizeType bytesTransfered;
             Request::StateType operationState;
 
+            AZStd::string fileName1 = AZStd::string::format("%s%itest.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
+            AZStd::string fileName2 = AZStd::string::format("%s%itest1.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
+            AZStd::string fileName3 = AZStd::string::format("%s%itest2.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
+            AZStd::string fileName4 = AZStd::string::format("%s%itest3.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
+
+
             const char* testFileNames[] = {
-                "test.dat",
-                "test1.dat",
-                "test2.dat",
-                "test3.dat",
+                fileName1.c_str(),
+                fileName2.c_str(),
+                fileName3.c_str(),
+                fileName4.c_str(),
             };
             const size_t nTestFiles = AZ_ARRAY_SIZE(testFileNames);
 
@@ -366,17 +368,7 @@ namespace UnitTest
         static TestFileIOBase m_fileIO;
         static AZ::IO::FileIOBase* m_prevFileIO;
     public:
-        static void SetUpTestCase()
-        {
-            m_prevFileIO = FileIOBase::GetInstance();
-            FileIOBase::SetInstance(&m_fileIO);
-        }
-
-        static void TearDownTestCase()
-        {
-            FileIOBase::SetInstance(m_prevFileIO);
-        }
-
+   
         void SetUp() override
         {
             AllocatorsFixture::SetUp();
@@ -384,11 +376,18 @@ namespace UnitTest
             AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
 
+            m_prevFileIO = FileIOBase::GetInstance();
+            FileIOBase::SetInstance(&m_fileIO);
+
             BusConnect();
         }
 
         void TearDown() override
         {
+            BusDisconnect();
+
+            FileIOBase::SetInstance(m_prevFileIO);
+
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
             AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
 
@@ -541,19 +540,11 @@ namespace UnitTest
             : m_numRequestsToProcess(0)
         {}
 
-        static void SetUpTestCase()
+        void SetUp() override
         {
             m_prevFileIO = FileIOBase::GetInstance();
             FileIOBase::SetInstance(&m_fileIO);
-        }
 
-        static void TearDownTestCase()
-        {
-            FileIOBase::SetInstance(m_prevFileIO);
-        }
-
-        void SetUp() override
-        {
             AllocatorsFixture::SetUp();
 
             AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
@@ -564,6 +555,10 @@ namespace UnitTest
 
         void TearDown() override
         {
+            BusDisconnect();
+
+            FileIOBase::SetInstance(m_prevFileIO);
+
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
             AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
 
@@ -599,8 +594,8 @@ namespace UnitTest
 
             size_t bufferSize = 256 * 1024 /*fileSize*/;
 
-            AZStd::string fileName = GetTestFolderPath() + "BigFile.dat";
-            AZStd::string fileNameSystemFile = GetTestFolderPath() + "BigFile1.dat";
+            AZStd::string fileName = AZStd::string::format("%s%iBigFile.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
+            AZStd::string fileNameSystemFile = AZStd::string::format("%s%iBigFile1.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
 
             void* buf1 = azmalloc(bufferSize, 64 * 1024);
             void* buf2 = azmalloc(bufferSize, 64 * 1024);
@@ -788,26 +783,21 @@ namespace UnitTest
         //};
 
     public:
-        static void SetUpTestCase()
-        {
-            m_prevFileIO = FileIOBase::GetInstance();
-            FileIOBase::SetInstance(&m_fileIO);
-        }
-
-        static void TearDownTestCase()
-        {
-            FileIOBase::SetInstance(m_prevFileIO);
-        }
         void SetUp() override
         {
             AllocatorsFixture::SetUp();
 
             AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+
+            m_prevFileIO = FileIOBase::GetInstance();
+            FileIOBase::SetInstance(&m_fileIO);
         }
 
         void TearDown() override
         {
+            FileIOBase::SetInstance(m_prevFileIO);
+
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
             AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
 
@@ -825,17 +815,20 @@ namespace UnitTest
             IO::Streamer::Create(desc);
 
             AZ_TracePrintf("", "\n");
+            
+            AZStd::string streamerStreamTestFile = AZStd::string::format("%s%iStreamerStreamTest.txt", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
+            AZStd::string systemFile = AZStd::string::format("%s%iSystemFileStreamTest.txt", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
 
             {
-                IO::VirtualStream* stream = IO::Streamer::Instance().RegisterFileStream("StreamerStreamTest.txt", IO::OpenMode::ModeWrite, false);
+                IO::VirtualStream* stream = IO::Streamer::Instance().RegisterFileStream(streamerStreamTestFile.c_str(), IO::OpenMode::ModeWrite, false);
                 StreamerStream streamerStream(stream, false);
                 AZ_TEST_ASSERT(streamerStream.IsOpen());
                 streamerStream.Write(6, "Hello");
                 IO::Streamer::Instance().UnRegisterStream(stream);
 
                 SystemFile file;
-                AZStd::string fileName = GetTestFolderPath() + "SystemFileStreamTest.txt";
-                file.Open(fileName.c_str(), SystemFile::SF_OPEN_CREATE | SystemFile::SF_OPEN_WRITE_ONLY);
+                
+                file.Open(systemFile.c_str(), SystemFile::SF_OPEN_CREATE | SystemFile::SF_OPEN_WRITE_ONLY);
                 SystemFileStream fileStream(&file, false);
                 AZ_TEST_ASSERT(fileStream.IsOpen());
                 fileStream.Write(6, "Hello");
@@ -849,7 +842,7 @@ namespace UnitTest
 
             {
                 char streamBuffer[16];
-                IO::VirtualStream* stream = IO::Streamer::Instance().RegisterFileStream("StreamerStreamTest.txt", OpenMode::ModeRead, false);
+                IO::VirtualStream* stream = IO::Streamer::Instance().RegisterFileStream(streamerStreamTestFile.c_str(), OpenMode::ModeRead, false);
                 StreamerStream streamerStream(stream, false);
                 AZ_TEST_ASSERT(streamerStream.IsOpen());
                 streamerStream.Read(6, streamBuffer);
@@ -858,8 +851,7 @@ namespace UnitTest
 
                 char fileBuffer[16];
                 SystemFile file;
-                AZStd::string fileName = GetTestFolderPath() + "SystemFileStreamTest.txt";
-                file.Open(fileName.c_str(), SystemFile::SF_OPEN_READ_ONLY);
+                file.Open(systemFile.c_str(), SystemFile::SF_OPEN_READ_ONLY);
                 SystemFileStream fileStream(&file, false);
                 AZ_TEST_ASSERT(fileStream.IsOpen());
                 fileStream.Read(6, fileBuffer);
@@ -904,29 +896,10 @@ namespace UnitTest
 
             AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
-        }
 
-        void TearDown() override
-        {
-            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
-            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
-
-            AllocatorsFixture::TearDown();
-        }
-
-        static void SetUpTestCase()
-        {
             m_prevFileIO = FileIOBase::GetInstance();
             FileIOBase::SetInstance(&m_fileIO);
-        }
 
-        static void TearDownTestCase()
-        {
-            FileIOBase::SetInstance(m_prevFileIO);
-        }
-
-        void run()
-        {
             IO::Streamer::Descriptor desc;
             AZStd::string testFolder = GetTestFolderPath();
             if (testFolder.length() > 0)
@@ -934,14 +907,34 @@ namespace UnitTest
                 desc.m_fileMountPoint = testFolder.c_str();
             }
             IO::Streamer::Create(desc);
+        }
 
-            const char* compressedFileName = "CompressedStream.azcs";
+        void TearDown() override
+        {
+            IO::Streamer::Destroy();
+
+            FileIOBase::SetInstance(m_prevFileIO);
+
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
+        }
+
+        void run()
+        {
+            AZStd::string randomFileName = AZStd::string::format("%s%iCompressedStream.azcs", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
+            const char* compressedFileName = randomFileName.c_str();
 
             // enable compression on the device (we can find device by name and/or by drive name, etc.)
             IO::Device* device = IO::Streamer::Instance().FindDevice(AZ_ROOT_TEST_FOLDER);
             AZ_TEST_ASSERT(device);  // we must have a valid device
 
             CompressorStream* compressorStream = new CompressorStream(compressedFileName, IO::OpenMode::ModeWrite);
+            
+            AZ_TEST_ASSERT(compressorStream);
+            AZ_TEST_ASSERT(compressorStream->IsOpen());
+
             AZStd::unique_ptr<IO::VirtualStream> writeStream(AZStd::make_unique<IO::VirtualStream>(compressorStream, true));
             const char numIterations = 10;
             //////////////////////////////////////////////////////////////////////////
@@ -969,7 +962,6 @@ namespace UnitTest
             AZ_TEST_ASSERT(compressorStream->GetWrappedStream()->GetLength() == compressorStream->GetCompressedLength()); //The underlying stream length should be actual amount data written
 
             IO::Streamer::Instance().UnRegisterStream(writeStream.get());
-            writeStream->Close();
 
             // read a compressed file
             VirtualStream* readStream = IO::Streamer::Instance().RegisterFileStream(compressedFileName, OpenMode::ModeRead, false);
@@ -1009,6 +1001,9 @@ namespace UnitTest
             //////////////////////////////////////////////////////////////////////////
             // Compressed file with extra seek points (for fast search)
             compressorStream = new CompressorStream(compressedFileName, IO::OpenMode::ModeWrite);
+            AZ_TEST_ASSERT(compressorStream);
+            AZ_TEST_ASSERT(compressorStream->IsOpen());
+
             writeStream.reset(new VirtualStream(compressorStream, true));
             registered = IO::Streamer::Instance().RegisterStream(writeStream.get(), IO::OpenMode::ModeWrite, false);
             AZ_TEST_ASSERT(registered);
@@ -1149,8 +1144,6 @@ namespace UnitTest
 
             IO::Streamer::Instance().UnRegisterStream(readStream);
             //////////////////////////////////////////////////////////////////////////
-
-            IO::Streamer::Destroy();
         }
 
         private:

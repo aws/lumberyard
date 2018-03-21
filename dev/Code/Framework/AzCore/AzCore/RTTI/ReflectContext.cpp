@@ -10,7 +10,9 @@
  *
  */
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/Component/Component.h>
 
+#include <AzCore/std/functional.h>
 #include <AzCore/std/string/string.h>
 
 namespace AZ
@@ -23,9 +25,18 @@ namespace AZ
     { }
 
     //=========================================================================
+    // ~OnDemandReflectionOwner
+    //=========================================================================
+    OnDemandReflectionOwner::~OnDemandReflectionOwner()
+    {
+        m_reflectFunctions.clear();
+        m_reflectFunctions.shrink_to_fit();
+    }
+
+    //=========================================================================
     // AddReflectFunction
     //=========================================================================
-    void OnDemandReflectionOwner::AddReflectFunction(AZ::Uuid typeId, OnDemandReflectionFunctionPtr reflectFunction)
+    void OnDemandReflectionOwner::AddReflectFunction(AZ::Uuid typeId, Internal::ReflectionFunctionRef reflectFunction)
     {
         auto& currentTypes = m_reflectContext.m_currentlyProcessingTypeIds;
         // If we're in process of reflecting this type already, don't store references to it
@@ -40,7 +51,7 @@ namespace AZ
             // Capture for lambda (in case this is gone when unreflecting)
             AZ::ReflectContext* reflectContext = &m_reflectContext;
             // If it's not already reflected, add it to the list, and capture a reference to it
-            AZStd::shared_ptr<OnDemandReflectionFunctionRef> reflectionPtr(reflectFunction, [reflectContext, typeId](OnDemandReflectionFunctionRef unreflectFunction)
+            AZStd::shared_ptr<Internal::ReflectionFunctionRef> reflectionPtr(reflectFunction, [reflectContext, typeId](Internal::ReflectionFunctionRef unreflectFunction)
             {
                 bool isRemovingReflection = reflectContext->IsRemovingReflection();
 

@@ -35,10 +35,17 @@ from botocore.exceptions import ClientError
 
 # resource manager imports
 import resource_manager.cli
-import resource_manager.constant
+import resource_manager_common.constant
 import resource_manager.util
 import resource_manager.stack
 from resource_manager.gem import GemContext
+
+# Cloud Gem Framework imports
+from cgf_utils.version_utils import Version
+from cgf_utils import aws_utils
+import cgf_service_client
+from resource_manager_common import stack_info
+import cgf_service_client
 
 # resource manager test imports
 import test_constant
@@ -82,7 +89,10 @@ class lmbr_aws_TestCase(unittest.TestCase):
             'AWS::IAM::Role': self.verify_iam_role,
             'AWS::IAM::ManagedPolicy': self.verify_iam_managed_policy
         }
-        self.session = boto3.Session(region_name=REGION, profile_name=test_constant.TEST_PROFILE)
+        if os.environ.get('NO_TEST_PROFILE', None):
+            self.session = boto3.Session(region_name=REGION)
+        else:
+            self.session = boto3.Session(region_name=REGION, profile_name=test_constant.TEST_PROFILE)
         self.aws_cloudformation = self.session.client('cloudformation')
         self.aws_cognito_identity = self.session.client('cognito-identity')
         self.aws_cognito_idp = self.session.client('cognito-idp')
@@ -91,6 +101,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
         self.aws_lambda = self.session.client('lambda')
         self.aws_logs = self.session.client('logs')
         self.aws_iam = self.session.client('iam')
+        self.stack_info_manager = stack_info.StackInfoManager(self.session)
 
     def __init__(self, *args, **kwargs):
         super(lmbr_aws_TestCase, self).__init__(*args, **kwargs)
@@ -139,9 +150,9 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         temp_dir = mkdtemp()     
         game_dir = os.path.join(temp_dir, game_name)
-        aws_dir = os.path.join(game_dir, resource_manager.constant.PROJECT_AWS_DIRECTORY_NAME)
+        aws_dir = os.path.join(game_dir, resource_manager_common.constant.PROJECT_AWS_DIRECTORY_NAME)
         pc_cache_dir = os.path.join(temp_dir, 'Cache', game_name, 'pc', game_name) # yes, two game_name directories!?!
-        local_project_settings_file_path = os.path.join(aws_dir, resource_manager.constant.PROJECT_LOCAL_SETTINGS_FILENAME)
+        local_project_settings_file_path = os.path.join(aws_dir, resource_manager_common.constant.PROJECT_LOCAL_SETTINGS_FILENAME)
 
         bootstrap_cfg_path = os.path.join(temp_dir, 'bootstrap.cfg')
         if not os.path.exists(bootstrap_cfg_path):
@@ -340,7 +351,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
         framework_gem_file_path = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', 'gem.json'))
         with open(framework_gem_file_path, 'r') as file:
             framework_gem = json.load(file)
-        return resource_manager.util.Version(framework_gem['Version'])
+        return Version(framework_gem['Version'])
 
     def run(self, result=None):
         self.currentResult = result # remember result for use in tearDown
@@ -348,15 +359,18 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
     def run_all_tests(self):
 
-        aws_access_key = os.environ.get('TEST_AWS_ACCESS_KEY_ID')
-        aws_secret_key = os.environ.get('TEST_AWS_SECRET_ACCESS_KEY')
+        aws_access_key = os.environ.get('AWS_ACCESS_KEY_ID')
+        aws_secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
 
+        self.lmbr_aws_credentials_args = []
+        
         if aws_access_key and aws_secret_key:
+            print 'Using environment credentials.'
             self.lmbr_aws_credentials_args = [
                 '--aws-access-key', aws_access_key,
                 '--aws-secret-key', aws_secret_key
             ]
-        else:
+        elif not os.environ.get('NO_TEST_PROFILE', None):
             self.lmbr_aws_credentials_args = [
                 '--profile', self.TEST_PROFILE
             ]
@@ -560,7 +574,8 @@ class lmbr_aws_TestCase(unittest.TestCase):
     def load_local_project_settings(self):
         if os.path.exists(self.LOCAL_PROJECT_SETTINGS_FILE_PATH):
             with open(self.LOCAL_PROJECT_SETTINGS_FILE_PATH, 'r') as f:
-                return json.load(f)
+                setting = json.load(f)
+                return setting[setting[test_constant.DEFAULT][test_constant.SET]]
         else:
             return {}
 
@@ -616,10 +631,13 @@ class lmbr_aws_TestCase(unittest.TestCase):
             res = self.aws_iam.get_role(RoleName=resource_description['PhysicalResourceId'])
             return res['Role']['Arn']
         else:
-            return resource_manager.util.get_resource_arn(
+            stack = self.stack_info_manager.get_stack_info(resource_description['StackId'], session=self.session)
+            return aws_utils.get_resource_arn(
+                stack.resource_definitions,
                 resource_description['StackId'], 
                 resource_description['ResourceType'], 
-                resource_description['PhysicalResourceId'])
+                resource_description['PhysicalResourceId'],
+                lambda_client=self.aws_lambda)
 
     def get_stack_name_from_arn(self, arn):
         # Stack ARN format: arn:aws:cloudformation:{region}:{account}:stack/{name}/{guid}
@@ -885,7 +903,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
                         self.assertNotEqual(evaluation_result['EvalDecision'], 'allowed', format_error_message('denied'))
 
     def get_mapping(self, resource_group_name, resource_name):        
-        user_settings_file_path = os.path.join(self.ROOT_DIR, resource_manager.constant.PROJECT_CACHE_DIRECTORY_NAME, test_constant.GAME_NAME, "pc", resource_manager.constant.PROJECT_USER_DIRECTORY_NAME, resource_manager.constant.PROJECT_AWS_DIRECTORY_NAME, resource_manager.constant.USER_SETTINGS_FILENAME)
+        user_settings_file_path = os.path.join(self.ROOT_DIR, resource_manager_common.constant.PROJECT_CACHE_DIRECTORY_NAME, test_constant.GAME_NAME, "pc", resource_manager_common.constant.PROJECT_USER_DIRECTORY_NAME, resource_manager_common.constant.PROJECT_AWS_DIRECTORY_NAME, resource_manager_common.constant.USER_SETTINGS_FILENAME)
         with open(user_settings_file_path, 'r') as user_settings_file:
             user_settings = json.load(user_settings_file)
         mappings = user_settings.get('Mappings', {})
@@ -895,7 +913,7 @@ class lmbr_aws_TestCase(unittest.TestCase):
         return mapping
 
     def verify_user_mappings(self, deployment_name, logical_ids, expected_physical_resource_ids = {}):
-        user_settings_file_path = os.path.join(self.ROOT_DIR, resource_manager.constant.PROJECT_CACHE_DIRECTORY_NAME, test_constant.GAME_NAME, "pc", resource_manager.constant.PROJECT_USER_DIRECTORY_NAME, resource_manager.constant.PROJECT_AWS_DIRECTORY_NAME, resource_manager.constant.USER_SETTINGS_FILENAME)
+        user_settings_file_path = os.path.join(self.ROOT_DIR, resource_manager_common.constant.PROJECT_CACHE_DIRECTORY_NAME, test_constant.GAME_NAME, "pc", resource_manager_common.constant.PROJECT_USER_DIRECTORY_NAME, resource_manager_common.constant.PROJECT_AWS_DIRECTORY_NAME, resource_manager_common.constant.USER_SETTINGS_FILENAME)
         print 'Verifing mappings in {}'.format(user_settings_file_path)
         with open(user_settings_file_path, 'r') as user_settings_file:
             user_settings = json.load(user_settings_file)
@@ -1139,19 +1157,47 @@ class lmbr_aws_TestCase(unittest.TestCase):
 
         del self.context[test_constant.ATTR_USERS][user_name]
 
+    def make_project_json(self, content, *path_parts):
+        file_path = self.get_project_path(*path_parts)
+        dir_path = os.path.dirname(file_path)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        with open(file_path, 'w') as file:
+            json.dump(content, file, indent=4, sort_keys=True)
+
+    def make_project_aws_json(self, content, *path_parts):
+        return self.make_project_json('AWS', *path_parts)
+
+    def make_gem_json(self, content, gem_name, *path_parts):
+        return self.make_gem_file(json.dumps(content, indent=4, sort_keys=True), gem_name, *path_parts)
+
+    def make_gem_aws_json(self, content, gem_name, *path_parts):
+        return self.make_gem_aws_file(json.dumps(content, indent=4, sort_keys=True), gem_name, *path_parts)
+
+    def make_gem_file(self, content, gem_name, *path_parts):
+        file_path = self.get_gem_path(gem_name, *path_parts)
+        dir_path = os.path.dirname(file_path)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        with open(file_path, 'w') as file:
+            file.write(content)
+
+    def make_gem_aws_file(self, content, gem_name, *path_parts):
+        return self.make_gem_file(content, gem_name, 'AWS', *path_parts)
+
     def read_project_json(self, *path_parts):
-        with open(self.get_project_path(*path_parts)) as file:
+        with open(self.get_project_path(*path_parts), 'r') as file:
             return json.load(file)
 
     def read_project_aws_json(self, *path_parts):
         return self.read_project_json('AWS', *path_parts)
 
     def read_gem_json(self, gem_name, *path_parts):
-        with open(self.get_gem_path(*path_parts)) as file:
+        with open(self.get_gem_path(gem_name, *path_parts), 'r') as file:
             return json.load(file)
 
     def read_gem_aws_json(self, gem_name, *path_parts):
-        return self.read_gem_json('AWS', *path_parts)
+        return self.read_gem_json(gem_name, 'AWS', *path_parts)
 
     def edit_project_aws_json(self, *path_parts):
         return self.EditableJsonDocument(self.get_project_aws_path(*path_parts))
@@ -1205,6 +1251,59 @@ class lmbr_aws_TestCase(unittest.TestCase):
         wrapper.mock = _mock
         with mock.patch.object(get_class_that_defined_method(method_to_decorate), method_to_decorate.__name__, new = wrapper):
             yield _mock
+
+
+    def get_service_client(self, assumed_role = None, use_aws_auth = True, stack_id = None):
+        '''Gets a service client for a stack's service api.
+
+        Arguments:
+
+           assumed_role: the name of a role to assume. A role with this name is looked for in
+           the project and TEST_DEPLOYMENT_NAME deployment access stacks. use_aws_auth is
+           ignored (AWS auth is always used), if this parameter is set.
+
+           use_aws_auth: if True, then the local AWS credentails will be used to make the
+           request. Otherwise the request will not be signed.
+
+           stack_id: identifies the stack that provides the service api. If not specified,
+           the stack identified using TEST_DEPLOYMENT_NAME and TEST_RESOURCE_GROUP_NAME will be
+           used.
+
+        Returns a cgf_service_client.Path object that can be used to make requests.
+
+        '''
+
+        url = self.get_service_url(stack_id = stack_id)
+
+        if assumed_role:
+            if assumed_role.startswith('Project'):
+                role_arn = self.get_stack_resource_arn(self.get_project_stack_arn(), assumed_role)
+            else:
+                role_arn = self.get_stack_resource_arn(self.get_deployment_access_stack_arn(self.TEST_DEPLOYMENT_NAME), assumed_role)
+        else:
+            role_arn = None
+
+        if use_aws_auth or role_arn:
+            session = self.session 
+        else:
+            session = None
+
+        return cgf_service_client.for_url(url, session = session, role_arn = role_arn, verbose = True)
+    
+
+    def get_service_url(self, stack_id = None):
+        '''Gets the service API url for a stack's service api. If no stack is specified, the stack
+        identified using TEST_DEPLOYMENT_NAME and TEST_RESOURCE_GROUP_NAME will be
+        used.
+        '''
+
+        if not stack_id:
+            stack_id = self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME)
+
+        url = self.get_stack_output(stack_id, 'ServiceUrl')
+        self.assertIsNotNone(url, "Missing ServiceUrl stack output.")
+
+        return url
 
 
 PROJECT_JSON_CONTENT = '''{

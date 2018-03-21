@@ -46,7 +46,7 @@ namespace Driller
         PDM_THREAD_ID,
         PDM_TIME_TOTAL
     };
-    static char* PDM_TIME_STRING[] = {
+    static const char* PDM_TIME_STRING[] = {
         "Function",
         "Comment",
         "Excl. Time (Micro)",
@@ -77,7 +77,7 @@ namespace Driller
         PDM_VALUE_THREAD_ID,
         PDM_VALUE_TOTAL
     };
-    static char* PDM_VALUE_STRING[] = {
+    static const char* PDM_VALUE_STRING[] = {
         "Function",
         "Comment",
         "Value 1",

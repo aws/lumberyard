@@ -13,6 +13,8 @@
 #include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
 #include <AzFramework/Input/Utils/AdjustAnalogInputForDeadZone.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
@@ -114,6 +116,64 @@ namespace AzFramework
         RL,
         RR
     }};
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceGamepad::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            // Unfortunately it doesn't seem possible to reflect anything through BehaviorContext
+            // using lambdas which capture variables from the enclosing scope. So we are manually
+            // reflecting all input channel names, instead of just iterating over them like this:
+            //
+            //  auto classBuilder = behaviorContext->Class<InputDeviceGamepad>();
+            //  for (const InputChannelId& channelId : Button::All)
+            //  {
+            //      const char* channelName = channelId.GetName();
+            //      classBuilder->Constant(channelName, [channelName]() { return channelName; });
+            //  }
+
+            behaviorContext->Class<InputDeviceGamepad>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Constant("name", BehaviorConstant(IdForIndex0.GetName()))
+
+                ->Constant(Button::A.GetName(), BehaviorConstant(Button::A.GetName()))
+                ->Constant(Button::B.GetName(), BehaviorConstant(Button::B.GetName()))
+                ->Constant(Button::X.GetName(), BehaviorConstant(Button::X.GetName()))
+                ->Constant(Button::Y.GetName(), BehaviorConstant(Button::Y.GetName()))
+                ->Constant(Button::L1.GetName(), BehaviorConstant(Button::L1.GetName()))
+                ->Constant(Button::R1.GetName(), BehaviorConstant(Button::R1.GetName()))
+                ->Constant(Button::L3.GetName(), BehaviorConstant(Button::L3.GetName()))
+                ->Constant(Button::R3.GetName(), BehaviorConstant(Button::R3.GetName()))
+                ->Constant(Button::DU.GetName(), BehaviorConstant(Button::DU.GetName()))
+                ->Constant(Button::DD.GetName(), BehaviorConstant(Button::DD.GetName()))
+                ->Constant(Button::DL.GetName(), BehaviorConstant(Button::DL.GetName()))
+                ->Constant(Button::DR.GetName(), BehaviorConstant(Button::DR.GetName()))
+                ->Constant(Button::Start.GetName(), BehaviorConstant(Button::Start.GetName()))
+                ->Constant(Button::Select.GetName(), BehaviorConstant(Button::Select.GetName()))
+
+                ->Constant(Trigger::L2.GetName(), BehaviorConstant(Trigger::L2.GetName()))
+                ->Constant(Trigger::R2.GetName(), BehaviorConstant(Trigger::R2.GetName()))
+
+                ->Constant(ThumbStickAxis2D::L.GetName(), BehaviorConstant(ThumbStickAxis2D::L.GetName()))
+                ->Constant(ThumbStickAxis2D::R.GetName(), BehaviorConstant(ThumbStickAxis2D::R.GetName()))
+
+                ->Constant(ThumbStickAxis1D::LX.GetName(), BehaviorConstant(ThumbStickAxis1D::LX.GetName()))
+                ->Constant(ThumbStickAxis1D::LY.GetName(), BehaviorConstant(ThumbStickAxis1D::LY.GetName()))
+                ->Constant(ThumbStickAxis1D::RX.GetName(), BehaviorConstant(ThumbStickAxis1D::RX.GetName()))
+                ->Constant(ThumbStickAxis1D::RY.GetName(), BehaviorConstant(ThumbStickAxis1D::RY.GetName()))
+
+                ->Constant(ThumbStickDirection::LU.GetName(), BehaviorConstant(ThumbStickDirection::LU.GetName()))
+                ->Constant(ThumbStickDirection::LD.GetName(), BehaviorConstant(ThumbStickDirection::LD.GetName()))
+                ->Constant(ThumbStickDirection::LL.GetName(), BehaviorConstant(ThumbStickDirection::LL.GetName()))
+                ->Constant(ThumbStickDirection::LR.GetName(), BehaviorConstant(ThumbStickDirection::LR.GetName()))
+                ->Constant(ThumbStickDirection::RU.GetName(), BehaviorConstant(ThumbStickDirection::RU.GetName()))
+                ->Constant(ThumbStickDirection::RD.GetName(), BehaviorConstant(ThumbStickDirection::RD.GetName()))
+                ->Constant(ThumbStickDirection::RL.GetName(), BehaviorConstant(ThumbStickDirection::RL.GetName()))
+                ->Constant(ThumbStickDirection::RR.GetName(), BehaviorConstant(ThumbStickDirection::RR.GetName()))
+            ;
+        }
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceGamepad::InputDeviceGamepad()

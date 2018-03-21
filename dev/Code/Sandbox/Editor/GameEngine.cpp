@@ -657,6 +657,10 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
     REGISTER_COMMAND("ed_killmemory", KillMemory, VF_NULL, "");
     REGISTER_COMMAND("ed_goto", CmdGotoEditor, VF_CHEAT, "Internal command, used by the 'GOTO' console command\n");
 
+    // The editor needs to handle the quit command differently
+    gEnv->pConsole->RemoveCommand("quit");
+    REGISTER_COMMAND("quit", CGameEngine::HandleQuitRequest, VF_RESTRICTEDMODE, "Quit/Shutdown the engine");
+
     EBUS_EVENT(CrySystemEventBus, OnCryEditorInitialized);
     
     return AZ::Success();
@@ -942,10 +946,10 @@ bool CGameEngine::LoadAI(const QString& levelName, const QString& missionName)
     }
 
     float fStartTime = m_pISystem->GetITimer()->GetAsyncCurTime();
-    CLogFile::FormatLine("Loading AI data %s, %s", levelName.toLatin1().data(), missionName.toLatin1().data());
+    CLogFile::FormatLine("Loading AI data %s, %s", levelName.toUtf8().data(), missionName.toUtf8().data());
     gEnv->pAISystem->FlushSystemNavigation();
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_CLEAR_AIGRAPH);
-    gEnv->pAISystem->LoadLevelData(levelName.toLatin1().data(), missionName.toLatin1().data());
+    gEnv->pAISystem->LoadLevelData(levelName.toUtf8().data(), missionName.toUtf8().data());
     CLogFile::FormatLine("Finished Loading AI data in %6.3f secs", m_pISystem->GetITimer()->GetAsyncCurTime() - fStartTime);
 
     return true;
@@ -961,7 +965,7 @@ bool CGameEngine::LoadMission(const QString& mission)
     if (mission != m_missionName)
     {
         m_missionName = mission;
-        gEnv->p3DEngine->LoadMissionDataFromXMLNode(m_missionName.toLatin1().data());
+        gEnv->p3DEngine->LoadMissionDataFromXMLNode(m_missionName.toUtf8().data());
     }
 
     return true;
@@ -1127,7 +1131,7 @@ void CGameEngine::SwitchToInEditor()
 {
     // Transition to editor entity context.
     EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, StopPlayInEditor);
-    
+
     // Reset movie system
     for (int i = m_pISystem->GetIMovieSystem()->GetNumPlayingSequences(); --i >= 0;)
     {
@@ -1245,6 +1249,18 @@ void CGameEngine::SwitchToInEditor()
                                                     AzFramework::SystemCursorState::UnconstrainedAndVisible);
 }
 
+void CGameEngine::HandleQuitRequest(IConsoleCmdArgs* /*args*/)
+{
+    if (GetIEditor()->GetGameEngine()->IsInGameMode())
+    {
+        GetIEditor()->GetGameEngine()->RequestSetGameMode(false);
+        gEnv->pConsole->ShowConsole(false);
+    }
+    else
+    {
+        MainWindow::instance()->GetActionManager()->GetAction(ID_APP_EXIT)->trigger();
+    }
+}
 
 void CGameEngine::RequestSetGameMode(bool inGame)
 {
@@ -1302,7 +1318,7 @@ void CGameEngine::SetGameMode(bool bInGame)
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_PHYSICS_APPLYSTATE);
 
     // Enables engine to know about that.
-    if (MainWindow::instance()) // KDAB_TODO: We need to know if we want to support console-only mode, in which we don't have the mainwindow
+    if (MainWindow::instance())
     {
         AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
         MainWindow::instance()->setFocus();
@@ -1493,9 +1509,9 @@ void CGameEngine::LoadAINavigationData()
 
     // Inform AiPoints that their GraphNodes are invalid (so release references to them)
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_CLEAR_AIGRAPH);
-    CLogFile::FormatLine("Loading AI navigation data for Level:%s Mission:%s", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    CLogFile::FormatLine("Loading AI navigation data for Level:%s Mission:%s", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     gEnv->pAISystem->FlushSystemNavigation();
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     // Inform AiPoints that they need to recreate GraphNodes for navigation NEEDED??
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_ATTACH_AIPOINTS);
 }
@@ -1541,7 +1557,7 @@ void CGameEngine::GenerateAiAll()
 
     QString fileNameAreas;
     fileNameAreas = QStringLiteral("%1/areas%2.bai").arg(m_levelPath, m_missionName);
-    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toLatin1().data());
+    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toUtf8().data());
 
     wait.Step(65);
     GetIEditor()->GetGameEngine()->GenerateAICoverSurfaces();
@@ -1549,7 +1565,7 @@ void CGameEngine::GenerateAiAll()
     wait.Step(75);
     GenerateAINavigationMesh();
     wait.Step(85);
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data(), false, true);
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data(), false, true);
     wait.Step(95);
     CLogFile::FormatLine("Validating SmartObjects");
 
@@ -1577,7 +1593,7 @@ void CGameEngine::GenerateAiAll()
 
                         error = QStringLiteral("SmartObject '%1' at (%2, %3, %4) is invalid!").arg(pSOEntity->GetName())
                             .arg(pos.x, 0, 'f', 2).arg(pos.y, 0, 'f', 2).arg(pos.z, 0, 'f', 2);
-                        CErrorRecord err(pSOEntity, CErrorRecord::ESEVERITY_WARNING, error.toLatin1().data());
+                        CErrorRecord err(pSOEntity, CErrorRecord::ESEVERITY_WARNING, error.toUtf8().data());
                         errorReport->ReportError(err);
                     }
                 }
@@ -1601,25 +1617,25 @@ void CGameEngine::GenerateAiTriangulation()
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_CLEAR_AIGRAPH);
     m_pNavigation->FlushSystemNavigation();
 
-    CLogFile::FormatLine("Generating Triangulation for Level:%s Mission:%s", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
-    m_pNavigation->GenerateTriangulation(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    CLogFile::FormatLine("Generating Triangulation for Level:%s Mission:%s", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
+    m_pNavigation->GenerateTriangulation(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 
     // Inform AiPoints that they need to recreate GraphNodes ready for graph export
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_ATTACH_AIPOINTS);
 
-    CLogFile::FormatLine("Generating Waypoints for Level:%s Mission:%s", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    CLogFile::FormatLine("Generating Waypoints for Level:%s Mission:%s", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     m_pNavigation->ReconnectAllWaypointNodes();
 
     char fileName[1024];
-    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     AILogProgress(" Now writing to %s.", fileName);
     m_pNavigation->GetGraph()->WriteToFile(fileName);
 
     QString fileNameAreas;
     fileNameAreas = QStringLiteral("%1/areas%2.bai").arg(m_levelPath, m_missionName);
-    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toLatin1().data());
+    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toUtf8().data());
 
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 }
 
 void CGameEngine::GenerateAiWaypoint()
@@ -1634,19 +1650,19 @@ void CGameEngine::GenerateAiWaypoint()
     // Inform AiPoints that they need to create GraphNodes (if they haven't already) ready for graph export
     GetIEditor()->GetObjectManager()->SendEvent(EVENT_ATTACH_AIPOINTS);
 
-    CLogFile::FormatLine("Generating Waypoints for Level:%s Mission:%s", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    CLogFile::FormatLine("Generating Waypoints for Level:%s Mission:%s", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     m_pNavigation->ReconnectAllWaypointNodes();
 
     char fileName[1024];
-    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     AILogProgress(" Now writing to %s.", fileName);
     m_pNavigation->GetGraph()->WriteToFile(fileName);
 
     QString fileNameAreas;
     fileNameAreas = QStringLiteral("%1/areas%2.bai").arg(m_levelPath, m_missionName);
-    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toLatin1().data());
+    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toUtf8().data());
 
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 }
 
 void CGameEngine::GenerateAiFlightNavigation()
@@ -1660,19 +1676,19 @@ void CGameEngine::GenerateAiFlightNavigation()
 
     m_pNavigation->GetFlightNavRegion()->Clear();
 
-    CLogFile::FormatLine("Generating Flight navigation for Level:%s Mission:%s", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
-    m_pNavigation->GenerateFlightNavigation(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    CLogFile::FormatLine("Generating Flight navigation for Level:%s Mission:%s", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
+    m_pNavigation->GenerateFlightNavigation(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 
     char fileName[1024];
-    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     AILogProgress(" Now writing to %s.", fileName);
     m_pNavigation->GetGraph()->WriteToFile(fileName);
 
     QString fileNameAreas;
     fileNameAreas = QStringLiteral("%1/areas%2.bai").arg(m_levelPath, m_missionName);
-    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toLatin1().data());
+    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toUtf8().data());
 
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 }
 
 void CGameEngine::GenerateAiNavVolumes()
@@ -1686,19 +1702,19 @@ void CGameEngine::GenerateAiNavVolumes()
 
     m_pNavigation->FlushSystemNavigation();
 
-    CLogFile::FormatLine("Generating 3D navigation volumes for Level:%s Mission:%s", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
-    m_pNavigation->Generate3DVolumes(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    CLogFile::FormatLine("Generating 3D navigation volumes for Level:%s Mission:%s", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
+    m_pNavigation->Generate3DVolumes(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 
     char fileName[1024];
-    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     AILogProgress(" Now writing to %s.", fileName);
     m_pNavigation->GetGraph()->WriteToFile(fileName);
 
     QString fileNameAreas;
     fileNameAreas = QStringLiteral("%1/areas%2.bai").arg(m_levelPath, m_missionName);
-    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toLatin1().data());
+    m_pNavigation->WriteAreasIntoFile(fileNameAreas.toUtf8().data());
 
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 }
 
 void CGameEngine::GenerateAINavigationMesh()
@@ -1714,7 +1730,7 @@ void CGameEngine::GenerateAINavigationMesh()
     gEnv->pAISystem->GetNavigationSystem()->ProcessQueuedMeshUpdates();
 
     mnmFilename = QStringLiteral("%1/mnmnav%2.bai").arg(m_levelPath, m_missionName);
-    gEnv->pAISystem->GetNavigationSystem()->SaveToFile(mnmFilename.toLatin1().data());
+    gEnv->pAISystem->GetNavigationSystem()->SaveToFile(mnmFilename.toUtf8().data());
 }
 
 void CGameEngine::ValidateAINavigation()
@@ -1764,11 +1780,11 @@ void CGameEngine::ClearAllAINavigation()
 
     // Ensure file data is all cleared (prevents confusion if the old data were to be reloaded implicitly)
     char fileName[1024];
-    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     AILogProgress(" Now writing empty data to %s.", fileName);
     m_pNavigation->GetGraph()->WriteToFile(fileName);
     wait.Step(60);
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     wait.Step(100);
 }
 
@@ -1780,10 +1796,10 @@ void CGameEngine::Generate3DDebugVoxels()
     CLogFile::FormatLine("Use ai_debugdrawvolumevoxels to view more/fewer voxels");
 
     char fileName[1024];
-    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    azsnprintf(fileName, 1024, "%s/net%s.bai", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     AILogProgress(" Now writing to %s.", fileName);
     m_pNavigation->GetGraph()->WriteToFile(fileName);
-    gEnv->pAISystem->LoadNavigationData(m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    gEnv->pAISystem->LoadNavigationData(m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
 }
 
 void CGameEngine::GenerateAICoverSurfaces()
@@ -1843,7 +1859,7 @@ void CGameEngine::GenerateAICoverSurfaces()
     }
 
     char fileName[1024];
-    azsnprintf(fileName, 1024, "%s\\cover%s.bai", m_levelPath.toLatin1().data(), m_missionName.toLatin1().data());
+    azsnprintf(fileName, 1024, "%s\\cover%s.bai", m_levelPath.toUtf8().data(), m_missionName.toUtf8().data());
     AILogProgress("Now writing to %s.", fileName);
     GetIEditor()->GetAI()->GetCoverSurfaceManager()->WriteToFile(fileName);
 }
@@ -2095,14 +2111,14 @@ void CGameEngine::OnEditorNotifyEvent(EEditorNotifyEvent event)
         if (m_pEditorGame)
         {
             // This method must be called so we will have a player to start game mode later.
-            m_pEditorGame->OnAfterLevelLoad(m_levelName.toLatin1().data(), m_levelPath.toLatin1().data());
+            m_pEditorGame->OnAfterLevelLoad(m_levelName.toUtf8().data(), m_levelPath.toUtf8().data());
         }
     }
     case eNotify_OnEndNewScene: // intentional fall-through?
     {
         if (m_pEditorGame)
         {
-            m_pEditorGame->OnAfterLevelInit(m_levelName.toLatin1().data(), m_levelPath.toLatin1().data());
+            m_pEditorGame->OnAfterLevelInit(m_levelName.toUtf8().data(), m_levelPath.toUtf8().data());
             HideLocalPlayer(true);
             SetPlayerViewMatrix(m_playerViewTM);     // Sync initial player position
         }

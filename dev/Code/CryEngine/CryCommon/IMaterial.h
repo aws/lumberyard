@@ -416,6 +416,9 @@ struct IMaterial
     virtual const char* GetMaterialLinkName() const = 0;
     virtual void SetKeepLowResSysCopyForDiffTex() = 0;
 
+    virtual uint32 GetDccMaterialHash() const = 0;
+    virtual void SetDccMaterialHash(uint32 hash) = 0;
+
     virtual CryCriticalSection& GetSubMaterialResizeLock() = 0;
     // </interfuscator:shuffle>
 };

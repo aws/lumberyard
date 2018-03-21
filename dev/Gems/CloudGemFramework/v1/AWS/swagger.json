@@ -19,117 +19,55 @@
     },
     "paths": {
 
-        "/service/status": {
-            "x-amazon-cloud-canvas-lambda-dispatch": {
-                "module": "service_status"
-            },
-            "get": {
-                "operationId": "get_service_status",
-                "description": "Returns the service's status. Useful for testing connectivity.",
-                "responses": {
-                    "200": {
-                        "description": "A successful service status response.",
-                        "schema": {
-                            "$ref": "#/definitions/ServiceStatus"
-                        }
-                    }
-                }
+        "/health": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "interface": "CloudGemFramework_ServiceStatus_1_0_0"
             }
         },
 
-        "/deployment/{deployment_name}/access/resource/{resource_name}": {
-            "get": {
-                "description": "Returns basic information about a resource in a deployment access stack.",
-                "parameters": [
+        "/deployment": {
+            "x-cloud-gem-framework-interface-implementation": {
+                "interface": [
                     {
-                        "name": "deployment_name",
-                        "in": "path",
-                        "required": true,
-                        "type": "string"
+                        "id": "CloudGemFramework_ResourceInfo_1_0_0"
                     },
                     {
-                        "name": "resource_name",
-                        "in": "path",
-                        "required": true,
-                        "type": "string"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A resource physical id.",
-                        "schema": {
-                            "$ref": "#/definitions/ResourceInfo"
+                        "id": "CloudGemFramework_DirectoryServiceLookup_1_0_0",
+                        "lambda-dispatch": {
+                            "paths": {
+                                "/interface/{interface_id}/service": {
+                                    "get": {
+                                        "module": "service_directory",
+                                        "function": "get_interface_services"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "id": "CloudGemFramework_DirectoryServiceRegistration_1_0_0",
+                        "lambda-dispatch": {
+                            "paths": {
+                                "/service/{service_url}/interface": {
+                                    "put": {
+                                        "module": "service_directory",
+                                        "function": "put_service_interfaces"
+                                    },
+                                    "get": {
+                                        "module": "service_directory",
+                                        "function": "get_service_interfaces"
+                                    },
+                                    "delete": {
+                                        "module": "service_directory",
+                                        "function": "delete_service_interfaces"
+                                    }
+                                }
+                            }
                         }
                     }
-                },
-                "x-amazon-cloud-canvas-lambda-dispatch": {
-                    "module": "resource_info",
-                    "function": "get_deployment_access_resource_info"
-                }
-            }
-        },
-
-        "/deployment/{deployment_name}/resource-group/{resource_group_name}/resource/{resource_name}": {
-            "get": {
-                "description": "Returns basic information about a resource in a resource group stack..",
-                "parameters": [
-                    {
-                        "name": "deployment_name",
-                        "in": "path",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
-                        "name": "resource_group_name",
-                        "in": "path",
-                        "required": true,
-                        "type": "string"
-                    },
-                    {
-                        "name": "resource_name",
-                        "in": "path",
-                        "required": true,
-                        "type": "string"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A resource physical id.",
-                        "schema": {
-                            "$ref": "#/definitions/ResourceInfo"
-                        }
-                    }
-                },
-                "x-amazon-cloud-canvas-lambda-dispatch": {
-                    "module": "resource_info",
-                    "function": "get_resource_group_resource_info"
-                }
+                ]
             }
         }
 
-    },
-    "definitions": {
-        "ResourceInfo": {
-            "type": "object",
-            "properties": {
-                "PhysicalId": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "PhysicalId"
-            ]
-        },
-        "ServiceStatus": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "status"
-            ]
-        }
     }
 }

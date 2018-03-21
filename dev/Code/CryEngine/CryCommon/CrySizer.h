@@ -197,9 +197,9 @@ public:
     template<typename T>
     void AddObject(const _smart_ptr<T>& rObj) { this->AddObject(rObj.get()); }
     template<typename T>
-    void AddObject(const boost::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
-    template<typename T>
-    void AddObject(const std::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
+	void AddObject(const AZStd::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
+	template<typename T>
+	void AddObject(const std::shared_ptr<T>& rObj) { this->AddObject(rObj.get()); }
     template<typename T>
     void AddObject(const std::unique_ptr<T>& rObj) { this->AddObject(rObj.get()); }
     template<typename T, typename U>

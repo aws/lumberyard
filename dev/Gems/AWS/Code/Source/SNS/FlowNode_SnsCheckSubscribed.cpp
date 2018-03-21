@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #pragma warning(push)
 #pragma warning(disable: 4819) // Invalid character not in default code page
 #include <SNS/FlowNode_SnsCheckSubscribed.h>

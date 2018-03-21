@@ -74,7 +74,6 @@ CObjectPhysicsManager::CObjectPhysicsManager()
         functor(*this, &CObjectPhysicsManager::Command_GetPhysicsState));
 
     m_fStartObjectSimulationTime = 0;
-    m_pProgress = 0;
     m_bSimulatingObjects = false;
     m_wasSimObjects = 0;
 }
@@ -82,7 +81,7 @@ CObjectPhysicsManager::CObjectPhysicsManager()
 //////////////////////////////////////////////////////////////////////////
 CObjectPhysicsManager::~CObjectPhysicsManager()
 {
-    SAFE_DELETE(m_pProgress);
+
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -133,8 +132,6 @@ void CObjectPhysicsManager::SimulateSelectedObjectsPositions()
     {
         return;
     }
-
-    m_pProgress = new CWaitProgress("Simulating Objects");
 
     GetIEditor()->GetGameEngine()->SetSimulationMode(true, true);
 
@@ -188,13 +185,10 @@ void CObjectPhysicsManager::UpdateSimulatingObjects()
     float curTime = GetISystem()->GetITimer()->GetAsyncCurTime();
     float runningTime = (curTime - m_fStartObjectSimulationTime);
 
-    m_pProgress->Step(100 * runningTime / MAX_OBJECTS_PHYS_SIMULATION_TIME);
-
     if (m_simObjects.empty() || (runningTime > MAX_OBJECTS_PHYS_SIMULATION_TIME))
     {
         m_fStartObjectSimulationTime = 0;
         m_bSimulatingObjects = false;
-        SAFE_DELETE(m_pProgress);
         GetIEditor()->GetGameEngine()->SetSimulationMode(false, true);
     }
 }

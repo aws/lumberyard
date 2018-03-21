@@ -323,7 +323,7 @@ def register_darwin_external_ly_identity(self, configuration):
                                    target_platform,
                                    includes=[include_path],
                                    libpath=[stlib_path],
-                                   lib=['LyIdentity_static'])
+                                   lib=['libLyIdentity_static.a'])
 
 @conf
 def register_darwin_external_ly_metrics(self, configuration):
@@ -346,10 +346,10 @@ def register_darwin_external_ly_metrics(self, configuration):
                                    target_platform,
                                    includes=[include_path],
                                    libpath=[stlib_path],
-                                   lib=['libLyMetricsShared_static.lib'])
+                                   lib=['libLyMetricsShared_static.a'])
 
     self.register_3rd_party_uselib('LyMetricsProducer_static',
                                    target_platform,
                                    includes=[include_path],
                                    libpath=[stlib_path],
-                                   lib=['LyMetricsProducer_static'])
+                                   lib=['libLyMetricsProducer_static.a'])

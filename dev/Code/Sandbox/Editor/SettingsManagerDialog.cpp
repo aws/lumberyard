@@ -216,7 +216,7 @@ void CSettingsManagerDialog::ImportLayouts(QString file, const QStringList& layo
         {
             const QString& className = it->first;
 
-            XmlNodeRef dockingLayoutNode = layoutNode->findChild(className.toLatin1().data());
+            XmlNodeRef dockingLayoutNode = layoutNode->findChild(className.toUtf8().data());
             if (dockingLayoutNode)
             {
                 viewPaneManager->DeserializeLayout(dockingLayoutNode);
@@ -235,7 +235,7 @@ void CSettingsManagerDialog::ImportLayouts(QString file, const QStringList& layo
                 continue;
             }
 
-            XmlNodeRef dockingLayoutNode = layoutNode->findChild(className.toLatin1().data());
+            XmlNodeRef dockingLayoutNode = layoutNode->findChild(className.toUtf8().data());
             if (!dockingLayoutNode)
             {
                 continue;

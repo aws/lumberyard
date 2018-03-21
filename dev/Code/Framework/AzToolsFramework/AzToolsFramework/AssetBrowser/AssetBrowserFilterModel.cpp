@@ -15,6 +15,7 @@
 
 #include <QSharedPointer>
 #include <QTimer>
+#include <QCollator>
 
 namespace AzToolsFramework
 {
@@ -90,7 +91,9 @@ namespace AzToolsFramework
                     }
 
                     // if both entries are of same type, sort alphabetically
-                    return QString::compare(leftEntry->GetDisplayName().c_str(), rightEntry->GetDisplayName().c_str(), Qt::CaseInsensitive) > 0;
+                    QCollator collator;
+                    collator.setNumericMode(true);
+                    return collator.compare(leftEntry->GetDisplayName().c_str(), rightEntry->GetDisplayName().c_str()) > 0;
                 }
             }
             return QSortFilterProxyModel::lessThan(source_left, source_right);

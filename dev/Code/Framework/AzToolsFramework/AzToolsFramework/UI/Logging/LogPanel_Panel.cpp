@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "LogPanel_Panel.h"
 
@@ -75,18 +75,26 @@ namespace AzToolsFramework
             }
         };
 
+        struct BaseLogPanel::Impl
+        {
+            QTabWidget* pTabWidget;
+            AZ::u32 storageID;
+            AZStd::unordered_map<QObject*, TabSettings> settingsForTabs;
+        };
+
         BaseLogPanel::BaseLogPanel(QWidget* pParent)
             : QWidget(pParent)
+            , m_impl(new BaseLogPanel::Impl)
         {
-            m_storageID = 0;
+            m_impl->storageID = 0;
             this->setLayout(aznew LogPanelLayout(NULL));
 
-            pTabWidget = new QTabWidget(this);
-            pTabWidget->setObjectName(QString::fromUtf8("tabWidget"));
-            pTabWidget->setGeometry(QRect(9, 9, 16, 16));
-            pTabWidget->setTabsClosable(true);
-            pTabWidget->setMovable(true);
-            layout()->addWidget(pTabWidget);
+            m_impl->pTabWidget = new QTabWidget(this);
+            m_impl->pTabWidget->setObjectName(QString::fromUtf8("tabWidget"));
+            m_impl->pTabWidget->setGeometry(QRect(9, 9, 16, 16));
+            m_impl->pTabWidget->setTabsClosable(true);
+            m_impl->pTabWidget->setMovable(true);
+            layout()->addWidget(m_impl->pTabWidget);
 
             // 1) new empty widget with horizontal layout
             QWidget* layoutWidget = new QWidget(this);
@@ -108,7 +116,7 @@ namespace AzToolsFramework
             layout()->addWidget(layoutWidget);
             layout()->setContentsMargins(0, 0, 0, 0);
 
-            connect(pTabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
+            connect(m_impl->pTabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
             connect(pContextButton, SIGNAL(clicked(bool)), this, SLOT(onAddClicked(bool)));
             connect(pResetButton, SIGNAL(clicked(bool)), this, SLOT(onResetClicked(bool)));
             connect(pCopyAllButton, SIGNAL(clicked(bool)), this, SLOT(onCopyAllClicked()));
@@ -118,7 +126,7 @@ namespace AzToolsFramework
 
         void BaseLogPanel::SetStorageID(AZ::u32 id)
         {
-            m_storageID = id;
+            m_impl->storageID = id;
         }
 
         void BaseLogPanel::Reflect(AZ::ReflectContext* reflection)
@@ -138,7 +146,7 @@ namespace AzToolsFramework
 
         BaseLogPanel::~BaseLogPanel()
         {
-            while (pTabWidget->widget(0))
+            while (m_impl->pTabWidget->widget(0))
             {
                 onTabClosed(0);
             }
@@ -168,7 +176,7 @@ namespace AzToolsFramework
         {
             // user clicked the "Reset" button
 
-            while (pTabWidget->widget(0))
+            while (m_impl->pTabWidget->widget(0))
             {
                 onTabClosed(0);
             }
@@ -178,9 +186,9 @@ namespace AzToolsFramework
 
         void BaseLogPanel::onCopyAllClicked()
         {
-            if (pTabWidget)
+            if (m_impl->pTabWidget)
             {
-                QWidget* currentTab = pTabWidget->currentWidget();
+                QWidget* currentTab = m_impl->pTabWidget->currentWidget();
                 if (currentTab)
                 {
                     QMetaObject::invokeMethod(currentTab, "CopyAll", Qt::QueuedConnection);
@@ -194,12 +202,12 @@ namespace AzToolsFramework
 
             if (newTab)
             {
-                int newTabIndex = pTabWidget->addTab(newTab, QString::fromUtf8(settings.m_tabName.c_str()));
-                pTabWidget->setCurrentIndex(newTabIndex);
-                m_settingsForTabs.insert(AZStd::make_pair(qobject_cast<QObject*>(newTab), settings));
+                int newTabIndex = m_impl->pTabWidget->addTab(newTab, QString::fromUtf8(settings.m_tabName.c_str()));
+                m_impl->pTabWidget->setCurrentIndex(newTabIndex);
+                m_impl->settingsForTabs.insert(AZStd::make_pair(qobject_cast<QObject*>(newTab), settings));
                 auto destroyFunction = [this](QObject* destroyedObject)
                     {
-                        m_settingsForTabs.erase(destroyedObject);
+                    m_impl->settingsForTabs.erase(destroyedObject);
                     };
                 connect(newTab, &QObject::destroyed, this, destroyFunction);
                 connect(newTab, SIGNAL(onLinkActivated(const QString&)), this, SIGNAL(onLinkActivated(const QString&)));
@@ -210,9 +218,9 @@ namespace AzToolsFramework
         {
             AZStd::intrusive_ptr<SavedState> savedState;
 
-            if (m_storageID != 0)
+            if (m_impl->storageID != 0)
             {
-                savedState = AZ::UserSettings::Find<SavedState>(m_storageID, AZ::UserSettings::CT_LOCAL);
+                savedState = AZ::UserSettings::Find<SavedState>(m_impl->storageID, AZ::UserSettings::CT_LOCAL);
             }
 
             if (savedState)
@@ -222,10 +230,10 @@ namespace AzToolsFramework
                     return false;
                 }
 
-                while (pTabWidget->count())
+                while (m_impl->pTabWidget->count())
                 {
-                    QWidget* pWidget = pTabWidget->widget(0);
-                    pTabWidget->removeTab(0);
+                    QWidget* pWidget = m_impl->pTabWidget->widget(0);
+                    m_impl->pTabWidget->removeTab(0);
                     delete pWidget;
                 }
 
@@ -244,16 +252,16 @@ namespace AzToolsFramework
 
         void BaseLogPanel::SaveState()
         {
-            if (m_storageID == 0)
+            if (m_impl->storageID == 0)
             {
                 AZ_TracePrintf("Debug", "A log window not storing its state because it has not been assigned a storage ID.");
                 return;
             }
 
-            AZStd::intrusive_ptr<SavedState> myState = AZ::UserSettings::CreateFind<SavedState>(m_storageID, AZ::UserSettings::CT_LOCAL);
+            AZStd::intrusive_ptr<SavedState> myState = AZ::UserSettings::CreateFind<SavedState>(m_impl->storageID, AZ::UserSettings::CT_LOCAL);
             myState->m_tabSettings.clear(); // because it might find an existing state!
 
-            for (auto pair : m_settingsForTabs)
+            for (auto pair : m_impl->settingsForTabs)
             {
                 myState->m_tabSettings.push_back(pair.second);
             }
@@ -262,8 +270,8 @@ namespace AzToolsFramework
         void BaseLogPanel::onTabClosed(int whichTab)
         {
             // a tab was closed.
-            QWidget* pWidget = pTabWidget->widget(whichTab);
-            pTabWidget->removeTab(whichTab);
+            QWidget* pWidget = m_impl->pTabWidget->widget(whichTab);
+            m_impl->pTabWidget->removeTab(whichTab);
             delete pWidget;
         }
 

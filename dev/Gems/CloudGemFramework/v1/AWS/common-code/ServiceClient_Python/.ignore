@@ -1,0 +1,5 @@
+*.pyc
+*.pyproj
+test
+.import
+

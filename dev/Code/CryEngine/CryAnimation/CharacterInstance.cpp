@@ -25,8 +25,6 @@
 
 #include "ModelBoneNames.h"
 
-DECLARE_JOB("SkinningTransformationsComputation", TSkinningTransformationsComputation, CCharInstance::SkinningTransformationsComputation);
-
 CCharInstance::CCharInstance(const string& strFileName, _smart_ptr<CDefaultSkeleton> pDefaultSkeleton)
     :   m_skinningTransformationsCount(0)
     , m_skinningTransformationsMovement(0)
@@ -91,9 +89,9 @@ void CCharInstance::RuntimeInit(_smart_ptr<CDefaultSkeleton> pExtDefaultSkeleton
             && pSkinningData->nNumBones == expectedNumBones
             && pSkinningData->pPreviousSkinningRenderData
             && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones
-            && pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+            && pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor)
         {
-            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+                pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor->WaitForCompletion();
         }
     }
 
@@ -153,9 +151,9 @@ CCharInstance::~CCharInstance()
     // sync skinning jobs if there are any
     int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
     int nList = nFrameID % 3;
-    if (arrSkinningRendererData[nList].nFrameID == nFrameID && arrSkinningRendererData[nList].pSkinningData && arrSkinningRendererData[nList].pSkinningData->pAsyncJobs)
+    if (arrSkinningRendererData[nList].nFrameID == nFrameID && arrSkinningRendererData[nList].pSkinningData && arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor)
     {
-        gEnv->pJobManager->WaitForJob(*arrSkinningRendererData[nList].pSkinningData->pAsyncJobs);
+        arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor->WaitForCompletion();
     }
 
     // make sure skeleton animation job finishes
@@ -620,11 +618,13 @@ void CCharInstance::BeginSkinningTransformationsComputation(SSkinningData* pSkin
     {
         *pSkinningData->pMasterSkinningDataList = SKINNING_TRANSFORMATION_RUNNING_INDICATOR;
 
-        TSkinningTransformationsComputation job(pSkinningData, m_pDefaultSkeleton.get(), 0, &m_SkeletonPose.GetPoseData(), &m_skinningTransformationsMovement);
-        job.SetClassInstance(this);
-        job.RegisterJobState(pSkinningData->pAsyncJobs);
-        job.SetPriorityLevel(JobManager::eHighPriority);
-        job.Run();
+        CDefaultSkeleton* pDefaultSkeleton = m_pDefaultSkeleton.get();
+        const Skeleton::CPoseData* pPoseData = &m_SkeletonPose.GetPoseData();
+        f32* pSkinningTransformationsMovement = &m_skinningTransformationsMovement;
+        pSkinningData->pAsyncJobExecutor->StartJob([this, pSkinningData, pDefaultSkeleton, pPoseData, pSkinningTransformationsMovement]()
+        {
+            this->SkinningTransformationsComputation(pSkinningData, pDefaultSkeleton, 0, pPoseData, pSkinningTransformationsMovement);
+        }); // Legacy JobManager priority: eHighPriority
     }
 }
 
@@ -933,7 +933,7 @@ void CCharInstance::SkinningTransformationsComputation(SSkinningData* pSkinningD
     while (pSkinningJobList != SKINNING_TRANSFORMATION_RUNNING_INDICATOR)
     {
         SVertexAnimationJob* pVertexAnimation = static_cast<SVertexAnimationJob*>(pSkinningJobList->pCustomData);
-        pVertexAnimation->Begin(pSkinningJobList->pAsyncJobs);
+        pVertexAnimation->Begin(pSkinningJobList->pAsyncJobExecutor);
 
         pSkinningJobList = pSkinningJobList->pNextSkinningData;
     }

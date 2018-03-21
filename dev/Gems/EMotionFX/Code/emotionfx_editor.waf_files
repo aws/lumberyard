@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/EMotionFX_precompiled.cpp",
+            "Source/EMotionFX_precompiled.h"
         ]
     },
     "auto": {
@@ -18,7 +18,6 @@
             "Source/Integration/Editor/Components/EditorAnimGraphComponent.cpp",
             "Source/Integration/Editor/Components/EditorSimpleMotionComponent.h",
             "Source/Integration/Editor/Components/EditorSimpleMotionComponent.cpp"
-        ]    
+        ]
     }
 }
-

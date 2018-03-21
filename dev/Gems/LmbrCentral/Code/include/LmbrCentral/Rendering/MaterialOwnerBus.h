@@ -107,6 +107,30 @@ namespace LmbrCentral
         //! doesn't exist yet.
         virtual void OnMaterialOwnerReady() = 0;
 
+        /**
+        * When connecting to this bus, if the material owner is ready you will immediately get an OnMaterialOwnerReady event
+        **/
+        template<class Bus>
+        struct ConnectionPolicy
+            : public AZ::EBusConnectionPolicy<Bus>
+        {
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            {
+                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+
+                bool readyResult = false;
+                LmbrCentral::MaterialOwnerRequestBus::EventResult(
+                    readyResult,
+                    id,
+                    &LmbrCentral::MaterialOwnerRequestBus::Events::IsMaterialOwnerReady);
+
+                if (readyResult)
+                {
+                    typename Bus::template CallstackEntryIterator<typename Bus::InterfaceType**> callstack(nullptr, &id); // Workaround for GetCurrentBusId in callee
+                    handler->OnMaterialOwnerReady();
+                }
+            }
+        };
     };
 
     using MaterialOwnerNotificationBus = AZ::EBus<MaterialOwnerNotifications>;

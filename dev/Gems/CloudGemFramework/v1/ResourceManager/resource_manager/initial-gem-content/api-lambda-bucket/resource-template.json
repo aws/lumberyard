@@ -158,7 +158,7 @@
                         ]
                     }
                 }, 
-                "Handler": "service.dispatch", 
+                "Handler": "cgf_lambda_service.dispatch", 
                 "Role": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration", 

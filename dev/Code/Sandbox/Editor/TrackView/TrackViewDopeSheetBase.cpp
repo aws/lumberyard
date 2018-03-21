@@ -419,8 +419,8 @@ void CTrackViewDopeSheetBase::mouseDoubleClickEvent(QMouseEvent* event)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDopeSheetBase::OnLButtonDown(Qt::KeyboardModifiers modifiers, const QPoint& point)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-    if (!pSequence)
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+    if (!sequence)
     {
         return;
     }
@@ -459,10 +459,20 @@ void CTrackViewDopeSheetBase::OnLButtonDown(Qt::KeyboardModifiers modifiers, con
 
         if (pAnimNode)
         {
-            CUndo undo("Paste Keys");
-            CUndo::Record(new CUndoAnimKeySelection(pSequence));
-            pSequence->DeselectAllKeys();
-            pSequence->PasteKeysFromClipboard(pAnimNode, pTrack, ComputeSnappedMoveOffset());
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo undo("Paste Keys");
+                CUndo::Record(new CUndoAnimKeySelection(sequence));
+                sequence->DeselectAllKeys();
+                sequence->PasteKeysFromClipboard(pAnimNode, pTrack, ComputeSnappedMoveOffset());
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Paste Keys");
+                sequence->DeselectAllKeys();
+                sequence->PasteKeysFromClipboard(pAnimNode, pTrack, ComputeSnappedMoveOffset());
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
         }
 
         SetMouseCursor(Qt::ArrowCursor);
@@ -475,12 +485,12 @@ void CTrackViewDopeSheetBase::OnLButtonDown(Qt::KeyboardModifiers modifiers, con
     // The summary region is used for moving already selected keys.
     if (m_rcSummary.contains(point))
     {
-        CTrackViewKeyBundle selectedKeys = pSequence->GetSelectedKeys();
+        CTrackViewKeyBundle selectedKeys = sequence->GetSelectedKeys();
         if (selectedKeys.GetKeyCount() > 0)
         {
             /// Move/Clone Key Undo Begin
             GetIEditor()->BeginUndo();
-            pSequence->StoreUndoForTracksWithSelectedKeys();
+            sequence->StoreUndoForTracksWithSelectedKeys();
             StoreMementoForTracksWithSelectedKeys();
 
             m_keyTimeOffset = 0;
@@ -1797,6 +1807,7 @@ void CTrackViewDopeSheetBase::ShowKeyPropertyCtrlOnSpot(int x, int y, bool bMult
         m_wndPropsOnSpot = new ReflectedPropertyControl(this);
         m_wndPropsOnSpot->Setup(true, 150);
         m_wndPropsOnSpot->setWindowFlags(Qt::CustomizeWindowHint | Qt::Popup | Qt::WindowStaysOnTopHint);
+        m_wndPropsOnSpot->SetStoreUndoByItems(false);
         bKeyChangeInSameTrack = false;
     }
 

@@ -14,7 +14,7 @@
 #define CHARTNUMBERFORMATS_H
 
 #include <AzCore/base.h>
-#include "qstring.h"
+#include <QString>
 
 #pragma once
 

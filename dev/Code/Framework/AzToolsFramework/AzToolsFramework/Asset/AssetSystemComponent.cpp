@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 
 #include <AzCore/IO/FileIO.h>
@@ -74,7 +74,7 @@ namespace AzToolsFramework
             if (socketConn)
             {
                 m_cbHandle = socketConn->AddMessageHandler(AZ_CRC("AssetProcessorManager::SourceFileNotification", 0x8bfc4d1c),
-                    [this](unsigned int typeId, unsigned int /*serial*/, const void* data, unsigned int dataLength)
+                    [](unsigned int typeId, unsigned int /*serial*/, const void* data, unsigned int dataLength)
                 {
                     OnAssetSystemMessage(typeId, data, dataLength);
                 });
@@ -97,7 +97,7 @@ namespace AzToolsFramework
             {
                 socketConn->RemoveMessageHandler(AZ_CRC("AssetProcessorManager::SourceFileNotification", 0x8bfc4d1c), m_cbHandle);
             }
-            
+
             AssetSystemBus::ClearQueuedEvents();
         }
 
@@ -188,7 +188,7 @@ namespace AzToolsFramework
                 return false;
             }
 
-            
+
             if (response.m_resolved)
             {
                 fullPath = response.m_fullSourcePath;
@@ -263,6 +263,31 @@ namespace AzToolsFramework
             if (!SendRequest(request, response))
             {
                 AZ_Error("Editor", false, "Failed to send GetSourceInfoBySourcePath request for %s", sourcePath);
+                return false;
+            }
+
+            if (response.m_found)
+            {
+                assetInfo = response.m_assetInfo;
+                watchFolder = response.m_rootFolder;
+            }
+            return response.m_found;
+        }
+
+        bool AssetSystemComponent::GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
+        {
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
+            {
+                return false;
+            }
+
+            AzFramework::AssetSystem::SourceAssetInfoRequest request(sourceUuid, AZ::Uuid::CreateNull());
+            AzFramework::AssetSystem::SourceAssetInfoResponse response;
+
+            if (!SendRequest(request, response))
+            {
+                AZ_Error("Editor", false, "Failed to send GetSourceInfoBySourceUUID request for uuid: ", sourceUuid.ToString<AZ::OSString>().c_str());
                 return false;
             }
 

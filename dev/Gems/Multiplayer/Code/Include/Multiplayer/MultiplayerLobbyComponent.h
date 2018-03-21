@@ -168,7 +168,6 @@ namespace Multiplayer
 
         // GameLift Functions
         const char* GetGameLiftParam(const char* param);
-        bool GetGameLiftBoolParam(const char* param);
         void SetGameLiftParam(const char* param, const char* value);
 
         void ShowGameLiftConfig();

@@ -69,7 +69,7 @@ SANDBOX_API void ErrorV(const char* format, va_list argList)
     str += szBuffer;
 
     //CLogFile::WriteLine( str );
-    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, str.toLatin1().data());
+    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_ERROR, str.toUtf8().data());
 
     if (!CCryEditApp::instance()->IsInTestMode() && !CCryEditApp::instance()->IsInExportMode() && !CCryEditApp::instance()->IsInLevelLoadTestMode())
     {
@@ -293,7 +293,7 @@ void CLogFile::AboutSystem()
     GetWindowsDirectory(szBuffer, sizeof(szBuffer));
     str += szBuffer;
     str += ")";
-    CryLog("%s", str.toLatin1().data());
+    CryLog("%s", str.toUtf8().data());
 #elif defined(AZ_PLATFORM_APPLE)
     QString operatingSystemName;
     if (QSysInfo::MacintoshVersion >= Q_MV_OSX(10, 12))

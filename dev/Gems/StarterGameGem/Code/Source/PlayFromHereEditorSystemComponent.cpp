@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "StarterGameGem_precompiled.h"
 #include "PlayFromHereEditorSystemComponent.h"
 
 #include <AzCore/Serialization/SerializeContext.h>

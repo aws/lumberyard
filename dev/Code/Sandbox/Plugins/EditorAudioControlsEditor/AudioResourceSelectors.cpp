@@ -25,7 +25,7 @@ using namespace AudioControls;
 namespace AudioControls
 {
     //-------------------------------------------------------------------------------------------//
-    dll_string ShowSelectDialog(const SResourceSelectorContext& context, const char* pPreviousValue, const EACEControlType controlType)
+    QString ShowSelectDialog(const SResourceSelectorContext& context, const QString& pPreviousValue, const EACEControlType controlType)
     {
         CATLControlsModel* pModel = CAudioControlsEditorPlugin::GetATLModel();
         AZ_Assert(pModel != nullptr, "AudioResourceSelectors - ATL Model is null!");
@@ -35,41 +35,41 @@ namespace AudioControls
 
         ATLControlsDialog dialog(context.parentWidget, controlType);
         dialog.SetScope(sLevelName);
-        return dialog.ChooseItem(pPreviousValue);
+        return dialog.ChooseItem(pPreviousValue.toUtf8().constData());
     }
 
     //-------------------------------------------------------------------------------------------//
-    dll_string AudioTriggerSelector(const SResourceSelectorContext& context, const char* pPreviousValue)
+    QString AudioTriggerSelector(const SResourceSelectorContext& context, const QString& pPreviousValue)
     {
         return ShowSelectDialog(context, pPreviousValue, eACET_TRIGGER);
     }
 
     //-------------------------------------------------------------------------------------------//
-    dll_string AudioSwitchSelector(const SResourceSelectorContext& context, const char* pPreviousValue)
+    QString AudioSwitchSelector(const SResourceSelectorContext& context, const QString& pPreviousValue)
     {
         return ShowSelectDialog(context, pPreviousValue, eACET_SWITCH);
     }
 
     //-------------------------------------------------------------------------------------------//
-    dll_string AudioSwitchStateSelector(const SResourceSelectorContext& context, const char* pPreviousValue)
+    QString AudioSwitchStateSelector(const SResourceSelectorContext& context, const QString& pPreviousValue)
     {
         return ShowSelectDialog(context, pPreviousValue, eACET_SWITCH_STATE);
     }
 
     //-------------------------------------------------------------------------------------------//
-    dll_string AudioRTPCSelector(const SResourceSelectorContext& context, const char* pPreviousValue)
+    QString AudioRTPCSelector(const SResourceSelectorContext& context, const QString& pPreviousValue)
     {
         return ShowSelectDialog(context, pPreviousValue, eACET_RTPC);
     }
 
     //-------------------------------------------------------------------------------------------//
-    dll_string AudioEnvironmentSelector(const SResourceSelectorContext& context, const char* pPreviousValue)
+    QString AudioEnvironmentSelector(const SResourceSelectorContext& context, const QString& pPreviousValue)
     {
         return ShowSelectDialog(context, pPreviousValue, eACET_ENVIRONMENT);
     }
 
     //-------------------------------------------------------------------------------------------//
-    dll_string AudioPreloadRequestSelector(const SResourceSelectorContext& context, const char* pPreviousValue)
+    QString AudioPreloadRequestSelector(const SResourceSelectorContext& context, const QString& pPreviousValue)
     {
         return ShowSelectDialog(context, pPreviousValue, eACET_PRELOAD);
     }

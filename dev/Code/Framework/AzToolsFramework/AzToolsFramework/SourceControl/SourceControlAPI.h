@@ -46,8 +46,8 @@ namespace AzToolsFramework
         SourceControlStatus m_status;
         unsigned int m_flags;
         AZStd::string m_filePath;
-        AZStd::string m_StatusUser; // informational  -this is the user that caused the above status. (eg Checked Out -> who checked it out.  Out of date -> who submitted a new version.
-        // secondary use of m_StatusUser is to signify that this file is checked out by other people than you, simultaneously
+        AZStd::string m_StatusUser; // informational - this is the user that caused the above status.
+        // secondary use of m_StatusUser is to signify that this file is being worked on by other users, simultaneously.
 
         SourceControlFileInfo()
             : m_status(SCS_ProviderIsDown)
@@ -116,7 +116,7 @@ namespace AzToolsFramework
 
         SourceControlSettingInfo() = default;
 
-        //! is this value acutally present and usable?
+        //! is this value actually present and usable?
         bool IsAvailable() const
         {
             return (m_status != SourceControlSettingStatus::Invalid) && (m_status != SourceControlSettingStatus::Unset) && (!m_value.empty());
@@ -170,6 +170,12 @@ namespace AzToolsFramework
 
         //! Attempt to revert a file
         virtual void RequestRevert(const char* fullFilePath, const SourceControlResponseCallback& respCallback) = 0;
+
+        //! Attempt to get latest revision of a file
+        virtual void RequestLatest(const char* fullFilePath, const SourceControlResponseCallback& respCallback) = 0;
+
+        //! Attempt to rename or move a file
+        virtual void RequestRename(const char* sourcePathFull, const char* destPathFull, const SourceControlResponseCallback& respCallback) = 0;
     };
 
     using SourceControlCommandBus = AZ::EBus<SourceControlCommands>;

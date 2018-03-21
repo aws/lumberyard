@@ -17,7 +17,6 @@
 
 #include <platform.h>
 #include <Cry_Math.h>
-#include <boost/iterator/iterator_facade.hpp>
 #include <AzCore/IO/FileIO.h>
 
 class ICrySizer;
@@ -107,10 +106,6 @@ public:
     XmlString() {};
     XmlString(const char* str)
         : string(str) {};
-#ifdef  _AFX
-    XmlString(const CString& str)
-        : string((const char*)str) {};
-#endif
 
     operator const char*() const {
         return c_str();
@@ -695,7 +690,6 @@ inline XmlNodeRef&  XmlNodeRef::operator=(const XmlNodeRef& newp)
 
 //XmlNodeRef can be treated as a container. Iterating through it, iterates through its children
 class XmlNodeRefIterator
-    : public boost::iterator_facade<XmlNodeRefIterator, XmlNodeRef, boost::random_access_traversal_tag, IXmlNode*>
 {
 public:
     XmlNodeRefIterator()
@@ -708,9 +702,20 @@ public:
     {
         Update();
     }
-private:
-    friend class boost::iterator_core_access;
 
+	bool operator!=(const XmlNodeRefIterator& rhs) {
+		return m_index != rhs.m_index;
+	}
+	XmlNodeRefIterator& operator++() {
+		++m_index;
+		Update();
+		return *this;
+	}
+	IXmlNode* operator*() const {
+		return m_currentChildNode;
+	}
+
+private:
     void Update()
     {
         if (m_index >= 0 && m_index < m_parentNode->getChildCount())
@@ -718,12 +723,6 @@ private:
             m_currentChildNode = m_parentNode->getChild(static_cast<int>(m_index));
         }
     }
-    void increment() { ++m_index; Update(); }
-    void decrement() { --m_index; Update(); }
-    void advance(std::size_t distance) { m_index += distance; Update(); }
-    difference_type distance_to(const XmlNodeRefIterator& other) const { return other.m_index - m_index; }
-    bool equal(const XmlNodeRefIterator& other) const { return m_index == other.m_index; }
-    reference dereference() const { return m_currentChildNode; }
 
     XmlNodeRef m_parentNode;
     XmlNodeRef m_currentChildNode;

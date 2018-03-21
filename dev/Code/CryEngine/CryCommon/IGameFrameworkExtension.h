@@ -34,6 +34,6 @@ struct IGameFrameworkExtensionCreator
     //  ICryUnknown pointer to just created extension (it can be safely casted with cryinterface_cast< > to the corresponding interface)
     virtual ICryUnknown* Create(IGameFramework* pIGameFramework) = 0;
 };
-DECLARE_BOOST_POINTERS(IGameFrameworkExtensionCreator);
+DECLARE_SMART_POINTERS(IGameFrameworkExtensionCreator);
 
 #endif //__IGameFrameworkExtension_h__

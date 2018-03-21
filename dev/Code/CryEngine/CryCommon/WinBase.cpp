@@ -64,9 +64,9 @@ unsigned int g_EnableMultipleAssert = 0;//set to something else than 0 if to ena
 
 #include "StringUtils.h"
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_DEFINE_FS_ERRNO_TYPE
 typedef int FS_ERRNO_TYPE;
-#if defined(APPLE) || defined(ORBIS) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_DEFINE_FS_STAT_TYPE
 typedef struct stat FS_STAT_TYPE;
 #else
 typedef struct stat64 FS_STAT_TYPE;
@@ -78,9 +78,11 @@ static const FS_ERRNO_TYPE FS_EISDIR = EISDIR;
 
 #include <mutex>
 
+#elif AZ_TRAIT_COMPILER_DEFINE_FS_STAT_TYPE
+#error cannot request AZ_TRAIT_COMPILER_DEFINE_FS_STAT_TYPE if AZ_TRAIT_COMPILER_DEFINE_FS_ERRNO_TYPE is zero
 #endif
 
-#if (defined(LINUX) || defined(APPLE) || defined(ORBIS)) && (!defined(_RELEASE) || defined(_DEBUG)) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_DEFINE_SASSERTDATA_TYPE && (!defined(_RELEASE) || defined(_DEBUG))
 struct SAssertData
 {
     int line;
@@ -245,7 +247,7 @@ char* ltoa (long i, char* a, int radix)
 }
 
 
-#if defined(ANDROID) || defined (ORBIS) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_DEFINE_WCSICMP
 // For Linux it's redefined to wcscasecmp and wcsncasecmp'
 int wcsicmp (const wchar_t* s1, const wchar_t* s2)
 {
@@ -1076,7 +1078,7 @@ BOOL GetComputerName(LPSTR lpBuffer, LPDWORD lpnSize)
 }
 #endif
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_DEFINE_GETCURRENTPROCESSID
 DWORD GetCurrentProcessId(void)
 {
     return (DWORD)getpid();

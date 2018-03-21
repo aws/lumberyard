@@ -55,13 +55,13 @@ void CAIGoal::Serialize(XmlNodeRef& node, bool bLoading)
     else
     {
         // Saving.
-        node->setAttr("Name", m_name.toLatin1().data());
+        node->setAttr("Name", m_name.toUtf8().data());
 
         for (int i = 0; i < m_stages.size(); i++)
         {
             // Write goals stages to xml.
             CAIGoalStage& stage = m_stages[i];
-            XmlNodeRef stageNode = node->newChild(stage.name.toLatin1().data());
+            XmlNodeRef stageNode = node->newChild(stage.name.toUtf8().data());
             stageNode->copyAttributes(stage.params);
             stageNode->setAttr("Blocking", stage.blocking);
         }

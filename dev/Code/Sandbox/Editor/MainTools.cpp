@@ -64,7 +64,7 @@ CMainTools::CMainTools(QWidget* parent)
         bi.toolClassName = toolClassName;
         bi.name = category;
         bi.toolUserDataKey = "category";
-        bi.toolUserData = category.toLatin1().data();
+        bi.toolUserData = category.toUtf8().data();
         bi.toolTip = GetToolTip(category);
 
         AddButton(bi);

@@ -122,5 +122,6 @@ namespace AzToolsFramework
     void SortEntitiesByLocationInHierarchy(EntityIdList& entityIds);
 
     bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType);
+    bool IsComponentWithServiceRegistered(const AZ::Crc32& serviceId);
 
 }; // namespace AzToolsFramework

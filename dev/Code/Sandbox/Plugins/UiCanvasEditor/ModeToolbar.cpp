@@ -64,7 +64,7 @@ void ModeToolbar::AddModes(EditorWindow* parent)
     {
         int key = (Qt::Key_1 + i++);
 
-        QString iconUrl = QString(":/Icons/%1.png").arg(ViewportHelpers::InteractionModeToString((int)m));
+        QString iconUrl = QString(":/Icons/%1Icon.png").arg(ViewportHelpers::InteractionModeToString((int)m));
 
         QIcon icon(iconUrl);
         AddPixmapToIcon(icon, QIcon::Mode::Active, Qt::white);

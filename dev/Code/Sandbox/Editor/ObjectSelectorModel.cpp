@@ -409,7 +409,7 @@ static void GetMaterialBreakability(std::set<QString>* breakTypes, CMaterial* pM
             return;
         }
 
-        ISurfaceType* pSurfaceType = pSurfaceManager->GetSurfaceTypeByName(surfaceTypeName.toLatin1().data());
+        ISurfaceType* pSurfaceType = pSurfaceManager->GetSurfaceTypeByName(surfaceTypeName.toUtf8().data());
         if (pSurfaceType && pSurfaceType->GetBreakability() != 0)
         {
             breakTypes->insert(pSurfaceType->GetType());
@@ -1186,7 +1186,7 @@ bool ObjectSelectorModel::IsPropertyMatch(CBaseObject* pObject) const
 
                 if (sVarPath.isEmpty() && pVars)
                 {
-                    IVariable* pVar = pVars->FindVariable(sPropFilter.toLatin1().data());
+                    IVariable* pVar = pVars->FindVariable(sPropFilter.toUtf8().data());
 
                     if (pVar)
                     {

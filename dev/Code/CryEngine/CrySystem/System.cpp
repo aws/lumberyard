@@ -27,6 +27,10 @@
 #include <AzFramework/API/ApplicationAPI_win.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
+#if defined(_RELEASE) && AZ_LEGACY_CRYSYSTEM_TRAIT_USE_EXCLUDEUPDATE_ON_CONSOLE
+//exclude some not needed functionality for release console builds
+#define EXCLUDE_UPDATE_ON_CONSOLE
+#endif
 
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -492,7 +496,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_bIsSteamInitialized = false;
 
     m_pDataProbe = nullptr;
-#if defined(WIN32) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
     RegisterWindowMessageHandler(this);
 #endif
 
@@ -507,7 +511,7 @@ CSystem::~CSystem()
 {
     ShutDown();
 
-#if defined(WIN32) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
     UnregisterWindowMessageHandler(this);
 #endif
 
@@ -824,6 +828,7 @@ void CSystem::ShutDown()
     SAFE_DELETE(m_pMemStats);
     SAFE_DELETE(m_pSizer);
     SAFE_DELETE(m_pDefaultValidator);
+    m_pValidator = nullptr;
 
     SAFE_DELETE(m_pPhysRenderer);
 
@@ -2091,7 +2096,7 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
         m_pDownloadManager->Update();
     }
 #endif //DOWNLOAD_MANAGER
-#if !defined(LINUX) && !defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_SIMULATE_TASK
     if (m_sys_SimulateTask->GetIVal() > 0)
     {
         // have a chance to win longest Pi calculation content
@@ -2115,7 +2120,7 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
         }
         //CryLog("Task calculate PI = %f ", Pi); // Thats funny , but it works :-)
     }
-#endif //LINUX
+#endif //AZ_LEGACY_CRYSYSTEM_TRAIT_SIMULATE_TASK
        //Now update frame statistics
     CTimeValue cur_time = gEnv->pTimer->GetAsyncTime();
 
@@ -2513,7 +2518,7 @@ void CSystem::debug_GetCallStackRaw(void** callstack, uint32& callstackLength)
     callstackLength = 0;
 #endif
 
-#if   defined(WIN64) || defined(WIN32) || defined(DURANGO)
+#if   AZ_LEGACY_CRYSYSTEM_TRAIT_CAPTURESTACK
     if (callstackCapacity > 0x40)
     {
         callstackCapacity = 0x40;
@@ -2565,13 +2570,6 @@ void CSystem::ApplicationTest(const char* szParam)
 
 void CSystem::ExecuteCommandLine()
 {
-    // should only be called once
-    {
-        static bool bCalledAlready = false;
-        assert(!bCalledAlready);
-        bCalledAlready = true;
-    }
-
     // auto detect system spec (overrides profile settings)
     if (m_pCmdLine->FindArg(eCLAT_Pre, "autodetect"))
     {
@@ -3043,7 +3041,7 @@ void* CSystem::GetRootWindowMessageHandler()
 //////////////////////////////////////////////////////////////////////////
 void CSystem::RegisterWindowMessageHandler(IWindowMessageHandler* pHandler)
 {
-#if defined(WIN32) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
     assert(pHandler && !stl::find(m_windowMessageHandlers, pHandler) && "This IWindowMessageHandler is already registered");
     m_windowMessageHandlers.push_back(pHandler);
 #else
@@ -3054,7 +3052,7 @@ void CSystem::RegisterWindowMessageHandler(IWindowMessageHandler* pHandler)
 //////////////////////////////////////////////////////////////////////////
 void CSystem::UnregisterWindowMessageHandler(IWindowMessageHandler* pHandler)
 {
-#if defined(WIN32) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
     bool bRemoved = stl::find_and_erase(m_windowMessageHandlers, pHandler);
     assert(pHandler && bRemoved && "This IWindowMessageHandler was not registered");
 #else

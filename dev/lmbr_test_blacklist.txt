@@ -5,7 +5,7 @@ boost_.*
 D3D.*
 dbghelp.*
 ffmpeg\.exe
-glut32\.dll
+glut32\.(dll|dylib|so)
 fuel[\\/].*
 glew32.*
 icu.*
@@ -13,18 +13,18 @@ lib(eay32|EGL|fbxsdk|GLES|ogg|opus|vo).*
 libSce.*
 Microsoft.*
 msvc.*
-nvToolsExt64.*\.dll
+nvToolsExt64.*\.(dll|dylib|so)
 opengl.*
 openvr_api.*
 osvr.*
-PhysX3CharacterKinematic.*\.dll
-PhysX3Common.*\.dll
-PhysX3Cooking.*\.dll
-PhysX3.*\.dll
-PhysX3Gpu.*\.dll
-PhysXDevice.*\.dll
-PxFoundation.*\.dll
-PxPvdSDK.*\.dll
+PhysX3CharacterKinematic.*\.(dll|dylib|so)
+PhysX3Common.*\.(dll|dylib|so)
+PhysX3Cooking.*\.(dll|dylib|so)
+PhysX3.*\.(dll|dylib|so)
+PhysX3Gpu.*\.(dll|dylib|so)
+PhysXDevice.*\.(dll|dylib|so)
+PxFoundation.*\.(dll|dylib|so)
+PxPvdSDK.*\.(dll|dylib|so)
 (lib)?PVRTexLib.*
 python.*
 qt5.*
@@ -40,12 +40,12 @@ xinput.*
 zlib.*
 
 # internal modules
-AzCoreTestDLL\.dll
-ComponentEntityEditorPlugin\.dll
-CryDesigner\.dll
-LyIdentity.*\.dll
-LyMetrics.*\.dll
-MaglevControlPanel\.dll
-UiCanvasEditor\.dll
+AzCoreTestDLL\.(dll|dylib|so)
+ComponentEntityEditorPlugin\.(dll|dylib|so)
+CryDesigner\.(dll|dylib|so)
+LyIdentity.*\.(dll|dylib|so)
+LyMetrics.*\.(dll|dylib|so)
+MaglevControlPanel\.(dll|dylib|so)
+UiCanvasEditor\.(dll|dylib|so)
 .*\.app.*
 AssetBuilder\.exe

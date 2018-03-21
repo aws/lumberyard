@@ -35,7 +35,10 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CryLegacy.352fef7706634c92814c587e84d7165a.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
-				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v1.1.1" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v1.1.3" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.GraphCanvas.875b6fcbdeea44deaae7984ad9bb6cdc.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemLeaderboard.a6db8cb7bfd645509f538bcb0ddc5343.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
@@ -80,6 +83,9 @@
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemSpeechRecognition.6f2e05e82d6f4b76abaa18a70f25d7fe.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.ScriptCanvasGem.869a0d0ec11a45c299917d45c81555e6.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
 				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.CloudGemTextToSpeech.bf49ab6b1b624e16854dcbaa94b1aa24.v0.1.0" type="{189CC2ED-FDDE-5680-91D4-9F630A79187F}"/>
 			</Class>
 			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
@@ -93,9 +99,507 @@
 			<Class name="AZ::u64" field="id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
 		<Class name="AZStd::string" field="Name" value="SystemEntity" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+		<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+			<Class name="SliceSystemComponent" field="element" type="{1712C054-1C84-4995-BA06-AFE99CCFE08B}"/>
+			<Class name="AssetCatalogComponent" field="element" version="3" type="{35D9C27B-CD07-4333-89BB-3D077444E10A}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="15549897631365563983" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="AZStd::string" field="CatalogRegistryFile" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			</Class>
+			<Class name="BootstrapReaderComponent" field="element" version="1" type="{35F2A89D-ECB0-49ED-8306-E65A358F354B}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="9498175058515411900" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="AZStd::string" field="configFileName" value="bootstrap.cfg" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			</Class>
+			<Class name="AssetSystemComponent" field="element" value="" type="{42C58BBF-0C15-4DF9-9351-4639B36F122A}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="8850561826679414774" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+			</Class>
+			<Class name="ScriptDebugAgent" field="element" value="" version="1" type="{624A7BE2-3C7E-4119-AEE2-1DB2BDB6CC89}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="11888517041358679808" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+			</Class>
+			<Class name="AZ::MemoryComponent" field="element" version="1" type="{6F450DDA-6F4D-40FD-A93B-E5CCCDBC72AB}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="118735289757016485" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="bool" field="isPoolAllocator" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				<Class name="bool" field="isThreadPoolAllocator" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			</Class>
+			<Class name="UserSettingsComponent" field="element" version="3" type="{A316662A-6C3E-43E6-BC61-4B375D0D83B4}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="7447974689711077716" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="unsigned int" field="ProviderId" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+			</Class>
+			<Class name="DrillerNetworkAgentComponent" field="element" value="" version="1" type="{B587A74D-6190-4149-91CB-0EA69936BD59}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="515393709741537017" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+			</Class>
+			<Class name="AZ::JobManagerComponent" field="element" version="1" type="{CAE3A025-FAC9-4537-B39E-0A800A2326DF}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="15631314815909199397" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="int" field="NumberOfWorkerThreads" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+				<Class name="int" field="FirstThreadCPUID" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+			</Class>
+			<Class name="InputSystemComponent" field="element" version="1" type="{CAF3A025-FAC9-4537-B99E-0A800A9326DF}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="5976237672713025190" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="unsigned int" field="GamepadsEnabled" value="4" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+				<Class name="bool" field="KeyboardEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				<Class name="bool" field="MotionEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				<Class name="bool" field="MouseEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				<Class name="bool" field="TouchEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				<Class name="bool" field="VirtualKeyboardEnabled" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			</Class>
+			<Class name="AssetManagerComponent" field="element" value="" version="1" type="{D5A73BCC-0098-4D1E-8FE4-C86101E374AC}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="156013822272229428" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+			</Class>
+			<Class name="GameEntityContextComponent" field="element" value="" type="{DA235454-DD9C-468C-AE70-404E415BAA6C}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="11260326510580727553" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+			</Class>
+			<Class name="StreamerComponent" field="element" version="2" type="{DA47D715-2710-49E2-BC94-EF81C311D89C}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="8450263809540537750" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="unsigned int" field="MaxNumberOpenLimitedStream" value="64" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+				<Class name="unsigned int" field="CacheBlockSize" value="32768" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+				<Class name="unsigned int" field="NumberOfCacheBlocks" value="4" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+				<Class name="int" field="DeviceThreadCpuId" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+				<Class name="int" field="DeviceThreadPriority" value="-100000" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+				<Class name="int" field="DeviceThreadSleepTimeMS" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+			</Class>
+			<Class name="ScriptSystemComponent" field="element" type="{EE57B2C2-4CF4-4CC1-9BA0-88F3BB298B2B}">
+				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+					<Class name="AZ::u64" field="Id" value="14857704118454199752" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+				</Class>
+				<Class name="int" field="garbageCollectorSteps" value="2" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+			</Class>
+		</Class>
 		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 		<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-		<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="475773020604" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.EMotionFX.044a63ea67d04479aa5daf62ded9d9ca.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="SystemComponent" field="element" version="1" type="{7AE4102B-387C-4157-B8C7-8D1EA3BCFD60}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="8752337721080896689" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+					<Class name="unsigned int" field="NumThreads" value="1" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{02533EDC-F2AA-4076-86E9-5E3702202E15}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="462888118716" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.ScriptCanvasGem.869a0d0ec11a45c299917d45c81555e6.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CoreBuilderSystemComponent" field="element" type="{521BF54E-29A9-4367-B9E5-19736AA3A957}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="10013709827089687844" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="Component" field="element" version="1" type="{794B1BA5-DE13-46C7-9149-74FFB02CB51B}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="2586151458405589749" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="SystemComponent" field="element" type="{CCCCE7AE-AEC7-43F8-969C-ED592C264560}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="9132050912536492121" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{098376F1-D0C2-4B92-9FCF-AFC8C7DFA172}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="471478053308" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemInGameSurvey.ec06978b23ce4c5294c43c1732f3f31d.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemInGameSurveySystemComponent" field="element" value="" type="{7891EEF0-1478-4706-BA93-6D953BCDDC93}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="1860775458770840466" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{0C0ECA81-00BB-4139-9A98-FEEAE2C64983}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="505837791676" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemTextToSpeech.bf49ab6b1b624e16854dcbaa94b1aa24.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemTextToSpeechSystemComponent" field="element" value="" type="{D26E218C-989B-40F6-8709-0600FE7AC1CD}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="17844358425754531357" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{10FC2C0F-EA9E-4518-A5F0-AC9191B89520}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="467183086012" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemPlayerAccount.fd4ea4ff80a64bb9a90e55b46e9539ef.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemPlayerAccountSystemComponent" field="element" version="1" type="{76F24D04-D36F-41EF-BE80-976190C379B6}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="6607682210349698019" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+					<Class name="AZStd::string" field="LogicalUserPoolName" value="CloudGemPlayerAccount.PlayerUserPool" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+					<Class name="AZStd::string" field="ClientAppName" value="DefaultClientApp" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{2007F458-16CB-4C8D-A68C-75E1885FEDA5}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="428528380348" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemAWSScriptBehaviors.eeea32a28cba4992a3aad86812a71477.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemAWSScriptBehaviorsSystemComponent" field="element" type="{03573861-C1BB-4316-AB72-49DFF1DBC694}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="6873231960345899797" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{3144765E-4C7C-463C-A5F7-E5D8B5FE57B5}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="492952889788" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.LyShine.0fefab3f13364722b2eab3b96ce2bf20.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="LyShineSystemComponent" field="element" type="{B0C78B8D-1E5B-47D7-95D0-EC69C0513804}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="16278253658741267917" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+					<Class name="AzFramework::SimpleAssetReference&lt;LmbrCentral::TextureAsset&gt;" field="CursorImagePath" version="1" type="{68E92460-5C0C-4031-9620-6F1A08763243}">
+						<Class name="SimpleAssetReferenceBase" field="BaseClass1" version="1" type="{E16CA6C5-5C78-4AD9-8E9B-F8C1FB4D1DB8}">
+							<Class name="AZStd::string" field="AssetPath" value="engineassets/textures/cursor_green.tif" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+						</Class>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{5B98FB11-A597-47DB-8BE8-74F44D957C67}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="501542824380" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CryLegacy.352fef7706634c92814c587e84d7165a.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CryLegacySystemComponent" field="element" value="" type="{D2051F81-6B46-4B23-A7F6-C19F814E63F0}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="4582381896700023206" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{6502EDBA-4CF3-4C8E-B310-27D29D1EC79B}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="497247857084" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.StaticData.4a4bf593603c4f329c76c2a10779311b.v1.0.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="StaticDataManager" field="element" version="1" type="{CA11D812-4BCD-4A02-A569-040B84633BC9}"/>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{6B556073-DFCF-4A7F-B763-8C1C13936B94}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="445708249532" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemFramework.6fc787a982184217a5a553ca24676cfa.v1.1.3.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemFrameworkSystemComponent" field="element" version="1" type="{3A468AF0-3D40-4E7C-95AF-E6F9FCF7F1EE}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="15803451643641517599" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+					<Class name="int" field="ThreadCount" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+					<Class name="int" field="FirstThreadCPU" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+					<Class name="int" field="ThreadPriority" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+					<Class name="int" field="ThreadStackSize" value="-1" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+				</Class>
+				<Class name="CloudCanvasMappingsComponent" field="element" value="" type="{4DE985CB-9AC4-472F-B647-E5E634C5C3A7}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="14152918546105450353" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="CloudCanvasPlayerIdentityComponent" field="element" value="" type="{AA90442E-613E-40E3-AF0E-13C6032C06E4}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="14293924772474733793" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{72F7EB98-205C-42D4-8195-94BBC350C333}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="437118314940" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.LmbrCentral.ff06785f7145416b9d46fde39098cb0c.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="PhysicsSystemComponent" field="element" value="" version="1" type="{1586DBA1-F5F0-49AB-9F59-AE62C0E60AE0}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="8651369639078926955" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="NavigationSystemComponent" field="element" value="" version="1" type="{3D27484B-00C4-4F3F-9605-2BF3E5C317FF}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="13661282996950026914" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="LoadScreenComponent" field="element" value="" version="1" type="{97CDBD6C-C621-4427-87C8-10E1B8F947FF}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="12253610586419049427" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="CharacterAnimationManagerComponent" field="element" value="" version="1" type="{ABD0848C-0CFC-43D3-AEFB-7EEED64AF164}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="13967636498321176463" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="StereoRendererComponent" field="element" version="1" type="{BBFE0965-5564-4739-8219-AFE8209A5E57}"/>
+				<Class name="LmbrCentralSystemComponent" field="element" value="" version="1" type="{CE249D37-C1D6-4A64-932D-C937B0EC2B8C}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="10010011250636452335" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{7969B004-21A2-4D3D-AC8B-90A4FABCFF1E}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="480067987900" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemMessageOfTheDay.21cba308da7040439f88fc3a45c71e18.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemMessageOfTheDaySystemComponent" field="element" value="" type="{8C73E66B-0934-4ABE-826C-50B0A4C6DC28}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="7193974224409260998" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{797853F3-03BB-4571-A6BD-6616D89BB5E1}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="488657922492" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemSamples.fcbd8e2e64af487fb1faecd2a133a0ce.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemSamplesSystemComponent" field="element" value="" type="{A3ACD99F-8DE4-4C2B-8D1C-2BAA35CB2B88}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="12460245352849456816" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{8381F150-4CC9-4115-A1BA-447709E77C62}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="484362955196" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.Microphone.e70dd59f02f14ea49e6b38434e86ebf1.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="MicrophoneSystemComponent" field="element" value="" version="1" type="{99982335-B44A-48A9-BBE5-851B4B3BB5E3}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="682342955182613025" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{99939704-566A-42B1-8A7A-567E01C63D9C}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="450003216828" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemDynamicContent.3a3eeef064a04c37b4513c6378f4f56a.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="DynamicContentTransferManager" field="element" version="3" type="{3B15EBE9-3F45-41BF-A94D-9C1E079D30A2}"/>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{A5268487-BF49-4191-BF31-0D083C9A19D6}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="510132758972" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemLeaderboard.a6db8cb7bfd645509f538bcb0ddc5343.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemLeaderboardSystemComponent" field="element" value="" type="{DB7BFDC7-BDC0-4443-9A50-9DF48B6CE0FE}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="16056699244149668358" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{AD272FCE-0082-42EB-B251-8C6EA063778B}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="458593151420" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudGemSpeechRecognition.6f2e05e82d6f4b76abaa18a70f25d7fe.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudGemSpeechRecognitionSystemComponent" field="element" value="" version="1" type="{498454B8-1903-4998-9821-6ACDCF93E552}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="10785569627558424917" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="VoiceRecorderSystemComponent" field="element" version="1" type="{D684766D-D126-4746-B570-97AEEF575C08}"/>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{B5F7B7ED-07B3-41C9-9E67-5CDBC6B7DF7B}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="432823347644" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CryLegacyAnimation.b4807336b070494d974275a581593ed8.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CryLegacyAnimationSystemComponent" field="element" value="" type="{0B2CC82A-81AA-4206-A42E-4A1FD252CA10}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="5744147188089595641" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{C63A0203-24A1-4375-852B-CBD1827B937E}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="441413282236" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.CloudCanvasCommon.102e23cf4c4c4b748585edbce2bbdc65.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="CloudCanvasCommonSystemComponent" field="element" value="" type="{35921485-494D-43B6-B893-E557088C3FFE}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="14319885192692565761" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{C921462C-CE57-436A-80D5-AA0CED1338F7}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+	</Class>
+	<Class name="ModuleEntity" type="{C5950488-35E0-4B55-B664-29A691A6482F}">
+		<Class name="AZ::Entity" field="BaseClass1" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+			<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+				<Class name="AZ::u64" field="id" value="454298184124" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+			</Class>
+			<Class name="AZStd::string" field="Name" value="E:\tomc_new_dev\lyengine\branches\CloudCanvasIntegration\dev\Bin64vc140\\Gem.Maestro.3b9a978ed6f742a1acb99f74379a342c.v0.1.0.dll" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+			<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+				<Class name="MaestroSystemComponent" field="element" value="" type="{47991994-4417-4CD7-AE0B-FEF1C8720766}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="4387259851884432893" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+				<Class name="SequenceAgentExternalCreator" field="element" value="" version="1" type="{AA979CD3-B47B-4710-9689-F20F4CD476BB}">
+					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+						<Class name="AZ::u64" field="Id" value="4838456974136252906" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+			<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		</Class>
+		<Class name="AZ::Uuid" field="moduleClassId" value="{ED1C74E6-BB73-4AC5-BD4B-91EFB400BAF4}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
 	</Class>
 </ObjectStream>
 

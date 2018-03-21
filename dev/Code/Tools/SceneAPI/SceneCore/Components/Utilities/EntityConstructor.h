@@ -30,6 +30,7 @@ namespace AZ
 
                 SCENE_CORE_API EntityPointer BuildEntity(const char* entityName, const AZ::Uuid& baseComponentType);
                 SCENE_CORE_API Entity* BuildEntityRaw(const char* entityName, const AZ::Uuid& baseComponentType);
+                SCENE_CORE_API Entity* BuildSceneSystemEntity(const char* configFilePath);
             } // namespace EntityConstructor
         } // namespace SceneCore
     } // namespace SceneAPI

@@ -6,32 +6,34 @@
     <ProjectGuid>{dd0d5873-aaf6-44cf-8de4-e55d2bbd3d75}</ProjectGuid>
     <ProjectHome />
     <StartupFile />
-    <SearchPath>..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\</SearchPath>
+    <SearchPath>.;..\Utils\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <InterpreterId />
-    <InterpreterVersion />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <PropertyGroup>
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
-    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="cgf_lambda_settings\" />
     <Folder Include="CloudCanvas\" />
-    <Folder Include="CloudCanvas\test\" />
+    <Folder Include="test\" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CloudCanvas\test\test_settings.py" />
-    <Compile Include="CloudCanvas\test\__init__.py" />
+    <Compile Include="cgf_lambda_settings\module.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="cgf_lambda_settings\__init__.py" />
+    <Compile Include="test\test_settings.py" />
+    <Compile Include="test\__init__.py" />
     <Compile Include="CloudCanvas\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".ignore" />
+    <Content Include=".import" />
   </ItemGroup>
-  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

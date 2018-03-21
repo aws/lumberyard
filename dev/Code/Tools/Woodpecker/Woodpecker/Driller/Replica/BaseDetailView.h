@@ -19,10 +19,10 @@
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/string/conversions.h>
 
-#include <qabstractitemmodel.h>
-#include <QtWidgets/qmainwindow.h>
-#include <QtWidgets/qdialog.h>
-#include <qitemselectionmodel.h>
+#include <QAbstractItemModel>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QDialog>
+#include <QItemSelectionModel>
 
 #include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
 
@@ -237,7 +237,7 @@ namespace Driller
         }
 
     public:
-        virtual typename const ReplicaBandwidthChartData<Key>::FrameMap & GetFrameData() const = 0;
+        virtual const typename ReplicaBandwidthChartData<Key>::FrameMap & GetFrameData() const = 0;
         virtual BaseDetailDisplayHelper* FindDetailDisplay(const Key& id) = 0;
         virtual const BaseDetailDisplayHelper* FindDetailDisplay(const Key& id) const = 0;
 
@@ -446,16 +446,6 @@ namespace Driller
             close();
         }
 
-        void SetShowAggregate(bool showAggregate)
-        {
-            m_showAggregate = showAggregate;
-        }
-
-        void SetShowActiveIds(bool showActive)
-        {
-            m_showActive = showActive;
-        }
-
         virtual void InitializeDisplayData() = 0;
         virtual void LayoutChanged() = 0;
         virtual void OnSetupTreeView() = 0;
@@ -550,7 +540,7 @@ namespace Driller
 
             }
 
-            const BandwidthChartData::FrameMap& frameMap = m_baseDetailView->GetFrameData();
+            const typename BandwidthChartData::FrameMap& frameMap = m_baseDetailView->GetFrameData();
             auto frameIter = frameMap.find(frameId);
 
             BaseDetailDisplayHelper* aggregateDisplayHelper = m_baseDetailView->FindAggregateDisplay();
@@ -578,9 +568,9 @@ namespace Driller
 
             if (frameIter != frameMap.end())
             {
-                const BandwidthChartData::BandwidthUsageMap* usageMap = frameIter->second;
+                const typename BandwidthChartData::BandwidthUsageMap* usageMap = frameIter->second;
 
-                for (BandwidthChartData::BandwidthUsageMap::const_iterator usageIter = usageMap->begin();
+                for (typename BandwidthChartData::BandwidthUsageMap::const_iterator usageIter = usageMap->begin();
                      usageIter != usageMap->end();
                      ++usageIter)
                 {

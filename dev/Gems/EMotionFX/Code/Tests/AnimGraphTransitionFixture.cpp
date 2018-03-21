@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/std/containers/array.h>
 #include "AnimGraphTransitionFixture.h"
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>

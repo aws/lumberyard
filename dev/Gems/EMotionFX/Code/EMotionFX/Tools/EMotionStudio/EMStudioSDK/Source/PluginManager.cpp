@@ -11,6 +11,7 @@
 */
 
 // include required headers
+#include <AzCore/std/sort.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include "EMStudioManager.h"
 #include <MysticQt/Source/MysticQtConfig.h>
@@ -39,13 +40,9 @@ namespace EMStudio
     // constructor
     PluginManager::PluginManager()
     {
-        mPlugins.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK);
-        mPluginLibs.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK);
-        mActivePlugins.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK);
-
-        mActivePlugins.Reserve(50);
-        mPluginLibs.Reserve(10);
-        mPlugins.Reserve(50);
+        mActivePlugins.reserve(50);
+        mPluginLibs.reserve(10);
+        mPlugins.reserve(50);
     }
 
 
@@ -60,19 +57,19 @@ namespace EMStudio
     // remove a given active plugin
     void PluginManager::RemoveActivePlugin(EMStudioPlugin* plugin)
     {
-        if (mActivePlugins.Find(plugin) == MCORE_INVALIDINDEX32)
+        PluginVector::const_iterator itPlugin = AZStd::find(mActivePlugins.begin(), mActivePlugins.end(), plugin);
+        if (itPlugin == mActivePlugins.end())
         {
             MCore::LogWarning("Failed to remove plugin '%s'", plugin->GetName());
             return;
         }
 
-        const uint32 numPlugins = mActivePlugins.GetLength();
-        for (uint32 p = 0; p < numPlugins; ++p)
+        for (EMStudioPlugin* activePlugin : mActivePlugins)
         {
-            mActivePlugins[p]->OnBeforeRemovePlugin(plugin->GetClassID());
+            activePlugin->OnBeforeRemovePlugin(plugin->GetClassID());
         }
 
-        mActivePlugins.RemoveByValue(plugin);
+        mActivePlugins.erase(itPlugin);
         delete plugin;
     }
 
@@ -84,15 +81,14 @@ namespace EMStudio
         QApplication::processEvents();
 
         // delete all plugins
-        const uint32 numPlugins = mPlugins.GetLength();
-        for (uint32 i = 0; i < numPlugins; ++i)
+        for (EMStudioPlugin* plugin : mPlugins)
         {
-            delete mPlugins[i];
+            delete plugin;
         }
-        mPlugins.Clear();
+        mPlugins.clear();
 
         // delete all active plugins
-        const uint32 numActivePlugins = mActivePlugins.GetLength();
+        const int32 numActivePlugins = static_cast<int32>(mActivePlugins.size());
         if (numActivePlugins > 0)
         {
             // iterate from back to front, destructing the plugins and removing them directly from the array of active plugins
@@ -100,36 +96,29 @@ namespace EMStudio
             {
                 EMStudioPlugin* plugin = mActivePlugins[a];
 
-                const uint32 currentNumPlugins = mActivePlugins.GetLength();
-                for (uint32 p = 0; p < currentNumPlugins; ++p)
+                const int32 currentNumPlugins = static_cast<int32>(mActivePlugins.size());
+                for (int32 p = 0; p < currentNumPlugins; ++p)
                 {
                     mActivePlugins[p]->OnBeforeRemovePlugin(plugin->GetClassID());
                 }
 
-                mActivePlugins.Remove(a);
+                mActivePlugins.erase(mActivePlugins.begin() + a);
                 delete plugin;
             }
 
-            MCORE_ASSERT(mActivePlugins.GetIsEmpty());
+            MCORE_ASSERT(mActivePlugins.empty());
         }
 
-    #if defined(MCORE_PLATFORM_WINDOWS)
         // unload all plugin libs
-        const uint32 numLibs = mPluginLibs.GetLength();
+        const uint32 numLibs = static_cast<int32>(mPluginLibs.size());
         for (uint32 l = 0; l < numLibs; ++l)
         {
+    #if defined(MCORE_PLATFORM_WINDOWS)
             FreeLibrary(mPluginLibs[l]);
-        }
-        mPluginLibs.Clear();
     #else
-        // unload all plugin libs
-        const uint32 numLibs = mPluginLibs.GetLength();
-        for (uint l = 0; l < numLibs; ++l)
-        {
             dlclose(mPluginLibs[l]);
-        }
-        mPluginLibs.Clear();
     #endif
+        }
     }
 
 
@@ -204,7 +193,7 @@ namespace EMStudio
         (registerFunction)();
 
         // Find handle
-        mPluginLibs.Add(dllHandle);
+        mPluginLibs.push_back(dllHandle);
     #else
         // load dylib into address space
         void* dylibHandle = dlopen(filename, RTLD_LAZY);
@@ -232,7 +221,7 @@ namespace EMStudio
         (registerPlugins)();
 
         // Find handle
-        mPluginLibs.Add(dylibHandle);
+        mPluginLibs.push_back(dylibHandle);
     #endif
 
         //----------------------------------------
@@ -246,7 +235,7 @@ namespace EMStudio
     // register the plugin
     void PluginManager::RegisterPlugin(EMStudioPlugin* plugin)
     {
-        mPlugins.Add(plugin);
+        mPlugins.push_back(plugin);
     }
 
 
@@ -269,7 +258,7 @@ namespace EMStudio
         // register as active plugin. This has to be done at this point since
         // the initialization could try to access the plugin and assume that
         // is active.
-        mActivePlugins.Add(newPlugin);
+        mActivePlugins.push_back(newPlugin);
 
         newPlugin->Init();
         newPlugin->RegisterKeyboardShortcuts();
@@ -282,12 +271,12 @@ namespace EMStudio
     // find a given plugin by its name (type string)
     uint32 PluginManager::FindPluginByTypeString(const char* pluginType) const
     {
-        const uint32 numPlugins = mPlugins.GetLength();
-        for (uint32 i = 0; i < numPlugins; ++i)
+        const size_t numPlugins = mPlugins.size();
+        for (size_t i = 0; i < numPlugins; ++i)
         {
             if (AzFramework::StringFunc::Equal(pluginType, mPlugins[i]->GetName()))
             {
-                return i;
+                return static_cast<uint32>(i);
             }
         }
 
@@ -296,8 +285,8 @@ namespace EMStudio
 
     EMStudioPlugin* PluginManager::GetActivePluginByTypeString(const char* pluginType) const
     {
-        const uint32 numPlugins = mActivePlugins.GetLength();
-        for (uint32 i = 0; i < numPlugins; ++i)
+        const size_t numPlugins = mActivePlugins.size();
+        for (size_t i = 0; i < numPlugins; ++i)
         {
             if (AzFramework::StringFunc::Equal(pluginType, mActivePlugins[i]->GetName()))
             {
@@ -324,8 +313,8 @@ namespace EMStudio
 
             // check if we have a conflict with a current plugin
             bool hasConflict = false;
-            const uint32 numActivePlugins = mActivePlugins.GetLength();
-            for (uint32 i = 0; i < numActivePlugins; ++i)
+            const size_t numActivePlugins = mActivePlugins.size();
+            for (size_t i = 0; i < numActivePlugins; ++i)
             {
                 EMStudioPlugin* plugin = mActivePlugins[i];
 
@@ -346,6 +335,11 @@ namespace EMStudio
         //return QString("INVALID");
     }
 
+    void PluginManager::SortActivePlugins()
+    {
+        AZStd::sort(mActivePlugins.begin(), mActivePlugins.end());
+    }
+
 
     // find the number of active plugins of a given type
     uint32 PluginManager::GetNumActivePluginsOfType(const char* pluginType) const
@@ -353,8 +347,8 @@ namespace EMStudio
         uint32 total = 0;
 
         // check all active plugins to see if they are from the given type
-        const uint32 numActivePlugins = mActivePlugins.GetLength();
-        for (uint32 i = 0; i < numActivePlugins; ++i)
+        const size_t numActivePlugins = mActivePlugins.size();
+        for (size_t i = 0; i < numActivePlugins; ++i)
         {
             if (AzFramework::StringFunc::Equal(pluginType, mActivePlugins[i]->GetName()))
             {
@@ -369,8 +363,8 @@ namespace EMStudio
     // find the first active plugin of a given type
     EMStudioPlugin* PluginManager::FindActivePlugin(uint32 classID)
     {
-        const uint32 numActivePlugins = mActivePlugins.GetLength();
-        for (uint32 i = 0; i < numActivePlugins; ++i)
+        const size_t numActivePlugins = mActivePlugins.size();
+        for (size_t i = 0; i < numActivePlugins; ++i)
         {
             if (mActivePlugins[i]->GetClassID() == classID)
             {
@@ -389,8 +383,8 @@ namespace EMStudio
         uint32 total = 0;
 
         // check all active plugins to see if they are from the given type
-        const uint32 numActivePlugins = mActivePlugins.GetLength();
-        for (uint32 i = 0; i < numActivePlugins; ++i)
+        const size_t numActivePlugins = mActivePlugins.size();
+        for (size_t i = 0; i < numActivePlugins; ++i)
         {
             if (mActivePlugins[i]->GetClassID() == classID)
             {

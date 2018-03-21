@@ -10,7 +10,7 @@
 *
 */
 
-#include "FbxTypeConverter.h"
+#include <SceneAPI/FbxSDKWrapper/FbxTypeConverter.h>
 
 namespace AZ
 {
@@ -60,6 +60,5 @@ namespace AZ
             }
             return transform;
         }
-
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

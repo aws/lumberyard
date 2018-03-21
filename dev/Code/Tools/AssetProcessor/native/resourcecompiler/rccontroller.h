@@ -93,6 +93,7 @@ namespace AssetProcessor
         //! Pause or unpause dispatching, only necessary on startup to avoid thrashing and make sure no jobs jump the gun.
         void SetDispatchPaused(bool pause);
 
+        //! All jobs which match this source will be cancelled or removed.  Note that relSourceFile should have any applicable output prefixes!
         void RemoveJobsBySource(QString relSourceFile);
 
     private:

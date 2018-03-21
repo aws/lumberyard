@@ -207,7 +207,7 @@ void CObjectCreateTool::FileChanged(QString file, bool bMakeNew)
         m_object = 0;
     }
 
-    m_object = GetIEditor()->NewObject(m_objectType.toLatin1().data(), file.toLatin1().data());
+    m_object = GetIEditor()->NewObject(m_objectType.toUtf8().data(), file.toUtf8().data());
     if (m_object)
     {
         m_object->SetLocalTM(objectTM);

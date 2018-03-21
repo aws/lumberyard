@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Water_precompiled.h"
 
 #include "WaterVolumeComponent.h"
 
@@ -450,6 +450,25 @@ namespace Water
         if (m_waterRenderNode)
         {
             m_waterRenderNode->SetMinSpec(static_cast<AZ::u32>(m_minSpec));
+            
+            if (gEnv && gEnv->p3DEngine)
+            {
+                const int configSpec = gEnv->pSystem->GetConfigSpec(true);
+
+                AZ::u32 rendFlags = static_cast<AZ::u32>(m_waterRenderNode->GetRndFlags());
+
+                const bool hidden = static_cast<AZ::u32>(configSpec) < static_cast<AZ::u32>(m_minSpec);
+                if (hidden)
+                {
+                    rendFlags |= ERF_HIDDEN;
+                }
+                else
+                {
+                    rendFlags &= ~ERF_HIDDEN;
+                }
+
+                m_waterRenderNode->SetRndFlags(rendFlags);
+            }
         }
     }
 

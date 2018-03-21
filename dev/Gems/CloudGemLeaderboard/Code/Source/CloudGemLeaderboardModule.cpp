@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemLeaderboard_precompiled.h"
 #include <platform_impl.h>
 
 #include "CloudGemLeaderboardSystemComponent.h"

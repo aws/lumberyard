@@ -28,12 +28,11 @@ namespace Visibility
         virtual ~PortalConfiguration() = default;
 
         static void Reflect(AZ::ReflectContext* context);
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         float m_height = 1.0f;
         bool m_displayFilled = false;
         bool m_affectedBySun = false;
-        bool m_ignoreSkyColor = false;
-        bool m_ignoreGI = false;
         float m_viewDistRatio = 100.0f;
         bool m_skyOnly = false;
         bool m_oceanIsVisible = false;
@@ -82,10 +81,6 @@ namespace Visibility
         bool GetDisplayFilled() override;
         void SetAffectedBySun(const bool value) override;
         bool GetAffectedBySun() override;
-        void SetIgnoreSkyColor(const bool value) override;
-        bool GetIgnoreSkyColor() override;
-        void SetIgnoreGI(const bool value) override;
-        bool GetIgnoreGI() override;
         void SetViewDistRatio(const float value) override;
         float GetViewDistRatio() override;
         void SetSkyOnly(const bool value) override;

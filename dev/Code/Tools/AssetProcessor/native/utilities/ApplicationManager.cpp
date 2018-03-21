@@ -547,13 +547,6 @@ void ApplicationManager::PopulateApplicationDependencies()
     QString gamePlatformConfigPath = assetRoot.filePath(gameName + "/AssetProcessorGamePlatformConfig.ini");
     m_filesOfInterest.push_back(gamePlatformConfigPath);
 
-    // if our Gems file changes, make sure we watch that, too.
-    QString gemsConfigFile = assetRoot.filePath(gameName + "/gems.json");
-    if (QFile::exists(gemsConfigFile))
-    {
-        m_filesOfInterest.push_back(gemsConfigFile);
-    }
-
     // add app modules
     AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::EnumerateModules,
         [this](const AZ::ModuleData& moduleData)

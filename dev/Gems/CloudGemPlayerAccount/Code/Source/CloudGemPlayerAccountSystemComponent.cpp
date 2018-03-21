@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "CloudGemPlayerAccount_precompiled.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -190,6 +190,7 @@ namespace CloudGemPlayerAccount
         {
             behaviorContext->EBus<CloudGemPlayerAccountRequestBus>("CloudGemPlayerAccountRequestBus")
                 // one of these for each function
+                ->Event("GetServiceStatus", &CloudGemPlayerAccountRequestBus::Events::GetServiceStatus)
                 ->Event("GetCurrentUser", &CloudGemPlayerAccountRequestBus::Events::GetCurrentUser)
                 ->Event("SignUp", &CloudGemPlayerAccountRequestBus::Events::SignUp)
                 ->Event("ConfirmSignUp", &CloudGemPlayerAccountRequestBus::Events::ConfirmSignUp)
@@ -206,7 +207,7 @@ namespace CloudGemPlayerAccount
                 ->Event("VerifyUserAttribute", &CloudGemPlayerAccountRequestBus::Events::VerifyUserAttribute)
                 ->Event("DeleteUserAttributes", &CloudGemPlayerAccountRequestBus::Events::DeleteUserAttributes)
                 ->Event("UpdateUserAttributes", &CloudGemPlayerAccountRequestBus::Events::UpdateUserAttributes)
-                ->Event("GetPlayerAccount", &CloudGemPlayerAccountRequestBus::Events::GetPlayerAccount)
+                ->Event("GetPlayerAccount", &CloudGemPlayerAccountRequestBus::Events::GetPlayerAccount) 
                 ->Event("UpdatePlayerAccount", &CloudGemPlayerAccountRequestBus::Events::UpdatePlayerAccount)
                 ;
             behaviorContext->EBus<CloudGemPlayerAccountNotificationBus>("CloudGemPlayerAccountNotificationBus")
@@ -283,6 +284,29 @@ namespace CloudGemPlayerAccount
     {
         AuthTokenGroup tokenGroup = GetUserAuthDetails(username);
         return tokenGroup.refreshToken.length() > 0;
+    }
+
+
+    AZ::u32 CloudGemPlayerAccountSystemComponent::GetServiceStatus()
+    {
+        AZ::u32 requestId = m_nextRequestId++;
+
+        auto callbackLambda = [requestId](ServiceAPI::GetServiceStatusRequestJob* job)
+        {
+            BasicResultInfo resultInfo
+            {
+                requestId,
+                job->WasSuccess(),
+                job->WasSuccess() ? "" : "GetServiceStatusFailed",
+                job->error.message.c_str()
+            };
+            EBUS_EVENT(CloudGemPlayerAccountNotificationBus, OnGetServiceStatusComplete, resultInfo);
+        };
+
+        ServiceAPI::GetServiceStatusRequestJob* job = ServiceAPI::GetServiceStatusRequestJob::Create(callbackLambda, callbackLambda);
+        job->Start();
+
+        return requestId;
     }
 
     //////////////////////////////// Start Public User Pool Wrapper Functions ////////////////////////////////////////////
@@ -1059,7 +1083,12 @@ namespace CloudGemPlayerAccount
         char buffer[TIME_BUFFER_SIZE];
 
         time(&rawtime);
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(CloudGemPlayerAccountSystemComponent_cpp)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_WINDOWS)
         gmtime_s(&timeinfo, &rawtime);
 #else
         gmtime_r(&rawtime, &timeinfo);

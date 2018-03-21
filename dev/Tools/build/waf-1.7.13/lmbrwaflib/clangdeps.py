@@ -152,7 +152,7 @@ class pch_clang(waflib.Task.Task):
 #############################################################################
 ## add precompiled header to c++ compile commandline, creates and add pch tasks if needed
 @feature('cxx')
-@after_method('apply_custom_flags')
+@after_method('apply_incpaths')
 def add_pch_clang(self):
     if self.env.CC_NAME not in supported_compilers:
         return
@@ -326,15 +326,6 @@ def wrap_compiled_task_clang(classname):
         unresolved_names = []
         return (resolved_nodes, unresolved_names)
 
-    def sig_implicit_deps(self):
-        if self.env.CC_NAME not in supported_compilers:
-            return super(derived_class, self).sig_implicit_deps()
-
-        try:
-            return waflib.Task.Task.sig_implicit_deps(self)
-        except Errors.WafError:
-            return Utils.SIG_NIL
-
     def exec_command(self, cmd, **kw):
         if self.env.CC_NAME not in supported_compilers:
             return super(derived_class, self).exec_command(cmd, **kw)
@@ -429,7 +420,6 @@ def wrap_compiled_task_clang(classname):
 
     derived_class.post_run = post_run
     derived_class.scan = scan
-    derived_class.sig_implicit_deps = sig_implicit_deps
     derived_class.exec_command = exec_command
     derived_class.can_retrieve_cache = can_retrieve_cache
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "InputManagementFramework_precompiled.h"
 #include "InputConfigurationComponent.h"
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/SystemFile.h>
@@ -17,6 +17,8 @@
 #include <InputRequestBus.h>
 #include <PlayerProfileRequestBus.h>
 #include <AzCore/Serialization/DataPatch.h>
+#include <AzCore/IO/ByteContainerStream.h>
+#include <AzCore/Serialization/Utils.h>
 
 namespace Input
 {
@@ -125,7 +127,17 @@ namespace Input
     {
         if (InputEventBindingsAsset* inputAsset = asset.GetAs<InputEventBindingsAsset>())
         {
-            m_inputEventBindings = inputAsset->m_bindings;
+            AZStd::vector<char> buffer;
+            AZ::IO::ByteContainerStream<AZStd::vector<char>> assetCopier(&buffer);
+            // Save to stream
+            AZ::Utils::SaveObjectToStream<InputEventBindingsAsset>(assetCopier, AZ::DataStream::ST_BINARY, inputAsset);
+            // Move to the beginning of the stream
+            assetCopier.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
+
+            if (InputEventBindingsAsset* localCopyOfAsset = AZ::Utils::LoadObjectFromStream<InputEventBindingsAsset>(assetCopier))
+            {
+                m_inputEventBindings.Swap(&localCopyOfAsset->m_bindings);
+            }
 
             //patch the data
             void* rawData = nullptr;

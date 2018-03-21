@@ -82,6 +82,8 @@ namespace AzFramework
             virtual bool ConfigureSocketConnection(const AZStd::string& branch, const AZStd::string& platform, const AZStd::string& identifier) = 0;
             //! Configure the underlying socket connection and try to connect to the Asset processor
             virtual bool Connect(const char* identifier) = 0;
+            //! Disconnect from the underlying socket connection to the Asset processor if connected, otherwise this function does nothing.
+            virtual bool Disconnect() = 0;
             //! Compile an asset synchronously
             virtual AssetStatus CompileAssetSync(const AZStd::string& assetPath) = 0;
             //! Retrieve the status of an asset synchronously

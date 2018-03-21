@@ -12,7 +12,7 @@
 *
 */
 
-#include <functional>
+#include <AzCore/std/functional.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/unordered_set.h>
@@ -33,7 +33,7 @@ namespace AZ
             class SceneGraphSelector
             {
             public:
-                using NodeFilterFunction = std::function<bool(const Containers::SceneGraph& graph, Containers::SceneGraph::NodeIndex& index)>;
+                using NodeFilterFunction = AZStd::function<bool(const Containers::SceneGraph& graph, Containers::SceneGraph::NodeIndex& index)>;
 
                 SCENE_CORE_API static AZStd::vector<AZStd::string> GenerateTargetNodes(const Containers::SceneGraph& graph, const DataTypes::ISceneNodeSelectionList& list,
                     NodeFilterFunction nodeFilter);

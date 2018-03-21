@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Water_precompiled.h"
 
 #include "WaterOceanEditor.h"
 #include <Water/WaterOceanComponent.h>

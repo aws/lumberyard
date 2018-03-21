@@ -61,13 +61,6 @@
 #endif
 
 
-// include the revolution sdk
-#ifdef MCORE_PLATFORM_WII
-    #include <revolution.h>
-    #include <revolution/mtx/mtx44ext.h>
-#endif
-
-
 #ifdef MCORE_PLATFORM_ANDROID
     #include <time.h>
     #include <android/log.h>
@@ -76,7 +69,9 @@
 
 #ifdef MCORE_SSE_ENABLED
     #include <intrin.h>
-    #pragma intrinsic( _mm_hadd_ps )
+    #ifdef AZ_COMPILER_MSVC
+        #pragma intrinsic( _mm_hadd_ps )
+    #endif
 #endif
 
 // include the system

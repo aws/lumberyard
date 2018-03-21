@@ -13,9 +13,12 @@
 #include "TestTypes.h"
 
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/RTTI/ReflectionManager.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 // Non intrusive typeinfo for external and intergral types
 struct ExternalClass
@@ -450,5 +453,97 @@ namespace UnitTest
         {
             thread.join();
         }
+    }
+
+    class ReflectionManagerTest
+        : public AllocatorsFixture
+    {
+    public:
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            m_reflection = AZStd::make_unique<ReflectionManager>();
+        }
+
+        void TearDown() override
+        {
+            m_reflection.reset();
+
+            AllocatorsFixture::TearDown();
+        }
+
+    protected:
+        AZStd::unique_ptr<ReflectionManager> m_reflection;
+    };
+
+    class TestReflectedClass
+    {
+    public:
+        static bool s_isReflected;
+        static void Reflect(ReflectContext* context)
+        {
+            s_isReflected = !context->IsRemovingReflection();
+        }
+    };
+    bool TestReflectedClass::s_isReflected = false;
+
+    TEST_F(ReflectionManagerTest, AddContext_AddClass)
+    {
+        m_reflection->AddReflectContext<SerializeContext>();
+
+        m_reflection->Reflect(&TestReflectedClass::Reflect);
+        EXPECT_TRUE(TestReflectedClass::s_isReflected);
+
+        m_reflection->RemoveReflectContext<SerializeContext>();
+
+        EXPECT_FALSE(TestReflectedClass::s_isReflected);
+    }
+
+    TEST_F(ReflectionManagerTest, AddClass_AddContext)
+    {
+        m_reflection->Reflect(&TestReflectedClass::Reflect);
+
+        m_reflection->AddReflectContext<SerializeContext>();
+        EXPECT_TRUE(TestReflectedClass::s_isReflected);
+
+        m_reflection->Unreflect(&TestReflectedClass::Reflect);
+
+        EXPECT_FALSE(TestReflectedClass::s_isReflected);
+    }
+
+    TEST_F(ReflectionManagerTest, UnreflectOnDestruct)
+    {
+        m_reflection->Reflect(&TestReflectedClass::Reflect);
+
+        m_reflection->AddReflectContext<SerializeContext>();
+        EXPECT_TRUE(TestReflectedClass::s_isReflected);
+
+        m_reflection.reset();
+
+        EXPECT_FALSE(TestReflectedClass::s_isReflected);
+    }
+
+    TEST_F(ReflectionManagerTest, UnreflectReReflect)
+    {
+        m_reflection->AddReflectContext<SerializeContext>();
+
+        m_reflection->Reflect(&TestReflectedClass::Reflect);
+        EXPECT_TRUE(TestReflectedClass::s_isReflected);
+
+        m_reflection->Unreflect(&TestReflectedClass::Reflect);
+        EXPECT_FALSE(TestReflectedClass::s_isReflected);
+
+        m_reflection->Reflect(&TestReflectedClass::Reflect);
+        EXPECT_TRUE(TestReflectedClass::s_isReflected);
+
+        m_reflection->RemoveReflectContext<SerializeContext>();
+        EXPECT_FALSE(TestReflectedClass::s_isReflected);
+
+        m_reflection->AddReflectContext<SerializeContext>();
+        EXPECT_TRUE(TestReflectedClass::s_isReflected);
+
+        m_reflection.reset();
+        EXPECT_FALSE(TestReflectedClass::s_isReflected);
     }
 }

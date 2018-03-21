@@ -36,9 +36,9 @@ namespace Serialization {
             : IArchive(caps) {}
     };
 
-    inline boost::shared_ptr<ITextInputArchive> CreateTextInputArchive()
+    inline AZStd::shared_ptr<ITextInputArchive> CreateTextInputArchive()
     {
-        boost::shared_ptr<ITextInputArchive> pArchive;
+        AZStd::shared_ptr<ITextInputArchive> pArchive;
         CryCreateClassInstance(MAKE_CRYGUID(0x7a83a1c890054608, 0x9f8447a4b0ad6c3b), pArchive);
         return pArchive;
     }

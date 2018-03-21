@@ -82,7 +82,7 @@ void DockableAttributePanel::Init(const QString& panelName, CBaseLibraryManager*
     m_titleBar->SetShowMenuContextMenuCallback([&] {return GetTitleBarMenu();
         });
     setTitleBarWidget(m_titleBar);
-    m_titleBarMenu = new QMenu(this);
+    m_titleBarMenu = new QMenu;
 
     m_attributeView = new CAttributeView(this);
     m_attributeView->setObjectName("dwAttributeViewWidget");
@@ -241,7 +241,7 @@ QAction* DockableAttributePanel::GetMenuAction(TabActions action, const QString&
     {
         connect(act, &QAction::triggered, this, [=]()
             {
-                QString cntxtItemName = contextItemName.toLatin1();
+                QString cntxtItemName = contextItemName.toUtf8();
                 int tabIndex = FindItemInTabs(cntxtItemName);
                 CRY_ASSERT(tabIndex != -1);
                 m_IgnoreAttributeRefresh = true;     //Ignore normal behavior as the refresh is not needed as we close each tab.
@@ -510,7 +510,7 @@ void DockableAttributePanel::TabSelectionChange(int index)
         QString tabTitle = m_openParticleTabBar->tabText(index);
         qDebug() << "Particle Editor: changed to particle" << tabTitle << "via tab" << index;
 
-        CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName.toUtf8().data()));
+        CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName));
         m_attributeView->SetCurrentItem(libItem);
         if (libItem)
         {
@@ -612,7 +612,7 @@ void DockableAttributePanel::RefreshOpenTabColors()
         if (m_openParticleTabBar->tabData(tabIdx).canConvert<ParticleTabData>())
         {
             ParticleTabData tabData = m_openParticleTabBar->tabData(tabIdx).value<ParticleTabData>();
-            CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName.toUtf8().data()));
+            CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName));
             CRY_ASSERT(libItem);
             CRY_ASSERT(libItem->GetType() == EDB_TYPE_PARTICLE);
             m_openParticleTabBar->setTabTextColor(tabIdx, GetTabTextColorFor(static_cast<CParticleItem*>(libItem)));
@@ -666,7 +666,7 @@ void DockableAttributePanel::AddToDynamicTab(QString& tabTitle, ParticleTabData&
     QVariant d;
     d.setValue(data);
     m_openParticleTabBar->setTabData(tabIndex, d);
-    CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(data.m_libraryItemName.toUtf8().data()));
+    CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(data.m_libraryItemName));
     m_openParticleTabBar->setTabTextColor(tabIndex, GetTabTextColorFor(static_cast<CParticleItem*>(libItem)));
     SelectTab(tabIndex);//Select the tab ...
 }
@@ -714,7 +714,7 @@ void DockableAttributePanel::OnVariableChange(IVariable* var)
         CRY_ASSERT(m_openParticleTabBar->tabData(curTab).canConvert<ParticleTabData>());
         ParticleTabData tabData = m_openParticleTabBar->tabData(curTab).value<ParticleTabData>();
 
-        CParticleItem* particleItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName.toUtf8().data()));
+        CParticleItem* particleItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName));
         CRY_ASSERT(particleItem);
 
         //if any of these are true particleitem is invalid, return to prevent crashing
@@ -799,7 +799,7 @@ void DockableAttributePanel::RefreshCurrentTab()
     {
         ParticleTabData tabData = m_openParticleTabBar->tabData(index).value<ParticleTabData>();
         QString tabTitle = m_openParticleTabBar->tabText(index);
-        CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName.toUtf8().data()));
+        CParticleItem* libItem = static_cast<CParticleItem*>(m_libraryManager->FindItemByName(tabData.m_libraryItemName));
         if (libItem != nullptr)
         {
             QString itemName = libItem->GetName();
@@ -890,4 +890,4 @@ void DockableAttributePanel::OnItemUndoPoint(const QString& itemName)
     emit SignalItemUndoPoint(itemName, true, m_currentLod);
 }
 
-#include <Qt/DockableAttributePanel.moc>
+#include <QT/DockableAttributePanel.moc>

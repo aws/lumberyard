@@ -158,18 +158,10 @@ public:
 
     void GetSaveFilePath(QString& path) const;
 
-#ifdef KDAB_TEMPORARILY_REMOVED
-    static bool AddShortcut(CXTPShortcutManagerAccel& accel);
-#endif
-    static bool AddShortcut(int cmdID, const QString& shortcutName);
-    static void UpdateShortcutsAndIcons();
-
     const std::vector<AmazonToolbar>& GetToolbars() const;
 
 private:
     void Load(QString xmlpath, AmazonToolbar* pToolbar, bool bToolbox, ActionManager* actionManager);
-    static bool IsPossibleToAddShortcut(const QString& shortcutName);
-    void RemoveMacroShortcut(int index, bool bToolbox);
 
     std::vector<CToolBoxMacro*> m_macros;
     std::vector<CToolBoxMacro*> m_shelveMacros;

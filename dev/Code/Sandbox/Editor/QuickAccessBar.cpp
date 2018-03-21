@@ -83,7 +83,7 @@ void CQuickAccessBar::OnOK()
         }
         else
         {
-            GetIEditor()->GetSystem()->GetIConsole()->ExecuteString(menuCmd.toLatin1().data());
+            GetIEditor()->GetSystem()->GetIConsole()->ExecuteString(menuCmd.toUtf8().data());
         }
 
         m_ui->m_inputEdit->clear();

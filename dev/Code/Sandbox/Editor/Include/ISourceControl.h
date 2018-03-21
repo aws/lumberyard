@@ -36,24 +36,6 @@ enum ESccFileAttributes
     SCC_FILE_ATTRIBUTE_MOVED        = 0x0400, // File is under source control and is marked for move/add
 };
 
-// Source control flags
-enum ESccFlags
-{
-    NONE                      = 0,
-    GETLATEST_REVERT          = 1 << 0, // don't revert when perform GetLatestVersion() on opened files
-    GETLATEST_ONLY_CHECK      = 1 << 1, // don't actually get latest version of the file, check if scc has more recent version
-    ADD_CHANGELIST            = 1 << 3, // add a changelist with the description
-    RENAME_WITHOUT_SUBMIT     = 1 << 6, // mark for move and don't submit
-    RENAME_WITHOUT_REVERT     = 1 << 7, // mark for move and don't revert changes
-};
-
-// Lock status of an item in source control
-enum ESccLockStatus
-{
-    SCC_LOCK_STATUS_UNLOCKED,
-    SCC_LOCK_STATUS_LOCKED_BY_OTHERS,
-    SCC_LOCK_STATUS_LOCKED_BY_US,
-};
 
 //////////////////////////////////////////////////////////////////////////
 // Description
@@ -75,9 +57,6 @@ struct ISourceControl
 
     using SourceControlState = AzToolsFramework::SourceControlState;
 
-    virtual bool CheckOut(const char* filename, int nFlags = 0, char* changelistId = NULL) = 0;
-    virtual bool Rename(const char* filename, const char* newfilename, const char* desc = 0, int nFlags = 0) = 0;
-    virtual bool GetLatestVersion(const char* filename, int nFlags = 0) = 0;
     //function to enable/disable source control
     virtual void SetSourceControlState(SourceControlState state) = 0;
     virtual ConnectivityState GetConnectivityState() = 0;

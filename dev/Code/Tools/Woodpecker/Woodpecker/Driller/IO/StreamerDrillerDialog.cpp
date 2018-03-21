@@ -44,7 +44,7 @@ namespace Driller
         SDM_OFFSET,
         SDM_TOTAL
     };
-    static char* SDM_STRING[] = {
+    static const char* SDM_STRING[] = {
         "Name",
         "Debug Name",
         "Event Type",
@@ -1472,7 +1472,7 @@ namespace Driller
 
                     if (dummyCompressedFlag)
                     {
-                        if (socEvent->m_type == StreamerDataAggregator::TRANSFER_EVENT_COMPRESSOR_READ || socEvent->m_type == StreamerDataAggregator::TRANSFER_EVENT_COMPRESSOR_WRITE)
+                        if (static_cast<StreamerDataAggregator::TransferEventType>(socEvent->m_type) == StreamerDataAggregator::TRANSFER_EVENT_COMPRESSOR_READ || static_cast<StreamerDataAggregator::TransferEventType>(socEvent->m_type) == StreamerDataAggregator::TRANSFER_EVENT_COMPRESSOR_WRITE)
                         {
                             return QVariant(QString("%1").arg(socEvent->m_bytesTransferred));
                         }

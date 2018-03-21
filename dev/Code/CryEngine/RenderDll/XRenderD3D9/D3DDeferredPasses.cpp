@@ -136,16 +136,13 @@ bool CD3D9Renderer::FX_DeferredCaustics()
     //allocate indices
     TempDynIB16::CreateFillAndBind(&arrDeferredInds[0], arrDeferredInds.size());
 
-    if (!FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
+    if (RenderCapabilities::SupportsDepthClipping())
     {
-        if (RenderCapabilities::SupportsDepthClipping())
-        {
-            FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size(), pSH, DS_SHADOW_CULL_PASS);
-        }
-        else
-        {
-            FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size(), pSH, DS_SHADOW_CULL_PASS, DS_SHADOW_CULL_PASS_FRONTFACING);
-        }
+        FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size(), pSH, DS_SHADOW_CULL_PASS);
+    }
+    else
+    {
+        FX_StencilCullPass(-1, arrDeferredVerts.size(), arrDeferredInds.size(), pSH, DS_SHADOW_CULL_PASS, DS_SHADOW_CULL_PASS_FRONTFACING);
     }
 
     pSH->FXEnd();

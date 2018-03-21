@@ -84,8 +84,8 @@ namespace LmbrCentral
         virtual void SetVolumetricFogOnly(bool /*volumetricFogOnly*/) {}
         virtual bool GetVolumetricFogOnly() { return false; }
 
-        virtual void SetIgnoreVisAreas(bool /*ignoreVisAreas*/) {}
-        virtual bool GetIgnoreVisAreas() { return false; }
+        virtual void SetUseVisAreas(bool /*useVisAreas*/) {}
+        virtual bool GetUseVisAreas() { return false; }
 
         virtual void SetAffectsThisAreaOnly(bool /*affectsThisAreaOnly*/) {}
         virtual bool GetAffectsThisAreaOnly() { return false; }

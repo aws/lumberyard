@@ -581,7 +581,7 @@ namespace CharacterTool
                 continue;
             }
             string filename = format.MakeFilename(entry->path.c_str());
-            filename = Path::GamePathToFullPath(filename.c_str()).toLatin1().data();
+            filename = Path::GamePathToFullPath(filename.c_str()).toUtf8().data();
             saveEntryController->AddSaveOperation(filename.c_str(),
                 [entry, &format, this](const AZStd::string& fullPath, const AZStd::shared_ptr<AZ::ActionOutput>& actionOutput) -> bool
                 {

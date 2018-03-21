@@ -17,25 +17,39 @@
    <bool>true</bool>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="4" column="4">
-    <widget class="QPushButton" name="CANCEL">
-     <property name="text">
-      <string>Close</string>
+   <item row="0" column="0" rowspan="4" colspan="2">
+    <widget class="QGroupBox" name="HEIGHTMAP_BORDER">
+     <property name="title">
+      <string>Select Tiles</string>
      </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QLabel" name="terrainTextureFrame">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>256</width>
+          <height>256</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>256</width>
+          <height>256</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
-   </item>
-   <item row="4" column="2" colspan="2">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>108</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
    </item>
    <item row="4" column="1">
     <widget class="QPushButton" name="CHANGE">
@@ -104,39 +118,25 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="0" rowspan="4" colspan="2">
-    <widget class="QGroupBox" name="HEIGHTMAP_BORDER">
-     <property name="title">
-      <string>Select Tiles</string>
+   <item row="4" column="4">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Close</set>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout">
-      <item>
-       <widget class="QLabel" name="terrainTextureFrame">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>256</width>
-          <height>256</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>256</width>
-          <height>256</height>
-         </size>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </widget>
+   </item>
+   <item row="4" column="2" colspan="2">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>108</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
    </item>
   </layout>
  </widget>

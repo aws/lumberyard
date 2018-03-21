@@ -16,7 +16,7 @@
 #include "PreviewWindowView.h"
 
 //QT
-#include <qshortcut.h>
+#include <QShortcut>
 
 //Editor
 #include <IEditor.h>

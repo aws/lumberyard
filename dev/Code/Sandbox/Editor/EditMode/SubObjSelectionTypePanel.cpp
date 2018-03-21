@@ -26,7 +26,6 @@
 
 const int SELECTION_TYPE_ITEM_HEIGHT = 18;
 
-#define IDC_TASKPANEL 1
 // CSubObjSelectionTypePanel dialog
 
 static QString SubObjElementTypeToString(ESubObjElementType type)

@@ -107,7 +107,8 @@ export abstract class ApiHandler implements Restifiable {
 
             this.recordEvent("ApiServiceRequested", {
                 "Identifier": this._identifier,
-                "Verb": RequestMethod[options.method]
+                "Verb": RequestMethod[options.method],
+                "Path": options.url.replace(this._serviceAPI, "")               
             }, null);
             observer.next(this.mapResponseCodes(http_observable))
         });
@@ -119,7 +120,8 @@ export abstract class ApiHandler implements Restifiable {
         return obs.map((res: Response) => {
             if (res) {
                 this.recordEvent("ApiServiceSuccess", {
-                    "Identifier": this._identifier
+                    "Identifier": this._identifier,
+                    "Path": res.url.replace(this._serviceAPI, "")
                 }, null);
                 if (res.status === 201) {
                     return { status: res.status, body: res }
@@ -149,7 +151,7 @@ export abstract class ApiHandler implements Restifiable {
             this.recordEvent("ApiServiceError", {
                 "Code": error.status,
                 "Message": error.statusText,
-                "Identifier": this._identifier
+                "Identifier": this._identifier                
             }, null);
 
             return Observable.throw(new Error("Status: " + error.status + ", Message:" + error.statusText));

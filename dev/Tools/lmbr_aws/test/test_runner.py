@@ -28,12 +28,12 @@ import time
 
 # Test are divided into to categories: unit tests and integration tests.
 #
-# Unit tests have no external dependencies (such as AWS or game levels) and are
+# Unit tests have no external dependencies (such as AWS or game levels) and are 
 # expected to execute quickly. Integration tests do have such dependencies and
-# may take a while to execute.
+# may take a while to execute. 
 #
-# All unfiltered unit test are always executed first, followed by integration
-# tests.
+# All unfiltered unit test are always executed first, followed by integration 
+# tests. 
 #
 # Test suites are defined using the following properties:
 #
@@ -60,7 +60,7 @@ import time
 #
 #   - disabled: set to True to disable the test. The default is that the test is
 #     enabled.
-#
+# 
 
 import path_utils
 
@@ -89,16 +89,42 @@ def lmbr_test_gem_command(gem_dll_name):
         '--only', gem_dll_name,
         '--dir', '{BUILD_DIRECTORY}'
     ]
+    
+def resource_manager_v1_test_python_path(*args):
+    path = [path_utils.resource_manager_v1_path()]
+    path.extend(
+        path_utils.resolve_imports(
+            path_utils.gem_common_code_path('CloudGemFramework', gem_version_directory='v1'),
+            path_utils.resource_manager_v1_path()
+        )
+    )
+    path.append(path_utils.resource_manager_v1_lib_path())
+    path.append(path_utils.python_aws_sdk_path())
+    path.append(path_utils.resource_manager_v1_test_path())
+    path.extend(args)
+    return path
 
-def integration_test_python_path(*args):
-    path = [
-        path_utils.python_aws_sdk_path(),
-        path_utils.resource_manager_v1_path(),
-        path_utils.resource_manager_v1_lib_path(),
-        path_utils.resource_manager_v1_test_path()
-    ]
-    if args:
-        path.extend(args)
+def resource_manager_v1_common_code_test_python_path(target_directory_path, *args):
+    path = []
+    path.extend(
+        path_utils.resolve_imports(
+            path_utils.gem_common_code_path('CloudGemFramework', gem_version_directory='v1'),
+            target_directory_path
+        )
+    )
+    path.extend(args)
+    return path
+
+def resource_manager_v1_lambda_code_test_python_path(target_directory_path, *args):
+    path = []
+    path.extend(
+        path_utils.resolve_imports(
+            path_utils.gem_common_code_path('CloudGemFramework', gem_version_directory='v1'),
+            target_directory_path
+        )
+    )
+    path.extend(args)
+    path.append(path_utils.python_aws_sdk_path())
     return path
 
 GROUP_EXCLUSIVE = -1
@@ -108,83 +134,143 @@ unit_test_suites = {
     'CloudGemFramework ResourceManager': {
         'group': GROUP_EXCLUSIVE,
         'environment': {
-            'PYTHONPATH': [
-                path_utils.python_aws_sdk_path(),
-                path_utils.resource_manager_v1_lib_path()
-            ],
+            'PYTHONPATH': resource_manager_v1_test_python_path(),
             'LYMETRICS': 'TEST'
+        },
+        'command': python_unittest_command( 
+            top_level_directory_path = path_utils.resource_manager_v1_path(), 
+            search_start_directory_path = path_utils.resource_manager_v1_test_path(), 
+            pattern='test_unit_lmbr_aws.py' 
+        )
+    },
+
+    'CloudGemFramework ResourceManager CommonCodeImport': {
+        'group': 1,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_test_python_path(
+                 path_utils.gem_common_code_path('CloudGemFramework', 'Utils', gem_version_directory='v1'))
         },
         'command': python_unittest_command(
             top_level_directory_path = path_utils.resource_manager_v1_path(),
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
-            pattern='test_unit_lmbr_aws.py'
+            pattern='test_unit_common_code_import.py'
         )
     },
 
     'CloudGemFramework common-code ResourceManagerCommon': {
         'group': 1,
         'environment': {
-            'PYTHONPATH': [
+            'PYTHONPATH': resource_manager_v1_common_code_test_python_path(
+                path_utils.resource_manager_v1_resource_manager_common_path(),
                 path_utils.python_aws_sdk_path()
-            ]
+            )
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_resource_manager_common_path('resource_manager_common', 'test'),
             top_level_directory_path = path_utils.resource_manager_v1_resource_manager_common_path()
         )
     },
-
+    
     'CloudGemFramework common-code LambdaSettings': {
         'group': 1,
         'environment': {
-            'PYTHONPATH': [
+            'PYTHONPATH': resource_manager_v1_common_code_test_python_path(
+                path_utils.gem_common_code_path('CloudGemFramework', 'LambdaSettings', gem_version_directory='v1'),
                 path_utils.python_aws_sdk_path()
-            ]
+            )
         },
-        'command': python_unittest_command(
-            search_start_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'LambdaSettings', 'CloudCanvas', 'test', gem_version_directory='v1'),
+        'command': python_unittest_command( 
+            search_start_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'LambdaSettings', 'test', gem_version_directory='v1'),
             top_level_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'LambdaSettings', gem_version_directory='v1')
         )
     },
-
+    
     'CloudGemFramework common-code LambdaService': {
         'group': 1,
         'environment': {
-            'PYTHONPATH': [
+            'PYTHONPATH': resource_manager_v1_common_code_test_python_path(
+                path_utils.gem_common_code_path('CloudGemFramework', 'LambdaService', gem_version_directory='v1'),
+                path_utils.gem_common_code_path('CloudGemFramework', 'ResourceManagerCommon', gem_version_directory='v1'),
+                path_utils.gem_lambda_code_path('CloudGemFramework', 'ProjectResourceHandler', gem_version_directory='v1'),
+                path_utils.gem_lambda_code_path('CloudGemFramework', 'ServiceLambda', gem_version_directory='v1'),
                 path_utils.python_aws_sdk_path()
-            ]
+            )
         },
         'command': python_unittest_command(
-            search_start_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'LambdaService', 'test', gem_version_directory='v1')
+            search_start_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'LambdaService', 'test', gem_version_directory='v1'),
+            top_level_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'LambdaService', gem_version_directory='v1')
+        )
+    },
+
+    'CloudGemFramework common-code ServiceClient_Python': {
+        'group': 1,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_common_code_test_python_path(
+                path_utils.gem_common_code_path('CloudGemFramework', 'ServiceClient_Python', gem_version_directory='v1'),
+                path_utils.gem_common_code_path('CloudGemFramework', 'ServiceClient_Python', 'test', gem_version_directory='v1'),
+                path_utils.python_aws_sdk_path()
+            )
+        },
+        'command': python_unittest_command(
+            search_start_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'ServiceClient_Python', 'test', gem_version_directory='v1'),
+            top_level_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'ServiceClient_Python', gem_version_directory='v1')
+        )
+    },
+
+    'CloudGemFramework common-code Utils': {
+        'group': 1,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_common_code_test_python_path(
+                path_utils.gem_common_code_path('CloudGemFramework', 'Utils', gem_version_directory='v1'),
+                path_utils.gem_common_code_path('CloudGemFramework', 'ResourceManagerCommon', gem_version_directory='v1'),
+                path_utils.python_aws_sdk_path()
+            )
+        },
+        'command': python_unittest_command( 
+            search_start_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'Utils', 'test', gem_version_directory='v1'),
+            top_level_directory_path = path_utils.gem_common_code_path('CloudGemFramework', 'Utils', gem_version_directory='v1')
         )
     },
 
     'CloudGemFramework lambda-code ProjectResourceHandler': {
         'group': 1,
         'environment': {
-            'PYTHONPATH': [
-                path_utils.python_aws_sdk_path(),
-                path_utils.resource_manager_v1_resource_manager_common_path()
-            ]
+            'PYTHONPATH': resource_manager_v1_lambda_code_test_python_path(
+                path_utils.gem_lambda_code_path('CloudGemFramework', 'ProjectResourceHandler', gem_version_directory = 'v1'),
+                path_utils.gem_lambda_code_path('CloudGemFramework', 'ServiceLambda', gem_version_directory = 'v1'),
+                path_utils.gem_common_code_path('CloudGemFramework', 'Utils', gem_version_directory='v1')
+            )
         },
         'command': python_unittest_command(
-            search_start_directory_path = path_utils.gem_lambda_code_test_path('CloudGemFramework', 'ProjectResourceHandler', gem_version_directory = 'v1')
+            search_start_directory_path = path_utils.gem_lambda_code_test_path('CloudGemFramework', 'ProjectResourceHandler', gem_version_directory = 'v1'),
+            top_level_directory_path = path_utils.gem_lambda_code_path('CloudGemFramework', 'ProjectResourceHandler', gem_version_directory = 'v1')
         )
     },
-
+    
+    'CloudGemFramework lambda-code ServiceLambda': {
+        'group': 1,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_lambda_code_test_python_path(
+                path_utils.gem_lambda_code_path('CloudGemFramework', 'ServiceLambda', gem_version_directory = 'v1')
+            )
+        },
+        'command': python_unittest_command(
+            search_start_directory_path = path_utils.gem_lambda_code_test_path('CloudGemFramework', 'ServiceLambda', gem_version_directory = 'v1'),
+            top_level_directory_path = path_utils.gem_lambda_code_path('CloudGemFramework', 'ServiceLambda', gem_version_directory = 'v1')
+        )
+    },
+    
     'CloudGemFramework resource-manager-code': {
         'group': 2,
         'environment': {
-            'PYTHONPATH': [
-                path_utils.resource_manager_v1_path(),
-                path_utils.resource_manager_v1_lib_path(),
-                path_utils.gem_resource_manager_code_lib_path('CloudGemFramework', gem_version_directory='v1'),
-                path_utils.python_aws_sdk_path()
-            ]
+            'PYTHONPATH': resource_manager_v1_test_python_path(
+                path_utils.gem_resource_manager_code_lib_path('CloudGemFramework', gem_version_directory='v1')
+            )
         },
-        'command': python_unittest_command(
-            search_start_directory_path = path_utils.gem_resource_manager_code_test_path('CloudGemFramework', gem_version_directory='v1'),
-            pattern='test_unit*.py'
+        'command': python_unittest_command( 
+            search_start_directory_path = path_utils.gem_resource_manager_code_test_path('CloudGemFramework', gem_version_directory='v1'), 
+            top_level_directory_path = path_utils.gem_resource_manager_code_path('CloudGemFramework', gem_version_directory='v1'),
+            pattern='test_unit*.py' 
         )
     },
 
@@ -198,11 +284,11 @@ unit_test_suites = {
     'CloudGemPlayerAccount lambda-code ServiceLambda': {
         'group': 1,
         'environment': {
-            'PYTHONPATH': [
+            'PYTHONPATH': [ 
                 path_utils.python_aws_sdk_path()
             ]
         },
-        'command': python_unittest_command(
+        'command': python_unittest_command( 
             search_start_directory_path = path_utils.gem_lambda_code_test_path('CloudGemPlayerAccount', 'ServiceLambda')
         )
     }
@@ -213,7 +299,7 @@ integration_test_suites = {
     'StackOperations': {
         'group': 1,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
@@ -224,7 +310,7 @@ integration_test_suites = {
     'UpdateHooks': {
         'group': 2,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
@@ -235,7 +321,7 @@ integration_test_suites = {
     'ProjectResourceHooks': {
         'group': 2,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
@@ -246,7 +332,7 @@ integration_test_suites = {
     'CustomResourceHandlerPlugins': {
         'group': 2,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
@@ -257,7 +343,7 @@ integration_test_suites = {
     'Security': {
         'group': 3,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
@@ -265,24 +351,37 @@ integration_test_suites = {
         )
     },
 
-    'CloudGemFramework': {
+    # 'ServiceApi': {
+    #     'group': 3,
+    #     'environment': {
+    #         'PYTHONPATH': resource_manager_v1_test_python_path(
+    #             path_utils.gem_resource_manager_code_path('CloudGemFramework', gem_version_directory='v1')
+    #         )
+    #     },
+    #     'command': python_unittest_command(
+    #         search_start_directory_path = path_utils.resource_manager_v1_test_path(),
+    #         pattern = 'test_integration_service_api.py'
+    #     ),
+    #     'required_libs': ['requests_aws4auth']
+    # },
+
+    'CGP': {
         'group': 3,
         'environment': {
-            'PYTHONPATH': integration_test_python_path(
+            'PYTHONPATH': resource_manager_v1_test_python_path(
                 path_utils.gem_resource_manager_code_path('CloudGemFramework', gem_version_directory='v1')
             )
         },
         'command': python_unittest_command(
-            search_start_directory_path = path_utils.gem_aws_test_path('CloudGemFramework', gem_version_directory='v1'),
-            pattern = 'test_integration.py'
-        ),
-        'required_libs': ['requests_aws4auth']
+            search_start_directory_path = path_utils.resource_manager_v1_test_path(),
+            pattern = 'test_integration_cgp.py'
+        )
     },
 
     'CognitoResourceHandlers': {
         'group': 3,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
@@ -293,7 +392,7 @@ integration_test_suites = {
     'CloudGemDynamicContent': {
         'group': 4,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.gem_aws_test_path('CloudGemDynamicContent')
@@ -303,7 +402,7 @@ integration_test_suites = {
     'CloudGemPlayerAccount': {
         'group': 4,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.gem_aws_test_path('CloudGemPlayerAccount'),
@@ -315,7 +414,7 @@ integration_test_suites = {
     'CloudGemInGameSurvey': {
         'group': 4,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.gem_aws_test_path('CloudGemInGameSurvey'),
@@ -327,7 +426,7 @@ integration_test_suites = {
     'CloudGemTextToSpeech': {
         'group': 4,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.gem_aws_test_path('CloudGemTextToSpeech'),
@@ -336,14 +435,36 @@ integration_test_suites = {
         'required_libs': ['requests_aws4auth']
     },
 
-    'FrameworkVersionUpdate': {
+    'FrameworkVersionUpdate v1.0.0 to latest': {
         'group': 4,
         'environment': {
-            'PYTHONPATH': integration_test_python_path()
+            'PYTHONPATH': resource_manager_v1_test_python_path()
         },
         'command': python_unittest_command(
             search_start_directory_path = path_utils.resource_manager_v1_test_path(),
             pattern = 'test_integration_version_update.py'
+        )
+    },
+
+    'FrameworkVersionUpdate v1.1.1 to latest': {
+        'group': 4,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_test_python_path()
+        },
+        'command': python_unittest_command(
+            search_start_directory_path = path_utils.resource_manager_v1_test_path(),
+            pattern = 'test_integration_version_update_from_1_1_1_to_latest.py'
+        )
+    },
+
+    'FrameworkVersionUpdate v1.1.2 to latest': {
+        'group': 4,
+        'environment': {
+            'PYTHONPATH': resource_manager_v1_test_python_path()
+        },
+        'command': python_unittest_command(
+            search_start_directory_path = path_utils.resource_manager_v1_test_path(),
+            pattern = 'test_integration_version_update_from_1_1_2_to_latest.py'
         )
     }
 }
@@ -361,6 +482,7 @@ def main():
     parser.add_argument('--list', '-l', action='store_true', required=False, help='List the available test suites and exit. No tests are run.')
     parser.add_argument('--build-directory', '-b', metavar='PATH', required=False, default='Bin64vc140.Debug.Test', help='The build output directory used for running C++ tests. Default is Bin64vc140.Debug.Test.')
     parser.add_argument('--unit-tests-only', '-u', action='store_true', required=False, help='Run only the unit tests. By default unit tests and integration tests are run.')
+    parser.add_argument('--integration-tests-only', '-i', action='store_true', required=False, help='Run only the integration tests. By default unit tests and integration tests are run.')
     parser.add_argument('--fail-fast', '-t', action='store_true', required=False, help='Do not run test suites after a failure. By default all test suites are run. Only applies to sequential runs.')
     parser.add_argument('--continue', '-c', action='store_true', required=False, dest='continue_run', help='Continue with previous failed test runs. By default all the test state files are deleted.')
 
@@ -385,7 +507,7 @@ def list_test_suites(args):
     suites = get_all_filtered_test_suites_in_order(args)
 
     for suite in suites:
-        suite['full_command_line'] = suite['command'] + ' ' + ' '.join(suite.get('arguments', []))
+        suite['full_command_line'] = ' '.join(suite.get('command', []))
 
     def group_formatter(group):
         if group == GROUP_EXCLUSIVE:
@@ -393,7 +515,7 @@ def list_test_suites(args):
         else:
             return str(group).rjust(len('exclusive'), ' ')
 
-    output_table(suites,
+    output_table(suites, 
         [
             {'Field': 'name', 'Heading': 'Test Name'},
             {'Field': 'type', 'Heading': 'Type'},
@@ -409,10 +531,11 @@ def list_test_suites(args):
 def run_test_suites_in_parallel(args):
 
     global_start_time = time.time()
-
+    
     results_directory_path = get_test_results_directory_path(args)
 
-    filtered_unit_test_suites = filter_and_sort_test_suites(args, unit_test_suites, 'Unit')
+    filtered_unit_test_suites = filter_and_sort_test_suites(args, unit_test_suites, 'Unit') if not \
+        args.integration_tests_only else []
 
     combined_test_suites = []
     combined_test_suites.extend(filtered_unit_test_suites)
@@ -464,13 +587,13 @@ def run_test_suites_in_parallel(args):
 
 
 def do_run_test_suites_in_parallel(args, suites, results_directory_path, type):
-
+            
     failed_suites = []
 
     exclusive_test_suites = [ suite for suite in suites if suite['group'] == GROUP_EXCLUSIVE ]
     other_test_suites = [ suite for suite in suites if suite['group'] != GROUP_EXCLUSIVE ]
 
-    for suite in exclusive_test_suites:
+    for suite in exclusive_test_suites: 
         failed_suites.extend(run_test_suite_list_in_parallel(args, [ suite ], results_directory_path, type))
 
     failed_suites.extend(run_test_suite_list_in_parallel(args, other_test_suites, results_directory_path, type))
@@ -519,7 +642,7 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
             def execute(command):
 
                 popen = subprocess.Popen(
-                    command,
+                    command, 
                     stdout=subprocess.PIPE,   # Pipe stdout to the loop below
                     stderr=subprocess.STDOUT, # Redirect stderr to stdout
                     stdin=subprocess.PIPE,    # See below.
@@ -527,10 +650,10 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
                     env=process_suite_environment(suite)
                 )
 
-                # Piping stdin and closing it causes the process to exit on Ctrl+C instead of promptig
-                # to terminate the batch job (at least I think that is what is happening... it made
+                # Piping stdin and closing it causes the process to exit on Ctrl+C instead of promptig 
+                # to terminate the batch job (at least I think that is what is happening... it made 
                 # everything work as desired).
-                popen.stdin.close()
+                popen.stdin.close() 
 
                 # Make the this function return an interator over lines read from the process output.
                 # A bit of python iterator magic here. Basically each the next function of the iterator
@@ -539,10 +662,10 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
                 # the process terminates.
 
                 for stdout_line in iter(popen.stdout.readline, ""):
-                    yield stdout_line
+                    yield stdout_line 
 
                 # After the iterator finishes, close the pipe and get the process exit code (no waiting
-                # is done here because the process has already terminated, causing the iterator loop
+                # is done here because the process has already terminated, causing the iterator loop 
                 # above to terminate).
                 popen.stdout.close()
                 exit_code = popen.wait()
@@ -553,7 +676,7 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
 
             # Open a file to receive the output which is read from the process using an iterator
             # returned by the execute function. The loop will exit when the process terminates.
-            # If the process exited with an error, an exception is raised by the execute function.
+            # If the process exited with an error, an exception is raised by the execute function. 
             try:
                 with open(output_file_path, mode = 'w') as output_file:
                     for output_line in execute(suite['command']):
@@ -564,7 +687,7 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
                 exception = e
 
             with output_lock:
-
+                
                 output_message('-----------------------------------------------------------------------------------------------------------------------------------------------------------')
 
                 if exception:
@@ -575,7 +698,7 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
                 else:
                     output_message('    PASSED: {}'.format(suite['title']))
                     record_successful_suite(suite)
-
+                
                 output_message('   command: {}'.format(format_suite_command('            ', suite)))
                 output_message('    output: {}'.format(output_file_path))
                 output_message('      time: {}'.format(datetime.datetime.now().strftime('%c')))
@@ -608,7 +731,7 @@ def run_test_suite_list_in_parallel(args, suites, results_directory_path, type):
 def run_test_suites_in_sequence(args):
 
     global_start_time = time.time()
-
+    
     suites = get_all_filtered_test_suites_in_order(args)
 
     verify_required_libs(suites)
@@ -639,7 +762,7 @@ def run_test_suites_in_sequence(args):
 
         if exit_code and args.fail_fast:
             break
-
+        
     output_message('')
     output_message('')
 
@@ -690,22 +813,22 @@ def get_all_filtered_test_suites_in_order(args):
 def get_test_run_state_file_path():
     return os.path.join(os.environ.get('TEMP', ''), 'lmbr_aws_test_run_state.json')
 
-
+    
 def record_successful_suite(suite):
 
     test_run_state_file_path = get_test_run_state_file_path()
-
+    
     if os.path.isfile(test_run_state_file_path):
         with open(test_run_state_file_path, 'r') as file:
             record = json.load(file)
     else:
         record = []
-
+        
     record.append(suite['title'])
-
+    
     with open(test_run_state_file_path, 'w') as file:
         json.dump(record, file)
-
+    
 
 def filter_and_sort_test_suites(args, suite_dict, type):
 
@@ -732,30 +855,30 @@ def filter_and_sort_test_suites(args, suite_dict, type):
             successful_suite_record = json.load(file)
     else:
         successful_suite_record = []
-
+                
     were_disabled_suites = True
 
     suites = []
     for name, suite in sorted(suite_dict.items(), cmp=compare):
         title = '{} {} Tests'.format(name, type)
         if filter_includes(args, title):
-
+        
             if suite.get('disabled', False):
 
                 output_message('WARNING: Skipping disabled suite: {}'.format(title))
 
             elif title in successful_suite_record:
-
+            
                 output_message('WARNING: Skipping previously successful suite: {}'.format(title))
-
+                
             else:
 
                 suite = copy.deepcopy(suite)
-
+            
                 suite['name'] = name
                 suite['title'] = title
                 suite['type'] = type
-
+            
                 new_command = []
                 for part in suite['command']:
                     part = part.replace('{BUILD_DIRECTORY}', args.build_directory)
@@ -769,7 +892,7 @@ def filter_and_sort_test_suites(args, suite_dict, type):
 
     return suites
 
-
+    
 def filter_includes(args, title):
     if args.filter:
         lower_name = title.lower()
@@ -778,7 +901,7 @@ def filter_includes(args, title):
                 return False
     return True
 
-
+    
 def verify_required_libs(suites):
 
     libs = set(['mock'])
@@ -797,7 +920,7 @@ def verify_required_libs(suites):
 
     if not all_ok:
         raise RuntimeError('Not all required libraries could be imported.')
-
+                
 
 def get_test_results_directory_path(args):
     path = path_utils.dev_path('CloudCanvasTestResults')
@@ -824,7 +947,7 @@ def output_table(items, specs, sort_column_count = 1, indent = False, first_sort
     The columns are arranged in the order of the specs. The column widths are automatically determiend.
 
     The items are sorted in ascending order by the formatted value of the first n columns, where n
-    is specified by the sort_column_count parameter (which defaults to 1, causing the the table to
+    is specified by the sort_column_count parameter (which defaults to 1, causing the the table to 
     be sorted by the first column only).
 
     '''
@@ -857,7 +980,7 @@ def output_table(items, specs, sort_column_count = 1, indent = False, first_sort
 
     def is_hidden(spec):
         return spec.get('Hidden', False) or (spec.get('HideWhenEmpty', False) and lengths.get(spec['Field'], 0) == 0)
-
+        
     specs = [ spec for spec in specs if not is_hidden(spec) ]
 
     for spec in specs:
@@ -895,32 +1018,32 @@ def output_table(items, specs, sort_column_count = 1, indent = False, first_sort
             line += '{0:{1}}  '.format(formatted_value, lengths[spec['Field']])
         output_message(line)
 
-
+        
 def process_suite_environment_value(value):
     if type(value) is list:
         value = os.pathsep.join(value)
     value = os.path.expandvars(value)
     return value
-
-
+    
+    
 def process_suite_environment(suite):
 
     env = copy.copy(os.environ)
-
+    
     # prevent interfearance with the test environments
     env.pop('PYTHONPATH', None)
-
+    
     if 'environment' in suite:
         for key, value in suite.get('environment', {}).iteritems():
             env[key] = process_suite_environment_value(value)
-
+        
     return env
-
+    
 
 def format_suite_command(prefix, suite):
-
+    
     result = ''
-
+    
     for key,value in suite.get('environment', {}).iteritems():
         value = process_suite_environment_value(value)
         if result:
@@ -929,10 +1052,10 @@ def format_suite_command(prefix, suite):
             result = result + 'SET "{}={}"'.format(key, value)
         else:
             result = result + 'SET {}={}'.format(key, value)
-
+        
     if result:
         result = result + '\n' + prefix
-
+        
     first_part = True
     for part in suite['command']:
         if ' ' in part:
@@ -941,36 +1064,36 @@ def format_suite_command(prefix, suite):
             result = result + ' '
         result = result + part
         first_part = False
-
+        
     return result
-
+    
 
 def cleanup_previous_test_state(args):
 
     if args.continue_run:
         print('Continuing previous test run (not deleting test state).')
         return
-
+    
     temp_dir = os.environ.get('TEMP', '')
     search_path = os.path.join(temp_dir, 'tmp_last_running_*')
-
+    
     for file_path in glob.glob(search_path):
         print('Deleting {}'.format(file_path))
         os.remove(file_path)
-
+        
     test_run_state_file_path = get_test_run_state_file_path()
     if os.path.isfile(test_run_state_file_path):
         print('Deleting {}'.format(test_run_state_file_path))
         os.remove(test_run_state_file_path)
-
+    
 
 def output_message(msg):
     print(msg)
 
-
+    
 def debug(*args):
     print(datetime.datetime.now().strftime('%c'), *args)
 
-
+    
 if __name__ == "__main__":
     sys.exit(main())

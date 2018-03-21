@@ -25,7 +25,7 @@
 //////////////////////////////////////////////////////////////////////////
 IAVI_Reader* CSystem::CreateAVIReader()
 {
-#if !defined(LINUX) && !defined(APPLE) && !defined(DURANGO) && !defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CREATE_AVI_READER
     CAVI_Reader* pAVIReader = new CAVI_Reader();
     return (pAVIReader);
 #else
@@ -36,7 +36,7 @@ IAVI_Reader* CSystem::CreateAVIReader()
 //////////////////////////////////////////////////////////////////////////
 void CSystem::ReleaseAVIReader(IAVI_Reader* pAVIReader)
 {
-#if !defined(LINUX) && !defined(APPLE) && !defined(DURANGO) && !defined(ORBIS)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CREATE_AVI_READER
     SAFE_DELETE(pAVIReader);
 #endif
 }

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Microphone_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

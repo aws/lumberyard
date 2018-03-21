@@ -583,7 +583,8 @@ namespace AssetProcessor
 
     bool InternalRecognizerBasedBuilder::GetMatchingRecognizers(const AZStd::vector<AssetBuilderSDK::PlatformInfo>& platformInfos, const QString& fileName, InternalRecognizerPointerContainer& output) const
     {
-        AZ_Assert(fileName.contains('\\') == false, "fileName must not contain backslashes: %s", fileName.toUtf8().constData());
+        QByteArray fileNameUtf8 = fileName.toUtf8();
+        AZ_Assert(fileName.contains('\\') == false, "fileName must not contain backslashes: %s", fileNameUtf8.constData());
 
         bool foundAny = false;
         // assetRecognizerDictionary is a key value pair dictionary where
@@ -593,7 +594,7 @@ namespace AssetProcessor
         for (const InternalAssetRecognizer* recognizer : m_assetRecognizerDictionary)
         {
             // so this platform is supported.  Check if the file matches the regex in MatchesPath.
-            if (recognizer->m_patternMatcher.MatchesPath(fileName))
+            if (recognizer->m_patternMatcher.MatchesPath(fileNameUtf8.constData()))
             {
                 // this recognizer does match that particular file name.
                 // do we know how to compile it for any of the platforms?
@@ -641,6 +642,10 @@ namespace AssetProcessor
         if (!GetMatchingRecognizers(request.m_enabledPlatforms, normalizedPath, recognizers))
         {
             AssetBuilderSDK::BuilderLog(m_internalRecognizerBuilderUuid, "Cannot find recognizer for %s.", request.m_sourceFile.c_str());
+            if (request.m_enabledPlatforms.empty())
+            {
+                response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
+            }
             return;
         }
 

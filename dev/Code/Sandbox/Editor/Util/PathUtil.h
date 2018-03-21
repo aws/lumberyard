@@ -84,7 +84,7 @@ namespace Path
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
-        _splitpath(filepath.toLatin1().data(), drive, dir, fname, ext);
+        _splitpath(filepath.toUtf8().data(), drive, dir, fname, ext);
         _makepath(path_buffer, drive, dir, 0, 0);
         path = path_buffer;
         _makepath(path_buffer, 0, 0, fname, ext);
@@ -116,7 +116,7 @@ namespace Path
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
-        _splitpath(filepath.toLatin1().data(), drive, dir, fname, ext);
+        _splitpath(filepath.toUtf8().data(), drive, dir, fname, ext);
         _makepath(path_buffer, drive, dir, 0, 0);
         path = path_buffer;
         filename = fname;
@@ -147,7 +147,7 @@ namespace Path
     inline QString GetExt(const QString& filepath)
     {
         char ext[_MAX_EXT];
-        _splitpath(filepath.toLatin1().data(), 0, 0, 0, ext);
+        _splitpath(filepath.toUtf8().data(), 0, 0, 0, ext);
         if (ext[0] == '.')
         {
             return ext + 1;
@@ -162,7 +162,7 @@ namespace Path
         char path_buffer[_MAX_PATH];
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
-        _splitpath(filepath.toLatin1().data(), drive, dir, 0, 0);
+        _splitpath(filepath.toUtf8().data(), drive, dir, 0, 0);
         _makepath(path_buffer, drive, dir, 0, 0);
         return CaselessPaths(path_buffer);
     }
@@ -173,7 +173,7 @@ namespace Path
         char path_buffer[_MAX_PATH];
         char fname[_MAX_FNAME];
         char ext[_MAX_EXT];
-        _splitpath(filepath.toLatin1().data(), 0, 0, fname, ext);
+        _splitpath(filepath.toUtf8().data(), 0, 0, fname, ext);
         _makepath(path_buffer, 0, 0, fname, ext);
         return CaselessPaths(path_buffer);
     }
@@ -182,7 +182,7 @@ namespace Path
     inline QString GetFileName(const QString& filepath)
     {
         char fname[_MAX_FNAME];
-        _splitpath(filepath.toLatin1().data(), 0, 0, fname, 0);
+        _splitpath(filepath.toUtf8().data(), 0, 0, fname, 0);
         return fname;
     }
 
@@ -251,7 +251,7 @@ namespace Path
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
         char fname[_MAX_FNAME];
-        _splitpath(filepath.toLatin1().data(), drive, dir, fname, 0);
+        _splitpath(filepath.toUtf8().data(), drive, dir, fname, 0);
         _makepath(path_buffer, drive, dir, fname, 0);
         return path_buffer;
     }
@@ -260,7 +260,7 @@ namespace Path
     inline QString Make(const QString& dir, const QString& filename, const QString& ext)
     {
         char path_buffer[_MAX_PATH];
-        _makepath(path_buffer, NULL, dir.toLatin1().data(), filename.toLatin1().data(), ext.toLatin1().data());
+        _makepath(path_buffer, NULL, dir.toUtf8().data(), filename.toUtf8().data(), ext.toUtf8().data());
         return CaselessPaths(path_buffer);
     }
 
@@ -280,7 +280,7 @@ namespace Path
     }
     inline string FullPathToGamePath(const char* path)
     {
-        return CaselessPaths(GetRelativePath(path, true)).toLatin1().data();
+        return CaselessPaths(GetRelativePath(path, true)).toUtf8().data();
     }
 
     QString FullPathToLevelPath(const QString& path);

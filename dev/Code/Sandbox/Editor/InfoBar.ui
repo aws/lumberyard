@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1239</width>
-    <height>26</height>
+    <width>1600</width>
+    <height>27</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -56,6 +56,9 @@
    </item>
    <item>
     <widget class="QPushButton" name="m_lockSelection">
+     <property name="toolTip">
+      <string>Lock Object Selection</string>
+     </property>
      <property name="text">
       <string>Lock Selection</string>
      </property>
@@ -82,8 +85,11 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="toolTip">
+      <string>X-Axis Position</string>
+     </property>
      <property name="alignment">
-      <set>Qt::AlignCenter|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      <set>Qt::AlignCenter|Qt::AlignHCenter|Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>
@@ -105,8 +111,11 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="toolTip">
+      <string>Y-Axis Position</string>
+     </property>
      <property name="alignment">
-      <set>Qt::AlignCenter|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      <set>Qt::AlignCenter|Qt::AlignHCenter|Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>
@@ -128,8 +137,11 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="toolTip">
+      <string>Z-Axis Position</string>
+     </property>
      <property name="alignment">
-      <set>Qt::AlignCenter|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      <set>Qt::AlignCenter|Qt::AlignHCenter|Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </item>
@@ -148,6 +160,9 @@
    </item>
    <item>
     <widget class="QPushButton" name="m_vectorLock">
+     <property name="toolTip">
+      <string>Lock Axis Vectors</string>
+     </property>
      <property name="text">
       <string>Lock Scale</string>
      </property>
@@ -172,6 +187,9 @@
    </item>
    <item>
     <widget class="QDoubleSpinBox" name="m_moveSpeed">
+     <property name="toolTip">
+      <string>Camera Movement Speed</string>
+     </property>
      <property name="alignment">
       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
      </property>
@@ -188,6 +206,9 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="toolTip">
+      <string>Set Camera Move Speed to 0.1</string>
+     </property>
      <property name="text">
       <string>.1</string>
      </property>
@@ -200,6 +221,9 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Set Camera Move Speed to 1.0 (default)</string>
      </property>
      <property name="text">
       <string>1</string>
@@ -214,6 +238,9 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="toolTip">
+      <string>Set Camera Move Speed to 10</string>
+     </property>
      <property name="text">
       <string>10</string>
      </property>
@@ -222,7 +249,7 @@
    <item>
     <widget class="QPushButton" name="m_terrainCollision">
      <property name="toolTip">
-      <string>Toggle Terrain Camera Collision (Q)</string>
+      <string>Enable Terrain Camera Collision (Q)</string>
      </property>
      <property name="text">
       <string>Coll</string>
@@ -233,6 +260,54 @@
      </property>
      <property name="checkable">
       <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_physicsBtn">
+     <property name="toolTip">
+      <string>Enable Physics/AI (Ctrl+P)</string>
+     </property>
+     <property name="text">
+      <string>AI/Physics</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_physSingleStepBtn">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Enable Physics/AI Single-step Mode ('&lt;' in Game Mode)</string>
+     </property>
+     <property name="text">
+      <string>||</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="m_physDoStepBtn">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Perform a Single Physics/AI Simulation Step ('&gt;' in Game Mode)</string>
+     </property>
+     <property name="text">
+      <string>|&gt;</string>
      </property>
     </widget>
    </item>
@@ -263,6 +338,9 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="toolTip">
+      <string>Go to Position</string>
+     </property>
      <property name="text">
       <string>Goto position</string>
      </property>
@@ -275,6 +353,9 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Mute Audio</string>
      </property>
      <property name="text">
       <string>Mute Audio</string>
@@ -291,6 +372,9 @@
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>Enable VR Preview</string>
      </property>
      <property name="text">
       <string>VR Preview</string>

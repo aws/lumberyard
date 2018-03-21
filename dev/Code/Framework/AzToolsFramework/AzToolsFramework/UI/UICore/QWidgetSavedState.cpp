@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "QWidgetSavedState.h"
 
 #include <AzCore/Serialization/SerializeContext.h>

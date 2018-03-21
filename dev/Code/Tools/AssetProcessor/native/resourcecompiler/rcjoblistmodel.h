@@ -89,8 +89,6 @@ namespace AssetProcessor
         RCJob* getItem(int index) const;
         int GetIndexOfProcessingJob(const QueueElementID& elementId);
 
-        void EraseFailedJobs(const QueueElementID& target);
-        int FailedJobsCount();
         void EraseJobs(QString sourceFile);
 
     private:
@@ -100,7 +98,6 @@ namespace AssetProcessor
 
         // profiler showed much of our time was spent in IsInQueue.
         QMultiMap<QueueElementID, RCJob*> m_jobsInQueueLookup;
-        QMultiMap<QueueElementID, RCJob*> m_jobsFailedLookup;
     };
 } // namespace AssetProcessor
 

@@ -12,9 +12,27 @@
 
 #include <AzFramework/Input/Devices/InputDeviceId.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceId::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<InputDeviceId>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Constructor<const char*, AZ::u32>()
+                ->Property("name", BehaviorValueProperty(&InputDeviceId::m_name))
+                ->Property("index", BehaviorValueProperty(&InputDeviceId::m_index))
+            ;
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceId::InputDeviceId(const char* name, AZ::u32 index)
         : m_name(name)
@@ -51,5 +69,15 @@ namespace AzFramework
     bool InputDeviceId::operator!=(const InputDeviceId& other) const
     {
         return !(*this == other);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceId::operator<(const InputDeviceId& other) const
+    {
+        if (m_index == other.m_index)
+        {
+            return m_crc32 < other.m_crc32;
+        }
+        return m_index < other.m_index;
     }
 } // namespace AzFramework

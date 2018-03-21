@@ -735,7 +735,7 @@ bool CAIDebuggerView::GetSetViewData(const SItem& sItem, Vec3& vPos, Vec3& vDir)
     vDir = Vec3_OneY;
 
     IAIObjectManager* pAIObjMgr = gEnv->pAISystem->GetAIObjectManager();
-    IAIObject* pAI = pAIObjMgr->GetAIObjectByName(sItem.type, sItem.name.toLatin1().data());
+    IAIObject* pAI = pAIObjMgr->GetAIObjectByName(sItem.type, sItem.name.toUtf8().data());
     IAIDebugRecord* pRecord = pAI ? pAI->GetAIDebugRecord() : NULL;
     if (pRecord)
     {
@@ -896,7 +896,7 @@ QString CAIDebuggerView::GetLabelAtPoint(const QPoint& point)
             }
         }
 
-        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toLatin1().data());
+        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toUtf8().data());
         if (!pAI)
         {
             continue;
@@ -942,7 +942,7 @@ Vec3 CAIDebuggerView::GetPosAtPoint(const QPoint& point)
             continue;
         }
 
-        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toLatin1().data());
+        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toUtf8().data());
         if (!pAI)
         {
             continue;
@@ -984,7 +984,7 @@ bool CAIDebuggerView::FindNext(const QString& what, float start, float& t)
     {
         const SItem&    item (*it);
 
-        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toLatin1().data());
+        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toUtf8().data());
         if (!pAI)
         {
             continue;
@@ -1135,7 +1135,7 @@ bool CAIDebuggerView::IsStreamEmpty(const SItem& sItem, int streamType) const
     IAISystem* pAISystem(GetIEditor()->GetAI()->GetAISystem());
     assert(pAISystem);
 
-    IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(sItem.type, sItem.name.toLatin1().data());
+    IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(sItem.type, sItem.name.toUtf8().data());
     IAIDebugRecord* pRecord = (pAI ? pAI->GetAIDebugRecord() : NULL);
     IAIDebugStream* pStream = (pRecord ? pRecord->GetStream((IAIRecordable::e_AIDbgEvent)streamType) : NULL);
 
@@ -1275,7 +1275,7 @@ void CAIDebuggerView::UpdateAIDebugger() const
             const SItem& currItem(*itItem);
             SAIRecorderObjectDebugContext objectContext;
 
-            objectContext.sName = currItem.name.toLatin1().data();
+            objectContext.sName = currItem.name.toUtf8().data();
             objectContext.bEnableDrawing = currItem.bDebugEnabled;
             objectContext.bSetView = currItem.bSetView;
             objectContext.color.r = currItem.debugColor.red();
@@ -1673,7 +1673,7 @@ void CAIDebuggerView::DrawDetails(QPainter& dc)
     {
         ++i;
         int y = m_detailsRect.top() + item.y;
-        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toLatin1().data());
+        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toUtf8().data());
         if (!pAI)
         {
             continue;
@@ -1773,7 +1773,7 @@ void CAIDebuggerView::DrawTimeline(QPainter& dc)
     {
         ++n;
 
-        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toLatin1().data());
+        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toUtf8().data());
         if (!pAI)
         {
             continue;
@@ -1975,7 +1975,7 @@ void CAIDebuggerView::SetCursorPrevEvent(bool bShiftDown)
         {
             const SItem& currItem(*itItem);
 
-            IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(currItem.type, currItem.name.toLatin1().data());
+            IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(currItem.type, currItem.name.toUtf8().data());
             if (!pAI)
             {
                 continue;
@@ -2044,7 +2044,7 @@ void CAIDebuggerView::SetCursorNextEvent(bool bShiftDown)
         {
             const SItem& currItem(*itItem);
 
-            IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(currItem.type, currItem.name.toLatin1().data());
+            IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(currItem.type, currItem.name.toUtf8().data());
             if (!pAI)
             {
                 continue;
@@ -2108,7 +2108,7 @@ float   CAIDebuggerView::GetRecordStartTime()
     {
         const SItem&    item (*it);
 
-        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toLatin1().data());
+        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toUtf8().data());
         if (!pAI)
         {
             continue;
@@ -2149,7 +2149,7 @@ float   CAIDebuggerView::GetRecordEndTime()
     {
         const SItem&    item (*it);
 
-        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toLatin1().data());
+        IAIObject* pAI = pAISystem->GetAIObjectManager()->GetAIObjectByName(item.type, item.name.toUtf8().data());
         if (!pAI)
         {
             continue;

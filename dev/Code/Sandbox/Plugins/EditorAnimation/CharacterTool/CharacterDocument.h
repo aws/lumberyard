@@ -17,7 +17,6 @@
 #include <Cry_Geo.h>
 #include <Cry_Camera.h>
 #include <smartptr.h>
-#include <boost/shared_ptr.hpp>
 
 #include <QString>
 #include <QObject>
@@ -62,7 +61,6 @@ class CDLight;
 
 namespace CharacterTool {
     using std::vector;
-    using std::unique_ptr;
     using Serialization::string;
     using Serialization::IArchive;
 
@@ -312,21 +310,21 @@ namespace CharacterTool {
 
         string m_loadedCharacterFilename;
         string m_loadedSkeleton;
-        unique_ptr<AnimationSetFilter> m_loadedAnimationSetFilter;
+        AZStd::unique_ptr<AnimationSetFilter> m_loadedAnimationSetFilter;
 
         _smart_ptr<ICharacterInstance> m_compressedCharacter;
         _smart_ptr<ICharacterInstance> m_uncompressedCharacter;
         vector<StateText> m_compressedStateTextCache;
         vector<StateText> m_uncompressedStateTextCache;
 
-        boost::shared_ptr<IAnimationGroundAlignment> m_groundAlignment;
+        AZStd::shared_ptr<IAnimationGroundAlignment> m_groundAlignment;
         float m_AverageFrameTime;
 
         ViewportOptions m_viewportOptions;
         bool m_showOriginalAnimation;
         std::shared_ptr<DisplayOptions> m_displayOptions;
         AnimationDrivenSamples m_animDrivenSamples;
-        unique_ptr<SViewportState> m_viewportState;
+        AZStd::unique_ptr<SViewportState> m_viewportState;
 
         ICVar* m_cvar_drawEdges;
         ICVar* m_cvar_drawLocator;

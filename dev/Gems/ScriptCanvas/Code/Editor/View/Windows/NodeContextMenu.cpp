@@ -165,7 +165,7 @@ namespace
 
         bool isMultipleNodes = selectedNodes.size() > 1;
         auto* action = new QAction({ isMultipleNodes ? QObject::tr("Copy Nodes") : QObject::tr("Copy Node") }, parent);
-        
+
         QString tipMessage = isMultipleNodes ? QObject::tr("Copy these nodes to the clipboard") : QObject::tr("Copy this node to the clipboard");
         action->setToolTip(tipMessage);
         action->setStatusTip(tipMessage);
@@ -185,12 +185,12 @@ namespace
         // Get the already selected nodes and add this node to the selection
         AZ::EntityId sceneId;
         GraphCanvas::SceneMemberRequestBus::EventResult(sceneId, nodeId, &GraphCanvas::SceneMemberRequests::GetScene);
-        
+
         AZStd::vector<AZ::EntityId> selectedNodes = GetAggregatedSceneAndActiveSelectedNodes(sceneId, nodeId);
 
         bool isMultipleNodes = selectedNodes.size() > 1;
         auto* action = new QAction({ isMultipleNodes ? QObject::tr("Cut Nodes") : QObject::tr("Cut Node") }, parent);
-        
+
         QString tipMessage = isMultipleNodes ? QObject::tr("Cut these nodes to the clipboard") : QObject::tr("Cut this node to the clipboard");
         action->setToolTip(tipMessage);
         action->setStatusTip(tipMessage);
@@ -215,7 +215,7 @@ namespace
 
         bool isMultipleNodes = selectedNodes.size() > 1;
         auto* action = new QAction({ isMultipleNodes ? QObject::tr("Duplicate Nodes") : QObject::tr("Duplicate Node") }, parent);
-        
+
         QString tipMessage = isMultipleNodes ? QObject::tr("Duplicate these nodes") : QObject::tr("Duplicate this node");
         action->setToolTip(tipMessage);
         action->setStatusTip(tipMessage);
@@ -239,14 +239,14 @@ namespace
 
         bool isMultipleNodes = selectedNodes.size() > 1;
         auto* action = new QAction({ isMultipleNodes ? QObject::tr("Delete Nodes") : QObject::tr("Delete Node") }, parent);
-        
+
         QString tipMessage = isMultipleNodes ? QObject::tr("Delete these nodes") : QObject::tr("Delete this node");
         action->setToolTip(tipMessage);
         action->setStatusTip(tipMessage);
 
         QObject::connect(action,
             &QAction::triggered,
-            [nodeId, selectedNodes, sceneId](bool)
+            [selectedNodes, sceneId](bool)
             {
                 ScriptCanvasEditor::GeneralRequestBus::Broadcast(&ScriptCanvasEditor::GeneralRequests::DeleteNodes, sceneId, selectedNodes);
             });

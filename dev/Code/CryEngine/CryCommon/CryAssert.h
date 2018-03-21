@@ -50,8 +50,16 @@
 // CRY_ASSERT_TRACE(expression,("This should never happen because parameter n%d named %s is %f",iParameter,szParam,fValue));
 //-----------------------------------------------------------------------------------------------------
 
-#if defined(USE_CRY_ASSERT) && (defined(WIN32) || defined(DURANGO) || defined(APPLE) || defined(LINUX))
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #include AZ_RESTRICTED_FILE(CryAssert_h)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+    #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32) || defined(APPLE) || defined(LINUX)
+    #define CRYASSERT_H_TRAIT_USE_CRY_ASSERT_MESSAGE 1
+#endif
 
+#if defined(USE_CRY_ASSERT) && CRYASSERT_H_TRAIT_USE_CRY_ASSERT_MESSAGE
 void CryAssertTrace(const char*, ...);
 bool CryAssert(const char*, const char*, unsigned int, bool*);
 void CryDebugBreak();
@@ -76,29 +84,12 @@ void CryDebugBreak();
 
     #undef assert
     #define assert CRY_ASSERT
-
-#else
-
-        #include <assert.h>
-        #define CRY_ASSERT(condition) assert(condition)
-        #define CRY_ASSERT_MESSAGE(condition, message) assert(condition)
-        #define CRY_ASSERT_TRACE(condition, parenthese_message) assert(condition)
+#elif !defined(CRY_ASSERT)
+    #include <assert.h>
+    #define CRY_ASSERT(condition) assert(condition)
+    #define CRY_ASSERT_MESSAGE(condition, message) assert(condition)
+    #define CRY_ASSERT_TRACE(condition, parenthese_message) assert(condition)
 #endif
-
-// This forces boost to use CRY_ASSERT, regardless of what it is defined as
-// See also: boost/assert.hpp
-#define BOOST_ENABLE_ASSERT_HANDLER
-namespace boost
-{
-    inline void assertion_failed_msg(const char* expr, const char* msg, const char* function, const char* file, long line)
-    {
-        CRY_ASSERT_TRACE(false, ("An assertion failed in boost: expr=%s, msg=%s, function=%s, file=%s, line=%d", expr, msg, function, file, (int)line));
-    }
-    inline void assertion_failed(const char* expr, const char* function, const char* file, long line)
-    {
-        assertion_failed_msg(expr, "BOOST_ASSERT", function, file, line);
-    }
-}
 
 //-----------------------------------------------------------------------------------------------------
 

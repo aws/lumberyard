@@ -83,7 +83,7 @@ public:
         Q_UNUSED(node);
         CReflectedVarGenericProperty val = instance;
         val.m_propertyType = GUI->GetPropertyType();
-        val.m_value = GUI->GetValue().toLatin1().data();
+        val.m_value = GUI->GetValue().toUtf8().data();
         instance = static_cast<property_t>(val);
     }
     virtual bool ReadValuesIntoGUI(size_t index, GenericPopupPropertyEditor* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)  override
@@ -420,7 +420,7 @@ public:
         Q_UNUSED(index);
         Q_UNUSED(node);
         CReflectedVarGenericProperty val = instance;
-        val.m_value = GUI->GetValue().toLatin1().data();
+        val.m_value = GUI->GetValue().toUtf8().data();
         instance = static_cast<property_t>(val);
     }
     virtual bool ReadValuesIntoGUI(size_t index, ListEditWidget* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)  override

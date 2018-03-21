@@ -79,10 +79,10 @@ namespace AZ
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // OS Allocations macros
-#if defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if AZ_TRAIT_OS_USE_WINDOWS_ALIGNED_MALLOC
 #   define AZ_OS_MALLOC(byteSize, alignment) _aligned_malloc(byteSize, alignment)
 #   define AZ_OS_FREE(pointer) _aligned_free(pointer)
-#   else
+#else
 #   if defined(AZ_PLATFORM_APPLE)
 inline void* memalign(size_t blocksize, size_t bytes)
 {

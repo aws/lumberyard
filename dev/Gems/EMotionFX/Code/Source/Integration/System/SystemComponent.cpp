@@ -11,7 +11,7 @@
 */
 
 
-#include "StdAfx.h"
+#include "EMotionFX_precompiled.h"
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -39,7 +39,7 @@
 // EMStudio tools and main window registration
 #   include <LyViewPaneNames.h>
 #   include <AzToolsFramework/API/ViewPaneOptions.h>
-#   include <QApplication.h>
+#   include <QApplication>
 #   include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #   include <EMotionStudio/EMStudioSDK/Source/MainWindow.h>
 #   include <EMotionStudio/EMStudioSDK/Source/PluginManager.h>
@@ -504,7 +504,7 @@ namespace EMotionFX
 
             // Update all the animation editor plugins (redraw viewports, timeline, and graph windows etc).
             // But only update this when the main window is visible.
-            if (EMStudio::GetManager() && EMStudio::GetMainWindow() && !EMStudio::GetMainWindow()->visibleRegion().isEmpty())
+            if (EMStudio::GetManager() && EMStudio::HasMainWindow() && !EMStudio::GetMainWindow()->visibleRegion().isEmpty())
             {
                 UpdateAnimationEditorPlugins(realDelta);
             }
@@ -607,6 +607,9 @@ namespace EMotionFX
 
             InitializeEMStudioPlugins();
 
+            // Get the MainWindow the first time so it is constructed
+            EMStudio::GetManager()->GetMainWindow();
+
             EMStudio::GetManager()->ExecuteApp();
 
             AZStd::function<QWidget*()> windowCreationFunc = []()
@@ -617,7 +620,7 @@ namespace EMotionFX
             // Register EMotionFX window with the main editor.
             AzToolsFramework::ViewPaneOptions emotionFXWindowOptions;
             emotionFXWindowOptions.isPreview = true;
-            emotionFXWindowOptions.isDeletable = false;
+            emotionFXWindowOptions.isDeletable = true;
             emotionFXWindowOptions.isDockable = false;
             emotionFXWindowOptions.optionalMenuText = "Animation Editor (PREVIEW)";
             EditorRequests::Bus::Broadcast(&EditorRequests::RegisterViewPane, EMStudio::MainWindow::GetEMotionFXPaneName(), LyViewPane::CategoryTools, emotionFXWindowOptions, windowCreationFunc);

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include <platform_impl.h>
 
 #include "LyShineSystemComponent.h"

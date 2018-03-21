@@ -1,8 +1,5 @@
 {
     "auto": {
-        "Include": [
-            "Include/PhysX/PhysXBus.h"
-        ],
         "Source/Components": [
             "Source/EditorPhysXRigidBodyComponent.cpp",
             "Source/EditorPhysXRigidBodyComponent.h"

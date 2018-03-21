@@ -2691,7 +2691,7 @@ namespace CD
                 BrushVec2 position;
                 QString attribute;
                 attribute = QStringLiteral("p%1").arg(i);
-                if (!xmlNode->getAttr(attribute.toLatin1().data(), position))
+                if (!xmlNode->getAttr(attribute.toUtf8().data(), position))
                 {
                     break;
                 }
@@ -2702,7 +2702,7 @@ namespace CD
                 BrushVec3 position;
                 QString attribute;
                 attribute = QStringLiteral("v%1").arg(i);
-                if (!xmlNode->getAttr(attribute.toLatin1().data(), position))
+                if (!xmlNode->getAttr(attribute.toUtf8().data(), position))
                 {
                     break;
                 }
@@ -2716,7 +2716,7 @@ namespace CD
             QString attribute;
             attribute = QStringLiteral("e%1").arg(i);
             int edgeindices(0);
-            if (!xmlNode->getAttr(attribute.toLatin1().data(), edgeindices))
+            if (!xmlNode->getAttr(attribute.toUtf8().data(), edgeindices))
             {
                 break;
             }
@@ -2762,7 +2762,7 @@ namespace CD
         {
             QString attribute;
             attribute = QStringLiteral("v%1").arg(i);
-            xmlNode->setAttr(attribute.toLatin1().data(), m_Vertices[i].pos);
+            xmlNode->setAttr(attribute.toUtf8().data(), m_Vertices[i].pos);
         }
 
         for (int i = 0, iSize(m_Edges.size()); i < iSize; ++i)
@@ -2770,7 +2770,7 @@ namespace CD
             QString attribute;
             attribute = QStringLiteral("e%1").arg(i);
             int edgeindices((m_Edges[i].m_i[0] << 16) | (m_Edges[i].m_i[1]));
-            xmlNode->setAttr(attribute.toLatin1().data(), edgeindices);
+            xmlNode->setAttr(attribute.toUtf8().data(), edgeindices);
         }
 
         xmlNode->setAttr("matID", m_MaterialID);

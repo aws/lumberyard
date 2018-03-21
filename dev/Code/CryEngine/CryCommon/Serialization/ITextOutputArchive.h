@@ -44,9 +44,9 @@ namespace Serialization {
             : IArchive(caps) {}
     };
 
-    inline boost::shared_ptr<ITextOutputArchive> CreateTextOutputArchive()
+    inline AZStd::shared_ptr<ITextOutputArchive> CreateTextOutputArchive()
     {
-        boost::shared_ptr<ITextOutputArchive> pArchive;
+        AZStd::shared_ptr<ITextOutputArchive> pArchive;
         CryCreateClassInstance(MAKE_CRYGUID(0xd1f14adbc4e74e49, 0x9cea55d80a55cbdb), pArchive);
         return pArchive;
     }

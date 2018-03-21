@@ -14,7 +14,7 @@
 
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/parallel/internal/time_linux.h>
-
+#include <mach/kern_return.h>
 #include <unistd.h>
 
 /**
@@ -81,7 +81,11 @@ namespace AZStd
             continue; /* Restart if interrupted by handler */
         }
 
-        AZ_Assert(result == 0 || errno == ETIMEDOUT, "semaphore_timedwait error %s\n", strerror(errno));
+        // semaphore_timedwait never sets errno, but returns KERN_OPERATION_TIMED_OUT
+        // if "Some thread-oriented operation (semaphore_wait) timed out"
+        // http://opensource.apple.com//source/xnu/xnu-2422.1.72/osfmk/kern/sync_sema.c
+        // http://opensource.apple.com/source/xnu/xnu-2422.1.72/osfmk/mach/kern_return.h
+        AZ_Assert(result == 0 || result == KERN_OPERATION_TIMED_OUT, "semaphore_timedwait error %d\n", result);
         return result == 0;
     }
 

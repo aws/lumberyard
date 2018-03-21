@@ -21,6 +21,12 @@ namespace AzToolsFramework
 {
     namespace ProcessLauncher
     {
+        enum ProcessLaunchResult : AZ::u32
+        {
+            PLR_Success,        // Process Launched Normally
+            PLR_MissingFile,    // Missing file or command
+        };
+
         struct ProcessLaunchInfo
         {
             //! This is the process to execute.  Do not escape spaces here.
@@ -43,6 +49,8 @@ namespace AzToolsFramework
             AZStd::string m_workingDirectory;
             ProcessPriority m_processPriority = PROCESSPRIORITY_NORMAL;
             AZStd::vector<AZStd::string>* m_environmentVariables = nullptr;
+            mutable ProcessLaunchResult m_launchResult = PLR_Success;
+
             //Not Supported On Mac
             bool m_showWindow = true;
         };

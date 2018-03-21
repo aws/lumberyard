@@ -15,9 +15,13 @@ from errors import HandledError
 import os
 import json
 import util
-import constant
 import glob
+from resource_manager_common import constant
 from botocore.exceptions import ClientError
+
+from cgf_utils import aws_utils
+from resource_manager_common import resource_type_info
+from resource_manager_common import stack_info
 
 def list(context, args):
 
@@ -48,8 +52,8 @@ def update(context, args, force=False):
     if not args.deployment:
         args.deployment = context.config.default_deployment
 
-    if not args.deployment:
-        raise HandledError('Could not find deployment to update mappings for.')
+    if args.deployment is None:
+        return
     
     player_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(args.deployment, 'player', constant.MAPPING_FILE_SUFFIX))
     server_mappings_file = os.path.join(__logical_mapping_file_path(context), '{}.{}.{}'.format(args.deployment, 'server', constant.MAPPING_FILE_SUFFIX))
@@ -59,7 +63,7 @@ def update(context, args, force=False):
     elif args.deployment == context.config.default_deployment:
         # we didn't need to get the mappings from the backend, update the user settings ourselves from local mappings
         __update_user_mappings_from_file(context, player_mappings_file)
-    
+
     if context.config.release_deployment is None and context.config.default_deployment:
         set_launcher_deployment(context, context.config.default_deployment)
 
@@ -89,20 +93,20 @@ def __update_user_mappings_from_file(context, player_mappings_file):
     with open(player_mappings_file) as mappings_file:
         mappings = json.load(mappings_file)
     context.config.set_user_mappings(mappings.get("LogicalMappings", {}))
-
+    
 def __update_logical_mappings_files(context, deployment_name, args=None):
     exclusions = __get_mapping_exclusions(context)
-    player_mappings = __get_mappings(context, deployment_name, exclusions, 'Player')
+    player_mappings = __get_mappings(context, deployment_name, exclusions, 'Player', args)
 
     if context.config.default_deployment == deployment_name:
         context.config.set_user_mappings(player_mappings)
 
-    __update_launcher(context, deployment_name, 'Player', player_mappings)
-    __update_launcher(context, deployment_name, 'Server')
+    __update_launcher(context, deployment_name, 'Player', player_mappings, args)
+    __update_launcher(context, deployment_name, 'Server', None, args)
 
-def __update_launcher(context, deployment_name, role, mappings=None):
+def __update_launcher(context, deployment_name, role, mappings=None, args=None):
     if mappings is None:
-        mappings = __get_mappings(context, deployment_name, __get_mapping_exclusions(context), role)
+        mappings = __get_mappings(context, deployment_name, __get_mapping_exclusions(context), role, args)
 
     kLogicalMappingsObjectName = 'LogicalMappings'
     outData = {}
@@ -119,14 +123,14 @@ def __logical_mapping_file_path(context):
     logicalMappingsPath = context.config.root_directory_path
     logicalMappingsPath = os.path.join(logicalMappingsPath, context.config.game_directory_name)
     logicalMappingsPath = os.path.join(logicalMappingsPath, 'Config')
-
+    
     return logicalMappingsPath
 
 
 def __remove_old_mapping_files(context, deployment_name = None):
     if deployment_name is None:
         __remove_all_old_mapping_files(context)
-    logicalMappingsPath = __logical_mapping_file_path(context)
+    logicalMappingsPath = __logical_mapping_file_path(context) 
     server_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'server', constant.MAPPING_FILE_SUFFIX))
     player_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'player', constant.MAPPING_FILE_SUFFIX))
     if os.path.exists(player_mappings_file) and context.config.validate_writable(player_mappings_file):
@@ -135,7 +139,8 @@ def __remove_old_mapping_files(context, deployment_name = None):
         os.remove(server_mappings_file)
 
 def __remove_all_old_mapping_files(context):
-    if not os.path.exists(logicalMappingsPath):
+    logicalMappingsPath = __logical_mapping_file_path(context)
+    if not os.path.exists(logicalMappingsPath):      
         return
     cwd = os.getcwd()
     os.chdir(logicalMappingsPath)
@@ -145,7 +150,7 @@ def __remove_all_old_mapping_files(context):
             continue
         try:
             os.remove(f)
-        except:
+        except: 
             pass
     os.chdir(cwd)
 
@@ -168,11 +173,12 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
     context.view.retrieving_mappings(deployment_name, deployment_stack_id, role)
 
     player_accessible_arns = __get_player_accessible_arns(context, deployment_name, role, args)
+    lambda_client = context.aws.client('lambda', region=region)
 
     resources = context.stack.describe_resources(deployment_stack_id, recursive=True)
 
     for logical_name, description in resources.iteritems():
-
+        
         if logical_name in exclusions:
             continue
 
@@ -185,12 +191,17 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
                     'UserPoolClients': description['UserPoolClients'] # include client id / secret
                 }
             else:
-                resource_arn = util.get_resource_arn(
-                    description['StackId'],
-                    description['ResourceType'],
-                    physical_resource_id,
+                stack_id = description['StackId']
+                s3_client = context.aws.client('s3')
+                type_definitions = context.resource_types.get_type_definitions_for_stack_id(stack_id, s3_client)
+
+                resource_arn = aws_utils.get_resource_arn(
+                    type_definitions=type_definitions,
+                    stack_arn=stack_id,
+                    resource_type=description['ResourceType'],
+                    resource_name=physical_resource_id,
                     optional = True,
-                    context = context
+                    lambda_client=lambda_client
                 )
                 if resource_arn and resource_arn in player_accessible_arns:
                     if __is_service_api_resource(description):
@@ -213,7 +224,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
         access_resources = context.stack.describe_resources(access_stack_arn, recursive=True)
         for logical_name, description in access_resources.iteritems():
             if description['ResourceType'] == 'Custom::CognitoIdentityPool':
-
+                
                 if logical_name in exclusions:
                     continue
 

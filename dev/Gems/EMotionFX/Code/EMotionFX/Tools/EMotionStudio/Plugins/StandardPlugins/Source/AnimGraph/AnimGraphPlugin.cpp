@@ -532,6 +532,8 @@ namespace EMStudio
         {
             EMotionFX::GetEMotionFX().GetRecorder()->StopRecording();
         }
+
+        EMStudio::DockWidgetPlugin::OnMainWindowClosed();
     }
 
     // init after the parent dock window has been created
@@ -554,9 +556,9 @@ namespace EMStudio
             for (uint32 n = 0; n < numNodes; ++n)
             {
                 EMotionFX::AnimGraphNode* node = animGraph->GetNode(n);
-                using std::placeholders::_1;
-                using std::placeholders::_2;
-                auto func = std::bind(&EMStudio::AnimGraphPlugin::OnAnimGraphNodeInputPortsChanged, this, _1, _2);
+                using AZStd::placeholders::_1;
+                using AZStd::placeholders::_2;
+                auto func = AZStd::bind(&EMStudio::AnimGraphPlugin::OnAnimGraphNodeInputPortsChanged, this, _1, _2);
                 node->SetInputPortChangeFunction(func);
             }
         }
@@ -654,7 +656,7 @@ namespace EMStudio
         QMainWindow* mainWindow = GetMainWindow();
 
         // create the attribute dock window
-        mAttributeDock = new MysticQt::DockWidget("Attributes");
+        mAttributeDock = new MysticQt::DockWidget(mainWindow, "Attributes");
         MysticQt::DockHeader* dockHeader = new MysticQt::DockHeader(mAttributeDock);
         mAttributeDock->setTitleBarWidget(dockHeader);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mAttributeDock);
@@ -669,7 +671,7 @@ namespace EMStudio
         dockHeader->UpdateIcons();
 
         // create the node group dock window
-        mNodeGroupDock = new MysticQt::DockWidget("Node Groups");
+        mNodeGroupDock = new MysticQt::DockWidget(mainWindow, "Node Groups");
         dockHeader = new MysticQt::DockHeader(mNodeGroupDock);
         mNodeGroupDock->setTitleBarWidget(dockHeader);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mNodeGroupDock);
@@ -684,7 +686,7 @@ namespace EMStudio
         dockHeader->UpdateIcons();
 
         // create the node palette dock
-        mNodePaletteDock = new MysticQt::DockWidget("Anim Graph Palette");
+        mNodePaletteDock = new MysticQt::DockWidget(mainWindow, "Anim Graph Palette");
         dockHeader = new MysticQt::DockHeader(mNodePaletteDock);
         mNodePaletteDock->setTitleBarWidget(dockHeader);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mNodePaletteDock);
@@ -700,7 +702,7 @@ namespace EMStudio
 
         // create the parameter dock
         QScrollArea* scrollArea = new QScrollArea();
-        mParameterDock = new MysticQt::DockWidget("Parameters");
+        mParameterDock = new MysticQt::DockWidget(mainWindow, "Parameters");
         dockHeader = new MysticQt::DockHeader(mParameterDock);
         mParameterDock->setTitleBarWidget(dockHeader);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mParameterDock);
@@ -718,7 +720,7 @@ namespace EMStudio
 
         // create the navigation dock
         MysticQt::DialogStack* stack = new MysticQt::DialogStack();
-        mNavigationDock = new MysticQt::DockWidget("Anim Graphs");
+        mNavigationDock = new MysticQt::DockWidget(mainWindow, "Anim Graphs");
         dockHeader = new MysticQt::DockHeader(mNavigationDock);
         mNavigationDock->setTitleBarWidget(dockHeader);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mNavigationDock);
@@ -742,7 +744,7 @@ namespace EMStudio
 
     #ifdef HAS_GAME_CONTROLLER
         // create the game controller dock
-        mGameControllerDock = new MysticQt::DockWidget("Game Controller");
+        mGameControllerDock = new MysticQt::DockWidget(mainWindow, "Game Controller");
         dockHeader = new MysticQt::DockHeader(mGameControllerDock);
         mGameControllerDock->setTitleBarWidget(dockHeader);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, mGameControllerDock);
@@ -1367,9 +1369,9 @@ namespace EMStudio
     void AnimGraphEventHandler::OnCreatedNode(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* node)
     {
         MCORE_UNUSED(animGraph);
-        using std::placeholders::_1;
-        using std::placeholders::_2;
-        auto func = std::bind(&EMStudio::AnimGraphPlugin::OnAnimGraphNodeInputPortsChanged, mPlugin, _1, _2);
+        using AZStd::placeholders::_1;
+        using AZStd::placeholders::_2;
+        auto func = AZStd::bind(&EMStudio::AnimGraphPlugin::OnAnimGraphNodeInputPortsChanged, mPlugin, _1, _2);
         node->SetInputPortChangeFunction(func);
     }
 
@@ -1920,6 +1922,10 @@ namespace EMStudio
 
     void AnimGraphPlugin::CleanHistory()
     {
+        if (!mCurrentAnimGraphHistory)
+        {
+            return;
+        }
         MCore::Array<HistoryItem>& history = mCurrentAnimGraphHistory->mHistory;
 
         bool historyModified = false;
@@ -2592,7 +2598,7 @@ namespace EMStudio
 
     // timer event
     void AnimGraphPlugin::ProcessFrame(float timePassedInSeconds)
-    {       
+    {
         if (GetManager()->GetAvoidRendering() || mGraphWidget->visibleRegion().isEmpty())
             return;
 

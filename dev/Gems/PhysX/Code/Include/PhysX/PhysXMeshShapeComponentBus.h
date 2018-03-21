@@ -34,5 +34,4 @@ namespace PhysX
      * Bus to service the PhysX Mesh Shape Component event group.
      */
     using PhysXMeshShapeComponentRequestBus = AZ::EBus<PhysXMeshShapeComponentRequests>;
-
 } // namespace PhysX

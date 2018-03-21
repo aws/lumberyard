@@ -6,7 +6,7 @@
     <ProjectGuid>{d35996a8-3647-4de0-b6c0-733c0d1880b0}</ProjectGuid>
     <ProjectHome />
     <StartupFile>cli.py</StartupFile>
-    <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\lib\</SearchPath>
+    <SearchPath>..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\lib\;..\..\AWS\common-code\ResourceManagerCommon\;..\..\AWS\common-code\ServiceClient_Python\;..\..\AWS\common-code\RequestsAws4Auth\;..\..\AWS\common-code\Utils\</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
@@ -25,11 +25,13 @@
     <Compile Include="cli.py" />
     <Compile Include="common_code.py" />
     <Compile Include="config.py" />
-    <Compile Include="constant.py" />
     <Compile Include="context.py" />
     <Compile Include="deployment.py" />
     <Compile Include="errors.py" />
     <Compile Include="file_util.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="function.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="gem.py" />
@@ -71,6 +73,8 @@
     <Compile Include="test\project_snapshot.py" />
     <Compile Include="test\test_constant.py" />
     <Compile Include="test\test_integration.py" />
+    <Compile Include="test\test_integration_cgp.py" />
+    <Compile Include="test\test_integration_service_api.py" />
     <Compile Include="test\test_integration_version_update.py">
       <SubType>Code</SubType>
     </Compile>
@@ -78,8 +82,8 @@
     <Compile Include="test\test_integraton_cognito_resource_handlers.py" />
     <Compile Include="test\test_integraton_custom_resource_handler_plugins.py" />
     <Compile Include="test\test_project_resource_hooks.py" />
+    <Compile Include="test\test_unit_common_code_import.py" />
     <Compile Include="test\test_unit_lmbr_aws.py" />
-    <Compile Include="test\test_unit_util.py" />
     <Compile Include="test\test_update_hooks.py" />
     <Compile Include="test\__init__.py" />
     <Compile Include="uploader.py" />

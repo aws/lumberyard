@@ -36,14 +36,7 @@ def build(bld):
         test_all_export_defines = ['AZCORE_ENABLE_MEMORY_TRACKING'],
 
         # Compiler Specific
-        msvc_cxxflags       = [
-                               '/W4', # warning level
-                              ],
-
-        clang_cxxflags      = [
-                               '-Werror',  # warnings as errors
-                               '-Wall',     # warning level
-                              ],
+        msvc_cxxflags       = ['/W4'],
 
         # Platform Specific
         win_file_list       = ['azcore_win.waf_files', 'std/azstd_win.waf_files'],

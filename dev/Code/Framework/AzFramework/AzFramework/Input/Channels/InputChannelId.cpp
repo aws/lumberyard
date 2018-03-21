@@ -12,9 +12,26 @@
 
 #include <AzFramework/Input/Channels/InputChannelId.h>
 
+#include <AzCore/RTTI/BehaviorContext.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputChannelId::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<InputChannelId>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
+                ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Constructor<const char*>()
+                ->Property("name", BehaviorValueProperty(&InputChannelId::m_name))
+            ;
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputChannelId::InputChannelId(const char* name)
         : m_name(name)

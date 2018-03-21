@@ -28,6 +28,7 @@
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 #include <QToolBar>
 #include <QTimer>
+#include <QLoggingCategory>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <QtGui/qpa/qplatformnativeinterface.h>
@@ -64,6 +65,7 @@ enum
 // QML Imports that are part of Qt (relative to the executable)
 #define QML_IMPORT_SYSTEM_LIB_PATH "qtlibs/qml"
 
+Q_LOGGING_CATEGORY(InputDebugging, "lumberyard.editor.input")
 
 // internal, private namespace:
 namespace
@@ -218,13 +220,16 @@ namespace Editor
             ResetIdleTimer(GetIEditor() ? GetIEditor()->IsInGameMode() : true);
         });
         installEventFilter(this);
+
+        // Disable our debugging input helpers by default
+        QLoggingCategory::setFilterRules(QStringLiteral("lumberyard.editor.input.*=false"));
     }
 
     void EditorQtApplication::Initialize()
     {
         GetIEditor()->RegisterNotifyListener(this);
 
-        m_stylesheet->Initialize(this);
+        m_stylesheet->Initialize(this, !gSettings.bEnableUI2);
 
         // install QTranslator
         InstallEditorTranslators();
@@ -330,6 +335,39 @@ namespace Editor
 
         UninstallEditorTranslators();
     }
+
+#ifdef _DEBUG
+    bool EditorQtApplication::notify(QObject* receiver, QEvent* ev)
+    {
+        if (ev->type() == QEvent::MouseButtonPress || ev->type() == QEvent::KeyPress)
+        {
+            qCDebug(InputDebugging) << "Event" << ev->type() << "delivered to" << receiver << "preaccepted=" << ev->isAccepted();
+            bool processed = QApplication::notify(receiver, ev);
+            qCDebug(InputDebugging) << "processed=" << processed << "; accepted=" << ev->isAccepted()
+                << "focusWidget=" << focusWidget();
+
+            if (QWidget::mouseGrabber() || QWidget::keyboardGrabber())
+            {
+                qCDebug(InputDebugging) << "Mouse Grabber=" << QWidget::mouseGrabber()
+                    << "; Key Grabber=" << QWidget::keyboardGrabber();
+            }
+
+            if (QWidget* popup = QApplication::activePopupWidget())
+            {
+                qCDebug(InputDebugging) << "popup=" << popup;
+            }
+
+            if (QWidget* modal = QApplication::activeModalWidget())
+            {
+                qCDebug(InputDebugging) << "modal=" << modal;
+            }
+
+            return processed;
+        }
+
+        return QApplication::notify(receiver, ev);
+    }
+#endif
 
     static QWindow* windowForWidget(const QWidget* widget)
     {
@@ -444,7 +482,7 @@ namespace Editor
                 {
                     if (GetIEditor()->GetSystem()->GetILog() != nullptr)
                     {
-                        GetIEditor()->GetSystem()->GetILog()->LogWithType(IMiniLog::eMessage, "Wrote LumberYard's compiled Qt Style to '%s'", outputStylePath.toLatin1().data());
+                        GetIEditor()->GetSystem()->GetILog()->LogWithType(IMiniLog::eMessage, "Wrote LumberYard's compiled Qt Style to '%s'", outputStylePath.toUtf8().data());
                     }
                 }
             }
@@ -497,6 +535,11 @@ namespace Editor
         }
 
         m_isMovingOrResizing = isMovingOrResizing;
+    }
+
+    void EditorQtApplication::EnableUI2(bool enable)
+    {
+        m_stylesheet->SwitchUI(this, !enable);
     }
 
     const QColor& EditorQtApplication::GetColorByName(const QString& name)

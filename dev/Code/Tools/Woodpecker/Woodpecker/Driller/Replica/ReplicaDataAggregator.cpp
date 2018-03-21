@@ -617,7 +617,7 @@ namespace Driller
                         case Replica::RET_CHUNK_RPC_SENT:
                         case Replica::RET_CHUNK_DATASET_SENT:
                         {
-                            field = AZStd::to_string(replicaChunkEvent->GetUsageBytes());
+                            field = AZStd::to_string(static_cast<unsigned long long>(replicaChunkEvent->GetUsageBytes()));
                             break;
                         }
                         case Replica::RET_CHUNK_RPC_RECEIVED:
@@ -645,7 +645,7 @@ namespace Driller
                         case Replica::RET_CHUNK_RPC_RECEIVED:
                         case Replica::RET_CHUNK_DATASET_RECEIVED:
                         {
-                            field = AZStd::to_string(replicaChunkEvent->GetUsageBytes());                            
+                            field = AZStd::to_string(static_cast<unsigned long long>(replicaChunkEvent->GetUsageBytes()));
                             break;
                         }
                         default:

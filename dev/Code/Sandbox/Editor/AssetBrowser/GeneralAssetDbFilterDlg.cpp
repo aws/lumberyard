@@ -18,7 +18,7 @@
 #include "AssetBrowserManager.h"
 #include "QtUtilWin.h"
 
-#include <QCheckbox>
+#include <QCheckBox>
 #include <QMessageBox>
 #include <QListWidgetItem>
 
@@ -146,7 +146,7 @@ bool CGeneralAssetDbFilterDlg::SaveFilterPresets()
 
 void CGeneralAssetDbFilterDlg::SaveCurrentPreset()
 {
-    UpdateFilterPreset(m_currentPresetName.toLatin1().data());
+    UpdateFilterPreset(m_currentPresetName.toUtf8().data());
     SaveFilterPresetsFrom(m_filterPresets);
 }
 
@@ -298,24 +298,24 @@ bool CGeneralAssetDbFilterDlg::SaveFilterPresetsFrom(TPresetNamePresetMap& rFilt
     for (TPresetNamePresetMap::iterator iter = rFilters.begin(), iterEnd = rFilters.end(); iter != iterEnd; ++iter)
     {
         XmlNodeRef xmlFilterPreset = XmlHelpers::CreateXmlNode("filterPreset");
-        xmlFilterPreset->setAttr("name", iter->first.toLatin1().data());
+        xmlFilterPreset->setAttr("name", iter->first.toUtf8().data());
         xmlFilterPreset->setAttr("bUsedInLevel", iter->second.bUsedInLevel);
         JoinStrings(iter->second.checkedDatabaseNames, strTemp);
-        xmlFilterPreset->setAttr("checkedDbs", strTemp.toLatin1().data());
+        xmlFilterPreset->setAttr("checkedDbs", strTemp.toUtf8().data());
 
         for (size_t i = 0, iCount = iter->second.fields.size(); i < iCount; ++i)
         {
             XmlNodeRef xmlFilter = XmlHelpers::CreateXmlNode("fieldFilter");
-            xmlFilter->setAttr("displayName", iter->second.fields[i].m_displayName.toLatin1().data());
-            xmlFilter->setAttr("fieldName", iter->second.fields[i].m_fieldName.toLatin1().data());
+            xmlFilter->setAttr("displayName", iter->second.fields[i].m_displayName.toUtf8().data());
+            xmlFilter->setAttr("fieldName", iter->second.fields[i].m_fieldName.toUtf8().data());
             xmlFilter->setAttr("fieldType", (int)iter->second.fields[i].m_fieldType);
             xmlFilter->setAttr("filterCondition", (int)iter->second.fields[i].m_filterCondition);
-            xmlFilter->setAttr("filterValue", iter->second.fields[i].m_filterValue.toLatin1().data());
-            xmlFilter->setAttr("maxFilterValue", iter->second.fields[i].m_maxFilterValue.toLatin1().data());
-            xmlFilter->setAttr("parentDB", iter->second.fields[i].m_parentDatabaseName.toLatin1().data());
+            xmlFilter->setAttr("filterValue", iter->second.fields[i].m_filterValue.toUtf8().data());
+            xmlFilter->setAttr("maxFilterValue", iter->second.fields[i].m_maxFilterValue.toUtf8().data());
+            xmlFilter->setAttr("parentDB", iter->second.fields[i].m_parentDatabaseName.toUtf8().data());
             strTemp = "";
             JoinStrings(iter->second.fields[i].m_enumValues, strTemp);
-            xmlFilter->setAttr("enumValues", strTemp.toLatin1().data());
+            xmlFilter->setAttr("enumValues", strTemp.toUtf8().data());
             xmlFilter->setAttr("useEnumValues", (int)iter->second.fields[i].m_bUseEnumValues);
 
             xmlFilterPreset->addChild(xmlFilter);
@@ -436,14 +436,14 @@ void CGeneralAssetDbFilterDlg::OnBnClickedButtonSavePreset()
         return;
     }
 
-    SFieldFiltersPreset* pPreset = GetFilterPresetByName(presetName.toLatin1().data());
+    SFieldFiltersPreset* pPreset = GetFilterPresetByName(presetName.toUtf8().data());
 
     if (!pPreset)
     {
-        if (AddFilterPreset(presetName.toLatin1().data()))
+        if (AddFilterPreset(presetName.toUtf8().data()))
         {
             FillPresetList();
-            SelectPresetByName(presetName.toLatin1().data());
+            SelectPresetByName(presetName.toUtf8().data());
             OnCbnSelchangeComboPreset();
         }
     }
@@ -474,7 +474,7 @@ void CGeneralAssetDbFilterDlg::OnBnClickedButtonRemovePreset()
 
         if (msgBox.exec() == QMessageBox::Yes)
         {
-            if (DeleteFilterPreset(presetName.toLatin1().data()))
+            if (DeleteFilterPreset(presetName.toUtf8().data()))
             {
                 FillPresetList();
 
@@ -496,7 +496,7 @@ void CGeneralAssetDbFilterDlg::UpdateVisibleDatabases()
     foreach (auto item, ui->ASSET_FILTERS_GENERAL_VISIBLE_DATABASE_OPTIONS_WIDGET->findChildren<QCheckBox*>())
     {
         QString dbName = item->text();
-        IAssetItemDatabase* pDB = CAssetBrowserManager::Instance()->GetDatabaseByName(dbName.toLatin1().data());
+        IAssetItemDatabase* pDB = CAssetBrowserManager::Instance()->GetDatabaseByName(dbName.toUtf8().data());
 
         if (!pDB)
         {

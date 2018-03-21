@@ -44,7 +44,6 @@
 #define VERIFY(EXPRESSION) { auto e = EXPRESSION; assert(e); }
 #endif
 
-#define DEFAULT_TEXTURE_SIZE 4096
 
 //! Size of terrain sector in units, sector size (in meters) depends from heightmap unit size - it gives more efficient heightmap triangulation
 #define SECTOR_SIZE_IN_UNITS 32
@@ -251,7 +250,7 @@ CHeightmap::CHeightmap()
     , m_fMaxHeight(HEIGHTMAP_MAX_HEIGHT)
     , m_iWidth(0)
     , m_iHeight(0)
-    , m_textureSize(DEFAULT_TEXTURE_SIZE)
+    , m_textureSize(DEFAULT_HEIGHTMAP_SIZE)
     , m_numSectors(0)
     , m_unitSize(2)
     , m_TerrainBGRTexture("TerrainTexture.pak")
@@ -831,7 +830,7 @@ void CHeightmap::SaveImage16Bit(const QString& fileName)
 //! Save heightmap in RAW format.
 void CHeightmap::SaveRAW(const QString& rawFile)
 {
-    FILE* file = fopen(rawFile.toLatin1().data(), "wb");
+    FILE* file = fopen(rawFile.toUtf8().data(), "wb");
     if (!file)
     {
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Error saving file %1").arg(rawFile));
@@ -867,7 +866,7 @@ void CHeightmap::SaveRAW(const QString& rawFile)
 //! Load heightmap from RAW format.
 void    CHeightmap::LoadRAW(const QString& rawFile)
 {
-    FILE* file = fopen(rawFile.toLatin1().data(), "rb");
+    FILE* file = fopen(rawFile.toUtf8().data(), "rb");
     if (!file)
     {
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Warning"), QObject::tr("Error loading file %1").arg(rawFile));
@@ -2180,7 +2179,7 @@ bool CHeightmap::Read(QString strFileName)
     }
 
     // Open the hold / fetch file
-    hFile = fopen(strFileName.toLatin1().data(), "rb");
+    hFile = fopen(strFileName.toUtf8().data(), "rb");
 
     if (!hFile)
     {
@@ -2891,7 +2890,7 @@ int CHeightmap::LogLayerSizes()
         CLayer* pLayer = GetIEditor()->GetTerrainManager()->GetLayer(i);
         int layerSize = pLayer->GetSize();
         totalSize += layerSize;
-        CLogFile::FormatLine("Layer %s: %dM", pLayer->GetLayerName().toLatin1().data(), layerSize / (1024 * 1024));
+        CLogFile::FormatLine("Layer %s: %dM", pLayer->GetLayerName().toUtf8().data(), layerSize / (1024 * 1024));
     }
     CLogFile::FormatLine("Total Layers Size: %dM", totalSize / (1024 * 1024));
     return totalSize;

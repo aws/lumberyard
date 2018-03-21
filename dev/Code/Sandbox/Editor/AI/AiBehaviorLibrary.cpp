@@ -295,7 +295,7 @@ void CAIBehaviorLibrary::LoadBehaviors(const QString& path)
     ClearBehaviors();
 
     BehaviorExplorer behaviorExplorer("CreateAIBehavior");
-    DirectoryExplorer()(path.toLatin1().data(), "*.lua", behaviorExplorer);
+    DirectoryExplorer()(path.toUtf8().data(), "*.lua", behaviorExplorer);
 
     BehaviorExplorer::Behaviors::iterator it = behaviorExplorer.behaviors.begin();
     BehaviorExplorer::Behaviors::iterator end = behaviorExplorer.behaviors.end();
@@ -339,8 +339,8 @@ void CAIBehaviorLibrary::ReloadScripts()
     for (std::set<QString>::iterator it = scriptFiles.begin(); it != scriptFiles.end(); it++)
     {
         QString file = *it;
-        CLogFile::FormatLine("Loading AI Behavior Script: %s", file.toLatin1().data());
-        scriptSystem->ExecuteFile(file.toLatin1().data());
+        CLogFile::FormatLine("Loading AI Behavior Script: %s", file.toUtf8().data());
+        scriptSystem->ExecuteFile(file.toUtf8().data());
     }
 
     // Reload main AI script.

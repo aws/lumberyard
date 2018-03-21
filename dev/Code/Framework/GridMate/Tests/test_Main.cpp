@@ -36,5 +36,5 @@ struct GridMateTestEnvironment
     }
 };
 
-AZ_UNIT_TEST_HOOK({new GridMateTestEnvironment()});
-AZ_INTEG_TEST_HOOK({new GridMateTestEnvironment()});
+AZ_UNIT_TEST_HOOK(new GridMateTestEnvironment());
+AZ_INTEG_TEST_HOOK(new GridMateTestEnvironment());

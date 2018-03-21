@@ -175,8 +175,8 @@ void CObjectLayer::SerializeBase(XmlNodeRef& node, bool bLoading)
     }
     else // save
     {
-        node->setAttr("Name", m_name.toLatin1().data());
-        node->setAttr("FullName", GetFullName().toLatin1().data());
+        node->setAttr("Name", m_name.toUtf8().data());
+        node->setAttr("FullName", GetFullName().toUtf8().data());
         node->setAttr("GUID", m_guid);
         node->setAttr("Hidden", m_hidden);
         node->setAttr("Frozen", m_frozen);
@@ -218,7 +218,7 @@ void CObjectLayer::Serialize(XmlNodeRef& node, bool bLoading)
     else
     {
         // Saving.
-        node->setAttr("Name", m_name.toLatin1().data());
+        node->setAttr("Name", m_name.toUtf8().data());
         node->setAttr("GUID", m_guid);
 
         node->setAttr("Exportable", m_exportable);

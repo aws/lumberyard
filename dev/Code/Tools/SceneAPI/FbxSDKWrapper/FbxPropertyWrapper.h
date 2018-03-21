@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,8 +10,9 @@
 *
 */
 
-#include <cassert>
-#include "fbxsdk.h"
+#pragma once
+
+#include <fbxsdk.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/std/string/string.h>
 
@@ -36,5 +35,5 @@ namespace AZ
         protected:
             FbxProperty* m_fbxProperty;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

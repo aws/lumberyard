@@ -333,18 +333,8 @@ void CD3D9Renderer::InitRenderer()
 #endif
 
     m_numOcclusionDownsampleStages = 1;
-    m_occlusionDownsampleSizeX = 0;
-    m_occlusionDownsampleSizeY = 0;
-    m_occlusionRequestedSizeX = 0;
-    m_occlusionRequestedSizeY = 0;
     m_occlusionSourceSizeX = 0;
     m_occlusionSourceSizeY = 0;
-
-    m_occlusionViewProj.SetIdentity();
-    for (int i = 0; i < 4; i++)
-    {
-        m_occlusionViewProjBuffer[i].SetIdentity();
-    }
 
     m_PerInstanceConstantBufferPool.Init();
 
@@ -1067,7 +1057,10 @@ void CD3D9Renderer::CalculateResolutions(int width, int height, bool bUseNativeR
     *pRenderWidth = width * m_numSSAASamples;
     *pRenderHeight = height * m_numSSAASamples;
 
-#if   defined(WIN32) || defined(WIN64)
+#if DRIVERD3D_CPP_TRAIT_CALCULATERESOLUTIONS_1080
+    *pNativeWidth = 1920;
+    *pNativeHeight = 1080;
+#elif defined(WIN32) || defined(WIN64)
     *pNativeWidth  = bUseNativeRes ? m_prefMonWidth  : width;
     *pNativeHeight = bUseNativeRes ? m_prefMonHeight : height;
 #else
@@ -1105,7 +1098,7 @@ void CD3D9Renderer::HandleDisplayPropertyChanges()
 #endif
 
         bool bFullScreen;
-#if defined(DURANGO) || defined(ORBIS) || defined(IOS) || defined(APPLETV) || defined(ANDROID)
+#if DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_FULLSCREEN
         bFullScreen = m_bFullScreen;
 #else
         bFullScreen = m_CVFullScreen ? m_CVFullScreen->GetIVal() != 0 : m_bFullScreen;
@@ -1113,7 +1106,7 @@ void CD3D9Renderer::HandleDisplayPropertyChanges()
 
         bool bForceReset = msaaChanged;
         bool bNativeRes;
-#if defined(DURANGO) || defined(ORBIS) || defined(IOS) || defined(APPLETV) || defined(ANDROID)
+#if DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_NATIVERES
         bNativeRes = true;
 #elif defined(WIN32) || defined(WIN64)
         bForceReset |= m_bDisplayChanged && bFullScreen;
@@ -1144,7 +1137,7 @@ void CD3D9Renderer::HandleDisplayPropertyChanges()
         height *= scale;
 #endif
 
-#if !defined(DURANGO) && !defined(ORBIS) && !defined(IOS) && !defined(APPLETV) && !defined(ANDROID)
+#if DRIVERD3D_CPP_TRAIT_HANDLEDISPLAYPROPERTYCHANGES_CALCRESOLUTIONS
         int renderWidth, renderHeight, nativeWidth, nativeHeight, backbufferWidth, backbufferHeight;
         CalculateResolutions(width, height, bNativeRes, &renderWidth, &renderHeight, &nativeWidth, &nativeHeight, &backbufferWidth, &backbufferHeight);
 
@@ -4597,7 +4590,9 @@ void CD3D9Renderer::RT_EndFrame()
         {
             ScaleBackbufferToViewport();
 
-#if   defined(SUPPORT_DEVICE_INFO)
+#if DRIVERD3D_CPP_TRAIT_RT_ENDFRAME_NOTIMPL
+            CRY_ASSERT_MESSAGE(0, "Case in EndFrame() not implemented yet");
+#elif defined(SUPPORT_DEVICE_INFO)
             DWORD dwFlags = 0;
             if (m_dwPresentStatus & (epsOccluded | epsNonExclusive))
             {
@@ -6964,8 +6959,6 @@ void CD3D9Renderer::UpdateTextureInVideoMemory(uint32 tnum, const byte* newdata,
 // Passing the actual texture resource to the renderer and prepping correct Mip
 bool CD3D9Renderer::EF_PrecacheResource(SShaderItem* pSI, float fMipFactorSI, float fTimeToReady, int Flags, int nUpdateId, int nCounter)
 {
-    FUNCTION_PROFILER_FAST(GetISystem(), PROFILE_RENDERER, g_bProfilerEnabled);
-
     CShader*            pSH = (CShader*)pSI->m_pShader;
     CShaderResources*   pSR = (CShaderResources*)pSI->m_pShaderResources;
 
@@ -7698,7 +7691,7 @@ public:
             }
             break;
 
-#if defined(_WIN32) && !defined(DURANGO)
+#if DRIVERD3D_CPP_TRAIT_ONSYSTEMEVENT_EVENTMOVE
         case ESYSTEM_EVENT_MOVE:
         {
             // When moving the window, update the preferred monitor dimensions so full-screen will pick the closest monitor

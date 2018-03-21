@@ -1,0 +1,38 @@
+{
+    "none": {
+        "Root": []
+    },
+    "auto": {
+        "Gallery": [
+            "Gallery/ButtonPage.ui",
+            "Gallery/ButtonPage.cpp",
+            "Gallery/ButtonPage.h",
+
+            "Gallery/CheckBoxPage.ui",
+            "Gallery/CheckBoxPage.cpp",
+            "Gallery/CheckBoxPage.h",
+
+            "Gallery/ComponentDemoWidget.ui",
+            "Gallery/ComponentDemoWidget.cpp",
+            "Gallery/ComponentDemoWidget.h",
+
+            "Gallery/main.cpp",
+
+            "Gallery/ProgressIndicatorPage.ui",
+            "Gallery/ProgressIndicatorPage.cpp",
+            "Gallery/ProgressIndicatorPage.h",
+
+            "Gallery/RadioButtonPage.ui",
+            "Gallery/RadioButtonPage.cpp",
+            "Gallery/RadioButtonPage.h",
+
+            "Gallery/SliderPage.ui",
+            "Gallery/SliderPage.cpp",
+            "Gallery/SliderPage.h",
+
+            "Gallery/ToggleSwitchPage.ui",
+            "Gallery/ToggleSwitchPage.cpp",
+            "Gallery/ToggleSwitchPage.h"
+        ]
+    }
+}

@@ -85,6 +85,9 @@ namespace UnitTest
         script->Execute("AZTestAssert(Vector2.CreateZero() == Vector2(0, 0))");
         script->Execute("AZTestAssert(Vector2.CreateAxisX() == Vector2(1, 0))");
         script->Execute("AZTestAssert(Vector2.CreateAxisY() == Vector2(0, 1))");
+        script->Execute("AZTestAssert(Vector2.CreateFromAngle() == Vector2(0, 1))");
+        script->Execute("fromAngle4 = Vector2.CreateFromAngle(4.0)");
+        script->Execute("AZTestAssert(fromAngle4:IsClose(Vector2(-0.7568024953, -0.6536436208), 0.01))");
 
         //// Create - Comparison functions
         script->Execute("vA:Set(-100, 10)");

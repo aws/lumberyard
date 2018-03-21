@@ -45,7 +45,9 @@
 #include <QtWidgets/QLayout>
 #include <QtWidgets/QStyle>
 
-class FlowLayout
+#include <AzQtComponents/AzQtComponentsAPI.h>
+
+class AZ_QT_COMPONENTS_API FlowLayout
     : public QLayout
 {
 public:

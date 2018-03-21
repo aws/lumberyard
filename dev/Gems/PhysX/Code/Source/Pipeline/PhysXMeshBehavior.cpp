@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/algorithm.h>
@@ -70,7 +70,7 @@ namespace PhysX
             }
         }
 
-        void PhysXMeshBehavior::InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target) 
+        void PhysXMeshBehavior::InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target)
         {
             if (!target.RTTI_IsTypeOf(PhysXMeshGroup::TYPEINFO_Uuid()))
             {
@@ -90,7 +90,7 @@ namespace PhysX
             for (auto iter = view.begin(), iterEnd = view.end(); iter != iterEnd; ++iter)
             {
                 AZ::SceneAPI::Containers::SceneGraph::NodeIndex nodeIndex = graph.ConvertToNodeIndex(iter.GetBaseIterator());
-                
+
                 AZStd::set<Crc32> types;
                 AZ::SceneAPI::Events::GraphMetaInfoBus::Broadcast(&AZ::SceneAPI::Events::GraphMetaInfoBus::Events::GetVirtualTypes, types, scene, nodeIndex);
 
@@ -126,11 +126,11 @@ namespace PhysX
             }
 
             AZStd::shared_ptr<PhysXMeshGroup> group = AZStd::make_shared<PhysXMeshGroup>();
-                
+
             // This is a group that's generated automatically so may not be saved to disk but would need to be recreated
             //      in the same way again. To guarantee the same uuid, generate a stable one instead.
             group->OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, PhysXMeshGroup::TYPEINFO_Uuid()));
-                
+
             EBUS_EVENT(AZ::SceneAPI::Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
             scene.GetManifest().AddEntry(AZStd::move(group));
 
@@ -156,6 +156,5 @@ namespace PhysX
 
             return updated ? AZ::SceneAPI::Events::ProcessingResult::Success : AZ::SceneAPI::Events::ProcessingResult::Ignored;
         }
-
     } // namespace SceneAPI
 } // namespace AZ

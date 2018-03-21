@@ -40,7 +40,7 @@ namespace LUA
 		void OnDebuggerDetached(){}
 		void OnTargetConnected(){}
 		void OnTargetDisconnected(){}
-		void TargetContextButton::OnTargetContextPrepared( AZStd::string &contextName );
+		void OnTargetContextPrepared( AZStd::string &contextName );
 
 	private slots:
 		void DoPopup();

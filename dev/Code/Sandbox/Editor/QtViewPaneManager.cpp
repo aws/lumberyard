@@ -109,6 +109,16 @@ bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
         return true;
     }
 
+    return CloseInstance(m_dockWidget, closeModes);
+}
+
+bool QtViewPane::CloseInstance(QDockWidget* dockWidget, CloseModes closeModes) 
+{
+    if (!dockWidget)
+    {
+        return false;
+    }
+
     bool canClose = true;
     bool destroy = closeModes & CloseMode::Destroy;
 
@@ -138,7 +148,7 @@ bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
         }
 
         // Check if embedded QWidget allows view pane to be closed.
-        QCoreApplication::sendEvent(Widget(), &closeEvent);
+        QCoreApplication::sendEvent(dockWidget->widget(), &closeEvent);
         // If widget accepted the close event, we delete the dockwidget, which will also delete the child widget in case it doesn't have Qt::WA_DeleteOnClose
         if (!closeEvent.isAccepted())
         {
@@ -152,24 +162,27 @@ bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
         if (destroy)
         {
             //important to set parent to null otherwise docking code will still find it while restoring since that happens before the delete.
-            m_dockWidget->setParent(nullptr);
-            m_dockWidget->deleteLater();
+            dockWidget->setParent(nullptr);
+            dockWidget->deleteLater();
 
-            //clear dockwidget pointer otherwise if we open this pane before the delete happens we'll think it's already there, then it gets deleted on us.
-            m_dockWidget.clear();
+            if (dockWidget == m_dockWidget)
+            {
+                //clear dockwidget pointer otherwise if we open this pane before the delete happens we'll think it's already there, then it gets deleted on us.
+                m_dockWidget.clear();
+            }
         }
         else
         {
             // If the dock widget is tabbed, then just remove it from the tab widget
-            AzQtComponents::DockTabWidget* tabWidget = ParentTabWidget(m_dockWidget);
+            AzQtComponents::DockTabWidget* tabWidget = ParentTabWidget(dockWidget);
             if (tabWidget)
             {
-                tabWidget->removeTab(m_dockWidget);
+                tabWidget->removeTab(dockWidget);
             }
             // Otherwise just hide the widget
             else
             {
-                m_dockWidget->hide();
+                dockWidget->hide();
             }
         }
     }
@@ -177,8 +190,13 @@ bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
     return canClose;
 }
 
+static bool SkipTitleBarOverdraw(QtViewPane* pane)
+{
+    return !pane->m_options.isDockable;
+}
+
 DockWidget::DockWidget(QWidget* widget, QtViewPane* pane, QSettings* settings, QMainWindow* parent, FancyDocking* advancedDockManager)
-    : AzQtComponents::StyledDockWidget(pane->m_name, parent)
+    : AzQtComponents::StyledDockWidget(pane->m_name, SkipTitleBarOverdraw(pane), parent)
     , m_settings(settings)
     , m_mainWindow(parent)
     , m_pane(pane)
@@ -276,7 +294,7 @@ void DockWidget::RestoreState(bool forceDefault)
     auto dockingArea = m_pane->m_options.preferedDockingArea;
     auto paneRect = m_pane->m_options.paneRect;
 
-    // If we are floating and have multiple instances, try to calculate an appropriate rect from the right-most, non-docked instance
+    // If we are floating and have multiple instances, try to calculate an appropriate rect from the most recently created, non-docked instance
     // make sure the new location would be reasonable on screen - otherwise use default paneRect for new widget positioning
     if (dockingArea == Qt::NoDockWidgetArea && m_pane->m_dockWidgetInstances.size() > 1)
     {
@@ -284,36 +302,36 @@ void DockWidget::RestoreState(bool forceDefault)
         static const int verticalCascadeAmount = 20;
         static const int lowerScreenEdgeBuffer = 50;
 
-        int rightMostX = 0;
-
         QRect screenRect = QApplication::desktop()->screenGeometry();
         int screenHeight = screenRect.height();
         int screenWidth = screenRect.width();
 
-        for (auto& dock : m_pane->m_dockWidgetInstances)
+        for (QList<DockWidget*>::reverse_iterator it = m_pane->m_dockWidgetInstances.rbegin(); it != m_pane->m_dockWidgetInstances.rend(); ++it)
         {
+            DockWidget* dock = *it;
+
             if (dock != this)
             {
                 QMainWindow* mainWindow = qobject_cast<QMainWindow*>(dock->parentWidget());
                 if (mainWindow && mainWindow->parentWidget())
                 {
-                    QPoint windowLocation = mainWindow->parentWidget()->mapToGlobal(QPoint(0,0));
+                    QPoint windowLocation = mainWindow->parentWidget()->mapToGlobal(QPoint(0, 0));
 
-                    if (windowLocation.x() > rightMostX)
+                    // Only nudge it to the right if we have room to do so
+                    if (windowLocation.x() + horizontalCascadeAmount < screenWidth - paneRect.width())
                     {
-                        // Only nudge it to the right if we have room to do so
-                        if (windowLocation.x() + horizontalCascadeAmount < screenWidth - paneRect.width())
-                        {
-                            paneRect.moveLeft(windowLocation.x() + horizontalCascadeAmount);
-                            rightMostX = windowLocation.x();
+                        paneRect.moveLeft(windowLocation.x() + horizontalCascadeAmount);
 
-                            // Keep it from getting too low on the screen
-                            if (windowLocation.y() + verticalCascadeAmount < screenHeight - lowerScreenEdgeBuffer)
-                            {
-                                paneRect.moveTop(windowLocation.y() + verticalCascadeAmount);
-                            }
+                        // Keep it from getting too low on the screen
+                        if (windowLocation.y() + verticalCascadeAmount < screenHeight - lowerScreenEdgeBuffer)
+                        {
+                            paneRect.moveTop(windowLocation.y() + verticalCascadeAmount);
                         }
                     }
+
+                    // We found an undocked window, just go ahead and break, if we couldn't adjust because of positioning,
+                    // it will be placed at the default location
+                    break;
                 }
             }
         }
@@ -648,6 +666,16 @@ bool QtViewPaneManager::ClosePane(const QString& name, QtViewPane::CloseModes cl
     return false;
 }
 
+bool QtViewPaneManager::ClosePaneInstance(const QString& name, QDockWidget* dockWidget, QtViewPane::CloseModes closeModes)
+{
+    if (QtViewPane* p = GetPane(name))
+    {
+        return p->CloseInstance(dockWidget, closeModes);
+    }
+
+    return false;
+}
+
 bool QtViewPaneManager::ClosePane(QtViewPane* pane, QtViewPane::CloseModes closeModes)
 {
     if (pane)
@@ -720,10 +748,14 @@ void QtViewPaneManager::SaveLayout()
     SaveLayout(s_lastLayoutName);
 }
 
-void QtViewPaneManager::RestoreLayout()
+void QtViewPaneManager::RestoreLayout(bool restoreDefaults)
 {
-    bool restored = RestoreLayout(s_lastLayoutName);
-    if (!restored)
+    if (!restoreDefaults)
+    {
+        restoreDefaults = !RestoreLayout(s_lastLayoutName);
+    }
+
+    if (restoreDefaults)
     {
         // Nothing is saved in settings, restore default layout
         RestoreDefaultLayout();
@@ -867,23 +899,9 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
         // width WILL be after maximized
         int screenWidth = QApplication::desktop()->screenGeometry(m_mainWindow).width();
 
-        if (assetBrowserViewPane && entityOutlinerViewPane)
-        {
-            m_mainWindow->addDockWidget(Qt::LeftDockWidgetArea, entityOutlinerViewPane->m_dockWidget);
-            entityOutlinerViewPane->m_dockWidget->setFloating(false);
-
-            m_mainWindow->addDockWidget(Qt::LeftDockWidgetArea, assetBrowserViewPane->m_dockWidget);
-            assetBrowserViewPane->m_dockWidget->setFloating(false);
-
-            m_advancedDockManager->splitDockWidget(m_mainWindow, entityOutlinerViewPane->m_dockWidget, assetBrowserViewPane->m_dockWidget, Qt::Vertical);
-
-            // Resize our entity outliner (and by proxy the asset browser split with it)
-            // so that they get an appropriate default width since the minimum sizes have
-            // been removed from these widgets
-            static const float entityOutlinerWidthPercentage = 0.15f;
-            int newWidth = (float)screenWidth * entityOutlinerWidthPercentage;
-            m_mainWindow->resizeDocks({ entityOutlinerViewPane->m_dockWidget }, { newWidth }, Qt::Horizontal);
-        }
+        // Add the console view pane first
+        m_mainWindow->addDockWidget(Qt::BottomDockWidgetArea, consoleViewPane->m_dockWidget);
+        consoleViewPane->m_dockWidget->setFloating(false);
 
 		if (m_enableLegacyCryEntities)
 		{
@@ -919,8 +937,23 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
         	}
 		}
 
-        m_mainWindow->addDockWidget(Qt::BottomDockWidgetArea, consoleViewPane->m_dockWidget);
-        consoleViewPane->m_dockWidget->setFloating(false);
+        if (assetBrowserViewPane && entityOutlinerViewPane)
+        {
+            m_mainWindow->addDockWidget(Qt::LeftDockWidgetArea, entityOutlinerViewPane->m_dockWidget);
+            entityOutlinerViewPane->m_dockWidget->setFloating(false);
+
+            m_mainWindow->addDockWidget(Qt::LeftDockWidgetArea, assetBrowserViewPane->m_dockWidget);
+            assetBrowserViewPane->m_dockWidget->setFloating(false);
+
+            m_advancedDockManager->splitDockWidget(m_mainWindow, entityOutlinerViewPane->m_dockWidget, assetBrowserViewPane->m_dockWidget, Qt::Vertical);
+
+            // Resize our entity outliner (and by proxy the asset browser split with it)
+            // so that they get an appropriate default width since the minimum sizes have
+            // been removed from these widgets
+            static const float entityOutlinerWidthPercentage = 0.15f;
+            int newWidth = (float)screenWidth * entityOutlinerWidthPercentage;
+            m_mainWindow->resizeDocks({ entityOutlinerViewPane->m_dockWidget }, { newWidth }, Qt::Horizontal);
+        }
 
         // Re-enable updates now that we've finished restoring the layout
         m_mainWindow->setUpdatesEnabled(true);
@@ -1017,7 +1050,7 @@ void QtViewPaneManager::SerializeLayout(XmlNodeRef& parentNode) const
     for (const QString& paneName : state.viewPanes)
     {
         XmlNodeRef paneNode = XmlHelpers::CreateXmlNode("ViewPane");
-        paneNode->setContent(paneName.toLatin1().data());
+        paneNode->setContent(paneName.toUtf8().data());
 
         paneListNode->addChild(paneNode);
     }

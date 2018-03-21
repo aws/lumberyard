@@ -18,9 +18,9 @@
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/containers/unordered_map.h>
 
-#include <QtCore\QObject>
-#include <QtWidgets\QWidget>
-#include <QtWidgets\QTreeWidget>
+#include <QtCore/QObject>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QTreeWidget>
 #include <Woodpecker/Driller/StripChart.hxx>
 
 #include <Woodpecker/Driller/DrillerDataTypes.h>
@@ -69,7 +69,7 @@ namespace Driller
         virtual void AddRegister( const Driller::ProfilerDrillerUpdateRegisterEvent *newData );
         void SetAggregator( Driller::ProfilerDataAggregator *aggregator );
         void EndAddRegisters();
-        void ProfilerDataModel::Recolor();
+        void Recolor();
         void SetFlatView( bool on );
         void SetDeltaData( bool on );
 

@@ -44,20 +44,20 @@ namespace Rain
         virtual bool IsEnabled() = 0;
 
         /**
-         * Sets whether or not the rain effect should ignore VisAreas
+         * Sets whether or not the rain effect should be affected by VisAreas
          *
-         * When true the rain effects will still be visible even when inside a VisArea.
+         * When false the rain effects will still be visible even when inside a VisArea.
          * Otherwise rain will stop rendering upon entering a VisArea.
          *
-         * @param ignoreVisAreas Pass true to ignore vis area volumes for rain rendering
+         * @param useVisAreas Pass false to ignore vis area volumes for rain rendering
          */
-        virtual void SetIgnoreVisAreas(bool ignoreVisAreas) = 0;
+        virtual void SetUseVisAreas(bool useVisAreas) = 0;
         /**
-         * Gets whether or not the rain effect will ignore VisAreas
+         * Gets whether or not the rain effect will be affected by VisAreas
          *
-         * @return True if the rain component will ignore vis areas
+         * @return True if the rain component will use VisAreas
          */
-        virtual bool GetIgnoreVisAreas() = 0;
+        virtual bool GetUseVisAreas() = 0;
         
         /**
          * Sets whether or not the rain effect will consider objects marked as occluders

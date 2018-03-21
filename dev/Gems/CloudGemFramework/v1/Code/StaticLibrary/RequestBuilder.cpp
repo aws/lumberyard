@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 
 #include <CloudGemFramework/RequestBuilder.h>
 

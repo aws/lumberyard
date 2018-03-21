@@ -125,8 +125,6 @@ CTexture* CTexture::s_ptexSceneSpecularAccMap;
 CTexture* CTexture::s_ptexSceneDiffuseAccMapMS;
 CTexture* CTexture::s_ptexSceneSpecularAccMapMS;
 CTexture* CTexture::s_ptexZTarget;
-CTexture* CTexture::s_ptexZOcclusion[2];
-CTexture* CTexture::s_ptexZTargetReadBack[4];
 CTexture* CTexture::s_ptexZTargetDownSample[4];
 CTexture* CTexture::s_ptexZTargetScaled;
 CTexture* CTexture::s_ptexZTargetScaled2;
@@ -1019,7 +1017,7 @@ void CTexture::RT_Precache()
 
 bool CTexture::Load(ETEX_Format eTFDst)
 {
-    LOADING_TIME_PROFILE_SECTION_NAMED_ARGS("CTexture::Load(ETEX_Format eTFDst)", m_SrcName);
+    LOADING_TIME_PROFILE_SECTION_NAMED_ARGS("CTexture::Load(ETEX_Format eTFDst)", m_SrcName.c_str());
     m_bWasUnloaded = false;
     m_bStreamed = false;
 
@@ -2811,11 +2809,6 @@ void CTexture::LoadDefaultSystemTextures()
         s_ptexSvoNorm = CTexture::CreateTextureObject("SvoNorm", 0, 0, 1, eTT_3D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SVONORM);
         s_ptexSvoOpac = CTexture::CreateTextureObject("SvoOpac", 0, 0, 1, eTT_3D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SVOOPAC);
         s_ptexFromObjCM = CTexture::CreateTextureObject("$FromObjCM", 0, 0, 1, eTT_Cube, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_FROMOBJ_CM);
-
-        s_ptexZTargetReadBack[0] = CTexture::CreateTextureObject("$ZTargetReadBack0", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown);
-        s_ptexZTargetReadBack[1] = CTexture::CreateTextureObject("$ZTargetReadBack1", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown);
-        s_ptexZTargetReadBack[2] = CTexture::CreateTextureObject("$ZTargetReadBack2", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown);
-        s_ptexZTargetReadBack[3] = CTexture::CreateTextureObject("$ZTargetReadBack3", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown);
 
         s_ptexZTargetDownSample[0] = CTexture::CreateTextureObject("$ZTargetDownSample0", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown);
         s_ptexZTargetDownSample[1] = CTexture::CreateTextureObject("$ZTargetDownSample1", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown);

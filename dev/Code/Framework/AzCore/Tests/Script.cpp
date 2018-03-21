@@ -599,10 +599,10 @@ namespace UnitTest
 
             // Method
             const int defaultIntValue = 20;
-            behaviorContext.Method("globalMethod", &globalMethod, BehaviorMakeDefaultValues(555))
+            behaviorContext.Method("globalMethod", &globalMethod, behaviorContext.MakeDefaultValues(555))
                     ->Attribute("GlobalMethodAttr", 5);
             behaviorContext.Method("globalMethod1", &globalMethod1);
-            behaviorContext.Method("globalMethod2WithDefaultArgument", &globalMethod2WithDefaultArgument, { {{"Value", "An Integer argument", BehaviorMakeDefaultValue(defaultIntValue)}} });
+            behaviorContext.Method("globalMethod2WithDefaultArgument", &globalMethod2WithDefaultArgument, { {{"Value", "An Integer argument", behaviorContext.MakeDefaultValue(defaultIntValue)}} });
 
             behaviorContext.Method("globalMethodContainers", &globalMethodContainers);
             behaviorContext.Method("globalMethodPair", &globalMethodPair);
@@ -641,8 +641,8 @@ namespace UnitTest
                     Attribute(AZ::Script::Attributes::Operator,AZ::Script::Attributes::OperatorType::Add)->
                 Method("ToString", &BehaviorTestClass::ToString)->
                 Method("StaticMethod", &BehaviorTestClass::StaticMethod)->
-                Method("MemberWithDefaultValues", &BehaviorTestClass::BoundsCheckMethodWithDefaultValue, { {{"value", "Value which will be checked to be within the two bounds arguments"}, {"delta", "The epsilon value", BehaviorMakeDefaultValue(0.1f)},
-                    {"minBound", "The minimum bounds value,", BehaviorMakeDefaultValue(0.0f)}, {"maxBound", "The maximum bounds value", BehaviorMakeDefaultValue(1.0f)}} })->
+                Method("MemberWithDefaultValues", &BehaviorTestClass::BoundsCheckMethodWithDefaultValue, { {{"value", "Value which will be checked to be within the two bounds arguments"}, {"delta", "The epsilon value", behaviorContext.MakeDefaultValue(0.1f)},
+                    {"minBound", "The minimum bounds value,", behaviorContext.MakeDefaultValue(0.0f)}, {"maxBound", "The maximum bounds value", behaviorContext.MakeDefaultValue(1.0f)}} })->
                 Property("data", &BehaviorTestClass::GetData, &BehaviorTestClass::SetData)->
                     Attribute("PropAttr", 30)->
                 Property("data1", BehaviorValueProperty(&BehaviorTestClass::m_data1))->

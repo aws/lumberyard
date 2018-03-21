@@ -105,9 +105,9 @@ struct IMovementActorAdapter
     virtual void SetActorStyle(const MovementStyle& style, const INavPath& navPath) = 0;
     virtual void SetStance(const MovementStyle::Stance stance) = 0;
 
-    virtual boost::shared_ptr<Vec3> CreateLookTarget() = 0;
+    virtual AZStd::shared_ptr<Vec3> CreateLookTarget() = 0;
     virtual void SetLookTimeOffset(float lookTimeOffset) = 0;
-    virtual void UpdateLooking(float updateTime, boost::shared_ptr<Vec3> lookTarget, const bool targetReachable, const float pathDistanceToEnd, const Vec3& followTargetPosition, const MovementStyle& style) = 0;
+    virtual void UpdateLooking(float updateTime, AZStd::shared_ptr<Vec3> lookTarget, const bool targetReachable, const float pathDistanceToEnd, const Vec3& followTargetPosition, const MovementStyle& style) = 0;
 };
 
 struct IMovementSystem

@@ -81,6 +81,8 @@ class QImageListDelegate
     : public QAbstractItemDelegate
 {
     Q_OBJECT
+signals:
+    void InvalidPixmapGenerated(const QModelIndex& index) const;
 public:
     QImageListDelegate(QObject* parent = nullptr);
 

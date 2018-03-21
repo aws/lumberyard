@@ -1222,7 +1222,7 @@ namespace CharacterTool {
 
     string Explorer::GetFilePathForEntry(const ExplorerEntry* entry)
     {
-        string path = Path::GamePathToFullPath(entry->path.c_str()).toLatin1().data();
+        string path = Path::GamePathToFullPath(entry->path.c_str()).toUtf8().data();
         if (!gEnv->pCryPak->IsFileExist(path.c_str(), ICryPak::eFileLocation_OnDisk))
         {
             if (stricmp(PathUtil::GetExt(path.c_str()), "caf") == 0)

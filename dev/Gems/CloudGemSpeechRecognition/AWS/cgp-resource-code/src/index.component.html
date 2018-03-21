@@ -128,10 +128,10 @@
                 <p *ngIf="intentsUsedByCurrentBot.length == 0">No intents created</p>
             </div>
             <div *ngFor="let intent of intentsUsedByCurrentBot let i = index">
-                <button [ngClass]="sidebarIndex == i ? 'active option-button' : 'option-button'" (click)="switchSideBarTabs(i)">
-                    {{intent["intentName"]}}
+                <div [ngClass]="sidebarIndex == i ? 'active option-button' : 'option-button'">
+                    <span (click)="switchSideBarTabs(i)">{{intent["intentName"]}}</span>
                     <i *ngIf="currentBot.version == '$LATEST'" class="fa fa-times-circle float-right remove-intent" aria-hidden="true" (click)="removeIntentFromBot(intent, i)" data-toggle="tooltip" data-placement="top" title="Delete"></i>
-                </button>
+                </div>
             </div>
             <hr>
             <div class="sidebar-section">

@@ -12,13 +12,13 @@
 *
 */
 
-#include <QWidget.h>
+#include <QWidget>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <SceneAPI/SceneUI/SceneUIConfiguration.h>
 #include <SceneAPI/SceneUI/SceneWidgets/SceneGraphWidget.h>
 

@@ -42,6 +42,8 @@ namespace CloudGemPlayerAccount
 
         virtual ~CloudGemPlayerAccountRequests() {}
 
+        virtual AZ::u32 GetServiceStatus() = 0;
+
         virtual AZ::u32 GetCurrentUser() = 0;
 
         // Checks whether there are any credentials cached in memory for the given user.
@@ -131,6 +133,7 @@ namespace CloudGemPlayerAccount
 
         virtual void OnGetPlayerAccountComplete(const AccountResultInfo& resultInfo, const PlayerAccount& playerAccount) {}
         virtual void OnUpdatePlayerAccountComplete(const AccountResultInfo& resultInfo) {}
+        virtual void OnGetServiceStatusComplete(const BasicResultInfo& resultInfo) {}
     };
     using CloudGemPlayerAccountNotificationBus = AZ::EBus<CloudGemPlayerAccountNotifications>;
 
@@ -156,6 +159,7 @@ namespace CloudGemPlayerAccount
             OnDeleteUserAttributesComplete,
             OnUpdateUserAttributesComplete,
             OnGetPlayerAccountComplete,
+            OnGetServiceStatusComplete,
             OnUpdatePlayerAccountComplete);
 
         void OnGetCurrentUserComplete(const BasicResultInfo& resultInfo) override
@@ -241,6 +245,11 @@ namespace CloudGemPlayerAccount
         void OnGetPlayerAccountComplete(const AccountResultInfo& resultInfo, const PlayerAccount& playerAccount) override
         {
             Call(FN_OnGetPlayerAccountComplete, resultInfo, playerAccount);
+        }
+
+        void OnGetServiceStatusComplete(const BasicResultInfo& resultInfo) override
+        {
+            Call(FN_OnGetServiceStatusComplete, resultInfo);
         }
 
         void OnUpdatePlayerAccountComplete(const AccountResultInfo& resultInfo) override

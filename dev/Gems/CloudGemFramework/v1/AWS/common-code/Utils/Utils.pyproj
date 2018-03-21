@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{ce40c839-581f-460a-8e21-22c53c2b7cdb}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile />
+    <SearchPath>.;..\..\..\..\..\..\Tools\AWSPythonSDK\1.4.4\;..\ResourceManagerCommon\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include=".ignore" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="cgf_utils\" />
+    <Folder Include="cgf_utils\test\" />
+    <Folder Include="test\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="cgf_utils\aws_utils.py" />
+    <Compile Include="cgf_utils\custom_resource_response.py" />
+    <Compile Include="cgf_utils\data_utils.py" />
+    <Compile Include="cgf_utils\json_utils.py" />
+    <Compile Include="cgf_utils\lambda_utils.py" />
+    <Compile Include="cgf_utils\patch.py" />
+    <Compile Include="cgf_utils\properties.py" />
+    <Compile Include="cgf_utils\role_utils.py" />
+    <Compile Include="cgf_utils\test\mock_aws.py" />
+    <Compile Include="cgf_utils\test\mock_properties.py" />
+    <Compile Include="cgf_utils\test\test_custom_resource_response.py" />
+    <Compile Include="cgf_utils\test\test_properties.py" />
+    <Compile Include="cgf_utils\test\test_role_utils.py" />
+    <Compile Include="cgf_utils\test\test_unit_data_utils.py" />
+    <Compile Include="cgf_utils\test\test_unit_patch.py" />
+    <Compile Include="cgf_utils\test\test_unit_version_utils.py" />
+    <Compile Include="cgf_utils\test\__init__.py" />
+    <Compile Include="cgf_utils\version_utils.py" />
+    <Compile Include="cgf_utils\__init__.py" />
+    <Compile Include="test\test_unit_data_utils.py" />
+    <Compile Include="test\test_unit_version_utils.py" />
+    <Compile Include="test\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

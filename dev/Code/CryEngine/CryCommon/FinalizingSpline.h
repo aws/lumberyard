@@ -810,6 +810,7 @@ namespace spline
         void dealloc()
         {
             free(m_pSpline);
+            m_pSpline = nullptr;
         }
 
     public:

@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Footsteps_precompiled.cpp",
+            "Source/Footsteps_precompiled.h"
         ]
     },
     "auto": {

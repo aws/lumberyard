@@ -295,6 +295,21 @@ namespace AzFramework
             m_branchToken = branchtoken;
         }
 
+        bool AssetSystemComponent::Disconnect()
+        {
+            auto apConnection = azrtti_cast<AssetProcessorConnection*>(m_socketConn.get());
+            if (!apConnection)
+            {
+                return false;
+            }
+
+            if (apConnection->IsConnected())
+            {
+                return apConnection->Disconnect();
+            }
+            return true;
+        }
+
         bool AssetSystemComponent::SaveCatalog()
         {
             auto apConnection = azrtti_cast<AssetProcessorConnection*>(m_socketConn.get());

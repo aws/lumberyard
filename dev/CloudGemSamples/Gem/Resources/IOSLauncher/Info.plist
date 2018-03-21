@@ -36,6 +36,8 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The application uses the microphone to send voice recordings to the AWS Lex service</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationLandscapeRight</string>

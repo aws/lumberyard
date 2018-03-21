@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "EditorDecalComponent.h"
 #include <IEditor.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -107,7 +107,7 @@ namespace LmbrCentral
 
                     DataElement(AZ::Edit::UIHandlers::SpinBox, &DecalConfiguration::m_depth, "Depth", "")->
                     Attribute(AZ::Edit::Attributes::ChangeNotify, &DecalConfiguration::MinorPropertyChanged)->
-                    Attribute(AZ::Edit::Attributes::Min, 0.f)->
+                    Attribute(AZ::Edit::Attributes::Min, 0.0001f)->
                     Attribute(AZ::Edit::Attributes::Max, 10.f)->
                     Attribute(AZ::Edit::Attributes::Step, 1.f / 255.f)->
 

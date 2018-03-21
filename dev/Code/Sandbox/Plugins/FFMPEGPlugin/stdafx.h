@@ -37,14 +37,12 @@
 #define _WIN32_IE 0x0600    // Change this to the appropriate value to target other versions of IE.
 #endif
 
-#define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS  // some CString constructors will be explicit
-
 #pragma warning(disable: 4244) // warning C4244: 'argument' : conversion from 'float' to 'uint8', possible loss of data
 #pragma warning(disable: 4800) // 'int' : forcing value to bool 'true' or 'false' (performance warning)
 #pragma warning(disable: 4266) // no override available for virtual member function from base 'CObject'; function is hidden
 //#pragma warning(disable: 4264) // no override available for virtual member function from base 'CObject'; function is hidden
 
-#include "Resource.h"
+#include "resource.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CRY Stuff ////////////////////////////////////////////////////////////////

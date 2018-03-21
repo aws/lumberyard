@@ -41,7 +41,7 @@ private:
     uint32 m_filePointer;
 };
 
-DECLARE_BOOST_POINTERS(CSaveReader_Steam);
+DECLARE_SMART_POINTERS(CSaveReader_Steam);
 
 class CSaveWriter_Steam
     : public IPlatformOS::ISaveWriter
@@ -63,7 +63,7 @@ private:
     uint32 m_filePos;
 };
 
-DECLARE_BOOST_POINTERS(CSaveWriter_Steam);
+DECLARE_SMART_POINTERS(CSaveWriter_Steam);
 
 
 class CFileFinderSteam

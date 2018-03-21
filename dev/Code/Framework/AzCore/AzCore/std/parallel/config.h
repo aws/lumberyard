@@ -34,7 +34,7 @@
  * \li \ref ParallelContainers
  *
  */
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_SYNCHRONIZATION_LIBRARY
     #include <intrin.h>
     #include <AzCore/std/typetraits/aligned_storage.h>
     #pragma intrinsic (_InterlockedIncrement)
@@ -136,7 +136,7 @@ namespace AZStd
         class thread_info;
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_USE_WINDOWS_SYNCHRONIZATION_LIBRARY
     // Mutex
     typedef AZStd::aligned_storage<40,8>::type  native_mutex_data_type; // declare storage for CRITICAL_SECTION (40 bytes on x64, 24 on x32) to avoid windows.h include
     typedef CRITICAL_SECTION*                   native_mutex_handle_type;

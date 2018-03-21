@@ -23,20 +23,19 @@
    <property name="bottomMargin">
     <number>4</number>
    </property>
-    <item>
-        <widget class="QLabel" name="STATIC1">
-            <property name="text">
-                <string>Sequence Type:</string>
-            </property>
-            <property name="alignment">
-                <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-            </property>
-        </widget>
-    </item>
-    <item>
-        <widget class="QComboBox" name="m_seqNodeTypeCombo">
-        </widget>
-    </item>
+   <item>
+    <widget class="QLabel" name="STATIC1">
+     <property name="text">
+      <string>Sequence Type:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="m_seqNodeTypeCombo"/>
+   </item>
    <item>
     <widget class="QLabel" name="STATIC">
      <property name="text">
@@ -49,12 +48,12 @@
    </item>
    <item>
     <widget class="QLineEdit" name="NAME">
+     <property name="maxLength">
+      <number>512</number>
+     </property>
      <property name="alignment">
       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
      </property>
-      <property name="maxLength">
-       <number>512</number>
-      </property>
     </widget>
    </item>
    <item>
@@ -71,53 +70,29 @@
     </spacer>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>60</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="BTNOK">
-       <property name="text">
-        <string>OK</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="BTNCANCEL">
-       <property name="text">
-        <string>Cancel</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
  <resources/>
  <connections>
   <connection>
-   <sender>BTNCANCEL</sender>
-   <signal>clicked()</signal>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
    <receiver>CTVNewSequenceDialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>126</x>
-     <y>120</y>
+     <x>161</x>
+     <y>117</y>
     </hint>
     <hint type="destinationlabel">
-     <x>172</x>
-     <y>104</y>
+     <x>168</x>
+     <y>102</y>
     </hint>
    </hints>
   </connection>

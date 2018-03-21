@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <QPushButton.h>
+#include <QPushButton>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>

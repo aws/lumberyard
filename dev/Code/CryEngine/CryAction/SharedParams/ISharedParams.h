@@ -49,7 +49,7 @@ public:
 #define BEGIN_SHARED_PARAMS(name)                                \
     struct name;                                                 \
                                                                  \
-    DECLARE_BOOST_POINTERS(name);                                \
+    DECLARE_SMART_POINTERS(name);                                \
                                                                  \
     struct name                                                  \
         : public ISharedParams                                   \
@@ -80,15 +80,15 @@ public:
 // Cast shared parameters pointer.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename TO>
-inline boost::shared_ptr<TO> CastSharedParamsPtr(ISharedParamsPtr pSharedParams)
+inline AZStd::shared_ptr<TO> CastSharedParamsPtr(ISharedParamsPtr pSharedParams)
 {
     if (pSharedParams && (pSharedParams->GetTypeInfo() == TO::s_typeInfo))
     {
-        return boost::static_pointer_cast<TO>(pSharedParams);
+        return AZStd::static_pointer_cast<TO>(pSharedParams);
     }
     else
     {
-        return boost::shared_ptr<TO>();
+        return AZStd::shared_ptr<TO>();
     }
 };
 
@@ -96,15 +96,15 @@ inline boost::shared_ptr<TO> CastSharedParamsPtr(ISharedParamsPtr pSharedParams)
 // Cast shared parameters pointer.
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename TO>
-inline boost::shared_ptr<const TO> CastSharedParamsPtr(ISharedParamsConstPtr pSharedParams)
+inline AZStd::shared_ptr<const TO> CastSharedParamsPtr(ISharedParamsConstPtr pSharedParams)
 {
     if (pSharedParams && (pSharedParams->GetTypeInfo() == TO::s_typeInfo))
     {
-        return boost::static_pointer_cast<const TO>(pSharedParams);
+        return AZStd::static_pointer_cast<const TO>(pSharedParams);
     }
     else
     {
-        return boost::shared_ptr<const TO>();
+        return AZStd::shared_ptr<const TO>();
     }
 };
 

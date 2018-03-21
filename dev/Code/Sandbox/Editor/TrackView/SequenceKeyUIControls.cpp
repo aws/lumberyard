@@ -18,7 +18,8 @@
 #include "TrackViewTrack.h"
 #include "TrackViewSequenceManager.h"
 #include "TrackViewUndo.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 //////////////////////////////////////////////////////////////////////////
 class CSequenceKeyUIControls
@@ -140,9 +141,9 @@ bool CSequenceKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedK
 // Called when UI variable changes.
 void CSequenceKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!pSequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
     {
         return;
     }
@@ -199,8 +200,25 @@ void CSequenceKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
                 pMovieSystem->SetStartEndTime(pSequence, sequenceKey.fStartTime, sequenceKey.fEndTime);
             }
 
-            CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-            keyHandle.SetKey(&sequenceKey);
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&sequenceKey);
+            }
+            else if (isDuringUndo)
+            {
+                keyHandle.SetKey(&sequenceKey);
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key Value");
+                keyHandle.SetKey(&sequenceKey);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
+
         }
     }
 }

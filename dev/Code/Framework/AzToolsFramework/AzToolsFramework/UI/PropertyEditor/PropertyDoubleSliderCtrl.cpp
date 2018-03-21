@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyDoubleSliderCtrl.hxx"
 #include "DHQSpinbox.hxx"
 #include "DHQSlider.hxx"
@@ -457,6 +457,18 @@ namespace AzToolsFramework
         if (m_pSpinBox)
         {
             m_pSpinBox->setDecimals(decimals);
+        }
+    }
+
+    /*!
+    \property DHPropertyDoubleSlider::setDisplayDecimals
+    \brief sets display decimal precision on spin box control within the slider control.
+    */
+    void DHPropertyDoubleSlider::setDisplayDecimals(int displayDecimals)
+    {
+        if (m_pSpinBox)
+        {
+            m_pSpinBox->SetDisplayDecimals(displayDecimals);
         }
     }
 
@@ -954,7 +966,19 @@ namespace AzToolsFramework
                 // emit a warning!
                 AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'Decimals' attribute from property '%s' into Slider", debugName);
             }
-            return;
+        }
+        else if (attrib == AZ::Edit::Attributes::DisplayDecimals)
+        {
+            int intValue = 0;
+            if (attrValue->Read<int>(intValue))
+            {
+                GUI->setDisplayDecimals(intValue);
+            }
+            else
+            {
+                // emit a warning!
+                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'DisplayDecimals' attribute from property '%s' into Slider", debugName);
+            }
         }
 
         // Verify that the bounds are within the acceptable range of the int slider.

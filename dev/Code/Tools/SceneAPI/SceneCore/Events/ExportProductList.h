@@ -35,10 +35,17 @@ namespace AZ
                 ExportProduct& operator=(const ExportProduct& rhs) = default;
                 SCENE_CORE_API ExportProduct& operator=(ExportProduct&& rhs);
 
+                //! Other names the product file may be known as in the past. This is only backwards compatibility in ResourceCompilerScene.
                 AZStd::vector<AZStd::string> m_legacyFileNames;
+                //! Relative or absolute path of the product file.
                 AZStd::string m_filename;
+                //! Unique id for the product file. This is usually based on the group id and is used to generate the 
+                //! the sub id.
                 Uuid m_id;
+                //! Type of the product file.
                 Data::AssetType m_assetType;
+                //! If the product makes use of level of detail, the level is encoded in the sub id. If s_LodNotUsed is specified
+                //! (default) the entire sub id number will be used for the product id.
                 s8 m_lod;
             };
 

@@ -78,7 +78,7 @@ private:
     uint32 m_nCurrentAnimationToken;
     Audio::TAudioControlID m_soundId;
 };
-DECLARE_BOOST_POINTERS(CLipSyncProvider_TransitionQueue);
+DECLARE_SMART_POINTERS(CLipSyncProvider_TransitionQueue);
 
 
 class CLipSync_TransitionQueue

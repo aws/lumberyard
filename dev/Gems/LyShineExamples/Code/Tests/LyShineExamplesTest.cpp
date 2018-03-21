@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "LyShineExamples_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

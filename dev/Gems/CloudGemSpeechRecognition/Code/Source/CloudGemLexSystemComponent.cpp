@@ -1,10 +1,10 @@
 
-#include "StdAfx.h"
+#include "CloudGemSpeechRecognition_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <base64.h>
+#include <Base64.h>
 #include <AzCore/JSON/document.h>
 
 #include "CloudGemLexSystemComponent.h"

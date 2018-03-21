@@ -235,16 +235,10 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
 
     for (const auto& missingModule : missingModules)
     {
-#if (_MSC_VER == 1900)
-        const char * bin64Folder = "Bin64vc140";
-#else // _MSC_VER == 1900
-        const char * bin64Folder = "Bin64vc120";
-#endif // _MSC_VER == 1900
-
         AZ_Error("Gems", false,
             "Module %s is missing from the current app descriptor for this project.\n"
-            "Update app descriptors by running \"%s\\lmbr.exe projects populate-appdescriptors\" from the dev/ folder.",
-            missingModule.c_str(), bin64Folder);
+            "Update app descriptors by running \"Tools/LmbrSetup/[Development Platform]/lmbr projects populate-appdescriptors\" from the dev/ folder.",
+            missingModule.c_str());
         return false;
     }
 #endif // AZ_MONOLITHIC_BUILD

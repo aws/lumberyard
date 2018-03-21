@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "Multiplayer_precompiled.h"
 #include "GameLiftListener.h"
 #include "MultiplayerGem.h"
 #include "Multiplayer/MultiplayerUtils.h"

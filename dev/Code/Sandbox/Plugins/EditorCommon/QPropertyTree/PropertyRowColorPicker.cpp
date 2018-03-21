@@ -16,7 +16,7 @@
 #include <IEditor.h>
 #include <QMenu>
 #include <QColorDialog>
-#include <QPainter.h>
+#include <QPainter>
 #include <QIcon>
 #include <QKeyEvent>
 

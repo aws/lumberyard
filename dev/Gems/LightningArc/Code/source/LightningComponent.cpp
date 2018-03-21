@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LightningArc_precompiled.h"
 #include "LightningComponent.h"
 
 #include <AzCore/Math/Vector2.h>

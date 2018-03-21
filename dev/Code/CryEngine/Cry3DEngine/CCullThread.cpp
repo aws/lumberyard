@@ -15,16 +15,9 @@
 #include "CCullThread.h"
 #include "ObjMan.h"
 #include "CCullRenderer.h"
-#include <IJobManager_JobDelegator.h>
 #include <CryProfileMarker.h>
-
-
-DECLARE_JOB("CheckOcclusion", TOcclusionCheckJob, NAsyncCull::CCullThread::CheckOcclusion);
-DECLARE_JOB("PrepareOcclusion", TOcclusionPrepareJob, NAsyncCull::CCullThread::PrepareOcclusion);
-DECLARE_JOB("PrepareOcclusion_ReprojectZBuffer", TOcclusionPrepareReprojectJob, NAsyncCull::CCullThread::PrepareOcclusion_ReprojectZBuffer);
-DECLARE_JOB("PrepareOcclusion_ReprojectZBufferLine", TOcclusionPrepareReprojectLineJob, NAsyncCull::CCullThread::PrepareOcclusion_ReprojectZBufferLine);
-DECLARE_JOB("PrepareOcclusion_ReprojectZBufferLineAfterMerge", TOcclusionPrepareReprojectLineJob2, NAsyncCull::CCullThread::PrepareOcclusion_ReprojectZBufferLineAfterMerge);
-DECLARE_JOB("PrepareOcclusion_RasterizeZBuffer", TOcclusionPrepareRasterizeJob, NAsyncCull::CCullThread::PrepareOcclusion_RasterizeZBuffer);
+#include <AzCore/Jobs/Job.h>
+#include <AzCore/Jobs/JobFunction.h>
 
 typedef NAsyncCull::CCullRenderer<CULL_SIZEX, CULL_SIZEY>    tdCullRasterizer;
 
@@ -33,14 +26,12 @@ uint8                           g_RasterizerBuffer[sizeof(tdCullRasterizer) + 16
 tdCullRasterizer*   g_Rasterizer;
 #define RASTERIZER (*g_Rasterizer)
 
-
 namespace NAsyncCull
 {
     const NVMath::vec4 MaskNot3 =   NVMath::Vec4(~3u, ~0u, ~0u, ~0u);
 
     CCullThread::CCullThread()
-        : m_pCheckOcclusionJob(NULL)
-        , m_Enabled(false)
+        : m_Enabled(false)
         , m_Active(false)
         , m_nPrepareState(IDLE)
         , m_OCMMeshCount(0)
@@ -51,7 +42,6 @@ namespace NAsyncCull
         Buffer  +=  127;
         Buffer  &=  ~127;
         g_Rasterizer        =   new(reinterpret_cast<void*>(Buffer))tdCullRasterizer();
-
 
         m_NearPlane = 0;
         m_FarPlane = 0;
@@ -250,19 +240,6 @@ namespace NAsyncCull
         m_OCMMeshCount              =   0;
         m_OCMInstCount              =   0;
         m_OCMOffsetInstances    =   0;
-
-        if (m_pCheckOcclusionJob)
-        {
-            delete static_cast<TOcclusionCheckJob*>(m_pCheckOcclusionJob);
-        }
-        m_pCheckOcclusionJob = NULL;
-    }
-
-    CCullThread::~CCullThread()
-    {
-        READ_WRITE_BARRIER
-        gEnv->pJobManager->WaitForJob(m_JobStatePrepareOcclusionBuffer);
-        delete static_cast<TOcclusionCheckJob*>(m_pCheckOcclusionJob);
     }
 
     void CCullThread::PrepareCullbufferAsync(const CCamera& rCamera)
@@ -286,9 +263,6 @@ namespace NAsyncCull
             _debug = gEnv->pRenderer->GetFrameID(false);
         }
 #endif
-
-        // sync a possible job from the last frame
-        gEnv->pJobManager->WaitForJob(m_JobStatePrepareOcclusionBuffer);
 
         const CCamera& rCam = rCamera;
 
@@ -337,13 +311,11 @@ namespace NAsyncCull
 
         RASTERIZER.Prepare();
 
-        m_PrepareBufferSync.SetRunning();
-
-        TOcclusionPrepareJob job;
-        job.SetClassInstance(this);
-        job.SetPriorityLevel(JobManager::eHighPriority);
-        job.SetBlocking();
-        job.Run();
+        m_PrepareBufferSync.PushCompletionFence();
+        m_OcclusionJobExecutor.StartJob([this]()
+        {
+            this->PrepareOcclusion();
+        }); // legacy: job.SetPriorityLevel(JobManager::eHighPriority); job.SetBlocking();
     }
 
     void CCullThread::CullStart(const SRenderingPassInfo& passInfo)
@@ -373,17 +345,17 @@ namespace NAsyncCull
 
         if (bNeedJobStart)
         {
-            TOcclusionCheckJob job(passInfo);
-            job.SetClassInstance(this);
-            job.SetPriorityLevel(JobManager::eHighPriority);
-            job.Run();
+            m_OcclusionJobExecutor.StartJob([this, passInfo]()
+            {
+                this->CheckOcclusion(passInfo);
+            }); // legacy: job.SetPriorityLevel(JobManager::eHighPriority);
         }
     }
 
     void CCullThread::CullEnd()
     {
         // If no frame was rendered, we need to remove the producer added in BeginCulling
-        gEnv->pJobManager->WaitForJob(m_PrepareBufferSync);
+        m_PrepareBufferSync.WaitForCompletion();
 
         bool bNeedRemoveProducer = false;
         {
@@ -566,10 +538,10 @@ namespace NAsyncCull
             }
         }
 
-        TOcclusionPrepareReprojectJob job;
-        job.SetClassInstance(this);
-        job.SetPriorityLevel(JobManager::eHighPriority);
-        job.Run();
+        m_OcclusionJobExecutor.StartJob([this]()
+        {
+            this->PrepareOcclusion_ReprojectZBuffer();
+        }); // legacy: job.SetPriorityLevel(JobManager::eHighPriority);
     }
 
     void CCullThread::PrepareOcclusion_ReprojectZBuffer()
@@ -594,18 +566,18 @@ namespace NAsyncCull
             m_nRunningReprojJobsAfterMerge = tdCullRasterizer::RESOLUTION_Y / nLinesPerJob;
             for (int i = 0; i < tdCullRasterizer::RESOLUTION_Y; i += nLinesPerJob)
             {
-                TOcclusionPrepareReprojectLineJob job((int)i, (int)nLinesPerJob);
-                job.SetClassInstance(this);
-                job.SetPriorityLevel(JobManager::eHighPriority);
-                job.Run();
+                m_OcclusionJobExecutor.StartJob([this, i]()
+                {
+                    this->PrepareOcclusion_ReprojectZBufferLine(i, nLinesPerJob);
+                }); // legacy: job.SetPriorityLevel(JobManager::eHighPriority);
             }
         }
         else
         {
-            TOcclusionPrepareRasterizeJob job;
-            job.SetClassInstance(this);
-            job.SetPriorityLevel(JobManager::eHighPriority);
-            job.Run();
+            m_OcclusionJobExecutor.StartJob([this]()
+            {
+                this->PrepareOcclusion_RasterizeZBuffer();
+            }); // job.SetPriorityLevel(JobManager::eHighPriority);
         }
     }
 
@@ -630,10 +602,10 @@ namespace NAsyncCull
             };
             for (int i = 0; i < tdCullRasterizer::RESOLUTION_Y; i += nLinesPerJob)
             {
-                TOcclusionPrepareReprojectLineJob2 job((int)i, (int)nLinesPerJob);
-                job.SetClassInstance(this);
-                job.SetPriorityLevel(JobManager::eHighPriority);
-                job.Run();
+                m_OcclusionJobExecutor.StartJob([this, i]()
+                {
+                    this->PrepareOcclusion_ReprojectZBufferLineAfterMerge(i, nLinesPerJob);
+                }); // job.SetPriorityLevel(JobManager::eHighPriority);
             }
         }
     }
@@ -656,10 +628,10 @@ namespace NAsyncCull
         uint32 nRemainingJobs = CryInterlockedDecrement((volatile int*)&m_nRunningReprojJobsAfterMerge);
         if (nRemainingJobs == 0)
         {
-            TOcclusionPrepareRasterizeJob job;
-            job.SetClassInstance(this);
-            job.SetPriorityLevel(JobManager::eHighPriority);
-            job.Run();
+            m_OcclusionJobExecutor.StartJob([this]()
+            {
+                this->PrepareOcclusion_RasterizeZBuffer();
+            }); //job.SetPriorityLevel(JobManager::eHighPriority);
         }
     }
 
@@ -702,13 +674,13 @@ namespace NAsyncCull
             }
         }
 
-        m_PrepareBufferSync.SetStopped();
+        m_PrepareBufferSync.PopCompletionFence();
         if (bNeedJobStart)
         {
-            TOcclusionCheckJob job(*((SRenderingPassInfo*)m_passInfoForCheckOcclusion));
-            job.SetClassInstance(this);
-            job.SetPriorityLevel(JobManager::eHighPriority);
-            job.Run();
+            m_OcclusionJobExecutor.StartJob([this]()
+            {
+                this->CheckOcclusion(*reinterpret_cast<SRenderingPassInfo*>(m_passInfoForCheckOcclusion));
+            }); // legacy: job.SetPriorityLevel(JobManager::eHighPriority)
         }
     }
 
@@ -730,6 +702,11 @@ namespace NAsyncCull
         rMatFinalT  =   m_MatScreenViewProj.GetTransposed();
         bool bEnabled = m_Enabled;
 
+        // Debugging stats in green to screen here with how many octree nodes pass/fail and how many terrain nodes pass/fail
+        unsigned int octreeNodesCulled = 0;
+        unsigned int octreeNodesVisible = 0;
+        unsigned int terrainNodesCulled = 0;
+        unsigned int terrainNodesVisible = 0;
         while (1)
         {
             SCheckOcclusionJobData jobData;
@@ -753,6 +730,11 @@ namespace NAsyncCull
                 if (TestAABB(rAABB, fDistance))
                 {
                     pOctTreeNode->COctreeNode::RenderContent(jobData.octTreeData.nRenderMask, passInfo, jobData.rendItemSorter, jobData.pCam);
+                    octreeNodesVisible++;
+                }
+                else
+                {
+                    octreeNodesCulled++;
                 }
             }
             else if (jobData.type == SCheckOcclusionJobData::TERRAIN_NODE)
@@ -767,12 +749,24 @@ namespace NAsyncCull
                 {
                     SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
                     GetObjManager()->PushIntoCullOutputQueue(SCheckOcclusionOutput::CreateTerrainOutput(jobData.terrainData.pTerrainNode, rendItemSorter));
+                    terrainNodesVisible++;
+                }
+                else
+                {
+                    terrainNodesCulled++;
                 }
             }
             else
             {
                 __debugbreak(); // unknown culler job type
             }
+        }
+
+        if (GetCVars()->e_CoverageBufferDebug)
+        {
+            float fGreen[4] = {0, 1, 0, 1};
+            gEnv->pRenderer->Draw2dLabel(16.0f, 32.0f, 1.6f, fGreen, false, AZStd::string::format("Octree Nodes Culled %i, Octree Nodes Visible %i",octreeNodesCulled, octreeNodesVisible).c_str());
+            gEnv->pRenderer->Draw2dLabel(16.0f, 64.0f, 1.6f, fGreen, false, AZStd::string::format("Terrain Nodes Culled %i, Terrain Nodes Visible %i",terrainNodesCulled, terrainNodesVisible).c_str());
         }
 
         GetObjManager()->RemoveCullJobProducer();

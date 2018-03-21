@@ -11,9 +11,9 @@
 */
 #pragma once
 
-#include <qgraphicswidget.h>
-#include <qgraphicslayoutitem.h>
-#include <qtimer.h>
+#include <QGraphicsWidget>
+#include <QGraphicsLayoutItem>
+#include <QTimer>
 
 #include <AzCore/Component/EntityId.h>
 

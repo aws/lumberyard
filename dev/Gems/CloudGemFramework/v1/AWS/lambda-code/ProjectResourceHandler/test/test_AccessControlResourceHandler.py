@@ -14,11 +14,11 @@ import unittest
 import mock
 import json
 
-from resource_manager_common.test import mock_aws
+from cgf_utils.test import mock_aws
 from test_case import ResourceHandlerTestCase
 
 from resource_manager_common import stack_info
-import AccessControlResourceHandler
+from resource_types import Custom_AccessControl
 
 def merge_dicts(*args):
     result = {}
@@ -27,10 +27,10 @@ def merge_dicts(*args):
     return result
 
 
-class AccessControlResourceHandlerTestCase(ResourceHandlerTestCase):
+class Custom_AccessControlTestCase(ResourceHandlerTestCase):
 
     def __init__(self, *args, **kwargs):
-        super(AccessControlResourceHandlerTestCase, self).__init__(*args, **kwargs)
+        super(Custom_AccessControlTestCase, self).__init__(*args, **kwargs)
 
     def make_problem_reporting_side_effect(self, problems_caused, return_values = None):
         index = [0] # in list to avoid reference before assignment error in side effect function below
@@ -47,14 +47,14 @@ class AccessControlResourceHandlerTestCase(ResourceHandlerTestCase):
             return return_value
         return side_effect
 
-    ANY_PROBLEM_LIST = ResourceHandlerTestCase.AnyInstance(AccessControlResourceHandler.ProblemList)
+    ANY_PROBLEM_LIST = ResourceHandlerTestCase.AnyInstance(Custom_AccessControl.ProblemList)
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_handler(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_handler(Custom_AccessControlTestCase):
 
-    @mock.patch('custom_resource_response.succeed')
-    @mock.patch('resource_manager_common.stack_info.get_stack_info')
-    @mock.patch('AccessControlResourceHandler._apply_resource_group_access_control')
+    @mock.patch('cgf_utils.custom_resource_response.success_response')
+    @mock.patch('resource_manager_common.stack_info.StackInfoManager.get_stack_info')
+    @mock.patch('resource_types.Custom_AccessControl._apply_resource_group_access_control')
     def __do_stack_type_resource_group_test(self, 
             request_type, 
             problems,
@@ -71,9 +71,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         if problems:
             with self.assertRaises(RuntimeError):
-                AccessControlResourceHandler.handler(event, self.CONTEXT)
+                Custom_AccessControl.handler(event, self.CONTEXT)
         else:
-            AccessControlResourceHandler.handler(event, self.CONTEXT)
+            Custom_AccessControl.handler(event, self.CONTEXT)
 
         mock_get_stack_info.assert_called_with(self.STACK_ARN)
         mock_apply_resource_group_access_control.assert_called_with(request_type, resource_group, self.ANY_PROBLEM_LIST)
@@ -81,7 +81,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         if problems:
             mock_succeed.assert_not_called()
         else:
-            mock_succeed.assert_called_with(event, self.CONTEXT, {}, self.PHYSICAL_RESOURCE_ID)
+            mock_succeed.assert_called_with({}, self.PHYSICAL_RESOURCE_ID)
 
 
     def test_stack_type_resource_group_create_with_no_problems(self):
@@ -108,9 +108,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         self.__do_stack_type_resource_group_test('Delete', ['Problem'])
 
 
-    @mock.patch('custom_resource_response.succeed')
-    @mock.patch('resource_manager_common.stack_info.get_stack_info')
-    @mock.patch('AccessControlResourceHandler._apply_deployment_access_control')
+    @mock.patch('cgf_utils.custom_resource_response.success_response')
+    @mock.patch('resource_manager_common.stack_info.StackInfoManager.get_stack_info')
+    @mock.patch('resource_types.Custom_AccessControl._apply_deployment_access_control')
     def __do_stack_type_deployment_access_test(self, 
             request_type,
             problems,
@@ -127,9 +127,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         if problems:
             with self.assertRaises(RuntimeError):
-                AccessControlResourceHandler.handler(event, self.CONTEXT)
+                Custom_AccessControl.handler(event, self.CONTEXT)
         else:
-            AccessControlResourceHandler.handler(event, self.CONTEXT)
+            Custom_AccessControl.handler(event, self.CONTEXT)
 
         mock_get_stack_info.assert_called_with(self.STACK_ARN)
         mock_apply_deployment_access_control.assert_called_with(request_type, deployment_access, self.ANY_PROBLEM_LIST)
@@ -137,7 +137,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         if problems:
             mock_succeed.assert_not_called()
         else:
-            mock_succeed.assert_called_with(event, self.CONTEXT, {}, self.PHYSICAL_RESOURCE_ID)
+            mock_succeed.assert_called_with({}, self.PHYSICAL_RESOURCE_ID)
 
 
     def test_stack_type_deployment_access_create_with_no_problems(self):
@@ -164,9 +164,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         self.__do_stack_type_deployment_access_test('Delete', ['Problem'])
 
 
-    @mock.patch('custom_resource_response.succeed')
-    @mock.patch('resource_manager_common.stack_info.get_stack_info')
-    @mock.patch('AccessControlResourceHandler._apply_project_access_control')
+    @mock.patch('cgf_utils.custom_resource_response.success_response')
+    @mock.patch('resource_manager_common.stack_info.StackInfoManager.get_stack_info')
+    @mock.patch('resource_types.Custom_AccessControl._apply_project_access_control')
     def __do_stack_type_project_test(self, 
             request_type,
             problems,
@@ -183,9 +183,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         if problems:
             with self.assertRaises(RuntimeError):
-                AccessControlResourceHandler.handler(event, self.CONTEXT)
+                Custom_AccessControl.handler(event, self.CONTEXT)
         else:
-            AccessControlResourceHandler.handler(event, self.CONTEXT)
+            Custom_AccessControl.handler(event, self.CONTEXT)
 
         mock_get_stack_info.assert_called_with(self.STACK_ARN)
         mock_apply_project_access_control.assert_called_with(request_type, project, self.ANY_PROBLEM_LIST)
@@ -193,7 +193,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         if problems:
             mock_succeed.assert_not_called()
         else:
-            mock_succeed.assert_called_with(event, self.CONTEXT, {}, self.PHYSICAL_RESOURCE_ID)
+            mock_succeed.assert_called_with({}, self.PHYSICAL_RESOURCE_ID)
 
 
     def test_stack_type_project_create_with_no_problems(self):
@@ -220,8 +220,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         self.__do_stack_type_project_test('Delete', ['Problem'])
 
 
-    @mock.patch('custom_resource_response.succeed')
-    @mock.patch('resource_manager_common.stack_info.get_stack_info')
+    @mock.patch('cgf_utils.custom_resource_response.success_response')
+    @mock.patch('resource_manager_common.stack_info.StackInfoManager.get_stack_info')
     def __do_stack_type_deployment_test(self, 
             request_type,                                     
             mock_get_stack_info, 
@@ -233,7 +233,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         deployment.stack_type = deployment.STACK_TYPE_DEPLOYMENT
 
         with self.assertRaises(RuntimeError):
-            AccessControlResourceHandler.handler(event, self.CONTEXT)
+            Custom_AccessControl.handler(event, self.CONTEXT)
 
         mock_succeed.assert_not_called()
         mock_get_stack_info.assert_called_with(self.STACK_ARN)
@@ -256,10 +256,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         event = self.make_event('Unexpected')
 
         with self.assertRaises(RuntimeError):
-            AccessControlResourceHandler.handler(event, self.CONTEXT)
+            Custom_AccessControl.handler(event, self.CONTEXT)
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_apply_resource_group_access_control(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_apply_resource_group_access_control(Custom_AccessControlTestCase):
 
     RESOURCE_GROUP = mock.MagicMock()
     REQUEST_TYPE = mock.MagicMock()
@@ -268,11 +268,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
     DEPLOYMENT_ACCESS_ROLE_MAPPINGS = mock.MagicMock()
     PROJECT_ROLE_MAPPINGS = mock.MagicMock()
 
-    @mock.patch('AccessControlResourceHandler._get_resource_group_policy_name')
-    @mock.patch('AccessControlResourceHandler._get_permissions')
-    @mock.patch('AccessControlResourceHandler._get_explicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._get_implicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._update_roles', return_value=True)
+    @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
+    @mock.patch('resource_types.Custom_AccessControl._get_permissions')
+    @mock.patch('resource_types.Custom_AccessControl._get_explicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._get_implicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._update_roles', return_value=True)
     def test_with_no_problems(self, 
             mock_update_roles,
             mock_get_implicit_role_mappings, 
@@ -289,9 +289,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         expected_problems = []
 
-        problems = AccessControlResourceHandler.ProblemList()
+        problems = Custom_AccessControl.ProblemList()
 
-        AccessControlResourceHandler._apply_resource_group_access_control(self.REQUEST_TYPE, self.RESOURCE_GROUP, problems)
+        Custom_AccessControl._apply_resource_group_access_control(self.REQUEST_TYPE, self.RESOURCE_GROUP, problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
@@ -314,11 +314,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(self.REQUEST_TYPE, policy_name, permissions, self.PROJECT_ROLE_MAPPINGS)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_resource_group_policy_name')
-    @mock.patch('AccessControlResourceHandler._get_permissions')
-    @mock.patch('AccessControlResourceHandler._get_explicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._get_implicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._update_roles', return_value=True)
+    @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
+    @mock.patch('resource_types.Custom_AccessControl._get_permissions')
+    @mock.patch('resource_types.Custom_AccessControl._get_explicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._get_implicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._update_roles', return_value=True)
     def test_with_no_deployment_access_stack(self, 
             mock_update_roles,
             mock_get_implicit_role_mappings, 
@@ -335,12 +335,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         expected_problems = []
 
-        problems = AccessControlResourceHandler.ProblemList()
+        problems = Custom_AccessControl.ProblemList()
 
         resource_group = mock.MagicMock()
         resource_group.deployment.deployment_access = None
 
-        AccessControlResourceHandler._apply_resource_group_access_control(self.REQUEST_TYPE, resource_group, problems)
+        Custom_AccessControl._apply_resource_group_access_control(self.REQUEST_TYPE, resource_group, problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
@@ -365,11 +365,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         self.assertEquals(mock_update_roles.call_count, 2)
 
 
-    @mock.patch('AccessControlResourceHandler._get_resource_group_policy_name')
-    @mock.patch('AccessControlResourceHandler._get_permissions')
-    @mock.patch('AccessControlResourceHandler._get_explicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._get_implicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._update_roles')
+    @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
+    @mock.patch('resource_types.Custom_AccessControl._get_permissions')
+    @mock.patch('resource_types.Custom_AccessControl._get_explicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._get_implicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._update_roles')
     def test_with_with_problems(self, 
             mock_update_roles,
             mock_get_implicit_role_mappings, 
@@ -404,9 +404,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         expected_problems = [mock_get_permissions_problem, resource_group_implicit_role_mapping_problem]
         expected_problems.extend(mock_get_explicit_role_mappings_problems)
 
-        problems = AccessControlResourceHandler.ProblemList()
+        problems = Custom_AccessControl.ProblemList()
 
-        AccessControlResourceHandler._apply_resource_group_access_control(self.REQUEST_TYPE, self.RESOURCE_GROUP, problems)
+        Custom_AccessControl._apply_resource_group_access_control(self.REQUEST_TYPE, self.RESOURCE_GROUP, problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
@@ -426,12 +426,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         mock_update_roles.assert_not_called()
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_apply_deployment_access_control(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_apply_deployment_access_control(Custom_AccessControlTestCase):
 
-    @mock.patch('AccessControlResourceHandler._get_resource_group_policy_name')
-    @mock.patch('AccessControlResourceHandler._get_permissions')
-    @mock.patch('AccessControlResourceHandler._get_explicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._update_roles')
+    @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
+    @mock.patch('resource_types.Custom_AccessControl._get_permissions')
+    @mock.patch('resource_types.Custom_AccessControl._get_explicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._update_roles')
     def test_with_no_problems(self, 
             mock_update_roles,
             mock_get_explicit_role_mappings, 
@@ -458,9 +458,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         expected_problems = []
 
-        problems = AccessControlResourceHandler.ProblemList()
+        problems = Custom_AccessControl.ProblemList()
 
-        AccessControlResourceHandler._apply_deployment_access_control(request_type, deployment_access, problems)
+        Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
@@ -480,10 +480,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             any_order = True)
 
 
-    @mock.patch('AccessControlResourceHandler._get_resource_group_policy_name')
-    @mock.patch('AccessControlResourceHandler._get_permissions')
-    @mock.patch('AccessControlResourceHandler._get_explicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._update_roles')
+    @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
+    @mock.patch('resource_types.Custom_AccessControl._get_permissions')
+    @mock.patch('resource_types.Custom_AccessControl._get_explicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._update_roles')
     def test_with_problems(self, 
             mock_update_roles,
             mock_get_explicit_role_mappings, 
@@ -524,9 +524,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         expected_problems = [ get_explicit_role_mappings_problem ]
         expected_problems.extend(mock_get_permissions_problems)
 
-        problems = AccessControlResourceHandler.ProblemList()
+        problems = Custom_AccessControl.ProblemList()
 
-        AccessControlResourceHandler._apply_deployment_access_control(request_type, deployment_access, problems)
+        Custom_AccessControl._apply_deployment_access_control(request_type, deployment_access, problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
@@ -543,12 +543,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         mock_update_roles.assert_not_called()
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_apply_project_access_control(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_apply_project_access_control(Custom_AccessControlTestCase):
 
-    @mock.patch('AccessControlResourceHandler._get_resource_group_policy_name')
-    @mock.patch('AccessControlResourceHandler._get_permissions')
-    @mock.patch('AccessControlResourceHandler._get_explicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._update_roles')
+    @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
+    @mock.patch('resource_types.Custom_AccessControl._get_permissions')
+    @mock.patch('resource_types.Custom_AccessControl._get_explicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._update_roles')
     def test_with_no_problems(self, 
             mock_update_roles,
             mock_get_explicit_role_mappings, 
@@ -588,9 +588,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         expected_problems = []
 
-        problems = AccessControlResourceHandler.ProblemList()
+        problems = Custom_AccessControl.ProblemList()
 
-        actual_problems = AccessControlResourceHandler._apply_project_access_control(request_type, project, problems)
+        actual_problems = Custom_AccessControl._apply_project_access_control(request_type, project, problems)
 
         self.assertEquals(len(problems), len(expected_problems))
 
@@ -616,10 +616,10 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             any_order = True)
 
 
-    @mock.patch('AccessControlResourceHandler._get_resource_group_policy_name')
-    @mock.patch('AccessControlResourceHandler._get_permissions')
-    @mock.patch('AccessControlResourceHandler._get_explicit_role_mappings')
-    @mock.patch('AccessControlResourceHandler._update_roles')
+    @mock.patch('resource_types.Custom_AccessControl._get_resource_group_policy_name')
+    @mock.patch('resource_types.Custom_AccessControl._get_permissions')
+    @mock.patch('resource_types.Custom_AccessControl._get_explicit_role_mappings')
+    @mock.patch('resource_types.Custom_AccessControl._update_roles')
     def test_with_problems(self, 
             mock_update_roles,
             mock_get_explicit_role_mappings, 
@@ -672,9 +672,9 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             [ mock_get_explicit_role_mappings_problem ],
             [ explicit_role_mappings ])
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
 
-        AccessControlResourceHandler._apply_project_access_control(request_type, project, actual_problems)
+        Custom_AccessControl._apply_project_access_control(request_type, project, actual_problems)
 
         expected_problems = [ mock_get_explicit_role_mappings_problem ]
         expected_problems.extend( mock_get_permissions_problems )
@@ -697,7 +697,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         mock_update_roles.assert_not_called()
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_resource_group_policy_name(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_resource_group_policy_name(Custom_AccessControlTestCase):
 
     def test_default(self):
         resource_group_name = 'test-resource-group'
@@ -706,13 +706,14 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         resource_group.resource_group_name = resource_group_name
         resource_group.deployment.deployment_name = deployment_name
         expected_policy_name = deployment_name + '.' + resource_group_name + '-AccessControl'
-        actual_policy_name = AccessControlResourceHandler._get_resource_group_policy_name(resource_group)
+        actual_policy_name = Custom_AccessControl._get_resource_group_policy_name(resource_group)
         self.assertEquals(actual_policy_name, expected_policy_name)
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_permissions(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permissions(Custom_AccessControlTestCase):
 
-    def test_with_no_metadata(self):
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_list', return_value=[])
+    def test_with_no_metadata(self, mock_get_permission_list):
         
         resource_a = mock.MagicMock()
         resource_a.get_cloud_canvas_metadata.return_value = None
@@ -723,12 +724,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         resource_group = mock.MagicMock()
         resource_group.resources = [ resource_a, resource_b ]
         
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
         
         expected_permissions = {}
         
-        actual_permissions = AccessControlResourceHandler._get_permissions(resource_group, actual_problems)
+        actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
         
         self.assertEquals(actual_permissions, expected_permissions)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -737,7 +738,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         resource_b.get_cloud_canvas_metadata.assert_called_with('Permissions')
 
 
-    @mock.patch('AccessControlResourceHandler._get_permission_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_list')
     def test_with_metadata(self, 
             mock_get_permission_list):
         
@@ -749,12 +750,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         resource_group = mock.MagicMock(name='resource-group')
         resource_group.resources = [ resource_a, resource_b ]
+        resource_group_default_role_mappings = resource_group.resource_definitions.get().permission_metadata.get()
 
         permission_list_a = [ mock.MagicMock(name='permission_list_a') ]
         permission_list_b = [ mock.MagicMock(name='permission_list_b') ]
-        mock_get_permission_list.side_effect = [ permission_list_a, permission_list_b ]
+        mock_get_permission_list.side_effect = [ permission_list_a, [], permission_list_b, [] ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_permissions = {
@@ -762,7 +764,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             resource_b.resource_arn: permission_list_b
         }
         
-        actual_permissions = AccessControlResourceHandler._get_permissions(resource_group, actual_problems)
+        actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
 
         self.assertEquals(actual_permissions, expected_permissions)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -772,10 +774,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         mock_get_permission_list.assert_has_calls([
             mock.call(resource_group.permission_context_name, resource_a.logical_id, metadata_a, actual_problems),
-            mock.call(resource_group.permission_context_name, resource_b.logical_id, metadata_b, actual_problems)])
+            mock.call(resource_group.permission_context_name, resource_a.logical_id, resource_group_default_role_mappings, actual_problems),
+            mock.call(resource_group.permission_context_name, resource_b.logical_id, metadata_b, actual_problems),
+            mock.call(resource_group.permission_context_name, resource_b.logical_id, resource_group_default_role_mappings, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_permission_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_list')
     def test_with_get_permission_list_problem(self, 
             mock_get_permission_list):
         
@@ -787,21 +791,24 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         resource_group = mock.MagicMock(name='resource-group')
         resource_group.resources = [ resource_a, resource_b ]
+        resource_group_default_role_mappings = resource_group.resource_definitions.get().permission_metadata.get()
 
         problem_a_1 = 'problem_a_1'
+        problem_a_2 = 'problem_a_2'
         problem_b_1 = 'problem_b_1'
+        problem_b_2 = 'problem_b_2'
 
         mock_get_permission_list.side_effect = self.make_problem_reporting_side_effect(
-            [ problem_a_1, problem_b_1 ],
-            [ [], [] ])
+            [ problem_a_1, problem_a_2, problem_b_1, problem_b_2 ],
+            [ [], [], [], [] ])
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
 
-        expected_problems = [ problem_a_1, problem_b_1 ]
+        expected_problems = [ problem_a_1, problem_a_2, problem_b_1, problem_b_2 ]
 
         expected_permissions = {}
         
-        actual_permissions = AccessControlResourceHandler._get_permissions(resource_group, actual_problems)
+        actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
 
         self.assertEquals(actual_permissions, expected_permissions)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -811,10 +818,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         mock_get_permission_list.assert_has_calls([
             mock.call(resource_group.permission_context_name, resource_a.logical_id, metadata_a, actual_problems),
-            mock.call(resource_group.permission_context_name, resource_b.logical_id, metadata_b, actual_problems)])
+            mock.call(resource_group.permission_context_name, resource_a.logical_id, resource_group_default_role_mappings, actual_problems),
+            mock.call(resource_group.permission_context_name, resource_b.logical_id, metadata_b, actual_problems),
+            mock.call(resource_group.permission_context_name, resource_b.logical_id, resource_group_default_role_mappings, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_permission_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_list')
     def test_with_unsupported_resource_type_arn(self, 
             mock_get_permission_list):
         
@@ -828,17 +837,18 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         resource_group = mock.MagicMock(name='resource-group')
         resource_group.resources = [ resource_a, resource_b ]
+        resource_group_default_role_mappings = resource_group.resource_definitions.get().permission_metadata.get()
 
         permission_list_a = [ mock.MagicMock(name='permission_list_a') ]
         permission_list_b = [ mock.MagicMock(name='permission_list_b') ]
-        mock_get_permission_list.side_effect = [ permission_list_a, permission_list_b ]
+        mock_get_permission_list.side_effect = [ permission_list_a, [], permission_list_b, [] ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING, self.ANY_STRING ]
 
         expected_permissions = {}
         
-        actual_permissions = AccessControlResourceHandler._get_permissions(resource_group, actual_problems)
+        actual_permissions = Custom_AccessControl._get_permissions(resource_group, actual_problems)
 
         self.assertEquals(actual_permissions, expected_permissions)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -848,18 +858,20 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         mock_get_permission_list.assert_has_calls([
             mock.call(resource_group.permission_context_name, resource_a.logical_id, metadata_a, actual_problems),
-            mock.call(resource_group.permission_context_name, resource_b.logical_id, metadata_b, actual_problems)])
+            mock.call(resource_group.permission_context_name, resource_a.logical_id, resource_group_default_role_mappings, actual_problems),
+            mock.call(resource_group.permission_context_name, resource_b.logical_id, metadata_b, actual_problems),
+            mock.call(resource_group.permission_context_name, resource_b.logical_id, resource_group_default_role_mappings, actual_problems)])
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_permission_list(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permission_list(Custom_AccessControlTestCase):
 
-    @mock.patch('AccessControlResourceHandler._get_permission')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission')
     def test_with_metadata_object(self, 
             mock_get_permission):
         
         permission = mock_get_permission.return_value
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_permission_list = [ permission ]
@@ -870,7 +882,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         permission_metadata = mock.MagicMock()
         permission_metadata_list = permission_metadata
 
-        actual_permission_list = AccessControlResourceHandler._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
+        actual_permission_list = Custom_AccessControl._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
 
         self.assertEquals(actual_permission_list, expected_permission_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -879,7 +891,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(resource_group_name, resource_logical_id, permission_metadata, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_permission')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission')
     def test_with_metadata_list(self, 
             mock_get_permission):
 
@@ -887,7 +899,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         permission_b = mock.MagicMock()        
         mock_get_permission.side_effect = [ permission_a, permission_b ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_permission_list = [ permission_a, permission_b ]
@@ -899,7 +911,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         permission_metadata_b = mock.MagicMock()
         permission_metadata_list = [ permission_metadata_a, permission_metadata_b ]
 
-        actual_permission_list = AccessControlResourceHandler._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
+        actual_permission_list = Custom_AccessControl._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
 
         self.assertEquals(actual_permission_list, expected_permission_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -909,7 +921,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(resource_group_name, resource_logical_id, permission_metadata_b, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_permission')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission')
     def test_with_get_permission_problem(self, 
             mock_get_permission):
         
@@ -919,7 +931,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             [ problem_a, problem_b ],
             [ None, None ])
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ problem_a, problem_b ]
 
         expected_permission_list = []
@@ -931,7 +943,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         permission_metadata_b = mock.MagicMock()
         permission_metadata_list = [ permission_metadata_a, permission_metadata_b ]
 
-        actual_permission_list = AccessControlResourceHandler._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
+        actual_permission_list = Custom_AccessControl._get_permission_list(resource_group_name, resource_logical_id, permission_metadata_list, actual_problems)
 
         self.assertEquals(actual_permission_list, expected_permission_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -941,11 +953,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(resource_group_name, resource_logical_id, permission_metadata_b, actual_problems)])
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_permission(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permission(Custom_AccessControlTestCase):
 
     def test_with_invalid_metadata_type(self):
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         resource_group_name = mock.MagicMock()
@@ -955,21 +967,21 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         expected_permission = None
 
-        actual_permission = AccessControlResourceHandler._get_permission(resource_group_name, resource_logical_id, permission_metadata, actual_problems)
+        actual_permission = Custom_AccessControl._get_permission(resource_group_name, resource_logical_id, permission_metadata, actual_problems)
 
         self.assertEquals(actual_permission, expected_permission)
         self.assertEquals(len(actual_problems), len(expected_problems))
 
 
-    @mock.patch('AccessControlResourceHandler._get_permission_abstract_role_list')
-    @mock.patch('AccessControlResourceHandler._get_permission_allowed_action_list')
-    @mock.patch('AccessControlResourceHandler._get_permission_resource_suffix_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_abstract_role_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_allowed_action_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_resource_suffix_list')
     def test_with_valid_metadata_object(self,
         mock_get_permission_resource_suffix_list,
         mock_get_permission_allowed_action_list,
         mock_get_permission_abstract_role_list):
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         resource_name = 'test-resource-group'
@@ -992,7 +1004,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             'LogicalResourceId': resource_logical_id
         }
 
-        actual_permission = AccessControlResourceHandler._get_permission(resource_name, resource_logical_id, permission_metadata, actual_problems)
+        actual_permission = Custom_AccessControl._get_permission(resource_name, resource_logical_id, permission_metadata, actual_problems)
 
         self.assertEquals(actual_permission, expected_permission)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1007,15 +1019,15 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(resource_name, abstract_role, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_permission_abstract_role_list')
-    @mock.patch('AccessControlResourceHandler._get_permission_allowed_action_list')
-    @mock.patch('AccessControlResourceHandler._get_permission_resource_suffix_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_abstract_role_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_allowed_action_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_permission_resource_suffix_list')
     def test_with_metadata_object_with_unsupported_property(self,
         mock_get_permission_resource_suffix_list,
         mock_get_permission_allowed_action_list,
         mock_get_permission_abstract_role_list):
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         resource_group_name = 'test-resource-group'
@@ -1039,7 +1051,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             'LogicalResourceId': resource_logical_id
         }
 
-        actual_permission = AccessControlResourceHandler._get_permission(resource_group_name, resource_logical_id, permission_metadata, actual_problems)
+        actual_permission = Custom_AccessControl._get_permission(resource_group_name, resource_logical_id, permission_metadata, actual_problems)
 
         self.assertEquals(actual_permission, expected_permission)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1054,7 +1066,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(resource_group_name, abstract_role, actual_problems)])
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_permission_abstract_role_list(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permission_abstract_role_list(Custom_AccessControlTestCase):
 
     def test_with_none(self):
 
@@ -1062,11 +1074,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         abstract_role_list = None
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_abstract_role_list = []
-        actual_abstract_role_list = AccessControlResourceHandler._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1079,11 +1091,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         abstract_role = 'test-abstract-role'
         abstract_role_list = abstract_role
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_abstract_role_list = [ [ resource_group_name, abstract_role ] ]
-        actual_abstract_role_list = AccessControlResourceHandler._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1097,7 +1109,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         abstract_role_2 = 'test-abstract-role-2'
         abstract_role_list = [ abstract_role_1, abstract_role_2 ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_abstract_role_list = [ 
@@ -1105,7 +1117,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             [ resource_group_name, abstract_role_2 ]
         ]
 
-        actual_abstract_role_list = AccessControlResourceHandler._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1117,12 +1129,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         abstract_role_list = {}
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_abstract_role_list = []
 
-        actual_abstract_role_list = AccessControlResourceHandler._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1135,27 +1147,27 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         abstract_role = 'test-abstract-role.with-dot'
         abstract_role_list = abstract_role
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_abstract_role_list = []
-        actual_abstract_role_list = AccessControlResourceHandler._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_permission_abstract_role_list(resource_group_name, abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_permission_resource_suffix_list(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permission_resource_suffix_list(Custom_AccessControlTestCase):
 
     def test_with_none(self):
 
         resource_suffix_list = None
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_resource_suffix_list = ['']
-        actual_resource_suffix_list = AccessControlResourceHandler._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
+        actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
         self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1166,11 +1178,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         resource_suffix = 'test-resource-suffix'
         resource_suffix_list = resource_suffix
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_resource_suffix_list = [ resource_suffix ]
-        actual_resource_suffix_list = AccessControlResourceHandler._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
+        actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
         self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1182,12 +1194,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         resource_suffix_2 = 'test-resource-suffix-2'
         resource_suffix_list = [ resource_suffix_1, resource_suffix_2 ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_resource_suffix_list = resource_suffix_list
 
-        actual_resource_suffix_list = AccessControlResourceHandler._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
+        actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
         self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1197,12 +1209,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         resource_suffix_list = []
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_resource_suffix_list = ['']
 
-        actual_resource_suffix_list = AccessControlResourceHandler._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
+        actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
         self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1212,28 +1224,28 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         resource_suffix_list = {}
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_resource_suffix_list = []
 
-        actual_resource_suffix_list = AccessControlResourceHandler._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
+        actual_resource_suffix_list = Custom_AccessControl._get_permission_resource_suffix_list(resource_suffix_list, actual_problems)
         
         self.assertEquals(actual_resource_suffix_list, expected_resource_suffix_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_permission_allowed_action_list(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_permission_allowed_action_list(Custom_AccessControlTestCase):
 
     def test_with_none(self):
 
         allowed_action_list = None
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_allowed_action_list = []
-        actual_allowed_action_list = AccessControlResourceHandler._get_permission_allowed_action_list(allowed_action_list, actual_problems)
+        actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
         self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1244,11 +1256,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         allowed_action = 'test-allowed-action'
         allowed_action_list = allowed_action
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_allowed_action_list = [ allowed_action ]
-        actual_allowed_action_list = AccessControlResourceHandler._get_permission_allowed_action_list(allowed_action_list, actual_problems)
+        actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
         self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1260,12 +1272,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         allowed_action_2 = 'test-allowed-action-2'
         allowed_action_list = [ allowed_action_1, allowed_action_2 ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_allowed_action_list = allowed_action_list
 
-        actual_allowed_action_list = AccessControlResourceHandler._get_permission_allowed_action_list(allowed_action_list, actual_problems)
+        actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
         self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1275,18 +1287,18 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         allowed_action_list = {}
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_allowed_action_list = []
 
-        actual_allowed_action_list = AccessControlResourceHandler._get_permission_allowed_action_list(allowed_action_list, actual_problems)
+        actual_allowed_action_list = Custom_AccessControl._get_permission_allowed_action_list(allowed_action_list, actual_problems)
         
         self.assertEquals(actual_allowed_action_list, expected_allowed_action_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_implicit_role_mappings(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_implicit_role_mappings(Custom_AccessControlTestCase):
 
     def test_default(self):
 
@@ -1323,12 +1335,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             }]
         }
 
-        actual_mappings = AccessControlResourceHandler._get_implicit_role_mappings(mock_resource_info, problems)
+        actual_mappings = Custom_AccessControl._get_implicit_role_mappings(mock_resource_info, problems)
 
         self.assertEquals(actual_mappings, expected_mappings)
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_explicit_role_mappings(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_explicit_role_mappings(Custom_AccessControlTestCase):
 
     def test_with_no_metadata(self):
         
@@ -1341,7 +1353,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         stack = mock.MagicMock()
         stack.resources.get_by_type.return_value = [ role_resource_a, role_resource_b ]
         
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
         
         expected_role_mappings = {
@@ -1349,7 +1361,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             role_resource_b.physical_id: []
         }
         
-        actual_role_mappings = AccessControlResourceHandler._get_explicit_role_mappings(stack, actual_problems)
+        actual_role_mappings = Custom_AccessControl._get_explicit_role_mappings(stack, actual_problems)
         
         self.assertEquals(actual_role_mappings, expected_role_mappings)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1360,7 +1372,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         stack.resources.get_by_type.assert_called_with('AWS::IAM::Role')
 
 
-    @mock.patch('AccessControlResourceHandler._get_role_mapping_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_list')
     def test_with_metadata(self, 
             mock_get_role_mapping_list):
         
@@ -1377,7 +1389,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         role_mapping_list_b = mock.MagicMock(name='role_mapping_list_b')
         mock_get_role_mapping_list.side_effect = [ role_mapping_list_a, role_mapping_list_b ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_role_mappings = {
@@ -1385,7 +1397,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             role_resource_b.physical_id: role_mapping_list_b
         }
         
-        actual_role_mappings = AccessControlResourceHandler._get_explicit_role_mappings(stack, actual_problems)
+        actual_role_mappings = Custom_AccessControl._get_explicit_role_mappings(stack, actual_problems)
 
         self.assertEquals(actual_role_mappings, expected_role_mappings)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1400,7 +1412,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(metadata_b, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_role_mapping_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_list')
     def test_with_get_role_mapping_list_problem(self, 
             mock_get_role_mapping_list):
         
@@ -1420,7 +1432,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             [ problem_a_1, problem_b_1 ],
             [ [], [] ])
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
 
         expected_problems = [ problem_a_1, problem_b_1 ]
 
@@ -1429,7 +1441,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             role_resource_b.physical_id: []
         }
 
-        actual_role_mappings = AccessControlResourceHandler._get_explicit_role_mappings(stack, actual_problems)
+        actual_role_mappings = Custom_AccessControl._get_explicit_role_mappings(stack, actual_problems)
 
         self.assertEquals(actual_role_mappings, expected_role_mappings)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1444,15 +1456,15 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(metadata_b, actual_problems)])
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_role_mapping_list(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_role_mapping_list(Custom_AccessControlTestCase):
 
-    @mock.patch('AccessControlResourceHandler._get_role_mapping')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping')
     def test_with_metadata_object(self, 
             mock_get_role_mapping):
         
         role_mapping = mock_get_role_mapping.return_value
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_role_mapping_list = [ role_mapping ]
@@ -1460,7 +1472,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         role_mapping_metadata = mock.MagicMock()
         role_mapping_metadata_list = role_mapping_metadata
 
-        actual_role_mapping_list = AccessControlResourceHandler._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
+        actual_role_mapping_list = Custom_AccessControl._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
 
         self.assertEquals(actual_role_mapping_list, expected_role_mapping_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1469,7 +1481,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(role_mapping_metadata, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_role_mapping')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping')
     def test_with_metadata_list(self, 
             mock_get_role_mapping):
 
@@ -1477,7 +1489,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         role_mapping_b = mock.MagicMock()        
         mock_get_role_mapping.side_effect = [ role_mapping_a, role_mapping_b ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_role_mapping_list = [ role_mapping_a, role_mapping_b ]
@@ -1486,7 +1498,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         role_mapping_metadata_b = mock.MagicMock()
         role_mapping_metadata_list = [ role_mapping_metadata_a, role_mapping_metadata_b ]
 
-        actual_role_mapping_list = AccessControlResourceHandler._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
+        actual_role_mapping_list = Custom_AccessControl._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
 
         self.assertEquals(actual_role_mapping_list, expected_role_mapping_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1496,7 +1508,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(role_mapping_metadata_b, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_role_mapping')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping')
     def test_with_get_role_mapping_problem(self, 
             mock_get_role_mapping):
         
@@ -1506,7 +1518,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             [ problem_a, problem_b ],
             [ None, None ])
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ problem_a, problem_b ]
 
         expected_role_mapping_list = []
@@ -1515,7 +1527,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         role_mapping_metadata_b = mock.MagicMock()
         role_mapping_metadata_list = [ role_mapping_metadata_a, role_mapping_metadata_b ]
 
-        actual_role_mapping_list = AccessControlResourceHandler._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
+        actual_role_mapping_list = Custom_AccessControl._get_role_mapping_list(role_mapping_metadata_list, actual_problems)
 
         self.assertEquals(actual_role_mapping_list, expected_role_mapping_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1525,30 +1537,30 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(role_mapping_metadata_b, actual_problems)])
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_role_mapping(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_role_mapping(Custom_AccessControlTestCase):
 
     def test_with_invalid_metadata_type(self):
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         role_mapping_metadata = 'invalid'
 
         expected_role_mapping = None
 
-        actual_role_mapping = AccessControlResourceHandler._get_role_mapping(role_mapping_metadata, actual_problems)
+        actual_role_mapping = Custom_AccessControl._get_role_mapping(role_mapping_metadata, actual_problems)
 
         self.assertEquals(actual_role_mapping, expected_role_mapping)
         self.assertEquals(len(actual_problems), len(expected_problems))
 
 
-    @mock.patch('AccessControlResourceHandler._get_role_mapping_abstract_role_list')
-    @mock.patch('AccessControlResourceHandler._get_role_mapping_effect')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_abstract_role_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_effect')
     def test_with_valid_metadata_object(self,
         mock_get_role_mapping_effect,
         mock_get_role_mapping_abstract_role_list):
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         abstract_role = 'test-abstract-role'
@@ -1564,7 +1576,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             'Effect': mock_get_role_mapping_effect.return_value
         }
 
-        actual_role_mapping = AccessControlResourceHandler._get_role_mapping(role_mapping_metadata, actual_problems)
+        actual_role_mapping = Custom_AccessControl._get_role_mapping(role_mapping_metadata, actual_problems)
 
         self.assertEquals(actual_role_mapping, expected_role_mapping)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1576,13 +1588,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(abstract_role, actual_problems)])
 
 
-    @mock.patch('AccessControlResourceHandler._get_role_mapping_abstract_role_list')
-    @mock.patch('AccessControlResourceHandler._get_role_mapping_effect')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_abstract_role_list')
+    @mock.patch('resource_types.Custom_AccessControl._get_role_mapping_effect')
     def test_with_metadata_object_with_unsupported_property(self,
         mock_get_role_mapping_effect,
         mock_get_role_mapping_abstract_role_list):
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         abstract_role = 'test-abstract-role'
@@ -1599,7 +1611,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             'Effect': mock_get_role_mapping_effect.return_value
         }
 
-        actual_role_mapping = AccessControlResourceHandler._get_role_mapping(role_mapping_metadata, actual_problems)
+        actual_role_mapping = Custom_AccessControl._get_role_mapping(role_mapping_metadata, actual_problems)
 
         self.assertEquals(actual_role_mapping, expected_role_mapping)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1611,17 +1623,17 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             mock.call(abstract_role, actual_problems)])
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_role_mapping_abstract_role_list(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_role_mapping_abstract_role_list(Custom_AccessControlTestCase):
 
     def test_with_none(self):
 
         abstract_role_list = None
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_abstract_role_list = []
-        actual_abstract_role_list = AccessControlResourceHandler._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1634,11 +1646,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         abstract_role = resource_group_name + '.' + abstract_role_name
         abstract_role_list = abstract_role
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_abstract_role_list = [ [ resource_group_name, abstract_role_name ] ]
-        actual_abstract_role_list = AccessControlResourceHandler._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1654,7 +1666,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         abstract_role_2 = resource_group_name_2 + '.' + abstract_role_name_2
         abstract_role_list = [ abstract_role_1, abstract_role_2 ]
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_abstract_role_list = [ 
@@ -1662,7 +1674,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             [ resource_group_name_2, abstract_role_name_2 ]
         ]
 
-        actual_abstract_role_list = AccessControlResourceHandler._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1672,12 +1684,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         abstract_role_list = {}
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_abstract_role_list = []
 
-        actual_abstract_role_list = AccessControlResourceHandler._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1688,11 +1700,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         abstract_role = 'invalid'
         abstract_role_list = abstract_role
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_abstract_role_list = []
-        actual_abstract_role_list = AccessControlResourceHandler._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1703,27 +1715,27 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         abstract_role = 'invalid.with.dots'
         abstract_role_list = abstract_role
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_abstract_role_list = []
-        actual_abstract_role_list = AccessControlResourceHandler._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
+        actual_abstract_role_list = Custom_AccessControl._get_role_mapping_abstract_role_list(abstract_role_list, actual_problems)
         
         self.assertEquals(actual_abstract_role_list, expected_abstract_role_list)
         self.assertEquals(len(actual_problems), len(expected_problems))
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_get_role_mapping_effect(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_get_role_mapping_effect(Custom_AccessControlTestCase):
 
     def test_with_none(self):
 
         effect = None
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_effect = effect
-        actual_effect = AccessControlResourceHandler._get_role_mapping_effect(effect, actual_problems)
+        actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
         self.assertEquals(actual_effect, expected_effect)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1733,11 +1745,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         effect = 'Allow'
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_effect = effect
-        actual_effect = AccessControlResourceHandler._get_role_mapping_effect(effect, actual_problems)
+        actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
         self.assertEquals(actual_effect, expected_effect)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1747,11 +1759,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         effect = 'Deny'
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = []
 
         expected_effect = effect
-        actual_effect = AccessControlResourceHandler._get_role_mapping_effect(effect, actual_problems)
+        actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
         self.assertEquals(actual_effect, expected_effect)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1761,12 +1773,12 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         effect = []
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_effect = effect
 
-        actual_effect = AccessControlResourceHandler._get_role_mapping_effect(effect, actual_problems)
+        actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
         self.assertEquals(actual_effect, expected_effect)
         self.assertEquals(len(actual_problems), len(expected_problems))
@@ -1776,18 +1788,18 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
 
         effect = 'Invalid'
 
-        actual_problems = AccessControlResourceHandler.ProblemList()
+        actual_problems = Custom_AccessControl.ProblemList()
         expected_problems = [ self.ANY_STRING ]
 
         expected_effect = effect
 
-        actual_effect = AccessControlResourceHandler._get_role_mapping_effect(effect, actual_problems)
+        actual_effect = Custom_AccessControl._get_role_mapping_effect(effect, actual_problems)
         
         self.assertEquals(actual_effect, expected_effect)
         self.assertEquals(len(actual_problems), len(expected_problems))
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_update_roles(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_update_roles(Custom_AccessControlTestCase):
 
     policy_name = 'TestPolicy'
     permissions = mock.MagicMock()
@@ -1804,11 +1816,11 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         mock_physical_role_name_2: role_mapping_list_2
     }
 
-    @mock_aws.patch_client('iam', 'delete_role_policy', reload = AccessControlResourceHandler)
+    @mock_aws.patch_client('iam', 'delete_role_policy', reload = Custom_AccessControl)
     def test_with_request_type_delete(self, mock_delete_role_policy):
 
         request_type = 'Delete'
-        AccessControlResourceHandler._update_roles(request_type, self.policy_name, self.permissions, self.role_mappings)
+        Custom_AccessControl._update_roles(request_type, self.policy_name, self.permissions, self.role_mappings)
 
         mock_delete_role_policy.assert_has_calls([
             mock.call(RoleName=self.mock_physical_role_name_1, PolicyName=self.policy_name),
@@ -1816,14 +1828,14 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             any_order = True)
 
 
-    @mock_aws.patch_client('iam', 'delete_role_policy', reload = AccessControlResourceHandler)
-    @mock.patch('AccessControlResourceHandler._create_role_policy')
+    @mock_aws.patch_client('iam', 'delete_role_policy', reload = Custom_AccessControl)
+    @mock.patch('resource_types.Custom_AccessControl._create_role_policy')
     def test_with_no_statements(self, mock_create_role_policy, mock_delete_role_policy):
 
         mock_create_role_policy.return_value = { 'Statement': [] }
 
         request_type = 'Create'
-        AccessControlResourceHandler._update_roles(request_type, self.policy_name, self.permissions, self.role_mappings)
+        Custom_AccessControl._update_roles(request_type, self.policy_name, self.permissions, self.role_mappings)
 
         mock_create_role_policy.assert_has_calls([
             mock.call(self.permissions, self.role_mapping_list_1),
@@ -1836,8 +1848,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             any_order = True)
 
 
-    @mock_aws.patch_client('iam', 'put_role_policy', reload = AccessControlResourceHandler)
-    @mock.patch('AccessControlResourceHandler._create_role_policy')
+    @mock_aws.patch_client('iam', 'put_role_policy', reload = Custom_AccessControl)
+    @mock.patch('resource_types.Custom_AccessControl._create_role_policy')
     def test_with_statements(self, mock_create_role_policy, mock_put_role_policy):
 
         mock_policy_1 = { 'Statement': [ 'Policy-1' ] }
@@ -1854,7 +1866,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         mock_create_role_policy.side_effect = mock_create_role_policy_side_effect
 
         request_type = 'Create'
-        AccessControlResourceHandler._update_roles(request_type, self.policy_name, self.permissions, self.role_mappings)
+        Custom_AccessControl._update_roles(request_type, self.policy_name, self.permissions, self.role_mappings)
 
         mock_create_role_policy.assert_has_calls([
             mock.call(self.permissions, self.role_mapping_list_1),
@@ -1867,7 +1879,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             any_order = True)
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_create_role_policy(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_create_role_policy(Custom_AccessControlTestCase):
 
     PERMISSION_RESOURCE_ARN_1 = 'permission-resource-arn-1'
     PERMISSION_RESOURCE_ARN_2 = 'permission-resource-arn-2'
@@ -1943,7 +1955,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         }
     ]
 
-    @mock.patch('AccessControlResourceHandler._any_abstract_roles_match')
+    @mock.patch('resource_types.Custom_AccessControl._any_abstract_roles_match')
     def test_with_no_matches(self, mock_any_abstract_roles_match):
 
         mock_any_abstract_roles_match.return_value = False
@@ -1953,7 +1965,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             'Statement': []
         }
 
-        actual_policy = AccessControlResourceHandler._create_role_policy(self.PERMISSIONS, self.ROLE_MAPPING_LIST)
+        actual_policy = Custom_AccessControl._create_role_policy(self.PERMISSIONS, self.ROLE_MAPPING_LIST)
 
         self.assertEquals(actual_policy, expected_policy)
 
@@ -1969,7 +1981,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             any_order = True)
 
 
-    @mock.patch('AccessControlResourceHandler._any_abstract_roles_match')
+    @mock.patch('resource_types.Custom_AccessControl._any_abstract_roles_match')
     def test_with_matches(self, mock_any_abstract_roles_match):
 
         mock_any_abstract_roles_match.return_value = True
@@ -2028,7 +2040,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             ]
         }
 
-        actual_policy = AccessControlResourceHandler._create_role_policy(self.PERMISSIONS, self.ROLE_MAPPING_LIST)
+        actual_policy = Custom_AccessControl._create_role_policy(self.PERMISSIONS, self.ROLE_MAPPING_LIST)
 
         self.assertItemsEqual(actual_policy['Statement'], expected_policy['Statement'])
 
@@ -2044,7 +2056,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             any_order = True)
 
 
-class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHandler_any_abstract_roles_match(AccessControlResourceHandlerTestCase):
+class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_AccessControl_any_abstract_roles_match(Custom_AccessControlTestCase):
 
     def test_with_no_match(self):
 
@@ -2058,7 +2070,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
             [ 'resource-group-1', 'abstract-role-x' ],
             [ 'resource-group-x', 'abstract-role-a' ] ]
 
-        actual = AccessControlResourceHandler._any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_role_list)
+        actual = Custom_AccessControl._any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_role_list)
 
         self.assertFalse(actual)
 
@@ -2073,7 +2085,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         mapping_abstract_role_list = [ [ 'resource-group-2', 'abstract-role-a' ] ]
 
-        actual = AccessControlResourceHandler._any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_role_list)
+        actual = Custom_AccessControl._any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_role_list)
 
         self.assertTrue(actual)
 
@@ -2088,7 +2100,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_AccessControlResourceHan
         
         mapping_abstract_role_list = [ [ '*', 'abstract-role-a' ] ]
 
-        actual = AccessControlResourceHandler._any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_role_list)
+        actual = Custom_AccessControl._any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_role_list)
 
         self.assertTrue(actual)
 

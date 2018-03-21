@@ -35,11 +35,6 @@
 #define _WIN32_IE 0x0501    // Change this to the appropriate value to target IE 5.0 or later.
 #endif
 
-#define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS  // some CString constructors will be explicit
-
-// turns off MFC's hiding of some common and often safely ignored warning messages
-#define _AFX_ALL_WARNINGS
-
 // prevent inclusion of conflicting definitions of INT8_MIN etc
 #define _INTSAFE_H_INCLUDED_
 
@@ -80,11 +75,6 @@
 #include "Cry_Math.h"
 #endif //NOMINMAX
 
-
-//#ifdef _AMD64_
-//#include <io.h>
-//#include "mfc_amd64_fix.h"
-//#endif
 
 // Resource includes
 #include "Resource.h"
@@ -146,10 +136,6 @@
 
 #ifdef CopyFile
 #undef CopyFile
-#endif
-
-#ifdef MoveFile
-#undef MoveFile
 #endif
 
 #ifdef GetUserName

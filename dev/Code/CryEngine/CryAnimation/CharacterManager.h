@@ -40,7 +40,7 @@ struct IAnimationSet;
 
 #ifdef ENABLE_RUNTIME_POSE_MODIFIERS
 class CPoseModifierSetup;
-DECLARE_BOOST_POINTERS(CPoseModifierSetup);
+DECLARE_SMART_POINTERS(CPoseModifierSetup);
 #endif
 
 extern float g_YLine;

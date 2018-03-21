@@ -46,7 +46,6 @@ private:
     float m_fStartObjectSimulationTime;
     int m_wasSimObjects;
     std::vector<_smart_ptr<CBaseObject> > m_simObjects;
-    CWaitProgress* m_pProgress;
 
     typedef std::vector<SCollisionClass> TCollisionClassVector;
     int m_collisionClassExportId;

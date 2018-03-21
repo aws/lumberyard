@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemPlayerAccount_precompiled.h"
 #include <platform_impl.h>
 
 #include "CloudGemPlayerAccountSystemComponent.h"

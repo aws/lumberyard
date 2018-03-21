@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Microphone_precompiled.cpp",
+            "Source/Microphone_precompiled.h"
         ]
     },
     "auto": {

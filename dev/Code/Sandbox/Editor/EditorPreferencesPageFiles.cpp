@@ -111,13 +111,13 @@ void CEditorPreferencesPage_Files::InitializeSettings()
     m_files.m_backupOnSave = gSettings.bBackupOnSave;
     m_files.m_backupOnSaveMaxCount = gSettings.backupOnSaveMaxCount;
     m_files.m_autoSaveTagPoints = gSettings.bAutoSaveTagPoints;
-    m_files.m_standardTempDirectory = gSettings.strStandardTempDirectory.toLatin1().data();
+    m_files.m_standardTempDirectory = gSettings.strStandardTempDirectory.toUtf8().data();
 
-    m_editors.m_scripts = gSettings.textEditorForScript.toLatin1().data();
-    m_editors.m_shaders = gSettings.textEditorForShaders.toLatin1().data();
-    m_editors.m_BSpaces = gSettings.textEditorForBspaces.toLatin1().data();
-    m_editors.m_textures = gSettings.textureEditor.toLatin1().data();
-    m_editors.m_animations = gSettings.animEditor.toLatin1().data();
+    m_editors.m_scripts = gSettings.textEditorForScript.toUtf8().data();
+    m_editors.m_shaders = gSettings.textEditorForShaders.toUtf8().data();
+    m_editors.m_BSpaces = gSettings.textEditorForBspaces.toUtf8().data();
+    m_editors.m_textures = gSettings.textureEditor.toUtf8().data();
+    m_editors.m_animations = gSettings.animEditor.toUtf8().data();
 
     m_autoBackup.m_enabled = gSettings.autoBackupEnabled;
     m_autoBackup.m_timeInterval = gSettings.autoBackupTime;

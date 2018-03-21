@@ -697,7 +697,7 @@ namespace LUAEditor
         }
         if (m_numOutstandingOperations > 0)
         {
-            AZ_TracePrintf(LUAEditorDebugName, "CheckOkayToShutDown() return FALSE with (%d) OutstandingOperations\n", m_numOutstandingOperations);
+            AZ_TracePrintf(LUAEditorDebugName, "CheckOkayToShutDown() return FALSE with (%d) OutstandingOperations\n", static_cast<int>(m_numOutstandingOperations));
             return false;
         }
 
@@ -710,7 +710,7 @@ namespace LUAEditor
         if (m_pLUAEditorMainWindow)
         {
             m_pLUAEditorMainWindow->SaveWindowState();
-    }
+        }
     }
 
     // Script interface:
@@ -1907,7 +1907,7 @@ namespace LUAEditor
 
     AZStd::string GetTooltip(const AzFramework::ScriptUserPropertyInfo& propInfo)
     {
-        static char* lut[2][2] =
+        static const char* lut[2][2] =
         {
             { "Locked", "WO" },
             { "RO", "R/W" }
@@ -2324,9 +2324,8 @@ namespace LUAEditor
             SyntaxStyleSettings::Reflect(reflection);
 
             serializeContext->Class<Context>()
-                ->Version(9)
-                ->Field("m_LUAKeywords", &Context::m_LUAKeywords)
-                ->Field("m_LUALibraryFunctions", &Context::m_LUALibraryFunctions);
+                ->Version(10)
+                ;
         }
 
 

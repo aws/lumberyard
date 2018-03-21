@@ -71,7 +71,7 @@ void CSurfaceType::Serialize(XmlNodeRef xmlRootNode, bool boLoading)
             CMaterial* pMtl = GetIEditor()->GetMaterialManager()->CreateMaterial(Path::RemoveExtension(m_detailTexture), XmlNodeRef(), 0);
             pMtl->AddRef();
             pMtl->SetShaderName("Terrain.Layer");
-            pMtl->GetShaderResources().m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = m_detailTexture.toLatin1().data();  // populate the diffuse slot
+            pMtl->GetShaderResources().m_TexturesResourcesMap[EFTT_DIFFUSE].m_Name = m_detailTexture.toUtf8().data();  // populate the diffuse slot
             pMtl->Update();
             m_material = pMtl->GetName();
         }
@@ -84,14 +84,14 @@ void CSurfaceType::Serialize(XmlNodeRef xmlRootNode, bool boLoading)
         XmlNodeRef sfType = xmlRootNode;
 
         // Name
-        sfType->setAttr("Name", m_name.toLatin1().data());
+        sfType->setAttr("Name", m_name.toUtf8().data());
         sfType->setAttr("SurfaceTypeID", m_nSurfaceTypeID);
-        sfType->setAttr("DetailTexture", m_detailTexture.toLatin1().data());
+        sfType->setAttr("DetailTexture", m_detailTexture.toUtf8().data());
         sfType->setAttr("DetailScaleX", m_detailScale[0]);
         sfType->setAttr("DetailScaleY", m_detailScale[1]);
-        sfType->setAttr("DetailMaterial", m_material.toLatin1().data());
+        sfType->setAttr("DetailMaterial", m_material.toUtf8().data());
         sfType->setAttr("ProjectAxis", m_projAxis);
-        sfType->setAttr("Bumpmap", m_bumpmap.toLatin1().data());
+        sfType->setAttr("Bumpmap", m_bumpmap.toUtf8().data());
 
         switch (m_projAxis)
         {

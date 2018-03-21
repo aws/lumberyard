@@ -316,7 +316,7 @@ public:
                 char ids[32];
                 _snprintf(ids, sizeof(ids) - 1, "(ID=%d)", id);
                 ids[sizeof(ids) - 1] = 0;
-                if (matches(ids, m_pOptions->m_strFind.toLatin1().data()) != 0)
+                if (matches(ids, m_pOptions->m_strFind.toUtf8().data()) != 0)
                 {
                     context = QObject::tr("Node: %1 (ID=%2)").arg(nodeName).arg(id);
                     m_resultVec.push_back(CFlowGraphSearchCtrl::Result(pFG, id, context));
@@ -326,7 +326,7 @@ public:
             if (m_pOptions->m_bIncludeEntities)
             {
                 CEntityObject* pEntity = pFlowNode->GetEntity();
-                if (pEntity != 0 && matches(pEntity->GetName(), m_pOptions->m_strFind.toLatin1().data()) != 0)
+                if (pEntity != 0 && matches(pEntity->GetName(), m_pOptions->m_strFind.toUtf8().data()) != 0)
                 {
                     context = QObject::tr("Entity: %1").arg(pEntity->GetName());
                     m_resultVec.push_back(CFlowGraphSearchCtrl::Result(pFG, id, context));
@@ -338,7 +338,7 @@ public:
                 const CHyperNode::Ports& inputs = *pNode->GetInputs();
                 for (int i = 0; i < inputs.size(); ++i)
                 {
-                    if (inputs[i].pVar != 0 && (matches(inputs[i].pVar->GetHumanName(), m_pOptions->m_strFind.toLatin1().data()) != 0))
+                    if (inputs[i].pVar != 0 && (matches(inputs[i].pVar->GetHumanName(), m_pOptions->m_strFind.toUtf8().data()) != 0))
                     {
                         context = QObject::tr("InPort: %1").arg(inputs[i].pVar->GetHumanName());
                         m_resultVec.push_back(CFlowGraphSearchCtrl::Result(pFG, id, context));
@@ -347,7 +347,7 @@ public:
                 const CHyperNode::Ports& outputs = *pNode->GetOutputs();
                 for (int i = 0; i < outputs.size(); ++i)
                 {
-                    if (outputs[i].pVar != 0 && (matches(outputs[i].pVar->GetHumanName(), m_pOptions->m_strFind.toLatin1().data()) != 0))
+                    if (outputs[i].pVar != 0 && (matches(outputs[i].pVar->GetHumanName(), m_pOptions->m_strFind.toUtf8().data()) != 0))
                     {
                         context = QObject::tr("OutPort: %1").arg(outputs[i].pVar->GetHumanName());
                         m_resultVec.push_back(CFlowGraphSearchCtrl::Result(pFG, id, context));

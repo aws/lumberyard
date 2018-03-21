@@ -16,7 +16,6 @@
 #include <AzQtComponents/Components/DockBar.h>
 #include <AzQtComponents/Components/DockMainWindow.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
-#include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
@@ -107,6 +106,17 @@ static QDataStream& operator>>(QDataStream& in, FancyDocking::TabContainerType& 
 namespace
 {
     static const char* g_AutoSavePropertyName = "AutoSaveLayout";
+
+    static bool shouldSkipTitleBarOverdraw(QDockWidget* dockWidget)
+    {
+        AzQtComponents::StyledDockWidget* styledDockChild = qobject_cast<AzQtComponents::StyledDockWidget*>(dockWidget);
+        if (styledDockChild != nullptr)
+        {
+            return styledDockChild->skipTitleBarOverdraw();
+        }
+
+        return false;
+    }
 }
 
 /**
@@ -160,9 +170,9 @@ FancyDocking::~FancyDocking()
  * Create a new QDockWidget whose main widget will be a DockMainWindow. It will be created floating
  * with the given geometry. The QDockWidget will be named with the given name
  */
-QMainWindow* FancyDocking::createFloatingMainWindow(const QString& name, const QRect& geometry)
+QMainWindow* FancyDocking::createFloatingMainWindow(const QString& name, const QRect& geometry, bool skipTitleBarOverdraw)
 {
-    auto dockWidget = new AzQtComponents::StyledDockWidget(m_mainWindow);
+    auto dockWidget = new AzQtComponents::StyledDockWidget(QString(), skipTitleBarOverdraw, m_mainWindow);
     dockWidget->setObjectName(name);
     if (!restoreDockWidget(dockWidget))
     {
@@ -1221,7 +1231,7 @@ bool FancyDocking::dockMouseMoveEvent(QDockWidget* dock, QMouseEvent* event)
         // If we restored the last floating screen grab for this dock widget,
         // then we need to change the placeholder size and update the X coordinate
         // to account for the extrapolated mouse press position
-        if (m_lastFloatingScreenGrab.contains(draggedDockWidget->objectName()))
+        if (draggedDockWidget && m_lastFloatingScreenGrab.contains(draggedDockWidget->objectName()))
         {
             QSize lastFloatingSize = m_state.dockWidgetScreenGrab.size;
             int pressPosX = m_state.pressPos.x();
@@ -1859,12 +1869,21 @@ void FancyDocking::makeDockWidgetFloating(QDockWidget* dock, const QRect& geomet
         return;
     }
 
-    // Create a floating window container for this dock widget
-    QScopedValueRollback<bool> guard(m_state.updateInProgress, true); // Don't let mainWindow get deleted while we do this
-    QMainWindow* mainWindow = createFloatingMainWindow(getUniqueDockWidgetName(g_floatingWindowPrefix), geometry);
-    dock->setParent(mainWindow);
-    mainWindow->addDockWidget(Qt::LeftDockWidgetArea, dock);
-    dock->show();
+    auto styledDockWidget = qobject_cast<AzQtComponents::StyledDockWidget*>(dock);
+    if (styledDockWidget && styledDockWidget->isSingleFloatingChild())
+    {
+        // Reuse the existing container
+        styledDockWidget->window()->setGeometry(geometry);
+    }
+    else
+    {
+        // Create a floating window container for this dock widget
+        QScopedValueRollback<bool> guard(m_state.updateInProgress, true); // Don't let mainWindow get deleted while we do this
+        QMainWindow* mainWindow = createFloatingMainWindow(getUniqueDockWidgetName(g_floatingWindowPrefix), geometry, shouldSkipTitleBarOverdraw(dock));
+        dock->setParent(mainWindow);
+        mainWindow->addDockWidget(Qt::LeftDockWidgetArea, dock);
+        dock->show();
+    }
 }
 
 /**
@@ -2358,14 +2377,22 @@ bool FancyDocking::eventFilter(QObject* watched, QEvent* event)
                         // them properly
                         for (QDockWidget* childDockWidget : mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
                         {
-                            if (childDockWidget->isVisible() && !childDockWidget->close())
+                            if (childDockWidget->isVisible())
                             {
-                                // If the child dock widget rejected the close,
-                                // then no need to continue trying to close the
-                                // other children, we can just stop now and ignore
-                                // the close event
-                                static_cast<QCloseEvent*>(event)->ignore();
-                                break;
+                                if (childDockWidget->close())
+                                {
+                                    // Destroy any empty container immediately
+                                    destroyIfUseless(mainWindow);
+                                }
+                                else
+                                {
+                                    // If the child dock widget rejected the close,
+                                    // then no need to continue trying to close the
+                                    // other children, we can just stop now and ignore
+                                    // the close event
+                                    event->ignore();
+                                    break;
+                                }
                             }
                         }
                         return true;
@@ -2762,7 +2789,9 @@ bool FancyDocking::restoreState(const QByteArray& state)
             continue;
         }
 
-        QMainWindow* mainWindow = createFloatingMainWindow(floatingDockName, QRect());
+        // Iterate over the child dock widgets to determine their dock widget options; must do this first before creating the floating main window
+        QVector<QDockWidget*> childDockWidgets;
+        bool skipTitleBarOverdraw = false;
         for (const QString &childName : childDockNames)
         {
             QDockWidget* child = m_mainWindow->findChild<QDockWidget*>(childName, Qt::FindDirectChildrenOnly);
@@ -2770,6 +2799,18 @@ bool FancyDocking::restoreState(const QByteArray& state)
             {
                 continue;
             }
+
+            // save the children so that we don't have to do a find on the main window again in the next loop
+            childDockWidgets.push_back(child);
+
+            skipTitleBarOverdraw = skipTitleBarOverdraw || shouldSkipTitleBarOverdraw(child);
+        }
+
+        // reparent and dock the child widgets to the new container now
+        QMainWindow* mainWindow = createFloatingMainWindow(floatingDockName, QRect(), skipTitleBarOverdraw);
+        for (auto t = childDockWidgets.begin(); t != childDockWidgets.end(); t++)
+        {
+            QDockWidget* child = *t;
             child->setParent(mainWindow);
             mainWindow->addDockWidget(Qt::LeftDockWidgetArea, child);
         }
@@ -2833,7 +2874,7 @@ bool FancyDocking::restoreState(const QByteArray& state)
             // The dock widgets will be restored with the same name in the main window, they just won't
             // be in the proper layout since we have our own custom tab system
             QDockWidget* dockWidget = m_mainWindow->findChild<QDockWidget*>(name);
-            if (!dockWidget)
+            if (!dockWidget || dockWidget->allowedAreas() == Qt::NoDockWidgetArea)
             {
                 continue;
             }
@@ -2865,6 +2906,18 @@ bool FancyDocking::restoreState(const QByteArray& state)
     if (!m_mainWindow->restoreState(mainState))
     {
         ok = false;
+    }
+
+    // If any dock widgets are currently docked to the main window that have
+    // docking disabled, this means they were previously docked to the main
+    // window (or tabbed) and the isDockable flag was later changed to false,
+    // so we need to change them to floating dock widgets
+    for (QDockWidget* subDockWidget : m_mainWindow->findChildren<QDockWidget*>(QString(), Qt::FindDirectChildrenOnly))
+    {
+        if (subDockWidget->allowedAreas() == Qt::NoDockWidgetArea)
+        {
+            makeDockWidgetFloating(subDockWidget, subDockWidget->geometry());
+        }
     }
 
     return ok;
@@ -2922,7 +2975,7 @@ bool FancyDocking::restoreDockWidget(QDockWidget* dock)
             auto it2 = m_restoreFloatings.find(floatingDockWidgetName);
             if (it2 != m_restoreFloatings.end())
             {
-                QMainWindow* mainWindow = createFloatingMainWindow(floatingDockWidgetName, it2->second);
+                QMainWindow* mainWindow = createFloatingMainWindow(floatingDockWidgetName, it2->second, shouldSkipTitleBarOverdraw(dock));
                 mainWindow->restoreState(it2->first);
                 dock->setParent(mainWindow);
                 m_restoreFloatings.erase(it2);

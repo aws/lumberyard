@@ -26,7 +26,7 @@
 #include <QtUtilWin.h>
 #include <QMessageBox>
 #include <QInputDialog>
-#include <qdebug.h>
+#include <QDebug>
 
 #include <ui_LevelFileDialog.h>
 
@@ -68,6 +68,7 @@ CLevelFileDialog::CLevelFileDialog(bool openDialog, QWidget* parent)
     ui->treeView->header()->close();
     m_filterModel->setSourceModel(m_model);
     ui->treeView->setModel(m_filterModel);
+    ui->treeView->installEventFilter(this);
 
     connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged,
         this, &CLevelFileDialog::OnTreeSelectionChanged);
@@ -83,25 +84,31 @@ CLevelFileDialog::CLevelFileDialog(bool openDialog, QWidget* parent)
         });
 
     connect(ui->filterLineEdit, &QLineEdit::textChanged, this, &CLevelFileDialog::OnFilterChanged);
-    connect(ui->cancelButton, &QPushButton::clicked, this, &CLevelFileDialog::OnCancel);
-    connect(ui->okButton, &QPushButton::clicked, this, &CLevelFileDialog::OnOK);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &CLevelFileDialog::OnCancel);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &CLevelFileDialog::OnOK);
     connect(ui->newFolderButton, &QPushButton::clicked, this, &CLevelFileDialog::OnNewFolder);
 
     if (m_bOpenDialog)
     {
         setWindowTitle(tr("Open Level"));
         ui->newFolderButton->setVisible(false);
-        ui->okButton->setText(tr("Open"));
+        ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Open"));
     }
     else
     {
         setWindowTitle(tr("Save Level As "));
-        ui->okButton->setText(tr("Save"));
+        ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Save"));
+        ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 
         // Make the name input the default active field for the save as dialog
         // The filter input will still be the default active field for the open dialog
         setTabOrder(ui->nameLineEdit, ui->filterLineEdit);
+
+        connect(ui->nameLineEdit, &QLineEdit::textChanged, this, &CLevelFileDialog::OnNameChanged);
     }
+
+    // reject invalid file names (see CryStringUtils::IsValidFileName)
+    ui->nameLineEdit->setValidator(new QRegExpValidator(QRegExp("^[a-zA-Z0-9_\\-./]*$"), ui->nameLineEdit));
 
     ReloadTree();
     LoadLastUsedLevelPath();
@@ -138,60 +145,19 @@ void CLevelFileDialog::OnOK()
     }
     else
     {
-        QString enteredPath = GetEnteredPath();
+        QString errorMessage;
+        if (!ValidateSaveLevelPath(errorMessage))
+        {
+            QMessageBox::warning(this, tr("Error"), errorMessage);
+            return;
+        }
+
         QString levelPath = GetLevelPath();
-
-        // Make sure that this folder can be used as a level folder:
-        // - It is a valid level path
-        // - It isn't already a file
-        // - There are no other level folders under it
-        if (!CryStringUtils::IsValidFileName(Path::GetFileName(levelPath).toLatin1().data()))
+        if (CFileUtil::PathExists(levelPath) && CheckLevelFolder(levelPath))
         {
+            // there is already a level folder at that location, ask before for overwriting it
             QMessageBox box(this);
-            box.setText(tr("Please enter a valid level name (standard English alphanumeric characters only)"));
-            box.setIcon(QMessageBox::Critical);
-            box.exec();
-            return;
-        }
-
-        //Verify that we are not using the temporary level name
-        const char* temporaryLevelName = GetIEditor()->GetDocument()->GetTemporaryLevelName();
-        if (QString::compare(Path::GetFileName(levelPath), temporaryLevelName) == 0)
-        {
-            QMessageBox::warning(this, tr("Error"), tr("Please enter a level name that is different from the temporary name"));
-            return;
-        }
-
-        if (!ValidateLevelPath(enteredPath))
-        {
-            QMessageBox::warning(this, tr("Error"), tr("Please enter a valid level location.\nYou cannot save levels inside levels."));
-            return;
-        }
-
-        if (CFileUtil::FileExists(levelPath))
-        {
-            QMessageBox box(this);
-            box.setText(tr("A file with that name already exists"));
-            box.setIcon(QMessageBox::Critical);
-            box.exec();
-            return;
-        }
-
-        if (CheckSubFoldersForLevelsRec(levelPath))
-        {
-            QMessageBox box(this);
-            box.setText(tr("You cannot save a level in a folder with sub\nfolders that contain levels"));
-            box.setIcon(QMessageBox::Critical);
-            box.exec();
-            return;
-        }
-
-        // Check if there is already a level folder at that
-        // location, if so ask before for overwriting it
-        if (CheckLevelFolder(levelPath))
-        {
-            QMessageBox box(this);
-            box.setText(tr("Do you really want to overwrite '%1'?").arg(enteredPath));
+            box.setText(tr("Do you really want to overwrite '%1'?").arg(GetEnteredPath()));
             box.setIcon(QMessageBox::Warning);
             box.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
             if (box.exec() != QMessageBox::Yes)
@@ -205,6 +171,18 @@ void CLevelFileDialog::OnOK()
 
     SaveLastUsedLevelPath();
     accept();
+}
+
+bool CLevelFileDialog::eventFilter(QObject* watched, QEvent* event)
+{
+    if (event->type() == QEvent::KeyPress) {
+        auto keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Return) {
+            OnOK();
+            return true;
+        }
+    }
+    return QDialog::eventFilter(watched, event);
 }
 
 QString CLevelFileDialog::NameForIndex(const QModelIndex& index) const
@@ -247,14 +225,14 @@ bool CLevelFileDialog::IsValidLevelSelected()
     }
 }
 
-QString CLevelFileDialog::GetLevelPath()
+QString CLevelFileDialog::GetLevelPath() const
 {
     const QString enteredPath = GetEnteredPath();
     const QString levelPath = QString("%1/%2/%3").arg(Path::GetEditingGameDataFolder().c_str()).arg(kLevelsFolder).arg(enteredPath);
     return levelPath;
 }
 
-QString CLevelFileDialog::GetEnteredPath()
+QString CLevelFileDialog::GetEnteredPath() const
 {
     QString enteredPath = ui->nameLineEdit->text();
     enteredPath = enteredPath.trimmed();
@@ -341,7 +319,7 @@ void CLevelFileDialog::OnNewFolder()
             const QString newFolderName = inputDlg.textValue();
             const QString newFolderPath = parentFullPath + "/" + newFolderName;
 
-            if (!CryStringUtils::IsValidFileName(newFolderName.toLatin1().data()))
+            if (!CryStringUtils::IsValidFileName(newFolderName.toUtf8().data()))
             {
                 QMessageBox box(this);
                 box.setText(tr("Please enter a single, valid folder name(standard English alphanumeric characters only)"));
@@ -386,6 +364,15 @@ void CLevelFileDialog::OnNewFolder()
 void CLevelFileDialog::OnFilterChanged()
 {
     m_filterModel->setFilterText(ui->filterLineEdit->text().toLower());
+}
+
+void CLevelFileDialog::OnNameChanged()
+{
+    if (!m_bOpenDialog)
+    {
+        QString errorMessage;
+        ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(ValidateSaveLevelPath(errorMessage));
+    }
 }
 
 void CLevelFileDialog::ReloadTree()
@@ -451,56 +438,51 @@ bool CLevelFileDialog::CheckLevelFolder(const QString folder, QStringList* level
     return bIsLevelFolder;
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-// Checks if there are levels in the sub folders of a folder
-//////////////////////////////////////////////////////////////////////////
-bool CLevelFileDialog::CheckSubFoldersForLevelsRec(const QString folder, bool bRoot)
+bool CLevelFileDialog::ValidateSaveLevelPath(QString& errorMessage) const
 {
-    if (!bRoot && CheckLevelFolder(folder))
+    const QString enteredPath = GetEnteredPath();
+    const QString levelPath = GetLevelPath();
+
+    if (!CryStringUtils::IsValidFileName(Path::GetFileName(levelPath).toUtf8().data()))
     {
-        return true;
+        errorMessage = tr("Please enter a valid level name (standard English alphanumeric characters only)");
+        return false;
     }
 
-    CFileEnum fileEnum;
-    QFileInfo fileData;
-    bool bIsLevelFolder = false;
-
-    for (bool bFoundFile = fileEnum.StartEnumeration(folder, "*", &fileData);
-         bFoundFile; bFoundFile = fileEnum.GetNextFile(&fileData))
+    //Verify that we are not using the temporary level name
+    const char* temporaryLevelName = GetIEditor()->GetDocument()->GetTemporaryLevelName();
+    if (QString::compare(Path::GetFileName(levelPath), temporaryLevelName) == 0)
     {
-        const QString fileName = fileData.fileName();
-
-        // Have we found a folder?
-        if (fileData.isDir())
-        {
-            // Skip the parent folder entries
-            if (fileName == "." || fileName == "..")
-            {
-                continue;
-            }
-
-            // Skip checking folders which are internal storage for backup and temp level files
-            if (CCryEditDoc::IsBackupOrTempLevelSubdirectory(fileName))
-            {
-                continue;
-            }
-
-            // Check if this sub folder contains a level
-            if (CheckSubFoldersForLevelsRec(folder + "/" + fileName, false))
-            {
-                return true;
-            }
-        }
+        errorMessage = tr("Please enter a level name that is different from the temporary name");
+        return false;
     }
 
-    return false;
+    if (!ValidateLevelPath(enteredPath))
+    {
+        errorMessage = tr("Please enter a valid level location.\nYou cannot save levels inside levels.");
+        return false;
+    }
+
+    if (CFileUtil::FileExists(levelPath))
+    {
+        errorMessage = tr("A file with that name already exists");
+        return false;
+    }
+
+    if (CFileUtil::PathExists(levelPath) && !CheckLevelFolder(levelPath))
+    {
+        errorMessage = tr("Please enter a level name");
+        return false;
+    }
+
+    return true;
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 // Checks if a given path is a valid level path
 //////////////////////////////////////////////////////////////////////////
-bool CLevelFileDialog::ValidateLevelPath(const QString& levelPath)
+bool CLevelFileDialog::ValidateLevelPath(const QString& levelPath) const
 {
     if (levelPath.isEmpty() || Path::GetExt(levelPath) != "")
     {
@@ -524,7 +506,7 @@ bool CLevelFileDialog::ValidateLevelPath(const QString& levelPath)
         {
             currentPath += "/" + splittedPath[i];
 
-            if (CheckLevelFolder(currentPath))
+            if (CFileUtil::FileExists(currentPath) || CheckLevelFolder(currentPath))
             {
                 return false;
             }

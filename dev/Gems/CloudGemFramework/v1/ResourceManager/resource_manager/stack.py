@@ -22,6 +22,8 @@ from datetime import datetime
 from dateutil.tz import tzlocal
 import json
 
+from cgf_utils import aws_utils
+
 MONITOR_WAIT_SECONDS = 10
 
 class StackContext(object):
@@ -277,7 +279,6 @@ class StackContext(object):
                     raise HandledError('Could not delete log group {}.'.format(log_group_name), e)
 
     def get_resource_arn(self, stack_id, logical_resource_id):
-
         cf = self.context.aws.client('cloudformation', region=util.get_region_from_arn(stack_id))
 
         try:
@@ -291,8 +292,9 @@ class StackContext(object):
 
         resource_name = res['StackResourceDetail']['PhysicalResourceId']
         resource_type = res['StackResourceDetail']['ResourceType']
+        type_definitions = self.context.resource_types.get_type_definitions_for_stack_id(stack_id)
 
-        return util.get_resource_arn(stack_id, resource_type, resource_name, context=self.context)
+        return aws_utils.get_resource_arn(type_definitions, stack_id, resource_type, resource_name, True)
 
 
     def get_physical_resource_id(self, stack_id, logical_resource_id, expected_type = None, optional=False):

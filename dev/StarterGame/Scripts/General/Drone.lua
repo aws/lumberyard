@@ -14,6 +14,11 @@ local drone =
 		OffsetTalking = { default = Vector3(1.5, 2.0, 2.0), description = "Offset from player position when talking." },
 		LingerAfterTalking = { default = 1.0, description = "How long to continue hovering after speech has ended.", suffix = " s" },
 		
+		SmoothingTargetFactor = { default = 1.0, description = "Linear interpolation factor on each OnTick to change the desired position from the previous to the current.", min = 0, max = 1},
+		
+		CameraEntityId = { default = EntityId() },
+		PlayerEntityId = { default = EntityId() },
+		
 		Movement =
 		{
 			MaxSpeed = { default = 6.0, description = "Maximum movement speed", suffix = " m/s" },
@@ -315,11 +320,30 @@ function drone:OnActivate()
 	self.wobbleScale = 0.1;
 	
 	self.maxSpeed = math.max(self.Properties.Movement.MaxSpeed, self.Properties.Talking.MaxSpeed);
+		
+	self.cameraPosition = TransformBus.Event.GetWorldTM(self.Properties.CameraEntityId):GetTranslation();
+	
+	self.currentAnimationState = "";
+	self.cameraJitterCompensationFactor = 0.0;
 	
 	self.tickBusHandler = TickBus.Connect(self);
-	
+	self.motionEventHandler = ActorNotificationBus.Connect(self, self.Properties.PlayerEntityId);
+	self.transformBusHandler = TransformNotificationBus.Connect(self, self.Properties.CameraEntityId);
 end
 
+function drone:OnStateEntered(stateName)
+	self.currentAnimationState = stateName;
+end
+
+function drone:OnTransformChanged(localTm, worldTm)
+	local newCameraPos = worldTm:GetTranslation();
+	local deltaPos = newCameraPos - self.cameraPosition;
+
+	if (self.position ~= nil) then
+		self.position = self.position + deltaPos * self.cameraJitterCompensationFactor;
+	end
+	self.cameraPosition = newCameraPos;
+end
 
 function drone:OnDeactivate()
 	if (self.materialCloned) then
@@ -349,6 +373,16 @@ function drone:OnDeactivate()
 	if (self.setVisibleHandler ~= nil) then
 		self.setVisibleHandler:Disconnect();
 		self.setVisibleHandler = nil;
+	end
+	
+	if (self.motionEventHandler ~= nil) then
+		self.motionEventHandler:Disconnect();
+		self.motionEventHandler = nil;
+	end
+	
+	if (self.transformBusHandler ~= nil) then
+		self.transformBusHandler:Disconnect();
+		self.transformBusHandler = nil;
 	end
 end
 
@@ -404,11 +438,20 @@ function drone:OnTick(deltaTime)
 end
 
 function drone:SetTargetPosition(targetPos, lookPos)
-	self.targetPosition = targetPos;
+	self.targetPosition = self.targetPosition + (targetPos - self.targetPosition) * self.Properties.SmoothingTargetFactor;
 	self.targetLookPosition = lookPos;
 end
 
 function drone:UpdateMovement(deltaTime)
+	
+	if (self.currentAnimationState == "Move") then
+		self.cameraJitterCompensationFactor = self.cameraJitterCompensationFactor + 4.0 * deltaTime;
+	else
+		self.cameraJitterCompensationFactor = self.cameraJitterCompensationFactor - 0.5 * deltaTime;
+	end
+	
+	self.cameraJitterCompensationFactor = utilities.Clamp(self.cameraJitterCompensationFactor, 0.0, 1.0);
+
 	local pos = self.position;
 	local dirToTarget = self.targetPosition - pos;
 	local distance = dirToTarget:GetLength();

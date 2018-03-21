@@ -71,6 +71,7 @@
 namespace AZStd
 {
     using std::is_constructible;
+    using std::is_default_constructible;
     using std::is_assignable;
     //using std::is_trivially_constructible; still not implemented in GCC 4.9 Android
     //using std::is_trivially_assignable; still not implemented in GCC 4.9 Android

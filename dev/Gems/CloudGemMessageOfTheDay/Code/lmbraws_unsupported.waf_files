@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/CloudGemMessageOfTheDay_precompiled.cpp",
+            "Source/CloudGemMessageOfTheDay_precompiled.h"
         ]
     },
     "auto": {

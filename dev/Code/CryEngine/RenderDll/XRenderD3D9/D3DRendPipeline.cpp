@@ -48,6 +48,8 @@
 #include <HMDBus.h>
 #include "MathConversion.h"
 
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
 #pragma warning(disable: 4244)
 
 
@@ -475,6 +477,9 @@ void CD3D9Renderer::EF_Init()
 
     MultiLayerAlphaBlendPass::InstallInstance();
     FurPasses::InstallInstance();
+    
+    // Initialize occlusion data
+    InvalidateCoverageBufferData();
 
     AZ_Assert(m_pBackBuffer == m_pBackBuffers[CD3D9Renderer::GetCurrentBackBufferIndex(m_pSwapChain)], "Swap chain was not properly swapped");
 
@@ -536,7 +541,7 @@ void CD3D9Renderer::EF_Restore()
 
     for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
     {
-        gEnv->pJobManager->WaitForJob(m_ComputeVerticesJobState[i]);
+        m_ComputeVerticesJobExecutors[i].WaitForCompletion();
     }
 
     // preallocate video memory buffer for particles when using the job system
@@ -616,6 +621,11 @@ void CD3D9Renderer::FX_PipelineShutdown(bool bFastShutdown)
     SAFE_RELEASE(m_RP.m_pREPostProcess);
     SAFE_DELETE(m_pPostProcessMgr);
     SAFE_DELETE(m_pWaterSimMgr);
+    
+    for (size_t idx = 0; idx < s_numOcclusionReadbackTextures; idx++)
+    {
+        m_occlusionData[idx].Destroy();
+    }
 
     //if (m_pStereoRenderer)
     //  m_pStereoRenderer->ReleaseResources();
@@ -697,10 +707,7 @@ void CD3D9Renderer::FX_ResetPipe()
     m_RP.m_FlagsShader_LT = 0;
     m_RP.m_nCommitFlags = FC_ALL;
     m_RP.m_PersFlags2 |= RBPF2_COMMIT_PF | RBPF2_COMMIT_CM;
-
-    m_RP.m_nZOcclusionProcess = 0;
-    m_RP.m_nZOcclusionReady = 1;
-
+    
     m_RP.m_nDeferredPrimitiveID = SHAPE_PROJECTOR;
 
     HRESULT h = FX_SetIStream(NULL, 0, Index16);
@@ -1613,12 +1620,12 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
             FX_PushRenderTarget(5, CTexture::s_ptexSceneNormalsMap, NULL);
 
             // Set don't care actions
-            FX_SetColorDontCareActions(0, true, false);
-            FX_SetColorDontCareActions(1, true, false);
-            FX_SetColorDontCareActions(2, true, false);
-            FX_SetColorDontCareActions(3, true, false);
+            FX_SetColorDontCareActions(0, true, false);  // Need store operation as the final output of light calculations goes here
+            FX_SetColorDontCareActions(1, true, true);
+            FX_SetColorDontCareActions(2, true, true);
+            FX_SetColorDontCareActions(3, true, false); // Need store operation here as this contains linear depth and is needed for the hair transparent pass after Lighting.
             FX_SetColorDontCareActions(4, true, true);
-            FX_SetColorDontCareActions(5, true, false);
+            FX_SetColorDontCareActions(5, true, true);
             FX_SetDepthDontCareActions(0, false, false);
             FX_SetStencilDontCareActions(0, false, false);
         }
@@ -1780,7 +1787,7 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
         if (eGT_256bpp_PATH == currentGmemPath)
         {
             FX_PushRenderTarget(3, CTexture::s_ptexGmemStenLinDepth, NULL);
-            FX_SetColorDontCareActions(3, false, false);
+            FX_SetColorDontCareActions(3, false, true);
         }
         break;
     }
@@ -4613,7 +4620,7 @@ void CD3D9Renderer::FX_ProcessBatchesList(int nums, int nume, uint32 nBatchFilte
     // before starting rendering of those
     if (rRP.m_nPassGroupID == EFSLIST_TRANSP || rRP.m_nPassGroupID == EFSLIST_HALFRES_PARTICLES || rRP.m_nPassGroupID == EFSLIST_PARTICLES_THICKNESS)
     {
-        gEnv->pJobManager->WaitForJob(m_ComputeVerticesJobState[m_RP.m_nProcessThreadID]);
+        m_ComputeVerticesJobExecutors[m_RP.m_nProcessThreadID].WaitForCompletion();
         UnLockParticleVideoMemory(gRenDev->m_nPoolIndexRT % SRenderPipeline::nNumParticleVertexIndexBuffer);
     }
 
@@ -5155,40 +5162,84 @@ void CD3D9Renderer::FX_ApplyThreadState(SThreadInfo& TI, SThreadInfo* pOldTI)
     m_RP.m_TI[m_RP.m_nProcessThreadID] = TI;
 }
 
-int CD3D9Renderer::GetOcclusionBuffer(uint16* pOutOcclBuffer, int32 nSizeX, int32 nSizeY, Matrix44* pmViewProj, Matrix44* pmCamBuffer)
+CD3D9Renderer::OcclusionReadbackData::~OcclusionReadbackData()
 {
-    m_occlusionRequestedSizeX = nSizeX;
-    m_occlusionRequestedSizeY = nSizeY;
-    if (nSizeX != m_occlusionDownsampleSizeX || nSizeY != m_occlusionDownsampleSizeY)
+    Destroy();
+}
+
+void CD3D9Renderer::OcclusionReadbackData::Destroy()
+{
+    azfree(m_occlusionReadbackBuffer);
+    m_occlusionReadbackBuffer = nullptr;
+}
+void CD3D9Renderer::OcclusionReadbackData::Reset(bool reverseDepth)
+{
+    m_occlusionReadbackViewProj.SetIdentity();
+
+    if (!m_occlusionReadbackBuffer)
     {
-        return 0;//not ready
+        m_occlusionReadbackBuffer = static_cast<float*>(azmalloc(CD3D9Renderer::s_occlusionBufferNumElements * sizeof(float), 16));
     }
-    if (m_occlusionBuffer < 4)
+    std::fill(m_occlusionReadbackBuffer, m_occlusionReadbackBuffer + CD3D9Renderer::s_occlusionBufferNumElements, (reverseDepth) ? 0.0f : 1.0f);
+}
+
+void CD3D9Renderer::InvalidateCoverageBufferData()
+{
+    for (size_t i = 0; i < s_numOcclusionReadbackTextures; i++)
+    {
+        m_occlusionData[i].SetupOcclusionData();
+    }
+    m_cpuOcclusionReadIndex = 0;
+    m_occlusionBufferIndex = 0;
+}
+
+void CD3D9Renderer::CPUOcclusionData::SetupOcclusionData()
+{
+    m_occlusionDataState = CPUOcclusionData::OcclusionDataState::OcclusionDataInvalid;
+    m_occlusionViewProj.SetIdentity();
+    
+    // Note: The macro Clr_FarPlane_R expects the variable name bReverseDepth to determine the clear value
+    const bool bReverseDepth = CRenderer::CV_r_ReverseDepth > 0 ? true : false;
+    if (!m_zTargetReadback)
+    {
+        unsigned int flags = FT_DONT_STREAM | FT_DONT_RELEASE | FT_STAGE_READBACK;
+        m_zTargetReadback = CTexture::CreateTextureObject("$ZTargetReadBack", s_occlusionBufferWidth, s_occlusionBufferHeight, 1, eTT_2D, flags, eTF_Unknown);
+        m_zTargetReadback->CreateRenderTarget(CTexture::s_eTFZ, Clr_FarPlane_R);
+    }
+
+    m_occlusionReadbackData.Reset(bReverseDepth);    
+}
+
+void CD3D9Renderer::CPUOcclusionData::Destroy()
+{
+    SAFE_RELEASE(m_zTargetReadback);
+    m_occlusionReadbackData.Destroy();
+}
+
+int CD3D9Renderer::GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffer)
+{
+    //AZ_Assert(m_cpuOcclusionReadIndex < s_numOcclusionReadbackTextures, "m_cpuOcclusionReadIndex (%u) out of range (%u)", m_cpuOcclusionReadIndex, s_numOcclusionReadbackTextures);
+    const CPUOcclusionData& occlusionData = m_occlusionData[m_cpuOcclusionReadIndex];
+
+    // Do not perform occlusion checks if our data is not ready or has been invalidated
+    if (occlusionData.m_occlusionDataState == CPUOcclusionData::OcclusionDataState::OcclusionDataInvalid)
     {
         return 0;
     }
 
-    const bool bUseNativeDepth = CRenderer::CV_r_CBufferUseNativeDepth && !gEnv->IsEditor();
-    {
-        // use the data prepared by the renderthread (with 1 frame latency)
-        for (size_t a = 0, S = nSizeX * nSizeY; a < S; a++)
-        {
-            reinterpret_cast<float*>(pOutOcclBuffer)[a] = m_occlusionZBuffer[a];
-        }
+    const OcclusionReadbackData& readbackData = occlusionData.m_occlusionReadbackData;
 
-        *pmCamBuffer = m_occlusionViewProj;
-    }
+    // Copy the data that was prepared by the render thread for use with the Coverage Buffer system
+    float* outputBuffer = reinterpret_cast<float*>(pOutOcclBuffer);
+    memcpy(pOutOcclBuffer, readbackData.m_occlusionReadbackBuffer, s_occlusionBufferNumElements * sizeof(float));
+    
+    *pmCamBuffer = readbackData.m_occlusionReadbackViewProj;
 
-
-    *pmViewProj = m_RP.m_newOcclusionCameraView * m_RP.m_newOcclusionCameraProj;
     return 1;
 }
 
-void CD3D9Renderer::FX_ZTargetReadBack()
+bool IsDepthReadbackOcclusionEnabled()
 {
-    PROFILE_LABEL_SCOPE("DEPTH READBACK");
-    PROFILE_FRAME(FX_ZTargetReadBack);
-
     static ICVar* pCVCheckOcclusion = gEnv->pConsole->GetCVar("e_CheckOcclusion");
     static ICVar* pCVStatObjBufferRenderTasks = gEnv->pConsole->GetCVar("e_StatObjBufferRenderTasks");
     static ICVar* pCVCoverageBufferReproj = gEnv->pConsole->GetCVar("e_CoverageBufferReproj");
@@ -5196,207 +5247,187 @@ void CD3D9Renderer::FX_ZTargetReadBack()
         (pCVStatObjBufferRenderTasks && pCVStatObjBufferRenderTasks->GetIVal() == 0) ||
         (pCVCoverageBufferReproj && pCVCoverageBufferReproj->GetIVal() == 4))
     {
+        return false;
+    }
+
+    return true;
+}
+
+void CD3D9Renderer::FX_ZTargetReadBackOnCPU()
+{
+    PROFILE_LABEL_SCOPE("DEPTH READBACK CPU");
+    PROFILE_FRAME(FX_ZTargetReadBackOnCPU);
+
+    if (!IsDepthReadbackOcclusionEnabled() || (SRendItem::m_RecurseLevel[m_RP.m_nProcessThreadID] > 0))
+    {
+        return;
+    }
+
+    static ICVar* pCVCoverageBufferLatency = gEnv->pConsole->GetCVar("e_CoverageBufferNumberFramesLatency");    
+    int latency = pCVCoverageBufferLatency->GetIVal();
+
+    // Readback index for the depth buffer in our ring buffer
+    AZ::u8 occlusionReadbackIndex = 0;
+    AZ_STATIC_ASSERT(s_numOcclusionReadbackTextures <= 3, "Maximum of 3 occlusion readback textures currently supported");
+    switch (latency)
+    {
+    case 0:
+        // Do not perform any CPU readback
+        return;
+        break;
+
+    case 1:
+        // Readback the depth buffer that was written to this frame (CPU will stall on GPU, useful for debugging)
+        occlusionReadbackIndex = (m_occlusionBufferIndex + 2) % s_numOcclusionReadbackTextures;
+        break;
+
+    case 2:
+        // Readback previous frame.
+        occlusionReadbackIndex = (m_occlusionBufferIndex + 1) % s_numOcclusionReadbackTextures;
+        break;
+
+    case 3:
+        // Readback oldest frame
+        occlusionReadbackIndex = m_occlusionBufferIndex;
+        break;
+    }
+    CPUOcclusionData& occlusionData = m_occlusionData[occlusionReadbackIndex];
+
+    // Do not perform readback if our occlusion data is not ready to be read back
+    if (occlusionData.m_occlusionDataState != CPUOcclusionData::OcclusionDataState::OcclusionDataOnGPU)
+    {
         return;
     }
 
     const bool bUseNativeDepth = CRenderer::CV_r_CBufferUseNativeDepth && !gEnv->IsEditor();
     const bool bReverseDepth = (m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) != 0;
-
-    bool bDownSampleUpdate = false;
-
-    int sourceWidth = CTexture::s_ptexZTarget->GetWidth();
-    int sourceHeight = CTexture::s_ptexZTarget->GetHeight();
-
-    if ((m_occlusionDownsampleSizeX && m_occlusionDownsampleSizeY) &&
-        (sourceWidth != m_occlusionSourceSizeX || sourceHeight != m_occlusionSourceSizeY))
-    {
-        bDownSampleUpdate = true;
-    }
-
-    if (m_occlusionRequestedSizeX != m_occlusionDownsampleSizeX ||
-        m_occlusionRequestedSizeY != m_occlusionDownsampleSizeY ||
-        bDownSampleUpdate ||
-        m_occlusionRequestedSizeX * m_occlusionRequestedSizeY != m_occlusionZBuffer.size() ||
-        !CTexture::s_ptexZTargetReadBack[0])
-    {
-        m_bOcclusionTexturesValid = true;
-
-        m_occlusionZBuffer.resize(m_occlusionRequestedSizeX * m_occlusionRequestedSizeY);
-
-        for (size_t y = 0; y < m_occlusionDownsampleSizeY; y++) // Clear CPU-side buffer
-        {
-            for (size_t x = 0; x < m_occlusionDownsampleSizeX; x++)
-            {
-                m_occlusionZBuffer[x + y * m_occlusionDownsampleSizeX] = 1.0f;
-            }
-        }
-
-        m_occlusionDownsampleSizeX = m_occlusionRequestedSizeX;
-        m_occlusionDownsampleSizeY = m_occlusionRequestedSizeY;
-        const uint32 nFlags = FT_DONT_STREAM | FT_DONT_RELEASE | FT_STAGE_READBACK;
-
-        for (size_t a = 0; a < 4; a++)
-        {
-            if (CTexture::s_ptexZTargetReadBack[a])
-            {
-                CTexture::s_ptexZTargetReadBack[a]->m_nFlags = nFlags;
-                CTexture::s_ptexZTargetReadBack[a]->m_nWidth = m_occlusionDownsampleSizeX;
-                CTexture::s_ptexZTargetReadBack[a]->m_nHeight = m_occlusionDownsampleSizeY;
-
-                CTexture::s_ptexZTargetReadBack[a]->CreateRenderTarget(CTexture::s_eTFZ, Clr_FarPlane_R);
-                CTexture::s_ptexZTargetReadBack[a]->Clear();
-            }
-            else
-            {
-                CTexture::s_ptexZTargetReadBack[a] = CTexture::CreateRenderTarget("$ZTargetReadBack", gcpRendD3D->m_occlusionDownsampleSizeX, gcpRendD3D->m_occlusionDownsampleSizeY, Clr_FarPlane_R, eTT_2D, nFlags, CTexture::s_eTFZ);
-                CTexture::s_ptexZTargetReadBack[a]->Clear();
-            }
-        }
-
-        m_occlusionSourceSizeX = sourceWidth;
-        m_occlusionSourceSizeY = sourceHeight;
-
-        int downSampleX = max(0, 1 + IntegerLog2((uint16)((m_occlusionSourceSizeX * m_RP.m_CurDownscaleFactor.x) / m_occlusionDownsampleSizeX)));
-        int downSampleY = max(0, 1 + IntegerLog2((uint16)((m_occlusionSourceSizeY * m_RP.m_CurDownscaleFactor.y) / m_occlusionDownsampleSizeY)));
-        m_numOcclusionDownsampleStages = min(4, max(downSampleX, downSampleY));
-
-        for (int a = 0; a < m_numOcclusionDownsampleStages; a++)
-        {
-            int width = m_occlusionDownsampleSizeX << (m_numOcclusionDownsampleStages - a - 1);
-            int height = m_occlusionDownsampleSizeY << (m_numOcclusionDownsampleStages - a - 1);
-
-            if (CTexture::s_ptexZTargetDownSample[a])
-            {
-                CTexture::s_ptexZTargetDownSample[a]->m_nFlags = nFlags;
-                CTexture::s_ptexZTargetDownSample[a]->m_nWidth = width;
-                CTexture::s_ptexZTargetDownSample[a]->m_nHeight = height;
-
-                CTexture::s_ptexZTargetDownSample[a]->CreateRenderTarget(CTexture::s_eTFZ, Clr_FarPlane_R);
-            }
-            else
-            {
-                assert(CTexture::s_ptexZTargetDownSample[a]);
-            }
-        }
-    }
-
-    if ((!m_occlusionDownsampleSizeX || !m_occlusionDownsampleSizeY) || !m_bOcclusionTexturesValid)
-    {
-        return;
-    }
-
-    ++m_occlusionBuffer;
-    const size_t Idx = m_RP.m_nProcessThreadID;
-    Matrix44 occlusionViewProj = m_occlusionViewProjBuffer[Idx];
-    Matrix44 mCurView, mCurProj;
-    mCurView.SetIdentity();
-    mCurProj.SetIdentity();
-    GetModelViewMatrix(reinterpret_cast<f32*>(&mCurView));
-    GetProjectionMatrix(reinterpret_cast<f32*>(&mCurProj));
-
-    if (bReverseDepth)
-    {
-        mCurProj = ReverseDepthHelper::Convert(mCurProj);
-    }
-
-    m_occlusionViewProjBuffer[Idx] = mCurView * mCurProj;
-
-    m_RP.m_nZOcclusionBufferID = ((m_RP.m_nZOcclusionBufferID + 1) < CULLER_MAX_CAMS) ? (m_RP.m_nZOcclusionBufferID + 1) : 0;
-
-    m_RP.m_OcclusionCameraBuffer[m_RP.m_nZOcclusionBufferID] = mCurView * mCurProj;
-
+    
     int nCameraID = -1;
-
-    if (!CTexture::s_ptexZTargetReadBack[Idx] || !CTexture::s_ptexZTargetReadBack[Idx]->GetDevTexture())
-    {
-        return;
-    }
-
-    bool bReadZBufferDirectlyFromVMEM = false;
 
     // In stereo rendering, we want the coverage buffer to be a merge of both rendered eyes. Otherwise one eye may
     // cull out the geometry visible be the other eye.
     bool mergePreviousBuffer = (GetS3DRend().GetStatus() == IStereoRenderer::Status::kRenderingSecondEye);
 
-    // Read data from previous frame
-    // There is a slight chance of a race condition when the main thread reads from the occlusion buffer during the following update
-    if (bReadZBufferDirectlyFromVMEM == false)
+    // Read data from the prepared frame
+    occlusionData.m_zTargetReadback->GetDevTexture()->AccessCurrStagingResource(0, false, [=, &nCameraID](void* pData, uint32 rowPitch, uint32 slicePitch)
     {
-        	CTexture::s_ptexZTargetReadBack[Idx]->GetDevTexture()->AccessCurrStagingResource(0, false, [=, &nCameraID](void* pData, uint32 rowPitch, uint32 slicePitch)
+        float* pDepths = reinterpret_cast<float*>(pData);
+        const CameraViewParameters& rc = GetViewParameters();
+        float zn = rc.fNear;
+        float zf = rc.fFar;
+        const float ProjRatioX  = zf / (zf - zn);
+        const float ProjRatioY  = zn / (zn - zf);
+                
+        OcclusionReadbackData& readbackData = m_occlusionData[occlusionReadbackIndex].m_occlusionReadbackData;
+        readbackData.m_occlusionReadbackViewProj = m_occlusionData[occlusionReadbackIndex].m_occlusionViewProj;
+        float* readBuffer = readbackData.m_occlusionReadbackBuffer;
+
+        if (bUseNativeDepth)
+        {
+            float x = floorf(pDepths[0] * 0.5f); // Decode the ID from the first pixel
+            readBuffer[0] = pDepths[0] - (x * 2.0f);
+            nCameraID  = (int)(x);
+
+            for (uint32 idx = 1; idx < s_occlusionBufferNumElements; idx++)
             {
-                float* pDepths = reinterpret_cast<float*>(pData);
-                const CameraViewParameters& rc = GetViewParameters();
-                float zn = rc.fNear;
-                float zf = rc.fFar;
-                const float ProjRatioX  = zf / (zf - zn);
-                const float ProjRatioY  = zn / (zn - zf);
-
-                uint32 nBufferSize = m_occlusionDownsampleSizeY * m_occlusionDownsampleSizeX;
-
-                if (bUseNativeDepth)
+                const float fDepthVal = bReverseDepth ? 1.0f - pDepths[idx] : pDepths[idx];
+                if (mergePreviousBuffer)
                 {
-                    float x = floorf(pDepths[0] * 0.5f); // Decode the ID from the first pixel
-                    m_occlusionZBuffer[0] = pDepths[0] - (x * 2.0f);
-                    nCameraID  = (int)(x);
-
-                    for (uint32 idx = 1; idx < nBufferSize; idx++)
+                    if (readBuffer[idx] == FLT_EPSILON)
                     {
-                        const float fDepthVal = bReverseDepth ? 1.0f - pDepths[idx] : pDepths[idx];
-                        if (mergePreviousBuffer)
-                        {
-                            if (m_occlusionZBuffer[idx] == FLT_EPSILON)
-                            {
-                                m_occlusionZBuffer[idx] = max(fDepthVal, FLT_EPSILON);
-                            }
-                            else
-                            {
-                                float maxDepth = max(fDepthVal, m_occlusionZBuffer[idx]);
-                                m_occlusionZBuffer[idx] = max(maxDepth, FLT_EPSILON);
-                            }
-                        }
-                        else
-                        {
-                            m_occlusionZBuffer[idx] = max(fDepthVal, FLT_EPSILON);
-                        }
+                        readBuffer[idx] = max(fDepthVal, FLT_EPSILON);
+                    }
+                    else
+                    {
+                        float maxDepth = max(fDepthVal, readBuffer[idx]);
+                        readBuffer[idx] = max(maxDepth, FLT_EPSILON);
                     }
                 }
                 else
                 {
-                    for (uint32 idx = 0; idx < nBufferSize; idx++)
+                    readBuffer[idx] = max(fDepthVal, FLT_EPSILON);
+                }
+            }
+        }
+        else
+        {
+            for (uint32 idx = 0; idx < s_occlusionBufferNumElements; idx++)
+            {
+                if (!mergePreviousBuffer)
+                {
+                    readBuffer[idx] = max(ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
+                }
+                else
+                {
+                    if (readBuffer[idx] == FLT_EPSILON)
                     {
-                        if (!mergePreviousBuffer)
-                        {
-                            m_occlusionZBuffer[idx] = max(ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
-                        }
-                        else
-                        {
-                            if (m_occlusionZBuffer[idx] == FLT_EPSILON)
-                            {
-                                m_occlusionZBuffer[idx] = max(ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
-                            }
-                            else
-                            {
-                                float newDepth = ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX;
-                                float maxDepth = max(newDepth, m_occlusionZBuffer[idx]);
-                                m_occlusionZBuffer[idx] = max(maxDepth, FLT_EPSILON);
-                            }
-                        }
+                        readBuffer[idx] = max(ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX, FLT_EPSILON);
+                    }
+                    else
+                    {
+                        float newDepth = ProjRatioY / max(pDepths[idx], FLT_EPSILON) + ProjRatioX;
+                        float maxDepth = max(newDepth, readBuffer[idx]);
+                        readBuffer[idx] = max(maxDepth, FLT_EPSILON);
                     }
                 }
+            }
+        }
 
-                m_occlusionViewProj = occlusionViewProj;
+        return true;
+    });
 
-                return true;
-            });
-    }
+    occlusionData.m_occlusionDataState = CPUOcclusionData::OcclusionDataState::OcclusionDataOnCPU;
+    m_cpuOcclusionReadIndex = occlusionReadbackIndex;
+}
 
-    m_occlusionViewProjBuffer[Idx] = mCurView * mCurProj;
+void CD3D9Renderer::FX_ZTargetReadBack()
+{
+    PROFILE_LABEL_SCOPE("DEPTH READBACK GPU");
+    PROFILE_FRAME(FX_ZTargetReadBack);
 
-    if (bUseNativeDepth)
+    if (!IsDepthReadbackOcclusionEnabled())
     {
-        nCameraID = max((int)0, min(nCameraID, (int)(CULLER_MAX_CAMS - 1)));
-        m_occlusionViewProj = m_RP.m_OcclusionCameraBuffer[nCameraID];
+        return;
     }
+    
+    const bool bUseNativeDepth = CRenderer::CV_r_CBufferUseNativeDepth && !gEnv->IsEditor();
+    const bool bReverseDepth = (m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) != 0;
+    int sourceWidth = CTexture::s_ptexZTarget->GetWidth();
+    int sourceHeight = CTexture::s_ptexZTarget->GetHeight();
+
+    if (sourceWidth != m_occlusionSourceSizeX || sourceHeight != m_occlusionSourceSizeY)
+    {
+        m_occlusionSourceSizeX = sourceWidth;
+        m_occlusionSourceSizeY = sourceHeight;
+
+        int downSampleX = max(0, 1 + IntegerLog2((uint16)((m_occlusionSourceSizeX * m_RP.m_CurDownscaleFactor.x) / s_occlusionBufferWidth)));
+        int downSampleY = max(0, 1 + IntegerLog2((uint16)((m_occlusionSourceSizeY * m_RP.m_CurDownscaleFactor.y) / s_occlusionBufferHeight)));
+        m_numOcclusionDownsampleStages = min(4, max(downSampleX, downSampleY));
+        
+        const uint32 nFlags = FT_DONT_STREAM | FT_DONT_RELEASE | FT_STAGE_READBACK;
+        for (int downsampleStage = 0; downsampleStage < m_numOcclusionDownsampleStages; downsampleStage++)
+        {
+            const int width = s_occlusionBufferWidth << (m_numOcclusionDownsampleStages - downsampleStage - 1);
+            const int height = s_occlusionBufferHeight << (m_numOcclusionDownsampleStages - downsampleStage - 1);
+
+            if (CTexture::s_ptexZTargetDownSample[downsampleStage])
+            {
+                CTexture::s_ptexZTargetDownSample[downsampleStage]->m_nFlags = nFlags;
+                CTexture::s_ptexZTargetDownSample[downsampleStage]->m_nWidth = width;
+                CTexture::s_ptexZTargetDownSample[downsampleStage]->m_nHeight = height;
+
+                CTexture::s_ptexZTargetDownSample[downsampleStage]->CreateRenderTarget(CTexture::s_eTFZ, Clr_FarPlane_R);
+            }
+            else
+            {
+                assert(CTexture::s_ptexZTargetDownSample[downsampleStage]);
+            }
+        }
+
+        InvalidateCoverageBufferData();
+    }
+
+    const AZ::u8 occlusionDataIndex = m_occlusionBufferIndex;
 
     // downsample on GPU
     RECT srcRect;
@@ -5442,7 +5473,7 @@ void CD3D9Renderer::FX_ZTargetReadBack()
     }
 
     pSrc = pDst;
-    pDst = CTexture::s_ptexZTargetReadBack[Idx];
+    pDst = m_occlusionData[occlusionDataIndex].m_zTargetReadback;
     PostProcessUtils().StretchRect(pSrc, pDst, false, false, false, false, downsampleMode);
 
     //  Blend ID into top left pixel of readback buffer
@@ -5456,6 +5487,7 @@ void CD3D9Renderer::FX_ZTargetReadBack()
     pSH->FXBeginPass(0);
 
     static CCryNameR pClearParams("vClearParam");
+    m_RP.m_nZOcclusionBufferID = ((m_RP.m_nZOcclusionBufferID + 1) < CULLER_MAX_CAMS) ? (m_RP.m_nZOcclusionBufferID + 1) : 0;
     Vec4 vFrameID = Vec4((float)(m_RP.m_nZOcclusionBufferID * 2.0f), 0, 0, 0);
     pSH->FXSetPSFloat(pClearParams, &vFrameID, 1);
 
@@ -5470,16 +5502,28 @@ void CD3D9Renderer::FX_ZTargetReadBack()
     gcpRendD3D->RT_SetViewport(0, 0, GetWidth(), GetHeight());
 
     // Copy to CPU accessible memory
-    if (bReadZBufferDirectlyFromVMEM == false)
-    {
-        CTexture::s_ptexZTargetReadBack[Idx]->GetDevTexture()->DownloadToStagingResource(0);
-    }
+    m_occlusionData[occlusionDataIndex].m_zTargetReadback->GetDevTexture()->DownloadToStagingResource(0);
 
     if (bUseNativeDepth)
     {
         CTexture::s_ptexZTarget->SetShaderResourceView(pZTargetOrigSRV, bMSAA);
     }
+    
+    Matrix44 mCurView, mCurProj;
+    mCurView.SetIdentity();
+    mCurProj.SetIdentity();
+    GetModelViewMatrix(reinterpret_cast<f32*>(&mCurView));
+    GetProjectionMatrix(reinterpret_cast<f32*>(&mCurProj));
 
+    if (bReverseDepth)
+    {
+        mCurProj = ReverseDepthHelper::Convert(mCurProj);
+    }
+    
+    m_occlusionData[occlusionDataIndex].m_occlusionViewProj = mCurView * mCurProj;
+    m_occlusionData[occlusionDataIndex].m_occlusionDataState = CPUOcclusionData::OcclusionDataState::OcclusionDataOnGPU;
+    
+    m_occlusionBufferIndex = (m_occlusionBufferIndex + 1) % s_numOcclusionReadbackTextures;
 }
 
 void CD3D9Renderer::FX_UpdateCharCBs()
@@ -5499,10 +5543,10 @@ void CD3D9Renderer::FX_UpdateCharCBs()
             SSkinningData* pSkinningData = cb->m_pSD;
 
             // make sure all sync jobs filling the buffers have finished
-            if (pSkinningData->pAsyncJobs)
+            if (pSkinningData->pAsyncJobExecutor)
             {
                 PROFILE_FRAME(FX_UpdateCharCBs_ASYNC_WAIT);
-                gEnv->pJobManager->WaitForJob(*pSkinningData->pAsyncJobs);
+                pSkinningData->pAsyncJobExecutor->WaitForCompletion();
             }
 
             if (pSkinningData->nHWSkinningFlags & eHWS_Skinning_Matrix)
@@ -5625,7 +5669,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
     // to non-thread safe remaing work for *::Render functions
     {
         PROFILE_FRAME(WaitForRendItems);
-        gEnv->pJobManager->WaitForJob(m_JobState_FinalizeRendItems[m_RP.m_nProcessThreadID]);
+        m_finalizeRendItemsJobExecutor[m_RP.m_nProcessThreadID].WaitForCompletion();
     }
 
     CRenderMesh::FinalizeRendItems(m_RP.m_nProcessThreadID);
@@ -5671,7 +5715,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
     // Wait for shadow jobs before building constant buffers.
     {
         PROFILE_FRAME(WaitForShadowRendItems);
-        gEnv->pJobManager->WaitForJob(m_JobState_FinalizeShadowRendItems[m_RP.m_nProcessThreadID]);
+        m_finalizeShadowRendItemsJobExecutor[m_RP.m_nProcessThreadID].WaitForCompletion();
     }
 
     // Precompile constant buffers for the frame.
@@ -5944,7 +5988,7 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
                 // make sure all all jobs which are computing particle vertices/indices
                 // have finished and their vertex/index buffers are unlocked
                 // before starting rendering of those
-                gEnv->pJobManager->WaitForJob(m_ComputeVerticesJobState[m_RP.m_nProcessThreadID]);
+                m_ComputeVerticesJobExecutors[m_RP.m_nProcessThreadID].WaitForCompletion();
                 UnLockParticleVideoMemory(gRenDev->m_nPoolIndexRT % SRenderPipeline::nNumParticleVertexIndexBuffer);
 
 
@@ -6142,6 +6186,10 @@ void CD3D9Renderer::RT_RenderScene(int nFlags, SThreadInfo& TI, void(* RenderFun
         FX_ProcessRenderList(EFSLIST_WATER_VOLUMES, AFTER_WATER, RenderFunc, false);    // Sorted list without preprocess
     }
 
+    // Readback the downsampled z-buffer to the CPU for use by the Coverage Buffer system next frame.
+    // This is performed at the end of the frame in order to help prevent a CPU/GPU sync point.
+    FX_ZTargetReadBackOnCPU();
+
     FX_ApplyThreadState(m_RP.m_OldTI[recursiveLevel], NULL);
 
     m_RP.m_PS[m_RP.m_nProcessThreadID].m_fRenderTime += iTimer->GetAsyncTime().GetDifferenceInSeconds(Time);
@@ -6173,32 +6221,33 @@ void CD3D9Renderer::EF_ProcessRenderLists(RenderFunc pRenderFunc, int nFlags, SV
         if (bSync3DEngineJobs)
         {
             // wait for all RendItems which need preprocession
-            // note: the SetStopped here indicates that no new jobs for preprocessing are spawned
-            // note: must be called before EndSpawningGeneratingRendItemJobs! in all constalations, else a race condtion can uncoalesce the underlying memory
-            JobManager::SJobState* pJobState = gEnv->pRenderer->GetGenerateRendItemJobStatePreProcess(nThreadID);
-            if (pJobState->IsRunning())
+            // note: the PopCompletionFence here indicates that no new jobs for preprocessing are spawned
+            // note: must be called before EndSpawningGeneratingRendItemJobs! in all constellations, else a race condition can uncoalesce the underlying memory
+            AZ::LegacyJobExecutor* pJobExecutor = gEnv->pRenderer->GetGenerateRendItemJobExecutorPreProcess(nThreadID);
+            if (pJobExecutor->IsRunning())
             {
-                pJobState->SetStopped();
+                pJobExecutor->PopCompletionFence();
             }
-            gEnv->pJobManager->WaitForJob(*pJobState);
+            pJobExecutor->WaitForCompletion();
 
-            // we need to prepare the render item lists here when we are not using the editor(which doesn't have MT rendering)
+            // we need to prepare the render item lists here when we are using the editor(which doesn't have MT rendering)
             if (!bIsMultiThreadedRenderer)
             {
-                if (m_generateRendItemJobState[nThreadID].IsRunning())
+                if (m_generateRendItemJobExecutor[nThreadID].IsRunning())
                 {
                     EndSpawningGeneratingRendItemJobs(nThreadID);
                 }
-                if (gRenDev->GetGenerateShadowRendItemJobState(nThreadID)->IsRunning())
+
+                if (gRenDev->GetGenerateShadowRendItemJobExecutor(nThreadID)->IsRunning())
                 {
-                    gRenDev->GetGenerateShadowRendItemJobState(nThreadID)->SetStopped();
+                    gRenDev->GetGenerateShadowRendItemJobExecutor(nThreadID)->PopCompletionFence();
                 }
 
                 ////////////////////////////////////////////////
                 // wait till all SRendItems for this frame have finished preparing
-                gEnv->pJobManager->WaitForJob(m_JobState_FinalizeRendItems[m_RP.m_nProcessThreadID]);
-                gEnv->pJobManager->WaitForJob(m_JobState_FinalizeShadowRendItems[m_RP.m_nProcessThreadID]);
-                gRenDev->GetGenerateRendItemJobState(nThreadID)->RegisterPostJob(NULL); // clear post job to prevent invoking it twice when no MT Rendering is enabled, but recursive rendering is used
+                m_finalizeRendItemsJobExecutor[m_RP.m_nProcessThreadID].WaitForCompletion();
+                m_finalizeShadowRendItemsJobExecutor[m_RP.m_nProcessThreadID].WaitForCompletion();
+                gRenDev->GetGenerateRendItemJobExecutor(nThreadID)->ClearPostJob(); // clear post job to prevent invoking it twice when no MT Rendering is enabled, but recursive rendering is used
             }
         }
 
@@ -6237,12 +6286,12 @@ void CD3D9Renderer::EF_ProcessRenderLists(RenderFunc pRenderFunc, int nFlags, SV
         }
     }
 
-    // since we need to sync earlier if we don't have multithreaded renderin
+    // since we need to sync earlier if we don't have multithreaded rendering
     // we need to finalize the rend items again in a possible recursive pass
     if (!bIsMultiThreadedRenderer && nR)
     {
-        gEnv->pJobManager->WaitForJob(m_generateRendItemJobState[nThreadID]);
-        m_JobState_FinalizeRendItems[nThreadID].SetRunning();
+        m_generateRendItemJobExecutor[nThreadID].WaitForCompletion();
+        m_finalizeRendItemsJobExecutor[nThreadID].PushCompletionFence();
         CRenderer::FinalizeRendItems(nThreadID);
     }
     m_pRT->RC_RenderScene(nFlags, pRenderFunc);
@@ -6338,7 +6387,7 @@ void CD3D9Renderer::EF_EndEf3D(const int nFlags, const int nPrecacheUpdateIdSlow
     EF_Query(EFQ_RenderMultithreaded, bIsMultiThreadedRenderer);
     if (bIsMultiThreadedRenderer && SRendItem::m_RecurseLevel[nThreadID] == 0 && !(nFlags & (SHDF_ZPASS_ONLY | SHDF_NO_SHADOWGEN))) //|SHDF_ALLOWPOSTPROCESS
     {
-        gRenDev->GetGenerateShadowRendItemJobState(nThreadID)->SetStopped();
+        gRenDev->GetGenerateShadowRendItemJobExecutor(nThreadID)->PopCompletionFence();
     }
 
     SRendItem::m_RecurseLevel[nThreadID]--;
@@ -6432,9 +6481,15 @@ void CD3D9Renderer::EF_Scene3D(SViewport& VP, int nFlags, const SRenderingPassIn
         //Draw these Debug systems as part of the scene so that they render properly in VR
 
 #ifdef ENABLE_RENDER_AUX_GEOM
+#ifndef _RELEASE
         if (gEnv->pAISystem)
         {
             gEnv->pAISystem->DebugDraw();
+        }
+
+        if (gEnv->pSystem)
+        {
+            gEnv->pSystem->RenderPhysicsHelpers();
         }
 
         //Draws all aux geometry
@@ -6446,7 +6501,8 @@ void CD3D9Renderer::EF_Scene3D(SViewport& VP, int nFlags, const SRenderingPassIn
         //as they draw. By clearing them out it means we can just re-process
         //that geometry for the 2nd eye and not draw a mangled vertex buffer.
         GetIRenderAuxGeom()->Process();
-#endif
+#endif //_RELEASE
+#endif //ENABLE_RENDER_AUX_GEOM
 
         //Only render the UI Canvas and the Console on the main window
         //If we're not in the editor, don't bother to check viewport
@@ -6454,10 +6510,11 @@ void CD3D9Renderer::EF_Scene3D(SViewport& VP, int nFlags, const SRenderingPassIn
         {
             EBUS_EVENT(AZ::RenderNotificationsBus, OnScene3DEnd);
         }
+
         // For VR rendering, RenderTextMessages need to be called in EF_Scene3D to render into both eyes,
-        // Some of 2D rendering calls such as console rendering were moved from CSystem::RenderEnd or EndFrame into EF_Scene3D to work with it.
+        // Some 2D rendering calls such as console rendering were moved from CSystem::RenderEnd or EndFrame into EF_Scene3D to work with it.
         // In this case we have to RenderTextMessage immediately instead of push RenderTextMessage to render thread.
-        // EF_RenderTextMessages will render textmessage into actual draw2d commands.
+        // EF_RenderTextMessages will render text messages into actual draw2d commands.
         // For the remaining 2D renderings that are still called at the end of frame(such as C3DEngine::DisplayInfo in CSystem::RenderEnd),
         // they are called after the TextMessage have already been rendered, so they will be eventually rendered 2 frames later.
         // This is not an ideal situation and we should find a better way to handle it later.

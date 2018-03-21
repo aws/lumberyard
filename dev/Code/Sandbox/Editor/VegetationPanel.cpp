@@ -757,12 +757,12 @@ void CVegetationPanel::UpdateUI()
     if (bPainting)
     {
         m_ui->paintObjectsButton->setChecked(true);
-        GetIEditor()->SetStatusText(tr("Hold Ctrl to Remove Vegetation").toLatin1());
+        GetIEditor()->SetStatusText(tr("Hold Ctrl to Remove Vegetation"));
     }
     else
     {
         m_ui->paintObjectsButton->setChecked(false);
-        GetIEditor()->SetStatusText(tr("Push Paint button to start painting").toLatin1());
+        GetIEditor()->SetStatusText(tr("Push Paint button to start painting"));
     }
 
     m_ui->pressureRadius->setChecked(m_tool->GetPressureRadius());
@@ -922,7 +922,7 @@ void CVegetationPanel::OnRemoveCategory()
 
     m_tool->ClearThingSelection();
 
-    CUndo undo(tr("Remove VegObject(s)").toLatin1());
+    CUndo undo(tr("Remove VegObject(s)").toUtf8());
 
     m_bIgnoreSelChange = true;
 
@@ -952,7 +952,7 @@ void CVegetationPanel::OnDistribute()
 {
     if (QMessageBox::Yes == QMessageBox::question(this, tr("Vegetation Distribute"), tr("Are you sure you want to Distribute?")))
     {
-        CUndo undo(tr("Vegetation Distribute").toLatin1());
+        CUndo undo(tr("Vegetation Distribute").toUtf8());
         QApplication::setOverrideCursor(Qt::WaitCursor);
         if (m_tool)
         {
@@ -967,7 +967,7 @@ void CVegetationPanel::OnClear()
 {
     if (QMessageBox::Yes == QMessageBox::question(this, tr("Vegetation Clear"), tr("Are you sure you want to Clear?")))
     {
-        CUndo undo(tr("Vegetation Clear").toLatin1());
+        CUndo undo(tr("Vegetation Clear").toUtf8());
         QApplication::setOverrideCursor(Qt::WaitCursor);
         if (m_tool)
         {
@@ -980,7 +980,7 @@ void CVegetationPanel::OnClear()
 //////////////////////////////////////////////////////////////////////////
 void CVegetationPanel::OnBnClickedScale()
 {
-    CUndo undo(tr("Vegetation Scale").toLatin1());
+    CUndo undo(tr("Vegetation Scale").toUtf8());
     if (m_tool)
     {
         m_tool->ScaleObjects();
@@ -993,7 +993,7 @@ void CVegetationPanel::OnBnClickedImport()
     QString file;
     if (CFileUtil::SelectFile("Vegetation Objects (*.veg);;All Files (*)", GetIEditor()->GetLevelFolder(), file))
     {
-        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toLatin1().data());
+        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toUtf8().data());
         if (!root)
         {
             return;
@@ -1002,7 +1002,7 @@ void CVegetationPanel::OnBnClickedImport()
         QWaitCursor wait;
 
         m_tool->ClearThingSelection();
-        CUndo undo(tr("Import Vegetation ").toLatin1());
+        CUndo undo(tr("Import Vegetation ").toUtf8());
 
         m_ui->objectPropertiesControl->RemoveAllItems();
 
@@ -1029,7 +1029,7 @@ void CVegetationPanel::OnBnClickedMerge()
     if (QMessageBox::Yes == QMessageBox::question(this, tr("Merge Vegetation"), tr("Are you sure you want to merge?")))
     {
         QWaitCursor wait;
-        CUndo undo(tr("Vegetation Merge").toLatin1());
+        CUndo undo(tr("Vegetation Merge").toUtf8());
         std::vector<CVegetationObject*> delObjects;
 
         CVegetationObject* pObject = objects[0];
@@ -1053,7 +1053,7 @@ void CVegetationPanel::OnBnClickedMerge()
 //////////////////////////////////////////////////////////////////////////
 void CVegetationPanel::OnBnClickedExport()
 {
-    CUndo undo(tr("Vegetation Export").toLatin1());
+    CUndo undo(tr("Vegetation Export").toUtf8());
     Selection objects;
     m_tool->GetSelectedObjects(objects);
     if (objects.empty())
@@ -1072,14 +1072,14 @@ void CVegetationPanel::OnBnClickedExport()
             XmlNodeRef node = root->newChild("VegetationObject");
             m_vegetationMap->ExportObject(objects[i], node);
         }
-        XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), root, fileName.toLatin1().data());
+        XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), root, fileName.toUtf8().data());
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CVegetationPanel::OnBnClickedRandomRotate()
 {
-    CUndo undo(tr("Vegetation Random Rotate").toLatin1());
+    CUndo undo(tr("Vegetation Random Rotate").toUtf8());
     if (m_tool)
     {
         m_tool->DoRandomRotate();
@@ -1089,7 +1089,7 @@ void CVegetationPanel::OnBnClickedRandomRotate()
 //////////////////////////////////////////////////////////////////////////
 void CVegetationPanel::OnBnClickedClearRotate()
 {
-    CUndo undo(tr("Vegetation Clear Rotate").toLatin1());
+    CUndo undo(tr("Vegetation Clear Rotate").toUtf8());
     if (m_tool)
     {
         m_tool->DoClearRotate();
@@ -1209,7 +1209,7 @@ void CVegetationPanel::OnAdd()
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    CUndo undo(tr("Add VegObject(s)").toLatin1());
+    CUndo undo(tr("Add VegObject(s)").toUtf8());
     for (const AssetBrowserEntry* selectionResults : selection.GetResults())
     {
         AZStd::vector<const ProductAssetBrowserEntry*> products;
@@ -1277,7 +1277,7 @@ void CVegetationPanel::OnClone()
     else
     {
         // clone all selected elements in current group / category
-        CUndo undo(tr("Clone VegObject").toLatin1());
+        CUndo undo(tr("Clone VegObject").toUtf8());
         foreach(auto & selection, selected)
         {
             CVegetationObject* object = selection.data(Role::VegetationObjectRole).value<CVegetationObject*>();
@@ -1312,7 +1312,7 @@ void CVegetationPanel::OnReplace()
 
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    CUndo undo(tr("Replace VegObject").toLatin1());
+    CUndo undo(tr("Replace VegObject").toUtf8());
     object->SetFileName(selection.GetResult()->GetFullPath().c_str());
     m_vegetationMap->RepositionObject(object);
 
@@ -1346,7 +1346,7 @@ void CVegetationPanel::OnRemove()
     m_tool->ClearThingSelection();
 
     QWaitCursor wait;
-    CUndo undo(tr("Remove VegObject(s)").toLatin1());
+    CUndo undo(tr("Remove VegObject(s)").toUtf8());
 
     m_bIgnoreSelChange = true;
     for (auto object : objects)

@@ -505,6 +505,10 @@ _smart_ptr<IMaterial> CMatMan::MakeMaterialFromXml(const AZStd::string& sMtlName
         pMtl->SetDirty(false);
     }
 
+    uint32 dccMaterialHash = 0;
+    node->getAttr("DccMaterialHash", dccMaterialHash);
+    pMtl->SetDccMaterialHash(dccMaterialHash);
+
     if (!(mtlFlags & MTL_FLAG_MULTI_SUBMTL))
     {
         shaderName = node->getAttr("Shader");
@@ -1243,6 +1247,7 @@ bool CMatMan::SaveMaterial(XmlNodeRef node, _smart_ptr<IMaterial> pMtl)
 {
     // Saving.
     node->setAttr("MtlFlags", pMtl->GetFlags());
+    node->setAttr("DccMaterialHash", pMtl->GetDccMaterialHash());
 
     SShaderItem& si = pMtl->GetShaderItem(0);
     SInputShaderResources m_shaderResources = SInputShaderResources(si.m_pShaderResources);

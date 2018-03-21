@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <AzFramework/Input/Channels/InputChannelId.h>
+#include <AzFramework/Input/Channels/InputChannel.h>
 #include <AzFramework/Input/Devices/InputDeviceId.h>
 
 #include <AzCore/std/containers/unordered_map.h>
@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    class InputChannel;
     class InputDevice;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +34,8 @@ namespace AzFramework
         //! EBus Trait: requests can be addressed to a specific InputDeviceId so that they are only
         //! handled by one input device that has connected to the bus using that unique id, or they
         //! can be broadcast to all input devices that have connected to the bus, regardless of id.
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        //! Connected input devices are ordered by their local player index from lowest to highest.
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ByIdAndOrdered;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! EBus Trait: requests should be handled by only one input device connected to each id
@@ -46,6 +46,10 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! EBus Trait: requests can be addressed to a specific InputDeviceId
         using BusIdType = InputDeviceId;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! EBus Trait: requests are handled by connected devices in the order of local player index
+        using BusIdOrderCompare = AZStd::less<BusIdType>;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         ///@{
@@ -61,6 +65,16 @@ namespace AzFramework
         //! \param[in] deviceId Id of the input device to find
         //! \return Pointer to the input device if it was found, nullptr if it was not
         static const InputDevice* FindInputDevice(const InputDeviceId& deviceId);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Request the ids of all input channels (optionally those associated with an input device)
+        //! that return custom data of a specific type (InputChannel::GetCustomData<CustomDataType>).
+        //! \param[out] o_channelIds The set of input channel ids to return
+        //! \param[in] deviceId (optional) Id of a specific input device to query for input channels
+        //! \tparam CustomDataType Only consider input channels that return custom data of this type
+        template<class CustomDataType>
+        static void GetInputChannelIdsWithCustomDataOfType(InputChannelIdSet& o_channelIds,
+                                                           const InputDeviceId* deviceId = nullptr);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Gets the input device that is uniquely identified by the InputDeviceId used to address
@@ -133,6 +147,31 @@ namespace AzFramework
         const InputDevice* inputDevice = nullptr;
         InputDeviceRequestBus::EventResult(inputDevice, deviceId, &InputDeviceRequests::GetInputDevice);
         return inputDevice;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    template<class CustomDataType>
+    inline void InputDeviceRequests::GetInputChannelIdsWithCustomDataOfType(
+        InputChannelIdSet& o_channelIds,
+        const InputDeviceId* deviceId)
+    {
+        InputChannelByIdMap inputChannelsById;
+        if (deviceId)
+        {
+            InputDeviceRequestBus::Event(*deviceId, &InputDeviceRequests::GetInputChannelsById, inputChannelsById);
+        }
+        else
+        {
+            InputDeviceRequestBus::Broadcast(&InputDeviceRequests::GetInputChannelsById, inputChannelsById);
+        }
+
+        for (const auto& inputChannelById : inputChannelsById)
+        {
+            if (inputChannelById.second->GetCustomData<CustomDataType>() != nullptr)
+            {
+                o_channelIds.insert(inputChannelById.first);
+            }
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

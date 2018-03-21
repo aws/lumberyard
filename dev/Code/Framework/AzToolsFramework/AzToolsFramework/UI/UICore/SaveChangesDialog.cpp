@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "SaveChangesDialog.hxx"
 #include <UI/UICore/ui_SaveChangesDialog.h>
 

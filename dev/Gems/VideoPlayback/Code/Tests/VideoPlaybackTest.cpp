@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "VideoPlayback_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

@@ -15,10 +15,7 @@
 #define __animtime_h__
 
 #include <IXml.h>
-#pragma warning(push)
-#pragma warning(disable:4819)   // Invalid character not in default code page
-#include <boost/math/special_functions/round.hpp>
-#pragma warning(pop)
+#include <AzCore/Casting/numeric_cast.h>
 
 struct SAnimTime
 {
@@ -47,7 +44,7 @@ struct SAnimTime
     explicit SAnimTime(int32 ticks)
         : m_ticks(ticks) {}
     explicit SAnimTime(float time)
-        : m_ticks(static_cast<int32>(boost::math::lround(static_cast<double>(time) * numTicksPerSecond))) {}
+        : m_ticks(aznumeric_caster(std::lround(static_cast<double>(time) * numTicksPerSecond))) {}
 
     static uint GetFrameRateValue(EFrameRate frameRate)
     {
@@ -127,8 +124,8 @@ struct SAnimTime
     SAnimTime operator*(SAnimTime r) const { SAnimTime temp = *this; temp.m_ticks *= r.m_ticks; return temp; }
     SAnimTime operator/(SAnimTime r) const { SAnimTime temp; temp.m_ticks = static_cast<int32>((static_cast<int64>(m_ticks) * numTicksPerSecond) / r.m_ticks); return temp; }
     SAnimTime operator%(SAnimTime r) const { SAnimTime temp = *this; temp.m_ticks %= r.m_ticks; return temp; }
-    SAnimTime operator*(float r) const { SAnimTime temp; temp.m_ticks = static_cast<int32>(boost::math::lround(static_cast<double>(m_ticks) * r)); return temp; }
-    SAnimTime operator/(float r) const { SAnimTime temp; temp.m_ticks = static_cast<int32>(boost::math::lround(static_cast<double>(m_ticks) / r)); return temp; }
+    SAnimTime operator*(float r) const { SAnimTime temp; temp.m_ticks = aznumeric_caster(std::lround(static_cast<double>(m_ticks) * r)); return temp; }
+    SAnimTime operator/(float r) const { SAnimTime temp; temp.m_ticks = aznumeric_caster(std::lround(static_cast<double>(m_ticks) / r)); return temp; }
     SAnimTime& operator+=(SAnimTime r) { *this = *this + r; return *this; }
     SAnimTime& operator-=(SAnimTime r) { *this = *this - r; return *this; }
     SAnimTime& operator*=(SAnimTime r) { *this = *this * r; return *this; }

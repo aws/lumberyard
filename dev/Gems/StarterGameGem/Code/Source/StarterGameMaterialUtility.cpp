@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "StarterGameGem_precompiled.h"
 #include "StarterGameMaterialUtility.h"
 
 #include "StarterGameEntityUtility.h"
@@ -38,7 +38,7 @@ namespace StarterGameGem
 
 	_smart_ptr<IMaterial> StarterGameMaterialUtility::GetSubMaterial(_smart_ptr<IMaterial> parentMaterial, int subMtlIndex)
 	{
-		return subMtlIndex > 0 ? parentMaterial->GetSubMtl(subMtlIndex) : parentMaterial;
+		return subMtlIndex >= 0 ? parentMaterial->GetSubMtl(subMtlIndex) : parentMaterial;
 	}
 
     //===========================================================================================

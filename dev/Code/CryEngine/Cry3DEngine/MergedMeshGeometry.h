@@ -18,6 +18,8 @@
 #include "MergedMeshRenderNode.h"
 #include "IIndexedMesh.h"
 
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
 #define c_MergedMeshesExtent (16.0f)
 #define c_MergedMeshChunkVersion (0xcafebab7)
 
@@ -400,7 +402,7 @@ struct SMMRMGeometry
         IStatObj* srcObj;
     };
     size_t refCount;
-    JobManager::SJobState geomPrepareState;
+    AZ::LegacyJobExecutor geomPrepareJobExecutor;
     const bool is_obj : 1;
 
 
@@ -417,7 +419,7 @@ struct SMMRMGeometry
         , deform()
         , state(CREATED)
         , srcObj(obj)
-        , geomPrepareState()
+        , geomPrepareJobExecutor()
         , is_obj(true)
     {
         memset (pChunks, 0, sizeof(pChunks));
@@ -438,7 +440,7 @@ struct SMMRMGeometry
         , pSpineInfo()
         , deform()
         , state(CREATED)
-        , geomPrepareState()
+        , geomPrepareJobExecutor()
         , is_obj(false)
     {
         memset (pChunks, 0, sizeof(pChunks));

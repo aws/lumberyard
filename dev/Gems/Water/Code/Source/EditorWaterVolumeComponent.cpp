@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Water_precompiled.h"
 #include "EditorWaterVolumeComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -46,7 +46,7 @@ namespace Water
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorWaterVolumeCommon::m_displayFilled, "Display Filled", "Renders the area as a filled volume")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorWaterVolumeCommon::m_displayFilled, "Display Filled", "Renders the area as a filled volume.")
                     ;
 
                 editContext->Class<WaterVolumeCommon>("Water Volume Common Configuration", "")
@@ -54,20 +54,20 @@ namespace Water
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_materialAsset, "Material", "The water material to use. Given material must have a water shader")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_materialAsset, "Material", "The water material to use. Given material must have a water shader.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnMaterialAssetChange)
                     
-                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &WaterVolumeCommon::m_minSpec, "Minimum spec", "The minimum engine spec for this volume to render")
+                    ->DataElement(AZ::Edit::UIHandlers::ComboBox, &WaterVolumeCommon::m_minSpec, "Minimum spec", "The minimum engine spec for this volume to render.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnMinSpecChange)
                     ->EnumAttribute(EngineSpec::Never, "Never")
                     ->EnumAttribute(EngineSpec::VeryHigh, "Very high")
                     ->EnumAttribute(EngineSpec::High, "High")
                     ->EnumAttribute(EngineSpec::Medium, "Medium")
                     ->EnumAttribute(EngineSpec::Low, "Low")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_surfaceUScale, "Surface U Scale", "How much the water surface texture tiles on the U axis")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_surfaceUScale, "Surface U Scale", "How much the water surface texture tiles on the U axis.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnWaterAreaParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_surfaceVScale, "Surface V Scale", "How much the water surface texture tiles on the V axis")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_surfaceVScale, "Surface V Scale", "How much the water surface texture tiles on the V axis.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnWaterAreaParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_viewDistanceMultiplier, "View Distance Multiplier", "Adjusts max view distance. If 1.0 then default is used. 1.1 would be 10% further than default.")
@@ -77,94 +77,94 @@ namespace Water
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Fog")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogDensity, "Density", "The more dense the water fog, the harder it is to see through")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogDensity, "Density", "The more dense the water fog, the harder it is to see through.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnFogDensityChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(AZ::Edit::UIHandlers::Color, &WaterVolumeCommon::m_fogColor, "Color", "Color of the water fog")
+                    ->DataElement(AZ::Edit::UIHandlers::Color, &WaterVolumeCommon::m_fogColor, "Color", "Color of the water fog.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnFogColorChange)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogColorMultiplier, "Color Multiplier", "Multiplied against the Color parameter")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogColorMultiplier, "Color Multiplier", "Multiplied against the Color parameter.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnFogColorChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogColorAffectedBySun, "Color Affected by Sun", "Should sky color affect the water's fog color. Useful if this volume is outdoors")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogColorAffectedBySun, "Color Affected by Sun", "Should sky color affect the water's fog color. Useful if this volume is outdoors.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnFogColorAffectedBySunChange)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogShadowing, "Shadowing", "How much shadows should affect the water's fog color")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_fogShadowing, "Shadowing", "How much shadows should affect the water's fog color.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnFogShadowingChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_capFogAtVolumeDepth, "Cap at Volume Depth", "Should fog still render if the player is underneath the volume")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_capFogAtVolumeDepth, "Cap at Volume Depth", "Should fog still render if the player is underneath the volume.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnCapFogAtVolumeDepthChange)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Caustics")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticsEnabled, "Enabled", "Enables water caustics")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticsEnabled, "Enabled", "Enables water caustics.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnCausticsEnableChange)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticIntensity, "Intensity", "Affects the brightness and visibility of caustics")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticIntensity, "Intensity", "Affects the brightness and visibility of caustics.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnCausticIntensityChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticTiling, "Tiling", "Affects how many caustics are rendered")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticTiling, "Tiling", "Affects how many caustics are rendered.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnCausticTilingChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticHeight, "Height", "Affects how high off the surface that caustics are rendered")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_causticHeight, "Height", "Affects how high off the surface that caustics are rendered.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnCausticHeightChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Advanced")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_spillableVolume, "Spillable Volume", "How much volume can spill into a container below")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_spillableVolume, "Spillable Volume", "How much volume can spill into a container below.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_volumeAccuracy, "Volume Accuracy", "How accurate the surface level of the spilled volume is")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_volumeAccuracy, "Volume Accuracy", "How accurate the surface level of the spilled volume is.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_extrudeBorder, "Extrude Border", "How much additional border to add to the spilled volume")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_extrudeBorder, "Extrude Border", "How much additional border to add to the spilled volume.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_convexBorder, "Convex Border", "Should the convex hull of the container be taken into account")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_convexBorder, "Convex Border", "Should the convex hull of the container be taken into account.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_objectSizeLimit, "Object Size Limit", "The minimum volume that an object must have to affect the water surface")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_objectSizeLimit, "Object Size Limit", "The minimum volume that an object must have to affect the water surface.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Wave Simulation")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSurfaceCellSize, "Surface Cell Size", "How large each cell of the water volume is")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSurfaceCellSize, "Surface Cell Size", "How large each cell of the water volume is.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSpeed, "Speed", "How fast each wave moves")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSpeed, "Speed", "How fast each wave moves.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveDampening, "Dampening", "How much dampening force is applied during simulation")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveDampening, "Dampening", "How much dampening force is applied during simulation.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveTimestep, "Timestep", "How often the wave simulation ticks")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveTimestep, "Timestep", "How often the wave simulation ticks.")
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.001f)		// Above 1 millisec updates - closer to 0 will create major slowdown, and 0 will freeze the editor
+
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSleepThreshold, "Sleep Threshold", "The lowest velocity for a cell to rest.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSleepThreshold, "Sleep Threshold", "The lowest velocity for a cell to rest")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveDepthCellSize, "Depth Cell Size", "How large each depth cell is.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveDepthCellSize, "Depth Cell Size", "How large each depth cell is")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveHeightLimit, "Height Limit", "The highest and lowest that the surface can deform.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveHeightLimit, "Height Limit", "The highest and lowest that the surface can deform")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveForce, "Force", "How strong the wave force is.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveForce, "Force", "How strong the wave force is")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSimulationAreaGrowth, "Simulation Area Growth", "Additional space added if the water simulation will cause expansion")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSimulationAreaGrowth, "Simulation Area Growth", "Additional space added if the water simulation will cause expansion.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ;
@@ -177,10 +177,12 @@ namespace Water
         WaterVolumeCommon::Activate();
 
         EditorWaterVolumeComponentRequestBus::Handler::BusConnect(m_entityId);
+        AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
     }
 
     void EditorWaterVolumeCommon::Deactivate()
     {
+        AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
         EditorWaterVolumeComponentRequestBus::Handler::BusDisconnect(m_entityId);
 
         WaterVolumeCommon::Deactivate();
@@ -238,6 +240,12 @@ namespace Water
         OnViewDistanceMultiplierChange();
     }
 
+    void EditorWaterVolumeCommon::OnEditorSpecChange()
+    {
+        //Trigger the min spec to update and refresh
+        OnMinSpecChange();
+    }
+
     void EditorWaterVolumeComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides)
     {
         provides.push_back(AZ_CRC("WaterVolumeService", 0x895e29b1));
@@ -266,7 +274,7 @@ namespace Water
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<EditorWaterVolumeComponent>("Water Volume", "")
+                editContext->Class<EditorWaterVolumeComponent>("Water Volume", "A volume that represents a small body of water.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Environment")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/WaterVolume.png")

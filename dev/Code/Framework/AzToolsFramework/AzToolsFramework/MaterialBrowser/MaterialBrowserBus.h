@@ -38,6 +38,6 @@ namespace AzToolsFramework
             virtual bool IsMultiMaterial(const AZ::Data::AssetId& assetId) = 0;
         };
 
-        using MaterialBrowserRequestsBus = AZ::EBus<MaterialBrowserRequests>;
+        using MaterialBrowserRequestBus = AZ::EBus<MaterialBrowserRequests>;
     } // namespace MaterialBrowser
 } // namespace AzToolsFramework

@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "Maestro_precompiled.h"
 #include "AnimComponentNode.h"
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Color.h>

@@ -1,0 +1,166 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "version": "1.0.0",
+        "title": "$RestApiResourceName$",
+        "description": "Cross Gem API to allow other CloudGems to track players banned from their systems ($DeploymentName$ deployment)."
+    },
+    "schemes": [
+        "https"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "x-amazon-cloud-canvas-lambda-dispatch": {
+        "lambda": "$ServiceLambdaArn$"
+    },
+    "paths": {
+        "/playerban": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "ban_player"
+            },
+            "post" : {
+                "parameters": [
+                    {
+                        "name": "request_data",
+                        "in": "body",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/definitions/BanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ban a player from a system",
+                        "schema": {
+                            "$ref": "#/definitions/BanOutcome"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "parameters": [
+                    {
+                        "name": "request_data",
+                        "in": "body",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/definitions/BanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ban a player from a system",
+                        "schema": {
+                            "$ref": "#/definitions/BanOutcome"
+                        }
+                    }
+                }
+            }
+        },
+        "/list": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "ban_list"
+            },
+            "get": {
+                "description": "Get a list of banned players",
+                "responses": {
+                    "200": {
+                        "description": "a list of players",
+                        "schema": {
+                            "$ref": "#/definitions/BannedPlayerList"
+                        }
+                    }
+                }
+            }
+        },
+        "/accountinfo/{cog_id}": {
+            "get": {
+                "description": "Gets the player account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "The players Cognito Identity ID.",
+                        "name": "cog_id",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The player's account",
+                        "schema": {
+                            "$ref": "#/definitions/AccountDescription"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions" : {
+        "AccountDescription": {
+            "properties": {
+                "AccountId": {
+                    "type": "string"
+                },
+                "AccountBlacklisted": {
+                    "type": "boolean"
+                },
+                "CognitoIdentityId": {
+                    "type": "string"
+                },
+                "CognitoUsername": {
+                    "type": "string"
+                },
+                "PlayerName": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "BanRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "The id of the player to be banned.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ]
+        },
+        "BanOutcome": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "description": "The banning response status.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "status"
+            ]
+        },
+        "BannedPlayerList": {
+            "type": "object",
+            "properties": {
+                "players": {
+                    "$ref": "#/definitions/StringList"
+                }
+            }
+        },
+        "StringList": {
+            "type": "array",
+            "description": "A string array of user names. Example: ['player1', 'player2']",
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+}

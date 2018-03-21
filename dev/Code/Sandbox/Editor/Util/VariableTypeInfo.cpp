@@ -182,7 +182,7 @@ void CVariableTypeInfo::Set(const char* value)
 
 void CVariableTypeInfo::Set(const QString& value)
 {
-    Set(value.toLatin1().data());
+    Set(value.toUtf8().data());
 }
 
 void CVariableTypeInfo::Set(float value)

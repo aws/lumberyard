@@ -2153,7 +2153,7 @@ bool CREBeam::mfDraw(CShader* ef, SShaderPass* sl)
     SDepthTexture D3dDepthSurface;
     SDepthTexture* pCurrDepthSurf = NULL;
 
-#if defined(WIN32) || defined(WIN64) || defined(DURANGO) || defined(APPLE) || defined(LINUX) // Depth surface nastiness
+#if D3DRENDERRE_CPP_TRAIT_MFDRAW_SETDEPTHSURF // Depth surface nastiness
     if (CTexture::IsTextureExist(pLowResRTDepth))
     {
         D3dDepthSurface.nWidth = pLowResRTDepth->GetWidth();
@@ -2514,7 +2514,7 @@ bool CREGeomCache::mfDraw(CShader* ef, SShaderPass* sfm)
                     rRP.m_FirstIndex = chunk.nFirstIndexId;
                     rRP.m_RendNumIndices = chunk.nNumIndices;
 
-#if defined(HW_INSTANCING_ENABLED) && !defined(ORBIS)
+#if defined(HW_INSTANCING_ENABLED) && D3DRENDERRE_CPP_TRAIT_MFDRAW_USEINSTANCING
                     const bool bUseInstancing = (CRenderer::CV_r_geominstancing != 0) && (numInstances > CRenderer::CV_r_GeomCacheInstanceThreshold);
 #else
                     const bool bUseInstancing = false;

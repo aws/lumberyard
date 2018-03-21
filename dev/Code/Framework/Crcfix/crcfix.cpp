@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
@@ -19,7 +20,6 @@
 #include <stdlib.h>
 #include <io.h>
 #include <sys/stat.h>
-#include <windows.h>
 
 int g_totalFixTimeMs = 0;
 int g_longestFixTimeMs = 0;
@@ -234,7 +234,7 @@ int main(int argc, char* argv[])
             char log[1024];
             DWORD oCount;
 
-            sprintf(log, "Batches processed: %d\n\tFiles found: %d\n\tFiles processed: %d\n\tFiles fixed: %d\n\tFiles failed: %d\n", entries.size(), nFound, nProcessed, nFixed, nFailed);
+            sprintf(log, "Batches processed: %zu\n\tFiles found: %d\n\tFiles processed: %d\n\tFiles fixed: %d\n\tFiles failed: %d\n", entries.size(), nFound, nProcessed, nFixed, nFailed);
             WriteFile(hFile, log, static_cast<DWORD>(strlen(log)), &oCount, NULL);
 
             AZStd::chrono::system_clock::time_point endTime = AZStd::chrono::system_clock::now();
@@ -395,8 +395,17 @@ int CRCfix::Fix(Filename srce)
 
     if (!infile || !outfile)
     {
-        fclose(infile);
-        fclose(outfile);
+        if (infile)
+        {
+            fclose(infile);
+            infile = nullptr;
+        }
+
+        if (outfile)
+        {
+            fclose(outfile);
+            outfile = nullptr;
+        }
 
         int dt = static_cast<int>(AZStd::chrono::milliseconds(AZStd::chrono::system_clock::now() - startTime).count());
         g_totalFixTimeMs += dt;

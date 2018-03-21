@@ -2201,7 +2201,7 @@ namespace BehaviorTree
     public:
         struct RuntimeData
         {
-            boost::shared_ptr<Vec3> lookTarget;
+            AZStd::shared_ptr<Vec3> lookTarget;
         };
 
         Look()

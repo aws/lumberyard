@@ -42,28 +42,6 @@
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 
-#define IDC_TASKPANEL 1
-
-#define IDC_SPLIT_WINDOW 3
-#define IDC_REPORT_CONTROL AFX_IDW_PANE_FIRST
-#define IDC_PROPERTYPANEL AFX_IDW_PANE_FIRST + 1
-
-#define ID_PANEL_VEG_DISABLE_PREVIEW 200
-
-#define COLUMN_VISIBLE        0
-#define COLUMN_OBJECT         1
-#define COLUMN_CATEGORY       2
-#define COLUMN_COUNT          3
-#define COLUMN_TEXSIZE        4
-#define COLUMN_MATERIAL       5
-#define COLUMN_ELEVATION_MIN  6
-#define COLUMN_ELEVATION_MAX  7
-#define COLUMN_SLOPE_MIN      8
-#define COLUMN_SLOPE_MAX      9
-
-#define COLUMN_MAIL_ICON    0
-#define COLUMN_CHECK_ICON   2
-
 #define VDB_COMMAND_HIDE    1
 #define VDB_COMMAND_UNHIDE  2
 
@@ -278,7 +256,7 @@ void CVegetationDataBasePage::OnBnClickedImport()
     QString file;
     if (CFileUtil::SelectFile("Vegetation Objects (*.veg);;All Files (*)", GetIEditor()->GetLevelFolder(), file))
     {
-        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toLatin1().data());
+        XmlNodeRef root = XmlHelpers::LoadXmlFromFile(file.toUtf8().data());
         if (!root)
         {
             return;
@@ -464,7 +442,7 @@ void CVegetationDataBasePage::ReloadObjects()
 
         bool bAdded = false;
 
-        const QByteArray chr = pObject->GetFileName().toLatin1();
+        const QByteArray chr = pObject->GetFileName().toUtf8();
         const char* chr1 = strrchr(chr, '/');
         const char* chr2 = strrchr(chr, '\\');
         if (chr2 && chr2 > chr1)
@@ -477,7 +455,7 @@ void CVegetationDataBasePage::ReloadObjects()
             chr1++;
             for (std::vector<CVegetationObject*>::iterator itID = vegObjs.begin(); itID != vegObjs.end(); ++itID)
             {
-                const QByteArray chl = (*itID)->GetFileName().toLatin1();
+                const QByteArray chl = (*itID)->GetFileName().toUtf8();
                 const char* chl1 = strrchr(chl, '/');
                 const char* chl2 = strrchr(chl, '\\');
                 if (chl2 && chl2 > chl1)

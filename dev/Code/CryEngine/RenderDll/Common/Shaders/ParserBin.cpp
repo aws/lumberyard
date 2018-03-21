@@ -947,9 +947,9 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
     const char* strUnsupportedFeats = "CParserBin::SetupForGMEM: cannot use 256bpp GMEM path due to SSDO or SSR being used! It is recommended to disable these features on mobile platforms. Forcing 128bpp path instead.";
     const char* strUnsupportedGmem256 = "CParserBin::SetupForGMEM: 256bpp GMEM path not supported on this device! Forcing 128bpp GMEM path instead.";
     const char* strUnsupportedGmem128 = "CParserBin::SetupForGMEM: 128bpp GMEM path not supported on this device! Forcing regular render path instead.";
-    AZStd::string glesGMEMShaderCache;
+
 #if defined(OPENGL_ES)
-    glesGMEMShaderCache = GetGLESShaderCachePath();
+    g_generatedShaderPath = GetGLESShaderCachePath();
 #endif
 
     switch (gmemPath)
@@ -997,11 +997,10 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
         }
         else if (m_nPlatform == SF_GLES3)
         {
-            glesGMEMShaderCache.append(gShaderCacheAppendGMEM256);
-            gRenDev->m_cEF.m_ShadersCache = glesGMEMShaderCache.c_str();
+            g_generatedShaderPath.append(gShaderCacheAppendGMEM256);
+            gRenDev->m_cEF.m_ShadersCache = g_generatedShaderPath.c_str();
         }
 
-        // Favor PLS extension if available
         if (RenderCapabilities::SupportsPLSExtension())
         {
             AddMacro(CParserBin::fxToken("GMEM_PLS"), nMacro, curMacroNum++, 0, m_StaticMacros);
@@ -1032,11 +1031,10 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
         }
         else if (m_nPlatform == SF_GLES3)
         {
-            glesGMEMShaderCache.append(gShaderCacheAppendGMEM128);
-            gRenDev->m_cEF.m_ShadersCache = glesGMEMShaderCache.c_str();
+            g_generatedShaderPath.append(gShaderCacheAppendGMEM128);
+            gRenDev->m_cEF.m_ShadersCache = g_generatedShaderPath.c_str();
         }
 
-        // Favor PLS extension if available
         if (RenderCapabilities::SupportsPLSExtension())
         {
             AddMacro(CParserBin::fxToken("GMEM_PLS"), nMacro, curMacroNum++, 0, m_StaticMacros);

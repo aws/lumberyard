@@ -167,7 +167,6 @@ public:
         }
         macro()->SwapCommand(row, targetRow);
         endMoveRows();
-        CToolBoxManager::UpdateShortcutsAndIcons();
         return true;
     }
 
@@ -275,7 +274,6 @@ public:
         }
         GetIEditor()->GetToolBoxManager()->SwapMacro(row, targetRow, true);
         endMoveRows();
-        CToolBoxManager::UpdateShortcutsAndIcons();
         return true;
     }
 
@@ -414,7 +412,6 @@ public:
         }
 
         endRemoveRows();
-        CToolBoxManager::UpdateShortcutsAndIcons();
         return true;
     }
 
@@ -466,12 +463,6 @@ CToolsConfigPage::CToolsConfigPage(QWidget* parent)
     , m_commandModel(new CommandModel(this))
     , m_completionModel(new QStringListModel(this))
     , m_ui(new Ui::ToolsConfigPage)
-#ifdef KDAB_TEMPORARILY_REMOVED
-    // We're porting away from XTPShortcutManager to KeyboardCustomizationSettings
-    // That means this dialog will need to be ported to QActions before we do that.
-    // So, when porting to Qt, uncomment this and use KeyboardCustomizationSettings
-    , m_macroShortcutKey(((CMainFrame*)AfxGetMainWnd())->XTPShortcutManager())
-#endif
 {
     m_ui->setupUi(this);
 
@@ -570,8 +561,7 @@ void CToolsConfigPage::OnSelchangeMacroList()
 
     if (m_ui->m_macroList->currentIndex().isValid())
     {
-        // Port to KeyboardCustomizationDialog after porting to Qt/QAction, , don't use XTPShortcutManager()
-        /// Update the shortcut.
+        // Update the shortcut.
         auto pShortcutMgr = MainWindow::instance()->GetShortcutManager();
         m_ui->m_macroShortcutKey->clear();
         if (pShortcutMgr && macro)
@@ -705,10 +695,6 @@ void CToolsConfigPage::OnAssignMacroShortcut()
 
     QKeySequence editorAccel = m_ui->m_macroShortcutKey->keySequence();
     CToolBoxMacro* pMacro = macroIndex.data(Qt::UserRole).value<CToolBoxMacro*>();
-#ifdef KDAB_TEMPORARILY_REMOVED
-    int id(macroIndex.row() + ID_TOOL_FIRST);
-    editorAccel.cmd = id;
-#endif
 
     QAction* action = pShortcutMgr->FindActionForShortcut(editorAccel);
     bool bReassign = false;
@@ -724,14 +710,7 @@ void CToolsConfigPage::OnAssignMacroShortcut()
         action->setShortcut(QKeySequence());
     }
 
-    if (true)//CToolBoxManager::AddShortcut(editorAccel) )
-    {
-        pMacro->SetShortcutName(m_ui->m_macroShortcutKey->keySequence());
-    }
-    else
-    {
-        QMessageBox::critical(this, QString(), tr("This macro can't be assigned."));
-    }
+    pMacro->SetShortcutName(m_ui->m_macroShortcutKey->keySequence());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -793,7 +772,7 @@ void CToolsConfigPage::OnSelectMacroIcon()
         {
             const QPixmap pixmap(iconPath);
             m_ui->m_macroIcon->setPixmap(pixmap);
-            pMacro->SetIconPath(iconPath.toLatin1().data());
+            pMacro->SetIconPath(iconPath.toUtf8().data());
         }
     }
 }

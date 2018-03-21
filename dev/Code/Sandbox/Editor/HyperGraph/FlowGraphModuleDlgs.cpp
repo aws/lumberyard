@@ -64,7 +64,7 @@ CFlowGraphEditModuleDlg::CFlowGraphEditModuleDlg(IFlowGraphModule* pModule, QWid
     connect(ui->EDIT_MODULE_OUTPUT, &QPushButton::clicked, this, &CFlowGraphEditModuleDlg::OnCommand_EditOutput);
     connect(ui->DELETE_MODULE_OUTPUT, &QPushButton::clicked, this, &CFlowGraphEditModuleDlg::OnCommand_DeleteOutput);
 
-    connect(ui->OK, &QPushButton::clicked, this, &CFlowGraphEditModuleDlg::OnOK);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &CFlowGraphEditModuleDlg::OnOK);
 }
 
 CFlowGraphEditModuleDlg::~CFlowGraphEditModuleDlg()
@@ -299,8 +299,8 @@ CFlowGraphNewModuleInputDlg::CFlowGraphNewModuleInputDlg(IFlowGraphModule::SModu
     }
 
     // connect
-    connect(ui->OK, &QPushButton::clicked, this, &CFlowGraphNewModuleInputDlg::OnOK);
-    connect(ui->CANCEL, &QPushButton::clicked, this, &QDialog::reject);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &CFlowGraphNewModuleInputDlg::OnOK);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 CFlowGraphNewModuleInputDlg::~CFlowGraphNewModuleInputDlg()
@@ -331,8 +331,8 @@ CFlowGraphNewDlg::CFlowGraphNewDlg(const QString& title, const QString& text, QW
 
     setWindowTitle(title);
 
-    connect(ui->OK, &QPushButton::clicked, this, &CFlowGraphNewDlg::OnOK);
-    connect(ui->CANCEL, &QPushButton::clicked, this, &QDialog::reject);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &CFlowGraphNewDlg::OnOK);
+    connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 void CFlowGraphNewDlg::OnOK()

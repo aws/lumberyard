@@ -1,0 +1,13 @@
+{
+    "auto":
+    {
+        "Root":
+        [
+        ],
+        "Source":
+        [
+            "Source/Cocoa/CocoaAudioRecorder.h",
+            "Source/Cocoa/CocoaAudioRecorder.mm"
+        ]
+    }
+}

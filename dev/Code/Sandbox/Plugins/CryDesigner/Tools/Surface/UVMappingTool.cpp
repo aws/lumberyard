@@ -132,7 +132,7 @@ void UVMappingTool::Leave()
 
 void UVMappingTool::OpenUVMappingWnd()
 {
-    GetIEditor()->ExecuteCommand("general.open_pane '%s'", ToolName());
+    GetIEditor()->ExecuteCommand(QStringLiteral("general.open_pane '%1'").arg(ToolName()));
 }
 
 void UVMappingTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point)

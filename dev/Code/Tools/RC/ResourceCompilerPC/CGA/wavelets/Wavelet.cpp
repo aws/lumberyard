@@ -13,7 +13,7 @@
 
 #include "stdafx.h"
 
-#include "wavelet.h"
+#include "Wavelet.h"
 
 
 void CBaseDT::Denoise(TWavereal cut)

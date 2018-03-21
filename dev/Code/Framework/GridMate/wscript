@@ -36,10 +36,6 @@ def build(bld):
         msvc_cxxflags   = [
                            '/W4', # warning level
                           ],
-        clang_cxxflags  = [
-                           '-Werror',  # warnings as errors
-                           '-Wall',    # warning level
-                          ],
 
         # Platform Specific
         win_features                = ['crcfix'],

@@ -422,7 +422,7 @@ void CTerrainMiniMapTool::SendParameters(void* data, uint32 width, uint32 height
             }
         }
 
-        bool success = GetIEditor()->GetRenderer()->WriteDDS((byte*)image.GetData(), width, height, 4, imageDDSFile.toLatin1().data(), eTF_BC2, 1);
+        bool success = GetIEditor()->GetRenderer()->WriteDDS((byte*)image.GetData(), width, height, 4, imageDDSFile.toUtf8().data(), eTF_BC2, 1);
         if (!success)
         {
             QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Unable to save DDS to %1").arg(imageDDSFile));
@@ -447,7 +447,7 @@ void CTerrainMiniMapTool::SendParameters(void* data, uint32 width, uint32 height
         }
     }
 
-    XmlNodeRef dataNode = GetISystem()->LoadXmlFromFile(dataFile.toLatin1().data());
+    XmlNodeRef dataNode = GetISystem()->LoadXmlFromFile(dataFile.toUtf8().data());
     if (!dataNode)
     {
         dataNode = GetISystem()->CreateXmlNode("MetaData");
@@ -458,7 +458,7 @@ void CTerrainMiniMapTool::SendParameters(void* data, uint32 width, uint32 height
         map = GetISystem()->CreateXmlNode("MiniMap");
         dataNode->addChild(map);
     }
-    map->setAttr("Filename", imageDDSFileShort.toLatin1().data());
+    map->setAttr("Filename", imageDDSFileShort.toUtf8().data());
     map->setAttr("startX", minx);
     map->setAttr("startY", miny);
     map->setAttr("endX", maxx);
@@ -472,7 +472,7 @@ void CTerrainMiniMapTool::SendParameters(void* data, uint32 width, uint32 height
         pGame->GetAdditionalMinimapData(dataNode);
     }
 
-    bool success = dataNode->saveToFile(dataFile.toLatin1().data());
+    bool success = dataNode->saveToFile(dataFile.toUtf8().data());
     if (!success)
     {
         QMessageBox::warning(QApplication::activeWindow(), QObject::tr("Warning"), QObject::tr("Unable to save minimap XML metadata file to %1").arg(dataFile));
@@ -480,7 +480,7 @@ void CTerrainMiniMapTool::SendParameters(void* data, uint32 width, uint32 height
 
     ILevelSystem* pLevelSystem = GetISystem()->GetIGame()->GetIGameFramework()->GetILevelSystem();
     QString name = pLevelSystem->GetCurrentLevel() ? pLevelSystem->GetCurrentLevel()->GetLevelInfo()->GetName() : "";
-    pLevelSystem->SetEditorLoadedLevel(name.toLatin1().data(), true);
+    pLevelSystem->SetEditorLoadedLevel(name.toUtf8().data(), true);
     QApplication::restoreOverrideCursor();
 }
 
@@ -504,7 +504,7 @@ void CTerrainMiniMapTool::Generate(bool bHideProxy)
     GetIEditor()->SetConsoleVar("e_ScreenShotMapSizeX", m_minimap.vExtends.x);
     GetIEditor()->SetConsoleVar("e_ScreenShotMapSizeY", m_minimap.vExtends.y);
 
-    XmlNodeRef root = GetISystem()->LoadXmlFromFile((QString("Editor/") + MAP_SCREENSHOT_SETTINGS).toLatin1().data());
+    XmlNodeRef root = GetISystem()->LoadXmlFromFile((QString("Editor/") + MAP_SCREENSHOT_SETTINGS).toUtf8().data());
     if (root)
     {
         for (int i = 0, nChilds = root->getChildCount(); i < nChilds; ++i)
@@ -580,7 +580,7 @@ void CTerrainMiniMapTool::LoadSettingsXML()
     QString settingsXmlPath = m_path;
     settingsXmlPath += m_filename;
     settingsXmlPath += ".xml";
-    XmlNodeRef dataNode = GetISystem()->LoadXmlFromFile(settingsXmlPath.toLatin1().data());
+    XmlNodeRef dataNode = GetISystem()->LoadXmlFromFile(settingsXmlPath.toUtf8().data());
     if (!dataNode)
     {
         return;

@@ -17,11 +17,11 @@
 #endif
 #include "QColorPickerWidget.h"
 #include "QColorEyeDropper.h"
-#include "qevent.h"
-#include <qsettings.h>
-#include <qdesktopwidget.h>
-#include <qdesktopservices.h>
-#include <qapplication.h>
+#include <QEvent>
+#include <QSettings>
+#include <QDesktopWidget>
+#include <QDesktopServices>
+#include <QApplication>
 
 #define EDITOR_QTUI_COLORPICKER_HELP_DOC_LINK "https://docs.aws.amazon.com/lumberyard/userguide/color-picker"
 

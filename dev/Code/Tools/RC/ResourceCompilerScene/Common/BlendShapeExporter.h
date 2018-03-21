@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <SceneAPI/SceneCore/Components/ExportingComponent.h>
+#include <SceneAPI/SceneCore/Components/RCExportingComponent.h>
 
 namespace AZ
 {
@@ -21,10 +21,10 @@ namespace AZ
         struct MeshNodeExportContext;
 
         class BlendShapeExporter
-            : public SceneAPI::SceneCore::ExportingComponent
+            : public SceneAPI::SceneCore::RCExportingComponent
         {
         public:
-            AZ_COMPONENT(BlendShapeExporter, "{1A27BF62-F684-4F9E-B2C6-B15E728659EA}", SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(BlendShapeExporter, "{1A27BF62-F684-4F9E-B2C6-B15E728659EA}", SceneAPI::SceneCore::RCExportingComponent);
             
             BlendShapeExporter();
             ~BlendShapeExporter() override = default;

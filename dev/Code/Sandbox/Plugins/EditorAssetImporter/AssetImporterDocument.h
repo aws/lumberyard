@@ -64,7 +64,6 @@ public:
     
 protected:
     void SaveManifest();
-    bool SaveMaterials(AZStd::shared_ptr<AZ::ActionOutput>& output);
 
     AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene> m_scene;
     AZStd::shared_ptr<AZ::AsyncSaveRunner> m_saveRunner;

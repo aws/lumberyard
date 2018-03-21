@@ -258,7 +258,7 @@ void CDecalObject::UpdateEngineNode()
 
     decalProperties.m_pos = wtm.TransformPoint(Vec3(0, 0, 0));
     decalProperties.m_normal = wtm.TransformVector(Vec3(0, 0, 1));
-    QByteArray ba = GetMaterialName().toLatin1();
+    QByteArray ba = GetMaterialName().toUtf8();
     decalProperties.m_pMaterialName = ba.data();
     decalProperties.m_radius = m_projectionType != SDecalProperties::ePlanar ? decalProperties.m_normal.GetLength() : 1;
     decalProperties.m_explicitRightUpFront = rotation;

@@ -135,7 +135,7 @@ namespace LensFlareUtil
         }
 
         pOutNode->setAttr("Name", pOptics->GetName().c_str());
-        pOutNode->setAttr("Type", typeName.toLatin1().data());
+        pOutNode->setAttr("Type", typeName.toUtf8().data());
         pOutNode->setAttr("Enable", pOptics->IsEnabled());
 
         XmlNodeRef pParamNode = pOutNode->createNode("Params");
@@ -223,7 +223,7 @@ namespace LensFlareUtil
                 }
             }
 
-            AddVariable(pRootVar, variableArray, pGroup->GetName(), displayGroupName.toLatin1().data(), "");
+            AddVariable(pRootVar, variableArray, pGroup->GetName(), displayGroupName.toUtf8().data(), "");
 
             for (int k = 0; k < pGroup->GetVariableCount(); ++k)
             {
@@ -296,7 +296,7 @@ namespace LensFlareUtil
                     alphaName += ".alpha";
                     QString alphaHumanName(pFuncVar->humanName.c_str());
                     alphaHumanName += " [alpha]";
-                    AddVariable(variableArray, alphaVar, alphaName.toLatin1().data(), alphaHumanName.toLatin1().data(), pFuncVar->description.c_str());
+                    AddVariable(variableArray, alphaVar, alphaName.toUtf8().data(), alphaHumanName.toUtf8().data(), pFuncVar->description.c_str());
                     alphaVar->SetLimits(0, 255, 0, bHardMinLimitation, false);
                     alphaVar->Set(color.a * 255.0f);
                     alphaVar->SetUserData(MakeFuncKey(i, k));
@@ -646,7 +646,7 @@ namespace LensFlareUtil
         }
 
         opticsName.replace(opticsRootName, newRootName);
-        pOptics->SetName(opticsName.toLatin1().data());
+        pOptics->SetName(opticsName.toUtf8().data());
 
         for (int i = 0, iElementSize(pOptics->GetElementCount()); i < iElementSize; ++i)
         {
@@ -665,8 +665,8 @@ namespace LensFlareUtil
     {
         XmlNodeRef rootNode = gEnv->pSystem->CreateXmlNode();
         rootNode->setTag("FlareDB");
-        rootNode->setAttr("Type", type.toLatin1().data());
-        rootNode->setAttr("GroupName", groupName.toLatin1().data());
+        rootNode->setAttr("Type", type.toUtf8().data());
+        rootNode->setAttr("GroupName", groupName.toUtf8().data());
         rootNode->setAttr("PasteAtSameLevel", bPasteAtSameLevel);
 
         for (int i = 0, iDataSize(dataList.size()); i < iDataSize; ++i)
@@ -693,7 +693,7 @@ namespace LensFlareUtil
             QString oldName = pOptics->GetName().c_str();
             QString parentName = pParent->GetName().c_str();
             QString updatedName = parentName + QString(".") + GetShortName(oldName);
-            pOptics->SetName(updatedName.toLatin1().data());
+            pOptics->SetName(updatedName.toUtf8().data());
         }
 
         for (int i = 0, iElementCount(pOptics->GetElementCount()); i < iElementCount; ++i)
@@ -772,7 +772,7 @@ namespace LensFlareUtil
     {
         QString opticsName;
         opticsName = QStringLiteral("Optics Name : %1\n").arg(pOptics->GetName().c_str());
-        OutputDebugString(opticsName.toLatin1().data());
+        OutputDebugString(opticsName.toUtf8().data());
 
         DynArray<FuncVariableGroup> groupArray(pOptics->GetEditorParamGroups());
         for (int i = 0, iGroupCount(groupArray.size()); i < iGroupCount; ++i)
@@ -781,7 +781,7 @@ namespace LensFlareUtil
 
             QString groupStr;
             groupStr = QStringLiteral("\tGroup : %1\n").arg(pGroup->GetName());
-            OutputDebugString(groupStr.toLatin1().data());
+            OutputDebugString(groupStr.toUtf8().data());
 
             for (int k = 0, iParamCount(pGroup->GetVariableCount()); k < iParamCount; ++k)
             {
@@ -830,7 +830,7 @@ namespace LensFlareUtil
                         str = QStringLiteral("\t\t%1 : NULL\n").arg(pVar->name.c_str());
                     }
                 }
-                OutputDebugString(str.toLatin1().data());
+                OutputDebugString(str.toUtf8().data());
             }
         }
 

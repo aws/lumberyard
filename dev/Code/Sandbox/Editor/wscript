@@ -66,7 +66,6 @@ def build(bld):
         win_cxxflags            = ['/wd4355'],
 
         win_features            = ['crcfix'],
-        win_defines             = ['KDAB_MAC_PORT'],
 
         # Testing
         test_all_file_list  = ['editor_core_test.waf_files'],
@@ -146,14 +145,14 @@ def build(bld):
         # Platform Specific
         win_features                        = [ 'crcfix' ],
         winres_defines                      = ['NDEBUG' ],
-        win_defines                         = ['KDAB_MAC_PORT'],
+        win_lib                             = ['version'],
 
 
-        darwin_cxxflags                     = ['-Wno-unused-local-typedef',
-                                               '-Wno-sometimes-uninitialized', # required for squish library to compile
+        darwin_cxxflags                     = ['-Wno-sometimes-uninitialized', # required for squish library to compile
                                                '-Wno-shift-negative-value', # required for squish library to compile
                                                '-Wno-null-dereference', # required for squish library to compile
-                                               '-Wno-deprecated-declarations', # using Gesalt macOS calls that are deprecated. 
+                                               '-Wno-deprecated-declarations', # using Gesalt macOS calls that are deprecated.
+                                               '-Wno-unused-local-typedef', # required for Boost Python 
                                               ],
         darwin_x64_lib                      = ['python2.7'],
         darwin_lib                          = ['curl'],
@@ -214,6 +213,7 @@ def build(bld):
                                                'QT5WINEXTRAS',
                                                'QT5CONCURRENT',
                                                'QT5XML',
+                                               'QTMAIN',
                                                'BOOSTPYTHON',
                                                'AWS_CPP_SDK_STS',
                                                'AWS_CPP_SDK_CORE',
@@ -254,7 +254,7 @@ def build(bld):
         win_features                        = [ 'crcfix' ],
         win_use                             = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
         winres_defines                      = ['NDEBUG' ],
-        win_defines                         = ['KDAB_MAC_PORT'],
+        win_lib                             = ['Shell32'],
 
 
         darwin_enable_rtti                  = True,

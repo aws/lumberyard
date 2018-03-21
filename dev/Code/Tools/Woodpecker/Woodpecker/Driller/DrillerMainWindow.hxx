@@ -23,7 +23,6 @@
 #include "DrillerNetworkMessages.h"
 #include "DrillerMainWindowMessages.h"
 
-
 #pragma once
 
 class QMenu;

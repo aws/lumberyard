@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "Maestro_precompiled.h"
 #include <AzTest/AzTest.h>
 #include <Mocks/ITimerMock.h>
 #include <Mocks/ICryPakMock.h>

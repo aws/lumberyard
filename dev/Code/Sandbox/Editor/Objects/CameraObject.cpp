@@ -162,7 +162,7 @@ void CCameraObject::SetName(const QString& name)
 {
     if (gEnv->pMovieSystem && GetName().isEmpty() == false)
     {
-        gEnv->pMovieSystem->OnCameraRenamed(GetName().toLatin1().data(), name.toLatin1().data());
+        gEnv->pMovieSystem->OnCameraRenamed(GetName().toUtf8().data(), name.toUtf8().data());
         GetIEditor()->Notify(eNotify_OnReloadTrackView);
     }
 

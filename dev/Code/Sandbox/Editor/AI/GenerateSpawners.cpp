@@ -87,13 +87,13 @@ static bool ShouldGenerateSpawner(IEntityClass* pClass)
 
 static bool OutputFile(const QString& name, const QString& data)
 {
-    FILE* f = fopen(name.toLatin1().data(), "wt");
+    FILE* f = fopen(name.toUtf8().data(), "wt");
     if (!f)
     {
-        CryLogAlways("Unable to open file %s", name.toLatin1().data());
+        CryLogAlways("Unable to open file %s", name.toUtf8().data());
         return false;
     }
-    fwrite(data.toLatin1().data(), data.toLatin1().length(), 1, f);
+    fwrite(data.toUtf8().data(), data.toUtf8().length(), 1, f);
     fclose(f);
     return true;
 }

@@ -142,7 +142,7 @@ void CMaterialFXGraphMan::SaveChangedGraphs()
             filename += '/';
             filename += pFG->GetName();
             filename += ".xml";
-            pFG->Save(filename.toLatin1().data());
+            pFG->Save(filename.toUtf8().data());
         }
     }
 }
@@ -195,7 +195,7 @@ bool CMaterialFXGraphMan::NewMaterialFx(QString& filename, CHyperGraph** pHyperG
     filename = file;
 
     // Ensure that we save this flowgraph on the correct root folder.
-    AZStd::string targetFilename = filename.toLatin1().data();
+    AZStd::string targetFilename = filename.toUtf8().data();
     AZStd::string targetPath = assetPath;
 
     AzFramework::StringFunc::Path::Normalize(targetFilename);
@@ -221,7 +221,7 @@ bool CMaterialFXGraphMan::NewMaterialFx(QString& filename, CHyperGraph** pHyperG
     pStartNode->SetPos(QPointF(80, 10));
     CHyperNode* pEndNode = (CHyperNode*) pGraph->CreateNode("MaterialFX:HUDEndFX");
     pEndNode->SetPos(QPointF(400, 10));
-    pGraph->SetGroupName(GetDefaultGroupName(assetPath, filename.toLatin1().data()).c_str());
+    pGraph->SetGroupName(GetDefaultGroupName(assetPath, filename.toUtf8().data()).c_str());
 
     pGraph->UnselectAll();
     pGraph->ConnectPorts(pStartNode, &pStartNode->GetOutputs()->at(0), pEndNode, &pEndNode->GetInputs()->at(0), false);

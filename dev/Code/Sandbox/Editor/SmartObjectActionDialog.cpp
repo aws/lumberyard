@@ -60,8 +60,8 @@ void CSmartObjectActionDialog::OnNewBtn()
     QString filename;
     if (GetIEditor()->GetAI()->NewAction(filename, this))
     {
-        m_sSOAction = PathUtil::GetFileName(filename.toLatin1().data());
-        IAIAction* pAction = gEnv->pAISystem->GetAIActionManager()->GetAIAction(m_sSOAction.toLatin1().data());
+        m_sSOAction = PathUtil::GetFileName(filename.toUtf8().data());
+        IAIAction* pAction = gEnv->pAISystem->GetAIActionManager()->GetAIAction(m_sSOAction.toUtf8().data());
         if (pAction)
         {
             CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();
@@ -81,7 +81,7 @@ void CSmartObjectActionDialog::OnEditBtn()
 {
     //  reject();
 
-    IAIAction* pAction = gEnv->pAISystem->GetAIActionManager()->GetAIAction(m_sSOAction.toLatin1().data());
+    IAIAction* pAction = gEnv->pAISystem->GetAIActionManager()->GetAIAction(m_sSOAction.toUtf8().data());
     if (pAction)
     {
         CFlowGraphManager* pManager = GetIEditor()->GetFlowGraphManager();

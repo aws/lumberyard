@@ -53,6 +53,7 @@ namespace AZ
                 SCENE_CORE_API ProcessingResult Process(ICallContext* context) override final;
 
                 CallProcessorBinder() = default;
+                virtual ~CallProcessorBinder() = default;
 
             protected:
                 CallProcessorBinder(const CallProcessorBinder&) = delete;
@@ -70,6 +71,7 @@ namespace AZ
                 class FunctionBinding
                 {
                 public:
+                    virtual ~FunctionBinding() = default;
                     virtual ProcessingResult Process(CallProcessorBinder* thisPtr, ICallContext* context) = 0;
 
                 protected:
@@ -83,6 +85,7 @@ namespace AZ
                 public:
                     using Function = ProcessingResult(Class::*)(ContextType&) const;
                     explicit ConstFunctionBindingTemplate(Function function);
+                    ~ConstFunctionBindingTemplate() override = default;
                     ProcessingResult Process(CallProcessorBinder* thisPtr, ICallContext* context) override;
                 private:
                     Function m_function;
@@ -94,6 +97,7 @@ namespace AZ
                 public:
                     using Function = ProcessingResult(Class::*)(ContextType&);
                     explicit FunctionBindingTemplate(Function function);
+                    ~FunctionBindingTemplate() override = default;
                     ProcessingResult Process(CallProcessorBinder* thisPtr, ICallContext* context) override;
                 private:
                     Function m_function;
@@ -105,6 +109,7 @@ namespace AZ
                 public:
                     using Function = ProcessingResult(Class::*)(ContextType&) const;
                     explicit ConstDerivedFunctionBindingTemplate(Function function);
+                    ~ConstDerivedFunctionBindingTemplate() override = default;
                     ProcessingResult Process(CallProcessorBinder* thisPtr, ICallContext* context) override;
                 private:
                     Function m_function;
@@ -116,6 +121,7 @@ namespace AZ
                 public:
                     using Function = ProcessingResult(Class::*)(ContextType&);
                     explicit DerivedFunctionBindingTemplate(Function function);
+                    ~DerivedFunctionBindingTemplate() override = default;
                     ProcessingResult Process(CallProcessorBinder* thisPtr, ICallContext* context) override;
                 private:
                     Function m_function;

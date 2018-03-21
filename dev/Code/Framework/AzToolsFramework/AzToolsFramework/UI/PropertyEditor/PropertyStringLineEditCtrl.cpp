@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PropertyStringLineEditCtrl.hxx"
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QLineEdit>
@@ -49,9 +49,13 @@ namespace AzToolsFramework
 
     void PropertyStringLineEditCtrl::setValue(AZStd::string& value)
     {
-        m_pLineEdit->blockSignals(true);
-        m_pLineEdit->setText(value.c_str());
-        m_pLineEdit->blockSignals(false);
+        QString text = m_pLineEdit->text();
+        if (text.compare(value.data()) != 0)
+        {
+            m_pLineEdit->blockSignals(true);
+            m_pLineEdit->setText(value.c_str());
+            m_pLineEdit->blockSignals(false);
+        }
     }
 
     void PropertyStringLineEditCtrl::focusInEvent(QFocusEvent* e)

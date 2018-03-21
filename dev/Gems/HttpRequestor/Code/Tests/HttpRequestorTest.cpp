@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "HttpRequestor_precompiled.h"
 #include <AzTest/AzTest.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/parallel/atomic.h>

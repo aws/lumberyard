@@ -20,18 +20,15 @@
 
 
 
-#include <boost/shared_ptr.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/weak_ptr.hpp>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
 
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/mem_fn.hpp>
-
-#define DECLARE_BOOST_POINTERS(name)                      \
-    typedef boost::shared_ptr<name> name##Ptr;            \
-    typedef boost::shared_ptr<const name> name##ConstPtr; \
-    typedef boost::weak_ptr<name> name##WeakPtr;          \
-    typedef boost::weak_ptr<const name> name##ConstWeakPtr;
+#define DECLARE_SMART_POINTERS(name)                      \
+    typedef AZStd::shared_ptr<name> name##Ptr;            \
+    typedef AZStd::shared_ptr<const name> name##ConstPtr; \
+    typedef AZStd::weak_ptr<name> name##WeakPtr;          \
+    typedef AZStd::weak_ptr<const name> name##ConstWeakPtr;
 
 // HACK for pre-VS2013 builds to avoid macro redefinitions
 // Sandbox includes afxcontrolbars.h, boost variant and mpl include stdint.h.

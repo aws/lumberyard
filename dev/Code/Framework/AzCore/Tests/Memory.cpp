@@ -208,18 +208,17 @@ namespace UnitTest
                 EXPECT_EQ(1000, ai.m_byteSize);
                 EXPECT_EQ(nullptr, ai.m_fileName); // We did not pass fileName or lineNum to sysAllocator.Allocate()
                 EXPECT_EQ(0, ai.m_lineNum);  // -- " --
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_WII) // ACCEPTED_USE
+#   if defined(AZ_PLATFORM_WINDOWS)
                 // if our hardware support stack traces make sure we have them, since we did not provide fileName,lineNum
                 EXPECT_TRUE(ai.m_stackFrames[0].IsValid());  // We need to have at least one frame
 #       if defined(AZ_PLATFORM_WINDOWS) && defined(_DEBUG)
                 // For windows we should be able to decode the program counters into readable content.
                 // This is possible on X360 and PS3 too, but weed to load the map file manually and so on... it's tricky. // ACCEPTED_USE
-                SymbolStorage::StackLine stackLine;
-                stackLine[0] = '\0';
+                SymbolStorage::StackLine stackLine{ 0 };
                 SymbolStorage::DecodeFrames(ai.m_stackFrames, 1, &stackLine);
-                EXPECT_TRUE(strstr(stackLine, "SystemAllocatorTest::run")); // We should have proper callstack
+                EXPECT_THAT((char*)stackLine, testing::HasSubstr("SystemAllocatorTest::run")); // We should have proper callstack
 #       endif // AZ_PLATFORM_WINDOWS
-#   endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) // ACCEPTED_USE
+#   endif // defined(AZ_PLATFORM_WINDOWS)
             }
             sysAlloc.GetRecords()->unlock();
 #endif //#if defined(AZCORE_ENABLE_MEMORY_TRACKING) && defined(AZ_DEBUG_BUILD)
@@ -536,7 +535,6 @@ namespace UnitTest
         {
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
             AllocatorInstance<SystemAllocator>::Destroy();
-
 
             MemoryTrackingFixture::TearDown();
         }
@@ -1126,7 +1124,7 @@ namespace UnitTest
         run();
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_X360) || defined(AZ_PLATFORM_PS3) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) // ACCEPTED_USE
+#if AZ_TRAIT_PERF_MEMORYBENCHMARK_IS_AVAILABLE
     class PERF_MemoryBenchmark
         : public ::testing::Test
     {
@@ -2588,11 +2586,7 @@ namespace UnitTest
             DebugSysAlloc da;
             {
                 HphaSchema::Descriptor hphaDesc;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4)
-                hphaDesc.m_memoryBlockByteSize = 512 * 1024 * 1024;
-#else
-                hphaDesc.m_memoryBlockByteSize = 150 * 1024 * 1024;
-#endif
+                hphaDesc.m_memoryBlockByteSize = AZ_TRAIT_OS_HPHA_MEMORYBLOCKBYTESIZE;
                 hphaDesc.m_memoryBlock = DebugAlignAlloc(hphaDesc.m_memoryBlockByteSize, hphaDesc.m_memoryBlockAlignment);
                 HeapSchema::Descriptor dlMallocDesc;
                 dlMallocDesc.m_numMemoryBlocks = 1;
@@ -2636,7 +2630,7 @@ namespace UnitTest
                 DebugAlignFree(dlMallocDesc.m_memoryBlocks[0]);
             }
 
-            #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4)
+            #if AZ_TRAIT_UNITTEST_NON_PREALLOCATED_HPHA_TEST
                       printf("\n\t\t\tNO prealocated memory!\n");
                       {
                           HphaSchema::Descriptor hphaDesc;
@@ -2682,7 +2676,7 @@ namespace UnitTest
         run();
     }
 #endif // ENABLE_PERFORMANCE_TEST
-#endif // AZ_PLATFORM_WINDOWS
+#endif // AZ_TRAIT_PERF_MEMORYBENCHMARK_IS_AVAILABLE
 }
 
 // GlobalNewDeleteTest-End

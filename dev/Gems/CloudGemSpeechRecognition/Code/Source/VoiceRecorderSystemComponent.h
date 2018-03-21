@@ -18,6 +18,10 @@
 #include <AzCore/Component/TickBus.h>
 #include <MicrophoneBus.h>
 
+#ifdef AZ_PLATFORM_APPLE
+#include "Cocoa/CocoaAudioRecorder.h"
+#endif
+
 namespace CloudGemSpeechRecognition 
 {
     class VoiceRecorderRequests : public AZ::ComponentBus
@@ -50,6 +54,8 @@ namespace CloudGemSpeechRecognition
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
+        VoiceRecorderSystemComponent() = default;
+
         void StartRecording();
         void StopRecording();
         bool IsMicrophoneAvailable();
@@ -58,6 +64,11 @@ namespace CloudGemSpeechRecognition
         void OnTick(float deltaTime, AZ::ScriptTimePoint time);
 
     protected:
+        VoiceRecorderSystemComponent(const VoiceRecorderSystemComponent&) = delete;
+        VoiceRecorderSystemComponent(VoiceRecorderSystemComponent&&) = delete;
+        VoiceRecorderSystemComponent& operator=(const VoiceRecorderSystemComponent&) = delete;
+        VoiceRecorderSystemComponent& operator=(VoiceRecorderSystemComponent&&) = delete;
+
         void Init() override;
         void Activate() override;
         void Deactivate() override;
@@ -65,13 +76,17 @@ namespace CloudGemSpeechRecognition
         void SetWAVHeader(AZ::u8* buffer, AZ::u32 bufferSize);
         void ReadBuffer();
 
+
+#if !defined(AZ_PLATFORM_APPLE)
         // Reserved for future use when we can tell if mic initialized
         bool m_isMicrophoneInitialized{ true };
 
-        AZ::u8* m_fillBuffer;
-        AZ::u8* m_curFillBufferPos;
+        AZ::u8* m_fillBuffer{ nullptr };
+        AZ::u8* m_curFillBufferPos{ nullptr };
         Audio::SAudioInputConfig m_bufferConfig;
-        char* m_currentB64Buffer;
+#endif
+        AZStd::unique_ptr<AZ::s8> m_currentB64Buffer;
+        int m_currentB64BufferSize{ 0 };
     };
 }
 

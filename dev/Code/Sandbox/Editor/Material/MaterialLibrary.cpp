@@ -32,7 +32,7 @@ bool CMaterialLibrary::Load(const QString& filename)
         return false;
     }
     SetFilename(filename);
-    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+    XmlNodeRef root = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
     if (!root)
     {
         return false;

@@ -13,8 +13,8 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/Debug/Trace.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include "FbxSkinWrapper.h"
-#include "FbxNodeWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FbxSkinWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 
 namespace AZ
 {
@@ -82,5 +82,5 @@ namespace AZ
             AZ_Assert(index < m_fbxSkin->GetClusterCount(), "Invalid skin cluster index %d", index);
             return nullptr;
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

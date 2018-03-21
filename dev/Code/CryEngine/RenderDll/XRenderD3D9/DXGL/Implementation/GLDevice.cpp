@@ -1954,6 +1954,16 @@ namespace NCryOpenGL
         kCapabilities.m_bCopyImageWorksOnCubeMapFaces = DetectIfCopyImageWorksOnCubeMapFaces();
 #endif //DXGL_SUPPORT_COPY_IMAGE && DXGL_SUPPORT_GETTEXIMAGE
 
+
+        glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &kCapabilities.m_maxRenderTargets);
+        kCapabilities.m_plsSizeInBytes = 0;
+#if defined(OPENGL_ES)
+        if (RenderCapabilities::SupportsPLSExtension())
+        {
+            glGetIntegerv(GL_MAX_SHADER_PIXEL_LOCAL_STORAGE_FAST_SIZE_EXT, &kCapabilities.m_plsSizeInBytes);
+        }
+#endif
+
         return true;
     }
 

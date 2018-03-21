@@ -18,7 +18,9 @@
 #include <AzCore/Casting/lossy_cast.h>
 #include <cctype>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_XBONE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(LocalFileIO_cpp)
+#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64)
 #include "LocalFileIO_win.inl"
 #elif defined(AZ_PLATFORM_ANDROID)
 #include "LocalFileIO_android.inl"

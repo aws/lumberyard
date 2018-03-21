@@ -39,7 +39,8 @@ namespace AzToolsFramework
             virtual SharedThumbnail GetThumbnail(SharedThumbnailKey thumbnailKey, const char* contextName) = 0;
         };
 
-        using ThumbnailerRequestsBus = AZ::EBus<ThumbnailerRequests>;
+        using ThumbnailerRequestBus = AZ::EBus<ThumbnailerRequests>;
+        using ThumbnailerRequestsBus = AZ::EBus<ThumbnailerRequests>; //deprecated
 
         //! Request product thumbnail to be rendered
         class ThumbnailerRendererRequests
@@ -57,7 +58,8 @@ namespace AzToolsFramework
             virtual bool Installed() const { return false; }
         };
 
-        using ThumbnailerRendererRequestsBus = AZ::EBus<ThumbnailerRendererRequests>;
+        using ThumbnailerRendererRequestBus = AZ::EBus<ThumbnailerRendererRequests>;
+        using ThumbnailerRendererRequestsBus = AZ::EBus<ThumbnailerRendererRequests>; //deprecated
 
         //! Notify that product thumbnail was rendered
         class ThumbnailerRendererNotifications
@@ -73,6 +75,7 @@ namespace AzToolsFramework
             virtual void ThumbnailFailedToRender() = 0;
         };
 
-        using ThumbnailerRendererNotificationsBus = AZ::EBus<ThumbnailerRendererNotifications>;
+        using ThumbnailerRendererNotificationBus = AZ::EBus<ThumbnailerRendererNotifications>;
+        using ThumbnailerRendererNotificationsBus = AZ::EBus<ThumbnailerRendererNotifications>; //deprecated
     } // namespace Thumbnailer
 } // namespace AzToolsFramework

@@ -43,7 +43,7 @@ public:
     void AddRow(const char* firstColumnValue, const QIcon& icon);
     void AddRowColumn(const char* value);
 
-    const char* ChooseItem(const char* currentValue);
+    QString ChooseItem(const QString& currentValue);
 
     QSize sizeHint() const override;
 

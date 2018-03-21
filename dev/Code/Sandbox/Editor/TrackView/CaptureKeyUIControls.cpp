@@ -16,7 +16,8 @@
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
 #include "TrackViewUndo.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 //////////////////////////////////////////////////////////////////////////
 class CCaptureKeyUIControls
@@ -112,9 +113,9 @@ bool CCaptureKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKe
 // Called when UI variable changes.
 void CCaptureKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selectedKeys)
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!pSequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
     {
         return;
     }
@@ -153,12 +154,12 @@ void CCaptureKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             if (pVar == mv_folder.GetVar())
             {
                 QString sFolder = mv_folder;
-                captureKey.folder = sFolder.toLatin1().data();
+                captureKey.folder = sFolder.toUtf8().data();
             }
             if (pVar == mv_prefix.GetVar())
             {
                 QString sPrefix = mv_prefix;
-                captureKey.prefix = sPrefix.toLatin1().data();
+                captureKey.prefix = sPrefix.toUtf8().data();
             }
             if (pVar == mv_captureBufferType.GetVar())
             {
@@ -166,8 +167,24 @@ void CCaptureKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             }
             SyncValue(mv_once, captureKey.once, false, pVar);
 
-            CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-            keyHandle.SetKey(&captureKey);
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
+            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            {
+                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&captureKey);
+            }
+            else if (isDuringUndo)
+            {
+                keyHandle.SetKey(&captureKey);
+            }
+            else
+            {
+                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key Value");
+                keyHandle.SetKey(&captureKey);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
         }
     }
 }

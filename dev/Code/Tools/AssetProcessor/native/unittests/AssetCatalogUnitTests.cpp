@@ -131,16 +131,17 @@ namespace AssetProcessor
 
     void BuildConfig(const QDir& tempPath, AssetDatabaseConnection* dbConn, PlatformConfiguration& config)
     {
-        //                                               PATH         DisplayName    PortKey      outputfolder root  recurse order
-        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4", "", false, false, -6), config, dbConn); // subfolder 4 overrides subfolder3
-        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "subfolder3", "subfolder3", "", false, false, -5), config, dbConn); // subfolder 3 overrides subfolder2
-        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "subfolder2", "subfolder2", "", false, true, -2), config, dbConn); // subfolder 2 overrides subfolder1
-        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1", "", false, true, -1), config, dbConn); // subfolder1 overrides root
-        AddScanFolder(ScanFolderInfo(tempPath.absolutePath(), "temp", "tempfolder", "", true, false, 0), config, dbConn); // add the root
-
         config.EnablePlatform({ "pc" ,{ "desktop", "renderer" } }, true);
         config.EnablePlatform({ "es3" ,{ "mobile", "renderer" } }, true);
         config.EnablePlatform({ "fandango" ,{ "console", "renderer" } }, false);
+        AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms;
+        config.PopulatePlatformsForScanFolder(platforms);
+        //                                               PATH         DisplayName    PortKey      outputfolder root    recurse  platforms     order
+        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder4"), "subfolder4", "subfolder4",    "",       false,   false, platforms, -6), config, dbConn); // subfolder 4 overrides subfolder3
+        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder3"), "subfolder3", "subfolder3",    "",       false,   false, platforms, -5), config, dbConn); // subfolder 3 overrides subfolder2
+        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder2"), "subfolder2", "subfolder2",    "",       false,   true,  platforms, -2), config, dbConn); // subfolder 2 overrides subfolder1
+        AddScanFolder(ScanFolderInfo(tempPath.filePath("subfolder1"), "subfolder1", "subfolder1",    "",       false,   true,  platforms, -1), config, dbConn); // subfolder1 overrides root
+        AddScanFolder(ScanFolderInfo(tempPath.absolutePath(),         "temp",       "tempfolder",    "",       true,    false, platforms,  0), config, dbConn); // add the root
 
         config.AddMetaDataType("exportsettings", QString());
 
@@ -153,7 +154,7 @@ namespace AssetProcessor
 
         speces3.m_extraRCParams = "somerandomparam";
         rec.m_name = "random files";
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.random", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.random", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         config.AddRecognizer(rec);
 
@@ -162,7 +163,7 @@ namespace AssetProcessor
 
         const char* builderTxt1Name = "txt files";
         rec.m_name = builderTxt1Name;
-        rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.txt", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         rec.m_platformSpecs.insert("pc", specpc);
         rec.m_platformSpecs.insert("es3", speces3);
 
@@ -173,14 +174,14 @@ namespace AssetProcessor
         ignore_spec.m_extraRCParams = "skip";
         AssetRecognizer ignore_rec;
         ignore_rec.m_name = "ignore files";
-        ignore_rec.m_patternMatcher = AssetUtilities::FilePatternMatcher("*.ignore", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
+        ignore_rec.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.ignore", AssetBuilderSDK::AssetBuilderPattern::Wildcard);
         ignore_rec.m_platformSpecs.insert("pc", specpc);
         ignore_rec.m_platformSpecs.insert("es3", ignore_spec);
         config.AddRecognizer(ignore_rec);
 
         ExcludeAssetRecognizer excludeRecogniser;
         excludeRecogniser.m_name = "backup";
-        excludeRecogniser.m_patternMatcher = AssetUtilities::FilePatternMatcher(".*\\/savebackup\\/.*", AssetBuilderSDK::AssetBuilderPattern::Regex);
+        excludeRecogniser.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher(".*\\/savebackup\\/.*", AssetBuilderSDK::AssetBuilderPattern::Regex);
         config.AddExcludeRecognizer(excludeRecogniser);
     }
 

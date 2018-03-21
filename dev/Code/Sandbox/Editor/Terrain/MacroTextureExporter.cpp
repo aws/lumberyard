@@ -403,7 +403,7 @@ bool MacroTextureExporter::Context::ExportTiles(const char* ctcFilename, const C
 
     if (!CFileUtil::OverwriteFile(adjustedCoverPath))
     {
-        Error(QStringLiteral("Cannot overwrite file %1").arg(adjustedCoverPath).toLatin1().data());
+        Error(QStringLiteral("Cannot overwrite file %1").arg(adjustedCoverPath).toUtf8().data());
         return false;
     }
 

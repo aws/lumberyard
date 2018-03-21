@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -20,12 +18,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
+#pragma once
+
 #include <AzCore/std/smart_ptr/shared_ptr.h>
-#include "FbxNodeWrapper.h"
-#include "FbxAnimStackWrapper.h"
-#include "FbxAxisSystemWrapper.h"
-#include "FbxSystemUnitWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxAnimStackWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxAxisSystemWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxSystemUnitWrapper.h>
 
 namespace AZ
 {
@@ -39,7 +38,7 @@ namespace AZ
             virtual ~FbxSceneWrapper();
 
             virtual bool LoadSceneFromFile(const char* fileName);
-            virtual bool LoadSceneFromFile(const std::string& fileName);
+            virtual bool LoadSceneFromFile(const AZStd::string& fileName);
 
             virtual AZStd::shared_ptr<FbxSystemUnitWrapper> GetSystemUnit() const;
             virtual AZStd::shared_ptr<FbxAxisSystemWrapper> GetAxisSystem() const;
@@ -62,5 +61,5 @@ namespace AZ
             FbxImporter* m_fbxImporter;
             FbxIOSettings* m_fbxIOSettings;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

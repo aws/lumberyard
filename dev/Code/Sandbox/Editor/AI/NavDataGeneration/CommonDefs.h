@@ -105,8 +105,5 @@ inline float LinStep(float a, float b, float x)
     return x;
 }
 
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
 #endif // CRYINCLUDE_EDITOR_AI_NAVDATAGENERATION_COMMONDEFS_H
 

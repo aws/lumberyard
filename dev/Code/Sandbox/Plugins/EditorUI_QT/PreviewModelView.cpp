@@ -190,8 +190,8 @@ void CPreviewModelView::ImportModel()
     x.typeName = Prop::GetPropertyTypeToResourceType(ePropertyModel);
 
     QString currPath = m_ModelFilename.toLower();
-    dll_string selected = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, currPath.toLatin1().data());
-    LoadModelFile(selected.c_str());
+    QString selected = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, currPath);
+    LoadModelFile(selected);
 }
 
 void CPreviewModelView::SetPostUpdateCallback(PostUpdateCallback callback)
@@ -357,7 +357,7 @@ void CPreviewModelView::LoadModelFile(const QString& modelFile)
                 CRY_ASSERT(GetIEditor()->GetSystem());
                 CRY_ASSERT(GetIEditor()->GetSystem()->GetIAnimationSystem());
                 // Load CGA animated object.
-                m_pCharacterModel = GetIEditor()->GetSystem()->GetIAnimationSystem()->CreateInstance(modelFile.toLatin1().data());
+                m_pCharacterModel = GetIEditor()->GetSystem()->GetIAnimationSystem()->CreateInstance(modelFile.toUtf8().data());
                 if (m_pCharacterModel)
                 {
                     m_pCharacterModel->AddRef();
@@ -365,7 +365,7 @@ void CPreviewModelView::LoadModelFile(const QString& modelFile)
                 else
                 {
                     CRY_ASSERT(GetIEditor()->GetLogFile());
-                    sprintf(buffer, "Loading of CGA animated object %s failed.", modelFile.toLatin1().data());
+                    sprintf(buffer, "Loading of CGA animated object %s failed.", modelFile.toUtf8().data());
                     GetIEditor()->GetLogFile()->Warning(buffer);
                 }
             }
@@ -374,7 +374,7 @@ void CPreviewModelView::LoadModelFile(const QString& modelFile)
                 CRY_ASSERT(GetIEditor()->GetSystem());
                 CRY_ASSERT(GetIEditor()->GetSystem()->GetIAnimationSystem());
                 // Load CGA animated object.
-                m_pCharacterModel = GetIEditor()->GetSystem()->GetIAnimationSystem()->CreateInstance(modelFile.toLatin1().data(), CA_PreviewMode | CA_CharEditModel);
+                m_pCharacterModel = GetIEditor()->GetSystem()->GetIAnimationSystem()->CreateInstance(modelFile.toUtf8().data(), CA_PreviewMode | CA_CharEditModel);
                 if (m_pCharacterModel)
                 {
                     m_pCharacterModel->AddRef();
@@ -382,7 +382,7 @@ void CPreviewModelView::LoadModelFile(const QString& modelFile)
                 else
                 {
                     CRY_ASSERT(GetIEditor()->GetLogFile());
-                    sprintf(buffer, "Loading of CGA animated object %s failed.", modelFile.toLatin1().data());
+                    sprintf(buffer, "Loading of CGA animated object %s failed.", modelFile.toUtf8().data());
                     GetIEditor()->GetLogFile()->Warning(buffer);
                 }
             }
@@ -390,7 +390,7 @@ void CPreviewModelView::LoadModelFile(const QString& modelFile)
             {
                 CRY_ASSERT(GetIEditor()->Get3DEngine());
                 // Load object.
-                m_pStaticModel = GetIEditor()->Get3DEngine()->LoadStatObjUnsafeManualRef(modelFile.toLatin1().data(), nullptr, nullptr, false);
+                m_pStaticModel = GetIEditor()->Get3DEngine()->LoadStatObjUnsafeManualRef(modelFile.toUtf8().data(), nullptr, nullptr, false);
                 if (m_pStaticModel)
                 {
                     m_pStaticModel->AddRef();
@@ -398,14 +398,14 @@ void CPreviewModelView::LoadModelFile(const QString& modelFile)
                 else
                 {
                     CRY_ASSERT(GetIEditor()->GetLogFile());
-                    sprintf(buffer, "Loading of geometry object %s failed.", modelFile.toLatin1().data());
+                    sprintf(buffer, "Loading of geometry object %s failed.", modelFile.toUtf8().data());
                     GetIEditor()->GetLogFile()->Warning(buffer);
                 }
             }
             else
             {
                 CRY_ASSERT(GetIEditor()->GetLogFile());
-                sprintf(buffer, "Unknown model file (%s) attempting to be loaded.", modelFile.toLatin1().data());
+                sprintf(buffer, "Unknown model file (%s) attempting to be loaded.", modelFile.toUtf8().data());
                 GetIEditor()->GetLogFile()->Warning(buffer);
             }
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <AWS_precompiled.h>
 #include <Util/JSON/FlowNode_IterateJsonArrayProperty.h>
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 

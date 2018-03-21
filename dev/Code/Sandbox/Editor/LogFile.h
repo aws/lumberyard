@@ -59,7 +59,9 @@ public:
     static QString GetMemUsage();
 
     static void WriteString(const char* pszString);
+    static void WriteString(const QString& string) { WriteString(string.toUtf8().data()); }
     static void WriteLine(const char* pszLine);
+    static void WriteLine(const QString& string) { WriteLine(string.toUtf8().data()); }
     static void FormatLine(const char* pszMessage, ...);
     static void FormatLineV(const char* pszMessage, va_list argList);
 

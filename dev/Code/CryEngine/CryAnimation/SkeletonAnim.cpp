@@ -17,12 +17,9 @@
 #include "FacialAnimation/FacialInstance.h"
 #include "Command_Buffer.h"
 #include "ParametricSampler.h"
-#include <IJobManager_JobDelegator.h>
 #include "CharacterManager.h"
 
 //
-
-DECLARE_JOB("CommandBufferExecute", TCommandBufferExecuteJob, CSkeletonAnimTask::Job_Execute);
 
 Memory::CPoolFrameLocal* CSkeletonAnimTask::s_pMemoryPool = NULL;
 
@@ -79,9 +76,9 @@ void CSkeletonAnimTask::Begin(const QuatTS& location, bool immediate)
     int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
     int nList = nFrameID % 3;
     SSkinningData* pSkinningData = m_pSkeletonAnim->m_pInstance->arrSkinningRendererData[nList].pSkinningData;
-    if (m_pSkeletonAnim->m_pInstance->arrSkinningRendererData[nList].nFrameID == nFrameID && pSkinningData && pSkinningData->pAsyncJobs)
+    if (m_pSkeletonAnim->m_pInstance->arrSkinningRendererData[nList].nFrameID == nFrameID && pSkinningData && pSkinningData->pAsyncJobExecutor)
     {
-        gEnv->pJobManager->WaitForJob(*pSkinningData->pAsyncJobs);
+        pSkinningData->pAsyncJobExecutor->WaitForCompletion();
     }
 
     if (immediate)
@@ -94,10 +91,13 @@ void CSkeletonAnimTask::Begin(const QuatTS& location, bool immediate)
         return;
     }
 
-    TCommandBufferExecuteJob job;
-    job.SetClassInstance(this);
-    job.RegisterJobState(&m_jobState);
-    job.Run();
+	m_jobExecutor.Reset();
+    m_jobExecutor.StartJob(
+        [this]()
+        {
+            this->Execute();
+        }
+    );
 
     CAnimationThreadTask::Begin();
 }
@@ -110,8 +110,8 @@ void CSkeletonAnimTask::Wait()
     {
         return;
     }
-    // wait for task to finish
-    gEnv->GetJobManager()->WaitForJob(m_jobState);
+
+    m_jobExecutor.WaitForCompletion();
     Synchronize();
 
     CAnimationThreadTask::Wait();
@@ -161,6 +161,8 @@ void CSkeletonAnimTask::Synchronize()
 
 void CSkeletonAnimTask::Execute()
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Animation);
+
     if (!m_pSkeletonAnim->m_pSkeletonPose->m_bFullSkeletonUpdate)
     {
         return; // TODO: Should not even create a task!
@@ -188,10 +190,6 @@ void CSkeletonAnimTask::Execute()
     m_bProcessed = true;
 }
 
-void CSkeletonAnimTask::Job_Execute()
-{
-    CSkeletonAnimTask::Execute();
-}
 
 //
 /*

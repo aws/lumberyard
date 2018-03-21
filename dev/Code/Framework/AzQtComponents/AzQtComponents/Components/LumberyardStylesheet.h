@@ -11,39 +11,16 @@
 */
 #pragma once
 
-#include <AzQtComponents/AzQtComponentsAPI.h>
-
-#include <QObject>
-#include <QColor>
-
-class QApplication;
+#include <AzQtComponents/Components/StyleManager.h>
 
 namespace AzQtComponents
 {
-    class StylesheetPreprocessor;
-
-    class AZ_QT_COMPONENTS_API LumberyardStylesheet
-        : public QObject
+    // Here for backwards compatibility with the old name of this class
+    class LumberyardStylesheet : public StyleManager
     {
-        Q_OBJECT
-
     public:
-        LumberyardStylesheet(QObject* parent);
-        ~LumberyardStylesheet();
-
-        void Initialize(QApplication* application);
-
-        void Refresh(QApplication* application);
-
-        const QColor& GetColorByName(const QString& name);
-
-    private:
-        void InitializeFonts();
-        void InitializeSearchPaths(QApplication* application);
-
-        bool WriteStylesheetForQtDesigner(const QString& processedStyle);
-
-        StylesheetPreprocessor* m_stylesheetPreprocessor;
+        LumberyardStylesheet(QObject* parent) : StyleManager(parent) {}
     };
+
 } // namespace AzQtComponents
 

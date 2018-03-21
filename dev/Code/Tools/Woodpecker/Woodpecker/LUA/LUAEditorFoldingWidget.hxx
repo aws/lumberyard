@@ -13,8 +13,8 @@
 #ifndef LUAEDITOR_FOLDINGWIDGET_H
 #define LUAEDITOR_FOLDINGWIDGET_H
 
-#include <AzCore\base.h>
-#include <QtWidgets\QWidget>
+#include <AzCore/base.h>
+#include <QtWidgets/QWidget>
 #include "AzToolsFramework/UI/UICore/PlainTextEdit.hxx"
 
 #pragma once

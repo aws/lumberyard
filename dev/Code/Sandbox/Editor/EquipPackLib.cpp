@@ -69,7 +69,7 @@ bool CEquipPackLib::RemoveEquipPack(const QString& name, bool /* bDeleteFromDisk
         bool bOK = CFileUtil::OverwriteFile(path);
         if (bOK)
         {
-            ::DeleteFile(path.toLatin1().data());
+            ::DeleteFile(path.toUtf8().data());
         }
     }
 #endif
@@ -123,16 +123,16 @@ bool CEquipPackLib::LoadLibs(bool bExportToGame)
         filename += files[iFile].filename;
         // CryLogAlways("Filename '%s'", filename);
 
-        XmlNodeRef node = XmlHelpers::LoadXmlFromFile(filename.toLatin1().data());
+        XmlNodeRef node = XmlHelpers::LoadXmlFromFile(filename.toUtf8().data());
         if (node == 0)
         {
-            Warning("CEquipPackLib:LoadLibs: Cannot load pack from file '%s'", filename.toLatin1().data());
+            Warning("CEquipPackLib:LoadLibs: Cannot load pack from file '%s'", filename.toUtf8().data());
             continue;
         }
 
         if (node->isTag("EquipPack") == false)
         {
-            Warning("CEquipPackLib:LoadLibs: File '%s' is not an equipment pack. Skipped.", filename.toLatin1().data());
+            Warning("CEquipPackLib:LoadLibs: File '%s' is not an equipment pack. Skipped.", filename.toUtf8().data());
             continue;
         }
 
@@ -170,7 +170,7 @@ bool CEquipPackLib::SaveLibs(bool bExportToGame)
     QString libsPath = (Path::GetEditingGameDataFolder() + EQUIPMENTPACKS_PATH).c_str();
     if (!libsPath.isEmpty())
     {
-        CFileUtil::CreateDirectory(libsPath.toLatin1().data());
+        CFileUtil::CreateDirectory(libsPath.toUtf8().data());
     }
 
     for (TEquipPackMap::iterator iter = m_equipmentPacks.begin(); iter != m_equipmentPacks.end(); ++iter)
@@ -183,7 +183,7 @@ bool CEquipPackLib::SaveLibs(bool bExportToGame)
             QString path (libsPath);
             path += iter->second->GetName();
             path += ".xml";
-            bool bOK = XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), packNode, path.toLatin1().data());
+            bool bOK = XmlHelpers::SaveXmlNode(GetIEditor()->GetFileUtil(), packNode, path.toUtf8().data());
             if (bOK)
             {
                 pPack->SetModified(false);
@@ -224,12 +224,12 @@ void CEquipPackLib::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bResetWhe
                 {
                     CLogFile::FormatLine("Warning: Unnamed EquipPack found !");
                     packName = "Unnamed";
-                    node->setAttr("name", packName.toLatin1().data());
+                    node->setAttr("name", packName.toUtf8().data());
                 }
                 CEquipPack* pCurPack = CreateEquipPack(packName);
                 if (!pCurPack)
                 {
-                    CLogFile::FormatLine("Warning: Unable to create EquipPack %s !", packName.toLatin1().data());
+                    CLogFile::FormatLine("Warning: Unable to create EquipPack %s !", packName.toUtf8().data());
                     continue;
                 }
                 pCurPack->Load(node);

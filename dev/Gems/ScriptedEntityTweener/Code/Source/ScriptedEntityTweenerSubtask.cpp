@@ -9,14 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "ScriptedEntityTweener_precompiled.h"
 
 #include <AzCore/Math/Color.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <ScriptedEntityTweener/ScriptedEntityTweenerBus.h>
 
-#include "ScriptedEntityTweenerSubTask.h"
+#include "ScriptedEntityTweenerSubtask.h"
 #include "ScriptedEntityTweenerMath.h"
 
 namespace ScriptedEntityTweener

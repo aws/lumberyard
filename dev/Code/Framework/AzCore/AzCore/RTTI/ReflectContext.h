@@ -31,9 +31,18 @@ namespace AZ
     class ReflectContext;
 
     /// Function type to called for on demand reflection within methods, properties, etc.
-    using OnDemandReflectionFunctionPtr = void(*)(ReflectContext* context);
-    // #MSVC2013 does not allow using of a function signature.
-    typedef void OnDemandReflectionFunctionRef(ReflectContext* context);
+    /// OnDemandReflection functions must be static, so we can optimize by just using function pointer instead of object
+    using StaticReflectionFunctionPtr = void(*)(ReflectContext* context);
+
+    /// Must be function object, as these are typically virtual member functions (see ComponentDescriptor::Reflect)
+    using ReflectionFunction = AZStd::function<void(ReflectContext* context)>;
+
+    namespace Internal
+    {
+        // This needs to be not a pointer, because we're jamming it into shared_ptr, and we don't want a pointer to a pointer
+        // #MSVC2013 does not allow using of a function signature.
+        typedef void ReflectionFunctionRef(ReflectContext* context);
+    }
 
     /**
      * Base classes for structures that store references to OnDemandReflection instantiations.
@@ -42,7 +51,7 @@ namespace AZ
     class OnDemandReflectionOwner
     {
     public:
-        virtual ~OnDemandReflectionOwner() = default;
+        virtual ~OnDemandReflectionOwner();
 
         // Disallow all copy-move operations, as well as default construct
         OnDemandReflectionOwner() = delete;
@@ -52,7 +61,7 @@ namespace AZ
         OnDemandReflectionOwner& operator=(OnDemandReflectionOwner&&) = delete;
 
         /// Register an OnDemandReflection function
-        void AddReflectFunction(AZ::Uuid typeId, OnDemandReflectionFunctionPtr reflectFunction);
+        void AddReflectFunction(AZ::Uuid typeId, StaticReflectionFunctionPtr reflectFunction);
 
     protected:
         /// Constructor to be called by child class
@@ -60,7 +69,7 @@ namespace AZ
 
     private:
         /// Reflection functions this instance owns references to
-        AZStd::vector<AZStd::shared_ptr<OnDemandReflectionFunctionRef>> m_reflectFunctions;
+        AZStd::vector<AZStd::shared_ptr<Internal::ReflectionFunctionRef>> m_reflectFunctions;
         ReflectContext& m_reflectContext;
     };
 
@@ -113,9 +122,9 @@ namespace AZ
         bool m_isRemoveReflection;
 
         /// Store the on demand reflect functions so we can avoid double-reflecting something
-        AZStd::unordered_map<AZ::Uuid, AZStd::weak_ptr<OnDemandReflectionFunctionRef>> m_onDemandReflection;
+        AZStd::unordered_map<AZ::Uuid, AZStd::weak_ptr<Internal::ReflectionFunctionRef>> m_onDemandReflection;
         /// OnDemandReflection functions that need to be called
-        AZStd::vector<AZStd::pair<AZ::Uuid, OnDemandReflectionFunctionPtr>> m_toProcessOnDemandReflection;
+        AZStd::vector<AZStd::pair<AZ::Uuid, StaticReflectionFunctionPtr>> m_toProcessOnDemandReflection;
         /// The type ids of the currently reflecting type. Used to prevent circular references. Is a set to prevent recursive circular references.
         AZStd::deque<AZ::Uuid> m_currentlyProcessingTypeIds;
 
@@ -327,17 +336,17 @@ namespace AZ
         struct AttributeValueTypeClassChecker
         {
             // By default any value is OK
-            static bool Check(const Uuid&, IRttiHelper*)      
-            { 
-                return true; 
-            }  
+            static bool Check(const Uuid&, IRttiHelper*)
+            {
+                return true;
+            }
         };
 
         template<class T, class C>
         struct AttributeValueTypeClassChecker<T C::*>
         {
             static bool Check(const Uuid& classId, IRttiHelper* rtti)
-            { 
+            {
                 if (classId == AzTypeInfo<C>::Uuid())
                 {
                     return true;
@@ -349,8 +358,8 @@ namespace AZ
         template<class T, class C>
         struct AttributeValueTypeClassChecker<T(C::*)()>
         {
-            static bool Check(const Uuid& classId, IRttiHelper* rtti) 
-            { 
+            static bool Check(const Uuid& classId, IRttiHelper* rtti)
+            {
                 if (classId == AzTypeInfo<C>::Uuid())
                 {
                     return true;
@@ -362,8 +371,8 @@ namespace AZ
         template<class T, class C>
         struct AttributeValueTypeClassChecker<T(C::*)() const>
         {
-            static bool Check(const Uuid& classId, IRttiHelper* rtti) 
-            { 
+            static bool Check(const Uuid& classId, IRttiHelper* rtti)
+            {
                 if (classId == AzTypeInfo<C>::Uuid())
                 {
                     return true;
@@ -375,7 +384,7 @@ namespace AZ
         template<class T, bool IsNoSpecialization = HasNoOnDemandReflection<OnDemandReflection<T>>::value>
         struct OnDemandReflectHook
         {
-            static OnDemandReflectionFunctionPtr Get()
+            static StaticReflectionFunctionPtr Get()
             {
                 return nullptr;
             }
@@ -384,7 +393,7 @@ namespace AZ
         template<class T>
         struct OnDemandReflectHook<T, false>
         {
-            static OnDemandReflectionFunctionPtr Get()
+            static StaticReflectionFunctionPtr Get()
             {
                 return &OnDemandReflection<T>::Reflect;
             }

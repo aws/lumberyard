@@ -619,7 +619,7 @@ void GridMateImpl::StopStorageService()
 /**
  * Windows platform-specific net modules
  */
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
 #   pragma comment(lib,"WS2_32.lib")
 #endif  // AZ_PLATFORM_WINDOWS
 

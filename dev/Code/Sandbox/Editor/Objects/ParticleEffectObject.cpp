@@ -313,7 +313,7 @@ void CParticleEffectObject::CFastParticleParser::ExtractParticlePathes(const QSt
 {
     m_ParticleList.clear();
 
-    XmlNodeRef rootNode = XmlHelpers::LoadXmlFromFile(particlePath.toLatin1().data());
+    XmlNodeRef rootNode = XmlHelpers::LoadXmlFromFile(particlePath.toUtf8().data());
 
     if (rootNode == NULL)
     {
@@ -356,9 +356,9 @@ void CParticleEffectObject::CFastParticleParser::ExtractLevelParticles()
                 if (pIPak)
                 {
                     bool newExtension = false;
-                    if (!pIPak->OpenPack(oldPath.toLatin1().data()))
+                    if (!pIPak->OpenPack(oldPath.toUtf8().data()))
                     {
-                        if (pIPak->OpenPack(newPath.toLatin1().data()))
+                        if (pIPak->OpenPack(newPath.toUtf8().data()))
                         {
                             newExtension = true;
                         }
@@ -369,9 +369,9 @@ void CParticleEffectObject::CFastParticleParser::ExtractLevelParticles()
                     }
 
                     QString particleLibrary = levelPath + "/" + "Level.editor_xml";
-                    if (XmlNodeRef rootNode = XmlHelpers::LoadXmlFromFile(particleLibrary.toLatin1().data()))
+                    if (XmlNodeRef rootNode = XmlHelpers::LoadXmlFromFile(particleLibrary.toUtf8().data()))
                     {
-                        if (XmlNodeRef particleLibrary = rootNode->findChild(pParticleManager->GetRootNodeName().toLatin1().data()))
+                        if (XmlNodeRef particleLibrary = rootNode->findChild(pParticleManager->GetRootNodeName().toUtf8().data()))
                         {
                             if (XmlNodeRef levelLibrary = particleLibrary->findChild("LevelLibrary"))
                             {
@@ -391,11 +391,11 @@ void CParticleEffectObject::CFastParticleParser::ExtractLevelParticles()
 
                     if (newExtension)
                     {
-                        pIPak->ClosePack(newPath.toLatin1().data());
+                        pIPak->ClosePack(newPath.toUtf8().data());
                     }
                     else
                     {
-                        pIPak->ClosePack(oldPath.toLatin1().data());
+                        pIPak->ClosePack(oldPath.toUtf8().data());
                     }
                 }
             }

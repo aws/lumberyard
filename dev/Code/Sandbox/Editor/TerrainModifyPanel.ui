@@ -215,7 +215,7 @@
              <number>1</number>
             </property>
             <property name="maximum">
-             <number>230</number>
+             <number>20000</number>
             </property>
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -271,7 +271,7 @@
           <item>
            <widget class="QSlider" name="brushInsideRadiusSlider">
             <property name="maximum">
-             <number>230</number>
+             <number>20000</number>
             </property>
             <property name="orientation">
              <enum>Qt::Horizontal</enum>

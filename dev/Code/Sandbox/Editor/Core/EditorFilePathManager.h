@@ -22,7 +22,7 @@ class EditorFilePathManager
 public:
     AZStd::string PrepareAssetIDForWriting(const char* name) const override
     {
-        return Path::GamePathToFullPath(name).toLatin1().data();
+        return Path::GamePathToFullPath(name).toUtf8().data();
     }
 };
 

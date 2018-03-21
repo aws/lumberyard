@@ -19,7 +19,7 @@ import service
 import traceback
 
 @service.api(logging_filter=account_utils.apply_logging_filter)
-def get(request, StartPlayerName=None, CognitoIdentityId=None, CognitoUsername=None, Email=None, PageToken=None):
+def get(request, StartPlayerName='', CognitoIdentityId=None, CognitoUsername=None, Email=None, PageToken=None):
     if CognitoIdentityId:
         return search_by_cognito_identity_id(CognitoIdentityId)
     if CognitoUsername:
@@ -27,9 +27,9 @@ def get(request, StartPlayerName=None, CognitoIdentityId=None, CognitoUsername=N
     if Email:
         return search_by_email(Email)
     if PageToken:
-        return search_by_start_name(serialized_page_token=PageToken)
+        return search_by_start_name(start_player_name=StartPlayerName.lower(), serialized_page_token=PageToken)
     if StartPlayerName:
-        return search_by_start_name(start_player_name=StartPlayerName)
+        return search_by_start_name(start_player_name=StartPlayerName.lower())
 
     return default_search()
 
@@ -66,7 +66,7 @@ def search_by_start_name(start_player_name = None, serialized_page_token = None)
     else:
         page_token = dynamodb_pagination.get_page_token_for_inclusive_start(config, start_player_name, forward=True)
 
-    search = dynamodb_pagination.PaginatedSearch(config, page_token)
+    search = dynamodb_pagination.PaginatedSearch(config, page_token, start_player_name)
 
     raw_account_items = search.get_next_page(page_size)
     

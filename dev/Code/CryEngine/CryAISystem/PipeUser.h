@@ -218,7 +218,7 @@ public:
         return m_looseAttentionId;
     }
 
-    typedef boost::weak_ptr<Vec3> LookTargetWeakPtr;
+    typedef AZStd::weak_ptr<Vec3> LookTargetWeakPtr;
     virtual LookTargetPtr CreateLookTarget() override;
 
     void RegisterAttack(const char* name);

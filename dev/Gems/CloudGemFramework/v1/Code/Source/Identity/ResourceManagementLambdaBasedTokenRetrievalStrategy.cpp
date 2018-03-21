@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <CloudGemFramework_precompiled.h>
 #include <Identity/ResourceManagementLambdaBasedTokenRetrievalStrategy.h>
 #pragma warning(disable: 4355) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
 #include <aws/lambda/model/InvokeRequest.h>

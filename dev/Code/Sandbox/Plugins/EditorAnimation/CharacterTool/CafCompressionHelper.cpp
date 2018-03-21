@@ -123,7 +123,7 @@ bool CafCompressionHelper::CompressAnimationForPreview(string* outputCafPath, st
     }
 
     const string inputFilePath = PathUtil::ReplaceExtension(animationPath, "i_caf"); //AnimSettingsFileHelper::GetIntermediateFilename(animationPath);
-    const string inputFilePathFull = Path::GamePathToFullPath(animationPath.c_str()).toLatin1().data();
+    const string inputFilePathFull = Path::GamePathToFullPath(animationPath.c_str()).toUtf8().data();
 
     if (animSettings.build.skeletonAlias.empty())
     {

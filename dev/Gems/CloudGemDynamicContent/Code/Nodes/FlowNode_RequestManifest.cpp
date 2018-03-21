@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <StdAfx.h>
+#include <CloudGemDynamicContent_precompiled.h>
 #include <Nodes/FlowNode_RequestManifest.h>
 #include <DynamicContent/DynamicContentBus.h>
 

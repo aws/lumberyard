@@ -64,7 +64,7 @@ AWSResourceManager::ExecuteAsyncCallback AWSDeploymentModel::CreateCallback(cons
             // TODO: move this to UI
             QMessageBox msgBox(QMessageBox::Critical,
                 tr("Cloud Canvas Resource Manager"),
-                tr(value.toString().toLatin1().data()),
+                tr(value.toString().toUtf8().data()),
                 QMessageBox::Ok,
                 Q_NULLPTR,
                 Qt::Popup);

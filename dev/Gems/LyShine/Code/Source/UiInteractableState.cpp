@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "UiInteractableState.h"
 
 #include <AzCore/Math/Crc.h>

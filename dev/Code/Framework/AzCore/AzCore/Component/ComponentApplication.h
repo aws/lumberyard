@@ -24,14 +24,14 @@
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/RTTI/ReflectionManager.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/std/string/conversions.h>
 
 namespace AZ
 {
-    class SerializeContext;
+    class BehaviorContext;
     class Module;
     class ModuleManager;
 
@@ -166,8 +166,8 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // ComponentApplicationRequests
-        void RegisterComponentDescriptor(const ComponentDescriptor* descriptor) override;
-        void UnregisterComponentDescriptor(const ComponentDescriptor* descriptor) override;
+        void RegisterComponentDescriptor(const ComponentDescriptor* descriptor) override final;
+        void UnregisterComponentDescriptor(const ComponentDescriptor* descriptor) override final;
         bool AddEntity(Entity* entity) override;
         bool RemoveEntity(Entity* entity) override;
         bool DeleteEntity(const EntityId& id) override;
@@ -176,9 +176,9 @@ namespace AZ
         void EnumerateEntities(const ComponentApplicationRequests::EntityCallback& callback) override;
         ComponentApplication* GetApplication() override { return this; }
         /// Returns the serialize context that has been registered with the app, if there is one.
-        SerializeContext* GetSerializeContext() override { return m_serializeContext; }
+        SerializeContext* GetSerializeContext() override;
         /// Returns the behavior context that has been registered with the app, if there is one.
-        BehaviorContext* GetBehaviorContext() override { return m_behaviorContext; }
+        BehaviorContext* GetBehaviorContext() override;
         /// Returns the working root folder that has been registered with the app, if there is one.
         /// It's expected that derived applications will implement an application root.
         const char*  GetAppRoot() override { return ""; }
@@ -230,11 +230,8 @@ namespace AZ
         void ResolveModulePath(AZ::OSString& modulePath) override;
 
     protected:
-        virtual void CreateSerializeContext();
-        virtual void DestroySerializeContext();
-
-        virtual void CreateBehaviorContext();
-        virtual void DestroyBehaviorContext();
+        virtual void CreateReflectionManager();
+        void DestroyReflectionManager();
 
         /// Perform any additional initialization needed before loading modules
         virtual void PreModuleLoad() {};
@@ -299,9 +296,8 @@ namespace AZ
 
         AZStd::chrono::system_clock::time_point     m_currentTime;
         float                                       m_deltaTime;
-        SerializeContext*                           m_serializeContext;
-        BehaviorContext*                            m_behaviorContext;
         AZStd::unique_ptr<ModuleManager>            m_moduleManager;
+        AZStd::unique_ptr<ReflectionManager>        m_reflectionManager;
         Descriptor                                  m_descriptor;
         bool                                        m_isStarted;
         bool                                        m_isSystemAllocatorOwner;

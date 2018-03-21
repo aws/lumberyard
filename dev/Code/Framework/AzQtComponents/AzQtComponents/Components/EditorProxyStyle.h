@@ -23,6 +23,7 @@ class QPushButton;
 
 namespace AzQtComponents
 {
+
     class AZ_QT_COMPONENTS_API EditorProxyStyle
         : public QProxyStyle
     {
@@ -56,8 +57,6 @@ namespace AzQtComponents
 
         static QColor dropZoneColorOnHover();
 
-        static void addTitleBarOverdrawWidget(QWidget* widget);
-
         // The QPushButtons set with the "Primary" property in the QStackedwidget in the AssetImporterManager
         // do not work with the stylesheet.
         // These buttons are painted in EditorProxyStyle.cpp, but for some reasons they cannot
@@ -68,7 +67,6 @@ namespace AzQtComponents
 
     protected:
         void polish(QWidget* widget) override;
-        void polish(QApplication *app) override;
         QSize sizeFromContents(ContentsType type, const QStyleOption* option,
             const QSize& size, const QWidget* widget) const override;
 

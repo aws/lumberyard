@@ -844,10 +844,10 @@ namespace ScriptCanvas
             
             m_slotContainer.m_slotIdSlotMap.clear();
             m_slotContainer.m_slotNameSlotMap.clear();
-            for (size_t slotIndex = 0; slotIndex < m_slotContainer.m_slots.size(); ++slotIndex)
+            for (size_t slotIndexer = 0; slotIndexer < m_slotContainer.m_slots.size(); ++slotIndexer)
             {
-                m_slotContainer.m_slotIdSlotMap.emplace(m_slotContainer.m_slots[slotIndex].GetId(), static_cast<int>(slotIndex));
-                m_slotContainer.m_slotNameSlotMap.emplace(m_slotContainer.m_slots[slotIndex].GetName(), static_cast<int>(slotIndex));
+                m_slotContainer.m_slotIdSlotMap.emplace(m_slotContainer.m_slots[slotIndexer].GetId(), static_cast<int>(slotIndexer));
+                m_slotContainer.m_slotNameSlotMap.emplace(m_slotContainer.m_slots[slotIndexer].GetName(), static_cast<int>(slotIndexer));
             }
             return true;
         }

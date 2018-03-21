@@ -1258,8 +1258,8 @@ string CShaderMan::mfGetShaderCompileFlags(EHWShaderClass eClass, UPipelineState
         pCompilerGLES3 = "-lang=es310 -flags=364289 -fxc=\"%s /nologo /E %s /T %s /Zpr /Gec /Fo\" -out=\"%s\" -in=\"%s\"";
     }
 #endif
-
-    // Confetti Nicholas Baldwin: adding metal shader language support
+    
+    //To enable half float support in the cross compiler set the flags value to (flags | 0x40000)
     const char* pCompilerMETAL = "-lang=metal -flags=7937 -fxc=\"%s /nologo /E %s /T %s /Zpr /Gec /Fo\" -out=\"%s\" -in=\"%s\"";
 
     if (CRenderer::CV_r_shadersdebug == 3)

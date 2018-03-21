@@ -139,7 +139,7 @@ void CMannTagEditorDialog::InitialiseFragmentADBsRec(const QString& baseDir)
     ICryPak* pCryPak = gEnv->pCryPak;
     _finddata_t fd;
 
-    intptr_t handle = pCryPak->FindFirst((baseDir + QStringLiteral("*")).toLatin1().data(), &fd);
+    intptr_t handle = pCryPak->FindFirst((baseDir + QStringLiteral("*")).toUtf8().data(), &fd);
     if (handle != -1)
     {
         do
@@ -211,7 +211,7 @@ void CMannTagEditorDialog::InitialiseFragmentTagsRec(const QString& baseDir)
     ICryPak* pCryPak = gEnv->pCryPak;
     _finddata_t fd;
 
-    intptr_t handle = pCryPak->FindFirst((baseDir + QStringLiteral("*.xml")).toLatin1().data(), &fd);
+    intptr_t handle = pCryPak->FindFirst((baseDir + QStringLiteral("*.xml")).toUtf8().data(), &fd);
     if (handle != -1)
     {
         do
@@ -228,14 +228,14 @@ void CMannTagEditorDialog::InitialiseFragmentTagsRec(const QString& baseDir)
             }
             else
             {
-                if (XmlNodeRef root = GetISystem()->LoadXmlFromFile(filename.toLatin1().data()))
+                if (XmlNodeRef root = GetISystem()->LoadXmlFromFile(filename.toUtf8().data()))
                 {
                     // Ignore non-tagdef XML files
                     QString tag = root->getTag();
                     if (tag == "TagDefinition")
                     {
                         IAnimationDatabaseManager& db = gEnv->pGame->GetIGameFramework()->GetMannequinInterface().GetAnimationDatabaseManager();
-                        const CTagDefinition* pTagDef = db.LoadTagDefs(filename.toLatin1().data(), true);
+                        const CTagDefinition* pTagDef = db.LoadTagDefs(filename.toUtf8().data(), true);
                         if (pTagDef)
                         {
                             AddTagDef(pTagDef->GetFilename());
@@ -271,7 +271,7 @@ void CMannTagEditorDialog::OnOK()
 
     const QString commonErrorMessage = tr("Failed to create FragmentID with name '%1'.\n  Reason:\n\n  %2").arg(m_fragmentName);
 
-    EModifyFragmentIdResult result = pManEditMan->RenameFragmentID(m_animDB->GetFragmentDefs(), m_fragmentID, m_fragmentName.toLatin1().data());
+    EModifyFragmentIdResult result = pManEditMan->RenameFragmentID(m_animDB->GetFragmentDefs(), m_fragmentID, m_fragmentName.toUtf8().data());
 
     if (result != eMFIR_Success)
     {
@@ -345,7 +345,7 @@ void CMannTagEditorDialog::ProcessFragmentADBChanges()
     {
         pMannequinEditorManager->RemoveSubADBFragmentFilter(m_animDB, currentSubADBFragmentFilterFilename, m_fragmentID);
     }
-    pMannequinEditorManager->AddSubADBFragmentFilter(m_animDB, sADBFileName.toLatin1().data(), m_fragmentID);
+    pMannequinEditorManager->AddSubADBFragmentFilter(m_animDB, sADBFileName.toUtf8().data(), m_fragmentID);
 
     CMannequinDialog::GetCurrentInstance()->FragmentBrowser()->SetADBFileNameTextToCurrent();
 }
@@ -361,7 +361,7 @@ void CMannTagEditorDialog::ProcessFragmentTagChanges()
 
     const QString tagsFilename = GetSelectedTagDefFilename();
     const bool hasFilename = !tagsFilename.isEmpty();
-    const CTagDefinition* pTagDef = hasFilename ? mannequinSys.GetAnimationDatabaseManager().LoadTagDefs(tagsFilename.toLatin1().data(), true) : NULL;
+    const CTagDefinition* pTagDef = hasFilename ? mannequinSys.GetAnimationDatabaseManager().LoadTagDefs(tagsFilename.toUtf8().data(), true) : NULL;
     const CTagDefinition* pCurFragFragTagDef = pControllerDef->GetFragmentTagDef(m_fragmentID);
 
     if (pTagDef == pCurFragFragTagDef)
@@ -484,7 +484,7 @@ void CMannTagEditorDialog::AddTagDef(const QString& filename)
     const QString normalizedFilename = GetNormalizedFilenameString(filename);
 
     IMannequin& mannequinSys = gEnv->pGame->GetIGameFramework()->GetMannequinInterface();
-    if (!mannequinSys.GetAnimationDatabaseManager().LoadTagDefs(filename.toLatin1().data(), true))
+    if (!mannequinSys.GetAnimationDatabaseManager().LoadTagDefs(filename.toUtf8().data(), true))
     {
         return;
     }
@@ -578,7 +578,7 @@ void CMannTagEditorDialog::OnCbnSelchangeFragfileCombo()
 void CMannTagEditorDialog::OnBnClickedCreateAdbFile()
 {
     const char* fragName = (m_fragmentID != FRAGMENT_ID_INVALID) ? m_animDB->GetFragmentDefs().GetTagName(m_fragmentID) : "NoFragment";
-    AZStd::string fragNameFullPath = Path::GamePathToFullPath(MANNEQUIN_FOLDER + fragName).toLatin1().data();
+    AZStd::string fragNameFullPath = Path::GamePathToFullPath(MANNEQUIN_FOLDER + fragName).toUtf8().data();
     QString fileName = QFileDialog::getSaveFileName(this, tr("Save As"), fragNameFullPath.c_str(), tr("ADB Files (*.adb);;All Files (*.*)"));
 
     if (!fileName.isEmpty())
@@ -602,7 +602,7 @@ void CMannTagEditorDialog::OnBnClickedCreateAdbFile()
 
         const QString normalizedFilename = GetNormalizedFilenameString(MANNEQUIN_FOLDER + sADBFileName);
         m_animDB->RemoveSubADBFragmentFilter(m_fragmentID);
-        m_animDB->AddSubADBFragmentFilter(normalizedFilename.toLatin1().data(), m_fragmentID);
+        m_animDB->AddSubADBFragmentFilter(normalizedFilename.toUtf8().data(), m_fragmentID);
 
         ResetFragmentADBs();
     }

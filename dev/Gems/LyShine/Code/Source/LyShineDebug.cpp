@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "LyShineDebug.h"
 #include "IConsole.h"
 #include <LyShine/IDraw2d.h>

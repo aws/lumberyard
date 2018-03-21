@@ -57,10 +57,13 @@ uint32 CAttachmentSKIN::AddBinding(IAttachmentObject* pIAttachmentObject, _smart
         if (pSkinningData
             && pSkinningData->nNumBones == expectedNumBones
             && pSkinningData->pPreviousSkinningRenderData
-            && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones
-            && pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+            && pSkinningData->pPreviousSkinningRenderData->nNumBones == expectedNumBones)
         {
-            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+            AZ::LegacyJobExecutor* pAsyncJobExecutor = pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor;
+            if (pAsyncJobExecutor)
+            {
+                pAsyncJobExecutor->WaitForCompletion();
+            }
         }
     }
     memset(m_arrSkinningRendererData, 0, sizeof(m_arrSkinningRendererData));
@@ -384,9 +387,9 @@ CAttachmentSKIN::~CAttachmentSKIN()
         int nList = nFrameID % 3;
         if (m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_arrSkinningRendererData[nList].pSkinningData)
         {
-            if (m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobs)
+            if (m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor)
             {
-                gEnv->pJobManager->WaitForJob(*m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobs);
+                m_arrSkinningRendererData[nList].pSkinningData->pAsyncJobExecutor->WaitForCompletion();
             }
         }
     }
@@ -732,7 +735,7 @@ void CAttachmentSKIN::DrawAttachment(SRendParams& RendParams, const SRenderingPa
             vertexSkinData.pVertexPositionsPrevious = strided_pointer<const Vec3>(NULL);
             if (pD->m_pSkinningData->pPreviousSkinningRenderData)
             {
-                gEnv->pJobManager->WaitForJob(*pD->m_pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+                pD->m_pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor->WaitForCompletion();
             }
             _smart_ptr<IRenderMesh>& pRenderMeshPrevious = m_pRenderMeshsSW[1 - iCurrentRenderMeshID];
             if (pRenderMeshPrevious != NULL)
@@ -806,7 +809,7 @@ void CAttachmentSKIN::DrawAttachment(SRendParams& RendParams, const SRenderingPa
             SSkinningData* pCurrentJobSkinningData = *pD->m_pSkinningData->pMasterSkinningDataList;
             if (pCurrentJobSkinningData == NULL)
             {
-                pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobs);
+                pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobExecutor);
             }
             else
             {
@@ -817,7 +820,7 @@ void CAttachmentSKIN::DrawAttachment(SRendParams& RendParams, const SRenderingPa
                 // in case we failed (job has finished in the meantime), we need to start the job from the main thread
                 if (pUpdatedJobSkinningData == NULL)
                 {
-                    pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobs);
+                    pVertexAnimation->Begin(pD->m_pSkinningData->pAsyncJobExecutor);
                 }
             }
 
@@ -864,7 +867,7 @@ void CAttachmentSKIN::DrawAttachment(SRendParams& RendParams, const SRenderingPa
             if (tang || bitang || norm || wire)
             {
                 CModelMesh* pModelMesh = m_pModelSkin->GetModelMesh(nRenderLOD);
-                gEnv->pJobManager->WaitForJob(*pD->m_pSkinningData->pAsyncJobs);
+                pD->m_pSkinningData->pAsyncJobExecutor->WaitForCompletion();
                 SoftwareSkinningDQ_VS_Emulator(pModelMesh, pObj->m_II.m_Matrix, tang, bitang, norm, wire, pD->m_pSkinningData->pBoneQuatsS);
             }
         }
@@ -991,9 +994,9 @@ SSkinningData* CAttachmentSKIN::GetVertexTransformationData(bool bVertexAnimatio
     {
         pSkinningData->nHWSkinningFlags |= eHWS_MotionBlured;
         pSkinningData->pPreviousSkinningRenderData = m_arrSkinningRendererData[nPrevList].pSkinningData;
-        if (pSkinningData->pPreviousSkinningRenderData->pAsyncJobs)
+        if (pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor)
         {
-            gEnv->pJobManager->WaitForJob(*pSkinningData->pPreviousSkinningRenderData->pAsyncJobs);
+            pSkinningData->pPreviousSkinningRenderData->pAsyncJobExecutor->WaitForCompletion();
         }
     }
     else

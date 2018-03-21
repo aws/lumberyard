@@ -36,6 +36,7 @@ struct IParticleEffect;
 #include <IStreamEngine.h>
 #include "RenderMeshUtils.h"
 #include "GeomQuery.h"
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #define MAX_PHYS_GEOMS_TYPES 4
 
@@ -257,7 +258,7 @@ struct SSyncToRenderMeshContext
     strided_pointer<SPipTangents> pTangents;
     strided_pointer<Vec3> pNormals; // TODO: change Vec3 to SPipNormal
     CStatObj* pObj;
-    JobManager::SJobState jobState;
+    AZ::LegacyJobExecutor jobExecutor;
 
     void Set(Vec3* _vmin, Vec3* _vmax, int _iVtx0, int _nVtx, strided_pointer<Vec3> _pVtx, int* _pVtxMap
         , int _mask, float _rscale, SClothTangentVtx* _ctd, strided_pointer<Vec3> _pMeshVtx

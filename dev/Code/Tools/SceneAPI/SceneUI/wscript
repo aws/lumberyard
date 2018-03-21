@@ -20,7 +20,7 @@ def build(bld):
         disable_pch                 = True,
         file_list                   = 'SceneUI.waf_files',
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'debug_dedicated', 'profile', 'profile_test', 'profile_dedicated'],
+        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
         test_all_file_list          = 'SceneUI_testing.waf_files',
         includes                    = [ bld.Path('Code/Tools') ],
         use                         = ['SceneCore', 'SceneData', 'AzCore', 'AzFramework', 'AzToolsFramework', 'EmotionFXStaticLib', 'AzQtComponents'],

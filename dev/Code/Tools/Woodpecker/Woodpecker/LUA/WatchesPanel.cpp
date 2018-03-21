@@ -828,7 +828,7 @@ const char* WatchesDataModel::SafetyType(char c) const
         return "<invalid>";
     }
 
-    return WatchesPanel::typeStringLUT[c];
+    return WatchesPanel::typeStringLUT[static_cast<int>(c)];
 }
 
 const bool WatchesDataModel::IsRealIndex(const QModelIndex& index) const

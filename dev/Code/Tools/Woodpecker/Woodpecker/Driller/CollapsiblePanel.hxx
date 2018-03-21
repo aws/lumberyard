@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <QtWidgets/qwidget.h>
+#include <QtWidgets/QWidget>
 
 namespace Ui
 {

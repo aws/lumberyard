@@ -1016,7 +1016,8 @@
     {
         "Root":
         [
-            "StdAfx.cpp"
+            "StdAfx.cpp",
+            "CryActionTraits.h"
         ],
         "Player Profiles":
         [

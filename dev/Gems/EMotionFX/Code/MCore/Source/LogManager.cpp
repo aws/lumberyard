@@ -14,10 +14,6 @@
 #include "LogManager.h"
 #include "LogFile.h"
 
-#ifdef MCORE_PLATFORM_MARMALADE
-    #include <s3eDebug.h>
-#endif
-
 #include <iostream>
 
 namespace MCore
@@ -514,13 +510,8 @@ namespace MCore
     #if (defined(MCORE_PLATFORM_WINDOWS))
         OutputDebugStringA(message);
         OutputDebugStringA("\n");
-    #elif (defined(MCORE_PLATFORM_WII))
-        OSReport(message);
-        OSReport("\n");
     #elif (defined(MCORE_PLATFORM_ANDROID))
         __android_log_print(ANDROID_LOG_INFO, "MCore", message);
-    #elif (defined(MCORE_PLATFORM_MARMALADE))
-        s3eDebugOutputString(message);
     #else
         std::cout << message << "\n";
     #endif
@@ -528,10 +519,10 @@ namespace MCore
 
 
     // format an std string
-    std::string FormatStdString(const char* fmt, ...)
+    AZStd::string FormatStdString(const char* fmt, ...)
     {
         int size = ((int)strlen(fmt)) * 2 + 128; // guess an initial size
-        std::string result;
+        AZStd::string result;
         va_list ap;
         for (;; )
         {

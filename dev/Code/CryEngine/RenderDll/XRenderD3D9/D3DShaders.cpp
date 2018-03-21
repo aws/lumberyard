@@ -40,7 +40,6 @@ bool CShader::FXSetTechnique(const CCryNameTSCRC& Name)
 
     if (i == m_HWTechniques.Num())
     { // not found and not set
-        rd->m_RP.m_pShader = NULL;
         rd->m_RP.m_nShaderTechnique = -1;
         rd->m_RP.m_pCurTechnique = NULL;
         return false;

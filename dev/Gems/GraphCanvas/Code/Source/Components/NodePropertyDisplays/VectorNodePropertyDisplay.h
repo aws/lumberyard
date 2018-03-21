@@ -11,9 +11,9 @@
 */
 #pragma once
 
-#include <qevent.h>
-#include <qgraphicswidget.h>
-#include <qobject.h>
+#include <QEvent>
+#include <QGraphicsWidget>
+#include <QObject>
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyVectorCtrl.hxx>
 

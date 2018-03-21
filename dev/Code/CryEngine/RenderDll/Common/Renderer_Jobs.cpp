@@ -681,33 +681,33 @@ void CRenderer::FinalizeRendItems_FindShadowFrustums(int nThreadID)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-JobManager::SJobState* CRenderer::GetGenerateRendItemJobState(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutor(int nThreadID)
 {
-    return &m_generateRendItemJobState[nThreadID];
+    return &m_generateRendItemJobExecutor[nThreadID];
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-JobManager::SJobState* CRenderer::GetGenerateShadowRendItemJobState(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateShadowRendItemJobExecutor(int nThreadID)
 {
-    return &m_generateShadowRendItemJobState[nThreadID];
+    return &m_generateShadowRendItemJobExecutor[nThreadID];
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-JobManager::SJobState* CRenderer::GetGenerateRendItemJobStatePreProcess(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutorPreProcess(int nThreadID)
 {
-    return &m_generateRendItemPreProcessJobState[nThreadID];
+    return &m_generateRendItemPreProcessJobExecutor[nThreadID];
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-JobManager::SJobState* CRenderer::GetFinalizeRendItemJobState(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetFinalizeRendItemJobExecutor(int nThreadID)
 {
-    return &m_JobState_FinalizeRendItems[nThreadID];
+    return &m_finalizeRendItemsJobExecutor[nThreadID];
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-JobManager::SJobState* CRenderer::GetFinalizeShadowRendItemJobState(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetFinalizeShadowRendItemJobExecutor(int nThreadID)
 {
-    return &m_JobState_FinalizeShadowRendItems[nThreadID];
+    return &m_finalizeShadowRendItemsJobExecutor[nThreadID];
 }
 
 //////////////////////////////////////////////////////////////////////////

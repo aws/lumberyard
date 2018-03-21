@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 #include "LibDyad.h"
 #include <CrySimpleManagedThread.h>
 #include <AzCore/std/parallel/atomic.h>

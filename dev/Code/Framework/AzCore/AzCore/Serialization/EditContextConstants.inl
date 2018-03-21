@@ -72,6 +72,7 @@ namespace AZ
             const static AZ::Crc32 SoftMin = AZ_CRC("SoftMin", 0x155bd9a3);
             const static AZ::Crc32 SoftMax = AZ_CRC("SoftMax", 0x2956e6fa);
             const static AZ::Crc32 Decimals = AZ_CRC("Decimals", 0x7252f046);
+            const static AZ::Crc32 DisplayDecimals = AZ_CRC("DisplayDecimals", 0x31f5f3a0);
 
             const static AZ::Crc32 LabelForX = AZ_CRC("LabelForX", 0x46dc59ea);
             const static AZ::Crc32 LabelForY = AZ_CRC("LabelForY", 0x31db697c);
@@ -122,6 +123,9 @@ namespace AZ
 
             // Attribute for tagging a System Component for use in certain contexts
             const static AZ::Crc32 SystemComponentTags = AZ_CRC("SystemComponentTags", 0x2d8bebc9);
+
+            // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
+            const static AZ::Crc32 Handler = AZ_CRC("Handler", 0x939715cd);
         }
 
 
@@ -149,7 +153,9 @@ namespace AZ
             const static AZ::Crc32 Vector2 = AZ_CRC("Vector2", 0xe6775839);
             const static AZ::Crc32 Vector3 = AZ_CRC("Vector3", 0x917068af);
             const static AZ::Crc32 Vector4 = AZ_CRC("Vector4", 0x0f14fd0c);
-            const static AZ::Crc32 Handler = AZ_CRC("Handler", 0x939715cd);
+
+            // Maintained in the UIHandlers namespace for backwards compatibility; moved to the Attributes namespace now
+            const static AZ::Crc32 Handler = Attributes::Handler;
         }
 
         // Attributes used in internal implementation only

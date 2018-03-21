@@ -159,8 +159,7 @@ function commsarrayeffects:UpdateTransition(amount)
 	StarterGameMaterialUtility.SetSubMtlShaderFloat(self.Properties.MainMeshEntity, "emissive_intensity", self.Properties.MainMeshEmissive2MatIndex, emissive);
 
 	local color = self.BeamMeshColor1Max * amount;
-	-- Ed.W. - Temporary fix for warning spam when deactivating comms arrays.
-	--StarterGameMaterialUtility.SetSubMtlShaderVec3(self.Properties.BeamMeshEntity, "StartColor", self.Properties.BeamMeshColor1MatIndex, color);
+	StarterGameMaterialUtility.SetSubMtlShaderVec3(self.Properties.BeamMeshEntity, "StartColor", self.Properties.BeamMeshColor1MatIndex, color);
 	color = self.BeamMeshColor2Max * amount;
 	StarterGameMaterialUtility.SetSubMtlShaderVec3(self.Properties.BeamMeshEntity, "StartColor", self.Properties.BeamMeshColor2MatIndex, color);
 end

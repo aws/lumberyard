@@ -59,12 +59,20 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     private speechBeforeChange: SpeechEntry;
     private currentCharacter: CharacterEntry;
     private characterBeforeChange: CharacterEntry;
+    private currentGeneratedPackage: GeneratedPackageEntry;
 
-    private filterOpen: boolean;
-    private filterApplied: boolean;
-    private filterText: string;
-    private tagList: Object[];
-    private originalTagList: Object[];
+    private tagFilterOpen: boolean;
+    private tagFilterApplied: boolean;
+    private tagFilterText: string;
+    private filterTagList: Object[];
+    private originalfilterTagList: Object[];
+    private tagsFilterLogic: string;
+
+    private characterFilterOpen: boolean;
+    private characterFilterApplied: boolean;
+    private characterFilterText: string;
+    private filterCharacterList: Object[];
+    private originalfilterCharacterList: Object[];
 
     private characterNames: string[];
     private languages: string[];
@@ -96,6 +104,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     private speechLinePages: number;
     private currentSpeechLibIndex: number = 1;
     private currentCharactersIndex: number = 1;
+    private currentGeneratedPackagesIndex: number = 1;
     private characterPages: number;
     private generatedPackagesPages: number;
 
@@ -103,8 +112,10 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     private papa: any;
 
     private prosody: Object;
-    private ssmlTagTypes: string[];
-    private currentSsmlTagMappings: Object;
+    private ssmlProsodyTagTypes: string[];
+    private currentssmlProsodyTagMappings: Object;
+
+    private deleteMultipleSpeeches: boolean;
 
     @ViewChild(ModalComponent) modalRef: ModalComponent;
     @ViewChild(PaginationComponent) paginationRef: PaginationComponent;
@@ -131,13 +142,16 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
 
         // bind proper scopes for callbacks that have a this reference
         this.deleteModal = this.deleteModal.bind(this);
+        this.deleteMultipleSpeechesModal = this.deleteMultipleSpeechesModal.bind(this);
         this.dismissModal = this.dismissModal.bind(this);
         this.downloadModal = this.downloadModal.bind(this);
         this.editModal = this.editModal.bind(this);
         // end of bind scopes
 
         this.characters = [];
-        this.filterText = "";
+        this.tagFilterText = "";
+        this.tagsFilterLogic = "Or";
+        this.characterFilterText = "";
         this.speechMarksTip = "Speech Marks are metadata files that describe synthesized speech which can be used for lip-syncing.";
         this.runtimeCapabilitiesTip = "If you disable the runtime capabilities, you will not be able to use a game client to generate speech files.";
         this.downloadDescriptionText = "After clicking the “Download” button, the .zip file may take a few minutes to generate on the server. The file will begin downloading automatically once it is ready.  View and re-download previously generated .zip files on the “Generated Packages” tab."
@@ -148,7 +162,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             rate: ["default", "x-slow", "slow", "medium", "fast", "x-fast"],
             pitch: ["default", "x-low", "low", "medium", "high", "x-high"]
         };
-        this.ssmlTagTypes = ["volume", "rate", "pitch"];
+        this.ssmlProsodyTagTypes = ["volume", "rate", "pitch"];
 
         this.Modes = Mode;
         this.update();
@@ -189,9 +203,14 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         });
     }
 
-    public clickFilterIcon(): void {
-        this.originalTagList = JSON.parse(JSON.stringify(this.tagList));
-        this.filterOpen = !this.filterOpen;
+    public openTagFilter(): void {
+        this.originalfilterTagList = JSON.parse(JSON.stringify(this.filterTagList));
+        this.tagFilterOpen = !this.tagFilterOpen;
+    }
+
+    public openCharacterFilter(): void {
+        this.originalfilterCharacterList = JSON.parse(JSON.stringify(this.filterCharacterList));
+        this.characterFilterOpen = !this.characterFilterOpen;
     }
 
     public clearPendingJobsList(): void {
@@ -200,18 +219,26 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
 
     public applyFilter(): void {
         let selectedTags = [];
-        this.filterText = "";
-        let tmpFilterApplied = false;
-        for (let tag of this.tagList) {
+        this.tagFilterText = "";
+        for (let tag of this.filterTagList) {
             if (tag["isSelected"]) {
                 selectedTags.push(tag["name"]);
-                tmpFilterApplied = true;
             }
         }
-        this.filterApplied = tmpFilterApplied;
+        this.tagFilterApplied = selectedTags.length > 0;
+
+        let selectedCharacters = [];
+        for (let character of this.filterCharacterList) {
+            if (character["isSelected"]) {
+                selectedCharacters.push(character["name"]);
+            }
+        }
+        this.characterFilterApplied = selectedCharacters.length > 0;
 
         let body = {
-            tags: selectedTags
+            tags: selectedTags,
+            characters: selectedCharacters,
+            logic: this.tagsFilterLogic
         }
         this.isLoadingSpeechLibrary = true;
         this.sortDir = "asc";
@@ -228,12 +255,18 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             this.isLoadingCharacters = false;
         });
 
-        this.filterOpen = !this.filterOpen;
+        this.tagFilterOpen = false;
+        this.characterFilterOpen = false;
     }
 
-    public cancelFilter(): void {
-        this.tagList = JSON.parse(JSON.stringify(this.originalTagList));
-        this.filterOpen = !this.filterOpen;
+    public cancelTagFilter(): void {
+        this.filterTagList = JSON.parse(JSON.stringify(this.originalfilterTagList));
+        this.tagFilterOpen = !this.tagFilterOpen;
+    }
+
+    public cancelCharacterFilter(): void {
+        this.filterCharacterList = JSON.parse(JSON.stringify(this.originalfilterCharacterList));
+        this.characterFilterOpen = !this.characterFilterOpen;
     }
 
     public update(): void {
@@ -266,6 +299,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
 
     /* Modal functions for TextToSpeech*/
     public deleteModal(model): void {
+        this.deleteMultipleSpeeches = false;
         this.mode = Mode.Delete;
         if (this.subNavActiveIndex == 0) {
             this.currentSpeech = model;
@@ -273,6 +307,14 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         else if (this.subNavActiveIndex == 1) {
             this.currentCharacter = model;
         }
+        else if (this.subNavActiveIndex == 2) {
+            this.currentGeneratedPackage= model;
+        }
+    }
+
+    public deleteMultipleSpeechesModal(): void {
+        this.deleteMultipleSpeeches = true;
+        this.mode = Mode.Delete;
     }
 
     public dismissModal(): void {
@@ -304,10 +346,23 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         this.modalRef.close();
         this.mode = Mode.List;
         if (this.subNavActiveIndex == 0) {
-            this.deleteCurrentSpeech();
+            this.deleteSpeechLine(this.currentSpeech);
         }
-        else {
+        else if (this.subNavActiveIndex == 1) {
             this.deleteCurrentCharacter();
+        }
+        else if (this.subNavActiveIndex == 2) {
+            this.deleteGeneratedPackage(this.currentGeneratedPackage);
+        }
+    }
+
+    public deleteSelectedSpeeches(): void {
+        this.modalRef.close();
+        this.mode = Mode.List;
+        for (let speech of this.speechLibrary) {
+            if (speech.isSelected["list"]) {
+                this.deleteSpeechLine(speech);
+            }
         }
     }
 
@@ -368,16 +423,22 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             complete: function (results) {
                 let header = results.data[0];
                 this.customFields = [];
+                let MD5ColumnExists = 0;
                 for (let field of header) {
-                    if (this.customFields.indexOf(field, 0) == -1) {
-                        this.customFields.push(field);
+                    if (field != 'MD5') {
+                        if (this.customFields.indexOf(field, 0) == -1) {
+                            this.customFields.push(field);
+                        }
+                        else {
+                            this.toastr.error("Duplicate field names are not allowed in the header row of the .csv file.");
+                            break;
+                        }
                     }
                     else {
-                        this.toastr.error("Duplicate field names are not allowed in the header row of the .csv file.");
-                        break;
+                        MD5ColumnExists = 1;
                     }
                 }
-                if (this.customFields.length == header.length) {
+                if (this.customFields.length == header.length - MD5ColumnExists) {
                     this.parseCsvFile(file);
                 }
             }.bind(this)
@@ -591,6 +652,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         }
         else if (this.subNavActiveIndex == 2) {
             this.generatedPackagesOnCurrentPage = this.generatedPackages.slice(startIndex, endIndex);
+            this.currentGeneratedPackagesIndex = pageIndex;
         }
     }
 
@@ -613,29 +675,55 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         this.paginationRef.reset();
     }
 
-    public saveSsmlTag(): void {
+    public savessmlTag(): void {
         this.modalRef.close();
         this.mode = Mode.List;
 
         for (let character of this.charactersOnCurrentPage) {
             if (character.name == this.currentCharacter.name) {
-                let ssmlTags = [];
-                for (let ssmlType of Object.keys(character.ssmlTagMappings)) {
-                    if (this.currentCharacter.ssmlTagMappings[ssmlType] != "default") {
-                        ssmlTags.push(ssmlType + "='" + this.currentCharacter.ssmlTagMappings[ssmlType] + "'");
+                let ssmlProsodyTags = [];
+                for (let ssmlType of Object.keys(character.ssmlProsodyTagMappings)) {
+                    if (this.currentCharacter.ssmlProsodyTagMappings[ssmlType] != "default") {
+                        ssmlProsodyTags.push(ssmlType + "='" + this.currentCharacter.ssmlProsodyTagMappings[ssmlType] + "'");
                     }   
                 }
-                if (ssmlTags.length > 0) {
-                    character.ssmlTags = ssmlTags;
+                if (ssmlProsodyTags.length > 0) {
+                    character.ssmlProsodyTags = ssmlProsodyTags;
                 }
-                else if (character.ssmlTags) {
-                    delete character['ssmlTags'];
+                else if (character.ssmlProsodyTags) {
+                    delete character['ssmlProsodyTags'];
                 }
-                character.ssmlTagMappings = this.currentCharacter.ssmlTagMappings;
+                character.ssmlProsodyTagMappings = this.currentCharacter.ssmlProsodyTagMappings;
+
+                character.ssmlLanguage = this.currentCharacter.ssmlLanguage;
+                if (character.ssmlLanguage == this.voices[character.language][0]['languageCode']) {
+                    delete character['ssmlLanguage'];
+                }
+
+                character.timbre = this.currentCharacter.timbre;
+                if (character.timbre == 100){
+                    delete character['timbre'];
+                }
 
                 this.updateCharacter(character);
                 break;
             }
+        }
+    }
+
+    public resetTimbre() {
+        this.currentCharacter.timbre = 100;
+    }
+
+    public getDeleteModalTitle(): string {
+        if (this.subNavActiveIndex == 0) {
+            return "Delete Speech";
+        }
+        else if (this.subNavActiveIndex == 1) {
+            return "Delete Chatacter";
+        }
+        else {
+            return "Delete Generated Package";
         }
     }
 
@@ -650,18 +738,29 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
     }
 
     private addExistingTagToList(tagName): void {
-        for (let tag of this.tagList) {
+        for (let tag of this.filterTagList) {
             if (tag["name"] == tagName) {
                 tag["count"]++;
                 return;
             }
         }
         let tag = { name: tagName, isSelected: false , count: 1};
-        this.tagList.push(tag);
+        this.filterTagList.push(tag);
+    }
+
+    private addCharacterInUseToList(characterName): void {
+        for (let character of this.filterCharacterList) {
+            if (character["name"] == characterName) {
+                character["count"]++;
+                return;
+            }
+        }
+        let character = { name: characterName, isSelected: false, count: 1 };
+        this.filterCharacterList.push(character);
     }
 
     private deleteExistingTagFromList(tagName): void {
-        this.tagList = this.tagList.filter(function (tag) {
+        this.filterTagList = this.filterTagList.filter(function (tag) {
             let keepCurrentTag = tag["name"] != tagName;
             // Do not remove the tag from the filter list if some other speech entries contain it.
             if (tag["name"] == tagName && tag["count"] > 1) {
@@ -669,6 +768,18 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
                 keepCurrentTag = true;
             }
             return keepCurrentTag;
+        });
+    }
+
+    private deleteCharacterInUseFromList(characterName): void {
+        this.filterCharacterList = this.filterCharacterList.filter(function (character) {
+            let keepCurrentCharacter = character["name"] != characterName;
+            // Do not remove the character from the filter list if some other speech entries contain it.
+            if (character["name"] == characterName && character["count"] > 1) {
+                character["count"]--;
+                keepCurrentCharacter = true;
+            }
+            return keepCurrentCharacter;
         });
     }
 
@@ -719,21 +830,31 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         character.isUploaded = true;
         character.previewLabelText = "Preview";
         character.speechMarksStatus = [
+            { name: "SSML", isChecked: character.speechMarks && character.speechMarks.includes("T") },
             { name: "Viseme", isChecked: character.speechMarks && character.speechMarks.includes("V") },
             { name: "Sentence/Word", isChecked: character.speechMarks && character.speechMarks.includes("S") }
         ];
-        if (!character.voiceList) {
-            this.getCharacterVoiceList(character);
-        }
-        character.ssmlTagMappings = { volume: "default", rate: "default", pitch: "default" }
-        if (character.ssmlTags) {
-            for (let ssmlTag of character.ssmlTags) {
-                let tagType = ssmlTag.split("=")[0];
-                let tmpStr = ssmlTag.split("=")[1];
-                let ssmlTagValue = tmpStr.substring(1, tmpStr.length - 1);
-                character.ssmlTagMappings[tagType] = ssmlTagValue;
+
+        if (this.voices) {
+            if (!character.voiceList) {
+                this.getCharacterVoiceList(character);
             }
-        }     
+            character.ssmlProsodyTagMappings = { volume: "default", rate: "default", pitch: "default" };
+            if (character.ssmlProsodyTags) {
+                for (let ssmlProsodyTag of character.ssmlProsodyTags) {
+                    let tagType = ssmlProsodyTag.split("=")[0];
+                    let tmpStr = ssmlProsodyTag.split("=")[1];
+                    let ssmlProsodyTagValue = tmpStr.substring(1, tmpStr.length - 1);
+                    character.ssmlProsodyTagMappings[tagType] = ssmlProsodyTagValue;
+                }
+            }
+            if (!character.ssmlLanguage) {
+                character.ssmlLanguage = this.voices[character.language][0]['languageCode'];
+            }
+            if (!character.timbre) {
+                character.timbre = 100;
+            }
+        }
     }
 
     private getCharacterVoiceList(character): void {
@@ -754,7 +875,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         character.speechMarks = "";
         for (let speechMark of character.speechMarksStatus) {
             if (speechMark.isChecked) {
-                character.speechMarks = character.speechMarks + speechMark.name.charAt(0);
+                character.speechMarks += speechMark.name == "SSML" ? "T" : speechMark.name.charAt(0);
             }
         }
         if (!character.isUploaded) {
@@ -784,6 +905,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             newCharacter = JSON.parse(JSON.stringify(this.characters[0]));
         }
         newCharacter.name = characterName ? characterName : "NewCharacter_" + this.characters.length;
+        newCharacter.ssmlProsodyTags = [];
         this.initializeCurrentCharacter(newCharacter);
         newCharacter.isUploaded = false;
         newCharacter.isEditing = true;
@@ -807,8 +929,14 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             voice: model.voice,
             speechMarks: model.speechMarks
         }
-        if (model.ssmlTags) {
-            body["ssmlTags"] = model.ssmlTags;
+        if (model.ssmlProsodyTags) {
+            body["ssmlProsodyTags"] = model.ssmlProsodyTags;
+        }
+        if (model.ssmlLanguage && model.ssmlLanguage != this.voices[model.language][0]['languageCode']) {
+            body["ssmlLanguage"] = model.ssmlLanguage;
+        }
+        if (model.timbre && model.timbre != 100) {
+            body["timbre"] = model.timbre;
         }
 
         let name = originalCharacterName ? originalCharacterName : model.name;
@@ -874,9 +1002,29 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         var timedifference = new Date().getTimezoneOffset();
         for (let generatedPackage of this.generatedPackages) {
             generatedPackage.isSelected = false;
-            let utcTime = generatedPackage.lastModified + ' +0000';
+            let utcTime = generatedPackage.lastModified + ' UTC';
             generatedPackage.lastModified = moment.utc(utcTime, 'YYYY-MM-DD HH:mm:ss [UTC]').local();
         }
+    }
+
+    private deleteGeneratedPackage(generatedPackage): void {
+        this._apiHandler.deleteGeneratedPackage(generatedPackage.name).subscribe(response => {
+            let obj = JSON.parse(response.body.text());
+            if (obj.result.status == "success") {
+                this.toastr.success("The generated package '" + generatedPackage.name + "' was deleted.");
+                if (generatedPackage.isSelected) {
+                    this.selectedPackagesNum--;
+                }
+                this.removeFromArray(this.generatedPackages, generatedPackage);
+                this.updatePaginationInfo();
+                this.updatePageContent(this.currentGeneratedPackagesIndex);
+            }
+            else {
+                this.toastr.error("The generated package '" + generatedPackage.name + "' was not deleted properly. " + obj.result.status);
+            }
+        }, err => {
+            this.toastr.error("The generated package '" + generatedPackage.name + "' was not deleted properly. " + err.message);
+        });
     }
 
     private markSettingAsLoaded(setting: string): void {
@@ -935,7 +1083,8 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             this.isLoadingSpeechLibrary = false;
             this.selectedSpeechesNum = 0;
             this.selectedSpeechIDs = [];
-            this.tagList = [];
+            this.filterTagList = [];
+            this.filterCharacterList = [];
             this.initializeSpeeches();
 
         }, err => {
@@ -971,6 +1120,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         speech.previewLabelText = "Preview";
         let index = this.selectedSpeechIDs.indexOf(speech.character + speech.line, 0);
         speech.isSelected = { list: index > -1, import: false };
+        this.addCharacterInUseToList(speech.character);
         for (let tag of speech.tags) {
             this.addExistingTagToList(tag);
         }
@@ -991,6 +1141,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             }
             // Delete the existing speech first
             this._apiHandler.deleteSpeech(body).subscribe(response => {
+                this.deleteCharacterInUseFromList(this.speechBeforeChange.character);
                 for (let tagName of this.speechBeforeChange.tags) {
                     this.deleteExistingTagFromList(tagName);
                 }
@@ -1077,23 +1228,27 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         });
     }
 
-    private deleteCurrentSpeech(): void {
-        for (let tagName of this.currentSpeech.tags) {
+    private deleteSpeechLine(speech): void {
+        for (let tagName of speech.tags) {
             this.deleteExistingTagFromList(tagName);
         }
 
         let body = {
-            character: this.currentSpeech.character,
-            line: this.currentSpeech.line
+            character: speech.character,
+            line: speech.line
         }
         this._apiHandler.deleteSpeech(body).subscribe(response => {
             this.toastr.success("The speech '" + body.line + "' was deleted.");
-            this.removeFromArray(this.speechLibrary, this.currentSpeech);
+            this.removeFromArray(this.speechLibrary, speech);
+            if (speech.isSelected["list"]) {
+                this.updateSelectedSpeechesNum(speech);
+            }
             this.updatePaginationInfo();
             this.currentSpeechLibIndex = this.speechLinePages < this.currentSpeechLibIndex ? this.speechLinePages : this.currentSpeechLibIndex;
             this.updatePageContent(this.currentSpeechLibIndex);
         }, err => {
             this.toastr.error("The speech '" + body.line + "' could not be deleted. " + err.message);
+            this.selectedSpeechesNum--;
         });
     }
 
@@ -1110,7 +1265,7 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             let importableSpeech = this.defaultSpeech();
             importableSpeech.tags = [];
             for (let field of this.customFields) {
-                if (this.currentCustomMappings[field] != "tag" && this.currentCustomMappings[field] != "") {
+                if (field != 'MD5' && this.currentCustomMappings[field] != "tag" && this.currentCustomMappings[field] != "") {
                     importableSpeech[this.currentCustomMappings[field]] = speechData[field];
                 }
                 else if (this.currentCustomMappings[field] != "" && speechData[field]){
@@ -1381,10 +1536,11 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         return new CharacterEntry({
             name: "NewCharacter_0",
             voice: "Joanna",
-            speechMarksStatus: [{ name: "Viseme", isChecked: true },
+            speechMarksStatus: [{ name: "SSML", isChecked: true },
+                { name: "Viseme", isChecked: true },
                 { name: "Sentence/Word", isChecked: true }],
             previewLabelText: "Preview",
-            speechMarks: "SV",
+            speechMarks: "SVT",
             isEditing: false,
             uploaded: false
         });

@@ -191,7 +191,7 @@ void CAxisHelperExtended::DrawAxis(DisplayContext& dc, const Vec3& vDir, const V
         dc.DrawBall(p, fBallSize * fScreenScale);
         QString label;
         label = QString::number(fDist, 'f', 2);
-        dc.DrawTextOn2DBox((p + m_vPos) * 0.5f, label.toLatin1().data(), fTextSize, col, ColorF(0.0f, 0.0f, 0.0f, 0.7f));
+        dc.DrawTextOn2DBox((p + m_vPos) * 0.5f, label.toUtf8().data(), fTextSize, col, ColorF(0.0f, 0.0f, 0.0f, 0.7f));
 
         Vec3 vUp = (m_matrix * vUpAxis - m_vPos);
         vUp.Normalize();

@@ -22,10 +22,10 @@
 #include <AzCore/std/string/string.h>
 
 #include <QtWidgets/QTreeWidget>
-#include <qabstractitemmodel.h>
-#include <QtWidgets/qmainwindow.h>
-#include <QtWidgets/qdialog.h>
-#include <qitemselectionmodel.h>
+#include <QAbstractItemModel>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QDialog>
+#include <QItemSelectionModel>
 
 #include "Woodpecker/Driller/DrillerMainWindowMessages.h"
 #include "Woodpecker/Driller/StripChart.hxx"

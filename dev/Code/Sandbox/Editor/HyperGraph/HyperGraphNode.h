@@ -228,7 +228,7 @@ public:
         currentPort.bInput = isInputPort;
         currentPort.pVar->Set(defaultValue);
         currentPort.pVar->SetName(portName);
-        currentPort.pVar->SetDescription(portDescription.toLatin1().data());
+        currentPort.pVar->SetDescription(portDescription.toUtf8().data());
         currentPort.pVar->SetDataType(portDataType);
 
         AddPort(currentPort);

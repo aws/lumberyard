@@ -51,7 +51,7 @@ void CParticlesExporter::ExportParticles(const QString& path, const QString& lev
             CCryMemFile file;
             file.Write(xmlData.c_str(), xmlData.length());
             QString filename = Path::Make(path, PARTICLES_FILE);
-            levelPakFile.UpdateFile(filename.toLatin1().data(), file);
+            levelPakFile.UpdateFile(filename.toUtf8().data(), file);
         }
     }
 

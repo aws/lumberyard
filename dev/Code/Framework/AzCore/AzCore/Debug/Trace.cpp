@@ -109,8 +109,7 @@ namespace AZ {
             return;
         }
 
-#if defined(AZ_ENABLE_DEBUG_TOOLS)
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
         if (isEnabled)
         {
             g_previousExceptionHandler = ::SetUnhandledExceptionFilter(&ExceptionHandler);
@@ -120,8 +119,7 @@ namespace AZ {
             ::SetUnhandledExceptionFilter(g_previousExceptionHandler);
             g_previousExceptionHandler = NULL;
         }
-#endif
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
+#endif // defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
     }
 
     //=========================================================================
@@ -138,7 +136,7 @@ namespace AZ {
             return; // Do not break when tests are running unless debugger is present
         }
 #   endif
-#   if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#   if defined(AZ_PLATFORM_WINDOWS)
         __debugbreak();
 #   elif defined(AZ_PLATFORM_LINUX)
         DEBUG_BREAK;
@@ -371,8 +369,7 @@ namespace AZ {
             window = g_dbgSystemWnd;
         }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)  /// Output to the debugger! // ACCEPTED_USE
-
+#if AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING  /// Output to the debugger!
 #   ifdef _UNICODE
         wchar_t messageW[g_maxMessageLength];
         size_t numCharsConverted;
@@ -452,8 +449,7 @@ namespace AZ {
         return g_exceptionInfo;
     }
 
-#if defined(AZ_ENABLE_DEBUG_TOOLS)
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
+#if defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
     //=========================================================================
     // GetExeptionName
     // [8/3/2011]
@@ -546,8 +542,7 @@ namespace AZ {
         g_exceptionInfo = NULL;
         return lReturn;
     }
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) // ACCEPTED_USE
-#endif // defined(AZ_ENABLE_TRACING)
+#endif // defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
 } // namspace AZ
 
 #endif // #ifndef AZ_UNITY_BUILD

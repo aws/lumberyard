@@ -10,11 +10,12 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 
 #ifdef AZ_TESTS_ENABLED
 
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
+#include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Physics/SystemComponent.h>
@@ -22,18 +23,27 @@
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
+#include <AzCore/Jobs/JobManagerComponent.h>
 #include <Physics/PhysicsTests.h>
 #include <Physics/PhysicsTests.inl>
 #include <Tests/TestTypes.h>
+#include <PhysXRigidBodyComponent.h>
 
 namespace Physics
 {
     class PhysXTestEnvironment
         : public PhysicsTestEnvironment
+        , public AZ::Debug::TraceMessageBus::Handler
     {
     protected:
         void SetupEnvironment() override;
         void TeardownEnvironment() override;
+
+        bool SuppressExpectedErrors(const char* window, const char* message);
+
+        // AZ::Debug::TraceMessageBus
+        bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message);
+        bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message);
 
         AZ::ComponentApplication* m_application;
         AZ::Entity* m_systemEntity;
@@ -65,6 +75,7 @@ namespace Physics
         AZ_TEST_ASSERT(m_systemEntity);
         m_systemEntity->AddComponent(aznew AZ::MemoryComponent());
         m_systemEntity->AddComponent(aznew AZ::AssetManagerComponent());
+        m_systemEntity->AddComponent(aznew AZ::JobManagerComponent());
         m_systemEntity->Init();
         m_systemEntity->Activate();
 
@@ -72,35 +83,66 @@ namespace Physics
         m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
         m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
         m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
+
+        AZ::Debug::TraceMessageBus::Handler::BusConnect();
     }
 
     void PhysXTestEnvironment::TeardownEnvironment()
     {
+        AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
         m_transformComponentDescriptor.release();
         m_serializeContext.release();
         delete m_application;
         PhysicsTestEnvironment::TeardownEnvironment();
     }
 
-    AZ::Entity* GenericPhysicsInterfaceTest::AddTestSphere(const AZ::Vector3& position, float radius)
+    bool PhysXTestEnvironment::SuppressExpectedErrors(const char* window, const char* message)
+    {
+        // suppress patterns we expect to see as a result of testing code branches which generate warnings / errors.
+        const char* expectedPatterns[] = { "Tried to get terrain height before terrain was populated" };
+
+        for (auto pattern : expectedPatterns)
+        {
+            if (AZStd::string(message).find(pattern) != -1)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool PhysXTestEnvironment::OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message)
+    {
+        return SuppressExpectedErrors(window, message);
+    }
+
+    bool PhysXTestEnvironment::OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message)
+    {
+        return SuppressExpectedErrors(window, message);
+    }
+
+    AZ::Entity* GenericPhysicsInterfaceTest::AddSphereEntity(const AZ::Vector3& position, float radius, Physics::MotionType motionType)
     {
         auto entity = aznew AZ::Entity("TestSphereEntity");
-        auto transformComponent = static_cast<AzFramework::TransformComponent*>(entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")));
-
+        entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
         entity->CreateComponent(AZ::Uuid::CreateString("{E24CBFF0-2531-4F8D-A8AB-47AF4D54BCD2}")); // SphereShapeComponent
         entity->Init();
 
-        // TODO: Remove this Activate/Deactivate magic when handling the shape change is implemented in the collider component
         entity->Activate();
 
         AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
 
-        EBUS_EVENT_ID(entity->GetId(), LmbrCentral::SphereShapeComponentRequestsBus, SetRadius, radius);
+        LmbrCentral::SphereShapeComponentRequestsBus::Event(entity->GetId(),
+            &LmbrCentral::SphereShapeComponentRequests::SetRadius, radius);
 
         entity->Deactivate();
 
         entity->CreateComponent(AZ::Uuid::CreateString("{C53C7C88-7131-4EEB-A602-A7DF5B47898E}")); // PhysXColliderComponent
         entity->CreateComponent(AZ::Uuid::CreateString("{D4E52A70-BDE1-4819-BD3C-93AB3F4F3BE3}")); // PhysXRigidBodyComponent
+        PhysX::PhysXRigidBodyConfiguration rigidBodyConfig;
+        rigidBodyConfig.m_motionType = motionType;
+        entity->CreateComponent<PhysX::PhysXRigidBodyComponent>(rigidBodyConfig);
 
         entity->Activate();
         return entity;

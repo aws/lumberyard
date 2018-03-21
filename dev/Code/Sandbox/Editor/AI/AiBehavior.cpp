@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
-#include "aibehavior.h"
+#include "AiBehavior.h"
 #include "../Util/FileUtil.h"
 #include "IScriptSystem.h"
 
@@ -25,18 +25,18 @@ void CAIBehavior::ReloadScript()
         return;
     }
 
-    if (CFileUtil::CompileLuaFile(GetScript().toLatin1().data()))
+    if (CFileUtil::CompileLuaFile(GetScript().toUtf8().data()))
     {
         IScriptSystem* scriptSystem = GetIEditor()->GetSystem()->GetIScriptSystem();
         // Script compiled succesfully.
-        scriptSystem->ReloadScript(m_script.toLatin1().data());
+        scriptSystem->ReloadScript(m_script.toUtf8().data());
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CAIBehavior::Edit()
 {
-    CFileUtil::EditTextFile(GetScript().toLatin1().data());
+    CFileUtil::EditTextFile(GetScript().toUtf8().data());
 }
 
 
@@ -49,16 +49,16 @@ void CAICharacter::ReloadScript()
         return;
     }
 
-    if (CFileUtil::CompileLuaFile(GetScript().toLatin1().data()))
+    if (CFileUtil::CompileLuaFile(GetScript().toUtf8().data()))
     {
         IScriptSystem* scriptSystem = GetIEditor()->GetSystem()->GetIScriptSystem();
         // Script compiled succesfully.
-        scriptSystem->ReloadScript(m_script.toLatin1().data());
+        scriptSystem->ReloadScript(m_script.toUtf8().data());
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CAICharacter::Edit()
 {
-    CFileUtil::EditTextFile(GetScript().toLatin1().data());
+    CFileUtil::EditTextFile(GetScript().toUtf8().data());
 }

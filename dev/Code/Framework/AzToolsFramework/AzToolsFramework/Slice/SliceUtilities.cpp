@@ -72,9 +72,9 @@ namespace AzToolsFramework
         * \param sliceRootPositionAfterReplacement [OUT] Position of the slice root entity wrt its parent after the slice has replaced live entities in the editor
         * \param wasRootAutoCreated [OUT] indicates if a root was auto created and added
         */
-        SliceTransaction::Result CheckAndAddSliceRoot(const AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset, 
+        SliceTransaction::Result CheckAndAddSliceRoot(const AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset,
                                   AZStd::string sliceRootName,
-                                  AZ::EntityId& sliceRootParentEntityId, 
+                                  AZ::EntityId& sliceRootParentEntityId,
                                   AZ::Vector3& sliceRootPositionAfterReplacement,
                                   bool& wasRootAutoCreated,
                                   QWidget* activeWindow)
@@ -169,7 +169,7 @@ namespace AzToolsFramework
 
                         sliceRootTranslation.SetZ(sliceZmin);
 
-                        // Re root entities so that the new slice root is the parent of all selection root entities 
+                        // Re root entities so that the new slice root is the parent of all selection root entities
                         // and reposition top level entities so that the slice root is at 0,0,0 in the slice
                         for (AZ::Entity* selectionRootEntity : selectionRootEntities)
                         {
@@ -192,7 +192,7 @@ namespace AzToolsFramework
                 }
                 else if (selectionRootEntities.size() == 1)
                 {
-                    AzToolsFramework::Components::TransformComponent* transformComponent = 
+                    AzToolsFramework::Components::TransformComponent* transformComponent =
                         selectionRootEntities.at(0)->FindComponent<AzToolsFramework::Components::TransformComponent>();
 
                     if (transformComponent)
@@ -216,7 +216,7 @@ namespace AzToolsFramework
         }
 
         //=========================================================================
-        void PushEntitiesModal(const EntityIdList& entities, 
+        void PushEntitiesModal(const EntityIdList& entities,
                                AZ::SerializeContext* serializeContext)
         {
             QDialog* dialog = new QDialog();
@@ -248,9 +248,9 @@ namespace AzToolsFramework
         }
 
         //=========================================================================
-        bool MakeNewSlice(const AzToolsFramework::EntityIdList& entities, 
-                          const char* targetDirectory, 
-                          bool inheritSlices, 
+        bool MakeNewSlice(const AzToolsFramework::EntityIdList& entities,
+                          const char* targetDirectory,
+                          bool inheritSlices,
                           AZ::SerializeContext* serializeContext)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -275,7 +275,7 @@ namespace AzToolsFramework
             // Expand any entity references on components, and offer to include any excluded entities to the slice.
             EntityIdSet allReferencedEntities = selectedHierarchyEntities;
             SliceUtilities::GatherAllReferencedEntities(allReferencedEntities, *serializeContext);
-            
+
             bool referencedEntitiesNotInSelection = (allReferencedEntities.size() > selectedHierarchyEntities.size());
             if (!referencedEntitiesNotInSelection)
             {
@@ -418,7 +418,7 @@ namespace AzToolsFramework
             }
 
             // We prevent users from creating a new slice with the same relative path that's already
-            // been used by an existing slice in other places (e.g. Gems) because the AssetProcessor 
+            // been used by an existing slice in other places (e.g. Gems) because the AssetProcessor
             // generates asset ids based on relative paths. This is unnecessary once AssetProcessor
             // starts to generate UUID to every asset regardless of paths.
             {
@@ -458,7 +458,7 @@ namespace AzToolsFramework
 
                 // PreSaveCallback for slice creation: Before saving slice, we ensure it has a single root by optionally auto-creating one for the user
                 SliceTransaction::PreSaveCallback preSaveCallback =
-                    [&sliceName, &parentAfterReplacement, &positionAfterReplacement, &selectedHierarchyEntities, &wasRootAutoCreated, &activeWindow]
+                    [&sliceName, &parentAfterReplacement, &positionAfterReplacement, &wasRootAutoCreated, &activeWindow]
                     (SliceTransaction::TransactionPtr transaction, const char* fullPath, SliceTransaction::SliceAssetPtr& asset) -> SliceTransaction::Result
                     {
                         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::MakeNewSlice:PreSaveCallback");
@@ -479,7 +479,7 @@ namespace AzToolsFramework
                     };
 
                 // PostSaveCallback for slice creation: kick off async replacement of source entities with an instance of the new slice.
-                SliceTransaction::PostSaveCallback postSaveCallback = 
+                SliceTransaction::PostSaveCallback postSaveCallback =
                     [&parentAfterReplacement, &positionAfterReplacement, &selectedHierarchyEntities, &wasRootAutoCreated]
                     (SliceTransaction::TransactionPtr transaction, const char* fullPath, const SliceTransaction::SliceAssetPtr& /*asset*/) -> void
                     {
@@ -509,8 +509,8 @@ namespace AzToolsFramework
                 }
 
                 SliceTransaction::Result result = transaction->Commit(
-                    targetPath.c_str(), 
-                    preSaveCallback, 
+                    targetPath.c_str(),
+                    preSaveCallback,
                     postSaveCallback);
 
                 if (!result)
@@ -563,9 +563,9 @@ namespace AzToolsFramework
                     auto beginCB = [&](void* ptr, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* elementData) -> bool
                     {
                         parentStack.push_back(classData);
-                        
+
                         AZ::u32 sliceFlags = GetSliceFlags(elementData ? elementData->m_editData : nullptr, classData ? classData->m_editData : nullptr);
-                        
+
                         // Skip any class or element marked as don't gather references
                         if (0 != (sliceFlags & AZ::Edit::SliceFlags::DontGatherReference))
                         {
@@ -657,7 +657,7 @@ namespace AzToolsFramework
             if (!sliceAsset)
             {
                 return AZ::Failure(AZStd::string::format("Asset \"%s\" with id %s is not loaded, or is not a slice.",
-                    sliceAsset.GetHint().c_str(), 
+                    sliceAsset.GetHint().c_str(),
                     sliceAsset.GetId().ToString<AZStd::string>().c_str()));
             }
 
@@ -679,7 +679,7 @@ namespace AzToolsFramework
 
                 const SliceTransaction::Result result = transaction->Commit(
                     sliceAsset.GetId(),
-                    SliceUtilities::SlicePreSaveCallbackForWorldEntities, 
+                    SliceUtilities::SlicePreSaveCallbackForWorldEntities,
                     nullptr);
 
                 if (!result)
@@ -843,7 +843,12 @@ namespace AzToolsFramework
         {
             const AZ::Edit::ElementData* editData = node.GetElementEditMetadata();
 
-            AZ::u32 sliceFlags = GetSliceFlags(editData, node.GetClassMetadata()->m_editData);
+            AZ::u32 sliceFlags = 0;
+
+            if (node.GetClassMetadata())
+            {
+                sliceFlags = GetSliceFlags(editData, node.GetClassMetadata()->m_editData);
+            }
 
             return sliceFlags;
         }

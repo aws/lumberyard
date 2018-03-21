@@ -417,9 +417,9 @@ public:
     bool DeleteObject(IRenderNode* pObj);
     void Render_Object_Nodes(bool bNodeCompletelyInFrustum, int nRenderMask, const SRenderingPassInfo& passInfo, SRendItemSorter& rendItemSorter);
 
-    static void DeallocateRenderContentQueue();
+    static void Shutdown();
     void RenderContent(int nRenderMask, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter, const CCamera* pCam);
-    void RenderContentJobEntry(int nRenderMask, SRenderingPassInfo passInfo, SRendItemSorter rendItemSorter, const CCamera* pCam);
+    void RenderContentJobEntry(int nRenderMask, const SRenderingPassInfo& passInfo, SRendItemSorter rendItemSorter, const CCamera* pCam);
     void RenderVegetations(TDoublyLinkedList<IRenderNode>* lstObjects, const CCamera& rCam, int nRenderMask, bool bNodeCompletelyInFrustum, SSectorTextureSet* pTerrainTexInfo, const SRenderingPassInfo& passInfo, SRendItemSorter& rendItemSorter);
     void RenderCommonObjects(TDoublyLinkedList<IRenderNode>* lstObjects, const CCamera& rCam, int nRenderMask, bool bNodeCompletelyInFrustum, SSectorTextureSet* pTerrainTexInfo, const SRenderingPassInfo& passInfo, SRendItemSorter& rendItemSorter);
     void RenderDecalsAndRoads(TDoublyLinkedList<IRenderNode>* lstObjects, const CCamera& rCam, int nRenderMask, bool bNodeCompletelyInFrustum, SSectorTextureSet* pTerrainTexInfo, const SRenderingPassInfo& passInfo, SRendItemSorter& rendItemSorter);

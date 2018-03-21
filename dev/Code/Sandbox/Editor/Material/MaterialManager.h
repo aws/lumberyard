@@ -22,6 +22,12 @@
 #include <Include/IEditorMaterialManager.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/std/string/wildcard.h>
+#include <AzFramework/Asset/AssetCatalogBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/parallel/binary_semaphore.h>
+#include <AzCore/std/parallel/thread.h>
+
 
 class CMaterial;
 class CMaterialLibrary;
@@ -56,9 +62,13 @@ class CRYEDIT_API CMaterialManager
     : public IEditorMaterialManager
     , public CBaseLibraryManager
     , public IMaterialManagerListener
-    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    , protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
+    , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler
+    , public AzFramework::AssetCatalogEventBus::Handler
+    , public AzToolsFramework::EditorEvents::Bus::Handler
 {
 public:
+
     //! Notification callback.
     typedef Functor0 NotifyCallback;
 
@@ -76,6 +86,7 @@ public:
 
     // Loads material.
     CMaterial* LoadMaterial(const QString& sMaterialName, bool bMakeIfNotFound = true);
+    XmlNodeRef LoadXmlNode(const QString &fullSourcePath, const QString &relativeFilePath);
     //! Loads a material, avoiding a call to CMaterialManager::MaterialToFilename if the full path is already known
     CMaterial* LoadMaterialWithFullSourcePath(const QString& relativeFilePath, const QString& fullSourcePath, bool makeIfNotFound = true);
     virtual CMaterial* LoadMaterial(const char* sMaterialName, bool bMakeIfNotFound = true);
@@ -166,9 +177,31 @@ public:
 
 protected:
     //////////////////////////////////////////////////////////////////////////////////////////////////////
-    // protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationsBus::Handler
+    // protected AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
     //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    // public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler
+    void EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry);
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    // AssetCatalogEventBus Functions
+    void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    // EditorEventsBus Functions
+    bool SkipEditorStartupUI() override;
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void SaveDccMaterial(const AZStd::string& relativeDccMaterialPath);
+    bool DccMaterialRequiresSave(const AZStd::string& relativeDccMaterialPath, const AZStd::string& fullSourcePath);
+    void DccMaterialSourceControlCheck(const AZStd::string& relativeDccMaterialPath);
+    void AddDccMaterialPath(const AZStd::string relativeDccMaterialPath);
+    void TickSourceControl();
+    void QueueSourceControlTick();
 
     // Duplicate the source material and set it as a submaterial of the target material at subMaterialIndex. Returns true if successful.
     bool DuplicateAsSubMaterialAtIndex(CMaterial* pSourceMaterial, CMaterial* pTargetMaterial, int subMaterialIndex);
@@ -214,6 +247,19 @@ protected:
     // IMaterial is needed to not let 3Dengine release selected IMaterial
     _smart_ptr<IMaterial> m_pCurrentEngineMaterial;
 
+    // Paths of .dccmtl that might require saving. They will be fed to
+    // DccMaterialSourceControlCheck() and if saving is required, they
+    // will be added to m_dccMaterialSaveBuffer
+    AZStd::vector<AZStd::string> m_sourceControlBuffer;
+    AZStd::mutex m_sourceControlBufferMutex;
+    AZStd::atomic_bool m_sourceControlFunctionQueued;
+
+    // Paths of .dccmtl that require saving. These paths have
+    // gone through DccMaterialSourceControlCheck() and will
+    // be saved by the dcc material save thread
+    AZStd::vector<AZStd::string> m_dccMaterialSaveBuffer;
+    AZStd::mutex m_dccMaterialSaveMutex;
+
     // Material highlighting
     _smart_ptr<CMaterial> m_pHighlightMaterial;
     CMaterialHighlighter* m_pHighlighter;
@@ -221,14 +267,27 @@ protected:
 
     bool m_bHighlightingMaterial;
 
-    bool m_bMaterialsLoaded;
+    // Only begin processing .dccmtl filepaths once editor is ready
+    // and we can display appropriate error messages
+    bool m_bEditorUiReady;
+
+    // Only report source control error to the user once,
+    // no need to spam them for every material
+    bool m_bSourceControlErrorReported;
 
     class CMaterialSender* m_MatSender;
 
 private:
-    CMaterial* LoadMaterialInternal(const QString &sMaterialNameClear, const QString &filename, const QString &filenameWithExtension, bool bMakeIfNotFound);
+    CMaterial* LoadMaterialInternal(const QString &materialNameClear, const QString &fullSourcePath, const QString &relativeFilePath, bool bMakeIfNotFound);
 
     AZ::Data::AssetType m_materialAssetType;
+    AZ::Data::AssetType m_dccMaterialAssetType;
+
+    void StartDccMaterialSaveThread();
+    void DccMaterialSaveThreadFunc();
+    AZStd::thread m_dccMaterialSaveThread;
+    AZStd::atomic_bool m_joinThreads;
+    AZStd::binary_semaphore m_dccMaterialSaveSemaphore;
 };
 
 #endif // CRYINCLUDE_EDITOR_MATERIAL_MATERIALMANAGER_H

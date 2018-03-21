@@ -23,7 +23,7 @@ class BoostSharedPtrSerializer
     : public Serialization::IPointer
 {
 public:
-    BoostSharedPtrSerializer(boost::shared_ptr<T>& ptr)
+    BoostSharedPtrSerializer(AZStd::shared_ptr<T>& ptr)
         : m_ptr(ptr)
     {
     }
@@ -75,7 +75,7 @@ public:
 
     Serialization::TypeID pointerType() const override
     {
-        return Serialization::TypeID::get<boost::shared_ptr<T> >();
+        return Serialization::TypeID::get<AZStd::shared_ptr<T> >();
     }
 
     Serialization::ClassFactory<T>* factory() const override
@@ -89,13 +89,13 @@ public:
     }
 
 protected:
-    boost::shared_ptr<T>& m_ptr;
+    AZStd::shared_ptr<T>& m_ptr;
 };
 
-namespace boost
+namespace AZStd
 {
     template <class T>
-    bool Serialize(Serialization::IArchive& ar, boost::shared_ptr<T>& ptr, const char* name, const char* label)
+    bool Serialize(Serialization::IArchive& ar, AZStd::shared_ptr<T>& ptr, const char* name, const char* label)
     {
         BoostSharedPtrSerializer<T> serializer(ptr);
         return ar(static_cast<Serialization::IPointer&>(serializer), name, label);

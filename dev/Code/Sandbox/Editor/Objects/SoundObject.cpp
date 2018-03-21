@@ -16,20 +16,12 @@
 
 #include "StdAfx.h"
 #include "SoundObject.h"
-#ifdef KDAB_REMOVED
-#include "../SoundObjectPanel.h"
-#endif
 
 #include "../Viewport.h"
 
 //////////////////////////////////////////////////////////////////////////
 // CBase implementation.
 //////////////////////////////////////////////////////////////////////////
-
-#ifdef KDAB_REMOVED
-int CSoundObject::m_rollupId = 0;
-CSoundObjectPanel* CSoundObject::m_panel = 0;
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 CSoundObject::CSoundObject()

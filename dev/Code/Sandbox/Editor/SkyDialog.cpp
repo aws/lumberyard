@@ -70,7 +70,7 @@ CSkyDialog::CSkyDialog(QWidget* pParent /*=NULL*/)
     connect(ui->actionSkySouth, &QAction::triggered, this, &CSkyDialog::OnSkySouth);
     connect(ui->actionSkyWest, &QAction::triggered, this, &CSkyDialog::OnSkyWest);
     connect(ui->actionSkyEast, &QAction::triggered, this, &CSkyDialog::OnSkyEast);
-    connect(ui->m_okButton, &QPushButton::clicked, this, &QDialog::accept);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
 }
 
 CSkyDialog::~CSkyDialog()

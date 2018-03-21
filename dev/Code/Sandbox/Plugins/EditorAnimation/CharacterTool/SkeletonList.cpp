@@ -51,7 +51,7 @@ namespace CharacterTool
     {
         std::set<string> loadedAliases;
 
-        XmlNodeRef xmlRoot = GetISystem()->LoadXmlFromFile(Path::GamePathToFullPath(ANIMATIONS_SKELETON_LIST_PATH).toLatin1().data());
+        XmlNodeRef xmlRoot = GetISystem()->LoadXmlFromFile(Path::GamePathToFullPath(ANIMATIONS_SKELETON_LIST_PATH).toUtf8().data());
         if (!xmlRoot)
         {
             return false;
@@ -113,7 +113,7 @@ namespace CharacterTool
             }
         }
 
-        const bool saveSuccess = xmlRoot->saveToFile(Path::GamePathToFullPath(ANIMATIONS_SKELETON_LIST_PATH).toLatin1().data());
+        const bool saveSuccess = xmlRoot->saveToFile(Path::GamePathToFullPath(ANIMATIONS_SKELETON_LIST_PATH).toUtf8().data());
         return saveSuccess;
     }
 

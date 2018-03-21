@@ -17,6 +17,8 @@ from view import ViewContext
 from metrics import MetricsContext
 from gem import GemContext
 from resource_group_context import ResourceGroupContext
+from resource_type_context import ResourceTypeContext
+from stack_info_manager_context import StackInfoManagerContext
 from hook import HookContext
 
 class Context(object):
@@ -32,6 +34,8 @@ class Context(object):
         self.gem = GemContext(self)
         self.resource_groups = ResourceGroupContext(self)
         self.hooks = HookContext(self)
+        self.resource_types = ResourceTypeContext(self)
+        self.stack_info = StackInfoManagerContext(self)
 
     def bootstrap(self, args):
         self.view.bootstrap(args)

@@ -498,11 +498,11 @@ struct IScreenFaderKey
 {
     //-----------------------------------------------------------------------------
     //!
-    enum EFadeType
+    enum EFadeType : int
     {
         eFT_FadeIn = 0, eFT_FadeOut = 1
     };
-    enum EFadeChangeType
+    enum EFadeChangeType : int
     {
         eFCT_Linear = 0, eFCT_Square = 1, eFCT_CubicSquare = 2, eFCT_SquareRoot = 3, eFCT_Sin = 4
     };

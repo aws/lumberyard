@@ -14,6 +14,7 @@
 #include "Implementation/GLCommon.hpp"
 #include "Interfaces/CCryDXGLDevice.hpp"
 #include "Implementation/GLDevice.hpp"
+#include <AzCore/std/algorithm.h>
 
 namespace RenderCapabilities
 {
@@ -109,24 +110,40 @@ namespace RenderCapabilities
 #if defined(OPENGL_ES)
     int GetAvailableMRTbpp()
     {
-        if (DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage))
+        const NCryOpenGL::SCapabilities& capabilities = GetGLDevice()->GetAdapter()->m_kCapabilities;
+        if (SupportsFrameBufferFetches())
         {
-            GLint availableTiledMem;
-            glGetIntegerv(GL_MAX_SHADER_PIXEL_LOCAL_STORAGE_FAST_SIZE_EXT, &availableTiledMem);
-            return availableTiledMem * 8;
+            // Assuming 32 bits per rendertarget when using all attachments.
+            GLint bitsPerRT = 32;
+            GLint numRT = capabilities.m_maxRenderTargets;
+            return numRT * bitsPerRT;
         }
 
-        return 128;
+        if (SupportsPLSExtension())
+        {
+            GLint bitsPerByte = 8;
+            GLint plsSize = capabilities.m_plsSizeInBytes;
+            // We only support PLS 128 for the moment.
+            return AZStd::min(plsSize * bitsPerByte, 128);
+        }
+
+        return 0;
     }
 
     bool Supports128bppGmemPath()
     {
-        return (SupportsFrameBufferFetches() || SupportsPLSExtension()) && GetAvailableMRTbpp() >= 128;
+        // We don't support GMEM on platforms without floating point rendertarget support 
+        return SupportsHalfFloatRendering() && 
+            (SupportsFrameBufferFetches() || SupportsPLSExtension()) && 
+            GetAvailableMRTbpp() >= 128;
     }
 
     bool Supports256bppGmemPath()
     {
-        return (SupportsFrameBufferFetches() || SupportsPLSExtension()) && GetAvailableMRTbpp() >= 256;
+        // We don't support GMEM on platforms without floating point rendertarget support 
+        return SupportsHalfFloatRendering() && 
+            (SupportsFrameBufferFetches() || SupportsPLSExtension()) 
+            && GetAvailableMRTbpp() >= 256;
     }
 
     bool SupportsHalfFloatRendering()
@@ -136,7 +153,8 @@ namespace RenderCapabilities
 
     bool SupportsPLSExtension()
     {
-        return DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage);
+        // Favor framebuffer fetch over PLS (for compatibility with Metal)
+        return !SupportsFrameBufferFetches() && DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage);
     }
 
     bool SupportsFrameBufferFetches()

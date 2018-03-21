@@ -23,6 +23,9 @@
     #else
         #include <AzCore/std/parallel/internal/atomic_impl_x86.inl>
     #endif
+#elif AZ_TRAIT_USE_X64_ATOMIC_IMPL
+    #include <AzCore/std/parallel/internal/atomic_impl_x86_x64.inl>
+    #include <AzCore/std/parallel/internal/atomic_impl_x64.inl>
 #else
     #include <AzCore/std/parallel/internal/atomic_impl_locks.inl>
 #endif

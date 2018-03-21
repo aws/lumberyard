@@ -172,7 +172,7 @@ struct IAnimationSerializable
 };
 
 
-DECLARE_BOOST_POINTERS(IAnimationSerializable);
+DECLARE_SMART_POINTERS(IAnimationSerializable);
 
 
 

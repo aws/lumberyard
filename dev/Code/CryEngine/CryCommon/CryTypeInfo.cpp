@@ -20,7 +20,14 @@
 #include "CrySizer.h"
 #include "CryEndian.h"
 
-#if defined(LINUX) || defined(APPLE) || defined(ORBIS)
+// Traits
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(CryTypeInfo_cpp)
+#elif defined(LINUX) || defined(APPLE)
+#define CRYTYPEINFO_CPP_TRAIT_DEFINE_LTOA_S 1
+#endif
+
+#if CRYTYPEINFO_CPP_TRAIT_DEFINE_LTOA_S
 
 char* _ltoa_s(long value, char* string, size_t size, int32 radix)
 {

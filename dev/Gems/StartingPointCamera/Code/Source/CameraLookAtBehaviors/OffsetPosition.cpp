@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "StartingPointCamera_precompiled.h"
 #include "OffsetPosition.h"
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Serialization/SerializeContext.h>

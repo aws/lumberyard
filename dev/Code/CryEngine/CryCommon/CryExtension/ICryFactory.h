@@ -23,7 +23,7 @@
 #include <BoostHelpers.h>
 
 struct ICryUnknown;
-DECLARE_BOOST_POINTERS(ICryUnknown);
+DECLARE_SMART_POINTERS(ICryUnknown);
 
 struct ICryFactory
 {

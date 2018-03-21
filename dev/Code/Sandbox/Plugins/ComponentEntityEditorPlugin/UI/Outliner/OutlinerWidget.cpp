@@ -25,6 +25,7 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Slice/SliceComponent.h>
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
@@ -150,6 +151,8 @@ OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
     EntityHighlightMessages::Bus::Handler::BusConnect();
     OutlinerModelNotificationBus::Handler::BusConnect();
     ToolsApplicationEvents::Bus::Handler::BusConnect();
+    AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
+
 }
 
 OutlinerWidget::~OutlinerWidget()
@@ -159,6 +162,7 @@ OutlinerWidget::~OutlinerWidget()
     EntityHighlightMessages::Bus::Handler::BusDisconnect();
     OutlinerModelNotificationBus::Handler::BusDisconnect();
     ToolsApplicationEvents::Bus::Handler::BusDisconnect();
+    AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusDisconnect();
 
     delete m_listModel;
     delete m_gui;
@@ -270,18 +274,22 @@ void OutlinerWidget::EntityHighlightRequested(AZ::EntityId entityId)
 // Currently a "strong highlight" request is handled by replacing the current selection with the requested entity.
 void OutlinerWidget::EntityStrongHighlightRequested(AZ::EntityId entityId)
 {
-    const QModelIndex proxyIndex = GetIndexFromEntityId(entityId);
-    if (!proxyIndex.isValid())
-    {
-        return;
-    }
+    // This can be sent from the Entity Inspector, and changing the selection can affect the state of that control
+    // so use singleShot with 0 to queue the response until any other events sent to the Entity Inspector have been processed
+    QTimer::singleShot(0, this, [entityId, this]() {
+        const QModelIndex proxyIndex = GetIndexFromEntityId(entityId);
+        if (!proxyIndex.isValid())
+        {
+            return;
+        }
 
-    // Scrolling to the entity will make sure that it is visible.
-    // This will automatically open parents.
-    m_gui->m_objectTree->scrollTo(proxyIndex);
+        // Scrolling to the entity will make sure that it is visible.
+        // This will automatically open parents.
+        m_gui->m_objectTree->scrollTo(proxyIndex);
 
-    // Not setting "ignoreSignal" because this will set both outliner and world selections.
-    m_gui->m_objectTree->selectionModel()->select(proxyIndex, QItemSelectionModel::ClearAndSelect);
+        // Not setting "ignoreSignal" because this will set both outliner and world selections.
+        m_gui->m_objectTree->selectionModel()->select(proxyIndex, QItemSelectionModel::ClearAndSelect);
+    });
 }
 
 void OutlinerWidget::QueueUpdateSelection()
@@ -408,6 +416,10 @@ void OutlinerWidget::OnOpenTreeContextMenu(const QPoint& pos)
                 }
             }
         }
+
+        contextMenu->addSeparator();
+
+        contextMenu->addAction(m_actionGoToEntitiesInViewport);
     }
 
     contextMenu->exec(m_gui->m_objectTree->mapToGlobal(pos));
@@ -682,6 +694,11 @@ void OutlinerWidget::DoMoveEntityDown()
     AzToolsFramework::SetEntityChildOrder(parentId, entityOrderArray);
 }
 
+void OutlinerWidget::GoToEntitiesInViewport()
+{
+    EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, GoToSelectedOrHighlightedEntitiesInViewports);
+}
+
 void OutlinerWidget::SetupActions()
 {
     m_actionToShowSlice = new QAction(tr("Show Slice"), this);
@@ -727,6 +744,11 @@ void OutlinerWidget::SetupActions()
     m_actionToMoveEntityDown->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     connect(m_actionToMoveEntityDown, &QAction::triggered, this, &OutlinerWidget::DoMoveEntityDown);
     addAction(m_actionToMoveEntityDown);
+
+    m_actionGoToEntitiesInViewport = new QAction(tr("Goto Entities in Viewport"), this);
+    m_actionGoToEntitiesInViewport->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    connect(m_actionGoToEntitiesInViewport, &QAction::triggered, this, &OutlinerWidget::GoToEntitiesInViewport);
+    addAction(m_actionGoToEntitiesInViewport);
 }
 
 void OutlinerWidget::StartObjectPickMode()
@@ -907,5 +929,16 @@ void OutlinerWidget::ClearFilter()
     m_gui->m_searchWidget->ClearTextFilter();
     m_gui->m_searchWidget->ClearTypeFilter();
 }
+
+void OutlinerWidget::OnStartPlayInEditor()
+{
+    setEnabled(false);
+}
+
+void OutlinerWidget::OnStopPlayInEditor()
+{
+    setEnabled(true);
+}
+
 
 #include <UI/Outliner/OutlinerWidget.moc>

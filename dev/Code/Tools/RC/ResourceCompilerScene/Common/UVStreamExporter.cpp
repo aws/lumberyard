@@ -47,7 +47,7 @@ namespace AZ
             SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<UVStreamExporter, SceneAPI::SceneCore::ExportingComponent>()->Version(1);
+                serializeContext->Class<UVStreamExporter, SceneAPI::SceneCore::RCExportingComponent>()->Version(1);
             }
         }
 

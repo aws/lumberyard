@@ -12,72 +12,11 @@
 #ifndef AZSTD_SHARED_SPIN_MUTEX_LOCK_H
 #define AZSTD_SHARED_SPIN_MUTEX_LOCK_H 1
 
-#include <AzCore/std/parallel/config.h>
-#include <AzCore/std/parallel/atomic.h>
-#include <AzCore/std/parallel/exponential_backoff.h>
+#include <AzCore/std/parallel/shared_mutex.h>
 
 namespace AZStd
 {
-    /**
-     * Light weight Read Write spin lock (implemented in the naming of the expected to become standard std::shared_mutex)
-     * TODO: Since this mode uses relaxed more if we care about debug performance we can handcraft using the intrinsics
-     * here instead of the function overhead that atomics have.
-     */
-    class shared_spin_mutex
-    {
-        AZStd::atomic<AZ::u32>  m_value; // last bit for exclusive lock, the rest shared locks counter.
-        static const AZ::u32 m_exclusiveLockBit = 0x80000000;
-        shared_spin_mutex& operator=(const shared_spin_mutex&);
-    public:
-        explicit shared_spin_mutex()
-            : m_value(0) {}
-        void lock_shared()
-        {
-            if ((m_value.fetch_add(1, memory_order_acquire) & m_exclusiveLockBit) != 0)
-            {
-                exponential_backoff backoff; // this is optional (to be more efficient)
-                while ((m_value.load(memory_order_acquire) & m_exclusiveLockBit) != 0)    // if there is a exclusive lock, wait
-                {
-                    backoff.wait();
-                }
-            }
-        }
-        void unlock_shared()
-        {
-            m_value.fetch_sub(1, memory_order_release);
-        }
-        bool try_lock_shared()
-        {
-            if ((m_value.fetch_add(1, memory_order_acquire) & m_exclusiveLockBit) == 0)
-            {
-                return true;
-            }
-            m_value.fetch_sub(1, memory_order_relaxed);
-            return false;
-        }
-        void lock()
-        {
-            exponential_backoff backoff; // this is optional (to be more efficient)
-            while (true)
-            {
-                AZ::u32 expected = 0; // no locks of any kind
-                if (m_value.compare_exchange_weak(expected, m_exclusiveLockBit, memory_order_acquire))
-                {
-                    break;
-                }
-                backoff.wait();
-            }
-        }
-        void unlock()
-        {
-            m_value.fetch_sub(m_exclusiveLockBit, memory_order_release);
-        }
-        bool try_lock()
-        {
-            AZ::u32 expected = 0;
-            return m_value.compare_exchange_weak(expected, m_exclusiveLockBit, memory_order_acquire, memory_order_relaxed);
-        }
-    };
+    using shared_spin_mutex = shared_mutex;
 }
 
 #endif // AZSTD_SHARED_SPIN_MUTEX_LOCK_H

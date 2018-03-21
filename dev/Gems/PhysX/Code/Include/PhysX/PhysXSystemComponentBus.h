@@ -49,7 +49,7 @@ namespace PhysX
         * @param sceneDesc Scene descriptor specifying details of scene to be created.
         * @return Pointer to the created scene.
         */
-        virtual physx::PxScene* CreateScene(const physx::PxSceneDesc& sceneDesc) = 0;
+        virtual physx::PxScene* CreateScene( physx::PxSceneDesc& sceneDesc) = 0;
         /**
         * Creates a new convex mesh.
         * @param vertices Pointer to beginning of vertex data.
@@ -72,12 +72,6 @@ namespace PhysX
         * @return Pointer to the created mesh.
         */
         virtual physx::PxTriangleMesh* CreateTriangleMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) = 0;
-        /**
-        * Gets the CPU dispatcher.
-        * The CPU dispatcher schedules tasks submitted by PhysX.
-        * @return Pointer to CPU dispatcher.
-        */
-        virtual AzPhysXCpuDispatcher* GetCpuDispatcher() = 0;
     };
 
     using PhysXSystemRequestBus = AZ::EBus<PhysXSystemRequests>;

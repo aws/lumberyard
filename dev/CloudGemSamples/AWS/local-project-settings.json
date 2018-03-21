@@ -1,4 +1,7 @@
 {
-    "DisabledResourceGroups": [],
-    "FrameworkVersion": "1.1.1"
+    "default": {
+        "DisabledResourceGroups": [], 
+        "Set": "default", 
+        "FrameworkVersion": "1.1.3" 
+    } 
 }

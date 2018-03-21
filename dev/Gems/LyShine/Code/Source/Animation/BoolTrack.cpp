@@ -11,7 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#include "StdAfx.h"
+#include "LyShine_precompiled.h"
 #include "BoolTrack.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include "UiAnimSerialize.h"

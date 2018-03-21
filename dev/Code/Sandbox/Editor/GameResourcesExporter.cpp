@@ -79,7 +79,7 @@ void CGameResourcesExporter::Save(const QString& outputDirectory)
     int numFiles = m_files.size();
 
     CLogFile::WriteLine("===========================================================================");
-    CLogFile::FormatLine("Exporting Level %s resources, %d files", GetIEditor()->GetGameEngine()->GetLevelName().toLatin1().data(), numFiles);
+    CLogFile::FormatLine("Exporting Level %s resources, %d files", GetIEditor()->GetGameEngine()->GetLevelName().toUtf8().data(), numFiles);
     CLogFile::WriteLine("===========================================================================");
 
     // Needed files.
@@ -91,15 +91,15 @@ void CGameResourcesExporter::Save(const QString& outputDirectory)
         {
             break;
         }
-        wait.SetText(srcFilename.toLatin1().data());
+        wait.SetText(srcFilename.toUtf8().data());
 
-        CLogFile::WriteLine(srcFilename.toLatin1().data());
+        CLogFile::WriteLine(srcFilename.toUtf8().data());
 
         CCryFile file;
-        if (file.Open(srcFilename.toLatin1().data(), "rb"))
+        if (file.Open(srcFilename.toUtf8().data(), "rb"))
         {
             // Save this file in target folder.
-            QString trgFilename = Path::Make(outputDirectory, srcFilename.toLatin1().data());
+            QString trgFilename = Path::Make(outputDirectory, srcFilename);
             int fsize = file.GetLength();
             if (fsize > data.GetSize())
             {
@@ -110,9 +110,9 @@ void CGameResourcesExporter::Save(const QString& outputDirectory)
 
             // Save this data to target file.
             QString trgFileDir = Path::GetPath(trgFilename);
-            CFileUtil::CreateDirectory(trgFileDir.toLatin1().data());
+            CFileUtil::CreateDirectory(trgFileDir.toUtf8().data());
             // Create a file.
-            FILE* trgFile = fopen(trgFilename.toLatin1().data(), "wb");
+            FILE* trgFile = fopen(trgFilename.toUtf8().data(), "wb");
             if (trgFile)
             {
                 // Save data to new file.
@@ -254,12 +254,12 @@ void CGameResourcesExporter::ExportPerLayerResourceList()
         }
         if (!files.empty())
         {
-            FILE* file = fopen(listFilename.toLatin1().data(), "wt");
+            FILE* file = fopen(listFilename.toUtf8().data(), "wt");
             if (file)
             {
                 for (size_t c = 0; c < files.size(); c++)
                 {
-                    fprintf(file, "%s\n", files[c].toLatin1().data());
+                    fprintf(file, "%s\n", files[c].toUtf8().data());
                 }
                 fclose(file);
             }

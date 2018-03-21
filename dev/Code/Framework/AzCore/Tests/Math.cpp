@@ -172,6 +172,12 @@ namespace UnitTest
         AZ_TEST_ASSERT(Vector2::CreateAxisX() == Vector2(1.0f, 0.0f));
         AZ_TEST_ASSERT(Vector2::CreateAxisY() == Vector2(0.0f, 1.0f));
 
+        AZ_TEST_ASSERT(Vector2::CreateFromAngle() == Vector2(0.0f, 1.0f));
+        // Simd SinCos is really innaccurate, so 0.01 is the best we can hope for.
+        AZ_TEST_ASSERT(Vector2::CreateFromAngle(0.78539816339f).IsClose(Vector2(0.7071067811f, 0.7071067811f), 0.01f));
+        AZ_TEST_ASSERT(Vector2::CreateFromAngle(4.0f).IsClose(Vector2(-0.7568024953f, -0.6536436208f), 0.01f));
+        AZ_TEST_ASSERT(Vector2::CreateFromAngle(-1.0f).IsClose(Vector2(-0.8414709848f, 0.5403023058f), 0.01f));
+
         // Create - Comparison functions
         vA.Set(-100.0f, 10.0f);
         vB.Set(35.0f, 10.0f);
@@ -5247,6 +5253,121 @@ namespace UnitTest
         EXPECT_EQ(hit, 1);
     }
 
+    class MATH_IntersectRayPolyhedronTest
+        : public AllocatorsFixture
+    {
+    protected:
+        void SetUp() override
+        {
+            // base of cube
+            m_vertices[0] = Vector3(0.0f, 0.0f, 0.0f);
+            m_vertices[1] = Vector3(10.0f, 0.0f, 0.0f);
+            m_vertices[2] = Vector3(10.0f, 10.0f, 0.0f);
+            m_vertices[3] = Vector3(0.0f, 10.0f, 0.0f);
+
+            // setup planes
+            for (size_t i = 0; i < 4; ++i)
+            {
+                const Vector3 start = m_vertices[i];
+                const Vector3 end = m_vertices[(i + 1) % 4];
+                const Vector3 top = start + Vector3::CreateAxisZ();
+
+                const Vector3 normal = (end - start).Cross(top - start).GetNormalizedSafe();
+
+                m_planes[i] = Plane::CreateFromNormalAndPoint(normal, start);
+            }
+
+            const Vector3 normalTop = 
+                (m_vertices[2] - m_vertices[0]).Cross(m_vertices[0] - m_vertices[1]).GetNormalizedSafe();
+            const Vector3 normalBottom = -normalTop;
+
+            const float height = 10.0f;
+            m_planes[4] = Plane::CreateFromNormalAndPoint(normalTop, m_vertices[0] + Vector3::CreateAxisZ(height));
+            m_planes[5] = Plane::CreateFromNormalAndPoint(normalBottom, m_vertices[0]);
+        }
+
+        void TearDown() override
+        {
+        }
+
+        Vector3 m_vertices[4];
+        Plane m_planes[6];
+    };
+
+    TEST_F(MATH_IntersectRayPolyhedronTest, RayParallelHit)
+    {
+        const Vector3 src = Vector3(0.0f, -1.0f, 1.0f);
+        const Vector3 dir = Vector3(0.0f, 1.0f, 0.0f);
+        const Vector3 end = (src + dir * VectorFloat(100.0f)) - src;
+
+        VectorFloat f, l;
+        int firstPlane, lastPlane;
+        const int intersections = Intersect::IntersectSegmentPolyhedron(src, end, m_planes, 6, f, l, firstPlane, lastPlane);
+
+        EXPECT_EQ(intersections, 1);
+    }
+
+    TEST_F(MATH_IntersectRayPolyhedronTest, RayAboveMiss)
+    {
+        const Vector3 src = Vector3(5.0f, 11.0f, 11.0f);
+        const Vector3 dir = Vector3(0.0f, -1.0f, 0.0f);
+        const Vector3 end = (src + dir * VectorFloat(100.0f)) - src;
+
+        VectorFloat f, l;
+        int firstPlane, lastPlane;
+        const int intersections = Intersect::IntersectSegmentPolyhedron(src, end, m_planes, 6, f, l, firstPlane, lastPlane);
+
+        EXPECT_EQ(intersections, 0);
+    }
+
+    TEST_F(MATH_IntersectRayPolyhedronTest, RayDiagonalDownHit)
+    {
+        const Vector3 src = Vector3(5.0f, -1.0f, 11.0f);
+        const Vector3 end = Vector3(5.0f, 11.0f, -11.0f);
+
+        VectorFloat f, l;
+        int firstPlane, lastPlane;
+        const int intersections = Intersect::IntersectSegmentPolyhedron(src, end, m_planes, 6, f, l, firstPlane, lastPlane);
+
+        EXPECT_EQ(intersections, 1);
+    }
+
+    TEST_F(MATH_IntersectRayPolyhedronTest, RayDiagonalAcrossHit)
+    {
+        const Vector3 src = Vector3(-5.0f, -5.0f, 5.0f);
+        const Vector3 end = Vector3(15.0f, 15.0f, 5.0f);
+
+        VectorFloat f, l;
+        int firstPlane, lastPlane;
+        const int intersections = Intersect::IntersectSegmentPolyhedron(src, end, m_planes, 6, f, l, firstPlane, lastPlane);
+
+        EXPECT_EQ(intersections, 1);
+    }
+
+    TEST_F(MATH_IntersectRayPolyhedronTest, RayDiagonalAcrossMiss)
+    {
+        const Vector3 src = Vector3(-5.0f, -15.0f, 5.0f);
+        const Vector3 end = Vector3(15.0f, 5.0f, 5.0f);
+
+        VectorFloat f, l;
+        int firstPlane, lastPlane;
+        const int intersections = Intersect::IntersectSegmentPolyhedron(src, end, m_planes, 6, f, l, firstPlane, lastPlane);
+
+        EXPECT_EQ(intersections, 0);
+    }
+
+    TEST_F(MATH_IntersectRayPolyhedronTest, RayStartInside)
+    {
+        const Vector3 src = Vector3(5.0f, 5.0f, 5.0f);
+        const Vector3 end = Vector3(5.0f, 5.0f, 5.0f);
+
+        VectorFloat f, l;
+        int firstPlane, lastPlane;
+        const int intersections = Intersect::IntersectSegmentPolyhedron(src, end, m_planes, 6, f, l, firstPlane, lastPlane);
+
+        EXPECT_EQ(intersections, 0);
+    }
+
     class MATH_SfmtTest
         : public AllocatorsFixture
     {
@@ -5716,9 +5837,86 @@ namespace UnitTest
         Color vector4Color;
         vector4Color.Set(Vector3(0.1f, 0.3f, 0.5f), 0.7f);
         EXPECT_EQ(vector4Color.GetAsVector4(), Vector4(0.1f, 0.3f, 0.5f, 0.7f));
-
+        
         // Oddly lacking a Set() from Vector4...
 
+    }
+
+    TEST(MATH_Color, HueSaturationValue)
+    {
+        Color fromHSV(0.0f, 0.0f, 0.0f, 1.0f);
+
+        // Check first sexant (0-60 degrees) with 0 hue, full saturation and value = red.
+        fromHSV.SetFromHSVRadians(0.0f, 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(1.0f, 0.0f, 0.0f, 1.0f)));
+        
+        // Check the second sexant (60-120 degrees)
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(72.0f), 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.8f, 1.0f, 0.0f, 1.0f)));
+
+        // Check the third sexant (120-180 degrees)
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(144.0f), 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.0f, 1.0f, 0.4f, 1.0f)));
+
+        // Check the fourth sexant (180-240 degrees)
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(216.0f), 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.0f, 0.4f, 1.0f, 1.0f)));
+
+        // Check the fifth sexant (240-300 degrees)
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(252.0f), 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.2f, 0.0f, 1.0f, 1.0f)));
+
+        // Check the sixth sexant (300-360 degrees)
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(324.0f), 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(1.0f, 0.0f, 0.6f, 1.0f)));
+
+        // Check the upper limit of the hue
+        fromHSV.SetFromHSVRadians(AZ::Constants::TwoPi, 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(1.0f, 0.0f, 0.0f, 1.0f)));
+        
+        // Check that zero saturation causes RGB to all be value.
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(90.0f), 0.0f, 0.75f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.75f, 0.75f, 0.75f, 1.0f)));
+
+        // Check that zero value causes the color to be black.
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(180.0f), 1.0f, 0.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.0f, 0.0f, 0.0f, 1.0f)));
+
+        // Check a non-zero, non-one saturation
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(252.0f), 0.5f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.6f, 0.5f, 1.0f, 1.0f)));
+
+        // Check a non-zero, non-one value
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(216.0f), 1.0f, 0.5f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.0f, 0.2f, 0.5f, 1.0f)));
+
+        // Check a non-zero, non-one value and saturation
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(144.0f), 0.25f, 0.75f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(143.44f/255.0f, 191.25f/255.0f, 162.56f/255.0f, 1.0f)));
+
+        // Check that negative hue is handled correctly (only fractional value, +1 to be positive)
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(-396.0f), 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(1.0f, 0.0f, 0.6f, 1.0f)));
+
+        // Check that negative saturation is clamped to 0
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(324.0f), -1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(1.0f, 1.0f, 1.0f, 1.0f)));
+
+        // Check that negative value is clamped to 0
+        fromHSV.SetFromHSVRadians(AZ::Constants::Pi, 1.0f, -1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.0f, 0.0f, 0.0f, 1.0f)));
+
+        // Check that > 1 saturation is clamped to 1
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(324.0f), 2.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(1.0f, 0.0f, 0.6f, 1.0f)));
+
+        // Check that > 1 value is clamped to 1
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(324.0f), 1.0f, 2.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(1.0f, 0.0f, 0.6f, 1.0f)));
+
+        // Check a large hue.
+        fromHSV.SetFromHSVRadians(AZ::DegToRad(3744.0f), 1.0f, 1.0f);
+        EXPECT_TRUE(fromHSV.IsClose(Color(0.0f, 1.0f, 0.4f, 1.0f)));
     }
 
     TEST(MATH_Color, EqualityComparisons)
@@ -6021,13 +6219,6 @@ namespace UnitTest
         EXPECT_EQ(0.0, AZ::Lerp(2.0, 4.0, -1.0));
     }
 
-    // note: build fix for VS2013 warning C4723 - potential divide by 0
-    // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-3-c4723
-    // compiler does not detect error handling code and warns about test below
-#if defined(AZ_COMPILER_MSVC) && defined(_MSC_FULL_VER) && (_MSC_FULL_VER <= 180040629)
-    #pragma warning(push)
-    #pragma warning(disable:4723)
-#endif
     TEST(MATH_LerpInverse, Test)
     {
         // Float
@@ -6039,10 +6230,13 @@ namespace UnitTest
         EXPECT_NEAR(-1.0, AZ::LerpInverse(2.0, 4.0, 0.0), 0.0001);
 
         // min/max need to be substantially different to return a useful t value
+        
         // Float
         const float epsilonF = std::numeric_limits<float>::epsilon();
         const float doesntMatterF = std::numeric_limits<float>::signaling_NaN();
-        EXPECT_EQ(0.0f, AZ::LerpInverse(2.3f, 2.3f, doesntMatterF));
+        // volatile keyword required here to prevent spurious vs2013 compile error about division by 0
+        volatile float lowerF = 2.3f, upperF = 2.3f;
+        EXPECT_EQ(0.0f, AZ::LerpInverse(lowerF, upperF, doesntMatterF));
         EXPECT_EQ(0.0f, AZ::LerpInverse(0.0f, 0.5f * epsilonF, doesntMatterF));
         EXPECT_EQ(0.0f, AZ::LerpInverse(0.0f, 5.0f * epsilonF, 0.0f));
         EXPECT_NEAR(0.4f, AZ::LerpInverse(0.0f, 5.0f * epsilonF, 2.0f * epsilonF), epsilonF);
@@ -6052,14 +6246,13 @@ namespace UnitTest
         // Double
         const double epsilonD = std::numeric_limits<double>::epsilon();
         const double doesntMatterD = std::numeric_limits<double>::signaling_NaN();
-        EXPECT_EQ(0.0, AZ::LerpInverse(2.3, 2.3, doesntMatterD));
+        // volatile keyword required here to prevent spurious vs2013 compile error about division by 0
+        volatile double lowerD = 2.3, upperD = 2.3;
+        EXPECT_EQ(0.0, AZ::LerpInverse(lowerD, upperD, doesntMatterD));
         EXPECT_EQ(0.0, AZ::LerpInverse(0.0, 0.5 * epsilonD, doesntMatterD));
         EXPECT_EQ(0.0, AZ::LerpInverse(0.0, 5.0 * epsilonD, 0.0));
         EXPECT_NEAR(0.4, AZ::LerpInverse(0.0, 5.0 * epsilonD, 2.0 * epsilonD), epsilonD);
         EXPECT_NEAR(0.6, AZ::LerpInverse(1.0, 1.0 + 5.0 * epsilonD, 1.0 + 3.0 * epsilonD), epsilonD);
         EXPECT_NEAR(1.0, AZ::LerpInverse(1.0, 1.0 + 5.0 * epsilonD, 1.0 + 5.0 * epsilonD), epsilonD);
     }
-#if defined(AZ_COMPILER_MSVC) && defined(_MSC_FULL_VER) && (_MSC_FULL_VER <= 180040629)
-    #pragma warning(pop)
-#endif
 }

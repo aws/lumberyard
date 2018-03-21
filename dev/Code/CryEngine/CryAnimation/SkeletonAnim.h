@@ -15,6 +15,8 @@
 #define CRYINCLUDE_CRYANIMATION_SKELETONANIM_H
 #pragma once
 
+#include <AzCore/Jobs/LegacyJobExecutor.h>
+
 #include "SkeletonPose.h"
 #include "AnimationThreadTask.h"
 #include "FacialAnimation/FacialModel.h"
@@ -75,7 +77,6 @@ public:
     // CAnimationThreadTask
 public:
     void Execute();
-    void Job_Execute();
 
 private:
     Command::CBuffer* m_pCommandBuffer;
@@ -86,7 +87,7 @@ private:
     bool m_bProcessed;
 
 private:
-    JobManager::SJobState m_jobState;
+    AZ::LegacyJobExecutor m_jobExecutor;
 };
 
 

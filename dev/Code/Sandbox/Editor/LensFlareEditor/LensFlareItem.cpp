@@ -107,7 +107,7 @@ void CLensFlareItem::SetName(const QString& name)
 
     if (m_pOptics)
     {
-        m_pOptics->SetName(GetShortName().toLatin1().data());
+        m_pOptics->SetName(GetShortName().toUtf8().data());
     }
 }
 
@@ -184,7 +184,7 @@ void CLensFlareItem::ReplaceOptics(IOpticsElementBasePtr pNewData)
     }
     CreateOptics();
     LensFlareUtil::CopyOptics(pNewData, m_pOptics);
-    m_pOptics->SetName(GetFullName().toLatin1().data());
+    m_pOptics->SetName(GetFullName().toUtf8().data());
     UpdateLights();
 
     CLensFlareEditor* pLensFlareEditor = CLensFlareEditor::GetLensFlareEditor();

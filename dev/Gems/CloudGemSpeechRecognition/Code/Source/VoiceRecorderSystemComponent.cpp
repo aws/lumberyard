@@ -11,69 +11,34 @@
 *
 */
 
-#include <StdAfx.h>
+#include <CloudGemSpeechRecognition_precompiled.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/IO/FileIO.h>
 
 #include "VoiceRecorderSystemComponent.h"
 #include <base64.h>
 
 #include <AzCore/IO/FileIO.h>
+#include <Microphone/WAVUtil.h>
 
 using namespace Audio;
 
 namespace CloudGemSpeechRecognition
 {
-    struct WAVHeader
-    {
-        AZ::u8 riffTag[4];
-        AZ::u32 fileSize;
-        AZ::u8 waveTag[4];
-        AZ::u8 fmtTag[4];
-        AZ::u32 fmtSize;
-        AZ::u16 audioFormat;
-        AZ::u16 channels;
-        AZ::u32 sampleRate;
-        AZ::u32 byteRate;
-        AZ::u16 blockAlign;
-        AZ::u16 bitsPerSample;
-        AZ::u8 dataTag[4];
-        AZ::u32 dataSize;
-
-        WAVHeader();
-    };
-
     // This is very specific initialization for the format that Lex requires
     const AZ::u32 SAMPLE_RATE = 16000; // preferred data rate for Lex
     const AZ::u16 BITS_PER_SAMPLE = 16; // Lex requires 16 bit samples
     const AZ::u32 BYTES_PER_SAMPLE = (AZ::u32)(BITS_PER_SAMPLE / 8);
     const AZ::u16 CHANNELS = 1;
     const AZ::u32 FRAME_SIZE = 4096; // this is the number of frames that will be requested each tick, might not get that many though.
-    const AZ::u32 BUFFER_ALLOC_SIZE = sizeof(WAVHeader) + (SAMPLE_RATE * CHANNELS * BYTES_PER_SAMPLE * 5); // alloc for 5 seconds each time 
-    //TODO: If we need to talk longer, allocate a larger buffer. For now, cap speech at 5 seconds. There's
-    // no realloc in azmemory, perhaps keep a linked list of buffers?
-
-    WAVHeader::WAVHeader()
-        : fileSize { 0 }
-        , fmtSize { 16 }
-        , audioFormat { 1 }     // 1 = PCM
-        , channels { CHANNELS }
-        , sampleRate { SAMPLE_RATE }
-        , byteRate { SAMPLE_RATE * BYTES_PER_SAMPLE }
-        , blockAlign { 2 }
-        , bitsPerSample { BITS_PER_SAMPLE }
-        , dataSize { 0 }
-    {
-        memcpy(riffTag, "RIFF", 4);
-        memcpy(waveTag, "WAVE", 4);
-        memcpy(fmtTag, "fmt ", 4);
-        memcpy(dataTag, "data", 4);
-    }
+    const AZ::u32 BUFFER_ALLOC_SIZE = sizeof(WAVHeader) + (SAMPLE_RATE * CHANNELS * BYTES_PER_SAMPLE * 5); // alloc for 5 seconds each time, should be enough for most utterances
 
     void VoiceRecorderSystemComponent::Init()
     {
+#if !defined(AZ_PLATFORM_APPLE)
         m_bufferConfig = SAudioInputConfig(
             AudioInputSourceType::Microphone,
             SAMPLE_RATE,
@@ -81,28 +46,33 @@ namespace CloudGemSpeechRecognition
             BITS_PER_SAMPLE,
             AudioInputSampleType::Int
             );
+#endif
     }
 
     void VoiceRecorderSystemComponent::Activate()
     {
+#if defined(AZ_PLATFORM_APPLE)
+        CocoaAudioRecorder::initialize();
+#else
         m_fillBuffer = nullptr;
-        m_currentB64Buffer = nullptr;
+#endif
+        m_currentB64Buffer.reset(nullptr);
         VoiceRecorderRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void VoiceRecorderSystemComponent::Deactivate()
     {
         VoiceRecorderRequestBus::Handler::BusDisconnect();
+#if defined(AZ_PLATFORM_APPLE)
+        CocoaAudioRecorder::shutdown();
+#else
         if (m_fillBuffer)
         {
             delete[] m_fillBuffer;
             m_fillBuffer = nullptr;
         }
-        if (m_currentB64Buffer)
-        {
-            delete[] m_currentB64Buffer;
-            m_currentB64Buffer = nullptr;
-        }
+#endif
+        m_currentB64Buffer.reset(nullptr);
     }
 
     void VoiceRecorderSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -148,16 +118,19 @@ namespace CloudGemSpeechRecognition
 
     void VoiceRecorderSystemComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
+#if !defined(AZ_PLATFORM_APPLE)
         bool isCapturing = false;
         MicrophoneRequestBus::BroadcastResult(isCapturing, &MicrophoneRequestBus::Events::IsCapturing);
         if (isCapturing)
         {
             ReadBuffer();
         }
+#endif
     }
 
     void VoiceRecorderSystemComponent::ReadBuffer()
     {
+#if !defined(AZ_PLATFORM_APPLE)
         // if there isn't room, don't continue recording
         //TODO if it gets too big, create a new buffer and start recording in to that
         // will need a buffer struct with buffer, current pos and size of buffer
@@ -170,14 +143,23 @@ namespace CloudGemSpeechRecognition
                 m_bufferConfig,
                 false);
 
+// The simple downsample used on non-windows plaforms for now yields different results than libsamplerate
+// When libsamplerate is ported to other platforms, the "windows" version should become the standard
+#if defined(AZ_PLATFORM_WINDOWS)
             AZ::u32 bytesRead = (actualSampleFrames * CHANNELS * BYTES_PER_SAMPLE);
-
+#else
+            AZ::u32 bytesRead = actualSampleFrames;
+#endif 
             m_curFillBufferPos += bytesRead;
         }
+#endif
     }
 
     void VoiceRecorderSystemComponent::StartRecording()
     {
+#if defined(AZ_PLATFORM_APPLE)
+        CocoaAudioRecorder::startRecording();
+#else
         if (IsMicrophoneAvailable())
         {
             bool didSessionStart = false;
@@ -194,10 +176,35 @@ namespace CloudGemSpeechRecognition
                 AZ_Warning("VoiceRecorderSystemComponent", true, "Unable to start recording session");
             }
         }
+#endif
     }
 
     void VoiceRecorderSystemComponent::StopRecording()
     {
+#if defined(AZ_PLATFORM_APPLE)
+        CocoaAudioRecorder::stopRecording();
+        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+        if(fileIO)
+        {
+            AZ::IO::HandleType fileHandle;
+            if(fileIO->Open(CocoaAudioRecorder::getFileName().c_str(), AZ::IO::OpenMode::ModeRead, fileHandle))
+            {
+                // read in the wav file and pack it up to send to lex
+                AZ::u64 size = 0;
+                fileIO->Size(fileHandle, size);
+                AZStd::unique_ptr<AZ::s8[]> buffer(new AZ::s8[size]);
+                fileIO->Read(fileHandle, buffer.get(), size);
+                int encodedSize = Base64::encodedsize_base64(size);
+                m_currentB64Buffer.reset(new AZ::s8[encodedSize + 1]);
+                Base64::encode_base64(reinterpret_cast<char*>(m_currentB64Buffer.get()), reinterpret_cast<char*>(buffer.get()), size, true);
+            }
+            else
+            {
+                AZ_Printf("VoiceRecorderSystemComponent", "Unable to open audio recorder sample file");
+                return;
+            }
+        }
+#else
         if (m_fillBuffer && m_curFillBufferPos != m_fillBuffer && IsMicrophoneAvailable())
         {
             AZ::TickBus::Handler::BusDisconnect();
@@ -208,47 +215,29 @@ namespace CloudGemSpeechRecognition
 
             auto wavSize = static_cast<AZ::u32>(m_curFillBufferPos - m_fillBuffer);
 
-            SetWAVHeader(m_fillBuffer, wavSize);
+            WAVUtil wavUtil(SAMPLE_RATE, BITS_PER_SAMPLE, CHANNELS, false);
+            wavUtil.SetBuffer(m_fillBuffer, wavSize);
 
-
-            // BEGIN PHISTER TEST
-            // This will go to "\dev\Cache\CloudGemSamples\pc\cloudgemsamples\push_to_talk.wav"
-            AZStd::string fileName = "push_to_talk.wav";
-            AZ::IO::FileIOStream fileStream(fileName.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary);
-            if (fileStream.IsOpen())
-            {
-                auto bytesWritten = fileStream.Write(wavSize, m_fillBuffer);
-                AZ_TracePrintf("VoiceRecorderSystemComponent", "Wrote file: %s, %d bytes\n", fileName.c_str(), bytesWritten);
-            }
-            // END PHISTER TEST
+            // write test output to user folder
+            wavUtil.WriteWAVToFile("@user@/push_to_talk.wav");
 
             int encodedSize = Base64::encodedsize_base64(wavSize);
-            if (m_currentB64Buffer)
-            {
-                delete[] m_currentB64Buffer;
-                m_currentB64Buffer = nullptr;
-            }
-            m_currentB64Buffer = new char[encodedSize + 1];
-            Base64::encode_base64(m_currentB64Buffer, reinterpret_cast<char*>(m_fillBuffer), wavSize, true);
+            m_currentB64Buffer.reset(new AZ::s8[encodedSize + 1]);
+            Base64::encode_base64(reinterpret_cast<char*>(m_currentB64Buffer.get()), reinterpret_cast<char*>(m_fillBuffer), wavSize, true);
 
             delete[] m_fillBuffer;
             m_fillBuffer = nullptr;
         }
+#endif
     }
-
-    void VoiceRecorderSystemComponent::SetWAVHeader(AZ::u8* fillBuffer, AZ::u32 bufferSize)
-    {
-        WAVHeader header;
-        header.fileSize = bufferSize - 8;   // the 'RIFF' tag and filesize aren't counted in this.
-        header.dataSize = bufferSize - sizeof(WAVHeader);
-        AZ::u8* headerBuff = reinterpret_cast<AZ::u8*>(&header);
-        ::memcpy(fillBuffer, headerBuff, sizeof(WAVHeader));
-    }
-
 
     bool VoiceRecorderSystemComponent::IsMicrophoneAvailable()
     {
+#if defined(AZ_PLATFORM_APPLE)
+        return true;
+#else
         return m_isMicrophoneInitialized;
+#endif
     }
 
     AZStd::string VoiceRecorderSystemComponent::GetSoundBufferBase64()
@@ -259,7 +248,7 @@ namespace CloudGemSpeechRecognition
         }
         else
         {
-            return AZStd::string(m_currentB64Buffer);
+            return AZStd::string(reinterpret_cast<char*>(m_currentB64Buffer.get()));
         }
     }
 }

@@ -22,6 +22,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionBus.h>
 
 #include "TrackViewDialog.h"
 #include "TrackViewAnimNode.h"
@@ -467,7 +468,7 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(const QString& name, const
     }
 
     CTrackViewAnimNode* pDirector = nullptr;
-    const auto nameStr = name.toLatin1();
+    const auto nameStr = name.toUtf8();
 
     // Check if the node's director or sequence already contains a node with this name, unless it's a component, for which we allow duplicate names since
     // Components are children of unique AZEntities in Track View
@@ -1010,7 +1011,10 @@ bool CTrackViewAnimNode::SetName(const char* pName)
     string oldName = GetName();
     m_pAnimNode->SetName(pName);
 
-    if (CUndo::IsRecording())
+    CTrackViewSequence* sequence = GetSequence();
+    AZ_Assert(sequence, "Nodes should never have a null sequence.");
+
+    if (CUndo::IsRecording() && sequence->GetSequenceType() == SequenceType::Legacy)
     {
         CUndo::Record(new CUndoAnimNodeRename(this, oldName));
     }
@@ -1266,7 +1270,7 @@ QString CTrackViewAnimNode::GetAvailableNodeNameStartingWith(const QString& name
     QString newName = name;
     unsigned int index = 2;
 
-    while (const_cast<CTrackViewAnimNode*>(this)->GetAnimNodesByName(newName.toLatin1().data()).GetCount() > 0)
+    while (const_cast<CTrackViewAnimNode*>(this)->GetAnimNodesByName(newName.toUtf8().data()).GetCount() > 0)
     {
         newName = QStringLiteral("%1%2").arg(name).arg(index);
         ++index;
@@ -1331,7 +1335,7 @@ CTrackViewAnimNodeBundle CTrackViewAnimNode::AddSelectedEntities(const DynArray<
             // If it has the same director than the current node, reject it
             if (pExistingNode->GetDirector() == GetDirector())
             {
-                GetIEditor()->GetMovieSystem()->LogUserNotificationMsg(AZStd::string::format("'%s' was already added to '%s', skipping...", pObject->GetName().toLatin1().data(), GetDirector()->GetName()));
+                GetIEditor()->GetMovieSystem()->LogUserNotificationMsg(AZStd::string::format("'%s' was already added to '%s', skipping...", pObject->GetName().toUtf8().data(), GetDirector()->GetName()));
                 continue;
             }
         }
@@ -1664,7 +1668,7 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
         // Check if the node's director or sequence already contains a node with this name
         CTrackViewAnimNode* pDirector = GetDirector();
         pDirector = pDirector ? pDirector : GetSequence();
-        if (pDirector->GetAnimNodesByName(name.toLatin1().data()).GetCount() > 0)
+        if (pDirector->GetAnimNodesByName(name.toUtf8().data()).GetCount() > 0)
         {
             return;
         }
@@ -1780,18 +1784,80 @@ bool CTrackViewAnimNode::IsValidReparentingTo(CTrackViewAnimNode* pNewParent)
     return true;
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewAnimNode::SetNewParent(CTrackViewAnimNode* pNewParent)
+void CTrackViewAnimNode::SetParentsInChildren(CTrackViewAnimNode* currentNode)
 {
-    if (pNewParent == GetParentNode())
+    const uint numChildren = currentNode->GetChildCount();
+
+    for (uint childIndex = 0; childIndex < numChildren; ++childIndex)
+    {
+        CTrackViewAnimNode* childAnimNode = static_cast<CTrackViewAnimNode*>(currentNode->GetChild(childIndex));
+
+        if (childAnimNode->GetNodeType() != eTVNT_Track)
+        {
+            childAnimNode->m_pAnimNode->SetParent(currentNode->m_pAnimNode.get());
+
+            if (childAnimNode->GetChildCount() > 0 && childAnimNode->GetNodeType() != eTVNT_AnimNode)
+            {
+                SetParentsInChildren(childAnimNode);
+            }
+        }
+    }
+}
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewAnimNode::SetNewParent(CTrackViewAnimNode* newParent)
+{
+    if (newParent == GetParentNode())
     {
         return;
     }
 
-    assert(CUndo::IsRecording());
-    assert(IsValidReparentingTo(pNewParent));
+    assert(IsValidReparentingTo(newParent));
 
-    CUndo::Record(new CUndoAnimNodeReparent(this, pNewParent));
+    CTrackViewSequence* sequence = newParent->GetSequence();
+    if (sequence->GetSequenceType() == SequenceType::Legacy)
+    {
+        assert(CUndo::IsRecording());
+        CUndo::Record(new CUndoAnimNodeReparent(this, newParent));
+    }
+    else
+    {
+        AzToolsFramework::ScopedUndoBatch undoBatch("Set New Track View Anim Node Parent");
+
+        UnBindFromEditorObjects();
+
+        // Remove from the old parent's children and hang on to a ref.
+        std::unique_ptr<CTrackViewNode> storedTrackViewNode;
+        CTrackViewAnimNode* lastParent = static_cast<CTrackViewAnimNode*>(m_pParentNode);
+        if (nullptr != lastParent)
+        {
+            for (auto iter = lastParent->m_childNodes.begin(); iter != lastParent->m_childNodes.end(); ++iter)
+            {
+                std::unique_ptr<CTrackViewNode>& currentNode = *iter;
+
+                if (currentNode.get() == this)
+                {
+                    currentNode.swap(storedTrackViewNode);
+                    lastParent->m_childNodes.erase(iter);
+                    break;
+                }
+            }
+        }
+        AZ_Assert(nullptr != storedTrackViewNode.get(), "Existing Parent of node not found");
+
+        sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_Removed);
+
+        // Set new parent
+        m_pParentNode = newParent;
+        m_pAnimNode->SetParent(newParent->m_pAnimNode.get());
+        SetParentsInChildren(this);
+
+        // Add node to the new parent's children.
+        static_cast<CTrackViewAnimNode*>(m_pParentNode)->AddNode(storedTrackViewNode.release());
+
+        BindToEditorObjects();
+
+        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1966,7 +2032,27 @@ void CTrackViewAnimNode::UpdateTrackGizmo()
 
     if (m_pNodeEntity && m_trackGizmo)
     {
-        const Matrix34 gizmoMatrix = m_pNodeEntity->GetParentAttachPointWorldTM();
+        Matrix34 gizmoMatrix;
+        gizmoMatrix.SetIdentity();
+
+        if (GetType() == AnimNodeType::AzEntity)
+        {
+            // Key data are always relative to the parent (or world if there is no parent). So get the parent
+            // entity id if there is one.
+            AZ::EntityId parentId;
+            AZ::TransformBus::EventResult(parentId, GetAzEntityId(), &AZ::TransformBus::Events::GetParentId);
+            if (parentId.IsValid())
+            {
+                AZ::Transform azWorldTM = GetEntityWorldTM(parentId);
+                gizmoMatrix = AZTransformToLYTransform(azWorldTM);
+            }
+        }
+        else
+        {
+            // Legacy system.
+            gizmoMatrix = m_pNodeEntity->GetParentAttachPointWorldTM();
+        }
+
         m_trackGizmo->SetMatrix(gizmoMatrix);
     }
 }
@@ -2172,9 +2258,28 @@ void CTrackViewAnimNode::OnEntityActivated(const AZ::EntityId& activatedEntityId
             CTrackViewAnimNode* childAnimNode = static_cast<CTrackViewAnimNode*>(GetChild(i));
             if (childAnimNode->GetComponentId() != AZ::InvalidComponentId && !(entity->FindComponent(childAnimNode->GetComponentId())))
             {
-                CUndo undo("Remove Track View Component Node");
+                // Check to see if the component is still on the entity, but just disabled. Don't remove it in that case.
+                AZ::Entity::ComponentArrayType disabledComponents;
+                AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequests::GetDisabledComponents, disabledComponents);
 
-                RemoveSubNode(childAnimNode);
+                bool isDisabled = false;
+                for (auto disabledComponent : disabledComponents)
+                {
+                    if (disabledComponent->GetId() == childAnimNode->GetComponentId())
+                    {
+                        isDisabled = true;
+                        break;
+                    }
+                }
+
+                if (!isDisabled)
+                {
+                    AzToolsFramework::ScopedUndoBatch undoBatch("Remove Track View Component Node");
+                    RemoveSubNode(childAnimNode);
+                    CTrackViewSequence* sequence = GetSequence();
+                    AZ_Assert(sequence != nullptr, "Sequence should not be null");
+                    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+                }
             }
         }
     }

@@ -286,11 +286,6 @@ protected:
 
     void OnDescriptionEdit();
 
-#ifdef KDAB_TEMPORARILY_REMOVED
-    afx_msg void OnMouseMove(UINT, CPoint);
-    afx_msg void OnLButtonUp(UINT, CPoint);
-#endif
-
     void CreatePanes();
 
     void SinkSelection();

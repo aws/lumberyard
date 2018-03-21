@@ -1151,7 +1151,7 @@ bool CD3D9Renderer::SetWindow(int width, int height, bool fullscreen, WIN_HWND h
 {
     LOADING_TIME_PROFILE_SECTION;
 
-#if defined(WIN32) || defined(DURANGO)
+#if D3DSYSTEM_CPP_TRAIT_SETWINDOW_REGISTERWINDOWMESSAGEHANDLER
     iSystem->RegisterWindowMessageHandler(this);
     m_registeredWindoWHandler = true;
 #endif

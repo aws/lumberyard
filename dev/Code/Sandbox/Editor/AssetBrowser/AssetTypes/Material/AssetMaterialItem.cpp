@@ -118,7 +118,7 @@ void CAssetMaterialItem::LoadMaterial()
     if (!m_pMaterial)
     {
         QString fullPath = m_strRelativePath + m_strFilename;
-        m_pMaterial = GetIEditor()->GetMaterialManager()->LoadMaterial(fullPath.toLatin1().data(), false);
+        m_pMaterial = GetIEditor()->GetMaterialManager()->LoadMaterial(fullPath.toUtf8().data(), false);
     }
 }
 
@@ -249,9 +249,9 @@ void CAssetMaterialItem::ToXML(XmlNodeRef& node) const
 {
     node->setTag("Material");
     QString fileName = m_strRelativePath + m_strFilename;
-    node->setAttr("fileName", fileName.toLatin1().data());
+    node->setAttr("fileName", fileName.toUtf8().data());
     node->setAttr("filesize", m_nFileSize);
-    node->setAttr("dccFilename", m_strDccFilename.toLatin1().data());
+    node->setAttr("dccFilename", m_strDccFilename.toUtf8().data());
 }
 
 void CAssetMaterialItem::FromXML(const XmlNodeRef& node)

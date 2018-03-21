@@ -17,6 +17,7 @@
 #include <AzQtComponents/Components/DockBarButton.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/Titlebar.h>
+#include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 
 #include <QPainter>
@@ -27,6 +28,7 @@
 #include <QScreen>
 #include <QCloseEvent>
 #include <QDesktopWidget>
+#include <QDialog>
 
 #ifdef Q_OS_WIN
 # include <QtGui/private/qhighdpiscaling_p.h>
@@ -62,7 +64,7 @@ namespace AzQtComponents
 
         // Create a QWindow -- windowHandle()
         setAttribute(Qt::WA_NativeWindow, true);
-        EditorProxyStyle::addTitleBarOverdrawWidget(this);
+        TitleBarOverdrawHandler::getInstance()->addTitleBarOverdrawWidget(this);
     }
 
     WindowDecorationWrapper::~WindowDecorationWrapper()
@@ -221,6 +223,24 @@ namespace AzQtComponents
         m_settingsKey = key;
     }
 
+    void WindowDecorationWrapper::enableSaveRestoreGeometry(const QString& key)
+    {
+        if (m_settings)
+        {
+            qWarning() << Q_FUNC_INFO << "Save/restore already enabled";
+            return;
+        }
+
+        if (key.isEmpty())
+        {
+            qWarning() << Q_FUNC_INFO << "Invalid parameters";
+            return;
+        }
+
+        m_settings = new QSettings(this);
+        m_settingsKey = key;
+    }
+
     bool WindowDecorationWrapper::saveRestoreGeometryEnabled() const
     {
         return m_settings != nullptr;
@@ -320,6 +340,16 @@ namespace AzQtComponents
 
         qDebug() << "WindowDecorationWrapper::childEvent" << this << w << "; flags=" << w->windowFlags()
         << "; guest's parent=" << w->parentWidget();
+#if defined(AZ_PLATFORM_APPLE)
+        // On macOS, tool windows correspond to the Floating class of windows. This means that the
+        // window lives on a level above normal windows making it impossible to put a normal window
+        // on top of it. Therefore we need to add Qt::Tool to QDialogs to ensure they are not hidden
+        // under a Floating window.
+        if (QDialog* d = qobject_cast<QDialog*>(w))
+        {
+            setWindowFlags(windowFlags() | Qt::Tool);
+        }
+#endif
         setGuest(w);
     }
 
@@ -349,7 +379,7 @@ namespace AzQtComponents
 
         if (isWin10())
         {
-            if (widget->window() && msg->message == WM_NCHITTEST && !(QApplication::mouseButtons() & Qt::RightButton))
+            if (widget->window() && msg->message == WM_NCHITTEST && GetAsyncKeyState(VK_RBUTTON) >= 0) // We're not interested in right click
             {
                 HWND handle = (HWND)widget->window()->winId();
                 const LRESULT defWinProcResult = DefWindowProc(handle, msg->message, msg->wParam, msg->lParam);
@@ -454,11 +484,11 @@ namespace AzQtComponents
         m_settings->setValue(m_settingsKey + QStringLiteral("-wasMaximized"), isMaximized());
     }
 
-    void WindowDecorationWrapper::restoreGeometryFromSettings()
+    bool WindowDecorationWrapper::restoreGeometryFromSettings()
     {
         if (!m_settings || m_restoringGeometry)
         {
-            return;
+            return false;
         }
 
         const QByteArray savedGeometry = m_settings->value(m_settingsKey).toByteArray();
@@ -471,6 +501,10 @@ namespace AzQtComponents
             QWidget::restoreGeometry(savedGeometry);
             show();
         }
+        else
+        {
+            return false;
+        }
         
         if (wasMaximized)
         {
@@ -479,6 +513,8 @@ namespace AzQtComponents
 
         adjustWidgetGeometry();
         m_restoringGeometry = false;
+
+        return true;
     }
 
     void WindowDecorationWrapper::applyFlagsAndAttributes()

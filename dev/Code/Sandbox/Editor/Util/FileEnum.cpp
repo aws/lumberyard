@@ -104,10 +104,8 @@ inline bool ScanDirectoryRecursive(
     const QString& path,
     const QString& file,
     QStringList& files,
-    bool bRecursive,
-    bool bSkipPaks)
+    bool bRecursive)
 {
-    QFileInfo foundFile;
     bool bFoundAny = false;
 
     QDirIterator hFile(root + path, QStringList(file));
@@ -119,13 +117,7 @@ inline bool ScanDirectoryRecursive(
         do
         {
             hFile.next();
-            foundFile = hFile.fileInfo();
-#ifdef KDAB_PORT // there are no attributes like that in system files - neither before port
-            if (bSkipPaks && (foundFile.attrib & _A_IN_CRYPAK))
-            {
-                continue;
-            }
-#endif
+            QFileInfo foundFile = hFile.fileInfo();
 
             bFoundAny = true;
             files.push_back(path + foundFile.fileName());
@@ -142,14 +134,7 @@ inline bool ScanDirectoryRecursive(
             do
             {
                 hFile.next();
-                foundFile = hFile.fileInfo();
-
-#ifdef KDAB_PORT // there are no attributes like that in system files - neither before port
-                if (bSkipPaks && (foundFile.attrib & _A_IN_CRYPAK))
-                {
-                    continue;
-                }
-#endif
+                QFileInfo foundFile = hFile.fileInfo();
 
                 if (foundFile.isDir())
                 {
@@ -161,8 +146,7 @@ inline bool ScanDirectoryRecursive(
                                 path + foundFile.fileName() + QDir::separator(),
                                 file,
                                 files,
-                                bRecursive,
-                                bSkipPaks))
+                                bRecursive))
                         {
                             bFoundAny = true;
                         }
@@ -180,7 +164,7 @@ bool CFileEnum::ScanDirectory(
     const QString& file,
     QStringList& files,
     bool bRecursive,
-    bool bSkipPaks)
+    bool /* bSkipPaks - unused, left for backwards API compatibility */)
 {
-    return ScanDirectoryRecursive(path, "", file, files, bRecursive, bSkipPaks);
+    return ScanDirectoryRecursive(path, "", file, files, bRecursive);
 }

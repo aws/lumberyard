@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/Maestro_precompiled.cpp",
+            "Source/Maestro_precompiled.h"
         ],
         "Source/Cinematics/Nodes":
         [
@@ -33,7 +33,7 @@
             "Source/Cinematics/AnimSequence.h",
             "Source/Cinematics/CharacterTrackAnimator.h",
             "Source/Cinematics/Movie.h",
-            "Source/Cinematics/StdAfx.h",
+            "Source/Cinematics/Maestro_precompiled.h",
             "Source/Cinematics/TCBSpline.h",
             "Source/Cinematics/resource.h"
         ],

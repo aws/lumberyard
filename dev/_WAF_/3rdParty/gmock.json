@@ -83,6 +83,17 @@
             "gmock_main/lib": [
                 "libgmock_main.a"
             ]
+        }, 
+        "linux_x64": {
+            "libpath_debug": [
+                "lib/linux/debug"
+            ], 
+            "libpath_release": [
+                "lib/linux/release"
+            ], 
+            "gmock/lib": [
+                "libgmock.a"
+            ]
         }
     }
 }

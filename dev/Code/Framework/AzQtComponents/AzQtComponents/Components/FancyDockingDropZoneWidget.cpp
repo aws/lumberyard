@@ -58,6 +58,8 @@ namespace AzQtComponents
         setAttribute(Qt::WA_NoSystemBackground);
         setAutoFillBackground(false);
         setGeometry(screen->availableGeometry());
+
+        Stop();
     }
 
     FancyDockingDropZoneWidget::~FancyDockingDropZoneWidget()
@@ -103,6 +105,13 @@ namespace AzQtComponents
 
     void FancyDockingDropZoneWidget::Stop()
     {
+#ifdef AZ_PLATFORM_APPLE_OSX
+        // macOS needs a bit help, WA_TransparentForMouseEvents doesn't always work
+        // there's a rare edge case when dragging while a popup is open which leads to events being sent to this window
+        // even if it's not visible. As far as I can tell it's not a Qt bug, the OS sends the events to this window.
+        // So here's this workaround
+        setGeometry(0, 0, 1, 1);
+#endif
         hide();
     }
 
@@ -321,5 +330,6 @@ namespace AzQtComponents
         // Slower, but more accurate when we're dragging the window
         return (QGuiApplication::queryKeyboardModifiers() & Qt::ControlModifier);
     }
-}
 
+#include <Components/FancyDockingDropZoneWidget.moc>
+} // namespace AzQtComponents

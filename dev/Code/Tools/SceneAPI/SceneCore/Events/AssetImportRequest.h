@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,7 +10,9 @@
 *
 */
 
-#include <AzCore/EBus/ebus.h>
+#pragma once
+
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
@@ -91,13 +91,6 @@ namespace AZ
                 //! to deal with any default behavior of the manifest.
                 virtual ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester);
-
-                //! @deprecated Function deprecated, use SceneSerializationBus::LoadScene instead.
-                AZ_DEPRECATED(static AZStd::shared_ptr<Containers::Scene> LoadScene(const AZStd::string& assetFilePath,
-                    RequestingApplication requester), "Function deprecated, use SceneSerializationBus::LoadScene instead.");
-                //! @deprecated Function deprecated, use SceneSerializationBus::LoadScene instead.
-                AZ_DEPRECATED(static AZStd::shared_ptr<Containers::Scene> LoadScene(const AZStd::string& assetFilePath,
-                    const Uuid& sourceGuid, RequestingApplication requester), "Function deprecated, use SceneSerializationBus::LoadScene instead.");
 
                 //! Utility function to load an asset and manifest from file by using the EBus functions above.
                 //! @param assetFilePath The absolute path to the source file (not the manifest).

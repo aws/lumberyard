@@ -57,6 +57,10 @@ private:
     QAction* m_enableAction;
     QAction* m_disableAction;
 
+    QPixmap m_scIconOk;
+    QPixmap m_scIconError;
+
+    bool m_sourceControlAvailable;
     AzToolsFramework::SourceControlState m_SourceControlState; 
 };
 

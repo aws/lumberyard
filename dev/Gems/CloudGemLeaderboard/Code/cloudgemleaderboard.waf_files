@@ -1,8 +1,8 @@
 {
     "none": {
         "Source": [
-            "Source/StdAfx.cpp",
-            "Source/StdAfx.h"
+            "Source/CloudGemLeaderboard_precompiled.cpp",
+            "Source/CloudGemLeaderboard_precompiled.h"
         ]
     },
     "auto": {

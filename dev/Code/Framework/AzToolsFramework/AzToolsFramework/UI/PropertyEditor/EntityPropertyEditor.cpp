@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "EntityPropertyEditor.hxx"
 
 #include <AzCore/Asset/AssetManagerBus.h>
@@ -51,7 +51,7 @@
 #include <AzToolsFramework/UI/ComponentPalette/ComponentPaletteWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorApi.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyRowWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzToolsFramework/Undo/UndoSystem.h>
@@ -59,6 +59,7 @@
 #include <QDrag>
 #include <QInputDialog>
 #include <QLabel>
+#include <QMainWindow>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
@@ -196,6 +197,7 @@ namespace AzToolsFramework
         , m_autoScrollCount(0)
         , m_autoScrollMargin(16)
         , m_autoScrollQueued(false)
+        , m_isSystemEntityEditor(false)
     {
         setObjectName("EntityPropertyEditor");
         setAcceptDrops(true);
@@ -214,7 +216,6 @@ namespace AzToolsFramework
 
         m_gui = aznew Ui::EntityPropertyEditorUI();
         m_gui->setupUi(this);
-        m_gui->m_entityIdEditor->setReadOnly(true);
         m_gui->m_entityNameEditor->setReadOnly(false);
         m_gui->m_entityDetailsLabel->setObjectName("LabelEntityDetails");
         m_gui->m_entitySearchBox->setReadOnly(false);
@@ -225,13 +226,14 @@ namespace AzToolsFramework
         connect(m_gui->m_addComponentButton, &QPushButton::clicked, this, &EntityPropertyEditor::OnAddComponent);
         connect(m_gui->m_entitySearchBox, &QLineEdit::textChanged, this, &EntityPropertyEditor::OnSearchTextChanged);
         connect(m_gui->m_buttonClearFilter, &QPushButton::clicked, this, &EntityPropertyEditor::ClearSearchFilter);
+        connect(m_gui->m_pinButton, &QPushButton::clicked, this, &EntityPropertyEditor::OpenPinnedInspector);
 
         m_componentPalette = aznew ComponentPaletteWidget(this, true);
         connect(m_componentPalette, &ComponentPaletteWidget::OnAddComponentEnd, this, [this]()
-            {
-                QueuePropertyRefresh();
-                m_shouldScrollToNewComponents = true;
-            });
+        {
+            QueuePropertyRefresh();
+            m_shouldScrollToNewComponents = true;
+        });
 
         HideComponentPalette();
 
@@ -252,7 +254,6 @@ namespace AzToolsFramework
 
         m_isBuildingProperties = false;
 
-        setTabOrder(m_gui->m_entityIdEditor, m_gui->m_entityNameEditor);
         setTabOrder(m_gui->m_entityNameEditor, m_gui->m_initiallyActiveCheckbox);
         setTabOrder(m_gui->m_initiallyActiveCheckbox, m_gui->m_addComponentButton);
 
@@ -288,12 +289,60 @@ namespace AzToolsFramework
         AZ::EntitySystemBus::Handler::BusDisconnect();
         EditorEntityContextNotificationBus::Handler::BusDisconnect();
 
+        for (auto& entityId : m_overrideSelectedEntityIds)
+        {
+            DisconnectFromEntityBuses(entityId);
+        }
+
         delete m_gui;
+    }
+
+    void EntityPropertyEditor::GetSelectedEntities(EntityIdList& selectedEntityIds)
+    {
+        if (IsLockedToSpecificEntities())
+        {
+            // Only include entities that currently exist
+            selectedEntityIds.clear();
+            selectedEntityIds.reserve(m_overrideSelectedEntityIds.size());
+            for (AZ::EntityId entityId : m_overrideSelectedEntityIds)
+            {
+                AZ::Entity* entity = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+                if (entity)
+                {
+                    selectedEntityIds.emplace_back(entityId);
+                }
+            }
+        }
+        else
+        {
+            ToolsApplicationRequests::Bus::BroadcastResult(selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+        }
+    }
+
+    void EntityPropertyEditor::SetOverrideEntityIds(const AzToolsFramework::EntityIdList& entities)
+    {
+        m_overrideSelectedEntityIds = entities;
+
+        for (auto& entityId : m_overrideSelectedEntityIds)
+        {
+            ConnectToEntityBuses(entityId);
+        }
+
+        m_gui->m_pinButton->setVisible(m_overrideSelectedEntityIds.size() == 0);
     }
 
     void EntityPropertyEditor::BeforeEntitySelectionChanged()
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        if (IsLockedToSpecificEntities())
+        {
+            return;
+        }
+
+        m_lastSelectedEntityIds.clear();
+        ToolsApplicationRequests::Bus::BroadcastResult(m_lastSelectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+
         ClearComponentEditorDragging();
         ClearComponentEditorSelection();
         ClearComponentEditorState();
@@ -302,8 +351,40 @@ namespace AzToolsFramework
     void EntityPropertyEditor::AfterEntitySelectionChanged()
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        if (IsLockedToSpecificEntities())
+        {
+            return;
+        }
+
         EntityIdList selectedEntityIds;
-        ToolsApplicationRequests::Bus::BroadcastResult(selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+        GetSelectedEntities(selectedEntityIds);
+
+        EntityIdList selectionRemoved = m_lastSelectedEntityIds;
+
+        for (AZ::EntityId& selectedEntityId : selectedEntityIds)
+        {
+            auto it = AZStd::find(selectionRemoved.begin(), selectionRemoved.end(), selectedEntityId);
+            if (it != selectionRemoved.end())
+            {
+                selectionRemoved.erase(it);
+            }
+            else
+            {
+                // This is a new entity, so need to connect to its notification bus for property updates
+                ConnectToEntityBuses(selectedEntityId);
+            }
+        }
+
+        // Need to disconnect for notifications from entities that are no longer selected
+        for (AZ::EntityId& entityId : selectionRemoved)
+        {
+            DisconnectFromEntityBuses(entityId);
+        }
+
+        if (m_lastSelectedEntityIds != selectedEntityIds)
+        {
+            ClearSearchFilter();
+        }
 
         if (selectedEntityIds.empty())
         {
@@ -314,6 +395,27 @@ namespace AzToolsFramework
 
         // when entity selection changed, we need to repopulate our GUI
         QueuePropertyRefresh();
+    }
+
+    void EntityPropertyEditor::OnEntityInitialized(const AZ::EntityId& entityId)
+    {
+        if (IsLockedToSpecificEntities())
+        {
+            // During slice reloading, an entity can be deregistered, then registered again.
+            // Refresh if the editor had been locked to that entity.
+            if (AZStd::find(m_overrideSelectedEntityIds.begin(), m_overrideSelectedEntityIds.end(), entityId) != m_overrideSelectedEntityIds.end())
+            {
+                QueuePropertyRefresh();
+            }
+        }
+    }
+
+    void EntityPropertyEditor::OnEntityDestroyed(const AZ::EntityId& entityId)
+    {
+        if (IsEntitySelected(entityId))
+        {
+            UpdateContents(); // immediately refresh
+        }
     }
 
     void EntityPropertyEditor::OnEntityActivated(const AZ::EntityId& entityId)
@@ -403,13 +505,11 @@ namespace AzToolsFramework
             m_gui->m_entityDetailsLabel->setVisible(true);
             m_gui->m_entityDetailsLabel->setText(tr("Only common components shown"));
             m_gui->m_entityNameEditor->setText(tr("%n entities selected", "", static_cast<int>(m_selectedEntityIds.size())));
-            m_gui->m_entityIdEditor->setText(tr("%n entities selected", "", static_cast<int>(m_selectedEntityIds.size())));
             m_gui->m_entityNameEditor->setReadOnly(true);
         }
         else if (!m_selectedEntityIds.empty())
         {
             auto entityId = m_selectedEntityIds.front();
-            m_gui->m_entityIdEditor->setText(QString("%1").arg(static_cast<AZ::u64>(entityId)));
 
             // No entity details for one entity
             m_gui->m_entityDetailsLabel->setVisible(false);
@@ -438,7 +538,7 @@ namespace AzToolsFramework
         ClearComponentEditorDragging();
 
         m_selectedEntityIds.clear();
-        ToolsApplicationRequests::Bus::BroadcastResult(m_selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+        GetSelectedEntities(m_selectedEntityIds);
 
         SourceControlFileInfo scFileInfo;
         ToolsApplicationRequests::Bus::BroadcastResult(scFileInfo, &ToolsApplicationRequests::GetSceneSourceControlInfo);
@@ -450,17 +550,16 @@ namespace AzToolsFramework
 
         // Hide the entity stuff and add component button if no entities are displayed
         bool hasEntitiesDisplayed = !m_selectedEntityIds.empty();
-        m_gui->m_entityDetailsLabel->setText(tr(hasEntitiesDisplayed ? "" : "Select an entity to show its properties in the inspector."));
+        m_gui->m_entityDetailsLabel->setText(hasEntitiesDisplayed ? "" : IsLockedToSpecificEntities() ? tr("The entity this inspector was pinned to has been deleted.") : tr("Select an entity to show its properties in the inspector."));
         m_gui->m_entityDetailsLabel->setVisible(!hasEntitiesDisplayed);
         m_gui->m_addComponentButton->setEnabled(hasEntitiesDisplayed);
         m_gui->m_addComponentButton->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityNameEditor->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityNameLabel->setVisible(hasEntitiesDisplayed);
-        m_gui->m_entityIdEditor->setVisible(hasEntitiesDisplayed);
-        m_gui->m_entityIdLabel->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityIcon->setVisible(hasEntitiesDisplayed);
-        m_gui->m_startActiveLabel->setVisible(hasEntitiesDisplayed);
-        m_gui->m_initiallyActiveCheckbox->setVisible(hasEntitiesDisplayed);
+        m_gui->m_pinButton->setVisible(m_overrideSelectedEntityIds.size() == 0 && hasEntitiesDisplayed && !m_isSystemEntityEditor);
+        m_gui->m_startActiveLabel->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
+        m_gui->m_initiallyActiveCheckbox->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
         m_gui->m_entitySearchBox->setVisible(hasEntitiesDisplayed);
         m_gui->m_buttonClearFilter->setVisible(hasEntitiesDisplayed);
 
@@ -929,7 +1028,7 @@ namespace AzToolsFramework
         }
 
         EntityIdList selectedEntityIds;
-        ToolsApplicationRequests::Bus::BroadcastResult(selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+        GetSelectedEntities(selectedEntityIds);
         if (selectedEntityIds.empty())
         {
             return;
@@ -989,6 +1088,9 @@ namespace AzToolsFramework
             return;
         }
 
+        // Set our flag to not refresh values based on our own update broadcasts
+        m_initiatingPropertyChangeNotification = true;
+
         // Send EBus notification for the affected entities, along with information about the affected component.
         for (size_t instanceIdx = 0; instanceIdx < componentNode->GetNumInstances(); ++instanceIdx)
         {
@@ -1002,6 +1104,8 @@ namespace AzToolsFramework
                     componentInstance->GetId());
             }
         }
+
+        m_initiatingPropertyChangeNotification = false;
     }
 
     void EntityPropertyEditor::SetPropertyEditingActive(InstanceDataNode* /*pNode*/)
@@ -1119,7 +1223,7 @@ namespace AzToolsFramework
         }
 
         EntityIdList selectedEntityIds;
-        ToolsApplicationRequests::Bus::BroadcastResult(selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+        GetSelectedEntities(selectedEntityIds);
 
         if (selectedEntityIds.size() == 1)
         {
@@ -1253,7 +1357,7 @@ namespace AzToolsFramework
         AZ::EntityId entityId = entity->GetId();
         QAction* pushAction = menu.addAction(tr("Push to slice..."));
 		pushAction->setEnabled(fieldNode->HasChangesVersusComparison(true));
-        connect(pushAction, &QAction::triggered, this, [this, entityId, fieldNode]()
+        connect(pushAction, &QAction::triggered, this, [entityId]()
             {
                 SliceUtilities::PushEntitiesModal({ entityId }, nullptr);
             }
@@ -1565,7 +1669,7 @@ namespace AzToolsFramework
             m_gui->m_initiallyActiveCheckbox->setCheckState(Qt::CheckState::PartiallyChecked);
         }
 
-        m_gui->m_initiallyActiveCheckbox->setVisible(true);
+        m_gui->m_initiallyActiveCheckbox->setVisible(!m_isSystemEntityEditor);
     }
 
     void EntityPropertyEditor::OnDisplayComponentEditorMenu(const QPoint& position)
@@ -2722,7 +2826,7 @@ namespace AzToolsFramework
 
                 AZ::Uuid componentTypeId = AZ::Uuid::CreateNull();
                 AZ::AssetTypeInfoBus::EventResult(componentTypeId, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
-                
+
                 if (canCreateComponent && !componentTypeId.IsNull())
                 {
                     // we have a component type that handles this asset.
@@ -3106,7 +3210,7 @@ namespace AzToolsFramework
 
         // before we start, find out whether any in the mimedata are even appropriate so we can execute an undo
         // note that the product pointers are only valid during this callback, so there is no point in caching them here.
-        GetCreatableAssetEntriesFromMimeData(mimeData, 
+        GetCreatableAssetEntriesFromMimeData(mimeData,
             [&](const AssetBrowser::ProductAssetBrowserEntry* /*product*/)
             {
                 createdAny = true;
@@ -3116,7 +3220,7 @@ namespace AzToolsFramework
         {
             // create one undo to wrap the entire operation since we detected a valid asset.
             ScopedUndoBatch undo("Add component from asset browser");
-            GetCreatableAssetEntriesFromMimeData(mimeData, 
+            GetCreatableAssetEntriesFromMimeData(mimeData,
                 [&](const AssetBrowser::ProductAssetBrowserEntry* product)
                 {
                     AZ::Uuid componentType;
@@ -3265,7 +3369,7 @@ namespace AzToolsFramework
         UpdateActions();
         UpdateOverlay();
     }
-	
+
     void EntityPropertyEditor::OnSearchTextChanged()
     {
         m_filterString = m_gui->m_entitySearchBox->text().toLatin1().data();
@@ -3279,6 +3383,109 @@ namespace AzToolsFramework
     {
         m_gui->m_entitySearchBox->setText("");
     }
+
+    void EntityPropertyEditor::OpenPinnedInspector()
+    {
+        AzToolsFramework::EntityIdList selectedEntities;
+        GetSelectedEntities(selectedEntities);
+
+        EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, OpenPinnedInspector, selectedEntities);
+    }
+
+    void EntityPropertyEditor::OnContextReset()
+    {
+        if (IsLockedToSpecificEntities())
+        {
+            CloseInspectorWindow();
+        }
+    }
+
+    void EntityPropertyEditor::CloseInspectorWindow()
+    {
+        for (auto& entityId : m_overrideSelectedEntityIds)
+        {
+            DisconnectFromEntityBuses(entityId);
+        }
+        EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, ClosePinnedInspector, this);
+    }
+
+    void EntityPropertyEditor::SetSystemEntityEditor(bool isSystemEntityEditor)
+    {
+        m_isSystemEntityEditor = isSystemEntityEditor;
+        UpdateContents();
+    }
+
+    void EntityPropertyEditor::OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap)
+    {
+        if (IsLockedToSpecificEntities())
+        {
+            bool entityIdChanged = false;
+            EntityIdList newOverrideSelectedEntityIds;
+            newOverrideSelectedEntityIds.reserve(m_overrideSelectedEntityIds.size());
+
+            for (AZ::EntityId& entityId : m_overrideSelectedEntityIds)
+            {
+                auto found = replacedEntitiesMap.find(entityId);
+                if (found != replacedEntitiesMap.end())
+                {
+                    entityIdChanged = true;
+                    newOverrideSelectedEntityIds.push_back(found->second);
+
+                    DisconnectFromEntityBuses(entityId);
+                    ConnectToEntityBuses(found->second);
+                }
+                else
+                {
+                    newOverrideSelectedEntityIds.push_back(entityId);
+                }
+            }
+
+            if (entityIdChanged)
+            {
+                m_overrideSelectedEntityIds = newOverrideSelectedEntityIds;
+                UpdateContents();
+            }
+        }
+    }
+
+    void EntityPropertyEditor::OnEntityComponentPropertyChanged(AZ::ComponentId componentId)
+    {
+        // When m_initiatingPropertyChangeNotification is true, it means this EntityPropertyEditor was
+        // the one that is broadcasting this property change, so no need to refresh our values
+        if (m_initiatingPropertyChangeNotification)
+        {
+            return;
+        }
+
+        for (auto componentEditor : m_componentEditors)
+        {
+            if (componentEditor->isVisible() && componentEditor->HasComponentWithId(componentId))
+            {
+                componentEditor->QueuePropertyEditorInvalidation(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values);
+                break;
+            }
+        }
+    }
+
+    void EntityPropertyEditor::OnComponentOrderChanged()
+    {
+        QueuePropertyRefresh();
+        m_shouldScrollToNewComponents = true;
+    }
+
+    void EntityPropertyEditor::ConnectToEntityBuses(const AZ::EntityId& entityId)
+    {
+        AzToolsFramework::EditorInspectorComponentNotificationBus::MultiHandler::BusConnect(entityId);
+        AzToolsFramework::PropertyEditorEntityChangeNotificationBus::MultiHandler::BusConnect(entityId);
+    }
+
+    void EntityPropertyEditor::DisconnectFromEntityBuses(const AZ::EntityId& entityId)
+    {
+        AzToolsFramework::EditorInspectorComponentNotificationBus::MultiHandler::BusDisconnect(entityId);
+        AzToolsFramework::PropertyEditorEntityChangeNotificationBus::MultiHandler::BusDisconnect(entityId);
+    }
+
+
 }
 
 #include <UI/PropertyEditor/EntityPropertyEditor.moc>

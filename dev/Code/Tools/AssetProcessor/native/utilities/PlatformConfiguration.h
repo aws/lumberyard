@@ -49,9 +49,10 @@ namespace AssetProcessor
         QString m_relativePath;    ///< Where the gem's folder is (relative to the gems search path(s))
         QString m_displayName;     ///< A friendly display name, not to be used for any pathing stuff.
         bool m_isGameGem = false; ///< True if its a 'game project' gem.  Only one such gem can exist for any game project.
+        bool m_assetOnly = false; ///< True if it is an asset only gems.
 
         GemInformation() = default;
-        GemInformation(const char* identifier, const char* absolutePath, const char* relativePath, const char* displayName, bool isGameGem);
+        GemInformation(const char* identifier, const char* absolutePath, const char* relativePath, const char* displayName, bool isGameGem, bool assetOnlyGem);
     };
 
     //! The data about a particular recognizer, including all platform specs.
@@ -60,7 +61,7 @@ namespace AssetProcessor
     {
         AssetRecognizer() = default;
 
-        AssetRecognizer(const QString& name, bool testLockSource, int priority, bool critical, bool supportsCreateJobs, AssetUtilities::FilePatternMatcher patternMatcher, const QString& version, const AZ::Data::AssetType& productAssetType)
+        AssetRecognizer(const QString& name, bool testLockSource, int priority, bool critical, bool supportsCreateJobs, AssetBuilderSDK::FilePatternMatcher patternMatcher, const QString& version, const AZ::Data::AssetType& productAssetType)
             : m_name(name)
             , m_testLockSource(testLockSource)
             , m_priority(priority)
@@ -72,7 +73,7 @@ namespace AssetProcessor
         {}
 
         QString m_name;
-        AssetUtilities::FilePatternMatcher  m_patternMatcher;
+        AssetBuilderSDK::FilePatternMatcher  m_patternMatcher;
         QString m_version = QString();
 
         // the QString is the Platform Identifier ("pc")
@@ -96,7 +97,7 @@ namespace AssetProcessor
     struct ExcludeAssetRecognizer
     {
         QString                             m_name;
-        AssetUtilities::FilePatternMatcher  m_patternMatcher;
+        AssetBuilderSDK::FilePatternMatcher  m_patternMatcher;
     };
     typedef QHash<QString, ExcludeAssetRecognizer> ExcludeRecognizerContainer;
 
@@ -161,6 +162,9 @@ namespace AssetProcessor
 
         //! Return how many scan folders there are
         int GetScanFolderCount() const;
+
+        //! Return the gems info list
+        QList<GemInformation> GetGemsInformation() const;
 
         //! Retrieve the scan folder at a given index.
         AssetProcessor::ScanFolderInfo& GetScanFolderAt(int index);
@@ -233,10 +237,13 @@ namespace AssetProcessor
         * So this function is there for those wishing to use a GUI.
         */
         const AZStd::string& GetError() const;
-    protected:
+
+        void PopulatePlatformsForScanFolder(AZStd::vector<AssetBuilderSDK::PlatformInfo>& platformsList, QStringList includeTagsList = QStringList(), QStringList excludeTagsList = QStringList());
+
         //! Read all the gems for the project and return a list of
         //! the folders containing gems that are active for this project.
         virtual bool ReadGems(QList<GemInformation>& gemInfoList);  //virtual, so that unit tests can override to avoid loading extra dlls during testing
+    protected:
 
         // call this first, to populate the list of platform informations
         void ReadPlatformInfosFromConfigFile(QString fileSource);
@@ -262,6 +269,7 @@ namespace AssetProcessor
         QVector<AssetProcessor::ScanFolderInfo> m_scanFolders;
         QList<QPair<QString, QString> > m_metaDataFileTypes;
         QSet<QString> m_metaDataRealFiles;
+        QList<GemInformation> m_gemInfoList;
 
         int m_minJobs = 1;
         int m_maxJobs = 3;

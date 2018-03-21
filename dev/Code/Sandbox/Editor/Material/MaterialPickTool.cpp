@@ -70,7 +70,7 @@ void CMaterialPickTool::Display(DisplayContext& dc)
     if (m_pMaterial)
     {
         float color[4] = {1, 1, 1, 1};
-        dc.renderer->Draw2dLabel(mousePoint.x() + 12, mousePoint.y ()+ 8, 1.2f, color, false, "%s", m_displayString.toLatin1().data());
+        dc.renderer->Draw2dLabel(mousePoint.x() + 12, mousePoint.y ()+ 8, 1.2f, color, false, "%s", m_displayString.toUtf8().data());
     }
 
     float fScreenScale = dc.view->GetScreenScaleFactor(m_HitInfo.vHitPos) * 0.06f;

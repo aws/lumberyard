@@ -472,7 +472,7 @@ void CSmartObjectStateDialog::OnEditBtn()
     auto index = m_ui->statesTreeView->selectionModel()->selectedIndexes().first();
 
     QString name = index.data(Qt::DisplayRole).toString();
-    CSOLibrary::VectorStateData::iterator it = CSOLibrary::FindState(name.toLatin1().data());
+    CSOLibrary::VectorStateData::iterator it = CSOLibrary::FindState(name.toUtf8().data());
     assert(it != CSOLibrary::GetStates().end());
 
     CItemDescriptionDlg dlg(this, false, false, true);
@@ -507,7 +507,7 @@ void CSmartObjectStateDialog::OnDeleteBtn()
     auto index = m_ui->statesTreeView->selectionModel()->selectedIndexes().first();
 
     QString name = index.data(Qt::DisplayRole).toString();
-    CSOLibrary::VectorStateData::iterator it = CSOLibrary::FindState(name.toLatin1().data());
+    CSOLibrary::VectorStateData::iterator it = CSOLibrary::FindState(name.toUtf8().data());
     assert(it != CSOLibrary::GetStates().end());
     if (CSOLibrary::StartEditing())
     {
@@ -521,9 +521,9 @@ void CSmartObjectStateDialog::UpdateCSOLibrary(const QStringList& tokens)
     {
         if (CItemDescriptionDlg::ValidateItem(token))
         {
-            if (CSOLibrary::FindState(token.toLatin1().data()) == CSOLibrary::GetStates().end())
+            if (CSOLibrary::FindState(token.toUtf8().data()) == CSOLibrary::GetStates().end())
             {
-                CSOLibrary::AddState(token.toLatin1().data(), "", "");
+                CSOLibrary::AddState(token.toUtf8().data(), "", "");
             }
         }
     }

@@ -1,5 +1,5 @@
 
-#include "StdAfx.h"
+#include "CloudGemFramework_precompiled.h"
 #include <platform_impl.h>
 
 #include <IGem.h>

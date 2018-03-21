@@ -1743,7 +1743,7 @@ void CFrameProfileSystem::RenderSubSystems(float col, float row)
     m_baseY -= 40;
 }
 
-#if defined(WIN32) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_PACKED_PEHEADER
 #pragma pack(push,1)
 const struct PEHeader
 {
@@ -1758,7 +1758,7 @@ const struct PEHeader
 //////////////////////////////////////////////////////////////////////////
 void CFrameProfileSystem::RenderMemoryInfo()
 {
-#if defined(WIN32) || defined(LINUX) || defined(DURANGO)
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_RENDERMEMORY_INFO
 
     m_pRenderer = gEnv->pRenderer;
     if (!m_pRenderer)

@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "Twitch_precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>

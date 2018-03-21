@@ -217,8 +217,9 @@
        </property>
        <property name="icon">
         <iconset resource="PanelDisplayLayer.qrc">
-         <normaloff>:/LayerEditor/LayerButtons/blank.png</normaloff>
-         <normalon>:/LayerEditor/LayerButtons/visible.png</normalon>:/LayerEditor/LayerButtons/blank.png</iconset>
+         <normaloff>:/LayerEditor/LayerButtons/visible.png</normaloff>
+         <normalon>:/LayerEditor/LayerButtons/visible.png</normalon>:/LayerEditor/LayerButtons/visible.png
+        </iconset>
        </property>
        <property name="checkable">
         <bool>true</bool>
@@ -248,8 +249,9 @@
        </property>
        <property name="icon">
         <iconset resource="PanelDisplayLayer.qrc">
-         <normaloff>:/LayerEditor/LayerButtons/blank.png</normaloff>
-         <normalon>:/LayerEditor/LayerButtons/usable.png</normalon>:/LayerEditor/LayerButtons/blank.png</iconset>
+         <normaloff>:/LayerEditor/LayerButtons/usable.png</normaloff>
+         <normalon>:/LayerEditor/LayerButtons/usable.png</normalon>:/LayerEditor/LayerButtons/usable.png
+        </iconset>
        </property>
        <property name="checkable">
         <bool>true</bool>

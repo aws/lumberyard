@@ -12,7 +12,7 @@
 #pragma once
 
 #include <QGraphicsLinearLayout>
-#include <qtimer.h>
+#include <QTimer>
 
 #include <Components/Slots/SlotLayoutComponent.h>
 #include <GraphCanvas/Components/SceneBus.h>

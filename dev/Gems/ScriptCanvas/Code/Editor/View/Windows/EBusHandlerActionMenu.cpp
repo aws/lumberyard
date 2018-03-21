@@ -11,10 +11,11 @@
 */
 #include "precompiled.h"
 
-#include <qevent.h>
-#include <qlineedit.h>
-#include <qlistview.h>
-#include <qwidgetaction.h>
+#include <QEvent>
+#include <QLineEdit>
+#include <QListView>
+#include <QWidgetAction>
+#include <QKeyEvent>
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeLayoutBus.h>

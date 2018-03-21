@@ -39,7 +39,6 @@ namespace PhysX
         physx::PxScene* GetNativeWorld() const { return m_world; }
         AZ::Crc32 GetWorldId() const { return m_worldId; }
 
-        //////////////////////////////////////////////////////////////////////////
         // Physics::World
         void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) override;
         AZ::u32 QueueRayCast(const Physics::RayCastRequest& request, const Physics::RayCastResultCallback& callback) override;
@@ -59,7 +58,6 @@ namespace PhysX
         void OnRemoveBody(const Physics::Ptr<Physics::WorldBody>& body) override;
         void OnAddAction(const Physics::Ptr<Physics::Action>& action) override;
         void OnRemoveAction(const Physics::Ptr<Physics::Action>& action) override;
-        //////////////////////////////////////////////////////////////////////////
 
     private:
 

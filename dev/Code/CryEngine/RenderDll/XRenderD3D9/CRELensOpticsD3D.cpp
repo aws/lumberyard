@@ -128,7 +128,7 @@ bool CRELensOptics::mfDraw(CShader* pShader, SShaderPass* pass)
         sunDirNorm.Normalize();
 
         flareLight.m_vPos = cam->vOrigin + sunDirNorm * sunHeight;
-        flareLight.m_cLdrClr = gEnv->p3DEngine->GetSunColor();
+        flareLight.m_cLdrClr = gEnv->p3DEngine->GetSunAnimColor();
         flareLight.m_fRadius = sunHeight;
         flareLight.m_bAttachToSun = true;
         pLight->SetPosition(flareLight.m_vPos);

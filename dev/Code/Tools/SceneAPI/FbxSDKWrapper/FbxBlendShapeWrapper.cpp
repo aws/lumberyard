@@ -10,13 +10,13 @@
 *
 */
 
-#include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include "FbxMeshWrapper.h"
-#include "FbxBlendShapeWrapper.h"
-#include "FbxBlendShapeChannelWrapper.h"
-#include "FbxNodeWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FbxMeshWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxBlendShapeWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxBlendShapeChannelWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 
 namespace AZ
 {
@@ -70,5 +70,5 @@ namespace AZ
                 return nullptr;
             }
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

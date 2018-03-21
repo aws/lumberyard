@@ -48,20 +48,15 @@
 // Viewport drag and drop support
 //////////////////////////////////////////////////////////////////////
 
-void QtViewport::BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QDropEvent* dropEvent)
+void QtViewport::BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QPoint& pt)
 {
     context.m_hitLocation = AZ::Vector3::CreateZero();
-
-    if (!dropEvent)
-    {
-        return;
-    }
 
     PreWidgetRendering(); // required so that the current render cam is set.
 
     Vec3 pos = Vec3(ZERO);
     HitContext hit;
-    if (HitTest(dropEvent->pos(), hit))
+    if (HitTest(pt, hit))
     {
         pos = hit.raySrc + hit.rayDir * hit.dist;
         pos = SnapToGrid(pos);
@@ -69,7 +64,7 @@ void QtViewport::BuildDragDropContext(AzQtComponents::ViewportDragContext& conte
     else
     {
         bool hitTerrain;
-        pos = ViewToWorld(dropEvent->pos(), &hitTerrain);
+        pos = ViewToWorld(pt, &hitTerrain);
         if (hitTerrain)
         {
             pos.z = GetIEditor()->GetTerrainElevation(pos.x, pos.y);
@@ -100,7 +95,7 @@ void QtViewport::dragEnterEvent(QDragEnterEvent* event)
         // new bus-based way of doing it (install a listener!)
         using namespace AzQtComponents;
         ViewportDragContext context;
-        BuildDragDropContext(context, event);
+        BuildDragDropContext(context, event->pos());
         DragAndDropEventsBus::Event(DragAndDropContexts::EditorViewport, &DragAndDropEvents::DragEnter, event, context);
     }
 }
@@ -123,7 +118,7 @@ void QtViewport::dragMoveEvent(QDragMoveEvent* event)
         // new bus-based way of doing it (install a listener!)
         using namespace AzQtComponents;
         ViewportDragContext context;
-        BuildDragDropContext(context, event);
+        BuildDragDropContext(context, event->pos());
         DragAndDropEventsBus::Event(DragAndDropContexts::EditorViewport, &DragAndDropEvents::DragMove, event, context);
     }
 }
@@ -146,7 +141,7 @@ void QtViewport::dropEvent(QDropEvent* event)
     {
         // new bus-based way of doing it (install a listener!)
         ViewportDragContext context;
-        BuildDragDropContext(context, event);
+        BuildDragDropContext(context, event->pos());
         DragAndDropEventsBus::Event(DragAndDropContexts::EditorViewport, &DragAndDropEvents::Drop, event, context);
     }
 

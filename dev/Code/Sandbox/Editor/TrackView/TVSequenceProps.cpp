@@ -39,7 +39,7 @@ CTVSequenceProps::CTVSequenceProps(CTrackViewSequence* pSequence, float fps, QWi
     ui->setupUi(this);
     assert(pSequence);
     m_pSequence = pSequence;
-    connect(ui->BTNOK, &QPushButton::clicked, this, &CTVSequenceProps::OnOK);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &CTVSequenceProps::OnOK);
     connect(ui->CUT_SCENE, &QCheckBox::toggled, this, &CTVSequenceProps::ToggleCutsceneOptions);
     connect(ui->TO_SECONDS, &QRadioButton::toggled, this, &CTVSequenceProps::OnBnClickedToSeconds);
     connect(ui->TO_FRAMES, &QRadioButton::toggled, this, &CTVSequenceProps::OnBnClickedToFrames);
@@ -164,7 +164,7 @@ void CTVSequenceProps::OnOK()
         // Rename sequence.
         const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
 
-        sequenceManager->RenameNode(m_pSequence, name.toLatin1().data());
+        sequenceManager->RenameNode(m_pSequence, name.toUtf8().data());
     }
 
     int seqFlags = m_pSequence->GetFlags();

@@ -10,7 +10,7 @@
 *
 */
 
-#include "FbxAnimLayerWrapper.h"
+#include <SceneAPI/FbxSDKWrapper/FbxAnimLayerWrapper.h>
 
 namespace AZ
 {
@@ -20,5 +20,5 @@ namespace AZ
             : m_fbxAnimLayer(fbxAnimLayer)
         {
         }
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

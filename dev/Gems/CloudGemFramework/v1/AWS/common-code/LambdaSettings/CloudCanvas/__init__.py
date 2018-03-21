@@ -10,20 +10,6 @@
 #
 # $Revision: #5 $
 
-import pkgutil
-
-_settings = None
-
-def get_setting(setting_name):
-    global _settings
-    if not _settings: _load_settings()
-    return _settings.get(setting_name, None)
-
-def _load_settings():
-    global _settings
-    loader = pkgutil.find_loader(__name__ + '.settings')
-    if loader is None:
-        _settings = {}
-    else:
-        _settings = loader.load_module(__name__ + '.settings').settings
+from cgf_lambda_settings import get_setting
+from cgf_lambda_settings import get_service_url
 

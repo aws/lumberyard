@@ -79,7 +79,7 @@ MCORE_INLINE float Math::SignOfFloat(float x)
 
 MCORE_INLINE float Math::Abs(float x)
 {
-    #if   defined(MCORE_FASTFLOAT_MATH)
+    #if defined(MCORE_FASTFLOAT_MATH)
     return fabsf(x);
     #elif (defined(MCORE_PLATFORM_MAC) || defined(MCORE_PLATFORM_IPHONE))
     return fabs(x);
@@ -113,7 +113,7 @@ MCORE_INLINE float Math::DegreesToRadians(float deg)
 
 MCORE_INLINE float Math::Sin(float x)
 {
-    #if   defined(MCORE_FASTFLOAT_MATH)
+    #if defined(MCORE_FASTFLOAT_MATH)
     return sinf(x);
     #else
     return sin(x);
@@ -123,7 +123,7 @@ MCORE_INLINE float Math::Sin(float x)
 
 MCORE_INLINE float Math::Cos(float x)
 {
-    #if   defined(MCORE_FASTFLOAT_MATH)
+    #if defined(MCORE_FASTFLOAT_MATH)
     return cosf(x);
     #else
     return cos(x);
@@ -262,7 +262,7 @@ MCORE_INLINE float Math::Pow(float base, float exponent)
 
 MCORE_INLINE float Math::Sqrt(float x)
 {
-    #if   defined(MCORE_FASTFLOAT_MATH)
+    #if defined(MCORE_FASTFLOAT_MATH)
     return sqrtf(x);
     #else
     return sqrt(x);
@@ -272,7 +272,7 @@ MCORE_INLINE float Math::Sqrt(float x)
 
 MCORE_INLINE float Math::SafeSqrt(float x)
 {
-    #if   defined(MCORE_FASTFLOAT_MATH)
+    #if defined(MCORE_FASTFLOAT_MATH)
     return (x > Math::epsilon) ? sqrtf(x) : 0.0f;
     #else
     return (x > Math::epsilon) ? sqrt(x) : 0.0f;

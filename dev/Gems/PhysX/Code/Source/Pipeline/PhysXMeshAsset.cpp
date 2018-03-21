@@ -11,7 +11,7 @@
 */
 
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 
 #include <Pipeline/PhysXMeshAsset.h>
 #include <AzCore/IO/GenericStreams.h>
@@ -35,8 +35,12 @@ namespace PhysX
 
         void PhysXMeshAssetHandler::Register()
         {
-            AZ_Assert(AZ::Data::AssetManager::IsReady(), "Asset manager isn't ready!");
-            AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<PhysXMeshAsset>::Uuid());
+            bool assetManagerReady = AZ::Data::AssetManager::IsReady();
+            AZ_Error("PhysX Mesh Asset", assetManagerReady, "Asset manager isn't ready.");
+            if (assetManagerReady)
+            {
+                AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<PhysXMeshAsset>::Uuid());
+            }
 
             AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<PhysXMeshAsset>::Uuid());
         }
@@ -51,7 +55,6 @@ namespace PhysX
             }
         }
 
-        //////////////////////////////////////////////////////////////////////////////////////////////
         // AZ::AssetTypeInfoBus
         AZ::Data::AssetType PhysXMeshAssetHandler::GetAssetType() const
         {
@@ -70,7 +73,7 @@ namespace PhysX
 
         const char* PhysXMeshAssetHandler::GetBrowserIcon() const
         {
-            return AZ::AssetTypeInfoBus::Handler::GetBrowserIcon();
+            return "Editor/Icons/Components/ColliderMesh.png";
         }
 
         const char* PhysXMeshAssetHandler::GetGroup() const
@@ -82,33 +85,34 @@ namespace PhysX
         {
             return AZ::Uuid("{87A02711-8D7F-4966-87E1-77001EB6B29E}"); // PhysXMeshShapeComponent
         }
-        //////////////////////////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////////////////////////
         // AZ::Data::AssetHandler
-        
         AZ::Data::AssetPtr PhysXMeshAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
         {
-            AZ_Assert(type == AZ::AzTypeInfo<PhysXMeshAsset>::Uuid(), "This handler deals only with PhysXMeshAsset type!");
             if (type == AZ::AzTypeInfo<PhysXMeshAsset>::Uuid())
             {
                 return aznew PhysXMeshAsset();
             }
 
+            AZ_Error("PhysX Mesh Asset", false, "This handler deals only with PhysXMeshAsset type.");
             return nullptr;
         }
-        
+
         bool PhysXMeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
         {
             PhysXMeshAsset* physXMeshAsset = asset.GetAs<PhysXMeshAsset>();
-            AZ_Assert(physXMeshAsset, "This should be a PhysXMeshAsset, as this is the only type we process!");
+            if (!physXMeshAsset)
+            {
+                AZ_Error("PhysX Mesh Asset", false, "This should be a PhysXMeshAsset, as this is the only type we process.");
+                return false;
+            }
 
             AZ::u32 assetVersion = 0;
             stream->Read(sizeof(assetVersion), &assetVersion);
-            
+
             AZ::u8 isConvexMesh = 0;
             stream->Read(sizeof(isConvexMesh), &isConvexMesh);
-            
+
             AZ::u32 assetDataSize = 0;
             stream->Read(sizeof(assetDataSize), &assetDataSize);
 
@@ -126,8 +130,8 @@ namespace PhysX
                 {
                     PhysX::PhysXSystemRequestBus::BroadcastResult(physXMeshAsset->m_meshData, &PhysX::PhysXSystemRequests::CreateTriangleMeshFromCooked, assetDataBuffer, assetDataSize);
                 }
-                
-                AZ_Error("PhysX", physXMeshAsset->m_meshData != nullptr, "Failed to construct PhysX mesh from the cooked data. Possible data corruption.");
+
+                AZ_Error("PhysX Mesh Asset", physXMeshAsset->m_meshData != nullptr, "Failed to construct PhysX mesh from the cooked data. Possible data corruption.");
 
                 azfree(assetDataBuffer);
 
@@ -160,6 +164,5 @@ namespace PhysX
         {
             assetTypes.push_back(AZ::AzTypeInfo<PhysXMeshAsset>::Uuid());
         }
-        //////////////////////////////////////////////////////////////////////////////////////////////
-    } //namespace Integration
-} // namespace EMotionFX
+    } //namespace Pipeline
+} // namespace PhysX

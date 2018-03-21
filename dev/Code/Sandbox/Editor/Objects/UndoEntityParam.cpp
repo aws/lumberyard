@@ -43,12 +43,12 @@ void CUndoEntityParam::Undo(bool bUndo)
 {
     if (bUndo)
     {
-        m_redo = PyGetEntityParam(m_entityName.toLatin1().data(), m_paramName.toLatin1().data());
+        m_redo = PyGetEntityParam(m_entityName.toUtf8().data(), m_paramName.toUtf8().data());
     }
-    PySetEntityParam(m_entityName.toLatin1().data(), m_paramName.toLatin1().data(), m_undo);
+    PySetEntityParam(m_entityName.toUtf8().data(), m_paramName.toUtf8().data(), m_undo);
 }
 
 void CUndoEntityParam::Redo()
 {
-    PySetEntityParam(m_entityName.toLatin1().data(), m_paramName.toLatin1().data(), m_redo);
+    PySetEntityParam(m_entityName.toUtf8().data(), m_paramName.toUtf8().data(), m_redo);
 }

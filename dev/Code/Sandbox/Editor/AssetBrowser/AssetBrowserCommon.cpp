@@ -332,7 +332,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
 
                 filterValue = (field.m_filterValue == "Yes");
 
-                assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 bool assetFieldValue = assetFieldValueVariant.toBool();
 
                 if (assetFieldValueVariant.isNull())
@@ -378,7 +378,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                 char filterValue, assetFieldValue;
 
                 filterValue = field.m_filterValue.toInt();
-                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 assetFieldValue = assetFieldValueVariant.toInt();
 
                 if (assetFieldValueVariant.isNull())
@@ -428,7 +428,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                 short int filterValue, assetFieldValue;
 
                 filterValue = field.m_filterValue.toInt();
-                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 assetFieldValue = assetFieldValueVariant.toInt();
 
                 if (assetFieldValueVariant.isNull())
@@ -478,7 +478,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                 int filterValue, assetFieldValue;
 
                 filterValue = field.m_filterValue.toInt();
-                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 assetFieldValue = assetFieldValueVariant.toInt();
 
                 if (assetFieldValueVariant.isNull())
@@ -529,7 +529,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
 
                 filterValue = field.m_filterValue.toLongLong();
 
-                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 assetFieldValue = assetFieldValueVariant.toLongLong();
 
                 if (assetFieldValueVariant.isNull())
@@ -580,7 +580,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
 
                 filterValue = field.m_filterValue.toDouble();
 
-                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 assetFieldValue = assetFieldValueVariant.toDouble();
 
                 if (assetFieldValueVariant.isNull())
@@ -631,7 +631,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
 
                 filterValue = field.m_filterValue.toDouble();
 
-                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 assetFieldValue = assetFieldValueVariant.toDouble();
 
                 if (assetFieldValueVariant.isNull())
@@ -706,7 +706,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                     }
                 }
 
-                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toLatin1().data());
+                QVariant assetFieldValueVariant = pAsset->GetAssetFieldValue(field.m_fieldName.toUtf8().data());
                 QString assetFieldValue = assetFieldValueVariant.toString();
                 const QString& filterValue = field.m_filterValue;
 
@@ -718,7 +718,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                 switch (filterCondition)
                 {
                 case SAssetField::eCondition_Contains:
-                    bAssetIsVisible = SearchTextWithWildcard(filterValue.toLatin1().data(), assetFieldValue.toLatin1().data());
+                    bAssetIsVisible = SearchTextWithWildcard(filterValue.toUtf8().data(), assetFieldValue.toUtf8().data());
                     break;
 
                 case SAssetField::eCondition_ContainsOneOfTheWords:
@@ -729,7 +729,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
 
                     for (size_t w = 0, wCount = words.size(); w < wCount; ++w)
                     {
-                        bAssetIsVisible = SearchTextWithWildcard(words[w].toLatin1().data(), assetFieldValue.toLatin1().data());
+                        bAssetIsVisible = SearchTextWithWildcard(words[w].toUtf8().data(), assetFieldValue.toUtf8().data());
 
                         // break if we find one word which is contained by the field value
                         if (bAssetIsVisible)
@@ -817,7 +817,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
             // get the filename asset field value to check against
             if (!assetFieldValueVariant.isNull())
             {
-                bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toLatin1().data(), assetFieldValue.toLatin1().data());
+                bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toUtf8().data(), assetFieldValue.toUtf8().data());
 
                 // lets try searching without extension
                 if (!bAssetIsVisibleByFullTextSearch)
@@ -825,7 +825,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                     QString fileExt = Path::GetExt(assetFieldValue);
 
                     assetFieldValue.replace(("." + fileExt), "");
-                    bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toLatin1().data(), assetFieldValue.toLatin1().data());
+                    bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toUtf8().data(), assetFieldValue.toUtf8().data());
                 }
             }
 
@@ -838,7 +838,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                 // get the asset relative path field value to check against
                 if (!assetFieldValueVariant.isNull())
                 {
-                    bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toLatin1().data(), assetFieldValue.toLatin1().data());
+                    bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toUtf8().data(), assetFieldValue.toUtf8().data());
                     QString assetFilename = pAsset->GetAssetFieldValue("filename").toString();
                     QString tmp;
 
@@ -850,13 +850,13 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                         tmp = assetFilename;
                         tmp.replace(("." + fileExt), "");
                         tmp = assetFieldValue + tmp;
-                        bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toLatin1().data(), tmp.toLatin1().data());
+                        bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toUtf8().data(), tmp.toUtf8().data());
 
                         // lets try searching with whole path+filename+ext
                         if (!bAssetIsVisibleByFullTextSearch)
                         {
                             assetFieldValue += assetFilename;
-                            bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toLatin1().data(), assetFieldValue.toLatin1().data());
+                            bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(iterFullSearchText->second.m_filterValue.toUtf8().data(), assetFieldValue.toUtf8().data());
                         }
                     }
                 }
@@ -878,7 +878,7 @@ void CAssetItemDatabase::ApplyFilters(const TAssetFieldFiltersMap& rFieldFilters
                     // search the tags
                     for (size_t w = 0, wCount = words.size(); w < wCount; ++w)
                     {
-                        bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(words[w].toLatin1().data(), assetFieldValue.toLatin1().data());
+                        bAssetIsVisibleByFullTextSearch = SearchTextWithWildcard(words[w].toUtf8().data(), assetFieldValue.toUtf8().data());
 
                         // break if we find one word which is contained by the field value
                         if (bAssetIsVisibleByFullTextSearch)

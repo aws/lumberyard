@@ -135,13 +135,13 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
 
     // update menus when the selection changes
     connect(m_hierarchy, &HierarchyWidget::SetUserSelection, [this](HierarchyItemRawPtrList*)
-        {
-            UpdateActionsEnabledState();
-        });
+    {
+        UpdateActionsEnabledState();
+    });
     m_clipboardConnection = connect(QApplication::clipboard(), &QClipboard::dataChanged, [this]()
-            {
-                UpdateActionsEnabledState();
-            });
+    {
+        UpdateActionsEnabledState();
+    });
 
     UpdatePrefabFiles();
 
@@ -178,7 +178,7 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
 
     // Add the canvas tab bar to the layout of the tab section widget
     canvasTabSectionWidgetLayout->addWidget(m_canvasTabBar);
-    
+
     // Create a "add canvas" button  that's a child of the tab section widget
     const int addCanvasButtonPadding = 3;
     QPushButton* addCanvasButton = new QPushButton(tr("+"), m_canvasTabSectionWidget);
@@ -193,7 +193,7 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     QHBoxLayout* addCanvasButtonLayout = new QHBoxLayout();
     addCanvasButtonLayout->setContentsMargins(0, addCanvasButtonPadding, addCanvasButtonPadding, addCanvasButtonPadding);
     addCanvasButtonLayout->addWidget(addCanvasButton);
-    
+
     // Add the "add canvas" button to the layout of the tab section widget
     canvasTabSectionWidgetLayout->addLayout(addCanvasButtonLayout);
 
@@ -223,9 +223,8 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
         GetViewport(),
         SLOT(UserSelectionChanged(HierarchyItemRawPtrList*)));
 
-    QObject::connect(m_undoGroup,
-        SIGNAL(cleanChanged(bool)),
-        SLOT(CleanChanged(bool)));
+
+    QObject::connect(m_undoGroup, &QUndoGroup::cleanChanged, this, &EditorWindow::CleanChanged);
 
     // by default the BottomDockWidgetArea will be the full width of the main window
     // and will make the Hierarchy and Properties panes less tall. This makes the
@@ -298,7 +297,7 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     // Start listening for any queries on the UiEditorChangeNotificationBus
     UiEditorChangeNotificationBus::Handler::BusConnect();
 
-    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler::BusConnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusConnect();
 
     // Don't draw the viewport until the window is shown
     m_viewport->SetRedrawEnabled(false);
@@ -311,7 +310,7 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
 
 EditorWindow::~EditorWindow()
 {
-    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationsBus::Handler::BusDisconnect();
+    AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusDisconnect();
 
     QObject::disconnect(m_clipboardConnection);
 
@@ -319,6 +318,11 @@ EditorWindow::~EditorWindow()
 
     UiEditorDLLBus::Handler::BusDisconnect();
     UiEditorChangeNotificationBus::Handler::BusDisconnect();
+
+    // This has to be disconnected, or we'll get some weird feedback loop
+    // where the cleanChanged signal propagates back up to the EditorWindow's
+    // tab control, which is possibly already deleted, and everything explodes
+    QObject::disconnect(m_undoGroup, &QUndoGroup::cleanChanged, this, &EditorWindow::CleanChanged);
 
     // Destroy all loaded canvases
     for (auto mapItem : m_canvasMetadataMap)
@@ -351,8 +355,8 @@ EditorWindow::~EditorWindow()
 LyShine::EntityArray EditorWindow::GetSelectedElements()
 {
     LyShine::EntityArray elements = SelectionHelpers::GetSelectedElements(
-            m_hierarchy,
-            m_hierarchy->selectedItems());
+        m_hierarchy,
+        m_hierarchy->selectedItems());
 
     return elements;
 }
@@ -426,7 +430,7 @@ AZ::EntityId EditorWindow::GetCanvasEntityIdForTabIndex(int index)
         auto canvasTabMetadata = data.value<UiCanvasTabMetadata>();
         return canvasTabMetadata.m_canvasEntityId;
     }
-    
+
     return AZ::EntityId();
 }
 
@@ -540,11 +544,11 @@ bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceA
         }
 
         QString filename = QFileDialog::getSaveFileName(nullptr,
-                QString(),
-                dir,
-                "*." UICANVASEDITOR_CANVAS_EXTENSION,
-                nullptr,
-                QFileDialog::DontConfirmOverwrite);
+            QString(),
+            dir,
+            "*." UICANVASEDITOR_CANVAS_EXTENSION,
+            nullptr,
+            QFileDialog::DontConfirmOverwrite);
         if (filename.isEmpty())
         {
             return false;
@@ -580,7 +584,7 @@ bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceA
     else
     {
         sourceAssetPathName = canvasMetadata.m_canvasSourceAssetPathname;
-        EBUS_EVENT_ID_RESULT(assetIdPathname,canvasMetadata.m_canvasEntityId, UiCanvasBus, GetPathname);
+        EBUS_EVENT_ID_RESULT(assetIdPathname, canvasMetadata.m_canvasEntityId, UiCanvasBus, GetPathname);
     }
 
     FileHelpers::SourceControlAddOrEdit(sourceAssetPathName.c_str(), this);
@@ -1012,7 +1016,7 @@ void EditorWindow::SaveActiveCanvasEditState()
     if (canvasMetadata)
     {
         UiCanvasEditState& canvasEditState = canvasMetadata->m_canvasEditState;
-     
+
         // Save viewport state
         canvasEditState.m_canvasViewportMatrixProps = m_viewport->GetViewportInteraction()->GetCanvasViewportMatrixProps();
         canvasEditState.m_shouldScaleToFitOnViewportResize = m_viewport->GetViewportInteraction()->ShouldScaleToFitOnViewportResize();
@@ -1242,7 +1246,7 @@ QUndoGroup* EditorWindow::GetUndoGroup()
 
 UndoStack* EditorWindow::GetActiveStack()
 {
-    return qobject_cast< UndoStack* >(m_undoGroup->activeStack());
+    return qobject_cast<UndoStack*>(m_undoGroup->activeStack());
 }
 
 AssetTreeEntry* EditorWindow::GetSliceLibraryTree()
@@ -1286,16 +1290,16 @@ void EditorWindow::SortPrefabsList()
 {
     AZStd::sort<IFileUtil::FileArray::iterator>(m_prefabFiles.begin(), m_prefabFiles.end(),
         [](const IFileUtil::FileDesc& fd1, const IFileUtil::FileDesc& fd2)
-        {
-            // Some of the files in the list are in different directories, so we
-            // explicitly sort by filename only.
-            AZStd::string fd1Filename;
-            AzFramework::StringFunc::Path::GetFileName(fd1.filename.toLatin1().data(), fd1Filename);
+    {
+        // Some of the files in the list are in different directories, so we
+        // explicitly sort by filename only.
+        AZStd::string fd1Filename;
+        AzFramework::StringFunc::Path::GetFileName(fd1.filename.toUtf8().data(), fd1Filename);
 
-            AZStd::string fd2Filename;
-            AzFramework::StringFunc::Path::GetFileName(fd2.filename.toLatin1().data(), fd2Filename);
-            return fd1Filename < fd2Filename;
-        });
+        AZStd::string fd2Filename;
+        AzFramework::StringFunc::Path::GetFileName(fd2.filename.toUtf8().data(), fd2Filename);
+        return fd1Filename < fd2Filename;
+    });
 }
 
 void EditorWindow::ToggleEditorMode()
@@ -1539,7 +1543,7 @@ void EditorWindow::OnCurrentCanvasTabChanged(int index)
         // Instead, SetActiveCanvas is called explicitly when a tab is added
         return;
     }
-    
+
     if (canvasEntityId.IsValid() && canvasEntityId == m_activeCanvasEntityId)
     {
         // Nothing else to do. This occurs when a tab is clicked, but the active canvas cannot be changed so the current tab is reverted
@@ -1580,7 +1584,7 @@ void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
         menu.addAction(CreateCloseAllCanvasesAction(true));
         menu.addAction(CreateCloseAllOtherCanvasesAction(canvasEntityId, true));
         menu.addSeparator();
-        
+
         QAction* action = new QAction("Copy Full Path", this);
         UiCanvasMetadata *canvasMetadata = GetCanvasMetadata(canvasEntityId);
         action->setEnabled(canvasMetadata && !canvasMetadata->m_canvasSourceAssetPathname.empty());
@@ -1647,13 +1651,13 @@ void EditorWindow::RestoreModeSettings(UiEditorMode mode)
     if (mode == UiEditorMode::Edit)
     {
         // restore the edit mode state
-        restoreState(settings.value(UICANVASEDITOR_SETTINGS_EDIT_MODE_STATE_KEY).toByteArray(),  UICANVASEDITOR_SETTINGS_WINDOW_STATE_VERSION);
+        restoreState(settings.value(UICANVASEDITOR_SETTINGS_EDIT_MODE_STATE_KEY).toByteArray(), UICANVASEDITOR_SETTINGS_WINDOW_STATE_VERSION);
         restoreGeometry(settings.value(UICANVASEDITOR_SETTINGS_EDIT_MODE_GEOM_KEY).toByteArray());
     }
     else
     {
         // restore the preview mode state
-        bool stateRestored = restoreState(settings.value(UICANVASEDITOR_SETTINGS_PREVIEW_MODE_STATE_KEY).toByteArray(),  UICANVASEDITOR_SETTINGS_WINDOW_STATE_VERSION);
+        bool stateRestored = restoreState(settings.value(UICANVASEDITOR_SETTINGS_PREVIEW_MODE_STATE_KEY).toByteArray(), UICANVASEDITOR_SETTINGS_WINDOW_STATE_VERSION);
         bool geomRestored = restoreGeometry(settings.value(UICANVASEDITOR_SETTINGS_PREVIEW_MODE_GEOM_KEY).toByteArray());
 
         // if either of the above failed then manually hide and show widgets,

@@ -41,7 +41,7 @@
 #include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeLayoutBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
-#include <GraphCanvas/Tools.h>
+#include <GraphCanvas/tools.h>
 #include <GraphCanvas/Types/SceneSerialization.h>
 #include <GraphCanvas/Widgets/GraphCanvasMimeContainer.h>
 #include <Styling/Parser.h>

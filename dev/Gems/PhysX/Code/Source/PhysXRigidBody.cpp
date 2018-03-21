@@ -10,7 +10,7 @@
 *
 */
 
-#include <StdAfx.h>
+#include <PhysX_precompiled.h>
 #include <PhysXMathConversion.h>
 #include <PhysXRigidBody.h>
 #include <PxPhysicsAPI.h>
@@ -119,7 +119,6 @@ namespace PhysX
                 rigidDynamic->setAngularDamping(m_config.m_angularDamping);
             }
 
-            // TODO CCD
             rigidDynamic->setCMassLocalPose(physx::PxTransform(PxVec3FromLYVec3(m_config.m_centreOfMassOffset)));
             m_pxRigidActor = rigidDynamic;
         }
@@ -140,7 +139,7 @@ namespace PhysX
         if (meshColliderAsset)
         {
             auto meshData = meshColliderAsset.Get()->GetMeshData();
-            AZ_Error("PhysX", meshData != nullptr, "Error. Invalid mesh collider asset.");
+            AZ_Error("PhysX", meshData != nullptr, "Error. Invalid mesh collider asset on entity %s", m_entity->GetName().c_str());
 
             if (meshData)
             {
@@ -148,10 +147,19 @@ namespace PhysX
 
                 physx::PxShape* meshShape = nullptr;
 
-                if( meshData->is<physx::PxTriangleMesh>() )
+                if (meshData->is<physx::PxTriangleMesh>())
                 {
-                    physx::PxTriangleMeshGeometry geom(reinterpret_cast<physx::PxTriangleMesh*>(meshData), physx::PxMeshScale(PxVec3FromLYVec3(m_config.m_scale)));
-                    meshShape = PxGetPhysics().createShape(geom, *mat);
+                    if(m_config.m_motionType == Physics::MotionType::Static)
+                    {
+                        physx::PxTriangleMeshGeometry geom(reinterpret_cast<physx::PxTriangleMesh*>(meshData), physx::PxMeshScale(PxVec3FromLYVec3(m_config.m_scale)));
+                        meshShape = PxGetPhysics().createShape(geom, *mat);
+                    }
+                    else
+                    {
+                        AZ_Error("PhysX", false, "Triangle mesh cannot be used on dynamic objects."
+                            " Please use the asset exported as a Convex or change the motion type to Static on entity %s", 
+                            m_entity->GetName().c_str());
+                    }
                 }
                 else if (meshData->is<physx::PxConvexMesh>())
                 {
@@ -160,7 +168,7 @@ namespace PhysX
                 }
                 else
                 {
-                    AZ_Error("PhysX", false, "Incorrect mesh data type.");
+                    AZ_Error("PhysX", false, "Incorrect mesh data type on entity %s", m_entity->GetName().c_str());
                 }
 
                 if (meshShape)
@@ -169,11 +177,10 @@ namespace PhysX
                 }
                 else
                 {
-                    AZ_Error("PhysX Rigid Body", false, "Failed to create shape.");
+                    AZ_Error("PhysX Rigid Body", false, "Failed to create shape on entity %s", m_entity->GetName().c_str());
                 }
             }
         }
-
         else
         {
             AddShapes();
@@ -225,7 +232,7 @@ namespace PhysX
 
         else
         {
-            AZ_Warning("PhysX Rigid Body", false, "Shape not supported in PhysX.");
+            AZ_Warning("PhysX Rigid Body", false, "Shape not supported in PhysX. Entity %s", m_entity->GetName().c_str());
         }
 
         if (shape)
@@ -235,7 +242,7 @@ namespace PhysX
 
         else
         {
-            AZ_Error("PhysX Rigid Body", false, "Failed to create shape.");
+            AZ_Error("PhysX Rigid Body", false, "Failed to create shape. Entity %s", m_entity->GetName().c_str());
         }
 
         if (m_config.m_motionType != Physics::MotionType::Static && m_config.m_computeInertiaDiagonal)
@@ -393,6 +400,21 @@ namespace PhysX
             // it is changing to static and so will have 0 velocity
             if (m_pxRigidActor)
             {
+                // transfer the shapes from the old actor
+                physx::PxU32 nbShapes = m_pxRigidActor->getNbShapes();
+                AZStd::vector<physx::PxShape*> shapes(nbShapes);
+                
+                m_pxRigidActor->getShapes(shapes.data(), nbShapes);
+                
+                // Check for trimesh shapes. They are not supported for dynamic objects.
+                if( AZStd::any_of(shapes.begin(), shapes.end(), 
+                    [](physx::PxShape* shape) { return shape->getGeometryType() == physx::PxGeometryType::eTRIANGLEMESH; }) )
+                {
+                    AZ_Error("PhysX Rigid Body", false, "Failed to convert the motion type of %s. Triangle Meshes cannot be used for dynamic objects.", m_entity->GetName());
+                    return;
+                }
+
+
                 physx::PxRigidActor* newActor = nullptr;
                 physx::PxTransform pose = m_pxRigidActor->getGlobalPose();
 
@@ -420,14 +442,7 @@ namespace PhysX
                     static_cast<physx::PxRigidDynamic*>(newActor)->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, motionType == Physics::MotionType::Keyframed);
                 }
 
-                // transfer the shapes from the old actor
-                physx::PxU32 nbShapes = m_pxRigidActor->getNbShapes();
-                physx::PxShape* shapeBuffer[1];
-                for (physx::PxU32 shapeIndex = 0; shapeIndex < nbShapes; shapeIndex++)
-                {
-                    m_pxRigidActor->getShapes(shapeBuffer, 1, shapeIndex);
-                    newActor->attachShape(*shapeBuffer[0]);
-                }
+                AZStd::for_each(shapes.begin(), shapes.end(), [newActor](physx::PxShape* shape) { newActor->attachShape(*shape); });
 
                 // copy the user data and name from the old actor
                 newActor->userData = m_pxRigidActor->userData;
@@ -630,7 +645,7 @@ namespace PhysX
     // Physics::WorldBody
     AZ::Transform PhysXRigidBody::GetTransform() const
     {
-        return m_transform;
+        return LYTransformFromPxTransform(m_pxRigidActor->getGlobalPose());
     }
 
     void PhysXRigidBody::SetTransform(const AZ::Transform& transform)
@@ -683,5 +698,90 @@ namespace PhysX
     void* PhysXRigidBody::GetNativePointer() const
     {
         return m_pxRigidActor;
+    }
+
+    // Not in API but needed to support PhysicsComponentBus
+    float PhysXRigidBody::GetLinearDamping()
+    {
+        if (m_config.m_motionType != Physics::MotionType::Dynamic)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Linear damping is only defined for dynamic rigid bodies.");
+            return 0.0f;
+        }
+
+        return static_cast<physx::PxRigidDynamic*>(m_pxRigidActor)->getLinearDamping();
+    }
+
+    void PhysXRigidBody::SetLinearDamping(float damping)
+    {
+        if (m_config.m_motionType != Physics::MotionType::Dynamic)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Linear damping is only defined for dynamic rigid bodies.");
+            return;
+        }
+
+        if (damping < 0.0f)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Negative linear damping value (%6.4e).", damping);
+            return;
+        }
+
+        static_cast<physx::PxRigidDynamic*>(m_pxRigidActor)->setLinearDamping(damping);
+    }
+
+    float PhysXRigidBody::GetAngularDamping()
+    {
+        if (m_config.m_motionType != Physics::MotionType::Dynamic)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Angular damping is only defined for dynamic rigid bodies.");
+            return 0.0f;
+        }
+
+        return static_cast<physx::PxRigidDynamic*>(m_pxRigidActor)->getAngularDamping();
+    }
+
+    void PhysXRigidBody::SetAngularDamping(float damping)
+    {
+        if (m_config.m_motionType != Physics::MotionType::Dynamic)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Angular damping is only defined for dynamic rigid bodies.");
+            return;
+        }
+
+        if (damping < 0.0f)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Negative angular damping value (%6.4e).", damping);
+            return;
+        }
+
+        static_cast<physx::PxRigidDynamic*>(m_pxRigidActor)->setAngularDamping(damping);
+    }
+
+    float PhysXRigidBody::GetSleepThreshold()
+    {
+        if (m_config.m_motionType != Physics::MotionType::Dynamic)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Sleep threshold is only defined for dynamic rigid bodies.");
+            return 0.0f;
+        }
+
+        return static_cast<physx::PxRigidDynamic*>(m_pxRigidActor)->getSleepThreshold();
+    }
+
+    void PhysXRigidBody::SetSleepThreshold(float threshold)
+    {
+        if (m_config.m_motionType != Physics::MotionType::Dynamic)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Sleep threshold is only defined for dynamic rigid bodies.");
+            return;
+        }
+
+        if (threshold < 0.0f)
+        {
+            AZ_Warning("PhysX Rigid Body", false, "Negative sleep threshold value (%6.4e).", threshold);
+            return;
+        }
+
+        static_cast<physx::PxRigidDynamic*>(m_pxRigidActor)->setSleepThreshold(threshold);
     }
 }

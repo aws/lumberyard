@@ -400,10 +400,14 @@ JobManager::CJobManager::CJobManager()
     m_pThreadBackEnd = new ThreadBackEnd::CThreadBackEnd();
 #endif // !JOBMANAGER_DISABLED
 
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_JOBMANAGER_SIXWORKERTHREADS
+    m_nRegularWorkerThreads = 6;
+#else
     CCpuFeatures* pCPU = new CCpuFeatures;
     pCPU->Detect();
     m_nRegularWorkerThreads = pCPU->GetLogicalCPUCount();
     delete pCPU;
+#endif
 
     m_pRegularWorkerFallbacks = new JobManager::SInfoBlock*[m_nRegularWorkerThreads];
     memset(m_pRegularWorkerFallbacks, 0, sizeof(JobManager::SInfoBlock*) * m_nRegularWorkerThreads);

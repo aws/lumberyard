@@ -191,6 +191,7 @@ public:
     virtual void RemoveCommand(const char* sName);
     virtual void ExecuteString(const char* command, const bool bSilentMode, const bool bDeferExecution = false);
     virtual void ExecuteConsoleCommand(const char* command) override;
+    virtual void ResetCVarsToDefaults() override;
     virtual void Exit(const char* command, ...) PRINTF_PARAMS(2, 3);
     virtual bool IsOpened();
     virtual int GetNumVars();

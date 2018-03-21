@@ -35,6 +35,8 @@ Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemTextToSpeech", "..\
 		{3C591F9E-CE9F-42B7-9E32-67ECBAC874ED} = {3C591F9E-CE9F-42B7-9E32-67ECBAC874ED}
 	EndProjectSection
 EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CloudGemSpeechRecognition", "..\..\..\CloudGemSpeechRecognition\AWS\cgp-resource-code\src\CloudGemSpeechRecognition.njsproj", "{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,10 @@ Global
 		{95BA226D-C222-436F-9125-CD494644D75E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{95BA226D-C222-436F-9125-CD494644D75E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{95BA226D-C222-436F-9125-CD494644D75E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B6D24E8-960D-47A4-A5F0-8ABF00AF07A5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

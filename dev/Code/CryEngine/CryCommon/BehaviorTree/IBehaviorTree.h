@@ -198,7 +198,7 @@ namespace BehaviorTree
     struct INode;
     struct DebugNode;
 
-    typedef boost::shared_ptr<DebugNode> DebugNodePtr;
+    typedef AZStd::shared_ptr<DebugNode> DebugNodePtr;
 
     struct DebugNode
     {
@@ -362,7 +362,7 @@ namespace BehaviorTree
         virtual const void* GetDataVoidPointer() const = 0;
     };
 
-    DECLARE_BOOST_POINTERS(IBlackboardVariable);
+    DECLARE_SMART_POINTERS(IBlackboardVariable);
 
     template < class Type = void >
     class BlackboardVariable
@@ -553,7 +553,7 @@ namespace BehaviorTree
 #endif
     };
 
-    DECLARE_BOOST_POINTERS(INode);
+    DECLARE_SMART_POINTERS(INode);
 
     // This is the recipe for a behavior tree.
     // The information in this template should be considered to be
@@ -585,7 +585,7 @@ namespace BehaviorTree
 #endif
     };
 
-    DECLARE_BOOST_POINTERS(BehaviorTreeTemplate);
+    DECLARE_SMART_POINTERS(BehaviorTreeTemplate);
 
     // This contains all the data for a behavior tree that can be modified
     // during runtime. The behavior tree instance is created from a
@@ -619,7 +619,7 @@ namespace BehaviorTree
 #endif // USING_BEHAVIOR_TREE_EVENT_DEBUGGING
     };
 
-    DECLARE_BOOST_POINTERS(BehaviorTreeInstance);
+    DECLARE_SMART_POINTERS(BehaviorTreeInstance);
 
     struct IBehaviorTreeManager
     {
@@ -847,7 +847,7 @@ namespace BehaviorTree
     struct NodePointerSerializer
         : BoostSharedPtrSerializer<INode>
     {
-        NodePointerSerializer(boost::shared_ptr<INode>& ptr)
+        NodePointerSerializer(AZStd::shared_ptr<INode>& ptr)
             : BoostSharedPtrSerializer(ptr)
         {
         }

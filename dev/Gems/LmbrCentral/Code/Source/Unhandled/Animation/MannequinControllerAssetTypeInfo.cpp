@@ -10,7 +10,7 @@
 *
 */
 
-#include "StdAfx.h"
+#include "LmbrCentral_precompiled.h"
 #include "MannequinControllerAssetTypeInfo.h"
 
 #include <LmbrCentral/Animation/MannequinAsset.h>

@@ -43,11 +43,12 @@ namespace EMStudio
 
         EMStudioPlugin* FindActivePlugin(uint32 classID);   // find first active plugin, or nullptr when not found
 
-        MCORE_INLINE uint32 GetNumPlugins() const                           { return mPlugins.GetLength(); }
+        MCORE_INLINE uint32 GetNumPlugins() const                           { return static_cast<uint32>(mPlugins.size()); }
         MCORE_INLINE EMStudioPlugin* GetPlugin(const uint32 index)          { return mPlugins[index]; }
 
-        MCORE_INLINE uint32 GetNumActivePlugins() const                     { return mActivePlugins.GetLength(); }
+        MCORE_INLINE uint32 GetNumActivePlugins() const                     { return static_cast<uint32>(mActivePlugins.size()); }
         MCORE_INLINE EMStudioPlugin* GetActivePlugin(const uint32 index)    { return mActivePlugins[index]; }
+        MCORE_INLINE const AZStd::vector<EMStudioPlugin*> GetActivePlugins() { return mActivePlugins; }
 
         uint32 GetNumActivePluginsOfType(const char* pluginType) const;
         uint32 GetNumActivePluginsOfType(uint32 classID) const;
@@ -55,18 +56,20 @@ namespace EMStudio
 
         QString GenerateObjectName() const;
 
-        void SortActivePlugins()                                            { mActivePlugins.Sort(); }
+        void SortActivePlugins();
 
     private:
-        MCore::Array<EMStudioPlugin*>   mPlugins;
+        typedef AZStd::vector<EMStudioPlugin*> PluginVector;
+
+        PluginVector mPlugins;
 
         #if defined(MCORE_PLATFORM_WINDOWS)
-        MCore::Array<HMODULE>       mPluginLibs;
+        AZStd::vector<HMODULE>       mPluginLibs;
         #else
-        MCore::Array<void*>         mPluginLibs;
+        AZStd::vector<void*>         mPluginLibs;
         #endif
 
-        MCore::Array<EMStudioPlugin*>   mActivePlugins;
+        PluginVector mActivePlugins;
 
         void UnloadPluginLibs();
     };

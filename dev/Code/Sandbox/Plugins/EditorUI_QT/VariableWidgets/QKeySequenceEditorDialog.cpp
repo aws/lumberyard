@@ -16,9 +16,9 @@
 #include "IEditorParticleUtils.h"
 #include "qmessagebox.h"
 #include <QStyle>
-#include <qdesktopwidget.h>
-#include <qapplication.h>
-#include <qsettings.h>
+#include <QDesktopWidget>
+#include <QApplication>
+#include <QSettings>
 
 QKeySequenceEditorDialog::QKeySequenceEditorDialog(QWidget* parent)
 {

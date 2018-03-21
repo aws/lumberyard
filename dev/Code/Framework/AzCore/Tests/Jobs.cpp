@@ -35,7 +35,7 @@
 #include <AzCore/std/time.h>
 #include <AzCore/std/parallel/thread.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE)
+#if AZ_TRAIT_SUPPORTS_MICROSOFT_PPL
 // Enable this to test against Microsoft PPL, keep in mind you MUST have Exceptions enabled to use PPL
 //# define AZ_COMPARE_TO_PPL
 #endif //
@@ -1150,9 +1150,7 @@ namespace UnitTest
         : public DefaultJobManagerSetupFixture
     {
     public:
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_XBONE) || defined(AZ_PLATFORM_PS4) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         static const size_t numElementsScale = 1;
-#endif
 
 #ifdef _DEBUG
         static const size_t m_numElements = 10000 / numElementsScale;

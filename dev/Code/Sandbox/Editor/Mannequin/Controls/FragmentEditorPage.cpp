@@ -30,7 +30,7 @@
 #include "IGameFramework.h"
 
 #include <QMenu>
-#include "QShortcut.h"
+#include <QShortcut>
 #include "QtUtil.h"
 
 //////////////////////////////////////////////////////////////////////////
@@ -611,7 +611,7 @@ void CFragmentEditorPage::CreateLocators()
 
             if ((item.type == CFragmentHistory::SHistoryItem::Param) && item.isLocation)
             {
-                m_modelViewport->AddLocator(h, item.paramName.toLatin1().data(), item.param.value);
+                m_modelViewport->AddLocator(h, item.paramName.toUtf8().data(), item.param.value);
             }
         }
 

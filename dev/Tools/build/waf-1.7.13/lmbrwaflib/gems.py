@@ -910,7 +910,7 @@ class GemManager(object):
             return
         self.gems.append(gem)
         code_path = self.ctx.root.make_node(gem.abspath).make_node(GEMS_CODE_FOLDER).abspath()
-        if os.path.isdir(code_path):
+        if gem.modules and os.path.isdir(code_path):
             self.dirs.append(code_path)
         else:
             Logs.debug('gems: gem Code folder does not exist %s - this is okay if the gem contains only assets and no code' % code_path)

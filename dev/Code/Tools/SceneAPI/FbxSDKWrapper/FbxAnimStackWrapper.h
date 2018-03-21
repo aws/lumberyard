@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,8 +10,10 @@
 *
 */
 
+#pragma once
+
 #include <AzCore/std/smart_ptr/shared_ptr.h>
-#include "fbxsdk.h"
+#include <fbxsdk.h>
 
 namespace AZ
 {
@@ -36,5 +36,5 @@ namespace AZ
             FbxAnimStackWrapper() = default;
             FbxAnimStack* m_fbxAnimStack;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

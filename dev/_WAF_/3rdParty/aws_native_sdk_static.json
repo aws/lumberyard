@@ -112,12 +112,6 @@
         "uselib": [
             "OPENSSL"
         ], 
-        "android_armv7_clang_features": [
-            "find_android_api_libs"
-        ], 
-        "android_armv8_clang_features": [
-            "find_android_api_libs"
-        ], 
         "ios_framework": [
             "security"
         ], 

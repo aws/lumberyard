@@ -27,6 +27,8 @@
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
 #include <CloudCanvas/CloudCanvasMappingsBus.h>
 
+#include <InitializeCloudCanvasProject.h>
+
 #include "CloudCanvasLogger.h"
 
 #include "AWSImporterModel.h"
@@ -197,6 +199,10 @@ void AWSResourceManager::ExecuteAsync(AWSResourceManager::RequestId requestId, c
 {
 
     AZ_Assert(m_startupComplete, "Attempt to submit a non-retryable command before startup is complete.");
+    if (!m_startupComplete)
+    {
+        return;
+    }
 
     if (failOnLoadError && m_initializationState == InitializationState::ErrorLoadingState)
     {
@@ -280,6 +286,9 @@ AWSResourceManager::PythonOutputHandlerMap AWSResourceManager::s_PythonOutputHan
         "error", &AWSResourceManager::ProcessOutputErrorWithLogging
     },
     {
+        "project_stack_exists", &AWSResourceManager::ProcessProjectStackExists
+    },
+    {
         "framework-not-enabled-error", &AWSResourceManager::ProcessFrameworkNotEnabledError
     },
     {
@@ -320,6 +329,9 @@ AWSResourceManager::PythonOutputHandlerMap AWSResourceManager::s_PythonOutputHan
     },
     {
         "supported-region-list", &AWSResourceManager::ProcessOutputSupportedRegionList
+    },
+    {
+        "create-admin", &AWSResourceManager::ProcessOutputCreateAdmin
     }
 };
 
@@ -383,6 +395,11 @@ void AWSResourceManager::ProcessOutputMessage(AWSResourceManager::RequestId requ
 {
     CommandOutput(requestId, "message", value);
     m_logger->Log("%s", value.toString().replace("\n", "").toStdString().c_str());
+}
+
+void AWSResourceManager::ProcessProjectStackExists(AWSResourceManager::RequestId requestId, const QVariant& value)
+{
+    GetIEditor()->OpenWinWidget(InitializeCloudCanvasProject::GetWWId());
 }
 
 void AWSResourceManager::ProcessFrameworkNotEnabledError(AWSResourceManager::RequestId requestId, const QVariant& value)
@@ -493,19 +510,27 @@ void AWSResourceManager::ProcessOutputSuccess(AWSResourceManager::RequestId requ
     CommandOutput(requestId, "success", value);
 }
 
-void AWSResourceManager::ProcessOutputCreateAdmin(const QVariant& value)
+AZStd::string AWSResourceManager::GetIdentityId()
+{
+    auto identity = Ly::Identity::GetDeveloperCognitoSettings();
+    /// helper class that gets Cognito credentials when needed
+    Aws::Auth::PersistentCognitoIdentityProvider_JsonFileImpl persistentIdentityProvider(identity.GetIdentityPoolId(), identity.GetAccountId());
+    return persistentIdentityProvider.GetIdentityId().c_str();
+}
+
+void AWSResourceManager::ProcessOutputCreateAdmin(RequestId requestId, const QVariant& value)
 {
     QMap<QString, QVariant> message = value.toMap();
 
     QDialog loginInfo;
     loginInfo.setWindowFlags(Qt::WindowCloseButtonHint);   
-    loginInfo.setWindowTitle("Launching the Cloud Gem Portal");
+    loginInfo.setWindowTitle("Cloud Gem Portal Administrator Account Creation");
     loginInfo.setMinimumHeight(140);
     loginInfo.setFixedWidth(350);
 
     QVBoxLayout* loginInfoLayout = new QVBoxLayout;
 
-    QLabel helpInfo("Thanks for opening the Cloud Gem Portal for the first time.  Your browser should have opened the Cloud Gem Portal to the login page.   Please use the username and password below to log into the site.");
+    QLabel helpInfo("Please use the username and password below to log into the site as an administrator.  Do not lose these.");
     helpInfo.setWordWrap(true);
     loginInfoLayout->addWidget(&helpInfo);
 
@@ -1125,10 +1150,14 @@ void AWSResourceManager::RequestEditProjectSettings()
     QSharedPointer<IFileSourceControlModel> projectSettingsSource = m_projectSettingsSourceControlModel;
 
     using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, GetProjectModel()->GetProjectSettingsFile().toStdString().c_str(), true, [projectSettingsSource](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+    QString path = GetProjectModel()->GetProjectSettingsFile();
+    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, path.toStdString().c_str(), true, [projectSettingsSource, path](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
         {
             projectSettingsSource->SetFlags(fileInfo.m_flags);
             projectSettingsSource->SetStatus(fileInfo.m_status);
+            if (!wasSuccess) {
+                QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Checkout error", "Failed to check file out from source control: " + path);
+            }
         }
         );
 }
@@ -1150,12 +1179,16 @@ void AWSResourceManager::RequestEditDeploymentTemplate()
 void AWSResourceManager::RequestEditGemsFile()
 {
     QSharedPointer<IFileSourceControlModel> sourceControlModel = m_gemsFileSourceControlModel;
+    QString path = GetProjectModel()->GetGemsFile();
 
     using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, GetProjectModel()->GetGemsFile().toStdString().c_str(), true, [sourceControlModel](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, path.toStdString().c_str(), true, [sourceControlModel, path](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
     {
         sourceControlModel->SetFlags(fileInfo.m_flags);
         sourceControlModel->SetStatus(fileInfo.m_status);
+        if (!wasSuccess) {
+            QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Checkout error", "Failed to check file out from source control: " + path);
+        }
     }
     );
 }
@@ -1209,6 +1242,7 @@ bool AWSResourceManager::InitializeProject(const QString& region, const QString&
     }
     args["confirm_aws_usage"] = true;
     args["confirm_security_change"] = true;
+    args["cognito_prod"] = GetIdentityId().c_str();
     ExecuteAsync(GetProjectStatusModel()->GetStackEventsModelInternal()->GetRequestId(), "create-project-stack", args);
 
     return true;
@@ -1265,21 +1299,11 @@ void AWSResourceManager::OpenCGP()
         if (key == "error")
         {
             QMessageBox::critical(GetIEditor()->GetEditorMainWindow(), "Cloud Gem Portal", value.toString());
-        }
-        else if(key == "create-admin")
-        {
-            ProcessOutputCreateAdmin(value);
-        }
+        }       
     };
 
     bool failOnLoadError = true;
-    QVariantMap args;
-   
-    auto identity = Ly::Identity::GetDeveloperCognitoSettings();
-    /// helper class that gets Cognito credentials when needed
-    Aws::Auth::PersistentCognitoIdentityProvider_JsonFileImpl persistentIdentityProvider(identity.GetIdentityPoolId(), identity.GetAccountId());
-        
-    args["cognito_prod"] = persistentIdentityProvider.GetIdentityId().c_str();    
+    QVariantMap args;       
     ExecuteAsync(callback, "cloud-gem-portal", args, failOnLoadError);
 
 }

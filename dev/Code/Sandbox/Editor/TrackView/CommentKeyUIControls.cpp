@@ -54,7 +54,7 @@ public:
         CFileUtil::ScanDirectory((Path::GetEditingGameDataFolder() + "/Fonts/").c_str(), "*.xml", fa, true);
         for (size_t i = 0; i < fa.size(); ++i)
         {
-            string name = fa[i].filename.toLatin1().data();
+            string name = fa[i].filename.toUtf8().data();
             PathUtil::RemoveExtension(name);
             mv_font->AddEnumItem(name.c_str(), name.c_str());
         }
@@ -134,13 +134,13 @@ void CCommentKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
 
             if (!pVar || pVar == mv_comment.GetVar())
             {
-                commentKey.m_strComment = ((QString)mv_comment).toLatin1().data();
+                commentKey.m_strComment = ((QString)mv_comment).toUtf8().data();
             }
 
             if (!pVar || pVar == mv_font.GetVar())
             {
                 QString sFont = mv_font;
-                commentKey.m_strFont = sFont.toLatin1().data();
+                commentKey.m_strFont = sFont.toUtf8().data();
             }
 
             if (!pVar || pVar == mv_align.GetVar())
@@ -154,9 +154,16 @@ void CCommentKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             commentKey.m_color.Set(color.x, color.y, color.z, commentKey.m_color.GetA());
             SyncValue(mv_size, commentKey.m_size, false, pVar);
 
+            bool isDuringUndo = false;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
+
             if (sequence->GetSequenceType() == SequenceType::Legacy)
             {
                 CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
+                keyHandle.SetKey(&commentKey);
+            }
+            else if (isDuringUndo)
+            {
                 keyHandle.SetKey(&commentKey);
             }
             else

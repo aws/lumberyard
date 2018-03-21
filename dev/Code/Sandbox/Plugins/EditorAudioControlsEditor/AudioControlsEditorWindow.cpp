@@ -192,6 +192,9 @@ namespace AudioControls
     //-------------------------------------------------------------------------------------------//
     void CAudioControlsEditorWindow::Update()
     {
+        if (!m_pATLControlsPanel)
+            return;
+
         m_pATLControlsPanel->Reload();
         m_pAudioSystemPanel->Reload();
         UpdateInspector();
@@ -228,8 +231,7 @@ namespace AudioControls
                     sLevelName = QString();
                 }
 
-                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toLatin1().data());
-            }
+                Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::RefreshAudioSystem, sLevelName.toUtf8().data());            }
         }
         m_pATLModel->ClearDirtyFlags();
     }
@@ -295,7 +297,7 @@ namespace AudioControls
         Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, oConfigDataRequest);
 
         //parse the AudioSystem level-specific config data
-        string sLevelName = GetIEditor()->GetLevelName().toLatin1().data();
+        string sLevelName = GetIEditor()->GetLevelName().toUtf8().data();
         sControlsPath += "levels/" + sLevelName;
         Audio::SAudioManagerRequestData<Audio::eAMRT_PARSE_CONTROLS_DATA> oParseLevelRequestData(sControlsPath.c_str(), Audio::eADS_LEVEL_SPECIFIC);
         oConfigDataRequest.pData = &oParseLevelRequestData;

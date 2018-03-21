@@ -126,7 +126,9 @@ public:
         static CScriptHelpDialog* pInstance = nullptr;
         if (!pInstance)
         {
-            pInstance = new CScriptHelpDialog();
+            MainWindow *m = MainWindow::instance();
+            QWidget *parentWidget = m->window() ? m->window() : m; // MainWindow might have a WindowDecorationWrapper parent. Makes a difference on macOS.
+            pInstance = new CScriptHelpDialog(parentWidget);
         }
         return pInstance;
     }

@@ -343,13 +343,8 @@ namespace AZ
         #if defined(AZ_SIMD)
         SimdVectorType m_rows[3];
         #else
-            #if defined(AZ_SIMD_WII)
-        //matrix elements, stored in ROW-MAJOR format
-        AZ_ALIGN(float m_values[3][4], 16);
-            #else
         //matrix elements, stored in COLUMN-MAJOR format
         AZ_ALIGN(float m_values[4][3], 16);
-            #endif
         #endif
     };
 
@@ -398,10 +393,8 @@ namespace AZ
 AZSTD_DECLARE_POD_TYPE(AZ::Transform);
 #endif
 
-#if defined(AZ_SIMD_WINDOWS) || defined(AZ_SIMD_XBONE) || defined(AZ_SIMD_PS4) || defined(AZ_SIMD_LINUX) || defined(AZ_SIMD_APPLE_OSX)
+#if AZ_TRAIT_USE_PLATFORM_SIMD
     #include <AzCore/Math/Internal/TransformWin32.inl>
-#elif defined(AZ_SIMD_WII)
-    #include <AzCore/Math/Internal/TransformWii.inl>
 #else
     #include <AzCore/Math/Internal/TransformFpu.inl>
 #endif

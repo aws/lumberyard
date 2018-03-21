@@ -18,6 +18,8 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Component/EntityId.h>
 
+#include <QString>
+
 namespace AZ
 {
     struct ClassDataReflection;

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "ChatPlay_precompiled.h"
 #include "BroadcastCVars.h"
 
 #define BROADCAST_DEFAULT_ENDPOINT "https://api.twitch.tv/kraken/"

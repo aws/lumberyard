@@ -14,7 +14,7 @@
 #include <Dialogs/QT/ui_NewEntityDialog.h>
 #include <AzCore/IO/FileIO.h>
 
-#include <QPushbutton>
+#include <QPushButton>
 #include <QToolTip>
 #include <QMessageBox>
 

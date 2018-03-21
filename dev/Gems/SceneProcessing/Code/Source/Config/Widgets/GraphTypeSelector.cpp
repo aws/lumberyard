@@ -10,8 +10,8 @@
 *
 */
 
-#include <QMenu.h>
-#include <QEvent.h>
+#include <QMenu>
+#include <QEvent>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>

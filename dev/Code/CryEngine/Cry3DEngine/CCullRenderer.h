@@ -207,7 +207,7 @@ namespace NAsyncCull
             break;
             case BitX | BitY | BitZ:
                 break;
-#if !defined(ORBIS) && !defined(ANDROID) // ACCEPTED_USE
+#if AZ_TRAIT_COMPILER_OPTIMIZE_MISSING_DEFAULT_SWITCH_CASE
             default:
                 __assume(0);
 #endif
@@ -217,10 +217,10 @@ namespace NAsyncCull
 
 
         template<bool WRITE, bool CULL, bool PROJECT, bool CULL_BACKFACES>
-#if !defined(_WIN64) && !defined(ORBIS) && !defined(LINUX) && !defined(APPLE) && !defined(DURANGO) // ACCEPTED_USE
-        CULLINLINE  bool            Triangle2D(NVMath::vec4 rV0, NVMath::vec4 rV1, NVMath::vec4 rV2, uint32 MinX = 0, uint32 MinY = 0, uint32 MaxX = 0, uint32 MaxY = 0, NVMath::vec4& VMinMax = NVMath::Vec4Zero(), NVMath::vec4& V210 = NVMath::Vec4Zero())
-#else
+#if AZ_TRAIT_COMPILER_PASS_4PLUS_VECTOR_PARAMETERS_BY_VALUE
         CULLINLINE  bool            Triangle2D(NVMath::vec4 rV0, NVMath::vec4 rV1, NVMath::vec4 rV2, uint32 MinX = 0, uint32 MinY = 0, uint32 MaxX = 0, uint32 MaxY = 0, NVMath::vec4  VMinMax = NVMath::Vec4Zero(), NVMath::vec4 V210 = NVMath::Vec4Zero())
+#else
+        CULLINLINE  bool            Triangle2D(NVMath::vec4 rV0, NVMath::vec4 rV1, NVMath::vec4 rV2, uint32 MinX = 0, uint32 MinY = 0, uint32 MaxX = 0, uint32 MaxY = 0, NVMath::vec4& VMinMax = NVMath::Vec4Zero(), NVMath::vec4& V210 = NVMath::Vec4Zero())
 #endif
         {
             using namespace NVMath;
@@ -467,7 +467,7 @@ namespace NAsyncCull
                 return;
             }
 
-            m_nNumWorker = gEnv->pJobManager->GetNumWorkerThreads();
+            m_nNumWorker = AZ::JobContext::GetGlobalContext()->GetJobManager().GetNumWorkerThreads();
             m_ZBufferSwap = new tdZexel*[m_nNumWorker];
             for (uint32 i = 0; i < m_nNumWorker; ++i)
             {
@@ -496,8 +496,7 @@ namespace NAsyncCull
 
             m_VMaxXY    =   NVMath::int32Tofloat(NVMath::Vec4(SIZEX, SIZEY, SIZEX, SIZEY));
 
-            Matrix44    Dummy;
-            if (!gEnv->pRenderer->GetOcclusionBuffer((uint16*)&m_ZBuffer[0], SizeX(), SizeY(), &Dummy, reinterpret_cast<Matrix44*>(&Reproject)))
+            if (!gEnv->pRenderer->GetOcclusionBuffer((uint16*)&m_ZBuffer[0], reinterpret_cast<Matrix44*>(&Reproject)))
             {
                 return false;
             }
@@ -518,8 +517,9 @@ namespace NAsyncCull
             //#define USE_W_DEPTH
             //#define SCALE_DEPTH
 
-            uint32 nWorkerThreadID = JobManager::GetWorkerThreadId();
-            float* pZBufferSwap =   m_ZBufferSwap[nWorkerThreadID];
+            const uint32 workerThreadID = AZ::JobContext::GetGlobalContext()->GetJobManager().GetWorkerThreadId();
+            CRY_ASSERT(workerThreadID != AZ::JobManager::InvalidWorkerThreadId);
+            float* pZBufferSwap = m_ZBufferSwap[workerThreadID];
 
             int sizeX = SIZEX;
             int sizeY = SIZEY;

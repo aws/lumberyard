@@ -284,7 +284,8 @@ void AssetImporterWindow::OpenFileInternal(const AZStd::string& filePath)
             HandleAssetLoadingCompleted(); 
         }, this);
 
-    m_processingOverlay.reset(new ProcessingOverlayWidget(m_overlay.data(), ProcessingOverlayWidget::Layout::Loading, s_browseTag, asyncLoadHandler));
+    m_processingOverlay.reset(new ProcessingOverlayWidget(m_overlay.data(), ProcessingOverlayWidget::Layout::Loading, s_browseTag));
+    m_processingOverlay->SetAndStartProcessingHandler(asyncLoadHandler);
     m_processingOverlay->SetAutoCloseOnSuccess(true);
     connect(m_processingOverlay.data(), &AZ::SceneAPI::SceneUI::ProcessingOverlayWidget::Closing, this, &AssetImporterWindow::ClearProcessingOverlay);
     m_processingOverlayIndex = m_processingOverlay->PushToOverlay();
@@ -316,19 +317,19 @@ void AssetImporterWindow::UpdateClicked()
         return;
     }
 
-    auto saveAndWaitForJobsHandler = AZStd::make_shared<AZ::SceneAPI::SceneUI::ExportJobProcessingHandler>(s_browseTag, m_fullSourcePath);
-    m_processingOverlay.reset(new ProcessingOverlayWidget(m_overlay.data(), ProcessingOverlayWidget::Layout::Exporting, s_browseTag, saveAndWaitForJobsHandler));
+    m_processingOverlay.reset(new ProcessingOverlayWidget(m_overlay.data(), ProcessingOverlayWidget::Layout::Exporting, s_browseTag));
     connect(m_processingOverlay.data(), &ProcessingOverlayWidget::Closing, this, &AssetImporterWindow::ClearProcessingOverlay);
     m_processingOverlayIndex = m_processingOverlay->PushToOverlay();
 
+    // We need to block closing of the overlay until source control operations are complete
+    m_processingOverlay->BlockClosing();
+
+    m_processingOverlay->OnSetStatusMessage("Saving settings...");
     bool isSourceControlActive = false;
     {
         using SCRequestBus = AzToolsFramework::SourceControlConnectionRequestBus;
         SCRequestBus::BroadcastResult(isSourceControlActive, &SCRequestBus::Events::IsActive);
     }
-    
-    // We need to block closing of the overlay until source control operations are complete
-    m_processingOverlay->BlockClosing();
 
     AZStd::shared_ptr<AZ::ActionOutput> output = AZStd::make_shared<AZ::ActionOutput>();
     m_assetImporterDocument->SaveScene(output,
@@ -355,16 +356,20 @@ void AssetImporterWindow::UpdateClicked()
                 }
 
                 m_rootDisplay->HandleSaveWasSuccessful();
+
+                // Don't attach the job processor until all files are saved.
+                m_processingOverlay->SetAndStartProcessingHandler(AZStd::make_shared<ExportJobProcessingHandler>(s_browseTag, m_fullSourcePath));
             }
             else
             {
-
                 // This kind of failure means that it's possible the jobs will never actually start,
                 //  so we act like the processing is complete to make it so the user won't be stuck
                 //  in the processing UI in that case.
                 m_processingOverlay->OnProcessingComplete();
             }
-            
+
+            // Blocking is only used for the period saving is happening. The ExportJobProcessingHandler will inform
+            // the overlay widget when the AP is done with processing, which will also block closing until done.
             m_processingOverlay->UnblockClosing();
         }
     );
@@ -404,7 +409,8 @@ void AssetImporterWindow::OnSceneResetRequested()
             m_rootDisplay->HandleSceneWasReset(m_assetImporterDocument->GetScene());
         }, this);
 
-    m_processingOverlay.reset(new ProcessingOverlayWidget(m_overlay.data(), ProcessingOverlayWidget::Layout::Resetting, s_browseTag, asyncLoadHandler));
+    m_processingOverlay.reset(new ProcessingOverlayWidget(m_overlay.data(), ProcessingOverlayWidget::Layout::Resetting, s_browseTag));
+    m_processingOverlay->SetAndStartProcessingHandler(asyncLoadHandler);
     m_processingOverlay->SetAutoCloseOnSuccess(true);
     connect(m_processingOverlay.data(), &ProcessingOverlayWidget::Closing, this, &AssetImporterWindow::ClearProcessingOverlay);
     m_processingOverlayIndex = m_processingOverlay->PushToOverlay();

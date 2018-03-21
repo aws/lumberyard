@@ -520,7 +520,7 @@ void CMissingAssetDialog::OnReportItemDblClick(const QModelIndex& index)
 void CMissingAssetDialog::AcceptRecort(CMissingAssetRecord* pRecord, int idx)
 {
     assert(pRecord->substitutions.size() > idx);
-    GetIEditor()->GetMissingAssetResolver()->AcceptRequest(pRecord->id, pRecord->substitutions[idx].toLatin1().data());
+    GetIEditor()->GetMissingAssetResolver()->AcceptRequest(pRecord->id, pRecord->substitutions[idx].toUtf8().data());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -537,7 +537,7 @@ void CMissingAssetDialog::ResolveRecord(CMissingAssetRecord* pRecord)
     QString fullFileName;
     if (pSearcher && pSearcher->GetReplacement(fullFileName, pRecord->assetTypeId))
     {
-        GetIEditor()->GetMissingAssetResolver()->AcceptRequest(pRecord->id, fullFileName.toLatin1().data());
+        GetIEditor()->GetMissingAssetResolver()->AcceptRequest(pRecord->id, fullFileName.toUtf8().data());
     }
 }
 

@@ -160,7 +160,7 @@ public:
         }
     }
 
-    void OnSequenceChanged();
+    void OnSequenceChanged(CTrackViewSequence* sequence);
 
     void PopulateVariables();
     void PopulateVariables(ReflectedPropertyControl* propCtrl);

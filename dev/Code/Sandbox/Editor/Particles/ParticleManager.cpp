@@ -92,7 +92,7 @@ void CEditorParticleManager::Export(XmlNodeRef& node)
         }
         // Level libraries are saved in level.
         XmlNodeRef libNode = libs->newChild("Library");
-        libNode->setAttr("Name", pLib->GetName().toLatin1().data());
+        libNode->setAttr("Name", pLib->GetName().toUtf8().data());
     }
 }
 

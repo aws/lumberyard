@@ -67,7 +67,7 @@ public:
     //~ISaveReader
 };
 
-DECLARE_BOOST_POINTERS(CSaveReader_CryPak);
+DECLARE_SMART_POINTERS(CSaveReader_CryPak);
 
 class CSaveWriter_CryPak
     : public IPlatformOS::ISaveWriter
@@ -84,6 +84,6 @@ public:
     //~ISaveWriter
 };
 
-DECLARE_BOOST_POINTERS(CSaveWriter_CryPak);
+DECLARE_SMART_POINTERS(CSaveWriter_CryPak);
 
 #endif // CRYINCLUDE_CRYSYSTEM_PLATFORMOS_SAVEREADERWRITER_CRYPAK_H

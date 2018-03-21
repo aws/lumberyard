@@ -225,9 +225,9 @@ void CAssetSoundItem::ToXML(XmlNodeRef& node) const
 {
     node->setTag("Sound");
     QString fileName = m_strRelativePath + m_strFilename;
-    node->setAttr("fileName", fileName.toLatin1().data());
+    node->setAttr("fileName", fileName.toUtf8().data());
     node->setAttr("filesize", m_nFileSize);
-    node->setAttr("dccFilename", m_strDccFilename.toLatin1().data());
+    node->setAttr("dccFilename", m_strDccFilename.toUtf8().data());
     node->setAttr("length", m_nSoundLengthMsec);
     node->setAttr("loopsound", m_bLoopingSound);
     // we give the timestamp, since the sound is inside fmod projects, not a real file

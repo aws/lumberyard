@@ -102,7 +102,7 @@ namespace AzToolsFramework
             UpdateLineSegmentPosition(index, vertices, *lineSegmentManipulator);
 
             lineSegmentManipulator->InstallLeftMouseUpCallback(
-                [this, &vertices, index](
+                [&vertices, index](
                     const LineSegmentSelectionManipulator::Action& action)
             {
                 InsertVertex<Vertex>(vertices, index, AdaptVertexIn<Vertex>(action.m_localLineHitPosition));

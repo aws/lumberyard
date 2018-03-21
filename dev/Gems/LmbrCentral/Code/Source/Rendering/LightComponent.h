@@ -115,7 +115,7 @@ namespace LmbrCentral
         float m_diffuseMultiplier;
         float m_specMultiplier;
         bool m_affectsThisAreaOnly;
-        bool m_ignoreVisAreas;
+        bool m_useVisAreas;
         bool m_indoorOnly;
         bool m_ambient;
         bool m_deferred;

@@ -15,6 +15,8 @@
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/aligned_storage.h>
 #include <AzFramework/Application/Application.h>
+#include <AzCore/UserSettings/UserSettingsComponent.h>
+#include <AzCore/IO/SystemFile.h>
 
 namespace AZ
 {
@@ -30,12 +32,33 @@ namespace UnitTest
         : public ::testing::Test
     {
     protected:
+
+        // HACK: Special Application that excludes UserSettingsComponent.
+        // For some reason unit tests for different branches will read/write the same UserSettings.xml file,
+        // but those tests may have different versions of serialization code for writing UserSettings.xml, thus 
+        // causing version conflicts. Ideally unit tests should not interact with physical files on disk, after 
+        // we fix this problem NoUserSettingsApplication should be removed, and we can use AzFramework::Application directly.
+        class NoUserSettingsApplication
+            : public AzFramework::Application
+        {
+            AZ::ComponentTypeList GetRequiredSystemComponents() const override
+            {
+                AZ::ComponentTypeList components = AzFramework::Application::GetRequiredSystemComponents();
+                AZ::ComponentTypeList::iterator componentItr = AZStd::find(components.begin(), components.end(), azrtti_typeid<AZ::UserSettingsComponent>());
+                if (componentItr != components.end())
+                {
+                    components.erase(componentItr);
+                }
+                return components;
+            }
+        };
+
         void SetUp() override
         {
             m_appDescriptor.m_allocationRecords = true;
             m_appDescriptor.m_allocationRecordsSaveNames = true;
             m_appDescriptor.m_recordingMode = AZ::Debug::AllocationRecords::Mode::RECORD_FULL;
-            m_application = new (AZStd::addressof(m_applicationBuffer)) AzFramework::Application();
+            m_application = new (AZStd::addressof(m_applicationBuffer)) NoUserSettingsApplication();
             m_application->Start(m_appDescriptor, m_appStartupParams);
         }
 
@@ -57,7 +80,7 @@ namespace UnitTest
 
         // Can't store on the stack because the object must be properly destroyed on shutdown.
         // Can't use unique_ptr yet because the allocators aren't up yet.
-        AZStd::aligned_storage<sizeof(AzFramework::Application), AZStd::alignment_of<AzFramework::Application>::value>::type m_applicationBuffer;
+        AZStd::aligned_storage<sizeof(NoUserSettingsApplication), AZStd::alignment_of<NoUserSettingsApplication>::value>::type m_applicationBuffer;
         AzFramework::Application* m_application;
     };
 }

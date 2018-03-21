@@ -103,12 +103,6 @@ public:
 };
 #endif
 
-#if defined(STREAMENGINE_SUPPORT_DECRYPT)
-DECLARE_JOB("StreamDecryptBlock", TStreamDecryptBlockJob, CAsyncIOFileRequest::DecryptBlockEntry)
-#endif  //STREAMENGINE_SUPPORT_DECRYPT
-
-DECLARE_JOB("StreamInflateBlock", TStreamInflateBlockJob, CAsyncIOFileRequest::DecompressBlockEntry)
-
 //#pragma optimize("",off)
 
 #if defined(STREAMENGINE_ENABLE_STATS)
@@ -512,11 +506,11 @@ void CAsyncIOFileRequest::JobStart_Decompress(CAsyncIOFileRequest_TransferPtr& p
     CryInterlockedIncrement(&engineState.pStats->nCurrentDecompressCount);
 #endif
 
-    TStreamInflateBlockJob job(engineState, nJob);
-    job.RegisterJobState(&pSelf->m_DecompJob);
-    job.SetClassInstance(pSelf.Relinquish());
-    job.SetPriorityLevel(JobManager::eStreamPriority);
-    job.Run();
+    CAsyncIOFileRequest* request = pSelf.Relinquish();
+    request->m_decompJobExecutor.StartJob([request, engineState, nJob]()
+    {
+        request->DecompressBlockEntry(engineState, nJob);
+    }); // Legacy JobManager priority: eStreamPriority
 }
 
 #if defined(STREAMENGINE_SUPPORT_DECRYPT)
@@ -568,11 +562,11 @@ void CAsyncIOFileRequest::JobStart_Decrypt(CAsyncIOFileRequest_TransferPtr& pSel
     CryInterlockedIncrement(&engineState.pStats->nCurrentDecryptCount);
 #endif
 
-    TStreamDecryptBlockJob job(engineState, nJob);
-    job.RegisterJobState(&pSelf->m_DecryptJob);
-    job.SetClassInstance(pSelf.Relinquish());
-    job.SetPriorityLevel(JobManager::eStreamPriority);
-    job.Run();
+    CAsyncIOFileRequest* request = pSelf.Relinquish();
+    request->m_decryptJobExecutor.StartJob([request, engineState, nJob]()
+    {
+        request->DecryptBlockEntry(engineState, nJob);
+    }); // Legacy JobManager priority: eStreamPriority
 }
 #endif  //STREAMENGINE_SUPPORT_DECRYPT
 

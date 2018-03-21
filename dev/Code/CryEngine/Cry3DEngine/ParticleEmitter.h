@@ -25,6 +25,11 @@
 
 class CParticle;
 
+namespace AZ
+{
+    class LegacyJobExecutor;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // A top-level emitter system, interfacing to 3D engine
 class CParticleEmitter
@@ -335,9 +340,9 @@ public:
         SEmitGeom::operator= (SEmitGeom());
     }
 
-    void SetUpdateParticlesJobState(JobManager::SJobState* pJobState)
+    void SetUpdateParticlesJobState(AZ::LegacyJobExecutor* pJobExecutor)
     {
-        m_pUpdateParticlesJobState = pJobState;
+        m_pJobExecutorParticles = pJobExecutor;
     }
 
     void GetEmitterBounds(Vec3& totalBounds) override
@@ -362,7 +367,7 @@ private:
         ePEF_Registered                     = BIT(10),
     };
 
-    JobManager::SJobState*                          m_pUpdateParticlesJobState;
+    AZ::LegacyJobExecutor*                          m_pJobExecutorParticles;
 
     // Constant values, effect-related.
     _smart_ptr<CParticleEffect>                     m_pTopEffect;

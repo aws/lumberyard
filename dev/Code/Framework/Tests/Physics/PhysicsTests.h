@@ -17,6 +17,8 @@
 #include <AzTest/AzTest.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/RigidBody.h>
 
 namespace Physics
 {
@@ -40,9 +42,14 @@ namespace Physics
         : public ::testing::Test
     {
     public:
+        // Helper functions for setting up test worlds using API only
+        // These can be implemented here as they should not require any gem specific functions
+        Physics::Ptr<Physics::World> CreateTestWorld();
+        void DestroyTestWorld();
+
         // Helper functions for setting up entities used in tests
         // These need to be implemented in the gem as they may require gem specific components etc.
-        AZ::Entity* AddTestSphere(const AZ::Vector3& position, float radius);
+        AZ::Entity* AddSphereEntity(const AZ::Vector3& position, float radius, MotionType motionType = MotionType::Dynamic);
     };
 } // namespace Physics
 #endif // AZ_TESTS_ENABLED

@@ -16,7 +16,7 @@
 #include <LegacyEntityConversion/LegacyEntityConversionBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 //Some headers needed for LegacyEntityConversionUtil.inl
-#include <QString.h>
+#include <QString>
 #include <Editor/Objects/BaseObject.h>
 #include <Objects/EntityObject.h>
 #include <Util/Variable.h>

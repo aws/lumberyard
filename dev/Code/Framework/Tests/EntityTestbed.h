@@ -60,7 +60,7 @@ namespace UnitTest
             {
                 AzToolsFramework::ToolsApplication::AddSystemComponents(systemEntity);
 
-                m_testbed.OnReflect(*m_serializeContext, *systemEntity);
+                m_testbed.OnReflect(*GetSerializeContext(), *systemEntity);
             }
 
             EntityTestbed& m_testbed;

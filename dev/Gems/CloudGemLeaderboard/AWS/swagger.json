@@ -25,7 +25,7 @@
             "post" : {
                 "description": "submit a new high score",
                 "parameters": [
-                    {						
+                    {
                         "name": "score_entry",
                         "in": "body",
                         "required": true,
@@ -52,7 +52,7 @@
                 "description": "Get all scores for given user",
                 "parameters": [
                     {
-						"description": "The user name that you wish to obtain scores for.",
+                        "description": "The user name that you wish to obtain scores for.",
                         "name": "user",
                         "in": "path",
                         "type": "string",
@@ -77,14 +77,14 @@
                 "description": "Get a specific score for given user",
                 "parameters": [
                     {
-						"description": "The user name that you wish to obtain scores for.",
+                        "description": "The user name that you wish to obtain scores for.",
                         "name": "user",
                         "in": "path",
                         "type": "string",
                         "required": true
                     },
                     {
-						"description": "The leaderboard stat table to query for scores about a player.",
+                        "description": "The leaderboard stat table to query for scores about a player.",
                         "name": "stat",
                         "in": "path",
                         "type": "string",
@@ -104,14 +104,14 @@
                 "description": "Delete a specific score for given user",
                 "parameters": [
                     {
-						"description": "The user name that you wish to delete scores for.",
+                        "description": "The user name that you wish to delete scores for.",
                         "name": "user",
                         "in": "path",
                         "type": "string",
                         "required": true
                     },
                     {
-						"description": "The leaderboard stat table to you wish to delete scores from.",
+                        "description": "The leaderboard stat table to you wish to delete scores from.",
                         "name": "stat",
                         "in": "path",
                         "type": "string",
@@ -143,7 +143,7 @@
             "post": {
                 "description": "Create a new stat to track in the leaderboards or edit an existing one",
                 "parameters": [
-                    {					
+                    {
                         "name": "stat_def",
                         "in": "body",
                         "required": true,
@@ -167,7 +167,7 @@
                 "description": "Delete a stat from the list of valid stats",
                 "parameters": [
                     {
-						"description": "The leaderboard stat table to delete.",
+                        "description": "The leaderboard stat table to delete.",
                         "name": "stat_name",
                         "in": "path",
                         "type": "string",
@@ -202,7 +202,7 @@
                 "description": "Ban a specific player",
                 "parameters": [
                     {
-						"description": "The user name of the individual you wish to unban.",
+                        "description": "The user name of the individual you wish to ban.",
                         "name": "user",
                         "in": "path",
                         "type": "string",
@@ -222,7 +222,7 @@
                 "description": "Unban a specific player",
                 "parameters": [
                     {
-						"description": "The user name of the individual you wish to unban.",
+                        "description": "The user name of the individual you wish to unban.",
                         "name": "user",
                         "in": "path",
                         "type": "string",
@@ -244,7 +244,7 @@
                 "description": "Update a leaderboard stat table details.",
                 "parameters": [
                     {
-						"description": "The leaderboard stat table to update.",
+                        "description": "The leaderboard stat table to update.",
                         "name": "stat",
                         "in": "path",
                         "type": "string",
@@ -303,7 +303,7 @@
             "type": "object",
             "properties": {
                 "status": {
-					"description": "The leaderboard service API status.",
+                    "description": "The leaderboard service API status.",
                     "type": "string"
                 }
             },
@@ -315,7 +315,7 @@
             "type": "object",
             "properties": {
                 "status": {
-					"description": "The banning response status.",
+                    "description": "The banning response status.",
                     "type": "string"
                 }
             },
@@ -342,19 +342,19 @@
             "type": "object",
             "properties": {
                 "user": {
-					"description": "The user name.",
+                    "description": "The user name.",
                     "type": "string"
                 },
                 "stat": {
-					"description": "The leaderboard stat table name.",
+                    "description": "The leaderboard stat table name.",
                     "type": "string"
                 },
                 "value": {
-					"description": "The user's leaderboard score.",
+                    "description": "The user's leaderboard score.",
                     "type": "number"
                 },
                 "estimated_rank": {
-					"description": "The user's estimated ranking.",
+                    "description": "The user's estimated ranking.",
                     "type": "integer"
                 }
             },
@@ -377,11 +377,11 @@
                     "$ref": "#/definitions/ScoreList"
                 },
                 "current_page": { 
-					"description": "The current page number to view.",
+                    "description": "The current page number to view.",
                     "type": "integer"
                 },
                 "total_pages": { 
-					"description": "The total number of pages within the leaderboard stat table.",
+                    "description": "The total number of pages within the leaderboard stat table.",
                     "type": "integer"
                 }
             },
@@ -393,23 +393,23 @@
             "type": "object",
             "properties": {
                 "name": {
-					"description": "The leaderboard stat table name.  Example:  score",
+                    "description": "The leaderboard stat table name.  Example:  score",
                     "type": "string"
                 },
                 "mode": {
-					"description": "The leaderboard stat table aggregation mode which can be either OVERWRITE or INCREMENT.  Example: OVERWRITE",
+                    "description": "The leaderboard stat table aggregation mode which can be either OVERWRITE or INCREMENT.  Example: OVERWRITE",
                     "type": "string"
                 },
                 "min": {
-					"description": "The minimum allowable score value. Values below this level will be rejected. Example: 0",
+                    "description": "The minimum allowable score value. Values below this level will be rejected. Example: 0",
                     "type": "number"
                 },
                 "max": {
-					"description": "The maximum allowable score value. Values above this level will be rejected. Example: 999999",
+                    "description": "The maximum allowable score value. Values above this level will be rejected. Example: 999999",
                     "type": "number"
                 },
                 "sample_size": {
-					"description": "The leaderboard sample resevoir size. The recommended range is between 200 to 1000. Example: 300",
+                    "description": "The leaderboard sample resevoir size. The recommended range is between 200 to 1000. Example: 300",
                     "type": "number"
                 }
             },
@@ -420,8 +420,8 @@
         },
         "StringList": {
             "type": "array",
-			"description": "A string array of user names. Example: ['player1', 'player2']",
-            "items": {				
+            "description": "A string array of user names. Example: ['player1', 'player2']",
+            "items": {
                 "type": "string"
             }
         },
@@ -457,11 +457,11 @@
                     "$ref": "#/definitions/StringList"
                 },
                 "page": {
-					"description": "The page number to start from.  Example: 0",
+                    "description": "The page number to start from.  Example: 0",
                     "type": "integer"
                 },
                 "page_size": {
-					"description": "The page size to be used for each page.  Example: 10",
+                    "description": "The page size to be used for each page.  Example: 10",
                     "type": "integer"
                 }
             }

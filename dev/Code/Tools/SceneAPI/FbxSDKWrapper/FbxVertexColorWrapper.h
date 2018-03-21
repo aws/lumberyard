@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -12,9 +10,10 @@
 *
 */
 
-#include "fbxsdk.h"
-#include <AzCore/std/string/string.h>
-#include "FbxLayerElementUtilities.h"
+#pragma once
+
+#include <fbxsdk.h>
+#include <SceneAPI/FbxSDKWrapper/FbxLayerElementUtilities.h>
 
 namespace AZ
 {
@@ -46,5 +45,5 @@ namespace AZ
         protected:
             FbxGeometryElementVertexColor* m_fbxVertexColor;
         };
-    }
-}
+    } // namespace FbxSDKWrapper
+} // namespace AZ

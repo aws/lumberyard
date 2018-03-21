@@ -388,11 +388,6 @@ namespace AZ
         }
         else
         {
-#if defined(AZ_COMPILER_MSVC)
-#pragma warning(push)
-#pragma warning(disable: 4573) // #MSVC2013 warning C4573: the usage of 'AZ::Internal::ModuleManagerInternalRequests::ClearModuleReferences' requires the compiler to capture 'this' but the current default capture mode does not allow it
-#endif
-
             // Create shared pointer, with a deleter that will remove the module reference from m_notOwnedModules
             moduleDataPtr = AZStd::shared_ptr<ModuleDataImpl>(
                 aznew ModuleDataImpl(),
@@ -403,10 +398,6 @@ namespace AZ
                     delete toDelete;
                 }
             );
-
-#if defined(AZ_COMPILER_MSVC)
-#pragma warning(pop)
-#endif
 
             // Create weak pointer to the module data
             m_notOwnedModules.emplace(preprocessedModulePath, moduleDataPtr);

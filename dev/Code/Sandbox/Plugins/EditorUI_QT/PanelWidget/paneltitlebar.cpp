@@ -11,7 +11,7 @@
 */
 
 #include "stdafx.h"
-#include "PanelTitleBar.h"
+#include "paneltitlebar.h"
 #include <PanelWidget/ui_PanelTitleBar.h>
 #include <PanelWidget/paneltitlebar.moc>
 #include <IEditor.h>

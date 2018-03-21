@@ -106,12 +106,23 @@ namespace AzFramework
         AZ_CLASS_ALLOCATOR(InputDeviceMotion, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Type Info
+        AZ_RTTI(InputDeviceMotion, "{AB8AC810-1B66-4BDA-B1D1-67DD70043650}", InputDevice);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        // Reflection
+        static void Reflect(AZ::ReflectContext* context);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         InputDeviceMotion();
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Disable copying
+        // Disable copying (protected to workaround a VS2013 bug in std::is_copy_constructible)
+        // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+    protected:
         AZ_DISABLE_COPY_MOVE(InputDeviceMotion);
+    public:
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor

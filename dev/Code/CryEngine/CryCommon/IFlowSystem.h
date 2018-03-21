@@ -2883,7 +2883,7 @@ struct IFlowSystemContainer
 TYPEDEF_AUTOPTR(IFlowGraphInspector);
 typedef IFlowGraphInspector_AutoPtr IFlowGraphInspectorPtr;
 
-typedef boost::shared_ptr<IFlowSystemContainer> IFlowSystemContainerPtr;
+typedef AZStd::shared_ptr<IFlowSystemContainer> IFlowSystemContainerPtr;
 
 struct IFlowSystem
 {

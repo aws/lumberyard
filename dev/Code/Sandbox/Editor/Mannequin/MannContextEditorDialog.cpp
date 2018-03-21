@@ -283,7 +283,7 @@ CMannContextEditorDialog::CMannContextEditorDialog(QWidget* pParent)
     connect(ui->m_wndReport, &QTreeView::activated, this, &CMannContextEditorDialog::OnReportItemDblClick);
     connect(ui->m_wndReport->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CMannContextEditorDialog::OnReportSelChanged);
 
-    connect(ui->OK, &QPushButton::clicked, this, &CMannContextEditorDialog::accept);
+    connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &CMannContextEditorDialog::accept);
     connect(ui->MANN_NEW_CONTEXT, &QAbstractButton::clicked, this, &CMannContextEditorDialog::OnNewContext);
     connect(ui->MANN_EDIT_CONTEXT, &QAbstractButton::clicked, this, &CMannContextEditorDialog::OnEditContext);
     connect(ui->MANN_CLONE_CONTEXT, &QAbstractButton::clicked, this, &CMannContextEditorDialog::OnCloneAndEditContext);

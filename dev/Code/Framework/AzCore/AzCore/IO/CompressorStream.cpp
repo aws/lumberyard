@@ -40,7 +40,10 @@ CompressorStream::CompressorStream(GenericStream* stream, bool ownStream)
     : m_stream(stream)
     , m_isStreamOwner(ownStream)
 {
-    ReadCompressedHeader();
+    if (IsOpen())
+    {
+        ReadCompressedHeader();
+    }
 }
 
 CompressorStream::~CompressorStream()
@@ -123,7 +126,12 @@ OpenMode CompressorStream::GetModeFlags() const
 
 bool CompressorStream::ReOpen()
 {
-    return m_stream->ReOpen();
+    if (m_stream->ReOpen())
+    {
+        ReadCompressedHeader();
+        return true;
+    }
+    return false;
 }
 
 void CompressorStream::Close()
@@ -281,7 +289,7 @@ Compressor* CompressorStream::CreateCompressor(AZ::u32 compressorId)
     }
     else
     {
-        AZ_Assert(false, "Unable to create compressor with type id [0x%08x]", compressorId)
+        AZ_Assert(false, "Unable to create compressor with type id [0x%08x]", compressorId);
     }
 
     return m_compressor.get();

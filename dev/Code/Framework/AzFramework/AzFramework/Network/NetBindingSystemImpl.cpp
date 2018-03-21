@@ -51,10 +51,16 @@ namespace AzFramework
         {
             auto RemapFunc = [this](AZ::EntityId originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
             {
-                auto iter = m_bindingQueue.find(originalId);
-                if (iter != m_bindingQueue.end())
+                NetBindingContextSequence netBindingContext { UnspecifiedNetBindingContextSequence };
+                EBUS_EVENT_RESULT(netBindingContext, NetBindingSystemBus, GetCurrentContextSequence);
+
+                if (netBindingContext != UnspecifiedNetBindingContextSequence)
                 {
-                    return iter->second.m_desiredRuntimeEntityId;
+                    auto iter = m_bindingQueue.find(originalId);
+                    if (iter != m_bindingQueue.end())
+                    {
+                        return iter->second.m_desiredRuntimeEntityId;
+                    }
                 }
                 return AZ::Entity::MakeId();
             };
@@ -417,10 +423,10 @@ namespace AzFramework
         m_contextData = nullptr;
 
         AZ::TickBus::Handler::BusDisconnect();
+        m_currentBindingContextSequence = UnspecifiedNetBindingContextSequence;
         m_spawnRequests.clear();
         m_bindRequests.clear();
         m_addMasterRequests.clear();
-        m_currentBindingContextSequence = UnspecifiedNetBindingContextSequence;
     }
 
     void NetBindingSystemImpl::ProcessSpawnRequests()

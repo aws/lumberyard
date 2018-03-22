@@ -392,7 +392,10 @@ void CThreadTaskManager::InitThreads()
 
     // Create a dummy thread that is used for main thread.
     m_threads.resize(1);
-    m_threads[0] = new CThreadTask_Thread(this, "Main Thread", 0, ((CSystem*)gEnv->pSystem)->m_sys_main_CPU->GetIVal(), THREAD_PRIORITY_NORMAL);
+
+    //  Make the render and main thread above normal priority. 
+    //  We want them to favour taking a core each and running whenever they have something to do. This should push job threads on to other cores.
+    m_threads[0] = new CThreadTask_Thread(this, "Main Thread", 0, ((CSystem*)gEnv->pSystem)->m_sys_main_CPU->GetIVal(), THREAD_PRIORITY_ABOVE_NORMAL);	
 
     CCpuFeatures* pCPU = ((CSystem*)gEnv->pSystem)->GetCPUFeatures();
 

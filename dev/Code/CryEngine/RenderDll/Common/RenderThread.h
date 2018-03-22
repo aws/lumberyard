@@ -234,10 +234,11 @@ struct SRenderThread
 #ifdef USE_LOCKS_FOR_FLUSH_SYNC
     int m_nFlush;
     CryMutex                            m_LockFlushNotify;
-    CryConditionVariable    m_FlushCondition;
 #if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
+    HANDLE m_FlushCondition;
     HANDLE m_FlushFinishedCondition;
 #else
+    CryConditionVariable    m_FlushCondition;
     CryConditionVariable    m_FlushFinishedCondition;
 #endif
 #else
@@ -301,7 +302,11 @@ struct SRenderThread
 #endif
         m_nFlush = 1;
 #ifdef USE_LOCKS_FOR_FLUSH_SYNC
+#if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
+        SetEvent(m_FlushCondition);
+#else
         m_FlushCondition.Notify();
+#endif
         m_LockFlushNotify.Unlock();
 #else
         READ_WRITE_BARRIER
@@ -315,7 +320,11 @@ struct SRenderThread
 #endif
         m_bQuit = 1;
 #ifdef USE_LOCKS_FOR_FLUSH_SYNC
+#if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
+        SetEvent(m_FlushCondition);
+#else
         m_FlushCondition.Notify();
+#endif
         m_LockFlushNotify.Unlock();
 #else
         READ_WRITE_BARRIER

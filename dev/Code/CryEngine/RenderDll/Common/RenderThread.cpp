@@ -62,6 +62,7 @@ void CRenderThread::Run()
     CNameTableR::m_nRenderThread = renderThreadId;
     gEnv->pCryPak->SetRenderThreadId(renderThreadId);
     //SetThreadAffinityMask(GetCurrentThread(), 2);
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
     m_started.Set();
     gRenDev->m_pRT->Process();
     gEnv->pSystem->GetIThreadTaskManager()->MarkThisThreadForDebugging(RENDER_THREAD_NAME, false);
@@ -120,6 +121,7 @@ SRenderThread::SRenderThread()
     m_bBeginFrameCalled = false;
     m_bQuitLoading = false;
 #if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
+    m_FlushCondition = CreateEvent(NULL, FALSE, FALSE, "FlushCondition");
     m_FlushFinishedCondition = CreateEvent(NULL, FALSE, FALSE, "FlushFinishedCondition");
 #endif
     Init(2);
@@ -181,6 +183,7 @@ SRenderThread::~SRenderThread()
     QuitRenderLoadingThread();
     QuitRenderThread();
 #if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
+    CloseHandle(m_FlushCondition);
     CloseHandle(m_FlushFinishedCondition);
 #endif
 }
@@ -3355,7 +3358,7 @@ void SRenderThread::FlushAndWait()
 // Flush current frame without waiting (should be called from main thread)
 void SRenderThread::SyncMainWithRender()
 {
-    AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::Renderer);
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
     FUNCTION_PROFILER_LEGACYONLY(GetISystem(), PROFILE_RENDERER);
 
 #if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
@@ -3463,6 +3466,8 @@ bool SRenderThread::IsFailed()
 bool CRenderer::FlushRTCommands(bool bWait, bool bImmediatelly, bool bForce)
 {
     AZ_TRACE_METHOD();
+    AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::Renderer);
+
     SRenderThread* pRT = m_pRT;
     IF (!pRT, 0)
     {
@@ -3564,7 +3569,13 @@ void SRenderThread::WaitFlushCond()
     m_LockFlushNotify.Lock();
     while (!*(volatile int*)&m_nFlush)
     {
+#if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
+        m_LockFlushNotify.Unlock();
+        MsgWaitForMultipleObjects(1, &m_FlushCondition, FALSE, 1, QS_ALLINPUT);
+        m_LockFlushNotify.Lock();
+#else
         m_FlushCondition.Wait(m_LockFlushNotify);
+#endif    
     }
     m_LockFlushNotify.Unlock();
 #else

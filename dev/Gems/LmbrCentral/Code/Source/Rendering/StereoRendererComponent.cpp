@@ -17,10 +17,11 @@
 
 #include "StereoRendererComponent.h"
 
-using namespace AZ;
 
 namespace LmbrCentral
 {
+    using namespace AZ;
+
     void StereoRendererComponent::Reflect(ReflectContext* context)
     {
         SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);

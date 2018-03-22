@@ -21,6 +21,23 @@
 
 namespace Camera
 {
+    // Clean up the behaviours instantiated for us by the editor/serialization system
+    CameraRigComponent::~CameraRigComponent()
+    {
+        for (ICameraTargetAcquirer* targetAcquirer : m_targetAcquirers)
+        {
+            delete targetAcquirer;
+        }
+        for (ICameraLookAtBehavior* lookAtBehavior : m_lookAtBehaviors)
+        {
+            delete lookAtBehavior;
+        }
+        for (ICameraTransformBehavior* transformBehavior : m_transformBehaviors)
+        {
+            delete transformBehavior;
+        }
+    }
+
     void CameraRigComponent::Init()
     {
         for (ICameraTargetAcquirer* targetAcquirer : m_targetAcquirers)

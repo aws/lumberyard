@@ -16,6 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include "PropertyEditorAPI.h"
+#include <AzCore/std/utils.h>
 
 #include <QWidget>
 
@@ -41,6 +42,7 @@ namespace AzToolsFramework
         AZStd::string value() const;
 
         void Add(const AZStd::string& value);
+        void Add(const AZStd::pair<AZStd::string, AZStd::string>& value); ///< Lua enums use pair<string,string>
         void Add(const AZStd::vector<AZStd::string>& value);
 
         QWidget* GetFirstInTabOrder();

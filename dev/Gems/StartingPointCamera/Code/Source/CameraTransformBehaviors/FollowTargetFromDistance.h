@@ -14,6 +14,7 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Math/Transform.h>
 #include <GameplayEventBus.h>
+#include <AzCore/Memory/SystemAllocator.h>
 
 namespace AZ
 {
@@ -34,6 +35,7 @@ namespace Camera
     public:
         ~FollowTargetFromDistance() override = default;
         AZ_RTTI(FollowTargetFromDistance, "{E6BEDB2C-6812-4369-8C0F-C1E72F380E50}", ICameraTransformBehavior)
+        AZ_CLASS_ALLOCATOR(FollowTargetFromDistance, AZ::SystemAllocator, 0); ///< Use AZ::SystemAllocator, otherwise a CryEngine allocator will be used. This will cause the Asset Processor to crash when this object is deleted, because of the wrong uninitialisation order
         static void Reflect(AZ::ReflectContext* reflection);
 
         //////////////////////////////////////////////////////////////////////////

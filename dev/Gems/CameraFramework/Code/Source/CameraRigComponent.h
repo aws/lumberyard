@@ -32,7 +32,7 @@ namespace Camera
     {
     public:
         AZ_COMPONENT(CameraRigComponent, "{286BF97A-1B4A-4EE1-944F-C13B2396227B}");
-        virtual ~CameraRigComponent() = default;
+        ~CameraRigComponent() override; ///< Define a destructor, we need to clean up the behaviours instantiated for us by the editor/serialization system
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);

@@ -287,6 +287,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 
 #ifdef WIN32
     m_hInst = NULL;
+    m_hStartupWnd = NULL;
     m_hWnd = NULL;
 #if _MSC_VER < 1000
     int sbh = _set_sbh_threshold(1016);
@@ -958,6 +959,16 @@ void CSystem::SetIProcess(IProcess* process)
 ISystem* CSystem::GetCrySystem()
 {
     return this;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//  Request main window handle.
+//  Normally it's pSystem->pHwnd, but in editor it's different. Using a dedicated method so that it can be used from modules that do not depend on CrySystem.
+//  This is used by GetFocusEx(). The editor creates window and then initialises renderer, which creates a sub-window (in a tab). 
+//  The game launcher will use null initial hwnd, and let the renderer create the window. We need to use the editor window for detecting focus changes in editor game mode, and render hwnd in the game launcher.
+void* CSystem::GetMainWindowHandle()
+{
+    return m_hStartupWnd ? m_hStartupWnd : m_hWnd;
 }
 
 //////////////////////////////////////////////////////////////////////////

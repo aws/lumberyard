@@ -60,6 +60,7 @@ class CrySystemRequests
 public:
     //! Get CrySystem
     virtual ISystem* GetCrySystem() = 0;
+    virtual void* GetMainWindowHandle() = 0;
 };
 using CrySystemRequestBus = AZ::EBus<CrySystemRequests>;
 

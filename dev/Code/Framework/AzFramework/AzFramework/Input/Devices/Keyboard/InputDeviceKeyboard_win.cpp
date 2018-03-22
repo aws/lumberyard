@@ -12,6 +12,7 @@
 
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_win_common.inl>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#include <CrySystemBus.h> ///< Bus used to get the application's main window, which is compared to the result of ::GetForegroundWindow() to detect if application is active
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
@@ -76,6 +77,19 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::RawInputNotificationsWin::OnRawInputCodeUnitUTF16Event
         void OnRawInputCodeUnitUTF16Event(uint16_t codeUnitUTF16) override;
+
+        /*
+            An extended version of::GetFocus() WinApi call.
+            The::GetFocus() call in this file is used to detect if application is active(in the foreground).
+            What::GetFocus() really does though is return the window with the KEYBOARD focus for the CURRENT THREAD's message queue.
+            This basically means that the call returns the current control within the application window that will receive the keyboard events.
+            Usually, when the main application window is sent to background, the text focus is reset(::GetFocus() returns nullptr), but not always -
+            it is possible for the application to be in the background, yet::GetFocus() to continue returning a valid window handle.
+            The MSDN documentation is somewhat brief and vague in this area, making it easy to use this call incorrectly.It does recommend using  ::GetForegroundWindow()
+            instead to get the window with which the user is currently working.GetFocusEx() uses that call to verify if the handle from::GetFocus() should be used -
+            if ::GetFocus() handle is valid, but the application is not active, ignore it.
+        */
+        HWND GetFocusEx() const;    
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! If a codeUnitUTF16 param passed to OnRawInputCodeUnitUTF16Event is part of a 2 code-unit
@@ -194,7 +208,8 @@ namespace AzFramework
         // is called below so that all raw input events are processed at the same time every frame.
 
         const bool hadFocus = m_hasFocus;
-        m_hasFocus = ::GetFocus() != nullptr;
+        m_hasFocus = GetFocusEx() != nullptr; ///< using an extended version of GetFocus() call that validates if application is currently active
+
         if (m_hasFocus)
         {
             // Process raw event queues once each frame while this thread's message queue has focus
@@ -212,7 +227,7 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceKeyboardWin::OnRawInputEvent(const RAWINPUT& rawInput)
     {
-        if (rawInput.header.dwType != RIM_TYPEKEYBOARD || !::GetFocus())
+        if (rawInput.header.dwType != RIM_TYPEKEYBOARD || !GetFocusEx())
         {
             return;
         }
@@ -247,5 +262,17 @@ namespace AzFramework
         {
             QueueRawTextEvent(codePointUTF8);
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    HWND InputDeviceKeyboardWin::GetFocusEx() const
+    {
+        static void* mainHwnd = nullptr;
+        if (!mainHwnd)
+        {
+            CrySystemRequestBus::BroadcastResult(mainHwnd, &CrySystemRequestBus::Events::GetMainWindowHandle);
+        }
+        HWND fgHwnd = ::GetForegroundWindow();
+        return static_cast<HWND>(mainHwnd) == fgHwnd ? ::GetFocus() : nullptr;
     }
 } // namespace AzFramework

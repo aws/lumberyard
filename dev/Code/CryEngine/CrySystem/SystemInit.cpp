@@ -3469,6 +3469,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
     m_hInst = (WIN_HINSTANCE)startupParams.hInstance;
     m_hWnd = (WIN_HWND)startupParams.hWnd;
+    m_hStartupWnd = (WIN_HWND)startupParams.hWnd;   ///< Store the startup window hwnd so that it can be used for focus change detection in editor game mode. 
 
     m_userRootDir = startupParams.userPath;
     m_logsDir = startupParams.logPath;

@@ -13,6 +13,7 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
 #include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
+#include <CrySystemBus.h> ///< Bus used to get the application's main window, which is compared to the result of ::GetForegroundWindow() to detects if application is active
 
 #include <Windows.h>
 
@@ -26,6 +27,28 @@ namespace
     const USHORT RAW_INPUT_MOUSE_USAGE = 0x02;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    /*  An extended version of ::GetFocus() WinApi call. 
+        The ::GetFocus() call in this file is used to detect if application is active (in the foreground).
+        What ::GetFocus() really does though is return the window with the KEYBOARD focus for the CURRENT THREAD's message queue.
+        This basically means that the call returns the current control within the application window that will receive the keyboard events.
+        Usually, when the main application window is sent to background, the text focus is reset (::GetFocus() returns nullptr), but not always -
+        it is possible for the application to be in the background, yet ::GetFocus() to continue returning a valid window handle.
+        The MSDN documentation is somewhat brief and vague in this area, making it easy to use this call incorrectly. It does recommend using  ::GetForegroundWindow()
+        instead to get the window with which the user is currently working. GetFocusEx() uses that call to verify if the handle from ::GetFocus() should be used - 
+        if ::GetFocus() handle is valid, but the application is not active, ignore it.
+    */
+    HWND GetFocusEx()
+    {
+        static void* mainHwnd = nullptr;
+        if (!mainHwnd)
+        {
+            CrySystemRequestBus::BroadcastResult(mainHwnd, &CrySystemRequestBus::Events::GetMainWindowHandle);
+        }
+        HWND fgHwnd = ::GetForegroundWindow();
+        return (static_cast<HWND>(mainHwnd) == fgHwnd) ? ::GetFocus() : nullptr;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Get the focus window that should be used to clip and/or normalize the system cursor.
     //! \return The HWND that should currently be considered the applictaion's focus window.
     HWND GetSystemCursorFocusWindow()
@@ -34,7 +57,7 @@ namespace
         AzFramework::InputSystemCursorConstraintRequestBus::BroadcastResult(
             systemCursorFocusWindow,
             &AzFramework::InputSystemCursorConstraintRequests::GetSystemCursorConstraintWindow);
-        return systemCursorFocusWindow ? static_cast<HWND>(systemCursorFocusWindow) : ::GetFocus();
+        return systemCursorFocusWindow ? static_cast<HWND>(systemCursorFocusWindow) : GetFocusEx();
     }
 }
 
@@ -272,7 +295,7 @@ namespace AzFramework
         // is called below so that all raw input events are processed at the same time every frame.
 
         const bool hadFocus = m_hasFocus;
-        m_hasFocus = ::GetFocus() != nullptr;
+        m_hasFocus = GetFocusEx() != nullptr;
         if (m_hasFocus)
         {
             // We have to refresh the system cursor clip rect each frame this application has focus
@@ -296,7 +319,7 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceMouseWin::OnRawInputEvent(const RAWINPUT& rawInput)
     {
-        if (rawInput.header.dwType != RIM_TYPEMOUSE || !::GetFocus())
+        if (rawInput.header.dwType != RIM_TYPEMOUSE || !GetFocusEx())
         {
             return;
         }

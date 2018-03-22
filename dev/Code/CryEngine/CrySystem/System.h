@@ -442,6 +442,7 @@ public:
     ////////////////////////////////////////////////////////////////////////
     // CrySystemRequestBus interface implementation
     ISystem* GetCrySystem() override;
+    void* GetMainWindowHandle() override;
     ////////////////////////////////////////////////////////////////////////
 
     //! Update screen during loading.
@@ -1080,6 +1081,10 @@ private: // ------------------------------------------------------
     ILoadConfigurationEntrySink* m_pCVarsWhitelistConfigSink;
 #endif // defined(CVARS_WHITELIST)
 
+    WIN_HWND        m_hStartupWnd; ///< Store the startup hwnd. 
+                                   ///< The editor creates the window and then initialises the renderer. 
+                                   ///< The game launcher lets the renderer create the window (so the startup hwnd is null in this case). 
+                                   ///< We need to use the editor window for detecting focus changes in editor game mode, as the renderer hwnd in this case is just the perspective tab
     WIN_HWND        m_hWnd;
     WIN_HINSTANCE   m_hInst;
 

@@ -770,8 +770,6 @@ void CWindowsConsole::CleanUp()
         m_pCVarSvGameRules = NULL;
         m_inputBufferHandle = INVALID_HANDLE_VALUE;
         m_screenBufferHandle = INVALID_HANDLE_VALUE;
-        FreeConsole();
-
         m_initialized = false;
     }
 

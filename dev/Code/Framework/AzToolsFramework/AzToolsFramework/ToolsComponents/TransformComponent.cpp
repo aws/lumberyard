@@ -148,6 +148,7 @@ namespace AzToolsFramework
             , m_netSyncEnabled(false)
             , m_interpolatePosition(AZ::InterpolationMode::NoInterpolation)
             , m_interpolateRotation(AZ::InterpolationMode::NoInterpolation)
+            , m_interpolateScale(AZ::InterpolationMode::NoInterpolation)
         {
         }
 
@@ -249,6 +250,11 @@ namespace AzToolsFramework
         bool TransformComponent::IsRotationInterpolated()
         {
             return m_interpolateRotation != AZ::InterpolationMode::NoInterpolation;
+        }
+
+        bool TransformComponent::IsScaleInterpolated()
+        {
+            return m_interpolateScale != AZ::InterpolationMode::NoInterpolation;
         }
 
         void TransformComponent::CheckApplyCachedWorldTransform(const AZ::Transform& parentWorld)
@@ -1064,6 +1070,7 @@ namespace AzToolsFramework
             configuration.m_isStatic = m_isStatic;
             configuration.m_interpolatePosition = m_interpolatePosition;
             configuration.m_interpolateRotation = m_interpolateRotation;
+            configuration.m_interpolateScale = m_interpolateScale;
 
             gameEntity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(configuration);
         }
@@ -1099,6 +1106,7 @@ namespace AzToolsFramework
                     Field("Sync Enabled", &TransformComponent::m_netSyncEnabled)->
                     Field("InterpolatePosition", &TransformComponent::m_interpolatePosition)->
                     Field("InterpolateRotation", &TransformComponent::m_interpolateRotation)->
+                    Field("InterpolateScale", &TransformComponent::m_interpolateScale)->
                     Version(8, &Internal::TransformComponentDataConverter);
 
                 if (AZ::EditContext* ptrEdit = serializeContext->GetEditContext())
@@ -1138,6 +1146,11 @@ namespace AzToolsFramework
 
                         DataElement(AZ::Edit::UIHandlers::ComboBox, &TransformComponent::m_interpolateRotation,
                             "Rotation Interpolation", "Enable local interpolation of rotation.")->
+                        EnumAttribute(AZ::InterpolationMode::NoInterpolation, "None")->
+                        EnumAttribute(AZ::InterpolationMode::LinearInterpolation, "Linear")->
+
+                        DataElement(AZ::Edit::UIHandlers::ComboBox, &TransformComponent::m_interpolateScale,
+                            "Scale Interpolation", "Enable local interpolation of scale.")->
                         EnumAttribute(AZ::InterpolationMode::NoInterpolation, "None")->
                         EnumAttribute(AZ::InterpolationMode::LinearInterpolation, "Linear");
 

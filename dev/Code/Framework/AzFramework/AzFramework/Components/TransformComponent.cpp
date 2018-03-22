@@ -220,9 +220,10 @@ namespace AzFramework
         , m_isStatic(copy.m_isStatic)
         , m_interpolatePosition(copy.m_interpolatePosition)
         , m_interpolateRotation(copy.m_interpolateRotation)
+        , m_interpolateScale(copy.m_interpolateScale)
         , m_netTargetTranslation()
         , m_netTargetRotation()
-        , m_netTargetScale(copy.m_netTargetScale)        
+        , m_netTargetScale()
     {
         CreateSamples();
         if (copy.m_netTargetTranslation)
@@ -233,7 +234,10 @@ namespace AzFramework
         {
             m_netTargetRotation->SetNewTarget(copy.m_netTargetRotation->GetTargetValue(), copy.m_netTargetRotation->GetTargetTimestamp());
         }
-
+        if (copy.m_netTargetScale)
+        {
+            m_netTargetScale->SetNewTarget(copy.m_netTargetScale->GetTargetValue(), copy.m_netTargetScale->GetTargetTimestamp());
+        }
         SetSyncEnabled(copy.m_isSyncEnabled);
     }
 
@@ -265,7 +269,21 @@ namespace AzFramework
             break;
         }
     }
-
+    
+    void TransformComponent::CreateScaleSample()
+    {
+        switch (m_interpolateScale)
+        {
+        case AZ::InterpolationMode::LinearInterpolation:
+            m_netTargetScale = AZStd::make_unique<AZ::LinearlyInterpolatedSample<AZ::Vector3>>();
+            break;
+        case AZ::InterpolationMode::NoInterpolation:
+        default:
+            m_netTargetScale = AZStd::make_unique<AZ::UninterpolatedSample<AZ::Vector3>>();
+            break;
+        }
+    }
+    
     void TransformComponent::CreateSamples()
     {
         if (m_netTargetTranslation)
@@ -295,6 +313,19 @@ namespace AzFramework
         {
             CreateRotationSample();
         }
+        if (m_netTargetScale)
+        {
+            auto target = m_netTargetScale->GetTargetValue();
+            auto timeStamp = m_netTargetScale->GetTargetTimestamp();
+
+            CreateScaleSample();
+
+            m_netTargetScale->SetNewTarget(target, timeStamp);
+        }
+        else
+        {
+            CreateScaleSample();
+        }
     }
 
     TransformComponent::~TransformComponent()
@@ -312,6 +343,7 @@ namespace AzFramework
             SetSyncEnabled(config->m_netSyncEnabled);
             m_interpolatePosition = config->m_interpolatePosition;
             m_interpolateRotation = config->m_interpolateRotation;
+            m_interpolateScale = config->m_interpolateScale;
             m_isStatic = config->m_isStatic;
             return true;
         }
@@ -329,6 +361,7 @@ namespace AzFramework
             config->m_netSyncEnabled = IsSyncEnabled();
             config->m_interpolatePosition = m_interpolatePosition;
             config->m_interpolateRotation = m_interpolateRotation;
+            config->m_interpolateScale = m_interpolateScale;
             config->m_isStatic = m_isStatic;
             return true;
         }
@@ -938,7 +971,9 @@ namespace AzFramework
             m_netTargetRotation->SetNewTarget(
                 transformReplicaChunk->m_localRotation.Get(),
                 transformReplicaChunk->m_localRotation.GetLastUpdateTime());
-            m_netTargetScale = transformReplicaChunk->m_localScale.Get();
+            m_netTargetScale->SetNewTarget(
+                transformReplicaChunk->m_localScale.Get(),
+                transformReplicaChunk->m_localScale.GetLastUpdateTime());
 
             if (HasAnyInterpolation())
             {
@@ -989,9 +1024,14 @@ namespace AzFramework
         return m_interpolateRotation != AZ::InterpolationMode::NoInterpolation;
     }
 
+    bool TransformComponent::IsScaleInterpolated()
+    {
+        return m_interpolateScale != AZ::InterpolationMode::NoInterpolation;
+    }
+
     bool TransformComponent::HasAnyInterpolation()
     {
-        return IsPositionInterpolated() || IsRotationInterpolated();
+        return IsPositionInterpolated() || IsRotationInterpolated() || IsScaleInterpolated();
     }
 
     void TransformComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*currentTime*/)
@@ -1012,7 +1052,7 @@ namespace AzFramework
         const AZ::Vector3 newTranslation = m_netTargetTranslation->GetInterpolatedValue(localTime);
         const AZ::Quaternion newRotation = m_netTargetRotation->GetInterpolatedValue(localTime);
         AZ::Transform newXform = AZ::Transform::CreateFromQuaternionAndTranslation(newRotation, newTranslation);
-        newXform.MultiplyByScale(m_netTargetScale);
+        newXform.MultiplyByScale(m_netTargetScale->GetInterpolatedValue(localTime));
 
         return newXform;
     }
@@ -1039,10 +1079,15 @@ namespace AzFramework
         }
     }
 
-    void TransformComponent::OnNewScaleData(const AZ::Vector3& scale, const GridMate::TimeContext& /*tc*/)
+    void TransformComponent::OnNewScaleData(const AZ::Vector3& scale, const GridMate::TimeContext& tc)
     {
-        // no interpolation of scale by design, very unlikely somebody needs it
-        m_netTargetScale = scale;
+        m_netTargetScale->SetNewTarget(scale, tc.m_realTime);
+        if (!HasAnyInterpolation())
+        {
+            unsigned int localTime = m_replicaChunk->GetReplicaManager()->GetTime().m_localTime;
+            AZ::Transform newXform = GetInterpolatedTransform(localTime);
+            SetLocalTMImpl(newXform);
+        }
     }
 
     void TransformComponent::UpdateReplicaChunk()
@@ -1227,6 +1272,7 @@ namespace AzFramework
                 ->Field("IsStatic", &TransformComponent::m_isStatic)
                 ->Field("InterpolatePosition", &TransformComponent::m_interpolatePosition)
                 ->Field("InterpolateRotation", &TransformComponent::m_interpolateRotation)
+                ->Field("InterpolateScale", &TransformComponent::m_interpolateScale)
                 ;
         }
 
@@ -1384,6 +1430,9 @@ namespace AzFramework
                 ->Property("interpolateRotation",
                     [](AZ::TransformConfig* config) { return (int&)(config->m_interpolateRotation); },
                     [](AZ::TransformConfig* config, const int& i) { config->m_interpolateRotation = (AZ::InterpolationMode)i; })
+                ->Property("interpolateScale",
+                    [](AZ::TransformConfig* config) { return (int&)(config->m_interpolateScale); },
+                    [](AZ::TransformConfig* config, const int& i) { config->m_interpolateScale = (AZ::InterpolationMode)i; })
                 ->Property("isStatic", BehaviorValueProperty(&AZ::TransformConfig::m_isStatic))
                 ;
         }

@@ -129,6 +129,8 @@ namespace LmbrCentral
         //! has changed.
         void RefreshRenderState();
 
+        void SetSkinMaterial(AZStd::string const&);
+
         //! Set/get auxiliary render flags.
         void SetAuxiliaryRenderFlags(uint32 flags);
         uint32 GetAuxiliaryRenderFlags() const { return m_auxiliaryRenderFlags; }
@@ -307,6 +309,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // SkinnedMeshComponentRequestBus interface implementation
         ICharacterInstance* GetCharacterInstance() override;
+        void SetSkinMaterial(const AZStd::string&) override;
         ///////////////////////////////////
     protected:
 

@@ -62,6 +62,7 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // SkinnedMeshComponentRequestBus interface implementation
         ICharacterInstance* GetCharacterInstance() override;
+        void SetSkinMaterial(const AZStd::string& materialOverride) override;
         ///////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

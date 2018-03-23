@@ -700,7 +700,11 @@ namespace AzFramework
         AZStd::function<void()> instantiateCallback =
             [this, readyAssetId]()
             {
-                for (auto iter = m_queuedSliceInstantiations.begin(); iter != m_queuedSliceInstantiations.end(); )
+                //  Create a transient processingQueue to protect against extra slices being added to the queue whilst already processing
+                AZStd::vector<InstantiatingSliceInfo> processingQueue;
+                m_queuedSliceInstantiations.swap(processingQueue);
+
+                for (auto iter = processingQueue.begin(); iter != processingQueue.end(); ) 
                 {
                     const InstantiatingSliceInfo& instantiating = *iter;
 
@@ -742,13 +746,17 @@ namespace AzFramework
                             EBUS_EVENT_ID(ticket, SliceInstantiationResultBus, OnSliceInstantiationFailed, asset.GetId());
                         }
 
-                        iter = m_queuedSliceInstantiations.erase(iter);
+                        iter = processingQueue.erase(iter);
                     }
                     else
                     {
                         ++iter;
                     }
                 }
+
+                // Recombine the transient queue with the main one
+                processingQueue.insert(processingQueue.end(), m_queuedSliceInstantiations.begin(), m_queuedSliceInstantiations.end());
+                m_queuedSliceInstantiations.swap(processingQueue);
             };
 
         // Instantiation is queued against the tick bus. This ensures we're not holding the AssetBus lock

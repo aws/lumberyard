@@ -566,6 +566,12 @@ namespace AZ
         * @return True if rotation of transform is interpolated via network sync.
         */
         virtual bool IsRotationInterpolated() = 0;
+
+        /**
+        * Returns whether scale of transform is interpolated via network sync.
+        * @return True if scale of transform is interpolated via network sync.
+        */
+        virtual bool IsScaleInterpolated() = 0;
     };
 
 
@@ -722,6 +728,11 @@ namespace AZ
          * Behavior for smoothing of rotation between network updates.
          */
         InterpolationMode m_interpolateRotation = InterpolationMode::NoInterpolation;
+
+        /**
+        * Behavior for smoothing of scale between network updates.
+        */
+        InterpolationMode m_interpolateScale = InterpolationMode::NoInterpolation;
 
         /**
          * Whether the transform is static.

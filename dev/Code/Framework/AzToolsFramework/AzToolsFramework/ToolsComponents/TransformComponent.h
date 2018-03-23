@@ -196,6 +196,7 @@ namespace AzToolsFramework
 
             bool IsPositionInterpolated() override;
             bool IsRotationInterpolated() override;
+            bool IsScaleInterpolated() override;
 
             //////////////////////////////////////////////////////////////////////////
             // SliceEntityHierarchyRequestBus
@@ -267,6 +268,7 @@ namespace AzToolsFramework
             bool m_netSyncEnabled;
             AZ::InterpolationMode m_interpolatePosition;
             AZ::InterpolationMode m_interpolateRotation;
+            AZ::InterpolationMode m_interpolateScale;
         };
     }
 } // namespace AzToolsFramework

@@ -176,6 +176,8 @@ namespace AzFramework
 
         AZ::Vector3 GetLocalScale() override;
         AZ::Vector3 GetWorldScale() override;
+
+        bool IsScaleInterpolated() override;
         //////////////////////////////////////////////////////////////////////////
 
         /// Returns parent EntityID or
@@ -280,6 +282,7 @@ namespace AzFramework
         bool                                    m_isStatic;                 ///< If true, the transform is static and doesn't move while entity is active.
         AZ::InterpolationMode                   m_interpolatePosition;      ///< Interpolation mode for net-synced position updates
         AZ::InterpolationMode                   m_interpolateRotation;      ///< Interpolation mode for net-synced rotation updates
+        AZ::InterpolationMode                   m_interpolateScale;         ///< Interpolation mode for net-synced scale updates
 
         //////////////////////////////////////////////////////////////////////////
         // TransformHierarchyInformationBus
@@ -301,10 +304,11 @@ namespace AzFramework
         void CreateSamples();
         void CreateTranslationSample();
         void CreateRotationSample();
+        void CreateScaleSample();
 
         AZStd::unique_ptr<AZ::Sample<AZ::Vector3>>    m_netTargetTranslation;
         AZStd::unique_ptr<AZ::Sample<AZ::Quaternion>> m_netTargetRotation;
-        AZ::Vector3 m_netTargetScale;
+        AZStd::unique_ptr<AZ::Sample<AZ::Vector3>>    m_netTargetScale;
 
         AZ::Transform GetInterpolatedTransform(unsigned int localTime);
         //////////////////////////////////////////////////////////////////////////////

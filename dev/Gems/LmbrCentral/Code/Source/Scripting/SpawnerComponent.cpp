@@ -220,11 +220,7 @@ namespace LmbrCentral
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnAbsolute(const AZ::Transform& world)
     {
-        AZ::Transform entityWorldTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(entityWorldTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-
-        const AZ::Transform relative = entityWorldTransform.GetInverseFast() * world;
-        return SpawnSliceInternal(m_sliceAsset, relative);
+        return SpawnSliceInternalAbsolute(m_sliceAsset, world);
     }
 
     //=========================================================================
@@ -242,11 +238,23 @@ namespace LmbrCentral
     //=========================================================================
     AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSliceAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world)
     {
-        AZ::Transform entityWorldTransform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(entityWorldTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+        return SpawnSliceInternalAbsolute(slice, world);
+    }
 
-        const AZ::Transform relative = entityWorldTransform.GetInverseFast() * world;
-        return SpawnSliceInternal(slice, relative);
+    //=========================================================================
+    AzFramework::SliceInstantiationTicket SpawnerComponent::SpawnSliceInternalAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world)
+    {
+        AzFramework::SliceInstantiationTicket ticket;
+        EBUS_EVENT_RESULT(ticket, AzFramework::GameEntityContextRequestBus, InstantiateDynamicSlice, slice, world, nullptr);
+
+        if (ticket)
+        {
+            m_activeTickets.emplace_back(ticket);
+            m_ticketToEntitiesMap.emplace(ticket); // create entry for ticket, with no entities listed yet
+
+            AzFramework::SliceInstantiationResultBus::MultiHandler::BusConnect(ticket);
+        }
+        return ticket;
     }
 
     //=========================================================================

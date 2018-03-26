@@ -89,6 +89,7 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // Private helpers
+        AzFramework::SliceInstantiationTicket SpawnSliceInternalAbsolute(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& world);
         AzFramework::SliceInstantiationTicket SpawnSliceInternal(const AZ::Data::Asset<AZ::Data::AssetData>& slice, const AZ::Transform& relative);
         //////////////////////////////////////////////////////////////////////////
 

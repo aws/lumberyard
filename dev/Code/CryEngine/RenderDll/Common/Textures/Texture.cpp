@@ -832,6 +832,18 @@ struct CompareTextures
     }
 };
 
+//  Installing this callback before calling RC_PreloadTextures(), 
+//  so that the main thread is periodically calling SyncrhonousTick while waiting for the render thread to finish precaching textures.
+struct TexturePrecacheWaitFlushFinishedCallback : public ILoadtimeCallback
+{
+    virtual void LoadtimeUpdate(float fDeltaTime) override
+    {
+        iSystem->SynchronousLoadingTick(__FUNC__, __LINE__, false);
+    }
+
+    virtual void LoadtimeRender() override {};
+};
+
 void CTexture::Precache()
 {
     LOADING_TIME_PROFILE_SECTION(iSystem);
@@ -847,7 +859,10 @@ void CTexture::Precache()
 
     CryLog("Requesting textures precache ...");
 
+    TexturePrecacheWaitFlushFinishedCallback flushWaitCallback; 
+    gRenDev->m_pRT->m_pWaitFlushFinishedCallback = &flushWaitCallback; 
     gRenDev->m_pRT->RC_PreloadTextures();
+    gRenDev->m_pRT->m_pWaitFlushFinishedCallback = nullptr;
 }
 
 void CTexture::RT_Precache()

@@ -220,6 +220,13 @@ struct SRenderThread
     CRenderThread* m_pThread;
     CRenderThreadLoading* m_pThreadLoading;
     ILoadtimeCallback* m_pLoadtimeCallback;
+
+    /* 
+        Optional callback to be called periodically while waiting for the flush to finish. 
+        It is used to update GridMate while waiting for the render thread to precache textures. 
+    */
+    ILoadtimeCallback* m_pWaitFlushFinishedCallback; 
+        
     CryMutex m_rdldLock;
     AZStd::mutex m_CommandsMutex;
     bool m_bQuit;

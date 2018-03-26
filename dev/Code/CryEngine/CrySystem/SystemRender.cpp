@@ -554,17 +554,36 @@ void CSystem::RenderJobStats()
 }
 
 //! Update screen and call some important tick functions during loading.
-void CSystem::SynchronousLoadingTick(const char* pFunc, int line)
+void CSystem::SynchronousLoadingTick(const char* pFunc, int line, bool drawLoadingScreen /*= true*/)
 {
     LOADING_TIME_PROFILE_SECTION;
     if (gEnv && gEnv->bMultiplayer && !gEnv->IsEditor())
     {
         //UpdateLoadingScreen currently contains a couple of tick functions that need to be called regularly during the synchronous level loading,
         //when the usual engine and game ticks are suspended.
-        UpdateLoadingScreen();
+        if (drawLoadingScreen)
+        {
+            UpdateLoadingScreen();
+        }
 
 #if defined(MAP_LOADING_SLICING)
         GetISystemScheduler()->SliceAndSleep(pFunc, line);
+#endif
+
+#if !defined(USE_NETWORK_STALL_TICKER_THREAD)
+        static const double secsPerTick = 1.0 / CryGetTicksPerSec();
+        static const double maxElapsedSeconds = 1.0 / 30.0; // No need to update GridMate more often than 30Hz
+        static int64 lastUpdateTicks = 0;
+        int64 nowTicks = CryGetTicks();
+        double elapsedSeconds = (nowTicks - lastUpdateTicks) * secsPerTick;
+        if (elapsedSeconds >= maxElapsedSeconds)
+        {
+            if (gEnv->pNetwork)
+            {
+                gEnv->pNetwork->SyncWithGame(eNGS_MinimalUpdateForLoading);
+            }
+            lastUpdateTicks = nowTicks;
+        }
 #endif
     }
 }

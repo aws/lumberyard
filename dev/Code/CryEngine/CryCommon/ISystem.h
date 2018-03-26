@@ -1291,8 +1291,14 @@ struct ISystem
     //   Ends rendering frame and swap back buffer.
     virtual void    RenderEnd(bool bRenderStats = true, bool bMainWindow = true) = 0;
 
-    //! Update screen and call some important tick functions during loading.
-    virtual void SynchronousLoadingTick(const char* pFunc, int line) = 0;
+	//! Update screen and call some important tick functions during loading.
+    /*
+        SynchronousTick is now also used to update GridMate when level is loading.
+        Added a flag to indicate that only GridMate should be updated.
+        This is needed because the loading screen cannot be updated when waiting for the textures to precache.
+    */
+    virtual void SynchronousLoadingTick(const char* pFunc, int line, bool drawLoadingScreen = true) = 0; 
+
 
     // Description:
     //   Renders the statistics; this is called from RenderEnd, but if the

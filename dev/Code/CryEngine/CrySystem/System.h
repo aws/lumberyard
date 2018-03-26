@@ -448,7 +448,12 @@ public:
     void UpdateLoadingScreen();
 
     //! Update screen and call some important tick functions during loading.
-    void SynchronousLoadingTick(const char* pFunc, int line);
+    /*
+        SynchronousTick is now also used to update GridMate when level is loading. 
+        Added a flag to indicate that only GridMate should be updated. 
+        This is needed because the loading screen cannot be updated when waiting for the textures to precache. 
+    */
+    void SynchronousLoadingTick(const char* pFunc, int line, bool drawLoadingScreen = true); 
 
     //! Renders the statistics; this is called from RenderEnd, but if the
     //! Host application (Editor) doesn't employ the Render cycle in ISystem,

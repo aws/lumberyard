@@ -347,6 +347,7 @@ CCryAction::CCryAction()
     , m_pScriptBindDS(0)
     , m_pScriptBindMFX(0)
     , m_pPersistentDebug(0)
+    , m_networkStallTickerReferences(0)
     , m_pMaterialEffectsCVars(0)
     , m_pEnableLoadingScreen(0)
     , m_pShowLanBrowserCVAR(0)
@@ -4153,6 +4154,16 @@ void CCryAction::StartNetworkStallTicker(bool includeMinimalUpdate)
     }
 
     m_networkStallTickerReferences++;
+#else ///< When the network stall ticker thread is disabled, tick GridMate from the main thread during level loading.
+    if (m_networkStallTickerReferences == 0)
+    {
+        if (includeMinimalUpdate)
+        {
+            gEnv->pNetwork->SyncWithGame(eNGS_AllowMinimalUpdate);
+        }
+    }
+
+    m_networkStallTickerReferences++;
 #endif // #ifdef USE_NETWORK_STALL_TICKER_THREAD
 }
 
@@ -4176,6 +4187,20 @@ void CCryAction::StopNetworkStallTicker()
 
         m_pNetworkStallTickerThread = nullptr;
 
+        if (gEnv && gEnv->pNetwork)
+        {
+            gEnv->pNetwork->SyncWithGame(eNGS_DenyMinimalUpdate);
+        }
+    }
+    
+#else   ///<  When the network stall ticker thread is disabled, tick GridMate from the main thread during level loading.
+    if (m_networkStallTickerReferences > 0)
+    {
+        m_networkStallTickerReferences--;
+    }
+
+    if (m_networkStallTickerReferences == 0)
+    {
         if (gEnv && gEnv->pNetwork)
         {
             gEnv->pNetwork->SyncWithGame(eNGS_DenyMinimalUpdate);

@@ -116,6 +116,7 @@ SRenderThread::SRenderThread()
     m_nRenderThreadLoading = 0;
     m_pThreadLoading = 0;
     m_pLoadtimeCallback = 0;
+    m_pWaitFlushFinishedCallback = 0;
     m_bEndFrameCalled = false;
     m_bBeginFrameCalled = false;
     m_bQuitLoading = false;
@@ -3525,6 +3526,11 @@ void SRenderThread::WaitFlushFinishedCond()
             // We should not attempt to wait for the render thread to signal us -
             // we force signal the flush condition to exit out of this wait loop.
             m_nFlush = 0;
+        }
+
+        if (m_pWaitFlushFinishedCallback)
+        {
+            m_pWaitFlushFinishedCallback->LoadtimeUpdate(iTimer->GetFrameTime());
         }
 #else
         m_FlushFinishedCondition.Wait(m_LockFlushNotify);

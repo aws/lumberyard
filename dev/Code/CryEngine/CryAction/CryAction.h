@@ -526,7 +526,10 @@ private:
     //-- Network Stall ticker thread
 #ifdef USE_NETWORK_STALL_TICKER_THREAD
     CNetworkStallTickerThread* m_pNetworkStallTickerThread;
-    uint32                                              m_networkStallTickerReferences;
+    uint32 m_networkStallTickerReferences;
+    
+#else   ///< When the network stall ticker thread is disabled, tick GridMate from the main thread during level loading.
+    uint32 m_networkStallTickerReferences;
 #endif // #ifdef USE_NETWORK_STALL_TICKER_THREAD
 
     // Console Variables with some CryAction as owner

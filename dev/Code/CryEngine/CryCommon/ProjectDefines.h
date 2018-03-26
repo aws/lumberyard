@@ -278,7 +278,13 @@ typedef uint32 vtx_idx;
 // #define PARTICLE_MOTION_BLUR
 
 // a special ticker thread to run during load and unload of levels
+/* 
+    Disabled network stall ticker thread, as it's causing crashes during level loading. 
+    For example, some entities in the level are networked, and call RPCs from Lua OnActivate() function. 
+    These RPCs would then be processed by the net stall ticker thread, effectively running Lua
+    from the main and net ticker thread simultaneously, leading to data corruption and crashes.
 #define USE_NETWORK_STALL_TICKER_THREAD
+*/
 
 #if !defined(MOBILE)
 //---------------------------------------------------------------------

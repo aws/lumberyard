@@ -220,17 +220,8 @@ private:
 
     ENGINE_API static CNameTableR* GetNameTable()
     {
-        static CNameTableR* ms_table;
-        ScopedSwitchToGlobalHeap globalHeapScope;
-        // Note: can not use a 'static CNameTable sTable' here, because that
-        // implies a static destruction order dependency - the name table is
-        // accessed from static destructor calls.
-
-        if (ms_table == NULL)
-        {
-            ms_table = new CNameTableR();
-        }
-        return ms_table;
+        static CNameTableR ms_table;
+        return &ms_table;
     }
 
     SNameEntry* _entry(const char* pBuffer) const

@@ -107,6 +107,7 @@ namespace LmbrCentral
     {
     public:
         virtual ICharacterInstance* GetCharacterInstance() = 0;
+        virtual void SetSkinMaterial(const AZStd::string&) = 0;
     };
 
     using SkinnedMeshComponentRequestBus = AZ::EBus<SkinnedMeshComponentRequests>;

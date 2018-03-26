@@ -757,6 +757,43 @@ namespace LmbrCentral
         }
     }
 
+    void SkinnedMeshComponentRenderNode::SetSkinMaterial(AZStd::string const& materialOverride)
+    {
+        if (gEnv && gEnv->p3DEngine && gEnv->p3DEngine->GetMaterialManager() && gEnv->p3DEngine->GetMaterialManager())
+        {
+            auto material = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(materialOverride.c_str());
+            if (material)
+            {
+                // Get the attachments for the character
+                if (m_characterInstance)
+                {
+                    auto attachmentManager = m_characterInstance->GetIAttachmentManager();
+                    if (attachmentManager)
+                    {
+                        for (int32 attachmentIndex = 0; attachmentIndex < attachmentManager->GetAttachmentCount(); ++attachmentIndex)
+                        {
+                            auto attachment = attachmentManager->GetInterfaceByIndex(attachmentIndex);
+                            if (attachment && attachment->GetType() == CA_SKIN)
+                            {
+                                // This is a skin attachment so set all the lods
+                                auto attachmentObject = attachment->GetIAttachmentObject();
+                                if (attachmentObject)
+                                {
+                                    for (uint32 lod = 0; lod <= SMeshLodInfo::s_nMaxLodCount; ++lod)
+                                    {
+                                        attachmentObject->SetReplacementMaterial(material, lod);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            AZ_Warning("MeshComponent", material, "Failed to load override material \"%s\".", materialOverride.c_str());
+        }
+    }
+
     /*IRenderNode*/ _smart_ptr<IMaterial> SkinnedMeshComponentRenderNode::GetMaterial(Vec3* pHitPos /*= nullptr*/)
     {
         if (m_materialOverride)
@@ -884,6 +921,11 @@ namespace LmbrCentral
     ICharacterInstance* SkinnedMeshComponent::GetCharacterInstance()
     {
         return m_skinnedMeshRenderNode.GetEntityCharacter();
+    }
+
+    void SkinnedMeshComponent::SetSkinMaterial(const AZStd::string& materialOverride)
+    {
+        m_skinnedMeshRenderNode.SetSkinMaterial(materialOverride);
     }
 
     bool SkinnedMeshComponent::GetVisibility()

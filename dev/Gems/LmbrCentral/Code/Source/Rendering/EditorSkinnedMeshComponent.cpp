@@ -339,6 +339,11 @@ namespace LmbrCentral
         return m_mesh.GetEntityCharacter();
     }
 
+    void EditorSkinnedMeshComponent::SetSkinMaterial(const AZStd::string& materialOverride)
+    {
+        m_mesh.SetSkinMaterial(materialOverride);
+    }
+
     bool EditorSkinnedMeshComponent::GetVisibility()
     {
         return m_mesh.GetVisible();

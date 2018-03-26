@@ -64,7 +64,10 @@ namespace AzRHI
 #endif
 
             Vec4* mappedData = reinterpret_cast<Vec4*>(MapConstantBuffer(shaderClass, shaderSlot, registerCountMax));
-            SIMDCopy(&mappedData[registerOffset], constants, registerCount);
+            if (mappedData)
+            {
+                SIMDCopy(&mappedData[registerOffset], constants, registerCount);
+            }
         }
 
         inline void WriteConstants(

@@ -92,7 +92,7 @@ namespace AzToolsFramework
             if (EditorPendingCompositionRequestBus::FindFirstHandler(GetEntityId()))
             {
                 // There's already a pending component on this bus. Ignore for now (warning below should turn into assert when invalid component setup issue causing this gets fixed)
-                AZ_Warning("EditorPendingCompositionComponent", false, "Entity with id %llu has multiple pending components on it. Ignoring duplicate component.", GetEntityId());
+                AZ_Warning("EditorPendingCompositionComponent", false, "Entity (%s) with id %llu has multiple pending components on it. Ignoring duplicate component.", GetEntity()->GetName().c_str(), GetEntityId());
                 return;
             }
 

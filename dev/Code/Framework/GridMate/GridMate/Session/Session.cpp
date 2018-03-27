@@ -2077,7 +2077,9 @@ GridMember::OnReplicaChangeOwnership(const ReplicaContext& rc)
 bool
 GridMember::OnKick(AZ::u8 reason, const RpcContext& rc)
 {
-    if (rc.m_sourcePeer == m_session->GetHost()->GetIdCompact())    //Only the host can kick
+    //  Null check m_session and m_session->GetHost(). 
+    //  2 Kick messages in quick succession can cause this to crash otherwise.
+    if (m_session && m_session->GetHost() && rc.m_sourcePeer == m_session->GetHost()->GetIdCompact())    //Only the host can kick
     {
         EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnMemberKicked, m_session, this);
         EBUS_EVENT_ID(m_session->GetGridMate(), SessionEventBus, OnMemberKicked, m_session, this, reason);
@@ -2090,7 +2092,6 @@ GridMember::OnKick(AZ::u8 reason, const RpcContext& rc)
         return true; // this is called only on the master
     }
     return false;
-
 }
 
 //=========================================================================

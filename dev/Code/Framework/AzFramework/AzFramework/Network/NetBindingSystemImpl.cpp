@@ -607,8 +607,11 @@ namespace AzFramework
                 }
 
                 NetBindingHandlerInterface* binding = GetNetBindingHandler(entity);
-                AZ_Assert(binding, "Can't find NetBindingHandlerInterface!");
-                binding->BindToNetwork(bindTo);
+                AZ_Assert(binding, "Can't find NetBindingComponent on entity %llu (%s)!", static_cast<AZ::u64>(entity->GetId()), entity->GetName().c_str());
+                if (binding)
+                {
+                    binding->BindToNetwork(bindTo);
+                }
 
                 entity->Activate();
                 success = true;

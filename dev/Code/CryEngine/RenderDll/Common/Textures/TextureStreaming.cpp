@@ -275,25 +275,26 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
         {
 
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
-
-            ID3D11CommandList* pCmdList = tp->StreamCreateDeferred(m_nHigherUploadedMip, m_nLowerUploadedMip, m_pNewPoolItem, tp->m_pFileTexMips->m_pPoolItem);
-
-            if (pCmdList)
+            if (tp->m_pFileTexMips->m_pPoolItem)    ///< Don't upload if the source is nullptr it'll just cause an exception
             {
-                m_pCmdList = pCmdList;
-                m_bValidLowMips = true;
+                ID3D11CommandList* pCmdList = tp->StreamCreateDeferred(m_nHigherUploadedMip, m_nLowerUploadedMip, m_pNewPoolItem, tp->m_pFileTexMips->m_pPoolItem);
 
-                for (int i = 0, c = m_nLowerUploadedMip - m_nHigherUploadedMip + 1; i != c; ++i)
+                if (pCmdList)
                 {
-                    m_mips[i].m_bExpanded = false;
-                }
+                    m_pCmdList = pCmdList;
+                    m_bValidLowMips = true;
 
-                if (CTexture::s_bStreamDontKeepSystem)
-                {
-                    tp->StreamReleaseMipsData(m_nHigherUploadedMip, m_nLowerUploadedMip);
+                    for (int i = 0, c = m_nLowerUploadedMip - m_nHigherUploadedMip + 1; i != c; ++i)
+                    {
+                        m_mips[i].m_bExpanded = false;
+                    }
+
+                    if (CTexture::s_bStreamDontKeepSystem)
+                    {
+                        tp->StreamReleaseMipsData(m_nHigherUploadedMip, m_nLowerUploadedMip);
+                    }
                 }
             }
-
 #endif
 
 #if defined(TEXSTRM_ASYNC_TEXCOPY)

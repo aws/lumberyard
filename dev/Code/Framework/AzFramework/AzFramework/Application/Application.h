@@ -200,6 +200,8 @@ namespace AzFramework
 
         virtual const char* GetCurrentConfigurationName() const;
 
+        void PumpWarning();
+
         void CreateReflectionManager() override;
 
         AzFramework::CommandLine m_commandLine;

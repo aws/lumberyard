@@ -21,6 +21,7 @@
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Serialization/ObjectStreamComponent.h>
@@ -630,6 +631,24 @@ namespace AzFramework
 #endif
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Not pumping the message queue frequently is bad so warn if this happens
+    void Application::PumpWarning()
+    {
+        const AZ::u32 warningInterval = 500;
+
+        static AZStd::chrono::system_clock::time_point lastCallTime = AZStd::chrono::system_clock::now();
+        AZStd::chrono::system_clock::time_point time = AZStd::chrono::system_clock::now();
+
+        AZ::u32 elapsedTime = AZStd::chrono::milliseconds(time - lastCallTime).count();
+
+        if (elapsedTime > 0 && elapsedTime > warningInterval)
+        {
+            AZ_Warning("System", false, "PumpWindowMessage not called for %.2fms", elapsedTime / 1000.0f);
+        }
+        lastCallTime = time;
+    }
+
     void Application::CreateReflectionManager()
     {
         ComponentApplication::CreateReflectionManager();
@@ -731,6 +750,7 @@ namespace AzFramework
     {
         if (m_pimpl)
         {
+            PumpWarning();
             m_pimpl->PumpSystemEventLoopOnce();
         }
     }
@@ -740,6 +760,7 @@ namespace AzFramework
     {
         if (m_pimpl)
         {
+            PumpWarning();
             m_pimpl->PumpSystemEventLoopUntilEmpty();
         }
     }

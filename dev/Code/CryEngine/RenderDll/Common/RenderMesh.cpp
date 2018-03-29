@@ -62,14 +62,15 @@ namespace
         bool m_doConditionalLock = false;
     };
 
-    static inline void RelinkTail(util::list<CRenderMesh>& instance, util::list<CRenderMesh>& list)
+    static inline void RelinkTail(util::list<CRenderMesh>& instance, util::list<CRenderMesh>& list, int threadId) ///< Added thread id parameter so we can determine if we're modifying the list for the fill thread (the render thread must lock for this case as worker threads are also using it)
     {
         // Conditional lock logic - If we are any thread that is not the render thread, do the lock because
         // they are operating on the m_nFillThreadID set of data. The render thread should be the only thread
         // accessing the m_nProcessThreadID index of the data.
         // If r_multithreaded == 0 (for example when in the Editor), then always do the lock because the data is no longer double buffered.
         bool isRenderThread = gRenDev->m_pRT->IsRenderThread();
-        bool doConditionalLock = !isRenderThread || (isRenderThread && (CRenderer::CV_r_multithreaded == 0));
+        bool doConditionalLock = !isRenderThread || threadId == gRenDev->m_pRT->CurThreadFill() || CRenderer::CV_r_multithreaded == 0;  ///< Always lock if the thread id is the current fill thread as other threads can access it
+
         CConditionalLock lock(CRenderMesh::m_sLinkLock, doConditionalLock);
         instance.relink_tail(&list);
     }
@@ -663,7 +664,7 @@ void* CRenderMesh::LockVB(int nStream, uint32 nFlags, int nVerts, int* nStride, 
     if (nFlags == FSL_SYSTEM_CREATE)
     {
 lSysCreate:
-        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
         if (!MS->m_pUpdateData)
         {
             uint32 nSize = GetStreamSize(nStream);
@@ -686,7 +687,7 @@ lSysCreate:
     if (nFlags == FSL_SYSTEM_UPDATE)
     {
 lSysUpdate:
-        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
         if (!MS->m_pUpdateData)
         {
             MESSAGE_VIDEO_BUFFER_ACC_ATTEMPT;
@@ -708,7 +709,7 @@ lSysUpdate:
         {
             return NULL;
         }
-        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId]);
+        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId], threadId);
         if (MS->m_pUpdateData)
         {
             pD = (byte*)MS->m_pUpdateData;
@@ -723,7 +724,7 @@ lSysUpdate:
         {
             return NULL;
         }
-        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId]);
+        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId], threadId);
 #   if BUFFER_ENABLE_DIRECT_ACCESS == 0
         if (gRenDev->m_pRT && gRenDev->m_pRT->IsMultithreaded())
         {
@@ -767,7 +768,7 @@ lSysUpdate:
         if ((nVB != ~0u && (MS->m_nFrameCreate != nFrame || MS->m_nElements != m_nVerts)) || !CRenderer::CV_r_buffer_enable_lockless_updates)
 #   endif
         goto lSysCreate;
-        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
         if (nVB == ~0u && !CreateVidVertices(nStream))
         {
             RT_AllocationFailure("Create VB-Stream", GetStreamSize(nStream, m_nVerts));
@@ -834,7 +835,7 @@ vtx_idx* CRenderMesh::LockIB(uint32 nFlags, int nOffset, int nInds)
     if (nFlags == FSL_SYSTEM_CREATE)
     {
 lSysCreate:
-        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
         if (!m_IBStream.m_pUpdateData)
         {
             uint32 nSize = m_nInds * sizeof(vtx_idx);
@@ -857,7 +858,7 @@ lSysCreate:
     if (nFlags == FSL_SYSTEM_UPDATE)
     {
 lSysUpdate:
-        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
         if (!m_IBStream.m_pUpdateData)
         {
             MESSAGE_VIDEO_BUFFER_ACC_ATTEMPT;
@@ -875,7 +876,7 @@ lSysUpdate:
     }
     else if (nFlags == FSL_READ)
     {
-        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId]);
+        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId], threadId);
         if (m_IBStream.m_pUpdateData)
         {
             pD = (byte*)m_IBStream.m_pUpdateData;
@@ -886,7 +887,7 @@ lSysUpdate:
 
     if (nFlags == (FSL_READ | FSL_VIDEO))
     {
-        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId]);
+        RelinkTail(m_Dirty[threadId], m_MeshDirtyList[threadId], threadId);
         buffer_handle_t nIB = m_IBStream.m_nID;
         if (nIB == ~0u)
         {
@@ -928,7 +929,7 @@ lSysUpdate:
         if ((nIB != ~0u && (m_IBStream.m_nFrameCreate || m_IBStream.m_nElements != m_nInds)) || !CRenderer::CV_r_buffer_enable_lockless_updates)
 #   endif
         goto lSysCreate;
-        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
         if (m_IBStream.m_nID == ~0u)
         {
             size_t bufferSize = m_nInds * sizeof(vtx_idx);
@@ -4934,7 +4935,7 @@ void CRenderMesh::CreateRemappedBoneIndicesPair(const uint pairGuid, const TRend
     UnlockIndexStream();
 
     m_CreatedBoneIndices[threadId].push_back(SBoneIndexStreamRequest(pairGuid, remappedIndices));
-    RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+    RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
 }
 
 
@@ -5018,7 +5019,7 @@ void CRenderMesh::CreateRemappedBoneIndicesPair(const DynArray<JointIdType>& arr
     UnlockIndexStream();
 
     m_CreatedBoneIndices[threadId].push_back(SBoneIndexStreamRequest(pairGuid, remappedIndices));
-    RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+    RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
 }
 
 void CRenderMesh::ReleaseRemappedBoneIndicesPair(const uint pairGuid)
@@ -5050,7 +5051,7 @@ void CRenderMesh::ReleaseRemappedBoneIndicesPair(const uint pairGuid)
     if (deleted != ~0u)
     {
         m_DeletedBoneIndices[threadId].push_back(pairGuid);
-        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+        RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
     }
 
     // Check for created but not yet remapped bone indices
@@ -5072,7 +5073,7 @@ void CRenderMesh::ReleaseRemappedBoneIndicesPair(const uint pairGuid)
         if (deleted != ~0u)
         {
             m_DeletedBoneIndices[threadId].push_back(pairGuid);
-            RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId]);
+            RelinkTail(m_Modified[threadId], m_MeshModifiedList[threadId], threadId);
         }
     }
 }

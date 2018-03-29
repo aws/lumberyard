@@ -340,10 +340,21 @@ got_unproj:
             else if (pentlist[i]->m_parts[0].flags & collider_flags && !IgnoreCollision(m_collisionClass, pentlist[i]->m_collisionClass))
             {
                 CLivingEntity* pent = (CLivingEntity*)pentlist[i];
-                if (fabs_tpl((pos.z + hCollider - hPivot) - (pent->m_pos.z + pent->m_hCyl - pent->m_hPivot)) < newdim.z + pent->m_size.z &&
-                    len2(vector2df(pos) - vector2df(pent->m_pos)) < sqr(newdim.x + pent->m_size.x))
+                float myColliderHalfHeight = newdim.z + (newdim.x * bCapsule);
+                float theirColliderHalfHeight = pent->m_size.z + (pent->m_size.x * pent->m_bUseCapsule);
+                float verticalCenterOfMyCollider = pos.z + hCollider - hPivot;
+                float verticalCenterOfTheirCollider = pent->m_pos.z + pent->m_hCyl - pent->m_hPivot;
+                float distanceBetweenVerticalCentersOfColliders = fabs_tpl(verticalCenterOfMyCollider - verticalCenterOfTheirCollider);
+                Vec2 planarCenterToCenterOfColliders = vector2df(pent->m_pos) - vector2df(pos);
+                float squareDistanceBetweenPlanarCentersOfColliders = len2(planarCenterToCenterOfColliders);
+                if (distanceBetweenVerticalCentersOfColliders < myColliderHalfHeight + theirColliderHalfHeight &&
+                    squareDistanceBetweenPlanarCentersOfColliders < sqr(newdim.x + pent->m_size.x))
                 {
-                    return 1E10;
+                    // Pick the best direction to unproject in the XY plane
+                    Vec2 safeUnprojDir = Vec2(cry_random(-1.0f, 1.0f), cry_random(-1.0f, 1.0f)).GetNormalizedSafe(Vec2(0.0f, 1.0f));
+                    dirUnproj = planarCenterToCenterOfColliders.GetNormalizedSafe(safeUnprojDir);
+                    float unprojAmountNeeded = newdim.x + pent->m_size.x - sqrt(squareDistanceBetweenPlanarCentersOfColliders);
+                    return unprojAmountNeeded;
                 }
             }
         }
@@ -359,7 +370,7 @@ int CLivingEntity::SetParams(const pe_params* _params, int bThreadSafe)
     {
         if (_params->type == pe_player_dimensions::type_id && (unsigned int)m_iSimClass < 7u)
         {
-            int iter = 0, iCaller = get_iCaller();
+            int iter = 30, iCaller = get_iCaller();
             WriteLockCond lockc(m_pWorld->m_lockCaller[iCaller], iCaller == MAX_PHYS_THREADS);
             float hCyl, hPivot;
             Vec3 size, pos;
@@ -378,15 +389,19 @@ int CLivingEntity::SetParams(const pe_params* _params, int bThreadSafe)
             float unproj = 0, step;
             if ((heightCollider != hCyl || sizeCollider.x != size.x || sizeCollider.z != size.z) && m_pWorld && m_bActive)
             {
+                // AZ_TracePrintf("Unproj", "Unprojecting start");
                 do
                 {
                     unproj += (step = UnprojectionNeeded(pos + params->dirUnproj * unproj, qrot, heightCollider,
-                                       hPivot, sizeCollider, m_bUseCapsule, params->dirUnproj, iCaller)) * 1.01f;
-                } while (unproj < params->maxUnproj && ++iter < 8 && step > 0);
-                if (unproj > params->maxUnproj || iter == 8)
+                        hPivot, sizeCollider, m_bUseCapsule, params->dirUnproj, iCaller)) * 1.01f;
+                    // AZ_TracePrintf("Unproj", "Unprojecting res %d, step %f, unproj %f", iter, step, unproj);
+                } while (unproj < params->maxUnproj && --iter > 0 && step > 0);
+                if (unproj > params->maxUnproj || iter == 0)
                 {
+                    // AZ_TracePrintf("Unproj", "Unprojecting fail");
                     return 0;
                 }
+                // AZ_TracePrintf("Unproj", "Unprojecting done");
             }
         }
         return 1;
@@ -471,19 +486,23 @@ int CLivingEntity::SetParams(const pe_params* _params, int bThreadSafe)
         }
 
         float unproj = 0, step;
-        res = 0;
+        res = 30;   ///< Upped the number of allowed iterations, and made the iterator count backwards to avoid repeated magic numbers
         if ((params->heightCollider != m_hCyl || params->heightPivot != m_hPivot || params->sizeCollider.x != m_size.x || params->sizeCollider.z != m_size.z ||
              params->bUseCapsule != m_bUseCapsule) && m_pWorld && m_bActive)
         {
+            // AZ_TracePrintf("Unproj", "Unprojecting start");
             do
             {
                 unproj += (step = UnprojectionNeeded(m_pos + params->dirUnproj * unproj, m_qrot, params->heightCollider,
-                                   params->heightPivot, params->sizeCollider, params->bUseCapsule, params->dirUnproj)) * 1.01f;
-            } while (unproj < params->maxUnproj && ++res < 8 && step > 0);
-            if (unproj > params->maxUnproj || res == 8)
+                    params->heightPivot, params->sizeCollider, params->bUseCapsule, params->dirUnproj)) * 1.01f;
+                // AZ_TracePrintf("Unproj", "Unprojecting res %d, step %f, unproj %f", res, step, unproj);
+            } while (unproj < params->maxUnproj && --res > 0 && step > 0);      
+            if (unproj > params->maxUnproj || res == 0)
             {
+                //AZ_TracePrintf("Unproj", "Unprojecting fail");
                 return 0;
             }
+            AZ_TracePrintf("Unproj", "Unprojecting done");
         }
 
         {

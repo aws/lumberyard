@@ -1896,12 +1896,19 @@ void UiTextComponent::Init()
         return;
     }
 
-    // if the font is not the one specified by the path (e.g. after loading using serialization)
-    if (gEnv->pCryFont->GetFontFamily(m_fontFilename.GetAssetPath().c_str()) != m_fontFamily)
+    //  The default font is registered as 'default-ui', but some come from the asset system here with 'fonts/' prefixed, 
+    //  which causes a mismatch and a memory leak. Slightly hacky, but we need to handle this special case here.
+    AZStd::string fontFileName = m_fontFilename.GetAssetPath();
+    if (fontFileName == "fonts/default-ui.xml")
     {
-        ChangeFont(m_fontFilename.GetAssetPath());
+        fontFileName = "default-ui";
     }
 
+    //  if the font is not the one specified by the path (e.g. after loading using serialization)
+    if (gEnv->pCryFont->GetFontFamily(fontFileName.c_str()) != m_fontFamily)
+    {
+        ChangeFont(fontFileName);
+    }
     // A call to prepare text is required here to build the draw batches for display. When
     // adding a text component to a pre-existing element, the rect may or may not change,
     // so we can't rely on that to prepare the text for display. Text components with fonts

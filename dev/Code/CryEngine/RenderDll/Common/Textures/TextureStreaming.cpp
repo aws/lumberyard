@@ -1638,8 +1638,11 @@ void CTexture::InitStreaming()
     if (CRenderer::CV_r_texturesstreaming)
     {
         int nMinTexStreamPool = 192;
-        int nMaxTexStreamPool = 1536;
-
+#ifdef NULL_RENDERER
+        int nMaxTexStreamPool = 8192; //< Dedicated server uses RenderNULL, which doesn't report any available memory via gRenDev->m_MaxTextureMemory, so use a magic number. It's ok to use it here, as a dedicated server will not load textures anyway.
+#else
+        int nMaxTexStreamPool = (gRenDev->m_MaxTextureMemory / 1024 / 1024); ///< Removed arbitrary limit.  Asserts/Warns on physical and proportional limits.
+#endif
 #if defined(WIN32) && !defined(WIN64)
         if (!pEnv->pi.win64Bit)  // 32 bit executable
         {
@@ -1677,6 +1680,10 @@ void CTexture::InitStreaming()
                 pICVarTexRes->Set(valTexRes);
             }
         }
+
+        // Asserts/Warns on physical and proportional limits
+        AZ_Assert(CRenderer::CV_r_TexturesStreamPoolSize < nMaxTexStreamPool, "Error!  You are attempting to assign more GPU memory than there is available on the card for texture streaming!");
+        AZ_Warning("TextureStreaming", CRenderer::CV_r_TexturesStreamPoolSize < (nMaxTexStreamPool * 0.5f), "Warning!  You are assigning more than 50 percent of total available GPU memory to texture streaming!");
 
         CRenderer::CV_r_TexturesStreamPoolSize = clamp_tpl(CRenderer::CV_r_TexturesStreamPoolSize, nMinTexStreamPool, nMaxTexStreamPool);
 

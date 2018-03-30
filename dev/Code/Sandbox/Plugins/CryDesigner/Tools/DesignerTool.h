@@ -54,7 +54,6 @@ public:
 
     void Display(DisplayContext& dc) override;
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
-
     virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
 
     void OnManipulatorDrag(CViewport* view, ITransformManipulator* pManipulator, QPoint& p0, QPoint& p1, const Vec3& value) override;

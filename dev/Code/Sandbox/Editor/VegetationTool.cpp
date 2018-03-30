@@ -71,11 +71,18 @@ CVegetationTool::CVegetationTool()
 
     m_bPaintingMode = false;
     m_bPlaceMode = true;
+    m_bTabletMode = false;
 
     m_opMode = OPMODE_NONE;
 
     m_isAffectedByBrushes = false;
     m_instanceLimitMessageActive = false;
+
+    m_bPressureSize = false;
+    m_bPressureDensity = true;
+    m_bPressureRadius = false;
+
+    m_activePenPressure = 0.0f;
 
     SetStatusText("Click to Place or Remove Vegetation");
 }
@@ -145,7 +152,7 @@ void CVegetationTool::RefreshPanel(bool isReload)
 
 //////////////////////////////////////////////////////////////////////////
 // Specific mouse events handlers.
-bool CVegetationTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point)
+bool CVegetationTool::OnDeviceDown(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet)
 {
     m_mouseDownPos = point;
 
@@ -165,12 +172,11 @@ bool CVegetationTool::OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& 
         }
 
         GetIEditor()->BeginUndo();
-        view->CaptureMouse();
         // If the paint fails we need to handle the button release ourselves because
         // the failure message box will steal the mouse events
-        if (!PaintBrush())
+        if (!PaintBrush(tablet))
         {
-            OnLButtonUp(view, nFlags, point);
+            OnDeviceUp(view, nFlags, point, tablet);
         }
     }
     else
@@ -249,7 +255,7 @@ bool CVegetationTool::IsThingSelected(CVegetationInstance* pObj)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CVegetationTool::OnLButtonUp(CViewport* view, UINT nFlags, const QPoint& point)
+bool CVegetationTool::OnDeviceUp(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet)
 {
     if (GetIEditor()->IsUndoRecording())
     {
@@ -292,7 +298,7 @@ bool CVegetationTool::OnLButtonUp(CViewport* view, UINT nFlags, const QPoint& po
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CVegetationTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point)
+bool CVegetationTool::OnDeviceMove(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet)
 {
     if (m_opMode == OPMODE_NONE)
     {
@@ -302,7 +308,7 @@ bool CVegetationTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& po
     {
         if (nFlags & MK_LBUTTON)
         {
-            PaintBrush();
+            PaintBrush(tablet);
         }
     }
     else if (m_opMode == OPMODE_SELECT)
@@ -358,6 +364,9 @@ bool CVegetationTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& po
 //////////////////////////////////////////////////////////////////////////
 bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
+    if (m_bTabletMode)
+        return false;
+
     m_isAffectedByBrushes = false;
     GetSelectedObjects(m_selectedObjects);
     if (!m_selectedObjects.empty() && m_selectedObjects[0]->IsAffectedByBrushes())
@@ -376,15 +385,15 @@ bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
     bool bProcessed = false;
     if (event == eMouseLDown)
     {
-        bProcessed = OnLButtonDown(view, flags, point);
+        bProcessed = OnDeviceDown(view, flags, point, STabletContext());
     }
     else if (event == eMouseLUp)
     {
-        bProcessed = OnLButtonUp(view, flags, point);
+        bProcessed = OnDeviceUp(view, flags, point, STabletContext());
     }
     else if (event == eMouseMove)
     {
-        bProcessed = OnMouseMove(view, flags, point);
+        bProcessed = OnDeviceMove(view, flags, point, STabletContext());
     }
 
     GetIEditor()->SetMarkerPosition(m_pointerPos);
@@ -405,6 +414,65 @@ bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
 
     m_prevMousePos = point;
 
+    // Not processed.
+    return bProcessed;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CVegetationTool::TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags)
+{
+    m_isAffectedByBrushes = false;
+    GetSelectedObjects(m_selectedObjects);
+    if (!m_selectedObjects.empty() && m_selectedObjects[0]->IsAffectedByBrushes())
+    {
+        m_isAffectedByBrushes = true;
+    }
+
+    bool mouseCollidingWithTerrain = false;
+    bool mouseCollidingWithObject = false;
+
+    m_pointerPos = view->ViewToWorld(point, &mouseCollidingWithTerrain, !m_isAffectedByBrushes, m_isAffectedByBrushes, false /* collideWithRenderMesh */, &mouseCollidingWithObject);
+    m_mousePos = point;
+
+    m_mouseOverPaintableSurface = mouseCollidingWithTerrain || mouseCollidingWithObject;
+
+    bool bProcessed = false;
+    if (event == eTabletPress)
+    {
+        m_bTabletMode = true;
+        m_activePenPressure = tabletContext.m_pressure;
+        bProcessed = OnDeviceDown(view, flags, point, tabletContext);
+    }
+    else if (event == eTabletRelease)
+    {
+        m_bTabletMode = false;
+        m_activePenPressure = 0.0;
+        bProcessed = OnDeviceUp(view, flags, point, tabletContext);
+    }
+    else if (event == eTabletMove)
+    {
+        bProcessed = OnDeviceMove(view, flags, point, tabletContext);
+        m_activePenPressure = tabletContext.m_pressure;
+    }
+
+    GetIEditor()->SetMarkerPosition(m_pointerPos);
+
+    if (flags & MK_CONTROL)
+    {
+        //swap x/y
+        int unitSize = GetIEditor()->GetHeightmap()->GetUnitSize();
+        float slope = GetIEditor()->GetHeightmap()->GetSlope(m_pointerPos.y / unitSize, m_pointerPos.x / unitSize);
+        char szNewStatusText[512];
+        sprintf_s(szNewStatusText, "Slope: %g", slope);
+        GetIEditor()->SetStatusText(szNewStatusText);
+    }
+    else
+    {
+        GetIEditor()->SetStatusText("Shift: Place New  Ctrl: Add To Selection  Alt: Scale Selected  Alt+Ctrl: Rotate Selected DEL: Delete Selected");
+    }
+
+    m_prevMousePos = point;
+    
     // Not processed.
     return bProcessed;
 }
@@ -524,6 +592,11 @@ void CVegetationTool::Display(DisplayContext& dc)
         else
         {
             dc.DrawTerrainCircle(m_pointerPos, m_brushRadius, 0.2f);
+            if (m_activePenPressure != 0.0f && m_bPressureRadius)
+            {
+                dc.SetColor(0, 0, 1, 1);
+                dc.DrawTerrainCircle(m_pointerPos, m_activePenPressure * m_brushRadius, 0.2f);
+            }
         }
 
         float col[4] = { 1, 1, 1, 0.8f };
@@ -659,7 +732,7 @@ void CVegetationTool::GetSelectedObjects(std::vector<CVegetationObject*>& object
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CVegetationTool::PaintBrush()
+bool CVegetationTool::PaintBrush(const STabletContext& tablet)
 {
     if (!m_mouseOverPaintableSurface)
     {
@@ -667,20 +740,27 @@ bool CVegetationTool::PaintBrush()
     }
 
     GetSelectedObjects(m_selectedObjects);
+    float brushRadius = m_brushRadius * (m_bPressureRadius ? tablet.m_pressure : 1.0f);
 
-    QRect rc(QPoint(m_pointerPos.x - m_brushRadius, m_pointerPos.y - m_brushRadius), 
-             QSize(m_brushRadius * 2, m_brushRadius * 2));
+    QRect rc(QPoint(m_pointerPos.x - brushRadius, m_pointerPos.y - brushRadius),
+             QSize(brushRadius * 2, brushRadius * 2));
 
     AABB updateRegion;
-    updateRegion.min = m_pointerPos - Vec3(m_brushRadius, m_brushRadius, m_brushRadius);
-    updateRegion.max = m_pointerPos + Vec3(m_brushRadius, m_brushRadius, m_brushRadius);
+    updateRegion.min = m_pointerPos - Vec3(brushRadius, brushRadius, brushRadius);
+    updateRegion.max = m_pointerPos + Vec3(brushRadius, brushRadius, brushRadius);
     bool success = true;
     if (m_bPlaceMode)
     {
         for (int i = 0; i < m_selectedObjects.size(); i++)
         {
             int numInstances = m_selectedObjects[i]->GetNumInstances();
-            success = m_vegetationMap->PaintBrush(rc, true, m_selectedObjects[i], &m_pointerPos);
+            float densityMod = m_bPressureDensity ? 1.0f - tablet.m_pressure : 1.0f;
+            float sizeMod = m_bPressureSize ? tablet.m_pressure : 1.0f;
+            //TODO: get minimum size from ui?
+            if (sizeMod < 0.1)
+                sizeMod = 0.1;
+            CVegetationBrushModulation modulate(densityMod, sizeMod);
+            success = m_vegetationMap->PaintBrush(rc, true, m_selectedObjects[i], &m_pointerPos, modulate);
             // If number of instances changed.
             if (numInstances != m_selectedObjects[i]->GetNumInstances() && m_panel)
             {

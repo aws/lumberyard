@@ -495,9 +495,10 @@ protected:
 
     // called to process mouse callback inside the viewport.
     virtual bool MouseCallback(EMouseEvent event, const QPoint& point, Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons = Qt::NoButton);
-
+    virtual bool TabletCallback(ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, Qt::KeyboardModifiers modifiers);
     void ProcessRenderLisneters(DisplayContext& rstDisplayContext);
 
+    void tabletEvent(QTabletEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
@@ -507,7 +508,6 @@ protected:
     void keyReleaseEvent(QKeyEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void leaveEvent(QEvent* event) override;
-
     void paintEvent(QPaintEvent* event) override;
 
     virtual void OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons, const QPoint& point);
@@ -523,6 +523,7 @@ protected:
     virtual void OnRButtonDblClk(Qt::KeyboardModifiers modifiers, const QPoint& point);
     virtual void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
     virtual void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
+
 #if defined(AZ_PLATFORM_WINDOWS)
     void OnRawInput(UINT wParam, HRAWINPUT lParam);
 #endif

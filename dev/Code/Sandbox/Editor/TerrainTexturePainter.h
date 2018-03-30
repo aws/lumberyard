@@ -30,7 +30,7 @@ enum ETextureBrushType
 */
 struct CTextureBrush
 {
-    ETextureBrushType       type;                               // Type of this brush.
+    ETextureBrushType                   type;                   // Type of this brush.
     float                               radius;                 // Radius of brush in meters
     float                               colorHardness;          // Opacity of layer color in brush painting
     float                               detailHardness;         // Opacity of detail texture in brush painting
@@ -41,10 +41,15 @@ struct CTextureBrush
     bool                                bMaskByLayerSettings;   //
 
     float                               minRadius;              //
-    float                           maxRadius;                  //
-    ColorF                          m_cFilterColor;         //
+    float                               maxRadius;              //
+    ColorF                              m_cFilterColor;         //
     float                               m_fBrightness;          // used together with m_cFilterColor
-    uint32                          m_dwMaskLayerId;        // 0xffffffff if not used
+    uint32                              m_dwMaskLayerId;        // 0xffffffff if not used
+
+    bool                                bPressureRadius;         // pen pressure controls
+    bool                                bPressureOpacity;
+    bool                                bPressureIntensity;
+    bool                                bPressureBrightness;
 
     CTextureBrush()
     {
@@ -60,6 +65,10 @@ struct CTextureBrush
         m_dwMaskLayerId = 0xffffffff;
         m_cFilterColor = ColorF(1, 1, 1);
         m_fBrightness = 1.0f;
+        bPressureRadius = true;
+        bPressureIntensity = false;
+        bPressureOpacity = false;
+        bPressureBrightness = false;
     }
 };
 
@@ -79,6 +88,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override;
 
     // Key down.
     bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
@@ -91,7 +101,7 @@ public:
     void GetBrush(CTextureBrush& brush) const { brush = m_brush; };
 
     void Action_Flood();
-    void Action_Paint();
+    void Action_Paint(float pressure = 1.0f);
     void Action_PickLayerId();
 
     //Undo
@@ -104,7 +114,7 @@ public:
 
 
 private:
-    void PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood);
+    void PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood, float pressure = 1.0f);
     CLayer* GetSelectedLayer() const;
     static void Command_Activate();
 
@@ -114,6 +124,8 @@ private:
 
     //! Flag is true if painting mode. Used for Undo.
     bool m_bIsPainting;
+    // disable mouse input when tablet input is active
+    bool m_bInTabletMode = false;
 
     struct CUndoTPElement* m_pTPElem;
 
@@ -121,6 +133,9 @@ private:
     I3DEngine* m_3DEngine;
     IRenderer* m_renderer;
     CHeightmap* m_heightmap;
+
+    //current tablet pen pressure
+    float m_activePressure;
 
     static CTextureBrush m_brush;
 

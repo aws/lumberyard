@@ -182,6 +182,11 @@ CTerrainPainterPanel::CTerrainPainterPanel(CTerrainTexturePainter& tool, QWidget
     connect(m_ui->layerListView, &QListView::doubleClicked, this, &CTerrainPainterPanel::OnLayersDblClk);
     connect(m_ui->layerListView, &QListView::clicked, this, &CTerrainPainterPanel::OnLayersClick);
     connect(m_ui->layerFloodButton, &QPushButton::clicked, this, &CTerrainPainterPanel::OnFloodLayer);
+
+    connect(m_ui->pressureBrightness, &QCheckBox::clicked, this, &CTerrainPainterPanel::OnTabletSettings);
+    connect(m_ui->pressureRadius, &QCheckBox::clicked, this, &CTerrainPainterPanel::OnTabletSettings);
+    connect(m_ui->pressureIntensity, &QCheckBox::clicked, this, &CTerrainPainterPanel::OnTabletSettings);
+    connect(m_ui->pressureOpacity, &QCheckBox::clicked, this, &CTerrainPainterPanel::OnTabletSettings);
 }
 
 CTerrainPainterPanel::~CTerrainPainterPanel()
@@ -215,6 +220,11 @@ void CTerrainPainterPanel::SetBrush(CTextureBrush& br)
     m_ui->brushColorHardnessSlider->setValue(br.colorHardness * 100.0);
     m_ui->brushDetailHardnessSlider->setValue(br.detailHardness * 100.0);
     m_ui->brushBrightnessSlider->setValue(br.m_fBrightness * 255.0);
+
+    m_ui->pressureBrightness->setChecked(br.bPressureBrightness ? Qt::Checked : Qt::Unchecked);
+    m_ui->pressureOpacity->setChecked(br.bPressureOpacity? Qt::Checked : Qt::Unchecked);
+    m_ui->pressureRadius->setChecked(br.bPressureRadius ? Qt::Checked : Qt::Unchecked);
+    m_ui->pressureIntensity->setChecked(br.bPressureIntensity ? Qt::Checked : Qt::Unchecked);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -314,8 +324,6 @@ void CTerrainPainterPanel::UpdateTextureBrushSettings()
     m_tool.SetBrush(br);
 }
 
-
-
 void CTerrainPainterPanel::SetLayerMaskSettingsToLayer()
 {
     QSignalBlocker brushLayerAltitudeMinBlocker(m_ui->brushLayerAltitudeMin);
@@ -371,7 +379,6 @@ void CTerrainPainterPanel::SetLayerMaskSettingsToLayer()
     m_bIgnoreNotify = false;
 }
 
-
 void CTerrainPainterPanel::OnLayersDblClk()
 {
     GetIEditor()->OpenView(LyViewPane::TerrainTextureLayers);
@@ -381,7 +388,6 @@ void CTerrainPainterPanel::OnLayersClick()
 {
     SetLayerMaskSettingsToLayer();
 }
-
 
 void CTerrainPainterPanel::GetLayerMaskSettingsFromLayer()
 {
@@ -401,9 +407,6 @@ void CTerrainPainterPanel::GetLayerMaskSettingsFromLayer()
     GetIEditor()->Notify(eNotify_OnInvalidateControls);
     m_bIgnoreNotify = false;
 }
-
-
-
 
 void CTerrainPainterPanel::OnBnClickedBrushSettolayer()
 {
@@ -430,6 +433,17 @@ void CTerrainPainterPanel::OnFloodLayer()
     m_tool.Action_StopUndo();
     m_tool.Action_Flood();
     m_tool.Action_StopUndo();
+}
+
+void CTerrainPainterPanel::OnTabletSettings()
+{
+    CTextureBrush br;
+    m_tool.GetBrush(br);
+    br.bPressureBrightness = m_ui->pressureBrightness->isChecked();
+    br.bPressureOpacity = m_ui->pressureOpacity->isChecked();
+    br.bPressureRadius = m_ui->pressureRadius->isChecked();
+    br.bPressureIntensity = m_ui->pressureIntensity->isChecked();
+    m_tool.SetBrush(br);
 }
 
 /*

@@ -98,6 +98,11 @@ CTerrainModifyTool::CTerrainModifyTool()
     m_hPaintCursor = CMFCUtils::LoadCursor(IDC_HAND_INTERNAL);
     m_hFlattenCursor = CMFCUtils::LoadCursor(IDC_POINTER_FLATTEN);
     m_hSmoothCursor = CMFCUtils::LoadCursor(IDC_POINTER_SMOOTH);
+
+    m_bInTabletMode = false;
+    m_bPressureRadius = true;
+    m_bPressureHardness = false;
+    m_activePressure = 0.0f;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -151,6 +156,11 @@ void CTerrainModifyTool::SetExternalUIPanel(class CTerrainModifyPanel* pPanel)
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainModifyTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
+    if (m_bInTabletMode)
+    {
+        return false;
+    }
+
     m_bSmoothOverride = false;
     if (Qt::AltModifier & QApplication::queryKeyboardModifiers())
     {
@@ -183,10 +193,6 @@ bool CTerrainModifyTool::MouseCallback(CViewport* view, EMouseEvent event, QPoin
     {
         m_pBrush->height = GetIEditor()->GetTerrainElevation(m_pointerPos.x, m_pointerPos.y);
         m_brush[eBrushFlatten].height = m_pBrush->height;
-
-        char str[256];
-        sprintf_s(str, "Picked height: %f\n", m_pBrush->height);
-        OutputDebugString(str);
 
         UpdateUI();
     }
@@ -252,6 +258,93 @@ bool CTerrainModifyTool::MouseCallback(CViewport* view, EMouseEvent event, QPoin
 
     return true;
 }
+//////////////////////////////////////////////////////////////////////////
+bool CTerrainModifyTool::TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags)
+{
+    if (event == eTabletPress || event == eTabletMove)
+    {
+        m_bInTabletMode = true;
+        m_activePressure = tabletContext.m_pressure;
+    }
+    else if (event == eTabletRelease)
+    {
+        m_bInTabletMode = false;
+        m_activePressure = 0.0f;
+    }
+    m_bSmoothOverride = false;
+    if (Qt::AltModifier & QApplication::queryKeyboardModifiers())
+    {
+        m_bSmoothOverride = true;
+    }
+
+    if (m_nPaintingMode == ePaintMode_InProgress)
+    {
+        m_nPaintingMode = ePaintMode_Ready;
+    }
+
+    m_bQueryHeightMode = false;
+
+    if (flags & MK_CONTROL && !m_isCtrlPressed) // Can happen when not viewport window was in focus
+    {
+        if (m_pBrush->type == eBrushFlatten)
+        {
+            SetCurBrushType(eBrushPickHeight);
+        }
+        else if (m_pBrush->type == eBrushRiseLower)
+        {
+            m_pBrush->height = -m_pBrush->height;
+        }
+        m_isCtrlPressed = true;
+    }
+
+    bool bCollideWithTerrain = true;
+    m_pointerPos = view->ViewToWorld(point, &bCollideWithTerrain, true);
+    if ((event == eTabletPress || (event == eTabletMove && (flags & MK_LBUTTON))) && m_pBrush->type == eBrushPickHeight)
+    {
+        m_pBrush->height = GetIEditor()->GetTerrainElevation(m_pointerPos.x, m_pointerPos.y);
+        m_brush[eBrushFlatten].height = m_pBrush->height;
+
+        UpdateUI();
+    }
+    else if (event == eTabletPress && bCollideWithTerrain)
+    {
+        if (!GetIEditor()->IsUndoRecording())
+        {
+            GetIEditor()->BeginUndo();
+        }
+        Paint(tabletContext.m_pressure);
+        m_nPaintingMode = ePaintMode_InProgress;
+    }
+
+    if (m_nPaintingMode == ePaintMode_Ready && event == eTabletMove && (flags & MK_LBUTTON) && !m_bQueryHeightMode && bCollideWithTerrain)
+    {
+        Paint(tabletContext.m_pressure);
+        m_nPaintingMode = ePaintMode_InProgress;
+    }
+
+    // Don't invalidate the paint mode on mouse move, since they could be
+    // painting and accidentally go outside the terrain boundry but then
+    // come back without releasing the mouse
+    if ((m_nPaintingMode == ePaintMode_Ready && event != eTabletMove) || event == eTabletRelease)
+    {
+        if (GetIEditor()->IsUndoRecording())
+        {
+            GetIEditor()->AcceptUndo("Terrain Modify");
+        }
+        m_nPaintingMode = ePaintMode_None;
+    }
+
+    // Show status help.
+    if (m_pBrush->type == eBrushRiseLower)
+    {
+        GetIEditor()->SetStatusText("CTRL:Inverse Height  ALT:Smooth  LMB:Rise/Lower/Smooth  [ ]:Change Brush Radius  <, >.:Change Height");
+    }
+    else
+    {
+        GetIEditor()->SetStatusText("CTRL:Query Height  ALT:Smooth  LMB:Flatten/Smooth  [ ]:Change Brush Radius  <, >.:Change Height/Hardness");
+    }
+    return true;
+}
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainModifyTool::Display(DisplayContext& dc)
@@ -279,9 +372,19 @@ void CTerrainModifyTool::Display(DisplayContext& dc)
     {
         dc.SetColor(0.5f, 1, 0.5f, 1);
         dc.DrawTerrainCircle(m_pointerPos, pBrush->radiusInside, 0.2f);
+        if (m_bPressureRadius && m_bInTabletMode)
+        {
+            dc.SetColor(0.5f, 0.5f, 1, 1);
+            dc.DrawTerrainCircle(m_pointerPos, pBrush->radiusInside * m_activePressure, 0.2f);
+        }
     }
     dc.SetColor(0, 1, 0, 1);
     dc.DrawTerrainCircle(m_pointerPos, pBrush->radius, 0.2f);
+    if (m_bPressureRadius && m_bInTabletMode)
+    {
+        dc.SetColor(0, 0, 1, 1);
+        dc.DrawTerrainCircle(m_pointerPos, pBrush->radius * m_activePressure, 0.2f);
+    }
     if (m_pointerPos.z < pBrush->height)
     {
         if (pBrush->type != eBrushSmooth)
@@ -494,7 +597,7 @@ void CTerrainModifyTool::UpdateUI()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainModifyTool::Paint()
+void CTerrainModifyTool::Paint(float pressure)
 {
     if (!GetIEditor()->Get3DEngine()->GetITerrain())
     {
@@ -515,8 +618,8 @@ void CTerrainModifyTool::Paint()
     int tx = RoundFloatToInt(m_pointerPos.y / unitSize);
     int ty = RoundFloatToInt(m_pointerPos.x / unitSize);
 
-    float fInsideRadius = (pBrush->radiusInside / unitSize);
-    int tsize = (pBrush->radius / unitSize);
+    float fInsideRadius = (pBrush->radiusInside / unitSize) * (m_bPressureRadius ? pressure : 1.0f);
+    int tsize = (pBrush->radius / unitSize) * (m_bPressureRadius ? pressure : 1.0f);
     if (tsize == 0)
     {
         tsize = 1;
@@ -524,18 +627,18 @@ void CTerrainModifyTool::Paint()
     int tsize2 = tsize * 2;
     int x1 = tx - tsize;
     int y1 = ty - tsize;
-
+    float hardness = pBrush->hardness * (m_bPressureHardness ? pressure : 1.0f);
     if (pBrush->type == eBrushFlatten && !m_bSmoothOverride)
     {
-        pHeightmap->DrawSpot2(tx, ty, tsize, fInsideRadius, pBrush->height, pBrush->hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
+        pHeightmap->DrawSpot2(tx, ty, tsize, fInsideRadius, pBrush->height, hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
     }
     if (pBrush->type == eBrushRiseLower && !m_bSmoothOverride)
     {
-        pHeightmap->RiseLowerSpot(tx, ty, tsize, fInsideRadius, pBrush->height, pBrush->hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
+        pHeightmap->RiseLowerSpot(tx, ty, tsize, fInsideRadius, pBrush->height, hardness, pBrush->bNoise, pBrush->noiseFreq / 10.0f, pBrush->noiseScale / 1000.0f);
     }
     else if (pBrush->type == eBrushSmooth || m_bSmoothOverride)
     {
-        pHeightmap->SmoothSpot(tx, ty, tsize, pBrush->height, pBrush->hardness);//,m_pBrush->noiseFreq/10.0f,m_pBrush->noiseScale/10.0f );
+        pHeightmap->SmoothSpot(tx, ty, tsize, pBrush->height, hardness);//,m_pBrush->noiseFreq/10.0f,m_pBrush->noiseScale/10.0f );
     }
     pHeightmap->UpdateEngineTerrain(x1, y1, tsize2, tsize2, true, false);
     AABB box;

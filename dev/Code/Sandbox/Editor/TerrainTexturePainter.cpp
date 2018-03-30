@@ -453,6 +453,7 @@ CTerrainTexturePainter::CTerrainTexturePainter()
 
     m_bIsPainting = false;
     m_pTPElem = 0;
+    m_activePressure = 0.0f;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -495,6 +496,10 @@ bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, Q
 {
     bool bPainting = false;
     bool hitTerrain = false;
+
+    if (m_bInTabletMode)
+        return true;
+
     m_pointerPos = view->ViewToWorld(point, &hitTerrain, true);
 
     m_brush.bErase = false;
@@ -528,6 +533,32 @@ bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, Q
 
     return true;
 }
+bool CTerrainTexturePainter::TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags)
+{
+    if (event == eTabletPress)
+        m_bInTabletMode = true;
+    else if (event == eTabletRelease)
+    {
+        m_bInTabletMode = false;
+        m_activePressure = 0.0f;
+    }
+
+    bool hitTerrain = false;
+    m_pointerPos = view->ViewToWorld(point, &hitTerrain, true);
+    if (event == eTabletPress || event == eTabletMove)
+    {
+        if ((m_pointerPos.x >= 0.0f) && (m_pointerPos.y >= 0.0f) && hitTerrain)
+        {
+            m_activePressure = tabletContext.m_pressure;
+            Action_Paint(tabletContext.m_pressure);
+        }
+        else
+        {
+            m_activePressure = 0.0f;
+        }
+    }
+    return true;
+}
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainTexturePainter::Display(DisplayContext& dc)
@@ -540,6 +571,11 @@ void CTerrainTexturePainter::Display(DisplayContext& dc)
     }
     dc.DepthTestOff();
     dc.DrawTerrainCircle(m_pointerPos, m_brush.radius, 0.2f);
+    if (m_activePressure != 0.0f && m_brush.bPressureRadius)
+    {
+        dc.SetColor(0, 0, 1 ,1);
+        dc.DrawTerrainCircle(m_pointerPos, m_activePressure * m_brush.radius, 0.2f);
+    }
     dc.DepthTestOn();
 }
 
@@ -623,7 +659,7 @@ void CTerrainTexturePainter::Action_PickLayerId()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainTexturePainter::Action_Paint()
+void CTerrainTexturePainter::Action_Paint(float pressure)
 {
     //////////////////////////////////////////////////////////////////////////
     // Paint spot on selected layer.
@@ -644,7 +680,7 @@ void CTerrainTexturePainter::Action_Paint()
 
     bPaintLock = true;
 
-    PaintLayer(pLayer, center, false);
+    PaintLayer(pLayer, center, false, pressure);
 
     GetIEditor()->GetDocument()->SetModifiedFlag(TRUE);
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
@@ -689,15 +725,15 @@ void CTerrainTexturePainter::Action_Flood()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood)
+void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood, float pressure)
 {
     float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
 
     SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.bMaskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
 
-    br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness;
+    br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness * (m_brush.bPressureBrightness ? (1.0f - pressure) : 1.0f);
     br.m_cFilterColor.rgb2srgb();
-    br.fRadius = m_brush.radius / fTerrainSize;
+    br.fRadius = (m_brush.radius / fTerrainSize) * (m_brush.bPressureRadius ? pressure : 1.0f);
     br.color = m_brush.value;
     if (m_brush.bErase)
     {
@@ -708,11 +744,13 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
     {
         float fX = center.y / fTerrainSize;                         // 0..1
         float fY = center.x / fTerrainSize;                         // 0..1
+        float colorHardness = m_brush.colorHardness * (m_brush.bPressureOpacity ? pressure : 1.0f);
+        float detailHardness = m_brush.detailHardness * (m_brush.bPressureIntensity ? pressure : 1.0f);
 
         // change terrain texture
-        if (m_brush.colorHardness > 0.0f)
+        if (colorHardness > 0.0f)
         {
-            br.hardness = m_brush.colorHardness;
+            br.hardness = colorHardness;
 
             CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
 
@@ -728,9 +766,9 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
             }
         }
 
-        if (m_brush.detailHardness > 0.0f)        // we also want to change the detail layer data
+        if (detailHardness > 0.0f)        // we also want to change the detail layer data
         {
-            br.hardness = m_brush.detailHardness;
+            br.hardness = detailHardness;
 
             // get unique layerId
             uint32 dwLayerId = pLayer->GetOrRequestLayerId();

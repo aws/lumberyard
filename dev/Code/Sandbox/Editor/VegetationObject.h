@@ -112,7 +112,6 @@ public:
     void LoadObject();
 
     float GetSize() { return mv_size; };
-    void SetSize(float fSize) { mv_size = fSize; };
 
     float GetSizeVar() { return mv_sizevar; };
     void SetSizeVar(float fSize) { mv_sizevar = fSize; };
@@ -201,6 +200,7 @@ public:
 
     //! Calculate variable size for this object.
     float CalcVariableSize() const;
+    float CalcVariableSize(float size) const;
 
     //! Id of this object.
     int GetId() const { return m_id; };
@@ -326,6 +326,24 @@ protected:
     friend class CVegetationMap;
 };
 
+//this is used to modulate certain values of CVegetationObject when used with a drawing tablet
+class CVegetationBrushModulation
+{
+public:
+    float GetDensity() const { return m_density; }
+    void SetDensity(float density) { m_density = density; }
+
+    float GetSize() const { return m_size; }
+    void SetSize(float value) { m_size = value; }
+
+    CVegetationBrushModulation() : m_density(1.0f), m_size(1.0f) {}
+    explicit CVegetationBrushModulation(float density, float size) : m_density(density), m_size(size) {}
+
+private:
+    float m_density;
+    float m_size;
+};
+
 //////////////////////////////////////////////////////////////////////////
 inline bool CVegetationObject::IsPlaceValid(float height, float slope) const
 {
@@ -343,20 +361,25 @@ inline bool CVegetationObject::IsPlaceValid(float height, float slope) const
 //////////////////////////////////////////////////////////////////////////
 inline float CVegetationObject::CalcVariableSize() const
 {
+    return CalcVariableSize(mv_size);
+}
+
+inline float CVegetationObject::CalcVariableSize(float size) const
+{
     if (mv_sizevar == 0)
     {
-        return mv_size;
+        return size;
     }
     else
     {
         float fval = mv_sizevar * cry_random(-1.0f, 1.0f);
         if (fval >= 0)
         {
-            return mv_size * (1.0f + fval);
+            return size * (1.0f + fval);
         }
         else
         {
-            return mv_size / (1.0f - fval);
+            return size / (1.0f - fval);
         }
     }
 }

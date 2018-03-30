@@ -102,6 +102,8 @@ private:
     void OnObjectsRClick(const QPoint& point);
     void OnUpdateNumbers();
 
+    void OnTabletSettingsChanged();
+
     //////////////////////////////////////////////////////////////////////////
     QScopedPointer<Ui::VegetationPanel> m_ui;
     QMenu* m_menu;

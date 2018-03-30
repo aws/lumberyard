@@ -32,6 +32,7 @@ public:
 
     virtual void Display(DisplayContext& dc) {};
     virtual bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
     virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
     virtual void SetUserData(const char* userKey, void* userData);

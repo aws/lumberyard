@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>232</width>
-    <height>703</height>
+    <height>729</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -114,55 +114,55 @@
           </property>
          </widget>
         </item>
-         <item row="4" column="0">
-           <widget class="QLabel" name="brushDetailHardnessLabel">
-             <property name="text">
-               <string>Detail Intensity:</string>
-             </property>
-           </widget>
-         </item>
-         <item row="4" column="1">
-           <spacer name="horizontalSpacer_3">
-             <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-               <size>
-                 <width>40</width>
-                 <height>20</height>
-               </size>
-             </property>
-           </spacer>
-         </item>
-         <item row="4" column="2">
-           <widget class="QDoubleSpinBox" name="brushDetailHardnessSpin">
-             <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-             </property>
-             <property name="maximum">
-               <double>1.000000000000000</double>
-             </property>
-             <property name="singleStep">
-               <double>0.010000000000000</double>
-             </property>
-           </widget>
-         </item>
-         <item row="5" column="0" colspan="3">
-           <widget class="QSlider" name="brushDetailHardnessSlider">
-             <property name="maximum">
-               <number>100</number>
-             </property>
-             <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="tickPosition">
-               <enum>QSlider::TicksAbove</enum>
-             </property>
-           </widget>
-         </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="brushDetailHardnessLabel">
+          <property name="text">
+           <string>Detail Intensity:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="4" column="2">
+         <widget class="QDoubleSpinBox" name="brushDetailHardnessSpin">
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0" colspan="3">
+         <widget class="QSlider" name="brushDetailHardnessSlider">
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="tickPosition">
+           <enum>QSlider::TicksAbove</enum>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
-       <item>
+      <item>
        <widget class="QCheckBox" name="paintMaskByLayerSettingsCheck">
         <property name="text">
          <string>Mask by Layer Altitude &amp;&amp; Slope</string>
@@ -195,6 +195,70 @@
       <string>Layer</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
+      <item row="1" column="2">
+       <widget class="QSpinBox" name="brushLayerAltitudeMax">
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="maximum">
+         <number>4096</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="altitudeLabel">
+        <property name="text">
+         <string>Altitude</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="brushLayerSlopeMin">
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="maximum">
+         <number>90</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QSpinBox" name="brushLayerSlopeMax">
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="maximum">
+         <number>90</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="brushLayerAltitudeMin">
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="maximum">
+         <number>1024</number>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0" colspan="3">
+       <widget class="QPushButton" name="layerFloodButton">
+        <property name="text">
+         <string>Flood</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="slopeLabel">
+        <property name="text">
+         <string>Slope(deg.)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="3">
+       <widget class="QListView" name="layerListView"/>
+      </item>
       <item row="0" column="0" colspan="3">
        <widget class="QGroupBox" name="vertexColoringGroup">
         <property name="title">
@@ -276,67 +340,46 @@
         </layout>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="altitudeLabel">
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="tabletGroup">
+     <property name="title">
+      <string>Tablet Pen Pressure</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <widget class="QCheckBox" name="pressureRadius">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
         <property name="text">
-         <string>Altitude</string>
+         <string>Radius</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="slopeLabel">
+      <item>
+       <widget class="QCheckBox" name="pressureOpacity">
         <property name="text">
-         <string>Slope(deg.)</string>
+         <string>Opacity</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="0" colspan="3">
-       <widget class="QPushButton" name="layerFloodButton">
+      <item>
+       <widget class="QCheckBox" name="pressureIntensity">
         <property name="text">
-         <string>Flood</string>
+         <string>Intensity</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0" colspan="3">
-       <widget class="QListView" name="layerListView"/>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="brushLayerAltitudeMin">
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="maximum">
-         <number>1024</number>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2">
-       <widget class="QSpinBox" name="brushLayerAltitudeMax">
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="maximum">
-         <number>4096</number>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QSpinBox" name="brushLayerSlopeMin">
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="maximum">
-         <number>90</number>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QSpinBox" name="brushLayerSlopeMax">
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="maximum">
-         <number>90</number>
+      <item>
+       <widget class="QCheckBox" name="pressureBrightness">
+        <property name="text">
+         <string>Brightness</string>
         </property>
        </widget>
       </item>

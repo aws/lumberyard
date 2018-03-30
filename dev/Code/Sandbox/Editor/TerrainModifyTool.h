@@ -85,21 +85,22 @@ public:
     //! Register this tool to editor system.
     static void RegisterTool(CRegistrationContext& rc);
 
-    virtual void BeginEditParams(IEditor* ie, int flags);
-    virtual void EndEditParams();
+    virtual void BeginEditParams(IEditor* ie, int flags) override;
+    virtual void EndEditParams() override;
 
-    virtual void Display(DisplayContext& dc);
+    virtual void Display(DisplayContext& dc) override;
 
     // Ovverides from CEditTool
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override;
 
     // Key down.
-    bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    bool OnSetCursor(CViewport* vp);
+    bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
+    bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
+    bool OnSetCursor(CViewport* vp) override;
 
     // Delete itself.
-    void DeleteThis() { delete this; };
+    void DeleteThis() override { delete this; };
 
     void SetCurBrushType(BrushType type);
     BrushType GetCurBrushType() const { return m_currentBrushType; }
@@ -109,11 +110,15 @@ public:
     void AdjustBrushValues();
     void SyncBrushRadiuses(bool bSync);
 
-    void Paint();
+    void Paint(float pressure = 1.0f);
 
     void SetExternalUIPanel(class CTerrainModifyPanel* pPanel);
     void ClearCtrlPressedState() { m_isCtrlPressed = false; }
 
+    void SetPressureRadius(bool value) { m_bPressureRadius = value; }
+    bool GetPressureRadius() const { return m_bPressureRadius; }
+    void SetPressureHardness(bool value) { m_bPressureHardness = value; }
+    bool GetPressureHardness() const { return m_bPressureHardness; }
     //////////////////////////////////////////////////////////////////////////
     // Commands.
     static void Command_Activate();
@@ -153,6 +158,11 @@ private:
     QCursor m_hPaintCursor;
     QCursor m_hFlattenCursor;
     QCursor m_hSmoothCursor;
+
+    bool m_bInTabletMode;
+    bool m_bPressureRadius;
+    bool m_bPressureHardness;
+    float m_activePressure;
 };
 
 

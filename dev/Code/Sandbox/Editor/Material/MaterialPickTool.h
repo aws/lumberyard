@@ -40,6 +40,7 @@ public:
 protected:
 
     bool OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point);
+
     void SetMaterial(_smart_ptr<IMaterial> pMaterial);
 
     virtual ~CMaterialPickTool();

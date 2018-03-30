@@ -44,6 +44,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     void OnManipulatorDrag(CViewport* pView, ITransformManipulator* pManipulator, QPoint& point0, QPoint& point1, const Vec3& value) override;
 
     virtual void SetUserData(const char* key, void* userData);
@@ -92,6 +93,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     virtual void SetUserData(const char* key, void* userData);
     virtual void Display(DisplayContext& dc) {}
     virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
@@ -113,6 +115,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     virtual void SetUserData(const char* key, void* userData);
     virtual void Display(DisplayContext& dc) {};
     virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);

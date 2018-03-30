@@ -25,20 +25,21 @@ public:
     Q_INVOKABLE CTerrainHoleTool();
     virtual ~CTerrainHoleTool();
 
-    virtual void BeginEditParams(IEditor* ie, int flags);
-    virtual void EndEditParams();
+    virtual void BeginEditParams(IEditor* ie, int flags) override;
+    virtual void EndEditParams() override;
 
-    virtual void Display(DisplayContext& dc);
+    virtual void Display(DisplayContext& dc) override;
 
     // Ovverides from CEditTool
-    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags) override;
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override;
 
     // Key down.
-    bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
-    bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
+    bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
+    bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) override;
 
     // Delete itself.
-    void DeleteThis() { delete this; };
+    void DeleteThis() override { delete this; };
 
     void SetBrushRadius(float r)
     {
@@ -50,17 +51,24 @@ public:
     };
     float GetBrushRadius() const { return m_brushRadius; };
 
+    void SetPressureRadius(bool value) { m_bPressureRadius = value; }
+    bool GetPressureRadius() const { return m_bPressureRadius; }
+
     void SetMakeHole(bool bEnable) { m_bMakeHole = bEnable; }
     bool GetMakeHole() { return m_bMakeHole; }
 
-    void Modify();
+    void Modify(float pressure = 1.0f);
 
 private:
-    bool CalculateHoleArea(Vec2i& min, Vec2i& max) const;
+    bool CalculateHoleArea(float pressure, Vec2i& min, Vec2i& max) const;
 
     Vec3 m_pointerPos;
     static float m_brushRadius;
     static bool m_bMakeHole;
+
+    bool m_bInTabletMode;
+    bool m_bPressureRadius;
+    float m_activePressure;
 
     int m_panelId;
     class CTerrainHolePanel* m_panel;

@@ -533,6 +533,33 @@ void    QtViewport::ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir)
     rayDir(0, 0, -1);
 }
 
+void QtViewport::tabletEvent(QTabletEvent* event)
+{
+    bool processed = false;
+    int flags = event->modifiers();
+    switch (event->type())
+    {
+    case QEvent::TabletPress:
+        processed = TabletCallback(ETabletEvent::eTabletPress, event->pos(), STabletContext(event->pressure()), event->modifiers());
+        break;
+    case QEvent::TabletRelease:
+        processed = TabletCallback(ETabletEvent::eTabletRelease, event->pos(), STabletContext(event->pressure()), event->modifiers());
+        break;
+    case QEvent::TabletMove:
+        processed = TabletCallback(ETabletEvent::eTabletMove, event->pos(), STabletContext(event->pressure()), event->modifiers());
+        break;
+    }
+
+    if (!processed)
+    {
+        event->ignore();
+    }
+    else
+    {
+        event->accept();
+    }
+}
+
 void QtViewport::mousePressEvent(QMouseEvent* event)
 {
     switch (event->button())
@@ -1381,6 +1408,55 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
 
     PostWidgetRendering();
 
+    return false;
+}
+//////////////////////////////////////////////////////////////////////////
+bool QtViewport::TabletCallback(ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, Qt::KeyboardModifiers modifiers)
+{
+    //See MouseCallback 
+    if (GetIEditor()->IsInGameMode())
+    {
+        return true;
+    }
+
+    //See MouseCallback 
+    if (gEnv->pSystem->IsAssertDialogVisible())
+    {
+        return true;
+    }
+
+    bool bCtrlClick = (modifiers & Qt::ControlModifier);
+    bool bShiftClick = (modifiers & Qt::ShiftModifier);
+
+    int flags = (bCtrlClick ? MK_CONTROL : 0) |
+                (bShiftClick ? MK_SHIFT : 0) |
+                MK_LBUTTON;
+
+    PreWidgetRendering();
+    //////////////////////////////////////////////////////////////////////////
+    // Asks current edit tool to handle tablet callback.
+    CEditTool* pEditTool = GetEditTool();
+    if (pEditTool)
+    {
+        if (pEditTool->TabletCallback(this, event, point, tabletContext, flags))
+        {
+            PostWidgetRendering();
+            return true;
+        }
+
+        // Ask all chain of parent tools if they are handling mouse event.
+        CEditTool* pParentTool = pEditTool->GetParentTool();
+        while (pParentTool)
+        {
+            if (pParentTool->TabletCallback(this, event, point, tabletContext, flags))
+            {
+                PostWidgetRendering();
+                return true;
+            }
+            pParentTool = pParentTool->GetParentTool();
+        }
+    }
+    PostWidgetRendering();
     return false;
 }
 //////////////////////////////////////////////////////////////////////////

@@ -39,6 +39,8 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+    bool TabletCallback(CViewport* view, ETabletEvent event, const QPoint& point, const STabletContext& tabletContext, int flags) override;
+
     void OnManipulatorDrag(CViewport* view, ITransformManipulator* pManipulator, QPoint& point0, QPoint& point1, const Vec3& value) override;
 
     // Key down.
@@ -61,7 +63,7 @@ public:
     void HideSelectedObjects(bool bHide);
     void RemoveSelectedObjects();
 
-    bool PaintBrush();
+    bool PaintBrush(const STabletContext& tablet);
     void PlaceThing();
     void GetSelectedObjects(std::vector<CVegetationObject*>& objects);
 
@@ -81,6 +83,15 @@ public:
 
     static void Command_Activate();
 
+    void SetPressureRadius(bool value) { m_bPressureRadius = value; }
+    bool GetPressureRadius() const { return m_bPressureRadius; }
+
+    void SetPressureDensity(bool value) { m_bPressureDensity = value; }
+    bool GetPressureDensity() const { return m_bPressureDensity; }
+
+    void SetPressureSize(bool value) { m_bPressureSize = value; }
+    bool GetPressureSize() const { return m_bPressureSize; }
+
 protected:
     virtual ~CVegetationTool();
     // Delete itself.
@@ -97,10 +108,10 @@ private:
 
     void SetModified(bool bWithBounds = false, const AABB& bounds = AABB());
 
-    // Specific mouse events handlers.
-    bool OnLButtonDown(CViewport* view, UINT nFlags, const QPoint& point);
-    bool OnLButtonUp(CViewport* view, UINT nFlags, const QPoint& point);
-    bool OnMouseMove(CViewport* view, UINT nFlags, const QPoint& point);
+    // Specific mouse/.pen events handlers.
+    bool OnDeviceDown(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet);
+    bool OnDeviceUp(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet);
+    bool OnDeviceMove(CViewport* view, UINT nFlags, const QPoint& point, const STabletContext& tablet);
 
     void OnPaintBrushFailed();
 
@@ -114,6 +125,7 @@ private:
 
     bool m_bPlaceMode;
     bool m_bPaintingMode;
+    bool m_bTabletMode;
 
     enum OpMode
     {
@@ -152,6 +164,13 @@ private:
 
     bool m_isAffectedByBrushes;
     bool m_instanceLimitMessageActive;
+
+    //pen settings
+    bool m_bPressureRadius;
+    bool m_bPressureDensity;
+    bool m_bPressureSize;
+
+    float m_activePenPressure;
 };
 
 

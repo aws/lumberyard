@@ -49,6 +49,7 @@ public:
     virtual void Display(struct DisplayContext& dc);
 
     virtual bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     virtual bool OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
     virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags);
     virtual bool OnSetCursor(CViewport* vp) { return false; };

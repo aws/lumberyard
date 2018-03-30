@@ -1298,9 +1298,14 @@ CVegetationInstance* CVegetationMap::PlaceObjectInstance(const Vec3& worldPos, C
     return 0;
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* object, Vec3* pPos)
+{
+    return PaintBrush(rc, bCircle, object, pPos, CVegetationBrushModulation());
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* object, Vec3* pPos, const CVegetationBrushModulation& modulate)
 {
     assert(object != 0);
 
@@ -1329,7 +1334,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
     float SlopeMin = object->GetSlopeMin();
     float SlopeMax = object->GetSlopeMax();
 
-    float density = object->GetDensity();
+    float density = object->GetDensity() * modulate.GetDensity();
     if (density <= 0)
     {
         density = m_minimalDistance;
@@ -1409,7 +1414,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 
         p.x = x;
         p.y = y;
-        float fScale = object->CalcVariableSize();
+        float fScale = object->CalcVariableSize(object->GetSize() * modulate.GetSize());
         float placeRadius = fScale * object->GetObjectSize() * 0.5f;
         // Check if this place is empty.
         if (!CanPlace(object, p, placeRadius))

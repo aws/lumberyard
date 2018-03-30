@@ -28,6 +28,7 @@
 
 
 class CVegetationObject;
+class CVegetationBrushModulation;
 struct CVegetationInstance;
 //////////////////////////////////////////////////////////////////////////
 /** CVegetationMap stores static objects distributed over terrain.
@@ -148,6 +149,7 @@ public:
 
     //! Paint objects on rectangle using given brush.
     bool PaintBrush(QRect& rc, bool bCircle, CVegetationObject* brush, Vec3* pPos = 0);
+    bool PaintBrush(QRect& rc, bool bCircle, CVegetationObject* brush, Vec3* pPos, const CVegetationBrushModulation& modulate);
 
     //! Clear objects in rectangle using given brush.
     //! @param brush Object to remove, if NULL all object will be cleared.

@@ -41,6 +41,7 @@ public:
     virtual void EndEditParams();
     virtual void Display(DisplayContext& dc);
     virtual bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     virtual void DeleteThis() { delete this; };
     //////////////////////////////////////////////////////////////////////////
 

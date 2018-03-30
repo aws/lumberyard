@@ -77,6 +77,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     virtual void SetUserData(const char* key, void* userData);
     virtual void BeginEditParams(IEditor* ie, int flags) {};
     virtual void EndEditParams() {};
@@ -102,6 +103,7 @@ public:
 
     // Ovverides from CEditTool
     bool MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags);
+
     virtual void SetUserData(const char* key, void* userData);
     virtual void BeginEditParams(IEditor* ie, int flags) {};
     virtual void EndEditParams() {};

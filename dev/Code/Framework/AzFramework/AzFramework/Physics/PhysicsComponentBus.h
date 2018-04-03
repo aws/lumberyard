@@ -321,6 +321,9 @@ namespace AzFramework
 
         //! Maximum number of collisions to be recorded per frame.
         int m_maxRecordedCollisions = 1;
+
+        //! Make physics components report state changes, so when they are moved by a transform modification, they trigger physics update events.
+        bool m_reportStateUpdates = false;
     };
 
     /*!

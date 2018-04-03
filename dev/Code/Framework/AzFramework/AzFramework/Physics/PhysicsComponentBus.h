@@ -301,6 +301,9 @@ namespace AzFramework
         //! Indicates whether this component can interact with proximity triggers
         bool m_interactsWithTriggers = true;
 
+        //! Indicates whether this component collides with character capsules (if set to false, the component will collide with the physics proxy instead)
+        bool m_collideWithCharacterCapsule = true;
+
         //! Damping value applied while in water.
         float m_buoyancyDamping = 0.f;
 

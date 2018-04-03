@@ -28,6 +28,7 @@
 #include "Audio/EditorAudioSwitchComponent.h"
 #include "Audio/EditorAudioTriggerComponent.h"
 #include "Physics/EditorConstraintComponent.h"
+#include "Physics/EditorParticlePhysicsComponent.h"
 #include "Physics/EditorRigidPhysicsComponent.h"
 #include "Physics/EditorStaticPhysicsComponent.h"
 #include "Physics/EditorWindVolumeComponent.h"
@@ -101,6 +102,7 @@ namespace LmbrCentral
             EditorMannequinScopeComponent::CreateDescriptor(),
             EditorMannequinComponent::CreateDescriptor(),
             EditorSphereShapeComponent::CreateDescriptor(),
+            EditorParticlePhysicsComponent::CreateDescriptor(),
             EditorRigidPhysicsComponent::CreateDescriptor(),
             EditorStaticPhysicsComponent::CreateDescriptor(),
             EditorWindVolumeComponent::CreateDescriptor(),

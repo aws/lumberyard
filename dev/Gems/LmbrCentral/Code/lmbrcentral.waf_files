@@ -135,6 +135,8 @@
             "Source/Physics/CharacterPhysicsComponent.cpp",
             "Source/Physics/ConstraintComponent.h",
             "Source/Physics/ConstraintComponent.cpp",
+            "source/Physics/ParticlePhysicsComponent.h",
+            "source/Physics/ParticlePhysicsComponent.cpp",
             "Source/Physics/PhysicsComponent.h",
             "Source/Physics/PhysicsComponent.cpp",
             "Source/Physics/PhysicsComponentV1Converter.cpp",

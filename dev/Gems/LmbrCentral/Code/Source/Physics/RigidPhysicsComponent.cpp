@@ -30,6 +30,7 @@ namespace AzFramework
                 ->Field("AtRestInitially", &AzFramework::RigidPhysicsConfig::m_atRestInitially)
                 ->Field("EnableCollisionResponse", &AzFramework::RigidPhysicsConfig::m_enableCollisionResponse)
                 ->Field("InteractsWithTriggers", &AzFramework::RigidPhysicsConfig::m_interactsWithTriggers)
+                ->Field("CollideWithCharacterCapsule", &AzFramework::RigidPhysicsConfig::m_collideWithCharacterCapsule)
                 ->Field("RecordCollisions", &AzFramework::RigidPhysicsConfig::m_recordCollisions)
                 ->Field("MaxRecordedCollisions", &AzFramework::RigidPhysicsConfig::m_maxRecordedCollisions)
                 ->Field("SimulationDamping", &AzFramework::RigidPhysicsConfig::m_simulationDamping)

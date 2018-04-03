@@ -53,6 +53,8 @@
         [
             "Source/Physics/EditorConstraintComponent.h",
             "Source/Physics/EditorConstraintComponent.cpp",
+            "source/Physics/EditorParticlePhysicsComponent.h",
+            "source/Physics/EditorParticlePhysicsComponent.cpp",
             "Source/Physics/EditorPhysicsComponent.h",
             "Source/Physics/EditorPhysicsComponent.cpp",
             "Source/Physics/EditorRigidPhysicsComponent.h",

@@ -36,6 +36,7 @@ namespace LmbrCentral
         void ConfigureCollisionGeometry() override;
         pe_type GetPhysicsType() const override { return PE_RIGID; }
         bool CanInteractWithProximityTriggers() const override { return m_configuration.m_interactsWithTriggers; }
+        bool CanCollideWithCharacterCapsule() const override { return m_configuration.m_collideWithCharacterCapsule; } ///< When false, character physical skeleton is used instead
         bool IsEnabledInitially() const override { return m_configuration.m_enabledInitially; }
         ////////////////////////////////////////////////////////////////////////
 

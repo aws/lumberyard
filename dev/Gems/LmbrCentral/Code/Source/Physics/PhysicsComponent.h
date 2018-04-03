@@ -169,6 +169,7 @@ namespace LmbrCentral
 
         virtual pe_type GetPhysicsType() const = 0;
         virtual bool CanInteractWithProximityTriggers() const = 0;
+        virtual bool CanCollideWithCharacterCapsule() const = 0; ///< When flase, character physical skeleton is used instead.
         virtual bool IsEnabledInitially() const = 0;
         ////////////////////////////////////////////////////////////////////////
 

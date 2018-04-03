@@ -50,6 +50,7 @@
 #include "Physics/PhysicsSystemComponent.h"
 #include "Physics/CharacterPhysicsComponent.h"
 #include "Physics/RagdollComponent.h"
+#include "Physics/ParticlePhysicsComponent.h"
 #include "Physics/RigidPhysicsComponent.h"
 #include "Physics/StaticPhysicsComponent.h"
 #include "Physics/WindVolumeComponent.h"
@@ -175,6 +176,7 @@ namespace LmbrCentral
             PhysicsSystemComponent::CreateDescriptor(),
             CharacterPhysicsComponent::CreateDescriptor(),
             RagdollComponent::CreateDescriptor(),
+            ParticlePhysicsComponent::CreateDescriptor(),
             RigidPhysicsComponent::CreateDescriptor(),
             SimpleAnimationComponent::CreateDescriptor(),
             SimpleStateComponent::CreateDescriptor(),

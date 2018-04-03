@@ -631,9 +631,22 @@ namespace LmbrCentral
         int finalPartId = AzFramework::ColliderComponentRequests::NoPartsAdded;
         EBUS_EVENT_ID_RESULT(finalPartId, entityId, ColliderComponentRequestBus, AddColliderToPhysicalEntity, *m_physicalEntity, m_nextPartId);
 
-        if (finalPartId == AzFramework::ColliderComponentRequests::NoPartsAdded)
+        if (GetPhysicsType() != PE_PARTICLE && finalPartId == AzFramework::ColliderComponentRequests::NoPartsAdded)
         {
             return;
+        }
+
+        /*
+            Disable collisions with player (meaning - player/character capsule).
+            Collisions with individual parts (physical skeleton) will still be enabled,
+            so this essentially makes the collisions more accurate.
+        */
+        if (!CanCollideWithCharacterCapsule() && finalPartId != AzFramework::ColliderComponentRequests::NoPartsAdded)
+        {
+            pe_params_part pp;
+            pp.ipart = finalPartId;
+            pp.flagsAND = ~geom_colltype_player;
+            m_physicalEntity->SetParams(&pp);
         }
 
         m_nextPartId = finalPartId + 1;

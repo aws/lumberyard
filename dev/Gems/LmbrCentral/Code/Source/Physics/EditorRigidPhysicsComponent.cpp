@@ -61,6 +61,9 @@ namespace LmbrCentral
                     ->DataElement(0, &AzFramework::RigidPhysicsConfig::m_interactsWithTriggers,
                         "Interacts with triggers", "Indicates whether or not this entity can interact with proximity triggers.")
 
+                    ->DataElement(0, &AzFramework::RigidPhysicsConfig::m_collideWithCharacterCapsule,
+                        "Collide with character capsule", "Indicates whether or not this entity can collide with character capsule (when disabled, entity collides with character's physical skeleton instead).")
+
                     ->DataElement(AZ::Edit::UIHandlers::Default, &AzFramework::RigidPhysicsConfig::m_recordCollisions, "Record collisions", "Whether or not to record and report collisions with this entity")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
 

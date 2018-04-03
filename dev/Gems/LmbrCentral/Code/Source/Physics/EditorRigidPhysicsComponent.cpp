@@ -68,6 +68,9 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Visibility, &AzFramework::RigidPhysicsConfig::m_recordCollisions)
                         ->Attribute(AZ::Edit::Attributes::Min, 0)
 
+                    ->DataElement(0, &AzFramework::RigidPhysicsConfig::m_reportStateUpdates,
+                        "Report state updates", "Indicates whether or not this entity should report external state changes, such as when the transform is modified directly.")
+
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Simulation")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
 

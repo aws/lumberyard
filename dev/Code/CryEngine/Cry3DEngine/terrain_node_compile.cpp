@@ -87,6 +87,7 @@ int CTerrainNode::Load_T(T& f, int& nDataSize, EEndian eEndian, bool bSectorPale
         ITerrain::SurfaceWeight* weights = new ITerrain::SurfaceWeight[(ChunkSizeSqr + 7) & (~0x7)];
         if (!CTerrain::LoadDataFromFile(weights, ChunkSizeSqr, f, nDataSize, eEndian))
         {
+            delete[] heightmap;
             delete[] weights;
             return 0;
         }

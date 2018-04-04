@@ -40,6 +40,7 @@
 #include <AzFramework/Entity/GameEntityContextBus.h>
 
 #include <IGameVolumes.h>
+#include <AzCore/Script/ScriptSystemBus.h>
 
 #ifdef WIN32
 #include <CryWindows.h>
@@ -2212,8 +2213,22 @@ void CLevelSystem::UnLoadLevel()
     stl::free_container(m_lastLevelName);
 
     GetISystem()->GetIResourceManager()->UnloadLevel();
-
+    
     SAFE_RELEASE(m_pCurrentLevel);
+
+    /*
+        Force Lua garbage collection before p3DEngine->UnloadLevel() and pRenderer->FreeResources(flags) are called.
+        p3DEngine->UnloadLevel() will destroy particle emitters even if they're still referenced by Lua objects that are yet to be collected.
+        (as per comment in 3dEngineLoad.cpp (line 501) - "Force to clean all particles that are left, even if still referenced.").
+        Then, during the next GC cycle, Lua finally cleans up, the particle emitter smart pointers will be pointing to invalid memory).
+        Normally the GC step is triggered at the end of this method (by the ESYSTEM_EVENT_LEVEL_POST_UNLOAD event), which is too late
+        (after the render resources have been purged).
+        This extra GC step takes a few ms more level unload time, which is a small price for fixing nasty crashes.
+        If, however, we wanted to claim it back, we could potentially get rid of the GC step that is triggered by ESYSTEM_EVENT_LEVEL_POST_UNLOAD to break even.
+    */
+
+    EBUS_EVENT(AZ::ScriptSystemRequestBus, GarbageCollect);
+
     // Delete engine resources
     if (p3DEngine)
     {

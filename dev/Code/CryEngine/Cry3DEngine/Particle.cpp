@@ -1515,9 +1515,6 @@ void CParticle::Update(SParticleUpdateContext const& context, float fFrameTime, 
                     stateNew.m_Loc.t = hit.pt;
 
                     fStepTime = max(fStepTime * hit.dist, context.fMinStepTime);
-
-                    // Rotate to surface normal.
-                    RotateToUpVector(stateNew.m_Loc.q, hit.n);
                     stateNew.Collide(fStepTime);
 
                     if (collNew.CanCollide() && params.eFinalCollision != params.eFinalCollision.Bounce)

@@ -121,6 +121,7 @@ public:
                 m_args.replace(">", "&gt;");
                 m_args.replace("\"", "&quot;");
                 m_args.replace("'", "&apos;");
+                m_args.replace("%", "&#37;");
             }
 
             sprintf_s(buf, buf_size, "%s<block name=\"%s\" totalTimeMS=\"%f\" startTime=\"%" PRIu64 "\" stopTime=\"%" PRIu64 "\" args=\"%s\"> \n",

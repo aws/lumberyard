@@ -291,27 +291,50 @@ void CAttachmentSKIN::UpdateRemapTable()
 
 void CAttachmentSKIN::ReleaseRemapTablePair()
 {
-    if (!m_pModelSkin)
+    if (m_pModelSkin
+        && m_pAttachmentManager
+        && m_pAttachmentManager->m_pSkelInstance
+        && m_pAttachmentManager->m_pSkelInstance->m_pDefaultSkeleton)
     {
-        return;
-    }
+        AZStd::unique_lock<AZStd::mutex> lock(m_remapMutex);
 
-    AZStd::unique_lock<AZStd::mutex> lock(m_remapMutex);
+        CCharInstance* pInstanceSkel = m_pAttachmentManager->m_pSkelInstance;
+        CDefaultSkeleton* pModelSkel = pInstanceSkel->m_pDefaultSkeleton;
+        const uint skeletonGuid = pModelSkel->GetGuid();
 
-    CCharInstance* pInstanceSkel = m_pAttachmentManager->m_pSkelInstance;
-    CDefaultSkeleton* pModelSkel = pInstanceSkel->m_pDefaultSkeleton;
-    const uint skeletonGuid = pModelSkel->GetGuid();
-
-    for (size_t i = 0; i < m_pModelSkin->GetNumLODs(); i++)
-    {
-        CModelMesh* pModelMesh = m_pModelSkin->GetModelMesh(i);
-        IRenderMesh* pRenderMesh = pModelMesh->m_pIRenderMesh;
-
-        if (pRenderMesh && m_hasRemapped[i])
+        for (size_t i = 0; i < m_pModelSkin->GetNumLODs(); i++)
         {
-            m_hasRemapped[i] = false;
-            pRenderMesh->ReleaseRemappedBoneIndicesPair(skeletonGuid);
+            CModelMesh* pModelMesh = m_pModelSkin->GetModelMesh(i);
+            if (pModelMesh)
+            {
+                IRenderMesh* pRenderMesh = pModelMesh->m_pIRenderMesh;
+
+                if (pRenderMesh && m_hasRemapped[i])
+                {
+                    m_hasRemapped[i] = false;
+                    pRenderMesh->ReleaseRemappedBoneIndicesPair(skeletonGuid);
+                }
+                else
+                {
+                    CryWarning(VALIDATOR_MODULE_ANIMATION, VALIDATOR_ERROR, "CAttachmentSKIN::ReleaseRemapTablePair m_pModelSkin->GetModelMesh returned null for LOD %lu", i);
+                }
+            }
         }
+    }
+    else
+    {
+        CryWarning(
+            VALIDATOR_MODULE_ANIMATION,
+            VALIDATOR_ERROR,
+            "CAttachmentSKIN::ReleaseRemapTablePair failed attempting to ReleaseRemapTablePair \n"
+            "	m_pModelSkin: %s \n"
+            "	m_pAttachmentManager: %s \n"
+            "	m_pAttachmentManager->m_pSkelInstance: %s \n"
+            "	m_pAttachmentManager->m_pSkelInstance->m_pDefaultSkeleton: %s \n"
+            , m_pModelSkin ? "Exists" : "NULL"
+            , m_pAttachmentManager ? "Exists" : "NULL"
+            , m_pAttachmentManager && m_pAttachmentManager->m_pSkelInstance ? "Exists" : "NULL"
+            , m_pAttachmentManager && m_pAttachmentManager->m_pSkelInstance && m_pAttachmentManager->m_pSkelInstance->m_pDefaultSkeleton ? "Exists" : "NULL");
     }
 }
 

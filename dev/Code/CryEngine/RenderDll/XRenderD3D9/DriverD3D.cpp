@@ -141,6 +141,30 @@ namespace detail
             return "D3DERR_CANNOTPROTECTCONTENT The specified content cannot be protected";
         case D3DERR_UNSUPPORTEDCRYPTO:
             return "D3DERR_UNSUPPORTEDCRYPTO The specified cryptographic algorithm is not supported.";
+        case DXGI_ERROR_DEVICE_REMOVED:
+        {
+            HRESULT subResult = gcpRendD3D->GetDevice().GetDeviceRemovedReason();
+            if (DXGI_ERROR_DEVICE_HUNG == subResult)
+            {
+                return "DXGI_ERROR_DEVICE_HUNG. The device was removed as it hung";
+            }
+            else if (DXGI_ERROR_DEVICE_REMOVED == subResult)
+            {
+                return "DXGI_ERROR_DEVICE_REMOVED. The device was removed";
+            }
+            else if (DXGI_ERROR_DEVICE_RESET == subResult)
+            {
+                return "DXGI_ERROR_DEVICE_RESET. The device was reset";
+            }
+            else if (DXGI_ERROR_DRIVER_INTERNAL_ERROR == subResult)
+            {
+                return "DXGI_ERROR_DRIVER_INTERNAL_ERROR. The device was removed due to an internal error";
+            }
+            else if (DXGI_ERROR_INVALID_CALL == subResult)
+            {
+                return "DXGI_ERROR_INVALID_CALL. The device was removed due to an invalid call";
+            }
+        }
         default:
             break;
         }

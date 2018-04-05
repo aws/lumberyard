@@ -18,6 +18,10 @@
 
 #include <process.h>
 
+//  Profile/Semaphore headers
+#include <AzCore/Debug/Profiler.h>
+#include <AzCore/std/parallel/semaphore.h>
+
 //////////////////////////////////////////////////////////////////////////
 // CryEvent represent a synchronization event
 //////////////////////////////////////////////////////////////////////////
@@ -433,12 +437,89 @@ public:
 // are implemented in CryThead_platform.h
 namespace CryMT {
     namespace detail {
+
+        ///////////////////////////////////////////////////////////////////////////////
+        //  Base class to add semaphores to use rather than sleep. This stops windows 
+        //  problems where the sleep can take up to a whole schedule quantum (16ms) 
+        //  to wake up and stall the entire game.
+        class ProducerConsumerQueueBase
+        {
+        public:
+            ProducerConsumerQueueBase()
+                : m_arrayFullSemaphore()
+                , m_queueEmptySemaphore()
+            {
+            }
+
+            inline void Done(size_t nConsumers)
+            {
+                // Release the semaphore for all consumers so any waiting consumers are released (requires you call reset before next frame)
+                m_queueEmptySemaphore.release(nConsumers);  
+            }
+
+            inline void Init(size_t nObjectSize)
+            {
+                // Release n objects so that n jobs can be pushed back
+                m_arrayFullSemaphore.release(static_cast<unsigned int>(nObjectSize));       
+            }
+
+            inline void ObjectPoppedFromArray()
+            {
+                m_arrayFullSemaphore.release();
+            }
+
+            inline void ObjectPoppedFromOverflow()
+            {
+            }
+
+            inline void ObjectPushedToArray()
+            {
+                m_queueEmptySemaphore.release();
+            }
+
+            inline void ObjectPushedToOverflow()
+            {
+                m_queueEmptySemaphore.release();
+            }
+
+            inline void Reset()
+            {
+                while (m_queueEmptySemaphore.try_acquire_for(AZStd::chrono::milliseconds(0)))
+                {
+                    // Reset the semaphore to 0 (should be 0 already but just in case - only needed if done is used)
+                };
+            }
+
+            inline void WaitForObject()
+            {
+                AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::Renderer);
+                m_queueEmptySemaphore.acquire();
+            }
+
+            inline void WaitForArraySpace()
+            {
+                AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::Renderer);
+                m_arrayFullSemaphore.acquire();
+            }
+
+            inline bool WaitForArraySpace(int millisecondsToWait)
+            {
+                AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::Renderer);
+                return m_arrayFullSemaphore.try_acquire_for(AZStd::chrono::milliseconds(millisecondsToWait));
+            }
+
+        private:
+            AZStd::semaphore m_arrayFullSemaphore;      ///< Will block acquire if the array is fully in use
+            AZStd::semaphore m_queueEmptySemaphore;     ///< Will block acquire if the queue is empty and there are no objects to pop
+        };
+
         ///////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////
-        class SingleProducerSingleConsumerQueueBase
+        class SingleProducerSingleConsumerQueueBase : public ProducerConsumerQueueBase  ///< Added producer/consumer semaphores
         {
         public:
             SingleProducerSingleConsumerQueueBase()
+                : ProducerConsumerQueueBase()
             {}
 
             void Push(void* pObj, volatile uint32& rProducerIndex, volatile uint32& rComsumerIndex, uint32 nBufferSize, void* arrBuffer, uint32 nObjectSize);
@@ -448,10 +529,11 @@ namespace CryMT {
 
         ///////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////
-        class N_ProducerSingleConsumerQueueBase
+        class N_ProducerSingleConsumerQueueBase : public ProducerConsumerQueueBase  ///< Added producer/consumer semaphores
         {
         public:
             N_ProducerSingleConsumerQueueBase()
+                : ProducerConsumerQueueBase()
             {
                 CryInitializeSListHead(fallbackList);
             }

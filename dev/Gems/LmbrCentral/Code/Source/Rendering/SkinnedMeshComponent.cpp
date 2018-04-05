@@ -613,6 +613,11 @@ namespace LmbrCentral
         return aabb;
     }
 
+    /*IRenderNode*/ void SkinnedMeshComponentRenderNode::PreRender(struct SRendParams& inOutRenderParams, const struct SRenderingPassInfo& passInfo)
+    {
+        EBUS_EVENT_ID(m_attachedToEntityId, MeshComponentNotificationBus, OnMeshPreRender, inOutRenderParams, passInfo);
+    }
+
     /*IRenderNode*/ void SkinnedMeshComponentRenderNode::Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo)
     {
         SRendParams rParams(inRenderParams);

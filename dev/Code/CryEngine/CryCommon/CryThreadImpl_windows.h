@@ -470,12 +470,8 @@ namespace CryMT {
         ///////////////////////////////////////////////////////////////////////////////
         void SingleProducerSingleConsumerQueueBase::Push(void* pObj, volatile uint32& rProducerIndex, volatile uint32& rComsumerIndex, uint32 nBufferSize, void* arrBuffer, uint32 nObjectSize)
         {
-            // spin if queue is full
-            int iter = 0;
-            while (rProducerIndex - rComsumerIndex == nBufferSize)
-            {
-                CryLowLatencySleep(iter++ > 10 ? 1 : 0);
-            }
+            // Wait for space to push an object in to the array
+            CryMT::detail::ProducerConsumerQueueBase::WaitForArraySpace();
 
             MemoryBarrier();
             char* pBuffer = alias_cast<char*>(arrBuffer);
@@ -485,18 +481,16 @@ namespace CryMT {
             MemoryBarrier();
             rProducerIndex += 1;
             MemoryBarrier();
+
+            CryMT::detail::ProducerConsumerQueueBase::ObjectPushedToArray();   ///< Signal object is now in the queue
         }
 
         ///////////////////////////////////////////////////////////////////////////////
         void SingleProducerSingleConsumerQueueBase::Pop(void* pObj, volatile uint32& rProducerIndex, volatile uint32& rComsumerIndex, uint32 nBufferSize, void* arrBuffer, uint32 nObjectSize)
         {
             MemoryBarrier();
-            // busy-loop if queue is empty
-            int iter = 0;
-            while (rProducerIndex - rComsumerIndex == 0)
-            {
-                CryLowLatencySleep(iter++ > 10 ? 1 : 0);
-            }
+            CryMT::detail::ProducerConsumerQueueBase::WaitForObject(); ///< Wait for an object to be in the queue
+
 
             char* pBuffer = alias_cast<char*>(arrBuffer);
             uint32 nIndex = rComsumerIndex % nBufferSize;
@@ -505,6 +499,8 @@ namespace CryMT {
             MemoryBarrier();
             rComsumerIndex += 1;
             MemoryBarrier();
+
+            CryMT::detail::ProducerConsumerQueueBase::ObjectPoppedFromArray(); ///< Signal object removed from the queue
         }
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -512,33 +508,41 @@ namespace CryMT {
         {
             MemoryBarrier();
             uint32 nProducerIndex;
-            uint32 nComsumerIndex;
 
             int iter = 0;
             do
             {
-                nProducerIndex = rProducerIndex;
-                nComsumerIndex = rComsumerIndex;
-
-                if (nProducerIndex - nComsumerIndex == nBufferSize)
+                //  Attempt to grab a slot in the array
+                if (CryMT::detail::ProducerConsumerQueueBase::WaitForArraySpace(iter++ > 10 ? 1 : 0))
                 {
-                    CryLowLatencySleep(iter++ > 10 ? 1 : 0);
+                    // We have managed to grab a slot to use, now get our producer index
+                    do
+                    {
+                        nProducerIndex = rProducerIndex;
+                    } while (CryInterlockedCompareExchange(alias_cast<volatile LONG*>(&rProducerIndex), nProducerIndex + 1, nProducerIndex) != nProducerIndex);
+                    break;
+                }
+                else
+                {
                     if (iter > 20) // 10 spins + 10 ms wait
                     {
                         uint32 nSizeToAlloc = sizeof(SFallbackList) + nObjectSize - 1;
                         SFallbackList* pFallbackEntry = (SFallbackList*)CryModuleMemalign(nSizeToAlloc, 128);
                         memcpy(pFallbackEntry->object, pObj, nObjectSize);
                         MemoryBarrier();
-                        CryInterlockedPushEntrySList(fallbackList,  pFallbackEntry->nextEntry);
+                        CryInterlockedPushEntrySList(fallbackList, pFallbackEntry->nextEntry);
+                        CryMT::detail::ProducerConsumerQueueBase::ObjectPushedToOverflow();     ///< Signal that we've pushed an object to the overflow list
                         return;
                     }
                     continue;
                 }
-
-                if (CryInterlockedCompareExchange(alias_cast<volatile LONG*>(&rProducerIndex), nProducerIndex + 1, nProducerIndex) == nProducerIndex)
+                //  Moved the following old code above to in the while loop after reserving space in array
+                /*if (CryInterlockedCompareExchange(alias_cast<volatile LONG*>(&rProducerIndex), nProducerIndex + 1, nProducerIndex) == nProducerIndex)
                 {
-                    break;
+                break;
                 }
+                break;
+                */
             } while (true);
 
             MemoryBarrier();
@@ -549,6 +553,8 @@ namespace CryMT {
             MemoryBarrier();
             arrStates[nIndex] = 1;
             MemoryBarrier();
+
+            CryMT::detail::ProducerConsumerQueueBase::ObjectPushedToArray();   ///< Signal that there is an object in the queue
         }
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -556,35 +562,24 @@ namespace CryMT {
         {
             MemoryBarrier();
 
-            // busy-loop if queue is empty
-            int iter = 0;
-            if (rRunning && rProducerIndex - rComsumerIndex == 0)
-            {
-                CRYPROFILE_SCOPE_PROFILE_MARKER("Wait For Data");
-                while (rRunning && rProducerIndex - rComsumerIndex == 0)
-                {
-                    CryLowLatencySleep(iter++ > 10 ? 1 : 0);
-                }
-            }
+            CryMT::detail::ProducerConsumerQueueBase::WaitForObject();  ///< Wait for an object to be available (or for running to be set to false)
 
-            if (rRunning == 0 && rProducerIndex - rComsumerIndex == 0)
+            // Process the fallback queue if there is nothing in the queue to be consumed (don't wait for the rRunning to go to false or we're wasting time doing nothing)
+            if (rProducerIndex - rComsumerIndex == 0) 
             {
                 SFallbackList* pFallback = (SFallbackList*)CryInterlockedPopEntrySList(fallbackList);
                 IF (pFallback, 0)
                 {
                     memcpy(pObj, pFallback->object, nObjectSize);
                     CryModuleMemalignFree(pFallback);
+                    CryMT::detail::ProducerConsumerQueueBase::ObjectPoppedFromOverflow();   ///< Signal that we removed an object from the overflow list
                     return true;
                 }
                 // if the queue was empty, make sure we really are empty
                 return false;
             }
 
-            iter = 0;
-            while (arrStates[rComsumerIndex % nBufferSize] == 0)
-            {
-                CryLowLatencySleep(iter++ > 10 ? 1 : 0);
-            }
+            AZ_Assert(arrStates[rComsumerIndex % nBufferSize], "Pop: Should be set");   ///< With these changes the array state should always be set
 
             char* pBuffer = alias_cast<char*>(arrBuffer);
             uint32 nIndex = rComsumerIndex % nBufferSize;
@@ -595,6 +590,8 @@ namespace CryMT {
             MemoryBarrier();
             rComsumerIndex += 1;
             MemoryBarrier();
+
+            CryMT::detail::ProducerConsumerQueueBase::ObjectPoppedFromArray();  ///< Signal that we removed an object from the array
 
             return true;
         }

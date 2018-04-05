@@ -1147,9 +1147,28 @@ public:
     // are implemeted in CryThead_platform.h
     namespace CryMT {
         namespace detail {
+
+            ///////////////////////////////////////////////////////////////////////////////
+            //  Dummy base class to match windows impl
+            class ProducerConsumerQueueBase
+            {
+            public:
+                inline void Done(size_t)
+                {
+                }
+
+                inline void Init(size_t)
+                {
+                }
+
+                inline void Reset()
+                {
+                }
+            };
+
             ///////////////////////////////////////////////////////////////////////////////
             ///////////////////////////////////////////////////////////////////////////////
-            class SingleProducerSingleConsumerQueueBase
+            class SingleProducerSingleConsumerQueueBase : public ProducerConsumerQueueBase  ///< Matches windows interface but uses dummy base class
             {
             public:
                 SingleProducerSingleConsumerQueueBase()
@@ -1203,7 +1222,7 @@ public:
 
             ///////////////////////////////////////////////////////////////////////////////
             ///////////////////////////////////////////////////////////////////////////////
-            class N_ProducerSingleConsumerQueueBase
+            class N_ProducerSingleConsumerQueueBase : public ProducerConsumerQueueBase  ///< Matches windows interface but uses dummy base class
             {
             public:
                 N_ProducerSingleConsumerQueueBase()

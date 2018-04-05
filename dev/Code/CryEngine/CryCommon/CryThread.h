@@ -653,6 +653,8 @@ namespace CryMT
 
         m_arrBuffer = alias_cast<T*>(CryModuleMemalign(nSize * sizeof(T), 16));
         m_nBufferSize = nSize;
+
+        CryMT::detail::ProducerConsumerQueueBase::Init(nSize);  ///< Set up the queue
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -746,6 +748,8 @@ namespace CryMT
         m_arrStates = alias_cast<uint32*>(CryModuleMemalign(nSize * sizeof(uint32), 16));
         memset((void*)m_arrStates, 0, sizeof(uint32) * nSize);
         m_nBufferSize = nSize;
+
+        CryMT::detail::ProducerConsumerQueueBase::Init(nSize); ///< Set up the queue
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -758,6 +762,7 @@ namespace CryMT
             __debugbreak();
         }
 #endif
+        CryMT::detail::ProducerConsumerQueueBase::Reset(); ///< Reset the queue for the next frame
         m_nRunning = 1;
         m_nProducerCount = 1;
     }
@@ -794,6 +799,7 @@ namespace CryMT
         if (CryInterlockedDecrement((volatile int*)&m_nProducerCount) == 0)
         {
             m_nRunning = 0;
+            CryMT::detail::ProducerConsumerQueueBase::Done(1);  ///< We're done, make sure the consumer is not waiting
         }
     }
 

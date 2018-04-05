@@ -645,6 +645,7 @@ bool CObjectLayerManager::SaveExternalLayer(CObjectArchive* pArchive, CObjectLay
 {
     // Form file name from layer name.
     QString path = Path::AddPathSlash(GetIEditor()->GetGameEngine()->GetLevelPath()) + m_layersPath;
+    path = Path::GamePathToFullPath(path); 
     QString file = pLayer->GetExternalLayerPath();
 
     if (CFileUtil::OverwriteFile(file))

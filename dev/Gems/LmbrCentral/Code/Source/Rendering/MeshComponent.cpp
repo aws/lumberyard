@@ -643,6 +643,11 @@ namespace LmbrCentral
         return aabb;
     }
 
+    /*IRenderNode*/ void MeshComponentRenderNode::PreRender(struct SRendParams& inOutRenderParams, const struct SRenderingPassInfo& passInfo)
+    {
+        EBUS_EVENT_ID(m_renderOptions.m_attachedToEntityId, MeshComponentNotificationBus, OnMeshPreRender, inOutRenderParams, passInfo);
+    }
+
     /*IRenderNode*/ void MeshComponentRenderNode::Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo)
     {
         if (!HasMesh())

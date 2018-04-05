@@ -255,6 +255,10 @@ struct IRenderNode
     virtual bool IsReady() const { return true; }
 
     // Summary:
+    //   Called prior to calling Render
+    virtual void PreRender(struct SRendParams& EntDrawParams, const SRenderingPassInfo& passInfo) {}
+
+    // Summary:
     //   Renders node geometry
     virtual void Render(const struct SRendParams& EntDrawParams, const SRenderingPassInfo& passInfo) = 0;
 

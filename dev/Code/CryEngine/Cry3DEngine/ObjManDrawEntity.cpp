@@ -128,6 +128,8 @@ void CObjManager::RenderDecalAndRoad(IRenderNode* pEnt,
     DrawParams.nMaterialLayers = pEnt->GetMaterialLayers();
     DrawParams.rendItemSorter = rendItemSorter.GetValue();
 
+    pEnt->PreRender(DrawParams, passInfo);
+
     pEnt->Render(DrawParams, passInfo);
 }
 

@@ -4703,7 +4703,10 @@ void CD3D9Renderer::FX_ProcessBatchesList(int nums, int nume, uint32 nBatchFilte
             FX_Start(pShader, nTech, pCurRes, pRE);
         }
 
-        pRE->mfPrepare(true);
+        if (pRE)
+        {
+            pRE->mfPrepare(true);
+        }
 
         if (rRP.m_RIs[0].size() == 0)
         {

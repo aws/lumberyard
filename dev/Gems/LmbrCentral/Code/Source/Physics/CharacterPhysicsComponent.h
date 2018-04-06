@@ -333,7 +333,7 @@ namespace LmbrCentral
 
         //////////////////////////////////////////////////////////////////////////
         // Non reflected data
-        IPhysicalEntity* m_physicalEntity = nullptr;
+        AZStd::shared_ptr<IPhysicalEntity> m_physicalEntity;
         bool m_isApplyingPhysicsToEntityTransform = false;
         SProximityElement* m_proximityTriggerProxy = nullptr;
         AZ::Transform m_previousEntityTransform = AZ::Transform::CreateIdentity();

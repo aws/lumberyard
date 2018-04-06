@@ -1304,6 +1304,17 @@ void UiCanvasComponent::StartSequence(const AZStd::string& sequenceName)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::PlaySequence(const AZStd::string& sequenceName, float startTime, float endTime)
+{
+    IUiAnimSequence* sequence = m_uiAnimationSystem.FindSequence(sequenceName.c_str());
+    if (sequence)
+    {
+        m_uiAnimationSystem.AddUiAnimationListener(sequence, this);
+        m_uiAnimationSystem.PlaySequence(sequence, nullptr, false, false, startTime, endTime);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::StopSequence(const AZStd::string& sequenceName)
 {
     IUiAnimSequence* sequence = m_uiAnimationSystem.FindSequence(sequenceName.c_str());
@@ -1383,6 +1394,25 @@ bool UiCanvasComponent::IsSequencePlaying(const AZStd::string& sequenceName)
         return m_uiAnimationSystem.IsPlaying(sequence);
     }
     return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiCanvasComponent::GetSequenceLength(const AZStd::string& sequenceName)
+{
+    float length = 0.f;
+    IUiAnimSequence* sequence = m_uiAnimationSystem.FindSequence(sequenceName.c_str());
+    if (sequence)
+    {
+        auto range = sequence->GetTimeRange();
+        length = range.Length();
+    }
+    return length;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetSequenceStopBehavior(IUiAnimationSystem::ESequenceStopBehavior stopBehavior)
+{
+    m_uiAnimationSystem.SetSequenceStopBehavior(stopBehavior);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1594,6 +1624,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
         behaviorContext->EBus<UiAnimationBus>("UiAnimationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("StartSequence", &UiAnimationBus::Events::StartSequence)
+            ->Event("PlaySequence", &UiAnimationBus::Events::PlaySequence)							
             ->Event("StopSequence", &UiAnimationBus::Events::StopSequence)
             ->Event("AbortSequence", &UiAnimationBus::Events::AbortSequence)
             ->Event("PauseSequence", &UiAnimationBus::Events::PauseSequence)
@@ -1602,12 +1633,18 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Event("GetSequencePlayingSpeed", &UiAnimationBus::Events::GetSequencePlayingSpeed)
             ->Event("SetSequencePlayingSpeed", &UiAnimationBus::Events::SetSequencePlayingSpeed)
             ->Event("GetSequencePlayingTime", &UiAnimationBus::Events::GetSequencePlayingTime)
-            ->Event("IsSequencePlaying", &UiAnimationBus::Events::IsSequencePlaying);
+            ->Event("IsSequencePlaying", &UiAnimationBus::Events::IsSequencePlaying)
+            ->Event("GetSequenceLength", &UiAnimationBus::Events::GetSequenceLength)
+            ->Event("SetSequenceStopBehavior", &UiAnimationBus::Events::SetSequenceStopBehavior);
 
         behaviorContext->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Started>("eUiAnimationEvent_Started")
             ->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Stopped>("eUiAnimationEvent_Stopped")
             ->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Aborted>("eUiAnimationEvent_Aborted")
             ->Enum<(int)IUiAnimationListener::EUiAnimationEvent::eUiAnimationEvent_Updated>("eUiAnimationEvent_Updated");
+
+        behaviorContext->Enum<(int)IUiAnimationSystem::ESequenceStopBehavior::eSSB_LeaveTime>("eSSB_LeaveTime")
+            ->Enum<(int)IUiAnimationSystem::ESequenceStopBehavior::eSSB_GotoEndTime>("eSSB_GotoEndTime")
+            ->Enum<(int)IUiAnimationSystem::ESequenceStopBehavior::eSSB_GotoStartTime>("eSSB_GotoStartTime");
 
         behaviorContext->EBus<UiAnimationNotificationBus>("UiAnimationNotificationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)

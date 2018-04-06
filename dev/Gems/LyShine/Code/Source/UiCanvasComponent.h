@@ -163,6 +163,7 @@ public: // member functions
 
     // UiAnimationInterface
     void StartSequence(const AZStd::string& sequenceName) override;
+    void PlaySequence(const AZStd::string& sequenceName, float startTime, float endTime) override;
     void StopSequence(const AZStd::string& sequenceName) override;
     void AbortSequence(const AZStd::string& sequenceName) override;
     void PauseSequence(const AZStd::string& sequenceName) override;
@@ -172,6 +173,8 @@ public: // member functions
     void SetSequencePlayingSpeed(const AZStd::string& sequenceName, float speed) override;
     float GetSequencePlayingTime(const AZStd::string& sequenceName) override;
     bool IsSequencePlaying(const AZStd::string& sequenceName) override;
+    float GetSequenceLength(const AZStd::string& sequenceName) override;
+    void SetSequenceStopBehavior(IUiAnimationSystem::ESequenceStopBehavior stopBehavior) override;
     // ~UiAnimationInterface
 
     // UiInteractableActiveNotifications

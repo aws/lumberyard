@@ -97,6 +97,7 @@ void UiSliderComponent::SetValue(float value)
 
     if (m_stepValue)
     {
+        m_value += (m_stepValue / 2.0f);    ///< Add half the step size to the value before the fmodf so that we round to nearest step rather than flooring to previous step
         m_value = m_value - fmodf(m_value, m_stepValue);
     }
 

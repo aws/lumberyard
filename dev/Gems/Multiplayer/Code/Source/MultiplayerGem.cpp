@@ -179,6 +179,7 @@ namespace Multiplayer
 
         if (session == m_session)
         {
+            session->GetReplicaMgr()->SetLocalLagAmt(gEnv->pConsole->GetCVar("gm_localLagAmount")->GetIVal()); ///< This needs setting explicitly here as the CB for the CVar will not be called at initialization time.
             EBUS_EVENT(AzFramework::NetBindingSystemEventsBus, OnNetworkSessionCreated, session);
         }
     }

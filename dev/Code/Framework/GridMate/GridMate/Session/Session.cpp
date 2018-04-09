@@ -1440,6 +1440,33 @@ GridSession::DebugIsEnableDisconnectDetection() const
     return m_state->m_isDisconnectDetection.Get();
 }
 
+//=========================================================================
+// DebugEnableThreadInstantResponse
+//=========================================================================
+void 
+GridSession::DebugEnableThreadInstantResponse(bool isEnable)
+{
+    AZ_Assert(m_state, "Invalid session state replica. Session is not initialized.");
+
+    if (IsHost())
+    {
+        //  This will be called on the Client via the "m_isThreadInstantResponse" callback on the dataset change
+        DebugEnableThreadInstantResponseOnCarrier(isEnable);
+    }
+
+    m_state->m_isThreadInstantResponse.Set(isEnable);
+}
+
+//=========================================================================
+// DebugEnableThreadInstantResponseOnCarrier
+//=========================================================================
+void 
+GridSession::DebugEnableThreadInstantResponseOnCarrier(bool isEnable)
+{
+    AZ_Assert(m_carrier, "Invalid carrier.");
+    m_carrier->DebugEnableThreadInstantResponse(isEnable);
+}
+
 //////////////////////////////////////////////////////////////////////////
 // State machine
 //////////////////////////////////////////////////////////////////////////

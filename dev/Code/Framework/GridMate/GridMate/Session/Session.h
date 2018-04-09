@@ -502,6 +502,11 @@ namespace GridMate
         bool DebugIsEnableDisconnectDetection() const;
         /// @}
 
+        /// @{ Debug: Functions for setting carrier instant response on host and client
+        void DebugEnableThreadInstantResponse(bool isEnable);
+        void DebugEnableThreadInstantResponseOnCarrier(bool isEnable);
+        /// @}
+
     protected:
         // Currently we support ONLY one carrier per session, since when we received messages from the carrier we don't prefix them with session ID
         // we we do so, we can share a carrier between sessions. TODO: If you enable it make sure to add function to check if you own that carrier or NOT
@@ -839,11 +844,13 @@ namespace GridMate
                 , m_topology("Topology", ST_INVALID)
                 , m_params("Params")
                 , m_isDisconnectDetection("DisconnectDetection", true)
+                , m_isThreadInstantResponse("ThreadInstantResponse", false)
                 , m_session(session)
             {
                 if (m_session)
                 {
                     m_isDisconnectDetection.Set(m_session->GetCarrierDesc().m_enableDisconnectDetection);
+                    m_isThreadInstantResponse.Set(m_session->GetCarrierDesc().m_threadInstantResponse);
                 }
                 SetPriority(k_replicaPriorityRealTime);
             }
@@ -886,6 +893,13 @@ namespace GridMate
             };
             DataSet<ParamContainer, ContainerMarshaler<ParamContainer, ParamMarshaler> > m_params; ///< Session params.
             DataSet<bool> m_isDisconnectDetection; ///< Allows to control disconnect detection states in the entire session.
+
+            void OnThreadInstantResponseChanged(const bool& isEnabled, const GridMate::TimeContext& timeContext)
+            {
+                (timeContext);
+                m_session->DebugEnableThreadInstantResponseOnCarrier(isEnabled);
+            }
+            DataSet<bool>::BindInterface<GridSessionReplica, &GridSessionReplica::OnThreadInstantResponseChanged> m_isThreadInstantResponse; ///< Allows control over instant carrier thread response on IO events
 
         protected:
             GridSession* m_session;

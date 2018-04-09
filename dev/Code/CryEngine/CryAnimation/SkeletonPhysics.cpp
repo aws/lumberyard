@@ -913,7 +913,15 @@ IPhysicalEntity* CSkeletonPhysics::CreateCharacterPhysics(
 
         pe_params_pos pp;
         pp.iSimClass = 6;
-        m_pCharPhysics = g_pIPhysicalWorld->CreatePhysicalEntity(PE_ARTICULATED, 5.0f, &pp, pfd.pForeignData, pfd.iForeignData);
+
+        // Set the position of the physics entity on creation as supplied.
+        Matrix34 transform(mtxloc);
+        pp.pMtx3x4 = &transform;
+
+        //  The foreign data has to be 0x5AFE on creation otherwise the position will not 
+        //  get set until later by a deferred job, resulting in character dimensions failing to create.
+        m_pCharPhysics = g_pIPhysicalWorld->CreatePhysicalEntity(PE_ARTICULATED, 5.0f, &pp, 0, 0x5AFE);
+        m_pCharPhysics->SetParams(&pfd);
 
 #   if !defined(_RELEASE)
         pe_params_flags pf;

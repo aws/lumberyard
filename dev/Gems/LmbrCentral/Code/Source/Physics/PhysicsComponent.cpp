@@ -486,8 +486,8 @@ namespace LmbrCentral
         IPhysicalEntity* rawPhysicalEntityPtr = gEnv->pPhysicalWorld->CreatePhysicalEntity(
                 GetPhysicsType(), // type
                 &positionParameters, // params
-                static_cast<uint64>(GetEntityId()), // pForeignData
-                PHYS_FOREIGN_ID_COMPONENT_ENTITY, // iForeignData
+                0,
+                0x5AFE,
                 -1, // id
                 nullptr); // IGeneralMemoryHeap
 
@@ -496,6 +496,11 @@ namespace LmbrCentral
             AZ_Assert(false, "Failed to create physical entity.");
             return;
         }
+
+        pe_params_foreign_data foreignDataParams;
+        foreignDataParams.iForeignData = PHYS_FOREIGN_ID_COMPONENT_ENTITY;
+        foreignDataParams.pForeignData = static_cast<uint64>(GetEntityId());
+        m_physicalEntity->SetParams(&foreignDataParams);
 
         // IPhysicalEntity is owned by IPhysicalWorld and will not be destroyed until both:
         // - IPhysicalEntity's internal refcount has dropped to zero.

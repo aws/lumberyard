@@ -174,8 +174,8 @@
 #define D3D_OK  S_OK
 #endif
 
-#if !defined(_RELEASE)
-# define RENDERER_ENABLE_BREAK_ON_ERROR 0
+#if !defined(CRY_USE_DX12) && !defined(OPENGL) && !defined(_RELEASE)        
+# define RENDERER_ENABLE_BREAK_ON_ERROR 0       ///< Define causes compile errors on DX12 and OpenGL
 #endif
 #if !defined(RENDERER_ENABLE_BREAK_ON_ERROR)
 # define RENDERER_ENABLE_BREAK_ON_ERROR 0

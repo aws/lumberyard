@@ -337,10 +337,18 @@ namespace LmbrCentral
         positionParameters.q = AZQuaternionToLYQuaternion(AZ::Quaternion::CreateFromTransform(transform));
 
         // create the ragdoll physics entity
-        m_physicalEntity = gEnv->pPhysicalWorld->CreatePhysicalEntity(PE_ARTICULATED, &positionParameters, static_cast<uint64>(GetEntityId()), PHYS_FOREIGN_ID_COMPONENT_ENTITY);
+        m_physicalEntity = gEnv->pPhysicalWorld->CreatePhysicalEntity(
+            PE_ARTICULATED, 
+            &positionParameters, 
+            0,
+            0x5AFE);
         AZ_Assert(m_physicalEntity, "new failed to create a physical entity for the ragdoll component.");
         m_physicalEntity->AddRef();
 
+        pe_params_foreign_data foreignDataParams;
+        foreignDataParams.iForeignData = PHYS_FOREIGN_ID_COMPONENT_ENTITY;
+        foreignDataParams.pForeignData = static_cast<uint64>(GetEntityId());
+        m_physicalEntity->SetParams(&foreignDataParams);
 
         ICharacterInstance* character = nullptr;
         EBUS_EVENT_ID_RESULT(character, GetEntityId(), SkinnedMeshComponentRequestBus, GetCharacterInstance);

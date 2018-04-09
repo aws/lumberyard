@@ -102,6 +102,31 @@ namespace AZ {
         asset->m_assetHint = assetHint;
         asset->UpgradeAssetInfo();
    
+        /*
+        * A fix for serialized fields of type AZ::Data::Asset<T> not loading data automatically for cloned entities,
+        * even when the asset flags are set to OBJECTSTREAM_PRE_LOAD or OBJECTSTREAM_QUEUE_LOAD.
+        * This breaks dynamic slice spawning, because slice instantiation involves cloning entities of an archetype slice.
+        * Similar code existed in LY1.10 in AssetEventHandler::OnWriteEnd(), but that class was removed in LY1.12.
+        * Without this code components of slice entities that reference assets do not work correctly, because asset data is never set.
+        * An alternative workaround for this issue is to call asset.QueueLoad() from every component that uses assets 
+        * (despite the asset flags indicating that data will be loaded automatically).
+        */
+        const auto flags = static_cast<Data::AssetFlags>(asset->GetFlags() & static_cast<u8>(Data::AssetFlags::OBJECTSTREAM_MASK));
+        if (assetId.IsValid() &&
+            asset->GetType() != Data::s_invalidAssetType &&
+            ((flags == Data::AssetFlags::OBJECTSTREAM_PRE_LOAD || flags == Data::AssetFlags::OBJECTSTREAM_QUEUE_LOAD)))
+        {
+            // Valid populated asset pointer, flagged as PRE_LOAD/QUEUE_LOAD. If the asset has already been constructed and/or loaded, set asset data.
+            if (Data::AssetManager::IsReady())
+            {
+                Data::Asset<Data::AssetData> existingAsset = Data::AssetManager::Instance().FindAsset(assetId);
+                if (existingAsset)
+                {
+                    asset->SetData(existingAsset.Get());
+                }
+            }
+        }
+
         return true;
     }
 

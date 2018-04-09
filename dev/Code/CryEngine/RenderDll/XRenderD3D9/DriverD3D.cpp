@@ -62,88 +62,81 @@
 #include <windows.h>
 #endif
 #if RENDERER_ENABLE_BREAK_ON_ERROR
+#include <d3d9.h>
 namespace detail
 {
     const char* ToString(long const hr)
     {
-        switch (hr)
-        {
-        case D3DOK_NOAUTOGEN:
+        if (D3DOK_NOAUTOGEN == hr)
             return "D3DOK_NOAUTOGEN This is a success code. However, the autogeneration of mipmaps is not supported for this format. This means that resource creation will succeed but the mipmap levels will not be automatically generated";
-        case D3DERR_CONFLICTINGRENDERSTATE:
+        else if (D3DERR_CONFLICTINGRENDERSTATE == hr)
             return "D3DERR_CONFLICTINGRENDERSTATE The currently set render states cannot be used together";
-        case D3DERR_CONFLICTINGTEXTUREFILTER:
+        else if (D3DERR_CONFLICTINGTEXTUREFILTER == hr)
             return "D3DERR_CONFLICTINGTEXTUREFILTER The current texture filters cannot be used together";
-        case D3DERR_CONFLICTINGTEXTUREPALETTE:
+        else if (D3DERR_CONFLICTINGTEXTUREPALETTE == hr)
             return "D3DERR_CONFLICTINGTEXTUREPALETTE The current textures cannot be used simultaneously.";
-        case D3DERR_DEVICEHUNG:
+        else if (D3DERR_DEVICEHUNG == hr)
             return "D3DERR_DEVICEHUNG The device that returned this code caused the hardware adapter to be reset by the OS. Most applications should destroy the device and quit. Applications that must continue should destroy all video memory objects (surfaces, textures, state blocks etc) and call Reset() to put the device in a default state. If the application then continues rendering in the same way, the device will return to this state";
-
-        case D3DERR_DEVICELOST:
+        else if (D3DERR_DEVICELOST == hr)
             return "D3DERR_DEVICELOST The device has been lost but cannot be reset at this time. Therefore, rendering is not possible.A Direct 3D device object other than the one that returned this code caused the hardware adapter to be reset by the OS. Delete all video memory objects (surfaces, textures, state blocks) and call Reset() to return the device to a default state. If the application continues rendering without a reset, the rendering calls will succeed.";
-        case D3DERR_DEVICENOTRESET:
+        else if (D3DERR_DEVICENOTRESET == hr)
             return "D3DERR_DEVICENOTRESET The device has been lost but can be reset at this time.";
-        case D3DERR_DEVICEREMOVED:
+        else if (D3DERR_DEVICEREMOVED == hr)
             return "D3DERR_DEVICEREMOVED The hardware adapter has been removed. Application must destroy the device, do enumeration of adapters and create another Direct3D device. If application continues rendering without calling Reset, the rendering calls will succeed";
-
-        case D3DERR_DRIVERINTERNALERROR:
+        else if (D3DERR_DRIVERINTERNALERROR == hr)
             return "D3DERR_DRIVERINTERNALERROR Internal driver error. Applications should destroy and recreate the device when receiving this error. For hints on debugging this error, see Driver Internal Errors (Direct3D 9).";
-        case D3DERR_DRIVERINVALIDCALL:
+        else if (D3DERR_DRIVERINVALIDCALL == hr)
             return "D3DERR_DRIVERINVALIDCALL Not used.";
-        case D3DERR_INVALIDCALL:
+        else if (D3DERR_INVALIDCALL == hr)
             return "D3DERR_INVALIDCALL The method call is invalid. For example, a method's parameter may not be a valid pointer.";
-        case D3DERR_INVALIDDEVICE:
+        else if (D3DERR_INVALIDDEVICE == hr)
             return "D3DERR_INVALIDDEVICE The requested device type is not valid.";
-        case D3DERR_MOREDATA:
+        else if (D3DERR_MOREDATA == hr)
             return "D3DERR_MOREDATA There is more data available than the specified buffer size can hold.";
-        case D3DERR_NOTAVAILABLE:
+        else if (D3DERR_NOTAVAILABLE == hr)
             return "D3DERR_NOTAVAILABLE This device does not support the queried technique.";
-        case D3DERR_NOTFOUND:
+        else if (D3DERR_NOTFOUND == hr)
             return "D3DERR_NOTFOUND The requested item was not found.";
-        case D3D_OK:
+        else if (D3D_OK == hr)
             return "D3D_OK No error occurred.";
-        case D3DERR_OUTOFVIDEOMEMORY:
+        else if (D3DERR_OUTOFVIDEOMEMORY == hr)
             return "D3DERR_OUTOFVIDEOMEMORY Direct3D does not have enough display memory to perform the operation. The device is using more resources in a single scene than can fit simultaneously into video memory. Present, PresentEx, or CheckDeviceState can return this error. Recovery is similar to D3DERR_DEVICEHUNG, though the application may want to reduce its per-frame memory usage as well to avoid having the error recur.";
-        case D3DERR_TOOMANYOPERATIONS:
+        else if (D3DERR_TOOMANYOPERATIONS == hr)
             return "D3DERR_TOOMANYOPERATIONS The application is requesting more texture-filtering operations than the device supports.";
-        case D3DERR_UNSUPPORTEDALPHAARG:
+        else if (D3DERR_UNSUPPORTEDALPHAARG == hr)
             return "D3DERR_UNSUPPORTEDALPHAARG The device does not support a specified texture-blending argument for the alpha channel.";
-        case D3DERR_UNSUPPORTEDALPHAOPERATION:
+        else if (D3DERR_UNSUPPORTEDALPHAOPERATION == hr)
             return "D3DERR_UNSUPPORTEDALPHAOPERATION The device does not support a specified texture-blending operation for the alpha channel.";
-        case D3DERR_UNSUPPORTEDCOLORARG:
+        else if (D3DERR_UNSUPPORTEDCOLORARG == hr)
             return "D3DERR_UNSUPPORTEDCOLORARG The device does not support a specified texture-blending argument for color values.";
-        case D3DERR_UNSUPPORTEDCOLOROPERATION:
+        else if (D3DERR_UNSUPPORTEDCOLOROPERATION == hr)
             return "D3DERR_UNSUPPORTEDCOLOROPERATION The device does not support a specified texture-blending operation for color values.";
-        case D3DERR_UNSUPPORTEDFACTORVALUE:
+        else if (D3DERR_UNSUPPORTEDFACTORVALUE == hr)
             return "D3DERR_UNSUPPORTEDFACTORVALUE The device does not support the specified texture factor value. Not used; provided only to support older drivers.";
-        case D3DERR_UNSUPPORTEDTEXTUREFILTER:
+        else if (D3DERR_UNSUPPORTEDTEXTUREFILTER == hr)
             return "D3DERR_UNSUPPORTEDTEXTUREFILTER The device does not support the specified texture filter.";
-        case D3DERR_WASSTILLDRAWING:
+        else if (D3DERR_WASSTILLDRAWING == hr)
             return "D3DERR_WASSTILLDRAWING The previous blit operation that is transferring information to or from this surface is incomplete.";
-        case D3DERR_WRONGTEXTUREFORMAT:
+        else if (D3DERR_WRONGTEXTUREFORMAT == hr)
             return "D3DERR_WRONGTEXTUREFORMAT The pixel format of the texture surface is not valid.";
-        case E_FAIL:
+        else if (E_FAIL == hr)
             return "E_FAIL An undetermined error occurred inside the Direct3D subsystem.";
-        case E_INVALIDARG:
+        else if (E_INVALIDARG == hr)
             return "E_INVALIDARG An invalid parameter was passed to the returning function.";
-        case E_NOINTERFACE:
+        else if (E_NOINTERFACE == hr)
             return "E_NOINTERFACE No object interface is available.";
-        case E_NOTIMPL:
+        else if (E_NOTIMPL == hr)
             return "E_NOTIMPL Not implemented.";
-        case E_OUTOFMEMORY:
+        else if (E_OUTOFMEMORY == hr)
             return "E_OUTOFMEMORY Direct3D could not allocate sufficient memory to complete the call.";
-
-        case D3DERR_UNSUPPORTEDOVERLAY:
+        else if (D3DERR_UNSUPPORTEDOVERLAY == hr)
             return "D3DERR_UNSUPPORTEDOVERLAY The device does not support overlay for the specified size or display mode.";
-        case D3DERR_UNSUPPORTEDOVERLAYFORMAT:
+        else if (D3DERR_UNSUPPORTEDOVERLAYFORMAT == hr)
             return "D3DERR_UNSUPPORTEDOVERLAYFORMAT The device does not support overlay for the specified surface format.";
-        case D3DERR_CANNOTPROTECTCONTENT:
+        else if (D3DERR_CANNOTPROTECTCONTENT == hr)
             return "D3DERR_CANNOTPROTECTCONTENT The specified content cannot be protected";
-        case D3DERR_UNSUPPORTEDCRYPTO:
+        else if (D3DERR_UNSUPPORTEDCRYPTO == hr)
             return "D3DERR_UNSUPPORTEDCRYPTO The specified cryptographic algorithm is not supported.";
-        default:
-            break;
-        }
         return "Unknown HRESULT CODE!";
     }
     bool CheckHResult(long const hr
@@ -155,7 +148,7 @@ namespace detail
         {
             return true;
         }
-        CryLogAlways("[%s:%d] d3d error: '%s'", file, line, ToString(hr));
+        CryLogAlways("%s(%d): d3d error: '%s'", file, line, ToString(hr));
         IF (breakOnError, 0)
         {
             __debugbreak();

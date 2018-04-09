@@ -538,6 +538,8 @@ namespace GridMate
         CTM_DISCONNECT,
         CTM_DELETE_CONNECTION,
         CTM_HANDSHAKE_COMPLETE,
+        CTM_INSTANT_THREAD_RESPONSE_ENABLE,
+        CTM_INSTANT_THREAD_RESPONSE_DISABLE,
     };
 
     enum MainThreadMsg
@@ -830,6 +832,7 @@ namespace GridMate
         void            DebugDeleteConnection(ConnectionID id) override;
         void            DebugEnableDisconnectDetection(bool isEnabled) override;
         bool            DebugIsEnableDisconnectDetection() const override;
+        void            DebugEnableThreadInstantResponse(bool isEnabled) override;
 
         //////////////////////////////////////////////////////////////////////////
         // Synchronized clock in milliseconds. It will wrap around ~49.7 days.
@@ -1943,6 +1946,14 @@ CarrierThread::ThreadPump()
                     {
                         m_trafficControl->OnHandshakeComplete(tc);
                     }
+                } break;
+                case CTM_INSTANT_THREAD_RESPONSE_ENABLE:
+                {
+                    m_threadInstantResponse = true;
+                } break;
+                case CTM_INSTANT_THREAD_RESPONSE_DISABLE:
+                {
+                    m_threadInstantResponse = false;
                 } break;
                 }
                 ;
@@ -4413,6 +4424,27 @@ CarrierImpl::DebugIsEnableDisconnectDetection() const
     // This is not thread safe, but this should not be a problem. If we need to be
     // we can add a new CTM_XXX (Carrier Thread Message)
     return m_thread->m_enableDisconnectDetection;
+}
+
+//=========================================================================
+// DebugEnableThreadInstantResponse
+//=========================================================================
+void
+CarrierImpl::DebugEnableThreadInstantResponse(bool isEnabled)
+{
+    ThreadMessage* ctm = nullptr;
+    if (isEnabled)
+    {
+        ctm = aznew ThreadMessage(CTM_INSTANT_THREAD_RESPONSE_ENABLE);
+    }
+    else
+    {
+        ctm = aznew ThreadMessage(CTM_INSTANT_THREAD_RESPONSE_DISABLE);
+    }
+
+    ctm->m_connection = nullptr;
+    ctm->m_threadConnection = nullptr;
+    m_thread->PushCarrierThreadMessage(ctm);
 }
 
 //=========================================================================

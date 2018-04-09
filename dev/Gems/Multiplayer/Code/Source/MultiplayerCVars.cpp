@@ -393,6 +393,19 @@ namespace Multiplayer
         session->GetReplicaMgr()->SetSendLimitBurstRange(cvar->GetFVal());
     }
 
+    static void OnInstantResponseChanged(ICVar* cvar)
+    {
+        GridMate::GridSession* session = nullptr;
+        EBUS_EVENT_RESULT(session, Multiplayer::MultiplayerRequestBus, GetSession);
+
+        if (!session)
+        {
+            return;
+        }
+
+        session->DebugEnableThreadInstantResponse(cvar->GetIVal() != 0);
+    }
+
     //-----------------------------------------------------------------------------
     MultiplayerCVars* MultiplayerCVars::s_instance = nullptr;
 
@@ -449,7 +462,7 @@ namespace Multiplayer
             REGISTER_INT_CB("gm_replicasSendTime", 0, VF_NULL, "Time interval between replicas sends (in milliseconds), 0 will bound sends to GridMate tick rate", OnReplicasSendTimeChanged);
             REGISTER_INT_CB("gm_replicasSendLimit", 0, VF_DEV_ONLY, "Replica data send limit in bytes per second. 0 - limiter turned off. (Dev build only)", OnReplicasSendLimitChanged);
             REGISTER_FLOAT_CB("gm_burstTimeLimit", 10.f, VF_DEV_ONLY, "Burst in bandwidth will be allowed for the given amount of time(in seconds). Burst will only be allowed if bandwidth is not capped at the time of burst. (Dev build only)", OnReplicasBurstRangeChanged);
-
+            REGISTER_INT_CB("gm_carrierThreadInstantResponse", 0, VF_NULL, "Specifies that IO events should wake the carrier thread instantly.", OnInstantResponseChanged);
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
             REGISTER_STRING("gamelift_fleet_id", "", VF_DUMPTODISK, "Id of GameLift Fleet to use with this client.");
@@ -501,7 +514,7 @@ namespace Multiplayer
 #endif
 
 
-
+            UNREGISTER_CVAR("gm_carrierThreadInstantResponse");
             UNREGISTER_CVAR("gm_burstTimeLimit");
             UNREGISTER_CVAR("gm_replicasSendLimit");
             UNREGISTER_CVAR("gm_replicasSendTime");

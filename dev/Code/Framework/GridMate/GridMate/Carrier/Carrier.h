@@ -184,6 +184,13 @@ namespace GridMate
         virtual bool            DebugIsEnableDisconnectDetection() const                        { return false; }
         // @}
 
+        /**
+         * Debug function which will allow the gm_carrierThreadInstantResponse to be changed at runtime for testing.
+         * \param isEnabled Specifies whether IO events should wake the carrier thread instantly
+        */
+        virtual void            DebugEnableThreadInstantResponse(bool isEnabled) { (void)isEnabled; }
+
+
         //////////////////////////////////////////////////////////////////////////
         // Synchronized clock in milliseconds. It will wrap around ~49.7 days.
         /**

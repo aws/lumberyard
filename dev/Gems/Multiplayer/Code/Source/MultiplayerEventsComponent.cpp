@@ -157,6 +157,13 @@ namespace Multiplayer
                 ->Method("IsLeaderboardServiceStarted", &GridMate::IGridMate::IsLeaderboardServiceStarted)
                 ->Method("IsAchievementServiceStarted", &GridMate::IGridMate::IsAchievementServiceStarted)
                 ->Method("IsStorageServiceStarted", &GridMate::IGridMate::IsStorageServiceStarted)
+                ->Method("GetHandle", []() -> GridMate::IGridMate* {
+                    if (gEnv && gEnv->pNetwork)
+                    {
+                        return gEnv->pNetwork->GetGridMate();
+                    }
+                    return nullptr;
+                });
                 ;
 
             behaviorContext->Class<GridMate::GridSession>()

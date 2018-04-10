@@ -92,11 +92,13 @@ enum EMaterialFlags
     MTL_FLAG_DELETE_PENDING             = 0x800000, // Internal use only
     MTL_FLAG_BLEND_TERRAIN              = 0x1000000,
     MTL_FLAG_IS_TERRAIN                 = 0x2000000,// indication to the loader - Terrain type
-    MTL_FLAG_IS_SKY                     = 0x4000000 // indication to the loader - Sky type
+    MTL_FLAG_IS_SKY                     = 0x4000000, // indication to the loader - Sky type
+    MTL_FLAG_DO_NOT_STREAM              = 0x40000000 // Do not stream this material
 };
 
 #define MTL_FLAGS_SAVE_MASK (MTL_FLAG_WIRE | MTL_FLAG_2SIDED | MTL_FLAG_ADDITIVE |  MTL_FLAG_LIGHTING | \
-                             MTL_FLAG_NOSHADOW | MTL_FLAG_MULTI_SUBMTL | MTL_FLAG_SCATTER | MTL_FLAG_REQUIRE_FORWARD_RENDERING | MTL_FLAG_HIDEONBREAK | MTL_FLAG_UIMATERIAL | MTL_64BIT_SHADERGENMASK | MTL_FLAG_REQUIRE_NEAREST_CUBEMAP | MTL_FLAG_CONSOLE_MAT | MTL_FLAG_BLEND_TERRAIN)
+                             MTL_FLAG_NOSHADOW | MTL_FLAG_MULTI_SUBMTL | MTL_FLAG_SCATTER | MTL_FLAG_REQUIRE_FORWARD_RENDERING | MTL_FLAG_HIDEONBREAK | MTL_FLAG_UIMATERIAL | MTL_64BIT_SHADERGENMASK | MTL_FLAG_REQUIRE_NEAREST_CUBEMAP | MTL_FLAG_CONSOLE_MAT | MTL_FLAG_BLEND_TERRAIN | \
+                             MTL_FLAG_DO_NOT_STREAM) 
 
 // Post effects flags
 enum EPostEffectFlags

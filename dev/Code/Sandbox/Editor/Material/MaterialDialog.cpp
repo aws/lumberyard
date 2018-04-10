@@ -202,6 +202,7 @@ public:
     CSmartVariable<bool> bHideAfterBreaking;
     CSmartVariable<bool> bBlendTerrainColor;
     //CSmartVariable<bool> bTranslucenseLayer;
+    CSmartVariable<bool> bDoNotStream;
     CSmartVariableEnum<QString> surfaceType;
 
     CSmartVariable<bool> allowLayerActivation;
@@ -525,6 +526,7 @@ public:
         AddVariable(tableAdvanced, bPropagateShaderParams, "Propagate Shader Params", "");
         AddVariable(tableAdvanced, bPropagateShaderGenParams, "Propagate Shader Generation", "");
         AddVariable(tableAdvanced, bPropagateVertexDef, "Propagate Vertex Deformation", "");
+        AddVariable(tableAdvanced, bDoNotStream, "Do Not Stream (Use Sparingly)", "");
 
         //////////////////////////////////////////////////////////////////////////
         // Init Vertex Deformation.
@@ -1146,6 +1148,7 @@ void CMaterialUI::SetFromMaterial(CMaterial* mtlIn)
     bScatter = (mtlFlags & MTL_FLAG_SCATTER);
     bHideAfterBreaking = (mtlFlags & MTL_FLAG_HIDEONBREAK);
     bBlendTerrainColor = (mtlFlags & MTL_FLAG_BLEND_TERRAIN);
+    bDoNotStream = (mtlFlags & MTL_FLAG_DO_NOT_STREAM);
     texUsageMask = mtlIn->GetTexmapUsageMask();
 
     allowLayerActivation = mtlIn->LayerActivationAllowed();
@@ -1247,6 +1250,15 @@ void CMaterialUI::SetToMaterial(CMaterial* mtl, int propagationFlags)
         else
         {
             mtlFlags &= ~MTL_FLAG_BLEND_TERRAIN;
+        }
+
+        if (bDoNotStream)
+        {
+            mtlFlags |= MTL_FLAG_DO_NOT_STREAM;
+        }
+        else
+        {
+            mtlFlags &= ~MTL_FLAG_DO_NOT_STREAM;
         }
     }
 

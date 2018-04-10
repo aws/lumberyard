@@ -375,6 +375,9 @@ CPhysicalWorld::CPhysicalWorld(ILog* pLog)
     m_pFirstEventChunk = m_pCurEventChunk = (EventChunk*)(new char[sizeof(EventChunk) + EVENT_CHUNK_SZ]);
     m_pRwiHitsTail = (m_pRwiHitsHead = (m_pRwiHitsPool = new ray_hit[257]) + 1) + 255;
 
+    // Initially we ignore no collision classes
+    m_rayWorldIntersectionDefaultCollisionClassesToIgnore = 0;
+
     Init();
 }
 

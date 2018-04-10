@@ -73,6 +73,12 @@ namespace AzFramework
             AZ::Vector3 m_position;  ///< The position of the hit in world space
             AZ::Vector3 m_normal;    ///< The normal of the surface hit
             AZ::EntityId m_entityId; ///< The id of the AZ::Entity hit, or AZ::InvalidEntityId if hit object is not an AZ::Entity
+
+            AZ_INLINE AZStd::string ToString() const
+            {
+                return IsValid() ? 
+                    AZStd::string::format("Hit: %s, Pos: {%f,%f,%f}, Dist: %f", m_entityId.ToString().c_str(), (float)m_position.GetX(), (float)m_position.GetY(), (float)m_position.GetZ(), m_distance) : "";
+            }
         };
 
         /**
@@ -113,6 +119,9 @@ namespace AzFramework
 
             /// \ref PhysicalEntityTypes that the ray can hit.
             int m_physicalEntityTypes = PhysicalEntityTypes::All;
+
+            /// Mask for the collision classes to check for, 0 is default (all)
+            int m_collisionClass = 0;
         };
 
         /**

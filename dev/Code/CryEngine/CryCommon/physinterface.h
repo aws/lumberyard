@@ -3874,6 +3874,7 @@ struct IPhysicalWorld
     virtual int GetEntitiesInBox(Vec3 ptmin, Vec3 ptmax, IPhysicalEntity**& pList, int objtypes, int szListPrealloc = 0) = 0;
 
     virtual int GetMaxThreads() = 0;
+    virtual void RayWorldIntersection_IgnoreCollisionClassesByDefault(uint32 collisionClasses, bool ignore) = 0;
     virtual int RayWorldIntersection(const SRWIParams& rp, const char* pNameTag = RWI_NAME_TAG, int iCaller = GetMaxPhysThreads()) = 0;
     // Traces ray requests (rwi calls with rwi_queue set); logs and calls EventPhysRWIResult for each
     // returns the number of rays traced

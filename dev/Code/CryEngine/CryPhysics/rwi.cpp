@@ -537,6 +537,18 @@ nowater:;
     }
 }
 
+void CPhysicalWorld::RayWorldIntersection_IgnoreCollisionClassesByDefault(uint32 collisionClasses, bool ignore)
+{
+    if (ignore)
+    {
+        m_rayWorldIntersectionDefaultCollisionClassesToIgnore |= collisionClasses;
+    }
+    else
+    {
+        m_rayWorldIntersectionDefaultCollisionClassesToIgnore &= ~collisionClasses;
+    }
+}
+
 int CPhysicalWorld::RayWorldIntersection(const IPhysicalWorld::SRWIParams& rp, const char* pNameTag, int iCaller)
 {
     ray_hit* hits = rp.hits;
@@ -670,6 +682,13 @@ int CPhysicalWorld::RayWorldIntersection(const IPhysicalWorld::SRWIParams& rp, c
             egc.flagsColliderAny = geom_collides;
         }
         egc.collclass = rp.collclass;
+
+        // If no collision class info was specified, use the default ignore list
+        if (egc.collclass.type == 0 && egc.collclass.ignore == 0)
+        {
+            egc.collclass.ignore = m_rayWorldIntersectionDefaultCollisionClassesToIgnore;
+        }
+
         egc.bUsePhysOnDemand = iszero((objtypes & (ent_static | ent_no_ondemand_activation)) - ent_static);
         egc.nMaxHits = rp.nMaxHits;
         egc.pSkipForeignData = (rp.nSkipEnts > 0 && rp.pSkipEnts[0]) ?

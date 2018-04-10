@@ -177,6 +177,8 @@ namespace LmbrCentral
                 ->Property("normal", BehaviorValueGetter(&RayCastHit::m_normal), nullptr)
                 ->Property("entityId", BehaviorValueGetter(&RayCastHit::m_entityId), nullptr)
                 ->Method("IsValid", &RayCastHit::IsValid)
+                ->Method("ToString", &RayCastHit::ToString)
+                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
                 ;
 
             // RayCastConfiguration
@@ -418,6 +420,13 @@ namespace LmbrCentral
         cryParams.hits = cryHits.data();
         cryParams.nMaxHits = cryHits.size();
         cryParams.flags = rwi_pierceability(AZ::GetClamp<decltype(configuration.m_piercesSurfacesGreaterThan)>(configuration.m_piercesSurfacesGreaterThan, 0, sf_max_pierceable));
+
+        // If the user specified a collision class then we want to match the type and ignore all others
+        if (configuration.m_collisionClass)
+        {
+            cryParams.collclass.type = configuration.m_collisionClass;
+            cryParams.collclass.ignore = ~configuration.m_collisionClass;
+        }
 
         // Set ignored entities
         AZStd::vector<IPhysicalEntity*> ignorePhysicalEntities;

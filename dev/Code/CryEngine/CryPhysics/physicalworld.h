@@ -405,6 +405,7 @@ public:
         m_timeSnapshot[iType] = itime_snapshot * m_vars.timeGranularity;
     }
 
+    virtual void RayWorldIntersection_IgnoreCollisionClassesByDefault(uint32 collisionClasses, bool ignore) override;
     // *important* if request RWIs queued iForeignData should be a EPhysicsForeignIds
     virtual int RayWorldIntersection(const Vec3& org, const Vec3& dir, int objtypes, unsigned int flags, ray_hit* hits, int nmaxhits,
         IPhysicalEntity** pSkipEnts = 0, int nSkipEnts = 0, PhysicsForeignData pForeignData = 0, int iForeignData = 0,
@@ -1077,6 +1078,8 @@ public:
     volatile int m_lockBreakQueue;
     volatile int m_lockAuxStepEnt;
     volatile int m_lockWaterMan;
+
+    uint32 m_rayWorldIntersectionDefaultCollisionClassesToIgnore; ///<  Mask of collision classes to ignore by default
 };
 
 const int PHYS_FOREIGN_ID_PHYS_AREA = 12;

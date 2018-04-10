@@ -427,6 +427,24 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
     {
         pMtl = CreateMaterialPlaceholder(name.c_str(), nLoadingFlags, szDefaultSolid);
     }
+    
+    if (pMtl)
+    {
+        if (pMtl->GetFlags() & MTL_FLAG_DO_NOT_STREAM)
+        {
+            pMtl->DisableTextureStreaming();
+        }
+
+        int nSubMtlCount = pMtl->GetSubMtlCount();
+        for (int i = 0; i < nSubMtlCount; i++)
+        {
+            _smart_ptr<IMaterial> pSubMtl = pMtl->GetSubMtl(i);
+            if (pSubMtl->GetFlags() & MTL_FLAG_DO_NOT_STREAM)
+            {
+                pSubMtl->DisableTextureStreaming();
+            }
+        }
+    }
 
     return pMtl;
 }

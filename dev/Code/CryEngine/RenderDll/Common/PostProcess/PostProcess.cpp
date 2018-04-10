@@ -583,7 +583,7 @@ int CPostEffectsMgr::SortEffectsByID(const CPostEffect* p1, const CPostEffect* p
 
 int CParamTexture::Create(const char* pszFileName)
 {
-    if (!pszFileName)
+    if (!pszFileName || pszFileName[0] == '\0')
     {
         return 0;
     }

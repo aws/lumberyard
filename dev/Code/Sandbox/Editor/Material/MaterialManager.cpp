@@ -1969,7 +1969,7 @@ void CMaterialManager::DccMaterialSourceControlCheck(const AZStd::string& relati
         }
         else
         {
-            QString errorMessage = QObject::tr("Could not check out read-only file %s in source control. Either check your source control configuration or disable source control.", fullSourcePath.c_str());
+            QString errorMessage = QObject::tr("Could not check out read-only file %s in source control. Either check your source control configuration or disable source control.").arg(fullSourcePath.c_str());
 
             // Alter error message slightly if source control is disabled
             bool isSourceControlActive = false;
@@ -1977,7 +1977,7 @@ void CMaterialManager::DccMaterialSourceControlCheck(const AZStd::string& relati
 
             if (!isSourceControlActive)
             {
-                errorMessage = QObject::tr("Could not check out read-only file %s because source control is disabled. Either enable source control or check out the file manually to make it writable.", fullSourcePath.c_str());
+                errorMessage = QObject::tr("Could not check out read-only file %s because source control is disabled. Either enable source control or check out the file manually to make it writable.").arg(fullSourcePath.c_str());
             }
 
             // Pop open an error message box if this is the first error we encounter

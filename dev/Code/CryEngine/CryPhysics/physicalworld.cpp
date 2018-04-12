@@ -3708,7 +3708,7 @@ void CPhysicalWorld::TimeStep(float time_interval, int flags)
         if (flags & ent_living)
         {
             m_pCurEnt = m_pTypedEnts[3];
-            THREAD_TASK(3, ProcessNextLivingEntity(time_interval, bSkipFlagged, 0))
+            THREAD_TASK(3, ProcessNextLivingEntity(time_interval_org, bSkipFlagged, 0))
             /*for(pent=m_pTypedEnts[3]; pent; pent=pent_next) {
                 pent_next = pent->m_next;
                 if (!(m_bUpdateOnlyFlagged&(pent->m_flags^pef_update) | bSkipFlagged&pent->m_flags))
@@ -3726,7 +3726,7 @@ void CPhysicalWorld::TimeStep(float time_interval, int flags)
                 {
                     pent->m_next_coll2 = pent->m_next;
                 }
-                THREAD_TASK(4, ProcessNextIndependentEntity(time_interval, bSkipFlagged, 0));
+                THREAD_TASK(4, ProcessNextIndependentEntity(time_interval_org, bSkipFlagged, 0));
                 m_updateTimes[4] = m_timePhysics;
             }
         }

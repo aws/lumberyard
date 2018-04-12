@@ -119,6 +119,11 @@ namespace Camera
                 ->Event("SetNearClipDistance", &CameraRequestBus::Events::SetNearClipDistance)
                 ->Event("SetFarClipDistance", &CameraRequestBus::Events::SetFarClipDistance)
                 ->Event("MakeActiveView", &CameraRequestBus::Events::MakeActiveView)
+                ->Event("ProjectWorldPointToScreen", &CameraRequestBus::Events::ProjectWorldPointToScreen)
+                ->Event("UnprojectScreenPointToWorld", &CameraRequestBus::Events::UnprojectScreenPointToWorld)
+                ->Event("ProjectWorldPointToViewport", &CameraRequestBus::Events::ProjectWorldPointToViewport)
+                ->Event("UnprojectViewportPointToWorld", &CameraRequestBus::Events::UnprojectViewportPointToWorld)
+                ->Event("GetProjectionMatrix", &CameraRequestBus::Events::GetProjectionMatrix)
                 ->VirtualProperty("FieldOfView","GetFovDegrees","SetFovDegrees")
                 ->VirtualProperty("NearClipDistance", "GetNearClipDistance", "SetNearClipDistance")
                 ->VirtualProperty("FarClipDistance", "GetFarClipDistance", "SetFarClipDistance")
@@ -226,6 +231,73 @@ namespace Camera
         m_prevViewId = AZ::u32(m_viewSystem->GetActiveViewId());
         m_viewSystem->SetActiveView(m_view);
         UpdateCamera();
+    }
+
+    bool CameraComponent::ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint)
+    {
+        const CCamera& camera = m_view->GetCamera();
+        int x = 0, y = 0, w = 0, h = 0;
+        if (gEnv && gEnv->pRenderer)
+        {
+            gEnv->pRenderer->GetViewport(&x, &y, &w, &h);
+        }
+        Vec3 screenPoint;
+        bool isOnScreen = camera.Project(AZVec3ToLYVec3(worldPoint), screenPoint, Vec2i(x, y), Vec2i(w, h));
+        outScreenPoint = LYVec3ToAZVec3(screenPoint);
+        return isOnScreen;
+    }
+
+    bool CameraComponent::UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint)
+    {
+        const CCamera& camera = m_view->GetCamera();
+        int x = 0, y = 0, w = 0, h = 0;
+        if (gEnv && gEnv->pRenderer)
+        {
+            gEnv->pRenderer->GetViewport(&x, &y, &w, &h);
+        }
+        Vec3 worldPoint;
+        bool isInFrustum = camera.Unproject(AZVec3ToLYVec3(screenPoint), worldPoint, Vec2i(x, y), Vec2i(w, h));
+        outWorldPoint = LYVec3ToAZVec3(worldPoint);
+        return isInFrustum;
+    }
+
+    bool CameraComponent::ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint)
+    {
+        const CCamera& camera = m_view->GetCamera();
+        Vec3 viewportPoint;
+        bool isOnScreen = camera.Project(AZVec3ToLYVec3(worldPoint), viewportPoint, Vec2i(int(viewport.GetX()), int(viewport.GetY())), Vec2i(int(viewport.GetZ()), int(viewport.GetW())));
+        outViewportPoint = LYVec3ToAZVec3(viewportPoint);
+        return isOnScreen;
+    }
+
+    bool CameraComponent::UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint)
+    {
+        const CCamera& camera = m_view->GetCamera();
+        Vec3 worldPoint;
+        bool isInFrustum = camera.Unproject(AZVec3ToLYVec3(viewportPoint), worldPoint, Vec2i(int(viewport.GetX()), int(viewport.GetY())), Vec2i(int(viewport.GetZ()), int(viewport.GetW())));
+        outWorldPoint = LYVec3ToAZVec3(worldPoint);
+        return isInFrustum;
+    }
+
+    void CameraComponent::GetProjectionMatrix(AZ::Matrix4x4& outProjectionMatrix)
+    {
+        // Do NOT use AZ::Matrix4x4::CreateProjection() here - it creates a right-handed matrix that looks in +Z direction, 
+        // whereas the CryEngine view system uses right-handed matrix that looks in -Z direction.
+        // I am not sure what the reason for this discrepancy is, but let's use what the engine is currently using, for consistency.
+        const CCamera& camera = m_view->GetCamera();
+        float aspectRatio = camera.GetProjRatio();
+        float yScale = 1.0f / tanf(camera.GetFov() / 2.0f);
+        float xScale = yScale / camera.GetProjRatio();
+
+        float m22 = float(double(m_farClipPlaneDistance) / (double(m_nearClipPlaneDistance) - double(m_farClipPlaneDistance)));
+        float m23 = float(double(m_nearClipPlaneDistance) * double(m_farClipPlaneDistance) / (double(m_nearClipPlaneDistance) - double(m_farClipPlaneDistance)));
+
+        outProjectionMatrix = AZ::Matrix4x4::CreateFromRows(
+            AZ::Vector4(xScale, 0.0f, 0.0f, 0.0f),
+            AZ::Vector4(0.0f, yScale, 0.0f, 0.0f),
+            AZ::Vector4(0.0f, 0.0f, m22, m23),
+            AZ::Vector4(0.0f, 0.0f, -1.0f, 0.0f)
+        );
     }
 
     void CameraComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)

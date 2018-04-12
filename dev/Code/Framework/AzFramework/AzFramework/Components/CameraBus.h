@@ -12,6 +12,7 @@
 #pragma once
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/Math/Vector3.h>
 
 namespace Camera
 {
@@ -122,6 +123,31 @@ namespace Camera
         * Makes the camera the active view
         */
         virtual void MakeActiveView() = 0;
+
+        /**
+        * Projects a world point to a screen point
+        */
+        virtual bool ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint) = 0;
+
+        /**
+        * Unproject a screen point to the world
+        */
+        virtual bool UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint) = 0;
+
+        /**
+        * Projects a world point to a viewport
+        */
+        virtual bool ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint) = 0;
+
+        /**
+        * Unproject a viewport point to a world point
+        */
+        virtual bool UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint) = 0;
+
+        /**
+        * Get the projection matrix
+        */
+        virtual void GetProjectionMatrix(AZ::Matrix4x4& outProjectionMatrix) = 0;
     };
     using CameraRequestBus = AZ::EBus<CameraComponentRequests>;
 

@@ -70,6 +70,11 @@ namespace Camera
         void SetFrustumWidth(float width) override;
         void SetFrustumHeight(float height) override;
         void MakeActiveView() override;
+        bool ProjectWorldPointToScreen(const AZ::Vector3& worldPoint, AZ::Vector3& outScreenPoint) override;
+        bool UnprojectScreenPointToWorld(const AZ::Vector3& screenPoint, AZ::Vector3& outWorldPoint) override;
+        bool ProjectWorldPointToViewport(const AZ::Vector3& worldPoint, const AZ::Vector4& viewport, AZ::Vector3& outViewportPoint) override;
+        bool UnprojectViewportPointToWorld(const AZ::Vector3& viewportPoint, const AZ::Vector4& viewport, AZ::Vector3& outWorldPoint) override;
+        void GetProjectionMatrix(AZ::Matrix4x4& outProjectionMatrix) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

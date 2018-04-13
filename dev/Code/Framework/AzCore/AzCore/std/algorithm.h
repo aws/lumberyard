@@ -43,6 +43,28 @@ namespace AZStd
     
     template<class T>
     T   clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }
+
+    template <class ForwardIter, class BinaryPredicate>
+    ForwardIter max_element(ForwardIter first, ForwardIter last, BinaryPredicate comp)
+    {
+        //DEBUG_CHECK(check_range(first, last))
+        if (first == last)
+        {
+            return last;
+        }
+
+        ForwardIter largest = first;
+        ++first;
+        for (; first != last; ++first)
+        {
+            if (comp(*largest, *first))
+            {
+                largest = first;
+            }
+        }
+
+        return largest;
+    }
     //////////////////////////////////////////////////////////////////////////
 
     // for_each.  Apply a function to every element of a range.

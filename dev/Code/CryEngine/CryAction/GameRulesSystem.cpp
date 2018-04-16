@@ -46,7 +46,14 @@ bool CGameRulesSystem::RegisterGameRules(const char* rulesName, const char* exte
     IEntityClassRegistry::SEntityClassDesc ruleClass;
 
     char scriptName[1024];
-    sprintf_s(scriptName, "Scripts/GameRules/%s.lua", rulesName);
+    if (extensionName && strcmp(extensionName, "NoCryLuaScript") == 0)
+    {
+        scriptName[0] = '\0';
+    }
+    else
+    {
+        sprintf_s(scriptName, "Scripts/GameRules/%s.lua", rulesName);
+    }
 
     ruleClass.sName = rulesName;
     ruleClass.sScriptFile = scriptName;

@@ -65,7 +65,8 @@ namespace GridMate
                 AZStd::is_same<Type, AZ::s8>::value  ||
                 AZStd::is_same<Type, AZ::s16>::value ||
                 AZStd::is_same<Type, AZ::s32>::value ||
-                AZStd::is_same<Type, AZ::s64>::value
+                AZStd::is_same<Type, AZ::s64>::value ||
+                AZStd::is_same<Type, size_t>::value
         };
     };
 

@@ -4113,7 +4113,12 @@ CarrierImpl::QueryStatistics(ConnectionID id, TrafficControl::Statistics* lastSe
     }
 
     Connection* conn = static_cast<Connection*>(id);
-    AZ_Assert(AZStd::find(m_connections.begin(), m_connections.end(), conn) != m_connections.end(), "This connection ID is not valid! Not in the list 0x%08x", conn);
+    bool validConnection = AZStd::find(m_connections.begin(), m_connections.end(), conn) != m_connections.end();
+    AZ_Assert(validConnection, "This connection ID is not valid! Not in the list 0x%08x", conn);
+    if (!validConnection)
+    {
+        return Carrier::CST_DISCONNECTED;
+    }
     {
         AZStd::lock_guard<AZStd::mutex> statsLock(conn->m_statsLock);
         if (lastSecond)

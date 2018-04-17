@@ -4026,6 +4026,14 @@ void CRenderer::RenderTextMessages(CTextMessages& messages)
             }
 
             ProjectToScreen(vPos.x, vPos.y, vPos.z, &sx, &sy, &sz);
+			
+            if (!b800x600)
+            {
+                // ProjectToScreen() returns virtual screen values in range [0-100], while the Draw2dTextWithDepth() method expects screen coords.
+                // Correcting sx, sy values if not in virtual screen mode (sz is depth in range [0-1], and does not need to be altered).
+                sx = vw ? (sx / 100.f) * vw : sx;
+                sy = vh ? (sy / 100.f) * vh : sy;
+            }
         }
         else
         {

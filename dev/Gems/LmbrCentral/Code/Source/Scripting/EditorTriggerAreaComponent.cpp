@@ -46,10 +46,15 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &TriggerAreaComponent::m_activationEntityType, "Activated by", "The types of entities capable of interacting with the area trigger.")
                         ->EnumAttribute(TriggerAreaComponent::ActivationEntityType::AllEntities, "All entities")
                         ->EnumAttribute(TriggerAreaComponent::ActivationEntityType::SpecificEntities, "Specific entities")
+						->EnumAttribute(TriggerAreaComponent::ActivationEntityType::IgnoreEntities, "Ignore entities")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &TriggerAreaComponent::OnActivatedByComboBoxChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &TriggerAreaComponent::m_specificInteractEntities, "Specific entities", "List of entities that can interact with the trigger.")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &TriggerAreaComponent::UseSpecificEntityList)
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+					->DataElement(AZ::Edit::UIHandlers::Default, &TriggerAreaComponent::m_ignoredEntities, "Ignore entities", "List of entities which will not interact with the trigger.")
+						->Attribute(AZ::Edit::Attributes::Visibility, &TriggerAreaComponent::UseIgnoredEntityList)
+						->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+					;
 
                 edit->Class<EditorTriggerAreaComponent>("Trigger Area", "The Trigger Area component provides generic triggering services by using Shape components as its bounds")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")

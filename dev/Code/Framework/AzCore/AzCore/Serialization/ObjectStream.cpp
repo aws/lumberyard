@@ -893,7 +893,7 @@ namespace AZ
                 }
                 m_xmlNode = next;
 
-                Uuid specializedId;
+                Uuid specializedId = Uuid::CreateNull();
                 // now parse the node
                 rapidxml::xml_attribute<char>* attr = m_xmlNode->first_attribute();
                 while (attr)
@@ -946,8 +946,13 @@ namespace AZ
                         }
 
                     }
-                    element.m_id = specializedId;
-                }
+
+					// Don't overwrite the element type if no specializedId attribute exists.
+					if (!specializedId.IsNull())    
+					{
+						element.m_id = specializedId;
+					}
+				}
  
                 // find the registered class data
                 cd = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
@@ -1065,8 +1070,13 @@ namespace AZ
                                 }
                             }
                         }
-                        element.m_id = specializedId;
-                    }
+
+						// Don't overwrite the element type if no specializedId attribute exists.
+						if (!specializedId.IsNull())
+						{
+							element.m_id = specializedId;
+						}
+					}
                 }
                 valueIt = currentElement->FindMember("version");
                 if (valueIt != currentElement->MemberEnd())
@@ -1166,8 +1176,8 @@ namespace AZ
                 // Version 3 of the ObjectStream serializes the specialized type id directly in the data element id field. The data element old id field value is no longer needed
                 if (m_version == 2)
                 {
-                    Uuid specializedId;
-                    nBytesRead = m_stream->Read(specializedId.end() - specializedId.begin(), specializedId.begin());
+					Uuid specializedId = Uuid::CreateNull();
+					nBytesRead = m_stream->Read(specializedId.end() - specializedId.begin(), specializedId.begin());
                     AZ_Assert(nBytesRead == static_cast<IO::SizeType>(specializedId.end() - specializedId.begin()), "Failed trying to read binary class element uuid");
 
                     // The Asset ClassId is handled directly within the LoadClass function
@@ -1184,8 +1194,13 @@ namespace AZ
                                 }
                             }
                         }
-                        element.m_id = specializedId;
-                    }
+
+						// Don't overwrite the element type if no specializedId attribute exists.
+						if (!specializedId.IsNull())
+						{
+							element.m_id = specializedId;
+						}
+					}
                 }
 
                 element.m_dataType = SerializeContext::DataElement::DT_BINARY_BE;

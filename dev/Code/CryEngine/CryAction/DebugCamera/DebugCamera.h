@@ -42,11 +42,14 @@ public:
     void OnEnable();
     void OnDisable();
     void OnInvertY();
-    void OnNextMode();
+	void OnToggleFixedMode();
     void UpdatePitch(float amount);
     void UpdateYaw(float amount);
     void UpdatePosition(const Vec3& amount);
     void MovePosition(const Vec3& offset);
+	inline Vec3 GetPosition() const { return m_position; }
+	inline float GetPitch() const { return m_cameraPitch; }
+	inline float GetYaw() const { return m_cameraYaw; }
 
 protected:
     int m_mouseMoveMode;
@@ -60,7 +63,9 @@ protected:
 
     float m_moveScale;
     float m_oldMoveScale;
-    Vec3 m_position;
+	bool m_goFaster = false;
+	bool m_goSlower = false;
+	Vec3 m_position;
     Matrix33 m_view;
 };
 

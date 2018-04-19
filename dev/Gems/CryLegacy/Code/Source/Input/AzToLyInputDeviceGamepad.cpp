@@ -70,16 +70,16 @@ void AzToLyInputDeviceGamepad::OnInputChannelEvent(const InputChannel& inputChan
         SInputSymbol* inputSymbol = DevSpecIdToSymbol(AZ::Crc32("gamepad_button_l2_digital"));
         if (inputSymbol)
         {
-            PostCryInputEvent(inputChannel, *inputSymbol);
-        }
+			PostCryInputEvent(inputChannel, *inputSymbol, o_hasBeenConsumed);
+		}
     }
     else if (inputChannel.GetInputChannelId() == InputDeviceGamepad::Trigger::R2)
     {
         SInputSymbol* inputSymbol = DevSpecIdToSymbol(AZ::Crc32("gamepad_button_r2_digital"));
         if (inputSymbol)
         {
-            PostCryInputEvent(inputChannel, *inputSymbol);
-        }
+			PostCryInputEvent(inputChannel, *inputSymbol, o_hasBeenConsumed);
+		}
     }
 }
 

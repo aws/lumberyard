@@ -52,6 +52,7 @@ public:
     virtual void PostInputEvent(const SInputEvent& event, bool bForce = false) {}
     virtual void PostMotionSensorEvent(const SMotionSensorEvent& event, bool bForce = false) {}
     virtual void PostUnicodeEvent(const SUnicodeEvent& event, bool bForce = false) {}
+	virtual bool WasLastPostedInputEventHandled() const { return false; }
 
     virtual void ForceFeedbackEvent(const SFFOutputEvent& event) {}
     virtual void ForceFeedbackSetDeviceIndex(int index) {};

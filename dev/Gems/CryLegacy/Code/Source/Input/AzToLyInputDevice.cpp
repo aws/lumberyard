@@ -109,12 +109,12 @@ void AzToLyInputDevice::OnInputChannelEvent(const InputChannel& inputChannel, bo
     SInputSymbol* inputSymbol = DevSpecIdToSymbol(inputChannel.GetInputChannelId().GetNameCrc32());
     if (inputSymbol)
     {
-        PostCryInputEvent(inputChannel, *inputSymbol);
+		PostCryInputEvent(inputChannel, *inputSymbol, o_hasBeenConsumed); ///< passing in o_hasBeenConsumed, so that systems that use CryInput can filter input events too.
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void AzToLyInputDevice::PostCryInputEvent(const InputChannel& inputChannel, SInputSymbol& inputSymbol)
+void AzToLyInputDevice::PostCryInputEvent(const InputChannel& inputChannel, SInputSymbol& inputSymbol, bool& o_hasBeenConsumed)
 {
     // Value
     inputSymbol.value = inputChannel.GetValue();
@@ -168,11 +168,14 @@ void AzToLyInputDevice::PostCryInputEvent(const InputChannel& inputChannel, SInp
     inputSymbol.AssignTo(inputEvent, GetIInput().GetModifiers());
     GetIInput().PostInputEvent(inputEvent);
 
+	o_hasBeenConsumed = GetIInput().WasLastPostedInputEventHandled(); ///< Check if CryInput handled this event, pass the result up
+
     // CryInput dispatched 'changed' events for touch inputs, in addition to the regular pressed/held/released
     if (inputSymbol.deviceType == eIDT_TouchScreen &&
         inputSymbol.state == eIS_Down)
     {
         inputEvent.state = eIS_Changed;
         GetIInput().PostInputEvent(inputEvent);
+		o_hasBeenConsumed = o_hasBeenConsumed || GetIInput().WasLastPostedInputEventHandled();
     }
 }

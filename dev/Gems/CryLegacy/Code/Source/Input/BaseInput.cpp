@@ -48,6 +48,7 @@ bool compareInputListener(const IInputEventListener* pListenerA, const IInputEve
 CBaseInput::CBaseInput()
     : m_pExclusiveListener(0)
     , m_enableEventPosting(true)
+	, m_wasLastPostedEventHandled(false)
     , m_retriggering(false)
     , m_hasFocus(false)
     , m_modifiers(0)
@@ -451,6 +452,7 @@ void CBaseInput::PostInputEvent(const SInputEvent& event, bool bForce)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_INPUT);
     //CryAutoCriticalSection postInputLock(m_postInputEventMutex);
+	m_wasLastPostedEventHandled = false; ///< Store the handled state of the event, so that it can be later retrieved via WasLastPostedInputEventHandled()
 
     if (!bForce && !m_enableEventPosting)
     {
@@ -477,6 +479,7 @@ void CBaseInput::PostInputEvent(const SInputEvent& event, bool bForce)
 
     if (!SendEventToListeners(event))
     {
+		m_wasLastPostedEventHandled = true;
         return;
     }
     AddEventToHoldSymbols(event);
@@ -495,6 +498,8 @@ void CBaseInput::PostUnicodeEvent(const SUnicodeEvent& event, bool bForce)
     FUNCTION_PROFILER(GetISystem(), PROFILE_INPUT);
     assert(event.inputChar != 0 && Unicode::Validate(event.inputChar) && "Attempt to post invalid unicode event");
 
+	m_wasLastPostedEventHandled = false;
+
     if (!bForce && !m_enableEventPosting)
     {
         return;
@@ -509,6 +514,7 @@ void CBaseInput::PostUnicodeEvent(const SUnicodeEvent& event, bool bForce)
 
     if (!SendEventToListeners(event))
     {
+		m_wasLastPostedEventHandled = true;
         return;
     }
 }

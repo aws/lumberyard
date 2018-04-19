@@ -81,8 +81,9 @@ public:
     virtual void    EnableEventPosting(bool bEnable);
     virtual bool    IsEventPostingEnabled () const;
     virtual void    PostInputEvent(const SInputEvent& event, bool bForce = false);
-    virtual void    PostMotionSensorEvent(const SMotionSensorEvent& event, bool bForce = false) {}
+	virtual void    PostMotionSensorEvent(const SMotionSensorEvent& event, bool bForce = false) { m_wasLastPostedEventHandled = false; } ///< Motion events are never handled by the base input.
     virtual void    PostUnicodeEvent(const SUnicodeEvent& event, bool bForce = false);
+	virtual bool    WasLastPostedInputEventHandled() const { return m_wasLastPostedEventHandled; } ///< Return the handled state of the last posted input event.
     virtual void    ForceFeedbackEvent(const SFFOutputEvent& event);
     virtual void    ForceFeedbackSetDeviceIndex(int index);
     virtual void    EnableDevice(EInputDeviceType deviceType, bool enable);
@@ -143,6 +144,7 @@ private:
     IInputEventListener*    m_pExclusiveListener;
 
     bool                    m_enableEventPosting;
+	bool                    m_wasLastPostedEventHandled; ///< Variable holds the handled state of the last PostInputEvent()/PostMotionSensorEvent()/PostUnicodeEvent(). Better way would be to add ref bool parameter to the Post*() functions, but that would require a large number of files to be modified.
     bool                    m_retriggering;
     CryCriticalSection      m_postInputEventMutex;
 

@@ -60,7 +60,7 @@ void AzToLyInputDeviceMouse::OnInputChannelEvent(const InputChannel& inputChanne
 
         if (inputSymbol)
         {
-            PostCryInputEvent(inputChannel, *inputSymbol);
+            PostCryInputEvent(inputChannel, *inputSymbol, o_hasBeenConsumed);
         }
     }
 }

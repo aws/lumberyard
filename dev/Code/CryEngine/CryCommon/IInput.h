@@ -1358,6 +1358,9 @@ struct IInput
     virtual void PostInputEvent(const SInputEvent& event, bool bForce = false) = 0;
     virtual void PostMotionSensorEvent(const SMotionSensorEvent& event, bool bForce = false) = 0;
     virtual void PostUnicodeEvent(const SUnicodeEvent& event, bool bForce = false) = 0;
+	virtual bool WasLastPostedInputEventHandled() const = 0;	// Check if the last posted input event was handled and does not need to be propagated further 
+																// (done via a separate call as this requires fewer changes than adding "wasHandled" ref parameter 
+																// to PostInputEvent(), PostMotionSensorEvent(), and PostUnicodeEvent())
 
     // Description:
     //   For direct key processing (e.g. win proc functions)

@@ -36,15 +36,26 @@ void ToggleDebugCamera(IConsoleCmdArgs* pArgs)
     DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
     if (debugCamera)
     {
-        if (!debugCamera->IsEnabled())
+        if (!debugCamera->IsEnabled() || debugCamera->IsFixed()	)
         {
             debugCamera->OnEnable();
         }
         else
         {
-            debugCamera->OnNextMode();
+            debugCamera->OnDisable();
         }
     }
+#endif
+}
+
+void ToggleDebugCameraFixedState(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+	DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
+	if (debugCamera)
+	{
+		debugCamera->OnToggleFixedMode();
+	}
 #endif
 }
 
@@ -97,13 +108,17 @@ DebugCamera::DebugCamera()
 {
     if (gEnv->pSystem->GetIInput())
     {
-        gEnv->pSystem->GetIInput()->AddEventListener(this);
+		gEnv->pSystem->GetIInput()->AddConsoleEventListener(this); ///< Add as console listener so that we get to handle input events before the game's main loop
     }
+
     REGISTER_COMMAND("debugCameraToggle", ToggleDebugCamera, VF_DEV_ONLY, "Toggle the debug camera.\n");
+	REGISTER_COMMAND("debugCameraToggleFixedState", ToggleDebugCameraFixedState, VF_DEV_ONLY, "Toggle the debug camera fixed state.\n");
     REGISTER_COMMAND("debugCameraInvertY", ToggleDebugCameraInvertY, VF_DEV_ONLY, "Toggle debug camera Y-axis inversion.\n");
     REGISTER_COMMAND("debugCameraMove", DebugCameraMove, VF_DEV_ONLY, "Move the debug camera the specified distance (x y z).\n");
-    gEnv->pConsole->CreateKeyBind("ctrl_keyboard_key_punctuation_backslash", "debugCameraToggle");
-    gEnv->pConsole->CreateKeyBind("alt_keyboard_key_punctuation_backslash", "debugCameraInvertY");
+    
+	gEnv->pConsole->CreateKeyBind("ctrl_keyboard_key_punctuation_slash", "debugCameraToggle");
+    gEnv->pConsole->CreateKeyBind("alt_keyboard_key_punctuation_slash", "debugCameraInvertY");
+	gEnv->pConsole->CreateKeyBind("ctrl_shift_keyboard_key_punctuation_slash", "debugCameraToggleFixedState");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -111,7 +126,7 @@ DebugCamera::~DebugCamera()
 {
     if (gEnv->pSystem->GetIInput())
     {
-        gEnv->pSystem->GetIInput()->RemoveEventListener(this);
+		gEnv->pSystem->GetIInput()->RemoveConsoleEventListener(this);
     }
 }
 
@@ -147,18 +162,16 @@ void DebugCamera::OnInvertY()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void DebugCamera::OnNextMode()
+void DebugCamera::OnToggleFixedMode()
 {
-    if (m_cameraMode == DebugCamera::ModeFree)
-    {
-        m_cameraMode = DebugCamera::ModeFixed;
-    }
-    // ...
-    else if (m_cameraMode == DebugCamera::ModeFixed)
-    {
-        // this is the last mode, go to disabled.
-        OnDisable();
-    }
+	if (m_cameraMode == DebugCamera::ModeOff || m_cameraMode == DebugCamera::ModeFree)
+	{
+		m_cameraMode = DebugCamera::ModeFixed;
+	}
+	else
+	{
+		m_cameraMode = DebugCamera::ModeOff;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -170,8 +183,8 @@ void DebugCamera::Update()
     }
 
     float rotationSpeed = clamp_tpl(m_moveScale, g_minRotationSpeed, g_maxRotationSpeed);
-    UpdateYaw(m_cameraYawInput * rotationSpeed * gEnv->pTimer->GetFrameTime());
-    UpdatePitch(m_cameraPitchInput * rotationSpeed * gEnv->pTimer->GetFrameTime());
+	UpdateYaw(m_cameraYawInput * rotationSpeed * gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI));
+	UpdatePitch(m_cameraPitchInput * rotationSpeed * gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI));
 
     m_view = Matrix33(Ang3(DEG2RAD(m_cameraPitch), 0.0f, DEG2RAD(m_cameraYaw)));
     UpdatePosition(m_moveInput);
@@ -211,11 +224,11 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
     {
         return false;
     }
-
-
-    if (!IsEnabled() || m_cameraMode == DebugCamera::ModeFixed)
+	
+	bool isHandled = false; // Prevent the character from moving when the free debug camera is enabled
+    if (m_cameraMode == DebugCamera::ModeOff || m_cameraMode == DebugCamera::ModeFixed)
     {
-        return false;
+        return isHandled;
     }
 
     if (eIDT_Keyboard == event.deviceType)
@@ -223,41 +236,56 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
         if (eKI_W == event.keyId)
         {
             m_moveInput.y = event.value;
+			isHandled = true;
         }
         else if (eKI_S == event.keyId)
         {
             m_moveInput.y = -event.value;
+			isHandled = true;
         }
         else if (eKI_A == event.keyId)
         {
             m_moveInput.x = -event.value;
+			isHandled = true;
         }
         else if (eKI_D == event.keyId)
         {
             m_moveInput.x = event.value;
+			isHandled = true;
         }
-        else if (eKI_LShift == event.keyId)
-        {
-            if (eIS_Released == event.state)
-            {
-                m_moveScale = m_oldMoveScale;
-            }
-            else if (eIS_Pressed == event.state)
-            {
-                m_oldMoveScale = m_moveScale;
-                m_moveScale = clamp_tpl(m_moveScale * g_boostMultiplier, g_moveScaleMin, g_moveScaleMax);
-            }
-        }
+		else if ((eKI_LShift == event.keyId || eKI_LCtrl == event.keyId) && (eIS_Pressed == event.state || eIS_Released == event.state))
+		{
+			m_goFaster = (event.keyId == eKI_LShift) ? (event.state == eIS_Pressed) : m_goFaster;
+			m_goSlower = (event.keyId == eKI_LCtrl) ? (event.state == eIS_Pressed) : m_goSlower;
+
+			if (m_goFaster && !m_goSlower)
+			{
+				m_oldMoveScale = m_moveScale;
+				m_moveScale = clamp_tpl(m_moveScale * g_boostMultiplier, g_moveScaleMin, g_moveScaleMax);
+			}
+			else if (m_goSlower && !m_goFaster)
+			{
+				m_oldMoveScale = m_moveScale;
+				m_moveScale = clamp_tpl(m_moveScale / g_boostMultiplier, g_moveScaleMin, g_moveScaleMax);
+			}
+			else
+			{
+				m_moveScale = m_oldMoveScale;
+			}
+			// Do not handle modifiers
+		}
     }
     else if (eIDT_Mouse == event.deviceType)
     {
         if (eKI_MouseWheelUp == event.keyId)
         {
             m_moveScale = clamp_tpl(m_moveScale + g_moveScaleIncrement, g_moveScaleMin, g_moveScaleMax);
+			isHandled = true;
         }
         else if (eKI_MouseWheelDown == event.keyId)
         {
             m_moveScale = clamp_tpl(m_moveScale - g_moveScaleIncrement, g_moveScaleMin, g_moveScaleMax);
+			isHandled = true;
         }
         else if (eKI_MouseX == event.keyId)
         {
@@ -265,12 +293,15 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             //the mouse movement for horizontal movement.
             if (2 != m_mouseMoveMode)
             {
-                UpdateYaw(fsgnf(-event.value) * clamp_tpl(fabs_tpl(event.value) * m_moveScale, 0.0f, g_mouseMaxRotationSpeed) * gEnv->pTimer->GetFrameTime());
+				// Use UI timer instead of game timer, so it still works when you pause the game		
+				// Removed m_moveScale - usually rotation speed is not an issue with debug camera
+				UpdateYaw(fsgnf(-event.value) * clamp_tpl(fabs_tpl(event.value), 0.0f, g_mouseMaxRotationSpeed) * gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI));
             }
             else
             {
                 UpdatePosition(Vec3(event.value * g_mouseMoveScale, 0.0f, 0.0f));
             }
+			isHandled = true;
         }
         else if (eKI_MouseY == event.keyId)
         {
@@ -278,12 +309,15 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             //the mouse movement for vertical movement.
             if (2 != m_mouseMoveMode)
             {
-                UpdatePitch(fsgnf(-event.value) * clamp_tpl(fabs_tpl(event.value) * m_moveScale, 0.0f, g_mouseMaxRotationSpeed) * gEnv->pTimer->GetFrameTime());
+				// Use UI timer instead of game timer, so it still works when you pause the game		
+				// Removed m_moveScale - usually rotation speed is not an issue with debug camera
+				UpdatePitch(fsgnf(-event.value) * clamp_tpl(fabs_tpl(event.value), 0.0f, g_mouseMaxRotationSpeed) * gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI));
             }
             else
             {
                 UpdatePosition(Vec3(0.0f, 0.0f, -event.value * g_mouseMoveScale));
             }
+			isHandled = true;
         }
         else if (eKI_Mouse1 == event.keyId)
         {
@@ -295,6 +329,7 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             {
                 m_mouseMoveMode = clamp_tpl(m_mouseMoveMode + 1, 0, 2);
             }
+			isHandled = true;
         }
         else if (eKI_Mouse2 == event.keyId)
         {
@@ -306,6 +341,7 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             {
                 m_mouseMoveMode = clamp_tpl(m_mouseMoveMode + 1, 0, 2);
             }
+			isHandled = true;
         }
     }
     else if (eIDT_Gamepad == event.deviceType)
@@ -316,48 +352,56 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
         case eKI_Orbis_Up:
         {
             m_moveScale = clamp_tpl(m_moveScale + g_moveScaleIncrement, g_moveScaleMin, g_moveScaleMax);
+			isHandled = true;
             break;
         }
         case eKI_XI_DPadDown:
         case eKI_Orbis_Down:
         {
             m_moveScale = clamp_tpl(m_moveScale - g_moveScaleIncrement, g_moveScaleMin, g_moveScaleMax);
+			isHandled = true;
             break;
         }
         case eKI_XI_TriggerL:
         case eKI_Orbis_L2:
         {
             m_moveInput.z = -event.value;
+			isHandled = true;
             break;
         }
         case eKI_XI_TriggerR:
         case eKI_Orbis_R2:
         {
             m_moveInput.z = event.value;
+			isHandled = true;
             break;
         }
         case eKI_XI_ThumbLX:
         case eKI_Orbis_StickLX:
         {
             m_moveInput.x = event.value;
+			isHandled = true;
             break;
         }
         case eKI_XI_ThumbLY:
         case eKI_Orbis_StickLY:
         {
             m_moveInput.y = event.value;
+			isHandled = true;
             break;
         }
         case eKI_XI_ThumbRX:
         case eKI_Orbis_StickRX:
         {
             m_cameraYawInput = -event.value * g_gamepadRotationSpeed;
+			isHandled = true;
             break;
         }
         case eKI_XI_ThumbRY:
         case eKI_Orbis_StickRY:
         {
             m_cameraPitchInput = event.value * g_gamepadRotationSpeed;
+			isHandled = true;
             break;
         }
         //KC: Use the shoulder buttons to temporarily boost or reduce the scale.
@@ -367,11 +411,13 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             if (eIS_Released == event.state)
             {
                 m_moveScale = m_oldMoveScale;
+				isHandled = true;
             }
             else if (eIS_Pressed == event.state)
             {
                 m_oldMoveScale = m_moveScale;
                 m_moveScale = clamp_tpl(m_moveScale / g_boostMultiplier, g_moveScaleMin, g_moveScaleMax);
+				isHandled = true;
             }
             break;
         }
@@ -381,18 +427,20 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             if (eIS_Released == event.state)
             {
                 m_moveScale = m_oldMoveScale;
+				isHandled = true;
             }
             else if (eIS_Pressed == event.state)
             {
                 m_oldMoveScale = m_moveScale;
                 m_moveScale = clamp_tpl(m_moveScale * g_boostMultiplier, g_moveScaleMin, g_moveScaleMax);
+				isHandled = true;
             }
             break;
         }
         }
     }
 
-    return false;
+    return isHandled;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -424,10 +472,11 @@ void DebugCamera::UpdateYaw(float amount)
 ///////////////////////////////////////////////////////////////////////////////
 void DebugCamera::UpdatePosition(const Vec3& amount)
 {
-    Vec3 diff = amount * g_moveSpeed * m_moveScale * gEnv->pTimer->GetFrameTime();
-    MovePosition(diff);
+	Vec3 diff = amount * g_moveSpeed * m_moveScale * gEnv->pTimer->GetFrameTime(ITimer::ETIMER_UI);
+	MovePosition(diff);
 }
 
+///////////////////////////////////////////////////////////////////////////////
 void DebugCamera::MovePosition(const Vec3& offset)
 {
     m_position += m_view.GetColumn0() * offset.x;

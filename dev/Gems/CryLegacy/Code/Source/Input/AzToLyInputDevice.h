@@ -44,7 +44,7 @@ protected:
     void OnInputChannelEvent(const AzFramework::InputChannel& inputChannel,
                              bool& o_hasBeenConsumed) override;
 
-    void PostCryInputEvent(const AzFramework::InputChannel& inputChannel, SInputSymbol& inputSymbol);
+    void PostCryInputEvent(const AzFramework::InputChannel& inputChannel, SInputSymbol& inputSymbol, bool& o_hasBeenConsumed);
 
 protected:
     const AzFramework::InputDeviceId m_azFrameworkInputDeviceId;

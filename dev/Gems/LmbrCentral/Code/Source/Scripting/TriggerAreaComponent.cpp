@@ -182,10 +182,11 @@ namespace LmbrCentral
         if (serialize)
         {
             serialize->Class<TriggerAreaComponent, AZ::Component, AzFramework::NetBindable>()
-                ->Version(2)
+                ->Version(3)
                 ->Field("TriggerOnce", &TriggerAreaComponent::m_triggerOnce)
                 ->Field("ActivatedBy", &TriggerAreaComponent::m_activationEntityType)
                 ->Field("SpecificInteractEntities", &TriggerAreaComponent::m_specificInteractEntities)
+				->Field("IgnoreInteractEntities", &TriggerAreaComponent::m_ignoredEntities)
                 ->Field("RequiredTags", &TriggerAreaComponent::m_requiredTags)
                 ->Field("ExcludedTags", &TriggerAreaComponent::m_excludedTags);
         }
@@ -198,6 +199,8 @@ namespace LmbrCentral
                 ->Event("RemoveRequiredTag", &TriggerAreaRequestsBus::Events::RemoveRequiredTag)
                 ->Event("AddExcludedTag", &TriggerAreaRequestsBus::Events::AddExcludedTag)
                 ->Event("RemoveExcludedTag", &TriggerAreaRequestsBus::Events::RemoveExcludedTag)
+				->Event("AddIgnoredEntity", &TriggerAreaRequestsBus::Events::AddIgnoredEntity)
+				->Event("RemoveIgnoredEntity", &TriggerAreaRequestsBus::Events::RemoveIgnoredEntity)
                 ;
 
             behaviorContext->EBus<TriggerAreaNotificationBus>("TriggerAreaNotificationBus")
@@ -353,6 +356,30 @@ namespace LmbrCentral
         }
     }
 
+	void TriggerAreaComponent::AddIgnoredEntity(const AZ::EntityId& ignoredEntityId)
+	{
+		const auto& ignoredEntityIter = AZStd::find(m_ignoredEntities.begin(), m_ignoredEntities.end(), ignoredEntityId);
+		bool isEntityIgnored = (m_ignoredEntities.end() != ignoredEntityIter);
+		if (!isEntityIgnored)
+		{
+			m_ignoredEntities.push_back(ignoredEntityId);
+			ReevaluateAllIgnoredEntities();
+		}
+	}
+
+	void TriggerAreaComponent::RemoveIgnoredEntity(const AZ::EntityId& ignoredEntityId)
+	{
+		const auto& ignoredEntityIter = AZStd::find(m_ignoredEntities.begin(), m_ignoredEntities.end(), ignoredEntityId);
+		bool isEntityIgnored = (m_ignoredEntities.end() != ignoredEntityIter);
+		AZ_Warning("TriggerAreaComponent", isEntityIgnored, "No such entity is ignored %s", ignoredEntityId.ToString().c_str());
+
+		if (isEntityIgnored)
+		{
+			m_ignoredEntities.erase(ignoredEntityIter);
+			ReevaluateAllIgnoredEntities();
+		}
+	}
+
     void TriggerAreaComponent::OnTick(float deltaTime, AZ::ScriptTimePoint)
     {
         TriggerAreaReplicaChunk* triggerAreaReplicaChunk = static_cast<TriggerAreaReplicaChunk*>(m_replicaChunk.get());
@@ -470,6 +497,12 @@ namespace LmbrCentral
             m_entitiesInsideExcludedByTags.erase(excludedEntityIter);
         }
 
+		auto ignoredEntityIter = AZStd::find(m_entitiesInsideExcludedByIgnoreList.begin(), m_entitiesInsideExcludedByIgnoreList.end(), entityId);
+		if (ignoredEntityIter != m_entitiesInsideExcludedByIgnoreList.end())
+		{
+			m_entitiesInsideExcludedByIgnoreList.erase(ignoredEntityIter);
+		}
+		
         TagComponentNotificationsBus::MultiHandler::BusDisconnect(entityId);
 
         return retVal;
@@ -517,6 +550,12 @@ namespace LmbrCentral
                 result = foundIter != m_specificInteractEntities.end();
                 break;
             }
+			case ActivationEntityType::IgnoreEntities:
+			{
+				auto foundIter = AZStd::find(m_ignoredEntities.begin(), m_ignoredEntities.end(), id);
+				result = foundIter == m_ignoredEntities.end();
+				break;
+			}
         }
         
         if (!result)
@@ -697,6 +736,19 @@ namespace LmbrCentral
         }
     }
 
+	void TriggerAreaComponent::ReevaluateAllIgnoredEntities()
+	{
+		for (const AZ::EntityId& entityInside : m_entitiesInside)
+		{
+			HandleIgnoredEntitiesChange(entityInside);
+		}
+
+		for (const AZ::EntityId& entityInside : m_entitiesInsideExcludedByIgnoreList)
+		{
+			HandleIgnoredEntitiesChange(entityInside);
+		}
+	}
+
     void TriggerAreaComponent::HandleTagChange(const AZ::EntityId& entityId)
     {
         FilteringResult result = EntityPassesFilters(entityId);
@@ -719,6 +771,28 @@ namespace LmbrCentral
             }
         }
     }
+
+	void TriggerAreaComponent::HandleIgnoredEntitiesChange(const AZ::EntityId& entityId)
+	{
+		FilteringResult result = EntityPassesFilters(entityId);
+		if (result != FilteringResult::Pass)
+		{
+			OnTriggerExit(entityId);
+			if (result == FilteringResult::FailWithPossibilityOfChange)
+			{
+				m_entitiesInsideExcludedByIgnoreList.push_back(entityId);
+			}
+		}
+		else
+		{
+			OnTriggerEnter(entityId);
+			auto foundIter = AZStd::find(m_entitiesInsideExcludedByIgnoreList.begin(), m_entitiesInsideExcludedByIgnoreList.end(), entityId);
+			if (foundIter != m_entitiesInsideExcludedByIgnoreList.end())
+			{
+				m_entitiesInsideExcludedByIgnoreList.erase(foundIter);
+			}
+		}
+	}
 
     void TriggerAreaComponent::OnTagAdded(const Tag& tagAdded)
     {

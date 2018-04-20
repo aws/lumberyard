@@ -73,6 +73,9 @@ namespace LmbrCentral
 
         void AddExcludedTag(const Tag& excludedTag) override;
         void RemoveExcludedTag(const Tag& excludedTag) override;
+
+		void AddIgnoredEntity(const AZ::EntityId&) override;
+		void RemoveIgnoredEntity(const AZ::EntityId&) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -139,6 +142,7 @@ namespace LmbrCentral
         {
             AllEntities,
             SpecificEntities,
+			IgnoreEntities,
         };
 
         //! Adds a required tag without Reevaluating trigger (used for building game entities)
@@ -171,14 +175,21 @@ namespace LmbrCentral
         /// Reevaluates tags for all entities in the Area
         void ReevaluateTagsAllEntities();
 
+		/// Reevaluates all ignored entities in the Area
+		void ReevaluateAllIgnoredEntities();
+
         /// Handles changes in tags on any entities that are inside the Trigger volume
         void HandleTagChange(const AZ::EntityId& entityId);
+
+		/// Handles change in the list of ignored entities that are inside the Trigger volume
+		void HandleIgnoredEntitiesChange(const AZ::EntityId& entityId);
 
         ActivationEntityType            m_activationEntityType;     ///< The types of entities able to interact with the trigger area.
         bool                            m_triggerOnce;              ///< Only trigger once.
         AZStd::vector<AZ::EntityId>     m_specificInteractEntities; ///< Specific list of entities that can interact with the trigger, if m_activationEntityType is SpecificEntities.
         AZStd::vector<AZ::EntityId>     m_entitiesInside;           ///< Tracking of valid entities currently inside the trigger.
-        AZStd::vector<AZ::EntityId>     m_entitiesInsideExcludedByTags;           ///< Tracking of valid entities currently spatially inside the trigger but are logically evicted
+		AZStd::vector<AZ::EntityId>     m_entitiesInsideExcludedByTags;           ///< Tracking of valid entities currently spatially inside the trigger but are logically evicted
+		AZStd::vector<AZ::EntityId>     m_entitiesInsideExcludedByIgnoreList;	  ///< Tracking of valid entities currently spatially inside the trigger but are logically evicted
         SProximityElement*              m_proximityTrigger;         ///< The proximity trigger instance per the ProximityTriggerSystem.
 
         GridMate::ReplicaChunkPtr       m_replicaChunk;
@@ -189,7 +200,11 @@ namespace LmbrCentral
         //! The tags that exclude an entity from triggering this Area
         AZStd::vector<LmbrCentral::Tag> m_excludedTags;
 
+		//! The entities which will not trigger this Area if m_activationEntityType is IgnoredEntities
+		AZStd::vector<AZ::EntityId> m_ignoredEntities;
+		
         bool UseSpecificEntityList() const { return m_activationEntityType == ActivationEntityType::SpecificEntities; }
+		bool UseIgnoredEntityList() const { return m_activationEntityType == ActivationEntityType::IgnoreEntities; }
 
         //////////////////////////////////////////////////////////////////////////
         // Component descriptor

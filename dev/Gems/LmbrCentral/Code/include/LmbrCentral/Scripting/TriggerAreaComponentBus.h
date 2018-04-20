@@ -34,6 +34,12 @@ namespace LmbrCentral
 
             //! Removes an excluded tag from the Activation filtering criteria of this component
             virtual void RemoveExcludedTag(const Tag& excludedTag) = 0;
+
+			//! Adds an entityId which will fail the Activation filtering criteria of this component
+			virtual void AddIgnoredEntity(const AZ::EntityId&) = 0;
+
+			//! Removes an entityId from the Activation filtering criteria of this component
+			virtual void RemoveIgnoredEntity(const AZ::EntityId&) = 0;
     };
 
     using TriggerAreaRequestsBus = AZ::EBus<TriggerAreaRequests>;

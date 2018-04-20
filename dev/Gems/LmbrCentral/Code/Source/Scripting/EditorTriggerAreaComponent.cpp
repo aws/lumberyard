@@ -28,7 +28,7 @@ namespace LmbrCentral
         if (serialize)
         {
             serialize->Class<EditorTriggerAreaComponent, EditorComponentBase>()
-                ->Version(2, ClassConverters::ConvertOldTriggerAreaComponent)
+                ->Version(3, ClassConverters::ConvertOldTriggerAreaComponent)
                 ->Field("TriggerArea", &EditorTriggerAreaComponent::m_gameComponent)
                 ->Field("RequiredTags", &EditorTriggerAreaComponent::m_requiredTags)
                 ->Field("ExcludedTags", &EditorTriggerAreaComponent::m_excludedTags)

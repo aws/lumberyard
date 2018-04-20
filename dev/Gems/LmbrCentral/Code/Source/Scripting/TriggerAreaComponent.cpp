@@ -182,7 +182,7 @@ namespace LmbrCentral
         if (serialize)
         {
             serialize->Class<TriggerAreaComponent, AZ::Component, AzFramework::NetBindable>()
-                ->Version(2)
+                ->Version(3)
                 ->Field("TriggerOnce", &TriggerAreaComponent::m_triggerOnce)
                 ->Field("ActivatedBy", &TriggerAreaComponent::m_activationEntityType)
                 ->Field("SpecificInteractEntities", &TriggerAreaComponent::m_specificInteractEntities)

@@ -74,6 +74,11 @@ public:
     virtual phys_geometry* RegisterGeometry(IGeometry* pGeom, int defSurfaceIdx = 0, int* pMatMapping = 0, int nMats = 0);
     virtual int AddRefGeometry(phys_geometry* pgeom);
     virtual int UnregisterGeometry(phys_geometry* pgeom);
+
+private:
+	int UnregisterGeometryLocked(phys_geometry* pgeom);
+public:
+
     virtual void SetGeomMatMapping(phys_geometry* pgeom, int* pMatMapping, int nMats);
 
     virtual void SaveGeometry(CMemStream& stm, IGeometry* pGeom);

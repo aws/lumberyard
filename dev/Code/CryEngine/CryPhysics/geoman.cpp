@@ -183,7 +183,13 @@ int CGeomManager::AddRefGeometry(phys_geometry* pgeom)
 
 int CGeomManager::UnregisterGeometry(phys_geometry* pgeom)
 {
-    WriteLock lock(m_lockGeoman);
+	WriteLock lock(m_lockGeoman);
+	return UnregisterGeometryLocked(pgeom);
+}
+
+// Internal function that assumes that the caller is already in the write lock, see ::UnregisterGeometry
+int CGeomManager::UnregisterGeometryLocked(phys_geometry* pgeom)      
+{
     AtomicAdd(&pgeom->nRefCount, -1);
     if (pgeom->nRefCount != 0)
     {
@@ -198,6 +204,12 @@ int CGeomManager::UnregisterGeometry(phys_geometry* pgeom)
         delete pmu;
         pgeom->pGeom->SetForeignData(0, DATA_MESHUPDATE);
     }
+
+	// Try and get the foreign data as unscaled geom, release the reference to it if it exists
+	if (phys_geometry* pUnscaledGeom = (phys_geometry*)pgeom->pGeom->GetForeignData(DATA_UNSCALED_GEOM))
+	{
+		UnregisterGeometryLocked(pUnscaledGeom);
+	}
     pgeom->pGeom->Release();
     pgeom->pGeom = 0;
     if (pgeom->pMatMapping)

@@ -16,6 +16,7 @@
 #pragma once
 
 #include "overlapchecks.h"
+#include "utils.h"
 
 struct tritem
 {
@@ -348,7 +349,12 @@ public:
     virtual Vec3 GetCenter() { return Vec3(ZERO); }
     virtual PhysicsForeignData GetForeignData(int iForeignData = 0) { return iForeignData == m_iForeignData ? m_pForeignData : PhysicsForeignData(0); }
     virtual int GetiForeignData() { return m_iForeignData; }
-    virtual void SetForeignData(PhysicsForeignData pForeignData, int iForeignData) { m_pForeignData = pForeignData; m_iForeignData = iForeignData; }
+	virtual void SetForeignData(PhysicsForeignData pForeignData, int iForeignData)
+	{
+		AZ_Assert(m_iForeignData != DATA_UNSCALED_GEOM, "Overriding foreign data that is reference counted, will leak geometry");
+		m_pForeignData = pForeignData;
+		m_iForeignData = iForeignData;
+	}
 
     virtual float BuildOcclusionCubemap(geom_world_data* pgwd, int iMode, SOcclusionCubeMap* grid0, SOcclusionCubeMap* grid1, int nGrow);
     virtual int DrawToOcclusionCubemap(const geom_world_data* pgwd, int iStartPrim, int nPrims, int iPass, SOcclusionCubeMap* cubeMap) { return 0; }

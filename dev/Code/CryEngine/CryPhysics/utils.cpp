@@ -623,6 +623,8 @@ int BakeScaleIntoGeometry(phys_geometry*& pgeom, IGeomManager* pGeoman, const Ve
             pGeoman->UnregisterGeometry(pgeom);
         }
         pGeomScaled->SetForeignData(pgeom, DATA_UNSCALED_GEOM);
+		pGeoman->AddRefGeometry(pgeom); ///< Add a reference to the unscaled geometry stored in foreign data or it may be released whilst stored
+
         int* pMatMapping = 0;
         if (pgeom->nMats)
         {

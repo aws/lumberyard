@@ -149,6 +149,7 @@ public:
     void FreeRenderResources();
     //
     void Copy();
+	void Paste();
 
     // interface IConsole ---------------------------------------------------------
     virtual void Release();

@@ -1360,6 +1360,15 @@ bool CXConsole::OnInputChannelEventFiltered(const AzFramework::InputChannel& inp
             // Consume keyboard events if the console is active, which it will be if we get here
             return true;
         }
+
+		if (channelId == AzFramework::InputDeviceKeyboard::Key::AlphanumericV &&
+			modifierKeyStates.IsActive(AzFramework::ModifierKeyMask::CtrlAny))
+		{
+			Paste();
+
+			// Consume keyboard events if the console is active, which it will be if we get here
+			return true;
+		}
     }
 
     if (channelId == AzFramework::InputDeviceKeyboard::Key::PunctuationTilde)
@@ -3471,6 +3480,27 @@ void CXConsole::Copy()
 #endif //WIN32
 }
 
+//////////////////////////////////////////////////////////////////////////
+void CXConsole::Paste()
+{
+#ifdef WIN32
+	if (OpenClipboard(nullptr))
+	{
+		if (HANDLE hUnicodeText = GetClipboardData(CF_UNICODETEXT))
+		{
+			const WCHAR* wchars = static_cast<const WCHAR*>(GlobalLock(hUnicodeText));
+			AZStd::string text;
+			AZStd::to_string(text, wchars);
+			if (text.length() > 0)
+			{
+				AddInputUTF8(text);
+			}
+			GlobalUnlock(hUnicodeText);
+		}
+		CloseClipboard();
+	}
+#endif //WIN32
+}
 
 //////////////////////////////////////////////////////////////////////////
 int CXConsole::GetNumVars()

@@ -683,44 +683,63 @@ void ScriptSystemComponent::OnAssetPreReload(Data::Asset<Data::AssetData> asset)
 //=========================================================================
 // OnAssetReloaded
 // #TEMP: Remove when asset dependencies are in place
-// This function will only be called for the asset that triggered the reload (everything else is disconnected)
+// This function will only be called for the asset that triggered the reload.
+//
+// Track all reload requests and remove them from the map one by one as they are handled. 
+// Once all queued reloads are handled, another full reload can be triggered.
 //=========================================================================
 void ScriptSystemComponent::OnAssetReloaded(Data::Asset<Data::AssetData> asset)
 {
-    Data::AssetBus::MultiHandler::BusDisconnect();
+	Data::AssetBus::MultiHandler::BusDisconnect(asset.GetId());
 
-    m_assetsAlreadyReloaded.emplace(asset.GetId());
+	auto it = m_queuedReloads.find(asset.GetId());
+	if (it == m_queuedReloads.end())
+	{
+		// This is not a reload queued by us as a "dependency" reload, probably an external change.
+		if (!m_isReloadQueued)
+		{
+			// There is no reload-all queued, schedule one.
+			m_isReloadQueued = true;
+			auto triggeredByAssetId = asset.GetId();
+			AZStd::function<void()> reloadFn = [this, triggeredByAssetId]() ///< Capture just reloaded asset ID so that it can be excluded from reloading
+			{
+				// Collects all script assets for reloading
+				Data::AssetCatalogRequests::AssetEnumerationCB collectAssetsCb = [this, triggeredByAssetId](const Data::AssetId id, const Data::AssetInfo& info)
+				{
+					// Check asset type
+					if (info.m_assetType == azrtti_typeid<ScriptAsset>())
+					{
+						// Ensure that the asset isn't scheduled for a reload already
+						if (id != triggeredByAssetId && m_queuedReloads.find(id) == m_queuedReloads.end()) ///< Don't reload just reloaded asset or assets already queued for reload
+						{
+							auto otherAsset = Data::AssetManager::Instance().FindAsset<ScriptAsset>(id);
+							if (otherAsset && otherAsset.IsReady())
+							{
+								// Reload the asset from it's current data
+								otherAsset.Reload();
 
-    if (!m_isReloadQueued)
-    {
-        m_isReloadQueued = true;
-        AZStd::function<void()> reloadFn = [this]()
-        {
-            // Collects all script assets for reloading
-            Data::AssetCatalogRequests::AssetEnumerationCB collectAssetsCb = [this](const Data::AssetId id, const Data::AssetInfo& info)
-            {
-                // Check asset type
-                if (info.m_assetType == azrtti_typeid<ScriptAsset>())
-                {
-                    // Ensure that the asset isn't scheduled for a reload already
-                    if (m_assetsAlreadyReloaded.find(id) == m_assetsAlreadyReloaded.end())
-                    {
-                        auto otherAsset = Data::AssetManager::Instance().FindAsset<ScriptAsset>(id);
-                        if (otherAsset && otherAsset.IsReady())
-                        {
-                            // Reload the asset from it's current data
-                            otherAsset.Reload();
-                        }
-                    }
-                }
-            };
-            Data::AssetCatalogRequestBus::Broadcast(&Data::AssetCatalogRequestBus::Events::EnumerateAssets, nullptr, collectAssetsCb, nullptr);
+								// Store the ID of the ID of the asset that we started reloading. We will use it to detect the moment 
+								// when all current reload requests are handled, and reloadFn can be called again.
+								m_queuedReloads.insert(id);
+								static_cast<Data::AssetBus::MultiHandler*>(this)->BusConnect(id); ///< static_cast to help the compiler pick the right vtable. It seems to struggle without an explicit cast.
+								// #THIRD_KIND_END
+							}
+						}
+					}
+				};
+				Data::AssetCatalogRequestBus::Broadcast(&Data::AssetCatalogRequestBus::Events::EnumerateAssets, nullptr, collectAssetsCb, nullptr);
 
-            m_isReloadQueued = false;
-            m_assetsAlreadyReloaded.clear();
-        };
-        TickBus::QueueFunction(reloadFn);
-    }
+				m_isReloadQueued = false;
+			};
+			TickBus::QueueFunction(reloadFn);
+		}
+	}
+	else
+	{
+		// This is one of the reloads triggered by us via reloadFn, no need to trigger another reload-all call.
+		// Remove it from the queue, so that reloadFn can be triggered again once all dependencies finished reloading.
+		m_queuedReloads.erase(it);
+	}
 }
 
 //=========================================================================

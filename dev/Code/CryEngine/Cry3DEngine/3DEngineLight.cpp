@@ -652,6 +652,8 @@ void C3DEngine::OnCasterDeleted(IShadowCaster* pCaster)
 
 void CLightVolumesMgr::Init()
 {
+	CryAutoLock< CryMutex > lock(m_dataMutex);
+
     m_bUpdateLightVolumes = false;
     for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
     {
@@ -664,6 +666,8 @@ void CLightVolumesMgr::Init()
 
 void CLightVolumesMgr::Reset()
 {
+	CryAutoLock< CryMutex > lock(m_dataMutex);
+
     for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
     {
         stl::free_container(m_pLightVolumes[i]);
@@ -678,6 +682,8 @@ void CLightVolumesMgr::Reset()
 
 uint16 CLightVolumesMgr::RegisterVolume(const Vec3& vPos, f32 fRadius, uint8 nClipVolumeRef, const SRenderingPassInfo& passInfo)
 {
+	CryAutoLock< CryMutex > lock(m_dataMutex);
+
     DynArray<SLightVolInfo*>& lightVolsInfo = m_pLightVolsInfo[passInfo.ThreadID()];
 
     IF ((m_bUpdateLightVolumes & (lightVolsInfo.size() < LV_MAX_COUNT)) && fRadius < 256.0f, 1)
@@ -726,6 +732,8 @@ uint16 CLightVolumesMgr::RegisterVolume(const Vec3& vPos, f32 fRadius, uint8 nCl
 
 void CLightVolumesMgr::RegisterLight(const CDLight& pDL, uint32 nLightID, const SRenderingPassInfo& passInfo)
 {
+	CryAutoLock< CryMutex > lock(m_dataMutex);
+
     IF ((m_bUpdateLightVolumes & !(pDL.m_Flags & LV_DLF_LIGHTVOLUMES_MASK)), 1)
     {
         FUNCTION_PROFILER_3DENGINE;
@@ -783,6 +791,8 @@ void CLightVolumesMgr::RegisterLight(const CDLight& pDL, uint32 nLightID, const 
 
 void CLightVolumesMgr::AddLight(const SRenderLight& pLight, const SLightVolInfo* __restrict pVolInfo, SLightVolume& pVolume)
 {
+	CryAutoLock< CryMutex > lock(m_dataMutex);
+
     // Check for clip volume
     if (pLight.m_nStencilRef[0] == pVolInfo->nClipVolumeID || pLight.m_nStencilRef[1] == pVolInfo->nClipVolumeID ||
         pLight.m_nStencilRef[0] == CClipVolumeManager::AffectsEverythingStencilRef)
@@ -825,6 +835,8 @@ void CLightVolumesMgr::AddLight(const SRenderLight& pLight, const SLightVolInfo*
 
 void CLightVolumesMgr::Update(const SRenderingPassInfo& passInfo)
 {
+	CryAutoLock< CryMutex > lock(m_dataMutex);
+
     uint32 nThreadID = passInfo.ThreadID();
     DynArray<SLightVolInfo*>& lightVolsInfo = m_pLightVolsInfo[nThreadID];
 
@@ -913,17 +925,20 @@ void CLightVolumesMgr::Update(const SRenderingPassInfo& passInfo)
                         continue;
                     }
 
-                    const SRenderLight& pDL = (*pLights)[nLightId];
-                    const int32 nNextLightId = lightCell.nLightID[(l + 1) & (LIGHTVOLUME_MAXLIGHTS - 1)];
-                    const SRenderLight& pNextDL = (*pLights)[nNextLightId];
-                    CryPrefetch(&pNextDL);
-                    CryPrefetch(&pNextDL.m_ObjMatrix);
+					if (static_cast<uint32>(nLightId) < nLightCount)
+					{
+						const SRenderLight& pDL = (*pLights)[nLightId];
+						const int32 nNextLightId = lightCell.nLightID[(l + 1) & (LIGHTVOLUME_MAXLIGHTS - 1)];
+						const SRenderLight& pNextDL = (*pLights)[nNextLightId];
+						CryPrefetch(&pNextDL);
+						CryPrefetch(&pNextDL.m_ObjMatrix);
 
-                    IF (lightProcessedStateArray[nLightId] != v + 1, 1)
-                    {
-                        lightProcessedStateArray[nLightId] = v + 1;
-                        AddLight(pDL, &*lightVolsInfo[v], lightVols[v]);
-                    }
+						IF(lightProcessedStateArray[nLightId] != v + 1, 1)
+						{
+							lightProcessedStateArray[nLightId] = v + 1;
+							AddLight(pDL, &*lightVolsInfo[v], lightVols[v]);
+						}
+					}
                 }
             }
         }
@@ -934,6 +949,8 @@ void CLightVolumesMgr::Update(const SRenderingPassInfo& passInfo)
 
 void CLightVolumesMgr::Clear(const SRenderingPassInfo& passInfo)
 {
+	CryAutoLock< CryMutex > lock(m_dataMutex);
+
     DynArray<SLightVolInfo*>& lightVolsInfo = m_pLightVolsInfo[passInfo.ThreadID()];
 
     m_bUpdateLightVolumes = false;

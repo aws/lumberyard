@@ -451,8 +451,15 @@ void CFlowNode::Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar)
             for (int i = 0; i < m_inputs.size(); i++)
             {
                 IVariable* pVar = m_inputs[i].pVar;
-                if (pVar->GetType() != IVariable::UNKNOWN)
-                {
+
+				/*				
+					Skip validation for input variables of custom types (unknown/void variables were already skipped), 
+					as otherwise bogus warnings will be logged. 
+					Custom type variables are not serialized to file (as per the comment in FlowGraphVariables.h, line 369), 
+					so they will always be "missing", although they are missing by design.
+				*/
+				if (pVar->GetType() != IVariable::UNKNOWN && pVar->GetType() != IVariable::FLOW_CUSTOM_DATA) 
+				{
                     if (portsNode->haveAttr(pVar->GetName().toUtf8().data()) == false)
                     {
                         // if we did not find a value for the variable we try to use the old name
@@ -477,10 +484,12 @@ void CFlowNode::Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar)
                         }
                         else
                         {
-                            CryLogAlways("CFlowNode::Serialize: FG '%s': Can't resolve value for "
-                                "'%s' <may not be severe>",
-                                name.data(),
-                                sVarName.data());
+							CryLogAlways("CFlowNode::Serialize: FG '%s': Can't resolve value for "
+								"'%s' (nodeId: %u, class: '%s') <may not be severe> (It can happen when new inputs were added to the called node, in which case re-saving flowgraph should fix this warning)",
+								name.data(),
+								sVarName.data(),
+								m_id,                        
+								m_classname.toUtf8().data());
                         }
                     }
                 }

@@ -509,6 +509,7 @@ private:
     SLightCell m_pWorldLightCells[LV_LIGHTS_WORLD_BUCKET_SIZE];     // 2D World cell buckets for light sources ids
     uint16 m_nWorldCells[LV_WORLD_BUCKET_SIZE];                     // World cell buckets for light volumes
     bool m_bUpdateLightVolumes : 1;
+	CryMutex m_dataMutex; // Added mutex to make sure all light interactions are thread-safe
 };
 
 // onscreen infodebug for e_debugDraw >= 100

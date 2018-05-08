@@ -46,6 +46,7 @@ namespace AzToolsFramework
         QWidget* GetFirstInTabOrder();
         QWidget* GetLastInTabOrder();
         void UpdateTabOrder();
+		void SetShowAlpha(bool showAlpha) { m_showAlpha = showAlpha; }
 
     signals:
         void valueChanged(QColor newValue);
@@ -72,6 +73,7 @@ namespace AzToolsFramework
 
         QLineEdit* m_colorEdit;
         QColor m_color;
+		bool m_showAlpha = false;
     };
 
     template <class ValueType>

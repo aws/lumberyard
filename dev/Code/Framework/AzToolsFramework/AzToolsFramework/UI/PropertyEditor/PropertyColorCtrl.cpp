@@ -105,9 +105,17 @@ namespace AzToolsFramework
                 m_pColorDialog->setCurrentColor(m_color);
             }
 
-            int R, G, B;
-            m_color.getRgb(&R, &G, &B);
-            m_colorEdit->setText(QStringLiteral("%1,%2,%3").arg(R).arg(G).arg(B));
+			int R, G, B, A;
+			m_color.getRgb(&R, &G, &B, &A);
+
+			if (m_showAlpha)
+			{
+				m_colorEdit->setText(QStringLiteral("R: %1 G: %2 B: %3 A: %4").arg(R).arg(G).arg(B).arg(A));
+			}
+			else
+			{
+				m_colorEdit->setText(QStringLiteral("R: %1 G: %2 B: %3").arg(R).arg(G).arg(B));
+			}
         }
     }
 
@@ -136,8 +144,15 @@ namespace AzToolsFramework
         }
 
         m_pColorDialog = new QColorDialog(m_color, this);
-        m_pColorDialog->setOption(QColorDialog::NoButtons);
-        connect(m_pColorDialog, SIGNAL(currentColorChanged(QColor)), this, SLOT(onSelected(QColor)));
+		if (m_showAlpha)
+		{
+			m_pColorDialog->setOptions(QColorDialog::NoButtons | QColorDialog::ShowAlphaChannel);
+		}
+		else
+		{
+			m_pColorDialog->setOption(QColorDialog::NoButtons);
+		}
+		connect(m_pColorDialog, SIGNAL(currentColorChanged(QColor)), this, SLOT(onSelected(QColor)));
 
         // Position the picker around cursor.
         QLayout* layout = m_pColorDialog->layout();
@@ -220,8 +235,16 @@ namespace AzToolsFramework
         }
     }
 
-    void AZColorPropertyHandler::ConsumeAttribute(PropertyColorCtrl* /*GUI*/, AZ::u32 /*attrib*/, PropertyAttributeReader* /*attrValue*/, const char* /*debugName*/)
+    void AZColorPropertyHandler::ConsumeAttribute(PropertyColorCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* /*debugName*/)
     {
+		if (attrib == AZ::Edit::Attributes::AlphaChannelEnabled)
+		{
+			bool value = false;
+			if (attrValue->Read<bool>(value))
+			{
+				GUI->SetShowAlpha(value);
+			}
+		}
     }
 
     void AZColorPropertyHandler::WriteGUIValuesIntoProperty(size_t index, PropertyColorCtrl* GUI, property_t& instance, InstanceDataNode* node)

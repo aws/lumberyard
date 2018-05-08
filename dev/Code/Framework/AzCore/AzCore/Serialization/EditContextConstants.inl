@@ -126,6 +126,9 @@ namespace AZ
 
             // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
             const static AZ::Crc32 Handler = AZ_CRC("Handler", 0x939715cd);
+
+			// Color picker attributes, allow to pick alpha if the AlphaChannelEnabled attribute is present
+			const static AZ::Crc32 AlphaChannelEnabled = AZ_CRC("AlphaChannelEnabled", 0xce653f5f); 
         }
 
 

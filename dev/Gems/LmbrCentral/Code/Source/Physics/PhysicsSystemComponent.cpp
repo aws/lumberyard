@@ -173,6 +173,7 @@ namespace LmbrCentral
             behaviorContext->Class<RayCastHit>()
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Property("distance", BehaviorValueGetter(&RayCastHit::m_distance), nullptr)
+				->Property("surface", BehaviorValueGetter(&RayCastHit::m_surfaceId), nullptr)
                 ->Property("position", BehaviorValueGetter(&RayCastHit::m_position), nullptr)
                 ->Property("normal", BehaviorValueGetter(&RayCastHit::m_normal), nullptr)
                 ->Property("entityId", BehaviorValueGetter(&RayCastHit::m_entityId), nullptr)
@@ -469,6 +470,7 @@ namespace LmbrCentral
             hit.m_distance = cryHit.dist;
             hit.m_position = LYVec3ToAZVec3(cryHit.pt);
             hit.m_normal = LYVec3ToAZVec3(cryHit.n);
+			hit.m_surfaceId = cryHit.surface_idx;
 
             if (cryHit.pCollider && cryHit.pCollider->GetiForeignData() == PHYS_FOREIGN_ID_COMPONENT_ENTITY)
             {

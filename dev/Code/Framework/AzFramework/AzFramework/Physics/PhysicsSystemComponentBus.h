@@ -70,6 +70,7 @@ namespace AzFramework
             bool IsValid() const { return m_distance >= 0.f; }
 
             float m_distance = -1.0f; ///< The distance from \ref begin to the hit
+			int m_surfaceId;         ///< The surface the ray hit
             AZ::Vector3 m_position;  ///< The position of the hit in world space
             AZ::Vector3 m_normal;    ///< The normal of the surface hit
             AZ::EntityId m_entityId; ///< The id of the AZ::Entity hit, or AZ::InvalidEntityId if hit object is not an AZ::Entity

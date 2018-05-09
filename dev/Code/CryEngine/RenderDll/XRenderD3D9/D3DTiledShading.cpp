@@ -98,8 +98,7 @@ CTiledShading::CTiledShading()
     STATIC_ASSERT(sizeof(STiledLightCullInfo) % 16 == 0, "STiledLightCullInfo should be 16 byte aligned for GPU performance");
     STATIC_ASSERT(sizeof(STiledLightShadeInfo) % 16 == 0, "STiledLightShadeInfo should be 16 byte aligned for GPU performance");
 
-    
-	= 0;
+    m_dispatchSizeX = 0;
     m_dispatchSizeY = 0;
 
     m_nTexStateCompare = 0xFFFFFFFF;

@@ -98,7 +98,8 @@ CTiledShading::CTiledShading()
     STATIC_ASSERT(sizeof(STiledLightCullInfo) % 16 == 0, "STiledLightCullInfo should be 16 byte aligned for GPU performance");
     STATIC_ASSERT(sizeof(STiledLightShadeInfo) % 16 == 0, "STiledLightShadeInfo should be 16 byte aligned for GPU performance");
 
-    m_dispatchSizeX = 0;
+    
+	= 0;
     m_dispatchSizeY = 0;
 
     m_nTexStateCompare = 0xFFFFFFFF;
@@ -1081,7 +1082,7 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
 
 void CTiledShading::BindForwardShadingResources(CShader*, EHWShaderClass shaderType)
 {
-    if (!CRenderer::CV_r_DeferredShadingTiled)
+    if (!CRenderer::CV_r_DeferredShadingTiled || !m_dispatchSizeX || !m_dispatchSizeY)
     {
         return;
     }

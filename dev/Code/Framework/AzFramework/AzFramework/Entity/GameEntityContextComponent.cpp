@@ -146,10 +146,33 @@ namespace AzFramework
         AddEntity(entity);
     }
 
+	//=========================================================================
+	// CloneGameEntity
+	//=========================================================================
+	AZ::Entity* GameEntityContextComponent::CloneGameEntity(AZ::Entity* entity, bool activate, const char* name)
+	{
+		AZ::Entity* clonedEntity = nullptr;
+		if (entity)
+		{
+			if (!activate)
+			{
+				m_activationDisabledForCloning = true;
+			}
 
-    //=========================================================================
-    // CreateEntity
-    //=========================================================================
+			clonedEntity = CloneEntity(*entity);
+			if (clonedEntity && name)
+			{
+				clonedEntity->SetName(name);
+			}
+
+			if (!activate)
+			{
+				m_activationDisabledForCloning = false;
+			}
+		}
+		return clonedEntity;
+	}
+
     AZ::Entity* GameEntityContextComponent::CreateEntity(const char* name)
     {
         auto entity = aznew AZ::Entity(name);
@@ -195,16 +218,19 @@ namespace AzFramework
             }
         }
 
-        for (AZ::Entity* entity : entities)
-        {
-            if (entity->GetState() == AZ::Entity::ES_INIT)
-            {
-                if (entity->IsRuntimeActiveByDefault())
-                {
-                    entity->Activate();
-                }
-            }
-        }
+		if (!m_activationDisabledForCloning)
+		{
+			for (AZ::Entity* entity : entities)
+			{
+				if (entity->GetState() == AZ::Entity::ES_INIT)
+				{
+					if (entity->IsRuntimeActiveByDefault())
+					{
+						entity->Activate();
+					}
+				}
+			}
+		}
     }
 
     //=========================================================================

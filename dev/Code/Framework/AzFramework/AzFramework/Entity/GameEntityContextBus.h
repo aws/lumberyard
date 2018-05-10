@@ -92,7 +92,7 @@ namespace AzFramework
 		* Clones an existing entity in the game context.
 		* @param entity A pointer to the entity to clone.
 		* @param activate Optional parameter to skip activation.
-		* @param name
+		* @param name A name for the cloned entity.
 		*/		
 		virtual AZ::Entity* CloneGameEntity(AZ::Entity* /*entity*/, bool /* activate = true*/, const char* /* name = nullptr*/) { return nullptr; }
 

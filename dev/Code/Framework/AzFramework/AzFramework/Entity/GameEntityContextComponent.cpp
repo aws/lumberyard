@@ -147,7 +147,7 @@ namespace AzFramework
     }
 
 	//=========================================================================
-	// CloneGameEntity
+	// GameEntityContextComponent::CloneGameEntity
 	//=========================================================================
 	AZ::Entity* GameEntityContextComponent::CloneGameEntity(AZ::Entity* entity, bool activate, const char* name)
 	{
@@ -173,6 +173,9 @@ namespace AzFramework
 		return clonedEntity;
 	}
 
+	//=========================================================================
+	// GameEntityContextComponent::CreateEntity
+	//=========================================================================
     AZ::Entity* GameEntityContextComponent::CreateEntity(const char* name)
     {
         auto entity = aznew AZ::Entity(name);

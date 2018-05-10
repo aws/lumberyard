@@ -19,8 +19,7 @@
 #include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
-
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {
@@ -73,7 +72,11 @@ namespace GraphCanvas
         ////
 
     private:
+
+        // Fix for VS2013
         CommentNodeFrameComponent(const CommentNodeFrameComponent&) = delete;
+        const CommentNodeFrameComponent& operator=(const CommentNodeFrameComponent&) = delete;
+        ////
 
         AZStd::unique_ptr<CommentNodeFrameGraphicsWidget> m_frameWidget;
     };

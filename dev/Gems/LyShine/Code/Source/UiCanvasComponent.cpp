@@ -82,7 +82,7 @@ class UiCanvasInputNotificationBusBehaviorHandler
 {
 public:
     AZ_EBUS_BEHAVIOR_BINDER(UiCanvasInputNotificationBusBehaviorHandler, "{76042EFA-0B61-4E7A-ACC8-296382D46881}", AZ::SystemAllocator,
-        OnCanvasPrimaryPressed, OnCanvasPrimaryReleased, OnCanvasHoverStart, OnCanvasHoverEnd, OnCanvasEnterPressed, OnCanvasEnterReleased);
+        OnCanvasPrimaryPressed, OnCanvasPrimaryReleased, OnCanvasMultiTouchPressed, OnCanvasMultiTouchReleased, OnCanvasHoverStart, OnCanvasHoverEnd, OnCanvasEnterPressed, OnCanvasEnterReleased);
 
     void OnCanvasPrimaryPressed(AZ::EntityId entityId) override
     {
@@ -92,6 +92,16 @@ public:
     void OnCanvasPrimaryReleased(AZ::EntityId entityId) override
     {
         Call(FN_OnCanvasPrimaryReleased, entityId);
+    }
+
+    void OnCanvasMultiTouchPressed(AZ::EntityId entityId, int multiTouchIndex) override
+    {
+        Call(FN_OnCanvasMultiTouchPressed, entityId, multiTouchIndex);
+    }
+
+    void OnCanvasMultiTouchReleased(AZ::EntityId entityId, int multiTouchIndex) override
+    {
+        Call(FN_OnCanvasMultiTouchReleased, entityId, multiTouchIndex);
     }
 
     void OnCanvasHoverStart(AZ::EntityId entityId) override
@@ -182,34 +192,34 @@ namespace
         AZ::EntityUtils::ReplaceEntityIds(
             object,
             [&newIdMap](const AZ::EntityId& originalId, bool /*isEntityId*/) -> AZ::EntityId
-        {
-            auto findIt = newIdMap.find(originalId);
-            if (findIt == newIdMap.end())
             {
-                AZ::EntityId newId = AZ::Entity::MakeId();
-                newIdMap.insert(AZStd::make_pair(originalId, newId));
-                return newId;
-            }
-            else
-            {
-                return findIt->second; // return the previously remapped id
-            }
-        }, context);
+                auto findIt = newIdMap.find(originalId);
+                if (findIt == newIdMap.end())
+                {
+                    AZ::EntityId newId = AZ::Entity::MakeId();
+                    newIdMap.insert(AZStd::make_pair(originalId, newId));
+                    return newId;
+                }
+                else
+                {
+                    return findIt->second; // return the previously remapped id
+                }
+            }, context);
 
         AZ::EntityUtils::ReplaceEntityRefs(
             object,
             [&newIdMap](const AZ::EntityId& originalId, bool /*isEntityId*/) -> AZ::EntityId
-        {
-            auto findIt = newIdMap.find(originalId);
-            if (findIt == newIdMap.end())
             {
-                return originalId; // entityId is not being remapped
-            }
-            else
-            {
-                return findIt->second; // return the remapped id
-            }
-        }, context);
+                auto findIt = newIdMap.find(originalId);
+                if (findIt == newIdMap.end())
+                {
+                    return originalId; // entityId is not being remapped
+                }
+                else
+                {
+                    return findIt->second; // return the remapped id
+                }
+            }, context);
     }
 }
 
@@ -1026,7 +1036,12 @@ bool UiCanvasComponent::GetEnabled()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::SetEnabled(bool enabled)
 {
+    const bool wasEnabled = m_enabled;
     m_enabled = enabled;
+    if (!wasEnabled && m_enabled && m_isConsumingAllInputEvents)
+    {
+        EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1071,6 +1086,30 @@ void UiCanvasComponent::SetIsPositionalInputSupported(bool isSupported)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::GetIsConsumingAllInputEvents()
+{
+    return m_isConsumingAllInputEvents;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetIsConsumingAllInputEvents(bool isConsuming)
+{
+    m_isConsumingAllInputEvents = isConsuming;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::GetIsMultiTouchSupported()
+{
+    return m_isMultiTouchSupported;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetIsMultiTouchSupported(bool isSupported)
+{
+    m_isMultiTouchSupported = isSupported;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasComponent::GetIsNavigationSupported()
 {
     return m_isNavigationSupported;
@@ -1098,7 +1137,7 @@ bool UiCanvasComponent::HandleInputEvent(const AzFramework::InputChannel::Snapsh
         AzFramework::InputDeviceVirtualKeyboard::IsVirtualKeyboardDevice(inputSnapshot.m_deviceId) ||
         AzFramework::InputDeviceGamepad::IsGamepadDevice(inputSnapshot.m_deviceId))
     {
-        return HandleKeyInputEvent(inputSnapshot, activeModifierKeys);
+        return HandleKeyInputEvent(inputSnapshot, activeModifierKeys) || m_isConsumingAllInputEvents;
     }
     else if (viewportPos)
     {
@@ -1111,7 +1150,7 @@ bool UiCanvasComponent::HandleInputEvent(const AzFramework::InputChannel::Snapsh
         }
     }
 
-    return false;
+    return m_isConsumingAllInputEvents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1153,8 +1192,9 @@ bool UiCanvasComponent::HandleInputPositionalEvent(const AzFramework::InputChann
         }
     }
 
+    // Currently we are just interested in mouse events and the primary touch for hover events
     if (AzFramework::InputDeviceMouse::IsMouseDevice(inputSnapshot.m_deviceId) ||
-        AzFramework::InputDeviceTouch::IsTouchDevice(inputSnapshot.m_deviceId))
+        inputSnapshot.m_channelId == AzFramework::InputDeviceTouch::Touch::Index0)
     {
         if (s_handleHoverInputEvents)
         {
@@ -1177,6 +1217,29 @@ bool UiCanvasComponent::HandleInputPositionalEvent(const AzFramework::InputChann
                 ClearHoverInteractable();
             }
             return HandlePrimaryRelease(viewportPos);
+        }
+    }
+    // ...while all other events from touch devices should be treated as multi-touch
+    else if (AzFramework::InputDeviceTouch::IsTouchDevice(inputSnapshot.m_deviceId))
+    {
+        const auto& touchIndexIt = AZStd::find(AzFramework::InputDeviceTouch::Touch::All.cbegin(),
+                                               AzFramework::InputDeviceTouch::Touch::All.cend(),
+                                               inputSnapshot.m_channelId);
+        if (touchIndexIt != AzFramework::InputDeviceTouch::Touch::All.cend())
+        {
+            const int touchindex = static_cast<int>(touchIndexIt - AzFramework::InputDeviceTouch::Touch::All.cbegin());
+            if (inputSnapshot.m_state == AzFramework::InputChannel::State::Began)
+            {
+                return HandleMultiTouchPress(viewportPos, touchindex);
+            }
+            else if (inputSnapshot.m_state == AzFramework::InputChannel::State::Ended)
+            {
+                return HandleMultiTouchRelease(viewportPos, touchindex);
+            }
+            else if (inputSnapshot.m_state == AzFramework::InputChannel::State::Updated)
+            {
+                return HandleMultiTouchUpdated(viewportPos, touchindex);
+            }
         }
     }
 
@@ -1270,6 +1333,14 @@ void UiCanvasComponent::ForceHoverInteractable(AZ::EntityId newHoverInteractable
 
         CheckHoverInteractableAndAutoActivate();
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::ClearAllInteractables()
+{
+    m_multiTouchInteractablesByTouchIndex.clear();
+    ClearActiveInteractable();
+    ClearHoverInteractable();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1496,6 +1567,8 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Field("RenderTargetName", &UiCanvasComponent::m_renderTargetName)
         // Input group
             ->Field("IsPosInputSupported", &UiCanvasComponent::m_isPositionalInputSupported)
+            ->Field("IsConsumingAllInput", &UiCanvasComponent::m_isConsumingAllInputEvents)
+            ->Field("IsMultiTouchSupported", &UiCanvasComponent::m_isMultiTouchSupported)
             ->Field("IsNavigationSupported", &UiCanvasComponent::m_isNavigationSupported)
             ->Field("FirstHoverElement", &UiCanvasComponent::m_firstHoverInteractable)
             ->Field("AnimSystem", &UiCanvasComponent::m_uiAnimationSystem)
@@ -1532,7 +1605,12 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             editInfo->ClassElement(AZ::Edit::ClassElements::Group, "Input")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
-            editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isPositionalInputSupported, "Handle positional", "When checked, positional input (mouse/touch) will automatically be handled.");
+            editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isPositionalInputSupported, "Handle positional", "When checked, positional input (mouse/touch) will automatically be handled.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
+            editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isConsumingAllInputEvents, "Consume all input", "When checked, all input events will be consumed by this canvas while it is enabled.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &UiCanvasComponent::GetIsPositionalInputSupported);
+            editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isMultiTouchSupported, "Handle multi-touch", "When checked, multi-touch input will automatically be handled.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &UiCanvasComponent::GetIsPositionalInputSupported);
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isNavigationSupported, "Handle navigation", "When checked, keyboard/gamepad events will automatically be used for navigation.");
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiCanvasComponent::m_firstHoverInteractable, "First focus elem", "The element to receive focus when the canvas loads.")
                 ->Attribute("EnumValues", &UiCanvasComponent::PopulateNavigableEntityList);
@@ -1580,12 +1658,17 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetRenderTargetName", &UiCanvasBus::Events::SetRenderTargetName)
             ->Event("GetIsPositionalInputSupported", &UiCanvasBus::Events::GetIsPositionalInputSupported)
             ->Event("SetIsPositionalInputSupported", &UiCanvasBus::Events::SetIsPositionalInputSupported)
+            ->Event("GetIsConsumingAllInputEvents", &UiCanvasBus::Events::GetIsConsumingAllInputEvents)
+            ->Event("SetIsConsumingAllInputEvents", &UiCanvasBus::Events::SetIsConsumingAllInputEvents)
+            ->Event("GetIsMultiTouchSupported", &UiCanvasBus::Events::GetIsMultiTouchSupported)
+            ->Event("SetIsMultiTouchSupported", &UiCanvasBus::Events::SetIsMultiTouchSupported)
             ->Event("GetIsNavigationSupported", &UiCanvasBus::Events::GetIsNavigationSupported)
             ->Event("SetIsNavigationSupported", &UiCanvasBus::Events::SetIsNavigationSupported)
             ->Event("GetTooltipDisplayElement", &UiCanvasBus::Events::GetTooltipDisplayElement)
             ->Event("SetTooltipDisplayElement", &UiCanvasBus::Events::SetTooltipDisplayElement)
             ->Event("GetHoverInteractable", &UiCanvasBus::Events::GetHoverInteractable)
-            ->Event("ForceHoverInteractable", &UiCanvasBus::Events::ForceHoverInteractable);
+            ->Event("ForceHoverInteractable", &UiCanvasBus::Events::ForceHoverInteractable)
+            ->Event("ClearAllInteractables", &UiCanvasBus::Events::ClearAllInteractables);
 
         behaviorContext->EBus<UiCanvasNotificationBus>("UiCanvasNotificationBus")
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
@@ -1698,6 +1781,8 @@ void UiCanvasComponent::Deactivate()
     {
         UiInteractableActiveNotificationBus::Handler::BusDisconnect(m_activeInteractable);
     }
+
+    m_multiTouchInteractablesByTouchIndex.clear();
 
     if (m_renderToTexture)
     {
@@ -2118,7 +2203,7 @@ bool UiCanvasComponent::HandlePrimaryPress(AZ::Vector2 point)
         }
     }
 
-    if (interactableEntity.IsValid())
+    if (interactableEntity.IsValid() && !IsInteractableActiveOrPressed(interactableEntity))
     {
         // if there is an interactable at that point and it can handle pressed events then
         // it becomes the currently pressed interactable for the canvas
@@ -2171,6 +2256,94 @@ bool UiCanvasComponent::HandlePrimaryRelease(AZ::Vector2 point)
     EBUS_EVENT_ID(GetEntityId(), UiCanvasInputNotificationBus, OnCanvasPrimaryReleased, prevActiveInteractable);
 
     return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::HandleMultiTouchPress(AZ::Vector2 point, int multiTouchIndex)
+{
+    bool result = false;
+
+    if (m_isMultiTouchSupported)
+    {
+        AZ::EntityId interactableEntity;
+        EBUS_EVENT_ID_RESULT(interactableEntity, m_rootElement, UiElementBus, FindInteractableToHandleEvent, point);
+
+        if (interactableEntity.IsValid() && !IsInteractableActiveOrPressed(interactableEntity))
+        {
+            EBUS_EVENT_ID_RESULT(result, interactableEntity, UiInteractableBus, HandleMultiTouchPressed, point, multiTouchIndex);
+            if (result)
+            {
+                m_multiTouchInteractablesByTouchIndex[multiTouchIndex] = interactableEntity;
+            }
+        }
+
+        // Send a notification to listeners telling them who was just pressed (can be noone)
+        EBUS_EVENT_ID(GetEntityId(), UiCanvasInputNotificationBus, OnCanvasMultiTouchPressed, interactableEntity, multiTouchIndex);
+    }
+
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::HandleMultiTouchRelease(AZ::Vector2 point, int multiTouchIndex)
+{
+    bool result = false;
+
+    if (m_isMultiTouchSupported)
+    {
+        // Get the corresponding interactable from the map before removing it. It should always already
+        // exist in the map, but if not this will just insert an invalid entity id then remove it again
+        AZ::EntityId multiTouchInteractable = m_multiTouchInteractablesByTouchIndex[multiTouchIndex];
+        m_multiTouchInteractablesByTouchIndex.erase(multiTouchIndex);
+
+        if (multiTouchInteractable.IsValid())
+        {
+            EBUS_EVENT_ID(multiTouchInteractable, UiInteractableBus, HandleMultiTouchReleased, point, multiTouchIndex);
+            result = true;
+        }
+
+        // Send a notification to listeners telling them who was just released
+        EBUS_EVENT_ID(GetEntityId(), UiCanvasInputNotificationBus, OnCanvasMultiTouchReleased, multiTouchInteractable, multiTouchIndex);
+    }
+
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::HandleMultiTouchUpdated(AZ::Vector2 point, int multiTouchIndex)
+{
+    bool result = false;
+
+    if (m_isMultiTouchSupported)
+    {
+        auto it = m_multiTouchInteractablesByTouchIndex.find(multiTouchIndex);
+        if (it != m_multiTouchInteractablesByTouchIndex.end() && it->second.IsValid())
+        {
+            EBUS_EVENT_ID(it->second, UiInteractableBus, MultiTouchPositionUpdate, point, multiTouchIndex);
+            result = true;
+        }
+    }
+
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::IsInteractableActiveOrPressed(AZ::EntityId interactableId) const
+{
+    if (interactableId == m_activeInteractable)
+    {
+        return true;
+    }
+
+    for (const auto& multiTouchInteractableByTouchIndex : m_multiTouchInteractablesByTouchIndex)
+    {
+        if (interactableId == multiTouchInteractableByTouchIndex.second)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2596,6 +2769,7 @@ void UiCanvasComponent::SetTargetCanvasSizeAndUniformScale(bool isInGame, AZ::Ve
     if (oldTargetCanvasSize != m_targetCanvasSize || oldUniformDeviceScale != m_uniformDeviceScale)
     {
         EBUS_EVENT_ID(GetRootElement()->GetId(), UiTransformBus, SetRecomputeTransformFlag);
+        EBUS_EVENT(UiCanvasSizeNotificationBus, OnCanvasSizeOrScaleChange, GetEntityId());
     }
 }
 
@@ -2827,9 +3001,9 @@ void UiCanvasComponent::SendRectChangeNotifications()
 {
     // lambda that simply sends the RecomputeTransformsAndSendNotifications message to an entity
     auto RecomputeAndNotify = [](const AZ::EntityId entity)
-    {
-        EBUS_EVENT_ID(entity, UiTransformBus, RecomputeTransformsAndSendNotifications);
-    };
+        {
+            EBUS_EVENT_ID(entity, UiTransformBus, RecomputeTransformsAndSendNotifications);
+        };
 
     // While we know there are transforms that need re-computing
     while (m_transformsNeedRecompute)

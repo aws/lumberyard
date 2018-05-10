@@ -14,7 +14,6 @@
 
 #include <MCore/Source/StandardHeaders.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/CommandManager.h>
 #include "../StandardPluginsConfig.h"
 #include <EMotionFX/Source/AnimGraph.h>
@@ -112,7 +111,7 @@ namespace EMStudio
         EMotionFX::AnimGraphNode*      mVisualColorNode;
         EMotionFX::AnimGraphNode*      mVisualOptionsNode;
         MysticQt::SearchButton*         mSearchFilter;
-        MCore::String       mSearchString;
+        AZStd::string       mSearchString;
 
         void SetEnabledSelectedNodes(bool flag);
         void FillPasteCommandGroup(bool cutMode);

@@ -63,7 +63,7 @@ namespace CommandSystem
     // Scale actor data.
     MCORE_DEFINECOMMAND_START(CommandScaleActorData, "Scale actor data", true)
 public:
-    MCore::String   mOldUnitType;
+    AZStd::string   mOldUnitType;
     uint32          mActorID;
     float           mScaleFactor;
     bool            mOldActorDirtyFlag;
@@ -74,6 +74,6 @@ public:
     // Helper functions
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     void COMMANDSYSTEM_API ClearScene(bool deleteActors = true, bool deleteActorInstances = true, MCore::CommandGroup* commandGroup = nullptr);
-    void COMMANDSYSTEM_API PrepareCollisionMeshesNodesString(EMotionFX::Actor* actor, uint32 lod, MCore::String* outNodeNames);
-    void COMMANDSYSTEM_API PrepareExcludedNodesString(EMotionFX::Actor* actor, MCore::String* outNodeNames);
+    void COMMANDSYSTEM_API PrepareCollisionMeshesNodesString(EMotionFX::Actor* actor, uint32 lod, AZStd::string* outNodeNames);
+    void COMMANDSYSTEM_API PrepareExcludedNodesString(EMotionFX::Actor* actor, AZStd::string* outNodeNames);
 } // namespace CommandSystem

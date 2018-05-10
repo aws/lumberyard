@@ -108,7 +108,7 @@ private:
     CREVolumeObject* m_pRE[RT_COMMAND_BUF_COUNT];
 
     CVolumeDataItem* m_pVolDataItem;
-    CREVolumeObject::IVolumeTexture* m_pVolShadTex;
+    IVolumeTexture* m_pVolShadTex;
 };
 
 #endif // CRYINCLUDE_CRY3DENGINE_VOLUMEOBJECTRENDERNODE_H

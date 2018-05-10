@@ -31,7 +31,7 @@ namespace EMotionFX
     // clone parameter info
     AnimGraphGameControllerSettings::ParameterInfo* AnimGraphGameControllerSettings::ParameterInfo::Clone() const
     {
-        ParameterInfo* result = new ParameterInfo(mParameterName.AsChar());
+        ParameterInfo* result = new ParameterInfo(mParameterName.c_str());
         result->mMode       = mMode;
         result->mInvert     = mInvert;
         result->mEnabled    = mEnabled;
@@ -67,7 +67,7 @@ namespace EMotionFX
 
     AnimGraphGameControllerSettings::Preset* AnimGraphGameControllerSettings::Preset::Clone() const
     {
-        Preset* result = new Preset(mName.AsChar());
+        Preset* result = new Preset(mName.c_str());
 
         const uint32 numParameterInfos = mParameterInfos.GetLength();
         result->mParameterInfos.Resize(numParameterInfos);
@@ -142,7 +142,7 @@ namespace EMotionFX
         {
             // check if we have already created a parameter info for the given parameter
             ParameterInfo* parameterInfo = mParameterInfos[i];
-            if (parameterInfo->mParameterName.CheckIfIsEqual(parameterName))
+            if (parameterInfo->mParameterName == parameterName)
             {
                 return parameterInfo;
             }
@@ -186,7 +186,7 @@ namespace EMotionFX
         {
             // check if the button info is linked to the given string
             ButtonInfo* buttonInfo = mButtonInfos[i];
-            if (buttonInfo->mString.CheckIfIsEqual(stringName))
+            if (buttonInfo->mString == stringName)
             {
                 // return success in case this button info isn't set to the mode none
                 if (buttonInfo->mMode != BUTTONMODE_NONE)
@@ -210,7 +210,7 @@ namespace EMotionFX
         {
             // check if the button info is linked to the given string
             ButtonInfo* buttonInfo = mButtonInfos[i];
-            if (buttonInfo->mString.CheckIfIsEqual(stringName))
+            if (buttonInfo->mString == stringName)
             {
                 // return success in case this button info is enabled
                 if (buttonInfo->mEnabled)
@@ -234,7 +234,7 @@ namespace EMotionFX
         {
             // check if the button info is linked to the given string and set the enabled flag in case it is linked to the given string name
             ButtonInfo* buttonInfo = mButtonInfos[i];
-            if (buttonInfo->mString.CheckIfIsEqual(stringName))
+            if (buttonInfo->mString == stringName)
             {
                 buttonInfo->mEnabled = isEnabled;
             }
@@ -315,7 +315,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numPresets; ++i)
         {
             // compare the names and return the index in case they are equal
-            if (mPresets[i]->GetNameString().CheckIfIsEqual(presetName))
+            if (mPresets[i]->GetNameString() == presetName)
             {
                 return i;
             }
@@ -399,7 +399,7 @@ namespace EMotionFX
                 }
 
                 // compare the names and replace them in case they are equal
-                if (parameterInfo->mParameterName.CheckIfIsEqual(oldName))
+                if (parameterInfo->mParameterName == oldName)
                 {
                     parameterInfo->mParameterName = newName;
                 }

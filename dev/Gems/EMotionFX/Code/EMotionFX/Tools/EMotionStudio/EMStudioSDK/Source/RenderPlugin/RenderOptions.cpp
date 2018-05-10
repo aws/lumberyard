@@ -139,10 +139,10 @@ namespace EMStudio
         settings->setValue("fieldOfView",              (double)mFOV);
         settings->setValue("showFPS",                  mShowFPS);
 
-        settings->setValue("texturePath",              mTexturePath.AsChar());
+        settings->setValue("texturePath",              mTexturePath.c_str());
         settings->setValue("autoCreateMipMaps",        mCreateMipMaps);
 
-        settings->setValue("lastUsedLayout",           mLastUsedLayout.AsChar());
+        settings->setValue("lastUsedLayout",           mLastUsedLayout.c_str());
 
         settings->setValue("aspiredRenderFPS",         mAspiredRenderFPS);
         settings->setValue("skipLoadingTextures",      mSkipLoadingTextures);
@@ -178,7 +178,7 @@ namespace EMStudio
 
     void RenderOptions::Load(QSettings* settings)
     {
-        mLastUsedLayout         = FromQtString(settings->value("lastUsedLayout",          mLastUsedLayout.AsChar()).toString());
+        mLastUsedLayout         = FromQtString(settings->value("lastUsedLayout",          mLastUsedLayout.c_str()).toString());
         mBackgroundColor        = StringToColor(settings->value("backgroundColor",         ColorToString(mBackgroundColor)).toString());
         mGradientSourceColor    = StringToColor(settings->value("gradientSourceColor",     ColorToString(mGradientSourceColor)).toString());
         mGradientTargetColor    = StringToColor(settings->value("gradientTargetColor",     ColorToString(mGradientTargetColor)).toString());
@@ -210,7 +210,7 @@ namespace EMStudio
         mLightSkyColor          = StringToColor(settings->value("lightSkyColor",           ColorToString(mLightSkyColor)).toString());
         mLightGroundColor       = StringToColor(settings->value("lightGroundColor",        ColorToString(mLightGroundColor)).toString());
 
-        mTexturePath            = FromQtString(settings->value("texturePath",              mTexturePath.AsChar()).toString());
+        mTexturePath            = FromQtString(settings->value("texturePath",              mTexturePath.c_str()).toString());
         mCreateMipMaps          = settings->value("autoCreateMipMaps",                      mCreateMipMaps).toBool();
 
         mAspiredRenderFPS       = settings->value("aspiredRenderFPS",                       mAspiredRenderFPS).toInt();

@@ -547,7 +547,7 @@ void CAttributeView::ImportPanel(const QString data, bool isFilePath)
                 m_custompanels.append(panel.innerGroup.name);
                 CAttributeListView* dWidget = new CAttributeListView(m_scrollAreaWidget, panel.innerGroup.isCustom, panel.innerGroup.isGroupAttribute);
                 dWidget->setWidget(widget);
-                widget->setSizePolicy(QSizePolicy::QSizePolicy(widget->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
+                widget->setSizePolicy(QSizePolicy(widget->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
                 connect(dWidget, &QDockWidget::topLevelChanged, [dWidget](bool isTopLevel)
                     {
                         dWidget->setWindowOpacity(isTopLevel ? 0.5 : 1.0);
@@ -701,7 +701,7 @@ QDockWidget* CAttributeView::ShowEmptyCustomPanel(QString panelname, QString gro
     m_custompanels.push_back(panelname);
     CAttributeListView* dWidget = new CAttributeListView(m_scrollAreaWidget, true, groupvisibility);
     dWidget->setWidget(widget);
-    widget->setSizePolicy(QSizePolicy::QSizePolicy(widget->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
+    widget->setSizePolicy(QSizePolicy(widget->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
     connect(dWidget, &QDockWidget::topLevelChanged, [dWidget](bool isTopLevel)
         {
             dWidget->setWindowOpacity(isTopLevel ? 0.5 : 1.0);

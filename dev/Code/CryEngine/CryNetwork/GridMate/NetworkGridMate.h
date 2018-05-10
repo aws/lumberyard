@@ -89,9 +89,6 @@ namespace GridMate
         //! to local objects.
         EntityId ServerEntityIdToLocalEntityId(EntityId serverId, bool allowForcedEstablishment = false) const override;
 
-        //! Returns true if we're in the middle of an internal GridMate update.
-        bool IsUpdatingGridMate() const { return m_isUpdatingGridMate; }
-
         //! Gets the synchronized network time as milliseconds since session creation time.
         virtual CTimeValue GetSessionTime() override;
 
@@ -251,14 +248,16 @@ namespace GridMate
             LevelLoadState_None,
             LevelLoadState_Loading,
             LevelLoadState_Loaded
-        } m_levelLoadState;
+        };
+        
+        AZStd::atomic<LevelLoadState>   m_levelLoadState;
 
         //! Set if we're currently in a GridMate update.
-        bool                            m_isUpdatingGridMate;
+        AZStd::mutex                    m_mutexUpdatingGridMate;
 
         //! Inherited from CryNetwork, this is sent by the NetworkStallTicker mechanism
         //! to tell us it's unsafe to process minimal network updates (loading updates).
-        bool                            m_allowMinimalUpdate;
+        AZStd::atomic<bool>             m_allowMinimalUpdate;
 
         typedef std::function<void()> Task;
         std::vector<Task>              m_postFrameTasks;

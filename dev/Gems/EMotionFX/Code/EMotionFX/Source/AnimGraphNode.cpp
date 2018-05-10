@@ -30,7 +30,7 @@
 #include "ActorManager.h"
 #include "EMotionFXManager.h"
 
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/AttributeFactory.h>
@@ -47,7 +47,7 @@ namespace EMotionFX
     {
         if (name)
         {
-            mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+            mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
         }
         else
         {
@@ -343,7 +343,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numChildNodes; ++i)
         {
             // compare the node name with the parameter and return a pointer to the node in case they are equal
-            if (mChildNodes[i]->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(mChildNodes[i]->GetNameString().c_str(), name, false /* no case */))
             {
                 return mChildNodes[i];
             }
@@ -362,7 +362,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numChildNodes; ++i)
         {
             // compare the node name with the parameter and return the relative child node index in case they are equal
-            if (mChildNodes[i]->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(mChildNodes[i]->GetNameString().c_str(), name, false /* no case */))
             {
                 return i;
             }
@@ -532,7 +532,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numPorts; ++i)
         {
             // if the port name is equal to the name we are searching for, return the index
-            if (MCore::GetStringIDGenerator().GetName(mOutputPorts[i].mNameID).CheckIfIsEqual(name))
+            if (AzFramework::StringFunc::Equal(MCore::GetStringIdPool().GetName(mOutputPorts[i].mNameID).c_str(), name, true /* case sensitive */))
             {
                 return i;
             }
@@ -549,7 +549,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numPorts; ++i)
         {
             // if the port name is equal to the name we are searching for, return the index
-            if (MCore::GetStringIDGenerator().GetName(mInputPorts[i].mNameID).CheckIfIsEqual(name))
+            if (AzFramework::StringFunc::Equal(MCore::GetStringIdPool().GetName(mInputPorts[i].mNameID).c_str(), name, true /* case sensitive */))
             {
                 return i;
             }
@@ -579,7 +579,7 @@ namespace EMotionFX
     void AnimGraphNode::SetInputPortName(uint32 portIndex, const char* name)
     {
         MCORE_ASSERT(portIndex < mInputPorts.GetLength());
-        mInputPorts[portIndex].mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mInputPorts[portIndex].mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 
@@ -587,7 +587,7 @@ namespace EMotionFX
     void AnimGraphNode::SetOutputPortName(uint32 portIndex, const char* name)
     {
         MCORE_ASSERT(portIndex < mOutputPorts.GetLength());
-        mOutputPorts[portIndex].mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mOutputPorts[portIndex].mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 
@@ -654,7 +654,7 @@ namespace EMotionFX
         const uint32 duplicatePort = FindOutputPortByID(portID);
         if (duplicatePort != MCORE_INVALIDINDEX32)
         {
-            MCore::LogError("EMotionFX::AnimGraphNode::SetOutputPortAsPose() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIDGenerator().GetName(mOutputPorts[duplicatePort].mNameID).AsChar(), name, GetTypeString());
+            MCore::LogError("EMotionFX::AnimGraphNode::SetOutputPortAsPose() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIdPool().GetName(mOutputPorts[duplicatePort].mNameID).c_str(), name, GetTypeString());
         }
 
         SetOutputPortName(outputPortNr, name);
@@ -671,7 +671,7 @@ namespace EMotionFX
         const uint32 duplicatePort = FindOutputPortByID(portID);
         if (duplicatePort != MCORE_INVALIDINDEX32)
         {
-            MCore::LogError("EMotionFX::AnimGraphNode::SetOutputPortAsMotionInstance() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIDGenerator().GetName(mOutputPorts[duplicatePort].mNameID).AsChar(), name, GetTypeString());
+            MCore::LogError("EMotionFX::AnimGraphNode::SetOutputPortAsMotionInstance() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIdPool().GetName(mOutputPorts[duplicatePort].mNameID).c_str(), name, GetTypeString());
         }
 
         SetOutputPortName(outputPortNr, name);
@@ -688,7 +688,7 @@ namespace EMotionFX
         const uint32 duplicatePort = FindOutputPortByID(portID);
         if (duplicatePort != MCORE_INVALIDINDEX32)
         {
-            MCore::LogError("EMotionFX::AnimGraphNode::SetOutputPort() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' name='%s')", portID, MCore::GetStringIDGenerator().GetName(mOutputPorts[duplicatePort].mNameID).AsChar(), name, GetTypeString());
+            MCore::LogError("EMotionFX::AnimGraphNode::SetOutputPort() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' name='%s')", portID, MCore::GetStringIdPool().GetName(mOutputPorts[duplicatePort].mNameID).c_str(), name, GetTypeString());
         }
 
         SetOutputPortName(outputPortNr, name);
@@ -706,7 +706,7 @@ namespace EMotionFX
         const uint32 duplicatePort = FindInputPortByID(portID);
         if (duplicatePort != MCORE_INVALIDINDEX32)
         {
-            MCore::LogError("EMotionFX::AnimGraphNode::SetInputPortAsNumber() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIDGenerator().GetName(mInputPorts[duplicatePort].mNameID).AsChar(), name, GetTypeString());
+            MCore::LogError("EMotionFX::AnimGraphNode::SetInputPortAsNumber() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIdPool().GetName(mInputPorts[duplicatePort].mNameID).c_str(), name, GetTypeString());
         }
 
         SetInputPortName(inputPortNr, name);
@@ -725,7 +725,7 @@ namespace EMotionFX
         const uint32 duplicatePort = FindInputPortByID(portID);
         if (duplicatePort != MCORE_INVALIDINDEX32)
         {
-            MCore::LogError("EMotionFX::AnimGraphNode::SetInputPort() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIDGenerator().GetName(mInputPorts[duplicatePort].mNameID).AsChar(), name, GetTypeString());
+            MCore::LogError("EMotionFX::AnimGraphNode::SetInputPort() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, MCore::GetStringIdPool().GetName(mInputPorts[duplicatePort].mNameID).c_str(), name, GetTypeString());
         }
 
         SetInputPortName(inputPortNr, name);
@@ -1311,7 +1311,7 @@ namespace EMotionFX
         const uint32 numPorts = mInputPorts.GetLength();
         for (uint32 i = 0; i < numPorts; ++i)
         {
-            if (mInputPorts[i].GetNameString().CheckIfIsEqual(portName))
+            if (mInputPorts[i].GetNameString() == portName)
             {
                 return &(mInputPorts[i]);
             }
@@ -1328,7 +1328,7 @@ namespace EMotionFX
         const uint32 numPorts = mOutputPorts.GetLength();
         for (uint32 i = 0; i < numPorts; ++i)
         {
-            if (mOutputPorts[i].GetNameString().CheckIfIsEqual(portName))
+            if (mOutputPorts[i].GetNameString() == portName)
             {
                 return &(mOutputPorts[i]);
             }
@@ -1454,7 +1454,7 @@ namespace EMotionFX
 
 
     // callback for when we renamed a node
-    void AnimGraphNode::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)
+    void AnimGraphNode::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
         // get the number of child nodes, iterate through and call the callback
         const uint32 numChildNodes = mChildNodes.GetLength();
@@ -2390,11 +2390,11 @@ namespace EMotionFX
 
     const char* AnimGraphNode::GetNodeInfo() const
     {
-        return mNodeInfo.AsChar();
+        return mNodeInfo.c_str();
     }
 
 
-    const MCore::String& AnimGraphNode::GetNodeInfoString() const
+    const AZStd::string& AnimGraphNode::GetNodeInfoString() const
     {
         return mNodeInfo;
     }
@@ -2484,7 +2484,7 @@ namespace EMotionFX
     {
         if (mNameID != MCORE_INVALIDINDEX32)
         {
-            return MCore::GetStringIDGenerator().GetName(mNameID).AsChar();
+            return MCore::GetStringIdPool().GetName(mNameID).c_str();
         }
         else
         {
@@ -2493,15 +2493,15 @@ namespace EMotionFX
     }
 
 
-    const MCore::String& AnimGraphNode::GetNameString() const
+    const AZStd::string& AnimGraphNode::GetNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID);
+        return MCore::GetStringIdPool().GetName(mNameID);
     }
 
 
     void AnimGraphNode::SetName(const char* name)
     {
-        mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 

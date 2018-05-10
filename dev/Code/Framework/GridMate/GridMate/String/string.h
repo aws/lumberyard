@@ -15,6 +15,9 @@
 #include <GridMate/Memory.h>
 #include <AzCore/std/string/string.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(string_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace GridMate
 {

@@ -37,16 +37,18 @@ namespace AzFramework
         void OnAssetSystemMessage(unsigned int /*typeId*/, const void* buffer, unsigned int bufferSize)
         {
             AssetNotificationMessage message;
-            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message))
+            // note that we forbid asset loading and we set STRICT mode.  These messages are all the kind of message that is supposed to be transmitted between the 
+            // same version of software, and are created at runtime, not loaded from disk, so they should not contain errors - if they do, it requires investigation.
+            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message, nullptr, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_STRICT)))
             {
-                AZ_TracePrintf("AssetSystem", "Problem deserializing AssetNotificationMessage");
+                AZ_WarningOnce("AssetSystem", false, "AssetNotificationMessage received but unable to deserialize it.  Is AssetProcessor.exe up to date?");
                 return;
             }
 
             if (message.m_data.length() > AZ_MAX_PATH_LEN)
             {
                 auto maxPath = message.m_data.substr(0, AZ_MAX_PATH_LEN - 1);
-                AZ_TracePrintf("AssetSystem", "HotUpdate: filename too long(%zd) : %s...", bufferSize, maxPath.c_str());
+                AZ_Warning("AssetSystem", false, "HotUpdate: filename too long(%zd) : %s...", bufferSize, maxPath.c_str());
                 return;
             }
 
@@ -74,7 +76,7 @@ namespace AzFramework
             }
             break;
             default:
-                AZ_TracePrintf("AssetSystem", "Unknown AssetNotificationMessage type");
+                AZ_WarningOnce("AssetSystem", false, "Unknown AssetNotificationMessage type received from network.  Is AssetProcessor.exe up to date?");
                 break;
             }
         }

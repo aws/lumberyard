@@ -16,15 +16,15 @@
 
 #include <qrect.h>
 #include <qpoint.h>
+#include <qcolor.h>
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Vector2.h>
-#include <AzCore/JSON/rapidjson.h>
-#include <AzCore/JSON/document.h>
 
 #include <GraphCanvas/Components/ViewBus.h>
-#include <GraphCanvas/Types/SceneData.h>
-#include <GraphCanvas/Types/SceneSerialization.h>
+#include <GraphCanvas/GraphicsItems/AnimatedPulse.h>
+#include <GraphCanvas/Types/GraphCanvasGraphData.h>
+#include <GraphCanvas/Types/GraphCanvasGraphSerialization.h>
 
 QT_FORWARD_DECLARE_CLASS(QKeyEvent);
 QT_FORWARD_DECLARE_CLASS(QGraphicsScene);
@@ -34,8 +34,6 @@ QT_FORWARD_DECLARE_CLASS(QMimeData);
 
 namespace GraphCanvas
 {
-    class SceneSerialization;
-
     enum DragSelectionType
     {
         // Items will be selected as they are dragged over.
@@ -54,8 +52,18 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
+        virtual void SetEditorId(const EditorId&) = 0;
+        virtual EditorId GetEditorId() const = 0;
+
         //! Get the grid entity (for setting grid pitch)
         virtual AZ::EntityId GetGrid() const = 0;
+
+        virtual AZ::EntityId CreatePulse(const AnimatedPulseConfiguration& pulseConfiguration) = 0;
+
+        virtual AZ::EntityId CreatePulseAroundSceneMember(const AZ::EntityId& memberId, int gridSteps, AnimatedPulseConfiguration pulseConfiguration) = 0;
+        virtual AZ::EntityId CreateCircularPulse(const AZ::Vector2& centerPoint, float initialRadius, float finalRadius, AnimatedPulseConfiguration pulseConfiguration) = 0;
+
+        virtual void CancelPulse(const AZ::EntityId& pulseId) = 0;
 
         //! Add a node to the scene.
         //! Nodes are owned by the scene and will follow the scene's entity life-cycle and be destroyed along with it.
@@ -86,6 +94,30 @@ namespace GraphCanvas
 
         //! Get the entity IDs of all selected nodes known to the scene.
         virtual AZStd::vector<AZ::EntityId> GetSelectedNodes() const = 0;
+
+        //! Will attempt to splice the node onto the given connection.
+        //! Will fully connect all valid connections that can be made.
+        virtual bool TrySpliceNodeOntoConnection(const AZ::EntityId& node, const AZ::EntityId& connectionId) = 0;
+
+        //! Will attempt to splice the node onto the given connection.
+        //! Will fully connect all valid connections that can be made.
+        virtual bool TrySpliceNodeTreeOntoConnection(const AZStd::unordered_set< NodeId >& entryNodes, const AZStd::unordered_set< NodeId >& exitNodes, const ConnectionId& connectionId) = 0;
+
+        //! Will remove a node from the graph, and attempt to stitch together as many
+        //! connections were severed as is possible. Any ambiguous connections will be thrown out.
+        virtual void DeleteNodeAndStitchConnections(const AZ::EntityId& node) = 0;
+
+        //! Will attempt to create as many connections between the specified endpoints and the target node as possible.
+        // Returns whether or not a connection was made.
+        virtual bool TryCreateConnectionsBetween(const AZStd::vector< Endpoint >& endpoints, const AZ::EntityId& targetNode) = 0;
+
+        //! Create a default connection (between two endpoints).
+        //! The connection will link the specified endpoints and have a default visual. It will be styled.
+        //! 
+        //! # Parameters
+        //! 1. The source endpoint.
+        //! 2. The target endpoint.
+        virtual AZ::EntityId CreateConnectionBetween(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) = 0;
 
         //! Add a connection to the scene.
         //! The connection must be connected to two slots and both slots must be in the same scene.
@@ -129,16 +161,17 @@ namespace GraphCanvas
         //! otherwise a node will only need to be in one of two endpoints of a connection in order for the connection to be considered found.
         virtual AZStd::unordered_set<AZ::EntityId> FindConnections(const AZStd::unordered_set<AZ::EntityId>& nodeIds, bool internalConnectionsOnly = false) const = 0;
 
+        //! Adds a Bookmark Anchor
+        virtual bool AddBookmarkAnchor(const AZ::EntityId& bookmarkAnchorId, const AZ::Vector2& position) = 0;
+
+        //! Removes the specified Bookmark Anchor
+        virtual bool RemoveBookmarkAnchor(const AZ::EntityId& bookmarkAnchorId) = 0;
+
         //! Add an entity of any valid type to the scene.
         virtual bool Add(const AZ::EntityId&) = 0;
 
         //! Remove an entity of any valid type from the scene.
         virtual bool Remove(const AZ::EntityId&) = 0;
-
-        //! Set the stylesheet for the scene from a string, it should be well-formed JSON.
-        virtual void SetStyleSheet(const AZStd::string&) = 0;
-        //! Set the stylesheet for the scene from a parsed JSON document.
-        virtual void SetStyleSheet(const rapidjson::Document&) = 0;
 
         //! Clears the selection in the scene.
         virtual void ClearSelection() = 0;
@@ -150,6 +183,9 @@ namespace GraphCanvas
 
         //! Whether or not there are selected items in the scene.
         virtual bool HasSelectedItems() const = 0;
+
+        //! Returns whether or not there are items selected that should be copied.
+        virtual bool HasCopiableSelection() const = 0;
 
         //! Returns whether or not there are entities at the specified point.
         virtual bool HasEntitiesAt(const AZ::Vector2&) const = 0;
@@ -176,7 +212,7 @@ namespace GraphCanvas
         virtual void Copy(const AZStd::vector<AZ::EntityId>&) const = 0;
 
         //! Serializes the specified entities to the given SceneSerializationHelper
-        virtual void SerializeEntities(const AZStd::unordered_set<AZ::EntityId>& itemIds, SceneSerialization& serializationTarget) const = 0;
+        virtual void SerializeEntities(const AZStd::unordered_set<AZ::EntityId>& itemIds, GraphSerialization& serializationTarget) const = 0;
 
         //! Cuts the selected nodes, connections and groups to the clipboard
         virtual void CutSelection() = 0;
@@ -194,7 +230,7 @@ namespace GraphCanvas
         //! Paste scene serialization at the given position.
         //! \param scenePos the position at which to deserialize the serialization.
         //! \param serializationSource is the data source from which data will be grabbed.
-        virtual void DeserializeEntities(const QPointF& scenePos, const SceneSerialization& serializationSource) = 0;
+        virtual void DeserializeEntities(const QPointF& scenePos, const GraphSerialization& serializationSource) = 0;
 
         //! Duplicate the nodes, connections and groups currently selected to the scene
         virtual void DuplicateSelection() = 0;
@@ -251,19 +287,21 @@ namespace GraphCanvas
 
         //! Returns a reference to the SceneData on the Scene, 
         //! The SceneRequests handler must be retrieved to invoke this method
-        virtual SceneData* GetSceneData() = 0;
-        virtual const SceneData* GetSceneDataConst() const = 0;
+        virtual GraphData* GetGraphData() = 0;
+        virtual const GraphData* GetGraphDataConst() const = 0;
 
         //! Uses the supplied scene data to add nodes, connections, to the scene.
         //! \param sceneData structure containing data to add to the scene(nodes, connections, etc...)
-        virtual bool AddSceneData(const SceneData&) = 0;
+        virtual bool AddGraphData(const GraphData&) = 0;
+
         //! Removes matching nodes, connections from the scene
         //! Note: User data is not modified
         //! \param sceneData structure containing data to remove from the scene
-        virtual void RemoveSceneData(const SceneData&) = 0;
+        virtual void RemoveGraphData(const GraphData&) = 0;
+
         //! Deletes matching nodes, connections from the scene
         //! \param sceneData structure containing data to delete from the scene
-        virtual void DeleteSceneData(const SceneData&) = 0;
+        virtual void DeleteGraphData(const GraphData&) = 0;
 
         //! Controls how drag selection is handled.
         //! Default value is OnRelease.
@@ -298,17 +336,23 @@ namespace GraphCanvas
         //! A node in the scene is being edited
         virtual void OnNodeIsBeingEdited(bool isEditing){}
 
-        //! Signals out that a SceneMember position was chagned.
-        virtual void OnSceneMemberPositionChanged(const AZ::EntityId& /*sceneMemberId*/, const AZ::Vector2& /*position*/) {}
+        //! A Scene Member was added to the scene
+        virtual void OnSceneMemberAdded(const AZ::EntityId& /*sceneMemberId*/) {};
 
-        //! Signals out that a SceneMember was added.
-        virtual void OnSceneMemberAdded(const AZ::EntityId& /*sceneMemberId*/) {}
+        //! A Scene Member was removed from the scene
+        virtual void OnSceneMemberRemoved(const AZ::EntityId& /*sceneMemberId*/) {};
 
-        //! A Scene Member in the scene has started being dragged.
-        virtual void OnSceneMemberDragBegin(const AZ::EntityId& /*sceneMemberId*/) {}
+        //! A Scene Member was selected
+        virtual void OnSceneMemberSelected(const AZ::EntityId& /*sceneMemberId*/) {};
+
+        //! A Scene Member in the scene has been moved
+        virtual void OnSceneMemberPositionChanged(const AZ::EntityId& /*sceneMemberId*/, const AZ::Vector2& /*position/*/) {};
+
+        //! A Scene Member in the scene has begun being dragged.
+        virtual void OnSceneMemberDragBegin() {}
 
         //! A Scene Member in the scene is finished being dragged.
-        virtual void OnSceneMemberDragComplete(const AZ::EntityId& /*sceneMemberId*/) {}
+        virtual void OnSceneMemberDragComplete() {}
 
         //! A node in the scene has been deleted
         virtual void OnPreNodeDeleted(const AZ::EntityId& /*nodeId*/) {}
@@ -326,11 +370,11 @@ namespace GraphCanvas
         virtual void OnPreConnectionDeleted(const AZ::EntityId& /*connectionId*/) {}
 
         //! Selected nodes, connections and groups have been serialized to the target serialization.
-        virtual void OnEntitiesSerialized(SceneSerialization&) {}
+        virtual void OnEntitiesSerialized(GraphSerialization&) {}
 
         //! GraphCanvas nodes, connections and groups have been pasted from the clipboard
         //! The userData map contains any custom data serialized in from a copy operation.
-        virtual void OnEntitiesDeserialized(const SceneSerialization&) {}
+        virtual void OnEntitiesDeserialized(const GraphSerialization&) {}
 
         //! Sent when a duplicate command begins
         virtual void OnDuplicateBegin() {}
@@ -357,7 +401,7 @@ namespace GraphCanvas
         virtual void PostCreationEvent() {}
 
         //! The scene's stylesheet was changed.
-        virtual void OnStyleSheetChanged() {}
+        virtual void OnStylesChanged() {}
 
         //! The selection in the scene has changed.
         virtual void OnSelectionChanged() {}
@@ -372,6 +416,9 @@ namespace GraphCanvas
 
         //! Signals that a drag selection has ended
         virtual void OnDragSelectEnd() {}
+
+        //! Signals that the scene registered a graphics view
+        virtual void OnViewRegistered() {}
     };
 
     using SceneNotificationBus = AZ::EBus<SceneNotifications>;
@@ -410,15 +457,6 @@ namespace GraphCanvas
 
         //! Callback for the Wrapper node action widgets
        virtual void OnWrapperNodeActionWidgetClicked(const AZ::EntityId& wrapperNode, const QRect& actionWidgetBoundingRect, const QPointF& scenePosition, const QPoint& screenPosition) = 0;
-
-       //! Callback for requesting an Undo Point to be posted.
-       virtual void RequestUndoPoint() = 0;
-
-       //! Callback for requesting the incrementation of the value of the ignore undo point tracker
-       virtual void RequestPushPreventUndoStateUpdate() = 0;
-
-       //! Callback for requesting the decrementation of the value of the ignore undo point tracker
-       virtual void RequestPopPreventUndoStateUpdate() = 0;
     };
 
     using SceneUIRequestBus = AZ::EBus<SceneUIRequests>;
@@ -466,17 +504,23 @@ namespace GraphCanvas
         using BusIdType = AZ::EntityId;
 
         //! When the entity is added to a scene, this event is emitted.
-        virtual void OnSceneSet(const AZ::EntityId&) {}
+        virtual void OnSceneSet(const AZ::EntityId& /*sceneId*/) {}
+
         //! When the entity is removed from a scene, this event is emitted.
         //! Includes the previously-set scene ID.
-        virtual void OnSceneCleared(const AZ::EntityId&) {}
+        virtual void OnSceneCleared(const AZ::EntityId& /*sceneId*/) {}
 
         //! Signal sent once the scene is fully configured and ready to be displayed.
         virtual void OnSceneReady() {}
 
         //! Signals that a SceneMember is fully and handled by the SceneComponent.
         virtual void OnMemberSetupComplete() {}
+
+        //! Signals that a SceneMember was deserialized into a particular graph.
+        //! Note: The graphId is being passed in order to ask questions about the graph.
+        //!       and is not a signal that the element has been added to the particular graph yet.
+        virtual void OnSceneMemberDeserializedForGraph(const AZ::EntityId& graphId) {}
     };
 
-    using SceneMemberNotificationBus = AZ::EBus<SceneMemberNotifications>;
+    using SceneMemberNotificationBus = AZ::EBus<SceneMemberNotifications>;    
 }

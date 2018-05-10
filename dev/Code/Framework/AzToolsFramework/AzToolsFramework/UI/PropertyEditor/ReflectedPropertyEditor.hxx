@@ -79,6 +79,8 @@ namespace AzToolsFramework
         //will force any queued invalidations to happen immediately
         void ForceQueuedInvalidation();
 
+        void CancelQueuedRefresh(); // Cancels any pending property refreshes
+
         void SetAutoResizeLabels(bool autoResizeLabels);
 
         InstanceDataNode* GetNodeFromWidget(QWidget* pTarget) const;
@@ -92,6 +94,7 @@ namespace AzToolsFramework
         int GetContentHeight() const;
         int GetMaxLabelWidth() const;
 
+        void SetLabelAutoResizeMinimumWidth(int labelMinimumWidth);
         void SetLabelWidth(int labelWidth);
 
         void SetSelectionEnabled(bool selectionEnabled);

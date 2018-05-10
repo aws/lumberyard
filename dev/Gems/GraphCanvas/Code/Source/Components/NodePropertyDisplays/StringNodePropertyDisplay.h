@@ -13,9 +13,9 @@
 
 #include <qlineedit.h>
 
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 
-#include <Components/NodePropertyDisplay/StringDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/StringDataInterface.h>
 
 class QGraphicsProxyWidget;
 

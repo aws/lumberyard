@@ -73,7 +73,7 @@ def register_win_x64_external_ly_identity(self, compiler, configuration):
     platform = 'windows'
     processor = 'intel64'
 
-    if compiler not in ('vs2013', 'vs2015'):
+    if compiler not in ('vs2013', 'vs2015', 'vs2017'):
         raise WafError("Invalid compiler value {}", compiler)
     if configuration not in ('Debug', 'Release'):
         raise WafError("Invalid configuration value {}", configuration)
@@ -108,7 +108,7 @@ def register_win_x64_external_ly_metrics(self, compiler, configuration):
     platform = 'windows'
     processor = 'intel64'
 
-    if compiler not in ('vs2013', 'vs2015'):
+    if compiler not in ('vs2013', 'vs2015', 'vs2017'):
         raise WafError("Invalid compiler value {}", compiler)
     if configuration not in ('Debug', 'Release'):
         raise WafError("Invalid configuration value {}", configuration)

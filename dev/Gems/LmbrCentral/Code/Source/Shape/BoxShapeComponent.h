@@ -11,31 +11,26 @@
 */
 #pragma once
 
-#include <Cry_Geo.h>
 #include <AzCore/Component/Component.h>
+
+#include "Rendering/EntityDebugDisplayComponent.h"
 #include "BoxShape.h"
 
 namespace LmbrCentral
 {
     class BoxShapeComponent
         : public AZ::Component
-        , public BoxShape
     {
     public:
-        AZ_COMPONENT(BoxShapeComponent, BoxShapeComponentTypeId);
+        AZ_COMPONENT(BoxShapeComponent, BoxShapeComponentTypeId)
 
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
-        // BoxShape
-        BoxShapeConfig& GetConfiguration() override { return m_configuration; }
-
     protected:
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
@@ -56,8 +51,32 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+        BoxShape m_boxShape; ///< Stores underlying box type for this component.
+    };
 
-        //! Stores configuration of a box for this component
-        BoxShapeConfig m_configuration;
+    /**
+     * Concrete EntityDebugDisplay implementation for BoxShape.
+     */
+    class BoxShapeDebugDisplayComponent
+        : public EntityDebugDisplayComponent
+    {
+    public:
+        AZ_COMPONENT(BoxShapeDebugDisplayComponent, "{2B0F198B-6753-4191-A024-2AFE0E228D93}", EntityDebugDisplayComponent)
+
+        BoxShapeDebugDisplayComponent() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
+
+        // EntityDebugDisplayComponent
+        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
+
+    private:
+        AZ_DISABLE_COPY_MOVE(BoxShapeDebugDisplayComponent)
+
+        BoxShapeConfig m_boxShapeConfig; ///< Stores configuration data for box shape.
     };
 } // namespace LmbrCentral

@@ -24,7 +24,7 @@ namespace AZ
     {
         namespace GraphData
         {
-            class MaterialData
+            class SCENE_DATA_CLASS MaterialData
                 : public AZ::SceneAPI::DataTypes::IMaterialData
             {
             public:

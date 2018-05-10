@@ -51,7 +51,7 @@ namespace ScriptCanvasEditor
             return;
         }
 
-        serializeContext->Class<EntityMimeDataHandler>()
+        serializeContext->Class<EntityMimeDataHandler, AZ::Component>()
             ->Version(1)
             ;
     }
@@ -69,14 +69,18 @@ namespace ScriptCanvasEditor
         GraphCanvas::SceneMimeDelegateHandlerRequestBus::Handler::BusDisconnect();
     }
     
-    bool EntityMimeDataHandler::IsInterestedInMimeData(const AZ::EntityId& sceneId, const QMimeData* mimeData) const
+    bool EntityMimeDataHandler::IsInterestedInMimeData(const AZ::EntityId& sceneId, const QMimeData* mimeData)
     {        
         (void)sceneId;
 
         return mimeData->hasFormat(EntityMimeData::GetMimeType());
     }    
 
-    void EntityMimeDataHandler::HandleDrop(const AZ::EntityId& sceneId, const QPointF& dropPoint, const QMimeData* mimeData)
+    void EntityMimeDataHandler::HandleMove(const AZ::EntityId&, const QPointF&, const QMimeData*)
+    {        
+    }
+
+    void EntityMimeDataHandler::HandleDrop(const AZ::EntityId& graphCanvasGraphId, const QPointF& dropPoint, const QMimeData* mimeData)
     {
         if (!mimeData->hasFormat(EntityMimeData::GetMimeType()))
         {
@@ -100,16 +104,21 @@ namespace ScriptCanvasEditor
         
         AZ::Vector2 pos(dropPoint.x(), dropPoint.y());
 
-        AZ::EntityId graphId;
-        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(graphId, &ScriptCanvasEditor::GeneralRequests::GetGraphId, sceneId);
+        AZ::EntityId scriptCanvasGraphId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
 
         for (const AZ::EntityId& id : entityIdListContainer.m_entityIds)
         {
-            NodeIdPair nodePair = Nodes::CreateEntityNode(id, graphId);
-            GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, nodePair.m_graphCanvasId, pos);
+            NodeIdPair nodePair = Nodes::CreateEntityNode(id, scriptCanvasGraphId);
+            GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, nodePair.m_graphCanvasId, pos);
             pos += AZ::Vector2(20, 20);
         }
 
-        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, sceneId);        
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasGraphId);        
+    }
+
+    void EntityMimeDataHandler::HandleLeave(const AZ::EntityId&, const QMimeData*)
+    {
+
     }
 } // namespace GraphCanvas

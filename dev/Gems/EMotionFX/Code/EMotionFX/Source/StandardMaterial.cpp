@@ -51,7 +51,7 @@ namespace EMotionFX
         mBlendMode      = LAYERBLENDMODE_NONE;
 
         // calculate the ID
-        mFileNameID = MCore::GetStringIDGenerator().GenerateIDForString(fileName);
+        mFileNameID = MCore::GetStringIdPool().GenerateIdForString(fileName);
     }
 
 
@@ -290,20 +290,20 @@ namespace EMotionFX
 
     const char* StandardMaterialLayer::GetFileName() const
     {
-        return MCore::GetStringIDGenerator().GetName(mFileNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mFileNameID).c_str();
     }
 
 
-    const MCore::String& StandardMaterialLayer::GetFileNameString() const
+    const AZStd::string& StandardMaterialLayer::GetFileNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mFileNameID);
+        return MCore::GetStringIdPool().GetName(mFileNameID);
     }
 
 
     void StandardMaterialLayer::SetFileName(const char* fileName)
     {
         // calculate the new ID
-        mFileNameID = MCore::GetStringIDGenerator().GenerateIDForString(fileName);
+        mFileNameID = MCore::GetStringIdPool().GenerateIdForString(fileName);
     }
 
 

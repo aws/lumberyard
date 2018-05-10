@@ -31,7 +31,7 @@ namespace JobManager {
             // stack size for each worker thread of the blocking backend
             enum
             {
-                eStackSize = 32 * 1024
+                eStackSize = 64 * 1024
             };
         } // namespace detail
 

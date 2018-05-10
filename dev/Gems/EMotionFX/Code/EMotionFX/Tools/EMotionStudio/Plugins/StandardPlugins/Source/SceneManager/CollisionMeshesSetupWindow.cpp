@@ -81,10 +81,10 @@ namespace EMStudio
 
         // create the command group
         MCore::CommandGroup commandGroup("Actor set collison meshes");
-        MCore::String tempString;
+        AZStd::string tempString;
 
         // add each command to update the collision meshes of each LOD
-        const MCore::Array<MCore::Array<MCore::String> >& LODNodeList = mHierarchyWidget->GetLODNodeList();
+        const MCore::Array<MCore::Array<AZStd::string> >& LODNodeList = mHierarchyWidget->GetLODNodeList();
         const uint32 numLOD = LODNodeList.GetLength();
         for (uint32 i = 0; i < numLOD; ++i)
         {
@@ -92,28 +92,28 @@ namespace EMStudio
             const uint32 numNodes = LODNodeList[i].GetLength();
 
             // generate the node list
-            MCore::String nodeList;
+            AZStd::string nodeList;
             for (uint32 j = 0; j < numNodes; ++j)
             {
-                nodeList.FormatAdd("%s;", LODNodeList[i][j].AsChar());
+                nodeList += AZStd::string::format("%s;", LODNodeList[i][j].c_str());
             }
 
             // remove the semicolon at the end
-            nodeList.TrimRight(MCore::UnicodeCharacter(';'));
+            AzFramework::StringFunc::Strip(nodeList, MCore::CharacterConstants::semiColon, true /* case sensitive */, false /* beginning */, true /* ending */);
 
             // generate the command
-            tempString.Format("ActorSetCollisionMeshes -actorID %i -lod %i -nodeList \"", actorID, i);
+            tempString = AZStd::string::format("ActorSetCollisionMeshes -actorID %i -lod %i -nodeList \"", actorID, i);
             tempString += nodeList;
             tempString += "\"";
 
             // add the command
-            commandGroup.AddCommandString(tempString.AsChar());
+            commandGroup.AddCommandString(tempString.c_str());
         }
 
         // execute the command group
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, tempString) == false)
         {
-            MCore::LogError(tempString.AsChar());
+            MCore::LogError(tempString.c_str());
         }
     }
 } // namespace EMStudio

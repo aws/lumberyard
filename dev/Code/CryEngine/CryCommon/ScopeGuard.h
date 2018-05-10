@@ -9,11 +9,16 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef CRYINCLUDE_CRYCOMMON_SCOPEGUARD_H
-#define CRYINCLUDE_CRYCOMMON_SCOPEGUARD_H
 #pragma once
 
 #include <type_traits>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SCOPEGUARD_H_SECTION_1 1
+#define SCOPEGUARD_H_SECTION_2 2
+#endif
+
 /**
 This is from the c++17 working draft paper N3949 http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3949.pdf
 It is a new library addition targeted for c++17. I didn't feel like waiting. Only modification is as required to get the
@@ -50,9 +55,17 @@ namespace std17
         }
         void release() { execute_on_destruction = false; }
     private:
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SCOPEGUARD_H_SECTION_1
+#include AZ_RESTRICTED_FILE(ScopeGuard_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         scope_guard_t(scope_guard_t const&) = delete;
         void operator=(scope_guard_t const&) = delete;
         scope_guard_t& operator=(scope_guard_t&&) = delete;
+#endif
         D deleter;
         bool execute_on_destruction;
         // exposition only
@@ -76,8 +89,16 @@ namespace std17
         D deleter;
         bool execute_on_destruction;
         // exposition only
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SCOPEGUARD_H_SECTION_2
+#include AZ_RESTRICTED_FILE(ScopeGuard_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         unique_resource_t& operator=(unique_resource_t const&) = delete;
         unique_resource_t(unique_resource_t const&) = delete;
+#endif
         // no copies!
     public:
         // construction
@@ -165,5 +186,3 @@ namespace std17
     }
 }
 
-
-#endif // CRYINCLUDE_CRYCOMMON_SCOPEGUARD_H

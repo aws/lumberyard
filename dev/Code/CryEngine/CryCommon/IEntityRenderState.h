@@ -618,6 +618,13 @@ struct IRoadRenderNode
     virtual void GetClipPlanes(Plane* pPlanes, int nPlanesNum, int nVertId = 0) = 0;
     virtual void GetTexCoordInfo(float* pTexCoordInfo) = 0;
     // </interfuscator:shuffle>
+
+    // This flag is used to account for legacy entities which used to serialize the node without parent objects.
+    // Now there are runtime components which spawn the rendering node, however we need to support legacy code as well. 
+    // Remove this flag when legacy entities are removed entirely
+    bool m_hasToBeSerialised = true;
+    // Whether or not ends of the road should be faded out
+    bool m_bAlphaBlendRoadEnds = true;
 };
 
 // Summary:
@@ -820,6 +827,11 @@ struct IWaterVolumeRenderNode
 
     virtual IPhysicalEntity* SetAndCreatePhysicsArea(const Vec3* pVertices, unsigned int numVertices) = 0;
     // </interfuscator:shuffle>
+
+    // This flag is used to account for legacy entities which used to serialize the node without parent objects.
+    // Now there are runtime components which spawn the rendering node, however we need to support legacy code as well. 
+    // Remove this flag when legacy entities are removed entirely
+    bool m_hasToBeSerialised = true;
 };
 
 // Description:

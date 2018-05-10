@@ -3,7 +3,7 @@
         {
             "long_form": "--enabled-game-projects", 
             "attribute": "enabled_game_projects", 
-            "default_value": "StarterGame, CloudGemSamples", 
+            "default_value": "StarterGame,CloudGemSamples", 
             "description": "Comma-separated list of game projects to enable for compiling"
         }
     ], 
@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.13.0.0", 
+            "default_value": "1.14.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -177,6 +177,12 @@
     ], 
     "Output Folder": [
         {
+            "long_form": "--output-folder-win64-vs2017", 
+            "attribute": "out_folder_win64_vs2017", 
+            "default_value": "Bin64vc141", 
+            "description": "Absolute or relative Win64 for VS2017 build output path"
+        }, 
+        {
             "long_form": "--output-folder-win64-vs2015", 
             "attribute": "out_folder_win64_vs2015", 
             "default_value": "Bin64vc140", 
@@ -189,10 +195,16 @@
             "description": "Absolute or relative Win64 for VS2013 build output path"
         }, 
         {
-            "long_form": "--output-folder-durango", 
-            "attribute": "out_folder_durango", 
-            "default_value": "BinDurango", 
-            "description": "Absolute or relative Durango build output path"
+            "long_form": "--output-folder-durango-vs2017", 
+            "attribute": "out_folder_durango_vs2017", 
+            "default_value": "BinDurangoVc141", 
+            "description": "Absolute or relative Durango for VS2017 build output path"
+        }, 
+        {
+            "long_form": "--output-folder-durango-vs2015", 
+            "attribute": "out_folder_durango_vs2015", 
+            "default_value": "BinDurangoVc140", 
+            "description": "Absolute or relative Durango for VS2015 build output path"
         }, 
         {
             "long_form": "--output-folder-mac64", 
@@ -201,10 +213,10 @@
             "description": "Absolute or relative Mac/Darwin64 build output path"
         }, 
         {
-            "long_form": "--output-folder-orbis", 
-            "attribute": "out_folder_orbis", 
-            "default_value": "BinOrbis", 
-            "description": "Absolute or relative Orbis build output path"
+            "long_form": "--output-folder-orbis-vs2015", 
+            "attribute": "out_folder_orbis_vs2015", 
+            "default_value": "BinOrbisVc140", 
+            "description": "Absolute or relative Orbis for VS2015 build output path"
         }, 
         {
             "long_form": "--output-folder-ios", 
@@ -287,6 +299,26 @@
             "description": "Optional parameter to pass the location of the 3rd party folder as part of the configure/bootstrap process"
         }
     ], 
+    "Packaging Options": [
+        {
+            "long_form": "--package-projects-automatically", 
+            "attribute": "package_projects_automatically", 
+            "default_value": "True", 
+            "description": "Automatically run the package command after each build."
+        }, 
+        {
+            "long_form": "--always-copy-assets", 
+            "attribute": "copy_assets", 
+            "default_value": "False", 
+            "description": "When running the packaging command always copy any assets that are specified to the package even for debug/profile builds."
+        }, 
+        {
+            "long_form": "--run-xcode-for-packaging", 
+            "attribute": "run_xcode_for_packaging", 
+            "default_value": "True", 
+            "description": "When running the packaging command execute xcode from the command line to generate the app bundle resources for macOS."
+        }
+    ], 
     "Visual Studio Project Generator": [
         {
             "long_form": "--generate-vs-projects-automatically", 
@@ -326,6 +358,24 @@
         }
     ], 
     "Windows Options": [
+        {
+            "long_form": "--win-vs2017-vswhere-args", 
+            "attribute": "win_vs2017_vswhere_args", 
+            "default_value": "-version 15.6.6", 
+            "description": "The arguments to pass to vswhere when locating vs2017 executables"
+        }, 
+        {
+            "long_form": "--win-vs2017-winkit", 
+            "attribute": "win_vs2017_winkit", 
+            "default_value": "", 
+            "description": "The windows kit that vs2017 builds windows targets against"
+        }, 
+        {
+            "long_form": "--win-vs2017-vcvarsall-args", 
+            "attribute": "win_vs2017_vcvarsall_args", 
+            "default_value": "", 
+            "description": "Additional arguments to pass to vcvarsall.bat"
+        }, 
         {
             "long_form": "--win-vs2015-winkit", 
             "attribute": "win_vs2015_winkit", 

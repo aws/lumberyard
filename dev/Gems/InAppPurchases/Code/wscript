@@ -9,22 +9,19 @@
 
 import os, shutil
 
+from waflib.Build import BuildContext
+
 def build(bld):
+
+    if isinstance(bld, BuildContext):
+        bld.read_aar(
+            name = 'billing',
+            group = 'com.android.billingclient',
+            version = '1.0'
+        )
 
     # on Android we need to copy the billing AIDL file into the project for processing
     java_src_root = bld.path.make_node(os.path.join('Source', 'Android', 'java'))
-
-    if 'android' in bld.env['PLATFORM']:
-        android_home = bld.get_env_file_var('LY_ANDROID_SDK', required = True)
-        source_file = os.path.join(android_home, 'extras', 'google', 'play_billing', 'IInAppBillingService.aidl')
-
-        dest_directory = java_src_root.make_node(os.path.join('com', 'android', 'vending', 'billing'))
-
-        if os.path.exists(dest_directory.abspath()):
-            shutil.rmtree(dest_directory.abspath(), ignore_errors = True)
-
-        dest_directory.mkdir()
-        shutil.copy2(source_file, dest_directory.abspath())
 
     bld.DefineGem(
         # Add custom build options here
@@ -37,7 +34,7 @@ def build(bld):
         ios_framework     = ['StoreKit'],
         ios_uselib        = ['OPENSSL', 'ASN1'],
 
-        android_file_list           = [ 'inapppurchases_android.waf_files' ],
-        android_java_src_path       = [ java_src_root.abspath() ],
-        android_aidl_src_path       = [ java_src_root.abspath() ],
+        android_use           = ['billing'],
+        android_file_list     = [ 'inapppurchases_android.waf_files' ],
+        android_java_src_path = [ java_src_root.abspath() ],
     )

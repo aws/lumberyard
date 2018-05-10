@@ -25,6 +25,7 @@
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include "native/utilities/assetUtilEBusHelper.h"
+#include <native/utilities/BuilderManager.h>
 
 #include <QtConcurrent/QtConcurrentRun>
 #include <QDir>
@@ -529,6 +530,7 @@ namespace AssetProcessor
                 result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                 shouldRemoveTempFolder = false;
             }
+            shouldRemoveTempFolder = shouldRemoveTempFolder && !s_createRequestFileForSuccessfulJob;
             break;
 
         case AssetBuilderSDK::ProcessJobResult_Crashed:

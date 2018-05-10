@@ -44,6 +44,7 @@
 
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/CommandGroup.h>
+#include <MCore/Source/StringConversions.h>
 
 #include <EMotionFX/CommandSystem/Source/AnimGraphNodeCommands.h>
 
@@ -127,7 +128,7 @@ namespace EMStudio
         mItemClicked = nullptr;
 
         mSearchFilter->GetSearchEdit()->clear();
-        mSearchString.Clear();
+        mSearchString.clear();
 
         mRootItem = UpdateTreeWidget(mTreeWidget, animGraph);
 
@@ -199,8 +200,9 @@ namespace EMStudio
             }
         }
 
-
-        if (allowItem && (searchFilterString == nullptr || (node && searchFilterString && node->GetNameString().Lowered().Contains(searchFilterString))))
+        AZStd::string loweredNodeName = node->GetNameString();
+        AZStd::to_lower(loweredNodeName.begin(), loweredNodeName.end());
+        if (allowItem && (searchFilterString == nullptr || (node && searchFilterString && loweredNodeName.find(searchFilterString) != AZStd::string::npos)))
         {
             newItem = new QTreeWidgetItem(parentItem, 0);
             if (node == nullptr)
@@ -355,20 +357,20 @@ namespace EMStudio
             return;
 
         // find out the current parent
-        MCore::String parentName;
+        AZStd::string parentName;
         const uint32 numSelected = mTreeWidget->selectedItems().count();
         if (numSelected > 0)
             parentName = mTreeWidget->selectedItems()[0]->text(0).toAscii().data();
 
         // build the command string
-        MCore::String commandString;
+        AZStd::string commandString;
         if (parentName.GetLength() > 0)
-            commandString.Format("AnimGraphCreateNode -name GENERATE -type AnimGraphStateMachine -parentState \"%s\"", parentName.AsChar());
+            commandString = AZStd::string::format("AnimGraphCreateNode -name GENERATE -type AnimGraphStateMachine -parentState \"%s\"", parentName.AsChar());
         else
-            commandString.Format("AnimGraphCreateNode -name GENERATE -type AnimGraphStateMachine");
+            commandString = AZStd::string::format("AnimGraphCreateNode -name GENERATE -type AnimGraphStateMachine");
 
         // execute the command
-        MCore::String commandResult;
+        AZStd::string commandResult;
         if (GetCommandManager()->ExecuteCommand(commandString, commandResult) == false)
         {
             MCore::LogError( commandResult.AsChar() );
@@ -466,7 +468,7 @@ namespace EMStudio
         }
         else
         {
-            EMotionFX::AnimGraphNode* selectedNode = animGraph->RecursiveFindNode(FromQtString(selectedItems[0]->text(COLUMN_NAME)).AsChar());
+            EMotionFX::AnimGraphNode* selectedNode = animGraph->RecursiveFindNode(FromQtString(selectedItems[0]->text(COLUMN_NAME)).c_str());
             mPlugin->GetAttributesWindow()->InitForAnimGraphObject(selectedNode);
         }
     }
@@ -531,11 +533,11 @@ namespace EMStudio
         MCORE_ASSERT( animGraph );
 
         // build the command string
-        MCore::String commandString;
-        commandString.Format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), FromQtString(mItemClickedName).AsChar(), FromQtString(newName).AsChar());
+        AZStd::string commandString;
+        commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), FromQtString(mItemClickedName).AsChar(), FromQtString(newName).AsChar());
 
         // execute the command
-        MCore::String commandResult;
+        AZStd::string commandResult;
         if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), commandResult) == false)
         {
             MCore::LogError( commandResult.AsChar() );
@@ -569,7 +571,7 @@ namespace EMStudio
                 continue;
             }
 
-            EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(FromQtString(selectedItems.at(i)->text(COLUMN_NAME)).AsChar());
+            EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(FromQtString(selectedItems.at(i)->text(COLUMN_NAME)).c_str());
             if (animGraphNode)
             {
                 selectedNodes.Add(animGraphNode);
@@ -891,16 +893,16 @@ namespace EMStudio
         }
 
         // build the command string
-        MCore::String commandString;
-        MCore::String commandResult;
-        commandString.Format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"\" -targetNode \"%s\"  -sourcePort 0 -targetPort 0 -startOffsetX 0 -startOffsetY 0 -endOffsetX %i -endOffsetY %i -transitionType %d", animGraph->GetID(), node->GetName(), endOffsetX, endOffsetY, transitionType);
+        AZStd::string commandString;
+        AZStd::string commandResult;
+        commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"\" -targetNode \"%s\"  -sourcePort 0 -targetPort 0 -startOffsetX 0 -startOffsetY 0 -endOffsetX %i -endOffsetY %i -transitionType %d", animGraph->GetID(), node->GetName(), endOffsetX, endOffsetY, transitionType);
 
         // execute the command
-        if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), commandResult) == false)
+        if (GetCommandManager()->ExecuteCommand(commandString.c_str(), commandResult) == false)
         {
-            if (commandResult.GetIsEmpty() == false)
+            if (commandResult.empty() == false)
             {
-                MCore::LogError(commandResult.AsChar());
+                MCore::LogError(commandResult.c_str());
             }
         }
     }
@@ -922,10 +924,10 @@ namespace EMStudio
         }
 
         // execute the command
-        MCore::String commandResult;
-        if (GetCommandManager()->ExecuteCommand(MCore::String().Format("AnimGraphSetEntryState -animGraphID %i -entryNodeName \"%s\"", animGraph->GetID(), node->GetName()).AsChar(), commandResult) == false)
+        AZStd::string commandResult;
+        if (GetCommandManager()->ExecuteCommand(AZStd::string::format("AnimGraphSetEntryState -animGraphID %i -entryNodeName \"%s\"", animGraph->GetID(), node->GetName()).c_str(), commandResult) == false)
         {
-            MCore::LogError(commandResult.AsChar());
+            MCore::LogError(commandResult.c_str());
         }
     }
 
@@ -944,7 +946,7 @@ namespace EMStudio
         MCORE_ASSERT(animGraph);
 
         // find the selected node
-        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(selectedItems.at(0)->text(COLUMN_NAME)).AsChar());
+        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(selectedItems.at(0)->text(COLUMN_NAME)).c_str());
         return node;
     }
 
@@ -982,7 +984,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numSelected; ++i)
         {
             QTreeWidgetItem*           item  = selectedItems.at(i);
-            EMotionFX::AnimGraphNode*  node  = animGraph->RecursiveFindNode(FromQtString(item->text(COLUMN_NAME)).AsChar());
+            EMotionFX::AnimGraphNode*  node  = animGraph->RecursiveFindNode(FromQtString(item->text(COLUMN_NAME)).c_str());
 
             // Only add it if the node is valid and is not in the list yet.
             if (node && AZStd::find(nodesToCopy.begin(), nodesToCopy.end(), node) == nodesToCopy.end())
@@ -1150,7 +1152,7 @@ namespace EMStudio
             if (event->mimeData()->hasText())
             {
                 // extract the class name
-                MCore::Array<MCore::String> parts = MCore::String( event->mimeData()->text().toAscii().data() ).Split(';');
+                MCore::Array<AZStd::string> parts = AZStd::string( event->mimeData()->text().toAscii().data() ).Split(';');
                 if (parts.GetLength() != 3)
                 {
                     MCore::LogError("BlendGraphWidget::dropEvent() - Incorrect syntax using drop data '%s'", event->mimeData()->text().toAscii().data());
@@ -1159,11 +1161,11 @@ namespace EMStudio
                     return;
                 }
 
-                MCore::String commandString;
-                MCore::String resultString;
+                AZStd::string commandString;
+                AZStd::string resultString;
                 if (mCurrentNode == nullptr)
                 {
-                    if (parts[1].CheckIfIsEqualNoCase("AnimGraphStateMachine") == false)
+                    if (AzFramework::StringFunc::Equal(parts[1].c_str(), "AnimGraphStateMachine", false) == false)
                     {
                         MCore::LogError("You can only drop State Machines as root nodes!");
                         event->ignore();
@@ -1176,18 +1178,18 @@ namespace EMStudio
                 const QPoint offset = LocalToGlobal( event->pos() );
 
                 // build the name prefix
-                MCore::String namePrefix = parts[2];
+                AZStd::string namePrefix = parts[2];
                 namePrefix.RemoveChars(" ");
 
                 // if we add a blendtree, we also should automatically add a final node
-                if (parts[1].CheckIfIsEqualNoCase("BlendTree"))
+                if (AzFramework::StringFunc::Equal(parts[1].c_str(), "BlendTree", false))
                 {
                     MCore::CommandGroup group("Create a blend tree");
 
-                    commandString.Format("AnimGraphCreateNode -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), mCurrentNode->GetName(), offset.x(), offset.y(), namePrefix.AsChar());
+                    commandString = AZStd::string::format("AnimGraphCreateNode -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), mCurrentNode->GetName(), offset.x(), offset.y(), namePrefix.AsChar());
                     group.AddCommandString( commandString.AsChar() );
 
-                    commandString.Format("AnimGraphCreateNode -type BlendTreeFinalNode -parentName \"%%LASTRESULT%%\" -xPos %d -yPos %d -name GENERATE -namePrefix \"FinalNode\"", geometry().width()/2, geometry().height()/2);
+                    commandString = AZStd::string::format("AnimGraphCreateNode -type BlendTreeFinalNode -parentName \"%%LASTRESULT%%\" -xPos %d -yPos %d -name GENERATE -namePrefix \"FinalNode\"", geometry().width()/2, geometry().height()/2);
                     group.AddCommandString( commandString.AsChar() );
 
                     // execute the command
@@ -1200,9 +1202,9 @@ namespace EMStudio
                 else
                 {
                     if (mCurrentNode)
-                        commandString.Format("AnimGraphCreateNode -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), mCurrentNode->GetName(), offset.x(), offset.y(), namePrefix.AsChar());
+                        commandString = AZStd::string::format("AnimGraphCreateNode -type \"%s\" -parentName \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), mCurrentNode->GetName(), offset.x(), offset.y(), namePrefix.AsChar());
                     else
-                        commandString.Format("AnimGraphCreateNode -type \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), offset.x(), offset.y(), namePrefix.AsChar());
+                        commandString = AZStd::string::format("AnimGraphCreateNode -type \"%s\" -xPos %d -yPos %d -name GENERATE -namePrefix \"%s\"", parts[1].AsChar(), offset.x(), offset.y(), namePrefix.AsChar());
 
                     // execute the command
                     if (GetCommandManager()->ExecuteCommand( commandString, resultString ) == false)
@@ -1247,7 +1249,7 @@ namespace EMStudio
 
         // find the node inside EMotionFX::GetEMotionFX()
         QTreeWidgetItem* selectedItem = selectedItems[0];
-        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).AsChar());
+        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
         MCORE_ASSERT(virtualFinalNode);
 
         // get the parent blend tree
@@ -1281,7 +1283,7 @@ namespace EMStudio
 
         // find the node inside EMotionFX::GetEMotionFX()
         QTreeWidgetItem* selectedItem = selectedItems[0];
-        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).AsChar());
+        EMotionFX::AnimGraphNode* virtualFinalNode = mPlugin->GetActiveAnimGraph()->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
         MCORE_ASSERT(virtualFinalNode);
 
         // get the parent blend tree
@@ -1304,7 +1306,7 @@ namespace EMStudio
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         MCORE_ASSERT(animGraph);
 
-        MCore::String commandString;
+        AZStd::string commandString;
         MCore::CommandGroup commandGroup;
 
         // for all selected nodes
@@ -1312,7 +1314,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numSelected; ++i)
         {
             QTreeWidgetItem* selectedItem = selectedItems[i];
-            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).AsChar());
+            EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
             MCORE_ASSERT(node);
             if (node->GetSupportsDisable() == false)
             {
@@ -1320,17 +1322,17 @@ namespace EMStudio
             }
 
             // build the command string and add it to the command group
-            commandString.Format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -enabled %i", animGraph->GetID(), node->GetName(), flag);
-            commandGroup.AddCommandString(commandString.AsChar());
+            commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -enabled %s", animGraph->GetID(), node->GetName(), AZStd::to_string(flag).c_str());
+            commandGroup.AddCommandString(commandString.c_str());
         }
 
         // execute the command group
-        MCore::String commandResult;
+        AZStd::string commandResult;
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult) == false)
         {
-            if (commandResult.GetLength() > 0)
+            if (commandResult.size() > 0)
             {
-                MCore::LogError(commandResult.AsChar());
+                MCore::LogError(commandResult.c_str());
             }
         }
     }
@@ -1355,7 +1357,7 @@ namespace EMStudio
         if (mVisualOptionsNode == nullptr)
         {
             QTreeWidgetItem* selectedItem = selectedItems[0];
-            node = animGraph->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).AsChar());
+            node = animGraph->RecursiveFindNode(FromQtString(selectedItem->text(COLUMN_NAME)).c_str());
         }
         else
         {
@@ -1405,7 +1407,7 @@ namespace EMStudio
     void NavigateWidget::OnFilterStringChanged(const QString& text)
     {
         FromQtString(text, &mSearchString);
-        mSearchString.ToLower();
+        AZStd::to_lower(mSearchString.begin(), mSearchString.end());
 
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         if (animGraph == nullptr)
@@ -1415,9 +1417,9 @@ namespace EMStudio
 
         mVisibleItem = nullptr;
 
-        if (mSearchString.GetLength() > 0)
+        if (mSearchString.size() > 0)
         {
-            mRootItem = UpdateTreeWidget(mTreeWidget, animGraph, MCORE_INVALIDINDEX32, false, mSearchString.AsChar());
+            mRootItem = UpdateTreeWidget(mTreeWidget, animGraph, MCORE_INVALIDINDEX32, false, mSearchString.c_str());
         }
         else
         {

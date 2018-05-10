@@ -17,7 +17,7 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <GraphCanvas/GraphCanvasBus.h>
-#include <Styling/PseudoElement.h>
+#include <GraphCanvas/Styling/PseudoElement.h>
 
 namespace GraphCanvas
 {
@@ -42,6 +42,8 @@ namespace GraphCanvas
         ////
 
         // GraphCanvasRequestBus
+        AZ::Entity* CreateBookmarkAnchor() const override;
+
         AZ::Entity* CreateScene() const override;
 
         AZ::Entity* CreateCoreNode() const override;
@@ -55,20 +57,16 @@ namespace GraphCanvas
         AZ::Entity* CreateVariableReferenceSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const override;
 
         NodePropertyDisplay* CreateBooleanNodePropertyDisplay(BooleanDataInterface* dataInterface) const override;
+        NodePropertyDisplay* CreateNumericNodePropertyDisplay(NumericDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateEntityIdNodePropertyDisplay(EntityIdDataInterface* dataInterface) const override;
-        NodePropertyDisplay* CreateDoubleNodePropertyDisplay(DoubleDataInterface* dataInterface) const override;
+        NodePropertyDisplay* CreateItemModelNodePropertyDisplay(ItemModelDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateReadOnlyNodePropertyDisplay(ReadOnlyDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateStringNodePropertyDisplay(StringDataInterface* dataInterface) const override;
-        NodePropertyDisplay* CreateVariableReferenceNodePropertyDisplay(VariableReferenceDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateVectorNodePropertyDisplay(VectorDataInterface* dataInterface) const override;
 
         AZ::Entity* CreateExecutionSlot(const AZ::EntityId& nodeId, const SlotConfiguration& slotConfiguration) const override;
 
         AZ::Entity* CreatePropertySlot(const AZ::EntityId& nodeId, const AZ::Crc32& propertyId, const SlotConfiguration& slotConfiguration) const override;
-
-        AZ::Entity* CreateDefaultConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const override;
-
-        SceneRequests* GetSceneRequests(AZ::Entity* sceneEntity) const override;
         ////
 
         // PseudoElementRequestBus

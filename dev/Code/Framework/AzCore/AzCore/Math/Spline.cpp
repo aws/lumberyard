@@ -215,6 +215,22 @@ namespace AZ
     };
 
     /**
+     * Used to store minimum distance values of closest position to spline for position.
+     */
+    struct PosMinResult
+    {
+        VectorFloat m_minDistanceSq = VectorFloat(std::numeric_limits<float>::max());
+    };
+
+    /**
+     * Used to store minimum distance values of closest position to spline for ray.
+     */
+    struct RayMinResult : PosMinResult
+    {
+        VectorFloat m_rayDistance = VectorFloat(std::numeric_limits<float>::max());
+    };
+
+    /**
      * Intermediate result of ray spline query - used to store initial result of query
      * before being combined with current state of spline query to build a spline address.
      * (use if we know distanceSq is less than current best known minDistanceSq)
@@ -237,6 +253,24 @@ namespace AZ
                 CalculateSplineAdddress(currentVertex, step, granularity, m_stepProportion),
                 m_distanceSq,
                 m_rayDistance);
+        }
+
+        /**
+         * Update minimum distance struct bases on current distance from spline.
+         * For ray, favour shortest distance along spline, as well as closest point on ray to spline.
+         * Note: This helps give expected results with parallel lines/splines and rays.
+         */
+        bool CompareLess(RayMinResult& rayMinResult) const
+        {
+            if (m_distanceSq.IsLessThan(rayMinResult.m_minDistanceSq) ||
+                m_distanceSq.IsLessEqualThan(rayMinResult.m_minDistanceSq) && m_rayDistance.IsLessThan(rayMinResult.m_rayDistance))
+            {
+                rayMinResult.m_rayDistance = m_rayDistance;
+                rayMinResult.m_minDistanceSq = m_distanceSq;
+                return true;
+            }
+
+            return false;
         }
     };
 
@@ -293,6 +327,20 @@ namespace AZ
                 CalculateSplineAdddress(currentVertex, step, granularity, m_stepProportion),
                 m_distanceSq);
         }
+
+        /**
+         * Update minimum distance struct bases on current distance from spline.
+         */
+        bool CompareLess(PosMinResult& posMinResult) const
+        {
+            if (m_distanceSq.IsLessThan(posMinResult.m_minDistanceSq))
+            {
+                posMinResult.m_minDistanceSq = m_distanceSq;
+                return true;
+            }
+
+            return false;
+        }
     };
 
     /**
@@ -331,11 +379,11 @@ namespace AZ
      * @param calcDistfunc The functor responsible for doing the distance query - returning min distance and proportion along segment.
      * @return SplineAddress closest to given query on spline.
      */
-    template<typename CalculateDistanceFunc, typename IntermediateResult, typename QueryResult>
+    template<typename CalculateDistanceFunc, typename IntermediateResult, typename QueryResult, typename MinResult>
     static QueryResult GetNearestAddressInternal(
         const Spline& spline, size_t begin, size_t end, size_t granularity, CalculateDistanceFunc calcDistfunc)
     {
-        VectorFloat minDistanceSq = VectorFloat(std::numeric_limits<float>::max());
+        MinResult minResult;
         QueryResult queryResult;
         for (size_t currentVertex = begin; currentVertex < end; ++currentVertex)
         {
@@ -347,10 +395,9 @@ namespace AZ
 
                 IntermediateResult intermediateResult = calcDistfunc(segmentStepBegin, segmentStepEnd);
 
-                if (intermediateResult.m_distanceSq.IsLessThan(minDistanceSq))
+                if (intermediateResult.CompareLess(minResult))
                 {
                     queryResult = intermediateResult.Build(currentVertex, granularStep, static_cast<float>(granularity));
-                    minDistanceSq = intermediateResult.m_distanceSq;
                 }
 
                 segmentStepBegin = segmentStepEnd;
@@ -500,19 +547,21 @@ namespace AZ
     {
         context.Class<Spline>()
             ->Field("Vertices", &Spline::m_vertexContainer)
-            ->Field("Closed", &Spline::m_closed);
+            ->Field("Closed", &Spline::m_closed)
+            ;
 
         if (EditContext* editContext = context.GetEditContext())
         {
             editContext->Class<Spline>("Spline", "Spline Data")
                 ->ClassElement(Edit::ClassElements::EditorData, "")
-                ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
-                ->Attribute(Edit::Attributes::AutoExpand, true)
-                ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
+                    //->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly) // disabled - prevents ChangeNotify attribute firing correctly
+                    ->Attribute(Edit::Attributes::AutoExpand, true)
+                    ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
                 ->DataElement(Edit::UIHandlers::Default, &Spline::m_vertexContainer, "Vertices", "Data representing the spline, in the entity's local coordinate space")
-                ->Attribute(Edit::Attributes::AutoExpand, true)
+                    ->Attribute(Edit::Attributes::AutoExpand, true)
                 ->DataElement(Edit::UIHandlers::CheckBox, &Spline::m_closed, "Closed", "Determine whether a spline is self closing (looping) or not")
-                ->Attribute(Edit::Attributes::ChangeNotify, &Spline::OnSplineChanged);
+                    ->Attribute(Edit::Attributes::ChangeNotify, &Spline::OnSplineChanged)
+                ;
         }
     }
 
@@ -538,7 +587,8 @@ namespace AZ
         m_vertexContainer.SetVertices(spline.GetVertices());
     }
 
-    void Spline::SetCallbacks(const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer)
+    void Spline::SetCallbacks(
+        const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer)
     {
         m_vertexContainer.SetCallbacks(
             [this, OnChangeContainer](size_t index) { OnVertexAdded(index); if (OnChangeContainer) { OnChangeContainer(); } },
@@ -566,7 +616,6 @@ namespace AZ
         if (closed != m_closed)
         {
             m_closed = closed;
-            OnSplineChanged();
         }
     }
 
@@ -594,7 +643,8 @@ namespace AZ
     {
         const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
+            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult, RayMinResult>(
+                *this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
             : RaySplineQueryResult(SplineAddress(), s_vectorFloatMax, s_vectorFloatMax);
     }
 
@@ -602,7 +652,8 @@ namespace AZ
     {
         const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
+            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult, PosMinResult>(
+                *this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
             : PositionSplineQueryResult(SplineAddress(), s_vectorFloatMax);
     }
 
@@ -756,7 +807,8 @@ namespace AZ
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
+            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult, RayMinResult>(
+                *this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
             : RaySplineQueryResult(SplineAddress(), s_vectorFloatMax, s_vectorFloatMax);
     }
 
@@ -764,7 +816,8 @@ namespace AZ
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 1
-            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult>(*this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
+            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult, PosMinResult>(
+                *this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
             : PositionSplineQueryResult(SplineAddress(), s_vectorFloatMax);
     }
 
@@ -999,12 +1052,14 @@ namespace AZ
 
     void BezierSpline::OnVertexAdded(size_t index)
     {
+        Spline::OnVertexAdded(index);
         AddBezierDataForIndex(index);
         OnSplineChanged();
     }
 
     void BezierSpline::OnVerticesSet()
     {
+        Spline::OnVerticesSet();
         m_bezierData.clear();
 
         const size_t vertexCount = GetVertexCount();
@@ -1021,12 +1076,14 @@ namespace AZ
 
     void BezierSpline::OnVertexRemoved(size_t index)
     {
+        Spline::OnVertexRemoved(index);
         m_bezierData.erase(m_bezierData.data() + index);
         OnSplineChanged();
     }
 
     void BezierSpline::OnVerticesCleared()
     {
+        Spline::OnVerticesCleared();
         m_bezierData.clear();
     }
 
@@ -1201,14 +1258,15 @@ namespace AZ
         {
             editContext->Class<BezierSpline>("Bezier Spline", "Spline data")
                 ->ClassElement(Edit::ClassElements::EditorData, "")
-                ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
-                ->Attribute(Edit::Attributes::AutoExpand, true)
-                ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
+                    //->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly) // disabled - prevents ChangeNotify attribute firing correctly
+                    ->Attribute(Edit::Attributes::AutoExpand, true)
+                    ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
                 ->DataElement(Edit::UIHandlers::Default, &BezierSpline::m_bezierData, "Bezier Data", "Data defining the bezier curve")
-                ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::Hide)
+                    ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::Hide)
                 ->DataElement(Edit::UIHandlers::Slider, &BezierSpline::m_granularity, "Granularity", "Parameter specifying the granularity of each segment in the spline")
-                ->Attribute(Edit::Attributes::Min, s_minGranularity)
-                ->Attribute(Edit::Attributes::Max, s_maxGranularity);
+                    ->Attribute(Edit::Attributes::Min, s_minGranularity)
+                    ->Attribute(Edit::Attributes::Max, s_maxGranularity)
+                    ;
         }
     }
 
@@ -1227,7 +1285,8 @@ namespace AZ
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 3
-            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult>(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
+            ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult, RayMinResult>(
+                *this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
             : RaySplineQueryResult(SplineAddress(), s_vectorFloatMax, s_vectorFloatMax);
     }
 
@@ -1235,7 +1294,8 @@ namespace AZ
     {
         size_t vertexCount = GetVertexCount();
         return vertexCount > 3
-            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult>(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
+            ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult, PosMinResult>(
+                *this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
             : PositionSplineQueryResult(SplineAddress(), s_vectorFloatMax);
     }
 
@@ -1447,15 +1507,16 @@ namespace AZ
         {
             editContext->Class<CatmullRomSpline>("Catmull Rom Spline", "Spline data")
                 ->ClassElement(Edit::ClassElements::EditorData, "")
-                ->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly)
-                ->Attribute(Edit::Attributes::AutoExpand, true)
-                ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
+                    //->Attribute(Edit::Attributes::Visibility, Edit::PropertyVisibility::ShowChildrenOnly) // disabled - prevents ChangeNotify attribute firing correctly
+                    ->Attribute(Edit::Attributes::AutoExpand, true)
+                    ->Attribute(Edit::Attributes::ContainerCanBeModified, false)
                 ->DataElement(Edit::UIHandlers::Slider, &CatmullRomSpline::m_knotParameterization, "Knot Parameterization", "Parameter specifying interpolation of the spline")
-                ->Attribute(Edit::Attributes::Min, 0.0f)
-                ->Attribute(Edit::Attributes::Max, 1.0f)
+                    ->Attribute(Edit::Attributes::Min, 0.0f)
+                    ->Attribute(Edit::Attributes::Max, 1.0f)
                 ->DataElement(Edit::UIHandlers::Slider, &CatmullRomSpline::m_granularity, "Granularity", "Parameter specifying the granularity of each segment in the spline")
-                ->Attribute(Edit::Attributes::Min, s_minGranularity)
-                ->Attribute(Edit::Attributes::Max, s_maxGranularity);
+                    ->Attribute(Edit::Attributes::Min, s_minGranularity)
+                    ->Attribute(Edit::Attributes::Max, s_maxGranularity)
+                    ;
         }
     }
 

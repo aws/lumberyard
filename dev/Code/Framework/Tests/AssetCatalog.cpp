@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Math/Uuid.h>
@@ -52,6 +52,7 @@ namespace UnitTest
     public:
         void SetUp() override
         {
+            AllocatorsFixture::SetUp();
             AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
 

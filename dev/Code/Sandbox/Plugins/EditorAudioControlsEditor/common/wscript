@@ -20,6 +20,6 @@ def build(bld):
         vs_filter       = 'Sandbox/Plugins/AudioControlsEditor',
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'editoraudiocontrolseditorcommon.waf_files',
-        platforms       = ['win'],
+        platforms       = ['win', 'darwin'],
         configurations  = ['debug', 'profile'],
     )

@@ -25,8 +25,8 @@
 
 ResourceGroupListStatusWidget::ResourceGroupListStatusWidget(
     ResourceManagementView* view,
-    QSharedPointer<IResourceGroupListStatusModel> resourceGroupListStatusModel)
-    : StackEventsSplitter{resourceGroupListStatusModel->GetActiveDeploymentStatusModel()->GetStackEventsModel()}
+    QSharedPointer<IResourceGroupListStatusModel> resourceGroupListStatusModel, QWidget* parent)
+    : StackEventsSplitter{resourceGroupListStatusModel->GetActiveDeploymentStatusModel()->GetStackEventsModel(), parent}
     , m_view{view}
     , m_resourceGroupListStatusModel{resourceGroupListStatusModel}
 {
@@ -39,7 +39,7 @@ ResourceGroupListStatusWidget::ResourceGroupListStatusWidget(
 void ResourceGroupListStatusWidget::CreateUI()
 {
     auto stackListWidget = new StackListWidget {
-        m_resourceGroupListStatusModel
+        m_resourceGroupListStatusModel, this
     };
     SetTopWidget(stackListWidget);
 

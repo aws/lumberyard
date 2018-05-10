@@ -71,6 +71,18 @@ if LUMBERYARD_ENGINE_PATH != '.':
     # If the lumberyard engine path external to the current path '.', update the context waf_dir
     Context.waf_dir = os.path.normpath('{}/Tools/build/waf-1.7.13'.format(LUMBERYARD_ENGINE_PATH))
 
+
+def recurse_subfolders(ctx):
+    recurse_subfolders = []
+    for subfolder in SUBFOLDERS:
+        if os.path.isabs(subfolder):
+            recurse_subfolders.append(subfolder)
+        else:
+            recurse_subfolders.append(os.path.join(ctx.engine_path,subfolder))
+
+    ctx.recurse(dirs=recurse_subfolders)
+
+
 # Configure Options for WAF
 def options(opt):
 
@@ -95,6 +107,8 @@ def configure(conf):
 
     conf.load_user_settings()
 
+    conf.initialize_third_party_settings()
+
     if conf.is_option_true('update_user_settings'):
         conf.update_settings_options_file()
 
@@ -107,6 +121,12 @@ def configure(conf):
 
     conf.add_gems_to_specs()
 
+    try:
+        import restricted
+        restricted.run(conf)
+    except ImportError:
+        pass
+
     conf.load_compile_rules_for_supported_platforms(PLATFORM_CONFIGURATION_FILTER)
 
     conf.update_validated_platforms()
@@ -114,14 +134,7 @@ def configure(conf):
     conf.process_custom_configure_commands()
 
     # Recurse into sub-folders for auto conf when any wscript changes
-    recurse_subfolders = []
-    for subfolder in SUBFOLDERS:
-        if os.path.isabs(subfolder):
-            recurse_subfolders.append(subfolder)
-        else:
-            recurse_subfolders.append(os.path.join(conf.engine_path,subfolder))
-
-    conf.recurse(dirs=recurse_subfolders)
+    recurse_subfolders(conf)
 
     conf.configure_game_projects()
 
@@ -176,6 +189,8 @@ def build(bld):
 
     bld.load_user_settings()
 
+    bld.initialize_third_party_settings()
+
     bld.options.project_spec = bld.options.project_spec.strip()  # remove spaces
 
     # Create a post build message container
@@ -216,15 +231,7 @@ def build(bld):
     # Load Core Engine Parts (Engine, Tools, Core Shaders etc)
     bld.game_project = None
 
-    recurse_subfolders = []
-    for subfolder in SUBFOLDERS:
-        if os.path.isabs(subfolder):
-            recurse_subfolders.append(subfolder)
-        else:
-            recurse_subfolders.append(os.path.join(bld.engine_path,subfolder))
-
-
-    bld.recurse(recurse_subfolders)
+    recurse_subfolders(bld)
 
     bld.process_gems()
 
@@ -238,6 +245,34 @@ def build(bld):
     if 'build' in bld.cmd:
         bld.env.store(os.path.join(bld.cache_dir, 'last_build_cache.py'))
 
+    if bld.is_option_true('package_projects_automatically') and bld.env['CONFIGURATION'] != 'project_generator':
+        package_cmd = 'package_{}_{}'.format(bld.env['PLATFORM'], bld.env['CONFIGURATION'])
+        if package_cmd in Options.commands:
+            return 
+        Options.commands.append(package_cmd)
+
+def package(pkg):
+    pkg.options.project_spec = pkg.options.project_spec.strip()  # remove spaces
+    pkg.calculate_engine_path()
+    pkg.load_user_settings()
+    pkg.initialize_third_party_settings()
+    pkg.prepare_build_environment()
+    pkg.add_gems_to_specs()
+    pkg.add_game_projects_to_specs()
+    pkg.game_project = pkg.project
+
+    pkg.check_module_load_options()
+
+    pkg.process_gems()
+    pkg.setup_game_projects()
+
+    recurse_subfolders(pkg)
+
+
+def package_darwin_x64(pkg):
+    package(pkg)
+
+
 def deploy(ctx):
     if not ctx.variant:
         ctx.fatal('Deploy task does not have a variant specified, cannot continue')
@@ -247,6 +282,8 @@ def deploy(ctx):
 
     # Read the required lmbr configuration
     ctx.calculate_engine_path()
+
+    ctx.initialize_third_party_settings()
 
     ctx.env['PLATFORM'] = platform
     ctx.env['CONFIGURATION'] = configuration

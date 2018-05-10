@@ -17,6 +17,7 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <GridMate/Replica/ReplicaCommon.h>
+#include <AzCore/Slice/SliceComponent.h>
 
 namespace AzFramework
 {
@@ -63,6 +64,11 @@ namespace AzFramework
         * Flags the entity as part of the level slice.
         */
         virtual void MarkAsLevelSliceEntity() = 0;
+
+        /**
+         * Set the slice instance id that this entity was spawned by and belongs to.
+         */
+        virtual void SetSliceInstanceId(const AZ::SliceComponent::SliceInstanceId& sliceInstanceId) = 0;
 
         /**
         * Sets the Replica Priority

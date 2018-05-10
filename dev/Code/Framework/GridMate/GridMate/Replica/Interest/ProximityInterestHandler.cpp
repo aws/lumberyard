@@ -52,7 +52,7 @@ namespace GridMate
         void OnReplicaActivate(const ReplicaContext& rc) override
         {
             m_interestHandler = static_cast<ProximityInterestHandler*>(rc.m_rm->GetUserContext(AZ_CRC("ProximityInterestHandler", 0x3a90b3e4)));
-            AZ_Assert(m_interestHandler, "No proximity interest handler in the user context");
+            AZ_Warning("GridMate", m_interestHandler, "No proximity interest handler in the user context");
 
             if (m_interestHandler)
             {

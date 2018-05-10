@@ -42,7 +42,7 @@ class AssetImporterManager
     Q_OBJECT
 
 public:
-    AssetImporterManager(QWidget* parent = nullptr);
+    explicit AssetImporterManager(QWidget* parent = nullptr);
     ~AssetImporterManager();
 
     // Modal, but blocking.

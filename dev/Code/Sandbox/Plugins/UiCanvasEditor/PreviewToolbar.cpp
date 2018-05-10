@@ -46,6 +46,7 @@ PreviewToolbar::PreviewToolbar(EditorWindow* parent)
     m_editButton = new QPushButton("End Preview", parent);
     QObject::connect(m_editButton,
         &QPushButton::clicked,
+        parent,
         [parent](bool checked)
         {
             parent->ToggleEditorMode();

@@ -387,6 +387,7 @@ namespace GridMate
             }
             else
             {
+                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_replicaMgr->m_mutexRemotePeers);
                 for (auto& route : m_replicaMgr->m_remotePeers)
                 {
                     if (route->GetId() == m_newOwnerId)

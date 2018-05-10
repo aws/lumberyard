@@ -22,7 +22,7 @@ from waflib import Context, TaskGen, Build, Utils, Logs
 from waflib.TaskGen import feature, after_method
 from waflib.Configure import conf
 
-import os, sys, copy
+import os, sys, copy, re
 
 HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl)'
 
@@ -58,6 +58,12 @@ MAP_EXT = {
 }
 
 LMBR_WAF_SCRIPT_REL_PATH = "Tools/build/waf-1.7.13/lmbr_waf"
+
+PLATFORM_TO_LAUNCHER_NAME = {
+    'ios'        :  "IOSLauncher",
+    'darwin_x64' :  "MacLauncher",
+    'appletv'    :  "AppleTVLauncher",
+}
 
 do_debug_print = False
 root_dir = ''
@@ -242,6 +248,7 @@ class PBXSourcesBuildPhase(XCodeNode):
             self.files.append(PBXBuildFile(file)) 
         self.runOnlyForDeploymentPostprocessing = 0
 
+
 class PBXResourcesBuildPhase(XCodeNode):
     def __init__(self, files):
         XCodeNode.__init__(self)
@@ -256,7 +263,6 @@ class PBXBuildFile(XCodeNode):
     def __init__(self, file_reference):
         XCodeNode.__init__(self)
         self.fileRef = file_reference._id
-        self.settings = { 'COMPILER_FLAGS' : "" }
 
 
 class PBXNativeTarget(XCodeNode):
@@ -269,47 +275,94 @@ class PBXNativeTarget(XCodeNode):
             return
 
         target = task_generator.name
-        node = task_generator.link_task.outputs[0].change_ext('.app')
+        node = task_generator.link_task.outputs[0];
+
         env =  task_generator.env
 
         project_name = None
-        for name in ctx.get_enabled_game_project_list():
 
+        for name in ctx.get_enabled_game_project_list():
             legacy_project_and_platform_modules = ctx.project_and_platform_modules(name, platform_name)
 
-            if len(legacy_project_and_platform_modules)>0:
+            if len(legacy_project_and_platform_modules) > 0:
                 # If there are modules defined for the project (in its projects.json), then this is a
                 # legacy game project (game.dll).  Perform the legacy project_name determination
                 if target in legacy_project_and_platform_modules:
                     project_name = name
                     break
-            else:
-                # If there are no modules, then this is a game project
-                # that is gem based only.  The project_name will equal the
-                # target
-                project_name = target
-                break
+        else:
+            # If there are no modules, then this is a game project that is gem based only. The
+            # project_name will equal the target
+            project_name = target
 
         target_settings = copy.copy(settings)
-        target_settings['PRODUCT_NAME'] = ctx.get_executable_name(project_name)
-        target_settings['INFOPLIST_FILE'] = task_generator.to_nodes(getattr(task_generator, 'mac_plist', [''])[0])[0].abspath()
+        target_settings['PRODUCT_NAME'] = node.name
+
+        launcherName = PLATFORM_TO_LAUNCHER_NAME.get(platform_name, "")
+        if project_name and launcherName in project_name:
+            # For the launchers they do not have the plist info files, but the game project
+            # does. Search for the game project and grab its plist info file.
+            project_name = project_name.partition(launcherName)[0]
+            game_task_gen = ctx.get_tgen_by_name(project_name)
+            target_settings['INFOPLIST_FILE'] = game_task_gen.to_nodes(getattr(game_task_gen, 'mac_plist', None)[0])[0].abspath()
+            # Since we have a plist file we are going to create an app bundle for this native target
+            node = node.change_ext('.app')
+        else: 
+            # Not all native target are going to have a plist file (like command line executables).  
+            plist_info_files = getattr(task_generator, 'mac_plist', None)
+            if plist_info_files:
+                target_settings['INFOPLIST_FILE'] = task_generator.to_nodes(plist_info_files[0])[0].abspath()
+                # Since we have a plist file we are going to create an app bundle for this native target
+                node = node.change_ext('.app')
+
+        self._game_project = project_name
+
         target_settings['ASSETCATALOG_COMPILER_APPICON_NAME'] = ctx.get_app_icon(target)
         target_settings['ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME'] = ctx.get_launch_image(target)
+        target_settings['RUN_WAF_BUILD'] = 'YES'
 
         build_configuration_list = []
         for config in ctx.get_target_configurations():
-
             per_configuartion_build_settings = copy.copy(target_settings)
-            per_configuartion_build_settings['CONFIGURATION_BUILD_DIR'] = ctx.get_output_folders(platform_name, config)[0].abspath()
+            output_folder = getattr(task_generator, "output_folder", None)
+            if output_folder:
+                if isinstance(output_folder, list):
+                    output_folder = output_folder[0]
+
+                # Because of how wscript files are executed when we recurse
+                # (project_generator phase) the tools that go into the
+                # lmbr_setup tools output are incomplete. For this case we call
+                # get_lmbr_setup_tools_output_folder ourselves with a platform
+                # and config override to get the correct output folder.
+                if output_folder in ctx.get_lmbr_setup_tools_output_folder():
+                    output_folder = ctx.get_lmbr_setup_tools_output_folder(platform_name, config)
+
+                per_configuartion_build_settings['CONFIGURATION_BUILD_DIR'] = ctx.engine_path + "/" + output_folder
+            else:
+                per_configuartion_build_settings['CONFIGURATION_BUILD_DIR'] = ctx.get_output_folders(platform_name, config)[0].abspath()
+
+            # Until iOS/AppleTV are moved to the new packaging system we need
+            # to skip this step otherwise it adds another [project_name].app to
+            # the directory path and will prevent deploying and running from
+            # Xcode
+            if platform_name not in ['ios', 'appletv']:
+                output_sub_folder = getattr(task_generator, "output_sub_folder", None)
+                if output_sub_folder:
+                    per_configuartion_build_settings['CONFIGURATION_BUILD_DIR'] += "/" + output_sub_folder
+
+            per_configuartion_build_settings['CONFIGURATION_BUILD_DIR'] = os.path.normpath(per_configuartion_build_settings['CONFIGURATION_BUILD_DIR'])
+
             if env and env.ARCH:
                 per_configuartion_build_settings['ARCHS'] = " ".join(env.ARCH)
 
             build_configuration_list.append(XCBuildConfiguration(config, per_configuartion_build_settings))
+
         self.buildConfigurationList = XCConfigurationList(build_configuration_list)
 
         self.buildPhases = []
         self.add_prepare_for_archive_build_phase_to_target()
-        self.add_waf_build_phase_to_target('build_' + platform_name + "_$CONFIGURATION" + ' -p ' + project_spec)
+        self.add_waf_phase_to_target('build_' + platform_name + "_$CONFIGURATION" + ' -p ' + project_spec + ' --package-projects-automatically=False')
+        self.add_waf_phase_to_target('package_' + platform_name + "_$CONFIGURATION" + ' -p ' + project_spec + ' --run-xcode-for-packaging=False')
         self.add_cleanup_after_archive_build_phase_to_target()
 
         self.buildRules = []
@@ -319,10 +372,13 @@ class PBXNativeTarget(XCodeNode):
         self.productType = "com.apple.product-type.application"
         self.productReference = PBXFileReference(target, node.abspath(), 'wrapper.application', 'BUILT_PRODUCTS_DIR')
 
-    def add_waf_build_phase_to_target(self, build_action):
-
+    def add_waf_phase_to_target(self, build_action):
         waf_build_phase = PBXShellScriptBuildPhase()
-        waf_build_phase.shellScript = "'%s' '%s' -cwd '%s' %s" % (sys.executable, XCodeEscapeSpacesForShell(self.lmbr_waf_script), XCodeEscapeSpacesForShell(root_dir), build_action)
+        waf_build_phase.shellScript = 'if [ \\"${RUN_WAF_BUILD}\\" = \\"YES\\" ]; then\n\t'
+
+        waf_build_phase.shellScript += '\\"%s\\" \\"%s\\" -cwd \\"%s\\" %s' % (sys.executable, XCodeEscapeSpacesForShell(self.lmbr_waf_script), XCodeEscapeSpacesForShell(root_dir), build_action)
+
+        waf_build_phase.shellScript += '\nfi'
         self.buildPhases.append(waf_build_phase)
 
     def add_prepare_for_archive_build_phase_to_target(self):
@@ -349,15 +405,18 @@ class PBXNativeTarget(XCodeNode):
 
     def add_rsync_rsources_build_phase_to_target(self, dev_assets_folder_ref, release_assets_folder_ref, target_assets_subdir):
         rsync_build_phase = PBXShellScriptBuildPhase()
+
+        game_folder = self._game_project.lower()
+
         clean_dev_folder_path               = '\\"' + XCodeEscapeSpacesForShell(dev_assets_folder_ref.path.rstrip('/')) + '/\\"'
         clean_dev_bootstrap_file_path       = '\\"' + XCodeEscapeSpacesForShell(dev_assets_folder_ref.path.rstrip('/')) + '/bootstrap.cfg\\"'
-        clean_dev_config_file_path          = '\\"' + XCodeEscapeSpacesForShell(dev_assets_folder_ref.path.rstrip('/')) + '/' + self.name + '/config/game.xml\\"'
+        clean_dev_config_file_path          = '\\"' + XCodeEscapeSpacesForShell(dev_assets_folder_ref.path.rstrip('/')) + '/' + game_folder + '/config/game.xml\\"'
         clean_release_folder_path           = '\\"' + XCodeEscapeSpacesForShell(release_assets_folder_ref.path.rstrip('/')) + '/\\"'
         clean_target_folder_path            = '\\"$TARGET_BUILD_DIR/$WRAPPER_NAME/' + target_assets_subdir + '/\\"'
         clean_target_bootstrap_file_path    = '\\"$TARGET_BUILD_DIR/$WRAPPER_NAME/' + target_assets_subdir + '/bootstrap.cfg\\"'
         exclude_and_filter_options          = '--delete-excluded --exclude .DS_Store --exclude CVS --exclude .svn --exclude .git --exclude .hg --exclude assetcatalog.xml.tmp --filter \\"P /user/\\"'
-        clean_target_config_folder          = '\\"$TARGET_BUILD_DIR/$WRAPPER_NAME/' + target_assets_subdir + '/' + self.name.lower() + '/config/\\"'
-        clean_target_config_file_path       = '\\"$TARGET_BUILD_DIR/$WRAPPER_NAME/' + target_assets_subdir + '/' + self.name.lower() + '/config/game.xml\\"'
+        clean_target_config_folder          = '\\"$TARGET_BUILD_DIR/$WRAPPER_NAME/' + target_assets_subdir + '/' + game_folder + '/config/\\"'
+        clean_target_config_file_path       = '\\"$TARGET_BUILD_DIR/$WRAPPER_NAME/' + target_assets_subdir + '/' + game_folder + '/config/game.xml\\"'
 
         # For release builds we need to use the asset paks, but for development builds
         # we want to use the loose assets (although the asset paks can be used instead).
@@ -449,15 +508,11 @@ class PBXProject(XCodeNode):
         w("}\n")
 
     def add_task_gen(self, task_generator, ctx):
+        target = PBXNativeTarget(self.platform_name, self.project_spec, task_generator, self.settings, ctx)
+        self.targets.append(target)
+        self._output.children.append(target.productReference)
+        return target
 
-        is_mac_app_game_project = getattr(task_generator, 'mac_app', False) and getattr(task_generator, 'mac_app_game_project', True)
-
-        if not is_mac_app_game_project and not getattr(task_generator, 'ios_app', False) and not getattr(task_generator, 'appletv_app', False):
-            self.targets.append(PBXLegacyTarget(self.platform_name, self.project_spec, task_generator.name, ctx))
-        else:
-            target = PBXNativeTarget(self.platform_name, self.project_spec, task_generator, self.settings, ctx)
-            self.targets.append(target)
-            self._output.children.append(target.productReference)
 
 class xcode(Build.BuildContext):
 
@@ -472,9 +527,10 @@ class xcode(Build.BuildContext):
         source = list(set(source_files + plist_files))
         return source
 
-    def generate_project(self):
+    def generate_project(self, projectPlatform):
         global root_dir
 
+        self.projectPlatform = projectPlatform
         self.restore()
         if not self.all_envs:
             self.load_envs()
@@ -485,12 +541,16 @@ class xcode(Build.BuildContext):
         xcode_project_name = self.get_xcode_project_name()
         if not xcode_project_name:
             xcode_project_name = getattr(Context.g_module, Context.APPNAME, 'project')
+
         project = PBXProject(xcode_project_name, ('Xcode 3.2', 46), self)
         project.set_project_spec(self.options.project_spec)
 
         platform_name = self.get_target_platform_name()
         project.set_platform_name(platform_name)
         project.set_settings(self.get_settings())
+
+        resource_group = PBXGroup("Resources")
+        project.mainGroup.children.append(resource_group)
 
         spec_modules = self.spec_modules(project.project_spec)
         project_modules = [];
@@ -509,12 +569,36 @@ class xcode(Build.BuildContext):
 
                 task_generator.post()
 
+                # Match any C/C++ program feature
                 features = Utils.to_list(getattr(task_generator, 'features', ''))
+                have_feature_match = False
+                for a_feature in features:
+                    if re.search("c.*program", a_feature) != None:
+                        have_feature_match = True
+                        break
+
+                def platform_filter(a_platform):
+                    return a_platform == 'all' or projectPlatform in a_platform
+
+                platforms = filter(platform_filter, task_generator.platforms)
+                is_valid_platform = len(platforms) != 0
 
                 source_files = list(set(source_files + self.collect_source(task_generator)))
 
-                if 'cprogram' or 'cxxprogram' in features:
-                    project.add_task_gen(task_generator, self)
+                if have_feature_match and is_valid_platform:
+                    pbx_native_target = project.add_task_gen(task_generator, self)
+                    xcassets_path = getattr(task_generator, 'darwin_xcassets', None)
+                    if xcassets_path:
+                        app_resources_group = PBXGroup(task_generator.name)
+                        resource_group.children.append(app_resources_group)
+                        xcassets_folder_node = self.engine_node.make_node(xcassets_path)
+                        xcode_assets_folder_ref = PBXFileReference('xcassets', xcassets_folder_node.abspath(), 'folder.assetcatalog')
+                        app_resources_group.children.append(xcode_assets_folder_ref)
+                        pbx_native_target .add_resources_build_phase_to_target([xcode_assets_folder_ref])
+
+                else:
+                    Logs.debug("xcode: Skipping {} because not a program {}:{} or platform {}:{}".format(task_generator.name, features, have_feature_match, task_generator.platforms, is_valid_platform))
+
 
         project.mainGroup.add(self.srcnode, source_files)
         project.targets.sort(key=lambda target: [isinstance(target, PBXLegacyTarget), target.name])
@@ -533,11 +617,8 @@ class xcode(Build.BuildContext):
         project._output.children.append(dummy_target.productReference)
         project.targets.append(dummy_target)
 
-        # Create resource group/folder structure and attach it to the native
+        # Create game resource group/folder structure and attach it to the native
         # projects
-        resource_group = PBXGroup("Resources")
-        project.mainGroup.children.append(resource_group)
-
         root_assets_folder = self.srcnode.make_node("Cache")
 
         for game_project in self.get_enabled_game_project_list():
@@ -557,9 +638,11 @@ class xcode(Build.BuildContext):
             game_resources_group.children.append(xcode_assets_folder_ref)
 
             for target in project.targets:
-                if isinstance(target, PBXNativeTarget) and target.name == game_project:
+                if isinstance(target, PBXNativeTarget) and target.name == game_project + PLATFORM_TO_LAUNCHER_NAME.get(platform_name, ""):
                     target.add_remove_embedded_provisioning_build_phase_to_target()
-                    target.add_rsync_rsources_build_phase_to_target(dev_assets_folder_ref, release_assets_folder_ref, self.get_target_assets_subdir())
+                    # Only do the rsync for iOS and appletv since they have not been converted to use the package command yet 
+                    if 'ios' in platform_name or 'appletv' in platform_name:
+                        target.add_rsync_rsources_build_phase_to_target(dev_assets_folder_ref, release_assets_folder_ref, self.get_target_assets_subdir())
                     target.add_resources_build_phase_to_target([xcode_assets_folder_ref])
 
         project.mainGroup.sort_recursive()
@@ -606,7 +689,7 @@ class xcode_mac(xcode):
         return self.get_mac_launch_image(project)
 
     def execute(self):
-        self.generate_project()
+        self.generate_project('darwin')
 
 
 class xcode_ios(xcode):
@@ -668,7 +751,7 @@ class xcode_ios(xcode):
         return self.get_ios_launch_image(project)
 
     def execute(self):
-        self.generate_project()
+        self.generate_project('ios')
 
 
 class xcode_appletv(xcode):
@@ -730,7 +813,7 @@ class xcode_appletv(xcode):
         return self.get_appletv_launch_image(project)
 
     def execute(self):
-        self.generate_project()
+        self.generate_project('appletv')
 
 
 @conf

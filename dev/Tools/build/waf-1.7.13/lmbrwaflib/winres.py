@@ -28,7 +28,7 @@ def rc_file(self, node):
 
 	obj_ext = '.' + str(self.idx) + '.rc.o'
 	if self.env['WINRC_TGT_F'] == '/fo':
-		obj_ext = '.' + str(self.idx) + '.' + target_name + '.res'
+		obj_ext = '.' + str(self.idx) + '.res'
 
 	rctask = self.create_task('winrc', node, node.change_ext(obj_ext))
 

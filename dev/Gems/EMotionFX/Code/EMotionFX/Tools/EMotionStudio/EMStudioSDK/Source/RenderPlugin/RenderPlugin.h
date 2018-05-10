@@ -154,7 +154,7 @@ namespace EMStudio
         MCORE_INLINE void SetActiveViewWidget(RenderViewWidget* viewWidget)         { mActiveViewWidget = viewWidget; }
 
         MCORE_INLINE void AddLayout(Layout* layout)                                 { mLayouts.Add(layout); }
-        Layout* FindLayoutByName(const MCore::String& layoutName);
+        Layout* FindLayoutByName(const AZStd::string& layoutName);
 
         MCORE_INLINE QCursor& GetZoomInCursor()                                     { assert(mZoomInCursor); return *mZoomInCursor; }
         MCORE_INLINE QCursor& GetZoomOutCursor()                                    { assert(mZoomOutCursor); return *mZoomOutCursor; }
@@ -243,7 +243,7 @@ namespace EMStudio
         QWidget*                            mRenderLayoutWidget;
         QSignalMapper*                      mSignalMapper;
         QWidget*                            mInnerWidget;
-        CommandSystem::SelectionList*           mCurrentSelection;
+        CommandSystem::SelectionList*       mCurrentSelection;
         bool                                mFirstFrameAfterReInit;
 
         MysticQt::PropertyWidget::Property*     mGridUnitSizeProperty;
@@ -256,9 +256,6 @@ namespace EMStudio
         MysticQt::PropertyWidget::Property*     mNearClipPlaneDistProperty;
         MysticQt::PropertyWidget::Property*     mFarClipPlaneDistProperty;
         MysticQt::PropertyWidget::Property*     mFOVProperty;
-        MysticQt::PropertyWidget::Property*     mTexturePathProperty;
-        MysticQt::PropertyWidget::Property*     mAutoMipMapProperty;
-        MysticQt::PropertyWidget::Property*     mSkipLoadTexturesProperty;
         MysticQt::PropertyWidget::Property*     mMainLightIntensityProperty;
         MysticQt::PropertyWidget::Property*     mMainLightAngleAProperty;
         MysticQt::PropertyWidget::Property*     mMainLightAngleBProperty;

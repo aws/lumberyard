@@ -1,6 +1,6 @@
 {
     "name": "dyad",
-    "source": "@ROOT@/Code/SDKs/dyad",
+    "source": "@3P:Dyad@",
     "description": "DYAD Library",
     "includes": [
         "src"
@@ -30,6 +30,7 @@
                 "libdyad.lib"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "linux_x64": {
             "libpath_debug": [
                 "lib/linux_debug"

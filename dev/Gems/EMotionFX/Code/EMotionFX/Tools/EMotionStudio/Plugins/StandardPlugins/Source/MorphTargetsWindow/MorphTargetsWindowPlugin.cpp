@@ -113,14 +113,12 @@ namespace EMStudio
     // clear the morph target window
     void MorphTargetsWindowPlugin::Clear()
     {
-        for (MorphTargetGroupWidget* group : mMorphTargetGroups)
-        {
-            delete group;
-        }
-        mMorphTargetGroups.clear();
+        mDock->SetContents(mStaticTextWidget);
 
         // clear the dialog stack
         mDialogStack->Clear();
+
+        mMorphTargetGroups.clear();
     }
 
 
@@ -378,17 +376,17 @@ namespace EMStudio
 
     bool MorphTargetsWindowPlugin::CommandAdjustMorphTargetCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        MCore::String name;
+        AZStd::string name;
         commandLine.GetValue("name", command, &name);
-        return UpdateMorphTargetsWindowPluginInterface(name);
+        return UpdateMorphTargetsWindowPluginInterface(name.c_str());
     }
 
 
     bool MorphTargetsWindowPlugin::CommandAdjustMorphTargetCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        MCore::String name;
+        AZStd::string name;
         commandLine.GetValue("name", command, &name);
-        return UpdateMorphTargetsWindowPluginInterface(name);
+        return UpdateMorphTargetsWindowPluginInterface(name.c_str());
     }
 
 

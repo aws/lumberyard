@@ -84,7 +84,7 @@ namespace RenderGL
     // Init
     bool PostProcessShader::Init(const char* filename)
     {
-        MCore::Array<MCore::String> defines;
+        MCore::Array<AZStd::string> defines;
         return GLSLShader::Init(nullptr, filename, defines);
     }
 

@@ -54,6 +54,7 @@ namespace AZ
                 virtual unsigned int GetVertexCount() const = 0;
                 virtual bool HasNormalData() const = 0;
 
+                //1 to 1 mapping from position to normal (each corner of triangle represented)
                 virtual const AZ::Vector3& GetPosition(unsigned int index) const = 0;
                 virtual const AZ::Vector3& GetNormal(unsigned int index) const = 0;
 
@@ -73,7 +74,6 @@ namespace AZ
                 virtual int GetUsedPointIndexForControlPoint(int controlPointIndex) const = 0;
 
                 virtual unsigned int GetVertexIndex(int faceIndex, int vertexIndexInFace) const = 0;
-
                 static const int s_invalidMaterialId = 0;
             };
         }  //namespace DataTypes

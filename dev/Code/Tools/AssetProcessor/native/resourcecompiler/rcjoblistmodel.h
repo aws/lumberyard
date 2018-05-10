@@ -89,7 +89,7 @@ namespace AssetProcessor
         RCJob* getItem(int index) const;
         int GetIndexOfProcessingJob(const QueueElementID& elementId);
 
-        void EraseJobs(QString sourceFile);
+        void EraseJobs(QString sourceFile, QVector<RCJob*>& pendingJobs);
 
     private:
 

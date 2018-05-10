@@ -46,14 +46,14 @@ namespace ScriptCanvas
             protected:
 
                 // Inputs
-                ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signalled, execution is delayed at this node according to the specified properties.")
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signaled, execution is delayed at this node according to the specified properties.")
                                 ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
 
                 ScriptCanvas_In(ScriptCanvas_In::Name("Reset", "Resets the delay.")
                                 ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled when the delay reaches zero."));
+                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Out", "Signaled when the delay reaches zero."));
 
                 // Data
                 ScriptCanvas_Property(float,

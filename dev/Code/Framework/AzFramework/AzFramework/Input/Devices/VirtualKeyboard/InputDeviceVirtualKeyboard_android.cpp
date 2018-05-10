@@ -25,15 +25,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    void JNI_OnRawVirtualKeyEvent(JNIEnv* jniEnv, jobject objectRef, int keyCode, int keyAction)
-    {
-        RawInputNotificationBusAndroid::Broadcast(
-            &RawInputNotificationsAndroid::OnRawInputVirtualKeyboardEvent,
-            keyCode,
-            keyAction);
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     void JNI_OnRawTextEvent(JNIEnv* jniEnv, jobject objectRef, jstring stringUTF16)
     {
@@ -44,7 +35,9 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Platform specific implementation for android virtual keyboard input devices
+    //! Platform specific implementation for Android virtual keyboard input devices.  This input device
+    //! is responsible for sending text events only, the physical keyboard is the one responsible
+    //! for sending key events.  Should this behaviour need to be changed, LY-69260 will correct it
     class InputDeviceVirtualKeyboardAndroid : public InputDeviceVirtualKeyboard::Implementation
                                             , public RawInputNotificationBusAndroid::Handler
     {
@@ -84,12 +77,12 @@ namespace AzFramework
         void TickInputDevice() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsAndroid::OnRawInputTextEvent
-        void OnRawInputTextEvent(const char* charsModifiedUTF8) override;
+        //! \ref AzFramework::RawInputNotificationsAndroid::OnRawInputEvent
+        void OnRawInputEvent(const AInputEvent* rawInputEvent) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsAndroid::OnRawInputVirtualKeyboardEvent
-        void OnRawInputVirtualKeyboardEvent(int keyCode, int keyAction) override;
+        //! \ref AzFramework::RawInputNotificationsAndroid::OnRawInputTextEvent
+        void OnRawInputTextEvent(const char* charsModifiedUTF8) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Raw input events on android can (and likely will) be dispatched from a thread other than
@@ -128,23 +121,19 @@ namespace AzFramework
         InputDeviceVirtualKeyboard& inputDevice)
         : InputDeviceVirtualKeyboard::Implementation(inputDevice)
     {
-        // Get the keyboard handler from the activity
-        AZ::Android::JNI::Object activity(AZ::Android::Utils::GetActivityClassRef(),
-                                             AZ::Android::Utils::GetActivityRef());
-        activity.RegisterMethod("GetKeyboardHandler", "()Lcom/amazon/lumberyard/input/KeyboardHandler;");
-        jobject keyboardRef = activity.InvokeObjectMethod<jobject>("GetKeyboardHandler");
-        jclass keyboardClass = AZ::Android::JNI::LoadClass("com/amazon/lumberyard/input/KeyboardHandler");
-
         // Initialize the keyboard handler
-        m_keyboardHandler.reset(aznew AZ::Android::JNI::Object(keyboardClass, keyboardRef, true));
+        m_keyboardHandler.reset(aznew AZ::Android::JNI::Object("com/amazon/lumberyard/input/KeyboardHandler"));
         m_keyboardHandler->RegisterMethod("ShowTextInput", "()V");
         m_keyboardHandler->RegisterMethod("HideTextInput", "()V");
         m_keyboardHandler->RegisterMethod("IsShowing", "()Z");
         m_keyboardHandler->RegisterNativeMethods(
         {
-            { "SendKeyCode", "(II)V", (void*)JNI_OnRawVirtualKeyEvent },
             { "SendUnicodeText", "(Ljava/lang/String;)V", (void*)JNI_OnRawTextEvent }
         });
+
+        // create the java instance
+        bool ret = m_keyboardHandler->CreateInstance("(Landroid/app/Activity;)V", AZ::Android::Utils::GetActivityRef());
+        AZ_Assert(ret, "Failed to create the KeyboardHandler Java instance.");
 
         // Connect to the raw input notifications bus
         RawInputNotificationBusAndroid::Handler::BusConnect();
@@ -230,29 +219,42 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardAndroid::OnRawInputTextEvent(const char* charsModifiedUTF8)
+    void InputDeviceVirtualKeyboardAndroid::OnRawInputEvent(const AInputEvent* rawInputEvent)
     {
-        AZStd::lock_guard<AZStd::mutex> lock(m_threadAwareRawTextEventsMutex);
-        m_threadAwareRawTextEvents.push_back(AZStd::string(charsModifiedUTF8));
-    }
+        // only care about key events
+        if (AInputEvent_getType(rawInputEvent) != AINPUT_EVENT_TYPE_KEY)
+        {
+            return;
+        }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardAndroid::OnRawInputVirtualKeyboardEvent(int keyCode, int keyAction)
-    {
         // We only care about key down actions
-        if (keyAction != AKEY_EVENT_ACTION_DOWN)
+        if (AKeyEvent_getAction(rawInputEvent) != AKEY_EVENT_ACTION_DOWN)
+        {
+            return;
+        }
+
+        const int keyCode = AKeyEvent_getKeyCode(rawInputEvent);
+
+        // always send the back event, but only if it's coming from the system
+        if (keyCode == AKEYCODE_BACK)
+        {
+            const int eventFlags = AKeyEvent_getFlags(rawInputEvent);
+            if ((eventFlags & AKEY_EVENT_FLAG_FROM_SYSTEM) == AKEY_EVENT_FLAG_FROM_SYSTEM)
+            {
+                AZStd::lock_guard<AZStd::mutex> lock(m_threadAwareRawCommandEventsMutex);
+                m_threadAwareRawCommandEvents.push_back(AzFramework::InputDeviceVirtualKeyboard::Command::NavigationBack);
+            }
+            return;
+        }
+
+        // early out on the rest of the event processing if the keyboard isn't active
+        if (!HasTextEntryStarted())
         {
             return;
         }
 
         switch (keyCode)
         {
-            case AKEYCODE_BACK:
-            {
-                AZStd::lock_guard<AZStd::mutex> lock(m_threadAwareRawCommandEventsMutex);
-                m_threadAwareRawCommandEvents.push_back(AzFramework::InputDeviceVirtualKeyboard::Command::NavigationBack);
-            }
-            break;
             case AKEYCODE_CLEAR:
             {
                 AZStd::lock_guard<AZStd::mutex> lock(m_threadAwareRawCommandEventsMutex);
@@ -283,5 +285,12 @@ namespace AzFramework
             }
             break;
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceVirtualKeyboardAndroid::OnRawInputTextEvent(const char* charsModifiedUTF8)
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_threadAwareRawTextEventsMutex);
+        m_threadAwareRawTextEvents.push_back(AZStd::string(charsModifiedUTF8));
     }
 } // namespace AzFramework

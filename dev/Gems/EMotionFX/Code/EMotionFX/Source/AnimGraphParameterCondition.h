@@ -78,8 +78,8 @@ namespace EMotionFX
         void OnUpdateAttributes() override;
 
         const char* GetTypeString() const override;
-        void GetSummary(MCore::String* outResult) const override;
-        void GetTooltip(MCore::String* outResult) const override;
+        void GetSummary(AZStd::string* outResult) const override;
+        void GetTooltip(AZStd::string* outResult) const override;
         const char* GetPaletteName() const override;
 
         bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
@@ -99,7 +99,7 @@ namespace EMotionFX
     private:
         // test function types
         typedef bool (MCORE_CDECL * BlendConditionParamValueFunction)(float paramValue, float testValue, float rangeValue);
-        //typedef bool (MCORE_CDECL *BlendConditionStringParamValueFunction)(const MCore::String& paramValue, const char* testValue);
+        //typedef bool (MCORE_CDECL *BlendConditionStringParamValueFunction)(const AZStd::string& paramValue, const char* testValue);
 
         uint32                                      mParameterIndex;
 
@@ -122,10 +122,10 @@ namespace EMotionFX
         static bool MCORE_CDECL TestNotInRange(float paramValue, float testValue, float rangeValue);
 
         // string test functions
-        //static bool MCORE_CDECL StringTestEqualCaseSensitive(const MCore::String& paramValue, const char* testValue);
-        //static bool MCORE_CDECL StringTestEqualCaseInsensitive(const MCore::String& paramValue, const char* testValue);
-        //static bool MCORE_CDECL StringTestNotEqualCaseSensitive(const MCore::String& paramValue, const char* testValue);
-        //static bool MCORE_CDECL StringTestNotEqualCaseInsensitive(const MCore::String& paramValue, const char* testValue);
+        //static bool MCORE_CDECL StringTestEqualCaseSensitive(const AZStd::string& paramValue, const char* testValue);
+        //static bool MCORE_CDECL StringTestEqualCaseInsensitive(const AZStd::string& paramValue, const char* testValue);
+        //static bool MCORE_CDECL StringTestNotEqualCaseSensitive(const AZStd::string& paramValue, const char* testValue);
+        //static bool MCORE_CDECL StringTestNotEqualCaseInsensitive(const AZStd::string& paramValue, const char* testValue);
 
         AnimGraphParameterCondition(AnimGraph* animGraph);
         ~AnimGraphParameterCondition();

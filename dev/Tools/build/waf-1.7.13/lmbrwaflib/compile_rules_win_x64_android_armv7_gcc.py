@@ -54,11 +54,13 @@ def load_win_x64_android_armv7_gcc_common_settings(conf):
     env['CXXFLAGS'] += target_arch_flag[:]
     env['LINKFLAGS'] += target_arch_flag[:]
 
-    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc140')
+    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc141')
+    if not os.path.exists(azcg_dir):
+        azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc140')
     if not os.path.exists(azcg_dir):
         azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc120')
     if not os.path.exists(azcg_dir):
-        conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have either the VS2013 or VS2015 binaries available')
+        conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have either VS2013, VS2015, or VS2017 binaries available')
     env['CODE_GENERATOR_PATH'] = [azcg_dir]
 
 

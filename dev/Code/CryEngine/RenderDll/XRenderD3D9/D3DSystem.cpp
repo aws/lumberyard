@@ -17,6 +17,36 @@
 #include "WindowsUtils.h"
 #include "D3DGPUParticleEngine.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DSYSTEM_CPP_SECTION_1 1
+#define D3DSYSTEM_CPP_SECTION_2 2
+#define D3DSYSTEM_CPP_SECTION_3 3
+#define D3DSYSTEM_CPP_SECTION_4 4
+#define D3DSYSTEM_CPP_SECTION_5 5
+#define D3DSYSTEM_CPP_SECTION_6 6
+#define D3DSYSTEM_CPP_SECTION_7 7
+#define D3DSYSTEM_CPP_SECTION_8 8
+#define D3DSYSTEM_CPP_SECTION_9 9
+#define D3DSYSTEM_CPP_SECTION_10 10
+#define D3DSYSTEM_CPP_SECTION_11 11
+#define D3DSYSTEM_CPP_SECTION_12 12
+#define D3DSYSTEM_CPP_SECTION_13 13
+#define D3DSYSTEM_CPP_SECTION_14 14
+#define D3DSYSTEM_CPP_SECTION_15 15
+#define D3DSYSTEM_CPP_SECTION_16 16
+#define D3DSYSTEM_CPP_SECTION_17 17
+#define D3DSYSTEM_CPP_SECTION_18 18
+#define D3DSYSTEM_CPP_SECTION_19 19
+#define D3DSYSTEM_CPP_SECTION_20 20
+#define D3DSYSTEM_CPP_SECTION_21 21
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+
 
 #include "D3DStereo.h"
 #include "D3DPostProcess.h"
@@ -34,26 +64,15 @@
     #define LoadLibrary  LoadLibraryA
   #endif // !UNICODE
 
-// Disable Uncrustify because it will put spaces around the slashes: *INDENT-OFF*
-# if 0 // Set to 0 to load DLL at runtime, you need to redist amd_ags(64).dll yourself
-#   ifdef WIN64
-      LINK_THIRD_PARTY_LIBRARY(SDKs/AMD/AGS Lib/lib/x64/static/amd_ags64.lib)
-#   else // WIN64
-      LINK_THIRD_PARTY_LIBRARY(SDKs/AMD/AGS Lib/lib/Win32/static/amd_ags.lib)
-#   endif // WIN64
-# else
-#   define _AMD_AGS_USE_DLL
-# endif
-# include <AMD/AGS Lib/inc/amd_ags.h>
-# include <NVAPI/nvapi.h>
-#	ifdef WIN64
-        LINK_THIRD_PARTY_LIBRARY(SDKs/NVAPI/amd64/nvapi64.lib)
-#	else // WIN64
-        LINK_THIRD_PARTY_LIBRARY(SDKs/NVAPI/x86/nvapi.lib)
-#	endif // WIN64
-#endif // defined(WIN32)
-// Enable Uncrustify: *INDENT-ON*
+# include <amd_ags.h>
+# include <nvapi.h>
 
+#endif // defined(WIN32)
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #include "../Common/RenderCapabilities.h"
 
@@ -503,6 +522,10 @@ bool CD3D9Renderer::ChangeResolution(int nNewWidth, int nNewHeight, int nNewColD
 #else
         RT_SetViewport(0, 0, m_width, m_height);
 #endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         m_MainViewport.nX = 0;
         m_MainViewport.nY = 0;
         m_MainViewport.nWidth = m_width;
@@ -736,7 +759,13 @@ void CD3D9Renderer::UnSetRes()
 
 void CD3D9Renderer::DestroyWindow(void)
 {
-#if   defined(OPENGL) // Scrubber safe exclusion
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(OPENGL) // Scrubber safe exclusion
 #else
     SAFE_RELEASE(m_DeviceContext);
 #endif
@@ -1083,6 +1112,10 @@ void CD3D9Renderer::ShutDown(bool bReInit)
     //CBaseResource::ShutDown();
     ForceFlushRTCommands();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     //////////////////////////////////////////////////////////////////////////
     // Clear globals.
     //////////////////////////////////////////////////////////////////////////
@@ -1553,7 +1586,13 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
     m_CVColorBits = iConsole->GetCVar("r_ColorBits");
 
     bool bNativeResolution;
-#if   defined(IOS)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(IOS)
     bNativeResolution = true;
 #elif defined(APPLETV)
     bNativeResolution = true;
@@ -1808,6 +1847,10 @@ WIN_HWND CD3D9Renderer::Init(int x, int y, int width, int height, unsigned int c
         "To reset a previously loaded chart call r_ColorGradingChartImage 0.\n"
         "Usage: r_ColorGradingChartImage [path of color chart image/reset]");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
@@ -2100,7 +2143,13 @@ bool CD3D9Renderer::SetRes()
     m_pixelAspectRatio = 1.0f;
 
     ///////////////////////////////////////////////////////////////////
-#if   defined(IOS) || defined(APPLETV) || defined(ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(IOS) || defined(APPLETV) || defined(ANDROID)
     m_bFullScreen = true;
 
     if (!m_devInfo.CreateDevice(false, m_width, m_height, m_backbufferWidth, m_backbufferHeight, m_zbpp, OnD3D11CreateDevice, CreateWindowCallback))
@@ -2181,8 +2230,16 @@ bool SPixFormat::CheckSupport(D3DFormat Format, const char* szDescr, ETexture_Us
 
             Init();
             DeviceFormat  = Format;
-            MaxWidth      = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-            MaxHeight     = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
+            MaxWidth = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+            MaxHeight = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+#endif
             Desc          = szDescr;
             //  Confetti BEGIN: Igor Lobanchikov
             BytesPerBlock = CTexture::BytesPerBlock(CTexture::TexFormatFromDeviceFormat(Format));
@@ -2280,10 +2337,18 @@ void SPixFormatSupport::CheckFormatSupport()
     m_FormatR9G9B9E5.CheckSupport(DXGI_FORMAT_R9G9B9E5_SHAREDEXP, "R9G9B9E5");
 
     // Depth formats
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     m_FormatD32FS8.CheckSupport(DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS, "R32FX8T");
     m_FormatD32F.CheckSupport(DXGI_FORMAT_R32_TYPELESS, "R32T");
     m_FormatD24S8.CheckSupport(DXGI_FORMAT_R24G8_TYPELESS, "R24G8T");
     m_FormatD16.CheckSupport(DXGI_FORMAT_R16_TYPELESS, "R16T");
+#endif
 
     m_FormatB5G6R5.CheckSupport(DXGI_FORMAT_B5G6R5_UNORM, "B5G6R5");
     m_FormatB5G5R5.CheckSupport(DXGI_FORMAT_B5G5R5A1_UNORM, "B5G5R5");
@@ -2415,9 +2480,17 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
 
     CryLogAlways("Active GPUs: %i", rd->m_nGPUs);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     rd->m_NumResourceSlots = D3D11_COMMONSHADER_INPUT_RESOURCE_REGISTER_COUNT;
     rd->m_NumSamplerSlots = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
     rd->m_MaxAnisotropyLevel = min(D3D11_REQ_MAXANISOTROPY, CRenderer::CV_r_texmaxanisotropy);
+#endif
 
 #if defined(WIN32) || defined(WIN64)
     HWND hWndDesktop = GetDesktopWindow();
@@ -2436,7 +2509,10 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
 #else
     rd->m_MaxTextureMemory = 256 * 1024 * 1024;
 
-#if   defined(IOS)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(IOS)
     rd->m_MaxTextureMemory = 1024 * 1024 * 1024;
 #endif
 #endif
@@ -2445,8 +2521,16 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11CreateDevice(D3DDevice* pd3dDevice)
         CRenderer::CV_r_TexturesStreamPoolSize = (int)(rd->m_MaxTextureMemory / 1024.0f / 1024.0f * 0.75f);
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     rd->m_MaxTextureSize = D3D11_REQ_FILTERING_HW_ADDRESSABLE_RESOURCE_DIMENSION;
     rd->m_bDeviceSupportsInstancing = true;
+#endif
 
     if (rd->m_bDeviceSupportsVertexTexture = (rd->m_Features & RFT_HW_SM30) != 0)
     {
@@ -2594,6 +2678,9 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     rd->m_d3dsdBackBuffer.Format = backBufferSurfaceDesc.Format;
     rd->m_d3dsdBackBuffer.SampleDesc = backBufferSurfaceDesc.SampleDesc;
     rd->m_ZFormat = rd->m_devInfo.AutoDepthStencilFmt();
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_14
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
     SAFE_RELEASE(pBackBuffer);
 
@@ -2614,7 +2701,15 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     dsTextureDesc.MiscFlags = 0;
     D3D11_DEPTH_STENCIL_VIEW_DESC dsViewDesc;
     dsViewDesc.Format = CTexture::ConvertToDepthStencilFmt(dsTextureDesc.Format);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_15
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     dsViewDesc.Flags = 0;
+#endif
     dsViewDesc.ViewDimension = dsTextureDesc.SampleDesc.Count > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
     dsViewDesc.Texture2D.MipSlice = 0;
 
@@ -2630,9 +2725,17 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     SAFE_RELEASE(rd->m_pZBuffer);
     dsTextureDesc.Width  = nDepthBufferWidth;
     dsTextureDesc.Height = nDepthBufferHeight;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_16
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     hr = rd->m_DevMan.CreateD3D11Texture2D(&dsTextureDesc, clearValues, NULL, &rd->m_pZTexture, "DepthBuffer");
     if (FAILED(hr))
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_17
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         return hr;
     }
     hr = rd->GetDevice().CreateDepthStencilView(rd->m_pZTexture, &dsViewDesc, &rd->m_pZBuffer);
@@ -2649,6 +2752,10 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     {
         dsTextureDesc.Width  = gcpRendD3D->GetOverlayWidth();
         dsTextureDesc.Height = gcpRendD3D->GetOverlayHeight();
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_18
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         hr = rd->m_DevMan.CreateD3D11Texture2D(&dsTextureDesc, clearValues, NULL, &rd->m_pNativeZTexture, "DepthBuffer");
         if (FAILED(hr))
         {
@@ -2692,7 +2799,15 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     rd->m_RTStack[0][0].m_pTarget = rd->m_pBackBuffer;
     rd->m_RTStack[0][0].m_Width = rd->m_d3dsdBackBuffer.Width;
     rd->m_RTStack[0][0].m_Height = rd->m_d3dsdBackBuffer.Height;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_19
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     rd->m_RTStack[0][0].m_bScreenVP = false;
+#endif
     rd->m_RTStack[0][0].m_bWasSetRT = false;
     rd->m_RTStack[0][0].m_bWasSetD = false;
     rd->m_nMaxRT2Commit = 0;
@@ -2771,7 +2886,16 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         assert(SUCCEEDED(hr));
     }
 
-#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+#if !defined(_RELEASE)
+#if defined(WIN32)
+#define D3DSYSTEM_CPP_USE_PRIVATEDATA
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_20
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#endif
+
+#if defined(D3DSYSTEM_CPP_USE_PRIVATEDATA)
     if (rd->m_pZTexture)
     {
         AZStd::string dsvName("$MainDepthStencil");
@@ -2806,6 +2930,13 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
     rd->ReleaseAuxiliaryMeshes();
     rd->CreateAuxiliaryMeshes();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DSYSTEM_CPP_SECTION_21
+#include AZ_RESTRICTED_FILE(D3DSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     D3D11_QUERY_DESC QDesc;
     QDesc.Query = D3D11_QUERY_EVENT;
     QDesc.MiscFlags = 0;
@@ -2815,6 +2946,7 @@ HRESULT CALLBACK CD3D9Renderer::OnD3D11PostCreateDevice(D3DDevice* pd3dDevice)
         assert(hr == S_OK && rd->m_pQuery[i]);
         rd->GetDeviceContext().End(rd->m_pQuery[i]);
     }
+#endif
     rd->EF_Restore();
 
     rd->m_bDeviceLost = 0;

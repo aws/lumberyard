@@ -17,6 +17,7 @@
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxBlendShapeImporter.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/FbxImporterUtilities.h>
 #include <SceneAPI/FbxSceneBuilder/Importers/Utilities/RenamedNodesMap.h>
+#include <SceneAPI/FbxSceneBuilder/Importers/Utilities/FbxMeshImporterUtilities.h>
 #include <SceneAPI/FbxSceneBuilder/FbxSceneSystem.h>
 #include <SceneAPI/FbxSDKWrapper/FbxNodeWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxMeshWrapper.h>
@@ -57,18 +58,21 @@ namespace AZ
                 }
 
                 Events::ProcessingResultCombiner combinedBlendShapeResult;
-                
-                for (int deformerIndex = 0; deformerIndex < context.m_sourceNode.GetMesh()->GetDeformerCount(FbxDeformer::eBlendShape); ++deformerIndex)
+
+                const std::shared_ptr<FbxSDKWrapper::FbxMeshWrapper> sourceMesh = context.m_sourceNode.GetMesh();
+                int blendShapeDeformerCount = sourceMesh->GetDeformerCount(FbxDeformer::eBlendShape);
+                for (int deformerIndex = 0; deformerIndex < blendShapeDeformerCount; ++deformerIndex)
                 {
                     AZ_TraceContext("Deformer Index", deformerIndex);
-                    AZStd::shared_ptr<const FbxSDKWrapper::FbxBlendShapeWrapper> fbxBlendShape = context.m_sourceNode.GetMesh()->GetBlendShape(deformerIndex);
+                    AZStd::shared_ptr<const FbxSDKWrapper::FbxBlendShapeWrapper> fbxBlendShape = sourceMesh->GetBlendShape(deformerIndex);
+
                     if (!fbxBlendShape)
                     {
                         AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to extract BlendShape Deformer at index %d", deformerIndex);
                         return Events::ProcessingResult::Failure;
                     }
-
-                    for (int channelIndex = 0; channelIndex < fbxBlendShape->GetBlendShapeChannelCount(); ++channelIndex)
+                    int blendShapeChannelCount = fbxBlendShape->GetBlendShapeChannelCount();
+                    for (int channelIndex = 0; channelIndex < blendShapeChannelCount; ++channelIndex)
                     {
                         //extract the mesh and build a blendshape data object.
                         AZStd::shared_ptr<const FbxSDKWrapper::FbxBlendShapeChannelWrapper> blendShapeChannel = fbxBlendShape->GetBlendShapeChannel(channelIndex);
@@ -94,18 +98,10 @@ namespace AZ
                             AZStd::shared_ptr<SceneData::GraphData::BlendShapeData> blendShapeData =
                                 AZStd::make_shared<SceneData::GraphData::BlendShapeData>();
 
-                            AZStd::vector<Vector3> fbxControlPoints = mesh->GetControlPoints();
-                            for (int vertIndex = 0; vertIndex < mesh->GetControlPointsCount(); ++vertIndex)
-                            {
-                                Vector3 pos = fbxControlPoints[vertIndex];
-                                context.m_sourceSceneSystem.SwapVec3ForUpAxis(pos);
-                                context.m_sourceSceneSystem.ConvertUnit(pos);
-                                blendShapeData->AddPosition(pos);
-                            }
+                            BuildSceneBlendShapeFromFbxBlendShape(blendShapeData, mesh, context.m_sourceSceneSystem);
 
                             Containers::SceneGraph::NodeIndex newIndex =
                                 context.m_scene.GetGraph().AddChild(context.m_currentGraphPosition, nodeName.c_str());
-
 
                             Events::ProcessingResult blendShapeResult;
                             SceneAttributeDataPopulatedContext dataPopulated(context, blendShapeData, newIndex, nodeName);
@@ -119,7 +115,7 @@ namespace AZ
                         }
                         else
                         {
-                            AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to extract mesh from BlendShapeChannel %d", channelIndex);
+                            AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Unable to extract blendshape mesh for(%s) from BlendShapeChannel %d", sourceMesh->GetName(), channelIndex);
                             combinedBlendShapeResult += Events::ProcessingResult::Failure;
                         }
                     }

@@ -14,7 +14,6 @@
 #define __EMSTUDIO_STATEFILTERSELECTIONDIALOG_H
 
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 #include "../StandardPluginsConfig.h"
 #include <QDialog>
@@ -39,10 +38,10 @@ namespace EMStudio
         StateFilterSelectionWindow(AnimGraphPlugin* plugin, QWidget* parent);
         ~StateFilterSelectionWindow();
 
-        void ReInit(EMotionFX::AnimGraph* animGraph, const MCore::Array<MCore::String>& oldNodeSelection, const MCore::Array<MCore::String>& oldGroupSelection);
+        void ReInit(EMotionFX::AnimGraph* animGraph, const MCore::Array<AZStd::string>& oldNodeSelection, const MCore::Array<AZStd::string>& oldGroupSelection);
 
-        const MCore::Array<MCore::String>& GetSelectedNodeNames() const                 { return mSelectedNodeNames; }
-        const MCore::Array<MCore::String>& GetSelectedGroupNames() const                    { return mSelectedGroupNames; }
+        const MCore::Array<AZStd::string>& GetSelectedNodeNames() const                 { return mSelectedNodeNames; }
+        const MCore::Array<AZStd::string>& GetSelectedGroupNames() const                    { return mSelectedGroupNames; }
 
     protected slots:
         void OnSelectionChanged();
@@ -52,7 +51,7 @@ namespace EMStudio
         {
             MCORE_MEMORYOBJECTCATEGORY(StateFilterSelectionWindow::WidgetLookup, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
             QTableWidgetItem*   mWidget;
-            MCore::String       mName;
+            AZStd::string       mName;
             bool                mIsGroup;
 
             WidgetLookup(QTableWidgetItem* widget, const char* name, bool isGroup)
@@ -68,8 +67,8 @@ namespace EMStudio
         void AddRow(uint32 rowIndex, const char* name, bool isGroup, bool isSelected, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 1.0f));
 
         MCore::Array<WidgetLookup>  mWidgetTable;
-        MCore::Array<MCore::String> mSelectedGroupNames;
-        MCore::Array<MCore::String> mSelectedNodeNames;
+        MCore::Array<AZStd::string> mSelectedGroupNames;
+        MCore::Array<AZStd::string> mSelectedNodeNames;
         AnimGraphPlugin*           mPlugin;
         QTableWidget*               mTableWidget;
         EMotionFX::AnimGraph*      mAnimGraph;

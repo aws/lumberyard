@@ -74,7 +74,7 @@ except ImportError:
 else:
     has_xml = True
 
-import os, sys, re, time, shutil, stat, hashlib
+import os, sys, re, time, shutil, stat
 from waflib.Tools import cxx
 from waflib import Task, Utils, Options, Errors, Context
 from waflib.TaskGen import feature, after_method, extension, before_method
@@ -156,8 +156,8 @@ QOBJECT_RE = re.compile(r'\s*Q_OBJECT\s*', flags=re.MULTILINE)
 
 
 # Derive a specific moc_files.<idx> folder name based on the base bldnode and idx
-def get_target_qt5_root(ctx, target_name, idx):
-    base_qt_node = ctx.bldnode.make_node('qt5/{}.{}'.format(target_name,idx))
+def get_target_qt5_root(ctx, target_name):
+    base_qt_node = ctx.bldnode.make_node('qt5/{}'.format(target_name))
     return base_qt_node
 
 # Change a target node from a changed extension to one marked as QT code generated
@@ -186,7 +186,7 @@ def change_target_qt5_node(ctx, project_path, target_name, relpath_target, idx):
     target_node_subdir = os.path.dirname(restricted_path)
 
     # Change the output target to the specific moc file folder
-    output_qt_dir = get_target_qt5_root(ctx, target_name, idx).make_node(target_node_subdir)
+    output_qt_dir = get_target_qt5_root(ctx, target_name).make_node(target_node_subdir)
     output_qt_dir.mkdir()
 
     output_qt_node = output_qt_dir.make_node(os.path.split(relpath_target)[1])
@@ -529,8 +529,7 @@ def apply_qt5_includes(self):
         return
 
     base_moc_node = get_target_qt5_root(self.bld,
-                                        self.name,
-                                        self.idx)
+                                        self.name)
     if not hasattr(self, 'includes'):
         self.includes = []
     self.includes.append(base_moc_node)
@@ -961,14 +960,28 @@ def find_qt5_binaries(self, platform):
     platformDirectoryMapping = {
         'win_x64_vs2013': 'msvc2013_64',
         'win_x64_vs2015': 'msvc2015_64',
+        'win_x64_vs2017': 'msvc2015_64',  # Not an error, VS2017 links with VS2015 binaries
         'darwin_x64': 'clang_64',
         'linux_x64': 'gcc_64'
     }
 
     if not platformDirectoryMapping.has_key(platform):
-        self.fatal('Platform %s is not supported by our Qt waf scripts!')
+        self.fatal('Platform %s is not supported by our Qt waf scripts!' % platform)
 
-    qtdir = os.path.normpath(self.CreateRootRelativePath('Code/Sandbox/SDKs/Qt/%s' % platformDirectoryMapping[platform]))
+    # Get the QT dir from the third party settings
+    qtdir, enabled, roles, _ = self.tp.get_third_party_path(platform, 'qt')
+
+    # If the path was not resolved, it could be an invalid alias (missing from the SetupAssistantConfig.json)
+    if not qtdir:
+        raise Errors.WafError("Invalid required QT alias for platform {}".format(platform))
+
+    # If the path was resolved, we still need to make sure the 3rd party is enabled based on the roles
+    if not enabled:
+        error_message = "Unable to resolve Qt because it is not enabled in Setup Assistant.  \nMake sure that at least " \
+                        "one of the following roles is enabled: [{}]".format(', '.join(roles))
+        raise Errors.WafError(error_message)
+
+    qtdir = os.path.join(qtdir, platformDirectoryMapping[platform])
 
     paths = []
 
@@ -1022,7 +1035,7 @@ def find_qt5_binaries(self, platform):
                 except self.errors.WafError:
                     pass
                 else:
-                    cand = cmd
+                    cand = os.path.normpath(cmd)
 
         if cand:
             self.env.QMAKE = cand
@@ -1039,7 +1052,8 @@ def find_qt5_binaries(self, platform):
     if qmake_cache_key in bin_cache:
         self.env.QT_INSTALL_BINS = qtbin = bin_cache[qmake_cache_key]
     else:
-        self.env.QT_INSTALL_BINS = qtbin = self.cmd_and_log([self.env.QMAKE] + ['-query', 'QT_INSTALL_BINS']).strip() + os.sep
+        query_qt_bin_result = self.cmd_and_log([self.env.QMAKE] + ['-query', 'QT_INSTALL_BINS']).strip() + os.sep
+        self.env.QT_INSTALL_BINS = qtbin = os.path.normpath(query_qt_bin_result) + os.sep
         bin_cache[qmake_cache_key] = qtbin
 
     paths.insert(0, qtbin)
@@ -1070,8 +1084,8 @@ def find_qt5_binaries(self, platform):
             except self.errors.ConfigurationError:
                 pass
             else:
-                env[var] = ret
-                bin_cache[cache_key] = ret
+                env[var] = os.path.normpath(ret)
+                bin_cache[cache_key] = os.path.normpath(ret)
                 break
 
     find_bin(['uic-qt5', 'uic'], 'QT_UIC')
@@ -1327,11 +1341,12 @@ def options(opt):
 
     opt.add_option('--translate', action="store_true", help="collect translation strings", dest="trans_qt5", default=False)
 
-SUPPORTED_QTLIB_PLATFORMS = ['win_x64_vs2013', 'win_x64_vs2015', 'darwin_x64', 'linux_x64']
+SUPPORTED_QTLIB_PLATFORMS = ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'darwin_x64', 'linux_x64']
 
 PLATFORM_TO_QTGA_SUBFOLDER = {
     "win_x64_vs2013": ["win32/vc120/qtga.dll", "win32/vc120/qtgad.dll", "win32/vc120/qtgad.pdb"],
     "win_x64_vs2015": ["win32/vc140/qtga.dll", "win32/vc140/qtgad.dll", "win32/vc140/qtgad.pdb"],
+    "win_x64_vs2017": ["win32/vc140/qtga.dll", "win32/vc140/qtgad.dll", "win32/vc140/qtgad.pdb"],  # Not an error, VS2017 links with VS2015 binaries
     "darwin_x64": ["macx/libqtga.dylib", "macx/libqtga_debug.dylib"],
     "linux_x64": []
 }
@@ -1502,7 +1517,7 @@ def qtlib_bootstrap(self, platform, configuration):
         num_files_copied += _copy_folder(ctx.env.QT_PLUGINS_DIR, dst_qtlib, 'plugins', plugins_pattern, is_required_pattern)
 
         # Copy the extra txt files
-        qt_base = os.path.normcase(ctx.Path('Code/Sandbox/SDKs/Qt'))
+        qt_base = os.path.normpath(ctx.ThirdPartyPath('qt',''))
         num_files_copied += _copy_file(os.path.join(qt_base, 'QT-NOTICE.TXT'),
                                    os.path.join(dst_qtlib, 'QT-NOTICE.TXT'))
         num_files_copied += _copy_file(os.path.join(qt_base, 'ThirdPartySoftware_Listing.txt'),
@@ -1563,7 +1578,7 @@ def qtlib_bootstrap(self, platform, configuration):
 
     # For windows, we will bootstrap copy the Qt Dlls to the main and rc subfolder
     # (for non-test and non-dedicated configurations)
-    if platform in ['win_x64_vs2015', 'win_x64_vs2013'] and configuration in \
+    if platform in ['win_x64_vs2017', 'win_x64_vs2015', 'win_x64_vs2013'] and configuration in \
             ['debug', 'profile', 'debug_test', 'profile_test', 'debug_dedicated', 'profile_dedicated']:
 
         copy_timer = Utils.Timer()

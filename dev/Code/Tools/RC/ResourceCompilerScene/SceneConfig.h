@@ -29,8 +29,6 @@ namespace AZ
             SceneConfig();
             ~SceneConfig() override;
 
-            const char* GetManifestFileExtension() const override;
-
             size_t GetErrorCount() const override;
 
         protected:

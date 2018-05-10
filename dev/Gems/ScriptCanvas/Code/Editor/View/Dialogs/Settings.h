@@ -72,7 +72,6 @@ namespace ScriptCanvasEditor
         void OnOK();
         void OnCancel();
         void OnTextChanged(const QString& text);
-        void keyPressEvent(QKeyEvent* event) override;
         void ConfigurePropertyEditor(AzToolsFramework::ReflectedPropertyEditor*);
 
     private:
@@ -80,11 +79,15 @@ namespace ScriptCanvasEditor
         void SetupGeneralSettings(AZ::SerializeContext* context);
         void SetupGraphSettings(AZ::SerializeContext* context);
 
+        void RevertSettings();
+
         QString m_text;
         AZ::EntityId m_graphId;
 
+        bool m_revertOnClose;
+
         Settings m_originalSettings;
-        EditorSettings::PreviewSettings m_originalPreviewSettings;
+        EditorSettings::ScriptCanvasEditorSettings m_originalEditorSettings;
 
         SettingsType m_settingsType = SettingsType::None;
 

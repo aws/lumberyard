@@ -12,12 +12,18 @@
     </Config>
     <Config file="android_medium.cfg">
         <Device model="SM-T217S"/> <!-- Samsung Galaxy Tab 3 -->  
-        <Device model="SM-N920C"/> <!-- Samsung Note 5 -->  
     </Config>
     <Config file="android_high.cfg">
         <Device model="Nexus 6"/> <!-- Motorola Nexus 6 -->
         <Device model="Pixel"/> <!-- Google Pixel -->
     </Config>
     <Config file="android_veryhigh.cfg">
+    </Config>
+    <Config file="android_samsung_note5.cfg">
+        <Device model="SM-N920C"/> <!-- Samsung Note 5 (Europe, Asia)--> 
+        <Device model="SM-N920T"/> <!-- Samsung Note 5 (T-Mobile)-->
+        <Device model="SM-N920A"/> <!-- Samsung Note 5 (AT&T)-->
+        <Device model="SM-N920I"/> <!-- Samsung Note 5 (Australia)-->
+        <Device model="SM-N920G"/> <!-- Samsung Note 5 (LATAM)-->
     </Config>
 </DeviceList>

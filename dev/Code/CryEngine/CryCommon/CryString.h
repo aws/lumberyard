@@ -616,13 +616,19 @@ inline int CryStringT<wchar_t>::_vscpf(const_str format, va_list args)
 template<>
 inline int CryStringT<char>::_vsnpf(value_type* buf, int cnt, const_str format, va_list args)
 {
+#pragma warning( push )
+#pragma warning(disable: 4996)
     return _vsnprintf(buf, cnt, format, args);
+#pragma warning( pop )
 }
 
 template<>
 inline int CryStringT<wchar_t>::_vsnpf(value_type* buf, int cnt, const_str format, va_list args)
 {
+#pragma warning( push )
+#pragma warning(disable: 4996)
     return _vsnwprintf(buf, cnt, format, args);
+#pragma warning( pop )
 }
 
 #else
@@ -2205,7 +2211,7 @@ inline CryStringT<T>& CryStringT<T>::Format(const_str format, ...)
     {
         n = 0;
     }
-    resize(n);
+    resize(n);  //this will actually allocate n+1 elements to accommodate the null terminator
     _vsnpf(m_str, n, format, argList);
     va_end(argList);
     return *this;

@@ -14,7 +14,7 @@
 #include <QPainter>
 
 #include <Components/Slots/Execution/ExecutionSlotConnectionPin.h>
-#include <Styling/definitions.h>
+#include <GraphCanvas/Styling/definitions.h>
 
 namespace GraphCanvas
 {
@@ -31,7 +31,7 @@ namespace GraphCanvas
     {    
     }
     
-    void ExecutionSlotConnectionPin::RefreshStyle()
+    void ExecutionSlotConnectionPin::OnRefreshStyle()
     {
         m_style.SetStyle(m_slotId, Styling::Elements::ExecutionConnectionPin);
         m_connectedStyle.SetStyle(m_slotId, ".connected");
@@ -39,6 +39,7 @@ namespace GraphCanvas
     
     void ExecutionSlotConnectionPin::DrawConnectionPin(QPainter *painter, QRectF drawRect, bool isConnected)
     {
+
         // draw triangle, pointing to the right
         if (isConnected)
         {

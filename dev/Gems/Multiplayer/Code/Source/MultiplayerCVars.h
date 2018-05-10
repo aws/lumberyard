@@ -45,6 +45,8 @@ namespace Multiplayer
         void RegisterCVars();
         void UnregisterCVars();
 
+        void PostInitRegistration();
+
     private:
 
         //! Host a session (LAN).

@@ -14,7 +14,6 @@
 
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include "../StandardPluginsConfig.h"
 #include <MysticQt/Source/SearchButton.h>
@@ -70,7 +69,7 @@ namespace EMStudio
     private:
         QTreeWidget*                            mHierarchy;
         MysticQt::SearchButton*                 mFindWidget;
-        MCore::String                           mFindString;
+        AZStd::string                           mFindString;
         uint32                                  mFilterNodeID;
         uint32                                  mAnimGraphID;
         bool                                    mShowStatesOnly;

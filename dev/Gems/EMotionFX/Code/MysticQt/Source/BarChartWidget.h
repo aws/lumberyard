@@ -13,8 +13,8 @@
 #pragma once
 
 #include "MysticQtConfig.h"
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
+#include <MCore/Source/MemoryManager.h>
 #include <QtWidgets/QWidget>
 #include <QtGui/QPainter>
 #include <QtGui/QPixmap>

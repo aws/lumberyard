@@ -13,26 +13,18 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <Asset/RuntimeAssetRegistry.h>
 
-namespace AZ
+namespace ScriptCanvas
 {
-    namespace Data
-    {
-        class AssetHandler;
-    }
-}
-
-namespace ScriptCanvasBuilder
-{
-    class CoreBuilderSystemComponent
+    class RuntimeAssetSystemComponent
         : public AZ::Component
     {
     public:
-        AZ_COMPONENT(CoreBuilderSystemComponent, "{521BF54E-29A9-4367-B9E5-19736AA3A957}");
+        AZ_COMPONENT(RuntimeAssetSystemComponent, "{521BF54E-29A9-4367-B9E5-19736AA3A957}");
 
-        CoreBuilderSystemComponent();
-        ~CoreBuilderSystemComponent() override;
+        RuntimeAssetSystemComponent() = default;
+        ~RuntimeAssetSystemComponent() override;
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -47,9 +39,11 @@ namespace ScriptCanvasBuilder
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
-    private:
-        CoreBuilderSystemComponent(const CoreBuilderSystemComponent&) = delete;
+        RuntimeAssetRegistry& GetAssetRegistry();
 
-        AZStd::unique_ptr<AZ::Data::AssetHandler> m_graphAssetHandler;
+    private:
+        RuntimeAssetSystemComponent(const RuntimeAssetSystemComponent&) = delete;
+
+        RuntimeAssetRegistry m_runtimeAssetRegistry;
     };
 }

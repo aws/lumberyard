@@ -328,7 +328,7 @@ namespace AZStd
 
     template<class Iterator1, class Iterator2>
     inline
-    typename Iterator1::difference_type operator-(move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
+    typename move_iterator<Iterator1>::difference_type operator-(const move_iterator<Iterator1>& left, const move_iterator<Iterator2>& right)
     {
         return (left.base() - right.base());
     }

@@ -105,21 +105,21 @@ namespace AZ
                 {
                     skinTransform = azrtti_cast<const SceneAPI::DataTypes::ITransform*>(*transform)->GetMatrix();
                 }
-                
 
                 MorphTargets* target = new MorphTargets();
                 target->MeshID = -1; //Based on the collada importer there's not a great way to set this.
                 target->m_strName = string(graph.GetNodeName(nodeIndex).GetName());
 
+                const size_t controlPointCount = blendShape->GetUsedControlPointCount();
 
-                for (size_t vertexIndex = 0; vertexIndex < blendShape->GetVertexCount(); ++vertexIndex)
+                for (size_t controlPointIndex = 0; controlPointIndex < controlPointCount; ++controlPointIndex)
                 {
                     SMeshMorphTargetVertex vert;
-                    vert.nVertexId = vertexIndex;
+                    vert.nVertexId = controlPointIndex;
                     
-                    AZ::Vector3 vtx = blendShape->GetPosition(vertexIndex);
+                    AZ::Vector3 vtx = blendShape->GetPosition(blendShape->GetUsedPointIndexForControlPoint(controlPointIndex));
 
-                    //Apply base skin tranform if one exists.
+                    //Apply base skin transform if one exists.
                     vtx = skinTransform * vtx;
 
                     vert.ptVertex = Vec3(vtx.GetX(), vtx.GetY(), vtx.GetZ());

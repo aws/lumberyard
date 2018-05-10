@@ -23,23 +23,26 @@ namespace ScriptCanvas
         namespace Logic
         {
             Indexer::Indexer()
-                : Node()
-                , m_out(-1)
             {}
 
-            void Indexer::OnInputSignal(const SlotId& slot)
+            void Indexer::OnInputSignal(const SlotId& slotId)
             {
-                auto slotIt = m_slotContainer.m_slotIdSlotMap.find(slot);
-                if (slotIt != m_slotContainer.m_slotIdSlotMap.end())
+                auto findSlotOutcome = FindSlotIndex(slotId);
+                if (!findSlotOutcome)
                 {
-                    m_out = slotIt->second;
+                    AZ_Warning("Script Canvas", false, "%s", findSlotOutcome.GetError().data());
+                    return;
                 }
 
-                const Datum output = Datum::CreateInitializedCopy(m_out);
-                PushOutput(output, m_slotContainer.m_slots[k_outputIndex]);
+                const Datum output(findSlotOutcome.GetValue());
 
-                const SlotId outSlot = IndexerProperty::GetOutSlotId(this);
-                SignalOutput(outSlot);
+                const SlotId outSlotId = IndexerProperty::GetOutSlotId(this);
+                if (auto outSlot = GetSlot(outSlotId))
+                {
+                    PushOutput(output, *outSlot);
+                }
+
+                SignalOutput(outSlotId);
             }
         }
     }

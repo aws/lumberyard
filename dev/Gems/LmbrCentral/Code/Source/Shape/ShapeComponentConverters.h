@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -18,33 +19,21 @@ namespace LmbrCentral
     namespace ClassConverters
     {
         /**
-        * SphereShape converters
-        */
-        bool DeprecateEditorSphereColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-        bool UpgradeEditorSphereShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+         * Common convert function to move shape config to shape type.
+         */
+        template <typename Shape, typename ShapeConfig>
+        bool UpgradeShapeComponentConfigToShape(
+            AZ::u32 version, const char* shapeName, AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         /**
-        * BoxShape converters
-        */
-        bool DeprecateEditorBoxColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-        bool UpgradeEditorBoxShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+         * ShapeComponent converters
+         */
+        bool UpgradeBoxShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+        bool UpgradeSphereShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+        bool UpgradeCapsuleShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+        bool UpgradeCylinderShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
-        /**
-        * CylinderShape converters
-        */
-        bool DeprecateEditorCylinderColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-        bool UpgradeEditorCylinderShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-
-        /**
-        * CapsuleShape converters
-        */
-        bool DeprecateEditorCapsuleColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-        bool UpgradeEditorCapsuleShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
-
-        /**
-        * PolygonPrismShape converters
-        */
-        bool UpgradeEditorPolygonPrismShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
     } // namespace ClassConverters
 } // namespace LmbrCentral
 
+#include "ShapeComponentConverters.inl"

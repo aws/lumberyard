@@ -17,7 +17,7 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 
-#include <tools.h>
+#include <GraphCanvas/tools.h>
 
 //////////
 // Tools

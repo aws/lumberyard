@@ -15,7 +15,7 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/Component/EntityUtils.h>
 
-#include <Styling/Selector.h>
+#include <GraphCanvas/Styling/Selector.h>
 
 #include <QDebug>
 

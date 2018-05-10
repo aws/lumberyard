@@ -34,6 +34,7 @@ namespace AZ
 namespace ScriptCanvas
 {
     static const AZ::EntityId SelfReferenceId = AZ::EntityId(0xacedc0de);
+    static const AZ::EntityId InvalidUniqueRuntimeId = AZ::EntityId(0xfee1baad);
 
     class Node;
     class Edge;
@@ -64,17 +65,22 @@ namespace ScriptCanvas
 
         static void Reflect(AZ::ReflectContext* context);
 
-        inline bool IsValid() const
+        bool IsValid() const
         {
             return m_id != AZ::Uuid::CreateNull();
         }
 
-        inline bool operator==(const SlotId& rhs) const
+        AZStd::string ToString() const
+        {
+            return m_id.ToString<AZStd::string>();
+        }
+
+        bool operator==(const SlotId& rhs) const
         {
             return m_id == rhs.m_id;
         }
 
-        inline bool operator!=(const SlotId& rhs) const
+        bool operator!=(const SlotId& rhs) const
         {
             return m_id != rhs.m_id;
         }
@@ -97,30 +103,20 @@ namespace AZStd
     };
 }
 
-#if defined(SCRIPTCANVAS_ERRORS_ENABLED)
-
 #define SCRIPT_CANVAS_INFINITE_LOOP_DETECTION_COUNT (1000)
 
-#define SCRIPTCANVAS_RETURN_IF_NOT_GRAPH_RECOVERABLE(graph)\
-    if (graph.IsInIrrecoverableErrorState()) { Deactivate(); return; }
-
 #define SCRIPTCANVAS_HANDLE_ERROR(node)\
-    if ((node).GetGraph()->IsInErrorState())\
+    bool inErrorState = false;\
+    ScriptCanvas::ErrorReporterBus::EventResult(inErrorState, node.GetGraphId(), &ScriptCanvas::ErrorReporter::IsInErrorState);\
+    if (inErrorState)\
     {\
-        (node).GetGraph()->HandleError((node));\
+        ScriptCanvas::ErrorReporterBus::Event(node.GetGraphId(), &ScriptCanvas::ErrorReporter::HandleError, (node));\
     }
 
 #define SCRIPTCANVAS_REPORT_ERROR(node, ...)\
-    (node).GetGraph()->ReportError((node), __VA_ARGS__)
+    ScriptCanvas::ErrorReporterBus::Event(node.GetGraphId(), &ScriptCanvas::ErrorReporter::ReportError, (node), __VA_ARGS__)
 
 #define SCRIPTCANVAS_RETURN_IF_ERROR_STATE(node)\
-    if ((node).GetGraph()->IsInErrorState()) { return; }  
-
-#else
-
-#define SCRIPTCANVAS_RETURN_IF_NOT_GRAPH_RECOVERABLE(graph)
-#define SCRIPTCANVAS_HANDLE_ERROR(node)
-#define SCRIPTCANVAS_REPORT_ERROR(node, ...)
-#define SCRIPTCANVAS_RETURN_IF_ERROR_STATE(node)
-
-#endif // defined(SCRIPTCANVAS_ERRORS_ENABLED)
+    bool inErrorState = false;\
+    ScriptCanvas::ErrorReporterBus::EventResult(inErrorState, node.GetGraphId(), &ScriptCanvas::ErrorReporter::IsInErrorState);\
+    if (inErrorState) { return; }  

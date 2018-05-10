@@ -43,7 +43,7 @@ void CVehicleWeapon::UpdateVarFromObject()
 //////////////////////////////////////////////////////////////////////////
 void CVehicleWeapon::Done()
 {
-    VeedLog("[CVehicleWeapon:Done] <%s>", GetName());
+    VeedLog("[CVehicleWeapon:Done] <%s>", GetName().toUtf8().constData());
     CBaseObject::Done();
 }
 

@@ -52,14 +52,14 @@ namespace LmbrCentral
         {
             // RayCastWorld return type
             behaviorContext->Class<NavRayCastResult>()
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Property("collision", BehaviorValueGetter(&NavRayCastResult::m_collision), nullptr)
                 ->Property("position", BehaviorValueGetter(&NavRayCastResult::m_position), nullptr)
                 ->Property("meshId", BehaviorValueGetter(&NavRayCastResult::m_meshId), nullptr)
                 ;
 
             behaviorContext->EBus<NavigationSystemRequestBus>("NavigationSystemRequestBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("RayCast", &NavigationSystemRequestBus::Events::RayCast)
                 ;
         }

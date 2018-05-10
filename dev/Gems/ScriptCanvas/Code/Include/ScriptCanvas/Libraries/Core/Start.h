@@ -41,7 +41,7 @@ namespace ScriptCanvas
                 void OnInputSignal(const SlotId&) override;
                 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled when the entity that owns this graph is fully activated."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled when the entity that owns this graph is fully activated."));
 
             };
         }

@@ -9,94 +9,86 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
-#include <Cry_Geo.h>
-#include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/Math/Aabb.h>
+#include <AzCore/Math/Obb.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 
+namespace AzFramework
+{
+    class EntityDebugDisplayRequests;
+}
+
 namespace LmbrCentral
 {
+    struct ShapeDrawParams;
+
     class BoxShape
         : public ShapeComponentRequestsBus::Handler
         , public BoxShapeComponentRequestsBus::Handler
         , public AZ::TransformNotificationBus::Handler
     {
     public:
-        // Runtime data 
-        class BoxIntersectionDataCache : public IntersectionTestDataCache<BoxShapeConfig>
-        {
-        public:           
+        AZ_CLASS_ALLOCATOR(BoxShape, AZ::SystemAllocator, 0)
+        AZ_RTTI(BoxShape, "{36D1BA94-13CF-433F-B1FE-28BEBBFE20AA}")
 
-            void UpdateIntersectionParams(const AZ::Transform& currentTransform, const BoxShapeConfig& configuration) override;
+        static void Reflect(AZ::ReflectContext* context);
 
-            AZ_INLINE const AABB& GetAABB() const
-            {
-                AZ_Warning("Box Shape Component", m_isAxisAligned, "Fetching AABB of a non axis aligned box, Use GetOBB instead");
-                return m_aabb;
-            }
-
-            AZ_INLINE const OBB& GetOBB() const
-            {
-                AZ_Warning("Box Shape Component", !m_isAxisAligned, "Fetching OBB of an axis aligned box, Use GetAABB instead");
-                return m_obb;
-            }
-
-            AZ_INLINE const AZ::Vector3& GetCurrentPosition() const
-            {
-                return m_currentPosition;
-            }
-
-            AZ_INLINE bool IsAxisAligned() const
-            {
-                return m_isAxisAligned;
-            }
-
-        private:
-
-            //! Indicates whether the box is axis or object aligned
-            bool m_isAxisAligned = true;
-
-            //! AABB representing this Box
-            AABB m_aabb;
-            OBB m_obb;
-
-            // Position of the Box
-            AZ::Vector3 m_currentPosition;
-        };
-
-        void Activate(const AZ::EntityId& entityId);
+        void Activate(AZ::EntityId entityId);
         void Deactivate();
-        void InvalidateCache(BoxIntersectionDataCache::CacheStatus reason);
+        void InvalidateCache(InvalidateShapeCacheReason reason);
 
-        // Get a reference to the underlying box configuration
-        virtual BoxShapeConfig& GetConfiguration() = 0;
-
-        // ShapeComponent::Handler implementation
-        AZ::Crc32 GetShapeType() override { return AZ::Crc32("Box"); }
+        // ShapeComponentRequestsBus::Handler
+        AZ::Crc32 GetShapeType() override { return AZ_CRC("Box", 0x08a9483a); }
         AZ::Aabb GetEncompassingAabb() override;
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
         AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) override;
+        bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
 
-        // BoxShapeComponentRequestBus::Handler implementation
-        inline BoxShapeConfig GetBoxConfiguration() override { return GetConfiguration(); }
-        inline AZ::Vector3 GetBoxDimensions() override { return GetConfiguration().GetDimensions(); }
-        void SetBoxDimensions(AZ::Vector3) override;
+        // BoxShapeComponentRequestBus::Handler
+        BoxShapeConfig GetBoxConfiguration() override { return m_boxShapeConfig; }
+        AZ::Vector3 GetBoxDimensions() override { return m_boxShapeConfig.m_dimensions; }
+        void SetBoxDimensions(const AZ::Vector3& dimensions) override;
 
-        // Transform notification bus listener        
-        void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;
+        // AZ::TransformNotificationBus::Handler
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        const BoxShapeConfig& GetBoxConfiguration() const { return m_boxShapeConfig; }
+        void SetBoxConfiguration(const BoxShapeConfig& boxShapeConfig) { m_boxShapeConfig = boxShapeConfig; }
+        const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
     private:
-        // Caches transient intersection data
-        BoxIntersectionDataCache m_intersectionDataCache;
+        /**
+         * Runtime data - cache potentially expensive operations.
+         */
+        class BoxIntersectionDataCache
+            : public IntersectionTestDataCache<BoxShapeConfig>
+        {
+            void UpdateIntersectionParamsImpl(
+                const AZ::Transform& currentTransform, const BoxShapeConfig& configuration) override;
 
-        //! Caches the current transform for the entity on which this component lives
-        AZ::Transform m_currentTransform;
+            friend BoxShape;
 
-        // Id of the entity the box shape is attached to
-        AZ::EntityId m_entityId;
+            AZ::Aabb m_aabb; ///< Aabb representing this Box.
+            AZ::Obb m_obb; ///< Obb representing this Box.
+            AZ::Vector3 m_currentPosition; ///< Position of the Box.
+            AZ::Vector3 m_dimensions; ///< Dimensions of Box (including entity scale).
+            bool m_axisAligned = true; ///< Indicates whether the box is axis or object aligned.
+        };
+
+        BoxShapeConfig m_boxShapeConfig; ///< Underlying box configuration.
+        BoxIntersectionDataCache m_intersectionDataCache; ///< Caches transient intersection data.
+        AZ::Transform m_currentTransform; ///< Caches the current transform for the entity on which this component lives.
+        AZ::EntityId m_entityId; ///< Id of the entity the box shape is attached to.
     };
+
+    void DrawBoxShape(
+        const ShapeDrawParams& shapeDrawParams, const BoxShapeConfig& boxShapeConfig,
+        AzFramework::EntityDebugDisplayRequests& displayContext);
+
 } // namespace LmbrCentral

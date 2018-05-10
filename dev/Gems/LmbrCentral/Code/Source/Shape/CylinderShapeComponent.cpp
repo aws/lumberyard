@@ -12,12 +12,51 @@
 
 #include "LmbrCentral_precompiled.h"
 #include "CylinderShapeComponent.h"
-#include <AzCore/Math/IntersectPoint.h>
+
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <Shape/ShapeComponentConverters.h>
+#include <Shape/ShapeDisplay.h>
 
 namespace LmbrCentral
 {
+    void CylinderShapeDebugDisplayComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<CylinderShapeDebugDisplayComponent, EntityDebugDisplayComponent>()
+                ->Version(1)
+                ->Field("Configuration", &CylinderShapeDebugDisplayComponent::m_cylinderShapeConfig)
+                ;
+        }
+    }
+
+    void CylinderShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* displayContext)
+    {
+        DrawCylinderShape(g_defaultShapeDrawParams, m_cylinderShapeConfig, *displayContext);
+    }
+
+    bool CylinderShapeDebugDisplayComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
+    {
+        if (const auto config = azrtti_cast<const CylinderShapeConfig*>(baseConfig))
+        {
+            m_cylinderShapeConfig = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool CylinderShapeDebugDisplayComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<CylinderShapeConfig*>(outBaseConfig))
+        {
+            *outConfig = m_cylinderShapeConfig;
+            return true;
+        }
+        return false;
+    }
+
     namespace ClassConverters
     {
         static bool DeprecateCylinderColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
@@ -26,15 +65,14 @@ namespace LmbrCentral
 
     void CylinderShapeConfig::Reflect(AZ::ReflectContext* context)
     {
-        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             // Deprecate: CylinderColliderConfiguration -> CylinderShapeConfig
             serializeContext->ClassDeprecate(
                 "CylinderColliderConfiguration",
                 "{E1DCB833-EFC4-43AC-97B0-4E07AA0DFAD9}",
-                &ClassConverters::DeprecateCylinderColliderConfiguration
-            );
+                &ClassConverters::DeprecateCylinderColliderConfiguration)
+                ;
 
             serializeContext->Class<CylinderShapeConfig>()
                 ->Version(1)
@@ -42,55 +80,51 @@ namespace LmbrCentral
                 ->Field("Radius", &CylinderShapeConfig::m_radius)
                 ;
 
-            AZ::EditContext* editContext = serializeContext->GetEditContext();
-            if (editContext)
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<CylinderShapeConfig>("Configuration", "Cylinder shape configuration parameters")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CylinderShapeConfig::m_height, "Height", "Height of cylinder")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
-                    ->Attribute(AZ::Edit::Attributes::Suffix, " m")
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, " m")
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CylinderShapeConfig::m_radius, "Radius", "Radius of cylinder")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
-                    ->Attribute(AZ::Edit::Attributes::Suffix, " m")
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                        ->Attribute(AZ::Edit::Attributes::Suffix, " m")
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
                     ;
             }
         }
 
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
-        if (behaviorContext)
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Class<CylinderShapeConfig>()
                 ->Property("Height", BehaviorValueProperty(&CylinderShapeConfig::m_height))
-                ->Property("Radius", BehaviorValueProperty(&CylinderShapeConfig::m_radius));
+                ->Property("Radius", BehaviorValueProperty(&CylinderShapeConfig::m_radius))
+                ;
         }
-
     }
 
     void CylinderShapeComponent::Reflect(AZ::ReflectContext* context)
     {
-        CylinderShapeConfig::Reflect(context);
+        CylinderShape::Reflect(context);
 
-        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->ClassDeprecate(
                 "CylinderColliderComponent",
                 "{A43F684B-07B6-4CD7-8D59-643709DF9486}",
-                &ClassConverters::DeprecateCylinderColliderComponent
-                );
+                &ClassConverters::DeprecateCylinderColliderComponent)
+                ;
 
             serializeContext->Class<CylinderShapeComponent, AZ::Component>()
-                ->Version(1)
-                ->Field("Configuration", &CylinderShapeComponent::m_configuration)
+                ->Version(2, &ClassConverters::UpgradeCylinderShapeComponent)
+                ->Field("CylinderShape", &CylinderShapeComponent::m_cylinderShape)
                 ;
         }
 
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
-        if (behaviorContext)
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Constant("CylinderShapeComponentTypeId", BehaviorConstant(CylinderShapeComponentTypeId));
 
@@ -104,19 +138,19 @@ namespace LmbrCentral
 
     void CylinderShapeComponent::Activate()
     {
-        CylinderShape::Activate(GetEntityId());
+        m_cylinderShape.Activate(GetEntityId());
     }
 
     void CylinderShapeComponent::Deactivate()
     {
-        CylinderShape::Deactivate();
+        m_cylinderShape.Deactivate();
     }
 
     bool CylinderShapeComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        if (auto config = azrtti_cast<const CylinderShapeConfig*>(baseConfig))
+        if (const auto config = azrtti_cast<const CylinderShapeConfig*>(baseConfig))
         {
-            m_configuration = *config;
+            m_cylinderShape.SetCylinderConfiguration(*config);
             return true;
         }
         return false;
@@ -126,13 +160,12 @@ namespace LmbrCentral
     {
         if (auto outConfig = azrtti_cast<CylinderShapeConfig*>(outBaseConfig))
         {
-            *outConfig = m_configuration;
+            *outConfig = m_cylinderShape.GetCylinderConfiguration();
             return true;
         }
         return false;
     }
 
-    //////////////////////////////////////////////////////////////////////////
     namespace ClassConverters
     {
         static bool DeprecateCylinderColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
@@ -168,7 +201,7 @@ namespace LmbrCentral
             }
 
             // Convert to CylinderShapeConfig
-            bool result = classElement.Convert<CylinderShapeConfig>(context);
+            const bool result = classElement.Convert<CylinderShapeConfig>(context);
             if (result)
             {
                 int newIndex = classElement.AddElement<float>(context, "Height");
@@ -182,8 +215,10 @@ namespace LmbrCentral
                 {
                     classElement.GetSubElement(newIndex).SetData<float>(context, oldRadius);
                 }
+
                 return true;
             }
+
             return false;
         }
 
@@ -216,7 +251,7 @@ namespace LmbrCentral
             }
 
             // Convert to CylinderShapeComponent
-            bool result = classElement.Convert<CylinderShapeComponent>(context);
+            const bool result = classElement.Convert<CylinderShapeComponent>(context);
             if (result)
             {
                 configIndex = classElement.AddElement<CylinderShapeConfig>(context, "Configuration");
@@ -224,11 +259,11 @@ namespace LmbrCentral
                 {
                     classElement.GetSubElement(configIndex).SetData<CylinderShapeConfig>(context, configuration);
                 }
+
                 return true;
             }
+
             return false;
         }
-
     } // namespace ClassConverters
-
 } // namespace LmbrCentral

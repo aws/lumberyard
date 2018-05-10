@@ -73,6 +73,7 @@ namespace AzToolsFramework
 
         AZ::u32 m_savedStateKey;
 
+        int m_propertyLabelAutoResizeMinimumWidth;
         int m_propertyLabelWidth;
         bool m_autoResizeLabels;
 
@@ -167,6 +168,7 @@ namespace AzToolsFramework
         , m_impl(new Impl(this))
     {
         m_impl->m_propertyLabelWidth = 200;
+        m_impl->m_propertyLabelAutoResizeMinimumWidth = 0;
 
         m_impl->m_expansionDepth = 0;
         m_impl->m_savedStateKey = 0;
@@ -386,7 +388,7 @@ namespace AzToolsFramework
     void ReflectedPropertyEditor::Impl::AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth)
     {
         // Removal markers should not be displayed in the property grid.
-        if (node->IsRemovedVersusComparison())
+        if (!node || node->IsRemovedVersusComparison())
         {
             return;
         }
@@ -406,7 +408,7 @@ namespace AzToolsFramework
         m_editor->setUpdatesEnabled(false);
 
         PropertyRowWidget* pWidget = nullptr;
-        if (visibility == NodeDisplayVisibility::Visible)
+        if (visibility == NodeDisplayVisibility::Visible || visibility == NodeDisplayVisibility::HideChildren)
         {
             auto widgetDisplayOrder = m_widgetsInDisplayOrder.end();
 
@@ -453,9 +455,12 @@ namespace AzToolsFramework
             depth += 1;
         }
 
-        for (auto& childNode : node->GetChildren())
+        if (visibility != NodeDisplayVisibility::HideChildren)
         {
-            AddProperty(&childNode, pParent, depth);
+            for (auto& childNode : node->GetChildren())
+            {
+                AddProperty(&childNode, pParent, depth);
+            }
         }
 
         if (pWidget)
@@ -623,7 +628,7 @@ namespace AzToolsFramework
     {
         if (m_autoResizeLabels)
         {
-            m_editor->SetLabelWidth(m_editor->GetMaxLabelWidth() + 10);
+            m_editor->SetLabelWidth(AZ::GetMax(m_propertyLabelAutoResizeMinimumWidth, m_editor->GetMaxLabelWidth() + 10));
         }
     }
 
@@ -938,22 +943,44 @@ namespace AzToolsFramework
         auto rowWidget = m_widgets.find(it->second);
         if (rowWidget != m_widgets.end())
         {
-            PropertyHandlerBase* handler = rowWidget->second->GetHandler();
+            InstanceDataNode* node = rowWidget->first;
+            PropertyRowWidget* widget = rowWidget->second;
+            PropertyHandlerBase* handler = widget->GetHandler();
             if (handler)
             {
-                if (m_ptrNotify)
+                if (rowWidget->second->ShouldPreValidatePropertyChange())
                 {
-                    m_ptrNotify->BeforePropertyModified(rowWidget->first);
+                    void* tempValue = rowWidget->first->GetClassMetadata()->m_factory->Create("Validate Attribute");
+
+                    handler->WriteGUIValuesIntoTempProperty_Internal(editorGUI, tempValue, rowWidget->first->GetClassMetadata()->m_typeId, rowWidget->first->GetSerializeContext());
+
+                    bool validated = rowWidget->second->ValidatePropertyChange(tempValue, rowWidget->first->GetClassMetadata()->m_typeId);
+
+                    rowWidget->first->GetClassMetadata()->m_factory->Destroy(tempValue);
+
+                    // Validate the change to make sure everything is okay before actually modifying the value on anything
+                    if (!validated)
+                    {
+                        // Force the values to update so that they are correct since something just declined changes and
+                        // we want the UI to display the current values and not the invalid ones
+                        m_editor->QueueInvalidation(Refresh_Values);
+                        return;
+                    }
                 }
 
-                handler->WriteGUIValuesIntoProperty_Internal(editorGUI, rowWidget->first);
+                if (m_ptrNotify)
+                {
+                    m_ptrNotify->BeforePropertyModified(node);
+                }
+
+                handler->WriteGUIValuesIntoProperty_Internal(editorGUI, node);
 
                 // once we've written our values, we need to potentially callback:
-                PropertyModificationRefreshLevel level = rowWidget->second->DoPropertyNotify();
+                PropertyModificationRefreshLevel level = widget->DoPropertyNotify();
 
                 if (m_ptrNotify)
                 {
-                    m_ptrNotify->AfterPropertyModified(rowWidget->first);
+                    m_ptrNotify->AfterPropertyModified(node);
                 }
 
                 if (level < Refresh_Values)
@@ -961,7 +988,7 @@ namespace AzToolsFramework
                     for (InstanceDataHierarchy& instance : m_instances)
                     {
                         instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
-                        rowWidget->second->OnValuesUpdated();
+                        widget->OnValuesUpdated();
                     }
                 }
 
@@ -1014,6 +1041,8 @@ namespace AzToolsFramework
         auto rowWidget = m_widgets.find(it->second);
         if (rowWidget != m_widgets.end())
         {
+            rowWidget->second->DoEditingCompleteNotify();
+
             PropertyHandlerBase* handler = rowWidget->second->GetHandler();
             if (handler)
             {
@@ -1355,6 +1384,11 @@ namespace AzToolsFramework
         m_impl->m_autoResizeLabels = autoResizeLabels;
     }
 
+    void ReflectedPropertyEditor::CancelQueuedRefresh()
+    {
+        m_impl->m_queuedRefreshLevel = Refresh_None;
+    }
+
     void ReflectedPropertyEditor::QueueInvalidation(PropertyModificationRefreshLevel level)
     {
         if ((int)level > m_impl->m_queuedRefreshLevel)
@@ -1492,6 +1526,10 @@ namespace AzToolsFramework
         return width;
     }
 
+    void ReflectedPropertyEditor::SetLabelAutoResizeMinimumWidth(int labelMinimumWidth)
+    {
+        m_impl->m_propertyLabelAutoResizeMinimumWidth = labelMinimumWidth;
+    }
 
     void ReflectedPropertyEditor::SetLabelWidth(int labelWidth)
     {

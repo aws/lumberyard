@@ -24,9 +24,9 @@ namespace CommandSystem
     // adjust a node group
     MCORE_DEFINECOMMAND_START(CommandAnimGraphAdjustNodeGroup, "Adjust anim graph node group", true)
 public:
-    static MCore::String GenerateNodeNameString(EMotionFX::AnimGraph* animGraph, const MCore::Array<uint32>& nodeIDs);
+    static AZStd::string GenerateNodeNameString(EMotionFX::AnimGraph* animGraph, const MCore::Array<uint32>& nodeIDs);
 
-    MCore::String               mOldName;
+    AZStd::string               mOldName;
     bool                        mOldIsVisible;
     MCore::RGBAColor            mOldColor;
     MCore::Array<uint32>        mOldNodeIDs;
@@ -37,13 +37,13 @@ public:
     // add node group
         MCORE_DEFINECOMMAND_START(CommandAnimGraphAddNodeGroup, "Add anim graph node group", true)
     bool                mOldDirtyFlag;
-    MCore::String       mOldName;
+    AZStd::string       mOldName;
     MCORE_DEFINECOMMAND_END
 
 
     // remove a node group
         MCORE_DEFINECOMMAND_START(CommandAnimGraphRemoveNodeGroup, "Remove anim graph node group", true)
-    MCore::String           mOldName;
+    AZStd::string           mOldName;
     bool                    mOldIsVisible;
     MCore::RGBAColor        mOldColor;
     MCore::Array<uint32>    mOldNodeIDs;

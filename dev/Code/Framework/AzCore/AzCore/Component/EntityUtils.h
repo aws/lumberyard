@@ -151,6 +151,7 @@ namespace AZ
 
         /// Return the first component that is either of the specified type or derive from the specified type
         Component* FindFirstDerivedComponent(Entity* entity, const Uuid& typeId);
+        Component* FindFirstDerivedComponent(EntityId entityId, const Uuid& typeId);
 
         /// Return the first component that is either of the specified type or derive from the specified type
         template<class ComponentType>
@@ -159,8 +160,17 @@ namespace AZ
             return azrtti_cast<ComponentType*>(FindFirstDerivedComponent(entity, AzTypeInfo<ComponentType>::Uuid()));
         }
 
+        template<class ComponentType>
+        inline ComponentType* FindFirstDerivedComponent(EntityId entityId)
+        {
+            Entity* entity{};
+            ComponentApplicationBus::BroadcastResult(entity, &ComponentApplicationRequests::FindEntity, entityId);
+            return entity ? FindFirstDerivedComponent<ComponentType>(entity): nullptr;
+        }
+
         /// Return a vector of all components that are either of the specified type or derive from the specified type
         Entity::ComponentArrayType FindDerivedComponents(Entity* entity, const Uuid& typeId);
+        Entity::ComponentArrayType FindDerivedComponents(EntityId entityId, const Uuid& typeId);
 
         /// Return a vector of all components that are either of the specified type or derive from the specified type
         template<class ComponentType>
@@ -177,6 +187,20 @@ namespace AZ
             }
             return result;
         }
+
+        template<class ComponentType>
+        inline AZStd::vector<ComponentType*> FindDerivedComponents(EntityId entityId)
+        {
+            Entity* entity{};
+            ComponentApplicationBus::BroadcastResult(entity, &ComponentApplicationRequests::FindEntity, entityId);
+            return entity ? FindDerivedComponents<ComponentType>(entity) : AZStd::vector<ComponentType*>();
+        }
+
+        //! performs a recursive search of all classes declared in the serialize hierarchy of typeToExamine
+        //! and returns true if it finds typeToFind, false otherwise.
+        bool CheckDeclaresSerializeBaseClass(SerializeContext* context, const TypeId& typeToFind, const TypeId& typeToExamine);
+
+
     } // namespace EntityUtils
 }   // namespace AZ
 

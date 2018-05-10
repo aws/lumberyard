@@ -569,6 +569,7 @@ namespace AZStd
             m_data.rehash_if_needed(this);
         }
 
+        AZ_FORCE_INLINE void            reserve(size_type numBucketsMin) { rehash((size_type)::ceilf((float)numBucketsMin / max_load_factor())); }
         AZ_FORCE_INLINE void            rehash(size_type numBucketsMin) { m_data.rehash(this, numBucketsMin); }
 
         iterator        erase(const_iterator erasePos)

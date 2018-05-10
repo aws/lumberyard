@@ -20,8 +20,8 @@
 namespace LmbrCentral
 {
     /**
-    * Common functionality and data for the SplineComponent.
-    */
+     * Common functionality and data for the SplineComponent.
+     */
     class SplineCommon
     {
     public:
@@ -60,8 +60,8 @@ namespace LmbrCentral
     };
 
     /**
-    * Component interface to core spline implementation.
-    */
+     * Component interface to core spline implementation.
+     */
     class SplineComponent
         : public AZ::Component
         , private SplineComponentRequestBus::Handler
@@ -77,9 +77,11 @@ namespace LmbrCentral
         void Deactivate() override;
 
         // SplineComponentRequestBus
-        AZ::ConstSplinePtr GetSpline() override;
+        AZ::SplinePtr GetSpline() override;
         void ChangeSplineType(AZ::u64 splineType) override;
         void SetClosed(bool closed) override;
+
+        // SplineComponentRequestBus/VertexContainerInterface
         bool GetVertex(size_t index, AZ::Vector3& vertex) const override;
         void AddVertex(const AZ::Vector3& vertex) override;
         bool UpdateVertex(size_t index, const AZ::Vector3& vertex) override;

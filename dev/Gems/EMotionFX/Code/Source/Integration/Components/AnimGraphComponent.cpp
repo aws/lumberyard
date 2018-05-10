@@ -16,7 +16,6 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/std/string/string.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <Integration/Components/AnimGraphComponent.h>
@@ -73,6 +72,7 @@ namespace EMotionFX
                     ->Version(1)
                     ->Field("AnimGraphAsset", &Configuration::m_animGraphAsset)
                     ->Field("MotionSetAsset", &Configuration::m_motionSetAsset)
+                    ->Field("ActiveMotionSetName", &Configuration::m_activeMotionSetName)
                     ->Field("ParameterDefaults", &Configuration::m_parameterDefaults)
                 ;
             }
@@ -256,7 +256,17 @@ namespace EMotionFX
             {
                 DestroyAnimGraphInstance();
 
-                m_animGraphInstance = cfg.m_animGraphAsset.Get()->CreateInstance(m_actorInstance, cfg.m_motionSetAsset.Get()->m_emfxMotionSet);
+                EMotionFX::MotionSet* rootMotionSetAsset = cfg.m_motionSetAsset.Get()->m_emfxMotionSet.get();
+                EMotionFX::MotionSet* motionSet = rootMotionSetAsset->RecursiveFindMotionSetByName(cfg.m_activeMotionSetName, true);
+                if (!motionSet)
+                {
+                    AZ_Error("EMotionFX", false, "Failed to find motion set \"%s\" in motion set file %s.",
+                        cfg.m_activeMotionSetName.c_str(),
+                        rootMotionSetAsset->GetName());
+                    motionSet = rootMotionSetAsset;
+                }
+
+                m_animGraphInstance = cfg.m_animGraphAsset.Get()->CreateInstance(m_actorInstance.get(), motionSet);
                 if (!m_animGraphInstance)
                 {
                     AZ_Error("EMotionFX", false, "Failed to create anim graph instance for entity \"%s\" %s.",
@@ -264,6 +274,7 @@ namespace EMotionFX
                         GetEntityId().ToString().c_str());
                     return;
                 }
+                
 
                 m_actorInstance->SetAnimGraphInstance(m_animGraphInstance.get());
 
@@ -707,7 +718,7 @@ namespace EMotionFX
                 MCore::AttributeString* param = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeString>(parameterIndex);
                 if (param)
                 {
-                    return AZStd::string(param->GetValue().AsChar());
+                    return AZStd::string(param->GetValue().c_str());
                 }
             }
             return AZStd::string();

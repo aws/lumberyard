@@ -2023,6 +2023,29 @@ uint16 NavigationSystem::GetAgentHeightInVoxelUnits(NavigationAgentTypeID agentT
     return 0;
 }
 
+bool NavigationSystem::TryGetAgentSettings(const char* agentType, const AgentType::Settings*& agentSettings)const
+{
+    NavigationAgentTypeID agentTypeId = GetAgentTypeID(agentType);
+    if (agentTypeId && agentTypeId <= m_agentTypes.size())
+    {
+        agentSettings = &m_agentTypes[agentTypeId - 1].settings;
+        return true;
+    }
+    return false;
+}
+
+bool NavigationSystem::TryGetAgentRadiusData(const char* agentType, Vec3& voxelSize, uint16& radiusInVoxels) const
+{
+    const AgentType::Settings* agentSettings = nullptr;
+    if (TryGetAgentSettings(agentType, agentSettings))
+    {
+        voxelSize = agentSettings->voxelSize;
+        radiusInVoxels = agentSettings->radiusVoxelCount;
+        return true;
+    }
+    return false;
+}
+
 void NavigationSystem::Clear()
 {
     StopAllTasks();
@@ -2369,6 +2392,11 @@ void NavigationSystem::RegisterArea(const char* shapeName)
 void NavigationSystem::UnRegisterArea(const char* shapeName)
 {
     m_volumesManager.UnRegisterArea(shapeName);
+}
+
+bool NavigationSystem::IsAreaPresent(const char* shapeName)
+{
+    return m_volumesManager.IsAreaPresent(shapeName);
 }
 
 NavigationVolumeID NavigationSystem::GetAreaId(const char* shapeName) const
@@ -2759,6 +2787,12 @@ bool NavigationSystem::ReadFromFile(const char* fileName, bool bAfterExporting)
 
                 if (gEnv->IsEditor())
                 {
+                    // if this area has not yet been registered, register it now
+                    if (!m_volumesManager.IsAreaPresent(areaName))
+                    {
+                        m_volumesManager.RegisterArea(areaName);
+                    }
+
                     m_volumesManager.SetAreaID(areaName, NavigationVolumeID(areaIDUint32));
                 }
             }

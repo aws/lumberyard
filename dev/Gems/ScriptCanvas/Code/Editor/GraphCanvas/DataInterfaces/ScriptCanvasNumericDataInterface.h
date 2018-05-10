@@ -11,26 +11,26 @@
 */
 #pragma once
 
-#include <GraphCanvas/Components/NodePropertyDisplay/DoubleDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
 
 #include "ScriptCanvasDataInterface.h"
 
 namespace ScriptCanvasEditor
 {
-    class ScriptCanvasDoubleDataInterface
-        : public ScriptCanvasDataInterface<GraphCanvas::DoubleDataInterface>        
+    class ScriptCanvasNumericDataInterface
+        : public ScriptCanvasDataInterface<GraphCanvas::NumericDataInterface>        
     {
     public:
-        AZ_CLASS_ALLOCATOR(ScriptCanvasDoubleDataInterface, AZ::SystemAllocator, 0);
-        ScriptCanvasDoubleDataInterface(const AZ::EntityId& nodeId, const ScriptCanvas::SlotId& slotId)
+        AZ_CLASS_ALLOCATOR(ScriptCanvasNumericDataInterface, AZ::SystemAllocator, 0);
+        ScriptCanvasNumericDataInterface(const AZ::EntityId& nodeId, const ScriptCanvas::SlotId& slotId)
             : ScriptCanvasDataInterface(nodeId, slotId)
         {
         }
         
-        ~ScriptCanvasDoubleDataInterface() = default;
+        ~ScriptCanvasNumericDataInterface() = default;
         
         // DoubleDataInterface
-        double GetDouble() const override
+        double GetNumber() const override
         {
             const ScriptCanvas::Datum* object = GetSlotObject();            
 
@@ -47,7 +47,7 @@ namespace ScriptCanvasEditor
             return 0.0;
         }
         
-        void SetDouble(double value) override
+        void SetNumber(double value) override
         {
             ScriptCanvas::Datum* object = GetSlotObject();
 

@@ -246,7 +246,7 @@ namespace EMStudio
         QPushButton* button = qobject_cast<QPushButton*>(sender());
         QPoint globalBottomLeft = button->mapToGlobal(QPoint(0, button->geometry().bottom()));
 
-        EMotionFX::AnimGraphNode* node = mAnimGraph->RecursiveFindNode(FromQtString(button->whatsThis()).AsChar());
+        EMotionFX::AnimGraphNode* node = mAnimGraph->RecursiveFindNode(FromQtString(button->whatsThis()).c_str());
 
         QMenu menu(button);
 
@@ -335,11 +335,11 @@ namespace EMStudio
         const uint32    maxNumHistoryItems  = 100;
 
         // create the array where we store the names of the last visited nodes and reserve space for the strings
-        MCore::Array<MCore::String> historyNodeNames;
+        MCore::Array<AZStd::string> historyNodeNames;
         historyNodeNames.Reserve(maxNumHistoryItems);
 
         // fill the node names array
-        MCore::String nodeName;
+        AZStd::string nodeName;
         for (int32 i = numHistoryItems - 1; i > 0; i--)
         {
             // break the loop if we have a given amount of items already
@@ -384,9 +384,9 @@ namespace EMStudio
             }
             else
             {
-                item->setText(historyNodeNames[i].AsChar()); // normal node handling
+                item->setText(historyNodeNames[i].c_str()); // normal node handling
             }
-            item->setWhatsThis(historyNodeNames[i].AsChar());
+            item->setWhatsThis(historyNodeNames[i].c_str());
 
             // add the item to the list widget and connect it
             historyWidget->addItem(item);

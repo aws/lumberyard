@@ -14,7 +14,6 @@
 #define __MYSTICQT_DOUBLESPINBOX_H
 
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "MysticQtConfig.h"
 #include <QtWidgets/QDoubleSpinBox>
 #include <QtWidgets/QSpinBox>
@@ -86,7 +85,7 @@ namespace MysticQt
 
     private:
         DoubleSpinBox*  mSpinbox;
-        MCore::String   mTemp;
+        AZStd::string   mTemp;
     };
 
 
@@ -151,7 +150,7 @@ namespace MysticQt
         double                  mMaximum;
         double                  mSingleStep;
         int                     mNumDecimals;
-        MCore::String           mTemp;
+        AZStd::string           mTemp;
 
         QLineEdit*              mLineEdit;
         QWidget*                mSpinButtonWidget;

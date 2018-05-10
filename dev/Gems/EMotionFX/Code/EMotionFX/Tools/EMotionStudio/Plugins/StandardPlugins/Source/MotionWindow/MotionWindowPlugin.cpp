@@ -151,22 +151,25 @@ namespace EMStudio
         QString BuildNameItem(OutlinerCategoryItem* item) const override
         {
             EMotionFX::Motion* motion = static_cast<EMotionFX::Motion*>(item->mUserData);
-            MCore::String relativeFileNameWithoutExtension = motion->GetFileNameString().ExtractPathRelativeTo(EMotionFX::GetEMotionFX().GetMediaRootFolder());
-            relativeFileNameWithoutExtension.RemoveFileExtension();
-            return relativeFileNameWithoutExtension.AsChar();
+            AZStd::string fileNameWithoutExtension = motion->GetFileNameString();
+            AzFramework::StringFunc::Path::GetFileName(fileNameWithoutExtension.c_str(), fileNameWithoutExtension);
+            return fileNameWithoutExtension.c_str();
         }
 
         QString BuildToolTipItem(OutlinerCategoryItem* item) const override
         {
             EMotionFX::Motion* motion = static_cast<EMotionFX::Motion*>(item->mUserData);
-            MCore::String relativeFileName = motion->GetFileNameString().ExtractPathRelativeTo(EMotionFX::GetEMotionFX().GetMediaRootFolder());
-            MCore::String relativeFileNameWithoutExtension = relativeFileName;
-            relativeFileNameWithoutExtension.RemoveFileExtension();
+            AZStd::string relativeFileName = motion->GetFileNameString();
+            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&relativeFileName);
+            
+            AZStd::string relativeFileNameWithoutExtension;
+            AzFramework::StringFunc::Path::GetFileName(relativeFileName.c_str(), relativeFileNameWithoutExtension);
+            
             QString toolTip = "<table border=\"0\">";
             toolTip += "<tr><td><p style='white-space:pre'><b>Name: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileNameWithoutExtension.GetIsEmpty() ? "&#60;no name&#62;" : relativeFileNameWithoutExtension.AsChar());
+            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileNameWithoutExtension.empty() ? "&#60;no name&#62;" : relativeFileNameWithoutExtension.c_str());
             toolTip += "<tr><td><p style='white-space:pre'><b>FileName: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.GetIsEmpty() ? "&#60;not saved yet&#62;" : relativeFileName.AsChar());
+            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.empty() ? "&#60;not saved yet&#62;" : relativeFileName.c_str());
             if ((motion->GetType() == EMotionFX::SkeletalMotion::TYPE_ID) || (motion->GetType() == EMotionFX::WaveletSkeletalMotion::TYPE_ID))
             {
                 EMotionFX::SkeletalMotion* skeletalMotion = static_cast<EMotionFX::SkeletalMotion*>(motion);
@@ -796,11 +799,11 @@ namespace EMStudio
             QMessageBox msgBox(GetMainWindow());
             AZStd::string text;
 
-            if (motion->GetFileNameString().GetIsEmpty() == false)
+            if (motion->GetFileNameString().empty() == false)
             {
                 text = AZStd::string::format("Save changes to '%s'?", motion->GetFileName());
             }
-            else if (motion->GetNameString().GetIsEmpty() == false)
+            else if (motion->GetNameString().empty() == false)
             {
                 text = AZStd::string::format("Save changes to the motion named '%s'?", motion->GetName());
             }

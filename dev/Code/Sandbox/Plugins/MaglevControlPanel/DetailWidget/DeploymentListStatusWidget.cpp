@@ -21,8 +21,8 @@
 
 #include "DetailWidget/DeploymentListStatusWidget.moc"
 
-DeploymentListStatusWidget::DeploymentListStatusWidget(ResourceManagementView* view, QSharedPointer<IDeploymentListStatusModel> deploymentListStatusModel)
-    : StackListWidget{deploymentListStatusModel}
+DeploymentListStatusWidget::DeploymentListStatusWidget(ResourceManagementView* view, QSharedPointer<IDeploymentListStatusModel> deploymentListStatusModel, QWidget* parent)
+    : StackListWidget{deploymentListStatusModel, parent}
     , m_view{view}
     , m_deploymentListStatusModel{deploymentListStatusModel}
 {

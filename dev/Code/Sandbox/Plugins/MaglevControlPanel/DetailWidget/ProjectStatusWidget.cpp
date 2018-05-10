@@ -20,8 +20,8 @@
 
 #include "DetailWidget/ProjectStatusWidget.moc"
 
-ProjectStatusWidget::ProjectStatusWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> projectStatusModel)
-    : StackEventsSplitter{projectStatusModel->GetStackEventsModel()}
+ProjectStatusWidget::ProjectStatusWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> projectStatusModel, QWidget* parent)
+    : StackEventsSplitter{projectStatusModel->GetStackEventsModel(), parent}
     , m_view{view}
     , m_projectStatusModel{projectStatusModel}
 {
@@ -32,7 +32,7 @@ ProjectStatusWidget::ProjectStatusWidget(ResourceManagementView* view, QSharedPo
 void ProjectStatusWidget::CreateUI()
 {
     auto stackWidget = new StackWidget {
-        m_view, m_projectStatusModel
+        m_view, m_projectStatusModel, this
     };
     stackWidget->AddUpdateButton();
     stackWidget->AddDeleteButton();

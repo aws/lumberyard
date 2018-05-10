@@ -78,7 +78,7 @@ namespace StarterGameGem
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<DecalSelectorComponent>()
+            serializeContext->Class<DecalSelectorComponent, AZ::Component>()
                 ->Version(1)
                 ->Field("DecalPools", &DecalSelectorComponent::m_decalPools)
                 ->Field("FallBackToDefault", &DecalSelectorComponent::m_useDefaultMat)

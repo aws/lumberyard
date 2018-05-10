@@ -325,7 +325,14 @@ public:
 
     void Reset();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(DeviceWrapper12_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     inline void SwitchToNewGraphicsPipeline() {}
+#endif
 
 protected:
     void SetPipelineStateImpl(CDeviceGraphicsPSOPtr devicePSO);

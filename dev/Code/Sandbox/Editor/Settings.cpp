@@ -813,7 +813,7 @@ void SEditorSettings::Load()
     LoadValue("Settings", "TemporaryDirectory", strStandardTempDirectory);
     LoadValue("Settings", "EditorEnv", strEditorEnv);
 
-    int consoleBackgroundColorThemeInt;
+    int consoleBackgroundColorThemeInt = (int)consoleBackgroundColorTheme;
     LoadValue("Settings", "ConsoleBackgroundColorTheme", consoleBackgroundColorThemeInt);
     consoleBackgroundColorTheme = (ConsoleColorTheme)consoleBackgroundColorThemeInt;
     if (consoleBackgroundColorTheme != ConsoleColorTheme::Dark && consoleBackgroundColorTheme != ConsoleColorTheme::Light)

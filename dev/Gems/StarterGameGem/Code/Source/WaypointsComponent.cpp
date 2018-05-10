@@ -44,7 +44,7 @@ namespace StarterGameGem
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<WaypointsComponent>()
+            serializeContext->Class<WaypointsComponent, AZ::Component>()
                 ->Version(1)
                 ->Field("Config", &WaypointsComponent::m_config)
             ;
@@ -104,7 +104,7 @@ namespace StarterGameGem
         }
         else
         {
-            AZ_Assert("AI", "WaypointsComponent: Tried to get the first waypoint but no waypoints exist.");
+            AZ_Assert(false, "WaypointsComponent: Tried to get the first waypoint but no waypoints exist.");
         }
 
         return res;

@@ -106,6 +106,8 @@ public:
     //! DiskSpaceInfoBus::Handler
     bool CheckSufficientDiskSpace(const QString& savePath, qint64 requiredSpace, bool shutdownIfInsufficient) override;
 
+    void RemoveOldTempFolders();
+
 Q_SIGNALS:
     void CheckAssetProcessorManagerIdleState();
     void ConnectionStatusMsg(QString message);
@@ -192,21 +194,7 @@ private:
     // Collection of all the external module builders
     AZStd::list<AssetProcessor::ExternalModuleAssetBuilderInfo*>    m_externalAssetBuilders;
 
-    struct ExternalAssetBuilderRegistration
-    {
-        ExternalAssetBuilderRegistration() = default;
-        ExternalAssetBuilderRegistration(AssetProcessor::ExternalModuleAssetBuilderInfo* builderInfo, AZStd::string builderFilePath)
-            : m_builderInfo(builderInfo),
-            m_builderFilePath(builderFilePath)
-        {
-
-        }
-
-        AssetProcessor::ExternalModuleAssetBuilderInfo* m_builderInfo = nullptr;
-        AZStd::string m_builderFilePath;
-    };
-
-    ExternalAssetBuilderRegistration m_currentExternalAssetBuilder;
+    AssetProcessor::ExternalModuleAssetBuilderInfo* m_currentExternalAssetBuilder = nullptr;
     
     QAtomicInt m_connectionsAwaitingAssetCatalogSave = 0;
     int m_remainingAPMJobs = 0;
@@ -214,6 +202,8 @@ private:
 
     unsigned int m_highestConnId = 0;
     AzToolsFramework::Ticker* m_ticker = nullptr; // for ticking the tickbus.
+
+    QList<QMetaObject::Connection> m_connectionsToRemoveOnShutdown;
 };
 
 

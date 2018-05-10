@@ -33,65 +33,148 @@
 #include <ScriptCanvas/Bus/RequestBus.h>
 
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
+#include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 #include <GraphCanvas/Components/GraphCanvasPropertyBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 
 #include <ScriptCanvas/Core/Endpoint.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 
+#include <ScriptCanvas/Libraries/Core/EBusEventHandler.h>
+#include <ScriptCanvas/Libraries/Core/Method.h>
+
+#include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+
 namespace
 {
-    bool ShouldDisplayComponent(AZ::Component* component)
-    {
-        auto classData = AzToolsFramework::GetComponentClassData(component);
+    using StringToInstanceMap = AZStd::unordered_map<AZStd::string, ScriptCanvasEditor::Widget::PropertyGrid::InstancesToDisplay>;
 
-        // Skip components without edit data
-        if (!classData || !classData->m_editData)
+    AZStd::string GetTitle(const AZ::EntityId& entityId, AZ::Component* instance)
+    {
+        AZStd::string result;
+
+        AZStd::string title;
+        GraphCanvas::NodeTitleRequestBus::EventResult(title, entityId, &GraphCanvas::NodeTitleRequests::GetTitle);
+
+        AZStd::string subtitle;
+        GraphCanvas::NodeTitleRequestBus::EventResult(subtitle, entityId, &GraphCanvas::NodeTitleRequests::GetSubTitle);
+        
+        // NOT a variable.
+        result = title;
+
+        if (!subtitle.empty())
         {
-            return false;
+            result += (result.empty() ? "" : " - " ) + subtitle;
         }
 
-        // Skip components that are set to invisible.
-        if (auto editorDataElement = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+        if (result.empty())
         {
-            if (auto visibilityAttribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::Visibility))
+            result = AzToolsFramework::GetFriendlyComponentName(instance).c_str();
+        }
+
+        return result;
+    }
+
+    void AddInstancesToComponentEditor(
+        AzToolsFramework::ComponentEditor* componentEditor,
+        const AZStd::list<AZ::Component*>& instanceList,
+        AZStd::unordered_map<AZ::TypeId, AZ::Component*>& firstOfTypeMap,
+        AZStd::unordered_set<AZ::EntityId>& entitySet)
+    {
+        for (auto& instance : instanceList)
+        {
+            // non-first instances are aggregated under the first instance
+            AZ::Component* aggregateInstance = nullptr;
+            if (firstOfTypeMap.count(instance->RTTI_GetType()) > 0)
             {
-                AzToolsFramework::PropertyAttributeReader reader(component, visibilityAttribute);
-                AZ::u32 visibilityValue;
-                if (reader.Read<AZ::u32>(visibilityValue))
-                {
-                    if (visibilityValue == AZ::Edit::PropertyVisibility::Hide)
-                    {
-                        return false;
-                    }
-                }
+                aggregateInstance = firstOfTypeMap[instance->RTTI_GetType()];
+            }
+            else
+            {
+                firstOfTypeMap[instance->RTTI_GetType()] = instance;
+            }
+
+            componentEditor->AddInstance(instance, aggregateInstance, nullptr);
+
+            // Try and get the underlying SC entity
+            AZStd::any* userData{};
+            GraphCanvas::NodeRequestBus::EventResult(userData, instance->GetEntityId(), &GraphCanvas::NodeRequests::GetUserData);
+            AZ::EntityId scriptCanvasId = userData && userData->is<AZ::EntityId>() ? *AZStd::any_cast<AZ::EntityId>(userData) : AZ::EntityId();
+            if (scriptCanvasId.IsValid())
+            {
+                entitySet.insert(scriptCanvasId);
+            }
+            else
+            {
+                entitySet.insert(instance->GetEntityId());
             }
         }
+    }
 
-        return true;
+    const AZStd::string GetMethod(AZ::Component* component)
+    {
+        auto classData = AzToolsFramework::GetComponentClassData(component);
+        if (!classData)
+        {
+            return "";
+        }
+
+        if (!classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Core::Method>())
+        {
+            return "";
+        }
+
+        ScriptCanvas::Nodes::Core::Method* method = azrtti_cast<ScriptCanvas::Nodes::Core::Method*>(component);
+        return method->GetMethodClassName() + method->GetName();
+    }
+
+    AZStd::string GetEBusEventHandlerString(const AZ::EntityId& entityId,
+                                            AZ::Component* component)
+    {
+        auto classData = AzToolsFramework::GetComponentClassData(component);
+        if (!classData)
+        {
+            return "";
+        }
+
+        if (!classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Core::EBusEventHandler>())
+        {
+            return "";
+        }
+
+        ScriptCanvas::Nodes::Core::EBusEventHandler* eventHandler = azrtti_cast<ScriptCanvas::Nodes::Core::EBusEventHandler*>(component);
+
+        // IMPORTANT: A wrapped node will have an event name. NOT a wrapper node.
+        AZStd::string eventName;
+        ScriptCanvasEditor::EBusHandlerEventNodeDescriptorRequestBus::EventResult(eventName, entityId, &ScriptCanvasEditor::EBusHandlerEventNodeDescriptorRequests::GetEventName);
+
+        AZStd::string result = eventHandler->GetEBusName() + eventName;
+        return result;
     }
 
     // Returns a set of unique display component instances
-    AZStd::unordered_set<AZ::Component*> GetVisibleGcInstances(const AZ::EntityId& entityId)
+    AZStd::list<AZ::Component*> GetVisibleGcInstances(const AZ::EntityId& entityId)
     {
-        AZStd::unordered_set<AZ::Component*> result;
+        AZStd::list<AZ::Component*> result;
+
         GraphCanvas::GraphCanvasPropertyBus::EnumerateHandlersId(entityId,
             [&result](GraphCanvas::GraphCanvasPropertyInterface* propertyInterface) -> bool
             {
                 AZ::Component* component = propertyInterface->GetPropertyComponent();
-                if (ShouldDisplayComponent(component))
+                if (AzToolsFramework::ShouldInspectorShowComponent(component))
                 {
-                    result.insert(component);
+                    result.push_back(component);
                 }
 
                 // Continue enumeration.
                 return true;
             });
+
         return result;
     }
 
     // Returns a set of unique display component instances
-    AZStd::unordered_set<AZ::Component*> GetVisibleScInstances(const AZ::EntityId& entityId)
+    AZStd::list<AZ::Component*> GetVisibleScInstances(const AZ::EntityId& entityId)
     {
         // GraphCanvas entityId -> scriptCanvasEntity
         AZStd::any* userData {};
@@ -99,51 +182,102 @@ namespace
         AZ::EntityId scriptCanvasId = userData && userData->is<AZ::EntityId>() ? *AZStd::any_cast<AZ::EntityId>(userData) : AZ::EntityId();
         if (!scriptCanvasId.IsValid())
         {
-            return {};
+            return AZStd::list<AZ::Component*>();
         }
 
         AZ::Entity* scriptCanvasEntity = AzToolsFramework::GetEntityById(scriptCanvasId);
         if (!scriptCanvasEntity)
         {
-            return {};
+            return AZStd::list<AZ::Component*>();
         }
 
         // scriptCanvasEntity -> ScriptCanvas::Node
-        AZStd::unordered_set<AZ::Component*> result;
+        AZStd::list<AZ::Component*> result;
         auto components = AZ::EntityUtils::FindDerivedComponents<ScriptCanvas::Node>(scriptCanvasEntity);
         for (auto component : components)
         {
-            if (ShouldDisplayComponent(component))
+            if (AzToolsFramework::ShouldInspectorShowComponent(component))
             {
-                result.insert(component);
+                result.push_back(component);
             }
         }
 
         return result;
     }
 
-    void AppendInstances(ScriptCanvasEditor::Widget::PropertyGrid::InstancesToAggregate& instancesToDisplay,
-        const AZStd::unordered_set<AZ::Component*>& components)
+    void MoveInstances(const AZStd::string& position,
+        const AZ::EntityId& entityId,
+        AZStd::list<AZ::Component*>& gcInstances,
+        AZStd::list<AZ::Component*>& scInstances,
+        StringToInstanceMap& instancesToDisplay)
     {
-        if (components.empty())
+        if (position.empty() ||
+            (gcInstances.empty() && scInstances.empty()))
         {
             return;
         }
 
-        for (auto component : components)
+        auto& entry = instancesToDisplay[position];
+        if (!entry.m_gcEntityId.IsValid())
         {
-            const AZ::SerializeContext::ClassData* positionInMap = AzToolsFramework::GetComponentClassData(component);
-            instancesToDisplay[positionInMap].insert(component);
+            entry.m_gcEntityId = entityId;
+        }
+
+        if (!gcInstances.empty())
+        {
+            entry.m_gcInstances.splice(entry.m_gcInstances.end(), gcInstances);
+        }
+
+        if (!scInstances.empty())
+        {
+            entry.m_scInstances.splice(entry.m_scInstances.end(), scInstances);
         }
     }
 
-    void CollectInstancesToDisplay(ScriptCanvasEditor::Widget::PropertyGrid::InstancesToAggregate& instancesToDisplay,
-        const AZStd::vector<AZ::EntityId>& selectedEntityIds)
+    AZStd::string GetKeyForInstancesToDisplay(const AZ::EntityId& entityId,
+        const AZStd::list<AZ::Component*>& gcInstances,
+        const AZStd::list<AZ::Component*>& scInstances)
+    {
+        AZStd::string result;
+
+        if (!scInstances.empty())
+        {
+            auto component = scInstances.front();
+
+            result = GetMethod(component);
+            if (!result.empty())
+            {
+                return result;
+            }
+
+            result = GetEBusEventHandlerString(entityId, component);
+            if (!result.empty())
+            {
+                return result;
+            }
+
+            return component->RTTI_GetType().ToString<AZStd::string>();
+        }
+
+        if (!gcInstances.empty())
+        {
+            return gcInstances.front()->RTTI_GetType().ToString<AZStd::string>();
+        }
+
+        return result;
+    }
+
+    void GetInstancesToDisplay(const AZStd::vector<AZ::EntityId>& selectedEntityIds,
+        StringToInstanceMap& instancesToDisplay)
     {
         for (auto& entityId : selectedEntityIds)
         {
-            AppendInstances(instancesToDisplay, GetVisibleScInstances(entityId));
-            AppendInstances(instancesToDisplay, GetVisibleGcInstances(entityId));
+            AZStd::list<AZ::Component*> gcInstances = GetVisibleGcInstances(entityId);
+            AZStd::list<AZ::Component*> scInstances = GetVisibleScInstances(entityId);
+
+            AZStd::string position = GetKeyForInstancesToDisplay(entityId, gcInstances, scInstances);
+
+            MoveInstances(position, entityId, gcInstances, scInstances, instancesToDisplay);
         }
     }
 }
@@ -157,8 +291,6 @@ namespace ScriptCanvasEditor
         {
             // This is used for styling.
             setObjectName("PropertyGrid");
-
-            m_componentEditors.clear();
 
             m_spacer = new QSpacerItem(1, 1, QSizePolicy::Fixed, QSizePolicy::Expanding);
 
@@ -190,36 +322,67 @@ namespace ScriptCanvasEditor
 
         void PropertyGrid::ClearSelection()
         {
+            for (auto& componentEditor : m_componentEditors)
+            {
+                // Component editor deletion needs to be deferred until the next frame
+                // as ClearSelection can be called when a slot is removed via the Reflected
+                // therefore causing the reflected property editor to be deleted while it is still
+                // in the callstack
+                // Deleting a node will cause the selection change event to be fired from the GraphCanvas Scene which leads to the selection being cleared
+                // Furthermore that change queues a property editor refresh for next frame, which if the node contained an EntityId slot it attempts to access
+                // the node address which has been deleted.
+                // Therefore the property editor property modification refresh level is set to none to prevent a refresh before it gets deleted
+                componentEditor->GetPropertyEditor()->CancelQueuedRefresh();
+                componentEditor->setVisible(false);
+                componentEditor.release()->deleteLater();
+            }
+
             m_componentEditors.clear();
+
             ScriptCanvas::EndpointNotificationBus::MultiHandler::BusDisconnect();
         }
 
-        void PropertyGrid::DisplayInstances(const InstancesToAggregate& instancesToDisplay)
+        void PropertyGrid::DisplayInstances(const InstancesToDisplay& instances)
         {
-            for (auto& pair : instancesToDisplay)
+            if (instances.m_gcInstances.empty() &&
+                instances.m_scInstances.empty())
             {
-                AzToolsFramework::ComponentEditor* componentEditor = CreateComponentEditor();
-
-                // Display all instances.
-                // Add instances to componentEditor
-                AZ::Component* firstInstance = !pair.second.empty() ? *pair.second.begin() : nullptr;
-                for (AZ::Component* componentInstance : pair.second)
-                {
-                    // non-first instances are aggregated under the first instance
-                    AZ::Component* aggregateInstance = componentInstance != firstInstance ? firstInstance : nullptr;
-                    componentEditor->AddInstance(componentInstance, aggregateInstance, nullptr);
-                }
-
-                // Refresh editor
-                componentEditor->AddNotifications();
-                componentEditor->SetExpanded(true);
-                componentEditor->InvalidateAll();
-
-                // hiding the icon on the header for Preview
-                componentEditor->GetHeader()->SetIcon(QIcon());
-
-                componentEditor->show();
+                return;
             }
+
+            AzToolsFramework::ComponentEditor* componentEditor = CreateComponentEditor();
+
+            AZ::Component* firstGcInstance = !instances.m_gcInstances.empty() ? instances.m_gcInstances.front() : nullptr;
+            AZ::Component* firstScInstance = !instances.m_scInstances.empty() ? instances.m_scInstances.front() : nullptr;
+
+            AZStd::unordered_map<AZ::TypeId, AZ::Component*> firstOfTypeMap;
+            AZStd::unordered_set<AZ::EntityId> entitySet;
+
+            // This adds all the component instances to the component editor widget and aggregates them based on the component types
+            AddInstancesToComponentEditor(componentEditor, instances.m_gcInstances, firstOfTypeMap, entitySet);
+            AddInstancesToComponentEditor(componentEditor, instances.m_scInstances, firstOfTypeMap, entitySet);
+
+            // Set the title.
+            // This MUST be done AFTER AddInstance() to override the default title.
+            AZStd::string title = GetTitle(instances.m_gcEntityId, firstScInstance ? firstScInstance : firstGcInstance);
+
+            // Use the number of unique entities to determine the number of selected entities for this component editor
+            if (entitySet.size() > 1)
+            {
+                title += AZStd::string::format(" (%zu Selected)", entitySet.size());
+            }
+
+            componentEditor->GetHeader()->SetTitle(title.c_str());
+
+            // Refresh editor
+            componentEditor->AddNotifications();
+            componentEditor->SetExpanded(true);
+            componentEditor->InvalidateAll();
+
+            // hiding the icon on the header for Preview
+            componentEditor->GetHeader()->SetIcon(QIcon());
+
+            componentEditor->show();
         }
 
         AzToolsFramework::ComponentEditor* PropertyGrid::CreateComponentEditor()
@@ -246,18 +409,6 @@ namespace ScriptCanvasEditor
             m_host->layout()->addWidget(componentEditor);
             m_host->layout()->addItem(m_spacer);
             m_host->layout()->update();
-
-            componentEditor->GetPropertyEditor()->SetDynamicEditDataProvider(
-                [](const void* objectPtr, const AZ::SerializeContext::ClassData* classData) -> const AZ::Edit::ElementData*
-            {
-                if (classData->m_typeId == azrtti_typeid<ScriptCanvas::Datum>())
-                {
-                    auto datum = reinterpret_cast<const ScriptCanvas::Datum*>(objectPtr);
-                    return datum->GetEditElementData();
-                }
-                return nullptr;
-
-                });
 
             return componentEditor;
         }
@@ -304,18 +455,23 @@ namespace ScriptCanvasEditor
                 AZ::Component* componentInstance = context->Cast<AZ::Component*>(componentNode->GetInstance(firstInstanceIdx), componentNode->GetClassMetadata()->m_typeId);
                 if (componentInstance && componentInstance->GetEntity())
                 {
-                    AZ::EntityId sceneId;
+                    AZ::EntityId scriptCanvasGraphId;
                     if (AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(componentInstance->GetEntity()))
                     {
                         // ScriptCanvas Node
-                        ScriptCanvas::EditorNodeRequestBus::EventResult(sceneId, componentInstance->GetEntityId(), &ScriptCanvas::EditorNodeRequests::GetGraphEntityId);
+                        ScriptCanvas::EditorNodeRequestBus::EventResult(scriptCanvasGraphId, componentInstance->GetEntityId(), &ScriptCanvas::EditorNodeRequests::GetGraphEntityId);
                     }
                     else
                     {
+                        AZ::EntityId graphCanvasGraphId;
+
                         // GraphCanvas Node
-                        GraphCanvas::SceneMemberRequestBus::EventResult(sceneId, componentInstance->GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
+                        GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, componentInstance->GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
+
+                        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
                     }
-                    GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, sceneId);
+
+                    GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasGraphId);
                 }
             }
         }
@@ -351,6 +507,21 @@ namespace ScriptCanvasEditor
                 }
             }
         }
+        
+        void PropertyGrid::RebuildPropertyGrid()
+        {
+            for (auto& componentEditor : m_componentEditors)
+            {
+                if (componentEditor->isVisible())
+                {
+                    componentEditor->QueuePropertyEditorInvalidation(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
 
         void PropertyGrid::SetVisibility(const AZStd::vector<AZ::EntityId>& selectedEntityIds)
         {
@@ -362,7 +533,9 @@ namespace ScriptCanvasEditor
                 GraphCanvas::NodeRequestBus::EventResult(nodeUserData, gcNodeEntityId, &GraphCanvas::NodeRequests::GetUserData);
                 AZ::EntityId scNodeEntityId = nodeUserData && nodeUserData->is<AZ::EntityId>() ? *AZStd::any_cast<AZ::EntityId>(nodeUserData) : AZ::EntityId();
 
-                ScriptCanvas::Node* node = ScriptCanvas::Node::FindNode(scNodeEntityId);
+                AZ::Entity* nodeEntity{};
+                AZ::ComponentApplicationBus::BroadcastResult(nodeEntity, &AZ::ComponentApplicationRequests::FindEntity, scNodeEntityId);
+                auto node = nodeEntity ? AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(nodeEntity) : nullptr;
                 if (!node)
                 {
                     continue;
@@ -392,9 +565,9 @@ namespace ScriptCanvasEditor
 
                         ScriptCanvas::Datum* datum = nullptr;
                         ScriptCanvas::EditorNodeRequestBus::EventResult(datum, scNodeEntityId, &ScriptCanvas::EditorNodeRequests::ModInput, scSlotId);
-                        if(datum)
+                        if (datum)
                         {
-                            datum->SetVisibility(isConnected ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::Show);
+                            datum->SetVisibility(isConnected ? AZ::Edit::PropertyVisibility::Hide : AZ::Edit::PropertyVisibility::ShowChildrenOnly);
                         }
                     }
 
@@ -409,11 +582,15 @@ namespace ScriptCanvasEditor
             if (!selectedEntityIds.empty())
             {
                 // Build up components to display
-                InstancesToAggregate instancesToDisplay;
-                CollectInstancesToDisplay(instancesToDisplay, selectedEntityIds);
+                StringToInstanceMap instanceMap;
+                GetInstancesToDisplay(selectedEntityIds, instanceMap);
 
                 SetVisibility(selectedEntityIds);
-                DisplayInstances(instancesToDisplay);
+
+                for (auto& pair : instanceMap)
+                {
+                    DisplayInstances(pair.second);
+                }
             }
         }
 
@@ -441,7 +618,7 @@ namespace ScriptCanvasEditor
 
             if (datum)
             {
-                datum->SetVisibility(AZ::Edit::PropertyVisibility::Show);
+                datum->SetVisibility(AZ::Edit::PropertyVisibility::ShowChildrenOnly);
             }
 
             RefreshPropertyGrid();

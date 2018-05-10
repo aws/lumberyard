@@ -468,7 +468,7 @@ void CVehiclePart::AddPart(CVehiclePart* pPart)
 //////////////////////////////////////////////////////////////////////////
 void CVehiclePart::Done()
 {
-    VeedLog("[CVehiclePart:Done] <%s>", GetName());
+    VeedLog("[CVehiclePart:Done] <%s>", GetName().toUtf8().constData());
 
     // remove callbacks
     if (IVariable* pPos = GetChildVar(m_pVar, "position"))
@@ -482,7 +482,7 @@ void CVehiclePart::Done()
     for (int i = nChildCount - 1; i >= 0; --i)
     {
         CBaseObject* pChild = GetChild(i);
-        VeedLog("[CVehiclePart]: deleting %s", pChild->GetName());
+        VeedLog("[CVehiclePart]: deleting %s", pChild->GetName().toUtf8().constData());
         GetIEditor()->DeleteObject(GetChild(i));
     }
 
@@ -505,7 +505,7 @@ void CVehiclePart::OnObjectEvent(CBaseObject* node, int event)
 {
     if (event == CBaseObject::ON_DELETE)
     {
-        VeedLog("[CVehiclePart]: ON_DELETE for %s", node->GetName());
+        VeedLog("[CVehiclePart]: ON_DELETE for %s", node->GetName().toUtf8().constData());
         // delete variable
         if (IVeedObject* pVO = IVeedObject::GetVeedObject(node))
         {
@@ -518,7 +518,7 @@ void CVehiclePart::OnObjectEvent(CBaseObject* node, int event)
                     m_pVehicle->GetVariable()->DeleteVariable(pVO->GetVariable(), true);
                 }
                 pVO->SetVariable(0);
-                VeedLog("[CVehiclePart] deleting var for %s", node->GetName());
+                VeedLog("[CVehiclePart] deleting var for %s", node->GetName().toUtf8().constData());
             }
         }
     }

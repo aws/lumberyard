@@ -485,16 +485,17 @@ void EditorWindow::AddMenu_View()
     {
         QMenu* drawElementBordersMenu = menu->addMenu("Draw &Borders on Unselected Elements");
 
-        auto viewport = canvasLoaded ? GetViewport() : nullptr;
+        auto viewport = GetViewport();
 
         // Add option to draw borders on all unselected elements (subject to "Include" options below)
         {
             QAction* action = new QAction("&Draw Borders", this);
             action->setCheckable(true);
-            action->setChecked(viewport ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Unselected) : false);
-            action->setEnabled(viewport);
+            action->setChecked(canvasLoaded ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Unselected) : false);
+            action->setEnabled(canvasLoaded);
             QObject::connect(action,
                 &QAction::triggered,
+                viewport,
                 [viewport, this](bool checked)
                 {
                     viewport->ToggleDrawElementBorders(ViewportWidget::DrawElementBorders_Unselected);
@@ -508,10 +509,11 @@ void EditorWindow::AddMenu_View()
         {
             QAction* action = new QAction("Include &Visual Elements", this);
             action->setCheckable(true);
-            action->setChecked(viewport ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Visual) : false);
-            action->setEnabled(viewport ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Unselected) : false);
+            action->setChecked(canvasLoaded ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Visual) : false);
+            action->setEnabled(canvasLoaded ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Unselected) : false);
             QObject::connect(action,
                 &QAction::triggered,
+                viewport,
                 [viewport](bool checked)
                 {
                     viewport->ToggleDrawElementBorders(ViewportWidget::DrawElementBorders_Visual);
@@ -524,10 +526,11 @@ void EditorWindow::AddMenu_View()
         {
             QAction* action = new QAction("Include &Parent Elements", this);
             action->setCheckable(true);
-            action->setChecked(viewport? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Parent) : false);
-            action->setEnabled(viewport ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Unselected) : false);
+            action->setChecked(canvasLoaded ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Parent) : false);
+            action->setEnabled(canvasLoaded ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Unselected) : false);
             QObject::connect(action,
                 &QAction::triggered,
+                viewport,
                 [viewport](bool checked)
                 {
                     viewport->ToggleDrawElementBorders(ViewportWidget::DrawElementBorders_Parent);
@@ -544,6 +547,7 @@ void EditorWindow::AddMenu_View()
             action->setEnabled(viewport ? viewport->IsDrawingElementBorders(ViewportWidget::DrawElementBorders_Unselected) : false);
             QObject::connect(action,
                 &QAction::triggered,
+                viewport,
                 [viewport](bool checked)
                 {
                     viewport->ToggleDrawElementBorders(ViewportWidget::DrawElementBorders_Hidden);

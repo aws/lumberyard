@@ -66,8 +66,8 @@ namespace EMStudio
         // copy & paste conditions
         struct CopyPasteConditionObject
         {
-            MCore::String   mAttributes;
-            MCore::String   mSummary;
+            AZStd::string   mAttributes;
+            AZStd::string   mSummary;
             uint32          mConditionType;
         };
 

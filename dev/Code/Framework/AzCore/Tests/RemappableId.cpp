@@ -266,4 +266,120 @@ namespace UnitTest
 
         delete cloneData;
     }
+
+    //! Test that the IdUtils::RemapIds function does not crash when invoking the IEventHandler function
+    //! on a pointer to a class element(i.e ClassType**)
+    class ParentElementPointerNotificationIdRemapTest
+        : public AllocatorsFixture
+    {
+    public:
+        ParentElementPointerNotificationIdRemapTest()
+            : AllocatorsFixture(15, false)
+        {
+            AllocatorsFixture::SetUp();
+            m_serializeContext.reset(aznew AZ::SerializeContext());
+            AllocatorInstance<PoolAllocator>::Create();
+            AllocatorInstance<ThreadPoolAllocator>::Create();
+
+            Entity::Reflect(m_serializeContext.get());
+            ParentEntityContainer::Reflect(*m_serializeContext);
+            RootParentElementWrapper::Reflect(*m_serializeContext);
+        }
+
+        ~ParentElementPointerNotificationIdRemapTest()
+        {
+            m_serializeContext.reset();
+
+            AllocatorInstance<PoolAllocator>::Destroy();
+            AllocatorInstance<ThreadPoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
+        }
+
+        void SetUp() override
+        {
+            ComponentApplication::Descriptor desc;
+            desc.m_useExistingAllocator = true;
+            m_app.Create(desc);
+        }
+
+        void TearDown() override
+        {
+            m_app.Destroy();
+        }
+
+        ComponentApplication m_app;
+        AZStd::unique_ptr<SerializeContext> m_serializeContext;
+
+        struct ParentEntityContainer
+        {
+            AZ_TYPE_INFO(ParentEntityContainer, "{60EFD610-4B9A-444C-9004-A651B772927F}");
+            AZ_CLASS_ALLOCATOR(ParentEntityContainer, AZ::SystemAllocator, 0);
+            friend class ParentEntityContainerEventHandler;
+
+            static void Reflect(AZ::SerializeContext& serializeContext);
+
+            AZ::EntityId m_remappableEntityId;
+        private:
+            void* alwaysNullptr = nullptr;
+        };
+
+        struct RootParentElementWrapper
+        {
+            AZ_TYPE_INFO(RootParentElementWrapper, "{BFC46F3C-D696-4A34-B824-F18428CAA910}");
+            AZ_CLASS_ALLOCATOR(RootParentElementWrapper, AZ::SystemAllocator, 0);
+
+            static void Reflect(AZ::SerializeContext& serializeContext)
+            {
+                serializeContext.Class<RootParentElementWrapper>()
+                    ->Field("m_parentEntityContainer", &RootParentElementWrapper::m_parentEntityContainer)
+                    ;
+            }
+
+            ParentEntityContainer* m_parentEntityContainer;
+        };
+
+    };
+
+    class ParentEntityContainerEventHandler
+        : public AZ::SerializeContext::IEventHandler
+    {
+    protected:
+        void OnWriteBegin(void* classPtr) override
+        {
+            auto parentEntityContainer = reinterpret_cast<ParentElementPointerNotificationIdRemapTest::ParentEntityContainer*>(classPtr);
+            EXPECT_EQ(nullptr, parentEntityContainer->alwaysNullptr);
+        }
+
+        void OnWriteEnd(void* classPtr) override
+        {
+            auto parentEntityContainer = reinterpret_cast<ParentElementPointerNotificationIdRemapTest::ParentEntityContainer*>(classPtr);
+            EXPECT_EQ(nullptr, parentEntityContainer->alwaysNullptr);
+        }
+    };
+    
+    
+    void ParentElementPointerNotificationIdRemapTest::ParentEntityContainer::Reflect(AZ::SerializeContext& serializeContext)
+    {
+        serializeContext.Class<ParentEntityContainer>()
+            ->EventHandler<ParentEntityContainerEventHandler>()
+            ->Field("m_remappableEntityId", &ParentEntityContainer::m_remappableEntityId)
+            ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Entity::MakeId)
+            ;
+    }
+
+    TEST_F(ParentElementPointerNotificationIdRemapTest, RemapEntityId)
+    {
+        RootParentElementWrapper rootWrapper;
+        rootWrapper.m_parentEntityContainer = aznew ParentEntityContainer;
+
+        auto entityIdMapper = [](const AZ::EntityId&, bool, const AZ::IdUtils::Remapper<AZ::EntityId>::IdGenerator& idGenerator)
+        {
+            return idGenerator();
+        };
+
+        AZ::u32 remapIdTotal = AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&rootWrapper, entityIdMapper, m_serializeContext.get(), true);
+        EXPECT_EQ(1, remapIdTotal);
+        delete rootWrapper.m_parentEntityContainer;
+    }
 }

@@ -17,8 +17,8 @@
 
 #include <QGraphicsWidget>
 
-#include <Styling/StyleHelper.h>
-#include <Types/TranslationTypes.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
+#include <GraphCanvas/Types/TranslationTypes.h>
 
 namespace GraphCanvas
 {

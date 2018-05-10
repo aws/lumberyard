@@ -15,7 +15,6 @@
 // include Core headers
 #include "StandardHeaders.h"
 #include "DiskTextFile.h"
-#include "UnicodeString.h"
 #include "LogManager.h"
 
 

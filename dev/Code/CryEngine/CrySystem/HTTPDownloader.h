@@ -22,10 +22,6 @@
 
 #include <wininet.h>
 #include <IScriptSystem.h>
-#pragma warning(push)
-#pragma warning(disable : 4091) // Needed to bypass the "'typedef ': ignored on left of '' when no variable is declared" brought in by DbgHelp.h
-#include <DbgHelp.h>
-#pragma warning(pop)
 
 
 #define HTTP_BUFFER_SIZE        (16384)

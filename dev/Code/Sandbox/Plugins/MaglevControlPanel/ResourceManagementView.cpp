@@ -109,14 +109,14 @@ void ResourceManagementView::LoadResourceValidationData()
     const char* filename = "@engroot@/Gems/CloudGemFramework/v1/ResourceManager/resource_manager/config/aws_name_validation_rules.json";
     if (!dataFile.Open(filename, "r"))
     {
-        AZ_Error("ResourceManager", "Unable to open Cloud Canvas resource validation data file: %s", filename);
+        AZ_Error("ResourceManager", false, "Unable to open Cloud Canvas resource validation data file: %s", filename);
         return;
     }
 
     size_t fileLen = dataFile.GetLength();
     if (fileLen <= 0)
     {
-        AZ_Error("ResourceManager", "Cloud Canvas resource validation data file is empty %s", filename);
+        AZ_Error("ResourceManager", false, "Cloud Canvas resource validation data file is empty %s", filename);
         return;
     }
     
@@ -125,7 +125,7 @@ void ResourceManagementView::LoadResourceValidationData()
     
     if (dataFile.ReadRaw(fileContents.get(), fileLen) != fileLen)
     {
-        AZ_Error("ResourceManager", "Unable to read Cloud Canvas validation data file %s", filename);
+        AZ_Error("ResourceManager", false, "Unable to read Cloud Canvas validation data file %s", filename);
         return;
     }
 
@@ -134,7 +134,7 @@ void ResourceManagementView::LoadResourceValidationData()
 
     if (error.error != QJsonParseError::NoError)
     {
-        AZ_Error("ResourceManager", "Error parsing Cloud Canvas validation file %s: %s", filename, error.errorString().toUtf8().constData());
+        AZ_Error("ResourceManager", false, "Error parsing Cloud Canvas validation file %s: %s", filename, error.errorString().toUtf8().constData());
         return;
     }
 
@@ -153,7 +153,7 @@ bool ResourceManagementView::GetResourceValidationData(const QString& resourceTy
     // if can't find type or field, return false
     if (!m_resourceValidation.contains(resourceType))
     {
-        AZ_Error("ResourceManager", "Cloud Canvas validation data doesn't contain information for resource type %s", resourceType.toUtf8().constData());
+        AZ_Error("ResourceManager", false, "Cloud Canvas validation data doesn't contain information for resource type %s", resourceType.toUtf8().constData());
         return false;
     }
 
@@ -161,7 +161,7 @@ bool ResourceManagementView::GetResourceValidationData(const QString& resourceTy
 
     if (!typeInfo.contains(resourceField))
     {
-        AZ_Error("ResourceManager", "Cloud Canvas validation data doesn't contain inform for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
+        AZ_Error("ResourceManager", false, "Cloud Canvas validation data doesn't contain inform for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
         return false;
     }
 
@@ -174,7 +174,7 @@ bool ResourceManagementView::GetResourceValidationData(const QString& resourceTy
     QJsonValue regEx = fieldInfo[REGEX_FIELD];
     if (regEx.isUndefined() || !regEx.isString())
     {
-        AZ_Warning("ResourceManager", "regex string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
+        AZ_Warning("ResourceManager", false, "regex string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
     }
     else
     {
@@ -184,7 +184,7 @@ bool ResourceManagementView::GetResourceValidationData(const QString& resourceTy
     QJsonValue help = fieldInfo[HELP_FIELD];
     if (help.isUndefined() || !help.isString())
     {
-        AZ_Warning("ResourceManager", "help string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
+        AZ_Warning("ResourceManager", false, "help string not found in Cloud canvas validation info for resource field %s in resource type %s", resourceField.toUtf8().constData(), resourceType.toUtf8().constData());
     }
     else
     {
@@ -1323,7 +1323,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
 
     QFrame tableFrame{};
     QVBoxLayout tableLayout{};
-    MaximumSizedTableView resourcesTable{};
+    MaximumSizedTableView resourcesTable{&tableFrame};
     QLabel statusLabel{};
 
     resourcesTable.setObjectName("ResourcesTable");
@@ -1391,7 +1391,8 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
     connect(
         pendingChangesModel.data(),
         &QAbstractItemModel::modelReset,
-        [&resourcesTable, &dialog, &confirmDeletionCheckBox, &confirmSecurityCheckBox, &stackResourcesModel, &statusLabel]()
+        &dialog,
+        [&resourcesTable, &dialog, &confirmDeletionCheckBox, &confirmSecurityCheckBox, &stackResourcesModel, &statusLabel]
         {
 
             resourcesTable.Resize();
@@ -1424,7 +1425,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
         }
     );
 
-    connect(&confirmDeletionCheckBox, &QCheckBox::stateChanged,
+    connect(&confirmDeletionCheckBox, &QCheckBox::stateChanged, &dialog,
         [&confirmSecurityCheckBox, &dialog](int state)
         {
             auto button = dialog.GetPrimaryButton();
@@ -1437,7 +1438,7 @@ bool ResourceManagementView::UpdateStack(const QSharedPointer<IStackStatusModel>
         }
     );
 
-    connect(&confirmSecurityCheckBox, &QCheckBox::stateChanged, 
+    connect(&confirmSecurityCheckBox, &QCheckBox::stateChanged, &dialog,
         [&confirmDeletionCheckBox, &dialog](int state)
         {
             auto button = dialog.GetPrimaryButton();
@@ -1612,7 +1613,7 @@ void ResourceManagementView::DetailWidgetFinder::VisitProjectDetail(QSharedPoint
 {
     if (!m_view->m_resourceGroupDetailWidgets.contains(resourceGroupStatusModel))
     {
-        m_view->m_resourceGroupDetailWidgets.insert(resourceGroupStatusModel, new ResourceGroupDetailWidget(m_view, resourceGroupStatusModel));
+        m_view->m_resourceGroupDetailWidgets.insert(resourceGroupStatusModel, new ResourceGroupDetailWidget(m_view, resourceGroupStatusModel, m_view));
     }
     m_detailWidget = m_view->m_resourceGroupDetailWidgets[resourceGroupStatusModel];
 }
@@ -1630,7 +1631,7 @@ void ResourceManagementView::DetailWidgetFinder::VisitProjectDetail(QSharedPoint
 {
     if (!m_view->m_resourceGroupListDetailWidget)
     {
-        m_view->m_resourceGroupListDetailWidget = new ResourceGroupListDetailWidget(m_view, resourceGroupListStatusModel);
+        m_view->m_resourceGroupListDetailWidget = new ResourceGroupListDetailWidget(m_view, resourceGroupListStatusModel, m_view);
     }
     m_detailWidget = m_view->m_resourceGroupListDetailWidget;
 }

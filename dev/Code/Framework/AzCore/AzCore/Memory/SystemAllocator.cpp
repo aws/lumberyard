@@ -112,11 +112,8 @@ SystemAllocator::Create(const Descriptor& desc)
         if (&AllocatorInstance<SystemAllocator>::Get() == (void*)this) // if we are the system allocator
         {
             AZ_Assert(!g_isSystemSchemaUsed, "AZ::SystemAllocator MUST be created first! It's the source of all allocations!");
-#ifdef AZCORE_SYS_ALLOCATOR_HPPA
             m_allocator = new(&g_systemSchema)HphaSchema(heapDesc);
-#else
-            m_allocator = new(&g_systemSchema)HeapSchema(heapDesc);
-#endif
+
             g_isSystemSchemaUsed = true;
             isReady = true;
         }

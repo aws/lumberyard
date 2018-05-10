@@ -17,6 +17,8 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+#include <AzToolsFramework/Thumbnails/SourceControlThumbnail.h>
+#include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
 
 #include <QMenu>
 #include <QHeaderView>
@@ -24,6 +26,7 @@
 #include <QCoreApplication>
 #include <QPen>
 #include <QPainter>
+#include <QTimer>
 
 namespace AzToolsFramework
 {
@@ -31,12 +34,11 @@ namespace AzToolsFramework
     {
         AssetBrowserTreeView::AssetBrowserTreeView(QWidget* parent)
             : QTreeViewWithStateSaving(parent)
-            , m_assetBrowserModel(nullptr)
-            , m_assetBrowserSortFilterProxyModel(nullptr)
             , m_delegate(new EntryDelegate(this))
+            , m_scTimer(new QTimer(this))
         {
             setSortingEnabled(true);
-            setItemDelegate(m_delegate.data());
+            setItemDelegate(m_delegate);
             header()->hide();
             setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -79,6 +81,7 @@ namespace AzToolsFramework
                         }
                     }
                 });
+            connect(m_scTimer, &QTimer::timeout, this, &AssetBrowserTreeView::OnUpdateSCThumbnailsList);
         }
 
         AssetBrowserTreeView::~AssetBrowserTreeView() = default;
@@ -234,9 +237,17 @@ namespace AzToolsFramework
             m_delegate->SetThumbnailContext(thumbnailContext);
         }
 
-        void AssetBrowserTreeView::SetShowSourceControlIcons(bool showSourceControlsIcons) const
+        void AssetBrowserTreeView::SetShowSourceControlIcons(bool showSourceControlsIcons)
         {
             m_delegate->SetShowSourceControlIcons(showSourceControlsIcons);
+            if (showSourceControlsIcons)
+            {
+                m_scTimer->start(m_scUpdateInterval);
+            }
+            else
+            {
+                m_scTimer->stop();
+            }
         }
 
         bool AssetBrowserTreeView::SelectProduct(const QModelIndex& idxParent, AZ::Data::AssetId assetID)
@@ -272,11 +283,11 @@ namespace AzToolsFramework
 
         void AssetBrowserTreeView::setModel(QAbstractItemModel* model)
         {
-            m_assetBrowserSortFilterProxyModel = static_cast<AssetBrowserFilterModel*>(model);
-            m_assetBrowserModel = static_cast<AssetBrowserModel*>(m_assetBrowserSortFilterProxyModel->sourceModel());
+            m_assetBrowserSortFilterProxyModel = qobject_cast<AssetBrowserFilterModel*>(model);
+            AZ_Assert(m_assetBrowserSortFilterProxyModel, "Expecting AssetBrowserFilterModel");
+            m_assetBrowserModel = qobject_cast<AssetBrowserModel*>(m_assetBrowserSortFilterProxyModel->sourceModel());
             QTreeViewWithStateSaving::setModel(model);
         }
-
         void AssetBrowserTreeView::OnContextMenu(const QPoint&)
         {
             auto selectedAssets = GetSelectedAssets();
@@ -291,6 +302,36 @@ namespace AzToolsFramework
             if (!menu.isEmpty())
             {
                 menu.exec(QCursor::pos());
+            }
+        }
+
+        void AssetBrowserTreeView::OnUpdateSCThumbnailsList()
+        {
+            using namespace Thumbnailer;
+
+            // get top and bottom indexes and find all entries in-between
+            QModelIndex topIndex = indexAt(rect().topLeft());
+            QModelIndex bottomIndex = indexAt(rect().bottomLeft());
+
+            while (topIndex.isValid())
+            {
+                auto sourceIndex = m_assetBrowserSortFilterProxyModel->mapToSource(topIndex);
+                const auto assetEntry = static_cast<AssetBrowserEntry*>(sourceIndex.internalPointer());
+                if (const auto sourceEntry = azrtti_cast<SourceAssetBrowserEntry*>(assetEntry))
+                {
+                    const SharedThumbnailKey key = sourceEntry->GetSourceControlThumbnailKey();
+                    if (key->UpdateThumbnail())
+                    {
+                        // UpdateThumbnail returns true if it started an actual Source Control operation.
+                        // To avoid flooding source control, we'll only allow one of these per check.
+                        return;
+                    }
+                }
+                topIndex = indexBelow(topIndex);
+                if (topIndex == bottomIndex)
+                {
+                    break;
+                }
             }
         }
     } // namespace AssetBrowser

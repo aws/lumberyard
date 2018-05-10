@@ -65,6 +65,7 @@ namespace NCryOpenGL
         GLint m_iMaxVertexAttribs;
         GLint m_maxRenderTargets;
         GLint m_plsSizeInBytes; // 0 when PLS is not supported
+        RenderCapabilities::FrameBufferFetchMask m_frameBufferFetchSupport;
 
         SResourceUnitCapabilities m_akResourceUnits[eRUT_NUM];
 
@@ -85,7 +86,7 @@ namespace NCryOpenGL
 #if DXGL_SUPPORT_COPY_IMAGE
         // Some drivers implementation of glCopyImageSubData does not work on cube map faces as specified by the standard
         bool m_bCopyImageWorksOnCubeMapFaces;
-#endif
+#endif        
     };
 
     struct SVersion

@@ -25,6 +25,11 @@ namespace AzFramework
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // Constants
+        static const int NAME_BUFFER_SIZE = 64;
+        static const int MAX_NAME_LENGTH = NAME_BUFFER_SIZE - 1;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
         AZ_CLASS_ALLOCATOR(InputDeviceId, AZ::SystemAllocator, 0);
 
@@ -38,13 +43,19 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
-        //! \param[in] name Name of the input device
+        //! \param[in] name Name of the input device (will be truncated if exceeds MAX_NAME_LENGTH)
         //! \param[in] index Index of the input device (optional)
-        explicit InputDeviceId(const char* name = "", AZ::u32 index = 0);
+        explicit InputDeviceId(const char* name, AZ::u32 index = 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        // Default copying
-        AZ_DEFAULT_COPY(InputDeviceId);
+        //! Copy constructor
+        //! \param[in] other Another instance of the class to copy from
+        InputDeviceId(const InputDeviceId& other);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Copy assignment operator
+        //! \param[in] other Another instance of the class to copy from
+        InputDeviceId& operator=(const InputDeviceId& other);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor
@@ -86,9 +97,9 @@ namespace AzFramework
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        const char* m_name;  //!< Name of the input device
-        AZ::Crc32   m_crc32; //!< Crc32 of the input device
-        AZ::u32     m_index; //!< Index of the input device
+        char      m_name[NAME_BUFFER_SIZE]; //!< Name of the input device
+        AZ::Crc32 m_crc32;                  //!< Crc32 of the input device
+        AZ::u32   m_index;                  //!< Index of the input device
     };
 } // namespace AzFramework
 

@@ -40,9 +40,9 @@ namespace CommandSystem
 
 
     // add an attachment
-    bool CommandAddAttachment::AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, MCore::String& outResult, bool remove)
+    bool CommandAddAttachment::AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, AZStd::string& outResult, bool remove)
     {
-        MCore::String attachToNode;
+        AZStd::string attachToNode;
         parameters.GetValue("attachToNode", command, &attachToNode);
 
         uint32 attachToActorID      = parameters.GetValueAsInt("attachToID", command);
@@ -99,14 +99,14 @@ namespace CommandSystem
         EMotionFX::ActorInstance* attachment = EMotionFX::GetActorManager().FindActorInstanceByID(attachmentID);
         if (attachment == nullptr)
         {
-            outResult.Format("Cannot add/remove attachment with ID %i. Attachment actor instance ID not valid.", attachmentID);
+            outResult = AZStd::string::format("Cannot add/remove attachment with ID %i. Attachment actor instance ID not valid.", attachmentID);
             return false;
         }
 
         EMotionFX::ActorInstance* attachToActorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(attachToActorID);
         if (attachToActorInstance == nullptr)
         {
-            outResult.Format("Cannot add/remove attachment to the given actor instance with ID %i. Actor instance ID not valid.", attachToActorID);
+            outResult = AZStd::string::format("Cannot add/remove attachment to the given actor instance with ID %i. Actor instance ID not valid.", attachToActorID);
             return false;
         }
 
@@ -130,10 +130,10 @@ namespace CommandSystem
         if (remove == false)
         {
             EMotionFX::Actor* attachToActor = attachToActorInstance->GetActor();
-            node = attachToActor->GetSkeleton()->FindNodeByName(attachToNode.AsChar());
+            node = attachToActor->GetSkeleton()->FindNodeByName(attachToNode.c_str());
             if (node == nullptr)
             {
-                outResult.Format("Cannot add attachment to node '%s'. The given node cannot be found.", attachToNode.AsChar());
+                outResult = AZStd::string::format("Cannot add attachment to node '%s'. The given node cannot be found.", attachToNode.c_str());
                 return false;
             }
         }
@@ -156,14 +156,14 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAddAttachment::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAddAttachment::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         return AddAttachment(this, parameters, outResult, false);
     }
 
 
     // undo the command
-    bool CommandAddAttachment::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAddAttachment::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         return AddAttachment(this, parameters, outResult, true);
     }
@@ -206,14 +206,14 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandRemoveAttachment::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveAttachment::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         return CommandAddAttachment::AddAttachment(this, parameters, outResult, true);
     }
 
 
     // undo the command
-    bool CommandRemoveAttachment::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveAttachment::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         return CommandAddAttachment::AddAttachment(this, parameters, outResult, false);
     }
@@ -241,7 +241,7 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
 
     // execute
-    bool CommandClearAttachments::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandClearAttachments::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         uint32 actorInstanceID = parameters.GetValueAsInt("actorInstanceID", MCORE_INVALIDINDEX32);
         MCORE_ASSERT(actorInstanceID != MCORE_INVALIDINDEX32);
@@ -250,7 +250,7 @@ namespace CommandSystem
         EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(actorInstanceID);
         if (actorInstance == nullptr)
         {
-            outResult.Format("Cannot remove attachments from actor instance with ID %i. Actor instance ID not valid.", actorInstanceID);
+            outResult = AZStd::string::format("Cannot remove attachments from actor instance with ID %i. Actor instance ID not valid.", actorInstanceID);
             return false;
         }
 
@@ -261,7 +261,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandClearAttachments::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandClearAttachments::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -301,7 +301,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAddDeformableAttachment::AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, MCore::String& outResult, bool remove)
+    bool CommandAddDeformableAttachment::AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, AZStd::string& outResult, bool remove)
     {
         uint32 attachToActorID      = parameters.GetValueAsInt("attachToID", command);
         uint32 attachToActorIndex   = parameters.GetValueAsInt("attachToIndex", command);
@@ -357,14 +357,14 @@ namespace CommandSystem
         EMotionFX::ActorInstance* attachment = EMotionFX::GetActorManager().FindActorInstanceByID(attachmentID);
         if (attachment == nullptr)
         {
-            outResult.Format("Cannot add skin attachment with ID %i. Attachment actor instance ID not valid.", attachmentID);
+            outResult = AZStd::string::format("Cannot add skin attachment with ID %i. Attachment actor instance ID not valid.", attachmentID);
             return false;
         }
 
         EMotionFX::ActorInstance* attachToActorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(attachToActorID);
         if (attachToActorInstance == nullptr)
         {
-            outResult.Format("Cannot add skin attachment to the given actor instance with ID %i. Actor instance ID not valid.", attachToActorID);
+            outResult = AZStd::string::format("Cannot add skin attachment to the given actor instance with ID %i. Actor instance ID not valid.", attachToActorID);
             return false;
         }
 
@@ -385,14 +385,14 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAddDeformableAttachment::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAddDeformableAttachment::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         return AddAttachment(this, parameters, outResult, false);
     }
 
 
     // undo the command
-    bool CommandAddDeformableAttachment::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAddDeformableAttachment::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         return AddAttachment(this, parameters, outResult, true);
     }

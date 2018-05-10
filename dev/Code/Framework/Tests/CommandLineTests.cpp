@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 #include <AzFramework/CommandLine/CommandLine.h>
 
 using namespace AzFramework;

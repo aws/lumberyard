@@ -100,27 +100,51 @@ namespace MCore
 
         normal  = this->mPlanes[FRUSTUMPLANE_LEFT].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_LEFT].GetDist();
-        LogDetailedInfo("Left Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
+        LogDetailedInfo("Left Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", 
+            static_cast<float>(normal.GetX()), 
+            static_cast<float>(normal.GetY()), 
+            static_cast<float>(normal.GetZ()), 
+            distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_RIGHT].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_RIGHT].GetDist();
-        LogDetailedInfo("Right Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
+        LogDetailedInfo("Right Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", 
+            static_cast<float>(normal.GetX()), 
+            static_cast<float>(normal.GetY()), 
+            static_cast<float>(normal.GetZ()), 
+            distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_TOP].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_TOP].GetDist();
-        LogDetailedInfo("Top Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
+        LogDetailedInfo("Top Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", 
+            static_cast<float>(normal.GetX()), 
+            static_cast<float>(normal.GetY()), 
+            static_cast<float>(normal.GetZ()), 
+            distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_BOTTOM].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_BOTTOM].GetDist();
-        LogDetailedInfo("Bottom Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
+        LogDetailedInfo("Bottom Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", 
+            static_cast<float>(normal.GetX()), 
+            static_cast<float>(normal.GetY()), 
+            static_cast<float>(normal.GetZ()), 
+            distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_NEAR].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_NEAR].GetDist();
-        LogDetailedInfo("Near Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
+        LogDetailedInfo("Near Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", 
+            static_cast<float>(normal.GetX()), 
+            static_cast<float>(normal.GetY()), 
+            static_cast<float>(normal.GetZ()), 
+            distance);
 
         normal  = this->mPlanes[FRUSTUMPLANE_FAR].GetNormal();
         distance = this->mPlanes[FRUSTUMPLANE_FAR].GetDist();
-        LogDetailedInfo("Far Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", normal.GetX(), normal.GetY(), normal.GetZ(), distance);
+        LogDetailedInfo("Far Plane: Normal=(%.6f, %.6f, %.6f) Distance=%.6f", 
+            static_cast<float>(normal.GetX()), 
+            static_cast<float>(normal.GetY()), 
+            static_cast<float>(normal.GetZ()), 
+            distance);
     }
 
 

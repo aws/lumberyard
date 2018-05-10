@@ -14,30 +14,47 @@
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <ScriptCanvas/Core/GraphData.h>
+#include <ScriptCanvas/Variable/VariableData.h>
 
 namespace ScriptCanvas
 {
-    class GraphAsset : public AZ::Data::AssetData
+    struct RuntimeData
     {
-    public:
-        AZ_RTTI(GraphAsset, "{3E2AC8CD-713F-453E-967F-29517F331784}", AZ::Data::AssetData);
-        AZ_CLASS_ALLOCATOR(GraphAsset, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(RuntimeData, "{A935EBBC-D167-4C59-927C-5D98C6337B9C}");
+        AZ_CLASS_ALLOCATOR(RuntimeData, AZ::SystemAllocator, 0);
+        RuntimeData() = default;
+        ~RuntimeData() = default;
+        RuntimeData(const RuntimeData&) = default;
+        RuntimeData& operator=(const RuntimeData&) = default;
+        RuntimeData(RuntimeData&&);
+        RuntimeData& operator=(RuntimeData&&);
 
-        GraphAsset(const AZ::Data::AssetId& assetId = AZ::Data::AssetId(), AZ::Data::AssetData::AssetStatus status = AZ::Data::AssetData::AssetStatus::NotLoaded);
-        ~GraphAsset() override;
-
-        static const char* GetFileExtension() { return "scriptcanvascompiled"; }
-        static const char* GetFileFilter() { return "*.scriptcanvascompiled"; }
-
-        const GraphData& GetGraphData() const { return m_graphData; }
-        GraphData& GetGraphData() { return m_graphData; }
-
-        void SetGraphData(const GraphData& graphData); //< NOTE: This does not delete the entities stored on the old graph data
-
-    protected:
-        friend class GraphAssetHandler;
-        GraphAsset(const GraphAsset&) = delete;
+        static void Reflect(AZ::ReflectContext* reflectContext);
 
         GraphData m_graphData;
+        VariableData m_variableData;
+    };
+    class RuntimeAsset
+        : public AZ::Data::AssetData
+    {
+    public:
+        AZ_RTTI(RuntimeAsset, "{3E2AC8CD-713F-453E-967F-29517F331784}", AZ::Data::AssetData);
+        AZ_CLASS_ALLOCATOR(RuntimeAsset, AZ::SystemAllocator, 0);
+
+        RuntimeAsset(const AZ::Data::AssetId& assetId = AZ::Data::AssetId(), AZ::Data::AssetData::AssetStatus status = AZ::Data::AssetData::AssetStatus::NotLoaded);
+        ~RuntimeAsset() override;
+
+        static const char* GetFileExtension() { return "scriptcanvas_compiled"; }
+        static const char* GetFileFilter() { return "*.scriptcanvas_compiled"; }
+
+        const RuntimeData& GetData() const { return m_runtimeData; }
+        RuntimeData& GetData() { return m_runtimeData; }
+        void SetData(const RuntimeData& runtimeData);
+
+    protected:
+        friend class RuntimeAssetHandler;
+        RuntimeAsset(const RuntimeAsset&) = delete;
+
+        RuntimeData m_runtimeData;
     };
 }

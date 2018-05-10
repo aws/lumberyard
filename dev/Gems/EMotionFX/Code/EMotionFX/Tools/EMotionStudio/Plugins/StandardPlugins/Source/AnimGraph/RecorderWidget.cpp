@@ -15,12 +15,14 @@
 #include <QWidget>
 #include <QPushButton>
 #include <QHBoxLayout>
+#include <QMessageBox>
 #include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
 #include "../TimeView/TimeViewPlugin.h"
 #include "../TimeView/TimeInfoWidget.h"
+#include "../TimeView/TrackDataHeaderWidget.h"
 #include "../TimeView/TrackDataWidget.h"
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 
@@ -31,6 +33,7 @@ namespace EMStudio
     RecorderWidget::RecorderWidget(AnimGraphPlugin* plugin, QWidget* parent)
         : QWidget(parent)
     {
+        EMotionFX::RecorderNotificationBus::Handler::BusConnect();
         mPlugin = plugin;
 
         // add the buttons to add, remove and clear the motions
@@ -162,6 +165,12 @@ namespace EMStudio
     }
 
 
+    void RecorderWidget::OnRecordingFailed(const AZStd::string& why)
+    {
+        QMessageBox::critical(this, "EMotionFX recording failed", why.c_str());
+    }
+
+
     // pressing the record button
     void RecorderWidget::OnRecordButton()
     {
@@ -217,6 +226,7 @@ namespace EMStudio
                 timeViewPlugin->OnZoomAll();
                 timeViewPlugin->SetCurrentTime(0.0f);
                 timeViewPlugin->GetTrackDataWidget()->setFocus();
+                timeViewPlugin->GetTrackDataHeaderWidget()->setFocus();
             }
 
             //mFilterButtonGroup->setEnabled(true);

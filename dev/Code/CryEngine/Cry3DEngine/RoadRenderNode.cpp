@@ -351,13 +351,16 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
 
                 // calculate alpha value
                 float fAlpha = 1.f;
-                if (fabs(arrTexCoors[0] - m_arrTexCoorsGlobal[0]) < 0.01f)
+                if (m_bAlphaBlendRoadEnds)
                 {
-                    fAlpha = CLAMP(t, 0, 1.f);
-                }
-                else if (fabs(arrTexCoors[1] - m_arrTexCoorsGlobal[1]) < 0.01f)
-                {
-                    fAlpha = CLAMP(1.f - t, 0, 1.f);
+                    if (fabs(arrTexCoors[0] - m_arrTexCoorsGlobal[0]) < 0.01f)
+                    {
+                        fAlpha = CLAMP(t, 0, 1.f);
+                    }
+                    else if (fabs(arrTexCoors[1] - m_arrTexCoorsGlobal[1]) < 0.01f)
+                    {
+                        fAlpha = CLAMP(1.f - t, 0, 1.f);
+                    }
                 }
 
                 tmp.color.bcolor[0] = 255;

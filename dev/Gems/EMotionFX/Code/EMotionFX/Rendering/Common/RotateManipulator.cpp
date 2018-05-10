@@ -357,8 +357,8 @@ namespace MCommon
         if (mMode != ROTATE_NONE)
         {
             const AZ::Vector3& currRot = mCallback->GetCurrValueQuat().ToEuler();
-            mTempString.Format("Abs. Rotation X: %.3f, Y: %.3f, Z: %.3f", MCore::Math::RadiansToDegrees(currRot.GetX() + MCore::Math::epsilon), MCore::Math::RadiansToDegrees(currRot.GetY() + MCore::Math::epsilon), MCore::Math::RadiansToDegrees(currRot.GetZ() + MCore::Math::epsilon));
-            renderUtil->RenderText(10, 10, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f);
+            mTempString = AZStd::string::format("Abs. Rotation X: %.3f, Y: %.3f, Z: %.3f", MCore::Math::RadiansToDegrees(currRot.GetX() + MCore::Math::epsilon), MCore::Math::RadiansToDegrees(currRot.GetY() + MCore::Math::epsilon), MCore::Math::RadiansToDegrees(currRot.GetZ() + MCore::Math::epsilon));
+            renderUtil->RenderText(10, 10, mTempString.c_str(), ManipulatorColors::mSelectionColor, 9.0f);
         }
 
         // if the rotation has been changed draw the current direction of the rotation
@@ -366,10 +366,10 @@ namespace MCommon
         {
             // render text with the rotation values of the axes
             float radius = (mMode == ROTATE_CAMROLL) ? mOuterRadius : mInnerRadius;
-            mTempString.Format("[%.2f, %.2f, %.2f]", MCore::Math::RadiansToDegrees(mRotation.GetX()), MCore::Math::RadiansToDegrees(mRotation.GetY()), MCore::Math::RadiansToDegrees(mRotation.GetZ()));
-            //String rotationValues = String().Format("[%.2f, %.2f, %.2f]", camera->GetPosition().x, camera->GetPosition().y, camera->GetPosition().z);
+            mTempString = AZStd::string::format("[%.2f, %.2f, %.2f]", MCore::Math::RadiansToDegrees(mRotation.GetX()), MCore::Math::RadiansToDegrees(mRotation.GetY()), MCore::Math::RadiansToDegrees(mRotation.GetZ()));
+            //String rotationValues = String() = AZStd::string::format("[%.2f, %.2f, %.2f]", camera->GetPosition().x, camera->GetPosition().y, camera->GetPosition().z);
             AZ::Vector3 textPosition = MCore::Project(mPosition + (upVector * (mOuterRadius + mTextDistance)), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-            renderUtil->RenderText(textPosition.GetX() - 2.9f * mTempString.GetLength(), textPosition.GetY(), mTempString.AsChar(), ManipulatorColors::mSelectionColor);
+            renderUtil->RenderText(textPosition.GetX() - 2.9f * mTempString.size(), textPosition.GetY(), mTempString.c_str(), ManipulatorColors::mSelectionColor);
 
             // mark the click position with a small cube
             AZ::Vector3 clickPosition = mPosition + mClickPosition * radius;
@@ -387,10 +387,10 @@ namespace MCommon
         }
         else
         {
-            if (mName.GetLength() > 0)
+            if (mName.size() > 0)
             {
                 AZ::Vector3 textPosition = MCore::Project(mPosition + (upVector * (mOuterRadius + mTextDistance)), camera->GetViewProjMatrix(), screenWidth, screenHeight);
-                renderUtil->RenderText(textPosition.GetX(), textPosition.GetY(), mName.AsChar(), ManipulatorColors::mSelectionColor, 11.0f, true);
+                renderUtil->RenderText(textPosition.GetX(), textPosition.GetY(), mName.c_str(), ManipulatorColors::mSelectionColor, 11.0f, true);
             }
         }
     }

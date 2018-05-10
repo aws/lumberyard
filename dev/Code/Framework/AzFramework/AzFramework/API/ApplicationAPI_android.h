@@ -31,15 +31,15 @@ namespace AzFramework
 
         using Bus = AZ::EBus<AndroidLifecycleEvents>;
 
-        // Android can also generate onStop/onRestart events which
-        // (at first glance) would appear to match better with our
-        // suspend/resume events. However there is no guarantee of
-        // either these methods being called, and the behavior of
-        // onPause/onResume more closely matches that of suspend/
-        // resume on our other platforms. 
 
-        virtual void OnPause() {}       // Constrain -> Suspend
-        virtual void OnResume() {}      // Resume -> Unconstrain
+        virtual void OnLostFocus() {} // Constrain
+        virtual void OnGainedFocus() {} // Unconstrain
+
+        // Android can also generate onStop/onRestart events which (at first glance) would appear to match better with our
+        // suspend/resume events. However there is no guarantee of either these methods being called, and the behavior of
+        // onPause/onResume more closely matches that of suspend/resume on our other platforms.
+        virtual void OnPause() {}       // Suspend
+        virtual void OnResume() {}      // Resume
 
         virtual void OnDestroy() {}     // Terminate
         virtual void OnLowMemory() {}   // Low memory

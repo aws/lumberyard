@@ -33,6 +33,20 @@ namespace AZ
                 virtual const AZ::Transform& GetKeyFrame(size_t index) const = 0;
                 virtual double GetTimeStepBetweenFrames() const = 0;
             };
+
+            class IBlendShapeAnimationData
+                : public IGraphObject
+            {
+            public:
+                AZ_RTTI(IBlendShapeAnimationData, "{CD2004EB-8B88-42B2-A539-079A557C98C9}", IGraphObject);
+
+                virtual ~IBlendShapeAnimationData() override = default;
+
+                virtual const char* GetBlendShapeName() const = 0;
+                virtual size_t GetKeyFrameCount() const = 0;
+                virtual double GetKeyFrame(size_t index) const = 0;
+                virtual double GetTimeStepBetweenFrames() const = 0;
+            };
         }
     }
 }

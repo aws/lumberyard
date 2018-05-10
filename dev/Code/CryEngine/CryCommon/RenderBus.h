@@ -16,7 +16,7 @@
 
 namespace AZ
 {
-    /*
+    /**
     * This bus serves as a way for non-rendering systems to react to events
     * that occur inside the renderer. For now these events will probably be implemented by
     * things like CSystem and CryAction. In the future the idea is that these can be implemented
@@ -30,16 +30,21 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         //////////////////////////////////////////////////////////////////////////
 
-        /*
+        /**
         * This event gets posted at the end of CD3D9Renderer's EF_Scene3D method.
         * CSystem (in SystemRenderer.cpp) uses this to render the console, aux geom and UI
         * in a manner that will make sure the render calls end up as part of the scene's render.
         * This is important or else those render calls won't show up properly in VR.
         */
-        virtual void OnScene3DEnd() = 0;
+        virtual void OnScene3DEnd() {};
+
+        /**
+        * This event gets posted at the beginning of CD3D9Renderer's FreeResources method, before the resources have been freed.
+        */
+        virtual void OnRendererFreeResources() {};
     };
 
     using RenderNotificationsBus = AZ::EBus<RenderNotifications>;

@@ -26,11 +26,16 @@ namespace EMotionFX
             : public AZ::ComponentBus
         {
         public:
+
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
             virtual void LoopMotion(bool enable) = 0;
             virtual void RetargetMotion(bool enable) = 0;
             virtual void ReverseMotion(bool enable) = 0;
             virtual void MirrorMotion(bool enable) = 0;
             virtual void SetPlaySpeed(float speed) = 0;
+            virtual void SetPlayOnActive(bool play) = 0;
+            virtual void PlayAnimation() = 0;
         };
         using SimpleMotionComponentRequestBus = AZ::EBus<SimpleMotionComponentRequests>;
     }

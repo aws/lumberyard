@@ -13,6 +13,7 @@
 #pragma once
 
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
+#include <ScriptCanvas/Variable/VariableCore.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/vector.h>
@@ -29,11 +30,10 @@ namespace AZ
 
 namespace ScriptCanvas
 {
-    class BehaviorContextObject;
-
     class SystemComponent
         : public AZ::Component
         , protected SystemRequestBus::Handler
+        , protected AZ::BehaviorContextBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{CCCCE7AE-AEC7-43F8-969C-ED592C264560}");
@@ -47,30 +47,33 @@ namespace ScriptCanvas
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
-        ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Init() override;
         void Activate() override;
         void Deactivate() override;
-        ////////////////////////////////////////////////////////////////////////
+        ////
                  
-        void AddOwnedObjectReference(const void* object, BehaviorContextObject* behaviorContextObject);
-        BehaviorContextObject* FindOwnedObjectReference(const void* object);
-        void RemoveOwnedObjectReference(const void* object);
+        void AddOwnedObjectReference(const void* object, BehaviorContextObject* behaviorContextObject) override;
+        BehaviorContextObject* FindOwnedObjectReference(const void* object) override;
+        void RemoveOwnedObjectReference(const void* object) override;
         
     protected:
-        ////////////////////////////////////////////////////////////////
         // SystemRequestBus::Handler
-        ////////////////////////////////////////////////////////////////
+        void CreateEngineComponentsOnEntity(AZ::Entity* entity) override;
         Graph* CreateGraphOnEntity(AZ::Entity* entity) override;
         ScriptCanvas::Graph* MakeGraph() override;
         AZ::EntityId FindGraphId(AZ::Entity* graphEntity) override;
         ScriptCanvas::Node* GetNode(const AZ::EntityId&, const AZ::Uuid&) override;
-        ScriptCanvas::SystemComponent* ModSystemComponent() override { return this; };
         ScriptCanvas::Node* CreateNodeOnEntity(const AZ::EntityId& entityId, AZ::EntityId graphId, const AZ::Uuid& nodeType) override;
-        ////////////////////////////////////////////////////////////////
+        ////
+
+        // BehaviorEventBus::Handler
+        void OnAddClass(const char* className, AZ::BehaviorClass* behaviorClass) override;
+        void OnRemoveClass(const char* className, AZ::BehaviorClass* behaviorClass) override;
+        ////
 
     private:
+        void RegisterCreatableTypes();
         // Workaround for VS2013 - Delete the copy constructor and make it private
         // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
         SystemComponent(const SystemComponent&) = delete;

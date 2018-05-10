@@ -14,7 +14,7 @@
 #include "EMotionFXConfig.h"
 #include "Node.h"
 #include "MorphTarget.h"
-
+#include <MCore/Source/StringConversions.h>
 
 namespace EMotionFX
 {
@@ -38,76 +38,76 @@ namespace EMotionFX
 
 
     // convert the given phoneme name to a phoneme set
-    MorphTarget::EPhonemeSet MorphTarget::FindPhonemeSet(const MCore::String& phonemeName)
+    MorphTarget::EPhonemeSet MorphTarget::FindPhonemeSet(const AZStd::string& phonemeName)
     {
         // return neutral pose if the phoneme name is empty
-        if (phonemeName.GetIsEmpty() || phonemeName == "x")
+        if (phonemeName.empty() || phonemeName == "x")
         {
             return PHONEMESET_NEUTRAL_POSE;
         }
 
         // AW
-        if (phonemeName.CheckIfIsEqualNoCase("AW"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "AW", false /* no case */))
         {
             return PHONEMESET_AW;
         }
 
         // UW_UH_OY
-        if (phonemeName.CheckIfIsEqualNoCase("UW") || phonemeName.CheckIfIsEqualNoCase("UH") || phonemeName.CheckIfIsEqualNoCase("OY") || phonemeName.CheckIfIsEqualNoCase("UW_UH_OY"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "UW", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "UH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "OY", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "UW_UH_OY", false /* no case */))
         {
             return PHONEMESET_UW_UH_OY;
         }
 
         // AA_AO_OW
-        if (phonemeName.CheckIfIsEqualNoCase("AA") || phonemeName.CheckIfIsEqualNoCase("AO") || phonemeName.CheckIfIsEqualNoCase("OW") || phonemeName.CheckIfIsEqualNoCase("AA_AO_OW"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "AA", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "AO", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "OW", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "AA_AO_OW", false /* no case */))
         {
             return PHONEMESET_AA_AO_OW;
         }
 
         // IH_AE_AH_EY_AY_H
-        if (phonemeName.CheckIfIsEqualNoCase("IH") || phonemeName.CheckIfIsEqualNoCase("AE") || phonemeName.CheckIfIsEqualNoCase("AH") || phonemeName.CheckIfIsEqualNoCase("EY") || phonemeName.CheckIfIsEqualNoCase("AY") || phonemeName.CheckIfIsEqualNoCase("H") || phonemeName.CheckIfIsEqualNoCase("IH_AE_AH_EY_AY_H"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "IH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "AE", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "AH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "EY", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "AY", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "H", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "IH_AE_AH_EY_AY_H", false /* no case */))
         {
             return PHONEMESET_IH_AE_AH_EY_AY_H;
         }
 
         // IY_EH_Y
-        if (phonemeName.CheckIfIsEqualNoCase("IY") || phonemeName.CheckIfIsEqualNoCase("EH") || phonemeName.CheckIfIsEqualNoCase("Y") || phonemeName.CheckIfIsEqualNoCase("IY_EH_Y"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "IY", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "EH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "Y", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "IY_EH_Y", false /* no case */))
         {
             return PHONEMESET_IY_EH_Y;
         }
 
         // L_EL
-        if (phonemeName.CheckIfIsEqualNoCase("") || phonemeName.CheckIfIsEqualNoCase("E") || phonemeName.CheckIfIsEqualNoCase("L_E"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "E", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "L_E", false /* no case */))
         {
             return PHONEMESET_L_EL;
         }
 
         // N_NG_CH_J_DH_D_G_T_K_Z_ZH_TH_S_SH
-        if (phonemeName.CheckIfIsEqualNoCase("N") || phonemeName.CheckIfIsEqualNoCase("NG") || phonemeName.CheckIfIsEqualNoCase("CH") || phonemeName.CheckIfIsEqualNoCase("J")  || phonemeName.CheckIfIsEqualNoCase("DH") || phonemeName.CheckIfIsEqualNoCase("D") || phonemeName.CheckIfIsEqualNoCase("G") || phonemeName.CheckIfIsEqualNoCase("T") || phonemeName.CheckIfIsEqualNoCase("K") || phonemeName.CheckIfIsEqualNoCase("Z")  || phonemeName.CheckIfIsEqualNoCase("ZH") || phonemeName.CheckIfIsEqualNoCase("TH") || phonemeName.CheckIfIsEqualNoCase("S") || phonemeName.CheckIfIsEqualNoCase("SH") || phonemeName.CheckIfIsEqualNoCase("N_NG_CH_J_DH_D_G_T_K_Z_ZH_TH_S_SH"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "N", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "NG", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "CH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "J", false /* no case */)  || AzFramework::StringFunc::Equal(phonemeName.c_str(), "DH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "D", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "G", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "T", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "K", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "Z", false /* no case */)  || AzFramework::StringFunc::Equal(phonemeName.c_str(), "ZH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "TH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "S", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "SH", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "N_NG_CH_J_DH_D_G_T_K_Z_ZH_TH_S_SH", false /* no case */))
         {
             return PHONEMESET_N_NG_CH_J_DH_D_G_T_K_Z_ZH_TH_S_SH;
         }
 
         // R_ER
-        if (phonemeName.CheckIfIsEqualNoCase("R") || phonemeName.CheckIfIsEqualNoCase("ER") || phonemeName.CheckIfIsEqualNoCase("R_ER"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "R", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "ER", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "R_ER", false /* no case */))
         {
             return PHONEMESET_R_ER;
         }
 
         // M_B_P_X
-        if (phonemeName.CheckIfIsEqualNoCase("M") || phonemeName.CheckIfIsEqualNoCase("B") || phonemeName.CheckIfIsEqualNoCase("P") || phonemeName.CheckIfIsEqualNoCase("X") || phonemeName.CheckIfIsEqualNoCase("M_B_P_X"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "M", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "B", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "P", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "X", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "M_B_P_X", false /* no case */))
         {
             return PHONEMESET_M_B_P_X;
         }
 
         // F_V
-        if (phonemeName.CheckIfIsEqualNoCase("F") || phonemeName.CheckIfIsEqualNoCase("V") || phonemeName.CheckIfIsEqualNoCase("F_V"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "F", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "V", false /* no case */) || AzFramework::StringFunc::Equal(phonemeName.c_str(), "F_V", false /* no case */))
         {
             return PHONEMESET_F_V;
         }
 
         // W
-        if (phonemeName.CheckIfIsEqualNoCase("W"))
+        if (AzFramework::StringFunc::Equal(phonemeName.c_str(), "W", false /* no case */))
         {
             return PHONEMESET_W;
         }
@@ -117,9 +117,9 @@ namespace EMotionFX
 
 
     // get the string/name for a given phoneme set
-    MCore::String MorphTarget::GetPhonemeSetString(const EPhonemeSet phonemeSet)
+    AZStd::string MorphTarget::GetPhonemeSetString(const EPhonemeSet phonemeSet)
     {
-        MCore::String result;
+        AZStd::string result;
 
         // build the string
         if (phonemeSet & PHONEMESET_NEUTRAL_POSE)
@@ -172,7 +172,7 @@ namespace EMotionFX
         }
 
         // remove any leading commas
-        result.Trim(MCore::UnicodeCharacter::comma);
+        AzFramework::StringFunc::Strip(result, MCore::CharacterConstants::comma, true /* case sensitive */, true /* beginning */, false /* ending */);
 
         // return the resulting string
         return result;
@@ -227,13 +227,13 @@ namespace EMotionFX
 
     const char* MorphTarget::GetName() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mNameID).c_str();
     }
 
 
-    const MCore::String& MorphTarget::GetNameString() const
+    const AZStd::string& MorphTarget::GetNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID);
+        return MCore::GetStringIdPool().GetName(mNameID);
     }
 
 
@@ -263,7 +263,7 @@ namespace EMotionFX
 
     void MorphTarget::SetName(const char* name)
     {
-        mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 

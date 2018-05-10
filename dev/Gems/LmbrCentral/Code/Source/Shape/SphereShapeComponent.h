@@ -12,28 +12,24 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include "Rendering/EntityDebugDisplayComponent.h"
 #include "SphereShape.h"
 
 namespace LmbrCentral
 {
     class SphereShapeComponent
         : public AZ::Component
-        , public SphereShape
     {
     public:
-
         friend class EditorSphereShapeComponent;
 
         AZ_COMPONENT(SphereShapeComponent, SphereShapeComponentTypeId);
 
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
-
-        // SphereShape
-        SphereShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -55,6 +51,33 @@ namespace LmbrCentral
 
         static void Reflect(AZ::ReflectContext* context);
 
-        SphereShapeConfig m_configuration;
+    private:
+        SphereShape m_sphereShape; ///< Stores underlying sphere type for this component.
+    };
+
+    /**
+     * Concrete EntityDebugDisplay implementation for SphereShape.
+     */
+    class SphereShapeDebugDisplayComponent
+        : public EntityDebugDisplayComponent
+    {
+    public:
+        AZ_COMPONENT(SphereShapeDebugDisplayComponent, "{C3E8DEF0-3786-4765-8B19-BDCB5E966980}", EntityDebugDisplayComponent)
+
+        SphereShapeDebugDisplayComponent() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
+
+        // EntityDebugDisplayComponent
+        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
+
+    private:
+        AZ_DISABLE_COPY_MOVE(SphereShapeDebugDisplayComponent)
+
+        SphereShapeConfig m_sphereShapeConfig; ///< Stores configuration data for sphere shape.
     };
 } // namespace LmbrCentral

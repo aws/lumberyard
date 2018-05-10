@@ -20,6 +20,13 @@
 #include "UnicodeFunctions.h"
 #include "FlowBaseNode.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#undef AZ_RESTRICTED_SECTION
+#define FLOWCLIPCAPTURENODES_CPP_SECTION_1 1
+#define FLOWCLIPCAPTURENODES_CPP_SECTION_2 2
+#define FLOWCLIPCAPTURENODES_CPP_SECTION_3 3
+#endif
+
 // ------------------------------------------------------------------------
 class CClipCaptureManagement
     : public CFlowBaseNode<eNCT_Singleton>
@@ -47,7 +54,15 @@ public:
         eI_Capture = 0,
         eI_DurationBefore,
         eI_DurationAfter,
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         eI_ClipId,
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         eI_LocalizedClipName,
         eI_Metadata,
     };
@@ -62,9 +77,23 @@ public:
     {
         static const SInputPortConfig inputs[] = {
             InputPortConfig_AnyType("Capture", _HELP("Begins Capturing a Clip")),
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             InputPortConfig<float> ("DurationAftere", 10.0f, _HELP("")),
             InputPortConfig<string>("ClipName",_HELP("")),
             InputPortConfig<string>("LocalizedClipName", _HELP("")),
+#endif
 
             InputPortConfig<string>("Metadata", _HELP("Optional. Use it for instance to tag clips")),
             {0}

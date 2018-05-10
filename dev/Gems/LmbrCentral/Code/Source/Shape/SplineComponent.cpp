@@ -93,15 +93,15 @@ namespace LmbrCentral
             {
                 editContext->Class<SplineCommon>("Configuration", "Spline configuration parameters")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        //->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly) // disabled - prevents ChangeNotify attribute firing correctly
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &SplineCommon::m_splineType, "Spline Type", "Interpolation type to use between vertices.")
-                    ->Attribute(AZ::Edit::Attributes::EnumValues, &PopulateSplineTypeList)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SplineCommon::OnChangeSplineType)
+                        ->Attribute(AZ::Edit::Attributes::EnumValues, &PopulateSplineTypeList)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SplineCommon::OnChangeSplineType)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SplineCommon::m_spline, "Spline", "Data representing the spline.")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+                        //->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly) // disabled - prevents ChangeNotify attribute firing correctly
+                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
             }
         }
     }
@@ -125,7 +125,10 @@ namespace LmbrCentral
 
         m_onChangeType = OnChangeType;
 
-        m_spline->SetCallbacks(OnAddVertex, OnRemoveVertex, OnUpdateVertex, OnSetVertices, OnClearVertices);
+        m_spline->SetCallbacks(
+            OnAddVertex, OnRemoveVertex, 
+            OnUpdateVertex, OnSetVertices,
+            OnClearVertices);
     }
 
     AZ::u32 SplineCommon::OnChangeSplineType()
@@ -136,8 +139,9 @@ namespace LmbrCentral
         {
             m_spline = CopySplinePtr(m_splineType, m_spline);
             m_spline->SetCallbacks(
-                m_onAddVertex, m_onRemoveVertex, m_onUpdateVertex,
-                m_onSetVertices, m_onClearVertices);
+                m_onAddVertex, m_onRemoveVertex, 
+                m_onUpdateVertex, m_onSetVertices,
+                m_onClearVertices);
 
             ret = AZ::Edit::PropertyRefreshLevels::EntireTree;
 
@@ -184,7 +188,8 @@ namespace LmbrCentral
                 Handler<BehaviorSplineComponentNotificationBusHandler>();
 
             behaviorContext->EBus<SplineComponentRequestBus>("SplineComponentRequestBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::All)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
+                ->Attribute(AZ::Script::Attributes::Category, "Shape")
                 ->Event("GetSpline", &SplineComponentRequestBus::Events::GetSpline)
                 ->Event("SetClosed", &SplineComponentRequestBus::Events::SetClosed)
                 ->Event("AddVertex", &SplineComponentRequestBus::Events::AddVertex)
@@ -208,10 +213,41 @@ namespace LmbrCentral
             SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
         };
         
+        auto vertexAdded = [this, splineChanged](size_t index)
+        {
+            splineChanged();
+            SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnVertexAdded, index);
+        };
+
+        auto vertexRemoved = [this, splineChanged](size_t index)
+        {
+            splineChanged();
+            SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnVertexRemoved, index);
+        };
+
+        auto verticesSet = [this, splineChanged]()
+        {
+            splineChanged();
+            SplineComponentNotificationBus::Event(
+                GetEntityId(), 
+                &SplineComponentNotificationBus::Events::OnVerticesSet,
+                m_splineCommon.m_spline->GetVertices()
+            );
+        };
+
+        auto verticesCleared = [this, splineChanged]()
+        {
+            splineChanged();
+            SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnVerticesCleared);
+        };
+
         m_splineCommon.SetCallbacks(
-            [splineChanged](size_t) { splineChanged(); },
-            [splineChanged](size_t) { splineChanged(); }, 
-            splineChanged, splineChanged, splineChanged, splineChanged);
+            vertexAdded,
+            vertexRemoved,
+            splineChanged, // vertex updated
+            verticesSet,
+            verticesCleared, 
+            splineChanged);
     }
 
     void SplineComponent::Deactivate()
@@ -225,7 +261,7 @@ namespace LmbrCentral
         m_currentTransform = world;
     }
 
-    AZ::ConstSplinePtr SplineComponent::GetSpline()
+    AZ::SplinePtr SplineComponent::GetSpline()
     {
         return m_splineCommon.m_spline;
     }

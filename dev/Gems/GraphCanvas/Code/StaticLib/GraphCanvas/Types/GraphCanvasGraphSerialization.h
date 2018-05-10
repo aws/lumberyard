@@ -15,11 +15,8 @@
 
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/std/containers/unordered_set.h>
-#include <AzCore/std/any.h>
-#include <AzCore/Serialization/Utils.h>
-#include <AzCore/Serialization/IdUtils.h>
 
-#include <GraphCanvas/Types/SceneData.h>
+#include <GraphCanvas/Types/GraphCanvasGraphData.h>
 
 namespace GraphCanvas
 {
@@ -27,123 +24,39 @@ namespace GraphCanvas
     //! This class will delete the stored entities in the destructor therefore
     //! any entities that should not be owned by this class should be removed
     //! before destruction
-    class SceneSerialization
+    class GraphSerialization
     {
     public:
-        AZ_TYPE_INFO(SceneSerialization, "{DB95F1F9-BEEA-499F-A6AD-1492435768F8}");
-        AZ_CLASS_ALLOCATOR(SceneSerialization, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(GraphSerialization, "{DB95F1F9-BEEA-499F-A6AD-1492435768F8}");
+        AZ_CLASS_ALLOCATOR(GraphSerialization, AZ::SystemAllocator, 0);
 
-        static void Reflect(AZ::ReflectContext* context)
-        {
-            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-            if (!serializeContext)
-            {
-                return;
-            }
+        static void Reflect(AZ::ReflectContext* context);
 
-            serializeContext->Class<SceneSerialization>()
-                ->Version(1)
-                ->Field("UserData", &SceneSerialization::m_userFields)
-                ->Field("SceneData", &SceneSerialization::m_sceneData)
-                ->Field("Key", &SceneSerialization::m_serializationKey)
-                ->Field("AveragePosition", &SceneSerialization::m_averagePosition)
-            ;
-        }
+        GraphSerialization() = default;
 
-        SceneSerialization() = default;
+        explicit GraphSerialization(AZStd::string serializationKey);
+        explicit GraphSerialization(const QByteArray& dataArray);
+        explicit GraphSerialization(GraphSerialization&& other);
 
-        explicit SceneSerialization(AZStd::string serializationKey)
-            : m_serializationKey(serializationKey)
-        {
-        }
+        ~GraphSerialization() = default;
 
-        explicit SceneSerialization(const QByteArray& dataArray)
-        {
-            AZ::SerializeContext* serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
-            AZ::Utils::LoadObjectFromBufferInPlace(dataArray.constData(), (AZStd::size_t)dataArray.size(), *this, serializeContext);
-            RegenerateIds();
-        }
+        GraphSerialization& operator=(GraphSerialization&& other);
 
-        explicit SceneSerialization(SceneSerialization&& other)
-            : m_serializationKey(other.m_serializationKey)
-            , m_sceneData(other.m_sceneData)
-            , m_averagePosition(other.m_averagePosition)
-            , m_userFields(AZStd::move(other.m_userFields))
-            , m_newIdMapping(AZStd::move(other.m_newIdMapping))
-        {
-        }
+        void Clear();
+        
+        const AZStd::string& GetSerializationKey() const;
+        void SetAveragePosition(const AZ::Vector2& averagePosition);
 
-        ~SceneSerialization() = default;
+        const AZ::Vector2& GetAveragePosition() const;
 
-        SceneSerialization& operator=(SceneSerialization&& other)
-        {
-            m_serializationKey = other.m_serializationKey;
-            m_sceneData = other.m_sceneData;
-            m_averagePosition = other.m_averagePosition;
-            m_userFields = AZStd::move(other.m_userFields);
-            m_newIdMapping = AZStd::move(other.m_newIdMapping);
-            return *this;
-        }
+        GraphData& GetGraphData();
+        const GraphData& GetGraphData() const;
 
-        void Clear()
-        {
-            m_sceneData.Clear();
-            m_userFields.clear();
-        }
+        AZStd::unordered_map<AZStd::string, AZStd::any>& GetUserDataMapRef();
+        const AZStd::unordered_map<AZStd::string, AZStd::any>& GetUserDataMapRef() const;
 
-        const AZStd::string& GetSerializationKey() const
-        {
-            return m_serializationKey;
-        }
-
-        void SetAveragePosition(const AZ::Vector2& averagePosition)
-        {
-            m_averagePosition = averagePosition;
-        }
-
-        const AZ::Vector2& GetAveragePosition() const
-        {
-            return m_averagePosition;
-        }
-
-        SceneData& GetSceneData()
-        {
-            return m_sceneData;
-        }
-
-        const SceneData& GetSceneData() const
-        {
-            return m_sceneData;
-        }
-
-        AZStd::unordered_map<AZStd::string, AZStd::any>& GetUserDataMapRef()
-        {
-            return m_userFields;
-        }
-
-        const AZStd::unordered_map<AZStd::string, AZStd::any>& GetUserDataMapRef() const
-        {
-            return m_userFields;
-        }
-
-        AZ::EntityId FindRemappedEntityId(const AZ::EntityId& originalId) const
-        {
-            AZ::EntityId mappedId;
-
-            auto mappingIter = m_newIdMapping.find(originalId);
-
-            if (mappingIter != m_newIdMapping.end())
-            {
-                mappedId = mappingIter->second;
-            }
-
-            return mappedId;
-        }
-
-        void RegenerateIds()
-        {
-            AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(this, m_newIdMapping);
-        }
+        AZ::EntityId FindRemappedEntityId(const AZ::EntityId& originalId) const;
+        void RegenerateIds();
 
     private:
 
@@ -151,7 +64,7 @@ namespace GraphCanvas
         AZStd::string                                   m_serializationKey;
 
         // The Scene data to be copied.
-        SceneData                                       m_sceneData;
+        GraphData                                 m_graphData;
         AZ::Vector2                                     m_averagePosition;
 
         // Custom serializable fields for adding custom user data to the serialization

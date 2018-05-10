@@ -16,7 +16,6 @@
 #include <AzCore/Math/Uuid.h>
 #include "BaseObject.h"
 #include "MCore/Source/Color.h"
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/File.h>
 #include <MCore/Source/Vector.h>
@@ -128,8 +127,8 @@ namespace EMotionFX
 
         struct EMFX_API NodeHistoryItem
         {
-            MCore::String           mName;
-            MCore::String           mMotionFileName;
+            AZStd::string           mName;
+            AZStd::string           mMotionFileName;
             float                   mStartTime;             // time the motion starts being active
             float                   mEndTime;               // time the motion stops being active
             KeyTrackLinearDynamic<float, float> mGlobalWeights; // the global weights at given time values
@@ -364,7 +363,7 @@ namespace EMotionFX
         void RecordMorphs();
         void RecordCurrentFrame();
         void RecordCurrentTransforms();
-        void RecordCurrentAnimGraphStates();
+        bool RecordCurrentAnimGraphStates();
         void RecordMainLocalTransforms();
         void RecordEvents();
         void UpdateNodeHistoryItems();
@@ -374,8 +373,13 @@ namespace EMotionFX
         void SampleAndApplyTransforms(float timeInSeconds, uint32 actorInstanceIndex) const;
         void SampleAndApplyMainTransform(float timeInSeconds, uint32 actorInstanceIndex) const;
         void SampleAndApplyAnimGraphStates(float timeInSeconds, const AnimGraphInstanceData& animGraphInstanceData) const;
-        void SaveUniqueData(const AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData);
-        void AssureAnimGraphBufferSize(AnimGraphInstanceData& animGraphInstanceData, uint32 numBytes);
+        bool SaveUniqueData(const AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData);
+
+        // Resizes the AnimGraphInstanceData's buffer to be big enough to hold
+        // /param numBytes bytes. Returns true if the buffer is big enough
+        // after the operation, false otherwise. False indicates there's not
+        // enough memory to accommodate the request
+        bool AssureAnimGraphBufferSize(AnimGraphInstanceData& animGraphInstanceData, uint32 numBytes);
         NodeHistoryItem* FindNodeHistoryItem(const ActorInstanceData& actorInstanceData, AnimGraphNode* node, float recordTime) const;
         uint32 FindFreeNodeHistoryItemTrack(const ActorInstanceData& actorInstanceData, NodeHistoryItem* item) const;
         void FinalizeAllNodeHistoryItems();

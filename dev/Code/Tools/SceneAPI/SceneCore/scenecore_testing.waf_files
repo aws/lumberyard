@@ -52,10 +52,6 @@
         [
             "Tests/Containers/Utilities/FiltersTests.cpp"
         ],
-        "Tests/Import/Utilities": 
-        [
-            "Tests/Import/Utilities/FileFinderTests.cpp"
-        ],
         "Tests/Utilities":
         [
             "Tests/Utilities/SceneGraphSelectorTests.cpp",

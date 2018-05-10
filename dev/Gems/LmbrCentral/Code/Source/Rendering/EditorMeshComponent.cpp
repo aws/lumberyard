@@ -15,6 +15,7 @@
 #include <IAISystem.h>
 
 #include "EditorMeshComponent.h"
+#include <AzFramework/Viewport/ViewportColors.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -25,6 +26,8 @@
 
 #include <INavigationSystem.h> // For updating nav tiles on creation of editor physics.
 #include <IPhysics.h> // For basic physicalization at edit-time for object snapping.
+#include <IEditor.h>
+#include <Settings.h>
 
 namespace LmbrCentral
 {
@@ -159,6 +162,8 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusConnect(m_entity->GetId());
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(GetEntityId());
 
         auto renderOptionsChangeCallback =
             [this]()
@@ -182,6 +187,8 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusDisconnect();
 
         DestroyEditorPhysics();
 
@@ -289,6 +296,32 @@ namespace LmbrCentral
 
     void EditorMeshComponent::DisplayEntity(bool& handled)
     {
+        const bool mouseHovered = m_accentType == AzToolsFramework::EntityAccentType::Hover;
+
+        IEditor* editor = nullptr;
+        AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
+
+        bool highlightGeometryOnMouseHover = editor->GetEditorSettings()->viewports.bHighlightMouseOverGeometry;
+        bool highlightGeometryWhenSelected = editor->GetEditorSettings()->viewports.bHighlightSelectedGeometry;
+
+        if ((!IsSelected() && mouseHovered && highlightGeometryOnMouseHover) || (IsSelected() && highlightGeometryWhenSelected))
+        {
+            AZ::Transform transform = AZ::Transform::CreateIdentity();
+            AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+            auto legacyTransform = AZTransformToLYTransform(transform);
+
+            SGeometryDebugDrawInfo dd;
+            dd.tm = legacyTransform;
+            dd.bExtrude = true;
+            dd.color = ColorB(250, 0, 250, 30);
+            dd.lineColor = AZColorToLYColorF(AzFramework::ViewportColors::HoverColor);
+            
+            if (IStatObj* geometry = GetStatObj())
+            {
+                geometry->DebugDraw(dd);
+            }
+        }
+
         if (m_mesh.HasMesh())
         {
             // Only allow Sandbox to draw the default sphere if we don't have a
@@ -302,6 +335,8 @@ namespace LmbrCentral
         if (MeshComponent* meshComponent = gameEntity->CreateComponent<MeshComponent>())
         {
             m_mesh.CopyPropertiesTo(meshComponent->m_meshRenderNode);
+            // ensure we do not copy across the edit time entity id
+            meshComponent->m_meshRenderNode.m_renderOptions.m_attachedToEntityId = AZ::EntityId();
         }
     }
 
@@ -412,6 +447,44 @@ namespace LmbrCentral
     void EditorMeshComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         CreateEditorPhysics();
+    }
+
+    AZ::Aabb EditorMeshComponent::GetEditorSelectionBounds()
+    {
+        return GetWorldBounds();
+    }
+
+    bool EditorMeshComponent::EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+    {
+        if (IStatObj* geometry = GetStatObj())
+        {
+            AZ::Transform transform = AZ::Transform::CreateIdentity();
+            AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+            auto legacyTransform = AZTransformToLYTransform(transform);
+            auto legacySrc = AZVec3ToLYVec3(src);
+            auto legacyDir = AZVec3ToLYVec3(dir);
+
+            const Matrix34 inverseTM = legacyTransform.GetInverted();
+            const Vec3 raySrcLocal = inverseTM.TransformPoint(legacySrc);
+            const Vec3 rayDirLocal = inverseTM.TransformVector(legacyDir).GetNormalized();
+
+            SRayHitInfo hi;
+            hi.inReferencePoint = raySrcLocal;
+            hi.inRay = Ray(raySrcLocal, rayDirLocal);
+            if (geometry->RayIntersection(hi))
+            {
+                const Vec3 worldHitPos = legacyTransform.TransformPoint(hi.vHitPos);
+                distance = legacySrc.GetDistance(worldHitPos);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void EditorMeshComponent::OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent)
+    {
+        m_accentType = accent;
     }
 
 } // namespace LmbrCentral

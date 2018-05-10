@@ -29,7 +29,7 @@ namespace AzToolsFramework
 
         void ProductThumbnail::LoadThread() 
         {
-            auto productKey = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(m_key);
+            auto productKey = azrtti_cast<const Thumbnailer::ProductThumbnailKey*>(m_key.data());
             AZ_Assert(productKey, "Incorrect key type, excpected ProductThumbnailKey");
 
             QString iconPath;
@@ -83,7 +83,7 @@ namespace AzToolsFramework
 
         bool ProductThumbnailCache::IsSupportedThumbnail(Thumbnailer::SharedThumbnailKey key) const
         {
-            return qobject_cast<const Thumbnailer::ProductThumbnailKey*>(key.data());
+            return azrtti_istypeof<const Thumbnailer::ProductThumbnailKey*>(key.data());
         }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

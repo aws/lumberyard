@@ -18,8 +18,8 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/string/string.h>
 
-#include <Styling/definitions.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/definitions.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {

@@ -14,7 +14,6 @@
 
 #include "StandardHeaders.h"
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include "Command.h"
 #include "CommandGroup.h"
@@ -87,10 +86,10 @@ namespace MCore
          * @param[in] callFromCommandGroup True in case the command is called from a command group. False in case the command to be called is not part of a command group and called only by itself.
          * @return True if the command succeeded, false if not.
          */
-        bool ExecuteCommand(const char* command, String& outCommandResult, bool addToHistory = true, Command** outExecutedCommand = nullptr, CommandLine* outExecutedParamters = nullptr, bool callFromCommandGroup = false, bool clearErrors = true, bool handleErrors = true);
+        bool ExecuteCommand(const char* command, AZStd::string& outCommandResult, bool addToHistory = true, Command** outExecutedCommand = nullptr, CommandLine* outExecutedParamters = nullptr, bool callFromCommandGroup = false, bool clearErrors = true, bool handleErrors = true);
         bool ExecuteCommand(const AZStd::string& command, AZStd::string& outCommandResult, bool addToHistory = true, Command** outExecutedCommand = nullptr, CommandLine* outExecutedParamters = nullptr, bool callFromCommandGroup = false, bool clearErrors = true, bool handleErrors = true);
-        bool ExecuteCommandInsideCommand(const char* command, String& outCommandResult);
-        bool ExecuteCommandInsideCommand(const AZStd::string& command, String& outCommandResult);
+        bool ExecuteCommandInsideCommand(const char* command, AZStd::string& outCommandResult);
+        bool ExecuteCommandInsideCommand(const AZStd::string& command, AZStd::string& outCommandResult);
 
         /**
          * Execute a command group.
@@ -102,23 +101,22 @@ namespace MCore
          * @param addToHistory Set to true when you want to add this group to the history.
          * @result Returns true when ALL commands inside the group executed successfully, otherwise false is returned.
          */
-        bool ExecuteCommandGroup(CommandGroup& commandGroup, String& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
         bool ExecuteCommandGroup(CommandGroup& commandGroup, AZStd::string& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
-        bool ExecuteCommandGroupInsideCommand(CommandGroup& commandGroup, String& outCommandResult);
+        bool ExecuteCommandGroupInsideCommand(CommandGroup& commandGroup, AZStd::string& outCommandResult);
 
         /**
          * Undo the last executed command in the command history.
          * @param outCommandResult The return/result value of the command.
          * @return True if the undo succeeded, false if not.
          */
-        bool Undo(String& outCommandResult);
+        bool Undo(AZStd::string& outCommandResult);
 
         /**
          * Redo the last command which has been undoed.
          * @param outCommandResult The return/result value of the command.
          * @return True if the redo succeeded, false if not.
          */
-        bool Redo(String& outCommandResult);
+        bool Redo(AZStd::string& outCommandResult);
 
         /**
          * Register a command to the command manager. Each command has to be registered using this function before
@@ -289,7 +287,7 @@ namespace MCore
          * @param addToHistory When set to true it is being added to the command history. This is set to false when redoing a command.
          * @return True if the command succeeded, false if not.
          */
-        bool ExecuteCommand(Command* command, const CommandLine& commandLine, String& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
+        bool ExecuteCommand(Command* command, const CommandLine& commandLine, AZStd::string& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
 
         /**
          * Push a command to the command history stack . This method will be automatically called by the system when

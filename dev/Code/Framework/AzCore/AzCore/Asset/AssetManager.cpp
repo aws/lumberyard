@@ -12,6 +12,8 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Asset/AssetInternal/LegacyBlockingAssetTypeManager.h>
+#include <AzCore/Asset/LegacyAssetHandler.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -118,6 +120,8 @@ namespace AZ
 
             void Process() override
             {
+                m_owner->RegisterAssetLoading(m_asset);
+                
                 const bool loadSucceeded = LoadData();
 
                 // Queue the result for dispatch to main thread.
@@ -132,6 +136,8 @@ namespace AZ
                 {
                     EBUS_EVENT_ID(m_asset.GetId(), AssetJobBus, OnAssetError, m_asset);
                 }
+
+                m_owner->UnregisterAssetLoading(m_asset);
 
                 delete this;
             }
@@ -159,6 +165,114 @@ namespace AZ
             AssetFilterCB                   m_assetLoadFilterCB;            
         };
 
+        /**
+         * Base class to handle blocking on an asset load. Takes care connecting to the AssetJobBus
+         * and clean up of the object.
+         */
+        class WaitForAsset
+            : public AssetJobBus::Handler
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(WaitForAsset, ThreadPoolAllocator, 0);
+
+            WaitForAsset(const Asset<AssetData>& assetToWaitFor)
+                : m_assetData(assetToWaitFor)
+            {
+            }
+
+            ~WaitForAsset() override
+            {
+            }
+
+            void OnAssetReady(const Asset<AssetData>& /*asset*/) override
+            {
+                Finish();
+            }
+
+            void OnAssetError(const Asset<AssetData>& /*asset*/) override
+            {
+                Finish();
+            }
+
+            void WaitAndDestroy()
+            {
+                BusConnect(m_assetData.GetId());
+
+                Wait();
+
+                delete this;
+            }
+
+        protected:
+            virtual void Finish() = 0;
+            virtual void Wait() = 0;
+
+            Asset<AssetData> m_assetData;
+        };
+
+        /**
+         * Utility class to wait when a blocking load is requested for an asset that's already
+         * loading asynchronously. Uses a semaphore to signal completion.
+         */
+        class WaitForAssetOnThreadWithNoBlockingJobs
+            : public WaitForAsset
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(WaitForAssetOnThreadWithNoBlockingJobs, ThreadPoolAllocator, 0);
+
+            WaitForAssetOnThreadWithNoBlockingJobs(const Asset<AssetData>& assetToWaitFor)
+                : WaitForAsset(assetToWaitFor)
+            {
+            }
+
+        protected:
+            void Wait() override
+            {
+                m_waitEvent.acquire();
+            }
+
+            void Finish()
+            {
+                m_waitEvent.release();
+            }
+
+        private:
+            AZStd::binary_semaphore m_waitEvent;
+        };
+
+        /**
+        * Utility class to wait when a blocking load is requested for an asset that's already
+        * loading asynchronously, but on a thread that processes blocking asset loads and requires
+        * pumping occasionally to drain queued loads.
+        */
+        class WaitForAssetOnThreadWithBlockingJobs
+            : public WaitForAsset
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(WaitForAssetOnThreadWithBlockingJobs, ThreadPoolAllocator, 0);
+
+            WaitForAssetOnThreadWithBlockingJobs(const Asset<AssetData>& assetToWaitFor, AssetInternal::LegacyBlockingAssetTypeManager* blockingAssetTypeManager)
+                : WaitForAsset(assetToWaitFor)
+                , m_blockingAssetTypeManager(blockingAssetTypeManager)
+            {
+                AZ_Assert(m_blockingAssetTypeManager, "LegacyBlockingAssetTypeManager can not be null!");
+            }
+
+        protected:
+            void Wait()
+            {
+                m_blockingAssetTypeManager->BlockOnAsset(m_assetData);
+            }
+
+            void Finish()
+            {
+                m_blockingAssetTypeManager->BlockingAssetFinished(m_assetData);
+            }
+
+        private:
+            AssetInternal::LegacyBlockingAssetTypeManager* m_blockingAssetTypeManager = nullptr;
+        };
+
         class ReloadAssetJob
             : public LoadAssetJob
         {
@@ -171,9 +285,13 @@ namespace AZ
 
             void Process() override
             {
+                m_owner->RegisterAssetLoading(m_asset);
+
                 const bool loadSucceeded = LoadData();
 
                 m_assetHandler->InitAsset(m_asset, loadSucceeded, true);
+
+                m_owner->UnregisterAssetLoading(m_asset);
 
                 delete this;
             }
@@ -308,6 +426,7 @@ namespace AZ
         // [6/12/2012]
         //=========================================================================
         AssetManager::AssetManager(const AssetManager::Descriptor& desc)
+            : m_blockingAssetTypeManager(aznew AssetInternal::LegacyBlockingAssetTypeManager())
         {
             (void)desc;
 
@@ -362,6 +481,8 @@ namespace AZ
                 delete handler;
             }
             AssetManagerBus::Handler::BusDisconnect();
+
+            delete m_blockingAssetTypeManager;
         }
 
         //=========================================================================
@@ -412,6 +533,13 @@ namespace AZ
             }
         }
 
+        void AssetManager::RegisterLegacyHandler(LegacyAssetHandler* handler, const AssetType& assetType, AZStd::thread::id threadThatLoadsAssets)
+        {
+            RegisterHandler(handler, assetType);
+
+            m_blockingAssetTypeManager->RegisterAssetHandler(assetType, handler, threadThatLoadsAssets);
+        }
+
         //=========================================================================
         // UnregisterHandler
         // [7/9/2014]
@@ -437,6 +565,9 @@ namespace AZ
                 }
                 AZ_Error("AssetDatabase", handler->m_nHandledTypes == 0, "%s->m_nHandledTypes has incorrect count %d!", handler->RTTI_GetTypeName(), (int)handler->m_nHandledTypes);
             }
+
+            // clear the single threaded map too
+            m_blockingAssetTypeManager->UnregisterAssetHandler(handler);
         }
 
         //=========================================================================
@@ -532,6 +663,7 @@ namespace AZ
             AZ_Error("AssetDatabase", !assetType.IsNull(), "GetAsset called with invalid asset type.");
 
             LoadAssetJob* loadJob = nullptr;
+            WaitForAsset* blockingWait = nullptr;
             AssetData* assetData = nullptr;
             Asset<AssetData> asset; // Used to hold a reference while job is dispatched and while outside of the assetMutex lock.
             AZ::Data::AssetInfo assetInfo;
@@ -560,11 +692,11 @@ namespace AZ
                 bool isNewEntry = false;
                 AssetHandler* handler = nullptr;
 
-                AZStd::lock_guard<AZStd::recursive_mutex> getAssetLock(m_getAssetMutex);
+                AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
                 {
                     // check if asset already exists
                     {
-                        AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
+                        
                         AssetMap::iterator it = m_assets.find(assetInfo.m_assetId);
                         if (it != m_assets.end())
                         {
@@ -577,38 +709,39 @@ namespace AZ
                         }
                     }
 
-                    m_handlerMutex.lock();
-                    // find the asset type handler
-                    AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
-                    AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
-                        assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
-                    if (handlerIt != m_handlers.end())
                     {
-                        // Create the asset ptr and insert it into our asset map.
-                        handler = handlerIt->second;
-                        if (isNewEntry)
+                        AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
+
+                        // find the asset type handler
+                        AssetHandlerMap::iterator handlerIt = m_handlers.find(assetInfo.m_assetType);
+                        AZ_Error("AssetDatabase", handlerIt != m_handlers.end(), "No handler was registered for this asset [type:%s id:%s]!",
+                            assetInfo.m_assetType.ToString<AZ::OSString>().c_str(), assetInfo.m_assetId.ToString<AZ::OSString>().c_str());
+                        if (handlerIt != m_handlers.end())
                         {
-                            assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
-                            if (assetData)
+                            // Create the asset ptr and insert it into our asset map.
+                            handler = handlerIt->second;
+                            if (isNewEntry)
                             {
-                                assetData->m_assetId = assetInfo.m_assetId;
-                                ++handler->m_nActiveAssets;
-                                asset = assetData;
-                            }
-                            else
-                            {
-                                AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
-                                    assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
+                                assetData = handler->CreateAsset(assetInfo.m_assetId, assetInfo.m_assetType);
+                                if (assetData)
+                                {
+                                    assetData->m_assetId = assetInfo.m_assetId;
+                                    ++handler->m_nActiveAssets;
+                                    asset = assetData;
+                                }
+                                else
+                                {
+                                    AZ_Error("AssetDatabase", false, "Failed to create asset with (id=%s, type=%s)",
+                                        assetInfo.m_assetId.ToString<AZ::OSString>().c_str(), assetInfo.m_assetType.ToString<AZ::OSString>().c_str());
+                                }
                             }
                         }
                     }
-                    m_handlerMutex.unlock();
 
                     if (assetData)
                     {
                         if (isNewEntry && assetData->IsRegisterReadonlyAndShareable())
                         {
-                            AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
                             m_assets.insert(AZStd::make_pair(assetInfo.m_assetId, assetData));
                         }
                         if (queueLoadData && assetData->GetStatus() == AssetData::AssetStatus::NotLoaded)
@@ -616,6 +749,37 @@ namespace AZ
                             // start the data loading
                             assetData->m_status = static_cast<int>(AssetData::AssetStatus::Loading);
                             loadJob = aznew LoadAssetJob(m_jobContext, this, assetData, handler, assetLoadFilterCB);
+                        }
+                        else if (loadBlocking && assetData->GetStatus() == AssetData::AssetStatus::Loading)
+                        {
+                            // The danger here is that we are in a blocking load for a cyclic asset reference.
+                            // interestingly enough, its actually "okay" to just return without blocking, because the blocking guarantee
+                            // will still ultimately hold as the original blocking load will complete higher up the chain.
+                            auto foundthread = m_assetsLoadingByThread.find(assetId);
+                            AZStd::thread::id threadId = AZStd::this_thread::get_id();
+
+                            if ((foundthread != m_assetsLoadingByThread.end()) && (foundthread->second == threadId))
+                            {
+                                // this thread is already loading this asset.  Its very likely that 
+                                // the asset we are loading refers to its own asset.
+                                // cyclic dependencies are generally data ERRORS because they mean something will certainly not work.
+                                AZ_Error("AssetManager", false, 
+                                    "Trying to load %s blocking but is already loading by the same thread also blocking.\n"
+                                    "This means an asset has a cyclic dependency in it!",
+                                    asset.ToString<AZStd::string>().c_str());
+                                loadBlocking = false;
+                            }
+                            else
+                            {
+                                if (m_blockingAssetTypeManager->HasBlockingHandlersForCurrentThread())
+                                {
+                                    blockingWait = aznew WaitForAssetOnThreadWithBlockingJobs(assetData, m_blockingAssetTypeManager);
+                                }
+                                else
+                                {
+                                    blockingWait = aznew WaitForAssetOnThreadWithNoBlockingJobs(assetData);
+                                }
+                            }
                         }
                     }
                 }
@@ -627,14 +791,23 @@ namespace AZ
             }
             // We delay the start of the job until we release m_assetMutex to avoid a deadlock
             // when AZCORE_JOBS_IMPL_SYNCHRONOUS is defined
-            if (loadJob)
+            if (loadBlocking)
             {
-                if (loadBlocking)
+                if(loadJob)
                 {
                     // Process directly within the calling thread if loadBlocking flag is set.
                     loadJob->Process();
                 }
-                else
+
+                if (blockingWait)
+                {
+                    blockingWait->WaitAndDestroy();
+                    blockingWait = nullptr;
+                }
+            }
+            else
+            {
+                if (loadJob)
                 {
                     // Otherwise, queue job through the job system.
                     loadJob->Start();
@@ -656,8 +829,6 @@ namespace AZ
             AssetMap::iterator it = m_assets.find(assetId);
             if (it == m_assets.end())
             {
-                AssetData* assetData = nullptr;
-
                 AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
                 // find the asset type handler
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(assetType);
@@ -666,7 +837,8 @@ namespace AZ
                 {
                     // Create the asset ptr
                     AssetHandler* handler = handlerIt->second;
-                    assetData = handler->CreateAsset(assetId, assetType);
+                    Asset<AssetData> asset(handler->CreateAsset(assetId, assetType));
+                    auto assetData = asset.Get();
                     AZ_Error("AssetDatabase", assetData, "Failed to create asset with (id=%s, type=%s)", assetId.ToString<AZ::OSString>().c_str(), assetType.ToString<AZ::OSString>().c_str());
                     if (assetData)
                     {
@@ -676,7 +848,7 @@ namespace AZ
                         {
                             m_assets.insert(AZStd::make_pair(assetId, assetData));
                         }
-                        return assetData;
+                        return asset;
                     }
                 }
             }
@@ -695,35 +867,31 @@ namespace AZ
         {
             AZ_Assert(asset, "Cannot release NULL AssetPtr!");
 
-            AssetId assetId = asset->GetId();
-            AssetType assetType = asset->GetType();
+            AZStd::lock_guard<AZStd::recursive_mutex> asset_lock(m_assetMutex);
 
-            bool destroy = false;
-            bool isInDatabase = false; // We do support assets that are not registered in the asset manager (with the same ID too).
+            // need to check the count again in here in case
+            // someone was trying to get the asset on another thread
+            // Set it to -1 so only this thread will attempt to clean up the cache and delete the asset
+            int expectedRefCount = 0;
+            if (asset->m_useCount.compare_exchange_strong(expectedRefCount, -1))
             {
-                AZStd::lock_guard<AZStd::recursive_mutex> asset_lock(m_assetMutex);
-                // need to check the count again in here in case
-                // someone was trying to get the asset on another thread
-                if (asset->m_useCount == 0)
+                AssetId assetId = asset->GetId();
+                AssetType assetType = asset->GetType();
+                bool isInDatabase = false; // We do support assets that are not registered in the asset manager (with the same ID too).
+
+                if (asset->IsRegisterReadonlyAndShareable())
                 {
-                    if (asset->IsRegisterReadonlyAndShareable())
+                    AssetMap::iterator it = m_assets.find(assetId);
+                    if (it != m_assets.end())
                     {
-                        AssetMap::iterator it = m_assets.find(assetId);
-                        if (it != m_assets.end())
+                        if (asset == it->second)
                         {
-                            if (asset == it->second)
-                            {
-                                isInDatabase = true;
-                                m_assets.erase(it);
-                            }
+                            isInDatabase = true;
+                            m_assets.erase(it);
                         }
                     }
-                    destroy = true;
                 }
-            }
 
-            if (destroy)
-            {
                 // find the asset type handler
                 AZStd::lock_guard<AZStd::recursive_mutex> handlerLock(m_handlerMutex);
                 AssetHandlerMap::iterator handlerIt = m_handlers.find(assetType);
@@ -768,7 +936,8 @@ namespace AZ
         {
             AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
             auto assetIter = m_assets.find(assetId);
-            if (assetIter == m_assets.end() || !assetIter->second->IsReady())
+
+            if (assetIter == m_assets.end() || assetIter->second->IsLoading())
             {
                 // Only existing assets can be reloaded.
                 return;
@@ -834,16 +1003,19 @@ namespace AZ
         void AssetManager::ReloadAssetFromData(const Asset<AssetData>& asset)
         {
             AZ_Assert(asset.Get(), "Asset data for reload is missing.");
-            AZ_Error("AssetDatabase", m_assets.find(asset.GetId()) != m_assets.end(),
-                "Unable to reload asset (%s:%s) because it isn't ready.", 
-                asset.GetId().ToString<AZStd::string>().c_str(),
-                asset.GetHint().c_str());
+            AZ_Assert(m_assets.find(asset.GetId()) != m_assets.end(),"Unable to reload asset %s because its not in the AssetManager's asset list.", asset.ToString<AZStd::string>().c_str());
             AZ_Assert(m_assets.find(asset.GetId()) == m_assets.end() || asset.Get()->RTTI_GetType() == m_assets.find(asset.GetId())->second->RTTI_GetType(),
                 "New and old data types are mismatched!");
 
+            auto found = m_assets.find(asset.GetId());
+            if ((found == m_assets.end()) || (asset.Get()->RTTI_GetType() != found->second->RTTI_GetType()))
+            {
+                return; // this will just lead to crashes down the line and the above asserts cover this.
+            }
+
             AssetData* newData = asset.Get();
 
-            if (m_assets[asset.GetId()] != newData)
+            if (found->second != newData)
             {
                 // Notify users that we are about to change asset
                 EBUS_EVENT_ID(asset.GetId(), AssetBus, OnAssetPreReload, asset);
@@ -891,13 +1063,6 @@ namespace AZ
 
                 AZ_Assert(m_assets.find(assetId) == m_assets.end() || asset.Get()->RTTI_GetType() == m_assets.find(assetId)->second->RTTI_GetType(),
                     "New and old data types are mismatched!");
-
-                // Destroy previous asset if there are no references.
-                auto assetIter = m_assets.find(assetId);
-                if (assetIter != m_assets.end() && assetIter->second->m_useCount == 0)
-                {
-                    ReleaseAsset(assetIter->second);
-                }
 
                 // Held references to old data are retained, but replace the entry in the DB for future requests.
                 // Fire an OnAssetReloaded message so listeners can react to the new data.
@@ -966,7 +1131,38 @@ namespace AZ
         void AssetManager::AddJob(AssetDatabaseJob* job)
         {
             AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
+
             m_activeJobs.push_back(*job);
+        }
+
+        //=========================================================================
+        // RegisterAssetLoading
+        //=========================================================================
+        void AssetManager::RegisterAssetLoading(const Asset<AssetData>& asset)
+        {
+            {
+                const AZ::Data::AssetId& assetId = asset.GetId();
+
+                AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
+                m_assetsLoadingByThread[assetId] = AZStd::this_thread::get_id();
+            }
+
+            m_blockingAssetTypeManager->AssetLoadStarted(asset.GetType(), asset.GetId());
+        }
+
+        //=========================================================================
+        // UnregisterAssetLoadingByThread
+        //=========================================================================
+        void AssetManager::UnregisterAssetLoading(const Asset<AssetData>& asset)
+        {
+            m_blockingAssetTypeManager->AssetLoadFinished(asset.GetType(), asset.GetId());
+
+            {
+                const AZ::Data::AssetId& assetId = asset.GetId();
+
+                AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
+                m_assetsLoadingByThread.erase(assetId);
+            }
         }
 
         //=========================================================================
@@ -976,6 +1172,7 @@ namespace AZ
         void AssetManager::RemoveJob(AssetDatabaseJob* job)
         {
             AZStd::lock_guard<AZStd::recursive_mutex> assetLock(m_assetMutex);
+
             m_activeJobs.erase(*job);
         }
 

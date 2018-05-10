@@ -55,7 +55,7 @@ namespace LmbrCentral
         }
     }
 
-    void FogVolume::UpdateFogVolumeProperties(const FogVolumeConfiguration & fogVolumeConfig)
+    void FogVolume::UpdateFogVolumeProperties(const FogVolumeConfiguration& fogVolumeConfig)
     {
         AZ_Assert(m_fogRenderNode != nullptr, "[FogVolumeCommon/FogVolumeComponent Component] Trying to updated null render node");
 
@@ -76,6 +76,33 @@ namespace LmbrCentral
         m_fogRenderNode->SetMatrix(AZTransformToLYTransform(parentTransform));
     }
 
+    void FogVolume::UpdateRenderingFlags(const FogVolumeConfiguration& fogVolumeConfig)
+    {
+        if (m_fogRenderNode)
+        {
+            m_fogRenderNode->SetMinSpec(static_cast<AZ::u32>(fogVolumeConfig.m_minSpec));
+
+            if (gEnv && gEnv->p3DEngine)
+            {
+                const int configSpec = gEnv->pSystem->GetConfigSpec(true);
+
+                AZ::u32 rendFlags = static_cast<AZ::u32>(m_fogRenderNode->GetRndFlags());
+
+                const bool hidden = static_cast<AZ::u32>(configSpec) < static_cast<AZ::u32>(fogVolumeConfig.m_minSpec);
+                if (hidden)
+                {
+                    rendFlags |= ERF_HIDDEN;
+                }
+                else
+                {
+                    rendFlags &= ~ERF_HIDDEN;
+                }
+
+                m_fogRenderNode->SetRndFlags(rendFlags);
+            }
+        }
+    }
+
     void FogUtils::FogConfigToFogParams(const LmbrCentral::FogVolumeConfiguration& configuration, SFogVolumeProperties& fogVolumeProperties)
     {
         AZ_Assert(configuration.m_volumeType != FogVolumeType::None, "[FogConfigToFogParams] Attempting to create a fog with invalid volume type")
@@ -87,7 +114,7 @@ namespace LmbrCentral
         fogVolumeProperties.m_ignoresVisAreas = configuration.m_ignoresVisAreas;
         fogVolumeProperties.m_affectsThisAreaOnly = configuration.m_affectsThisAreaOnly;
 
-        fogVolumeProperties.m_globalDensity = configuration.m_globalDensity;
+        fogVolumeProperties.m_globalDensity = max(0.01f, configuration.m_globalDensity);
         fogVolumeProperties.m_densityOffset = configuration.m_densityOffset;
         fogVolumeProperties.m_nearCutoff = configuration.m_nearCutoff;
         fogVolumeProperties.m_fHDRDynamic = configuration.m_hdrDynamic;

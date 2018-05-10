@@ -65,6 +65,12 @@ namespace Audio
         m_nFileCacheManagerSize         = 384 << 10;// 384 MiB on Windows
         m_nAudioObjectPoolSize          = 1024;
         m_nAudioEventPoolSize           = 512;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(SoundCVars_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_OSX)
         m_nATLPoolSize                  = 8 << 10;  // 8 MiB on Mac
         m_nFileCacheManagerSize         = 384 << 10;// 384 MiB on Mac

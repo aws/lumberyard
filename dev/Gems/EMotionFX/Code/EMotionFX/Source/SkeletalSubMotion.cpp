@@ -58,7 +58,7 @@ namespace EMotionFX
         mPosTrack           = nullptr;
         mRotTrack           = nullptr;
 
-        mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 

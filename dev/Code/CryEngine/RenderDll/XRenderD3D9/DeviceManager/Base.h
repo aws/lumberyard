@@ -67,7 +67,12 @@ namespace AzRHI
 
     // BitScanReverse/BitScanForward available?
 
-#if   defined(LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Base_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(LINUX)
 #define HAS_BIT_SCAN_REVERSE_FORWARD 0
 #elif defined(APPLE)
 #define HAS_BIT_SCAN_REVERSE_FORWARD 0

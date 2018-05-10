@@ -205,7 +205,6 @@ namespace EMStudio
 
         // take scrolling into account
         startX += mTrack->GetPlugin()->GetScrollX();
-        startY += mTrack->GetPlugin()->GetScrollY();
 
         // check if we're inside the area of the element
         if (MCore::InRange<int32>(x, startX, startX + width) && MCore::InRange<int32>(y, startY, startY + height))

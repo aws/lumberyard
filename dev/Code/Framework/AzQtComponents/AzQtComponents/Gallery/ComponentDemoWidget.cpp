@@ -21,6 +21,9 @@
 #include "ToggleSwitchPage.h"
 #include "ProgressIndicatorPage.h"
 #include "SliderPage.h"
+#include "CardPage.h"
+
+#include <QMap>
 
 const QString g_pageIndexSettingKey = QStringLiteral("ComponentDemoWidgetPage");
 
@@ -30,22 +33,39 @@ ComponentDemoWidget::ComponentDemoWidget(QWidget* parent)
 {
     ui->setupUi(this);
 
-    addPage(new ButtonPage(this), "Buttons");
-    addPage(new CheckBoxPage(this), "CheckBoxes");
-    addPage(new RadioButtonPage(this), "RadioButtons");
-    addPage(new ToggleSwitchPage(this), "ToggleSwitches");
-    addPage(new ProgressIndicatorPage(this), "ProgressIndicators");
-    addPage(new SliderPage(this), "Sliders");
+    QMap<QString, QWidget*> sortedPages;
+
+    sortedPages.insert("Buttons", new ButtonPage(this));
+    sortedPages.insert("ToggleSwitches", new ToggleSwitchPage(this));
+    sortedPages.insert("Cards", new CardPage(this));
+    sortedPages.insert("CheckBoxes", new CheckBoxPage(this));
+    sortedPages.insert("ProgressIndicators", new ProgressIndicatorPage(this));
+    sortedPages.insert("RadioButtons", new RadioButtonPage(this));
+    sortedPages.insert("Sliders", new SliderPage(this));
+
+    for (const auto& title : sortedPages.keys())
+    {
+        addPage(sortedPages.value(title), title);
+    }
 
     connect(ui->demoSelector, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), ui->demoWidgetStack, [this](int newIndex) {
         ui->demoWidgetStack->setCurrentIndex(newIndex);
 
+        QString demoSelectorText = ui->demoSelector->currentText();
+
         QSettings settings;
-        settings.setValue(g_pageIndexSettingKey, newIndex);
+        settings.setValue(g_pageIndexSettingKey, demoSelectorText);
     });
 
     QSettings settings;
-    int savedIndex = settings.value(g_pageIndexSettingKey, 0).toInt();
+    QString valueString = settings.value(g_pageIndexSettingKey, 0).toString();
+    bool convertedToInt = false;
+    int savedIndex = valueString.toInt(&convertedToInt);
+    if (!convertedToInt)
+    {
+        savedIndex = ui->demoSelector->findText(valueString);
+    }
+
     ui->demoSelector->setCurrentIndex(savedIndex);
 }
 

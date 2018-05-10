@@ -14,6 +14,7 @@
 #define __RENDERGL_SHADERCACHE__H
 
 #include "Shader.h"
+#include <AzCore/std/string/string.h>
 
 namespace RenderGL
 {
@@ -38,7 +39,7 @@ namespace RenderGL
         // a cache entry
         struct Entry
         {
-            MCore::String   mName;      // the search key (unique for each shader)
+            AZStd::string   mName;      // the search key (unique for each shader)
             Shader*         mShader;
         };
 

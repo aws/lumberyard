@@ -179,9 +179,16 @@ namespace AZ
                 auto *dataContainer =  &Serialize::StaticInstance<AZStdAnyContainer>::s_instance;
                 dataContainer->SetSerializeContext(serializeContext);
                 serializeContext->Class<AZStd::any>()
-                    ->DataContainer(dataContainer);
+                    ->DataContainer(dataContainer)
                     ;
-                // Value data is injected into the hierarchy per-instance, since type is dynamic.
+                    // Value data is injected into the hierarchy per-instance, since type is dynamic.
+                if (EditContext* editContext = serializeContext->GetEditContext())
+                {
+                    editContext->Class<AZStd::any>("any", "Type safe container which can store a type that specializes the TypeInfo template")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ;
+                }
             }
         }
     }

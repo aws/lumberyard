@@ -94,7 +94,7 @@ namespace AZ
          * Specifies the mutex that is used when adding and removing events from the event queue.
          * This mutex is for the event queue, not TickEvents. Do not add a mutex to TickEvents.
          */
-        typedef AZStd::mutex EventQueueMutexType; 
+        typedef AZStd::recursive_mutex EventQueueMutexType; 
         
         /**
          * Determines the order in which handlers receive tick events. 

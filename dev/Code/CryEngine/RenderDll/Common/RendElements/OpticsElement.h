@@ -308,17 +308,30 @@ public:
     void ApplySpectrumTexFlag(CShader* shader, bool enabled);
     void ApplyExternTintAndBrightnessVS(CShader* shader, ColorF& cExTint, float fExBrt);
     void ApplyVSParam_Xform(CShader* shader, Matrix33& mx33);
-    void ApplyVSParam_ScreenWidthHeight(CShader* shader);
     void ApplyVSParam_Dynamics(CShader* shader, const Vec3& projPos);
     void ApplyPSParam_LightProjPos(CShader* shader, const Vec3& lightProjPos);
     void ApplyVSParam_LightProjPos(CShader* shader, const Vec3& lightProjPos);
 
     void ApplyCommonVSParams(CShader* shader, const Vec3& wpos, const Vec3& lightProjPos)
     {
+        //If aspect ratio correction is on (default) we want to adjust the global 
+        //transform to re-scale the flare geometry to keep a constant size regardless of 
+        //the window's aspect ratio.
+        //This used to be handled in the shader with params passed from a method ApplyVSParams_ScreenWidthHeight.
+        //But that only applied to ghost flares and why bother doing that per-vertex when we can do it once
+        //per constant buffer.
+        if (HasAspectRatioCorrection())
+        {
+            const float inverseAspectRatio = static_cast<float>(gEnv->pRenderer->GetHeight()) / static_cast<float>(gEnv->pRenderer->GetWidth());
+
+            //Adjust the entire base to avoid warping when rotation is applied
+            const Vec3 adjustedXBasis = m_globalTransform.GetRow(0) * inverseAspectRatio;
+            m_globalTransform.SetRow(0, adjustedXBasis);
+        }
+
         ApplyVSParam_WPosAndSize(shader, wpos);
         ApplyVSParam_Xform(shader, m_globalTransform);
         ApplyVSParam_Dynamics(shader, lightProjPos);
-        ApplyVSParam_ScreenWidthHeight(shader);
     }
 
     virtual EFlareType GetType() { return eFT__Base__; }

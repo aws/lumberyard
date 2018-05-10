@@ -11,6 +11,7 @@
 
 from waflib import Context, Utils, Logs
 from waflib.Configure import conf
+from third_party import ThirdPartySettings
 import sys
 import os
 
@@ -152,3 +153,13 @@ def run_bootstrap_tool(ctx, ly_params, setup_assistant_third_party_override):
 
         if verbose_mode == False:
             Logs.info(out.strip())
+
+
+
+@conf
+def run_linkless_bootstrap(conf):
+
+    if not hasattr(conf,"tp"):
+        conf.tp = ThirdPartySettings(conf)
+        conf.tp.initialize()
+

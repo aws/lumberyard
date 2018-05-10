@@ -14,7 +14,6 @@
 
 #include <MCore/Source/StandardHeaders.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/Endian.h>
 #include "../StandardPluginsConfig.h"
@@ -123,7 +122,6 @@ namespace EMStudio
         MCORE_DEFINECOMMANDCALLBACK(CommandSaveMotionSetCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandLoadMotionSetCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandActivateAnimGraphCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandScaleAnimGraphDataCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandAnimGraphAddConditionCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandAnimGraphRemoveConditionCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandAnimGraphCreateConnectionCallback);
@@ -159,7 +157,6 @@ namespace EMStudio
         CommandSaveMotionSetCallback*                   mSaveMotionSetCallback;
         CommandLoadMotionSetCallback*                   mLoadMotionSetCallback;
         CommandActivateAnimGraphCallback*              mActivateAnimGraphCallback;
-        CommandScaleAnimGraphDataCallback*             mScaleAnimGraphDataCallback;
         CommandAnimGraphAddConditionCallback*          mAnimGraphAddConditionCallback;
         CommandAnimGraphRemoveConditionCallback*       mAnimGraphRemoveConditionCallback;
         CommandAnimGraphCreateConnectionCallback*      mAnimGraphCreateConnectionCallback;

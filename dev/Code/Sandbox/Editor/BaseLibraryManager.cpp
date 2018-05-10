@@ -168,13 +168,17 @@ void CBaseLibraryManager::ClearAll()
     //  CBaseLibraryManager::UnregisterItem()
     //  CBaseLibraryManager::DeleteItem()
     //  CMaterial::~CMaterial()
-    AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
-    ItemsGUIDMap itemsGuidMap = m_itemsGuidMap;
-    ItemsNameMap itemsNameMap = m_itemsNameMap;
 
-    m_itemsGuidMap.clear();
-    m_itemsNameMap.clear();
-    m_libs.clear();
+    ItemsGUIDMap itemsGuidMap;
+    ItemsNameMap itemsNameMap;
+
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_itemsNameMapMutex);
+        std::swap(itemsGuidMap, m_itemsGuidMap);
+        std::swap(itemsNameMap, m_itemsNameMap);
+
+        m_libs.clear();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -82,6 +82,48 @@ namespace Maestro
                             Maestro::SequenceComponentRequests::AnimatablePropertyAddress   address(component->GetId(), virtualPropertyIter->first);
                             m_addressToBehaviorVirtualPropertiesMap[address] = &virtualPropertyIter->second;
                         }
+
+                        // Check for the GetAssetDuration event is present and cache it
+                        for (auto eventIter = behaviorEbus->m_events.begin(); eventIter != behaviorEbus->m_events.end(); eventIter++)
+                        {
+                            if (eventIter->first == "GetAssetDuration")
+                            {
+                                if (&eventIter->second != nullptr)
+                                {
+                                    AZ::BehaviorEBusEventSender* sender = &eventIter->second;
+
+                                    // Sanity check, Shouldn't be able to get here.
+                                    if (nullptr == sender)
+                                    {
+                                        AZ_Error("SequenceAgent", false, "EBus %s, GetAssetDuration sender is null.", behaviorEbus->m_name.c_str());
+                                        continue;
+                                    }
+                                    
+                                    // Sanity check, m_broadcast should always be valid.
+                                    if (nullptr == sender->m_broadcast)
+                                    {
+                                        AZ_Error("SequenceAgent", false, "EBus %s, GetAssetDuration sender->m_broadcast is null.", behaviorEbus->m_name.c_str());
+                                        continue;
+                                    }
+
+                                    // GetAssetDuration shoulder return a float. 
+                                    if (!sender->m_broadcast->HasResult())
+                                    {
+                                        AZ_Error("SequenceAgent", false, "EBus %s, GetAssetDuration should return result", behaviorEbus->m_name.c_str());
+                                        continue;
+                                    }
+
+                                    // GetAssetDuration should take an asset id.
+                                    if (sender->m_broadcast->GetNumArguments() != 1)
+                                    {
+                                        AZ_Error("SequenceAgent", false, "EBus %s, GetAssetDuration should take one argument, an asset id.", behaviorEbus->m_name.c_str());
+                                        continue;
+                                    }
+
+                                    m_addressToGetAssetDurationMap[component->GetId()] = sender;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -146,11 +188,25 @@ namespace Maestro
                 SequenceAgentHelper::DoSafeSet(findIter->second, entityId, boolValue);
                 changed = true;
             }
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::s32>::Uuid())
+            {
+                AZ::s32 s32value = 0;
+                value.GetValue(s32value);
+                findIter->second->m_setter->m_event->Invoke(entityId, s32value);
+                changed = true;
+            }
             else if (propertyTypeId == AZ::AzTypeInfo<AZ::u32>::Uuid())
             {
                 AZ::u32 u32value = 0;
                 value.GetValue(u32value);
                 findIter->second->m_setter->m_event->Invoke(entityId, u32value);
+                changed = true;
+            }
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::Data::AssetBlends<AZ::Data::AssetData>>::Uuid())
+            {
+                AZ::Data::AssetBlends<AZ::Data::AssetData> assetBlendValue;
+                value.GetValue(assetBlendValue);
+                findIter->second->m_setter->m_event->Invoke(entityId, assetBlendValue);
                 changed = true;
             }
             else
@@ -197,11 +253,23 @@ namespace Maestro
                 SequenceAgentHelper::DoSafeGet(findIter->second, entityId, boolValue);
                 returnValue.SetValue(boolValue);
             }
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::s32>::Uuid())
+            {
+                AZ::s32 s32Value;
+                findIter->second->m_getter->m_event->InvokeResult(s32Value, entityId);
+                returnValue.SetValue(s32Value);
+            }
             else if (propertyTypeId == AZ::AzTypeInfo<AZ::u32>::Uuid())
             {
                 AZ::u32 u32Value;
                 findIter->second->m_getter->m_event->InvokeResult(u32Value, entityId);
                 returnValue.SetValue(u32Value);
+            }
+            else if (propertyTypeId == AZ::AzTypeInfo<AZ::Data::AssetBlends<AZ::Data::AssetData>>::Uuid())
+            {
+                AZ::Data::AssetBlends<AZ::Data::AssetData> assetBlendValue;
+                findIter->second->m_getter->m_event->InvokeResult(assetBlendValue, entityId);
+                returnValue.SetValue(assetBlendValue);
             }
             else
             {
@@ -212,4 +280,27 @@ namespace Maestro
             }
         }
     }
+
+    void SequenceAgent::GetAssetDuration(Maestro::SequenceComponentRequests::AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId)
+    {
+        auto findIter = m_addressToGetAssetDurationMap.find(componentId);
+        if (findIter != m_addressToGetAssetDurationMap.end())
+        {
+            if (nullptr != findIter->second)
+            {
+                AZ::BehaviorEBusEventSender* sender = findIter->second;
+                if (nullptr != sender)
+                {
+                    AZ::BehaviorMethod* broadcast = sender->m_broadcast;
+                    if (nullptr != broadcast)
+                    {
+                        float floatValue = 0.0f;
+                        broadcast->InvokeResult(floatValue, assetId);
+                        returnValue.SetValue(floatValue);
+                    }
+                }
+            }
+        }
+    }
+
 }// namespace Maestro

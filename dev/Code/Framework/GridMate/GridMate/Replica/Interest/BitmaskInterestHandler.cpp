@@ -50,7 +50,7 @@ namespace GridMate
         void OnReplicaActivate(const ReplicaContext& rc) override
         {
             m_interestHandler = static_cast<BitmaskInterestHandler*>(rc.m_rm->GetUserContext(AZ_CRC("BitmaskInterestHandler", 0x5bf5d75b)));
-            AZ_Assert(m_interestHandler, "No bitmask interest handler in the user context");
+            AZ_Warning("GridMate", m_interestHandler != nullptr, "No bitmask interest handler in the user context");
             if (m_interestHandler)
             {
                 m_interestHandler->OnNewRulesChunk(this, rc.m_peer);

@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_BUCKETALLOCATORIMPL_H
-#define CRYINCLUDE_CRYCOMMON_BUCKETALLOCATORIMPL_H
 #pragma once
 
 #include "BucketAllocator.h"
@@ -412,7 +410,7 @@ bool BucketAllocator<TraitsT>::Refill(uint8 bucket)
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BUCKETALLOCATORIMPL_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(BucketAllocatorImpl_h)
+#include AZ_RESTRICTED_FILE(BucketAllocatorImpl_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(_WIN32) || defined(LINUX) || defined(APPLE)
 #define BUCKETALLOCATORIMPL_H_TRAIT_TRACK_BUCKET_ALLOCATOR 1
 #endif
@@ -1244,10 +1242,9 @@ inline void BucketAllocatorDetail::SystemAllocator::CleanupAllocator::Free(void*
 {
     // Will be freed automatically when the allocator is destroyed
 }
-
-#elif defined(AZ_RESTRICTED_FILE)
+#elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BUCKETALLOCATORIMPL_H_SECTION_IMPL
-#include AZ_RESTRICTED_FILE(BucketAllocatorImpl_h)
+#include AZ_RESTRICTED_FILE(BucketAllocatorImpl_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(APPLE) || defined(LINUX)
 inline UINT_PTR BucketAllocatorDetail::SystemAllocator::ReserveAddressSpace(size_t numPages, size_t pageLen)
 {
@@ -1393,5 +1390,3 @@ inline void BucketAllocatorDetail::SystemAllocator::CleanupAllocator::Free(void*
 #endif
 
 #endif
-
-#endif // CRYINCLUDE_CRYCOMMON_BUCKETALLOCATORIMPL_H

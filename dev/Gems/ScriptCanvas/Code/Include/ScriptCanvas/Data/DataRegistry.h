@@ -22,7 +22,11 @@ namespace ScriptCanvas
         AZ_TYPE_INFO(DataRegistry, "{41049FA8-EA56-401F-9720-6FE9028A1C01}");
         AZ_CLASS_ALLOCATOR(DataRegistry, AZ::SystemAllocator, 0);
 
+        void RegisterType(const AZ::TypeId& typeId);
+        void UnregisterType(const AZ::TypeId& typeId);
+
         AZStd::unordered_map<Data::eType, Data::TypeErasedTraits> m_typeIdTraitMap; // Creates a mapping of the Data::eType TypeId to the trait structure
+        AZStd::unordered_set<Data::Type> m_creatableTypes;
     };
 
     void InitDataRegistry();

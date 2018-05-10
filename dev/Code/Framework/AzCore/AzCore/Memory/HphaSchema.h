@@ -43,15 +43,17 @@ namespace AZ
                 , m_memoryBlockByteSize(0)
                 , m_memoryBlock(0)
                 , m_subAllocator(nullptr)
+                , m_systemChunkSize(0)
             {}
 
-            static const int        m_memoryBlockAlignment = 64*1024;
+            static const int        m_memoryBlockAlignment = AZ_TRAIT_OS_DEFAULT_PAGE_SIZE;
             unsigned int            m_pageSize;                             ///< Page allocation size must be 1024 bytes aligned.
             unsigned int            m_poolPageSize : 31;                    ///< Page size used to small memory allocations. Must be less or equal to m_pageSize and a multiple of it.
             unsigned int            m_isPoolAllocations : 1;                ///< True to allow allocations from pools, otherwise false.
             size_t                  m_memoryBlockByteSize;                  ///< Memory block size, if 0 we use the OS memory allocation functions.
             void*                   m_memoryBlock;                          ///< Can be NULL if so the we will allocate memory from the subAllocator if m_memoryBlocksByteSize is != 0.
             IAllocatorAllocate*     m_subAllocator;                         ///< Allocator that m_memoryBlocks memory was allocated from or should be allocated (if NULL).
+            size_t                  m_systemChunkSize;                      ///< Size of chunk to request from the OS when more memory is needed (defaults to m_pageSize)
         };
 
 
@@ -76,9 +78,7 @@ namespace AZ
 
     private:
         Descriptor          m_desc;
-#if defined(AZ_OS64)
-        int                 m_pad;      // pad the Descriptor to avoid C4355
-#endif
+
         size_type           m_capacity;                 ///< Capacity in bytes.
         HpAllocator*        m_allocator;
         AZ_ALIGN(char m_hpAllocatorBuffer[5120], 16);    ///< Memory buffer for HpAllocator

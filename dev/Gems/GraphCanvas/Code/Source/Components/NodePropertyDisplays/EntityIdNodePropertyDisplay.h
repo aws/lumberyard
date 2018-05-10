@@ -19,9 +19,8 @@
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEntityIdCtrl.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/EntityIdQLabel.hxx>
 
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
-#include <Components/NodePropertyDisplay/EntityIdDataInterface.h>
-
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/EntityIdDataInterface.h>
 #include <GraphCanvas/Components/MimeDataHandlerBus.h>
 
 namespace GraphCanvas

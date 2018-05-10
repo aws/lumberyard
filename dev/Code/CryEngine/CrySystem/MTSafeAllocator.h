@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYSYSTEM_MTSAFEALLOCATOR_H
-#define CRYINCLUDE_CRYSYSTEM_MTSAFEALLOCATOR_H
 #pragma once
 
 
@@ -22,7 +20,12 @@
 #include <ISystem.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-#if   defined(MOBILE)  // IOS/Android
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(MTSafeAllocator_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(MOBILE)  // IOS/Android
 # define MTSAFE_TEMPORARY_POOL_SIZE (0)
 # define MTSAFE_TEMPORARY_POOL_MINALLOC (0)
 # define MTSAFE_TEMPORARY_POOL_MAXALLOC ((128U << 10) - 1)
@@ -195,5 +198,3 @@ private:
     // The total number of temporary allocations that fell back to global system memory
     LARGE_INTEGER m_TempAllocationsTime;
 };
-
-#endif // CRYINCLUDE_CRYSYSTEM_MTSAFEALLOCATOR_H

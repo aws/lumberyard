@@ -967,7 +967,7 @@ EditableQToolBar::EditableQToolBar(const QString& title, ToolbarManager* manager
 {
     setAcceptDrops(true);
 
-    connect(this, &QToolBar::orientationChanged, [this](Qt::Orientation orientation)
+    connect(this, &QToolBar::orientationChanged, this, [this](Qt::Orientation orientation)
     {
         for (const auto widget : findChildren<QWidget*>())
             layout()->setAlignment(widget, orientation == Qt::Horizontal ? Qt::AlignVCenter : Qt::AlignHCenter);

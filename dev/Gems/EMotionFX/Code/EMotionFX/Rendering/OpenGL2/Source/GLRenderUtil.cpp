@@ -549,7 +549,7 @@ namespace RenderGL
         for (uint32 i = 0; i < mTextEntries.GetLength(); )
         {
             TextEntry* textEntry = mTextEntries[i];
-            RenderText(static_cast<float>(textEntry->mX), static_cast<float>(textEntry->mY), textEntry->mText.AsChar(), textEntry->mColor, textEntry->mFontSize, textEntry->mCentered);
+            RenderText(static_cast<float>(textEntry->mX), static_cast<float>(textEntry->mY), textEntry->mText.c_str(), textEntry->mColor, textEntry->mFontSize, textEntry->mCentered);
 
             textEntry->mLifeTime -= timeDelta;
             if (textEntry->mLifeTime < 0.0f)

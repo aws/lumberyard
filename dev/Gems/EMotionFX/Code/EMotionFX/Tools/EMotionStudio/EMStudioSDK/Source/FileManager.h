@@ -25,7 +25,6 @@
 #include "EMStudioConfig.h"
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/Source/Motion.h>
 #include <EMotionFX/Source/Actor.h>
@@ -98,8 +97,8 @@ namespace EMStudio
         AZStd::string SaveAnimGraphFileDialog(QWidget* parent);
 
         // game controller preset files
-        MCore::String LoadControllerPresetFileDialog(QWidget* parent, const char* defaultFolder);
-        MCore::String SaveControllerPresetFileDialog(QWidget* parent, const char* defaultFolder);
+        AZStd::string LoadControllerPresetFileDialog(QWidget* parent, const char* defaultFolder);
+        AZStd::string SaveControllerPresetFileDialog(QWidget* parent, const char* defaultFolder);
 
     private:
         QString                                         mLastActorFolder;

@@ -21,7 +21,7 @@ def build(bld):
         target          = 'ParticleEditorPlugin',
         vs_filter       = 'Sandbox/Plugins',
         file_list       = 'particleeditorplugin.waf_files',
-        platforms       = ['win'],
+        platforms       = ['win','darwin'],
         configurations  = ['debug', 'debug_test', 'profile', 'profile_test'],
         pch             = "stdafx.cpp",
         use             = ['EditorUI_QT',

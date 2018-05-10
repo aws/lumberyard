@@ -13,6 +13,7 @@
 
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/std/containers/fixed_vector.h>
 
 namespace AZ
 {
@@ -124,6 +125,13 @@ namespace AZ
             return nullptr;
         }
 
+        Component* FindFirstDerivedComponent(EntityId entityId, const Uuid& typeId)
+        {
+            Entity* entity{};
+            ComponentApplicationBus::BroadcastResult(entity, &ComponentApplicationRequests::FindEntity, entityId);
+            return entity ? FindFirstDerivedComponent(entity, typeId) : nullptr;
+        }
+
         //=========================================================================
         // FindDerivedComponents
         //=========================================================================
@@ -140,6 +148,71 @@ namespace AZ
             return result;
         }
 
+        Entity::ComponentArrayType FindDerivedComponents(EntityId entityId, const Uuid& typeId)
+        {
+            Entity* entity{};
+            ComponentApplicationBus::BroadcastResult(entity, &ComponentApplicationRequests::FindEntity, entityId);
+            return entity ? FindDerivedComponents(entity, typeId) : Entity::ComponentArrayType();
+        }
+
+       
+        bool CheckDeclaresSerializeBaseClass(SerializeContext* context, const TypeId& typeToFind, const TypeId& typeToExamine)
+        {
+            AZ_Assert(context, "CheckDeclaresSerializeBaseClass called with no serialize context.");
+            if (!context)
+            {
+                return false;
+            }
+
+            AZStd::fixed_vector<TypeId, 64> knownBaseClasses = { typeToExamine };  // avoid allocating heap here if possible.  64 types are 64*sizeof(Uuid) which is only 1k.
+            bool foundBaseClass = false;
+            auto baseClassVisitorFn = [&typeToFind, &foundBaseClass, &knownBaseClasses](const AZ::SerializeContext::ClassData* reflectedBase, const TypeId& /*rttiBase*/)
+            {
+                // SerializeContext::EnumerateBase() iterates:
+                // - the immediate base classes reflected to SerializeContext.
+                // - then it iterates the entire tree of base classes from the AZ_RTTI info.
+                // We only care about base classes reflected to SerializeContext,
+                // so stop iterating once we stop receiving SerializeContext::ClassData*.
+                if (!reflectedBase)
+                {
+                    return false;
+                }
+
+                // Stop iterating if we've found what we are looking for!
+                if (reflectedBase->m_typeId == typeToFind)
+                {
+                    foundBaseClass = true;
+                    return false;
+                }
+
+                // EnumerateBase() only iterates 1 level of reflected base classes.
+                // if we haven't found what we are looking for yet, push base classes into queue for further exploration.
+                if (AZStd::find(knownBaseClasses.begin(), knownBaseClasses.end(), reflectedBase->m_typeId) == knownBaseClasses.end())
+                {
+                    if (knownBaseClasses.size() == 64)
+                    {
+                        // this should be pretty unlikely since a single class would have to have many other classes in its heirarchy
+                        // and it'd all have to be basically in one layer, as we are popping as we explore.
+                        AZ_WarningOnce("EntityUtils", false, "While trying to find a base class, all available slots were consumed.  consider increasing the size of knownBaseClasses.\n");
+                        // we cannot continue any futher, assume we did not find it.
+                        return false;
+                    }
+                    knownBaseClasses.push_back(reflectedBase->m_typeId);
+                }
+
+                return true; // keep iterating
+            };
+
+            while (!knownBaseClasses.empty())
+            {
+                TypeId toExamine = knownBaseClasses.back();
+                knownBaseClasses.pop_back();
+
+                context->EnumerateBase(baseClassVisitorFn, toExamine);
+            }
+
+            return foundBaseClass;
+        }
     } // namespace EntityUtils
 }   // namespace AZ
 

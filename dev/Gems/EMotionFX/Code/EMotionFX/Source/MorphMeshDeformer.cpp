@@ -159,7 +159,7 @@ namespace EMotionFX
 
                     // deform the vertex data
                     positions[vtxNr] = AZ::PackedVector3f(AZ::Vector3(positions[vtxNr]) + deltas[v].mPosition.ToVector3(minValue, maxValue) * weight);
-                    normals  [vtxNr] = AZ::PackedVector3f(AZ::Vector3(normals[vtxNr]) + deltas[v].mNormal.ToVector3(-1.0f, 1.0f) * weight);
+                    normals  [vtxNr] = AZ::PackedVector3f(AZ::Vector3(normals[vtxNr]) + deltas[v].mNormal.ToVector3(-2.0f, 2.0f) * weight);
 
                     AZ::Vector3 EmfxVector = deltas[v].mTangent.ToVector3(-1.0f, 1.0f);
                     AZ::Vector4 scaleVector4(EmfxVector.GetX(), EmfxVector.GetY(), EmfxVector.GetZ(), 0.0f);

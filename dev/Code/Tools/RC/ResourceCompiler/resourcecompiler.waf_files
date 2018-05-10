@@ -8,7 +8,8 @@
             "IConvertor.h",
             "IMultiplatformConfig.h",
             "IRCLog.h",
-            "IResCompiler.h"
+            "IResCompiler.h",
+            "IUnitTestHelper.h"
         ],
         "Pak":
         [
@@ -78,7 +79,8 @@
             "UnitTestHelper.h",
             "ResourceCompilerTests.cpp",
             "ResourceCompiler.rc",
-            "RCUtil.h"
+            "RCUtil.h",
+            "FunctionThread.h"
         ],
         "Zip":
         [

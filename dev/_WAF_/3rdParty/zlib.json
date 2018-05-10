@@ -1,108 +1,132 @@
 {
-    "name": "zlib", 
-    "source": "@ROOT@/Code/SDKs/zlib-common", 
-    "description": "ZLib Library", 
+    "name": "zlib",
+    "source": "@3P:zlib@",
+    "description": "ZLib Library",
     "includes": [
         "include"
-    ], 
-    "defines": [], 
-    "lib_required": "True", 
+    ],
+    "defines": [],
+    "lib_required": "True",
     "platform": {
         "win_x64_vs2013": {
             "libpath_debug": [
                 "build/win_x64/vc120/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/vc120/release"
-            ], 
+            ],
             "lib": [
                 "zlib.lib"
             ]
-        }, 
+        },
         "win_x64_vs2015": {
             "libpath_debug": [
                 "build/win_x64/vc140/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/vc140/release"
-            ], 
+            ],
             "lib": [
                 "zlib.lib"
             ]
-        }, 
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "durango_vs2015": {
+            "libpath_debug": [
+                "build/win_x64/durango_xdk_03_2016_qfe3/debug"
+            ],
+            "libpath_release": [
+                "build/win_x64/durango_xdk_03_2016_qfe3/release"
+            ],
+            "lib": [
+                "zlib.lib"
+            ]
+        },
+        "durango_vs2017": "@durango_vs2015",
+        "orbis_vs2015": {
+            "libpath_debug": [
+                "build/win_x64/orbis_sdk_3.5/debug"
+            ],
+            "libpath_release": [
+                "build/win_x64/orbis_sdk_3.5/release"
+            ],
+            "lib": [
+                "libzlib.a"
+            ]
+        },
         "darwin_x64": {
             "libpath_debug": [
                 "build/osx/darwin-clang-703.0.31/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/osx/darwin-clang-703.0.31/release"
-            ], 
+            ],
             "lib": [
                 "libzlib.a"
             ]
-        }, 
+        },
         "ios": {
             "libpath_debug": [
                 "build/osx/ios-clang-703.0.31/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/osx/ios-clang-703.0.31/release"
-            ], 
+            ],
             "lib": [
                 "libzlib.a"
             ]
-        }, 
+        },
         "appletv": {
             "libpath_debug": [
                 "build/osx/appletv-clang-703.0.31/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/osx/appletv-clang-703.0.31/release"
-            ], 
+            ],
             "lib": [
                 "libzlib.a"
             ]
-        }, 
+        },
         "android_armv7_gcc": {
             "libpath_debug": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/release"
-            ], 
+            ],
             "lib": [
                 "libzlib.a"
             ]
-        }, 
+        },
         "android_armv7_clang": {
             "libpath_debug": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/clang-3.8/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/clang-3.8/release"
-            ], 
+            ],
             "lib": [
                 "libzlib.a"
             ]
-        }, 
+        },
         "android_armv8_clang": {
             "libpath_debug": [
                 "build/win_x64/android_ndk_r12/android-21/arm64-v8a/clang-3.8/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/android_ndk_r12/android-21/arm64-v8a/clang-3.8/release"
-            ], 
+            ],
             "lib": [
                 "libzlib.a"
             ]
-        }, 
+        },
         "linux_x64": {
             "libpath_debug": [
                 "build/linux/clang-3.4/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/linux/clang-3.4/release"
-            ], 
+            ],
             "lib": [
                 "libzlib.a"
             ]

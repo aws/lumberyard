@@ -1,0 +1,23 @@
+{
+  "name": "unwind",
+  "source": "@3P:unwind_build@",
+  "description": "unwind Library",
+  "includes": [
+    "include"
+  ],
+  "defines": [],
+  "lib_required": "True",
+  "platform": {
+    "linux_x64": {
+      "libpath_debug": [
+        "lib/linux-x86_64-clang-debug"
+      ],
+      "libpath_release": [
+        "lib/linux-x86_64-clang-release"
+      ],
+      "lib": [
+        "libunwind.a"
+      ]
+    }
+  }
+}

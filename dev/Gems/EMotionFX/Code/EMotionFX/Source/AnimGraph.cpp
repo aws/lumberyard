@@ -53,8 +53,6 @@ namespace EMotionFX
         mGameControllerSettings     = AnimGraphGameControllerSettings::Create();
         mRootStateMachine           = nullptr;
         mAttributeSet               = MCore::AttributeSet::Create();
-        mUnitType                   = GetEMotionFX().GetUnitType();
-        mFileUnitType               = mUnitType;
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime           = false;
@@ -176,7 +174,7 @@ namespace EMotionFX
     AnimGraphNode* AnimGraph::RecursiveFindNode(const char* name) const
     {
         // get the ID for a given node name we search for
-        uint32 id = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        uint32 id = MCore::GetStringIdPool().GenerateIdForString(name);
 
         // search based on the id
         return mRootStateMachine->RecursiveFindNodeByID(id);
@@ -198,18 +196,18 @@ namespace EMotionFX
 
 
     // generate a state name that isn't in use yet
-    MCore::String AnimGraph::GenerateNodeName(const MCore::Array<MCore::String>& nameReserveList, const char* prefix) const
+    AZStd::string AnimGraph::GenerateNodeName(const MCore::Array<AZStd::string>& nameReserveList, const char* prefix) const
     {
-        MCore::String result;
+        AZStd::string result;
         uint32 number = 0;
         bool found = false;
         while (found == false)
         {
             // build the string
-            result.Format("%s%d", prefix, number++);
+            result = AZStd::string::format("%s%d", prefix, number++);
 
             // if there is no such state machine yet
-            if (RecursiveFindNode(result.AsChar()) == nullptr && nameReserveList.Find(result.AsChar()) == MCORE_INVALIDINDEX32)
+            if (RecursiveFindNode(result.c_str()) == nullptr && nameReserveList.Find(result.c_str()) == MCORE_INVALIDINDEX32)
             {
                 found = true;
             }
@@ -352,7 +350,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numNodeGroups; ++i)
         {
             // compare the node names and return a pointer in case they are equal
-            if (mNodeGroups[i]->GetNameString().CheckIfIsEqual(groupName))
+            if (mNodeGroups[i]->GetNameString() == groupName)
             {
                 return mNodeGroups[i];
             }
@@ -371,7 +369,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numNodeGroups; ++i)
         {
             // compare the node names and return the index in case they are equal
-            if (mNodeGroups[i]->GetNameString().CheckIfIsEqual(groupName))
+            if (mNodeGroups[i]->GetNameString() == groupName)
             {
                 return i;
             }
@@ -911,23 +909,23 @@ namespace EMotionFX
 
     const char* AnimGraph::GetName() const
     {
-        return mName.AsChar();
+        return mName.c_str();
     }
 
 
     const char* AnimGraph::GetFileName() const
     {
-        return mFileName.AsChar();
+        return mFileName.c_str();
     }
 
 
-    const MCore::String& AnimGraph::GetNameString() const
+    const AZStd::string& AnimGraph::GetNameString() const
     {
         return mName;
     }
 
 
-    const MCore::String& AnimGraph::GetFileNameString() const
+    const AZStd::string& AnimGraph::GetFileNameString() const
     {
         return mFileName;
     }
@@ -959,7 +957,7 @@ namespace EMotionFX
 
     const char* AnimGraph::GetDescription() const
     {
-        return mDescription.AsChar();
+        return mDescription.c_str();
     }
 
 
@@ -1017,79 +1015,5 @@ namespace EMotionFX
     }
 
 
-    void AnimGraph::SetUnitType(MCore::Distance::EUnitType unitType)
-    {
-        mUnitType = unitType;
-    }
-
-
-    MCore::Distance::EUnitType AnimGraph::GetUnitType() const
-    {
-        return mUnitType;
-    }
-
-
-
-    void AnimGraph::SetFileUnitType(MCore::Distance::EUnitType unitType)
-    {
-        mFileUnitType = unitType;
-    }
-
-
-    MCore::Distance::EUnitType AnimGraph::GetFileUnitType() const
-    {
-        return mFileUnitType;
-    }
-
-
-    // scale everything to the given unit type
-    void AnimGraph::ScaleToUnitType(MCore::Distance::EUnitType targetUnitType)
-    {
-        if (mUnitType == targetUnitType)
-        {
-            return;
-        }
-
-        // calculate the scale factor and scale
-        const float scaleFactor = static_cast<float>(MCore::Distance::GetConversionFactor(mUnitType, targetUnitType));
-        Scale(scaleFactor);
-
-        // update the unit type
-        mUnitType = targetUnitType;
-    }
-
-
-    // scale
-    void AnimGraph::Scale(float scaleFactor)
-    {
-        // convert parameters
-        const uint32 numParameters = GetNumParameters();
-        for (uint32 i = 0; i < numParameters; ++i)
-        {
-            MCore::AttributeSettings* param = GetParameter(i);
-            if (param->GetCanScale())
-            {
-                param->Scale(scaleFactor);
-
-                // scale all animgraph instance values
-                const uint32 numInstances = GetNumAnimGraphInstances();
-                for (uint32 b = 0; b < numInstances; ++b)
-                {
-                    AnimGraphInstance* animGraphInstance = GetAnimGraphInstance(b);
-                    animGraphInstance->GetParameterValue(i)->Scale(scaleFactor);
-                }
-            }
-        }
-
-        // convert all object internals if needed
-        const uint32 numObjects = GetNumObjects();
-        for (uint32 i = 0; i < numObjects; ++i)
-        {
-            GetObject(i)->Scale(scaleFactor);
-        }
-
-        // trigger the event
-        GetEventManager().OnScaleAnimGraphData(this, scaleFactor);
-    }
 } // namespace EMotionFX
 

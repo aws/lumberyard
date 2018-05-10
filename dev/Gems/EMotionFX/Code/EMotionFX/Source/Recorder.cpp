@@ -12,6 +12,7 @@
 
 // include required headers
 #include "Recorder.h"
+#include "RecorderBus.h"
 #include "ActorInstance.h"
 #include "TransformData.h"
 #include "AnimGraphManager.h"
@@ -411,7 +412,12 @@ namespace EMotionFX
         // record the current anim graph states
         if (mRecordSettings.mRecordAnimGraphStates)
         {
-            RecordCurrentAnimGraphStates();
+            if (!RecordCurrentAnimGraphStates())
+            {
+                StopRecording();
+                Clear();
+                return;
+            }
         }
 
         // always record the main transforms
@@ -543,7 +549,7 @@ namespace EMotionFX
 
 
     // record current animgraph states
-    void Recorder::RecordCurrentAnimGraphStates()
+    bool Recorder::RecordCurrentAnimGraphStates()
     {
         // for all actor instances
         const uint32 numActorInstances = mActorInstanceDatas.GetLength();
@@ -595,7 +601,10 @@ namespace EMotionFX
                 }
 
                 // recursively save all unique datas
-                SaveUniqueData(animGraphInstance, animGraph->GetRootStateMachine(), animGraphInstanceData);
+                if (!SaveUniqueData(animGraphInstance, animGraph->GetRootStateMachine(), animGraphInstanceData))
+                {
+                    return false;
+                }
 
                 // increase the frames counter
                 animGraphInstanceData.mNumFrames++;
@@ -603,11 +612,12 @@ namespace EMotionFX
                 //MCore::LogInfo("Frame %d = %d bytes (offset=%d), with %d objects - dataBuffer = %d kb", animGraphInstanceData.mNumFrames, frames.GetLast().mNumBytes, frames.GetLast().mByteOffset, frames.GetLast().mObjectInfos.GetLength(), animGraphInstanceData.mDataBufferSize / 1024);
             }
         } // for all actor instances
+        return true;
     }
 
 
     // recursively save the node's unique data
-    void Recorder::SaveUniqueData(const AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData)
+    bool Recorder::SaveUniqueData(const AnimGraphInstance* animGraphInstance, AnimGraphObject* object, AnimGraphInstanceData& animGraphInstanceData)
     {
         // get the current frame's data pointer
         AnimGraphAnimFrame& currentFrame = animGraphInstanceData.mFrames.GetLast();
@@ -632,7 +642,10 @@ namespace EMotionFX
         }
 
         // make sure we have at least the given amount of space in the buffer we are going to write the frame data to
-        AssureAnimGraphBufferSize(animGraphInstanceData, requiredFrameBytes + currentFrame.mByteOffset);
+        if (!AssureAnimGraphBufferSize(animGraphInstanceData, requiredFrameBytes + currentFrame.mByteOffset))
+        {
+            return false;
+        }
         uint8* dataPointer = &animGraphInstanceData.mDataBuffer[frameOffset];
 
         // save all the unique datas for the objects
@@ -653,23 +666,36 @@ namespace EMotionFX
 
         // make sure we have a match here, otherwise some of the object->SaveUniqueData(dataPointer) returns different values than object->SaveUniqueData(nullptr)
         MCORE_ASSERT(requiredFrameBytes == currentFrame.mNumBytes);
+
+        return true;
     }
 
 
     // make sure our anim graph anim buffer is big enough to hold a specified amount of bytes
-    void Recorder::AssureAnimGraphBufferSize(AnimGraphInstanceData& animGraphInstanceData, uint32 numBytes)
+    bool Recorder::AssureAnimGraphBufferSize(AnimGraphInstanceData& animGraphInstanceData, uint32 numBytes)
     {
         // if the buffer is big enough, do nothing
         if (animGraphInstanceData.mDataBufferSize >= numBytes)
         {
-            return;
+            return true;
         }
 
         // we need to reallocate to grow the buffer
         const uint32 newNumBytes = animGraphInstanceData.mDataBufferSize + (numBytes - animGraphInstanceData.mDataBufferSize) * 100; // allocate 100 frames ahead
-        animGraphInstanceData.mDataBuffer = (uint8*)MCore::Realloc(animGraphInstanceData.mDataBuffer, newNumBytes, EMFX_MEMCATEGORY_RECORDER);
-        MCORE_ASSERT(animGraphInstanceData.mDataBuffer);
-        animGraphInstanceData.mDataBufferSize = newNumBytes;
+        void* newBuffer = MCore::Realloc(animGraphInstanceData.mDataBuffer, newNumBytes, EMFX_MEMCATEGORY_RECORDER);
+        MCORE_ASSERT(newBuffer);
+        if (newBuffer)
+        {
+            animGraphInstanceData.mDataBuffer = static_cast<uint8*>(newBuffer);
+            animGraphInstanceData.mDataBufferSize = newNumBytes;
+            return true;
+        }
+        RecorderNotificationBus::Broadcast(&RecorderNotificationBus::Events::OnRecordingFailed,
+            "There is not enough memory to continue the current EMotionFX "
+            "recording. It was deleted to free memory in order to keep the "
+            "editor stable."
+        );
+        return false;
     }
 
 
@@ -754,8 +780,8 @@ namespace EMotionFX
                 result += curItem->mGlobalWeights.CalcMemoryUsage(false);
                 result += curItem->mLocalWeights.CalcMemoryUsage(false);
                 result += curItem->mPlayTimes.CalcMemoryUsage(false);
-                result += curItem->mName.GetMaxLength() + 1;
-                result += curItem->mMotionFileName.GetMaxLength() + 1;
+                result += static_cast<uint32>(curItem->mName.capacity()) + 1;
+                result += static_cast<uint32>(curItem->mMotionFileName.capacity()) + 1;
             }
         } // for all actor instances
 
@@ -1159,7 +1185,7 @@ namespace EMotionFX
                         if (motionInstance)
                         {
                             item->mMotionID         = motionInstance->GetMotion()->GetID();
-                            item->mMotionFileName   = motionInstance->GetMotion()->GetFileNameString().ExtractFileName();
+                            AzFramework::StringFunc::Path::GetFileName(item->mMotionFileName.c_str(), item->mMotionFileName);
                         }
                     }
 

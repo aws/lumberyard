@@ -11,14 +11,21 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_EDITOR_ALEMBIC_ALEMBICCOMPILER_H
-#define CRYINCLUDE_EDITOR_ALEMBIC_ALEMBICCOMPILER_H
 #pragma once
 
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 
 class CAlembicCompiler
+    : public AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
 {
 public:
+    CAlembicCompiler();
+    ~CAlembicCompiler();
+
     bool CompileAlembic(const QString& fullPath);
+
+protected:
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
+    void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
 };
-#endif // CRYINCLUDE_EDITOR_ALEMBIC_ALEMBICCOMPILER_H

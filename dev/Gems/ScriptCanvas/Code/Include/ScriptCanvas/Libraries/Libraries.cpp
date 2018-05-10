@@ -32,6 +32,7 @@ namespace ScriptCanvas
         Entity::InitNodeRegistry(*g_nodeRegistry);
         Comparison::InitNodeRegistry(*g_nodeRegistry);
         Time::InitNodeRegistry(*g_nodeRegistry);
+        String::InitNodeRegistry(*g_nodeRegistry);
     }
 
     void ResetNodeRegistry()
@@ -54,6 +55,7 @@ namespace ScriptCanvas
         Entity::Reflect(reflectContext);
         Comparison::Reflect(reflectContext);
         Time::Reflect(reflectContext);
+        String::Reflect(reflectContext);
     }
 
     AZStd::vector<AZ::ComponentDescriptor*> GetLibraryDescriptors()
@@ -75,6 +77,9 @@ namespace ScriptCanvas
         libraryDescriptors.insert(libraryDescriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
 
         componentDescriptors = Time::GetComponentDescriptors();
+        libraryDescriptors.insert(libraryDescriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
+
+        componentDescriptors = String::GetComponentDescriptors();
         libraryDescriptors.insert(libraryDescriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
 
         return libraryDescriptors;

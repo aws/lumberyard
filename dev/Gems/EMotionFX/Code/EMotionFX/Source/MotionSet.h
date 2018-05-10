@@ -15,8 +15,8 @@
 #include "EMotionFXConfig.h"
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
-#include <AzCore/std/string/string.h>
-#include <MCore/Source/StringIDGenerator.h>
+#include <AzCore/std/containers/unordered_set.h>
+#include <MCore/Source/StringIdPool.h>
 #include "BaseObject.h"
 
 
@@ -239,6 +239,13 @@ namespace EMotionFX
         const EntryMap& GetMotionEntries() const;
 
         /**
+         * Gets child motions recursively.
+         * Every Motion* returned in childMotions will have directly or indirectly this MotionSet as a parent
+         * @param[out] childMotions set where the child motions are returned.
+         */
+        void RecursiveGetMotions(AZStd::unordered_set<Motion*>& childMotions) const;
+
+        /**
          * Preallocate the array of motion entries.
          * This will NOT grow the motion entries array as reported by GetNumMotionEntries(). However, it internally pre-allocates memory to make the AddMotionEntry() calls faster.
          * @param[in] numMotionEntries The number of motion entries to peallocate
@@ -267,6 +274,7 @@ namespace EMotionFX
         MotionEntry* FindMotionEntryByStringID(const char* motionId) const;
         MotionEntry* RecursiveFindMotionEntryByStringID(const char* stringID) const;
         Motion* RecursiveFindMotionByStringID(const char* stringID, bool loadOnDemand = true) const;
+        MotionSet* RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime = false);
 
         /**
          * Set a new motion id for the given motion entry.
@@ -312,6 +320,13 @@ namespace EMotionFX
          * @result A pointer to the child set at the given index.
          */
         MotionSet* GetChildSet(uint32 index) const;
+
+        /**
+         * Gets child motion sets recursively.
+         * Every MotionSet* returned in childMotionSets will have directly or indirectly this MotionSet as a parent
+         * @param[out] childMotionSets set where the child motion sets are returned.
+         */
+        void RecursiveGetMotionSets(AZStd::vector<const MotionSet*>& childMotionSets, bool isOwnedByRuntime = false) const;
 
         /**
          * Remove the child set with the given id.
@@ -376,6 +391,12 @@ namespace EMotionFX
         MotionSetCallback* GetCallback() const;
 
         void Log();
+
+        /**
+        * Get the number of motion entries that contain morph data.
+        * @result The number of motion entries that contain morph data.
+        */
+        size_t GetNumMorphMotions() const;
 
     private:
         AZStd::unordered_map<AZ::u32, MotionEntry*> m_motionEntries;    /**< Hash map for storing the motion entries. Key is the 32-bit unsigned integer representing the motion id string using the string id generator. */

@@ -39,8 +39,8 @@ namespace EMotionFX
 
             typedef EMotionFXPtr<EMotionFX::AnimGraphInstance> AnimGraphInstancePtr;
             AnimGraphInstancePtr CreateInstance(
-                const EMotionFXPtr<EMotionFX::ActorInstance>& actorInstance,
-                const EMotionFXPtr<EMotionFX::MotionSet>& motionSet);
+                EMotionFX::ActorInstance* actorInstance,
+                EMotionFX::MotionSet* motionSet);
 
             EMotionFXPtr<EMotionFX::AnimGraph> GetAnimGraph() { return m_emfxAnimGraph; }
 

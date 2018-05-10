@@ -45,7 +45,7 @@ namespace AZ
 
                 AZ_RTTI(SceneManifest, "{9274AD17-3212-4651-9F3B-7DCCB080E467}");
                 
-                SCENE_CORE_API virtual ~SceneManifest()  = default;
+                SCENE_CORE_API virtual ~SceneManifest();
                 
                 SCENE_CORE_API static AZStd::shared_ptr<const DataTypes::IManifestObject> SceneManifestConstDataConverter(
                     const AZStd::shared_ptr<DataTypes::IManifestObject>& value);

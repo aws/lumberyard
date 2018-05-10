@@ -24,6 +24,17 @@
 #include <AudioSystemImpl_wwise.h>
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYAUDIOIMPLWWISE_CPP_SECTION_1 1
+#define CRYAUDIOIMPLWWISE_CPP_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(CryAudioImplWwise_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+
 namespace Audio
 {
     // Define global objects.
@@ -80,6 +91,10 @@ class CEngineModule_CryAudioImplWwise
         size_t nSecondarySize = 0;
         void* pSecondaryMemory = nullptr;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(CryAudioImplWwise_cpp, AZ_RESTRICTED_PLATFORM)
+    #endif
 
         g_audioImplMemoryPoolSecondary_wwise.InitMem(nSecondarySize, (uint8*)pSecondaryMemory);
     #endif // PROVIDE_AUDIO_IMPL_SECONDARY_POOL

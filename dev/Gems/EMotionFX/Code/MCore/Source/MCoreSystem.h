@@ -24,8 +24,7 @@ namespace MCore
     // forward declarations
     class LogManager;
     class IDGenerator;
-    class StringIDGenerator;
-    class AzStringIdGenerator;
+    class StringIdPool;
     class AttributeFactory;
     class AttributePool;
     class JobList;
@@ -114,8 +113,7 @@ namespace MCore
          * Get the string based ID generator.
          * @result A reference to the string based ID generator.
          */
-        MCORE_INLINE StringIDGenerator& GetStringIDGenerator()          { return *mStringIDGenerator; }
-        MCORE_INLINE AzStringIdGenerator& GetAzStringIdGenerator()      { return *mAzStringIdGenerator; }
+        MCORE_INLINE StringIdPool& GetStringIdPool()          { return *mStringIdPool; }
 
         /**
          * Get the attribute factory.
@@ -154,8 +152,7 @@ namespace MCore
     private:
         LogManager*             mLogManager;        /**< The log manager. */
         IDGenerator*            mIDGenerator;       /**< The ID generator. */
-        StringIDGenerator*      mStringIDGenerator; /**< The string based ID generator. */
-        AzStringIdGenerator*    mAzStringIdGenerator;   /**< The string based ID generator. */
+        StringIdPool*           mStringIdPool; /**< The string based ID generator. */
         AttributeFactory*       mAttributeFactory;  /**< The attribute factory. */
         AttributePool*          mAttributePool;     /**< The attribute pooling system. */
         JobManager*             mJobManager;        /**< The multithread job manager. */
@@ -215,8 +212,7 @@ namespace MCore
 
     MCORE_INLINE LogManager& GetLogManager()                   { return gMCore.Get()->GetLogManager(); }
     MCORE_INLINE IDGenerator& GetIDGenerator()                 { return gMCore.Get()->GetIDGenerator(); }
-    MCORE_INLINE StringIDGenerator& GetStringIDGenerator()     { return gMCore.Get()->GetStringIDGenerator(); }
-    MCORE_INLINE AzStringIdGenerator& GetAzStringIdGenerator() { return gMCore.Get()->GetAzStringIdGenerator(); }
+    MCORE_INLINE StringIdPool& GetStringIdPool()               { return gMCore.Get()->GetStringIdPool(); }
     MCORE_INLINE AttributeFactory& GetAttributeFactory()       { return gMCore.Get()->GetAttributeFactory(); }
     MCORE_INLINE AttributePool& GetAttributePool()             { return gMCore.Get()->GetAttributePool(); }
     MCORE_INLINE JobManager& GetJobManager()                   { return gMCore.Get()->GetJobManager(); }

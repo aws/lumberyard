@@ -102,7 +102,7 @@ namespace CloudCanvas
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<StaticDataManager>()
+                serializeContext->Class<StaticDataManager, AZ::Component>()
                     ->Version(1);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();

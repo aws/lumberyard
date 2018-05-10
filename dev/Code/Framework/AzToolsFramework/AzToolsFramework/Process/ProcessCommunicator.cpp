@@ -71,14 +71,18 @@ namespace AzToolsFramework
 
         if (status.shouldReadOutput)
         {
-            bytesRead = ReadOutput(buffer, bufferSize);
+            // Send in the size - 1 to leave room for us to write out the 0 in
+            // bytesRead position on the next line
+            bytesRead = ReadOutput(buffer, bufferSize - 1);
             buffer[bytesRead] = 0;
             processOutput.outputResult.append(buffer, bytesRead);
         }
 
         if (status.shouldReadErrors)
         {
-            bytesRead = ReadError(buffer, bufferSize);
+            // Send in the size - 1 to leave room for us to write out the 0 in
+            // bytesRead position on the next line
+            bytesRead = ReadError(buffer, bufferSize - 1);
             buffer[bytesRead] = 0;
             processOutput.errorResult.append(buffer, bytesRead);
         }

@@ -11,16 +11,14 @@
 */
 
 #include "MotionSet.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "MotionManager.h"
 #include "Motion.h"
+#include "SkeletalMotion.h"
 #include "EventManager.h"
 #include "Importer/Importer.h"
 #include <MCore/Source/DiskFile.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/IDGenerator.h>
-#include <MCore/Source/UnicodeStringIterator.h>
-#include <MCore/Source/UnicodeCharacter.h>
 
 
 namespace EMotionFX
@@ -118,7 +116,7 @@ namespace EMotionFX
 
     MotionSet::MotionEntry* MotionSet::MotionEntry::Create(const char* fileName, const char* id, Motion* motion)
     {
-        const AZ::u32 stringId = MCore::GetAzStringIdGenerator().GenerateIdForString(id);
+        const AZ::u32 stringId = MCore::GetStringIdPool().GenerateIdForString(id);
         return new MotionEntry(fileName, stringId, motion);
     }
 
@@ -127,9 +125,9 @@ namespace EMotionFX
     {
         if (m_stringId == MCORE_INVALIDINDEX32)
         {
-            return MCore::GetAzStringIdGenerator().GetStringById(0);
+            return MCore::GetStringIdPool().GetStringById(0);
         }
-        return MCore::GetAzStringIdGenerator().GetStringById(m_stringId);
+        return MCore::GetStringIdPool().GetStringById(m_stringId);
     }
 
 
@@ -203,7 +201,10 @@ namespace EMotionFX
         // Get rid of the child motion sets.
         for (MotionSet* childSet : m_childSets)
         {
-            childSet->Destroy();
+            if (!childSet->GetIsOwnedByRuntime())
+            {
+                childSet->Destroy();
+            }
         }
         m_childSets.clear();
     }
@@ -299,6 +300,22 @@ namespace EMotionFX
         return m_motionEntries;
     }
 
+    void MotionSet::RecursiveGetMotions(AZStd::unordered_set<Motion*>& childMotions) const
+    {
+        if (GetIsOwnedByRuntime())
+        {
+            return;
+        }
+        for (const auto& item : m_motionEntries)
+        {
+            MotionEntry* motionEntry = item.second;
+            childMotions.insert(motionEntry->GetMotion());
+        }
+        for (const MotionSet* childMotionSet : m_childSets)
+        {
+            childMotionSet->RecursiveGetMotions(childMotions);
+        }
+    }
 
     void MotionSet::ReserveMotionEntries(uint32 numMotionEntries)
     {
@@ -376,7 +393,7 @@ namespace EMotionFX
     {
         MCore::LockGuardRecursive lock(m_mutex);
 
-        const AZ::u32 key = MCore::GetAzStringIdGenerator().GenerateIdForString(motionId);
+        const AZ::u32 key = MCore::GetStringIdPool().GenerateIdForString(motionId);
 
         const auto& iterator = m_motionEntries.find(key);
         if (iterator == m_motionEntries.end())
@@ -403,7 +420,7 @@ namespace EMotionFX
         // Recursively ask the parent motion sets in case we haven't found the motion id in the current motion set.
         if (m_parentSet)
         {
-            return m_parentSet->FindMotionEntryByStringID(stringID);
+            return m_parentSet->RecursiveFindMotionEntryByStringID(stringID);
         }
 
         // Motion id not found.
@@ -443,13 +460,13 @@ namespace EMotionFX
                 const AZStd::string extension = fileName.ExtractFileExtension();
 
                 // check what type of file to load
-                if (extension.CheckIfIsEqualNoCase("motion"))
+                if (AzFramework::StringFunc::Equal(extension.c_str(), "motion", false))
                     motion = (Motion*)GetImporter().LoadSkeletalMotion( fileName.AsChar(), nullptr );   // TODO: what about motion load settings?
                 else
-                if (extension.CheckIfIsEqualNoCase("xpm"))
+                if (AzFramework::StringFunc::Equal(extension.c_str(), "xpm", false))
                     motion = (Motion*)GetImporter().LoadMorphMotion( fileName.AsChar(), nullptr );  // TODO: same here, what about the importer loading settings
                 else
-                    AZ_Warning("EMotionFX", "MotionSet - Loading on demand of motion '%s' (id=%s) failed as the file extension isn't known.", fileName.AsChar(), stringID);
+                    AZ_Warning("EMotionFX", false, "MotionSet - Loading on demand of motion '%s' (id=%s) failed as the file extension isn't known.", fileName.AsChar(), stringID);
 
                 // mark that we already tried to load this motion, so that we don't retry this next time
                 if (motion == nullptr)
@@ -463,12 +480,32 @@ namespace EMotionFX
         return motion;
     }
 
+    MotionSet* MotionSet::RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime) 
+    {
+        MCore::LockGuardRecursive lock(m_mutex);
+        
+        if (GetIsOwnedByRuntime() == isOwnedByRuntime && m_name == motionSetName)
+        {
+            return this;
+        }
+        MotionSet* motionSet = nullptr;
+        for (MotionSet* childMotionSet : m_childSets)
+        {
+            motionSet = childMotionSet->RecursiveFindMotionSetByName(motionSetName, isOwnedByRuntime);
+            if (motionSet)
+            {
+                return motionSet;
+            }
+        }
+        return motionSet;
+    }
+
 
     void MotionSet::SetMotionEntryId(MotionEntry* motionEntry, const char* newId)
     {
         AZ_Assert(newId, "Motion id must not be nullptr.");
         const AZ::u32 oldStringId = motionEntry->GetStringID();
-        const AZ::u32 newStringId = MCore::GetAzStringIdGenerator().GenerateIdForString(newId);
+        const AZ::u32 newStringId = MCore::GetStringIdPool().GenerateIdForString(newId);
 
         motionEntry->SetStringId(newStringId);
 
@@ -684,16 +721,49 @@ namespace EMotionFX
     uint32 MotionSet::GetNumChildSets() const
     {
         MCore::LockGuardRecursive lock(m_mutex);
-        return static_cast<uint32>(m_childSets.size());
+
+        uint32 childSetSize = 0;
+        for (const MotionSet* motionSet : m_childSets)
+        {
+            if (!motionSet->GetIsOwnedByRuntime())
+            {
+                ++childSetSize;
+            }
+        }
+        return childSetSize;
     }
 
 
     MotionSet* MotionSet::GetChildSet(uint32 index) const
     {
         MCore::LockGuardRecursive lock(m_mutex);
-        return m_childSets[index];
+        uint32 currentIndex = -1;
+        for (MotionSet* motionSet : m_childSets)
+        {
+            if (!motionSet->GetIsOwnedByRuntime())
+            {
+                ++currentIndex;
+                if (currentIndex == index)
+                {
+                    return motionSet;
+                }
+            }
+        }
+        return nullptr;
     }
 
+    void MotionSet::RecursiveGetMotionSets(AZStd::vector<const MotionSet*>& childMotionSets, bool isOwnedByRuntime) const
+    {
+        MCore::LockGuardRecursive lock(m_mutex);
+        if (GetIsOwnedByRuntime() == isOwnedByRuntime)
+        {
+            childMotionSets.push_back(this);
+            for (MotionSet* childMotion : m_childSets)
+            {
+                childMotion->RecursiveGetMotionSets(childMotionSets, isOwnedByRuntime);
+            }
+        }
+    }
 
     MotionSet* MotionSet::GetParentSet() const
     {
@@ -723,4 +793,25 @@ namespace EMotionFX
             nr++;
         }
     }
+
+    size_t MotionSet::GetNumMorphMotions() const
+    {
+        size_t numMorphMotions = 0;
+        const EntryMap& motionEntries = GetMotionEntries();
+        for (const auto& item : motionEntries)
+        {
+            const MotionEntry* motionEntry = item.second;
+            const Motion* motion = motionEntry->GetMotion();           
+            if (motion && motion->GetType() == SkeletalMotion::TYPE_ID)
+            {
+                const SkeletalMotion* skeletalMotion = static_cast<const SkeletalMotion*>(motion);
+                if (skeletalMotion->GetNumMorphSubMotions() > 0)
+                {
+                    numMorphMotions++;
+                }
+            }
+        }
+        return numMorphMotions;
+    }
+
 } // namespace EMotionFX

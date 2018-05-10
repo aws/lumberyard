@@ -108,7 +108,10 @@ namespace GridMate
                         // Start buffer in read mode.
                         AZ::IO::ByteContainerStream<decltype(memoryBuffer)> memoryStream(&memoryBuffer);       
 
-                        value.m_data = AZ::Utils::LoadObjectFromStream(memoryStream, m_serializeContext, &value.m_typeId);                        
+                        // we'll use a strict filter here, one that doesn't allow deserialization to automatically start loading assets, nor tolerates errors.
+                        // this is becuase this is coming from a network interface and should always be error-free.
+                        AZ::ObjectStream::FilterDescriptor filterToUse(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_STRICT);
+                        value.m_data = AZ::Utils::LoadObjectFromStream(memoryStream, m_serializeContext, &value.m_typeId, filterToUse);
                     }
                 }
             }

@@ -21,7 +21,6 @@
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include "../MainWindow.h"
 #include <MysticQt/Source/KeyboardShortcutManager.h>
-#include <AzCore/std/string/string.h>
 
 
 
@@ -81,6 +80,8 @@ namespace EMStudio
     // destructor
     RenderPlugin::~RenderPlugin()
     {
+        SaveRenderOptions();
+
         // get rid of the emstudio actors
         CleanEMStudioActors();
 
@@ -517,6 +518,8 @@ namespace EMStudio
         {
             ViewCloseup(false);
         }
+
+        ReInitTransformationManipulators();
     }
 
 
@@ -694,11 +697,11 @@ namespace EMStudio
         //mDock->setAllowedAreas(Qt::NoDockWidgetArea);
 
         // load the cursors
-        mZoomInCursor       = new QCursor(QPixmap(MCore::String(MysticQt::GetDataDir() + "Images/Rendering/ZoomInCursor.png").AsChar()).scaled(32, 32));
-        mZoomOutCursor      = new QCursor(QPixmap(MCore::String(MysticQt::GetDataDir() + "Images/Rendering/ZoomOutCursor.png").AsChar()).scaled(32, 32));
-        //mTranslateCursor  = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/TranslateCursor.png").AsChar()) );
-        //mRotateCursor     = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/RotateCursor.png").AsChar()) );
-        //mNotAllowedCursor = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/NotAllowedCursor.png").AsChar()) );
+        mZoomInCursor       = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomInCursor.png").c_str()).scaled(32, 32));
+        mZoomOutCursor      = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomOutCursor.png").c_str()).scaled(32, 32));
+        //mTranslateCursor  = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/TranslateCursor.png").c_str()) );
+        //mRotateCursor     = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/RotateCursor.png").c_str()) );
+        //mNotAllowedCursor = new QCursor( QPixmap(String(MysticQt::GetDataDir() + "Images/Rendering/NotAllowedCursor.png").c_str()) );
 
         LoadRenderOptions();
 
@@ -783,7 +786,7 @@ namespace EMStudio
         mRotateManipulator      = (MCommon::RotateManipulator*)GetManager()->AddTransformationManipulator(new MCommon::RotateManipulator(70.0f, false));
 
         // set the default rendering layout
-        LayoutButtonPressed(mRenderOptions.mLastUsedLayout.AsChar());
+        LayoutButtonPressed(mRenderOptions.mLastUsedLayout.c_str());
         return true;
     }
 
@@ -797,7 +800,7 @@ namespace EMStudio
         // save the general render options
         mRenderOptions.Save(&settings);
 
-        MCore::String groupName;
+        AZStd::string groupName;
         if (mCurrentLayout)
         {
             // get the number of render views and iterate through them
@@ -806,9 +809,9 @@ namespace EMStudio
             {
                 RenderViewWidget* renderView = mViewWidgets[i];
 
-                groupName.Format("%s_%i", mCurrentLayout->GetName(), i);
+                groupName = AZStd::string::format("%s_%i", mCurrentLayout->GetName(), i);
 
-                settings.beginGroup(groupName.AsChar());
+                settings.beginGroup(groupName.c_str());
                 renderView->SaveOptions(&settings);
                 settings.endGroup();
             }
@@ -823,7 +826,7 @@ namespace EMStudio
         QSettings settings(renderOptionsFilename.c_str(), QSettings::IniFormat, this);
         mRenderOptions.Load(&settings);
 
-        MCore::String groupName;
+        AZStd::string groupName;
         if (mCurrentLayout)
         {
             // get the number of render views and iterate through them
@@ -832,9 +835,9 @@ namespace EMStudio
             {
                 RenderViewWidget* renderView = mViewWidgets[i];
 
-                groupName.Format("%s_%i", mCurrentLayout->GetName(), i);
+                groupName = AZStd::string::format("%s_%i", mCurrentLayout->GetName(), i);
 
-                settings.beginGroup(groupName.AsChar());
+                settings.beginGroup(groupName.c_str());
                 renderView->LoadOptions(&settings);
                 settings.endGroup();
             }
@@ -927,9 +930,6 @@ namespace EMStudio
         mNearClipPlaneDistProperty      = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Near Clip Plane Distance", mRenderOptions.mNearClipPlaneDistance, 0.1f, 0.001f, 100.0f);
         mFarClipPlaneDistProperty       = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Far Clip Plane Distance", mRenderOptions.mFarClipPlaneDistance, 200.0f, 1.0f, 100000.0f);
         mFOVProperty                    = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Field Of View", mRenderOptions.mFOV, 1.0f, 1.0f, 170.0f);
-        mTexturePathProperty            = generalPropertyWidget->AddStringProperty(renderGroupName, "Texture Path", mRenderOptions.mTexturePath, "");
-        mAutoMipMapProperty             = generalPropertyWidget->AddBoolProperty(renderGroupName, "Automatically Create Mip Maps", mRenderOptions.mCreateMipMaps);
-        mSkipLoadTexturesProperty       = generalPropertyWidget->AddBoolProperty(renderGroupName, "Skip Loading Textures", mRenderOptions.mSkipLoadingTextures);
 
         // main light
         mMainLightIntensityProperty     = generalPropertyWidget->AddFloatSpinnerProperty(renderGroupName, "Main Light Intensity",  mRenderOptions.mMainLightIntensity, 1.0f, 0.0f, 10.0f);
@@ -1064,18 +1064,6 @@ namespace EMStudio
         if (property == mFOVProperty)
         {
             mRenderOptions.mFOV = property->AsFloat();
-        }
-        if (property == mTexturePathProperty)
-        {
-            mRenderOptions.mTexturePath = property->AsString();
-        }
-        if (property == mAutoMipMapProperty)
-        {
-            mRenderOptions.mCreateMipMaps = property->AsBool();
-        }
-        if (property == mSkipLoadTexturesProperty)
-        {
-            mRenderOptions.mSkipLoadingTextures = property->AsBool();
         }
         if (property == mMainLightIntensityProperty)
         {
@@ -1363,7 +1351,7 @@ namespace EMStudio
         ViewCloseup(false);
     }
 
-    RenderPlugin::Layout* RenderPlugin::FindLayoutByName(const MCore::String& layoutName)
+    RenderPlugin::Layout* RenderPlugin::FindLayoutByName(const AZStd::string& layoutName)
     {
         // get the render layout templates and iterate through them
         const uint32 numLayouts = mLayouts.GetLength();
@@ -1373,7 +1361,7 @@ namespace EMStudio
             Layout* layout = mLayouts[i];
 
             // check if the this is the layout
-            if (layoutName.CheckIfIsEqualNoCase(layout->GetName()))
+            if (AzFramework::StringFunc::Equal(layoutName.c_str(), layout->GetName(), false /* no case */))
             {
                 return layout;
             }
@@ -1391,7 +1379,7 @@ namespace EMStudio
 
     void RenderPlugin::LayoutButtonPressed(const QString& text)
     {
-        MCore::String pressedButtonText = FromQtString(text);
+        AZStd::string pressedButtonText = FromQtString(text);
         Layout* layout = FindLayoutByName(pressedButtonText);
         if (layout == nullptr)
         {
@@ -1451,8 +1439,6 @@ namespace EMStudio
         shortcutManger->RegisterKeyboardShortcut("Show Selected", "Render Window", Qt::Key_S, false, false, true);
         shortcutManger->RegisterKeyboardShortcut("Show Entire Scene", "Render Window", Qt::Key_A, false, false, true);
         shortcutManger->RegisterKeyboardShortcut("Toggle Selection Box Rendering", "Render Window", Qt::Key_J, false, false, true);
-        shortcutManger->RegisterKeyboardShortcut("Select All Actor Instances", "Render Window", Qt::Key_A, false, true, true);
-        shortcutManger->RegisterKeyboardShortcut("Unselect All Actor Instances", "Render Window", Qt::Key_D, false, true, true);
     }
 
 

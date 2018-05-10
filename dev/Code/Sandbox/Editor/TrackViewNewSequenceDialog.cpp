@@ -59,6 +59,14 @@ void CTVNewSequenceDialog::OnInitDialog()
         ui->m_seqNodeTypeCombo->addItem(tr(g_seqTypeComboPairs[i].name));
     }
     ui->m_seqNodeTypeCombo->setCurrentIndex(static_cast<int>(SequenceType::SequenceComponent));         // default choice is the Director Component Entity
+
+    // If legacy mode is disabled, hide the sequence type option so that only
+    // Component Entity sequence types are created (since it is the default choice)
+    if (!GetIEditor()->IsLegacyUIEnabled())
+    {
+        ui->STATIC1->hide();
+        ui->m_seqNodeTypeCombo->hide();
+    }
 }
 
 void CTVNewSequenceDialog::OnOK()

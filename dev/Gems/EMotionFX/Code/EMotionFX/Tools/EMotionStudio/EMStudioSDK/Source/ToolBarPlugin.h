@@ -15,7 +15,6 @@
 
 // include MCore
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
 #include <QToolBar>
@@ -52,7 +51,7 @@ namespace EMStudio
         virtual QString GetObjectName() const override                      { AZ_Assert(!mBar.isNull(), "Unexpected null bar"); return mBar->objectName(); }
         virtual void SetObjectName(const QString& name) override            { GetToolBar()->setObjectName(name); }
 
-        virtual bool GetHasWindowWithObjectName(const MCore::String& objectName) override;
+        virtual bool GetHasWindowWithObjectName(const AZStd::string& objectName) override;
 
         virtual Qt::ToolBarArea GetToolBarCreationArea() const              { return Qt::BottomToolBarArea; }
 

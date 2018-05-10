@@ -12,10 +12,12 @@
 
 #include "ManipulatorView.h"
 
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/VectorConversions.h>
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/std/containers/array.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzToolsFramework/Manipulators/ManipulatorManager.h>
 #include <AzToolsFramework/Manipulators/AngularManipulator.h>
 #include <AzToolsFramework/Manipulators/LinearManipulator.h>
 #include <AzToolsFramework/Manipulators/LineSegmentSelectionManipulator.h>
@@ -26,6 +28,42 @@
 namespace AzToolsFramework
 {
     const float g_defaultManipulatorSphereRadius = 0.1f;
+
+    AZ::Transform TransformUniformScale(const AZ::Transform& transform)
+    {
+        AZ::Transform transformUniformScale = transform;
+        const AZ::VectorFloat maxScale = transformUniformScale.ExtractScale().GetMaxElement();
+        return transformUniformScale * AZ::Transform::CreateScale(AZ::Vector3(maxScale));
+    }
+
+    AZ::Transform WorldFromLocalWithUniformScale(const AZ::EntityId entityId)
+    {
+        AZ::Transform worldFromLocal;
+        AZ::TransformBus::EventResult(
+            worldFromLocal, entityId, &AZ::TransformBus::Events::GetWorldTM);
+
+        return TransformUniformScale(worldFromLocal);
+    }
+
+    /**
+     * Take into account the location of the camera and orientate
+     * the axis so it faces the camera.
+     */
+    static void CameraCorrectAxis(
+        const AZ::Vector3& axis, AZ::Vector3& correctedAxis, const ManipulatorManagerState& managerState,
+        const ViewportInteraction::MouseInteraction& mouseInteraction,
+        const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition,
+        const ViewportInteraction::CameraState& cameraState)
+    {
+        // do not update (flip) the axis while the manipulator is being interacted with
+        if (!(mouseInteraction.m_mouseButtons.Any() && managerState.m_interacting))
+        {
+            correctedAxis =
+                (worldFromLocal * localPosition - cameraState.m_location).Dot(worldFromLocal.Multiply3x3(axis)) > 0.0f
+                ? axis * -AZ::VectorFloat::CreateOne()
+                : axis;
+        }
+    }
 
     /**
      * Calculate quad bound in world space.
@@ -226,31 +264,39 @@ namespace AzToolsFramework
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void ManipulatorViewQuad::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
-        const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, ManipulatorSpace manipulatorSpace)
+        const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace)
     {
-        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+        const AZ::Transform localFromWorld = manipulatorState.m_worldFromLocal.GetInverseFast();
         const AZ::Vector3 axis1 = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_axis1).GetNormalized();
         const AZ::Vector3 axis2 = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_axis2).GetNormalized();
 
+        CameraCorrectAxis(
+            axis1, m_cameraCorrectedAxis1, managerState, mouseInteraction,
+            manipulatorState.m_worldFromLocal, manipulatorState.m_localPosition, cameraState);
+        CameraCorrectAxis(
+            axis2, m_cameraCorrectedAxis2, managerState, mouseInteraction,
+            manipulatorState.m_worldFromLocal, manipulatorState.m_localPosition, cameraState);
+
         const Picking::BoundShapeQuad quadBound =
-            CalculateQuadBound(localPosition, worldFromLocal, axis1, axis2,
+            CalculateQuadBound(
+                manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal, m_cameraCorrectedAxis1, m_cameraCorrectedAxis2,
                 m_size * CalculateScreenToWorldMultiplier(
-                    m_screenSizeFixed, worldFromLocal * localPosition, cameraState));
+                    m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState));
 
-        display.SetLineWidth(defaultLineWidth(mouseOver));
+        display.SetLineWidth(defaultLineWidth(manipulatorState.m_mouseOver));
 
-        display.SetColor(ViewColor(mouseOver, m_axis1Color, m_mouseOverColor).GetAsVector4());
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_axis1Color, m_mouseOverColor).GetAsVector4());
         display.DrawLine(quadBound.m_corner4, quadBound.m_corner3);
 
-        display.SetColor(ViewColor(mouseOver, m_axis2Color, m_mouseOverColor).GetAsVector4());
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_axis2Color, m_mouseOverColor).GetAsVector4());
         display.DrawLine(quadBound.m_corner2, quadBound.m_corner3);
 
-        if (mouseOver)
+        if (manipulatorState.m_mouseOver)
         {
             display.SetColor(Vector3ToVector4(m_mouseOverColor.GetAsVector3(), 0.5f));
 
@@ -271,17 +317,17 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewQuadBillboard::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& /*managerState*/,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, ManipulatorSpace /*manipulatorSpace*/)
     {
         const Picking::BoundShapeQuad quadBound =
-            CalculateQuadBoundBillboard(localPosition, worldFromLocal,
+            CalculateQuadBoundBillboard(manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal,
                 m_size * CalculateScreenToWorldMultiplier(
-                    m_screenSizeFixed, worldFromLocal * localPosition, cameraState), cameraState);
+                    m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState), cameraState);
 
-        display.SetColor(ViewColor(mouseOver, m_color, m_mouseOverColor).GetAsVector4());
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_color, m_mouseOverColor).GetAsVector4());
         display.DrawQuad(
             quadBound.m_corner1, quadBound.m_corner2,
             quadBound.m_corner3, quadBound.m_corner4);
@@ -293,25 +339,30 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewLine::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
-        const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, ManipulatorSpace manipulatorSpace)
+        const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace)
     {
         const float viewScale = CalculateScreenToWorldMultiplier(
-            m_screenSizeFixed, worldFromLocal * localPosition, cameraState);
+            m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState);
 
-        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+        const AZ::Transform localFromWorld = manipulatorState.m_worldFromLocal.GetInverseFast();
         const AZ::Vector3 axis = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_axis).GetNormalized();
 
+        CameraCorrectAxis(
+            axis, m_cameraCorrectedAxis, managerState, mouseInteraction,
+            manipulatorState.m_worldFromLocal, manipulatorState.m_localPosition, cameraState);
+
         const Picking::BoundShapeLineSegment lineBound =
-            CalculateLineBound(localPosition, worldFromLocal, axis,
+            CalculateLineBound(
+                manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal, m_cameraCorrectedAxis,
                 m_length * viewScale,
                 m_width * viewScale);
 
-        display.SetColor(ViewColor(mouseOver, m_color, m_mouseOverColor).GetAsVector4());
-        display.SetLineWidth(defaultLineWidth(mouseOver));
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_color, m_mouseOverColor).GetAsVector4());
+        display.SetLineWidth(defaultLineWidth(manipulatorState.m_mouseOver));
         display.DrawLine(lineBound.m_start, lineBound.m_end);
 
         if (m_screenSizeFixed || m_boundDirty)
@@ -321,30 +372,30 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewLineSelect::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& /*managerState*/,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace /*manipulatorSpace*/)
     {
         const float viewScale = CalculateScreenToWorldMultiplier(
-            /*@param screenSizeFixed=*/true, worldFromLocal * localPosition, cameraState);
+            /*@param screenSizeFixed=*/true, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState);
 
         const Picking::BoundShapeLineSegment lineBound =
-            CalculateLineBound(m_localStart, m_localEnd, worldFromLocal, m_width * viewScale);
+            CalculateLineBound(m_localStart, m_localEnd, manipulatorState.m_worldFromLocal, m_width * viewScale);
 
         if (m_boundDirty)
         {
             RefreshBound(managerId, manipulatorId, lineBound);
         }
-            
-        if (mouseOver)
+
+        if (manipulatorState.m_mouseOver)
         {
             const LineSegmentSelectionManipulator::Action action = CalculateManipulationDataAction(
-                worldFromLocal, mouseInteraction.m_mousePick.m_rayOrigin, 
+                manipulatorState.m_worldFromLocal, mouseInteraction.m_mousePick.m_rayOrigin,
                 mouseInteraction.m_mousePick.m_rayDirection,
                 cameraState.m_farClip, m_localStart, m_localEnd);
-            
-            const AZ::Vector3 worldLineHitPosition = worldFromLocal * action.m_localLineHitPosition;
+
+            const AZ::Vector3 worldLineHitPosition = manipulatorState.m_worldFromLocal * action.m_localLineHitPosition;
             display.SetColor(AZ::Vector4(0.0f, 1.0f, 0.0f, 1.0f));
             display.DrawBall(
                 worldLineHitPosition,
@@ -354,28 +405,37 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewCone::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
-        const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, ManipulatorSpace manipulatorSpace)
+        const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace)
     {
         const float viewScale = CalculateScreenToWorldMultiplier(
-            m_screenSizeFixed, worldFromLocal * localPosition, cameraState);
+            m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState);
 
-        const AZ::Vector3 scale = worldFromLocal.RetrieveScale();
-        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+        const AZ::Vector3 scale = manipulatorState.m_worldFromLocal.RetrieveScale();
+        const AZ::Transform localFromWorld = manipulatorState.m_worldFromLocal.GetInverseFast();
         const AZ::Vector3 axis = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_axis).GetNormalized();
         const AZ::Vector3 offset = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_offset);
 
+        CameraCorrectAxis(
+            axis, m_cameraCorrectedAxis, managerState, mouseInteraction,
+            manipulatorState.m_worldFromLocal, manipulatorState.m_localPosition, cameraState);
+
+        CameraCorrectAxis(
+            offset, m_cameraCorrectedOffset, managerState, mouseInteraction,
+            manipulatorState.m_worldFromLocal, manipulatorState.m_localPosition, cameraState);
+
         const Picking::BoundShapeCone coneBound =
-            CalculateConeBound(localPosition, worldFromLocal, axis,
-                offset * scale.GetReciprocal() * viewScale,
+            CalculateConeBound(
+                manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal, m_cameraCorrectedAxis,
+                m_cameraCorrectedOffset * scale.GetReciprocal() * viewScale,
                 m_length * viewScale,
                 m_radius * viewScale);
 
-        display.SetColor(ViewColor(mouseOver, m_color, m_mouseOverColor).GetAsVector4());
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_color, m_mouseOverColor).GetAsVector4());
         display.DrawCone(
             coneBound.m_base, coneBound.m_axis, coneBound.m_radius, coneBound.m_height);
 
@@ -386,15 +446,15 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewBox::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
-        const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, ManipulatorSpace manipulatorSpace)
+        const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace)
     {
         const float viewScale = CalculateScreenToWorldMultiplier(
-            m_screenSizeFixed, worldFromLocal * localPosition, cameraState);
+            m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState);
 
-        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+        const AZ::Transform localFromWorld = manipulatorState.m_worldFromLocal.GetInverseFast();
         const AZ::Quaternion orientation = [this, manipulatorSpace, &localFromWorld]() -> AZ::Quaternion {
             switch (manipulatorSpace)
             {
@@ -410,16 +470,20 @@ namespace AzToolsFramework
         const AZ::Vector3 offset = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_offset);
 
+        CameraCorrectAxis(
+            offset, m_cameraCorrectedOffset, managerState, mouseInteraction,
+            manipulatorState.m_worldFromLocal, manipulatorState.m_localPosition, cameraState);
+
         const Picking::BoundShapeBox boxBound =
-            CalculateBoxBound(localPosition, worldFromLocal, orientation,
-                offset * viewScale,
+            CalculateBoxBound(manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal, orientation,
+                m_cameraCorrectedOffset * viewScale,
                 m_halfExtents * viewScale);
 
         const AZ::Vector3 xAxis = boxBound.m_orientation * AZ::Vector3::CreateAxisX();
         const AZ::Vector3 yAxis = boxBound.m_orientation * AZ::Vector3::CreateAxisY();
         const AZ::Vector3 zAxis = boxBound.m_orientation * AZ::Vector3::CreateAxisZ();
 
-        display.SetColor(ViewColor(mouseOver, m_color, m_mouseOverColor).GetAsVector4());
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_color, m_mouseOverColor).GetAsVector4());
         display.DrawSolidOBB(boxBound.m_center,
             xAxis, yAxis, zAxis, boxBound.m_halfExtents);
 
@@ -430,25 +494,29 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewCylinder::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
-        const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, ManipulatorSpace manipulatorSpace)
+        const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace)
     {
         const float viewScale = CalculateScreenToWorldMultiplier(
-            m_screenSizeFixed, worldFromLocal * localPosition, cameraState);
+            m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState);
 
-        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+        const AZ::Transform localFromWorld = manipulatorState.m_worldFromLocal.GetInverseFast();
         const AZ::Vector3 axis = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_axis);
 
+        CameraCorrectAxis(
+            axis, m_cameraCorrectedAxis, managerState, mouseInteraction,
+            manipulatorState.m_worldFromLocal, manipulatorState.m_localPosition, cameraState);
+
         const Picking::BoundShapeCylinder cylinderBound =
             CalculateCylinderBound(
-                localPosition, worldFromLocal, axis,
+                manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal, m_cameraCorrectedAxis,
                 m_length * viewScale,
                 m_radius * viewScale);
 
-        display.SetColor(ViewColor(mouseOver, m_color, m_mouseOverColor).GetAsVector4());
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_color, m_mouseOverColor).GetAsVector4());
         display.DrawSolidCylinder(cylinderBound.m_base + cylinderBound.m_axis * cylinderBound.m_height * 0.5f,
             cylinderBound.m_axis, cylinderBound.m_radius, cylinderBound.m_height);
 
@@ -459,17 +527,17 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewSphere::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& /*managerState*/,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace /*manipulatorSpace*/)
     {
         const Picking::BoundShapeSphere sphereBound =
-            CalculateSphereBound(localPosition, worldFromLocal,
+            CalculateSphereBound(manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal,
                 m_radius * CalculateScreenToWorldMultiplier(
-                    m_screenSizeFixed, worldFromLocal * localPosition, cameraState));
+                    m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState));
 
-        display.SetColor(m_decideColorFn(mouseInteraction, mouseOver, m_color).GetAsVector4());
+        display.SetColor(m_decideColorFn(mouseInteraction, manipulatorState.m_mouseOver, m_color).GetAsVector4());
         display.DrawBall(sphereBound.m_center, sphereBound.m_radius);
 
         if (m_screenSizeFixed || m_boundDirty)
@@ -479,31 +547,31 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewCircle::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& /*managerState*/,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, ManipulatorSpace manipulatorSpace)
     {
         const float viewScale = CalculateScreenToWorldMultiplier(
-            m_screenSizeFixed, worldFromLocal * localPosition, cameraState);
+            m_screenSizeFixed, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState);
 
-        const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
+        const AZ::Transform localFromWorld = manipulatorState.m_worldFromLocal.GetInverseFast();
         const AZ::Vector3 axis = Internal::TransformAxisForSpace(
             manipulatorSpace, localFromWorld, m_axis);
 
         const Picking::BoundShapeTorus torusBound =
             CalculateTorusBound(
-                localPosition, worldFromLocal, axis,
+                manipulatorState.m_localPosition, manipulatorState.m_worldFromLocal, axis,
                 m_radius * viewScale,
                 m_width * viewScale);
 
         // transform circle based on delta between default z up axis and other axes
-        const AZ::Transform worldFromLocalWithOrientation = worldFromLocal *
+        const AZ::Transform worldFromLocalWithOrientation = manipulatorState.m_worldFromLocal *
             AZ::Transform::CreateFromQuaternion(AZ::Quaternion::CreateShortestArc(AZ::Vector3::CreateAxisZ(), axis));
 
         display.PushMatrix(worldFromLocalWithOrientation);
-        display.SetColor(ViewColor(mouseOver, m_color, m_mouseOverColor).GetAsVector4());
-        display.DrawHalfDottedCircle(localPosition, torusBound.m_majorRadius, worldFromLocalWithOrientation.GetInverseFast() * cameraState.m_location);
+        display.SetColor(ViewColor(manipulatorState.m_mouseOver, m_color, m_mouseOverColor).GetAsVector4());
+        display.DrawHalfDottedCircle(manipulatorState.m_localPosition, torusBound.m_majorRadius, worldFromLocalWithOrientation.GetInverseFast() * cameraState.m_location);
         display.PopMatrix();
 
         if (m_screenSizeFixed || m_boundDirty)
@@ -513,29 +581,29 @@ namespace AzToolsFramework
     }
 
     void ManipulatorViewSplineSelect::Draw(
-        ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-        bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+        ManipulatorManagerId managerId, const ManipulatorManagerState& /*managerState*/,
+        ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
         AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace /*manipulatorSpace*/)
     {
         const float viewScale = CalculateScreenToWorldMultiplier(
-            /*@param screenSizeFixed=*/true, worldFromLocal * localPosition, cameraState);
+            /*@param screenSizeFixed=*/true, manipulatorState.m_worldFromLocal * manipulatorState.m_localPosition, cameraState);
 
         const Picking::BoundShapeSpline splineBound =
-            CalculateSplineBound(m_spline, worldFromLocal, m_width * viewScale);
+            CalculateSplineBound(m_spline, manipulatorState.m_worldFromLocal, m_width * viewScale);
 
         if (m_boundDirty)
         {
             RefreshBound(managerId, manipulatorId, splineBound);
         }
 
-        if (mouseOver)
+        if (manipulatorState.m_mouseOver)
         {
             const SplineSelectionManipulator::Action action = CalculateManipulationDataAction(
-                worldFromLocal, mouseInteraction.m_mousePick.m_rayOrigin,
+                manipulatorState.m_worldFromLocal, mouseInteraction.m_mousePick.m_rayOrigin,
                 mouseInteraction.m_mousePick.m_rayDirection, m_spline);
 
-            const AZ::Vector3 worldSplineHitPosition = worldFromLocal * action.m_localSplineHitPosition;
+            const AZ::Vector3 worldSplineHitPosition = manipulatorState.m_worldFromLocal * action.m_localSplineHitPosition;
                 display.SetColor(m_color.GetAsVector4());
                 display.DrawBall(worldSplineHitPosition,
                     CalculateScreenToWorldMultiplier(true, worldSplineHitPosition, cameraState) * g_defaultManipulatorSphereRadius);

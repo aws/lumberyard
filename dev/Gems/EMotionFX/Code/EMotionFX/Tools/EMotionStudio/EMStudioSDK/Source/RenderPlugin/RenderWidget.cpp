@@ -160,28 +160,31 @@ namespace EMStudio
         // calculate cam distance for the orthographic cam mode
         if (mCamera->GetProjectionMode() == MCommon::Camera::PROJMODE_ORTHOGRAPHIC)
         {
-            // reduced size for the rotation gizmo in ortho mode
-            float gizmoScale = 0.75f;
-            if (activeManipulator->GetType() == MCommon::TransformationManipulator::GIZMOTYPE_ROTATION)
+            camDist = 0.75f; 
+            switch (GetCameraMode())
             {
-                gizmoScale = 0.6f;
-            }
-
-            uint32 camMode = GetCameraMode();
-            if (camMode == CAMMODE_FRONT || camMode == CAMMODE_BACK)
-            {
-                camDist = MCore::Math::Abs(mCamera->GetPosition().GetY()) * gizmoScale;
-            }
-            else if (camMode == CAMMODE_LEFT || camMode == CAMMODE_RIGHT)
-            {
-                camDist = MCore::Math::Abs(mCamera->GetPosition().GetX()) * gizmoScale;
-            }
-            else
-            {
-                camDist = MCore::Math::Abs(mCamera->GetPosition().GetZ()) * gizmoScale;
+            case CAMMODE_FRONT:
+            case CAMMODE_BOTTOM:
+                // -(scale.x)
+                camDist *= (-2.0 / mCamera->GetViewProjMatrix().m16[0]);
+                break;
+            case CAMMODE_BACK:
+            case CAMMODE_TOP:
+                // scale.x
+                camDist *= (2.0 / mCamera->GetViewProjMatrix().m16[0]);
+                break;
+            case CAMMODE_LEFT:
+                // -(scale.y)
+                camDist *= (-2.0 / mCamera->GetViewProjMatrix().m16[4]);
+                break;
+            case CAMMODE_RIGHT:
+                // scale.y
+                camDist *= (2.0 / mCamera->GetViewProjMatrix().m16[4]);
+                break;
+            default:
+                break;
             }
         }
-
         // calculate cam distance for perspective cam
         else
         {
@@ -730,20 +733,6 @@ namespace EMStudio
             return;
         }
 
-        if (shortcutManger->Check(event, "Select All Actor Instances", "Render Window"))
-        {
-            GetMainWindow()->OnSelectAllActorInstances();
-            event->accept();
-            return;
-        }
-
-        if (shortcutManger->Check(event, "Unselect All Actor Instances", "Render Window"))
-        {
-            GetMainWindow()->OnUnselectAllActorInstances();
-            event->accept();
-            return;
-        }
-
         if (event->key() == Qt::Key_Delete)
         {
             CommandSystem::RemoveSelectedActorInstances();
@@ -768,18 +757,6 @@ namespace EMStudio
         }
 
         if (shortcutManger->Check(event, "Show Entire Scene", "Render Window"))
-        {
-            event->accept();
-            return;
-        }
-
-        if (shortcutManger->Check(event, "Select All Actor Instances", "Render Window"))
-        {
-            event->accept();
-            return;
-        }
-
-        if (shortcutManger->Check(event, "Unselect All Actor Instances", "Render Window"))
         {
             event->accept();
             return;

@@ -16,6 +16,8 @@
 #ifdef WIN32
 #include <gdiplus.h>
 #pragma comment (lib, "Gdiplus.lib")
+
+#include <WinUser.h> // needed for MessageBoxW in the assert handler
 #endif
 
 #include "CryEdit.h"
@@ -230,6 +232,7 @@
 #include <QStandardItemModel>
 #include <QTreeView>
 #include <QClipboard>
+#include <QElapsedTimer>
 #include <ILevelSystem.h>
 
 #include <AzFramework/Components/CameraBus.h>
@@ -254,11 +257,11 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
 #include "Core/EditorMetricsPlainTextNameRegistration.h"
+#include "EditorToolsApplication.h"
 
 #include "../Plugins/EditorUI_QT/EditorUI_QTAPI.h"
 
 #include <Engines/EnginesAPI.h> // For LyzardSDK
-#include <Crates/Crates.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <AzFramework/API/ApplicationAPI_win.h>
@@ -268,15 +271,11 @@
 #include "WindowObserver_mac.h"
 #endif
 
-//#define m_pMainWnd MainWindow::instance()
-
 static const char defaultFileExtension[] = ".ly";
 static const char oldFileExtension[] = ".cry";
 
-/////////////////////////////////////////////////////////////////////////////
-// The one and only CCryEditApp object
-//////////////////////////////////////////////////////////////////////////
-CCryEditApp theApp;
+static const char lumberyardEditorClassName[] = "LumberyardEditorClass";
+static const char lumberyardApplicationName[] = "LumberyardApplication";
 
 RecentFileList::RecentFileList()
 {
@@ -357,6 +356,8 @@ void RecentFileList::WriteList()
 //////////////////////////////////////////////////////////////////////////
 namespace
 {
+    static const char* s_CryEditAppInstanceName = "CryEditAppInstanceName";
+
     QString PyGetGameFolder()
     {
         return Path::GetEditingGameDataFolder().c_str();
@@ -429,7 +430,7 @@ namespace
     int PyCreateLevel(const char* levelName, int resolution, int unitSize, bool bUseTerrain)
     {
         QString qualifiedName;
-        return theApp.CreateLevel(levelName, resolution, unitSize, bUseTerrain, qualifiedName);
+        return CCryEditApp::instance()->CreateLevel(levelName, resolution, unitSize, bUseTerrain, qualifiedName);
     }
 
     QString PyGetCurrentLevelName()
@@ -525,49 +526,6 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetCurrentViewPosition, general, set_curr
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PySetCurrentViewRotation, general, set_current_view_rotation,
     "Sets the rotation of the current view as given x, y, z Euler angles.",
     "general.set_current_view_rotation(float xValue, float yValue, float zValue)");
-
-namespace {
-
-// Override the ToolsApplication so that we can special case when the config file is not
-// found and give the user of the Editor a specific message about it.
-class EditorToolsApplication : public AzToolsFramework::ToolsApplication
-{
-public:
-    bool OnFailedToFindConfiguration(const char* configFilePath) override;
-
-    bool IsStartupAborted() const;
-
-    void RegisterCoreComponents() override;
-
-    AZ::ComponentTypeList GetRequiredSystemComponents() const;
-
-    void StartCommon(AZ::Entity* systemEntity) override;
-
-    AZ::Outcome<AZStd::string, AZStd::string> ResolveToolApplicationPath(const char* toolName);
-
-    using AzToolsFramework::ToolsApplication::Start;
-    bool Start(int argc, char* argv[]);
-
-private:
-    bool m_StartupAborted = false;
-    Editor::EditorMetricsPlainTextNameRegistrationBusListener m_metricsPlainTextRegistrar;
-
-    bool GetOptionalAppRootArg(int argc, char* argv[], char destinationRootArgBuffer[], size_t destinationRootArgBufferSize) const;
-};
-
-}
-
-EditorToolsApplication AZToolsApp;
-
-enum
-{
-    DefaultExportSettings_ExportToPC = true,
-    DefaultExportSettings_ExportToConsole = false,
-};
-
-const UINT kDisplayMenuIndex = 3;
-const UINT kRememberLocationMenuIndex = 12;
-const UINT kGotoLocationMenuIndex = 13;
 
 #define ERROR_LEN 256
 
@@ -969,7 +927,12 @@ void CCryEditApp::RegisterActionHandlers()
 
     ON_COMMAND_RANGE(ID_GAME_IOS_ENABLELOWSPEC, ID_GAME_IOS_ENABLEVERYHIGHSPEC, OnChangeGameSpec)
 
-
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    ON_COMMAND_RANGE(ID_GAME_##PUBLICNAME##_ENABLELOWSPEC, ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC, OnChangeGameSpec)
+    AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
 
     ON_COMMAND(ID_OPEN_QUICK_ACCESS_BAR, OnOpenQuickAccessBar)
 
@@ -991,11 +954,13 @@ void CCryEditApp::RegisterActionHandlers()
     // ~Project Configurator
 }
 
+CCryEditApp* CCryEditApp::s_currentInstance = nullptr;
 /////////////////////////////////////////////////////////////////////////////
 // CCryEditApp construction
 CCryEditApp::CCryEditApp()
     : m_pEventLoopHook(0)
 {
+    s_currentInstance = this;
     m_mutexApplication = NULL;
 
     m_sPreviewFile[0] = 0;
@@ -1050,11 +1015,12 @@ CCryEditApp::~CCryEditApp()
 {
     EditorIdleProcessingBus::Handler::BusDisconnect();
     AzFramework::AssetSystemInfoBus::Handler::BusDisconnect();
+    s_currentInstance = nullptr;
 }
 
 CCryEditApp* CCryEditApp::instance()
 {
-    return &theApp;
+    return s_currentInstance;
 }
              
 
@@ -1099,6 +1065,9 @@ public:
         parser.addHelpOption();
         parser.setSingleDashWordOptionMode(QCommandLineParser::ParseAsLongOptions);
         parser.setApplicationDescription(QObject::tr("Amazon Lumberyard"));
+        // nsDocumentRevisionDebugMode is an argument that the macOS system passed into an App bundle that is being debugged. 
+        // Need to include it here so that Qt argument parser does not error out.
+        bool nsDocumentRevisionsDebugMode = false;
         static const std::vector<std::pair<QString, bool&> > options = {
             { "export", m_bExport },
             { "exportTexture", m_bExportTexture },
@@ -1119,6 +1088,7 @@ public:
             { "VTUNE", dummy },
             { "runpython", m_bRunPythonScript },
             { "version", m_bShowVersionInfo },
+            { "NSDocumentRevisionsDebugMode", nsDocumentRevisionsDebugMode},
         };
 
         parser.addPositionalArgument("file", QCoreApplication::translate("main", "file to open"));
@@ -1209,14 +1179,13 @@ struct SharedData
 //      article Q141752 to locate the previous instance of the application. .
 BOOL CCryEditApp::FirstInstance(bool bForceNewInstance)
 {
-    QSystemSemaphore sem("LumberyardApplication_sem", 1);
+    QSystemSemaphore sem(QString(lumberyardApplicationName) + "_sem", 1);
     sem.acquire();
     {
-        QSharedMemory fix("LumberyardEditorClass");
-        fix.attach();
+        FixDanglingSharedMemory(lumberyardEditorClassName);
     }
     sem.release();
-    m_mutexApplication = new QSharedMemory("LumberyardEditorClass");
+    m_mutexApplication = new QSharedMemory(lumberyardEditorClassName);
     if (!m_mutexApplication->create(sizeof(SharedData)) && !bForceNewInstance)
     {
         m_mutexApplication->attach();
@@ -1241,7 +1210,7 @@ BOOL CCryEditApp::FirstInstance(bool bForceNewInstance)
         sem.release();
         QTimer* t = new QTimer(this);
         connect(t, &QTimer::timeout, [this]() {
-            QSystemSemaphore sem("LumberyardApplication_sem", 1);
+            QSystemSemaphore sem(QString(lumberyardApplicationName) + "_sem", 1);
             sem.acquire();
             SharedData* data = reinterpret_cast<SharedData*>(m_mutexApplication->data());
             QString preview = QString::fromLatin1(data->text);
@@ -1441,7 +1410,8 @@ static int ShowLegacyEntityConversionLogDialog(int objectsConverted, int objects
 
     // Add button for exporting our log to a CSV file
     QPushButton* exportLogButton = new QPushButton(QObject::tr("Export Log"), &logDialog);
-    QObject::connect(exportLogButton, &QPushButton::clicked, [model]() {
+    QObject::connect(exportLogButton, &QPushButton::clicked, model, [model]
+    {
         ExportLegacyEntityConversionLog(model);
     });
 
@@ -2160,7 +2130,7 @@ void CCryEditApp::ShowSplashScreen(CCryEditApp* app)
     // Make sure the initial paint of the splash screen occurs so we dont get stuck with a blank window
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
-    QObject::connect(splashScreen, &QObject::destroyed, [=]()
+    QObject::connect(splashScreen, &QObject::destroyed, splashScreen, [=]
     {
         g_splashScreenStateLock.Lock();
         g_pInitializeUIInfo = nullptr;
@@ -2299,14 +2269,8 @@ BOOL CCryEditApp::CheckIfAlreadyRunning()
 
     if (!m_bPreviewMode)
     {
-        QSystemSemaphore sem("LumberyardApplication_sem", 1);
-        sem.acquire();
-        {
-            QSharedMemory fix("LumberyardApplication");
-            fix.attach();
-        }
-        sem.release();
-        m_mutexApplication = new QSharedMemory("LumberyardApplication");
+        FixDanglingSharedMemory(lumberyardApplicationName);
+        m_mutexApplication = new QSharedMemory(lumberyardApplicationName);
         if (!m_mutexApplication->create(16))
         {
             if (QMessageBox::question(AzToolsFramework::GetActiveWindow(), QObject::tr("Too many apps"), QObject::tr("There is already a Lumberyard application running\nDo you want to start another one?")) != QMessageBox::Yes)
@@ -2318,7 +2282,7 @@ BOOL CCryEditApp::CheckIfAlreadyRunning()
         }
     }
 
-    // Shader precaching may start multiple editor copies
+    // Shader pre-caching may start multiple editor copies
     if (!FirstInstance(bForceNewInstance) && !m_bPrecacheShaderList)
     {
         return false;
@@ -2613,6 +2577,9 @@ void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
 // CCryEditApp initialization
 BOOL CCryEditApp::InitInstance()
 {
+    QElapsedTimer startupTimer;
+    startupTimer.start();
+
     InitDirectory();
 
     // create / attach to the environment:
@@ -2622,6 +2589,13 @@ BOOL CCryEditApp::InitInstance()
 
     // parameters must be parsed early to capture arguments for test bootstrap
     CEditCommandLineInfo cmdInfo;
+
+    if (IsProjectConfiguratorRunning())
+    {
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Project Configurator is open"),
+            QObject::tr("Please close Project Configurator before running the Editor."));
+        return false;
+    }
 
 #if AZ_TESTS_ENABLED
     if (!cmdInfo.m_bBootstrapPluginTests) // don't check running state for google test (for death tests)
@@ -2853,6 +2827,10 @@ BOOL CCryEditApp::InitInstance()
         GetIEditor()->GetGameEngine()->GetIEditorGame()->PostInit();
     }
 
+    // DON'T CHANGE ME!
+    // Test scripts listen for this line, so please don't touch this without updating them.
+    // We consider ourselves "initialized enough" at this stage because all further initialization may be blocked by the modal welcome screen.
+    CLogFile::WriteLine(QString("Engine initialized, took %1s.").arg(startupTimer.elapsed() / 1000.0, 0, 'f', 2));
 
     InitLevel(cmdInfo);
 
@@ -2861,7 +2839,6 @@ BOOL CCryEditApp::InitInstance()
     CWipFeatureManager::Instance()->EnableManager(!cmdInfo.m_bDeveloperMode);
     CWipFeatureManager::Init();
 #endif
-
 
     if (GetIEditor()->IsInMatEditMode())
     {
@@ -3404,6 +3381,27 @@ void CCryEditApp::OpenAWSConsoleFederated(const QString& destUrl)
     }
 }
 
+bool CCryEditApp::FixDanglingSharedMemory(const QString& sharedMemName) const
+{
+    QSystemSemaphore sem(sharedMemName + "_sem", 1);
+    sem.acquire();
+    {
+        QSharedMemory fix(sharedMemName);
+        if (!fix.attach())
+        {
+            if (fix.error() != QSharedMemory::NotFound)
+            {
+                sem.release();
+                return false;
+            }
+        }
+        // fix.detach() when destructed, taking out any dangling shared memory
+        // on unix
+    }
+    sem.release();
+    return true;
+}
+
 // App command to open Amazon Publish page
 void CCryEditApp::OnCommercePublish()
 {
@@ -3561,7 +3559,6 @@ int CCryEditApp::ExitInstance(int exitCode)
         delete m_mutexApplication;
     }
 
-    AZToolsApp.Stop();
     UninitializeEditorUIQTISystem();
     DetachEditorCoreAZEnvironment();
     return 0;
@@ -6727,7 +6724,7 @@ void CCryEditApp::OnConvertselectionTobrushes()
     {
         if (!GetIEditor()->GetObjectManager()->ConvertToType(objects[i], "Brush"))
         {
-            gEnv->pLog->LogError("Object %s can't be converted to the brush type.", objects[i]->GetName());
+            gEnv->pLog->LogError("Object %s can't be converted to the brush type.", objects[i]->GetName().toUtf8().constData());
             isFail = true;
         }
     }
@@ -6755,7 +6752,7 @@ void CCryEditApp::OnConvertselectionTosimpleentity()
     {
         if (!GetIEditor()->GetObjectManager()->ConvertToType(objects[i], "GeomEntity"))
         {
-            gEnv->pLog->LogError("Object %s can't be converted to the simple entity type.", objects[i]->GetName());
+            gEnv->pLog->LogError("Object %s can't be converted to the simple entity type.", objects[i]->GetName().toUtf8().constData());
             isFail = true;
         }
     }
@@ -6782,7 +6779,7 @@ void CCryEditApp::OnConvertselectionToGameVolume()
     {
         if (!GetIEditor()->GetObjectManager()->ConvertToType(objects[i], "GameVolume"))
         {
-            gEnv->pLog->LogError("Object %s can't be converted to the game volume type.", objects[i]->GetName());
+            gEnv->pLog->LogError("Object %s can't be converted to the game volume type.", objects[i]->GetName().toUtf8().constData());
             isFail = true;
         }
     }
@@ -6825,7 +6822,7 @@ void CCryEditApp::OnConvertSelectionToComponentEntity()
         }
         else
         {
-            AZ_Error("Editor", "Object %s could not be converted. Only Brushes and GeomEntities are supported sources.", objects[i]->GetName().toUtf8().data());
+            AZ_Error("Editor", false, "Object %s could not be converted. Only Brushes and GeomEntities are supported sources.", objects[i]->GetName().toUtf8().data());
             continue;
         }
 
@@ -6873,17 +6870,17 @@ void CCryEditApp::OnConvertSelectionToComponentEntity()
                     }
                     else
                     {
-                        AZ_Error("Editor", "Object %s could not be converted because mesh component could not be created.", objects[i]->GetName().toUtf8().data());
+                        AZ_Error("Editor", false, "Object %s could not be converted because mesh component could not be created.", objects[i]->GetName().toUtf8().data());
                     }
                 }
                 else
                 {
-                    AZ_Error("Editor", "Object %s could not be converted because component entity could not be created.", objects[i]->GetName().toUtf8().data());
+                    AZ_Error("Editor", false, "Object %s could not be converted because component entity could not be created.", objects[i]->GetName().toUtf8().data());
                 }
             }
             else
             {
-                AZ_Error("Editor", "Object %s could not be converted because Id for asset \"%s\" could not be determined.", objects[i]->GetName().toUtf8().data(), meshFile.toUtf8().data());
+                AZ_Error("Editor", false, "Object %s could not be converted because Id for asset \"%s\" could not be determined.", objects[i]->GetName().toUtf8().data(), meshFile.toUtf8().data());
             }
         }
     }
@@ -7901,8 +7898,22 @@ void CCryEditApp::OnChangeGameSpec(UINT nID)
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_IOS));
         break;
     case ID_GAME_IOS_ENABLEVERYHIGHSPEC:
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_VERYHIGH_SPEC).arg(CONFIG_IOS));
+        GetIEditor()->ExecuteCommand("general.set_config_spec %d %d", CONFIG_VERYHIGH_SPEC, CONFIG_IOS);
         break;
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    case ID_GAME_##PUBLICNAME##_ENABLELOWSPEC:\
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_##PUBLICNAME));\
+        break;\
+    case ID_GAME_##PUBLICNAME##_ENABLEMEDIUMSPEC:\
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_MEDIUM_SPEC).arg(CONFIG_##PUBLICNAME));\
+        break;\
+    case ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC:\
+        GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_HIGH_SPEC).arg(CONFIG_##PUBLICNAME));\
+        break;
+    AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
     case ID_GAME_APPLETV_ENABLESPEC:
         GetIEditor()->ExecuteCommand(QStringLiteral("general.set_config_spec %1 %2").arg(CONFIG_LOW_SPEC).arg(CONFIG_APPLETV));
         break;
@@ -7969,6 +7980,20 @@ void CCryEditApp::OnUpdateGameSpec(QAction* action)
     case ID_GAME_IOS_ENABLEVERYHIGHSPEC:
         SetGameSpecCheck(CONFIG_VERYHIGH_SPEC, CONFIG_IOS, nCheck, enable);
         break;
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    case ID_GAME_##PUBLICNAME##_ENABLELOWSPEC:\
+        SetGameSpecCheck(CONFIG_LOW_SPEC, CONFIG_##PUBLICNAME, nCheck, enable);\
+        break;\
+    case ID_GAME_##PUBLICNAME##_ENABLEMEDIUMSPEC:\
+        SetGameSpecCheck(CONFIG_MEDIUM_SPEC, CONFIG_##PUBLICNAME, nCheck, enable);\
+        break;\
+    case ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC:\
+        SetGameSpecCheck(CONFIG_HIGH_SPEC, CONFIG_##PUBLICNAME, nCheck, enable);\
+        break;
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
     case ID_GAME_APPLETV_ENABLESPEC:
         SetGameSpecCheck(CONFIG_LOW_SPEC, CONFIG_APPLETV, nCheck, enable);
         break;
@@ -8112,7 +8137,7 @@ namespace
 
 bool CCryEditApp::Command_ExportToEngine()
 {
-    return theApp.UserExportToGame(false, false, false, true);
+    return CCryEditApp::instance()->UserExportToGame(false, false, false, true);
 }
 
 
@@ -8326,6 +8351,25 @@ bool CCryEditApp::OpenProjectConfiguratorSwitchProject()
     return ToProjectConfigurator(message, QObject::tr("Editor"), "Project Selection");
 }
 
+bool CCryEditApp::IsProjectConfiguratorRunning() const
+{
+    FixDanglingSharedMemory("ProjectConfiguratorApp");
+    QSharedMemory testMem("ProjectConfiguratorApp");
+    bool createSuccess = testMem.create(1, QSharedMemory::AccessMode::ReadOnly);
+    if (createSuccess)
+    {
+        return false;
+    }
+
+    if (testMem.error() != QSharedMemory::AlreadyExists)
+    {
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), 
+            QString("Cannot test if ProjectConfigurator is running: Failed to create shared memory. (%0)").arg(testMem.errorString()));
+        return false;
+    }
+
+    return true;
+}
 
 bool CCryEditApp::ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location)
 {
@@ -8365,7 +8409,10 @@ bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
 
     QString projectConfiguratorPath;
     AZStd::string exePath = AZStd::string::format("%s%s", engineRoot, BINFOLDER_NAME);
-    auto result = AZToolsApp.ResolveToolPath(exePath.c_str(), projectConfigurator);
+    
+    AZ::Outcome<AZStd::string, AZStd::string> result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveToolPath"));
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequestBus::Events::ResolveToolPath, exePath.c_str(), projectConfigurator);
+
     if (!result.IsSuccess())
     {
         // If project configurator doesnt exist in the bin64 folder, then next search LmbrSetup/{Platform}
@@ -8575,15 +8622,41 @@ public:
 private:
     void ShowMessageBox(const QString& message)
     {
-        QMessageBox msg(QMessageBox::Critical, QObject::tr("Error"), message, QMessageBox::Ok);
-        msg.exec();
+        QString titleString = QObject::tr("Error");
+
+        // Queue message box to run on the UI thread to avoid a cross-thread dependency.
+        auto crossPlatformShowMessageFunc = [message, titleString]()
+        {
+            QMessageBox msg(QMessageBox::Critical, titleString, message, QMessageBox::Ok);
+            msg.exec();
+        };
+
+        if (gEnv && gEnv->mMainThreadId == CryGetCurrentThreadId())
+        {
+            crossPlatformShowMessageFunc();
+        }
+        else
+        {
+#ifdef AZ_PLATFORM_WINDOWS
+            // On Windows, use the standard message box when in the non-ui thread, so that the thread still blocks
+            // waiting for user input, and thus allows a developer to attach a debugger and break here to get a useful
+            // callstack.
+            // Requires WinUser.h above; if this changes, please remove that as well.
+            std::wstring messageBuffer = message.toStdWString();
+            std::wstring titleBuffer = titleString.toStdWString();
+            MessageBoxW(NULL, messageBuffer.data(), titleBuffer.data(), MB_OK);
+#else
+            // On other platforms, queue and send to the main thread. Less than ideal, but the best way to prevent race conditions
+            // and other problems caused by message boxes being launched in the non-ui thread.
+            AZ::TickBus::QueueFunction(crossPlatformShowMessageFunc);
+#endif
+        }
     }
 };
 
-
-
 int SANDBOX_API CryEditMain(int argc, char* argv[])
 {
+    CCryEditApp* theApp = new CCryEditApp();
     // this does some magic to set the current directory...
     {
         QCoreApplication app(argc, argv);
@@ -8624,34 +8697,43 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
     StartupTraceHandler traceHandler;
     int ret = 0;
 
-    if (!AZToolsApp.Start(argc, argv))
+    // open a scope to contain the AZToolsApp instance;
     {
-        return -1;
+        EditorInternal::EditorToolsApplication AZToolsApp;
+
+        if (!AZToolsApp.Start(argc, argv))
+        {
+            return -1;
+        }
+
+        AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::NotifyQtApplicationAvailable, &app);
+
+    #if defined(AZ_PLATFORM_APPLE_OSX)
+        // Native menu bars do not work on macOS due to all the tool dialogs
+        QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
+    #endif
+
+        int exitCode = 0;
+
+        if (CCryEditApp::instance()->InitInstance())
+        {
+            app.EnableOnIdle();
+            app.ResetIdleTimer();
+
+            traceHandler.BusDisconnect(); // no longer needed, Qt can take over from here
+            ret = app.exec();
+        }
+        else
+        {
+            exitCode = 1;
+        }
+
+        CCryEditApp::instance()->ExitInstance(exitCode);
+
+        AZToolsApp.Stop();
     }
-    
-    AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::NotifyQtApplicationAvailable, &app);
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
-    // Native menu bars do not work on macOS due to all the tool dialogs
-    QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
-#endif
-
-    int exitCode = 0;
-
-    if (CCryEditApp::instance()->InitInstance())
-    {
-        app.EnableOnIdle();
-        app.ResetIdleTimer();
-
-        traceHandler.BusDisconnect(); // no longer needed, Qt can take over from here
-        ret = app.exec();
-    }
-    else
-    {
-        exitCode = 1;
-    }
-
-    CCryEditApp::instance()->ExitInstance(exitCode);
+    delete theApp;
 
     return ret;
 }
@@ -8778,149 +8860,6 @@ namespace
     }
 
 
-    bool EditorToolsApplication::OnFailedToFindConfiguration(const char* configFilePath)
-    {
-        bool overrideAssetRoot = (this->m_assetRoot[0] != '\0');
-        const char* sourcePaths[] = { this->m_assetRoot };
-
-        CEngineConfig engineCfg(sourcePaths, overrideAssetRoot ? 1 : 0);
-
-        char msg[4096] = { 0 };
-        azsnprintf(msg, sizeof(msg),
-            "Application descriptor file not found:\n"
-            "%s\n"
-            "Generate this file and commit it to source control by running:\n"
-            "Bin64\\lmbr.exe projects populate-appdescriptors -projects %s",
-            configFilePath, engineCfg.m_gameDLL.c_str());
-        QMessageBox::critical(AzToolsFramework::GetActiveWindow(), QObject::tr("File not found"), msg);
-
-        // flag that we failed, so that the application can exit out
-        m_StartupAborted = true;
-
-        // indicate that we don't want AzFramework::Application::Start to continue startup
-        return false;
-    }
-
-    bool EditorToolsApplication::IsStartupAborted() const
-    {
-        return m_StartupAborted;
-    }
-
-
-    void EditorToolsApplication::RegisterCoreComponents()
-    {
-        AzToolsFramework::ToolsApplication::RegisterCoreComponents();
-
-        RegisterComponentDescriptor(AZ::CratesHandler::CreateDescriptor());
-    }
-
-
-    AZ::ComponentTypeList EditorToolsApplication::GetRequiredSystemComponents() const
-    {
-        AZ::ComponentTypeList components = AzToolsFramework::ToolsApplication::GetRequiredSystemComponents();
-
-        components.emplace_back(azrtti_typeid<AZ::CratesHandler>());
-
-        return components;
-    }
-
-
-    void EditorToolsApplication::StartCommon(AZ::Entity* systemEntity)
-    {
-        AzToolsFramework::ToolsApplication::StartCommon(systemEntity);
-
-        AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardEngines", AZ::ModuleInitializationSteps::ActivateEntity, true);
-        AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardGems", AZ::ModuleInitializationSteps::ActivateEntity, true);
-        AZ::ModuleManagerRequestBus::Broadcast(&AZ::ModuleManagerRequestBus::Events::LoadDynamicModule, "LyzardProjects", AZ::ModuleInitializationSteps::ActivateEntity, true);
-    }
-
-
-    AZ::Outcome<AZStd::string, AZStd::string> EditorToolsApplication::ResolveToolApplicationPath(const char* toolName)
-    {
-        Engines::EngineId activeEngineId;
-        Engines::EngineManagerRequestBus::BroadcastResult(activeEngineId, &Engines::EngineManagerRequests::GetActiveEngineId);
-
-        AZ::Outcome<AZStd::string, AZStd::string> resolveEngineToolPathResult = AZ::Failure(AZStd::string("Failed calling Engines::EngineManagerRequestBus::GetActiveEngineId()"));
-        Engines::EngineRequestBus::EventResult(resolveEngineToolPathResult, activeEngineId, &Engines::EngineRequests::ResolveEngineToolPath, AZStd::string(toolName), true);
-        return resolveEngineToolPathResult;
-    }
-
-
-    bool EditorToolsApplication::Start(int argc, char* argv[])
-    {
-        char descriptorPath[AZ_MAX_PATH_LEN] = { 0 };
-        char appRootOverride[AZ_MAX_PATH_LEN] = { 0 };
-        {
-            CEngineConfig engineCfg;
-
-            azstrcat(descriptorPath, AZ_MAX_PATH_LEN, engineCfg.m_gameFolder);
-            azstrcat(descriptorPath, AZ_MAX_PATH_LEN, "/Config/Editor.xml");
-
-            AzFramework::Application::StartupParameters params;
-
-            if (!GetOptionalAppRootArg(argc, argv, appRootOverride, AZ_ARRAY_SIZE(appRootOverride)))
-            {
-                QString currentRoot;
-                QDir pathCheck(qApp->applicationDirPath());
-                do
-                {
-                    if (pathCheck.exists(QString("engine.json")))
-                    {
-                        currentRoot = pathCheck.absolutePath();
-                        break;
-                    }
-                } while (pathCheck.cdUp());
-                if (currentRoot.isEmpty())
-                {
-                    return false;
-                }
-                azstrncpy(appRootOverride, AZ_ARRAY_SIZE(appRootOverride), currentRoot.toUtf8().data(), currentRoot.length());
-            }
-
-            params.m_appRootOverride = appRootOverride;
-
-            // Must be done before creating QApplication, otherwise asserts when we alloc
-            AzToolsFramework::ToolsApplication::Start(descriptorPath, params);
-            if (IsStartupAborted())
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    bool EditorToolsApplication::GetOptionalAppRootArg(int argc, char* argv[], char destinationRootArgBuffer[], size_t destinationRootArgBufferSize) const
-    {
-        const char* appRootArg = nullptr;
-        bool isAppRootArg = false;
-        for (int index = 0; index < argc; index++)
-        {
-            if (isAppRootArg)
-            {
-                appRootArg = argv[index];
-                isAppRootArg = false;
-            }
-            else if (azstricmp("--app-root", argv[index]) == 0)
-            {
-                isAppRootArg = true;
-            }
-        }
-        if (appRootArg)
-        {
-            azstrncpy(destinationRootArgBuffer, destinationRootArgBufferSize, appRootArg, strlen(appRootArg));
-            const char lastChar = destinationRootArgBuffer[strlen(destinationRootArgBuffer) - 1];
-            bool needsTrailingPathDelim = (lastChar != AZ_CORRECT_FILESYSTEM_SEPARATOR) && (lastChar != AZ_WRONG_FILESYSTEM_SEPARATOR);
-            if (needsTrailingPathDelim)
-            {
-                azstrncat(destinationRootArgBuffer, destinationRootArgBufferSize, AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING, 1);
-            }
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
 
 }
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyStartProcessDetached, general, start_process_detached,

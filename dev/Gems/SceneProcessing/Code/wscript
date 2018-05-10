@@ -5,7 +5,10 @@ def build(bld):
 
         editor              = dict(
             includes        = [ bld.Path('Code/Tools') ],
-            use             = ['SceneCore', 'SceneData', 'FbxSceneBuilder'],
+            use             = ['SceneCore',
+                               'SceneData',
+                               'FbxSceneBuilder',
+                               'AssetBuilderSDK'],
             disable_pch     = True,
             features        = ['crcfix', 'qt5'],
             autod_uselib    = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],

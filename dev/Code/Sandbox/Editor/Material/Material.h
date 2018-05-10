@@ -126,6 +126,9 @@ public:
     //! Get public parameters of material in variable block.
     CVarBlock* GetPublicVars(SInputShaderResources& pShaderResources);
 
+    //! Set the shader public param m_script variable into our own m_script, script contains min/max for a given shader param value
+    void SetShaderParamPublicScript();
+
     //! Sets variable block of public shader parameters.
     //! VarBlock must be in same format as returned by GetPublicVars().
     void SetPublicVars(CVarBlock* pPublicVars, CMaterial* pMtl);

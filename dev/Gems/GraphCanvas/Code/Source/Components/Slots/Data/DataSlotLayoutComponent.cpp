@@ -18,10 +18,11 @@
 
 #include <Components/Slots/Data/DataSlotLayoutComponent.h>
 
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/GraphCanvasBus.h>
 #include <Components/Slots/Data/DataSlotConnectionPin.h>
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <Widgets/GraphCanvasLabel.h>
 
 namespace GraphCanvas
@@ -116,7 +117,7 @@ namespace GraphCanvas
         DataSlotRequestBus::EventResult(dataType, m_owner.GetEntityId(), &DataSlotRequests::GetDataTypeId);
 
         AZStd::string typeString;
-        DataSlotActionRequestBus::EventResult(typeString, GetSceneId(), &DataSlotActionRequests::GetTypeString, dataType);
+        GraphModelRequestBus::EventResult(typeString, GetSceneId(), &GraphModelRequests::GetDataTypeString, dataType);
 
         AZStd::string displayText = tooltip.GetDisplayString();
 
@@ -238,11 +239,11 @@ namespace GraphCanvas
 
             if (dataSlotType == DataSlotType::Value)
             {
-                NodePropertySourceRequestBus::EventResult(nodePropertyDisplay, sceneId, &NodePropertySourceRequests::CreateDataSlotPropertyDisplay, typeId, nodeId, m_owner.GetEntityId());
+                GraphModelRequestBus::EventResult(nodePropertyDisplay, sceneId, &GraphModelRequests::CreateDataSlotPropertyDisplay, typeId, nodeId, m_owner.GetEntityId());
             }
             else if (dataSlotType == DataSlotType::Reference)
             {
-                NodePropertySourceRequestBus::EventResult(nodePropertyDisplay, sceneId, &NodePropertySourceRequests::CreateDataSlotVariablePropertyDisplay, typeId, nodeId, m_owner.GetEntityId());
+                GraphModelRequestBus::EventResult(nodePropertyDisplay, sceneId, &GraphModelRequests::CreateDataSlotVariablePropertyDisplay, typeId, nodeId, m_owner.GetEntityId());
             }
 
             if (nodePropertyDisplay)

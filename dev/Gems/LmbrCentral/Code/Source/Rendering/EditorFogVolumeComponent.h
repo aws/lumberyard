@@ -15,6 +15,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
@@ -43,6 +44,7 @@ namespace LmbrCentral
         , private FogVolumeComponentRequestsBusHandler
         , private AZ::TransformNotificationBus::Handler
         , private ShapeComponentNotificationsBus::Handler
+        , private AzToolsFramework::EditorEvents::Bus::Handler
     {
     private:
         using Base = AzToolsFramework::Components::EditorComponentBase;
@@ -52,34 +54,27 @@ namespace LmbrCentral
 
         ~EditorFogVolumeComponent() override = default;
 
-        /////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        /////////////////////////////////////////////
 
         static void Reflect(AZ::ReflectContext* context);
 
-        /////////////////////////////////////////////
         // RenderNodeRequestBus::Handler
         IRenderNode* GetRenderNode() override;
         float GetRenderNodeRequestBusOrder() const override;
-        /////////////////////////////////////////////
 
-        /////////////////////////////////////////////
         // FogVolumeComponentRequestBus::Handler
         void RefreshFog() override;
-        /////////////////////////////////////////////
 
-        /////////////////////////////////////////////
         // TransformNotificationBus::Handler
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        /////////////////////////////////////////////
 
-        /////////////////////////////////////////////
         // ShapeComponentNotificationsBus::Handler
         void OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons changeReason) override;
-        /////////////////////////////////////////////
+
+        // AzToolsFramework::EditorEvents::Handler
+        void OnEditorSpecChange() override;
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 

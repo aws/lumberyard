@@ -80,7 +80,7 @@ namespace GraphCanvas
         return m_layoutWidget->contains(localRectPos);
     }
     
-    void SlotLayoutComponent::SetVisibility(bool visible)
+    void SlotLayoutComponent::SetVisible(bool visible)
     {
         if (m_layoutWidget)
         {
@@ -88,7 +88,7 @@ namespace GraphCanvas
         }
     }
     
-    bool SlotLayoutComponent::GetVisibility() const
+    bool SlotLayoutComponent::IsVisible() const
     {
         bool retVal = false;
         

@@ -339,6 +339,15 @@ namespace EMotionFX
          */
         void UpdateMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers=false);
 
+        /**
+        * Update/Process the morph mesh deformers.
+        * This will apply morphing deformations only to the meshes used by the actor instance.
+        * All morph deformations happen on the CPU. So if you use pure GPU processing, you should not be calling this method.
+        * @param timePassedInSeconds The time passed in seconds, since the last frame or update.
+        * @param processDisabledDeformers When set to true, even mesh deformers that are disabled will even be processed.
+        */
+        void UpdateMorphMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers = false);
+
         //-------------------------------------------------------------------------------------------
 
         // bounding volume

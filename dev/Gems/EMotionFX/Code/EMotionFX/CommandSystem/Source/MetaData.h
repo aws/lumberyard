@@ -14,7 +14,6 @@
 
 // include the required headers
 #include <EMotionFX/CommandSystem/Source/CommandSystemConfig.h>
-#include <AzCore/std/string/string.h>
 
 
 namespace EMotionFX

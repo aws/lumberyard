@@ -14,7 +14,7 @@
 #include "TextureCache.h"
 #include "GraphicsManager.h"
 #include <MCore/Source/LogManager.h>
-
+#include <MCore/Source/StringConversions.h>
 
 
 namespace RenderGL
@@ -110,7 +110,7 @@ namespace RenderGL
         const uint32 numEntries = mEntries.GetLength();
         for (uint32 i = 0; i < numEntries; ++i)
         {
-            if (mEntries[i].mName.CheckIfIsEqualNoCase(filename)) // non-case-sensitive name compare
+            if (AzFramework::StringFunc::Equal(mEntries[i].mName.c_str(), filename, false /* no case */)) // non-case-sensitive name compare
             {
                 return mEntries[i].mTexture;
             }
@@ -226,8 +226,8 @@ namespace RenderGL
             uint32 width, height;
             uint32 flags = 0;
 
-            MCore::String filename;
-            filename.Format("%sNormalTexture.png", GetGraphicsManager()->GetShaderPath() );
+            AZStd::string filename;
+            filename = AZStd::string::format("%sNormalTexture.png", GetGraphicsManager()->GetShaderPath() );
 
             GLuint textureID = 0;
             textureID = SOIL_load_OGL_texture( filename.AsChar(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, flags , &width, &height );

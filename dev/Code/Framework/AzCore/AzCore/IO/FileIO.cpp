@@ -321,11 +321,19 @@ namespace AZ
             const Result result = fileIO->Open(path, mode, m_handle);
             m_ownsHandle = IsOpen();
             m_mode = mode;
-
-            //Not using supplied path parameter as it may be unresolved 
-            AZStd::array<char, MaxPathLength> resolvedPath{ {0} };
-            fileIO->GetFilename(m_handle, resolvedPath.data(), resolvedPath.size() - 1);
-            m_filename = resolvedPath.data();
+            
+            if (IsOpen())
+            {
+                // Not using supplied path parameter as it may be unresolved
+                AZStd::array<char, MaxPathLength> resolvedPath{ {0} };
+                fileIO->GetFilename(m_handle, resolvedPath.data(), resolvedPath.size() - 1);
+                m_filename = resolvedPath.data();
+            }
+            else
+            {
+                // remember the file name so you can try again with ReOpen
+                m_filename = path;
+            }
 
             return result;
         }

@@ -9,34 +9,33 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #pragma once
 
 #include <QTreeView>
+
+#include <AzCore/Memory/SystemAllocator.h>
+
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 
-namespace ScriptCanvasEditor
+namespace GraphCanvas
 {
-    namespace Widget
+    class NodePaletteTreeView
+        : public AzToolsFramework::QTreeViewWithStateSaving
     {
-        class NodeTreeView
-            : public AzToolsFramework::QTreeViewWithStateSaving
-        {
-            Q_OBJECT
+        Q_OBJECT
 
-        public:
-            AZ_CLASS_ALLOCATOR(NodeTreeView, AZ::SystemAllocator, 0);
-            explicit NodeTreeView(QWidget* parent = nullptr);
-			
-            void resizeEvent(QResizeEvent* event) override;
+    public:
+        AZ_CLASS_ALLOCATOR(NodePaletteTreeView, AZ::SystemAllocator, 0);
+        explicit NodePaletteTreeView(QWidget* parent = nullptr);
+        
+        void resizeEvent(QResizeEvent* event) override;
 
-        protected:
-            void mousePressEvent(QMouseEvent* ev) override;
-            void mouseMoveEvent(QMouseEvent* ev) override;
-            void mouseReleaseEvent(QMouseEvent* ev) override;
+    protected:
+        void mousePressEvent(QMouseEvent* ev) override;
+        void mouseMoveEvent(QMouseEvent* ev) override;
+        void mouseReleaseEvent(QMouseEvent* ev) override;
 
-        private:
-            void UpdatePointer(const QModelIndex &modelIndex, bool isMousePressed);
-        };
-    }
+    private:
+        void UpdatePointer(const QModelIndex &modelIndex, bool isMousePressed);
+    };
 }

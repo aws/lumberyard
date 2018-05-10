@@ -464,7 +464,14 @@ void CLog::LogV(const ELogType type, int flags, const char* szFormat, va_list ar
     int bufferlen = sizeof(szBuffer) - prefixSize;
     if (bufferlen > 0)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Log_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         int count = vsnprintf_s(szString, bufferlen, bufferlen - 1, szCommand, args);
+#endif
         if (count == -1 || count >= bufferlen)
         {
             szBuffer[sizeof(szBuffer) - 1] = '\0';

@@ -884,12 +884,10 @@ namespace EMotionFX
         // reset the output is ready flags, so we return cached copies of the outputs, but refresh/recalculate them
         AnimGraphNode* rootNode = GetRootNode();
 
-        // TODO: just use the ResetFlagsForAllNodes later on, but fix the issue with overwriting connection isProcessed/isVisited flags first when showing the graphs in EMStudio
+        ResetFlagsForAllObjects();
+
     #ifdef EMFX_EMSTUDIOBUILD
         rootNode->RecursiveResetFlags(this, 0xffffffff);    // the 0xffffffff clears all flags
-    #else
-        //ResetFlagsForAllNodes(0xffffffff);
-        ResetFlagsForAllObjects();
     #endif
 
         // reset all node pose ref counts

@@ -12,6 +12,7 @@
 
 // include required headers
 #include "TimeViewPlugin.h"
+#include "TrackDataHeaderWidget.h"
 #include "TrackDataWidget.h"
 #include "TrackHeaderWidget.h"
 #include "TimeInfoWidget.h"
@@ -25,20 +26,10 @@
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
 
 #include <QDockWidget>
-#include <QSplitter>
-#include <QPushButton>
-#include <QVBoxLayout>
 #include <QGridLayout>
-#include <QMainWindow>
 #include <QScrollBar>
-#include <QPixmap>
-#include <QPainter>
-#include <QLabel>
-
-#include <MysticQt/Source/Slider.h>
 
 #include <MCore/Source/LogManager.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Compare.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/MotionInstance.h>
@@ -61,9 +52,7 @@ namespace EMStudio
         mTimeScale          = 1.0;
         mTargetTimeScale    = 1.0;
         mScrollX            = 0.0;
-        mScrollY            = 0.0;
         mTargetScrollX      = 0.0;
-        mTargetScrollY      = 0.0;
         mMaxTime            = 0.0;
         mMaxHeight          = 0.0;
         mMinScale           = 0.25;
@@ -71,12 +60,12 @@ namespace EMStudio
         mCurMouseX          = 0;
         mCurMouseY          = 0;
         mTotalTime          = FLT_MAX;
-        mVerticalScrollBar  = nullptr;
         mZoomInCursor       = nullptr;
         mZoomOutCursor      = nullptr;
         mIsAnimating        = false;
         mDirty              = true;
 
+        mTrackDataHeaderWidget = nullptr;
         mTrackDataWidget    = nullptr;
         mTrackHeaderWidget  = nullptr;
         mTimeInfoWidget     = nullptr;
@@ -202,76 +191,57 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback("ClearSelection", mClearSelectionCallback);
 
         // load the cursors
-        mZoomInCursor       = new QCursor(QPixmap(MCore::String(MysticQt::GetDataDir() + "Images/Rendering/ZoomInCursor.png").AsChar()).scaled(32, 32));
-        mZoomOutCursor      = new QCursor(QPixmap(MCore::String(MysticQt::GetDataDir() + "Images/Rendering/ZoomOutCursor.png").AsChar()).scaled(32, 32));
+        mZoomInCursor       = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomInCursor.png").c_str()).scaled(32, 32));
+        mZoomOutCursor      = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomOutCursor.png").c_str()).scaled(32, 32));
 
-        // create a layout
-        QGridLayout* layout = new QGridLayout();
-        layout->setSizeConstraint(QLayout::SetMaximumSize);
-        layout->setMargin(0);
-        layout->setSpacing(0);
-
-        // create an inner widget and let it use the created layout
+        // create main widget
         mMainWidget = new QWidget(mDock);
-        mMainWidget->setLayout(layout);
-
-        // insert the inner widget inside the docking window
         mDock->SetContents(mMainWidget);
+        QGridLayout* mainLayout = new QGridLayout();
+        mainLayout->setMargin(0);
+        mainLayout->setSpacing(0);
+        mMainWidget->setLayout(mainLayout);
 
-        // create the splitter window and add the widgets to it
-        QSplitter* splitterWidget = new QSplitter(mMainWidget);
-        splitterWidget->setObjectName("TimeViewSplitter");
-        layout->addWidget(splitterWidget);
-
-        //-----------
-        // create the area on the left
-        QWidget* innerWidgetLeft = new QWidget();
-        splitterWidget->addWidget(innerWidgetLeft);
-        splitterWidget->setCollapsible(splitterWidget->count() - 1, false);
-
-        QVBoxLayout* leftLayout = new QVBoxLayout();
-        leftLayout->setSpacing(0);
-        leftLayout->setMargin(0);
-        leftLayout->setSizeConstraint(QLayout::SetMaximumSize);
-        innerWidgetLeft->setLayout(leftLayout);
-
+        // create widgets in the header
+        // Top-left
         mTimeInfoWidget = new TimeInfoWidget(this);
-        mTimeInfoWidget->setMaximumWidth(175);
-        mTimeInfoWidget->setMinimumHeight(35);
-        mTimeInfoWidget->setMaximumHeight(35);
-        mTimeInfoWidget->setMinimumWidth(175);
-        leftLayout->addWidget(mTimeInfoWidget);
+        mTimeInfoWidget->setFixedSize(175, 40);
+        mainLayout->addWidget(mTimeInfoWidget, 0, 0);
 
-        mTrackHeaderWidget = new TrackHeaderWidget(this);
-        mTrackHeaderWidget->setMaximumWidth(175);
-        mTrackHeaderWidget->setMaximumHeight(10000);
-        leftLayout->addWidget(mTrackHeaderWidget);
-        innerWidgetLeft->setObjectName("StyledWidget");
-        leftLayout->setObjectName("StyledWidget");
+        // Top-right
+        mTrackDataHeaderWidget = new TrackDataHeaderWidget(this, mDock);
+        mTrackDataHeaderWidget->setFixedHeight(40);
+        mainLayout->addWidget(mTrackDataHeaderWidget, 0, 1);
 
-        // create the area on the right
-        QWidget* innerWidgetRight = new QWidget();
-        splitterWidget->addWidget(innerWidgetRight);
-        splitterWidget->setCollapsible(splitterWidget->count() - 1, false);
+        // create widgets in the body. For the body we are going to put a scroll area
+        // so we can get a vertical scroll bar when we have more tracks than what the
+        // view can show
+        QScrollArea* bodyWidget = new QScrollArea(mMainWidget);
+        bodyWidget->setFrameShape(QFrame::NoFrame);
+        bodyWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        bodyWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        bodyWidget->setWidgetResizable(true);
 
-        QGridLayout* rightLayout = new QGridLayout();
-        rightLayout->setSpacing(0);
-        rightLayout->setMargin(0);
-        rightLayout->setSizeConstraint(QLayout::SetMaximumSize);
-        innerWidgetRight->setLayout(rightLayout);
+        // scroll areas require an inner widget to hold the layout (instead of a layout 
+        // directly). 
+        QWidget* innerWidget = new QWidget(bodyWidget);
+        QHBoxLayout* bodyLayout = new QHBoxLayout();
+        bodyLayout->setMargin(0);
+        bodyLayout->setSpacing(0);
+        innerWidget->setLayout(bodyLayout);
+        bodyWidget->setWidget(innerWidget);
+        mainLayout->addWidget(bodyWidget, 1, 0, 1, 2);
 
-        mTrackDataWidget = new TrackDataWidget(this);
-        rightLayout->addWidget(mTrackDataWidget, 1, 0);
-        //mTrackDataWidget->setMaximumHeight( 1000 );
-        mTrackDataWidget->setMinimumHeight(1);
+        // Bottom-left
+        mTrackHeaderWidget = new TrackHeaderWidget(this, mDock);
+        mTrackHeaderWidget->setFixedWidth(175);
+        bodyLayout->addWidget(mTrackHeaderWidget);
+
+        // bottom-right
+        mTrackDataWidget = new TrackDataWidget(this, mDock);
+        bodyLayout->addWidget(mTrackDataWidget);
+
         connect(mTrackDataWidget, SIGNAL(SelectionChanged()), this, SLOT(OnSelectionChanged()));
-
-        mVerticalScrollBar = new QScrollBar(Qt::Vertical);
-        mVerticalScrollBar->setRange(0, 1000);
-        mVerticalScrollBar->setMinimumHeight(1);
-        mVerticalScrollBar->setMaximumHeight(10000);
-        connect(mVerticalScrollBar, SIGNAL(valueChanged(int)), this, SLOT(OnVerticalScrollBar(int)));
-        rightLayout->addWidget(mVerticalScrollBar, 1, 1);
 
         connect(mTrackDataWidget, SIGNAL(ElementTrackChanged(uint32, float, float, const char*, const char*)), this, SLOT(MotionEventTrackChanged(uint32, float, float, const char*, const char*)));
         connect(mTrackDataWidget, SIGNAL(MotionEventChanged(TimeTrackElement*, double, double)), this, SLOT(MotionEventChanged(TimeTrackElement*, double, double)));
@@ -310,7 +280,6 @@ namespace EMStudio
         mTracks.Clear();
         SetRedrawFlag();
     }
-
 
     TimeTrack* TimeViewPlugin::FindTrackByElement(TimeTrackElement* element) const
     {
@@ -441,6 +410,7 @@ namespace EMStudio
     void TimeViewPlugin::UpdateVisualData()
     {
         ValidatePluginLinks();
+        mTrackDataHeaderWidget->update();
         mTrackDataWidget->update();
         mTimeInfoWidget->update();
         mDirty = false;
@@ -494,7 +464,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numTracks; ++i)
         {
             // check if the absolute pixel is inside
-            TimeTrackElement* result = mTracks[i]->GetElementAt(x + mScrollX, y + mScrollY);
+            TimeTrackElement* result = mTracks[i]->GetElementAt(x + mScrollX, y);
             if (result)
             {
                 return result;
@@ -577,39 +547,8 @@ namespace EMStudio
         SetRedrawFlag();
     }
 
-
-    void TimeViewPlugin::DeltaScrollY(double deltaY, bool animate)
-    {
-        SetScrollY(mTargetScrollY + deltaY, animate);
-        SetRedrawFlag();
-    }
-
-
-    void TimeViewPlugin::SetScrollY(double scrollY, bool animate)
-    {
-        mTargetScrollY = scrollY;
-
-        if (mTargetScrollY < 0)
-        {
-            mTargetScrollY = 0;
-        }
-
-        if (mTargetScrollY > mMaxHeight)
-        {
-            mTargetScrollY = mMaxHeight;
-        }
-
-        if (animate == false)
-        {
-            mScrollY = mTargetScrollY;
-        }
-        SetRedrawFlag();
-    }
-
-
     void TimeViewPlugin::SetScrollX(double scrollX, bool animate)
     {
-        //int32 width = mTrackDataWidget->geometry().width();
         mTargetScrollX = scrollX;
 
         if (mTargetScrollX < 0)
@@ -729,70 +668,6 @@ namespace EMStudio
         }
     }
 
-
-    // render the element time handles on top of everything
-    void TimeViewPlugin::RenderElementToolTips(QPainter& painter, uint32 dataWindowHeight, const QPen& pen)
-    {
-        MCORE_UNUSED(painter);
-        MCORE_UNUSED(pen);
-        MCORE_UNUSED(dataWindowHeight);
-        /*  // get the position
-            QPoint position = mTrackDataWidget->mapFromGlobal( QCursor::pos() );
-            if (position.y() < 0)
-            {
-                DisableAllToolTips();
-                return;
-            }
-
-            // for all tracks
-            const uint32 numTracks = mTracks.GetLength();
-            for (uint32 t=0; t<numTracks; ++t)
-            {
-                TimeTrack* track = mTracks[t];
-                if (track->IsVisible() == false)
-                    continue;
-
-                // for all elements
-                const uint32 numElems = track->GetNumElements();
-                for (uint32 i=0; i<numElems; ++i)
-                {
-                    TimeTrackElement* elem = track->GetElement(i);
-
-                    // if the element has to show its time handles, do it
-                    if (elem->GetShowToolTip())
-                    {
-                        // get the text width of the name
-                        QLabel tooltipLabel;
-                        //tooltipLabel.setTextFormat(Qt::RichText);
-                        tooltipLabel.setText( elem->GetToolTip() );
-                        uint32 widthText = tooltipLabel.sizeHint().width();
-
-                        // calculate the dimensions
-                        int32 startX, startY, width, height;
-                        elem->CalcDimensions(&startX, &startY, &width, &height);
-
-                        QRect rect(position.x()+5, position.y()+5, widthText+4, 15);
-
-                        // draw the lines
-                        painter.setPen( QPen(QColor(0, 0, 0)) );
-                        painter.setBrush( QBrush(QColor(66, 66, 66)) );
-                        painter.drawRoundedRect( rect, 3.0f, 3.0f );
-
-                        // draw the text
-                        QTextOption options;
-                        options.setWrapMode( QTextOption::NoWrap );
-                        options.setAlignment( Qt::AlignCenter );
-
-                        //painter.setPen( QPen(QColor(244, 156, 28)) );
-                        painter.setPen( QPen(QColor(190, 190, 190)) );
-                        painter.setFont( elem->GetFont() );
-                        painter.drawText( rect, elem->GetToolTip(), options );
-                    }
-                }
-            }*/
-    }
-
-
     // disables all tool tips
     void TimeViewPlugin::DisableAllToolTips()
     {
@@ -875,7 +750,6 @@ namespace EMStudio
 
         // animate the zoom
         mScrollX += (mTargetScrollX - mScrollX) * 0.2;
-        mScrollY += (mTargetScrollY - mScrollY) * 0.2;
 
         mIsAnimating = false;
         if (mTargetTimeScale > mTimeScale)
@@ -899,15 +773,6 @@ namespace EMStudio
             mIsAnimating = true;
         }
 
-        if (MCore::Math::Abs(mTargetScrollY - mScrollY) <= 1)
-        {
-            mScrollY = mTargetScrollY;
-        }
-        else
-        {
-            mIsAnimating = true;
-        }
-
         if (MCore::Math::Abs(mTargetTimeScale - mTimeScale) <= 0.001)
         {
             mTimeScale = mTargetTimeScale;
@@ -924,15 +789,7 @@ namespace EMStudio
 
         if (MCore::Math::Abs(mMaxHeight - mLastMaxHeight) > 0.0001)
         {
-            mVerticalScrollBar->setRange(0, mMaxHeight);
             mLastMaxHeight = mMaxHeight;
-        }
-
-        if (MCore::Math::Abs(mTargetScrollY - mVerticalScrollBar->value()) > 0.0001)
-        {
-            mVerticalScrollBar->blockSignals(true);
-            mVerticalScrollBar->setValue(mTargetScrollY);
-            mVerticalScrollBar->blockSignals(false);
         }
 
         if (mTrackDataWidget->mDragging == false && mTrackDataWidget->mResizing == false)
@@ -1136,14 +993,14 @@ namespace EMStudio
 
         if (event->key() == Qt::Key_Down)
         {
-            DeltaScrollY(20);
+            mTrackDataWidget->scroll(0, 20);
             event->accept();
             return;
         }
 
         if (event->key() == Qt::Key_Up)
         {
-            DeltaScrollY(-20);
+            mTrackDataWidget->scroll(0, -20);
             event->accept();
             return;
         }
@@ -1396,7 +1253,7 @@ namespace EMStudio
         if (mMotion)
         {
             uint32 i;
-            MCore::String text;
+            AZStd::string text;
 
             EMotionFX::MotionEventTable* eventTable = mMotion->GetEventTable();
 
@@ -1446,21 +1303,21 @@ namespace EMStudio
                             timeTrack->AddElement(element);
                         }
 
-                        text.Format("%s - %s", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).AsChar());
-                        uint32 color = GetEventPresetManager()->GetEventColor(motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).AsChar());
+                        text = AZStd::string::format("%s - %s", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).c_str());
+                        uint32 color = GetEventPresetManager()->GetEventColor(motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).c_str());
                         QColor qColor = QColor(MCore::ExtractRed(color), MCore::ExtractGreen(color), MCore::ExtractBlue(color));
 
                         element->SetIsVisible(true);
-                        element->SetName(text.AsChar());
+                        element->SetName(text.c_str());
                         element->SetColor(qColor);
                         element->SetElementNumber(j);
                         element->SetStartTime(motionEvent.GetStartTime());
                         element->SetEndTime(motionEvent.GetEndTime());
 
                         // tooltip
-                        MCore::String tooltip;
-                        MCore::String rowName;
-                        tooltip.Reserve(16384);
+                        AZStd::string tooltip;
+                        AZStd::string rowName;
+                        tooltip.reserve(16384);
 
                         tooltip = "<table border=\"0\">";
 
@@ -1468,38 +1325,36 @@ namespace EMStudio
                         {
                             // time
                             rowName = "Time";
-                            tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                            tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
+                            tooltip += AZStd::string::format("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.c_str());
+                            tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
                         }
                         else // range event
                         {
                             // start time
-                            rowName = "Start Time";
-                            rowName.ConvertToNonBreakingHTMLSpaces();
-                            tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                            tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
+                            rowName = "Start&nbsp;Time";
+                            tooltip += AZStd::string::format("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.c_str());
+                            tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetStartTime());
 
                             // end time
-                            rowName = "End Time";
-                            rowName.ConvertToNonBreakingHTMLSpaces();
-                            tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                            tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetEndTime());
+                            rowName = "End&nbsp;Time";
+                            tooltip += AZStd::string::format("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.c_str());
+                            tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetEndTime());
                         }
 
                         // type
                         rowName = "Type";
-                        tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                        tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetEventTypeString());
+                        tooltip += AZStd::string::format("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.c_str());
+                        tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetEventTypeString());
 
                         // parameters
                         rowName = "Parameters";
-                        tooltip.FormatAdd("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.AsChar());
-                        tooltip.FormatAdd("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetParameterString(eventTrack).AsChar());
+                        tooltip += AZStd::string::format("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.c_str());
+                        tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetParameterString(eventTrack).c_str());
 
                         tooltip += "</table>";
 
                         // set tooltip
-                        element->SetToolTip(tooltip.AsChar());
+                        element->SetToolTip(tooltip.c_str());
                     }
                 }
                 for (j = numMotionEvents; j < timeTrack->GetNumElements(); ++j)
@@ -1728,11 +1583,11 @@ namespace EMStudio
         }
 
         // adjust the motion event
-        MCore::String outResult, command;
-        command.Format("AdjustMotionEvent -motionID %i -eventTrackName \"%s\" -eventNr %i -startTime %f -endTime %f", mMotion->GetID(), eventTrack->GetName(), motionEventNr, startTime, endTime);
-        if (EMStudio::GetCommandManager()->ExecuteCommand(command.AsChar(), outResult) == false)
+        AZStd::string outResult, command;
+        command = AZStd::string::format("AdjustMotionEvent -motionID %i -eventTrackName \"%s\" -eventNr %i -startTime %f -endTime %f", mMotion->GetID(), eventTrack->GetName(), motionEventNr, startTime, endTime);
+        if (EMStudio::GetCommandManager()->ExecuteCommand(command.c_str(), outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
     }
 
@@ -1740,7 +1595,7 @@ namespace EMStudio
     void TimeViewPlugin::RemoveSelectedMotionEvents()
     {
         // create the command group
-        MCore::String result;
+        AZStd::string result;
         MCore::CommandGroup commandGroup("Remove motion events");
 
         if (mMotion == nullptr)
@@ -1789,7 +1644,7 @@ namespace EMStudio
         // execute the command group
         if (EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result) == false)
         {
-            MCore::LogError(result.AsChar());
+            MCore::LogError(result.c_str());
         }
 
         UnselectAllElements();
@@ -1799,7 +1654,7 @@ namespace EMStudio
     void TimeViewPlugin::RemoveAllMotionEvents()
     {
         // create the command group
-        MCore::String result;
+        AZStd::string result;
         MCore::CommandGroup commandGroup("Remove motion events");
 
         if (mMotion == nullptr)
@@ -1847,7 +1702,7 @@ namespace EMStudio
         // execute the command group
         if (EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result) == false)
         {
-            MCore::LogError(result.AsChar());
+            MCore::LogError(result.c_str());
         }
 
         UnselectAllElements();
@@ -2058,7 +1913,6 @@ namespace EMStudio
     void TimeViewPlugin::OnGotoTimeZero()
     {
         mTargetScrollX = 0;
-        mTargetScrollY = 0;
     }
 
 
@@ -2066,7 +1920,6 @@ namespace EMStudio
     void TimeViewPlugin::OnResetTimeline()
     {
         mTargetScrollX      = 0;
-        mTargetScrollY      = 0;
         mTargetTimeScale    = 1.0;
     }
 
@@ -2187,16 +2040,6 @@ namespace EMStudio
     }
     bool TimeViewPlugin::CommandClearSelectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return MotionSelectionChangedTimeViewPlugin(); }
     bool TimeViewPlugin::CommandClearSelectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return MotionSelectionChangedTimeViewPlugin(); }
-
-
-    // value changed of the vertical scroll bar
-    void TimeViewPlugin::OnVerticalScrollBar(int value)
-    {
-        mTargetScrollY  = value;
-        mScrollY        = value;
-        UpdateVisualData();
-    }
-
 
     // calculate the content heights
     uint32 TimeViewPlugin::CalcContentHeight() const

@@ -21,6 +21,7 @@ typedef CryStringT<char> string;
 
 #include <QCoreApplication>
 #include <QSettings>
+#include <QProcess>
 
 namespace PluginInfo
 {
@@ -61,6 +62,17 @@ bool CFFMPEGPlugin::CanExitNow()
 
 static void Command_FFMPEGEncode(const char* input, const char* output, const char* codec, int bitRateinKb, int fps, const char* etc)
 {
+    QString ffmpegExectablePath = CFFMPEGPlugin::GetFFMPEGExectablePath();
+    QString ffmpegCmdLine = QStringLiteral("\"%1\" -r %2 -i \"%3\" -vcodec %4 -b %5k -r %6 %7 -strict experimental -y \"%8\"")
+        .arg(ffmpegExectablePath, QString::number(fps), input, codec, QString::number(bitRateinKb), QString::number(fps), etc, output);
+    GetIEditor()->GetSystem()->GetILog()->Log("Executing \"%s\" from FFMPEGPlugin...", ffmpegCmdLine.toUtf8().data());
+    QString outTxt;
+    GetIEditor()->ExecuteConsoleApp(ffmpegCmdLine, outTxt, true, true);
+    GetIEditor()->GetSystem()->GetILog()->Log("FFMPEG execution done.");
+}
+
+QString CFFMPEGPlugin::GetFFMPEGExectablePath()
+{
     // the FFMPEG exe could be in a number of possible locations
     // our preferred location is from the path in the registry @
     // "Software\\Amazon\\Lumberyard\\Settings"
@@ -68,15 +80,13 @@ static void Command_FFMPEGEncode(const char* input, const char* output, const ch
 
     // if its not there, try the current folder and a few others
     // see what can be found!
-
-    QString ffmpegEXEPath;
-    QString outTxt;
+    QString ffmpegExectablePath;
 
     QSettings settings("Amazon", "Lumberyard");
     settings.beginGroup("Settings");
-    ffmpegEXEPath = settings.value("FFMPEG_PLUGIN").toString();
+    ffmpegExectablePath = settings.value("FFMPEG_PLUGIN").toString();
 
-    if (ffmpegEXEPath.isEmpty() || !QFile::exists(ffmpegEXEPath))
+    if (ffmpegExectablePath.isEmpty() || !QFile::exists(ffmpegExectablePath))
     {
         QString path = qApp->applicationDirPath();
         QString checkPath;
@@ -96,27 +106,29 @@ static void Command_FFMPEGEncode(const char* input, const char* output, const ch
 #endif
             if (QFile::exists(checkPath))
             {
-                ffmpegEXEPath = checkPath;
+                ffmpegExectablePath = checkPath;
                 break;
             }
         }
 
-        if (ffmpegEXEPath.isEmpty())
+        if (ffmpegExectablePath.isEmpty())
         {
 #if defined(AZ_PLATFORM_WINDOWS)
-            ffmpegEXEPath = "ffmpeg.exe";
+            ffmpegExectablePath = "ffmpeg.exe";
 #else
-            ffmpegEXEPath = "ffmpeg";
+            ffmpegExectablePath = "ffmpeg";
 #endif
             // try the current folder if all else fails, this will also work if its in the PATH somehow.
         }
     }
 
-    QString ffmpegCmdLine = QStringLiteral("\"%1\" -r %2 -i \"%3\" -vcodec %4 -b %5k -r %6 %7 -strict experimental -y \"%8\"")
-        .arg(ffmpegEXEPath, QString::number(fps), input, codec, QString::number(bitRateinKb), QString::number(fps), etc, output);
-    GetIEditor()->GetSystem()->GetILog()->Log("Executing \"%s\" from FFMPEGPlugin...", ffmpegCmdLine.toUtf8().data());
-    GetIEditor()->ExecuteConsoleApp(ffmpegCmdLine, outTxt, true, true);
-    GetIEditor()->GetSystem()->GetILog()->Log("FFMPEG execution done.");
+    return ffmpegExectablePath;
+}
+
+bool CFFMPEGPlugin::RuntimeTest()
+{
+    QString ffmpegExectablePath = CFFMPEGPlugin::GetFFMPEGExectablePath();
+    return QProcess::startDetached(QStringLiteral("\"%1\" -version").arg(ffmpegExectablePath), {});
 }
 
 void CFFMPEGPlugin::RegisterTheCommand()

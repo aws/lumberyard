@@ -15,6 +15,12 @@
 
 #include <StdAfx.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlatformOS_PC_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 
 #if defined(WIN32) || defined(WIN64)
 #define PLATFORM_WINDOWS
@@ -34,6 +40,8 @@
 #include "Steamworks/public/steam/steam_api.h"
 #include "SaveReaderWriter_Steam.h"
 #endif
+
+#include "NativeUIRequests.h"
 
 IPlatformOS* IPlatformOS::Create(const uint8 createParams)
 {
@@ -402,7 +410,8 @@ CPlatformOS_PC::DebugMessageBox(const char* body, const char* title, unsigned in
     int winresult = CryMessageBox(body, title, MB_OKCANCEL);
     return (winresult == IDOK) ? eMsgBox_OK : eMsgBox_Cancel;
 #else
-    CRY_ASSERT_MESSAGE(false, "DebugMessageBox not implemented on this platform!");
+    EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, title, body, false);
+
     return eMsgBox_OK; // [AlexMcC|30.03.10]: Ok? Cancel? Dunno! Uh-oh :( This is only used in CryPak.cpp so far, and for that use it's better to return ok
 #endif
 }
@@ -926,3 +935,4 @@ IPlatformOS::IFileFinderPtr CPlatformOS_PC::GetFileFinder(unsigned int user)
     return IFileFinderPtr(new CFileFinderCryPak());
 }
 
+#endif

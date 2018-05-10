@@ -122,10 +122,11 @@ struct IRenderElement
     virtual bool mfCompile(CParserBin& Parser, SParserFrame& Frame) = 0;
     virtual bool mfDraw(CShader* ef, SShaderPass* sfm) = 0;
     virtual bool mfPreDraw(SShaderPass* sl) = 0;
-
     virtual CRendElementBase* mfCopyConstruct() = 0;
     virtual CRenderChunk* mfGetMatInfo() = 0;
     virtual TRenderChunkArray* mfGetMatInfoList() = 0;
+
+    virtual bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) = 0;
 
     virtual void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) = 0;
 
@@ -248,6 +249,7 @@ public:
     ENGINE_API virtual void mfGetPlane(Plane& pl) override;
     ENGINE_API virtual bool mfDraw(CShader* ef, SShaderPass* sfm) override;
     ENGINE_API virtual void* mfGetPointer(ESrcPointer ePT, int* Stride, EParamType Type, ESrcPointer Dst, int Flags) override;
+    ENGINE_API virtual bool mfSetSampler(int customId, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit) override { return false; }
 
     virtual uint16 mfGetFlags()  override { return m_Flags; }
     virtual void mfSetFlags(uint16 fl)  override { m_Flags = fl; }

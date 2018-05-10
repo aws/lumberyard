@@ -16,7 +16,6 @@
 #include <AzCore/Math/Vector2.h>
 #include "StandardHeaders.h"
 #include "MemoryManager.h"
-#include "UnicodeString.h"
 #include "Vector.h"
 #include "Quaternion.h"
 #include "Matrix4.h"
@@ -52,8 +51,8 @@ namespace MCore
         Attribute* Clone() const override;
         Attribute* CreateInstance(void* destMemory) override;
         const char* GetTypeString() const override;
-        bool InitFromString(const String& valueString) override;
-        bool ConvertToString(String& outString) const override;
+        bool InitFromString(const AZStd::string& valueString) override;
+        bool ConvertToString(AZStd::string& outString) const override;
         bool InitFrom(const Attribute* other) override;
         uint32 GetClassSize() const override;
         uint32 GetDataSize() const override;
@@ -118,7 +117,7 @@ namespace MCore
         bool SetBoolAttribute(const char* internalName, bool value, bool createIfNotExists = true);
 
         // get helpers
-        const char* GetStringAttribute(const char* internalName, const char* defaultValue = "");
+        const AZStd::string GetStringAttribute(const char* internalName, const AZStd::string& defaultValue = "");
         float GetFloatAttribute(const char* internalName, float defaultValue = 0.0f);
         int32 GetInt32Attribute(const char* internalName, int32 defaultValue = 0);
         bool GetBoolAttribute(const char* internalName, bool defaultValue = false);

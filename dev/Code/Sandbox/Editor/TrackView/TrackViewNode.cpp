@@ -66,11 +66,11 @@ bool CTrackViewKeyHandle::IsSelected() const
 }
 
 ////////////////////////////////////////////////////////////////////////////
-void CTrackViewKeyHandle::SetTime(float time)
+void CTrackViewKeyHandle::SetTime(float time, bool notifyListeners)
 {
     assert(m_bIsValid);
 
-    m_pTrack->SetKeyTime(m_keyIndex, time);
+    m_pTrack->SetKeyTime(m_keyIndex, time, notifyListeners);
 }
 
 ////////////////////////////////////////////////////////////////////////////

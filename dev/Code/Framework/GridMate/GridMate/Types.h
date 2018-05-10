@@ -15,6 +15,7 @@
 /// \file types.h
 
 #include <AzCore/base.h>
+#include <AzCore/RTTI/TypeInfo.h>
 
 #include <AzCore/std/chrono/chrono.h>
 
@@ -102,6 +103,11 @@ namespace GridMate
             : m_refCount(0)  {}
         virtual ~ReferenceCounted()         {}
     };
+}
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(GridMate::ServiceType, "{7DA6C7AF-3EA3-49AD-894D-53046D7965B2}");
 }
 
 #endif // GRIDMATE_TYPES_H

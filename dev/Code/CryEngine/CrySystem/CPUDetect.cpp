@@ -15,6 +15,13 @@
 #include "System.h"
 #include "AutoDetectSpec.h"
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CPUDETECT_CPP_SECTION_1 1
+#define CPUDETECT_CPP_SECTION_2 2
+#endif
+
 #if defined(WIN32)
 #include <intrin.h>
 #elif defined(LINUX) || defined(APPLE)
@@ -124,6 +131,9 @@ bool IsAMD()
 // Broken out for validation support.
 #if defined(WIN32) || (defined(LINUX) && !defined(ANDROID)) || defined(MAC)
     #define AZ_SUPPORTS_AMD
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CPUDETECT_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(CPUDetect_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
 #if defined(AZ_SUPPORTS_AMD)
@@ -1502,7 +1512,10 @@ void CCpuFeatures::Detect(void)
         m_Cpu[c] = cpuInfo;
     }
 
-#endif // WIN32
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CPUDETECT_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(CPUDetect_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
 #if defined(WIN32) || defined(WIN64)

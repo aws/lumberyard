@@ -26,7 +26,7 @@ class DetailWidget
 
 public:
 
-    DetailWidget(ResourceManagementView* view);
+    DetailWidget(ResourceManagementView* view, QWidget* parent);
 
     virtual ~DetailWidget();
 

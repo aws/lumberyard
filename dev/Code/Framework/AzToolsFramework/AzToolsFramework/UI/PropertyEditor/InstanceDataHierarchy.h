@@ -235,6 +235,15 @@ namespace AzToolsFramework
 
         InstanceDataNode*   GetRootNode()   { return m_matched ? this : NULL; }
 
+        void FixupEditData()
+        {
+            // if we ended up with anything to display, we need to do another pass to fix up container element nodes.
+            if (m_matched)
+            {
+                FixupEditData(this, 0);
+            }
+        };
+
         /// Builds the intersecting hierarchy using all the root instances added.
         /// If a comparison instance is set, nodes will also be flagged based on detected deltas (\ref ComparisonFlags).
         void Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider = DynamicEditDataProvider());

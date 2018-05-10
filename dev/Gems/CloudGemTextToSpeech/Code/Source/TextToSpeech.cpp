@@ -17,7 +17,7 @@
 #include <CryAction.h>
 #include <fstream>
 
-#include <md5/md5.h>
+#include <md5.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Jobs/JobFunction.h>

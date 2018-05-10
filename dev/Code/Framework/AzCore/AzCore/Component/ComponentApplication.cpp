@@ -244,8 +244,6 @@ namespace AZ
 
         m_deltaTime = 0.f;
         m_exeDirectory[0] = '\0';
-
-        TickBus::AllowFunctionQueuing(true);
     }
 
     //=========================================================================
@@ -319,7 +317,7 @@ namespace AZ
         {
             SerializeContext sc;
             Descriptor::Reflect(&sc, this);
-            ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(0, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+            ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         }
 
         // Destroy the temp system allocator
@@ -327,12 +325,6 @@ namespace AZ
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
             m_osAllocator->DeAllocate(desc.m_heap.m_memoryBlocks[0], desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
-        }
-        else
-        {
-            AZ_Assert(m_descriptor.m_useExistingAllocator,
-                "%s has useExistingAllocator set to false, but an existing system allocator was found! If you will create the system allocator yourself then set useExistingAllocator to true!",
-                applicationDescriptorFile);
         }
 
         CreateCommon();
@@ -360,7 +352,9 @@ namespace AZ
                 classId.ToString(idStr, AZ_ARRAY_SIZE(idStr));
                 AZ_Error("ComponentApplication", false, "Unknown class type %p %s", classPtr, idStr);
             }
-        });
+        }, 
+            ObjectStream::FilterDescriptor(ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+        // we cannot load assets during system bootstrap since we haven't even got the catalog yet.  But we can definitely read their IDs.
 
         AZ_Assert(systemEntity, "SystemEntity failed to load!");
         cfg.Close();
@@ -422,6 +416,9 @@ namespace AZ
 
         RegisterCoreComponents();
 
+        TickBus::AllowFunctionQueuing(true);
+        SystemTickBus::AllowFunctionQueuing(true);
+
         ComponentApplicationBus::Handler::BusConnect();
 
         m_currentTime = AZStd::chrono::system_clock::now();
@@ -466,8 +463,13 @@ namespace AZ
     void ComponentApplication::Destroy()
     {
         // Finish all queued work
+        AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
+        
         TickBus::ExecuteQueuedEvents();
         TickBus::AllowFunctionQueuing(false);
+        
+        SystemTickBus::ExecuteQueuedEvents();
+        SystemTickBus::AllowFunctionQueuing(false);
 
         // deactivate all entities
         Entity* systemEntity = nullptr;
@@ -540,7 +542,7 @@ namespace AZ
             m_isSystemAllocatorOwner = false;
         }
 
-        
+
 
         if (m_isOSAllocatorOwner)
         {
@@ -565,7 +567,7 @@ namespace AZ
     //=========================================================================
     void ComponentApplication::CreateSystemAllocator()
     {
-        if (m_descriptor.m_useExistingAllocator)
+        if (m_descriptor.m_useExistingAllocator || AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
         {
             m_isSystemAllocatorOwner = false;
             AZ_Assert(AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady(), "You must setup AZ::SystemAllocator instance, before you can call Create application with m_useExistingAllocator flag set to true");
@@ -910,48 +912,17 @@ namespace AZ
     bool ComponentApplication::ShouldAddSystemComponent(AZ::ComponentDescriptor* descriptor)
     {
         // NOTE: This is different than modules! All system components must be listed in GetRequiredSystemComponents, and then AZ::Edit::Attributes::SystemComponentTags may be used to filter down from there
-
-        // If the required tags are empty, it is assumed all components with the attribute are required
-        if (m_startupParameters.m_systemComponentTags.empty())
+        if (m_moduleManager->GetSystemComponentTags().empty())
         {
             return true;
         }
 
         const SerializeContext::ClassData* classData = GetSerializeContext()->FindClassData(descriptor->GetUuid());
         AZ_Warning("ComponentApplication", classData, "Component type %s not reflected to SerializeContext!", descriptor->GetName());
-        if (classData)
-        {
-            if (Attribute* attribute = FindAttribute(Edit::Attributes::SystemComponentTags, classData->m_attributes))
-            {
-                // Read the tags
-                AZStd::vector<AZ::Crc32> tags;
-                AZ::AttributeReader reader(nullptr, attribute);
-                AZ::Crc32 tag;
-                if (reader.Read<AZ::Crc32>(tag))
-                {
-                    tags.emplace_back(tag);
-                }
-                else
-                {
-                    AZ_Verify(reader.Read<AZStd::vector<AZ::Crc32>>(tags), "Attribute \"AZ::Edit::Attributes::SystemComponentTags\" must be of type AZ::Crc32 or AZStd::vector<AZ::Crc32>");
-                }
 
-                // Match tags to required tags
-                for (const AZ::Crc32& requiredTag : m_startupParameters.m_systemComponentTags)
-                {
-                    if (AZStd::find(tags.begin(), tags.end(), requiredTag) != tags.end())
-                    {
-                        // Tag match, add component
-                        return true;
-                    }
-                }
-
-                // If the tags didn't match, don't use the component
-                return false;
-            }
-        }
-        // If attribute not present, assume wanted for all contexts
-        return true;
+        // Note, if there are no SystemComponentTags on the classData, we will return true
+        // in order to maintain backwards compatibility with legacy non-tagged components
+        return Edit::SystemComponentTagsMatchesAtLeastOneTag(classData, m_moduleManager->GetSystemComponentTags(), true);
     }
 
     //=========================================================================
@@ -995,7 +966,6 @@ namespace AZ
 
         AZ_Warning("Module", componentCount == systemEntity->GetComponents().size(),
             "Application implements deprecated function 'AddSystemComponents'. Use 'GetRequiredSystemComponents' instead.");
-        componentCount = systemEntity->GetComponents().size();
     }
 
     //=========================================================================
@@ -1009,7 +979,12 @@ namespace AZ
             return;
         }
 
-#if   defined(AZ_PLATFORM_ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ComponentApplication_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_ANDROID)
         // On Android, all dlopen calls should be relative.
         azstrcpy(m_exeDirectory, AZ_ARRAY_SIZE(m_exeDirectory), "");
 #else

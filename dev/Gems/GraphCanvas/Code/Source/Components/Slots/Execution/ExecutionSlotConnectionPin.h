@@ -25,11 +25,12 @@ namespace GraphCanvas
         ExecutionSlotConnectionPin(const AZ::EntityId& slotId);
         ~ExecutionSlotConnectionPin();
         
-        void RefreshStyle() override;
+        void OnRefreshStyle() override;
         
         void DrawConnectionPin(QPainter* painter, QRectF drawRect, bool isConnected) override;
         
     private:
+
         Styling::StyleHelper m_connectedStyle;
     };
 }

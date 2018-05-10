@@ -68,7 +68,7 @@ namespace EMStudio
                             commandGroup.AddCommandString( "Unselect -actorInstanceID SELECT_ALL" );
 
                         String command;
-                        command.Format("Select -actorInstanceID %i", actorInstance->GetID());
+                        command = AZStd::string::format("Select -actorInstanceID %i", actorInstance->GetID());
                         commandGroup.AddCommandString( command.AsChar() );
 
                         // execute the commands
@@ -133,15 +133,6 @@ namespace EMStudio
             connect(cloneAction,       SIGNAL(triggered()), renderWidget, SLOT(CloneSelectedActorInstances()));
             connect(removeAction,      SIGNAL(triggered()), renderWidget, SLOT(RemoveSelectedActorInstances()));
         }
-
-
-        if (GetCommandManager()->GetCurrentSelection().GetNumSelectedActors() > 0)
-        {
-            QAction* scaleAction = menu.addAction("Scale Actor Data");
-            connect(scaleAction, SIGNAL(triggered()), GetMainWindow(), SLOT(OnScaleSelectedActors()));
-            menu.addSeparator();
-        }
-
 
         // add actions for loading actors
         QAction* openAction         = menu.addAction("Open Actor");

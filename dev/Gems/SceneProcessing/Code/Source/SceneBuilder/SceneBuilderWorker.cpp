@@ -27,8 +27,8 @@
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
-#include <SceneBuilder/Source/SceneBuilderWorker.h>
-#include <SceneBuilder/Source/TraceMessageHook.h>
+#include <SceneBuilder/SceneBuilderWorker.h>
+#include <SceneBuilder/TraceMessageHook.h>
 
 namespace SceneBuilder
 {

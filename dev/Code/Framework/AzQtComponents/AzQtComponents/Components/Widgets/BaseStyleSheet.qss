@@ -50,3 +50,4 @@ QLineEdit
 @import "ToolTip.qss";
 @import "ProgressBar.qss";
 @import "Slider.qss";
+@import "Card.qss";

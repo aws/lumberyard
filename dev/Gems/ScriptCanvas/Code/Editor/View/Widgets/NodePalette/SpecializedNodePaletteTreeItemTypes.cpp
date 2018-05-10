@@ -26,6 +26,7 @@
 
 #include "ScriptCanvas/Bus/RequestBus.h"
 #include "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h"
+#include "Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h"
 
 #include <Core/Attributes.h>
 #include <Editor/Metrics.h>
@@ -55,10 +56,10 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateEntityRefNodeMimeEvent::CreateNode(const AZ::EntityId& graphId) const
+    ScriptCanvasEditor::NodeIdPair CreateEntityRefNodeMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropNode, AZ::AzTypeInfo<ScriptCanvas::Nodes::Entity::EntityRef>::Uuid(), graphId);
-        return Nodes::CreateEntityNode(m_entityId, graphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropNode, AZ::AzTypeInfo<ScriptCanvas::Nodes::Entity::EntityRef>::Uuid(), scriptCanvasGraphId);
+        return Nodes::CreateEntityNode(m_entityId, scriptCanvasGraphId);
     }
 
     /////////////////////////////////
@@ -66,7 +67,7 @@ namespace ScriptCanvasEditor
     /////////////////////////////////
 
     EntityRefNodePaletteTreeItem::EntityRefNodePaletteTreeItem(const QString& nodeName, const QString& iconPath)
-        : DraggableNodePaletteTreeItem(nodeName, iconPath)
+        : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
     {
     }
 
@@ -111,7 +112,7 @@ namespace ScriptCanvasEditor
     bool CreateCommentNodeMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId)
     {
         AZ::EntityId graphId;
-        GeneralRequestBus::BroadcastResult(graphId, &GeneralRequests::GetGraphId, sceneId);
+        GeneralRequestBus::BroadcastResult(graphId, &GeneralRequests::GetGraphCanvasGraphId, sceneId);
         Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::Uuid("{CBA20A26-1ED7-4B3A-A491-F5FF2C47BC29}"), graphId);
 
         NodeIdPair nodeId = ConstructNode(sceneId, sceneDropPosition);
@@ -135,7 +136,7 @@ namespace ScriptCanvasEditor
     ///////////////////////////////
 
     CommentNodePaletteTreeItem::CommentNodePaletteTreeItem(const QString& nodeName, const QString& iconPath)
-        : DraggableNodePaletteTreeItem(nodeName, iconPath)
+        : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
     {
         SetToolTip("Comment box for notes. Does not affect script execution or data.");
     }
@@ -161,7 +162,7 @@ namespace ScriptCanvasEditor
         }
     }
 
-    NodeIdPair CreateBlockCommentNodeMimeEvent::ConstructNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition)
+    NodeIdPair CreateBlockCommentNodeMimeEvent::ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition)
     {
         NodeIdPair retVal;
 
@@ -171,25 +172,23 @@ namespace ScriptCanvasEditor
         if (graphCanvasEntity)
         {
             retVal.m_graphCanvasId = graphCanvasEntity->GetId();
-            GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, graphCanvasEntity->GetId(), scenePosition);
+            GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, graphCanvasEntity->GetId(), scenePosition);
             GraphCanvas::SceneMemberUIRequestBus::Event(graphCanvasEntity->GetId(), &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
         }
 
         return retVal;
     }
 
-    bool CreateBlockCommentNodeMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId)
+    bool CreateBlockCommentNodeMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId)
     {
-        AZ::EntityId graphId;
-        GeneralRequestBus::BroadcastResult(graphId, &GeneralRequests::GetGraphId, sceneId);
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::Uuid("{CE31F6F6-1536-4C97-BB59-863408ABA736}"), graphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::Uuid("{CE31F6F6-1536-4C97-BB59-863408ABA736}"), graphCanvasGraphId);
 
-        NodeIdPair nodeId = ConstructNode(sceneId, sceneDropPosition);
+        NodeIdPair nodeId = ConstructNode(graphCanvasGraphId, sceneDropPosition);
 
         if (nodeId.m_graphCanvasId.IsValid())
         {
             AZ::EntityId gridId;
-            GraphCanvas::SceneRequestBus::EventResult(gridId, sceneId, &GraphCanvas::SceneRequests::GetGrid);
+            GraphCanvas::SceneRequestBus::EventResult(gridId, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGrid);
 
             AZ::Vector2 offset;
             GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
@@ -205,7 +204,7 @@ namespace ScriptCanvasEditor
     ////////////////////////////////////
 
     BlockCommentNodePaletteTreeItem::BlockCommentNodePaletteTreeItem(const QString& nodeName, const QString& iconPath)
-        : DraggableNodePaletteTreeItem(nodeName, iconPath)
+        : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
     {
     }
 

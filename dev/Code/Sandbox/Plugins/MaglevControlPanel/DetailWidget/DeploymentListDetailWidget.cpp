@@ -24,8 +24,8 @@
 
 #include "DetailWidget/DeploymentListDetailWidget.moc"
 
-DeploymentListDetailWidget::DeploymentListDetailWidget(ResourceManagementView* view, QSharedPointer<IDeploymentListStatusModel> deploymentListStatusModel)
-    : DetailWidget{view}
+DeploymentListDetailWidget::DeploymentListDetailWidget(ResourceManagementView* view, QSharedPointer<IDeploymentListStatusModel> deploymentListStatusModel, QWidget* parent)
+    : DetailWidget{view, parent}
     , m_deploymentListStatusModel{deploymentListStatusModel}
 {
     setObjectName("DeploymentList");
@@ -57,11 +57,11 @@ void DeploymentListDetailWidget::UpdateUI()
     switch (m_view->m_resourceManager->GetInitializationState())
     {
     case IAWSResourceManager::InitializationState::UnknownState:
-        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view}; });
+        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::NoProfileState:
-        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view}; });
+        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::InitializingState:
@@ -69,20 +69,20 @@ void DeploymentListDetailWidget::UpdateUI()
     case IAWSResourceManager::InitializationState::InitializedState:
         if (!m_deploymentListStatusModel->IsReady())
         {
-            m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view}; });
+            m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view, this}; });
         }
         else if (m_deploymentListStatusModel->rowCount() == 0)
         {
-            m_layout.SetWidget(State::NoDeployment, [this](){ return new NoDeploymentWidget {m_view}; });
+            m_layout.SetWidget(State::NoDeployment, [this](){ return new NoDeploymentWidget {m_view, this}; });
         }
         else
         {
-            m_layout.SetWidget(State::Status, [this](){ return new DeploymentListStatusWidget {m_view, m_deploymentListStatusModel}; });
+            m_layout.SetWidget(State::Status, [this](){ return new DeploymentListStatusWidget {m_view, m_deploymentListStatusModel, this}; });
         }
         break;
 
     case IAWSResourceManager::InitializationState::ErrorLoadingState:
-        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget {m_view}; });
+        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget {m_view, this}; });
         break;
 
     default:

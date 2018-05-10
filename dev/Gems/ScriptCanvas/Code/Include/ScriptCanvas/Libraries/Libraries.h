@@ -125,6 +125,16 @@ namespace ScriptCanvas
             static void InitNodeRegistry(NodeRegistry& nodeRegistry);
             static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
         };
+
+        struct String : public LibraryDefinition
+        {
+            AZ_RTTI(String, "{5B700838-21A2-4579-9303-F4A4822AFEF4}", LibraryDefinition);
+
+            static void Reflect(AZ::ReflectContext*);
+            static void InitNodeRegistry(NodeRegistry& nodeRegistry);
+            static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+        };
+
     }
 
     void ReflectLibraries(AZ::ReflectContext*);

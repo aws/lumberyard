@@ -152,6 +152,7 @@ namespace LmbrCentral
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         SkinnedMeshComponentRequestBus::Handler::BusConnect(GetEntityId());
         SkeletalHierarchyRequestBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
 
         auto renderOptionsChangeCallback =
             [this]()
@@ -174,6 +175,7 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
 
         DestroyEditorPhysics();
 
@@ -290,6 +292,11 @@ namespace LmbrCentral
         {
             m_mesh.CopyPropertiesTo(meshComponent->m_skinnedMeshRenderNode);
         }
+    }
+
+    AZ::Aabb EditorSkinnedMeshComponent::GetEditorSelectionBounds()
+    {
+        return GetWorldBounds();
     }
 
     void EditorSkinnedMeshComponent::CreateEditorPhysics()

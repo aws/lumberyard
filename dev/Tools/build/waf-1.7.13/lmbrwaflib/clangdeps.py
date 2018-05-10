@@ -236,8 +236,7 @@ def add_clangdeps_flags(taskgen):
 
 #############################################################################
 ## convert path to node.  Dependencies are returned from clang as paths, but we want to know which nodes need to be rebuilt
-def path_to_node(base_node, path, cached_nodes, b_drive_hack
-):
+def path_to_node(base_node, path, cached_nodes, b_drive_hack):
     # Take the base node and the path and return a node
     # Results are cached because searching the node tree is expensive
     # The following code is executed by threads, it is not safe, so a lock is needed...
@@ -285,7 +284,7 @@ def wrap_compiled_task_clang(classname):
             node = None
             assert os.path.isabs(path)
 
-	    drive_hack = False
+            drive_hack = False
             node = path_to_node(bld.root, path, cached_nodes, drive_hack)
 
             if not node:
@@ -367,6 +366,8 @@ def wrap_compiled_task_clang(classname):
                 if res != None:
                     inc_path = res.group(1)
                     Logs.debug('clangdeps: Regex matched %s' % inc_path)
+                    if not os.path.isabs(inc_path):
+                        inc_path = os.path.join(self.generator.bld.path.abspath(), inc_path)
                     self.clangdeps_paths.add(inc_path)
                     if self.generator.bld.is_option_true('show_includes'):
                         out.append(line)

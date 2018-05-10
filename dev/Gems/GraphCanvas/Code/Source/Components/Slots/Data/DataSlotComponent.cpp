@@ -206,7 +206,6 @@ namespace GraphCanvas
 
         if (m_variableId.IsValid() && m_dataSlotType == DataSlotType::Reference)
         {
-            VariableNotificationBus::Handler::BusConnect(m_variableId);
         }
     }
     
@@ -218,80 +217,19 @@ namespace GraphCanvas
 
         if (m_variableId.IsValid() && m_dataSlotType == DataSlotType::Reference)
         {
-            VariableNotificationBus::Handler::BusDisconnect(m_variableId);
         }
     }
 
-    void DataSlotComponent::OnNameChanged()
-    {
-        UpdateDisplay();
-    }
-
-    void DataSlotComponent::OnVariableActivated()
-    {
-        UpdateDisplay();
-    }
-
-    void DataSlotComponent::OnVariableDestroyed()
-    {
-        AssignVariable(AZ::EntityId());
-    }
-
-    void DataSlotComponent::ResolvePastedReferences()
-    {
-        VariableReferenceSceneNotificationBus::Handler::BusDisconnect();
-
-        AZ::EntityId sceneId = GetScene();
-        AZ::EntityId variableId = m_variableId;
-
-        m_variableId.SetInvalid();
-
-        Endpoint endpoint(GetNode(), GetEntityId());
-
-        // Three cases for being pasted as a reference.
-        // 1) We paste down with a copy of our variable. In which case we want to update our
-        //    reference to that copied value.
-        // 2) We paste down without a copy of our variable. In which case we want to maintain
-        //    the original references.
-        // 3) We were pasted into a different graph, that doesn't contain our variable. In which case
-        //    we want to go back to an unresolved state.
-        //
-        // The Copied id is the unmapped entity id, while the variable id is the actually mapped variation.
-        //
-        // Check the mapped id first to see if that's valid. Then check the unmapped version to see if that's valid
-        bool canAssign = false;
-        for (AZ::EntityId testVariableId : { variableId, AZ::EntityId(m_copiedVariableId) })
-        { 
-            ConnectionSceneRequestBus::EventResult(canAssign, sceneId, &ConnectionSceneRequests::IsValidVariableAssignment, testVariableId, endpoint);
-
-            if (canAssign)
-            {
-                AssignVariable(testVariableId);
-                break;
-            }
-        }
-
-        if (!canAssign)
-        {
-            // To completely mimic our variable being 'unreferenced'
-            // restore the previous variable id so we can properly invalidate it.
-            m_variableId = variableId;
-
-            AssignVariable(AZ::EntityId());
-        }
-    }
-
-    void DataSlotComponent::OnNodeAboutToSerialize(SceneSerialization&)
+    void DataSlotComponent::OnNodeAboutToSerialize(GraphSerialization&)
     {
         m_copiedVariableId = static_cast<AZ::u64>(m_variableId);
     }
     
-    void DataSlotComponent::OnNodeDeserialized(const SceneSerialization&)
+    void DataSlotComponent::OnNodeDeserialized(const AZ::EntityId&, const GraphSerialization&)
     {
         if (m_dataSlotType == DataSlotType::Reference)
         {
             NodeNotificationBus::Handler::BusDisconnect();
-            VariableReferenceSceneNotificationBus::Handler::BusConnect(GetScene());
         }
     }
 
@@ -315,7 +253,7 @@ namespace GraphCanvas
             {
                 NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, false);
                 DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
-                SetConnectionDisplayState(ConnectionDisplayState::Deletion);
+                SetConnectionDisplayState(RootGraphicsItemDisplayState::Deletion);
             }
         }
         else if (slotType == DataSlotType::Value)
@@ -401,8 +339,6 @@ namespace GraphCanvas
 
             if (m_dataSlotType != DataSlotType::Variable)
             {
-                VariableActionRequestBus::Event(GetScene(), &VariableActionRequests::UnassignVariableValue, m_variableId, endpoint);
-                VariableNotificationBus::Handler::BusDisconnect(m_variableId);
             }
             
             m_variableId = variableId;
@@ -414,10 +350,7 @@ namespace GraphCanvas
 
                 if (m_variableId.IsValid())
                 {
-                    VariableActionRequestBus::Event(GetScene(), &VariableActionRequests::AssignVariableValue, m_variableId, endpoint);
                 }
-
-                VariableNotificationBus::Handler::BusConnect(m_variableId);
             }
 
             UpdateDisplay();
@@ -435,8 +368,6 @@ namespace GraphCanvas
     {
         if (m_previousDataSlotType != DataSlotType::Unknown)
         {
-            SetConnectionDisplayState(ConnectionDisplayState::None);
-
             bool typeChanged = m_dataSlotType != m_previousDataSlotType;
 
             m_dataSlotType = m_previousDataSlotType;
@@ -525,7 +456,6 @@ namespace GraphCanvas
 
             if (m_variableId.IsValid())
             {
-                VariableActionRequestBus::Event(GetScene(), &VariableActionRequests::UnassignVariableValue, m_variableId, Endpoint(GetNode(), GetEntityId()));
                 m_variableId.SetInvalid();
             }
         }
@@ -564,11 +494,11 @@ namespace GraphCanvas
         return retVal;
     }
 
-    AZ::Entity* DataSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    AZ::Entity* DataSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
     {
         const AZStd::string k_connectionSubStyle = ".varFlow";
 
         // Create this Connection's entity.
-        return DataConnectionComponent::CreateDataConnection(sourceEndpoint, targetEndpoint, k_connectionSubStyle);
+        return DataConnectionComponent::CreateDataConnection(sourceEndpoint, targetEndpoint, createModelConnection, k_connectionSubStyle);
     }
 }

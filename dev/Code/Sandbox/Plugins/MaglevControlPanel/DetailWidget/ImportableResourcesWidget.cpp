@@ -157,7 +157,7 @@ void ImportableResourcesWidget::CreateResourcesTable()
     m_filterListProxyModel->setSourceModel(m_importerModel.data());
 
     //Generate the table to list all of the importable resources
-    m_listTable = new QTableView{};
+    m_listTable = new QTableView{this};
     m_listTable->setObjectName("ListTable");
     m_listTable->setModel(m_filterListProxyModel.data());
     m_listTable->verticalHeader()->hide();

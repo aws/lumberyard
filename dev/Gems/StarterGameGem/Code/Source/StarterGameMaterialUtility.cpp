@@ -73,7 +73,7 @@ namespace StarterGameGem
             DynArray<SShaderParam> params = shaderItem.m_pShaderResources->GetParameters();
             if (params.size() == 0)
             {
-                AZ_Warning("StarterGame", false, "%s found no shader parameters on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+                AZ_Warning("StarterGame", false, "%s found no shader parameters on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             }
 
             set = SShaderParam::SetParam(paramName.c_str(), &params, var);
@@ -87,7 +87,7 @@ namespace StarterGameGem
         }
         else
         {
-            AZ_Warning("StarterGame", false, "%s found an invalid shader item on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s found an invalid shader item on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
         }
 
         return set;
@@ -274,7 +274,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return set;
         }
 
@@ -290,12 +290,12 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return set;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId, subMtlIndex);
             return set;
         }
 
@@ -314,7 +314,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return var;
         }
 
@@ -331,12 +331,12 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return var;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId, subMtlIndex);
             return var;
         }
 
@@ -355,7 +355,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return set;
         }
 
@@ -371,12 +371,12 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return set;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId, subMtlIndex);
             return set;
         }
 
@@ -395,7 +395,7 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return var;
         }
         
@@ -412,12 +412,12 @@ namespace StarterGameGem
 
         if (!mat)
         {
-            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId);
+            AZ_Warning("StarterGame", false, "%s couldn't find a material on %s (%llu)", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId);
             return var;
         }
         if (mat->GetSubMtlCount() < subMtlIndex)
         {
-            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId), (AZ::u64)entityId, subMtlIndex);
+            AZ_Warning("StarterGame", false, "%s material on %s (%llu) doesn't have sub material at index %d", __FUNCTION__, StarterGameEntityUtility::GetEntityName(entityId).c_str(), (AZ::u64)entityId, subMtlIndex);
             return var;
         }
 

@@ -17,6 +17,9 @@
 #include "StdAfx.h"
 #include "BinarySerializeHelper.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(BinarySerializeHelper_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 CBinarySerializedObject::CBinarySerializedObject(const char* szSection)

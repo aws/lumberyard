@@ -1,0 +1,22 @@
+{
+    "name": "amd_static",
+    "source": "@3P:AMD_AGS@",
+    "description": "AMD AGS Library (Static)",
+    "includes": [
+        "inc"
+    ],
+    "lib_required": "True",
+    "shared_required": "False",
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath": [
+                "lib/x64/static"
+            ],
+            "lib": [
+                "amd_ags64.lib"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
+    }
+}

@@ -25,6 +25,9 @@
 /// - Add IsOpen() function to GenericStream.
 /// - Added plane line-ray intersections.
 ///
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ReleaseNotes_h, AZ_RESTRICTED_PLATFORM)
+#endif
 /// \section Build177 Build 177 Thu 06/21/2012 10:00:03.17
 /// - Added AssetDatabase
 /// - Added generic stream wrappers.

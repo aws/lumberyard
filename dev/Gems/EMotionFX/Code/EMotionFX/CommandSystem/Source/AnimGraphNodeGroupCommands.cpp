@@ -16,6 +16,7 @@
 #include "CommandManager.h"
 #include <EMotionFX/Source/AnimGraph.h>
 #include <MCore/Source/Random.h>
+#include <MCore/Source/StringConversions.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/AnimGraphInstance.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
@@ -41,14 +42,14 @@ namespace CommandSystem
     }
 
 
-    MCore::String CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(EMotionFX::AnimGraph* animGraph, const MCore::Array<uint32>& nodeIDs)
+    AZStd::string CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(EMotionFX::AnimGraph* animGraph, const MCore::Array<uint32>& nodeIDs)
     {
         if (nodeIDs.GetIsEmpty())
         {
             return "";
         }
 
-        MCore::String result;
+        AZStd::string result;
         const uint32 numNodes = nodeIDs.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
@@ -70,7 +71,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAnimGraphAdjustNodeGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustNodeGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph
         EMotionFX::AnimGraph* animGraph = CommandsGetAnimGraph(parameters, this, outResult);
@@ -80,14 +81,14 @@ namespace CommandSystem
         }
 
         // get the node group name
-        MCore::String valueString;
+        AZStd::string valueString;
         parameters.GetValue("name", this, &valueString);
 
         // find the node group index
-        const uint32 groupIndex = animGraph->FindNodeGroupIndexByName(valueString.AsChar());
+        const uint32 groupIndex = animGraph->FindNodeGroupIndexByName(valueString.c_str());
         if (groupIndex == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("Node group \"%s\" can not be found.", valueString.AsChar());
+            outResult = AZStd::string::format("Node group \"%s\" can not be found.", valueString.c_str());
             return false;
         }
 
@@ -114,9 +115,9 @@ namespace CommandSystem
         // set the new name
         // if the new name is empty, the name is not changed
         parameters.GetValue("newName", this, &valueString);
-        if (valueString.GetIsEmpty() == false)
+        if (valueString.empty() == false)
         {
-            nodeGroup->SetName(valueString.AsChar());
+            nodeGroup->SetName(valueString.c_str());
         }
 
         // check if parametes nodeNames is set
@@ -129,19 +130,22 @@ namespace CommandSystem
             parameters.GetValue("nodeAction", this, &valueString);
 
             // get the node names and split the string
-            MCore::String nodeNameString;
+            AZStd::string nodeNameString;
             parameters.GetValue("nodeNames", this, &nodeNameString);
-            MCore::Array<MCore::String> nodeNames = nodeNameString.Split();
-            const uint32 numNodes = nodeNames.GetLength();
+            
+            AZStd::vector<AZStd::string> nodeNames;
+            AzFramework::StringFunc::Tokenize(nodeNameString.c_str(), nodeNames, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
+
+            const size_t numNodes = nodeNames.size();
 
             // remove the selected nodes from the given node group
-            if (valueString.CompareNoCase("remove") == 0)
+            if (AzFramework::StringFunc::Equal(valueString.c_str(), "remove", false /* no case */))
             {
                 // iterate through the nodes from the parameter node names array
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodes; ++i)
                 {
                     // validate node
-                    EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(nodeNames[i].AsChar());
+                    EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(nodeNames[i].c_str());
                     if (animGraphNode == nullptr)
                     {
                         continue;
@@ -151,13 +155,13 @@ namespace CommandSystem
                     nodeGroup->RemoveNodeByID(animGraphNode->GetID());
                 }
             }
-            else if (valueString.CompareNoCase("add") == 0) // add the selected nodes to the given node group
+            else if (AzFramework::StringFunc::Equal(valueString.c_str(), "add", false /* no case */)) // add the selected nodes to the given node group
             {
                 // iterate through the nodes from the parameter node names array
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodes; ++i)
                 {
                     // validate node
-                    EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(nodeNames[i].AsChar());
+                    EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(nodeNames[i].c_str());
                     if (animGraphNode == nullptr)
                     {
                         continue;
@@ -174,7 +178,7 @@ namespace CommandSystem
                     nodeGroup->AddNode(animGraphNode->GetID());
                 }
             }
-            else if (valueString.CompareNoCase("replace") == 0) // clear the node group and then add the selected nodes to the given node group
+            else if (AzFramework::StringFunc::Equal(valueString.c_str(), "replace", false /* no case */)) // clear the node group and then add the selected nodes to the given node group
             {
                 // clear the node group upfront
                 nodeGroup->RemoveAllNodes();
@@ -183,7 +187,7 @@ namespace CommandSystem
                 for (uint32 i = 0; i < numNodes; ++i)
                 {
                     // validate node
-                    EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(nodeNames[i].AsChar());
+                    EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNode(nodeNames[i].c_str());
                     if (animGraphNode == nullptr)
                     {
                         continue;
@@ -225,7 +229,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAnimGraphAdjustNodeGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph id and check if it is valid
         EMotionFX::AnimGraph* animGraph = CommandsGetAnimGraph(parameters, this, outResult);
@@ -235,48 +239,48 @@ namespace CommandSystem
         }
 
         // construct the command
-        MCore::String valueString;
-        MCore::String commandString;
-        commandString.Format("AnimGraphAdjustNodeGroup -animGraphID %i", animGraph->GetID());
+        AZStd::string valueString;
+        AZStd::string commandString;
+        commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i", animGraph->GetID());
 
         // set the old name or simply set the name if the name is not changed
         if (parameters.CheckIfHasParameter("newName"))
         {
             parameters.GetValue("newName", this, &valueString);
-            commandString.FormatAdd(" -name \"%s\"", valueString.AsChar());
-            commandString.FormatAdd(" -newName \"%s\"", mOldName.AsChar());
+            commandString += AZStd::string::format(" -name \"%s\"", valueString.c_str());
+            commandString += AZStd::string::format(" -newName \"%s\"", mOldName.c_str());
         }
         else
         {
-            commandString.FormatAdd(" -name \"%s\"", mOldName.AsChar());
+            commandString += AZStd::string::format(" -name \"%s\"", mOldName.c_str());
         }
 
         // set the old visible flag
         if (parameters.CheckIfHasParameter("isVisible"))
         {
-            commandString.FormatAdd(" -isVisible %i", mOldIsVisible);
+            commandString += AZStd::string::format(" -isVisible %s", AZStd::to_string(mOldIsVisible).c_str());
         }
 
         // set the old color
         if (parameters.CheckIfHasParameter("color"))
         {
             const AZ::Vector4 color(mOldColor.r, mOldColor.g, mOldColor.b, mOldColor.a);
-            commandString.FormatAdd(" -color \"%s\"", MCore::String(color).AsChar());
+            commandString += AZStd::string::format(" -color \"%s\"", AZStd::to_string(color).c_str());
         }
 
         // set the old nodes
         if (parameters.CheckIfHasParameter("nodeNames"))
         {
-            MCore::String nodeNamesString = CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(animGraph, mOldNodeIDs);
-            commandString.FormatAdd(" -nodeNames \"%s\" -nodeAction \"replace\"", nodeNamesString.AsChar());
+            AZStd::string nodeNamesString = CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(animGraph, mOldNodeIDs);
+            commandString += AZStd::string::format(" -nodeNames \"%s\" -nodeAction \"replace\"", nodeNamesString.c_str());
         }
 
         // execute the command
-        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult) == false)
+        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult) == false)
         {
-            if (outResult.GetLength() > 0)
+            if (outResult.size() > 0)
             {
-                MCore::LogError(outResult.AsChar());
+                MCore::LogError(outResult.c_str());
             }
         }
 
@@ -325,18 +329,18 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAnimGraphAddNodeGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAddNodeGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph id and check if it is valid
         const uint32            animGraphID    = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph*  animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (animGraph == nullptr)
         {
-            outResult.Format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
             return false;
         }
 
-        MCore::String valueString;
+        AZStd::string valueString;
         if (parameters.CheckIfHasParameter("name"))
         {
             parameters.GetValue("name", this, &valueString);
@@ -344,14 +348,14 @@ namespace CommandSystem
         else
         {
             // generate a unique parameter name
-            valueString.GenerateUniqueString("NodeGroup",   [&](const MCore::String& value)
+            valueString = MCore::GenerateUniqueString("NodeGroup", [&](const AZStd::string& value)
                 {
-                    return (animGraph->FindNodeGroupByName(value.AsChar()) == nullptr);
+                    return (animGraph->FindNodeGroupByName(value.c_str()) == nullptr);
                 });
         }
 
         // add new node group to the anim graph
-        EMotionFX::AnimGraphNodeGroup* nodeGroup = EMotionFX::AnimGraphNodeGroup::Create(valueString.AsChar());
+        EMotionFX::AnimGraphNodeGroup* nodeGroup = EMotionFX::AnimGraphNodeGroup::Create(valueString.c_str());
         animGraph->AddNodeGroup(nodeGroup);
 
         // give the node group a random color
@@ -382,28 +386,28 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAnimGraphAddNodeGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAddNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph id and check if it is valid
         const uint32            animGraphID    = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph*  animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (animGraph == nullptr)
         {
-            outResult.Format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
             return false;
         }
 
         // construct the command
-        MCore::String commandString;
-        commandString.Format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraphID, mOldName.AsChar());
+        AZStd::string commandString;
+        commandString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraphID, mOldName.c_str());
 
         // execute the command
-        MCore::String resultString;
-        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), resultString) == false)
+        AZStd::string resultString;
+        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), resultString) == false)
         {
-            if (resultString.GetLength() > 0)
+            if (resultString.size() > 0)
             {
-                MCore::LogError(resultString.AsChar());
+                MCore::LogError(resultString.c_str());
             }
         }
 
@@ -447,25 +451,25 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAnimGraphRemoveNodeGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveNodeGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph id and check if it is valid
         const uint32            animGraphID    = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph*  animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (animGraph == nullptr)
         {
-            outResult.Format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
             return false;
         }
 
-        MCore::String valueString;
+        AZStd::string valueString;
         parameters.GetValue("name", this, &valueString);
 
         // find the node group index and remove it
-        const uint32 groupIndex = animGraph->FindNodeGroupIndexByName(valueString.AsChar());
+        const uint32 groupIndex = animGraph->FindNodeGroupIndexByName(valueString.c_str());
         if (groupIndex == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("Cannot add node group to anim graph. Node group index is invalid.", groupIndex);
+            outResult = AZStd::string::format("Cannot add node group to anim graph. Node group index is invalid.", groupIndex);
             return false;
         }
 
@@ -502,34 +506,34 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAnimGraphRemoveNodeGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph id and check if it is valid
         const uint32            animGraphID    = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph*  animGraph      = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (animGraph == nullptr)
         {
-            outResult.Format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot add node group to anim graph. Anim graph id '%i' is not valid.", animGraphID);
             return false;
         }
 
         // construct the command
-        MCore::String valueString;
+        AZStd::string valueString;
         MCore::CommandGroup commandGroup;
-        valueString.Format("AnimGraphAddNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), mOldName.AsChar());
-        commandGroup.AddCommandString(valueString.AsChar());
+        valueString = AZStd::string::format("AnimGraphAddNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), mOldName.c_str());
+        commandGroup.AddCommandString(valueString.c_str());
 
-        MCore::String nodeNamesString = CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(animGraph, mOldNodeIDs);
+        AZStd::string nodeNamesString = CommandAnimGraphAdjustNodeGroup::GenerateNodeNameString(animGraph, mOldNodeIDs);
         const AZ::Vector4 color(mOldColor.r, mOldColor.g, mOldColor.b, mOldColor.a);
-        valueString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %i -color \"%s\" -nodeNames \"%s\" -nodeAction \"add\"", animGraph->GetID(), mOldName.AsChar(), mOldIsVisible, MCore::String(color).AsChar(), nodeNamesString.AsChar());
-        commandGroup.AddCommandString(valueString.AsChar());
+        valueString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %s -color \"%s\" -nodeNames \"%s\" -nodeAction \"add\"", animGraph->GetID(), mOldName.c_str(), AZStd::to_string(mOldIsVisible).c_str(), AZStd::to_string(color).c_str(), nodeNamesString.c_str());
+        commandGroup.AddCommandString(valueString.c_str());
 
         // execute the command
         if (GetCommandManager()->ExecuteCommandGroupInsideCommand(commandGroup, valueString) == false)
         {
-            if (valueString.GetLength() > 0)
+            if (valueString.size() > 0)
             {
-                MCore::LogError(valueString.AsChar());
+                MCore::LogError(valueString.c_str());
             }
         }
 
@@ -572,23 +576,23 @@ namespace CommandSystem
         MCore::CommandGroup internalCommandGroup("Clear anim graph node groups");
 
         // get rid of all node groups
-        MCore::String valueString;
+        AZStd::string valueString;
         for (uint32 i = 0; i < numNodeGroups; ++i)
         {
             // get pointer to the current actor instance
             EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(i);
 
             // construct the command
-            valueString.Format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroup->GetName());
+            valueString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroup->GetName());
 
             // add the command to the command group
             if (commandGroup == nullptr)
             {
-                internalCommandGroup.AddCommandString(valueString.AsChar());
+                internalCommandGroup.AddCommandString(valueString.c_str());
             }
             else
             {
-                commandGroup->AddCommandString(valueString.AsChar());
+                commandGroup->AddCommandString(valueString.c_str());
             }
         }
 
@@ -597,7 +601,7 @@ namespace CommandSystem
         {
             if (GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, valueString) == false)
             {
-                MCore::LogError(valueString.AsChar());
+                MCore::LogError(valueString.c_str());
             }
         }
     }

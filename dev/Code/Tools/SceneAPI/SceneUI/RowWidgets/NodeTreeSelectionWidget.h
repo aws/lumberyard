@@ -55,6 +55,7 @@ namespace AZ
                 void AddFilterType(const Uuid& idProperty);
                 void AddFilterVirtualType(Crc32 name);
                 void UseNarrowSelection(bool enable);
+                void UpdateSelectionLabel();
 
             signals:
                 void valueChanged();
@@ -63,7 +64,6 @@ namespace AZ
                 void SelectButtonClicked();
                 void ListChangesAccepted();
                 void ListChangesCanceled();
-                void UpdateSelectionLabel();
 
                 size_t CalculateSelectedCount();
                 size_t CalculateTotalCount();

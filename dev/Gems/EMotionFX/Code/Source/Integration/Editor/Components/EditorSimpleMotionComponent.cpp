@@ -18,7 +18,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Asset/AssetManager.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <Integration/Assets/ActorAsset.h>

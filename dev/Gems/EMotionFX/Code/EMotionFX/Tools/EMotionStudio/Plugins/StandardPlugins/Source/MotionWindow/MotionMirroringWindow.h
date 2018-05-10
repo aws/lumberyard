@@ -16,7 +16,6 @@
 // include MCore
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <QWidget>
 
 QT_FORWARD_DECLARE_CLASS(QPushButton)

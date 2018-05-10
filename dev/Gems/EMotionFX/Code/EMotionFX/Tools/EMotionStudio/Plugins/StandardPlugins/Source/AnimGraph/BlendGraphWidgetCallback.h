@@ -25,9 +25,6 @@
 
 namespace EMStudio
 {
-    // forward declarations
-    class NodeGraphWidget;
-
     // blend graph widget callback
     class BlendGraphWidgetCallback
         : public GraphWidgetCallback
@@ -50,7 +47,7 @@ namespace EMStudio
         AZStd::string               m_tempStringA;
         AZStd::string               m_tempStringB;
         AZStd::string               m_tempStringC;
-        MCore::String               m_mcoreTempString;
+        AZStd::string               m_mcoreTempString;
     };
 }   // namespace EMStudio
 

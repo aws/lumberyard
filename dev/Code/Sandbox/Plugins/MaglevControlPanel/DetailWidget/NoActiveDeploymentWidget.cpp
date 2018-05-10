@@ -17,8 +17,9 @@
 
 #include "DetailWidget/NoActiveDeploymentWidget.moc"
 
-NoActiveDeploymentWidget::NoActiveDeploymentWidget(ResourceManagementView* view)
-    : m_view{view}
+NoActiveDeploymentWidget::NoActiveDeploymentWidget(ResourceManagementView* view, QWidget* parent)
+    : ActionWidget(parent)
+    , m_view{view}
 {
     SetTitleText(tr(
             "You have not yet selected a default Cloud Canvas deployment."

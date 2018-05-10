@@ -14,8 +14,6 @@
 // Description : Common math class
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_CRY_MATH_H
-#define CRYINCLUDE_CRYCOMMON_CRY_MATH_H
 #pragma once
 
 //========================================================================================
@@ -497,7 +495,7 @@ ILINE int ilog2(uint64 x)   // if x==1<<i (i=0..63), returns i
 {
 #if defined(CRY_PLATFORM_X64)
 # if defined(AZ_RESTRICTED_PLATFORM)
-#  include AZ_RESTRICTED_FILE(Cry_Math_h)
+#  include AZ_RESTRICTED_FILE(Cry_Math_h, AZ_RESTRICTED_PLATFORM)
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #  undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -692,5 +690,3 @@ inline void GetBasisVectors(const Vec3& n, Vec3& b1, Vec3& b2)
     b1 = Vec3(1.0f - n.x * n.x * a, b, -n.x);
     b2 = Vec3(b, 1.0f - n.y * n.y * a, -n.y);
 }
-
-#endif // CRYINCLUDE_CRYCOMMON_CRY_MATH_H

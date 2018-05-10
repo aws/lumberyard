@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/ScriptCanvasPhysics_precompiled.cpp",
+            "Source/ScriptCanvasPhysics_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/PhysicsNodeLibrary.cpp",
+            "Source/PhysicsNodeLibrary.h",
+            "Source/ScriptCanvasPhysicsModule.cpp",
+            "Source/ScriptCanvasPhysicsSystemComponent.cpp",
+            "Source/ScriptCanvasPhysicsSystemComponent.h",
+            "Source/RayCast.h"
+        ]
+    }
+}

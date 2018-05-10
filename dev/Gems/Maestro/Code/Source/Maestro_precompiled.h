@@ -17,6 +17,8 @@
 
 #if defined(AZ_PLATFORM_WINDOWS)
 
+#define NOMINMAX            // Needed for std::min/std::max to work
+
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN        // Exclude rarely-used stuff from Windows headers
 #endif
@@ -38,32 +40,6 @@
 #ifndef _WIN32_IE           // Allow use of features specific to IE 6.0 or later.
 #define _WIN32_IE 0x0600    // Change this to the appropriate value to target other versions of IE.
 #endif
-
-#define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS  // some CString constructors will be explicit
-#define _AFXDLL
-
-#include <afxwin.h>         // MFC core and standard components
-#include <afxext.h>         // MFC extensions
-#ifndef _AFX_NO_OLE_SUPPORT
-#include <afxole.h>         // MFC OLE classes
-#include <afxodlgs.h>       // MFC OLE dialog classes
-#include <afxdisp.h>        // MFC Automation classes
-#endif // _AFX_NO_OLE_SUPPORT
-
-#ifndef _AFX_NO_DB_SUPPORT
-#include <afxdb.h>          // MFC ODBC database classes
-#endif // _AFX_NO_DB_SUPPORT
-
-#ifndef _AFX_NO_DAO_SUPPORT
-#include <afxdao.h>         // MFC DAO database classes
-#endif // _AFX_NO_DAO_SUPPORT
-
-#ifndef _AFX_NO_OLE_SUPPORT
-#include <afxdtctl.h>       // MFC support for Internet Explorer 4 Common Controls
-#endif
-#ifndef _AFX_NO_AFXCMN_SUPPORT
-#include <afxcmn.h>         // MFC support for Windows Common Controls
-#endif // _AFX_NO_AFXCMN_SUPPORT
 
 #pragma warning(disable: 4244) // warning C4244: 'argument' : conversion from 'float' to 'uint8', possible loss of data
 #pragma warning(disable: 4800) // 'int' : forcing value to bool 'true' or 'false' (performance warning)

@@ -34,8 +34,6 @@ namespace GraphCanvas
         virtual void SetGrid(AZ::EntityId gridId) = 0;
 
         virtual qreal GetCornerRadius() const = 0;
-
-        virtual bool IsWrapped() const = 0;
     };
 
     using NodeUIRequestBus = AZ::EBus<NodeUIRequests>;

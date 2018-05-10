@@ -36,8 +36,8 @@ namespace CommandSystem
     int32                   mEndOffsetY;
     int32                   mSourcePort;
     int32                   mTargetPort;
-    MCore::String           mSourcePortName;
-    MCore::String           mTargetPortName;
+    AZStd::string           mSourcePortName;
+    AZStd::string           mTargetPortName;
     bool                    mOldDirtyFlag;
 
 public:
@@ -68,7 +68,7 @@ public:
     int32                   mSourcePort;
     int32                   mTargetPort;
     bool                    mOldDirtyFlag;
-    MCore::String           mOldAttributesString;
+    AZStd::string           mOldAttributesString;
 
 public:
     uint32 GetTargetNodeID() const      { return mTargetNodeID; }
@@ -88,8 +88,8 @@ public:
         MCORE_DEFINECOMMAND_START(CommandAnimGraphAdjustConnection, "Adjust a anim graph connection", true)
 public:
     uint32                  mAnimGraphID;
-    MCore::String           mOldTargetNodeName;
-    MCore::String           mOldSourceNodeName;
+    AZStd::string           mOldTargetNodeName;
+    AZStd::string           mOldSourceNodeName;
     int32                   mStartOffsetX;
     int32                   mStartOffsetY;
     int32                   mEndOffsetX;
@@ -112,5 +112,5 @@ public:
     COMMANDSYSTEM_API void CopyBlendTreeConnection(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* targetNode, EMotionFX::BlendTreeConnection* connection, const AZStd::vector<EMotionFX::AnimGraphNode*>& copiedNodes, const AZStd::vector<AZStd::string>& nameReserveList);
     COMMANDSYSTEM_API void CopyStateTransition(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphStateMachine* stateMachine, const AZStd::string& parentName, EMotionFX::AnimGraphStateTransition* transition, const AZStd::vector<EMotionFX::AnimGraphNode*>& copiedNodes, const AZStd::vector<AZStd::string>& nameReserveList);
 
-    COMMANDSYSTEM_API EMotionFX::AnimGraph* CommandsGetAnimGraph(const MCore::CommandLine& parameters, MCore::Command* command, MCore::String& outResult);
+    COMMANDSYSTEM_API EMotionFX::AnimGraph* CommandsGetAnimGraph(const MCore::CommandLine& parameters, MCore::Command* command, AZStd::string& outResult);
 } // namespace CommandSystem

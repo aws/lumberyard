@@ -28,8 +28,8 @@ namespace AssetProcessor
 {
     struct BuilderRef;
 
-    //! Indicates if job request files should be deleted on success.  Can be useful for debugging
-    static const bool s_DeleteSuccessfulJobRequestFiles = true;
+    //! Indicates if job request files should be created on success.  Can be useful for debugging
+    static const bool s_createRequestFileForSuccessfulJob = false;
 
     //! This EBUS is used to request a free builder from the builder manager pool
     class BuilderManagerBusTraits
@@ -86,7 +86,7 @@ namespace AssetProcessor
 
         //! Sends the job over to the builder and blocks until the response is received or the builder crashes/times out
         template<typename TNetRequest, typename TNetResponse, typename TRequest, typename TResponse>
-        void RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener = nullptr) const;
+        void RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener = nullptr, AZStd::string tempFolderPath = AZStd::string()) const;
 
     private:
 
@@ -104,7 +104,7 @@ namespace AssetProcessor
 
         //! Writes the request out to disk for debug purposes and logs info on how to manually run the asset builder
         template<typename TRequest>
-        bool DebugWriteRequestFile(QString& tempFolderPath, const TRequest& request, const AZStd::string& task, const AZStd::string& modulePath) const;
+        bool DebugWriteRequestFile(QString tempFolderPath, const TRequest& request, const AZStd::string& task, const AZStd::string& modulePath) const;
 
         const AZ::Uuid m_uuid;
 

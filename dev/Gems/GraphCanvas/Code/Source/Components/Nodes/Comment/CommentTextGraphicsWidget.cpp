@@ -62,6 +62,7 @@ namespace GraphCanvas
 
         m_textEdit = aznew Internal::FocusableTextEdit();
         m_textEdit->setProperty("HasNoWindowDecorations", true);
+        m_textEdit->setProperty("DisableFocusWindowFix", true);
         m_textEdit->setFocusPolicy(Qt::FocusPolicy::StrongFocus);
 
         m_textEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAlwaysOff);
@@ -155,7 +156,6 @@ namespace GraphCanvas
         }
 
         updateGeometry();
-        adjustSize();
         RefreshDisplay();
 
         m_layout->invalidate();
@@ -292,7 +292,7 @@ namespace GraphCanvas
                 AZ_Warning("Graph Canvas", false, "Unhandled Comment Mode: %i", m_commentMode);
             }
 
-            adjustSize();
+            updateGeometry();
         }
     }
 
@@ -390,12 +390,13 @@ namespace GraphCanvas
         }
 
         updateGeometry();
-        adjustSize();
     }
 
     void CommentTextGraphicsWidget::SubmitValue()
     {
-        CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetComment, GetComment());
+        AZStd::string comment = GetComment();
+        CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetComment, comment);
+        CommentNotificationBus::Event(GetEntityId(), &CommentNotifications::OnCommentChanged, comment);
         UpdateSizing();
     }
 

@@ -18,7 +18,7 @@
 #include <QKeyEvent>
 
 #include <GraphCanvas/Components/SceneBus.h>
-#include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeLayoutBus.h>
+#include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 
 #include "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h"
 #include "Editor/Translation/TranslationHelper.h"
@@ -103,10 +103,10 @@ namespace ScriptCanvasEditor
 
         m_ebusNode = ebusNode;
 
-        EBusNodeDescriptorRequestBus::EventResult(m_busName, m_ebusNode, &EBusNodeDescriptorRequests::GetBusName);
+        EBusHandlerNodeDescriptorRequestBus::EventResult(m_busName, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetBusName);
         
         AZStd::vector< AZStd::string > eventNames;
-        EBusNodeDescriptorRequestBus::EventResult(eventNames, m_ebusNode, &EBusNodeDescriptorRequests::GetEventNames);
+        EBusHandlerNodeDescriptorRequestBus::EventResult(eventNames, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetEventNames);
         
         m_actionItems.resize(eventNames.size());
          
@@ -128,7 +128,7 @@ namespace ScriptCanvasEditor
             
             actionItem.m_index = i;
             
-            EBusNodeDescriptorRequestBus::EventResult(actionItem.m_active, ebusNode, &EBusNodeDescriptorRequests::ContainsEvent, eventNames[i]);
+            EBusHandlerNodeDescriptorRequestBus::EventResult(actionItem.m_active, ebusNode, &EBusHandlerNodeDescriptorRequests::ContainsEvent, eventNames[i]);
         }
 
         layoutChanged();
@@ -155,8 +155,8 @@ namespace ScriptCanvasEditor
 
     void EBusHandlerActionSourceModel::UpdateEBusItem(EBusHandlerActionItem& actionItem)
     {
-        AZ::EntityId sceneId;
-        GraphCanvas::SceneMemberRequestBus::EventResult(sceneId, m_ebusNode, &GraphCanvas::SceneMemberRequests::GetScene);
+        AZ::EntityId graphCanvasGraphId;
+        GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, m_ebusNode, &GraphCanvas::SceneMemberRequests::GetScene);
 
         AZStd::string eventName(actionItem.m_name.toUtf8().data());
 
@@ -165,25 +165,29 @@ namespace ScriptCanvasEditor
             AZ::Vector2 dummyPosition(0, 0);
             CreateEBusHandlerEventMimeEvent mimeEvent(QString(m_busName.c_str()), actionItem.m_name);
 
-            NodeIdPair idPair = mimeEvent.CreateEventNode(sceneId, dummyPosition);
+            NodeIdPair idPair = mimeEvent.CreateEventNode(graphCanvasGraphId, dummyPosition);
 
             GraphCanvas::WrappedNodeConfiguration configuration;
 
-            EBusNodeDescriptorRequestBus::EventResult(configuration, m_ebusNode, &EBusNodeDescriptorRequests::GetEventConfiguration, eventName);
+            EBusHandlerNodeDescriptorRequestBus::EventResult(configuration, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetEventConfiguration, eventName);
             GraphCanvas::WrapperNodeRequestBus::Event(m_ebusNode, &GraphCanvas::WrapperNodeRequests::WrapNode, idPair.m_graphCanvasId, configuration);
-            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, sceneId);
+
+            AZ::EntityId scriptCanvasGraphId;
+            GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+
+            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasGraphId);
         }
         else
         {
             AZ::EntityId nodeId;
-            EBusNodeDescriptorRequestBus::EventResult(nodeId, m_ebusNode, &EBusNodeDescriptorRequests::FindEventNodeId, eventName);
+            EBusHandlerNodeDescriptorRequestBus::EventResult(nodeId, m_ebusNode, &EBusHandlerNodeDescriptorRequests::FindEventNodeId, eventName);
 
             if (nodeId.IsValid())
             {
                 AZStd::unordered_set<AZ::EntityId> deleteNodes;
                 deleteNodes.insert(nodeId);
 
-                GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::Delete, deleteNodes);
+                GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::Delete, deleteNodes);
 
                 actionItem.m_active = false;
             }

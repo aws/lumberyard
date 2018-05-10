@@ -134,30 +134,8 @@ namespace UnitTest
             // Regular warning
             AZ_Warning("Streamer", falseExp, "Test Message");
 
-            // Whenever a warning occurs, the trace system automatically sends the callstack to AZ_Traceprintf.
-            // this means that there is actually more than one TracePrintF for every warning given since it includes
-            // all of the stack frames on a line each.
-            AZ_TEST_ASSERT(m_numTracePrintfs > 1); 
-
-            // This should print a warning only once
-            int oldNumTracePrintfs = m_numTracePrintfs;
-            for (s32 i = 0; i < 5; ++i)
-            {
-                AZ_WarningOnce("AZCore | Warning once", i < 0, "Warning only once %d", m_data);
-                if (i == 0)
-                {
-                    // the first time we hit the above warning it should increase the number of traceprintfs (includes callstack).
-                    AZ_TEST_ASSERT(m_numTracePrintfs > oldNumTracePrintfs);
-                    oldNumTracePrintfs = m_numTracePrintfs;
-                }
-                else
-                {
-                    // the number of printfs executed should not change after the first warning dumps its call stack.
-                    AZ_TEST_ASSERT(oldNumTracePrintfs == m_numTracePrintfs);
-                }
-            }
-
             // Printf
+            int oldNumTracePrintfs = m_numTracePrintfs;
             AZ_Printf("AI | A*", "Test Message");
             // only one traceprintf should have occurred here.
             AZ_TEST_ASSERT(m_numTracePrintfs == oldNumTracePrintfs + 1);

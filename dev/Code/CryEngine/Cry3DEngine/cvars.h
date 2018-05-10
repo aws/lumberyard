@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRY3DENGINE_CVARS_H
-#define CRYINCLUDE_CRY3DENGINE_CVARS_H
 #pragma once
 
 #if defined(CONSOLE_CONST_CVAR_MODE)
@@ -66,6 +64,12 @@ struct CVars
     };
 #endif
 #define e_PhysOceanCellDefault (0.f)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(cvars_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     enum
     {
         e_DeformableObjectsDefault = 1
@@ -86,6 +90,7 @@ struct CVars
     {
         e_LightVolumesDefault = 1
     };
+#endif
 
 #define e_DecalsDefferedDynamicMinSizeDefault (0.35f)
 #define e_DecalsPlacementTestAreaSizeDefault (0.08f)
@@ -567,5 +572,3 @@ struct CVars
     #include "SVO/SceneTreeCVars.inl" // include SVO related variables
 #endif
 };
-
-#endif // CRYINCLUDE_CRY3DENGINE_CVARS_H

@@ -11,6 +11,9 @@
 */
 #include <StdAfx.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlatformOS_Base_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #include "PlatformOS_Base.h"
 

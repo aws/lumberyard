@@ -30,6 +30,8 @@
 
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/SkeletalSubMotion.h>
+#include <EMotionFX/Source/MorphSubMotion.h>
+#include <EMotionFX/Source/KeyTrackLinear.h>
 #include <MCore/Source/AzCoreConversions.h>
 
 #include <AzCore/Math/Quaternion.h>
@@ -304,6 +306,43 @@ namespace EMotionFX
                 if (!AZ::IsClose(scaleFactor, 1.0f, FLT_EPSILON)) // If the scale factor is 1, no need to call Scale
                 {
                     context.m_motion.Scale(scaleFactor);
+                }
+            }
+
+            //process MorphTargetAnimation
+            //scene
+            //    IBlendShapeAnimationData
+            auto sceneGraphView = SceneViews::MakePairView(graph.GetNameStorage(), graph.GetContentStorage());
+            auto sceneGraphDownardsIteratorView = SceneViews::MakeSceneGraphDownwardsView<SceneViews::BreadthFirst>(
+                graph, graph.GetRoot(), sceneGraphView.begin(), true);
+
+            auto iterator = sceneGraphDownardsIteratorView.begin();
+
+            for (; iterator != sceneGraphDownardsIteratorView.end(); ++iterator)
+            {
+                SceneContainers::SceneGraph::HierarchyStorageConstIterator hierarchy = iterator.GetHierarchyIterator();
+                SceneContainers::SceneGraph::NodeIndex currentIndex = graph.ConvertToNodeIndex(hierarchy);
+                AZ_Assert(currentIndex.IsValid(), "While iterating through the Scene Graph an unexpected invalid entry was found.");
+                AZStd::shared_ptr<const SceneDataTypes::IGraphObject> currentItem = iterator->second;
+                if (hierarchy->IsEndPoint())
+                {
+                    if (currentItem->RTTI_IsTypeOf(SceneDataTypes::IBlendShapeAnimationData::TYPEINFO_Uuid()))
+                    {
+                        const SceneDataTypes::IBlendShapeAnimationData* blendShapeAnimationData = static_cast<const SceneDataTypes::IBlendShapeAnimationData*>(currentItem.get());
+
+                        uint32 id = MCore::GetStringIdPool().GenerateIdForString(blendShapeAnimationData->GetBlendShapeName());
+
+                        EMotionFX::MorphSubMotion* subMotion = EMotionFX::MorphSubMotion::Create(id);
+                        EMotionFX::KeyTrackLinear<float, MCore::Compressed16BitFloat>* keyTrack = subMotion->GetKeyTrack();
+                        const size_t keyFrameCount = blendShapeAnimationData->GetKeyFrameCount();
+                        const float keyFrameStep = static_cast<float>(blendShapeAnimationData->GetTimeStepBetweenFrames());
+                        for (int keyFrameIndex = 0; keyFrameIndex < keyFrameCount; keyFrameIndex++)
+                        {
+                            const float keyFrameValue = static_cast<float>(blendShapeAnimationData->GetKeyFrame(keyFrameIndex));
+                            keyTrack->AddKeySorted(keyFrameIndex * keyFrameStep, keyFrameValue);
+                        }
+                        context.m_motion.AddMorphSubMotion(subMotion);
+                    }
                 }
             }
 

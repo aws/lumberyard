@@ -42,14 +42,6 @@ public:
         return new CLensGhost(*this);
     }
 
-    Matrix34 mx33to34(Matrix33& mx)
-    {
-        return Matrix34(
-            mx.m00, mx.m01, mx.m02, 0,
-            mx.m10, mx.m11, mx.m12, 0,
-            mx.m20, mx.m21, mx.m22, 0);
-    }
-
     EFlareType GetType() { return eFT_Ghost; }
     void Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SAuxParams& aux);
     void Load(IXmlNode* pNode);

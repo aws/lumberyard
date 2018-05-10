@@ -39,6 +39,7 @@ namespace ScriptCanvas
                         {
                             editContext->Class<Multiply>("Multiply", "Multiply")
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                                    ->Attribute(AZ::Edit::Attributes::Category, "Math/Number")
                                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Placeholder.png")
                                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                                 ;
@@ -54,7 +55,7 @@ namespace ScriptCanvas
             protected:
                 Datum Evaluate(const Datum& lhs, const Datum& rhs) override
                 {
-                    return Datum::CreateInitializedCopy(*lhs.GetAs<Data::NumberType>() * *rhs.GetAs<Data::NumberType>());
+                    return Datum(*lhs.GetAs<Data::NumberType>() * *rhs.GetAs<Data::NumberType>());
                 }
             };
 

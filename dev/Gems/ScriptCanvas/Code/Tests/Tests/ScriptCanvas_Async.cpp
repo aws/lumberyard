@@ -87,7 +87,7 @@ public:
     void ConfigureSlots() override
     {
         AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
+        AddSlot("Out", "", ScriptCanvas::SlotType::LatentOut);
     }
 
     void OnActivate() override

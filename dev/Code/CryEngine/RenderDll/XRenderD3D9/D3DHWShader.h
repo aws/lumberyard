@@ -11,9 +11,11 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef __D3DHWSHADER_H__
-#define __D3DHWSHADER_H__
+#pragma once
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(D3DHWShader_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #define MERGE_SHADER_PARAMETERS 1
 
@@ -1170,5 +1172,3 @@ struct SShaderTechniqueStat
 };
 
 extern std::vector<SShaderTechniqueStat> g_SelectedTechs;
-
-#endif  // __D3DHWSHADER_H__

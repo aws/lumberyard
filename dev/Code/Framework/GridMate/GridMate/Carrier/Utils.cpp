@@ -9,6 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define UTILS_CPP_SECTION_1 1
+#define UTILS_CPP_SECTION_2 2
+#define UTILS_CPP_SECTION_3 3
+#endif
+
 #ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Carrier/Utils.h>
@@ -19,6 +27,9 @@
 #   include <WinSock2.h>
 #   include <Ws2tcpip.h>
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION UTILS_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Utils_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
 #   include <sys/types.h>
 #   include <ifaddrs.h>
@@ -76,6 +87,13 @@ namespace GridMate
 
         freeaddrinfo(addrInfo);
         machineName = name;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION UTILS_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Utils_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
         struct ifaddrs* ifAddrStruct = nullptr;
         struct ifaddrs* ifa = nullptr;
@@ -203,7 +221,15 @@ namespace GridMate
     {
         if (familyType == Driver::BSD_AF_INET6)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION UTILS_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(Utils_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             return "FF02::1";
+#endif
         }
         else if (familyType == Driver::BSD_AF_INET)
         {

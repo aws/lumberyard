@@ -30,7 +30,7 @@
 
 namespace CommandSystem
 {
-    EMotionFX::AnimGraph* CommandsGetAnimGraph(const MCore::CommandLine& parameters, MCore::Command* command, MCore::String& outResult)
+    EMotionFX::AnimGraph* CommandsGetAnimGraph(const MCore::CommandLine& parameters, MCore::Command* command, AZStd::string& outResult)
     {
         if (parameters.CheckIfHasParameter("animGraphID"))
         {
@@ -38,7 +38,7 @@ namespace CommandSystem
             EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
             if (animGraph == nullptr)
             {
-                outResult.Format("Anim graph with id '%i' cannot be found.", animGraphID);
+                outResult = AZStd::string::format("Anim graph with id '%i' cannot be found.", animGraphID);
                 return nullptr;
             }
             return animGraph;
@@ -48,7 +48,7 @@ namespace CommandSystem
             EMotionFX::AnimGraph* animGraph = GetCommandManager()->GetCurrentSelection().GetFirstAnimGraph();
             if (animGraph == nullptr)
             {
-                outResult.Format("Anim graph id is not specified and no one anim graph is selected.");
+                outResult = AZStd::string::format("Anim graph id is not specified and no one anim graph is selected.");
                 return nullptr;
             }
             return animGraph;
@@ -76,7 +76,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAnimGraphCreateConnection::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphCreateConnection::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph to work on
         EMotionFX::AnimGraph* animGraph = CommandsGetAnimGraph(parameters, this, outResult);
@@ -92,25 +92,25 @@ namespace CommandSystem
         mTransitionType = parameters.GetValueAsInt("transitionType", MCORE_INVALIDINDEX32);
 
         // get the node names
-        MCore::String sourceName;
-        MCore::String targetName;
+        AZStd::string sourceName;
+        AZStd::string targetName;
         parameters.GetValue("sourceNode", "", &sourceName);
         parameters.GetValue("targetNode", "", &targetName);
 
         // find the source node in the anim graph
-        EMotionFX::AnimGraphNode* sourceNode = animGraph->RecursiveFindNode(sourceName.AsChar());
+        EMotionFX::AnimGraphNode* sourceNode = animGraph->RecursiveFindNode(sourceName.c_str());
         // this is allowed for wildcard transitions
         //if (sourceNode == nullptr && mTransitionType != AnimGraphWildCardTransition::TYPE_ID)
         //{
-        //  outResult.Format("Cannot find source node with name '%s' in anim graph '%s'", sourceName.AsChar(), animGraph->GetName());
+        //  outResult = AZStd::string::format("Cannot find source node with name '%s' in anim graph '%s'", sourceName.AsChar(), animGraph->GetName());
         //  return false;
         //}
 
         // find the target node in the anim graph
-        EMotionFX::AnimGraphNode* targetNode = animGraph->RecursiveFindNode(targetName.AsChar());
+        EMotionFX::AnimGraphNode* targetNode = animGraph->RecursiveFindNode(targetName.c_str());
         if (targetNode == nullptr)
         {
-            outResult.Format("Cannot find target node with name '%s' in anim graph '%s'", targetName.AsChar(), animGraph->GetName());
+            outResult = AZStd::string::format("Cannot find target node with name '%s' in anim graph '%s'", targetName.c_str(), animGraph->GetName());
             return false;
         }
 
@@ -121,9 +121,9 @@ namespace CommandSystem
         parameters.GetValue("targetPortName", this, &mTargetPortName);
 
         // in case the source port got specified by name, overwrite the source port number
-        if (!mSourcePortName.GetIsEmpty())
+        if (!mSourcePortName.empty())
         {
-            mSourcePort = sourceNode->FindOutputPortIndex(mSourcePortName.AsChar());
+            mSourcePort = sourceNode->FindOutputPortIndex(mSourcePortName.c_str());
 
             // in case we want to add this connection to a parameter node while the parameter name doesn't exist, still return true so that copy paste doesn't fail
             if (sourceNode->GetType() == EMotionFX::BlendTreeParameterNode::TYPE_ID && mSourcePort == -1)
@@ -134,9 +134,9 @@ namespace CommandSystem
         }
 
         // in case the target port got specified by name, overwrite the source port number
-        if (!mTargetPortName.GetIsEmpty())
+        if (!mTargetPortName.empty())
         {
-            mTargetPort = sourceNode->FindOutputPortIndex(mTargetPortName.AsChar());
+            mTargetPort = sourceNode->FindOutputPortIndex(mTargetPortName.c_str());
         }
 
         // get the offsets
@@ -148,7 +148,7 @@ namespace CommandSystem
         // get the parent of the source node
         if (targetNode->GetParentNode() == nullptr)
         {
-            outResult.Format("Cannot create connections between root state machines.");
+            outResult = AZStd::string::format("Cannot create connections between root state machines.");
             return false;
         }
 
@@ -163,27 +163,27 @@ namespace CommandSystem
         {
             if (sourceNode == nullptr)
             {
-                outResult.Format("Cannot create blend tree connection in anim graph '%s' as the source node is not valid. ", animGraph->GetName());
+                outResult = AZStd::string::format("Cannot create blend tree connection in anim graph '%s' as the source node is not valid. ", animGraph->GetName());
                 return false;
             }
 
             // verify port ranges
             if (mSourcePort >= (int32)sourceNode->GetNumOutputs() || mSourcePort < 0)
             {
-                outResult.Format("The output port number is not valid for the given node. Node '%s' only has %d output ports.", sourceNode->GetName(), sourceNode->GetNumOutputs());
+                outResult = AZStd::string::format("The output port number is not valid for the given node. Node '%s' only has %d output ports.", sourceNode->GetName(), sourceNode->GetNumOutputs());
                 return false;
             }
 
             if (mTargetPort >= (int32)targetNode->GetNumInputs() || mTargetPort < 0)
             {
-                outResult.Format("The input port number is not valid for the given node. Node '%s' only has %d input ports.", targetNode->GetName(), targetNode->GetNumInputs());
+                outResult = AZStd::string::format("The input port number is not valid for the given node. Node '%s' only has %d input ports.", targetNode->GetName(), targetNode->GetNumInputs());
                 return false;
             }
 
             // check if connection already exists
             if (targetNode->GetHasConnection(sourceNode, static_cast<uint16>(mSourcePort), static_cast<uint16>(mTargetPort)))
             {
-                outResult.Format("The connection you are trying to create already exists!");
+                outResult = AZStd::string::format("The connection you are trying to create already exists!");
                 return false;
             }
 
@@ -217,14 +217,14 @@ namespace CommandSystem
             EMotionFX::AnimGraphObject* object = EMotionFX::GetAnimGraphManager().GetObjectFactory()->CreateObjectByTypeID(animGraph, mTransitionType);
             if (object == nullptr)
             {
-                outResult.Format("Cannot create transition of type %d", mTransitionType);
+                outResult = AZStd::string::format("Cannot create transition of type %d", mTransitionType);
                 return false;
             }
 
             // check if this is really a transition
             if (object->GetBaseType() != EMotionFX::AnimGraphStateTransition::BASETYPE_ID)
             {
-                outResult.Format("Cannot create state transition of type %d, because this object type is not inherited from AnimGraphStateTransition.", mTransitionType);
+                outResult = AZStd::string::format("Cannot create state transition of type %d, because this object type is not inherited from AnimGraphStateTransition.", mTransitionType);
                 return false;
             }
 
@@ -269,9 +269,9 @@ namespace CommandSystem
             // set the attributes from a string
             if (parameters.CheckIfHasParameter("attributesString"))
             {
-                MCore::String attributesString;
+                AZStd::string attributesString;
                 parameters.GetValue("attributesString", this, &attributesString);
-                transition->InitAttributesFromString(attributesString.AsChar());
+                transition->InitAttributesFromString(attributesString.c_str());
             }
 
             // add the transition to the state machine
@@ -294,7 +294,7 @@ namespace CommandSystem
         animGraph->SetDirtyFlag(true);
 
         // set the command result to the connection id
-        outResult.Format("%i", mConnectionID);
+        outResult = AZStd::string::format("%i", mConnectionID);
 
         // recursively update attributes of all nodes
         animGraph->RecursiveUpdateAttributes();
@@ -315,7 +315,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAnimGraphCreateConnection::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphCreateConnection::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
 
@@ -323,7 +323,7 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mAnimGraphID);
         if (animGraph == nullptr)
         {
-            outResult.Format("The anim graph with id '%i' does not exist anymore.", mAnimGraphID);
+            outResult = AZStd::string::format("The anim graph with id '%i' does not exist anymore.", mAnimGraphID);
             return false;
         }
 
@@ -333,33 +333,33 @@ namespace CommandSystem
 
         if (sourceNode == nullptr || targetNode == nullptr)
         {
-            outResult.Format("Source or target node does not exist!");
+            outResult = AZStd::string::format("Source or target node does not exist!");
             return false;
         }
 
         // get the source node name, special path here as wildcard transitions have a nullptr source node
-        MCore::String sourceNodeName;
+        AZStd::string sourceNodeName;
         if (sourceNode)
         {
             sourceNodeName = sourceNode->GetName();
         }
 
         // delete the connection
-        MCore::String commandString;
-        commandString.Format("AnimGraphRemoveConnection -animGraphID %i -targetNode \"%s\" -targetPort %d -sourceNode \"%s\" -sourcePort %d -id %d",
+        AZStd::string commandString;
+        commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -targetNode \"%s\" -targetPort %d -sourceNode \"%s\" -sourcePort %d -id %d",
             animGraph->GetID(),
             targetNode->GetName(),
             mTargetPort,
-            sourceNodeName.AsChar(),
+            sourceNodeName.c_str(),
             mSourcePort,
             mConnectionID);
 
         // execute the command without putting it in the history
-        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult) == false)
+        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult) == false)
         {
-            if (outResult.GetLength() > 0)
+            if (outResult.size() > 0)
             {
-                MCore::LogError(outResult.AsChar());
+                MCore::LogError(outResult.c_str());
             }
 
             return false;
@@ -448,7 +448,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAnimGraphRemoveConnection::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveConnection::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph to work on
         EMotionFX::AnimGraph* animGraph = CommandsGetAnimGraph(parameters, this, outResult);
@@ -461,24 +461,24 @@ namespace CommandSystem
         mAnimGraphID = animGraph->GetID();
 
         // get the node names
-        MCore::String sourceName;
-        MCore::String targetName;
+        AZStd::string sourceName;
+        AZStd::string targetName;
         parameters.GetValue("sourceNode", "", &sourceName);
         parameters.GetValue("targetNode", "", &targetName);
 
         // find the source node in the anim graph
-        EMotionFX::AnimGraphNode* sourceNode = animGraph->RecursiveFindNode(sourceName.AsChar());
+        EMotionFX::AnimGraphNode* sourceNode = animGraph->RecursiveFindNode(sourceName.c_str());
         //if (sourceNode == nullptr)
         //{
-        //  outResult.Format("Cannot find source node with name '%s' in anim graph '%s'", sourceName.AsChar(), animGraph->GetName());
+        //  outResult = AZStd::string::format("Cannot find source node with name '%s' in anim graph '%s'", sourceName.AsChar(), animGraph->GetName());
         //  return false;
         //}
 
         // find the target node in the anim graph
-        EMotionFX::AnimGraphNode* targetNode = animGraph->RecursiveFindNode(targetName.AsChar());
+        EMotionFX::AnimGraphNode* targetNode = animGraph->RecursiveFindNode(targetName.c_str());
         if (targetNode == nullptr)
         {
-            outResult.Format("Cannot find target node with name '%s' in anim graph '%s'", targetName.AsChar(), animGraph->GetName());
+            outResult = AZStd::string::format("Cannot find target node with name '%s' in anim graph '%s'", targetName.c_str(), animGraph->GetName());
             return false;
         }
 
@@ -497,7 +497,7 @@ namespace CommandSystem
         // get the parent of the source node
         if (targetNode->GetParentNode() == nullptr)
         {
-            outResult.Format("Cannot remove connections between root state machines.");
+            outResult = AZStd::string::format("Cannot remove connections between root state machines.");
             return false;
         }
 
@@ -506,27 +506,27 @@ namespace CommandSystem
         {
             if (sourceNode == nullptr)
             {
-                outResult.Format("Cannot remove blend tree connection in anim graph '%s' as the source node is not valid.", animGraph->GetName());
+                outResult = AZStd::string::format("Cannot remove blend tree connection in anim graph '%s' as the source node is not valid.", animGraph->GetName());
                 return false;
             }
 
             // verify port ranges
             if (mSourcePort >= (int32)sourceNode->GetNumOutputs() || mSourcePort < 0)
             {
-                outResult.Format("The output port number is not valid for the given node. Node '%s' only has %d output ports.", sourceNode->GetName(), sourceNode->GetNumOutputs());
+                outResult = AZStd::string::format("The output port number is not valid for the given node. Node '%s' only has %d output ports.", sourceNode->GetName(), sourceNode->GetNumOutputs());
                 return false;
             }
 
             if (mTargetPort >= (int32)targetNode->GetNumInputs() || mTargetPort < 0)
             {
-                outResult.Format("The input port number is not valid for the given node. Node '%s' only has %d input ports.", targetNode->GetName(), targetNode->GetNumInputs());
+                outResult = AZStd::string::format("The input port number is not valid for the given node. Node '%s' only has %d input ports.", targetNode->GetName(), targetNode->GetNumInputs());
                 return false;
             }
 
             // check if connection already exists
             if (!targetNode->GetHasConnection(sourceNode, static_cast<uint16>(mSourcePort), static_cast<uint16>(mTargetPort)))
             {
-                outResult.Format("The connection you are trying to remove doesn't exist!");
+                outResult = AZStd::string::format("The connection you are trying to remove doesn't exist!");
                 return false;
             }
 
@@ -550,7 +550,7 @@ namespace CommandSystem
             const uint32 transitionID = parameters.GetValueAsInt("id", this);
             if (transitionID == MCORE_INVALIDINDEX32)
             {
-                outResult.Format("You cannot remove a state transition with an invalid id. (Did you specify the id parameter?)");
+                outResult = AZStd::string::format("You cannot remove a state transition with an invalid id. (Did you specify the id parameter?)");
                 return false;
             }
 
@@ -561,7 +561,7 @@ namespace CommandSystem
             const uint32 transitionIndex = stateMachine->FindTransitionIndexByID(transitionID);
             if (transitionIndex == MCORE_INVALIDINDEX32)
             {
-                outResult.Format("The state transition you are trying to remove cannot be found.");
+                outResult = AZStd::string::format("The state transition you are trying to remove cannot be found.");
                 return false;
             }
 
@@ -617,7 +617,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAnimGraphRemoveConnection::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveConnection::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
 
@@ -625,7 +625,7 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mAnimGraphID);
         if (animGraph == nullptr)
         {
-            outResult.Format("The anim graph with id '%i' does not exist anymore.", mAnimGraphID);
+            outResult = AZStd::string::format("The anim graph with id '%i' does not exist anymore.", mAnimGraphID);
             return false;
         }
 
@@ -634,17 +634,16 @@ namespace CommandSystem
             return false;
         }
 
-        MCore::String sourceNodeName;
+        AZStd::string sourceNodeName;
         if (mSourceNodeID != MCORE_INVALIDINDEX32)
         {
-            sourceNodeName = MCore::GetStringIDGenerator().GetName(mSourceNodeID).AsChar();
+            sourceNodeName = MCore::GetStringIdPool().GetName(mSourceNodeID);
         }
 
-        MCore::String commandString;
-        commandString.Format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -id %d -transitionType %d",
+        AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -id %d -transitionType %d",
             animGraph->GetID(),
-            sourceNodeName.AsChar(),
-            MCore::GetStringIDGenerator().GetName(mTargetNodeID).AsChar(),
+            sourceNodeName.c_str(),
+            MCore::GetStringIdPool().GetName(mTargetNodeID).c_str(),
             mSourcePort,
             mTargetPort,
             mStartOffsetX, mStartOffsetY,
@@ -653,18 +652,16 @@ namespace CommandSystem
             mTransitionType);
 
         // add the old attributes
-        if (mOldAttributesString.GetIsEmpty() == false)
+        if (mOldAttributesString.empty() == false)
         {
-            MCore::String attributesString;
-            attributesString.Format(" -attributesString \"%s\"", mOldAttributesString.AsChar());
-            commandString += attributesString;
+            commandString += AZStd::string::format(" -attributesString \"%s\"", mOldAttributesString.c_str());
         }
 
-        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult) == false)
+        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult) == false)
         {
-            if (outResult.GetLength() > 0)
+            if (outResult.size() > 0)
             {
-                MCore::LogError(outResult.AsChar());
+                MCore::LogError(outResult.c_str());
             }
 
             return false;
@@ -746,7 +743,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAnimGraphAdjustConnection::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustConnection::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph to work on
         EMotionFX::AnimGraph* animGraph = CommandsGetAnimGraph(parameters, this, outResult);
@@ -758,21 +755,21 @@ namespace CommandSystem
         // store the anim graph id for undo
         mAnimGraphID = animGraph->GetID();
 
-        MCore::String stateMachineName;
+        AZStd::string stateMachineName;
         parameters.GetValue("stateMachine", "", &stateMachineName);
 
         // find the node in the anim graph
-        EMotionFX::AnimGraphNode* stateMachineNode = animGraph->RecursiveFindNode(stateMachineName.AsChar());
+        EMotionFX::AnimGraphNode* stateMachineNode = animGraph->RecursiveFindNode(stateMachineName.c_str());
         if (stateMachineNode == nullptr)
         {
-            outResult.Format("Cannot find state machine node with name '%s' in anim graph '%s'", stateMachineName.AsChar(), animGraph->GetName());
+            outResult = AZStd::string::format("Cannot find state machine node with name '%s' in anim graph '%s'", stateMachineName.c_str(), animGraph->GetName());
             return false;
         }
 
         // type cast it to a state machine node
         if (stateMachineNode->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID)
         {
-            outResult.Format("Anim graph node named '%s' is not a state machine.", stateMachineName.AsChar());
+            outResult = AZStd::string::format("Anim graph node named '%s' is not a state machine.", stateMachineName.c_str());
             return false;
         }
         EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(stateMachineNode);
@@ -782,7 +779,7 @@ namespace CommandSystem
         const uint32 transitionIndex = stateMachine->FindTransitionIndexByID(transitionID);
         if (transitionIndex == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("The state transition you are trying to adjust cannot be found.");
+            outResult = AZStd::string::format("The state transition you are trying to adjust cannot be found.");
             return false;
         }
 
@@ -808,14 +805,14 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("sourceNode"))
         {
             // get the new source node name
-            MCore::String newSourceName;
+            AZStd::string newSourceName;
             parameters.GetValue("sourceNode", "", &newSourceName);
 
             // find the node in the anim graph
-            EMotionFX::AnimGraphNode* newSourceNode = animGraph->RecursiveFindNode(newSourceName.AsChar());
+            EMotionFX::AnimGraphNode* newSourceNode = animGraph->RecursiveFindNode(newSourceName.c_str());
             if (newSourceNode == nullptr)
             {
-                outResult.Format("Cannot find new source node with name '%s' in anim graph '%s'", newSourceName.AsChar(), animGraph->GetName());
+                outResult = AZStd::string::format("Cannot find new source node with name '%s' in anim graph '%s'", newSourceName.c_str(), animGraph->GetName());
                 return false;
             }
 
@@ -827,14 +824,14 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("targetNode"))
         {
             // get the new target node name
-            MCore::String newTargetName;
+            AZStd::string newTargetName;
             parameters.GetValue("targetNode", "", &newTargetName);
 
             // find the node in the anim graph
-            EMotionFX::AnimGraphNode* newTargetNode = animGraph->RecursiveFindNode(newTargetName.AsChar());
+            EMotionFX::AnimGraphNode* newTargetNode = animGraph->RecursiveFindNode(newTargetName.c_str());
             if (newTargetNode == nullptr)
             {
-                outResult.Format("Cannot find new target node with name '%s' in anim graph '%s'", newTargetName.AsChar(), animGraph->GetName());
+                outResult = AZStd::string::format("Cannot find new target node with name '%s' in anim graph '%s'", newTargetName.c_str(), animGraph->GetName());
                 return false;
             }
 
@@ -890,53 +887,53 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAnimGraphAdjustConnection::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustConnection::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the anim graph
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mAnimGraphID);
         if (animGraph == nullptr)
         {
-            outResult.Format("The anim graph with id '%i' does not exist anymore.", mAnimGraphID);
+            outResult = AZStd::string::format("The anim graph with id '%i' does not exist anymore.", mAnimGraphID);
             return false;
         }
 
-        MCore::String commandString;
-        commandString.Reserve(2048);
+        AZStd::string commandString;
+        commandString.reserve(2048);
 
         // get the state machine name and the transition id to work on
-        MCore::String stateMachineName;
+        AZStd::string stateMachineName;
         parameters.GetValue("stateMachine", "", &stateMachineName);
         const uint32 transitionID = parameters.GetValueAsInt("transitionID", this);
 
         // construct the command including the required parameters
-        commandString.Format("AnimGraphAdjustConnection -animGraphID %i -stateMachine \"%s\" -transitionID %i -startOffsetX %i -startOffsetY %i -endOffsetX %i -endOffsetY %i ", animGraph->GetID(), stateMachineName.AsChar(), transitionID, mStartOffsetX, mStartOffsetY, mEndOffsetX, mEndOffsetY);
+        commandString = AZStd::string::format("AnimGraphAdjustConnection -animGraphID %i -stateMachine \"%s\" -transitionID %i -startOffsetX %i -startOffsetY %i -endOffsetX %i -endOffsetY %i ", animGraph->GetID(), stateMachineName.c_str(), transitionID, mStartOffsetX, mStartOffsetY, mEndOffsetX, mEndOffsetY);
 
-        if (!mOldSourceNodeName.GetIsEmpty())
+        if (!mOldSourceNodeName.empty())
         {
-            commandString.FormatAdd("-sourceNode \"%s\" ", mOldSourceNodeName.AsChar());
+            commandString += AZStd::string::format("-sourceNode \"%s\" ", mOldSourceNodeName.c_str());
         }
-        if (!mOldTargetNodeName.GetIsEmpty())
+        if (!mOldTargetNodeName.empty())
         {
-            commandString.FormatAdd("-targetNode \"%s\" ", mOldTargetNodeName.AsChar());
+            commandString += AZStd::string::format("-targetNode \"%s\" ", mOldTargetNodeName.c_str());
         }
 
         if (parameters.CheckIfHasParameter("isDisabled"))
         {
-            commandString.FormatAdd("-isDisabled %i ", mOldDisabledFlag);
+            commandString += AZStd::string::format("-isDisabled %s ", AZStd::to_string(mOldDisabledFlag).c_str());
         }
 
-        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult) == false)
+        if (GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult) == false)
         {
-            if (outResult.GetIsEmpty() == false)
+            if (outResult.empty() == false)
             {
-                MCore::LogError(outResult.AsChar());
+                MCore::LogError(outResult.c_str());
             }
 
             return false;
         }
 
-        mOldTargetNodeName.Clear();
-        mOldSourceNodeName.Clear();
+        mOldTargetNodeName.clear();
+        mOldSourceNodeName.clear();
         mStartOffsetX   = 0;
         mStartOffsetY   = 0;
         mEndOffsetX     = 0;
@@ -1240,7 +1237,7 @@ namespace CommandSystem
             transition->GetVisualEndOffsetX(),
             transition->GetVisualEndOffsetY(),
             transition->GetType(),
-            transition->CreateAttributesString().AsChar());
+            transition->CreateAttributesString().c_str());
 
         commandGroup->AddCommandString(commandString);
 
@@ -1254,7 +1251,7 @@ namespace CommandSystem
             commandString = AZStd::string::format("AnimGraphAddCondition -stateMachineName \"%s\" -transitionID \"%%LASTRESULT%%\" -conditionType %d -attributesString \"%s\"",
                 parentName.c_str(),
                 conditionType,
-                condition->CreateAttributesString().AsChar());
+                condition->CreateAttributesString().c_str());
 
             commandGroup->AddCommandString(commandString);
         }

@@ -35,7 +35,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <MCore/Source/LogManager.h>
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
@@ -131,7 +131,7 @@ namespace EMStudio
         }
 
         // get the anim graph to work on
-        MCore::String outResult;
+        AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
         if (animGraph == nullptr)
         {
@@ -324,7 +324,7 @@ namespace EMStudio
         }
 
         // get the anim graph to work on
-        MCore::String outResult;
+        AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
         if (animGraph == nullptr)
         {
@@ -336,14 +336,14 @@ namespace EMStudio
         EMotionFX::AnimGraphNode* emfxNode = animGraph->RecursiveFindNodeByID(blendCommand->GetNodeID());
 
         // get the new name
-        MCore::String newName;
+        AZStd::string newName;
         commandLine.GetValue("newName", command, &newName);
 
         // rename the graph (change its ID)
         uint32 nodeID;
-        if (newName.GetIsEmpty() == false)
+        if (newName.empty() == false)
         {
-            nodeID = MCore::GetStringIDGenerator().GenerateIDForString(blendCommand->GetOldName().AsChar());
+            nodeID = MCore::GetStringIdPool().GenerateIdForString(blendCommand->GetOldName().c_str());
             animGraphPlugin->RenameGraph(nodeID, emfxNode->GetID(), animGraph);
         }
         else
@@ -362,7 +362,7 @@ namespace EMStudio
             }
             else
             {
-                MCore::LogError("AnimGraphPlugin::FindGraphAndNode() - There is no visual node associated with EMotion FX node '%s' in graph of node '%s'", MCore::GetStringIDGenerator().GetName(nodeID).AsChar(), emfxNode->GetParentNode() ? emfxNode->GetParentNode()->GetName() : "");
+                MCore::LogError("AnimGraphPlugin::FindGraphAndNode() - There is no visual node associated with EMotion FX node '%s' in graph of node '%s'", MCore::GetStringIdPool().GetName(nodeID).c_str(), emfxNode->GetParentNode() ? emfxNode->GetParentNode()->GetName() : "");
                 return false;
             }
         }
@@ -406,7 +406,7 @@ namespace EMStudio
         }
 
         // get the new name
-        MCore::String newName;
+        AZStd::string newName;
         commandLine.GetValue("newName", command, &newName);
 
         // get the emfx node
@@ -423,9 +423,9 @@ namespace EMStudio
         }
 
         // rename the graph (change its ID)
-        if (newName.GetLength() > 0)
+        if (newName.size() > 0)
         {
-            animGraphPlugin->RenameGraph(MCore::GetStringIDGenerator().GenerateIDForString(newName.AsChar()), emfxNode->GetID(), animGraph);
+            animGraphPlugin->RenameGraph(MCore::GetStringIdPool().GenerateIdForString(newName.c_str()), emfxNode->GetID(), animGraph);
         }
 
         // get the EMotion FX parent node
@@ -443,9 +443,9 @@ namespace EMStudio
 
         // find the graph node associated with this emfx node
         GraphNode* graphNode;
-        if (newName.GetLength() > 0)
+        if (newName.size() > 0)
         {
-            graphNode = animGraphPlugin->FindGraphNode(visualGraph, MCore::GetStringIDGenerator().GenerateIDForString(newName.AsChar()), animGraph);
+            graphNode = animGraphPlugin->FindGraphNode(visualGraph, MCore::GetStringIdPool().GenerateIdForString(newName.c_str()), animGraph);
         }
         else
         {
@@ -488,7 +488,7 @@ namespace EMStudio
         }
 
         // get the anim graph to work on
-        MCore::String outResult;
+        AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
         if (animGraph == nullptr)
         {
@@ -498,9 +498,9 @@ namespace EMStudio
         CommandSystem::CommandAnimGraphCreateConnection* blendCommand = (CommandSystem::CommandAnimGraphCreateConnection*)command;
 
         // when pasting connections to a parameter node where the parameter is not created yet, still return true so that the command group won't fail entirly
-        MCore::String sourcePortName;
+        AZStd::string sourcePortName;
         commandLine.GetValue("sourcePortName", command, &sourcePortName);
-        if (sourcePortName.GetIsEmpty() == false && blendCommand->GetConnectionID() == MCORE_INVALIDINDEX32)
+        if (sourcePortName.empty() == false && blendCommand->GetConnectionID() == MCORE_INVALIDINDEX32)
         {
             return true;
         }
@@ -658,7 +658,7 @@ namespace EMStudio
         }
 
         // get the anim graph to work on
-        MCore::String outResult;
+        AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
         if (animGraph == nullptr)
         {
@@ -754,7 +754,7 @@ namespace EMStudio
     // callback when removing a connection
     bool AnimGraphPlugin::CommandAdjustConnectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        MCore::String outResult;
+        AZStd::string outResult;
 
         // get the anim graph plugin
         EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
@@ -772,21 +772,21 @@ namespace EMStudio
             return false;
         }
 
-        MCore::String stateMachineName;
+        AZStd::string stateMachineName;
         commandLine.GetValue("stateMachine", "", &stateMachineName);
 
         // find the node in the anim graph
-        EMotionFX::AnimGraphNode* stateMachineNode = animGraph->RecursiveFindNode(stateMachineName.AsChar());
+        EMotionFX::AnimGraphNode* stateMachineNode = animGraph->RecursiveFindNode(stateMachineName.c_str());
         if (stateMachineNode == nullptr)
         {
-            outResult.Format("CommandAdjustConnectionCallback: Cannot find state machine node with name '%s' in anim graph '%s'", stateMachineName.AsChar(), animGraph->GetName());
+            outResult = AZStd::string::format("CommandAdjustConnectionCallback: Cannot find state machine node with name '%s' in anim graph '%s'", stateMachineName.c_str(), animGraph->GetName());
             return false;
         }
 
         // type cast it to a state machine node
         if (stateMachineNode->GetType() != EMotionFX::AnimGraphStateMachine::TYPE_ID)
         {
-            outResult.Format("CommandAdjustConnectionCallback: Anim graph node named '%s' is not a state machine.", stateMachineName.AsChar());
+            outResult = AZStd::string::format("CommandAdjustConnectionCallback: Anim graph node named '%s' is not a state machine.", stateMachineName.c_str());
             return false;
         }
         EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(stateMachineNode);
@@ -796,7 +796,7 @@ namespace EMStudio
         const uint32 transitionIndex = stateMachine->FindTransitionIndexByID(transitionID);
         if (transitionIndex == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("CommandAdjustConnectionCallback: The state transition you are trying to adjust cannot be found.");
+            outResult = AZStd::string::format("CommandAdjustConnectionCallback: The state transition you are trying to adjust cannot be found.");
             return false;
         }
 
@@ -811,14 +811,14 @@ namespace EMStudio
         NodeGraph* stateMachineNodeGraph = animGraphPlugin->FindGraphForNode(stateMachineNode->GetID(), animGraph);
         if (stateMachineNodeGraph == nullptr)
         {
-            outResult.Format("CommandAdjustConnectionCallback: Cannot find visual state machine node for id %i.", stateMachineNode->GetID());
+            outResult = AZStd::string::format("CommandAdjustConnectionCallback: Cannot find visual state machine node for id %i.", stateMachineNode->GetID());
             return false;
         }
 
         NodeConnection* visualConnection = stateMachineNodeGraph->FindConnectionByID(transitionID);
         if (visualConnection && visualConnection->GetType() != StateConnection::TYPE_ID)
         {
-            outResult.Format("CommandAdjustConnectionCallback: Visual connection is not a transition.");
+            outResult = AZStd::string::format("CommandAdjustConnectionCallback: Visual connection is not a transition.");
             return false;
         }
 
@@ -923,7 +923,7 @@ namespace EMStudio
         CommandSystem::CommandAnimGraphRemoveNode* blendCommand = (CommandSystem::CommandAnimGraphRemoveNode*)command;
 
         // get the anim graph to work on
-        MCore::String outResult;
+        AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
         if (animGraph == nullptr)
         {
@@ -963,7 +963,7 @@ namespace EMStudio
 
         // remove the visual graph of the removed node
         animGraphPlugin->RemoveGraphForNode(blendCommand->GetNodeID(), animGraph);
-        animGraphPlugin->GetNavigateWidget()->RemoveTreeRow(MCore::GetStringIDGenerator().GetName(blendCommand->GetNodeID()).AsChar());
+        animGraphPlugin->GetNavigateWidget()->RemoveTreeRow(MCore::GetStringIdPool().GetName(blendCommand->GetNodeID()).c_str());
         //animGraphPlugin->GetNavigateWidget()->UpdateTreeWidget( animGraph );
 
         animGraphPlugin->GetNavigateWidget()->update();
@@ -998,7 +998,7 @@ namespace EMStudio
         //EMotionFX::CommandAnimGraphRemoveNode* blendCommand = (EMotionFX::CommandAnimGraphRemoveNode*)command;
 
         // get the anim graph to work on
-        MCore::String outResult;
+        AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
         if (animGraph == nullptr)
         {
@@ -1007,9 +1007,9 @@ namespace EMStudio
 
         // in case we removed a parent of the currently active graph
         // get the EMotion FX node
-        MCore::String name;
+        AZStd::string name;
         commandLine.GetValue("name", "", &name);
-        EMotionFX::AnimGraphNode* emfxNode = animGraph->RecursiveFindNode(name.AsChar());
+        EMotionFX::AnimGraphNode* emfxNode = animGraph->RecursiveFindNode(name.c_str());
         EMotionFX::AnimGraphNode* currentAnimGraphNode = animGraphPlugin->GetGraphWidget()->GetCurrentNode();
         if (animGraphPlugin->CheckIfIsParentNodeRecursively(currentAnimGraphNode, emfxNode) ||
             emfxNode == currentAnimGraphNode)
@@ -1045,7 +1045,7 @@ namespace EMStudio
         }
 
         // get the anim graph to work on
-        MCore::String outResult;
+        AZStd::string outResult;
         EMotionFX::AnimGraph* animGraph = CommandSystem::CommandsGetAnimGraph(commandLine, command, outResult);
         if (animGraph == nullptr)
         {
@@ -1053,9 +1053,9 @@ namespace EMStudio
         }
 
         // find the entry anim graph node
-        MCore::String entryNodeName;
+        AZStd::string entryNodeName;
         commandLine.GetValue("entryNodeName", "", &entryNodeName);
-        EMotionFX::AnimGraphNode* entryNode = animGraph->RecursiveFindNode(entryNodeName.AsChar());
+        EMotionFX::AnimGraphNode* entryNode = animGraph->RecursiveFindNode(entryNodeName.c_str());
         if (entryNode == nullptr)
         {
             return false;
@@ -1180,8 +1180,8 @@ namespace EMStudio
     //----------------------------------------------------------------------------------------------------------------------------------
     // CommandPlayMotionCallback callback
     //----------------------------------------------------------------------------------------------------------------------------------
-    bool AnimGraphPlugin::CommandPlayMotionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)   { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); MCore::String outResult; return GetCommandManager()->ExecuteCommand("Unselect -animGraphIndex SELECT_ALL", outResult, false); }
-    bool AnimGraphPlugin::CommandPlayMotionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)      { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); MCore::String outResult; return GetCommandManager()->ExecuteCommand("Unselect -animGraphIndex SELECT_ALL", outResult, false); }
+    bool AnimGraphPlugin::CommandPlayMotionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)   { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); AZStd::string outResult; return GetCommandManager()->ExecuteCommand("Unselect -animGraphIndex SELECT_ALL", outResult, false); }
+    bool AnimGraphPlugin::CommandPlayMotionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)      { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); AZStd::string outResult; return GetCommandManager()->ExecuteCommand("Unselect -animGraphIndex SELECT_ALL", outResult, false); }
 
     //----------------------------------------------------------------------------------------------------------------------------------
     // CommandAnimGraphWapParametersCallback callback
@@ -1282,7 +1282,7 @@ namespace EMStudio
         AnimGraphPlugin* animGraphPlugin = (AnimGraphPlugin*)plugin;
 
         // get the new ID
-        MCore::String newIDString;
+        AZStd::string newIDString;
         commandLine.GetValue("newIDString", command, &newIDString);
 
         // update the attribute window if one motion node is selected using this new ID

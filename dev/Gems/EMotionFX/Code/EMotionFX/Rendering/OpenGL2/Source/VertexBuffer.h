@@ -15,7 +15,6 @@
 
 #include "RenderGLConfig.h"
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/LogManager.h>
 
 // include OpenGL

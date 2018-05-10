@@ -21,5 +21,8 @@ namespace AZ
     }
 }
 //Platform specific Util implementations go in a .cpp.inl file here
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Utils_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #endif // #ifndef AZ_UNITY_BUILD

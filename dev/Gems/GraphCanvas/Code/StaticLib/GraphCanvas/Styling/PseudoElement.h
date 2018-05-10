@@ -16,8 +16,8 @@
 
 #include <functional>
 
-#include <Components/StyleBus.h>
-#include <Styling/Selector.h>
+#include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Styling/Selector.h>
 
 namespace GraphCanvas
 {
@@ -70,7 +70,6 @@ namespace GraphCanvas
 
             AZStd::string GetElement() const override;
             AZStd::string GetClass() const override;
-            AZStd::string GetId() const override;
             ////
 
             // AZ::Component

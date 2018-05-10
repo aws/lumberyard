@@ -292,8 +292,11 @@ AzToolsFramework::ReflectedPropertyEditor* PropertiesContainer::CreatePropertyEd
     m_rowLayout->addWidget(editor);
     editor->hide();
 
-    editor->Setup(m_serializeContext, m_propertiesWidget, true, 150);
+    const int propertyLabelWidth = 150;
+    editor->Setup(m_serializeContext, m_propertiesWidget, true, propertyLabelWidth);
     editor->SetSavedStateKey(AZ_CRC("UiCanvasEditor_PropertyEditor", 0xc402ebcc));
+    editor->SetLabelAutoResizeMinimumWidth(propertyLabelWidth);
+    editor->SetAutoResizeLabels(true);
 
     QObject::connect(editor,
         &AzToolsFramework::ReflectedPropertyEditor::OnExpansionContractionDone,
@@ -444,7 +447,7 @@ void PropertiesContainer::SelectionChanged(HierarchyItemRawPtrList* items)
     m_selectedEntities.clear();
     if (items)
     {
-        for (auto i : * items)
+        for (auto i : *items)
         {
             m_selectedEntities.push_back(i->GetEntityId());
         }
@@ -507,7 +510,7 @@ void PropertiesContainer::RequestPropertyContextMenu(AzToolsFramework::InstanceD
     }
 }
 
-void PropertiesContainer::SetSelectedEntityDisplayNameWidget(QLabel * selectedEntityDisplayNameWidget)
+void PropertiesContainer::SetSelectedEntityDisplayNameWidget(QLabel* selectedEntityDisplayNameWidget)
 {
     m_selectedEntityDisplayNameWidget = selectedEntityDisplayNameWidget;
 }

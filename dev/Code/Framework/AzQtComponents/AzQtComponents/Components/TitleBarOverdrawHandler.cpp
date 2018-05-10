@@ -46,6 +46,10 @@ TitleBarOverdrawHandler::TitleBarOverdrawHandler(QObject* parent)
     s_titleBarOverdrawHandlerInstance = this;
 }
 
+TitleBarOverdrawHandler::~TitleBarOverdrawHandler()
+{
+}
+
 #ifndef Q_OS_WIN
 
 TitleBarOverdrawHandler* TitleBarOverdrawHandler::createHandler(QApplication* application, QObject* parent)

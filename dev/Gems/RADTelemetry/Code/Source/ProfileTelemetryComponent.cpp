@@ -25,6 +25,9 @@
     tm_api* g_radTmApi;
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ProfileTelemetryComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace
 {

@@ -2,8 +2,9 @@
  "none":{
 		"Header Files":
 		[
-			"StdAfx.h"
-		],			
+			"StdAfx.h",
+			"../LumberyardLauncher.h"
+		],
 		"Source Files":
 		[
 			"Main.cpp"

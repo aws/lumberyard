@@ -15,7 +15,10 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
 
-class QGraphicsView;
+#include <GraphCanvas/Editor/EditorTypes.h>
+
+class QResizeEvent;
+class QWheelEvent;
 
 namespace GraphCanvas
 {
@@ -24,21 +27,27 @@ namespace GraphCanvas
     public:
         AZ_TYPE_INFO(ViewParams, "{D016BF86-DFBB-4AF0-AD26-27F6AB737740}");
         double m_scale = 1.0;
-        
+
         float m_anchorPointX = 0.0f;
         float m_anchorPointY = 0.0f;
     };
 
     typedef AZ::EntityId ViewId;
-    
+
+    class GraphCanvasGraphicsView;
+
     //! ViewRequests
     //! Requests that are serviced by the \ref View component.
-    class ViewRequests : public AZ::EBusTraits
+    class ViewRequests
+        : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = ViewId;
-        
+
+        virtual void SetEditorId(const EditorId& editorId) = 0;
+        virtual EditorId GetEditorId() const = 0;
+
         //! Set the scene that the view should render.
         virtual void SetScene(const AZ::EntityId&) = 0;
 
@@ -48,32 +57,60 @@ namespace GraphCanvas
         //! Clear the scene that the view is rendering, so it will be empty.
         virtual void ClearScene() = 0;
 
+        virtual AZ::Vector2 GetViewSceneCenter() const = 0;
+
         //! Map a view coordinate to the scene coordinate space.
         virtual AZ::Vector2 MapToScene(const AZ::Vector2& /*viewPoint*/) = 0;
 
         //! Map a scene coordinate to the view coordinate space.
         virtual AZ::Vector2 MapFromScene(const AZ::Vector2& /*scenePoint*/) = 0;
-        
+
         //! Sets the View params of the view
         virtual void SetViewParams(const ViewParams& /*viewParams*/) = 0;
 
-        //! Frame the selection into view.
-        virtual void FrameSelectionIntoView() = 0;
+        //! Changes the scene to display only the view area.
+        virtual void DisplayArea(const QRectF& viewArea) = 0;
 
-        virtual QGraphicsView* AsQGraphicsView() = 0;
+        //! Ensures that the specified area is centered and fully displayed.
+        //! Tries to not change the scale value unless necessary.
+        virtual void CenterOnArea(const QRectF& viewArea) = 0;
+
+        //! Move the view center to posInSceneCoordinates
+        virtual void CenterOn(const QPointF& posInSceneCoordinates) = 0;
+
+        //! Get, in scene coordinates, the QRectF of the area covered by the entire content of the scene
+        virtual QRectF GetCompleteArea() = 0;
+
+        //! Send a wheelEvent to the CanvasGraphicsView
+        virtual void WheelEvent(QWheelEvent* ev) = 0;
+
+        //! Get, in scene coordinates, the QRectF of the area presented in the view
+        virtual QRectF GetViewableAreaInSceneCoordinates() = 0;
+
+        //! Get the view as a CanvasGraphicsView.
+        virtual GraphCanvasGraphicsView* AsGraphicsView() = 0;
     };
 
     using ViewRequestBus = AZ::EBus<ViewRequests>;
-    
+
     class ViewNotifications
         : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = ViewId;
-        
-        //! Signalled whenever the view parameters of a view changes
-        virtual void OnViewParamsChanged(const ViewParams& viewParams) {};
+
+        //! Signaled whenever the view parameters of a view changes
+        virtual void OnViewParamsChanged(const ViewParams& /*viewParams*/) {};
+
+        //! The view was resized
+        virtual void OnViewResized(QResizeEvent* /*event*/) {}
+
+        //! The view was scrolled
+        virtual void OnViewScrolled() {}
+
+        //! The view was centered on an area using CenterOnArea()
+        virtual void OnViewCenteredOnArea() {}
     };
 
     using ViewNotificationBus = AZ::EBus<ViewNotifications>;
@@ -86,10 +123,9 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        //! Signalled whenever the alt keyboard modifier changes
+        //! Signaled whenever the alt keyboard modifier changes
         virtual void OnAltModifier(bool enabled) {};
     };
 
     using ViewSceneNotificationBus = AZ::EBus<ViewSceneNotifications>;
-
 }

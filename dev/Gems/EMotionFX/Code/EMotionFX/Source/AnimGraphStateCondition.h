@@ -16,7 +16,6 @@
 #include "EMotionFXConfig.h"
 #include "EventHandler.h"
 #include "AnimGraphTransitionCondition.h"
-#include <MCore/Source/UnicodeString.h>
 
 namespace EMotionFX
 {
@@ -78,10 +77,15 @@ namespace EMotionFX
             uint32 GetClassSize() const override                    { return sizeof(UniqueData); }
             AnimGraphObjectData* Clone(void* destMem, AnimGraphObject* object, AnimGraphInstance* animGraphInstance) override        { return new (destMem) UniqueData(object, animGraphInstance); }
 
+            void CreateEventHandler();
+            void DeleteEventHandler();
+
         public:
-            AnimGraphInstance*                         mAnimGraphInstance;
-            AnimGraphStateCondition::EventHandler*     mEventHandler;
-            EFunction                                   mLastTriggeredType;
+            // The anim graph instance pointer shouldn't change. If it were to
+            // change, we'd need to remove an existing event handler and create
+            // a new one in the new anim graph instance.
+            AnimGraphInstance* const                    mAnimGraphInstance;
+            AnimGraphStateCondition::EventHandler*      mEventHandler;
             bool                                        mTriggered;
         };
 
@@ -90,14 +94,14 @@ namespace EMotionFX
         void RegisterAttributes() override;
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         void OnUpdateAttributes() override;
-        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName) override;
+        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
 
         void Reset(AnimGraphInstance* animGraphInstance) override;
 
         const char* GetTypeString() const override;
-        void GetSummary(MCore::String* outResult) const override;
-        void GetTooltip(MCore::String* outResult) const override;
+        void GetSummary(AZStd::string* outResult) const override;
+        void GetTooltip(AZStd::string* outResult) const override;
         const char* GetPaletteName() const override;
         ECategory GetPaletteCategory() const override;
 
@@ -117,14 +121,36 @@ namespace EMotionFX
             EventHandler(AnimGraphStateCondition* condition, UniqueData* uniqueData);
             virtual ~EventHandler();
 
-            // overloaded
+            // overloaded 
             void OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
             void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
             void OnStateExit(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
             void OnStateEnd(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
 
         private:
-            AnimGraphStateCondition*   mCondition;
+            bool IsTargetState(const AnimGraphNode* state) const
+            {
+                const AZStd::string& stateName = mCondition->GetAttributeString(ATTRIB_STATE)->GetValue();
+                return (stateName.empty() || stateName == state->GetName());
+            }
+
+            void OnStateChange(AnimGraphInstance* animGraphInstance, AnimGraphNode* state, EFunction targetFunction)
+            {
+                // check if the state and the anim graph instance are valid and
+                // return directly in case one of them is not
+                if (!state || !animGraphInstance)
+                {
+                    return;
+                }
+
+                const int32 functionIndex = mCondition->GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
+                if (functionIndex == targetFunction && IsTargetState(state))
+                {
+                    mUniqueData->mTriggered = true;
+                }
+            }
+
+            AnimGraphStateCondition*    mCondition;
             UniqueData*                 mUniqueData;
         };
 

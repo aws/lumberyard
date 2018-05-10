@@ -25,8 +25,7 @@ def build(bld):
         platforms           = ['all'],
         configurations      = ['all'],
         pch                 = 'StdAfx.cpp',
-        includes            = [bld.Path('Code/SDKs'),
-                               bld.Path('Code/CryEngine/CryAction')],
+        includes            = [bld.Path('Code/CryEngine/CryAction')],
         defines             = ['ENGINE_EXPORTS'],
         use                 = ['GridMate','AzFramework' ],
 
@@ -43,7 +42,9 @@ def build(bld):
        
        
        
+       
 
+       
        
        
 

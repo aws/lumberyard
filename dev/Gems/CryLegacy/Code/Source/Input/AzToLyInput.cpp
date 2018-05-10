@@ -41,6 +41,12 @@
 
 using namespace AzFramework;
 
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#undef AZ_RESTRICTED_SECTION
+#define AZTOLYINPUT_CPP_SECTION_ADDINPUT 1
+#define AZTOLYINPUT_CPP_SECTION_ADDTOOLSINPUT 2
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AzToLyInput::AzToLyInput()
     : CBaseInput()
@@ -107,7 +113,15 @@ bool AzToLyInput::Init()
 
     for (AZ::u32 i = 0; i < 4; ++i)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDINPUT
+#include AZ_RESTRICTED_FILE(AzToLyInput_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         if (!AddInputDevice(new AzToLyInputDeviceGamepad(*this, i)))
+#endif
         {
             // CBaseInput::AddInputDevice calls delete on it's argument if it fails.
             gEnv->pLog->Log("Error: Initializing AzToLy Gamepad");
@@ -115,6 +129,16 @@ bool AzToLyInput::Init()
         }
     }
 
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDTOOLSINPUT
+#include AZ_RESTRICTED_FILE(AzToLyInput_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDTOOLSINPUT
+#include AZ_RESTRICTED_FILE(AzToLyInput_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
 
 #if defined(SYNERGY_INPUT_ENABLED)
     const char* pServer = g_pInputCVars->i_synergyServer->GetString();

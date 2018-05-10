@@ -36,7 +36,12 @@
 using namespace AZ;
 using namespace AZ::Debug;
 
-#if   defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Components_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_APPLE_IOS)
 #   define AZ_ROOT_TEST_FOLDER  "/Documents/"
 #elif defined(AZ_PLATFORM_APPLE_TV)
 #   define AZ_ROOT_TEST_FOLDER "/Library/Caches/"

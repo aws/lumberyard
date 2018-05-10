@@ -142,7 +142,7 @@ namespace CloudCanvas
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<DynamicContentTransferManager>()
+                serializeContext->Class<DynamicContentTransferManager, AZ::Component>()
                     ->Version(3);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -195,7 +195,7 @@ namespace CloudCanvas
             }
             if (responseCode == LmbrAWS::HttpOKResponse())
             {
-                AZ_TracePrintf("CloudCanvas", "Downloaded signed URL to %s", requestPtr->GetFullLocalFileName().c_str());
+                AZ_TracePrintf("CloudCanvas", "Downloaded signed URL to %s", outputFile.c_str());
                 OnDownloadSuccess(requestPtr);
             }
             else
@@ -911,7 +911,7 @@ namespace CloudCanvas
                         AZ_TracePrintf("CloudCanvas", "Warning - Dynamic Content downloaded but Pak priority is currently set to FileFirst.  Use the console command sys_PakPriority=1 if you wish to switch to prefer paks.");
                     }
                     const auto& pakFileToMount = m_pakFilesToMount.front();
-                    const AZStd::string downloadedPath{ pakFileToMount->GetAliasedFilePath() };
+                    const AZStd::string downloadedPath{ pakFileToMount->GetFullLocalFileName() };
                     const bool pakMounted = gEnv->pCryPak->OpenPack("@assets@", downloadedPath.c_str(), ICryPak::FLAGS_NO_LOWCASE);
                     if (!pakMounted)
                     {
@@ -933,7 +933,7 @@ namespace CloudCanvas
             // Handle this outside the loop because RemovePendingPak uses our m_pakFileMountMutex
             if (failurePak)
             {
-                AZ_Warning("CloudCanvas", "Attempted to open %s %d times without success - removing", failurePak->GetAliasedFilePath().c_str(), failurePak->GetOpenRetryCount());
+                AZ_Warning("CloudCanvas", false, "Attempted to open %s %d times without success - removing", failurePak->GetAliasedFilePath().c_str(), failurePak->GetOpenRetryCount());
                 RemovePendingPak(failurePak);
                 failurePak->SetStatus(DynamicContentFileInfo::FileStatus::PAK_MOUNT_FAILED);
             }

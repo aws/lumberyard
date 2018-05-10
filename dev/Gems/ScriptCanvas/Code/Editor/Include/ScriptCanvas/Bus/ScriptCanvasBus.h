@@ -15,6 +15,8 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
+#include <ScriptCanvas/Data/Data.h>
+
 class QWidget;
 
 namespace ScriptCanvasEditor
@@ -25,6 +27,12 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
         virtual void AddAsyncJob(AZStd::function<void()>&& jobFunc) = 0;
+
+        // Inserts into the supplied set types that are creatable within the editor
+        virtual void GetEditorCreatableTypes(AZStd::unordered_set<ScriptCanvas::Data::Type>& outCreatableTypes) = 0;
+
+        // Creates all editor components needed to associate the script canvas engine with an entity
+        virtual void CreateEditorComponentsOnEntity(AZ::Entity* entity) = 0;
     };
 
     using SystemRequestBus = AZ::EBus<SystemRequests>;

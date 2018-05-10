@@ -70,6 +70,25 @@ namespace AZ
 
     namespace Edit
     {
+        void GetComponentUuidsWithSystemComponentTag(
+            const SerializeContext* serializeContext,
+            const AZStd::vector<AZ::Crc32>& requiredTags,
+            AZStd::unordered_set<AZ::Uuid>& componentUuids)
+        {
+            componentUuids.clear();
+
+            serializeContext->EnumerateAll(
+                [&requiredTags, &componentUuids](const AZ::SerializeContext::ClassData* data, const AZ::Uuid& typeId) -> bool
+            {
+                if (SystemComponentTagsMatchesAtLeastOneTag(data, requiredTags))
+                {
+                    componentUuids.emplace(typeId);
+                }
+
+                return true;
+            });
+        }
+
         //=========================================================================
         // ClearAttributes
         //=========================================================================

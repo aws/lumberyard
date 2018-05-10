@@ -19,7 +19,7 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/Graph.h>
-#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/map.h>
 
 namespace AZ
 {
@@ -61,14 +61,14 @@ namespace ScriptCanvas
                 static const char* c_busIdTooltip;
 
                 using Events = AZStd::vector<EBusEventEntry>;
-                using EventMap = AZStd::unordered_map<AZ::Crc32, EBusEventEntry>;
+                using EventMap = AZStd::map<AZ::Crc32, EBusEventEntry>;
 
                 ScriptCanvas_Node(EBusEventHandler,
                     ScriptCanvas_Node::Name("Event Handler", "Allows you to handle a event.")
                     ScriptCanvas_Node::Uuid("{33E12915-EFCA-4AA7-A188-D694DAD58980}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Bus.png")
                     ScriptCanvas_Node::EventHandler("SerializeContextEventHandlerDefault<EBusEventHandler>")
-                    ScriptCanvas_Node::Version(2, EBusEventHandlerVersionConverter)
+                    ScriptCanvas_Node::Version(3, EBusEventHandlerVersionConverter)
                     ScriptCanvas_Node::GraphEntryPoint(true)
                     ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                 );
@@ -100,6 +100,7 @@ namespace ScriptCanvas
                 AZStd::vector<SlotId> GetNonEventSlotIds() const;
                 bool IsEventSlotId(const SlotId& slotId) const;
 
+                bool IsEventHandler() const override;
                 bool IsEventConnected(const EBusEventEntry& entry) const;
                 bool IsValid() const;
                 
@@ -129,9 +130,9 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("Disconnect", "Disconnect this event handler."));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("OnConnected", "Signalled when a connection has taken place."));
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("OnDisconnected", "Signalled when this event handler is disconnected."));
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("OnFailure", "Signalled when it is not possible to connect this handler."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("OnConnected", "Signaled when a connection has taken place."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("OnDisconnected", "Signaled when this event handler is disconnected."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("OnFailure", "Signaled when it is not possible to connect this handler."));
                                 
                 ScriptCanvas_SerializeProperty(EventMap, m_eventMap);
                 ScriptCanvas_SerializeProperty(AZStd::string, m_ebusName);

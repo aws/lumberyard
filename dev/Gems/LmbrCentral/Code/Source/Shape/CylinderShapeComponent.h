@@ -9,33 +9,29 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/Component.h>
+
+#include "Rendering/EntityDebugDisplayComponent.h"
 #include "CylinderShape.h"
 
 namespace LmbrCentral
 {
     class CylinderShapeComponent
         : public AZ::Component
-        , public CylinderShape
     {
     public:
         AZ_COMPONENT(CylinderShapeComponent, CylinderShapeComponentTypeId);
 
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
-        //////////////////////////////////////////////////////////////////////////    
-
-        // Get the configuration
-        CylinderShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
@@ -56,11 +52,32 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+        CylinderShape m_cylinderShape; ///< Stores underlying cylinder type for this component.
+    };
 
-        //////////////////////////////////////////////////////////////////////////
-        // Serialized data
+    /**
+     * Concrete EntityDebugDisplay implementation for CylinderShape.
+     */
+    class CylinderShapeDebugDisplayComponent
+        : public EntityDebugDisplayComponent
+    {
+    public:
+        AZ_COMPONENT(CylinderShapeDebugDisplayComponent, "{13F00855-7BB6-447A-9E8D-61F37275BC95}", EntityDebugDisplayComponent)
 
-        //! Stores configuration of a cylinder for this component
-        CylinderShapeConfig m_configuration;
+        CylinderShapeDebugDisplayComponent() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
+
+        // EntityDebugDisplayComponent
+        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
+
+    private:
+        AZ_DISABLE_COPY_MOVE(CylinderShapeDebugDisplayComponent)
+
+        CylinderShapeConfig m_cylinderShapeConfig; ///< Stores configuration data for cylinder shape.
     };
 } // namespace LmbrCentral

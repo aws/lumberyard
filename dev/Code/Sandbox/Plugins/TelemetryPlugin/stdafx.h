@@ -92,11 +92,13 @@
 
 
 #ifdef WIN64
-#if (_MSC_VER == 1900)
+#if (_MSC_VER >= 1910)
+#pragma comment(lib, "../../../../Bin64vc141/Editor.lib")
+#elif (_MSC_VER >= 1900)
 #pragma comment(lib, "../../../../Bin64vc140/Editor.lib")
-#else // _MSC_VER == 1900
+#else // _MSC_VER
 #pragma comment(lib, "../../../../Bin64vc120/Editor.lib")
-#endif // _MSC_VER == 1900
+#endif // _MSC_VER
 #else
 #pragma comment(lib, "../../../../Bin32/Editor.lib")
 #endif

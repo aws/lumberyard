@@ -11,15 +11,16 @@
 import os
 import sys
 import argparse
-import xml.etree.ElementTree as ET
+import re
+import traceback
 
-from waflib.TaskGen import feature, before_method, after_method
-from waflib import Logs, Options, Utils, Configure, ConfigSet
+from waflib import Logs, Options, Utils, Configure, ConfigSet, Errors
 from waflib.Configure import conf, ConfigurationContext
 from waflib.Build import BuildContext, CleanContext, Context
-
+from waflib import Node
 from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, PLATFORM_CONFIGURATION_FILTER, PLATFORMS, CONFIGURATIONS, LUMBERYARD_ENGINE_PATH
 from utils import parse_json_file
+from third_party import ThirdPartySettings
 
 UNSUPPORTED_PLATFORM_CONFIGURATIONS = set()
 
@@ -42,6 +43,8 @@ ANDROID_TIMESTAMP_CHECK_FILES = ['_WAF_/android/android_settings.json', '_WAF_/e
 CONFIGURE_TIMESTAMP_FILES = ['bootstrap.timestamp','SetupAssistantConfig.timestamp', 'android_settings.timestamp', 'environment.timestamp']
 # if configure is run explicitly, delete these files to force them to rerun
 CONFIGURE_FORCE_TIMESTAMP_FILES = ['generate_uber_files.timestamp', 'project_gen.timestamp']
+# The prefix for file aliasing 3rd party paths (ie @3P:foo@)
+FILE_ALIAS_3P_PREFIX = "3P:"
 
 # List of extra non-build (non project building) commands.
 NON_BUILD_COMMANDS = [
@@ -55,6 +58,8 @@ NON_BUILD_COMMANDS = [
     'xcode_appletv',
     'xcode_mac'
 ]
+
+REGEX_PATH_ALIAS = re.compile('@(.+)@')
 
 
 # Table of lmbr waf modules that need to be loaded by the root waf script, grouped by tooldir where the modules need to be loaded from.
@@ -79,6 +84,7 @@ LMBR_WAFLIB_MODULES = [
         'az_code_generator',
         'crcfix',
         'doxygen',
+        'packaging',
 
         'generate_uber_files',          # Load support for Uber Files
         'generate_module_def_files',    # Load support for Module Definition Files
@@ -227,8 +233,12 @@ def configure_general_compile_settings(conf):
     if load_setting_count == 0:
         conf.fatal('[ERROR] Unable to load any general compile settings modules')
 
+    available_platforms = conf.get_available_platforms()
+    if len(available_platforms)==0:
+        raise Errors.WafError('[ERROR] No available platforms detected.  Make sure you enable at least one platform in Setup Assistant.')
+
     # load the android specific tools, if enabled
-    if any(platform for platform in conf.get_available_platforms() if platform.startswith('android')):
+    if any(platform for platform in available_platforms if platform.startswith('android')):
         # We need to validate the JDK path from SetupAssistant before loading the javaw tool.
         # This way we don't introduce a dependency on lmbrwaflib in the core waflib.
         jdk_home = conf.get_env_file_var('LY_JDK', required = True)
@@ -327,11 +337,7 @@ def run_bootstrap(conf):
     if not conf.is_engine_local():
         return
 
-    # Bootstrap the build environment with bootstrap tool
-    bootstrap_param = getattr(conf.options, "bootstrap_tool_param", "")
-    bootstrap_third_party_override = getattr(conf.options, "bootstrap_third_party_override", "")
-    conf.run_bootstrap_tool(bootstrap_param, bootstrap_third_party_override)
-
+    conf.run_linkless_bootstrap()
 
 @conf
 def load_compile_rules_for_supported_platforms(conf, platform_configuration_filter):
@@ -366,6 +372,8 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
         Logs.info('[INFO] Configure "%s - [%s]"' % (platform, ', '.join(conf.get_supported_configurations(platform))))
         conf.load(compile_rule_script, tooldir=[LMBR_WAF_TOOL_DIR])
 
+        conf.tp.validate_local(platform)
+
         # platform installed
         installed_platforms.append(platform)
 
@@ -380,6 +388,9 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
             if configuration_values:
                 configuration_settings_map[uselib_name] = configuration_values
         conf.env['THIRD_PARTY_USELIB_SETTINGS'] = configuration_settings_map
+
+        if not hasattr(conf,'InvalidUselibs'):
+            setattr(conf,'InvalidUselibs',set())
 
         for supported_configuration in conf.get_supported_configurations():
             # if the platform isn't going to generate a build command, don't require that the configuration exists either
@@ -435,10 +446,12 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
                     third_party_config_file = third_party_uselib_map[uselib_info][0]
                     path_alias_map = third_party_uselib_map[uselib_info][1]
 
-                    thirdparty_error_msgs, uselib_names = conf.read_3rd_party_config(third_party_config_file, platform, supported_configuration, path_alias_map)
+                    is_valid, uselib_names = conf.read_3rd_party_config(third_party_config_file, platform, supported_configuration, path_alias_map)
 
-                    for thirdparty_error_msg in thirdparty_error_msgs:
-                        conf.warn_once(thirdparty_error_msg)
+                    if not is_valid:
+                        conf.warn_once('Invalid local paths defined in file {} detected.  The following uselibs will not be valid:{}'.format(third_party_config_file, ','.join(uselib_names)))
+                        for uselib_name in uselib_names:
+                            conf.InvalidUselibs.add(uselib_name)
 
 
 @conf
@@ -960,12 +973,69 @@ def get_enabled_capabilities(ctx):
         parsed_params = capability_parser.parse_args(params)
         parsed_capabilities = getattr(parsed_params,'enablecapability',[])
     else:
-        parsed_capabilities = []
+        host_platform = Utils.unversioned_sys_platform()
 
-    setattr(ctx,'parsed_capabilities',parsed_capabilities)
+        # If bootstrap-tool-param is not set, that means setup assistant needs to be ran or we use default values
+        # if the source for setup assistant is available but setup assistant has not been built yet
+
+        base_lmbr_setup_path = os.path.join(ctx.path.abspath(), 'Tools', 'LmbrSetup')
+        setup_assistant_code_path = os.path.join(ctx.path.abspath(), 'Code', 'Tools', 'AZInstaller')
+        setup_assistant_spec_path = os.path.join(ctx.path.abspath(), '_WAF_', 'specs', 'lmbr_setup_tools.json')
+
+        # Use the defaults if this hasnt been set yet
+        parsed_capabilities = ['compilegame', 'compileengine', 'compilesandbox']
+        if host_platform == 'darwin':
+            setup_assistant_name = 'SetupAssistant'
+            lmbr_setup_platform = 'Mac'
+            parsed_capabilities.append('compileios')
+            parsed_capabilities.append('macOS')
+            minimal_setup_assistant_build_command = './lmbr_waf.sh build_darwin_x64_profile -p lmbr_setup_tools'
+        elif host_platform == 'win32':
+            setup_assistant_name = 'SetupAssistant.exe'
+            lmbr_setup_platform = 'Win'
+            parsed_capabilities.append('windows')
+            parsed_capabilities.append('vc141')
+            parsed_capabilities.append('vc140')
+            parsed_capabilities.append('vc120')
+            minimal_setup_assistant_build_command = 'lmbr_waf build_win_x64_vs2017_profile -p lmbr_setup_tools'
+        else:
+            lmbr_setup_platform = 'Linux'
+            setup_assistant_name = 'SetupAssistantBatch'
+            parsed_capabilities.append('setuplinux')
+            minimal_setup_assistant_build_command = './lmbr_waf.sh build_linux_x64_profile -p lmbr_setup_tools'
+
+        setup_assistant_binary_path = os.path.join(base_lmbr_setup_path, lmbr_setup_platform, setup_assistant_name)
+
+        setup_assistant_code_exists = os.path.exists(os.path.join(setup_assistant_code_path, 'wscript'))
+
+        if not os.path.exists(setup_assistant_binary_path):
+            # Setup assistant binary does not exist
+            if not setup_assistant_code_exists or not os.path.exists(setup_assistant_spec_path):
+                # The Setup Assistant binary does not exist and the source to build it does not exist.  We cannot continue
+                raise Errors.WafError('[ERROR] Unable to locate the SetupAssistant application required to configure the build '
+                                      'settings for the project. Please contact support for assistance.')
+            else:
+                # If the source code exists, setup assistant will need to enable the minim capabilities in order to build it from source
+                ctx.warn_once('Defaulting to the minimal build options.  Setup Assistant needs to be built and run to configure specific build options.')
+                ctx.warn_once('To build Setup Assistant, run "{}" from the command line after the configure is complete'.format(minimal_setup_assistant_build_command))
+        else:
+            if setup_assistant_code_exists:
+                # If the setup assistant binary exists, and the source code exists, default to the minimal build capabilities needed to build setup assistant but warn
+                # the user
+                ctx.warn_once('Defaulting to the minimal build options.  Setup Assistant needs to be ran to configure specific build options.')
+            else:
+                # The setup assistant binary exists but setup assistant hasnt been run yet.  Halt the process and inform the user
+                raise Errors.WafError('[ERROR] Setup Assistant has not configured the build settings for the project yet.  You must run the tool ({}) and configure the build options first.'.format(setup_assistant_binary_path))
+
+    setattr(ctx, 'parsed_capabilities', parsed_capabilities)
 
     return parsed_capabilities
 
+@conf
+def initialize_third_party_settings(conf):
+    if not hasattr(conf,"tp"):
+        conf.tp = ThirdPartySettings(conf)
+        conf.tp.initialize()
 
 
 ###############################################################################
@@ -979,6 +1049,121 @@ def CreateRootRelativePath(self, path):
 
 ###############################################################################
 @conf
-def Path(self, path):
+def Path(ctx, path):
+
     # Alias to 'CreateRootRelativePath'
-    return CreateRootRelativePath(self, path)
+    def _get_source_file_and_function():
+        stack = traceback.extract_stack(limit=10)
+        max_index = len(stack) - 1
+        for index in range(max_index, 0, -1):
+            if stack[index][2] in ('_get_source_file_and_function', 'PreprocessFilePath', 'fun', 'Path', '_invalid_alias_callback', '_alias_not_enabled_callback'):
+                continue
+            return stack[index][0], stack[index][1], stack[index][2]
+        raise RuntimeError('Invalid stack trace')
+
+    def _invalid_alias_callback(alias_key):
+        error_file, error_line, error_function = _get_source_file_and_function()
+        error_message = "Invalid alias '{}' specified in {}:{} ({})".format(alias_key, error_file, error_line,
+                                                                            error_function)
+        raise Errors.WafError(error_message)
+
+    def _alias_not_enabled_callback(alias_key, roles):
+        error_file, error_line, error_function = _get_source_file_and_function()
+        warning_message = "3rd Party alias '{}' specified in {}:{} ({}) is not enabled. Make sure that at least one of the " \
+                          "following roles is enabled: [{}]".format(alias_key, error_file, error_line, error_function,
+                                                                    ', '.join(roles))
+        ctx.warn_once(warning_message)
+
+    processed_path = ctx.PreprocessFilePath(path, _invalid_alias_callback, _alias_not_enabled_callback)
+    if not processed_path:
+        Logs.warn("[WARN] Invalid path alias:{}".format(path))
+    if os.path.isabs(processed_path):
+        return processed_path
+    else:
+        return CreateRootRelativePath(ctx, processed_path)
+
+@conf
+def PreprocessFilePath(ctx, input, alias_invalid_callback, alias_not_enabled_callback):
+    """
+    Perform a preprocess to a path to perform the following:
+
+    * Substitute any alias (@<ALIAS>@) with the alias value
+    * Convert relative paths to absolute paths using the base_path as the pivot (if set)
+
+    :param ctx:             Context
+    :param input_path:      Relative, absolute, or aliased pathj
+    :param base_path:       Base path to resolve relative paths if supplied.  If not, relative paths stay relative
+    :param return_filenode: Flag to return a Node object instead of an absolute path
+    :return:    The processed path
+    """
+
+    if isinstance(input, Node.Node):
+        input_path = input.abspath()
+    else:
+        input_path = input
+
+    # Perform alias check first
+    alias_match_groups = REGEX_PATH_ALIAS.search(input_path)
+    if alias_match_groups:
+
+        # Alias pattern detected, evaluate the alias
+        alias_key = alias_match_groups.group(1)
+
+        if alias_key == "ENGINE":
+            # Apply the @ENGINE@ Alias
+            processed_path = os.path.normpath(input_path.replace('@{}@'.format(alias_key), ctx.engine_node.abspath()))
+            return processed_path
+
+        elif alias_key.startswith(FILE_ALIAS_3P_PREFIX):
+            # Apply a third party alias reference
+            third_party_identifier = alias_key.replace(FILE_ALIAS_3P_PREFIX, "").strip()
+            resolved_path, enabled, roles, optional = ctx.tp.get_third_party_path(None, third_party_identifier)
+
+            # If the path was not resolved, it could be an invalid alias (missing from the SetupAssistantConfig.json
+            if not resolved_path:
+                alias_invalid_callback(alias_key)
+
+            # If the path was resolved, we still need to make sure the 3rd party is enabled based on the roles
+            if not enabled and not optional:
+                alias_not_enabled_callback(alias_key, roles)
+
+            processed_path = os.path.normpath(input_path.replace('@{}@'.format(alias_key), resolved_path))
+            return processed_path
+        else:
+            return input_path
+    else:
+        return input_path
+
+
+###############################################################################
+@conf
+def ThirdPartyPath(ctx, third_party_identifier, path=''):
+
+    def _get_source_file_and_function():
+        stack = traceback.extract_stack(limit=10)
+        max_index = len(stack) - 1
+        for index in range(max_index, 0, -1):
+            if stack[index][2] in ('_get_source_file_and_function', 'fun', 'ThirdPartyPath', '_invalid_alias_callback', '_alias_not_enabled_callback'):
+                continue
+            return stack[index][0], stack[index][1], stack[index][2]
+        raise RuntimeError('Invalid stack trace')
+
+    resolved_path, enabled, roles, optional = ctx.tp.get_third_party_path(None, third_party_identifier)
+
+    # If the path was not resolved, it could be an invalid alias (missing from the SetupAssistantConfig.json
+    if not resolved_path:
+        error_file, error_line, error_function = _get_source_file_and_function()
+        error_message = "Invalid alias '{}' specified in {}:{} ({})".format(third_party_identifier, error_file, error_line,
+                                                                            error_function)
+        raise Errors.WafError(error_message)
+
+    # If the path was resolved, we still need to make sure the 3rd party is enabled based on the roles
+    if not enabled and not optional:
+        error_file, error_line, error_function = _get_source_file_and_function()
+        warning_message = "3rd Party alias '{}' specified in {}:{} ({}) is not enabled. Make sure that at least one of the " \
+                          "following roles is enabled: [{}]".format(third_party_identifier, error_file, error_line, error_function,
+                                                                    ', '.join(roles))
+        ctx.warn_once(warning_message)
+
+    processed_path = os.path.normpath(os.path.join(resolved_path, path))
+    return processed_path

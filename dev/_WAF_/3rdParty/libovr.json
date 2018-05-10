@@ -1,6 +1,6 @@
 {
     "name": "libOVR",
-    "source": "@ROOT@/Code/SDKs/OculusSDK/LibOVR",
+    "source": "@3P:OculusSDK@",
     "description": "Support library for Oculus Rift",
     "includes": [
         "Include"
@@ -23,6 +23,7 @@
             "lib": [
                 "LibOVR.lib"
             ]
-        }
+        },
+        "win_x64_vs2017": "@win_x64_vs2015"
     }
 }

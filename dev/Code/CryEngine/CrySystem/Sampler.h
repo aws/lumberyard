@@ -19,23 +19,6 @@
 
 class CSamplingThread;
 
-// Symbol database, used Microsoft DebugAPI.
-class CSymbolDatabase
-{
-public:
-    CSymbolDatabase();
-    ~CSymbolDatabase();
-
-    bool Init();
-
-    // Lookup name of the function from instruction pointer.
-    bool LookupFunctionName(uint64 ip, string& funcName);
-    bool LookupFunctionName(uint64 ip, string& funcName, string& fileName, int& lineNumber);
-
-private:
-    bool m_bInitialized;
-};
-
 //////////////////////////////////////////////////////////////////////////
 // Sampler class is running a second thread which is at regular intervals
 // eg 1ms samples main thread and stores current IP in the samples buffers.
@@ -79,7 +62,6 @@ private:
     int m_samplePeriodMs;
 
     CSamplingThread* m_pSamplingThread;
-    CSymbolDatabase* m_pSymDB;
 };
 
 #else //WIN32

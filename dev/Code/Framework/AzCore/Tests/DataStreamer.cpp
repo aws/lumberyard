@@ -30,6 +30,7 @@
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/Math/Uuid.h>
 
 #include <AzCore/Math/Sfmt.h>
 
@@ -41,7 +42,21 @@ using namespace AZ::IO;
 using namespace AZ::Debug;
 using namespace AZStd;
 
-#if   defined(AZ_PLATFORM_APPLE_IOS)
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DATASTREAMER_CPP_SECTION_1 1
+#define DATASTREAMER_CPP_SECTION_2 2
+#define DATASTREAMER_CPP_SECTION_3 3
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DATASTREAMER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(DataStreamer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_APPLE_IOS)
 #   define AZ_ROOT_TEST_FOLDER  "/Documents/"
 #elif defined(AZ_PLATFORM_APPLE_TV)
 #   define AZ_ROOT_TEST_FOLDER "/Library/Caches/"
@@ -66,6 +81,12 @@ namespace // anonymous
         return AZ_ROOT_TEST_FOLDER;
     }
 #endif
+
+    AZStd::string GetRandomTestFileName(const char* basedOn)
+    {
+        AZ::Uuid uniqueId = AZ::Uuid::CreateRandom();
+        return AZStd::string::format("%s%s-%s", GetTestFolderPath(), basedOn, uniqueId.ToString<AZStd::string>().c_str());
+    }
 } // anonymous namespace
 
 // If you are running the performance tests, you need to set the
@@ -77,9 +98,17 @@ namespace // anonymous
 // accurate mode and enable DVD emulation in the debug options.
 //#define ENABLE_PERFORMANCE_TEST
 #ifdef ENABLE_PERFORMANCE_TEST
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DATASTREAMER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(DataStreamer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#   else
 #       define AZ_DVD_ROOT          "e:\\"
 #       define AZ_NET_ROOT          "\\\\18pcheng2\\AZCORE_DATA\\"
 #       define AZ_HDD_ROOT          ""
+#   endif
 #   define LARGE_READ_TEST_FILE         AZ_DVD_ROOT "FILE1.IMG"  // File size should be at least TOTAL_READ_SIZE.
 #   define SMALL_READ_TEST_FILE         AZ_DVD_ROOT "FILE2.IMG"  // File size should be at least TOTAL_READ_SIZE.
 #   define INTERLEAVED_READ_TEST_FILE1  AZ_DVD_ROOT "FILE3.IMG"  // File size should be at least TOTAL_READ_SIZE.
@@ -181,10 +210,10 @@ namespace UnitTest
             SizeType bytesTransfered;
             Request::StateType operationState;
 
-            AZStd::string fileName1 = AZStd::string::format("%s%itest.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
-            AZStd::string fileName2 = AZStd::string::format("%s%itest1.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
-            AZStd::string fileName3 = AZStd::string::format("%s%itest2.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
-            AZStd::string fileName4 = AZStd::string::format("%s%itest3.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
+            AZStd::string fileName1 = GetRandomTestFileName("test.dat");
+            AZStd::string fileName2 = GetRandomTestFileName("test1.dat");
+            AZStd::string fileName3 = GetRandomTestFileName("test2.dat");
+            AZStd::string fileName4 = GetRandomTestFileName("test3.dat");
 
 
             const char* testFileNames[] = {
@@ -310,7 +339,15 @@ namespace UnitTest
             // concurrent open/close stress test
             //
             // one test thread
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DATASTREAMER_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(DataStreamer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             const size_t numOperations = 50000;
+#endif
 
             CycleOpenReadClose(testFileNames, nTestFiles, 0, 0, numOperations);
 
@@ -594,8 +631,8 @@ namespace UnitTest
 
             size_t bufferSize = 256 * 1024 /*fileSize*/;
 
-            AZStd::string fileName = AZStd::string::format("%s%iBigFile.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());;
-            AZStd::string fileNameSystemFile = AZStd::string::format("%s%iBigFile1.dat", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
+            AZStd::string fileName = GetRandomTestFileName("BigFile.dat");
+            AZStd::string fileNameSystemFile = GetRandomTestFileName("BigFile1.dat");
 
             void* buf1 = azmalloc(bufferSize, 64 * 1024);
             void* buf2 = azmalloc(bufferSize, 64 * 1024);
@@ -816,8 +853,8 @@ namespace UnitTest
 
             AZ_TracePrintf("", "\n");
             
-            AZStd::string streamerStreamTestFile = AZStd::string::format("%s%iStreamerStreamTest.txt", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
-            AZStd::string systemFile = AZStd::string::format("%s%iSystemFileStreamTest.txt", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
+            AZStd::string streamerStreamTestFile = GetRandomTestFileName("StreamerStreamTest.txt");
+            AZStd::string systemFile = GetRandomTestFileName("SystemFileStreamTest.txt");
 
             {
                 IO::VirtualStream* stream = IO::Streamer::Instance().RegisterFileStream(streamerStreamTestFile.c_str(), IO::OpenMode::ModeWrite, false);
@@ -923,7 +960,7 @@ namespace UnitTest
 
         void run()
         {
-            AZStd::string randomFileName = AZStd::string::format("%s%iCompressedStream.azcs", GetTestFolderPath(), ::testing::UnitTest::GetInstance()->random_seed());
+            AZStd::string randomFileName = GetRandomTestFileName("CompressedStream.azcs");
             const char* compressedFileName = randomFileName.c_str();
 
             // enable compression on the device (we can find device by name and/or by drive name, etc.)

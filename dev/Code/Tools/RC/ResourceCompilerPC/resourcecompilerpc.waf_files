@@ -141,13 +141,17 @@
             "../../CryCommonTools/PropertyHelpers.cpp",
             "../../CryCommonTools/StringHelpers.cpp",
             "../../CryCommonTools/TempFilePakExtraction.cpp",
+            "../../CryCommonTools/ColladaShared.h",
             "../../CryCommonTools/Decompose.cpp",
             "../../CryCommonTools/Decompose.h",
             "../../CryCommonTools/FileUtil.h",
             "../../CryCommonTools/PathHelpers.h",
             "../../CryCommonTools/PropertyHelpers.h",
             "../../CryCommonTools/StringHelpers.h",
-            "../../CryCommonTools/TempFilePakExtraction.h"
+            "../../CryCommonTools/TempFilePakExtraction.h",
+            "../../CryCommonTools/Export/ExportHelpers.h",
+            "../../CryCommonTools/Export/HelperData.h",
+            "../../CryCommonTools/Export/MeshUtils.h"
         ]
     },
     "none":
@@ -170,11 +174,11 @@
             "../../../CryEngine/Cry3DEngine/MeshCompiler/MeshCompiler.cpp",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/ForsythFaceReorderer.cpp",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/TangentSpaceCalculation.cpp",
-            "../../../SDKs/TangentBasisComputation/mikkelsen/mikktspace.cpp",
+            "@3P:mikkelsen@/mikkelsen/mikktspace.cpp",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/MeshCompiler.h",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/TangentSpaceCalculation.h",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/ForsythFaceReorderer.h",
-            "../../../SDKs/TangentBasisComputation/mikkelsen/mikktspace.h",
+            "@3P:mikkelsen@/mikkelsen/mikktspace.h",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/PVRTTriStrip/PVRTTriStrip.cpp"
 
         ],

@@ -37,17 +37,19 @@ namespace AZ
     //=========================================================================
     Data::AssetPtr SliceAssetHandler::CreateAsset(const Data::AssetId& id, const Data::AssetType& type)
     {
-        (void)id;
-        (void)type;
         AZ_Assert(type == AzTypeInfo<SliceAsset>::Uuid() || type == AzTypeInfo<DynamicSliceAsset>::Uuid(), "This handler deals only with SliceAsset type!");
+        
+        Data::AssetPtr newPtr = nullptr;
         if (type == AzTypeInfo<DynamicSliceAsset>::Uuid())
         {
-            return aznew DynamicSliceAsset();
+            newPtr = aznew DynamicSliceAsset(id);
         }
-        else
+        else if (type == AzTypeInfo<SliceAsset>::Uuid())
         {
-            return aznew SliceAsset();
+            newPtr = aznew SliceAsset(id);
         }
+
+        return newPtr;
     }
 
     //=========================================================================

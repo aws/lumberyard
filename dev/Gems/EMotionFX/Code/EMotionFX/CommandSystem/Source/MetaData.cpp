@@ -10,7 +10,6 @@
 *
 */
 
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <MCore/Source/AttributeSet.h>
 #include <EMotionFX/Source/Motion.h>
 #include <EMotionFX/Source/Actor.h>
@@ -50,7 +49,7 @@ namespace CommandSystem
             EMotionFX::MotionEventTrack* eventTrack = motionEventTable->GetTrack(i);
 
             metaDataString += AZStd::string::format("CreateMotionEventTrack -motionID $(MOTIONID) -eventTrackName \"%s\"\n", eventTrack->GetName());
-            metaDataString += AZStd::string::format("AdjustMotionEventTrack -motionID $(MOTIONID) -eventTrackName \"%s\" -enabled %s\n", eventTrack->GetName(), eventTrack->GetIsEnabled() ? "true" : "false");
+            metaDataString += AZStd::string::format("AdjustMotionEventTrack -motionID $(MOTIONID) -eventTrackName \"%s\" -enabled %s\n", eventTrack->GetName(), AZStd::to_string(eventTrack->GetIsEnabled()).c_str());
 
             const AZ::u32 numMotionEvents = eventTrack->GetNumEvents();
             for (AZ::u32 j = 0; j < numMotionEvents; ++j)
@@ -58,7 +57,7 @@ namespace CommandSystem
                 EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(j);
                 metaDataString += AZStd::string::format("CreateMotionEvent -motionID $(MOTIONID) -eventTrackName \"%s\" ", eventTrack->GetName());
                 metaDataString += AZStd::string::format("-startTime %f -endTime %f ", motionEvent.GetStartTime(), motionEvent.GetEndTime());
-                metaDataString += AZStd::string::format("-eventType \"%s\" -parameters \"%s\" ", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).AsChar());
+                metaDataString += AZStd::string::format("-eventType \"%s\" -parameters \"%s\" ", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).c_str());
                 metaDataString += AZStd::string::format("-mirrorType \"%s\"\n", motionEvent.GetMirrorEventTypeString());
             }
         }
@@ -125,7 +124,7 @@ namespace CommandSystem
                 }
 
                 outMetaDataString += AZStd::string::format("AdjustMorphTarget -actorID $(ACTORID) -lodLevel %i -name \"%s\" -phonemeAction \"replace\" ", lodLevel, morphTarget->GetName());
-                outMetaDataString += AZStd::string::format("-phonemeSets \"%s\" ", morphTarget->GetPhonemeSetString(morphTarget->GetPhonemeSets()).AsChar());
+                outMetaDataString += AZStd::string::format("-phonemeSets \"%s\" ", morphTarget->GetPhonemeSetString(morphTarget->GetPhonemeSets()).c_str());
                 outMetaDataString += AZStd::string::format("-rangeMin %f -rangeMax %f\n", morphTarget->GetRangeMin(), morphTarget->GetRangeMax());
             }
         }
@@ -214,16 +213,16 @@ namespace CommandSystem
         metaDataString += AZStd::string::format("AdjustActor -actorID $(ACTORID) -name \"%s\"\n", actor->GetName());
 
         // collision mesh for LOD 0
-        MCore::String tempString;
+        AZStd::string tempString;
         PrepareCollisionMeshesNodesString(actor, 0, &tempString);
         metaDataString += AZStd::string::format("ActorSetCollisionMeshes -actorID $(ACTORID) -lod 0 -nodeList \"");
-        metaDataString += tempString.AsChar();
+        metaDataString += tempString;
         metaDataString += "\"\n";
 
         // nodes excluded from the bounding volume calculation
         PrepareExcludedNodesString(actor, &tempString);
         metaDataString += "AdjustActor -actorID $(ACTORID) -nodesExcludedFromBounds \"";
-        metaDataString += tempString.AsChar();
+        metaDataString += tempString;
         metaDataString += "\" -nodeAction \"select\"\n";
 
         GenerateNodeGroupMetaData(actor, metaDataString);
@@ -270,12 +269,12 @@ namespace CommandSystem
         }
 
         // Execute the command group and apply the meta data.
-        MCore::String outResult;
+        AZStd::string outResult;
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
         {
-            if (outResult.GetIsEmpty() == false)
+            if (outResult.empty() == false)
             {
-                MCore::LogError(outResult.AsChar());
+                MCore::LogError(outResult.c_str());
             }
 
             return false;

@@ -161,6 +161,7 @@ public:
     virtual void PostLoad();
 
     int GetId() const { return m_id; }
+    void SetId(int id) { m_id = id; }
     const char* GetNameFast() const { return m_name.c_str(); }
 
     virtual void Render(){}

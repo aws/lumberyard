@@ -74,8 +74,6 @@
 #include <GameWarning.h>
 #include "GameUtils.h"
 
-#include "CheatProtection.h"
-
 #pragma warning(disable: 4018)  // conditional expression is constant
 #pragma warning(disable: 4018)  // conditional expression is constant
 #pragma warning(disable: 4503)  // decorated name length exceeded, name was truncated

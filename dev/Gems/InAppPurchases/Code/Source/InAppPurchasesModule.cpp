@@ -13,146 +13,28 @@
 #include "InAppPurchases_precompiled.h"
 
 #include "InAppPurchasesModule.h"
+#include "InAppPurchasesSystemComponent.h"
 #include <platform_impl.h>
-
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 
 namespace InAppPurchases
 {
-    InAppPurchasesModule::InAppPurchasesModule() : CryHooksModule()
+    InAppPurchasesModule::InAppPurchasesModule()
+        : AZ::Module()
     {
-        InAppPurchasesRequestBus::Handler::BusConnect();
+        // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
+        m_descriptors.insert(m_descriptors.end(), {
+            SystemComponent::CreateDescriptor(),
+        });
     }
 
-    InAppPurchasesModule::~InAppPurchasesModule()
+    /**
+    * Add required SystemComponents to the SystemEntity.
+    */
+    AZ::ComponentTypeList InAppPurchasesModule::GetRequiredSystemComponents() const
     {
-        InAppPurchasesInterface::DestroyInstance();
-        InAppPurchasesRequestBus::Handler::BusDisconnect();
-    }
-
-    void InAppPurchasesModule::Initialize()
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->Initialize();
-        }
-    }
-
-    void InAppPurchasesModule::QueryProductInfoById(const AZStd::string& productId) const
-    {
-        AZStd::vector<AZStd::string> productIds;
-        productIds.push_back(productId);
-        InAppPurchasesModule::QueryProductInfoByIds(productIds);
-    }
-
-    void InAppPurchasesModule::QueryProductInfoByIds(AZStd::vector<AZStd::string>& productIds) const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->QueryProductInfo(productIds);
-        }
-    }
-
-    void InAppPurchasesModule::QueryProductInfo() const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->QueryProductInfo();
-        }
-    }
-
-    const AZStd::vector<AZStd::unique_ptr<ProductDetails const> >* InAppPurchasesModule::GetCachedProductInfo() const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            return &InAppPurchasesInterface::GetInstance()->GetCache()->GetCachedProductDetails();
-        }
-        return nullptr;
-    }
-
-    const AZStd::vector<AZStd::unique_ptr<PurchasedProductDetails const> >* InAppPurchasesModule::GetCachedPurchasedProductInfo() const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            return &InAppPurchasesInterface::GetInstance()->GetCache()->GetCachedPurchasedProductDetails();
-        }
-        return nullptr;
-    }
-
-    void InAppPurchasesModule::PurchaseProductWithDeveloperPayload(const AZStd::string& productId, const AZStd::string& developerPayload) const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->PurchaseProduct(productId, developerPayload);
-        }
-    }
-
-    void InAppPurchasesModule::PurchaseProduct(const AZStd::string& productId) const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->PurchaseProduct(productId);
-        }
-    }
-
-    void InAppPurchasesModule::QueryPurchasedProducts() const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->QueryPurchasedProducts();
-        }
-    }
-    
-    void InAppPurchasesModule::RestorePurchasedProducts() const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->RestorePurchasedProducts();
-        }
-    }
-    
-    void InAppPurchasesModule::ConsumePurchase(const AZStd::string& purchaseToken) const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->ConsumePurchase(purchaseToken);
-        }
-    }
-    
-    void InAppPurchasesModule::FinishTransaction(const AZStd::string& transactionId, bool downloadHostedContent) const
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->FinishTransaction(transactionId, downloadHostedContent);
-        }
-    }
-
-    void InAppPurchasesModule::ClearCachedProductDetails()
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->GetCache()->ClearCachedProductDetails();
-        }
-    }
-
-    void InAppPurchasesModule::ClearCachedPurchasedProductDetails()
-    {
-        if (InAppPurchasesInterface::GetInstance() != nullptr)
-        {
-            InAppPurchasesInterface::GetInstance()->GetCache()->ClearCachedPurchasedProductDetails();
-        }
-    }
-
-    void InAppPurchasesModule::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
-    {
-        switch (event)
-        {
-        case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-        {
-            RegisterExternalFlowNodes();
-        }
-        break;
-        }
+        return AZ::ComponentTypeList{
+            azrtti_typeid<SystemComponent>(),
+        };
     }
 }
 

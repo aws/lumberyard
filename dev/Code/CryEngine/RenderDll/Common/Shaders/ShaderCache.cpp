@@ -1282,6 +1282,9 @@ string CShaderMan::mfGetShaderCompileFlags(EHWShaderClass eClass, UPipelineState
     else
     if (CParserBin::m_nPlatform == SF_ORBIS) // ACCEPTED_USE
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ShaderCache_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         return pCompilerOrbis; // ACCEPTED_USE
     }
     else
@@ -2070,8 +2073,6 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
         mfInitShadersList(NULL);
         mfPreloadShaderExts();
         _PrecacheShaderList(bStatsOnly);
-
-        _SetVar("r_ShadersOrbis", 0); // ACCEPTED_USE
     }
     else
     if (CRenderer::CV_r_shadersdurango) // ACCEPTED_USE

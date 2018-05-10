@@ -1,92 +1,113 @@
 {
-    "name": "TomCrypt", 
-    "source": "@ROOT@/Code/SDKs/LibTomCrypt", 
-    "description": "LibTomCrypt open source library (http://www.libtom.org/)", 
+    "name": "TomCrypt",
+    "source": "@3P:libtomcrypt@",
+    "description": "LibTomCrypt open source library (http://www.libtom.org/)",
     "includes": [
         "src/headers"
-    ], 
-    "defines": [], 
-    "lib_required": "True", 
+    ],
+    "defines": [],
+    "lib_required": "True",
     "platform": {
         "win_x64_vs2013": {
             "libpath": [
                 "lib/x64"
-            ], 
+            ],
             "lib_release": [
                 "libtomcrypt.lib"
-            ], 
+            ],
             "lib_debug": [
                 "libtomcrypt_debug.lib"
             ]
-        }, 
+        },
         "win_x64_vs2015": {
             "libpath": [
                 "lib/x64_vc14"
-            ], 
+            ],
             "lib_release": [
                 "libtomcrypt.lib"
-            ], 
+            ],
             "lib_debug": [
                 "libtomcrypt_debug.lib"
             ]
-        }, 
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "durango_vs2015": {
+            "libpath": [
+                "lib/x64_vc14"
+            ],
+            "lib_release": [
+                "libtomcrypt.lib"
+            ],
+            "lib_debug": [
+                "libtomcrypt_debug.lib"
+            ]
+        },
+        "durango_vs2017": "@durango_vs2015",
+        "orbis_vs2015": {
+            "libpath": [
+                "lib/orbis"
+            ],
+            "lib": [
+                "libtomcrypt.a"
+            ]
+        },
         "darwin_x64": {
             "libpath": [
                 "lib/mac"
-            ], 
+            ],
             "lib": [
                 "libtomcrypt.a"
-            ], 
+            ],
             "linkflags": [
-                "-force_load", 
+                "-force_load",
                 "%LIBPATH(libtomcrypt.a)"
             ]
-        }, 
+        },
         "ios": {
             "libpath": [
                 "lib/ios"
-            ], 
+            ],
             "lib": [
                 "libtomcrypt.a"
-            ], 
+            ],
             "linkflags": [
-                "-force_load", 
+                "-force_load",
                 "%LIBPATH(libtomcrypt.a)"
             ]
-        }, 
+        },
         "appletv": {
             "libpath": [
                 "lib/appletv"
-            ], 
+            ],
             "lib": [
                 "libtomcrypt.a"
-            ], 
+            ],
             "linkflags": [
-                "-force_load", 
+                "-force_load",
                 "%LIBPATH(libtomcrypt.a)"
             ]
-        }, 
+        },
         "android_armv7_gcc": {
             "libpath": [
                 "lib/android-armeabi-v7a"
-            ], 
+            ],
             "lib": [
                 "libtomcrypt.a"
             ]
-        }, 
-        "android_armv7_clang": "@android_armv7_gcc", 
+        },
+        "android_armv7_clang": "@android_armv7_gcc",
         "android_armv8_clang": {
             "libpath": [
                 "lib/android-arm64-v8a"
-            ], 
+            ],
             "lib": [
                 "libtomcrypt.a"
             ]
-        }, 
+        },
         "linux_x64": {
             "libpath": [
                 "lib/linux"
-            ], 
+            ],
             "lib": [
                 "libtomcrypt.a"
             ]

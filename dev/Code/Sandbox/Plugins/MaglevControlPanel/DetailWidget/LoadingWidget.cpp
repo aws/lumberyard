@@ -28,8 +28,8 @@
 #include <DetailWidget/LoadingWidget.moc>
 #include <ResourceManagementView.h>
 
-LoadingWidget::LoadingWidget(ResourceManagementView* view)
-    : DetailWidget {view}
+LoadingWidget::LoadingWidget(ResourceManagementView* view, QWidget* parent)
+    : DetailWidget {view, parent}
 {
 
     // root

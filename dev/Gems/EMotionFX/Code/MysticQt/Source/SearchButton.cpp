@@ -13,7 +13,6 @@
 // include the required headers
 #include "SearchButton.h"
 #include <MCore/Source/LogManager.h>
-#include <MCore/Source/UnicodeString.h>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLineEdit>

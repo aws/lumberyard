@@ -117,7 +117,7 @@ namespace RenderGL
         delete mRandomVectorTexture;
 
         // clear the string memory
-        mShaderPath.Clear();
+        mShaderPath.clear();
     }
 
 
@@ -500,10 +500,10 @@ namespace RenderGL
     // LoadPostProcessShader
     PostProcessShader* GraphicsManager::LoadPostProcessShader(const char* cFileName)
     {
-        MCore::String filename = mShaderPath + MCore::String(cFileName);
+        AZStd::string filename = mShaderPath + AZStd::string(cFileName);
 
         // check if the shader is already in the cache
-        Shader* s = mShaderCache.FindShader(filename.AsChar());
+        Shader* s = mShaderCache.FindShader(filename.c_str());
         if (s)
         {
             return (PostProcessShader*)s;
@@ -511,13 +511,13 @@ namespace RenderGL
 
         // load the shader from disk
         PostProcessShader* shader = new PostProcessShader();
-        if (!shader->Init(filename.AsChar()))
+        if (!shader->Init(filename.c_str()))
         {
             delete shader;
             return nullptr;
         }
 
-        mShaderCache.AddShader(filename.AsChar(), shader);
+        mShaderCache.AddShader(filename.c_str(), shader);
         return shader;
     }
 
@@ -525,40 +525,40 @@ namespace RenderGL
     // LoadShader
     GLSLShader* GraphicsManager::LoadShader(const char* vertexFileName, const char* pixelFileName)
     {
-        MCore::Array<MCore::String> defines;
+        MCore::Array<AZStd::string> defines;
         return LoadShader(vertexFileName, pixelFileName, defines);
     }
 
 
     // LoadShader
-    GLSLShader* GraphicsManager::LoadShader(const char* vFile, const char* pFile, MCore::Array<MCore::String>& defines)
+    GLSLShader* GraphicsManager::LoadShader(const char* vFile, const char* pFile, MCore::Array<AZStd::string>& defines)
     {
-        MCore::String vStr;
-        MCore::String pStr;
+        AZStd::string vStr;
+        AZStd::string pStr;
 
         if (vFile)
         {
-            vStr.Format("%s%s", mShaderPath.AsChar(), vFile);
+            vStr = AZStd::string::format("%s%s", mShaderPath.c_str(), vFile);
         }
 
         if (pFile)
         {
-            pStr.Format("%s%s", mShaderPath.AsChar(), pFile);
+            pStr = AZStd::string::format("%s%s", mShaderPath.c_str(), pFile);
         }
 
         // construct the lookup string for the shader cache
-        MCore::String dStr;
+        AZStd::string dStr;
         const uint32 numDefines = defines.GetLength();
         for (uint32 n = 0; n < numDefines; n++)
         {
-            dStr.FormatAdd("#%s", defines[n].AsChar());
+            dStr += AZStd::string::format("#%s", defines[n].c_str());
         }
 
-        MCore::String cStr;
-        cStr.Format("%s%s%s", vStr.AsChar(), pStr.AsChar(), dStr.AsChar());
+        AZStd::string cStr;
+        cStr = AZStd::string::format("%s%s%s", vStr.c_str(), pStr.c_str(), dStr.c_str());
 
         // check if the shader is already in the cache
-        Shader* cShader = mShaderCache.FindShader(cStr.AsChar());
+        Shader* cShader = mShaderCache.FindShader(cStr.c_str());
         if (cShader)
         {
             return (GLSLShader*)cShader;
@@ -566,13 +566,13 @@ namespace RenderGL
 
         // load the shader from disk
         GLSLShader* shader = new GLSLShader();
-        if (!shader->Init(vFile ? vStr.AsChar() : nullptr, pFile ? pStr.AsChar() : nullptr, defines))
+        if (!shader->Init(vFile ? vStr.c_str() : nullptr, pFile ? pStr.c_str() : nullptr, defines))
         {
             delete shader;
             return nullptr;
         }
 
-        mShaderCache.AddShader(cStr.AsChar(), shader);
+        mShaderCache.AddShader(cStr.c_str(), shader);
         return shader;
     }
 

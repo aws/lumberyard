@@ -82,8 +82,8 @@ namespace MysticQt
 
     private:
         void GetButtonGradientColors(uint32 rowIndex, uint32 numRows, QColor startColor, QColor endColor, QColor* outStartColor, QColor* outEndColor);
-        void GetBorderStyleSheet(MCore::String* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j);
-        void PrepareStyleSheet(MCore::String* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j);
+        void GetBorderStyleSheet(AZStd::string* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j);
+        void PrepareStyleSheet(AZStd::string* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j);
 
         QGridLayout*    mGridLayout;
         EMode           mMode;

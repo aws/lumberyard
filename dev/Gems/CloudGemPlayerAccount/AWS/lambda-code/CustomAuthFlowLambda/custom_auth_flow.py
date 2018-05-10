@@ -116,18 +116,13 @@ def verify_auth_challenge_response(event):
 
     # Use the provided username and password to attempt authentication using the admin API.
     try:
-        idpResponse = account_utils.get_user_pool_client().admin_initiate_auth(
-            UserPoolId = event['userPoolId'],
-            ClientId = event['callerContext']['clientId'],
-            AuthFlow = 'ADMIN_NO_SRP_AUTH',
-            AuthParameters = {
-                'USERNAME': event['userName'],
-                'PASSWORD': password
-            }
-        )
+        idpResponse = __get_identity_provider_response(event, password)
     except:
-        traceback.print_exc()
-        raise errors.ClientError("Authentication failed")
+        try:
+            idpResponse = __get_identity_provider_response(event, new_password)
+        except:
+            traceback.print_exc()
+            raise errors.ClientError("Authentication failed")
 
     if 'AuthenticationResult' not in idpResponse:
         if 'ChallengeName' in idpResponse:
@@ -187,10 +182,24 @@ def verify_auth_challenge_response(event):
              'CognitoUsername': event['userName']
         })
     else:
-        account_utils.create_account({
-             'AccountId': str(uuid.uuid4()),
+        account = account_utils.get_account_for_user_name(event['userName'])
+        account_id = account['AccountId'] if account else str(uuid.uuid4())
+        account_utils.create_or_update_account({
+             'AccountId': account_id,
              'CognitoIdentityId': idResponse['IdentityId'],
              'CognitoUsername': event['userName']
         })
 
     event['response']['answerCorrect'] = True
+
+def __get_identity_provider_response(event, password):
+    idpResponse = account_utils.get_user_pool_client().admin_initiate_auth(
+        UserPoolId = event['userPoolId'],
+        ClientId = event['callerContext']['clientId'],
+        AuthFlow = 'ADMIN_NO_SRP_AUTH',
+        AuthParameters = {
+            'USERNAME': event['userName'],
+            'PASSWORD': password
+        }
+    )
+    return idpResponse

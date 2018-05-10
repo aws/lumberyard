@@ -23,3 +23,6 @@
 #include "Start.h"
 #include "String.h"
 #include "EBusEventHandler.h"
+#include "ExtractProperty.h"
+#include "GetVariable.h"
+#include "SetVariable.h"

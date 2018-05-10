@@ -19,16 +19,27 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     #if defined(AZ_PLATFORM_WINDOWS)
     const char* const SATLXmlTags::sPlatform = "Windows";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_OSX)
     const char* const SATLXmlTags::sPlatform = "Mac";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_LINUX_X64)
     const char* const SATLXmlTags::sPlatform = "Linux";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_ANDROID)
     const char* const SATLXmlTags::sPlatform = "Android";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_IOS)
     const char* const SATLXmlTags::sPlatform = "iOS";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_TV)
     const char* const SATLXmlTags::sPlatform = "AppleTV";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ATLEntities_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
     #else
     #error "Unsupported platform."
     #endif

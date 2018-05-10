@@ -14,11 +14,11 @@
 
 #include "EMotionFXConfig.h"
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 
 // include MCore related files
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Quaternion.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/SmallArray.h>
 #include <MCore/Source/OBB.h>
@@ -513,7 +513,7 @@ namespace EMotionFX
          * Get the name of the actor as a Core string object.
          * @result The string containing the name of the actor.
          */
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
 
         /**
          * Set the filename of the actor.
@@ -528,10 +528,10 @@ namespace EMotionFX
         const char* GetFileName() const;
 
         /**
-         * Returns the filename of the actor, as a MCore::String object.
+         * Returns the filename of the actor, as a AZStd::string object.
          * @result The filename of the actor.
          */
-        const MCore::String& GetFileNameString() const;
+        const AZStd::string& GetFileNameString() const;
 
         /**
          * Add a dependency to the actor.
@@ -937,8 +937,8 @@ namespace EMotionFX
         MCore::Array<LODLevel>          mLODs;
         MCore::Array<Dependency>        mDependencies;          /**< The dependencies on other actors (shared meshes and transforms). */
         AZStd::vector<NodeInfo>         mNodeInfos;             /**< The per node info, shared between lods. */
-        MCore::String                   mName;                  /**< The name of the actor. */
-        MCore::String                   mFileName;              /**< The filename of the actor. */
+        AZStd::string                   mName;                  /**< The name of the actor. */
+        AZStd::string                   mFileName;              /**< The filename of the actor. */
         MCore::Array<NodeMirrorInfo>    mNodeMirrorInfos;       /**< The array of node mirror info. */
         MCore::Array< MCore::Array< Material* > >   mMaterials; /**< A collection of materials (for each lod). */
         MCore::Array< MorphSetup* >     mMorphSetups;           /**< A  morph setup for each geometry LOD. */

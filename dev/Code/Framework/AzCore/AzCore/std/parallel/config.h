@@ -9,12 +9,17 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_PARALLEL_CONFIG_INCLUDED
-#define AZSTD_PARALLEL_CONFIG_INCLUDED
+#pragma once
 
 #include <AzCore/std/base.h>
 
 #include <AzCore/PlatformDef.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CONFIG_H_SECTION_1 1
+#define CONFIG_H_SECTION_2 2
+#endif
 
 /**
  * \page Parallel Parallel Processing
@@ -116,6 +121,9 @@
 
 
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CONFIG_H_SECTION_1
+#include AZ_RESTRICTED_FILE(config_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include <pthread.h>
 #   include <semaphore.h>
@@ -160,6 +168,9 @@ namespace AZStd
     };
     typedef HANDLE              native_thread_handle_type;
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CONFIG_H_SECTION_2
+#include AZ_RESTRICTED_FILE(config_h, AZ_RESTRICTED_PLATFORM)
 #elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     // Mutex
     typedef pthread_mutex_t     native_mutex_data_type;
@@ -218,6 +229,3 @@ namespace AZStd
     //  basic_ostream<charT, traits>&
     //      operator<< (basic_ostream<charT, traits>& out, AZStd::thread::id id);
 }
-
-#endif // AZSTD_PARALLEL_CONFIG_INCLUDED
-#pragma once

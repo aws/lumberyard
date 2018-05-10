@@ -15,6 +15,7 @@
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/NodeGroup.h>
 #include <EMotionFX/Source/Importer/ActorFileFormat.h>
+#include <MCore/Source/StringConversions.h>
 
 
 namespace ExporterLib
@@ -99,13 +100,13 @@ namespace ExporterLib
         MCore::LogDetailedInfo("    + IncludeInBoundsCalc: %d", node->GetIncludeInBoundsCalc());
 
         // log skeletal lods
-        MCore::String lodString = "    + Skeletal LODs: ";
+        AZStd::string lodString = "    + Skeletal LODs: ";
         for (l = 0; l < 32; ++l)
         {
             int32 flag = node->GetSkeletalLODStatus(l);
-            lodString += MCore::String(flag);
+            lodString += AZStd::to_string(flag);
         }
-        MCore::LogDetailedInfo(lodString.AsChar());
+        MCore::LogDetailedInfo(lodString.c_str());
 
         // endian conversion
         ConvertFileVector3(&nodeChunk.mLocalPos,           targetEndianType);
@@ -201,16 +202,16 @@ namespace ExporterLib
         // logging
         MCore::LogDetailedInfo("- Group: name='%s'", nodeGroup->GetName());
         MCore::LogDetailedInfo("    + DisabledOnDefault: %i", groupChunk.mDisabledOnDefault);
-        MCore::String nodesString;
+        AZStd::string nodesString;
         for (i = 0; i < numNodes; ++i)
         {
-            nodesString += MCore::String(nodeGroup->GetNode(static_cast<uint16>(i)));
+            nodesString += AZStd::to_string(nodeGroup->GetNode(static_cast<uint16>(i)));
             if (i < numNodes - 1)
             {
                 nodesString += ", ";
             }
         }
-        MCore::LogDetailedInfo("    + Nodes (%i): %s", groupChunk.mNumNodes, nodesString.AsChar());
+        MCore::LogDetailedInfo("    + Nodes (%i): %s", groupChunk.mNumNodes, nodesString.c_str());
 
         // endian conversion
         ConvertUnsignedShort(&groupChunk.mNumNodes, targetEndianType);

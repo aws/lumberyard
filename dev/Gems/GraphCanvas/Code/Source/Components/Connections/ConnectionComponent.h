@@ -22,6 +22,7 @@
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Utils/StateControllers/StateController.h>
 
 namespace GraphCanvas
 {
@@ -51,11 +52,11 @@ namespace GraphCanvas
         AZ_COMPONENT(ConnectionComponent, "{14BB1535-3B30-4B1C-8324-D864963FBC76}");
         static void Reflect(AZ::ReflectContext* context);
 		
-        static AZ::Entity* CreateBaseConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, const AZStd::string& selectorClass);
-        static AZ::Entity* CreateGeneralConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, const AZStd::string& substyle = "");
+        static AZ::Entity* CreateBaseConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection, const AZStd::string& selectorClass);
+        static AZ::Entity* CreateGeneralConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection, const AZStd::string& substyle = "");
 
         ConnectionComponent();
-        ConnectionComponent(const Endpoint& sourceEndpoint,const Endpoint& targetEndpoint);
+        ConnectionComponent(const Endpoint& sourceEndpoint,const Endpoint& targetEndpoint, bool createModelConnection = true);
         ~ConnectionComponent() override = default;
 
         // AZ::Component
@@ -123,6 +124,11 @@ namespace GraphCanvas
         ////
 
     protected:
+
+        // VS2013 Fixes
+        ConnectionComponent(const ConnectionComponent&) = delete;
+        const ConnectionComponent& operator=(const ConnectionComponent&) = delete;
+        ////
         
         void FinalizeMove();
 
@@ -140,8 +146,8 @@ namespace GraphCanvas
         void UpdateMovePosition(const QPointF& scenePos);
         void FinalizeMove(const QPointF& scenePos, const QPoint& screenPos);        
 
-        //! The ID of the scene this connection belongs to.
-        AZ::EntityId m_sceneId;
+        //! The Id of the graph this connection belongs to.
+        GraphId m_graphId;
 
         //! The source endpoint that this connection is from.
         Endpoint m_sourceEndpoint;
@@ -163,6 +169,9 @@ namespace GraphCanvas
 
         //! Store custom data for this connection
         AZStd::any m_userData;
+
+        StateSetter<RootGraphicsItemDisplayState> m_nodeDisplayStateStateSetter;
+        StateSetter<RootGraphicsItemDisplayState> m_connectionStateStateSetter;
     };
 
     class ConnectionEventFilter

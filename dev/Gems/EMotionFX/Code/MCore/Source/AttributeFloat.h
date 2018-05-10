@@ -15,6 +15,7 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Attribute.h"
+#include "StringConversions.h"
 
 namespace MCore
 {
@@ -55,16 +56,11 @@ namespace MCore
             mValue = static_cast<const AttributeFloat*>(other)->GetValue();
             return true;
         }
-        bool InitFromString(const String& valueString) override
+        bool InitFromString(const AZStd::string& valueString) override
         {
-            if (valueString.CheckIfIsValidFloat() == false)
-            {
-                return false;
-            }
-            mValue = valueString.ToFloat();
-            return true;
+            return AzFramework::StringFunc::LooksLikeFloat(valueString.c_str(), &mValue);
         }
-        bool ConvertToString(String& outString) const override      { outString.Format("%.8f", mValue); return true; }
+        bool ConvertToString(AZStd::string& outString) const override      { outString = AZStd::string::format("%.8f", mValue); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeFloat); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_FLOATSPINNER; }
         void Scale(float scaleFactor) override                      { mValue *= scaleFactor; }

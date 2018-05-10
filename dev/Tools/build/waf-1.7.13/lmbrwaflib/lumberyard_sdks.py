@@ -73,10 +73,10 @@ def get_platform_lib_prefix(bld):
     platform = bld.env['PLATFORM']
     if any(substring in platform for substring in [
         'darwin',
-    'ios',
-    'appletv',
-    'linux',
-    'android',
+	'ios',
+	'appletv',
+	'linux',
+	'android',
     ]):
         return 'lib'
     return ''
@@ -305,7 +305,9 @@ def BuildPlatformLibraryDirectory(bld, forceStaticLinking):
         platformDir = 'windows/intel64'
         compilerDir = None
 
-        if bld.env['MSVC_VERSION'] == 14:
+        if bld.env['MSVC_VERSION'] == 15:
+            compilerDir = 'vs2017'
+        elif bld.env['MSVC_VERSION'] == 14:
             compilerDir = 'vs2015'
         elif bld.env['MSVC_VERSION'] == 12:
             compilerDir = 'vs2013'
@@ -354,7 +356,7 @@ def get_python_home_lib_and_dll(ctx, platform):
     :return:    see the description
     """
 
-    if platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_test', 'project_generator']:
+    if platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'win_x64_test', 'project_generator']:
         python_version = '2.7.12'
         python_variant = 'windows'
         python_includes = 'include'
@@ -437,7 +439,7 @@ def enable_embedded_python(self):
     platform = self.env['PLATFORM'].lower()
     config = self.env['CONFIGURATION'].lower()
 
-    if platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_test', 'linux_x64', 'project_generator']:
+    if platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'win_x64_test', 'linux_x64', 'project_generator']:
 
         # Set the USE_DEBUG_PYTHON environment variable to the location of
         # a debug build of python if you want to use one for debug builds.
@@ -504,7 +506,7 @@ def apply_embedded_python_dependency(self):
     """
     current_platform = self.bld.env['PLATFORM']
 
-    if current_platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_test', 'linux_x64']:
+    if current_platform in ['win_x64_vs2013', 'win_x64_vs2015', 'win_x64_vs2017', 'win_x64_test', 'linux_x64']:
         # Only supported for win_x64 and linux
         _, _, _, python_dll = get_python_home_lib_and_dll(self.bld, current_platform)
         copy_local_python_to_target(self, python_dll)

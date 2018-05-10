@@ -179,21 +179,40 @@ export class BotEntry {
 	**/
     public delete(): any {
         var promise = new Promise(function (resolve, reject) {
-            this._apiHandler.deleteBot(this.name).subscribe(response => {
-                let obj = JSON.parse(response.body.text());
-                if (obj.result.status == "INUSE") {
-                    this.toastr.error("The bot '" + this.name + "' is currently used by an alias. Delete the alisas from '" + this.name + "'");
-                    reject();
-                }
-                else if (obj.result.status == "DELETED") {
-                    this.toastr.success("The bot '" + this.name + "' was deleted.");
-                    resolve();
-                }
-                else {
-                    this.toastr.error("The bot '" + this.name + "' could not be deleted. " + obj.result.status);
-                    reject();
-                }
-            });
+            if (this.version == "$LATEST") {
+                this._apiHandler.deleteBot(this.name).subscribe(response => {
+                    let obj = JSON.parse(response.body.text());
+                    if (obj.result.status == "INUSE") {
+                        this.toastr.error("The bot '" + this.name + "' is currently used by an alias. Delete the alisas from '" + this.name + "'");
+                        reject();
+                    }
+                    else if (obj.result.status == "DELETED") {
+                        this.toastr.success("The bot '" + this.name + "' was deleted.");
+                        resolve();
+                    }
+                    else {
+                        this.toastr.error("The bot '" + this.name + "' could not be deleted. " + obj.result.status);
+                        reject();
+                    }
+                });
+            }
+            else {
+                this._apiHandler.deleteBotVersion(this.name, this.version).subscribe(response => {
+                    let obj = JSON.parse(response.body.text());
+                    if (obj.result.status == "INUSE") {
+                        this.toastr.error("The selected version of the bot '" + this.name + "' is currently used by an alias. Delete the alisas from '" + this.name + "'");
+                        reject();
+                    }
+                    else if (obj.result.status == "DELETED") {
+                        this.toastr.success("The selected version of the bot '" + this.name + "' was deleted.");
+                        resolve();
+                    }
+                    else {
+                        this.toastr.error("The selected version of the bot '" + this.name + "' could not be deleted. " + obj.result.status);
+                        reject();
+                    }
+                });
+            }
         }.bind(this));
         return promise;
     }

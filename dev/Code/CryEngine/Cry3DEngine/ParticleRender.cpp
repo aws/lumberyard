@@ -701,7 +701,6 @@ void CParticle::AddLight(const SRendParams& RenParams, const SRenderingPassInfo&
         const Vec4* vLight = (Vec4*) &dl.m_Origin.x;
         if ((cColor.r + cColor.g + cColor.b) > fMinColorThreshold && vLight->w > fMinRadiusThreshold)
         {
-            Get3DEngine()->SetupLightScissors(&dl, passInfo);
             dl.m_n3DEngineUpdateFrameID = passInfo.GetMainFrameID();
             SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
             Get3DEngine()->AddLightToRenderer(dl, 1.f, passInfo, rendItemSorter);

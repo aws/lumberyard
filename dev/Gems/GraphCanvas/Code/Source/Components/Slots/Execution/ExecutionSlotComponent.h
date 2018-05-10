@@ -30,6 +30,8 @@ namespace GraphCanvas
         ~ExecutionSlotComponent();
 
     protected:
-        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const override;
+        ExecutionSlotComponent(const ExecutionSlotComponent&) = delete;
+        ExecutionSlotComponent& operator=(const ExecutionSlotComponent&) = delete;
+        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const override;
     };
 }

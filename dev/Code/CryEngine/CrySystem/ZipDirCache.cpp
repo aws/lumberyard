@@ -174,6 +174,13 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
         return nError;
     }
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define ZIPDIRCACHE_CPP_SECTION_1 1
+#define ZIPDIRCACHE_CPP_SECTION_2 2
+#endif
+
 #if !defined(SUPPORT_UNENCRYPTED_PAKS)
     if (!pFileEntry->IsEncrypted())
     {
@@ -241,6 +248,13 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
             {
 #if defined(APPLE) || defined(LINUX)
                 int errnoVal = errno;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ZIPDIRCACHE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(ZipDirCache_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
                 int errnoVal = *_errno();
 #endif
@@ -263,6 +277,13 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
             {
 #if defined(APPLE) || defined(LINUX)
                 int errnoVal = errno;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ZIPDIRCACHE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(ZipDirCache_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
                 int errnoVal = *_errno();
 #endif

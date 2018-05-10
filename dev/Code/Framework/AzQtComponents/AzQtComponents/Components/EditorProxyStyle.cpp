@@ -24,6 +24,7 @@
 #include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 
+#include <QTimer>
 #include <QAbstractItemView>
 #include <QToolBar>
 #include <QTreeView>
@@ -311,7 +312,7 @@ namespace AzQtComponents
     {
         static struct Filter : public QObject
         {
-            bool eventFilter(QObject* obj, QEvent* ev)
+            bool eventFilter(QObject* obj, QEvent* ev) override
             {
                 if (obj->isWidgetType() &&
                     (ev->type() == QEvent::Enter ||
@@ -542,11 +543,19 @@ namespace AzQtComponents
         }
         else if (auto view = qobject_cast<QAbstractItemView*>(widget))
         {
-            if (findParent<QComboBox>(view) && !qobject_cast<QStyledItemDelegate*>(view->itemDelegate()))
+            if (findParent<QComboBox>(view))
             {
-                // By default QCombobox uses QItemDelegate for it's list view, but that doesn't honour css
+                // By default QCombobox uses QItemDelegate for its list view, but that doesn't honour css
                 // So set a QStyledItemDelegate to get stylesheets working
-                view->setItemDelegate(new QStyledItemDelegate(view));
+                QTimer::singleShot(0, view, [view] {
+                    // But do it in a delayed fashion! At this point we're inside QComboBoxPrivateContainer constructor
+                    // and the next thing it will do is set the old delegate which we don't want
+                    // Use a singleshot to guarantee we have the last word regarding the item delegate.
+                    if (!qobject_cast<QStyledItemDelegate*>(view->itemDelegate()))
+                    {
+                        view->setItemDelegate(new QStyledItemDelegate(view));
+                    }
+                });
             }
             else if (auto tableView = qobject_cast<QTableView*>(widget))
             {

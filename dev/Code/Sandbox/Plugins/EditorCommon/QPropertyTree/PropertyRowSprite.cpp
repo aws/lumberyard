@@ -139,7 +139,8 @@ bool PropertyRowSprite::onContextMenu(QMenu &menu, QPropertyTree* tree)
     action = menu.addAction("Clear");
     QObject::connect( action,
                         &QAction::triggered,
-                        [ this, tree ]()
+                        tree,
+                        [ this, tree ]
                         {
                             Clear( tree );
                         } );
@@ -149,7 +150,8 @@ bool PropertyRowSprite::onContextMenu(QMenu &menu, QPropertyTree* tree)
     action = menu.addAction(buttonIcon(tree, buttonIndex--), "Pick Resource...");
     QObject::connect( action,
                         &QAction::triggered,
-                        [ this, tree ]()
+                        tree,
+                        [ this, tree ]
                         {
                             PropertyActivationEvent ev;
                             ev.tree = tree;
@@ -161,7 +163,8 @@ bool PropertyRowSprite::onContextMenu(QMenu &menu, QPropertyTree* tree)
         action = menu.addAction(buttonIcon(tree, buttonIndex), "Edit");
         QObject::connect( action,
                             &QAction::triggered,
-                            [ this, tree ]()
+                            tree,
+                            [ this, tree ]
                             {
                                 PropertyActivationEvent ev;
                                 ev.tree = tree;

@@ -183,6 +183,8 @@ namespace AssetUtilities
     //! If you fail to delete the temp workspace, it will eventually fill the folder up and cause problems.
     bool CreateTempWorkspace(QString& result);
 
+    bool CreateTempRootFolder(QString startFolder, QDir& tempRoot);
+
     AZStd::string ComputeJobLogFolder();
     AZStd::string ComputeJobLogFileName(const AzToolsFramework::AssetSystem::JobInfo& jobInfo);
     AZStd::string ComputeJobLogFileName(const AssetProcessor::JobEntry& jobEntry);

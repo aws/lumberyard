@@ -2484,7 +2484,7 @@ void CAIPathObject::UpdateGameArea(bool bRemove)
 
         if (GetNavigation()->DoesNavigationShapeExists(GetName().toUtf8().data(), AREATYPE_PATH, m_bRoad))
         {
-            gEnv->pSystem->GetILog()->LogError("AI Path: Path '%s' already exists in AIsystem, please rename the path.", GetName());
+            gEnv->pSystem->GetILog()->LogError("AI Path: Path '%s' already exists in AIsystem, please rename the path.", GetName().toUtf8().constData());
             m_updateSucceed = false;
             return;
         }
@@ -2766,7 +2766,7 @@ void CAIShapeObject::UpdateGameArea(bool bRemove)
 
         if (GetNavigation()->DoesNavigationShapeExists(GetName().toUtf8().data(), AREATYPE_GENERIC))
         {
-            gEnv->pSystem->GetILog()->LogError("AI Shape: Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
+            gEnv->pSystem->GetILog()->LogError("AI Shape: Shape '%s' already exists in AIsystem, please rename the shape.", GetName().toUtf8().constData());
             m_updateSucceed = false;
             return;
         }
@@ -2831,7 +2831,7 @@ void CAIOcclusionPlaneObject::UpdateGameArea(bool bRemove)
 
         if (GetNavigation()->DoesNavigationShapeExists(GetName().toUtf8().data(), AREATYPE_OCCLUSION_PLANE))
         {
-            gEnv->pSystem->GetILog()->LogError("OcclusionPlane: Shape '%s' already exists in AIsystem, please rename the shape.", GetName());
+            gEnv->pSystem->GetILog()->LogError("OcclusionPlane: Shape '%s' already exists in AIsystem, please rename the shape.", GetName().toUtf8().constData());
             m_updateSucceed = false;
             return;
         }

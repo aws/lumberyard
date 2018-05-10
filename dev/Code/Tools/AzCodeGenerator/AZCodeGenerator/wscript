@@ -29,11 +29,6 @@ def build(bld):
     linux_x64_lib = ['python2.7', 'z', 'util', 'ncurses', 'dl']
     linux_x64_linkflags = list(linux_x64_cxxflags) # ['-pthread', '-stdlib=libstdc++']
     linux_x64_rpath = bld.Path('Tools/Python/2.7.12/linux_x64/lib')
-    
-    llvm_libs = ['clangFrontend', 'clangSerialization', 'clangDriver', 'clangTooling', 'clangParse',
-                 'clangSema', 'clangAnalysis', 'clangRewriteFrontend', 'clangRewrite', 'clangEdit',
-                 'clangAST', 'clangLex', 'clangBasic', 'LLVMMC', 'LLVMSupport', 'LLVMOption', 'LLVMBitReader',
-                 'LLVMMCParser']
 
     platform, configuration = bld.get_platform_and_configuration()
     pydll = None
@@ -52,28 +47,9 @@ def build(bld):
 
     output_folder_vs2013 = ['Tools/AzCodeGenerator/bin/vc120/']
     output_folder_vs2015 = ['Tools/AzCodeGenerator/bin/vc140/']
+    output_folder_vs2017 = ['Tools/AzCodeGenerator/bin/vc141/']
     output_folder_darwin = ['Tools/AzCodeGenerator/bin/osx/']
     output_folder_linux = ['Tools/AzCodeGenerator/bin/linux/']
-
-
-    win_x64_vs2013_debug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2013/debug/include')]
-    win_x64_vs2013_debug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2013/debug/lib')]
-    win_x64_vs2013_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2013/release/include')]
-    win_x64_vs2013_ndebug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2013/release/lib')]
-    win_x64_vs2015_debug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2015/debug/include')]
-    win_x64_vs2015_debug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2015/debug/lib')]
-    win_x64_vs2015_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/vs2015/release/include')]
-    win_x64_vs2015_ndebug_libpath = [bld.Path('Code/Tools/SDKs/Clang/vs2015/release/lib')]
-    
-    darwin_x64_debug_includes  = [bld.Path('Code/Tools/SDKs/Clang/xcode/debug/include')]
-    darwin_x64_debug_libpath   = [bld.Path('Code/Tools/SDKs/Clang/xcode/debug/lib')]
-    darwin_x64_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/xcode/release/include')]
-    darwin_x64_ndebug_libpath  = [bld.Path('Code/Tools/SDKs/Clang/xcode/release/lib')]
-
-    linux_x64_debug_includes  = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/debug/include')]
-    linux_x64_debug_libpath   = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/debug/lib'), bld.Path('Tools/Python/2.7.12/linux_x64/lib')]
-    linux_x64_ndebug_includes = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/release/include')]
-    linux_x64_ndebug_libpath  = [bld.Path('Code/Tools/SDKs/Clang/linux_x64/release/lib'), bld.Path('Tools/Python/2.7.12/linux_x64/lib')]
 
     bld.CryBuildUtility(
 
@@ -84,7 +60,7 @@ def build(bld):
         file_list           = 'azcodegenerator.waf_files',
         pch                 = 'precompiled.cpp',
 
-        use                 = ['RAPIDJSON'],
+        use                 = ['RAPIDJSON', 'CLANG'],
         features            = ['EmbeddedPython'],
 
         source_artifacts_include = source_artifacts,
@@ -97,51 +73,17 @@ def build(bld):
         darwin_x64_defines  = darwin_x64_defines,
         linux_x64_defines   = linux_x64_defines,
 
-        includes = [bld.Path('Code/Tools/SDKs/Clang/llvm/include')],
-
-        win_x64_vs2013_debug_includes=win_x64_vs2013_debug_includes,
-        win_x64_vs2015_debug_includes=win_x64_vs2015_debug_includes,
-        win_x64_vs2013_debug_dedicated_includes=win_x64_vs2013_debug_includes,
-        win_x64_vs2015_debug_dedicated_includes=win_x64_vs2015_debug_includes,
-        win_x64_vs2013_ndebug_includes=win_x64_vs2013_ndebug_includes,
-        win_x64_vs2015_ndebug_includes=win_x64_vs2015_ndebug_includes,
-        win_x64_vs2013_ndebug_dedicated_includes=win_x64_vs2013_ndebug_includes,
-        win_x64_vs2015_ndebug_dedicated_includes=win_x64_vs2015_ndebug_includes,
-
-        darwin_x64_debug_includes=darwin_x64_debug_includes,
-        darwin_x64_debug_dedicated_includes=darwin_x64_debug_includes,
-        darwin_x64_ndebug_includes=darwin_x64_ndebug_includes,
-        darwin_x64_ndebug_dedicated_includes=darwin_x64_ndebug_includes,
-
-        linux_x64_debug_includes=linux_x64_debug_includes,
-        linux_x64_ndebug_includes=linux_x64_ndebug_includes,
-
-        lib=llvm_libs,
         darwin_x64_lib=darwin_x64_lib,
         linux_x64_lib=linux_x64_lib,
 
-        win_x64_vs2013_debug_libpath=win_x64_vs2013_debug_libpath,
-        win_x64_vs2015_debug_libpath=win_x64_vs2015_debug_libpath,
-        win_x64_vs2013_debug_dedicated_libpath=win_x64_vs2013_debug_libpath,
-        win_x64_vs2015_debug_dedicated_libpath=win_x64_vs2015_debug_libpath,
-        win_x64_vs2013_ndebug_libpath=win_x64_vs2013_ndebug_libpath,
-        win_x64_vs2015_ndebug_libpath=win_x64_vs2015_ndebug_libpath,
-        win_x64_vs2013_ndebug_dedicated_libpath=win_x64_vs2013_ndebug_libpath,
-        win_x64_vs2015_ndebug_dedicated_libpath=win_x64_vs2015_ndebug_libpath,
-
-        darwin_x64_debug_libpath=darwin_x64_debug_libpath,
-        darwin_x64_debug_dedicated_libpath=darwin_x64_debug_libpath,
-        darwin_x64_ndebug_libpath=darwin_x64_ndebug_libpath,
-        darwin_x64_ndebug_dedicated_libpath=darwin_x64_ndebug_libpath,
-
-        linux_x64_debug_libpath=linux_x64_debug_libpath,
-        linux_x64_ndebug_libpath=linux_x64_ndebug_libpath,
+        linux_x64_libpath=[bld.Path('Tools/Python/2.7.12/linux_x64/lib')],
 
         linux_x64_linkflags=linux_x64_linkflags,
         linux_x64_rpath=linux_x64_rpath,
 
         win_x64_vs2013_output_folder=output_folder_vs2013,
         win_x64_vs2015_output_folder=output_folder_vs2015,
+        win_x64_vs2017_output_folder=output_folder_vs2017,
         darwin_x64_output_folder=output_folder_darwin,
         linux_x64_output_folder=output_folder_linux,
 

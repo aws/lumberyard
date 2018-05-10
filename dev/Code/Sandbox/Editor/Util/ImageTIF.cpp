@@ -16,7 +16,7 @@
 #include "CryFile.h"
 
 
-#include "../../../SDKs/tiff/libtiff/tiffio.h"  // TIFF library
+#include "libtiff/tiffio.h"  // TIFF library
 
 // Function prototypes
 static tsize_t libtiffDummyReadProc (thandle_t fd, tdata_t buf, tsize_t size);

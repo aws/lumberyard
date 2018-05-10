@@ -15,7 +15,6 @@
 #include <AzCore/std/function/function_fwd.h>
 #include <AzToolsFramework/Thumbnails/Thumbnail.h>
 #include <QStyledItemDelegate>
-#include <QPointer>
 
 class QWidget;
 class QPainter;
@@ -37,7 +36,7 @@ namespace AzToolsFramework
             explicit EntryDelegate(QWidget* parent = nullptr);
             ~EntryDelegate() override;
 
-            QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+            QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
             void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
             //! Set location where thumbnails are located for this instance of asset browser
             void SetThumbnailContext(const char* thumbnailContext);

@@ -29,6 +29,9 @@ public:
     int i_useKinect;
     int i_seatedTracking;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(InputCVars_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     float i_kinSkeletonMovedDistance;
 

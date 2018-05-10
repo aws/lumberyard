@@ -70,9 +70,8 @@ namespace HttpRequestor
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serialize->Class<HttpRequestorSystemComponent>()
-                ->Version(1)
-                ->SerializerForEmptyClass()
+            serialize->Class<HttpRequestorSystemComponent, AZ::Component>()
+                ->Version(1);
                 ;
             
             if (AZ::EditContext* ec = serialize->GetEditContext())

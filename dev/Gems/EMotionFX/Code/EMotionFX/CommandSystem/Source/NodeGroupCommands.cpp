@@ -15,6 +15,7 @@
 #include "CommandManager.h"
 #include <EMotionFX/Source/NodeGroup.h>
 #include <EMotionFX/Source/ActorManager.h>
+#include <MCore/Source/StringConversions.h>
 
 
 namespace CommandSystem
@@ -42,9 +43,9 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAdjustNodeGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustNodeGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        MCore::String valueString;
+        AZStd::string valueString;
 
         // get the motion id and the corresponding motion pointer
         const int32 actorID = parameters.GetValueAsInt("actorID", this);
@@ -54,15 +55,15 @@ namespace CommandSystem
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
         if (actor == nullptr)
         {
-            outResult.Format("Cannot adjust node group. Actor with id='%i' does not exist.", actorID);
+            outResult = AZStd::string::format("Cannot adjust node group. Actor with id='%i' does not exist.", actorID);
             return false;
         }
 
         // get the node group
-        EMotionFX::NodeGroup* nodeGroup = actor->FindNodeGroupByNameNoCase(valueString.AsChar());
+        EMotionFX::NodeGroup* nodeGroup = actor->FindNodeGroupByNameNoCase(valueString.c_str());
         if (nodeGroup == nullptr)
         {
-            outResult.Format("Cannot adjust node group. Node group with name='%s' does not exist.", valueString.AsChar());
+            outResult = AZStd::string::format("Cannot adjust node group. Node group with name='%s' does not exist.", valueString.c_str());
             return false;
         }
 
@@ -78,7 +79,7 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("newName"))
         {
             parameters.GetValue("newName", this, &valueString);
-            nodeGroup->SetName(valueString.AsChar());
+            nodeGroup->SetName(valueString.c_str());
         }
 
         // check if parameter disabledOnDefault is set and adjust it
@@ -92,26 +93,27 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("nodeNames"))
         {
             // get the node action
-            MCore::String nodeAction;
+            AZStd::string nodeAction;
             parameters.GetValue("nodeAction", this, &valueString);
 
             // get the node names and split the string
-            MCore::String nodeNameString;
+            AZStd::string nodeNameString;
             parameters.GetValue("nodeNames", this, &nodeNameString);
 
             // get the individual node names
-            MCore::Array<MCore::String> nodeNames = nodeNameString.Split(MCore::UnicodeCharacter(';'));
+            AZStd::vector<AZStd::string> nodeNames;
+            AzFramework::StringFunc::Tokenize(nodeNameString.c_str(), nodeNames, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
 
             // get the number of nodes
-            const uint32 numNodes = nodeNames.GetLength();
+            const size_t numNodes = nodeNames.size();
 
             // remove the selected nodes from the node group
-            if (valueString.CheckIfIsEqualNoCase("remove"))
+            if (AzFramework::StringFunc::Equal(valueString.c_str(), "remove", false /* no case */))
             {
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodes; ++i)
                 {
                     // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
+                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].c_str());
                     if (node == nullptr)
                     {
                         continue;
@@ -121,12 +123,12 @@ namespace CommandSystem
                     nodeGroup->RemoveNodeByNodeIndex((uint16)node->GetNodeIndex());
                 }
             }
-            else if (valueString.CheckIfIsEqualNoCase("add")) // add the selected nodes to the node group
+            else if (AzFramework::StringFunc::Equal(valueString.c_str(), "add", false /* no case */)) // add the selected nodes to the node group
             {
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodes; ++i)
                 {
                     // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
+                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].c_str());
                     if (node == nullptr)
                     {
                         continue;
@@ -144,10 +146,10 @@ namespace CommandSystem
                 nodeGroup->GetNodeArray().Clear();
 
                 // add all nodes to the group
-                for (uint32 i = 0; i < numNodes; ++i)
+                for (size_t i = 0; i < numNodes; ++i)
                 {
                     // get the node
-                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].AsChar());
+                    EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(nodeNames[i].c_str());
 
                     // check if node exists
                     if (node == nullptr)
@@ -169,7 +171,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAdjustNodeGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // return if no information about the previous node group was stored
         if (mOldNodeGroup == nullptr)
@@ -181,7 +183,7 @@ namespace CommandSystem
         int32   actorID = parameters.GetValueAsInt("actorID", this);
 
         // get the name
-        MCore::String name;
+        AZStd::string name;
         if (parameters.CheckIfHasParameter("newName"))
         {
             parameters.GetValue("newName", this, &name);
@@ -197,17 +199,17 @@ namespace CommandSystem
         // return error if actor was not found
         if (actor == nullptr)
         {
-            outResult.Format("Cannot adjust node group. Actor with id='%i' does not exist.", actorID);
+            outResult = AZStd::string::format("Cannot adjust node group. Actor with id='%i' does not exist.", actorID);
             return false;
         }
 
         // get the node group
-        EMotionFX::NodeGroup* nodeGroup = actor->FindNodeGroupByNameNoCase(name.AsChar());
+        EMotionFX::NodeGroup* nodeGroup = actor->FindNodeGroupByNameNoCase(name.c_str());
 
         // return error if node group name is not set
         if (nodeGroup == nullptr)
         {
-            outResult.Format("Cannot adjust node group. Node group with name='%s' does not exist.", name.AsChar());
+            outResult = AZStd::string::format("Cannot adjust node group. Node group with name='%s' does not exist.", name.c_str());
             return false;
         }
 
@@ -256,7 +258,7 @@ namespace CommandSystem
         GetSyntax().AddRequiredParameter("actorID",          "The id of the actor the node group belongs to.",               MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddRequiredParameter("name",             "The name of the node group to adjust.",                        MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddParameter("newName",          "The new name of the node group.",                              MCore::CommandSyntax::PARAMTYPE_STRING,     "");
-        GetSyntax().AddParameter("enabledOnDefault", "The enabled on default flag.",                                 MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    "");
+        GetSyntax().AddParameter("enabledOnDefault", "The enabled on default flag.",                                 MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    "false");
         GetSyntax().AddParameter("nodeNames",        "A list of nodes that should be added to the node group.",      MCore::CommandSyntax::PARAMTYPE_STRING,     "");
         GetSyntax().AddParameter("nodeAction",       "The action to perform with the nodes passed to the command.",  MCore::CommandSyntax::PARAMTYPE_STRING,     "select");
     }
@@ -288,24 +290,24 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAddNodeGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAddNodeGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get parameters
         const int32 actorID = parameters.GetValueAsInt("actorID", this);
 
-        MCore::String name;
+        AZStd::string name;
         parameters.GetValue("name", this, &name);
 
         // get the actor
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
         if (actor == nullptr)
         {
-            outResult.Format("Cannot add node group. Actor with id='%i' does not exist.", actorID);
+            outResult = AZStd::string::format("Cannot add node group. Actor with id='%i' does not exist.", actorID);
             return false;
         }
 
         // add new node group to the actor
-        EMotionFX::NodeGroup* nodeGroup = EMotionFX::NodeGroup::Create(name.AsChar());
+        EMotionFX::NodeGroup* nodeGroup = EMotionFX::NodeGroup::Create(name.c_str());
         actor->AddNodeGroup(nodeGroup);
 
         // save the current dirty flag and tell the actor that something got changed
@@ -316,26 +318,26 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAddNodeGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAddNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get actor id and the actor
         const int32 actorID = parameters.GetValueAsInt("actorID", this);
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
         if (actor == nullptr)
         {
-            outResult.Format("Cannot undo add node group. Actor with id='%i' does not exist.", actorID);
+            outResult = AZStd::string::format("Cannot undo add node group. Actor with id='%i' does not exist.", actorID);
             return false;
         }
 
-        MCore::String name;
+        AZStd::string name;
         parameters.GetValue("name", this, &name);
 
         // call remove command
-        MCore::String command;
-        command.Format("RemoveNodeGroup -actorID %i -name %s", actorID, name.AsChar());
-        if (GetCommandManager()->ExecuteCommandInsideCommand(command.AsChar(), outResult) == false)
+        AZStd::string command;
+        command = AZStd::string::format("RemoveNodeGroup -actorID %i -name %s", actorID, name.c_str());
+        if (GetCommandManager()->ExecuteCommandInsideCommand(command.c_str(), outResult) == false)
         {
-            MCore::LogInfo(outResult.AsChar());
+            MCore::LogInfo(outResult.c_str());
             return false;
         }
 
@@ -383,27 +385,27 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandRemoveNodeGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveNodeGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get parameters
         const int32 actorID = parameters.GetValueAsInt("actorID", this);
 
-        MCore::String name;
+        AZStd::string name;
         parameters.GetValue("name", this, &name);
 
         // get the actor
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
         if (actor == nullptr)
         {
-            outResult.Format("Cannot remove node group. Actor with id='%i' does not exist.", actorID);
+            outResult = AZStd::string::format("Cannot remove node group. Actor with id='%i' does not exist.", actorID);
             return false;
         }
 
         // get the node group
-        EMotionFX::NodeGroup* nodeGroup = actor->FindNodeGroupByNameNoCase(name.AsChar());
+        EMotionFX::NodeGroup* nodeGroup = actor->FindNodeGroupByNameNoCase(name.c_str());
         if (nodeGroup == nullptr)
         {
-            outResult.Format("Cannot remove node group. Node group with name='%s' does not exist.", name.AsChar());
+            outResult = AZStd::string::format("Cannot remove node group. Node group with name='%s' does not exist.", name.c_str());
             return false;
         }
 
@@ -426,7 +428,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandRemoveNodeGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveNodeGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // check if old node group exists
         if (mOldNodeGroup == nullptr)
@@ -437,19 +439,19 @@ namespace CommandSystem
         // get parameters
         const int32 actorID = parameters.GetValueAsInt("actorID", this);
 
-        MCore::String name;
+        AZStd::string name;
         parameters.GetValue("name", this, &name);
 
         // get the actor
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
         if (actor == nullptr)
         {
-            outResult.Format("Cannot remove node group. Actor with id='%i' does not exist.", actorID);
+            outResult = AZStd::string::format("Cannot remove node group. Actor with id='%i' does not exist.", actorID);
             return false;
         }
 
         // add the node to the group again
-        if (name.CheckIfIsEqual(mOldNodeGroup->GetName()))
+        if (name == mOldNodeGroup->GetName())
         {
             actor->AddNodeGroup(mOldNodeGroup->Clone());
         }
@@ -496,11 +498,11 @@ namespace CommandSystem
         }
 
         // create our command group
-        MCore::String outResult;
+        AZStd::string outResult;
         MCore::CommandGroup internalCommandGroup("Clear node groups");
 
         // iterate trough all node groups and add remove command to the command group
-        MCore::String command;
+        AZStd::string command;
         for (uint16 i = 0; i < numNodeGroups; ++i)
         {
             // get the nodegroup and check if it is valid
@@ -511,14 +513,14 @@ namespace CommandSystem
             }
 
             // add the command to the group
-            command.Format("RemoveNodeGroup -actorID %i -name \"%s\"", actor->GetID(), nodeGroup->GetName());
+            command = AZStd::string::format("RemoveNodeGroup -actorID %i -name \"%s\"", actor->GetID(), nodeGroup->GetName());
             if (commandGroup == nullptr)
             {
-                internalCommandGroup.AddCommandString(command.AsChar());
+                internalCommandGroup.AddCommandString(command.c_str());
             }
             else
             {
-                commandGroup->AddCommandString(command.AsChar());
+                commandGroup->AddCommandString(command.c_str());
             }
         }
 
@@ -527,7 +529,7 @@ namespace CommandSystem
         {
             if (GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, outResult) == false)
             {
-                MCore::LogError(outResult.AsChar());
+                MCore::LogError(outResult.c_str());
             }
         }
     }

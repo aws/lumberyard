@@ -80,6 +80,13 @@ ZipDir::CachePtr ZipDir::CacheFactory::New (const char* szFile, ICryPak::EInMemo
 
     if (m_fileExt.m_fileHandle != AZ::IO::InvalidHandle)
     {
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define ZIPDIRCACHEFACTORY_CPP_SECTION_1 1
+#define ZIPDIRCACHEFACTORY_CPP_SECTION_2 2
+#endif
+
 #ifdef SUPPORT_UNBUFFERED_IO
         char fileResolved[AZ_MAX_PATH_LEN] = { 0 };
         AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(szFile, fileResolved, AZ_MAX_PATH_LEN);
@@ -460,6 +467,10 @@ struct SortFileEntryByNameOffsetPredicate
 
 namespace
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ZIPDIRCACHEFACTORY_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(ZipDirCacheFactory_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 ZipDir::CachePtr ZipDir::CacheFactory::MakeCache (const char* szFile)
@@ -492,6 +503,10 @@ ZipDir::CachePtr ZipDir::CacheFactory::MakeCache (const char* szFile)
 
     Cache* pCacheInstance = (Cache*)m_pHeap->PersistentAlloc(nCacheInstanceSize); // Do not use pools for this allocation
     pCacheInstance->Construct(m_fileExt, m_pHeap, nSizeRequired, m_nFlags, nCacheInstanceSize);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ZIPDIRCACHEFACTORY_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(ZipDirCacheFactory_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     pCacheInstance->SetZipFileSize(m_nZipFileSize);
     pCacheInstance->SetCDROffsetSize(m_CDREnd.lCDROffset, m_CDREnd.lCDRSize);
 

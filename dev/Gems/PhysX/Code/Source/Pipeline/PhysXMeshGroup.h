@@ -14,14 +14,10 @@
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/RTTI/Rtti.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <SceneAPI/SceneCore/Containers/RuleContainer.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISceneNodeGroup.h>
 #include <SceneAPI/SceneData/ManifestBase/SceneNodeSelectionList.h>
-
-namespace AZ
-{
-    class ReflectContext;
-}
 
 namespace PhysX
 {
@@ -44,7 +40,7 @@ namespace PhysX
             void OverrideId(const AZ::Uuid& id);
 
             AZ::SceneAPI::Containers::RuleContainer& GetRuleContainer() override;
-            const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const;
+            const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const override;
 
             AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetSceneNodeSelectionList() override;
             const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetSceneNodeSelectionList() const override;
@@ -76,6 +72,8 @@ namespace PhysX
             AZ::u32 GetNumTrisPerLeaf() const;
 
         protected:
+            static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+
             AZ::SceneAPI::SceneData::SceneNodeSelectionList     m_nodeSelectionList;
             AZ::SceneAPI::Containers::RuleContainer             m_rules;
             AZStd::string                                       m_name;
@@ -104,5 +102,5 @@ namespace PhysX
             //Shared
             bool m_buildGPUData = false;
         };
-    }
-}
+    } // namespace Pipeline
+} // namespace PhysX

@@ -32,15 +32,17 @@ namespace Water
         struct General
         {
             AZ_RTTI(General, "{3218DB33-BF7C-4508-9A95-2B7561CA1497}");
-            static void Reflect(AZ::ReflectContext* context);
+            
             General();
+            virtual ~General() = default;
+            
+            static void Reflect(AZ::ReflectContext* context);
 
             float m_height = AZ::OceanConstants::s_DefaultHeight; ///< the plane's height in the world, cached from the transform component and not serialized.
             bool m_useOceanBottom = true; ///< if FALSE then the ocean bottom will not render
             AzFramework::SimpleAssetReference<LmbrCentral::MaterialAsset> m_oceanMaterialAsset; ///< the material asset for the ocean
 
         private:
-
             static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
             void OnOceanMaterialChanged();
         };
@@ -48,6 +50,10 @@ namespace Water
         struct Caustics
         {
             AZ_RTTI(Caustics, "{376EE3DF-0225-4AB1-B50A-12852D961C3F}");
+            
+            Caustics() = default;
+            virtual ~Caustics() = default;
+            
             static void Reflect(AZ::ReflectContext* context);
 
             bool  m_enabled = true; ///< false/true turns off/on water caustics effects on surfaces below the water
@@ -55,12 +61,15 @@ namespace Water
             float m_depth = AZ::OceanConstants::s_CausticsDepthDefault; ///< The depth below the ocean that caustics are calculated. This appears to be in meters. There's a hard cut-off where the calculation stops that looks ugly, it would be better to lerp this off.
             float m_intensity = AZ::OceanConstants::s_CausticsIntensityDefault; ///< The intensity of the light in caustics. 0 turns caustics off completely. Near-zero values still show caustics rather strongly, so going from 0.01 to 0.0 is a sudden change. This should be fixed.
             float m_tiling = AZ::OceanConstants::s_CausticsTilingDefault; ///< Affects the tiling of the caustics texture
-
         };
 
         struct Animation
         {
             AZ_RTTI(Animation, "{2EC40FEA-8691-42A0-9F71-205A35B4EC4F}");
+            
+            Animation() = default;
+            virtual ~Animation() = default;
+            
             static void Reflect(AZ::ReflectContext* context);
 
             float m_wavesAmount = AZ::OceanConstants::s_animationWavesAmountDefault; ///< The frequency of the waves - higher numbers makes waves closer together.
@@ -73,6 +82,10 @@ namespace Water
         struct Reflection
         {
             AZ_RTTI(Reflection, "{7E602EC1-B6C9-4112-96C7-CECA8C448E11}");
+
+            Reflection() = default;
+            virtual ~Reflection() = default;
+            
             static void Reflect(AZ::ReflectContext* context);
 
             float m_resolutionScale = 0.5f; ///< the scale of the screen resolution to use for ocean reflections
@@ -86,6 +99,10 @@ namespace Water
         struct Fog
         {
             AZ_RTTI(Fog, "{022C7A5C-1A04-4424-AFFB-256994321185}");
+
+            Fog() = default;
+            virtual ~Fog() = default;
+
             static void Reflect(AZ::ReflectContext* context);
 
             AZ::Color m_color = AZ::OceanConstants::s_oceanFogColorDefault; ///< The color of the ocean fog
@@ -97,6 +114,10 @@ namespace Water
         struct Advanced
         {
             AZ_RTTI(Advanced, "{2AACAF8C-AD1F-44A5-B5C8-D329F41F2853}");
+            
+            Advanced() = default;
+            virtual ~Advanced() = default;
+            
             static void Reflect(AZ::ReflectContext* context);
 
             int m_waterTessellationAmount = AZ::OceanConstants::s_waterTessellationDefault; ///< Sets the amount of water tessellation

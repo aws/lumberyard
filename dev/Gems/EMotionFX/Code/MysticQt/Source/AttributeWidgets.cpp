@@ -85,7 +85,7 @@ namespace MysticQt
 
     void AttributeWidget::CreateStandardLayout(QWidget* widget, const char* description)
     {
-        //QLabel*           label       = new QLabel( mNameString.AsChar() );
+        //QLabel*           label       = new QLabel( mNameString.c_str() );
         QVBoxLayout*        layout      = new QVBoxLayout();
 
         //layout->addWidget(label);
@@ -481,7 +481,7 @@ namespace MysticQt
         const uint32 numComboValues = attributeSettings->GetNumComboValues();
         for (uint32 i = 0; i < numComboValues; ++i)
         {
-            mComboBox->addItem(attributeSettings->GetComboValueString(i).AsChar());
+            mComboBox->addItem(attributeSettings->GetComboValueString(i).c_str());
         }
 
         mComboBox->setCurrentIndex(value);
@@ -1054,7 +1054,7 @@ namespace MysticQt
         QString value;
         if (attribute)
         {
-            value = static_cast<MCore::AttributeString*>(attribute)->GetValue().AsChar();
+            value = static_cast<MCore::AttributeString*>(attribute)->GetValue().c_str();
         }
 
         if (value != mLineEdit->text())

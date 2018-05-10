@@ -37,7 +37,7 @@ namespace AZ
     {
         Data::AssetManager::Descriptor desc;
         Data::AssetManager::Create(desc);
-        TickBus::Handler::BusConnect();
+        SystemTickBus::Handler::BusConnect();
     }
 
     //=========================================================================
@@ -46,7 +46,9 @@ namespace AZ
     //=========================================================================
     void AssetManagerComponent::Deactivate()
     {
-        TickBus::Handler::BusDisconnect();
+        Data::AssetManager::Instance().DispatchEvents(); // clear any waiting assets.
+
+        SystemTickBus::Handler::BusDisconnect();
         Data::AssetManager::Destroy();
     }
 
@@ -54,7 +56,7 @@ namespace AZ
     // OnTick
     // [6/25/2012]
     //=========================================================================
-    void AssetManagerComponent::OnTick(float /*deltaTime*/, ScriptTimePoint /*time*/)
+    void AssetManagerComponent::OnSystemTick()
     {
         Data::AssetManager::Instance().DispatchEvents();
     }

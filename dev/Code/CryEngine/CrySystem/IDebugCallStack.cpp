@@ -53,16 +53,7 @@ void IDebugCallStack::FileCreationCallback(void (* postBackupProcess)())
 //////////////////////////////////////////////////////////////////////////
 void IDebugCallStack::LogCallstack()
 {
-    CollectCurrentCallStack();      // is updating m_functions
-
-    WriteLineToLog("=============================================================================");
-    int len = (int)m_functions.size();
-    for (int i = 0; i < len; i++)
-    {
-        const char* str = m_functions[i].c_str();
-        WriteLineToLog("%2d) %s", len - i, str);
-    }
-    WriteLineToLog("=============================================================================");
+	AZ::Debug::Trace::PrintCallstack("", 2);
 }
 
 const char* IDebugCallStack::TranslateExceptionCode(DWORD dwExcept)

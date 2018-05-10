@@ -31,6 +31,18 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <CryEngineAPI.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define TEXTURE_CPP_SECTION_1 1
+#define TEXTURE_CPP_SECTION_2 2
+#define TEXTURE_CPP_SECTION_3 3
+#define TEXTURE_CPP_SECTION_4 4
+#define TEXTURE_CPP_SECTION_5 5
+#define TEXTURE_CPP_SECTION_6 6
+#define TEXTURE_CPP_SECTION_7 7
+#endif
+
 #if defined(OPENGL_ES) || defined(CRY_USE_METAL)
 #include "../../XRenderD3D9/DriverD3D.h" // for gcpRendD3D
 #endif
@@ -82,6 +94,10 @@ CTexture* CTexture::s_ptexSceneNormalsBent;
 CTexture* CTexture::s_ptexAOColorBleed;
 CTexture* CTexture::s_ptexSceneDiffuse;
 CTexture* CTexture::s_ptexSceneSpecular;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 CTexture* CTexture::s_ptexAmbientLookup;
 
 // Post-process related textures
@@ -1510,7 +1526,15 @@ uint32 CTexture::TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, u
 
     if (eTM != eTM_None)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         __debugbreak();
         return 0;
@@ -2822,6 +2846,10 @@ void CTexture::LoadDefaultSystemTextures()
         s_ptexSceneNormalsMapMS = CTexture::CreateTextureObject("$SceneNormalsMapMS", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SCENE_NORMALMAP_MS);
         s_ptexSceneDiffuseAccMapMS = CTexture::CreateTextureObject("$SceneDiffuseAccMS", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SCENE_DIFFUSE_ACC_MS);
         s_ptexSceneSpecularAccMapMS = CTexture::CreateTextureObject("$SceneSpecularAccMS", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SCENE_SPECULAR_ACC_MS);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         s_ptexRT_ShadowPool = CTexture::CreateTextureObject("$RT_ShadowPool", 0, 0, 1, eTT_2D, FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
         //  Confetti BEGIN: Igor Lobanchikov
         s_ptexRT_ShadowStub = CTexture::CreateTextureObject("$RT_ShadowStub", 0, 0, 1, eTT_2D, FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
@@ -2879,6 +2907,10 @@ void CTexture::LoadDefaultSystemTextures()
             s_ptexSceneNormalsBent = CTexture::CreateTextureObject("$SceneNormalsBent", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
             s_ptexSceneDiffuse = CTexture::CreateTextureObject("$SceneDiffuse", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
             s_ptexSceneSpecular = CTexture::CreateTextureObject("$SceneSpecular", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             s_ptexSceneDiffuseAccMap = CTexture::CreateTextureObject("$SceneDiffuseAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_DIFFUSE_ACC);
             s_ptexSceneSpecularAccMap = CTexture::CreateTextureObject("$SceneSpecularAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_SPECULAR_ACC);
             s_ptexAmbientLookup = CTexture::CreateTextureObject("$AmbientLookup", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
@@ -2945,6 +2977,9 @@ void CTexture::LoadDefaultSystemTextures()
         {
             s_ptexHDRTarget = CTexture::CreateTextureObject("$HDRTarget", 0, 0, 1, eTT_2D, nRTFlags, eTF_Unknown);
         }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
         // Create dummy texture object for terrain and clouds lightmap
@@ -3005,6 +3040,10 @@ void CTexture::LoadDefaultSystemTextures()
             s_defaultEnvironmentProbeDummy = CTexture::CreateTextureObject("$DefaultEnvironmentProbe", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM, eTF_Unknown, TO_DEFAULT_ENVIRONMENT_PROBE);
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 #endif
 }
@@ -3329,4 +3368,17 @@ CTexture* CTexture::GetZTargetTexture()
 int CTexture::GetTextureState(const STexState& TS)
 {
     return GetTexState(TS);
+}
+
+void CTexture::ApplyForID(int id, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit, bool useWhiteDefault)
+{
+    CTexture* pTex = id > 0 ? CTexture::GetByID(id) : nullptr;
+    if (pTex)
+    {
+        pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+    }
+    else if (useWhiteDefault)
+    {
+        CTextureManager::Instance()->GetWhiteTexture()->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit);
+    }
 }

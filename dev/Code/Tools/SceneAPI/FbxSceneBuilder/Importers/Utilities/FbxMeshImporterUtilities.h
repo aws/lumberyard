@@ -24,6 +24,7 @@ namespace AZ
         namespace GraphData
         {
             class MeshData;
+            class BlendShapeData;
         }
     }
 
@@ -34,6 +35,8 @@ namespace AZ
         {
             bool BuildSceneMeshFromFbxMesh(const AZStd::shared_ptr<SceneData::GraphData::MeshData>& mesh,
                 const FbxSDKWrapper::FbxMeshWrapper& sourceMesh, const FbxSceneSystem& sceneSystem);
+            bool BuildSceneBlendShapeFromFbxBlendShape(const AZStd::shared_ptr<SceneData::GraphData::BlendShapeData>& blendShape,
+                const AZStd::shared_ptr<const FbxSDKWrapper::FbxMeshWrapper>& sourceMesh, const FbxSceneSystem& sceneSystem);
         }
     }
 }

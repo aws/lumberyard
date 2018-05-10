@@ -13,7 +13,6 @@
 #pragma once
 
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/MemoryCategories.h>
 #include "EMStudioConfig.h"
 #include <MysticQt/Source/KeyboardShortcutManager.h>

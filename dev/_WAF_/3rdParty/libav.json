@@ -1,6 +1,6 @@
 {
     "name": "libav",
-    "source": "@ROOT@/Code/SDKs/libav",
+    "source": "@3P:LibAV@",
     "description": "Support library for libav",
     "aliases": {
         "lib_names": [
@@ -48,6 +48,7 @@
                 "${dll_names}.dll"
             ]
         },
-        "win_x64_vs2015": "@win_x64_vs2013"
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
     }
 }

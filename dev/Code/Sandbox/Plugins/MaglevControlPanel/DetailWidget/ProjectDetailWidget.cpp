@@ -25,8 +25,8 @@
 
 #include <IAWSResourceManager.h>
 
-ProjectDetailWidget::ProjectDetailWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> projectStatusModel)
-    : DetailWidget{view}
+ProjectDetailWidget::ProjectDetailWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> projectStatusModel, QWidget* parent)
+    : DetailWidget{view, parent}
     , m_projectStatusModel{projectStatusModel}
 {
 }
@@ -43,24 +43,24 @@ void ProjectDetailWidget::UpdateUI()
     switch (m_view->m_resourceManager->GetInitializationState())
     {
     case IAWSResourceManager::InitializationState::UnknownState:
-        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view}; });
+        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::UninitializedState:
-        m_layout.SetWidget(State::NoProjectStack, [this](){ return new NoProjectStackWidget {m_view}; });
+        m_layout.SetWidget(State::NoProjectStack, [this](){ return new NoProjectStackWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::NoProfileState:
-        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view}; });
+        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::InitializingState:
     case IAWSResourceManager::InitializationState::InitializedState:
-        m_layout.SetWidget(State::Status, [this](){ return new ProjectStatusWidget {m_view, m_projectStatusModel}; });
+        m_layout.SetWidget(State::Status, [this](){ return new ProjectStatusWidget {m_view, m_projectStatusModel, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::ErrorLoadingState:
-        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget {m_view}; });
+        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget {m_view, this}; });
         break;
 
     default:

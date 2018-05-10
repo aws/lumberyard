@@ -18,6 +18,7 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
+#include <SceneAPI/SceneData/Rules/MaterialRule.h>
 
 #include <Pipeline/PhysXMeshGroup.h>
 
@@ -98,7 +99,7 @@ namespace PhysX
             // Check if the context is serialized and has PhysXMeshGroup class data.
             if (serializeContext)
             {
-                serializeContext->Class<PhysXMeshGroup, AZ::SceneAPI::DataTypes::ISceneNodeGroup>()->Version(0)
+                serializeContext->Class<PhysXMeshGroup, AZ::SceneAPI::DataTypes::ISceneNodeGroup>()->Version(1, &PhysXMeshGroup::VersionConverter)
                     ->Field("name", &PhysXMeshGroup::m_name)
                     ->Field("export as convex", &PhysXMeshGroup::m_exportAsConvex)
 
@@ -148,6 +149,7 @@ namespace PhysX
                         "<span>If the area of a triangle of the hull is below this value, the triangle will be rejected. This test is done only if Check Zero Area Triangles is used.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->DataElement(AZ_CRC("PlaneTolerance", 0xa8640bac), &PhysXMeshGroup::m_planeTolerance, "Plane Tolerance",
                         "<span>The value is used during hull construction. When a new point is about to be added to the hull it gets dropped when the point is closer to the hull than the planeTolerance. "
                         "The Plane Tolerance is increased according to the hull size. If 0.0f is set all points are accepted when the convex hull is created. This may lead to edge cases where the "
@@ -156,6 +158,7 @@ namespace PhysX
                         "might be required to lower the default value.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->DataElement(AZ_CRC("Use16bitIndices", 0xb81adbfa), &PhysXMeshGroup::m_use16bitIndices, "Use 16-bit Indices",
                         "<span>Denotes the use of 16-bit vertex indices in Convex triangles or polygons. Otherwise, 32-bit indices are assumed.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsConvex)
@@ -208,6 +211,8 @@ namespace PhysX
                         " nearby vertices. The mesh validation approach also uses the same snap-to-grid approach to identify nearby vertices. If more than one vertex snaps to a given "
                         "grid coordinate, we ensure that the distance between the vertices is at least Mesh Weld Tolerance. If this is not the case, a warning is emitted.</span>")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &PhysXMeshGroup::GetExportAsTriMesh)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                         ->DataElement(AZ_CRC("NumTrisPerLeaf", 0x391bf6d1), &PhysXMeshGroup::m_numTrisPerLeaf, "Number of Triangles Per Leaf",
                         "<span>Mesh cooking hint for max triangles per leaf limit. Fewer triangles per leaf produces larger meshes with better runtime performance and worse cooking performance."
                         " More triangles per leaf results in faster cooking speed and smaller mesh sizes, but with worse runtime performance.</span>")
@@ -217,12 +222,14 @@ namespace PhysX
 
                     // Both convex and trimesh
                         ->DataElement(AZ_CRC("BuildGPUData", 0x0b7b0568), &PhysXMeshGroup::m_buildGPUData, "Build GPU Data",
-                        "<span>When true, addigional information required for GPU-accelerated rigid body simulation is created. This can increase memory usage and cooking times for convex meshes "
+                        "<span>When true, additional information required for GPU-accelerated rigid body simulation is created. This can increase memory usage and cooking times for convex meshes "
                         "and triangle meshes. Convex hulls are created with respect to GPU simulation limitations. Vertex limit is set to 64 and vertex limit per face is internally set to 32.</span>")
 
                         ->DataElement(AZ::Edit::UIHandlers::Default, &PhysXMeshGroup::m_nodeSelectionList, "Select meshes", "<span>Select the meshes to be included in the mesh group.</span>")
                         ->Attribute("FilterName", "meshes")
-                        ->Attribute("FilterType", AZ::SceneAPI::DataTypes::IMeshData::TYPEINFO_Uuid());
+                        ->Attribute("FilterType", AZ::SceneAPI::DataTypes::IMeshData::TYPEINFO_Uuid())
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &PhysXMeshGroup::m_rules, "", "Add or remove rules to fine-tune the export process.")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
                 }
             }
         }
@@ -326,5 +333,28 @@ namespace PhysX
         {
             return m_buildGPUData;
         }
-    }
-}
+
+        bool PhysXMeshGroup::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            // Remove the material rule
+            if (classElement.GetVersion() < 1)
+            {
+                int ruleContainerNodeIndex = classElement.FindElement(AZ_CRC("rules", 0x899a993c));
+                if (ruleContainerNodeIndex >= 0)
+                {
+                    AZ::SerializeContext::DataElementNode& ruleContainerNode = classElement.GetSubElement(ruleContainerNodeIndex);
+                    AZ::SceneAPI::Containers::RuleContainer ruleContainer;
+                    if (ruleContainerNode.GetData<AZ::SceneAPI::Containers::RuleContainer>(ruleContainer))
+                    {
+                        auto materialRule = ruleContainer.FindFirstByType<AZ::SceneAPI::SceneData::MaterialRule>();
+                        ruleContainer.RemoveRule(materialRule);
+                    }
+
+                    ruleContainerNode.SetData<AZ::SceneAPI::Containers::RuleContainer>(context, ruleContainer);
+                }
+            }
+
+            return true;
+        }
+    } // namespace Pipeline
+} // namespace PhysX

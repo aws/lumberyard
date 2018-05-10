@@ -130,6 +130,41 @@ namespace AzToolsFramework
         return editorComponentBaseComponent;
     }
 
+    bool ShouldInspectorShowComponent(const AZ::Component* component)
+    {
+        if (!component)
+        {
+            return false;
+        }
+
+        const AZ::SerializeContext::ClassData* classData = GetComponentClassData(component);
+
+        // Don't show components without edit data
+        if (!classData || !classData->m_editData)
+        {
+            return false;
+        }
+
+        // Don't show components that are set to invisible.
+        if (const AZ::Edit::ElementData* editorDataElement = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+        {
+            if (AZ::Edit::Attribute* visibilityAttribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::Visibility))
+            {
+                PropertyAttributeReader reader(const_cast<AZ::Component*>(component), visibilityAttribute);
+                AZ::u32 visibilityValue;
+                if (reader.Read<AZ::u32>(visibilityValue))
+                {
+                    if (visibilityValue == AZ::Edit::PropertyVisibility::Hide)
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     AZ::EntityId GetEntityIdForSortInfo(const AZ::EntityId parentId)
     {
         AZ::EntityId sortEntityId = parentId;

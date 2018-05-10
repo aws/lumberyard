@@ -914,7 +914,7 @@ namespace EMStudio
             tempFPSString.Format( "%i FPS", lastFPS );
             painter.setPen( QColor(255, 255, 255) );
             painter.resetTransform();
-            painter.drawText( 5, 20, tempFPSString.AsChar() );
+            painter.drawText( 5, 20, tempFPSString.c_str() );
             */
         //#endif
     }

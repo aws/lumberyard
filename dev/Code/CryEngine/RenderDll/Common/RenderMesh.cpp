@@ -3197,7 +3197,7 @@ bool CRenderMesh::UpdateUVCoordsAdjacency(SMeshStream& IBStream, const AZ::Verte
             {
                 int nTrgs = m_nInds / 3;
                 pTxtAdjBuffer.resize(nTrgs * 12);
-                int nVerts = _GetNumVerts();
+                int nVerts = GetNumVerts();
                 for (int n = 0; n < nTrgs; ++n)
                 {
                     // fill in the dummy adjacency first
@@ -5152,8 +5152,8 @@ void CRenderMesh::BindStreamsToRenderPipeline()
     size_t offset[VSF_NUM] = { 0 };
     const void *pVB[VSF_NUM] = { NULL };
 
-    pIB = rd->m_DevBufMan.GetD3D(pRenderMesh->_GetIBStream(), &nOffs);
-    pVB[0] = rd->m_DevBufMan.GetD3D(pRM->_GetVBStream(VSF_GENERAL), &offset[0]);
+    pIB = rd->m_DevBufMan.GetD3D(pRenderMesh->GetIBStream(), &nOffs);
+    pVB[0] = rd->m_DevBufMan.GetD3D(pRM->GetVBStream(VSF_GENERAL), &offset[0]);
     h = rd->FX_SetVStream(0, pVB[0], offset[0], pRM->GetStreamStride(VSF_GENERAL));
 
     for (int i = 1, mask = 1 << 1; i < VSF_NUM; ++i, mask <<= 1)
@@ -5161,7 +5161,7 @@ void CRenderMesh::BindStreamsToRenderPipeline()
         if (rd->m_RP.m_FlagsStreams_Stream & (mask) && pRM->_HasVBStream(i))
         {
             streamStride[i] = pRM->GetStreamStride(i);
-            pVB[i] = rd->m_DevBufMan.GetD3D(pRM->_GetVBStream(i), &offset[i]);
+            pVB[i] = rd->m_DevBufMan.GetD3D(pRM->GetVBStream(i), &offset[i]);
         }
     }
 
@@ -5239,7 +5239,7 @@ bool CRenderMesh::FillGeometryInfo(CRendElementBase::SGeometryInfo &geom)
     if (!pRenderMeshForVertices->CanRender())
         return false;
 
-    geom.indexStream.pStream = gRenDev->m_DevBufMan.GetD3D(_GetIBStream(), &nOffs);
+    geom.indexStream.pStream = gRenDev->m_DevBufMan.GetD3D(GetIBStream(), &nOffs);
     geom.indexStream.nOffset = nOffs;
     geom.indexStream.nStride = (sizeof(vtx_idx) == 2 ? Index16 : Index32);
     geom.streamMask = 0;
@@ -5249,7 +5249,7 @@ bool CRenderMesh::FillGeometryInfo(CRendElementBase::SGeometryInfo &geom)
         if (pRenderMeshForVertices->_HasVBStream(nStream))
         {
             nOffs = 0;
-            geom.vertexStream[nStream].pStream = gRenDev->m_DevBufMan.GetD3D(pRenderMeshForVertices->_GetVBStream(nStream), &nOffs);
+            geom.vertexStream[nStream].pStream = gRenDev->m_DevBufMan.GetD3D(pRenderMeshForVertices->GetVBStream(nStream), &nOffs);
             geom.vertexStream[nStream].nOffset = nOffs;
             geom.vertexStream[nStream].nStride = pRenderMeshForVertices->GetStreamStride(nStream);
 

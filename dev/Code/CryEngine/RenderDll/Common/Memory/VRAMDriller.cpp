@@ -96,14 +96,29 @@ namespace Render
 
             //=========================================================================
 
-            const VRAMAllocationInfo* RegisterAllocation(void* address, size_t byteSize, string allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory)
+            const VRAMAllocationInfo* RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory)
             {
                 AZ_Assert(address, ("Error, allocation address is null"));
 
                 // Insert and populate the allocation record
                 VRAMAllocationRecordsType::pair_iter_bool iterBool = m_allocations.insert_key(address);
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define VRAMDRILLER_CPP_SECTION_1 1
+#define VRAMDRILLER_CPP_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION VRAMDRILLER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(VRAMDriller_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 // Turning off the VRAMDriller altogether causes weird allocation errors
                 AZ_Warning("Driller", iterBool.second, "VRAM memory address 0x%p is already allocated and being tracked! VRAM memory reporting may now be inaccurate.", address);
+#endif
 
                 VRAMAllocationInfo& allocationInfo = iterBool.first->second;
                 allocationInfo.m_byteSize =  byteSize;
@@ -117,8 +132,16 @@ namespace Render
             void UnregisterAllocation(void* address)
             {
                 VRAMAllocationRecordsType::iterator iter = m_allocations.find(address);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION VRAMDRILLER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(VRAMDriller_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 // Turning off the VRAMDriller altogether causes weird allocation errors
                 AZ_Warning("Driller", iter != m_allocations.end(), "VRAM memory address 0x%p does not exist in the records. VRAM memory reporting may now be inaccurate.", address);
+#endif
                 if ( iter != m_allocations.end() )
                 {
                     m_allocations.erase(iter);
@@ -205,7 +228,7 @@ namespace Render
 
         //=========================================================================
 
-        void VRAMDriller::RegisterAllocation(void* address, size_t byteSize, string allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories)
+        void VRAMDriller::RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories)
         {
             AZ_Assert(m_allocations != nullptr, "Allocation records for the VRAMDriller do not exist!");
             AZ_Assert(category != VRAM_CATEGORY_INVALID, "Invalid VRAM allocation category");

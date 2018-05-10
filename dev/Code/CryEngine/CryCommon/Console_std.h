@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef CRYINCLUDE_CRYCOMMON_CONSOLE_STD_H
-#define CRYINCLUDE_CRYCOMMON_CONSOLE_STD_H
+
 #pragma once
 
 
@@ -18,6 +17,7 @@
 
 namespace std
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Console_std_h, AZ_RESTRICTED_PLATFORM)
+#endif
 }
-
-#endif//CRYINCLUDE_CRYCOMMON_CONSOLE_STD_H

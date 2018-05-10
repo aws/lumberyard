@@ -1,0 +1,11 @@
+{
+    "auto": {
+        "Source": [
+            "Source/CustomAssetExample/Builder/CustomAssetExampleBuilderComponent.h",
+            "Source/CustomAssetExample/Builder/CustomAssetExampleBuilderComponent.cpp",
+            "Source/CustomAssetExample/Builder/CustomAssetExampleBuilderWorker.h",
+            "Source/CustomAssetExample/Builder/CustomAssetExampleBuilderWorker.cpp",
+            "Source/CustomAssetExample/CustomAssetExampleEditorModule.cpp"
+        ]
+    }
+}

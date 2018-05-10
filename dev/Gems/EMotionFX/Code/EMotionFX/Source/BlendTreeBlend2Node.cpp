@@ -94,7 +94,7 @@ namespace EMotionFX
 
     // convert attributes for backward compatibility
     // this handles attributes that got renamed or who's types have changed during the development progress
-    bool BlendTreeBlend2Node::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName)
+    bool BlendTreeBlend2Node::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
     {
         // convert things by the base class
         const bool result = AnimGraphObject::ConvertAttribute(attributeIndex, attributeToConvert, attributeName);
@@ -146,7 +146,7 @@ namespace EMotionFX
 
 
     // get the blend nodes
-    void BlendTreeBlend2Node::FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outBlendNodeA, AnimGraphNode** outBlendNodeB, float* outWeight, bool isAdditive)
+    void BlendTreeBlend2Node::FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outBlendNodeA, AnimGraphNode** outBlendNodeB, float* outWeight, bool isAdditive, bool optimizeByWeight)
     {
         // if we have no input poses
         BlendTreeConnection* connectionA = mInputPorts[INPUTPORT_POSE_A].mConnection;
@@ -174,22 +174,30 @@ namespace EMotionFX
                 return;
             }
 
-            if (*outWeight < MCore::Math::epsilon)
+            if (optimizeByWeight)
             {
-                *outBlendNodeA  = connectionA->GetSourceNode();
-                *outBlendNodeB  = nullptr;
+                if (*outWeight < MCore::Math::epsilon)
+                {
+                    *outBlendNodeA = connectionA->GetSourceNode();
+                    *outBlendNodeB = nullptr;
+                }
+                else
+                if ((*outWeight < 1.0f - MCore::Math::epsilon) || isAdditive)
+                {
+                    *outBlendNodeA = connectionA->GetSourceNode();
+                    *outBlendNodeB = connectionB->GetSourceNode();
+                }
+                else
+                {
+                    *outBlendNodeA = connectionB->GetSourceNode();
+                    *outBlendNodeB = nullptr;
+                    *outWeight = 0.0f;
+                }
             }
             else
-            if ((*outWeight < 1.0f - MCore::Math::epsilon) || isAdditive)
             {
-                *outBlendNodeA  = connectionA->GetSourceNode();
-                *outBlendNodeB  = connectionB->GetSourceNode();
-            }
-            else
-            {
-                *outBlendNodeA  = connectionB->GetSourceNode();
-                *outBlendNodeB  = nullptr;
-                *outWeight      = 0.0f;
+                *outBlendNodeA = connectionA->GetSourceNode();
+                *outBlendNodeB = connectionB->GetSourceNode();
             }
             return;
         }
@@ -677,7 +685,7 @@ namespace EMotionFX
             Skeleton* skeleton = actor->GetSkeleton();
             for (uint32 a = 0; a < numNodes; ++a)
             {
-                Node* node = skeleton->FindNodeByName(attrib->GetNode(a).mName.AsChar());
+                Node* node = skeleton->FindNodeByName(attrib->GetNode(a).mName.c_str());
                 if (node)
                 {
                     nodeIndices.Add(node->GetNodeIndex());
@@ -716,12 +724,33 @@ namespace EMotionFX
         AnimGraphNode* nodeA;
         AnimGraphNode* nodeB;
         float weight;
-        FindBlendNodes(animGraphInstance, &nodeA, &nodeB, &weight, isAdditive);
+        FindBlendNodes(animGraphInstance, &nodeA, &nodeB, &weight, isAdditive, false);
 
         // check if we have three incoming connections, if not, we can't really continue
-        if (nodeA == nullptr)
+        if (!nodeA)
         {
             return;
+        }
+
+        // Both nodes need to have their weight updated and their TopDownUpdate be called
+        // Then one of the node can be removed for the synching if it has zero weight
+        // Please Note: the TopDownUpdate needs to be called afer the synching
+        AnimGraphNode* nodeWeightUpdateA = nodeA;
+        AnimGraphNode* nodeWeightUpdateB = nodeB;
+        float weightBeforeOptimization = weight;
+        
+        if (weight < MCore::Math::epsilon)
+        {
+            nodeB = nullptr;
+        }
+        else if (weight > 1.0f - MCore::Math::epsilon)
+        {
+            if (nodeB)
+            {
+                nodeA = nodeB;
+            }
+            nodeB = nullptr;
+            weight = 0.0f;
         }
 
         // if we want to sync the motions
@@ -789,17 +818,26 @@ namespace EMotionFX
             }
         }
 
-        AnimGraphNodeData* uniqueDataNodeA = nodeA->FindUniqueNodeData(animGraphInstance);
-        uniqueDataNodeA->SetGlobalWeight(uniqueData->GetGlobalWeight() * (1.0f - weight));
-        uniqueDataNodeA->SetLocalWeight(1.0f - weight);
-        nodeA->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
-        if (nodeB && nodeA != nodeB)
+
+        AnimGraphNodeData* uniqueDataNodeA = nodeWeightUpdateA->FindUniqueNodeData(animGraphInstance);
+        if (!nodeWeightUpdateB)
         {
-            AnimGraphNodeData* uniqueDataNodeB = nodeB->FindUniqueNodeData(animGraphInstance);
-            uniqueDataNodeB->SetGlobalWeight(uniqueData->GetGlobalWeight() * weight);
-            uniqueDataNodeB->SetLocalWeight(weight);
-            nodeB->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
+            uniqueDataNodeA->SetGlobalWeight(uniqueData->GetGlobalWeight());
+            uniqueDataNodeA->SetLocalWeight(1.0f);
         }
+        else
+        {
+            uniqueDataNodeA->SetGlobalWeight(uniqueData->GetGlobalWeight() * (1.0f - weightBeforeOptimization));
+            uniqueDataNodeA->SetLocalWeight(1.0f - weightBeforeOptimization);
+            if (nodeWeightUpdateB)
+            {
+                AnimGraphNodeData* uniqueDataNodeB = nodeWeightUpdateB->FindUniqueNodeData(animGraphInstance);
+                uniqueDataNodeB->SetGlobalWeight(uniqueData->GetGlobalWeight() * weightBeforeOptimization);
+                uniqueDataNodeB->SetLocalWeight(weightBeforeOptimization);
+                nodeWeightUpdateB->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
+            }
+        }
+        nodeWeightUpdateA->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
     }
 
 

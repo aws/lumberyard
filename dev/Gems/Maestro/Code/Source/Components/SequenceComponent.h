@@ -72,6 +72,10 @@ namespace Maestro
 
         AZ::Uuid GetAnimatedAddressTypeId(const AZ::EntityId& animatedEntityId, const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) override;
 
+        //! Track View will expect some components (those using AZ::Data::AssetBlends as a virtual property) to supply a GetAssetDuration event
+        //! so Track View can query the duration of an asset (like a motion) without having any knowledge of that that asset is.
+        void GetAssetDuration(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId)  override;
+
         /////////////////////////////////////////
         // Behaviors
         void Play() override;

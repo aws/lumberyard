@@ -13,10 +13,9 @@
 #pragma once
 
 // include the required headers
+#include <AzCore/std/string/string.h>
 #include "StandardHeaders.h"
 #include "MemoryManager.h"
-#include "UnicodeString.h"
-
 
 namespace MCore
 {
@@ -68,7 +67,7 @@ namespace MCore
         static double ConvertValue(float value, EUnitType sourceType, EUnitType targetType);
 
         static const char* UnitTypeToString(EUnitType unitType);
-        static bool StringToUnitType(const String& str, EUnitType* outUnitType);
+        static bool StringToUnitType(const AZStd::string& str, EUnitType* outUnitType);
 
         MCORE_INLINE double GetDistance() const                                         { return mDistance; }
         MCORE_INLINE EUnitType GetUnitType() const                                      { return mUnitType; }

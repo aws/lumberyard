@@ -131,8 +131,8 @@ namespace EMStudio
         QPoint                      mLastGlobalMousePos;
         EMotionFX::AnimGraphNode*  mCurrentNode;
         MCore::CommandGroup         mMoveGroup;
-        MCore::String               mMoveString;
-        MCore::String               mTextString;
+        AZStd::string               mMoveString;
+        AZStd::string               mTextString;
         QFont                       mOverlayFont;
     };
 }   // namespace EMStudio

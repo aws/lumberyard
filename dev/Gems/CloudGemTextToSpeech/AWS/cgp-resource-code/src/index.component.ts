@@ -905,6 +905,10 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
             newCharacter = JSON.parse(JSON.stringify(this.characters[0]));
         }
         newCharacter.name = characterName ? characterName : "NewCharacter_" + this.characters.length;
+        if (!newCharacter.name.match(/^[0-9a-zA-Z_]+$/)) {
+            this.toastr.error("The character name can only contain non-alphanumeric characters and \"_\".");
+            return;
+        }
         newCharacter.ssmlProsodyTags = [];
         this.initializeCurrentCharacter(newCharacter);
         newCharacter.isUploaded = false;
@@ -940,6 +944,17 @@ export class TextToSpeechIndexComponent extends AbstractCloudGemIndexComponent{
         }
 
         let name = originalCharacterName ? originalCharacterName : model.name;
+        if (!body.name.match(/^[0-9a-zA-Z_]+$/)) {
+            this.toastr.error("The character name can only contain non-alphanumeric characters and \"_\".");
+            if (operation == "Create") {
+                model.isEditing = true;
+            }
+            else if (operation == "Update") {
+                this.cancel(model);
+                this.addCharacterEntry(model, "Reset");
+            }
+            return;
+        }
 
         this._apiHandler.createCharacter(body).subscribe(() => {
             if (operation == "Update") {

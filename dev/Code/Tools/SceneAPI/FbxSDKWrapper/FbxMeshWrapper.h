@@ -32,6 +32,8 @@ namespace AZ
             FbxMeshWrapper(FbxMesh* fbxMesh);
             virtual ~FbxMeshWrapper();
 
+            virtual const char* GetName() const;
+
             virtual int GetDeformerCount() const;
             virtual int GetDeformerCount(int type) const;
             virtual AZStd::shared_ptr<const FbxSkinWrapper> GetSkin(int index) const;

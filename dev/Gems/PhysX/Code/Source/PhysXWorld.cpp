@@ -17,6 +17,7 @@
 #include <Include/PhysX/PhysXSystemComponentBus.h>
 #include <Include/PhysX/PhysXNativeTypeIdentifiers.h>
 #include <AzPhysXCpuDispatcher.h>
+#include <PhysXTriggerAreaEventBus.h>
 
 namespace PhysX
 {
@@ -32,7 +33,7 @@ namespace PhysX
         sceneDesc.filterShader = physx::PxDefaultSimulationFilterShader;
 
         PhysXSystemRequestBus::BroadcastResult(m_world, &PhysXSystemRequests::CreateScene, sceneDesc);
-
+        m_world->setSimulationEventCallback(this);
         m_worldCollisionFilter = nullptr;
     }
 
@@ -282,4 +283,55 @@ namespace PhysX
     void PhysXWorld::OnRemoveAction(const Physics::Ptr<Physics::Action>& action)
     {
     }
+
+    void PhysXWorld::onConstraintBreak(physx::PxConstraintInfo* constraints, physx::PxU32 count)
+    {
+    }
+
+    void PhysXWorld::onWake(physx::PxActor** actors, physx::PxU32 count)
+    {
+    }
+
+    void PhysXWorld::onSleep(physx::PxActor** actors, physx::PxU32 count)
+    {
+    }
+
+    void PhysXWorld::onContact(const physx::PxContactPairHeader& pairHeader, const physx::PxContactPair* pairs, physx::PxU32 nbPairs)
+    {
+    }
+
+    void PhysXWorld::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
+    {
+        for (physx::PxU32 i = 0; i < count; ++i)
+        {
+            physx::PxTriggerPair& triggerPair = pairs[i];
+            if (triggerPair.triggerActor != nullptr && triggerPair.otherActor != nullptr)
+            {
+                AZ::EntityId triggerEntityId(reinterpret_cast<AZ::u64>(triggerPair.triggerActor->userData));
+                AZ::EntityId otherEntityId(reinterpret_cast<AZ::u64>(triggerPair.otherActor->userData));
+                
+                if (triggerPair.status == physx::PxPairFlag::eNOTIFY_TOUCH_FOUND)
+                {
+                    PhysXTriggerAreaEventBus::Event(triggerEntityId, &PhysXTriggerAreaEvents::OnTriggerEnter, otherEntityId);
+                }
+                else if (triggerPair.status == physx::PxPairFlag::eNOTIFY_TOUCH_LOST)
+                {
+                    PhysXTriggerAreaEventBus::Event(triggerEntityId, &PhysXTriggerAreaEvents::OnTriggerExit, otherEntityId);
+                }
+                else
+                {
+                    AZ_Warning("PhysX World", false, "onTrigger with status different from TOUCH_FOUND and TOUCH_LOST.");
+                }
+            }
+            else
+            {
+                AZ_Warning("PhysX World", false, "onTrigger received invalid actors.");
+            }
+        }
+    }
+
+    void PhysXWorld::onAdvance(const physx::PxRigidBody*const* bodyBuffer, const physx::PxTransform* poseBuffer, const physx::PxU32 count)
+    {
+    }
+
 } // namespace PhysX

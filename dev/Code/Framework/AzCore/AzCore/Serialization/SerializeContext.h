@@ -596,6 +596,7 @@ namespace AZ
                 DataElementNode* m_dataElement = nullptr;
                 int m_currentContainerElementIndex = 0;
             };
+            
             using NodeStack = AZStd::list<DataElementInstanceData>;
             bool GetDataHierarchyEnumerate(ErrorHandler* errorHandler, NodeStack& nodeStack);
             bool GetClassElement(ClassElement& classElement, const DataElementNode& parentDataElement, ErrorHandler* errorHandler) const;

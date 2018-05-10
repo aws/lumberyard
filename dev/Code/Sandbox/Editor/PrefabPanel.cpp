@@ -546,7 +546,7 @@ void CPrefabPanel::OnPick(CBaseObject* picked)
     {
         if (!m_pPrefabObject->CanObjectBeAddedAsMember(picked))
         {
-            Warning("Object %s is already part of a prefab (%s)", picked->GetName(), picked->GetPrefab()->GetName());
+            Warning("Object %s is already part of a prefab (%s)", picked->GetName().toUtf8().constData(), picked->GetPrefab()->GetName().toUtf8().constData());
             return;
         }
 

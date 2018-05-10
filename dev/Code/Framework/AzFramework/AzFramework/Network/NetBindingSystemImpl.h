@@ -16,16 +16,19 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <GridMate/Serialize/CompressionMarshal.h>
 
 namespace AzFramework
 {
     /**
-    */
+     * \brief Represents a request to bind a particular replica to an entity
+     */
     class BindRequest
     {
     public:
         BindRequest()
             : m_bindTo(GridMate::InvalidReplicaId)
+            , m_state(State::None)
         {
         }
 
@@ -33,19 +36,53 @@ namespace AzFramework
         AZ::EntityId m_desiredRuntimeEntityId;
         AZ::EntityId m_actualRuntimeEntityId;
         AZStd::chrono::system_clock::time_point m_requestTime;
+
+        /**
+         * \brief Represents the state of this bind request and it's relation to the slice instantiation process
+         */
+        enum class State : AZ::u8
+        {
+            None,
+            /**
+             * \brief This is the first request that led to instantiating a slice
+             */
+            FirstBindInSlice,
+            /**
+             * \brief The request is a placeholder in case a real bind request arrives later.
+             * Some part of the slice may never be bound (e.g. if a replica is omitted by Interest Manager)
+             */
+            PlaceholderBind,
+            /**
+             * \brief The real request did arrive to replace a placeholder request.
+             */
+            LateBind,
+        };
+
+        State m_state;
     };
 
     typedef AZStd::unordered_map<AZ::EntityId, BindRequest> BindRequestContainerType;
 
     /**
-    */
+     * \brief Represents a slice instance being instantiated and bound to replicas
+     * \note It's possible that only some of the entities are activated and bound to replicas.
+     */
     class NetBindingSliceInstantiationHandler
         : public SliceInstantiationResultBus::Handler
     {
     public:
+        ~NetBindingSliceInstantiationHandler() override;
+
         void InstantiateEntities();
-        bool IsInstantiated();
-        bool IsBindingComplete();
+        bool IsInstantiated() const;
+        bool IsANewSliceRequest() const;
+        bool IsBindingComplete() const;
+
+        /**
+         * \note Returns false if there are no entities in the slice or the slice instance isn't ready yet.
+         * \return true if any of the entities from the slice are active
+         */
+        bool HasActiveEntities() const;
 
         //////////////////////////////////////////////////////////////////////////
         // SliceInstantiationResultBus
@@ -54,9 +91,55 @@ namespace AzFramework
         void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId) override;
         //////////////////////////////////////////////////////////////////////////
 
+        void InstantiationFailureCleanup();
+        void UseCacheFor(BindRequest& request, const AZ::EntityId& staticEntityId);
+        void CloseEntityMap(const AZ::SliceComponent::EntityIdToEntityIdMap& staticToRuntimeMap);
+
         AZ::Data::AssetId m_sliceAssetId;
         BindRequestContainerType m_bindingQueue;
         SliceInstantiationTicket m_ticket;
+
+        /**
+         * \breif a cache of entities that might be networked at some point
+         * \note they might be bound and unbound if their replicas leave and come back in the view
+         */
+        AZStd::vector<AZ::Entity*> m_boundEntities;
+
+        /**
+         * \brief identifies which slice instance the instantiation will be performed for
+         */
+        AZ::SliceComponent::SliceInstanceId m_sliceInstanceId;
+        /**
+         * \brief when was the request to spawn a slice and bind it made
+         */
+        AZStd::chrono::system_clock::time_point m_bindTime;
+
+        AZ::SliceComponent::EntityIdToEntityIdMap m_staticToRuntimeEntityMap;
+
+        /**
+         * \brief The state of the slice instance.
+         */
+        enum class State
+        {
+            /**
+             * \brief Has not started instantiating the slice instance.
+             */
+            NewRequest,
+            /**
+             * \brief Waiting on the slice to spawn.
+             */
+            Spawning,
+            /**
+             * \brief Successfully spawned the slice assets.
+             */
+            Spawned,
+            /**
+             * \brief Failed to spawn the slice.
+             */
+            Failed
+        };
+
+        State m_state = State::NewRequest;
     };
 
     /**
@@ -94,6 +177,8 @@ namespace AzFramework
         virtual void Init();
         virtual void Shutdown();
 
+        static const AZStd::chrono::milliseconds s_sliceBindingTimeout;
+
         //////////////////////////////////////////////////////////////////////////
         // NetBindingSystemBus
         bool ShouldBindToNetwork() override;
@@ -105,6 +190,7 @@ namespace AzFramework
         void SpawnEntityFromStream(AZ::IO::GenericStream& spawnData, AZ::EntityId useEntityId, GridMate::ReplicaId bindTo, NetBindingContextSequence addToContext) override;
         void OnNetworkSessionActivated(GridMate::GridSession* session) override;
         void OnNetworkSessionDeactivated(GridMate::GridSession* session) override;
+        void UnbindGameEntity(AZ::EntityId entity, const AZ::SliceComponent::SliceInstanceId& sliceInstanceId) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -136,7 +222,7 @@ namespace AzFramework
         virtual void ProcessBindRequests();
 
         //! Performs final stage of entity spawning process
-        virtual void BindAndActivate(AZ::Entity* entity, GridMate::ReplicaId replicaId, bool addToContext);
+        virtual bool BindAndActivate(AZ::Entity* entity, GridMate::ReplicaId replicaId, bool addToContext, const AZ::SliceComponent::SliceInstanceId& sliceInstanceId);
 
         //! Called on the host to spawn the net binding system replica
         virtual GridMate::Replica* CreateSystemReplica();
@@ -154,7 +240,7 @@ namespace AzFramework
         typedef AZStd::list<SpawnRequest> SpawnRequestContainerType;
         typedef AZStd::map<NetBindingContextSequence, SpawnRequestContainerType> SpawnRequestContextContainerType;
 
-        typedef AZStd::unordered_map<AZ::EntityId, NetBindingSliceInstantiationHandler> SliceRequestContainerType;
+        typedef AZStd::unordered_map<AZ::SliceComponent::SliceInstanceId, NetBindingSliceInstantiationHandler> SliceRequestContainerType;
         typedef AZStd::map<NetBindingContextSequence, SliceRequestContainerType> BindRequestContextContainerType;
 
         GridMate::GridSession* m_bindingSession;
@@ -194,6 +280,31 @@ namespace AzFramework
          * \return True if the root slice entities is to be loaded authoritatively
          */
         bool IsAuthoritateLoad() const;
+
+        void UpdateClock(float deltaTime);
+        AZStd::chrono::system_clock::time_point Now() const;
+
+        AZStd::chrono::system_clock::time_point m_currentTime;
+    };
+
+    class NetBindingSystemContextData
+        : public GridMate::ReplicaChunk
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(NetBindingSystemContextData, AZ::SystemAllocator, 0);
+
+        static const char* GetChunkName() { return "NetBindingSystemContextData"; }
+
+        NetBindingSystemContextData();
+
+        bool IsReplicaMigratable() override { return true; }
+        bool IsBroadcast() override { return true; }
+
+        void OnReplicaActivate(const GridMate::ReplicaContext& rc) override;
+
+        void OnReplicaDeactivate(const GridMate::ReplicaContext& rc) override;
+
+        GridMate::DataSet<AZ::u32, GridMate::VlqU32Marshaler> m_bindingContextSequence;
     };
 } // namespace AzFramework
 

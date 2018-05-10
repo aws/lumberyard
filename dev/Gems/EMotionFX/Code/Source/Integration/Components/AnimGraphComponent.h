@@ -81,8 +81,9 @@ namespace EMotionFX
 
                     Configuration();
 
-                AZ::Data::Asset<AnimGraphAsset>    m_animGraphAsset;          ///< Selected anim graph.
-                AZ::Data::Asset<MotionSetAsset>     m_motionSetAsset;           ///< Selected motion set.
+                AZ::Data::Asset<AnimGraphAsset>     m_animGraphAsset;           ///< Selected anim graph.
+                AZ::Data::Asset<MotionSetAsset>     m_motionSetAsset;           ///< Selected motion set asset.
+                AZStd::string                       m_activeMotionSetName;      ///< Selected motion set.
                 ParameterDefaults                   m_parameterDefaults;        ///< Defaults for parameter values.
 
                 static void Reflect(AZ::ReflectContext* context);
@@ -177,7 +178,7 @@ namespace EMotionFX
             Configuration                               m_configuration;        ///< Component configuration.
 
             EMotionFXPtr<EMotionFX::ActorInstance>      m_actorInstance;        ///< Associated actor instance (retrieved from Actor Component).
-            EMotionFXPtr<EMotionFX::AnimGraphInstance> m_animGraphInstance;   ///< Live anim graph instance.
+            EMotionFXPtr<EMotionFX::AnimGraphInstance>  m_animGraphInstance;    ///< Live anim graph instance.
         };
 
     } // namespace Integration

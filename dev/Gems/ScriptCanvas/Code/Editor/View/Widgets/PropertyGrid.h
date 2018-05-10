@@ -64,16 +64,24 @@ namespace ScriptCanvasEditor
 
             // PropertyGridRequestHandler
             void RefreshPropertyGrid() override;
+            void RebuildPropertyGrid() override;
+            void SetSelection(const AZStd::vector<AZ::EntityId>& selectedEntityIds) override;
+            void ClearSelection() override;
             ////
 
             void SealUndoStack() override {};
 
-            void ClearSelection();
-            void SetSelection(const AZStd::vector<AZ::EntityId>& selectedEntityIds);
-
             void OnNodeUpdate(const AZ::EntityId&);
 
-            using InstancesToAggregate = AZStd::unordered_map<const AZ::SerializeContext::ClassData*, AZStd::unordered_set<AZ::Component*>>;
+            struct InstancesToDisplay
+            {
+                //! This is ONLY used to get the title of the node.
+                //! This entity ISN'T necessarily the owner of m_gcInstances and m_scInstances.
+                AZ::EntityId m_gcEntityId;
+
+                AZStd::list<AZ::Component*> m_gcInstances;
+                AZStd::list<AZ::Component*> m_scInstances;
+            };
 
         private slots:
             void UpdateContents(const AZStd::vector<AZ::EntityId>& selectedEntityIds);
@@ -86,7 +94,7 @@ namespace ScriptCanvasEditor
         private:
 
             void SetVisibility(const AZStd::vector<AZ::EntityId>& selectedEntityIds);
-            void DisplayInstances(const InstancesToAggregate& instancesToDisplay);
+            void DisplayInstances(const InstancesToDisplay& instances);
 
             AzToolsFramework::ComponentEditor* CreateComponentEditor();
 

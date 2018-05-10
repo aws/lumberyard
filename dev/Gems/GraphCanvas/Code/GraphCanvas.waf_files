@@ -2,16 +2,7 @@
     "NoUberFile": {
         "Root": [
             "precompiled.cpp",
-            "precompiled.h",
-            "Source/resources.qrc"
-        ],
-        "Include/GraphCanvas/Styling":[
-            "Include/GraphCanvas/Styling/Selector.h"
-        ],
-        "Source/Styling":[
-            "Source/Styling/StyleHelper.h",
-            "Source/Styling/Style.cpp",
-            "Source/Styling/Style.h"
+            "precompiled.h"
         ]
     },
     "auto": {
@@ -26,15 +17,7 @@
             "Include/GraphCanvas/Components/GeometryBus.h",
             "Include/GraphCanvas/Components/GraphCanvasPropertyBus.h",
             "Include/GraphCanvas/Components/GridBus.h",
-            "Include/GraphCanvas/Components/MimeDataHandlerBus.h",
-            "Include/GraphCanvas/Components/SceneBus.h",
-            "Include/GraphCanvas/Components/StyleBus.h",
-            "Include/GraphCanvas/Components/ViewBus.h",
-            "Include/GraphCanvas/Components/VisualBus.h"
-        ],
-        "Include/GraphCanvas/Components/Connections":
-        [
-            "Include/GraphCanvas/Components/Connections/ConnectionBus.h"
+            "Include/GraphCanvas/Components/MimeDataHandlerBus.h"
         ],
         "Include/GraphCanvas/Components/Connections/ConnectionFilters":
         [
@@ -45,13 +28,14 @@
         "Include/GraphCanvas/Components/NodePropertyDisplay":
         [
             "Include/GraphCanvas/Components/NodePropertyDisplay/BooleanDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/DataInterface.h",
+            "Include/GraphCanvas/Components/NodePropertyDisplay/DataInterface.h",       
             "Include/GraphCanvas/Components/NodePropertyDisplay/DoubleDataInterface.h",
             "Include/GraphCanvas/Components/NodePropertyDisplay/EntityIdDataInterface.h",
+            "Include/GraphCanvas/Components/NodePropertyDisplay/ItemModelDataInterface.h",
             "Include/GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h",
+            "Include/GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h",
             "Include/GraphCanvas/Components/NodePropertyDisplay/ReadOnlyDataInterface.h",
             "Include/GraphCanvas/Components/NodePropertyDisplay/StringDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/VariableDataInterface.h",
             "Include/GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h"
         ],
         "Include/GraphCanvas/Components/Nodes":
@@ -66,13 +50,9 @@
         [
             "Include/GraphCanvas/Components/Nodes/Comment/CommentBus.h"
         ],
-        "Include/GraphCanvas/Components/Nodes/Variable":
-        [
-            "Include/GraphCanvas/Components/Nodes/Variable/VariableNodeBus.h"
-        ],
         "Include/GraphCanvas/Components/Nodes/Wrapper":
         [
-            "Include/GraphCanvas/Components/Nodes/Wrapper/WrapperNodeLayoutBus.h"
+            "Include/GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h"
         ],
         "Include/GraphCanvas/Components/Slots":
         [
@@ -87,32 +67,14 @@
             "Include/GraphCanvas/Components/Slots/Property/PropertySlotBus.h"
         ],
         "Include/GraphCanvas/Types":
-        [
-            "Include/GraphCanvas/Types/Endpoint.h",
+        [            
             "Include/GraphCanvas/Types/EntitySaveData.h",
-            "Include/GraphCanvas/Types/SceneData.h",
-            "Include/GraphCanvas/Types/SceneSerialization.h",
-            "Include/GraphCanvas/Types/TranslationTypes.h",
-            "Include/GraphCanvas/Types/Types.h"
-        ],
-        "Include/GraphCanvas/Ui":
-        [
-            "Include/GraphCanvas/Ui/RootVisualNotificationsHelper.h"
+            "Include/GraphCanvas/Types/TranslationTypes.h"
         ],
         "Include/GraphCanvas/Widgets":
         [
-            "Include/GraphCanvas/Widgets/GraphCanvasMimeContainer.cpp",
-            "Include/GraphCanvas/Widgets/GraphCanvasMimeContainer.h",
-            "Include/GraphCanvas/Widgets/GraphCanvasMimeEvent.cpp",
-            "Include/GraphCanvas/Widgets/GraphCanvasMimeEvent.h",
-            "Include/GraphCanvas/Widgets/GraphCanvasTreeItem.h",
-            "Include/GraphCanvas/Widgets/GraphCanvasTreeModel.cpp",
-            "Include/GraphCanvas/Widgets/GraphCanvasTreeModel.h",
-            "Include/GraphCanvas/Widgets/NodePropertyBus.h"
-        ],
-        "Include/GraphCanvas/Widgets/CanvasGraphicsView":
-        [
-            "Include/GraphCanvas/Widgets/CanvasGraphicsView/CanvasGraphicsView.h"
+            "Include/GraphCanvas/Widgets/NodePropertyBus.h",
+            "Include/GraphCanvas/Widgets/RootGraphicsItem.h"
         ],
         "Source":
         [
@@ -124,6 +86,8 @@
         ],
         "Source/Components":
         [
+            "Source/Components/BookmarkManagerComponent.cpp",
+            "Source/Components/BookmarkManagerComponent.h",
             "Source/Components/GeometryComponent.cpp",
             "Source/Components/GeometryComponent.h",
             "Source/Components/GridComponent.cpp",
@@ -132,14 +96,17 @@
             "Source/Components/GridVisualComponent.h",
             "Source/Components/SceneComponent.cpp",
             "Source/Components/SceneComponent.h",
+            "Source/Components/SceneMemberComponent.cpp",
+            "Source/Components/SceneMemberComponent.h",
             "Source/Components/StylingComponent.cpp",
-            "Source/Components/StylingComponent.h"			
+            "Source/Components/StylingComponent.h"
         ],
-        "Source/Components/ColorPaletteManager":
+        "Source/Components/BookmarkAnchor":
         [
-            "Source/Components/ColorPaletteManager/ColorPaletteManagerBus.h",
-            "Source/Components/ColorPaletteManager/ColorPaletteManagerComponent.cpp",
-            "Source/Components/ColorPaletteManager/ColorPaletteManagerComponent.h"
+            "Source/Components/BookmarkAnchor/BookmarkAnchorComponent.cpp",
+            "Source/Components/BookmarkAnchor/BookmarkAnchorComponent.h",
+            "Source/Components/BookmarkAnchor/BookmarkAnchorVisualComponent.cpp",
+            "Source/Components/BookmarkAnchor/BookmarkAnchorVisualComponent.h"
         ],
         "Source/Components/Connections":
         [
@@ -161,16 +128,17 @@
         [
             "Source/Components/NodePropertyDisplays/BooleanNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h",
-            "Source/Components/NodePropertyDisplays/DoubleNodePropertyDisplay.cpp",
-            "Source/Components/NodePropertyDisplays/DoubleNodePropertyDisplay.h",
+            "Source/Components/NodePropertyDisplays/NumericNodePropertyDisplay.cpp",
+            "Source/Components/NodePropertyDisplays/NumericNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.h",
+            "Source/Components/NodePropertyDisplays/ItemModelInspectionDialog.ui",
+            "Source/Components/NodePropertyDisplays/ItemModelNodePropertyDisplay.cpp",
+            "Source/Components/NodePropertyDisplays/ItemModelNodePropertyDisplay.h",            
             "Source/Components/NodePropertyDisplays/ReadOnlyNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/ReadOnlyNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/StringNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/StringNodePropertyDisplay.h",
-            "Source/Components/NodePropertyDisplays/VariableReferenceNodePropertyDisplay.cpp",
-            "Source/Components/NodePropertyDisplays/VariableReferenceNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/VectorNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/VectorNodePropertyDisplay.h"
         ],
@@ -255,18 +223,9 @@
             "Source/Components/Slots/Property/PropertySlotLayoutComponent.cpp",
             "Source/Components/Slots/Property/PropertySlotLayoutComponent.h"
         ],
-        "Source/Styling":
+        "Source/Utils":
         [
-            "Source/Styling/default_style.json",
-            "Source/Styling/definitions.cpp",
-            "Source/Styling/definitions.h",
-            "Source/Styling/Parser.cpp",
-            "Source/Styling/Parser.h",
-            "Source/Styling/PseudoElement.cpp",
-            "Source/Styling/PseudoElement.h",
-            "Source/Styling/Selector.cpp",
-            "Source/Styling/SelectorImplementations.cpp",
-            "Source/Styling/SelectorImplementations.h"
+            "Source/Utils/ConversionUtils.h"
         ],
         "Source/Widgets":
         [

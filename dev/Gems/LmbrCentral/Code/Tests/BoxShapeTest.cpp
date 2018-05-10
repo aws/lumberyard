@@ -15,148 +15,381 @@
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Math/Matrix3x3.h>
-#include <AzCore/Math/VertexContainerInterface.h>
 #include <AzCore/Math/Random.h>
-
-#include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
-
+#include <Shape/BoxShapeComponent.h>
 #include <Tests/TestTypes.h>
 
-#include <Shape/BoxShapeComponent.h>
+using namespace AZ;
+using namespace AzFramework;
+using namespace LmbrCentral;
 
-class BoxShapeTest
-    : public UnitTest::AllocatorsFixture
+namespace UnitTest
 {
-    AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
-    AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
-    AZStd::unique_ptr<AZ::ComponentDescriptor> m_boxShapeComponentDescriptor;
-
-public:
-    void SetUp() override
+    class BoxShapeTest
+        : public AllocatorsFixture
     {
-        UnitTest::AllocatorsFixture::SetUp();
-        m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
+        AZStd::unique_ptr<SerializeContext> m_serializeContext;
+        AZStd::unique_ptr<ComponentDescriptor> m_transformComponentDescriptor;
+        AZStd::unique_ptr<ComponentDescriptor> m_boxShapeComponentDescriptor;
 
-        m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
-        m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
-        m_boxShapeComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(LmbrCentral::BoxShapeComponent::CreateDescriptor());
-        m_boxShapeComponentDescriptor->Reflect(&(*m_serializeContext));
-    }
-
-    void TearDown() override
-    {
-        m_serializeContext.reset();
-        UnitTest::AllocatorsFixture::TearDown();
-    }
-};
-
-void SetupBoxComponent(const AZ::Transform& transform, AZ::Entity& entity)
-{
-    LmbrCentral::BoxShapeComponent* boxShapeComponent = entity.CreateComponent<LmbrCentral::BoxShapeComponent>();
-    entity.CreateComponent<AzFramework::TransformComponent>();
-
-    entity.Init();
-    entity.Activate();
-
-    //Use identity transform so that we test points against an AABB
-    AZ::TransformBus::Event(entity.GetId(), &AZ::TransformBus::Events::SetWorldTM, transform);
-
-    AZ::Vector3 boxDimensions(10.0f, 10.0f, 10.0f);
-    LmbrCentral::BoxShapeComponentRequestsBus::Event(entity.GetId(), &LmbrCentral::BoxShapeComponentRequestsBus::Events::SetBoxDimensions, boxDimensions);
-}
-
-bool RandomPointsAreInBox(const AZ::Entity& entity, const AZ::Transform& entityTransform, const AZ::RandomDistributionType distributionType)
-{
-    const AZ::u32 testPoints = 10000;
-    AZ::Vector3 testPoint;
-    bool testPointInVolume = false;
-
-    //Test a bunch of random points generated with a random distribution type 
-    //They should all end up in the volume
-    for (AZ::u32 i = 0; i < testPoints; ++i)
-    {
-        LmbrCentral::ShapeComponentRequestsBus::EventResult(testPoint, entity.GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GenerateRandomPointInside, distributionType);
-
-        LmbrCentral::ShapeComponentRequestsBus::EventResult(testPointInVolume, entity.GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::IsPointInside, testPoint);
-
-        if (!testPointInVolume)
+    public:
+        void SetUp() override
         {
-            return false;
+            AllocatorsFixture::SetUp();
+            m_serializeContext = AZStd::make_unique<SerializeContext>();
+
+            m_transformComponentDescriptor = AZStd::unique_ptr<ComponentDescriptor>(TransformComponent::CreateDescriptor());
+            m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
+            m_boxShapeComponentDescriptor = AZStd::unique_ptr<ComponentDescriptor>(BoxShapeComponent::CreateDescriptor());
+            m_boxShapeComponentDescriptor->Reflect(&(*m_serializeContext));
         }
+
+        void TearDown() override
+        {
+            m_serializeContext.reset();
+            AllocatorsFixture::TearDown();
+        }
+    };
+
+    void CreateBox(const Transform& transform, const Vector3& dimensions, Entity& entity)
+    {
+        entity.CreateComponent<BoxShapeComponent>();
+        entity.CreateComponent<TransformComponent>();
+
+        entity.Init();
+        entity.Activate();
+
+        // use identity transform so that we test points against an AABB
+        TransformBus::Event(entity.GetId(), &TransformBus::Events::SetWorldTM, transform);
+        BoxShapeComponentRequestsBus::Event(entity.GetId(), &BoxShapeComponentRequestsBus::Events::SetBoxDimensions, dimensions);
     }
 
-    return true;
-}
+    void CreateDefaultBox(const Transform& transform, Entity& entity)
+    {
+        CreateBox(transform, Vector3(10.0f, 10.0f, 10.0f), entity);
+    }
 
-TEST_F(BoxShapeTest, NormalDistributionRandomPointsAreInAABB)
-{
-    bool allRandomPointsInVolume = false;
+    bool RandomPointsAreInBox(const Entity& entity, const RandomDistributionType distributionType)
+    {
+        const size_t testPoints = 10000;
 
-    //Don't rotate transform so that this is an AABB
-    AZ::Transform transform = AZ::Transform::CreateIdentity();
-    transform.SetPosition(AZ::Vector3(5.0f, 5.0f, 5.0f));
+        Vector3 testPoint;
+        bool testPointInVolume = false;
 
-    AZ::Entity entity;
-    SetupBoxComponent(transform, entity);
+        // test a bunch of random points generated with a random distribution type
+        // they should all end up in the volume
+        for (size_t i = 0; i < testPoints; ++i)
+        {
+            ShapeComponentRequestsBus::EventResult(
+                testPoint, entity.GetId(), &ShapeComponentRequestsBus::Events::GenerateRandomPointInside, distributionType);
 
-    allRandomPointsInVolume = RandomPointsAreInBox(entity, transform, AZ::RandomDistributionType::Normal);
+            ShapeComponentRequestsBus::EventResult(
+                testPointInVolume, entity.GetId(), &ShapeComponentRequestsBus::Events::IsPointInside, testPoint);
 
-    ASSERT_TRUE(allRandomPointsInVolume);
-}
+            if (!testPointInVolume)
+            {
+                return false;
+            }
+        }
 
-TEST_F(BoxShapeTest, UniformRealDistributionRandomPointsAreInAABB)
-{
-    bool allRandomPointsInVolume = false;
+        return true;
+    }
 
-    //Don't rotate transform so that this is an AABB
-    AZ::Transform transform = AZ::Transform::CreateIdentity();
-    transform.SetPosition(AZ::Vector3(5.0f, 5.0f, 5.0f));
+    TEST_F(BoxShapeTest, NormalDistributionRandomPointsAreInAABB)
+    {
+        // don't rotate transform so that this is an AABB
+        const Transform transform = Transform::CreateTranslation(Vector3(5.0f, 5.0f, 5.0f));
 
-    AZ::Entity entity;
-    SetupBoxComponent(transform, entity);
+        Entity entity;
+        CreateDefaultBox(transform, entity);
 
-    allRandomPointsInVolume = RandomPointsAreInBox(entity, transform, AZ::RandomDistributionType::UniformReal);
+        const bool allRandomPointsInVolume = RandomPointsAreInBox(entity, RandomDistributionType::Normal);
+        EXPECT_TRUE(allRandomPointsInVolume);
+    }
 
-    ASSERT_TRUE(allRandomPointsInVolume);
-}
+    TEST_F(BoxShapeTest, UniformRealDistributionRandomPointsAreInAABB)
+    {
+        // don't rotate transform so that this is an AABB
+        const Transform transform = Transform::CreateTranslation(Vector3(5.0f, 5.0f, 5.0f));
 
-TEST_F(BoxShapeTest, NormalDistributionRandomPointsAreInOBB)
-{
-    bool allRandomPointsInVolume = false;
+        Entity entity;
+        CreateDefaultBox(transform, entity);
 
-    //Rotate to end up with an OBB
-    float angle = AZ::Constants::HalfPi * 0.5f;
+        const bool allRandomPointsInVolume = RandomPointsAreInBox(entity, RandomDistributionType::UniformReal);
+        EXPECT_TRUE(allRandomPointsInVolume);
+    }
 
-    AZ::Quaternion rotation = AZ::Quaternion::CreateRotationY(angle);
-    AZ::Transform transform = AZ::Transform::CreateFromQuaternion(rotation);
+    TEST_F(BoxShapeTest, NormalDistributionRandomPointsAreInOBB)
+    {
+        // rotate to end up with an OBB
+        const Transform transform = Transform::CreateFromQuaternionAndTranslation(
+                Quaternion::CreateRotationY(Constants::QuarterPi), Vector3(5.0f, 5.0f, 5.0f));
 
-    transform.SetPosition(AZ::Vector3(5.0f, 5.0f, 5.0f));
+        Entity entity;
+        CreateDefaultBox(transform, entity);
 
-    AZ::Entity entity;
-    SetupBoxComponent(transform, entity);
+        const bool allRandomPointsInVolume = RandomPointsAreInBox(entity, RandomDistributionType::Normal);
+        EXPECT_TRUE(allRandomPointsInVolume);
+    }
 
-    allRandomPointsInVolume = RandomPointsAreInBox(entity, transform, AZ::RandomDistributionType::Normal);
+    TEST_F(BoxShapeTest, UniformRealDistributionRandomPointsAreInOBB)
+    {
+        // rotate to end up with an OBB
+        const Transform transform = Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateRotationY(Constants::QuarterPi), Vector3(5.0f, 5.0f, 5.0f));
 
-    ASSERT_TRUE(allRandomPointsInVolume);
-}
+        Entity entity;
+        CreateDefaultBox(transform, entity);
 
-TEST_F(BoxShapeTest, UniformRealDistributionRandomPointsAreInOBB)
-{
-    bool allRandomPointsInVolume = false;
+        const bool allRandomPointsInVolume = RandomPointsAreInBox(entity, RandomDistributionType::UniformReal);
+        EXPECT_TRUE(allRandomPointsInVolume);
+    }
 
-    //Rotate to end up with an OBB
-    float angle = AZ::Constants::HalfPi * 0.5f;
+    TEST_F(BoxShapeTest, GetRayIntersectBoxSuccess1)
+    {
+        Entity entity;
+        CreateBox(
+            Transform::CreateTranslation(Vector3(0.0f, 0.0f, 5.0f)) *
+            Transform::CreateRotationZ(Constants::QuarterPi),
+            Vector3(1.0f), entity);
 
-    AZ::Quaternion rotation = AZ::Quaternion::CreateRotationY(angle);
-    AZ::Transform transform = AZ::Transform::CreateFromQuaternion(rotation);
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(0.0f, 5.0f, 5.0f), Vector3(0.0f, -1.0f, 0.0f), distance);
 
-    transform.SetPosition(AZ::Vector3(5.0f, 5.0f, 5.0f));
+        // 5.0 - 0.707 ~= 4.29 (box rotated by 45 degrees)
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 4.29f, 1e-2f);
+    }
 
-    AZ::Entity entity;
-    SetupBoxComponent(transform, entity);
+    TEST_F(BoxShapeTest, GetRayIntersectBoxSuccess2)
+    {
+        Entity entity;
+        CreateBox(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi) *
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisZ(), Constants::QuarterPi), Vector3(-10.0f, -10.0f, -10.0f)),
+            Vector3(4.0f, 4.0f, 2.0f), entity);
 
-    allRandomPointsInVolume = RandomPointsAreInBox(entity, transform, AZ::RandomDistributionType::UniformReal);
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(-10.0f, -10.0f, 0.0f), Vector3(0.0f, 0.0f, -1.0f), distance);
+        
+        // 0.70710678 * 4 = 2.8284271
+        // 10.0 - 2.8284271 ~= 7.17157287
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 7.17f, 1e-2f);
+    }
 
-    ASSERT_TRUE(allRandomPointsInVolume);
+    TEST_F(BoxShapeTest, GetRayIntersectBoxSuccess3)
+    {
+        Entity entity;
+        CreateBox(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateIdentity(), Vector3(100.0f, 100.0f, 0.0f)),
+            Vector3(5.0f, 5.0f, 5.0f), entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(100.0f, 100.0f, -100.0f), Vector3(0.0f, 0.0f, 1.0f), distance);
+
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 97.5f, 1e-2f);
+    }
+
+    // transformed scaled
+    TEST_F(BoxShapeTest, GetRayIntersectBoxSuccess4)
+    {
+        Entity entity;
+        CreateBox(
+            Transform::CreateFromQuaternionAndTranslation(
+                Quaternion::CreateFromAxisAngle(Vector3::CreateAxisY(), Constants::QuarterPi),
+                Vector3(0.0f, 0.0f, 5.0f)) *
+            Transform::CreateScale(Vector3(3.0f)),
+            Vector3(2.0f, 4.0f, 1.0f), entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(1.0f, -10.0f, 4.0f), Vector3(0.0f, 1.0f, 0.0f), distance);
+
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 4.0f, 1e-2f);
+    }
+
+    TEST_F(BoxShapeTest, GetRayIntersectBoxFailure)
+    {
+        Entity entity;
+        CreateBox(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateIdentity(), Vector3(0.0f, -10.0f, 0.0f)),
+            Vector3(2.0f, 6.0f, 4.0f), entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3::CreateZero(), Vector3(1.0f, 0.0f, 0.0f), distance);
+
+        EXPECT_FALSE(rayHit);
+    }
+
+    TEST_F(BoxShapeTest, GetAabb1)
+    {
+        // not rotated - AABB input
+        Entity entity;
+        CreateBox(Transform::CreateIdentity(), Vector3(1.5f, 3.5f, 5.5f), entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-0.75f, -1.75f, -2.75f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(0.75f, 1.75f, 2.75f)));
+    }
+
+    TEST_F(BoxShapeTest, GetAabb2)
+    {
+        // rotated - OBB input
+        Entity entity;
+        CreateDefaultBox(
+            Transform::CreateFromQuaternionAndTranslation(
+                Quaternion::CreateRotationY(Constants::QuarterPi),
+                Vector3(5.0f, 5.0f, 5.0f)), entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequestsBus::Events::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(Vector3(-2.07106f, 0.0f, -2.07106f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(Vector3(12.07106f, 10.0f, 12.07106f)));
+    }
+
+    TEST_F(BoxShapeTest, GetAabb3)
+    {
+        // rotated - OBB input
+        Entity entity;
+        CreateBox(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::QuarterPi) *
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisY(), Constants::QuarterPi), Vector3(0.0f, 0.0f, 0.0f)),
+            Vector3(2.0f, 5.0f, 1.0f), entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-1.06066f, -2.517766f, -2.517766f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(1.06066f, 2.517766f, 2.517766f)));
+    }
+
+    // transformed
+    TEST_F(BoxShapeTest, GetAabb4)
+    {
+        // not rotated - AABB input
+        Entity entity;
+        CreateBox(Transform::CreateTranslation(
+            Vector3(100.0f, 70.0f, 30.0f)), Vector3(1.8f, 3.5f, 5.2f), entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(99.1f, 68.25f, 27.4f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(100.9f, 71.75f, 32.6f)));
+    }
+
+    // transformed scaled
+    TEST_F(BoxShapeTest, GetAabb5)
+    {
+        Entity entity;
+        CreateBox(
+            Transform::CreateFromQuaternionAndTranslation(
+                Quaternion::CreateFromAxisAngle(Vector3::CreateAxisY(), Constants::QuarterPi),
+                Vector3::CreateZero()) *
+            Transform::CreateScale(Vector3(3.0f)),
+            Vector3(2.0f, 4.0f, 1.0f), entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-3.18f, -6.0f, -3.18f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(3.18f, 6.0f, 3.18f)));
+    }
+
+    // point inside scaled
+    TEST_F(BoxShapeTest, IsPointInsideSuccess1)
+    {
+        Entity entity;
+        CreateBox(
+            Transform::CreateFromQuaternionAndTranslation(
+                Quaternion::CreateFromAxisAngle(Vector3::CreateAxisZ(), Constants::QuarterPi),
+                Vector3(23.0f, 12.0f, 40.0f)) *
+            Transform::CreateScale(Vector3(3.0f)),
+            Vector3(2.0f, 6.0f, 3.5f), entity);
+
+        bool inside;
+        ShapeComponentRequestsBus::EventResult(
+            inside, entity.GetId(), &ShapeComponentRequests::IsPointInside, Vector3(27.0f, 5.0f, 36.0f));
+
+        EXPECT_TRUE(inside);
+    }
+
+    // point inside scaled
+    TEST_F(BoxShapeTest, IsPointInsideSuccess2)
+    {
+        Entity entity;
+        CreateBox(
+            Transform::CreateTranslation(Vector3(23.0f, 12.0f, 40.0f)) *
+            Transform::CreateRotationX(-Constants::QuarterPi) *
+            Transform::CreateRotationZ(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(2.0f)),
+            Vector3(4.0f, 7.0f, 3.5f), entity);
+
+        bool inside;
+        ShapeComponentRequestsBus::EventResult(
+            inside, entity.GetId(), &ShapeComponentRequests::IsPointInside, Vector3(18.0f, 16.0f, 40.0f));
+
+        EXPECT_TRUE(inside);
+    }
+
+    // distance scaled
+    TEST_F(BoxShapeTest, DistanceFromPoint1)
+    {
+        Entity entity;
+        CreateBox(
+            Transform::CreateTranslation(Vector3(10.0f, 37.0f, 32.0f)) *
+            Transform::CreateRotationZ(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(3.0f, 1.0f, 1.0f)),
+            Vector3(4.0f, 2.0f, 10.0f), entity);
+
+        float distance;
+        ShapeComponentRequestsBus::EventResult(
+            distance, entity.GetId(), &ShapeComponentRequests::DistanceFromPoint, Vector3(3.6356f, 30.636f, 40.0f));
+
+        EXPECT_NEAR(distance, 3.0f, 1e-2f);
+    }
+
+    // distance scaled
+    TEST_F(BoxShapeTest, DistanceFromPoint2)
+    {
+        Entity entity;
+        CreateBox(
+            Transform::CreateTranslation(Vector3(10.0f, 37.0f, 32.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::HalfPi) *
+            Transform::CreateScale(Vector3(3.0f, 1.0f, 1.0f)),
+            Vector3(4.0f, 2.0f, 10.0f), entity);
+
+        float distance;
+        ShapeComponentRequestsBus::EventResult(
+            distance, entity.GetId(), &ShapeComponentRequests::DistanceFromPoint, Vector3(10.0f, 37.0f, 48.0f));
+
+        EXPECT_NEAR(distance, 13.0f, 1e-2f);
+    }
 }

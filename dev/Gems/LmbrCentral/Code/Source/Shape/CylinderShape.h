@@ -9,10 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
-#include <Cry_Geo.h>
-#include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
@@ -22,70 +21,78 @@ namespace AZ
     enum class RandomDistributionType : AZ::u32;
 }
 
+namespace AzFramework
+{
+    class EntityDebugDisplayRequests;
+}
+
 namespace LmbrCentral
 {
-    class CylinderShape        
+    struct ShapeDrawParams;
+
+    class CylinderShape
         : public ShapeComponentRequestsBus::Handler
         , public CylinderShapeComponentRequestsBus::Handler
         , public AZ::TransformNotificationBus::Handler
     {
     public:
-        
-        // Runtime data
-        class CylinderIntersectionDataCache : public IntersectionTestDataCache<CylinderShapeConfig>
-        {
-        public:
-            friend class CylinderShape;
+        AZ_CLASS_ALLOCATOR(CylinderShape, AZ::SystemAllocator, 0)
+        AZ_RTTI(CylinderShape, "{B45EFEF2-631F-43D3-B538-A3FE68350231}")
 
-            void UpdateIntersectionParams(const AZ::Transform& currentTransform, const CylinderShapeConfig& configuration) override;
+        static void Reflect(AZ::ReflectContext* context);
 
-        private:
-
-            // Values that are used for cylinder intersection tests
-            // The center point of the cylinder
-            AZ::Vector3 m_baseCenterPoint;
-
-            // A vector along the axis of this cylinder scaled to the height of the cylinder
-            AZ::Vector3 m_axisVector;
-
-            // Length of the axis squared
-            float m_axisLengthSquared;
-
-            // Radius of the cylinder squared
-            float m_radiusSquared;
-        };
-
-        void Activate(const AZ::EntityId& entityId);
+        void Activate(AZ::EntityId entityId);
         void Deactivate();
-        void InvalidateCache(CylinderIntersectionDataCache::CacheStatus reason);
+        void InvalidateCache(InvalidateShapeCacheReason reason);
 
-        // Get a reference to the underlying cylinder configuration
-        virtual CylinderShapeConfig& GetConfiguration() = 0;
-
-        // ShapeComponent::Handler implementation
-        AZ::Crc32 GetShapeType() override { return AZ::Crc32("Cylinder"); }
+        // ShapeComponentRequestsBus::Handler
+        AZ::Crc32 GetShapeType() override { return AZ_CRC("Cylinder", 0x9b045bea); }
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
         AZ::Aabb GetEncompassingAabb() override;
         AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) override;
+        bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
 
-        // ShapeBoxComponentRequestBus::Handler implementation
-        CylinderShapeConfig GetCylinderConfiguration() override { return GetConfiguration(); }
-        void SetHeight(float newHeight) override;
-        void SetRadius(float newRadius) override;        
-        
-        // Transform notification bus listener        
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;   
+        // CylinderShapeComponentRequestsBus::Handler
+        CylinderShapeConfig GetCylinderConfiguration() override { return m_cylinderShapeConfig; }
+        void SetHeight(float height) override;
+        void SetRadius(float radius) override;
+        float GetHeight() override;
+        float GetRadius() override;
+
+        // AZ::TransformNotificationBus::Handler
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        const CylinderShapeConfig& GetCylinderConfiguration() const { return m_cylinderShapeConfig; }
+        void SetCylinderConfiguration(const CylinderShapeConfig& cylinderShapeConfig) { m_cylinderShapeConfig = cylinderShapeConfig; }
+        const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
     private:
+        /**
+         * Runtime data - cache potentially expensive operations.
+         */
+        class CylinderIntersectionDataCache
+            : public IntersectionTestDataCache<CylinderShapeConfig>
+        {
+            void UpdateIntersectionParamsImpl(
+                const AZ::Transform& currentTransform, const CylinderShapeConfig& configuration) override;
 
-        //! Caches transient intersection data
-        CylinderIntersectionDataCache m_intersectionDataCache;
+            friend class CylinderShape;
+            
+            AZ::Vector3 m_baseCenterPoint; ///< The center point of the cylinder.
+            AZ::Vector3 m_axisVector; ///< A vector along the axis of this cylinder scaled to the height of the cylinder.
+            float m_height = 0.0f; ///< Height of the cylinder (including entity scale).
+            float m_radius = 0.0f; ///< Radius of the cylinder (including entity scale).
+        };
 
-        //! Caches the current World transform
-        AZ::Transform m_currentWorldTransform;
+        CylinderShapeConfig m_cylinderShapeConfig; ///< Underlying cylinder configuration.
+        CylinderIntersectionDataCache m_intersectionDataCache; ///< Caches transient intersection data.
+        AZ::Transform m_currentTransform; ///< Caches the current World transform.
+        AZ::EntityId m_entityId; ///< The Id of the entity the shape is attached to.
+    };
 
-        //! The Id of the entity the shape is attached to
-        AZ::EntityId m_entityId;
-    };    
+    void DrawCylinderShape(
+        const ShapeDrawParams& shapeDrawParams, const CylinderShapeConfig& cylinderShapeConfig,
+        AzFramework::EntityDebugDisplayRequests& displayContext);
+
 } // namespace LmbrCentral

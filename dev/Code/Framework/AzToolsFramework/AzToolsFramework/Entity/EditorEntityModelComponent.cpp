@@ -19,7 +19,7 @@ namespace AzToolsFramework
         {
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<EditorEntityModelComponent>(); // Empty class
+                serializeContext->Class<EditorEntityModelComponent, AZ::Component>(); // Empty class
             }
         }
 

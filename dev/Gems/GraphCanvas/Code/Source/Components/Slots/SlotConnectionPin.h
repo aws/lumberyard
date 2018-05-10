@@ -19,12 +19,14 @@
 #include <Components/Slots/SlotLayoutItem.h>
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Utils/StateControllers/StateController.h>
 
 namespace GraphCanvas
 {
     class SlotConnectionPin
         : public SlotLayoutItem
         , public SlotUIRequestBus::Handler
+        , public SlotNotificationBus::Handler
     {
     public:
         AZ_RTTI(SlotConnectionPin, "{4E4A8C30-584A-434B-B8FC-0514C1E7D290}", QGraphicsLayoutItem, QGraphicsItem);
@@ -36,8 +38,12 @@ namespace GraphCanvas
         void Activate();
         void Deactivate();
 
+        // SlotNotificationBus
+        void OnRegisteredToNode(const AZ::EntityId& nodeId) override;
+        ////
+
         // SlotLayoutItem
-        void RefreshStyle() override;
+        void RefreshStyle() override final;
 
         AZ::EntityId GetEntityId() const override
         {
@@ -68,9 +74,11 @@ namespace GraphCanvas
 		////
 
         virtual void DrawConnectionPin(QPainter *painter, QRectF drawRect, bool isConnected);
+        virtual void OnRefreshStyle();
 
         AZ::EntityId m_slotId;
 
         bool m_hovered;
+        StateSetter<RootGraphicsItemDisplayState> m_nodeDisplayStateStateSetter;
     };
 }

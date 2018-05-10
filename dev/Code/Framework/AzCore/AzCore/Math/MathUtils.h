@@ -32,11 +32,12 @@ namespace AZ
      */
     namespace Constants
     {
-        static const float Pi       = 3.14159265358979323846f;
-        static const float TwoPi    = 6.28318530717958623200f;
-        static const float HalfPi   = 1.57079632679489655800f;
+        static const float Pi = 3.14159265358979323846f;
+        static const float TwoPi = 6.28318530717958647692f;
+        static const float HalfPi = 1.57079632679489661923f;
+        static const float QuarterPi = 0.78539816339744830962f;
         static const float MaxFloatBeforePrecisionLoss  = 100000.f;
-    };
+    }
 
     /**
      * Degrees/radians conversion
@@ -45,7 +46,6 @@ namespace AZ
     AZ_MATH_FORCE_INLINE float RadToDeg(float rad)      { return rad * 180.0f / Constants::Pi; }
     AZ_MATH_FORCE_INLINE float DegToRad(float deg)      { return deg * Constants::Pi / 180.0f; }
     /*@}*/
-
 
     AZ_MATH_FORCE_INLINE bool IsClose(float a, float b, float tolerance) { return (fabsf(a - b) <= tolerance); }
     AZ_MATH_FORCE_INLINE bool IsClose(double a, double b, double tolerance) { return (fabs(a - b) <= tolerance); }

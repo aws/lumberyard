@@ -11,13 +11,25 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYENGINE_RENDERDLL_XRENDERD3D9_DRIVERD3D_H
-#define CRYINCLUDE_CRYENGINE_RENDERDLL_XRENDERD3D9_DRIVERD3D_H
 #pragma once
 
 
 #include "Cry_XOptimise.h"
 #include "IWindowMessageHandler.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DRIVERD3D_H_SECTION_2 2
+#define DRIVERD3D_H_SECTION_3 3
+#define DRIVERD3D_H_SECTION_4 4
+#define DRIVERD3D_H_SECTION_5 5
+#define DRIVERD3D_H_SECTION_6 6
+#define DRIVERD3D_H_SECTION_7 7
+#define DRIVERD3D_H_SECTION_8 8
+#define DRIVERD3D_H_SECTION_9 9
+#define DRIVERD3D_H_SECTION_10 10
+#define DRIVERD3D_H_SECTION_11 11
+#endif
 
 # if !defined(_RELEASE)
 # define ENABLE_CONTEXT_THREAD_CHECKING 0
@@ -402,7 +414,7 @@ protected:
             OcclusionDataOnCPU
         };
 
-        void SetupOcclusionData();
+        void SetupOcclusionData(const char* textureName);
         void Destroy();
 
         // Matrix used to render the Z-buffer that is downsampled into m_zTargetReadback
@@ -462,7 +474,15 @@ protected:
     volatile int m_CharCBFrameRequired[3];
     volatile int m_CharCBAllocated;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_2
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     IDXGISwapChain*  m_pSwapChain;
+#endif
     enum PresentStatus
     {
         epsOccluded         = 1 << 0,
@@ -721,6 +741,10 @@ public:
     virtual void LockParticleVideoMemory(uint32 nId);
     virtual void UnLockParticleVideoMemory(uint32 nId);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_3
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
     SDepthTexture m_DepthBufferOrig;
@@ -785,11 +809,19 @@ public:
 
     CRenderPipelineProfiler* m_pPipelineProfiler;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_4
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 private:
     D3DDevice* m_Device;
     D3DDeviceContext* m_DeviceContext;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_5
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+    #endif
 
     t_arrDeferredMeshIndBuff m_arrDeferredInds;
     t_arrDeferredMeshVertBuff m_arrDeferredVerts;
@@ -804,6 +836,10 @@ public:
     void SetDefaultTexParams(bool bUseMips, bool bRepeat, bool bLoad);
 
 public:
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_6
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     /////////////////////////////////////////////////////////////////////////////
     // Functions to access the device and associated objects
@@ -811,6 +847,10 @@ public:
     D3DDevice& GetDevice();
     D3DDeviceContext& GetDeviceContext();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_7
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
     bool IsDeviceContextValid() { return m_DeviceContext != nullptr; }
 
     /////////////////////////////////////////////////////////////////////////////
@@ -1258,10 +1298,26 @@ public:
     void FX_DrawShader_Fur(CShader* ef, SShaderTechnique* pTech);
 
     // hdr src texture is optional, if not specified uses default hdr destination target
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_8
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     void CopyFramebufferDX11(CTexture* pDst, ID3D11Resource* pSrcResource, D3DFormat srcFormat);
+#endif
     void FX_ScreenStretchRect(CTexture* pDst, CTexture* pHDRSrc = NULL);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_9
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     bool BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBakingOutput* pReturnValues);
+#endif
 
     virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffer);
 
@@ -1370,10 +1426,13 @@ public:
     bool FX_DeferredDecals();
     bool FX_DeferredDecalsEmissive();
     bool FX_SkinRendering(bool bEnable);
-    void FX_LinearizeDepth(CTexture* ptexZ);
     void FX_DepthFixupPrepare();
     void FX_DepthFixupMerge();
     void FX_SRGBConversion();
+
+    // Linearize Depth
+    void SetupLinearizeDepthParams(CShader* shader);
+    void FX_LinearizeDepth(CTexture* ptexZ);
 
     // Performance queries
     //=======================================================================
@@ -1421,7 +1480,7 @@ public:
         m_RP.m_TI[nThreadID].m_PersFlags |= RBPF_FP_MATRIXDIRTY | RBPF_FP_DIRTY;
     }
 
-    void FX_ResetPipe();
+    void FX_ResetPipe() override;
 
     _inline void EF_SetGlobalColor(float r, float g, float b, float a)
     {
@@ -1484,6 +1543,10 @@ public:
         return false;
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_10
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
     void FX_DrawBatches(CShader* pSh, SShaderPass* pPass);
     void FX_DrawBatchesSkinned(CShader* pSh, SShaderPass* pPass, SSkinningData* pSkinningData);
 
@@ -2003,6 +2066,11 @@ public:
         return m_PerInstanceConstantBufferPool;
     }
 
+    PerInstanceConstantBufferPool* GetPerInstanceConstantBufferPoolPointer()
+    {
+        return &m_PerInstanceConstantBufferPool;
+    }
+
     virtual void PushFogVolume(class CREFogVolume* pFogVolume, const SRenderingPassInfo& passInfo)
     {
         GetVolumetricFog().PushFogVolume(pFogVolume, passInfo);
@@ -2187,6 +2255,10 @@ inline D3DDeviceContext& CD3D9Renderer::GetDeviceContext()
     return *m_DeviceContext;
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_H_SECTION_11
+#include AZ_RESTRICTED_FILE(DriverD3D_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(SUPPORT_DEVICE_INFO_USER_DISPLAY_OVERRIDES)
 void UserOverrideDisplayProperties(DXGI_MODE_DESC& desc);
@@ -2207,5 +2279,3 @@ extern CD3D9Renderer gcpRendD3D;
 #define STREAMED_TEXTURE_USAGE (CDeviceManager::USAGE_STREAMING)
 
 void EnableCloseButton(void* hWnd, bool enabled);
-
-#endif // CRYINCLUDE_CRYENGINE_RENDERDLL_XRENDERD3D9_DRIVERD3D_H

@@ -2,7 +2,9 @@
     "auto": {
         "Tests": [
             "Tests/EMotionFXTest.cpp",
-            "Tests/EmotionFXMathLibTests.cpp"
+            "Tests/InitSceneAPIFixture.h",
+            "Tests/MorphTargetPipelineTests.cpp",
+            "Tests/SystemComponentFixture.h"
         ]
     }
 }

@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_IRENDERER_H
-#define CRYINCLUDE_CRYCOMMON_IRENDERER_H
 #pragma once
 
 #include "Cry_Geo.h"
@@ -107,7 +105,6 @@ struct SClipVolumeBlendInfo;
 class IImageFile;
 class CRenderView;
 struct SDynTexture2;
-class ITextureManager;
 class CTexture;
 
 //////////////////////////////////////////////////////////////////////
@@ -851,7 +848,7 @@ struct SDrawTextInfo
 #define MAX_RESOLUTION_SCALE (4.0f)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-    #include AZ_RESTRICTED_FILE(IRenderer_h)
+    #include AZ_RESTRICTED_FILE(IRenderer_h, AZ_RESTRICTED_PLATFORM)
 #else
 //SLI/CROSSFIRE GPU maximum count
     #define MAX_GPU_NUM 4
@@ -1087,6 +1084,7 @@ struct SRenderTileInfo;
 class CShaderMan;
 class CDeviceBufferManager;
 class CShaderResources;
+class PerInstanceConstantBufferPool;
 
 namespace AZ {
     class Plane;
@@ -1378,6 +1376,10 @@ struct IRenderer
     // Summary:
     //  Returns values of nearest rendering z-range max
     virtual float GetNearestRangeMax() const = 0;
+
+    // Summary:
+    //  Returns the PerInstanceConstantBufferPool
+    virtual PerInstanceConstantBufferPool* GetPerInstanceConstantBufferPoolPointer() = 0;
 
     // Summary:
     //  Projects to screen.
@@ -2242,6 +2244,9 @@ struct IRenderer
     // Draw a quad
     virtual void DrawQuad3D(const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const ColorF& color, float ftx0, float fty0, float ftx1, float fty1) = 0;
 
+    // Resets render pipeline state
+    virtual void FX_ResetPipe() = 0;
+
     // Gets an (existing) depth surface of the dimensions given
     virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA) = 0;
 
@@ -2620,5 +2625,3 @@ struct SRendParams
     // Force drawing static instead of deformable meshes
     bool bForceDrawStatic;
 };
-
-#endif // CRYINCLUDE_CRYCOMMON_IRENDERER_H

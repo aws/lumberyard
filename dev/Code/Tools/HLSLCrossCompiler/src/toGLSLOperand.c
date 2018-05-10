@@ -1679,7 +1679,7 @@ void TranslateOperand(HLSLCrossCompilerContext* psContext, const Operand* psOper
 
     TranslateVariableName(psContext, psOperand, ui32TOFlag, &ui32IgnoreSwizzle);
 
-    if (!ui32IgnoreSwizzle || psOperand->ui32RegisterNumber >= GMEM_FLOAT_START_SLOT)
+    if (!ui32IgnoreSwizzle || IsGmemReservedSlot(FBF_ANY, psOperand->ui32RegisterNumber))
     {
         TranslateOperandSwizzle(psContext, psOperand);
     }
@@ -1793,26 +1793,34 @@ void TextureName(bstring output, Shader* psShader, const uint32_t ui32TextureReg
         found &= GetResourceFromBindingPoint(RGROUP_SAMPLER, ui32SamplerRegister, &psShader->sInfo, &psSamplerBinding);
     }
 
-    if (found)
-    {
-        if (ui32TextureRegister >= GMEM_FLOAT_START_SLOT) // FRAMEBUFFER FETCH
+	if (found)
+	{
+        if (IsGmemReservedSlot(FBF_EXT_COLOR, ui32TextureRegister) || IsGmemReservedSlot(FBF_ARM_COLOR, ui32TextureRegister)) // FRAMEBUFFER FETCH
         {
             int regNum = GetGmemInputResourceSlot(ui32TextureRegister);
             bformata(output, "GMEM_Input%d", regNum);
+        }
+        else if (IsGmemReservedSlot(FBF_ARM_DEPTH, ui32TextureRegister))
+        {
+            bcatcstr(output, "GMEM_Depth");
+        }
+        else if (IsGmemReservedSlot(FBF_ARM_STENCIL, ui32TextureRegister))
+        {
+            bcatcstr(output, "GMEM_Stencil");
         }
         else
         {
             ResourceName(output, psShader, psTextureBinding->Name, RGROUP_TEXTURE, psSamplerBinding ? psSamplerBinding->Name : NULL, RGROUP_SAMPLER, ui32TextureRegister - psTextureBinding->ui32BindPoint, szModifier);
         }
-    }
-    else if (ui32SamplerRegister < MAX_RESOURCE_BINDINGS)
-    {
-        bformata(output, "UnknownTexture%s_%d_%d", szModifier, ui32TextureRegister, ui32SamplerRegister);
-    }
-    else
-    {
-        bformata(output, "UnknownTexture%s_%d", szModifier, ui32TextureRegister);
-    }
+	}
+	else if (ui32SamplerRegister < MAX_RESOURCE_BINDINGS)
+	{
+		bformata(output, "UnknownTexture%s_%d_%d", szModifier, ui32TextureRegister, ui32SamplerRegister);
+	}
+	else
+	{
+		bformata(output, "UnknownTexture%s_%d", szModifier, ui32TextureRegister);
+	}
 }
 
 void UAVName(bstring output, Shader* psShader, const uint32_t ui32RegisterNumber)
@@ -1882,6 +1890,11 @@ void ConvertToUniformBufferName(bstring output, Shader* psShader, const char* sz
 
 uint32_t GetGmemInputResourceSlot(uint32_t const slotIn)
 {
+    if (slotIn == GMEM_ARM_COLOR_SLOT)
+    {
+        // ARM framebuffer fetch only works with COLOR0
+        return 0;
+    }
     if (slotIn >= GMEM_FLOAT4_START_SLOT)
     {
         return slotIn - GMEM_FLOAT4_START_SLOT;

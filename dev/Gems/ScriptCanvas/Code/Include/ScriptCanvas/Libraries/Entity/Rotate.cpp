@@ -42,8 +42,8 @@ namespace ScriptCanvas
                             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                             ->Attribute(AZ::Edit::Attributes::Category, "Entity/Transform")
                             ->Attribute(AZ::Edit::Attributes::CategoryStyle, ".method")
+                            ->Attribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride, "MethodNodeTitlePalette")
                             ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Rotate.png")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                             ;
                     }
@@ -55,7 +55,7 @@ namespace ScriptCanvas
                 AddSlot("In", "", SlotType::ExecutionIn);
                 AddSlot("Out", "", SlotType::ExecutionOut);
                 AddInputDatumSlot(k_setEntityName, "The entity to apply the rotation on.", Datum::eOriginality::Original, ScriptCanvas::SelfReferenceId);
-                AddInputDatumSlot(k_setAnglesName, "Euler angles, Pitch/Yaw/Roll.", Data::Type::BehaviorContextObject(AZ::AzTypeInfo<AZ::Vector3>::Uuid()), Datum::eOriginality::Original);
+                AddInputDatumSlot(k_setAnglesName, "Euler angles, Pitch/Yaw/Roll.", Data::Type::Vector3(), Datum::eOriginality::Original);
             }
 
             void Rotate::OnInputSignal(const SlotId&)

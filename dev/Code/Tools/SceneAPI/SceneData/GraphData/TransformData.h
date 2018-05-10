@@ -24,7 +24,7 @@ namespace AZ
     {
         namespace GraphData
         {
-            class TransformData
+            class SCENE_DATA_CLASS TransformData
                 : public AZ::SceneAPI::DataTypes::ITransform
             {
             public:

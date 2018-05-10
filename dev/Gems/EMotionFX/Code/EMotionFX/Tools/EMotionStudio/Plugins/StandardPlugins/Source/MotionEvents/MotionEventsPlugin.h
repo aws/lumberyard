@@ -74,7 +74,7 @@ namespace EMStudio
         bool CheckIfIsPresetReadyToDrop();
         void OnAddEventTrack()                                                                              { CommandSystem::CommandAddEventTrack(); }
         void RemoveEventTrack(int eventTrackNr)                                                             { CommandSystem::CommandRemoveEventTrack(eventTrackNr); }
-        void SetEventTrackName(const QString& text, int trackNr)                                            { CommandSystem::CommandRenameEventTrack(trackNr, FromQtString(text).AsChar()); }
+        void SetEventTrackName(const QString& text, int trackNr)                                            { CommandSystem::CommandRenameEventTrack(trackNr, FromQtString(text).c_str()); }
         void SetEventTrackEnabled(bool enabled, int trackNr)                                                { CommandSystem::CommandEnableEventTrack(trackNr, enabled); }
 
     private:

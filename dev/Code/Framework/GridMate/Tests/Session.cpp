@@ -20,12 +20,35 @@
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/string/conversions.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SESSION_CPP_SECTION_1 1
+#define SESSION_CPP_SECTION_2 2
+#define SESSION_CPP_SECTION_3 3
+#define SESSION_CPP_SECTION_4 4
+#define SESSION_CPP_SECTION_5 5
+#define SESSION_CPP_SECTION_6 6
+#define SESSION_CPP_SECTION_7 7
+#define SESSION_CPP_SECTION_8 8
+#define SESSION_CPP_SECTION_9 9
+#define SESSION_CPP_SECTION_10 10
+#define SESSION_CPP_SECTION_11 11
+#define SESSION_CPP_SECTION_12 12
+#define SESSION_CPP_SECTION_13 13
+#define SESSION_CPP_SECTION_14 14
+#define SESSION_CPP_SECTION_15 15
+#endif
+
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <Winsock2.h>
 #pragma warning(push)
 #pragma warning( disable: 4996 )
 #pragma warning(pop)
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
 using namespace GridMate;
@@ -558,7 +581,15 @@ namespace UnitTest
             }
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         static const int k_numMachines = 3;
+#endif
         static const int k_host = 0;
         static const int k_hostPort = 5450;
 
@@ -2131,7 +2162,15 @@ namespace UnitTest
         }
     };
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(AZ_TEST_VOICECHAT)
     // This test requires two consoles to run it
@@ -2146,6 +2185,10 @@ namespace UnitTest
             : GridMateMPTestFixture(100 * 1024 * 1024, false)
         {
             // User service
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             m_userService->EnableUserSlot(true, 0);
             while (!m_userService->IsUserSlotEnabled(0))
@@ -2168,7 +2211,15 @@ namespace UnitTest
                 }
             }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             // Hook to session events bus.
             SessionEventBus::Handler::BusConnect(m_gridMate);
@@ -2179,13 +2230,25 @@ namespace UnitTest
             // Unhook from session events bus.
             SessionEventBus::Handler::BusDisconnect();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         void run()
         {
             GridSearch* search = nullptr;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             Gamepad gamepad(m_userService->GetUser(0));
 
@@ -2202,9 +2265,17 @@ namespace UnitTest
             int numResults = search->GetNumResults();
             if (numResults == 0)
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             }
             else
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             }
 
             AZ_Assert(session, "Invalid session");
@@ -2295,6 +2366,10 @@ namespace UnitTest
             AZ_TEST_ASSERT(!talkingWhileMute);
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     };
 #endif // AZ_TEST_VOICECHAT
 }
@@ -2313,7 +2388,15 @@ GM_TEST(Integ_LANLatencySessionTest)
 //GM_TEST(LANSessionMigarationTestTest2)
 //GM_TEST(LANSessionMigarationTestTest3)
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_14
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_15
+#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(AZ_TEST_VOICECHAT)
 GM_TEST(SessionVoiceChatTest)

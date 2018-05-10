@@ -7,20 +7,31 @@ pollyrequester =
 }
 
 function pollyrequester:OnActivate()
-	-- Load Canvas
+	self.tickBusHandler = TickBus.Connect(self,self.entityId);
+
+	self.playbackHandler = TextToSpeechPlaybackNotificationBus.Connect(self, self.entityId);
+	Debug.Log("Activating")
+end
+
+function pollyrequester:initUiCanvas()
+	Debug.Log("Loading Ui Canvas")
 	self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("Levels/TextToSpeechSample/UI/InputUi.uicanvas")
 
 	self.textInputElement = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "Message Input")
 	self.characterInputElement = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "Character Input")
 	self.dropDownEntityId = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "Voice Dropdown")
 	
-	self.playbackHandler = TextToSpeechPlaybackNotificationBus.Connect(self, self.entityId);
 	self.uiNotifications = UiCanvasNotificationBus.Connect(self, self.canvasEntityId)
 
+	
 	local util = require("scripts.util")
 	util.SetMouseCursorVisible(true)
 	self:PopulateVoiceList()
-	Debug.Log("Activating")
+end
+
+function pollyrequester:OnTick(deltaTime,timePoint)
+	self:initUiCanvas();
+	self.tickBusHandler:Disconnect();
 end
 
 function pollyrequester:AddCharacterSSMLToMessage(language, timbre, tags, ssml, message)

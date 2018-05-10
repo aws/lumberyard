@@ -9,20 +9,17 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #include "precompiled.h"
-#include "NodePalette.h"
 
 #include <QLineEdit>
 #include <QMenu>
 #include <QSignalBlocker>
 #include <QScrollBar>
-#include <QBoxLayout>
-#include <QPainter>
-#include <QEvent>
+#include <qboxlayout.h>
+#include <qpainter.h>
+#include <qevent.h>
 #include <QCoreApplication>
 #include <QCompleter>
-#include <QMouseEvent>
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -34,44 +31,35 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
-#include <GraphCanvas/Widgets/GraphCanvasTreeModel.h>
+#include <GraphCanvas/Widgets/NodePalette/TreeItems/NodePaletteTreeItem.h>
 
-#include <Editor/Model/NodePalette/NodePaletteSortFilterProxyModel.h>
+#include <Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.h>
 
+#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/Nodes/NodeUtils.h>
 
-#include <Editor/View/Widgets/ui_NodePalette.h>
-#include <Editor/View/Widgets/NodeTreeView.h>
-#include <Editor/View/Widgets/NodePalette/NodePaletteTreeItem.h>
+#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h>
+#include <Editor/Include/ScriptCanvas/Bus/RequestBus.h>
 
 #include <Editor/Settings.h>
 #include <AzCore/UserSettings/UserSettings.h>
 
 #include <Editor/Components/IconComponent.h>
 #include <Editor/Translation/TranslationHelper.h>
+#include <ScriptCanvas/Data/DataRegistry.h>
 
 #include <Core/Attributes.h>
 #include <Libraries/Entity/EntityRef.h>
 #include <Libraries/Libraries.h>
 
-// Primitive data types we are hard coding for now
-#include <Libraries/Core/String.h>
-#include <Libraries/Logic/Boolean.h>
-#include <Libraries/Math/AABBNode.h>
-#include <Libraries/Math/CRCNode.h>
-#include <Libraries/Math/ColorNode.h>
-#include <Libraries/Math/Matrix3x3Node.h>
-#include <Libraries/Math/Matrix4x4Node.h>
-#include <Libraries/Math/OBBNode.h>
-#include <Libraries/Math/PlaneNode.h>
-#include <Libraries/Math/Rotation.h>
-#include <Libraries/Math/Transform.h>
-#include <Libraries/Math/Number.h>
-#include <Libraries/Math/Vector.h>
+#include <Libraries/Core/GetVariable.h>
+#include <Libraries/Core/Method.h>
+#include <Libraries/Core/SetVariable.h>
+
 
 namespace
 {
@@ -157,15 +145,15 @@ namespace
         return categoryPath;
     }
 
-    typedef AZStd::pair<ScriptCanvasEditor::NodePaletteTreeItem*, AZStd::string> CategoryKey;
-    typedef AZStd::unordered_map<CategoryKey, ScriptCanvasEditor::NodePaletteTreeItem*> CategoryRootsMap;
+    typedef AZStd::pair<GraphCanvas::NodePaletteTreeItem*, AZStd::string> CategoryKey;
+    typedef AZStd::unordered_map<CategoryKey, GraphCanvas::NodePaletteTreeItem*> CategoryRootsMap;
 
     // Given a category path (e.g. "My/Category") and a parent node, creates the necessary intermediate
     // nodes under the given parent and returns the leaf tree item under the given category path.
-    template<class NodeType = ScriptCanvasEditor::NodePaletteTreeItem>
-    ScriptCanvasEditor::NodePaletteTreeItem* GetCategoryNode(
+    template<class NodeType = GraphCanvas::NodePaletteTreeItem>
+    GraphCanvas::NodePaletteTreeItem* GetCategoryNode(
         const char* categoryPath,
-        ScriptCanvasEditor::NodePaletteTreeItem* parentRoot,
+        GraphCanvas::NodePaletteTreeItem* parentRoot,
         CategoryRootsMap& categoryRoots
     )
     {
@@ -177,7 +165,7 @@ namespace
         AZStd::vector<AZStd::string> categories;
         AzFramework::StringFunc::Tokenize(categoryPath, categories, "/", true, true);
 
-        ScriptCanvasEditor::NodePaletteTreeItem* intermediateRoot = parentRoot;
+        GraphCanvas::NodePaletteTreeItem* intermediateRoot = parentRoot;
         for (auto it = categories.begin(); it < categories.end(); it++)
         {
             AZStd::string intermediatePath;
@@ -187,7 +175,7 @@ namespace
 
             if (categoryRoots.find(key) == categoryRoots.end())
             {
-                categoryRoots[key] = intermediateRoot->CreateChildNode<NodeType>(it->c_str());
+                categoryRoots[key] = intermediateRoot->CreateChildNode<NodeType>(it->c_str(), ScriptCanvasEditor::AssetEditorId);
             }
 
             intermediateRoot = categoryRoots[key];
@@ -200,11 +188,16 @@ namespace
     {
         AZ::Uuid m_uuid;
         AZStd::string m_styleOverride;
+        AZStd::string m_paletteOverride = "DefaultNodeTitlePalette";
         AZStd::string m_path;
     };
 
-    ScriptCanvasEditor::NodePaletteTreeItem* CreatePaletteRoot()
+    // Keeping this here for the time being to more easily faciliate some known merges.
+    // Once merges are complete this can be just moved into the other method.
+    GraphCanvas::NodePaletteTreeItem* ExternalCreatePaletteRoot()
     {
+        auto dataRegistry = ScriptCanvas::GetDataRegistry();
+
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
@@ -212,7 +205,7 @@ namespace
         AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
 
         bool showExcludedPreviewNodes = false;
-        AZStd::intrusive_ptr<ScriptCanvasEditor::EditorSettings::PreviewSettings> settings = AZ::UserSettings::CreateFind<ScriptCanvasEditor::EditorSettings::PreviewSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
+        AZStd::intrusive_ptr<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
         if (settings)
         {
             showExcludedPreviewNodes = settings->m_showExcludedNodes;
@@ -249,7 +242,7 @@ namespace
                                 categoryInfo.m_path = categoryAttributeData->Get(nullptr);
                             }
                         }
-                        else
+
                         if (auto categoryStyleAttribute = editorElementData->FindAttribute(AZ::Edit::Attributes::CategoryStyle))
                         {
                             if (auto categoryAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(categoryStyleAttribute))
@@ -257,8 +250,16 @@ namespace
                                 categoryInfo.m_styleOverride = categoryAttributeData->Get(nullptr);
                             }
                         }
+
+                        if (auto titlePaletteAttribute = editorElementData->FindAttribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride))
+                        {
+                            if (auto categoryAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(titlePaletteAttribute))
+                            {
+                                categoryInfo.m_paletteOverride = categoryAttributeData->Get(nullptr);
+                            }
+                        }
                     }
-                }                
+                }
 
                 categoryData.emplace_back(classData->m_editData ? classData->m_editData->m_name : classData->m_name, categoryInfo);
                 return true;
@@ -268,29 +269,18 @@ namespace
         QString defaultIconPath("Editor/Icons/ScriptCanvas/Libraries/All.png");
 
         // The root.
-        ScriptCanvasEditor::NodePaletteTreeItem* root = aznew ScriptCanvasEditor::NodePaletteTreeItem("root");
+        GraphCanvas::NodePaletteTreeItem* root = aznew GraphCanvas::NodePaletteTreeItem("root", ScriptCanvasEditor::AssetEditorId);
 
         // Map to keep track of the category nodes under which to put any categorized ebuses/objects
         CategoryRootsMap categoryRoots;
 
-        ScriptCanvasEditor::NodePaletteTreeItem* variableTypeRoot = nullptr;
-
         {
-            ScriptCanvasEditor::NodePaletteTreeItem* utilitiesRoot = GetCategoryNode("Utilities", root, categoryRoots);
+            GraphCanvas::NodePaletteTreeItem* utilitiesRoot = GetCategoryNode("Utilities", root, categoryRoots);
 
             utilitiesRoot->CreateChildNode<ScriptCanvasEditor::CommentNodePaletteTreeItem>("Comment", QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(AZ::Uuid()).c_str()));
             utilitiesRoot->CreateChildNode<ScriptCanvasEditor::BlockCommentNodePaletteTreeItem>("Block Comment", QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(AZ::Uuid()).c_str()));
 
-            ScriptCanvasEditor::NodePaletteTreeItem* variableRoot = GetCategoryNode<ScriptCanvasEditor::VariableCategoryNodePaletteTreeItem>("Variables", root, categoryRoots);
-
-            variableRoot->CreateChildNode<ScriptCanvasEditor::GetVariableNodePaletteTreeItem>("Get Variable");
-            variableRoot->CreateChildNode<ScriptCanvasEditor::SetVariableNodePaletteTreeItem>("Set Variable");
-
-            //Need to create Variable types here in order to get it to show up in the correct spot under the
-            // VariableCategoryNodePaletteTreeItem
-            variableTypeRoot = GetCategoryNode("Variables/Create Variable", root, categoryRoots);
-
-            variableRoot->CreateChildNode<ScriptCanvasEditor::LocalVariablesListNodePaletteTreeItem>("Local Variables");
+            root->CreateChildNode<ScriptCanvasEditor::LocalVariablesListNodePaletteTreeItem>("Variables");
         }
 
         // When the NodePalette is used elsewhere than a context menu,
@@ -303,14 +293,15 @@ namespace
             // Parent
             // Passing in the root will hook it up to the root.
             AZStd::string categoryPath = type.second.m_path.empty() ? type.first.toUtf8().data() : type.second.m_path.c_str();
-            ScriptCanvasEditor::NodePaletteTreeItem* parentItem = GetCategoryNode(categoryPath.c_str(), root, categoryRoots);
+            GraphCanvas::NodePaletteTreeItem* parentItem = GetCategoryNode(categoryPath.c_str(), root, categoryRoots);
             parentItem->SetStyleOverride(type.second.m_styleOverride);
+            parentItem->SetTitlePalette(type.second.m_paletteOverride);
 
             // Children
             for (auto& node : ScriptCanvas::Library::LibraryDefinition::GetNodes(type.second.m_uuid))
             {
-                ScriptCanvasEditor::NodePaletteTreeItem* nodeParent = nullptr;
-                
+                GraphCanvas::NodePaletteTreeItem* nodeParent = nullptr;
+
                 if (HasExcludeFromNodeListAttribute(serializeContext, node.first, showExcludedPreviewNodes))
                 {
                     continue;
@@ -326,7 +317,7 @@ namespace
 
                 bool isMissingEntry(false);
                 bool isMissingTooltip(false);
-                
+
                 if (classData && classData->m_editData && classData->m_editData->m_name)
                 {
                     auto nodeContextName = ScriptCanvasEditor::Nodes::GetContextName(*classData);
@@ -361,7 +352,7 @@ namespace
                     {
                         categoryName = contextName;
                     }
-                    
+
                     if (!categoryName.empty())
                     {
                         // a better category name may have been found
@@ -371,47 +362,69 @@ namespace
                     {
                         nodeParent = parentItem;
                     }
-                    
-                    if (auto editorDataElement = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+
+                    // Need to detect primitive types.
+                    if (classData->m_azRtti && classData->m_azRtti->IsTypeOf<ScriptCanvas::PureData>())
                     {
-                        if (auto categoryStyleAttribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::CategoryStyle))
+                        continue;
+                    }
+                    else if (classData->m_azRtti && classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Core::GetVariableNode>())
+                    {
+                        continue;
+                    }
+                    else if (classData->m_azRtti && classData->m_azRtti->IsTypeOf<ScriptCanvas::Nodes::Core::SetVariableNode>())
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        GraphCanvas::NodePaletteTreeItem* customItem{};
+                        auto editorDataElement = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData);
+                        if (editorDataElement)
                         {
-                            if (auto categoryAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(categoryStyleAttribute))
+                            if (auto treeItemOverrideFunc = azrtti_cast<AZ::AttributeFunction<GraphCanvas::NodePaletteTreeItem*(GraphCanvas::NodePaletteTreeItem*)>*>(editorDataElement->FindAttribute(ScriptCanvas::Attributes::NodePalette::TreeItemOverride)))
                             {
-                                parentItem->SetStyleOverride(categoryAttributeData->Get(nullptr));
+                                customItem = treeItemOverrideFunc->m_function(nodeParent);
                             }
                         }
-                    }
-                }
-                
-                // Need to detect primitive types.
-                if (classData->m_azRtti && classData->m_azRtti->IsTypeOf<ScriptCanvas::PureData>())
-                {
-                    ScriptCanvasEditor::VariablePrimitiveNodePaletteTreeItem* varItem = variableTypeRoot->CreateChildNode<ScriptCanvasEditor::VariablePrimitiveNodePaletteTreeItem>(node.first, QString(name.c_str()), QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(node.first).c_str()));
 
-                    if (toolTip.isEmpty())
-                    {
-                        AZStd::string displayTooltip;
-
-                        // TODO: move to and consolidate these in the translation file
-                        if (classData->m_editData && classData->m_editData->m_description)
+                        if (!customItem)
                         {
-                            toolTip = classData->m_editData->m_description;
+                            customItem = nodeParent->CreateChildNode<ScriptCanvasEditor::CustomNodePaletteTreeItem>(node.first, QString(name.c_str()), QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(node.first).c_str()));
                         }
+
+                        if (editorDataElement)
+                        {
+                            if (auto categoryStyleAttribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::CategoryStyle))
+                            {
+                                if (auto categoryAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(categoryStyleAttribute))
+                                {
+                                    if (categoryAttributeData->Get(nullptr))
+                                    {
+                                        customItem->SetStyleOverride(categoryAttributeData->Get(nullptr));
+                                    }
+                                }
+                            }
+
+                            if (auto titlePaletteAttribute = editorDataElement->FindAttribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride))
+                            {
+                                if (auto titlePaletteAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<const char*>*>(titlePaletteAttribute))
+                                {
+                                    if (titlePaletteAttributeData->Get(nullptr))
+                                    {
+                                        customItem->SetTitlePalette(titlePaletteAttributeData->Get(nullptr));
+                                    }
+                                }
+                            }
+
+                            if (toolTip.isEmpty() && classData->m_editData->m_description)
+                            {
+                                toolTip = classData->m_editData->m_description;
+                            }
+                        }
+
+                        customItem->SetToolTip(toolTip);
                     }
-
-                    varItem->SetToolTip(toolTip);
-                }
-                else
-                {
-                    ScriptCanvasEditor::CustomNodePaletteTreeItem* customItem = nodeParent->CreateChildNode<ScriptCanvasEditor::CustomNodePaletteTreeItem>(node.first, QString(name.c_str()), QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(node.first).c_str()));
-
-                    if (toolTip.isEmpty() && classData->m_editData->m_description)
-                    {
-                        toolTip = classData->m_editData->m_description;
-                    }
-
-                    customItem->SetToolTip(toolTip);
                 }
             }
         }
@@ -419,7 +432,7 @@ namespace
         // Merged all of these into a single pass(to avoid going over the giant lists multiple times), 
         // so now this looks absolutely horrifying in what it's doing. 
         // Everything is still mostly independent, and independently scoped to try to make the division of labor clear.
-        ScriptCanvasEditor::NodePaletteTreeItem* otherRoot = GetCategoryNode("Other", root, categoryRoots);
+        GraphCanvas::NodePaletteTreeItem* otherRoot = GetCategoryNode("Other", root, categoryRoots);
 
         {
             // We will skip buses that are ONLY registered on classes that derive from EditorComponentBase,
@@ -495,10 +508,15 @@ namespace
 
                     if (canCreate)
                     {
-                        variableTypeRoot->CreateChildNode<ScriptCanvasEditor::VariableObjectNodePaletteTreeItem>(QString(classIter.first.c_str()));
+                        ScriptCanvas::Data::Type type = dataRegistry->m_typeIdTraitMap[ScriptCanvas::Data::eType::BehaviorContextObject].m_dataTraits.GetSCType(behaviorClass->m_typeId);
+
+                        if (type.IsValid())
+                        {
+                            ScriptCanvasEditor::VariablePaletteRequestBus::Broadcast(&ScriptCanvasEditor::VariablePaletteRequests::RegisterVariableType, type);
+                        }
                     }
                     
-                    ScriptCanvasEditor::NodePaletteTreeItem* categorizedRoot = nullptr;
+                    GraphCanvas::NodePaletteTreeItem* categorizedRoot = nullptr;
                     if (categoryPath.empty())
                     {
                         categoryPath = "Other";
@@ -517,7 +535,7 @@ namespace
                         categoryPath.append(displayName.c_str());
                     }
 
-                    ScriptCanvasEditor::NodePaletteTreeItem* objectItem = objectItem = GetCategoryNode(categoryPath.c_str(), root, categoryRoots);
+                    GraphCanvas::NodePaletteTreeItem* objectItem = GetCategoryNode(categoryPath.c_str(), root, categoryRoots);
 
                     for (auto method : behaviorClass->m_methods)
                     {
@@ -526,6 +544,13 @@ namespace
                         if (ShouldExcludeFromNodeList(excludeMethodAttributeData, behaviorClass->m_azRtti ? behaviorClass->m_azRtti->GetTypeId() : behaviorClass->m_typeId, showExcludedPreviewNodes))
                         {
                             continue; // skip this method
+                        }
+
+                        const auto isExposableOutcome = ScriptCanvas::IsExposable(*method.second);
+                        if (!isExposableOutcome.IsSuccess())
+                        {
+                            AZ_Warning("ScriptCanvas", false, "Unable to expose method: %s to ScriptCanvas because: %s", method.second->m_name.data(), isExposableOutcome.GetError().data());
+                            continue;
                         }
                         
                         GraphCanvas::TranslationKeyedString methodCategoryString;
@@ -540,15 +565,9 @@ namespace
                         }
                         else
                         {
-                            ScriptCanvasEditor::NodePaletteTreeItem* methodParentItem = GetCategoryNode(methodCategoryPath.c_str(), root, categoryRoots);
+                            GraphCanvas::NodePaletteTreeItem* methodParentItem = GetCategoryNode(methodCategoryPath.c_str(), root, categoryRoots);
                             methodParentItem->CreateChildNode<ScriptCanvasEditor::ClassMethodEventPaletteTreeItem>(QString(classIter.first.c_str()), QString(method.first.c_str()));
                         }
-                    }
-
-                    if (objectItem->GetNumChildren() == 0)
-                    {
-                        objectItem->DetachItem();
-                        delete objectItem;
                     }
                 }
 
@@ -663,7 +682,7 @@ namespace
                                     }
                                 }
 
-                                ScriptCanvasEditor::NodePaletteTreeItem* busItem = GetCategoryNode(categoryPath.c_str(), useGenericEbusRoot ? otherRoot : root, categoryRoots);
+                                GraphCanvas::NodePaletteTreeItem* busItem = GetCategoryNode(categoryPath.c_str(), useGenericEbusRoot ? otherRoot : root, categoryRoots);
 
                                 for (const auto& event : events)
                                 {
@@ -729,7 +748,7 @@ namespace
                             categoryPath.append(displayName.c_str());
                         }
 
-                        ScriptCanvasEditor::NodePaletteTreeItem* busItem = GetCategoryNode(categoryPath.c_str(), useGenericSenderRoot ? otherRoot : root, categoryRoots);
+                        GraphCanvas::NodePaletteTreeItem* busItem = GetCategoryNode(categoryPath.c_str(), useGenericSenderRoot ? otherRoot : root, categoryRoots);
 
                         AZStd::string displayTooltip = ScriptCanvasEditor::TranslationHelper::GetClassKeyTranslation(ScriptCanvasEditor::TranslationContextGroup::EbusSender, ebusIter.first, ScriptCanvasEditor::TranslationKeyId::Tooltip);
 
@@ -756,12 +775,12 @@ namespace
 
             for (auto& mapPair : categoryRoots)
             {
-                if (mapPair.second->GetNumChildren() == 0)
+                if (mapPair.second->GetChildCount() == 0)
                 {
                     GraphCanvas::GraphCanvasTreeItem* parentItem = mapPair.second->GetParent();
                     mapPair.second->DetachItem();
 
-                    if (parentItem->GetNumChildren() == 0)
+                    if (parentItem->GetChildCount() == 0)
                     {
                         recursiveSet.insert(parentItem);
                     }
@@ -780,7 +799,7 @@ namespace
 
                 treeItem->DetachItem();
 
-                if (parentItem->GetNumChildren() == 0)
+                if (parentItem->GetChildCount() == 0)
                 {
                     recursiveSet.insert(parentItem);
                 }
@@ -798,395 +817,18 @@ namespace ScriptCanvasEditor
 {
     namespace Widget
     {
-        ////////////////////////////
-        // NodePaletteTreeDelegate
-        ////////////////////////////
-        NodePaletteTreeDelegate::NodePaletteTreeDelegate(QWidget* parent)
-            : QStyledItemDelegate(parent)
+        //////////////////////////
+        // NodePaletteDockWidget
+        //////////////////////////
+
+        NodePaletteDockWidget::NodePaletteDockWidget(const QString& windowLabel, QWidget* parent, bool inContextMenu)
+            : GraphCanvas::NodePaletteDockWidget(ExternalCreatePaletteRoot(), ScriptCanvasEditor::AssetEditorId, windowLabel, parent, inContextMenu)
         {
         }
 
-        void NodePaletteTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
+        GraphCanvas::GraphCanvasTreeItem* NodePaletteDockWidget::CreatePaletteRoot() const
         {
-            painter->save();
-
-            QStyleOptionViewItemV4 options = option;
-            initStyleOption(&options, index);
-
-            // paint the original node item
-            QStyledItemDelegate::paint(painter, option, index);
-
-            const int textMargin = options.widget->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, 0, options.widget) + 1;
-            QRect textRect = options.widget->style()->subElementRect(QStyle::SE_ItemViewItemText, &options);
-            textRect = textRect.adjusted(textMargin, 0, -textMargin, 0);
-
-            QModelIndex sourceIndex = static_cast<const Model::NodePaletteSortFilterProxyModel*>(index.model())->mapToSource(index);
-            NodePaletteTreeItem* treeItem = static_cast<NodePaletteTreeItem*>(sourceIndex.internalPointer());
-            if (treeItem && treeItem->HasHighlight())
-            {
-                // pos, len
-                const AZStd::pair<int, int>& highlight = treeItem->GetHighlight();
-                QString preSelectedText = options.text.left(highlight.first);
-                int preSelectedTextLength = options.fontMetrics.width(preSelectedText);
-                QString selectedText = options.text.mid(highlight.first, highlight.second);
-                int selectedTextLength = options.fontMetrics.width(selectedText);
-
-                QRect highlightRect(textRect.left() + preSelectedTextLength, textRect.top(), selectedTextLength, textRect.height());
-
-                // paint the highlight rect
-                painter->fillRect(highlightRect, options.palette.highlight());
-            }
-
-            painter->restore();
+            return ExternalCreatePaletteRoot();
         }
-
-        ////////////////
-        // NodePalette
-        ////////////////
-        NodePalette::NodePalette(const QString& windowLabel, QWidget* parent, bool inContextMenu)
-            : AzQtComponents::StyledDockWidget(parent)
-            , ui(new Ui::NodePalette())
-            , m_contextMenuCreateEvent(nullptr)
-            , m_view(nullptr)
-            , m_model(nullptr)
-        {
-            m_view = aznew NodeTreeView(this);
-            m_model = aznew Model::NodePaletteSortFilterProxyModel(this);
-
-            m_filterTimer.setInterval(250);
-            m_filterTimer.setSingleShot(true);
-            m_filterTimer.stop();
-
-            QObject::connect(&m_filterTimer, &QTimer::timeout, this, &NodePalette::UpdateFilter);
-
-            setWindowTitle(windowLabel);
-            ui->setupUi(this);
-
-            QObject::connect(ui->m_quickFilter, &QLineEdit::textChanged, this, &NodePalette::OnQuickFilterChanged);
-
-            QAction* clearAction = ui->m_quickFilter->addAction(QIcon(":/ScriptCanvasEditorResources/Resources/lineedit_clear.png"), QLineEdit::TrailingPosition);
-            QObject::connect(clearAction, &QAction::triggered, this, &NodePalette::ClearFilter);
-
-            GraphCanvas::GraphCanvasTreeModel* sourceModel = aznew GraphCanvas::GraphCanvasTreeModel(CreatePaletteRoot(), this);
-            sourceModel->setMimeType(GetMimeType());
-
-            GraphCanvas::GraphCanvasTreeModelRequestBus::Handler::BusConnect(sourceModel);
-
-            m_model->setSourceModel(sourceModel);
-            m_model->PopulateUnfilteredModel();
-
-            m_view->setModel(m_model);
-            m_view->setItemDelegate(aznew NodePaletteTreeDelegate(this));
-
-            if (!inContextMenu)
-            {
-                QObject::connect(ui->m_quickFilter, &QLineEdit::returnPressed, this, &NodePalette::UpdateFilter);
-            }
-            else
-            {
-                QObject::connect(ui->m_quickFilter, &QLineEdit::returnPressed, this, &NodePalette::TrySpawnItem);
-            }
-
-            if (inContextMenu)
-            {
-                setTitleBarWidget(new QWidget());
-                setFeatures(NoDockWidgetFeatures);
-                setContentsMargins(15, 0, 0, 0);
-                ui->dockWidgetContents->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-
-                QObject::connect(m_view->selectionModel(), &QItemSelectionModel::selectionChanged, this, &NodePalette::OnSelectionChanged);
-            }
-
-            QObject::connect(m_view->verticalScrollBar(), &QScrollBar::valueChanged, this, &NodePalette::OnScrollChanged);
-
-            ui->contentLayout->addWidget(m_view);
-
-            if (!inContextMenu)
-            {
-                MainWindowNotificationBus::Handler::BusConnect();
-                m_view->InitializeTreeViewSaving(AZ_CRC("NodePalette_ContextView", 0x3cfece67));
-                m_view->ApplyTreeViewSnapshot();
-            }
-            else
-            {
-                m_view->InitializeTreeViewSaving(AZ_CRC("NodePalette_TreeView", 0x9d6844cd));
-            }
-
-            m_view->PauseTreeViewSaving();
-
-            ui->m_categoryLabel->SetElideMode(Qt::ElideLeft);
-        }
-
-        NodePalette::~NodePalette()
-        {
-            GraphCanvas::GraphCanvasTreeModelRequestBus::Handler::BusDisconnect();
-            delete m_contextMenuCreateEvent;
-        }
-
-        void NodePalette::FocusOnSearchFilter()
-        {
-            ui->m_quickFilter->setFocus(Qt::FocusReason::MouseFocusReason);
-        }
-
-        void NodePalette::ResetDisplay()
-        {
-            delete m_contextMenuCreateEvent;
-            m_contextMenuCreateEvent = nullptr;
-
-            {
-                QSignalBlocker blocker(ui->m_quickFilter);
-                ui->m_quickFilter->clear();
-
-                m_model->ClearFilter();
-                m_model->invalidate();
-            }
-
-            {
-                QSignalBlocker blocker(m_view->selectionModel());
-                m_view->clearSelection();
-            }
-
-            m_view->collapseAll();
-            ui->m_categoryLabel->setFullText("");
-
-            setVisible(true);
-        }
-
-        GraphCanvas::GraphCanvasMimeEvent* NodePalette::GetContextMenuEvent() const
-        {
-            return m_contextMenuCreateEvent;
-        }
-
-        void NodePalette::ResetSourceSlotFilter()
-        {
-            m_model->ResetSourceSlotFilter();
-            ui->m_quickFilter->setCompleter(m_model->GetCompleter());
-        }
-
-        void NodePalette::FilterForSourceSlot(const AZ::EntityId& sceneId, const AZ::EntityId& sourceSlotId)
-        {
-            m_model->FilterForSourceSlot(sceneId, sourceSlotId);
-            ui->m_quickFilter->setCompleter(m_model->GetCompleter());
-        }
-
-        void NodePalette::PreOnActiveSceneChanged()
-        {
-            ClearSelection();
-            m_view->UnpauseTreeViewSaving();
-            m_view->CaptureTreeViewSnapshot();
-            m_view->PauseTreeViewSaving();
-
-            m_view->model()->layoutAboutToBeChanged();
-        }
-
-        void NodePalette::PostOnActiveSceneChanged()
-        {
-            m_view->model()->layoutChanged();
-
-            m_view->UnpauseTreeViewSaving();
-            m_view->ApplyTreeViewSnapshot();
-            m_view->PauseTreeViewSaving();
-
-            if (m_model->HasFilter())
-            {
-                UpdateFilter();
-            }
-        }
-
-        void NodePalette::ClearSelection()
-        {
-            m_view->selectionModel()->clearSelection();
-        }
-
-        void NodePalette::OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
-        {
-            if (selected.indexes().empty())
-            {
-                // Nothing to do.
-                return;
-            }
-
-            auto index = selected.indexes().first();
-
-            if (!index.isValid())
-            {
-                // Nothing to do.
-                return;
-            }
-
-            // IMPORTANT: mapToSource() is NECESSARY. Otherwise the internalPointer
-            // in the index is relative to the proxy model, NOT the source model.
-            QModelIndex sourceModelIndex = m_model->mapToSource(index);
-
-            NodePaletteTreeItem* nodePaletteItem = static_cast<NodePaletteTreeItem*>(sourceModelIndex.internalPointer());
-            HandleSelectedItem(nodePaletteItem);
-        }
-
-        void NodePalette::OnScrollChanged(int scrollPosition)
-        {
-            RefreshFloatingHeader();
-        }
-
-        void NodePalette::RefreshFloatingHeader()
-        {
-            // TODO: Fix slight visual hiccup with the sizing of the header when labels vanish.
-            // Seems to remain at size for one frame.
-            QModelIndex proxyIndex = m_view->indexAt(QPoint(0, 0));
-            QModelIndex modelIndex = m_model->mapToSource(proxyIndex);
-            NodePaletteTreeItem* currentItem = static_cast<NodePaletteTreeItem*>(modelIndex.internalPointer());
-
-            QString fullPathString;
-
-            bool needsSeparator = false;
-
-            while (currentItem && currentItem->GetParent() != nullptr)
-            {
-                currentItem = static_cast<NodePaletteTreeItem*>(currentItem->GetParent());
-
-                // This is the root element which is invisible. We don't want to display that.
-                if (currentItem->GetParent() == nullptr)
-                {
-                    break;
-                }
-
-                if (needsSeparator)
-                {
-                    fullPathString.prepend("/");
-                }
-
-                fullPathString.prepend(currentItem->GetName());
-                needsSeparator = true;
-            }
-
-            ui->m_categoryLabel->setFullText(fullPathString);
-        }
-
-        void NodePalette::OnQuickFilterChanged()
-        {
-            m_filterTimer.stop();
-            m_filterTimer.start();
-        }
-
-        void NodePalette::UpdateFilter()
-        {
-            if (!m_model->HasFilter())
-            {
-                m_view->UnpauseTreeViewSaving();
-                m_view->CaptureTreeViewSnapshot();
-                m_view->PauseTreeViewSaving();
-            }
-
-            QString text = ui->m_quickFilter->text();
-            
-            // The QCompleter doesn't seem to update the completion prefix when you delete anything, only when thigns are added.
-            // To get it to update correctly when the user deletes something, I'm using the combination of things:
-            //
-            // 1) If we have a completion, that text will be auto filled into the quick filter because of the completion model.
-            // So, we will compare those two values, and if they match, we know we want to search using the completion prefix.
-            //
-            // 2) If they don't match, it means that user deleted something, and the Completer didn't update it's internal state, so we'll just
-            // use whatever is in the text box.
-            //
-            // 3) When the text field is set to empty, the current completion gets invalidated, but the prefix doesn't, so that gets special cased out.
-            //
-            // Extra fun: If you type in something, "Like" then delete a middle character, "Lie", and then put the k back in. It will auto complete the E
-            // visually but the completion prefix will be the entire word.
-            if (ui->m_quickFilter->completer() 
-                && ui->m_quickFilter->completer()->currentCompletion().compare(text, Qt::CaseInsensitive) == 0
-                && !text.isEmpty())
-            {
-                text = ui->m_quickFilter->completer()->completionPrefix();
-            }
-
-            m_model->SetFilter(text);
-            m_model->invalidate();
-
-            if (!m_model->HasFilter())
-            {
-                m_view->UnpauseTreeViewSaving();
-                m_view->ApplyTreeViewSnapshot();
-                m_view->PauseTreeViewSaving();
-
-                m_view->clearSelection();
-            }
-            else
-            {
-                m_view->expandAll();
-            }
-        }
-
-        void NodePalette::ClearFilter()
-        {
-            {
-                QSignalBlocker blocker(ui->m_quickFilter);
-                ui->m_quickFilter->setText("");
-            }
-
-            UpdateFilter();
-        }
-
-        void NodePalette::TrySpawnItem()
-        {
-            QCompleter* completer = ui->m_quickFilter->completer();
-            QModelIndex modelIndex = completer->currentIndex();
-
-            if (modelIndex.isValid())
-            {
-                // The docs say this is fine. So here's hoping.
-                QAbstractProxyModel* proxyModel = qobject_cast<QAbstractProxyModel*>(completer->completionModel());
-
-                if (proxyModel)
-                {
-                    QModelIndex sourceIndex = proxyModel->mapToSource(modelIndex);
-
-                    if (sourceIndex.isValid())
-                    {
-                        Model::NodePaletteAutoCompleteModel* autoCompleteModel = qobject_cast<Model::NodePaletteAutoCompleteModel*>(proxyModel->sourceModel());
-
-                        const GraphCanvas::GraphCanvasTreeItem* treeItem = autoCompleteModel->FindItemForIndex(sourceIndex);
-
-                        if (treeItem)
-                        {
-                            HandleSelectedItem(treeItem);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                UpdateFilter();
-            }
-        }
-
-        void NodePalette::HandleSelectedItem(const GraphCanvas::GraphCanvasTreeItem* treeItem)
-        {
-            m_contextMenuCreateEvent = treeItem->CreateMimeEvent();
-
-            if (m_contextMenuCreateEvent)
-            {
-                emit OnContextMenuSelection();
-            }
-        }
-
-        void NodePalette::ResetModel()
-        {
-            GraphCanvas::GraphCanvasTreeModelRequestBus::Handler::BusDisconnect(); 
-
-            GraphCanvas::GraphCanvasTreeModel* sourceModel = aznew GraphCanvas::GraphCanvasTreeModel(CreatePaletteRoot(), this);
-            sourceModel->setMimeType(GetMimeType());
-            
-            delete m_model;
-            m_model = aznew Model::NodePaletteSortFilterProxyModel(this);
-            m_model->setSourceModel(sourceModel);
-            m_model->PopulateUnfilteredModel();
-            
-            GraphCanvas::GraphCanvasTreeModelRequestBus::Handler::BusConnect(sourceModel);
-
-            m_view->setModel(m_model);
-
-            ResetDisplay();
-        }
-
-        #include <Editor/View/Widgets/NodePalette.moc>
     }
 }

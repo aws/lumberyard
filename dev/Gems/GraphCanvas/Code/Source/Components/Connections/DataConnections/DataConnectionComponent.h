@@ -24,10 +24,10 @@ namespace GraphCanvas
         AZ_COMPONENT(DataConnectionComponent, "{ECC6A4D9-E8CD-451B-93BE-409F04A9A52B}", ConnectionComponent);
         static void Reflect(AZ::ReflectContext* context);
 		
-        static AZ::Entity* CreateDataConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, const AZStd::string& substyle = "");
+        static AZ::Entity* CreateDataConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection, const AZStd::string& substyle = "");
 
         DataConnectionComponent() = default;
-        DataConnectionComponent(const Endpoint& sourceEndpoint,const Endpoint& targetEndpoint);
+        DataConnectionComponent(const Endpoint& sourceEndpoint,const Endpoint& targetEndpoint, bool createModelConnection = true);
         ~DataConnectionComponent() override = default;
 
         // Component
@@ -36,6 +36,11 @@ namespace GraphCanvas
         ////
 
     protected:
+
+        // VS2013 Fixes
+        DataConnectionComponent(const DataConnectionComponent&) = delete;
+        const DataConnectionComponent& operator=(const DataConnectionComponent&) = delete;
+        ////
 
         bool OnConnectionMoveComplete(const QPointF& scenePos, const QPoint& screenPos) override;
     }; 

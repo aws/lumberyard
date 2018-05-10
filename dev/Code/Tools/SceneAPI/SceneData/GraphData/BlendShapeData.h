@@ -24,21 +24,40 @@ namespace AZ
     {
         namespace GraphData
         {
-            class BlendShapeData
+            class SCENE_DATA_CLASS BlendShapeData
                 : public SceneAPI::DataTypes::IBlendShapeData
             {
             public:
                 AZ_RTTI(BlendShapeData, "{FF875C22-2E4F-4CE3-BA49-09BF78C70A09}", SceneAPI::DataTypes::IBlendShapeData)
 
                 SCENE_DATA_API ~BlendShapeData() override;
-                SCENE_DATA_API virtual void AddPosition(const Vector3& position);
+                SCENE_DATA_API virtual unsigned int AddVertex(const Vector3& position, const Vector3& normal);
+
+                //assume consistent winding - no stripping or fanning expected (3 index per face)
+                SCENE_DATA_API virtual void AddFace(const Face& face);
+
+                SCENE_DATA_API void SetVertexIndexToControlPointIndexMap(int vertexIndex, int controlPointIndex);
+
+                SCENE_DATA_API size_t GetUsedControlPointCount() const override;
+                SCENE_DATA_API int GetControlPointIndex(int vertexIndex) const override;
+                SCENE_DATA_API int GetUsedPointIndexForControlPoint(int controlPointIndex) const override;
 
                 //assume consistent winding - no stripping or fanning expected (3 index per face)
                 SCENE_DATA_API unsigned int GetVertexCount() const override;
+                SCENE_DATA_API unsigned int GetFaceCount() const override;
 
                 SCENE_DATA_API const Vector3& GetPosition(unsigned int index) const override;
+                SCENE_DATA_API const Vector3& GetNormal(unsigned int index) const override;
+
+                SCENE_DATA_API unsigned int GetFaceVertexIndex(unsigned int face, unsigned int vertexIndex) const override;
+
             protected:
                 AZStd::vector<Vector3>  m_positions;
+                AZStd::vector<Vector3>  m_normals;
+                AZStd::vector<Face>     m_faces;
+
+                AZStd::unordered_map<int, int>                          m_vertexIndexToControlPointIndexMap;
+                AZStd::unordered_map<int, int>                          m_controlPointToUsedVertexIndexMap;
             };
         } // GraphData
     } // SceneData

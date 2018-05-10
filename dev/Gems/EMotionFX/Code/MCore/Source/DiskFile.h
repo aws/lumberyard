@@ -15,7 +15,6 @@
 // include the Core headers
 #include "StandardHeaders.h"
 #include "File.h"
-#include "UnicodeString.h"
 #include "MemoryManager.h"
 
 
@@ -164,11 +163,11 @@ namespace MCore
          * Returns the name of the file as it has been opened.
          * @result The string containing the filename as it has been passed to the method Open.
          */
-        String GetFileName() const;
+        const AZStd::string& GetFileName() const;
 
     protected:
-        String  mFileName;  /**< The filename */
-        FILE*   mFile;      /**< The file handle. */
-        EMode   mFileMode;  /**< The mode we opened the file with. */
+        AZStd::string  mFileName;  /**< The filename */
+        FILE*          mFile;      /**< The file handle. */
+        EMode          mFileMode;  /**< The mode we opened the file with. */
     };
 } // namespace MCore

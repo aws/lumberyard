@@ -89,6 +89,7 @@ namespace AzFramework
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Category, "Input")
+                ->Constructor<const char*>()
                 ->Constructor<const char*, AZ::u32>()
                 ->Property("channelId", BehaviorValueProperty(&BusIdType::m_channelId))
                 ->Property("deviceIndex", BehaviorValueProperty(&BusIdType::m_deviceIndex))
@@ -120,7 +121,8 @@ namespace AzFramework
     // Input request example:
     //
     //  function ScriptName:OnTick(deltaTime, timePoint)
-    //      local inputChannel = InputChannelRequestBus.Event.GetInputChannel(InputChannelRequest_BusId(mouse_button_left, 0))
+    //      local channelRequestId = InputChannelRequest_BusId(InputDeviceMouse.mouse_button_left)
+    //      local inputChannel = InputChannelRequestBus.Event.GetInputChannel(channelRequestId)
     //      if (inputChannel:IsActive()) then
     //          Debug.Log("Left mouse button active")
     //      end

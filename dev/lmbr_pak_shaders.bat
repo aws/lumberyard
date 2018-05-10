@@ -38,6 +38,7 @@ GOTO pythonPathSet
 SET BASE_PATH=%~dp0
 ECHO [WAF] Engine Root: %BASE_PATH%
 
+:pythonPathSet
 SET TOOLS_DIR=%BASE_PATH%\Tools
 
 SET PYTHON_DIR=%TOOLS_DIR%\Python

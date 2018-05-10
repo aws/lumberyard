@@ -44,16 +44,26 @@ namespace Physics
             : m_position(v)
             , m_color(c)
         {}
+
+        static AZ::Color GetGhostColor()        { return AZ::Color(1.0f, 0.7f, 0.0f, 1.0f); }
+        static AZ::Color GetRigidBodyColor()    { return AZ::Color(0.0f, 1.0f, 0.0f, 1.0f); }
+        static AZ::Color GetSleepingBodyColor() { return AZ::Color(0.5f, 0.5f, 0.5f, 1.0f); }
+        static AZ::Color GetCharacterColor()    { return AZ::Color(0.0f, 1.0f, 1.0f, 1.0f); }
+        static AZ::Color GetRayColor()          { return AZ::Color(0.8f, 0.4f, 0.2f, 1.0f); }
+        static AZ::Color GetRed()               { return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); }
+        static AZ::Color GetGreen()             { return AZ::Color(0.0f, 1.0f, 0.0f, 1.0f); }
+        static AZ::Color GetBlue()              { return AZ::Color(0.0f, 0.0f, 1.0f, 1.0f); }
+        static AZ::Color GetWhite()             { return AZ::Color(1.0f, 1.0f, 1.0f, 1.0f); }
     };
 
     /**
-      * Settings structure provided to DebugDrawPhysics to drive debug drawing behavior.
-      */
+     * Settings structure provided to DebugDrawPhysics to drive debug drawing behavior.
+     */
     struct DebugDrawSettings
     {
-        using DebugDrawLineCallback = AZStd::function<void(const DebugDrawVertex& from, const DebugDrawVertex& to, const Ptr<WorldBody>& body, float thickness)>;
-        using DebugDrawTriangleCallback = AZStd::function<void(const DebugDrawVertex& a, const DebugDrawVertex& b, const DebugDrawVertex& c, const Ptr<WorldBody>& body)>;
-        using DebugDrawTriangleBatchCallback = AZStd::function<void(const DebugDrawVertex* verts, AZ::u32 numVerts, const AZ::u32* indices, AZ::u32 numIndices, const Ptr<WorldBody>& body)>;
+        using DebugDrawLineCallback = AZStd::function<void(const DebugDrawVertex& from, const DebugDrawVertex& to, const Ptr<WorldBody>& body, float thickness, void* udata)>;
+        using DebugDrawTriangleCallback = AZStd::function<void(const DebugDrawVertex& a, const DebugDrawVertex& b, const DebugDrawVertex& c, const Ptr<WorldBody>& body, void* udata)>;
+        using DebugDrawTriangleBatchCallback = AZStd::function<void(const DebugDrawVertex* verts, AZ::u32 numVerts, const AZ::u32* indices, AZ::u32 numIndices, const Ptr<WorldBody>& body, void* udata)>;
 
         DebugDrawLineCallback           m_drawLineCB;                               ///< Required user callback for line drawing.
         DebugDrawTriangleBatchCallback  m_drawTriBatchCB;                           ///< User callback for triangle batch drawing. Required if \ref m_isWireframe is false.
@@ -62,6 +72,10 @@ namespace Physics
         AZ::Vector3                     m_cameraPos = AZ::Vector3::CreateZero();    ///< Camera position, for limiting objects based on \ref m_drawDistance.
         float                           m_drawDistance = 500.f;                     ///< Distance from \ref m_cameraPos within which objects will be drawn.
         bool                            m_drawBodyTransforms = false;               ///< If enabled, draws transform axes for each body.
+        void*                           m_udata = nullptr;                          ///< Platform specific and/or gem specific optional user data pointer.
+
+        void DrawLine(const DebugDrawVertex& from, const DebugDrawVertex& to, const Ptr<WorldBody>& body, float thickness = 1.0f) { m_drawLineCB(from, to, body, thickness, m_udata); }
+        void DrawTriangleBatch(const DebugDrawVertex* verts, AZ::u32 numVerts, const AZ::u32* indices, AZ::u32 numIndices, const Ptr<WorldBody>& body) { m_drawTriBatchCB(verts, numVerts, indices, numIndices, body, m_udata); }
     };
 
     /**

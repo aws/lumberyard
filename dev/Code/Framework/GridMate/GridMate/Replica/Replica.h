@@ -96,6 +96,7 @@ namespace GridMate
         bool DetachReplicaChunk(const ReplicaChunkPtr& chunk);
 
         ReplicaId GetRepId() const { return m_myId; }
+        PeerId GetPeerId() const;
         const char* GetDebugName() const;
         unsigned int GetCreateTime() const { return m_createTime; }
         ReplicaContext GetMyContext() const;

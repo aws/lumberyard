@@ -26,5 +26,6 @@ def build(bld):
         ndebug_output_file_name      = 'crcfix',
         debug_output_file_name       = 'crcfixD',
         win_x64_vs2013_output_folder = ['Tools/crcfix/bin/vc120/'],
-        win_x64_vs2015_output_folder = ['Tools/crcfix/bin/vc140/']
+        win_x64_vs2015_output_folder = ['Tools/crcfix/bin/vc140/'],
+        win_x64_vs2017_output_folder = ['Tools/crcfix/bin/vc141/']
     )

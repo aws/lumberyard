@@ -88,7 +88,7 @@ import mscv_helper, cry_utils
 HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl|*.hxx)'
 
 PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
-<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="${project.msvs_version}.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<ItemGroup Label="ProjectConfigurations">
 		${for b in project.build_properties}
 			<ProjectConfiguration Include="${b.configuration}|${b.platform.split()[0]}">
@@ -154,8 +154,6 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 				${endif}
             <!--
             -->
-            <!--
-            -->
             ${endif}
 		</PropertyGroup>
 	${endfor}
@@ -215,7 +213,7 @@ FILTER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 # Please mirror any changes in the solution template in the msvs_override_handling.py | get_solution_overrides()
 # This also include format changes such as spaces
 
-SOLUTION_TEMPLATE = '''Microsoft Visual Studio Solution File, Format Version ${project.numver}
+SOLUTION_TEMPLATE = '''Microsoft Visual Studio Solution File, Format Version ${project.formatver}
 # Visual Studio ${project.vsver}
 ${for p in project.all_projects}
 Project("{${p.ptype()}}") = "${p.name}", "${p.title}", "{${p.uuid}}"
@@ -351,7 +349,7 @@ COMPILE_TEMPLATE = '''def f(project):
 SUPPORTED_MSVS_VALUE_TABLE = {
     "12": {
         "name" : "Visual Studio 2013",
-        "numver" : "12.00",
+        "formatver" : "12.00",
         "vsver" : "2013",
         "defaultPlatformToolSet" : "v120",
         "platforms" : ["win_x64_vs2013"],
@@ -359,12 +357,23 @@ SUPPORTED_MSVS_VALUE_TABLE = {
     },
     "14": {
         "name" : "Visual Studio 2015",
-        "numver" : "14.00",
+        "formatver" : "12.00",
         "vsver": "14",
         "defaultPlatformToolSet": "v140",
-        "platforms": ["win_x64_vs2015",
-	],
+        "platforms": [
+            "win_x64_vs2015",
+    	],
         "product_name": "2015"
+    },
+    "15": {
+        "name" : "Visual Studio 2017",
+        "formatver" : "12.00",
+        "vsver": "15",
+        "defaultPlatformToolSet": "v141",
+        "platforms": [
+            "win_x64_vs2017",
+        ],
+        "product_name": "2017"
     }
 }
 
@@ -384,11 +393,13 @@ def convert_waf_platform_to_vs_platform(waf_platform):
 
 def _preprocess_vs_platform_key(vs_platform, vs_version):
 
-    if vs_platform == 'x64':
-        if vs_version not in SUPPORTED_MSVS_VALUE_TABLE:
-            raise SystemError('Invalid msvs version {}'.format(vs_platform))
-        vs_product_name = SUPPORTED_MSVS_VALUE_TABLE[vs_version]['product_name']
-        platform_key = '{} vs{}'.format(vs_platform, vs_product_name)
+    if vs_platform in (
+        'x64',
+        ):
+            if vs_version not in SUPPORTED_MSVS_VALUE_TABLE:
+                raise SystemError('Invalid msvs version {}'.format(vs_platform))
+            vs_product_name = SUPPORTED_MSVS_VALUE_TABLE[vs_version]['product_name']
+            platform_key = '{} vs{}'.format(vs_platform, vs_product_name)
     else:
         platform_key = vs_platform
 
@@ -874,9 +885,21 @@ class vsnode_project(vsnode):
         return '$(SolutionDir)..\\' + relative_path + '\\'
 
     def get_layout_folder(self, platform, mode, projectname):
-       if self.ctx.get_bootstrap_vfs() == '1':
-            return '$(SolutionDir)..\\layouts\\{}\\{}\\vfs'.format(projectname, mode)
-       return '$(SolutionDir)..\\layouts\\{}\\{}\\full'.format(projectname, mode)
+        the_mode = None
+        if 'release' in mode:
+            the_mode = 'release'
+        elif 'debug' in mode:
+            the_mode = 'debug'
+        elif 'profile' in mode:
+            the_mode = 'profile'
+        elif 'performance' in mode:
+            the_mode = 'performance'
+        else:
+            Logs.error('Layout Folder Unknown mode = {}'.format(mode))
+
+        if self.ctx.get_bootstrap_vfs() == '1' and the_mode != 'release':
+            return '$(SolutionDir)..\\layouts\\{}\\{}\\vfs'.format(projectname, the_mode)
+        return '$(SolutionDir)..\\layouts\\{}\\{}\\full'.format(projectname, the_mode)
 
     def get_rebuild_command(self, props):
 
@@ -1113,7 +1136,7 @@ class vsnode_target(vsnode_project):
         result = []
         platforms = [target_platform]
         # Append common win platform for windows hosts
-        if target_platform in ('win_x86', 'win_x64', 'win_x64_vs2015', 'win_x64_vs2013', 'win_x64_vs2013_test', 'win_x64_vs2015_test'):
+        if target_platform in ('win_x86', 'win_x64', 'win_x64_vs2017', 'win_x64_vs2015', 'win_x64_vs2013', 'win_x64_vs2013_test', 'win_x64_vs2015_test', 'win_x64_vs20177_test'):
             platforms.append('win')
         if target_platform in ('linux_x64'):
             platforms.append('linux')
@@ -1188,7 +1211,7 @@ class vsnode_target(vsnode_project):
             visited_nodes.add(tg.name)
 
             # Make sure that a list of strings is provided as the export includes
-            check_export_includes = Utils.to_list(tg.export_includes) if tg.export_includes is not None else None
+            check_export_includes = Utils.to_list(tg.export_includes) if getattr(tg, 'export_includes', None) is not None else None
 
             # Make sure the export includes is not empty before processing
             if check_export_includes is not None and len(check_export_includes) > 0:
@@ -1423,7 +1446,7 @@ class vsnode_target(vsnode_project):
                 qt_intermediate_include_path = os.path.join(self.tg.bld.bldnode.abspath(),
                                                             x.target_config,
                                                             'qt5',
-                                                            '{}.{}'.format(self.name, self.tg.idx))
+                                                            self.name)
                 include_list.append(qt_intermediate_include_path)
 
             x.includes_search_path = ';'.join(include_list)
@@ -1522,7 +1545,7 @@ class msvs_generator(BuildContext):
         else:
             Logs.info('[INFO] Generating {} solution.'.format(selected_msvs_version_platform['name']))
 
-        self.numver = selected_msvs_version_platform['numver']
+        self.formatver = selected_msvs_version_platform['formatver']
         self.vsver  = selected_msvs_version_platform['vsver']
         self.defaultPlatformToolSet = selected_msvs_version_platform['defaultPlatformToolSet']
         self.msvs_version = msvs_version
@@ -1757,6 +1780,7 @@ class msvs_generator(BuildContext):
                 skip_module = not self.check_against_enabled_game_projects(target)
 
             if skip_module:
+                Logs.debug('msvs: Unqualifying %s' % taskgen.target)
                 unqualified_taskgens.append(taskgen)
                 continue
 

@@ -107,6 +107,8 @@
 #include <QResizeEvent>
 #include <QFileInfo>
 #include <QWidgetAction>
+#include <QSettings>
+
 #include "AzCore/std/smart_ptr/make_shared.h"
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/TickBus.h>
@@ -151,11 +153,16 @@ using namespace AzToolsFramework;
 #define LAYOUTS_WILDCARD "*.layout"
 #define DUMMY_LAYOUT_NAME "Dummy_Layout"
 
-const char* OPEN_VIEW_PANE_EVENT_NAME = "OpenViewPaneEvent"; //Sent when users open view panes;
-const char* VIEW_PANE_ATTRIBUTE_NAME = "ViewPaneName"; //Name of the current view pane
-const char* OPEN_LOCATION_ATTRIBUTE_NAME = "OpenLocation"; //Indicates where the current view pane is opened from
+static const char* g_openViewPaneEventName = "OpenViewPaneEvent"; //Sent when users open view panes;
+static const char* g_viewPaneAttributeName = "ViewPaneName"; //Name of the current view pane
+static const char* g_openLocationAttributeName = "OpenLocation"; //Indicates where the current view pane is opened from
 
-const char* ASSET_IMPORTER_NAME = "AssetImporter";
+static const char* g_assetImporterName = "AssetImporter";
+
+static const char* g_snapToGridEnabled = "mainwindow/snapGridEnabled";
+static const char* g_snapToGridSize = "mainwindow/snapGridSize";
+static const char* g_snapAngleEnabled = "mainwindow/snapAngleEnabled";
+static const char* g_snapAngle = "mainwindow/snapAngle";
 
 class CEditorOpenViewCommand
     : public _i_reference_target_t
@@ -587,13 +594,13 @@ HWND MainWindow::GetNativeHandle()
 void MainWindow::SendMetricsEvent(const char* viewPaneName, const char* openLocation)
 {
     //Send metrics event to check how many times the pane is open via main menu View->Open View Pane
-    auto eventId = LyMetrics_CreateEvent(OPEN_VIEW_PANE_EVENT_NAME);
+    auto eventId = LyMetrics_CreateEvent(g_openViewPaneEventName);
 
     // Add attribute to show what pane is opened
-    LyMetrics_AddAttribute(eventId, VIEW_PANE_ATTRIBUTE_NAME, viewPaneName);
+    LyMetrics_AddAttribute(eventId, g_viewPaneAttributeName, viewPaneName);
 
     // Add attribute to tell where this pane is opened from
-    LyMetrics_AddAttribute(eventId, OPEN_LOCATION_ATTRIBUTE_NAME, openLocation);
+    LyMetrics_AddAttribute(eventId, g_openLocationAttributeName, openLocation);
 
     LyMetrics_SubmitEvent(eventId);
 }
@@ -601,7 +608,7 @@ void MainWindow::SendMetricsEvent(const char* viewPaneName, const char* openLoca
 void MainWindow::OnOpenAssetImporterManager(const QStringList& dragAndDropFileList)
 {
     // Asset Importer metrics event: open the Asset Importer by dragging and dropping files/folders from local directories to the Editor
-    EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::MenuTriggered, ASSET_IMPORTER_NAME, MetricsActionTriggerType::DragAndDrop);
+    EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::MenuTriggered, g_assetImporterName, MetricsActionTriggerType::DragAndDrop);
     m_assetImporterManager->Exec(dragAndDropFileList);
 }
 
@@ -671,6 +678,7 @@ void MainWindow::Initialize()
     RegisterStdViewClasses();
     InitCentralWidget();
 
+    LoadConfig();
     InitActions();
 
     // load toolbars ("shelves") and macros
@@ -745,7 +753,6 @@ void MainWindow::closeEvent(QCloseEvent* event)
     // Some of the panes may ask for confirmation to save changes before closing.
     if (!QtViewPaneManager::instance()->ClosePanesWithRollback(QVector<QString>()) ||
         !GetIEditor() ||
-        (GetIEditor()->GetDocument() && !GetIEditor()->GetDocument()->CanCloseFrame(nullptr)) ||
         !GetIEditor()->GetLevelIndependentFileMan()->PromptChangedFiles())
     {
         event->ignore();
@@ -771,8 +778,27 @@ void MainWindow::closeEvent(QCloseEvent* event)
     QMainWindow::closeEvent(event);
 }
 
+void MainWindow::LoadConfig()
+{
+    CGrid* grid = gSettings.pGrid;
+    Q_ASSERT(grid);
+
+    ReadConfigValue(g_snapAngleEnabled, grid->bAngleSnapEnabled);
+    ReadConfigValue(g_snapAngle, grid->angleSnap);
+    ReadConfigValue(g_snapToGridEnabled, grid->bEnabled);
+    ReadConfigValue(g_snapToGridSize, grid->size);
+}
+
 void MainWindow::SaveConfig()
 {
+    CGrid* grid = gSettings.pGrid;
+    Q_ASSERT(grid);
+
+    m_settings.setValue(g_snapAngleEnabled, grid->bAngleSnapEnabled);
+    m_settings.setValue(g_snapAngle, grid->angleSnap);
+    m_settings.setValue(g_snapToGridEnabled, grid->bEnabled);
+    m_settings.setValue(g_snapToGridSize, grid->size);
+
     m_settings.setValue("mainWindowState", saveState());
     QtViewPaneManager::instance()->SaveLayout();
     if (m_pLayoutWnd)
@@ -924,6 +950,14 @@ void MainWindow::InitActions()
     am->AddAction(ID_GAME_IOS_ENABLELOWSPEC, tr("Low")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecIosLow")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
     am->AddAction(ID_GAME_APPLETV_ENABLESPEC, tr("Apple TV")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecAppleTV")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
@@ -1910,7 +1944,7 @@ QComboBox* MainWindow::CreateSelectionMaskComboBox()
     });
 
     QAction* ac = m_actionManager->GetAction(ID_EDIT_NEXTSELECTIONMASK);
-    connect(ac, &QAction::triggered, [cb]()
+    connect(ac, &QAction::triggered, cb, [cb]
     {
         // cycle the combo-box
         const int currentIndex = qMax(0, cb->currentIndex()); // if -1 assume 0

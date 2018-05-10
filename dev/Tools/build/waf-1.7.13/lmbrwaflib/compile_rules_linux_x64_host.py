@@ -15,6 +15,8 @@ from waflib.Configure import conf, Logs
 # being a _host file, this means that these settings apply to any build at all that is
 # being done from this kind of host
 
+PLATFORM = 'linux_x64'
+
 @conf
 def load_linux_x64_host_settings(conf):
     """
@@ -28,14 +30,16 @@ def load_linux_x64_host_settings(conf):
     v['CODE_GENERATOR_PATH'] = [ azcg_dir ]
     v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7'),
                                         conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload'),
-                                        conf.Path('Code/SDKs/markupsafe/x64'),
-                                        conf.Path('Code/SDKs/jinja2/x64')]
+                                        conf.ThirdPartyPath('markupsafe', 'x64'),
+                                        conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7'),
                                               conf.Path('Tools/Python/2.7.12/linux_x64/lib/python2.7/lib-dynload'),
-                                              conf.Path('Code/SDKs/markupsafe/x64'),
-                                              conf.Path('Code/SDKs/jinja2/x64')]
+                                              conf.ThirdPartyPath('markupsafe', 'x64'),
+                                              conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.12/linux_x64')
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/linux_x64')
 
-    # Detect the QT binaries
-    conf.find_qt5_binaries('linux_x64')
+    # Detect the QT binaries, if the current capabilities selected requires it.
+    _, enabled, _, _ = conf.tp.get_third_party_path(PLATFORM, 'qt')
+    if enabled:
+        conf.find_qt5_binaries(PLATFORM)

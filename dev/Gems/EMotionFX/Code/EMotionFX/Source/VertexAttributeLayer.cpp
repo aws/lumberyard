@@ -12,7 +12,7 @@
 
 // include headers
 #include "VertexAttributeLayer.h"
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 
 namespace EMotionFX
@@ -23,7 +23,7 @@ namespace EMotionFX
     {
         mNumAttributes  = numAttributes;
         mKeepOriginals  = keepOriginals;
-        mNameID         = MCore::GetStringIDGenerator().GenerateIDForString("");
+        mNameID         = MCore::GetStringIdPool().GenerateIdForString("");
     }
 
 
@@ -44,21 +44,21 @@ namespace EMotionFX
     // set the name
     void VertexAttributeLayer::SetName(const char* name)
     {
-        mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 
     // get the name
     const char* VertexAttributeLayer::GetName() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mNameID).c_str();
     }
 
 
     // get the name string
-    const MCore::String& VertexAttributeLayer::GetNameString() const
+    const AZStd::string& VertexAttributeLayer::GetNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID);
+        return MCore::GetStringIdPool().GetName(mNameID);
     }
 
 

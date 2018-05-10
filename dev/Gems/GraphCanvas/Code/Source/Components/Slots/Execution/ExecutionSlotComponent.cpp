@@ -93,10 +93,10 @@ namespace GraphCanvas
     {
     }
 
-    AZ::Entity* ExecutionSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    AZ::Entity* ExecutionSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
     {    
         const AZStd::string k_connectionSubStyle = ".logicFlow";
 
-        return ConnectionComponent::CreateGeneralConnection(sourceEndpoint, targetEndpoint, k_connectionSubStyle);
+        return ConnectionComponent::CreateGeneralConnection(sourceEndpoint, targetEndpoint, createModelConnection, k_connectionSubStyle);
     }
 }

@@ -21,6 +21,9 @@
 #include "EnvironmentPreset.h"
 #include <Environment/OceanEnvironmentBus.h>
 
+// Maximum number of minutes in a day converted to a float value
+static const float s_maxTime = ((24 * 60) - 1) / 60.0f;
+
 class CBezierSplineFloat
     : public spline::CBaseSplineInterpolator<float, spline::BezierSpline<float> >
 {
@@ -405,7 +408,7 @@ void CTimeOfDay::Update(bool bInterpolate, bool bForceUpdate, bool bEnvUpdate)
         }
 
         // normalized time for interpolation
-        float t = m_fTime / 24.0f;
+        float t = m_fTime / s_maxTime;
 
         // interpolate all values
         for (uint32 i = 0; i < static_cast<uint32>(GetVariableCount()); i++)
@@ -553,7 +556,7 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
 
     if (m_bSunLinkedToTOD)
     {
-        float timeAng(((m_fTime + 12.0f) / 24.0f) * gf_PI * 2.0f);
+        float timeAng(((m_fTime + 12.0f) / s_maxTime) * gf_PI * 2.0f);
         float sunRot = gf_PI * (-m_sunRotationLatitude) / 180.0f;
         float longitude = 0.5f * gf_PI - gf_PI * m_sunRotationLongitude / 180.0f;
 
@@ -591,67 +594,94 @@ void CTimeOfDay::UpdateEnvLighting(bool forceUpdate)
     AZ_Assert(p3DEngine->m_duskStart <= p3DEngine->m_duskEnd, "Invalid sun/moon transition parameters in CTimeOfDay::UpdateEnvLighting!");
     AZ_Assert(p3DEngine->m_dawnEnd <= p3DEngine->m_duskStart, "Invalid sun/moon transition parameters in CTimeOfDay::UpdateEnvLighting!");
     float sunIntensityMultiplier(1.0f);
+
+    // The ratio between night and day for adjusting luminance.   Day = 1, Night = 0, transitions = [0..1]
     float dayNightIndicator(1.0);
+    // The ratio [0..1] relative to high noon which represents maximum luminance.
+    float midDayIndicator(1.0);
+
     if (m_fTime < p3DEngine->m_dawnStart || m_fTime >= p3DEngine->m_duskEnd)
-    {
-        // night
-        sunIntensityMultiplier = 0.0;
+    {   // Night time
         p3DEngine->GetGlobalParameter(E3DPARAM_NIGHSKY_MOON_DIRECTION, sunPos);
-        dayNightIndicator = 0.0;
+        sunIntensityMultiplier = 0.0f;
+        midDayIndicator = 0.0f;
+        dayNightIndicator = 0.0f;
     }
-    else if (m_fTime < p3DEngine->m_dawnEnd)
-    {
-        // dawn
-        AZ_Assert(p3DEngine->m_dawnStart < p3DEngine->m_dawnEnd, "Invalid sun/moon transition parameters in CTimeOfDay::UpdateEnvLighting!");
-        float b(0.5f * (p3DEngine->m_dawnStart + p3DEngine->m_dawnEnd));
-        if (m_fTime < b)
+    else
+    {   // Dawn, day and dusk time
+
+        // Calculating the energy multiplier where mid-day sun is 1.0 and night is 0
+        const float noonTime = 12.0f;
+        float   dayTime = p3DEngine->m_duskEnd - p3DEngine->m_dawnStart;
+
+        if (m_fTime <= noonTime)
         {
-            // fade out moon
-            sunMultiplier *= (b - m_fTime) / (b - p3DEngine->m_dawnStart);
-            sunIntensityMultiplier = 0.0;
-            p3DEngine->GetGlobalParameter(E3DPARAM_NIGHSKY_MOON_DIRECTION, sunPos);
+            float   dawnToNoon = noonTime - p3DEngine->m_dawnStart;
+            midDayIndicator = (m_fTime - p3DEngine->m_dawnStart) / dawnToNoon;
         }
         else
         {
-            // fade in sun
-            float t((m_fTime - b) / (p3DEngine->m_dawnEnd - b));
-            sunMultiplier *= t;
-            sunIntensityMultiplier = t;
+            float   noonToDusk = p3DEngine->m_duskEnd - noonTime;
+            midDayIndicator = (m_fTime - noonTime) / noonToDusk;
         }
+        midDayIndicator = cos(0.5f * midDayIndicator * 3.14159265f);     // Converting to the cosine to represent energy distribution
 
-        dayNightIndicator = (m_fTime - p3DEngine->m_dawnStart) / (p3DEngine->m_dawnEnd - p3DEngine->m_dawnStart);
-    }
-    else if (m_fTime < p3DEngine->m_duskStart)
-    {
-        // day
-        dayNightIndicator = 1.0;
-    }
-    else if (m_fTime < p3DEngine->m_duskEnd)
-    {
-        // dusk
-        AZ_Assert(p3DEngine->m_duskStart < p3DEngine->m_duskEnd, "Invalid sun/moon transition parameters in CTimeOfDay::UpdateEnvLighting!");
-        float b(0.5f * (p3DEngine->m_duskStart + p3DEngine->m_duskEnd));
-        if (m_fTime < b)
+                                                                         // Calculation of sun intensity and day-to-night indicator
+        if (m_fTime < p3DEngine->m_dawnEnd)
         {
-            // fade out sun
-            float t((b - m_fTime) / (b - p3DEngine->m_duskStart));
-            sunMultiplier *= t;
-            sunIntensityMultiplier = t;
+            // dawn
+            AZ_Assert(p3DEngine->m_dawnStart < p3DEngine->m_dawnEnd, "Invalid sun/moon transition parameters in CTimeOfDay::UpdateEnvLighting!");
+            float b(0.5f * (p3DEngine->m_dawnStart + p3DEngine->m_dawnEnd));
+            if (m_fTime < b)
+            {
+                // fade out moon
+                sunMultiplier *= (b - m_fTime) / (b - p3DEngine->m_dawnStart);
+                sunIntensityMultiplier = 0.0f;
+                p3DEngine->GetGlobalParameter(E3DPARAM_NIGHSKY_MOON_DIRECTION, sunPos);
+            }
+            else
+            {
+                // fade in sun
+                float t((m_fTime - b) / (p3DEngine->m_dawnEnd - b));
+                sunMultiplier *= t;
+                sunIntensityMultiplier = t;
+            }
+            dayNightIndicator = (m_fTime - p3DEngine->m_dawnStart) / (p3DEngine->m_dawnEnd - p3DEngine->m_dawnStart);
         }
-        else
+        else if (m_fTime < p3DEngine->m_duskStart)
         {
-            // fade in moon
-            sunMultiplier *= (m_fTime - b) / (p3DEngine->m_duskEnd - b);
-            sunIntensityMultiplier = 0.0;
-            p3DEngine->GetGlobalParameter(E3DPARAM_NIGHSKY_MOON_DIRECTION, sunPos);
+            // day
+            dayNightIndicator = 1.0;
         }
+        else if (m_fTime < p3DEngine->m_duskEnd)
+        {
+            // dusk
+            AZ_Assert(p3DEngine->m_duskStart < p3DEngine->m_duskEnd, "Invalid sun/moon transition parameters in CTimeOfDay::UpdateEnvLighting!");
+            float b(0.5f * (p3DEngine->m_duskStart + p3DEngine->m_duskEnd));
+            if (m_fTime < b)
+            {
+                // fade out sun
+                float t((b - m_fTime) / (b - p3DEngine->m_duskStart));
+                sunMultiplier *= t;
+                sunIntensityMultiplier = t;
+            }
+            else
+            {
+                // fade in moon
+                sunMultiplier *= (m_fTime - b) / (p3DEngine->m_duskEnd - b);
+                sunIntensityMultiplier = 0.0;
+                p3DEngine->GetGlobalParameter(E3DPARAM_NIGHSKY_MOON_DIRECTION, sunPos);
+            }
 
-        dayNightIndicator = (p3DEngine->m_duskEnd - m_fTime) / (p3DEngine->m_duskEnd - p3DEngine->m_duskStart);
+            dayNightIndicator = (p3DEngine->m_duskEnd - m_fTime) / (p3DEngine->m_duskEnd - p3DEngine->m_duskStart);
+        }
     }
+
     sunIntensityMultiplier = max(GetVar(PARAM_SKYLIGHT_SUN_INTENSITY_MULTIPLIER).fValue[0], 0.0f);
-    p3DEngine->SetGlobalParameter(E3DPARAM_DAY_NIGHT_INDICATOR, Vec3(dayNightIndicator, 0, 0));
+    p3DEngine->SetGlobalParameter(E3DPARAM_DAY_NIGHT_INDICATOR, Vec3(dayNightIndicator, midDayIndicator, 0));
 
     p3DEngine->SetSunDir(sunPos);
+
 
     // set sun, sky, and fog color
     Vec3 sunColor(Vec3(GetVar(PARAM_SUN_COLOR).fValue[ 0 ],
@@ -1085,21 +1115,21 @@ void CTimeOfDay::NetSerialize(TSerialize ser, float lag, uint32 flags)
 
                 float localTime = m_fTime;
                 // handle wraparound
-                if (localTime < wraparoundGuardHours && remoteTime > (24.0f - wraparoundGuardHours))
+                if (localTime < wraparoundGuardHours && remoteTime > (s_maxTime - wraparoundGuardHours))
                 {
-                    localTime += 24.0f;
+                    localTime += s_maxTime;
                 }
-                else if (remoteTime < wraparoundGuardHours && localTime > (24.0f - wraparoundGuardHours))
+                else if (remoteTime < wraparoundGuardHours && localTime > (s_maxTime - wraparoundGuardHours))
                 {
-                    remoteTime += 24.0f;
+                    remoteTime += s_maxTime;
                 }
                 // don't blend times if they're very different
                 if (fabsf(remoteTime - localTime) < 1.0f)
                 {
                     setTime = adjustmentFactor * remoteTime + (1.0f - adjustmentFactor) * m_fTime;
-                    if (setTime > 24.0f)
+                    if (setTime > s_maxTime)
                     {
-                        setTime -= 24.0f;
+                        setTime -= s_maxTime;
                     }
                 }
             }
@@ -1139,13 +1169,13 @@ void CTimeOfDay::Tick()
             }
             else if (fabs(m_advancedInfo.fStartTime - m_advancedInfo.fEndTime) <= 0.05f)//full cycle mode
             {
-                if (fTime > 24.0f)
+                if (fTime > s_maxTime)
                 {
-                    fTime -= 24.0f;
+                    fTime -= s_maxTime;
                 }
                 else if (fTime < 0.0f)
                 {
-                    fTime += 24.0f;
+                    fTime += s_maxTime;
                 }
             }
             else

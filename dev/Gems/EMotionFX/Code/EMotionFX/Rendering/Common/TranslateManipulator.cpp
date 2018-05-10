@@ -208,12 +208,12 @@ namespace MCommon
             // render delta position of the gizmo of the name if not dragging at the moment
             if (mSelectionLocked && mMode != TRANSLATE_NONE)
             {
-                mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", static_cast<float>(deltaPos.GetX()), static_cast<float>(deltaPos.GetY()), static_cast<float>(deltaPos.GetZ()));
-                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+                mTempString = AZStd::string::format("X: %.3f, Y: %.3f, Z: %.3f", static_cast<float>(deltaPos.GetX()), static_cast<float>(deltaPos.GetY()), static_cast<float>(deltaPos.GetZ()));
+                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mTempString.c_str(), ManipulatorColors::mSelectionColor, 9.0f, true);
             }
             else
             {
-                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mName.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mName.c_str(), ManipulatorColors::mSelectionColor, 9.0f, true);
             }
         }
 
@@ -227,8 +227,8 @@ namespace MCommon
         if (mMode != TRANSLATE_NONE)
         {
             const AZ::Vector3 offsetPos = GetPosition();
-            mTempString.Format("Abs Pos X: %.3f, Y: %.3f, Z: %.3f", static_cast<float>(offsetPos.GetX()), static_cast<float>(offsetPos.GetY()), static_cast<float>(offsetPos.GetZ()));
-            renderUtil->RenderText(10, 10, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f);
+            mTempString = AZStd::string::format("Abs Pos X: %.3f, Y: %.3f, Z: %.3f", static_cast<float>(offsetPos.GetX()), static_cast<float>(offsetPos.GetY()), static_cast<float>(offsetPos.GetZ()));
+            renderUtil->RenderText(10, 10, mTempString.c_str(), ManipulatorColors::mSelectionColor, 9.0f);
         }
     }
 

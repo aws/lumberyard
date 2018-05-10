@@ -11,7 +11,6 @@
 */
 
 #include <AzCore/Debug/Timer.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "Exporter.h"
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
@@ -59,9 +58,9 @@ namespace ExporterLib
         SaveActorHeader(file, targetEndianType);
 
         // save actor info
-        MCore::String sourceApplication = actor->GetAttributeSet()->GetStringAttribute("sourceApplication");
-        MCore::String originalFileName  = actor->GetAttributeSet()->GetStringAttribute("originalFileName");
-        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), sourceApplication.AsChar(), originalFileName.AsChar(), actor->GetName(), /*actor->GetRetargetOffset()*/ 0.0f, actor->GetUnitType(), targetEndianType);
+        AZStd::string sourceApplication = actor->GetAttributeSet()->GetStringAttribute("sourceApplication");
+        AZStd::string originalFileName  = actor->GetAttributeSet()->GetStringAttribute("originalFileName");
+        SaveActorFileInfo(file, actor->GetNumLODLevels(), actor->GetMotionExtractionNodeIndex(), sourceApplication.c_str(), originalFileName.c_str(), actor->GetName(), /*actor->GetRetargetOffset()*/ 0.0f, actor->GetUnitType(), targetEndianType);
 
         // save nodes
         EMotionFX::GetEventManager().OnSubProgressText("Saving nodes");

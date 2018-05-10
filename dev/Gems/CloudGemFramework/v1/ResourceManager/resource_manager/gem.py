@@ -456,7 +456,7 @@ class GemContext(object):
         # lmbr.exe now lives in Tools/LmbrSetup/{platform].{compiler}(.Debug)(.Test)
         baselmbrpath = os.path.join('Tools', 'LmbrSetup')
 
-        for platformname in ['Win','Win.vc120','Win.vc140','Mac','Mac.clang','Linux','Linux.clang','Linux.gcc']:
+        for platformname in ['Win','Win.vc120','Win.vc140','Win.vc141','Mac','Mac.clang','Linux','Linux.clang','Linux.gcc']:
             directory_names.append(os.path.join(baselmbrpath,'{}.Debug.Test'.format(platformname)))
             directory_names.append(os.path.join(baselmbrpath,'{}'.format(platformname)))
             directory_names.append(os.path.join(baselmbrpath,'{}.Debug'.format(platformname)))
@@ -651,7 +651,7 @@ def build(bld):
 
     bld.DefineGem(
         
-        includes = [bld.Path('Code/SDKs/AWSNativeSDK/include')],
+        includes = [bld.ThirdPartyPath('AWSNativeSDK','include')],
 
         file_list = file_list,
 

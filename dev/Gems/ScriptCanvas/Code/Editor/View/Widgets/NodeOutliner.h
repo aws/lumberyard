@@ -31,15 +31,13 @@
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 #include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 
 #include <ScriptCanvas/Bus/RequestBus.h>
 #include <Editor/View/Widgets/NodeTableView.h>
-#include <Editor/View/Windows/MainWindowBus.h>
 
 class QAction;
 class QLineEdit;
-
-Q_DECLARE_METATYPE(AZ::EntityId);
 
 namespace ScriptCanvasEditor
 {
@@ -82,38 +80,7 @@ namespace ScriptCanvasEditor
                 return aznumeric_cast<int>(m_nodeIds.size());
             }
 
-            QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override
-            {
-                AZ::EntityId nodeId;
-
-                if (index.row() < m_nodeIds.size())
-                {
-                    nodeId = m_nodeIds[index.row()];
-                }
-
-                switch (role)
-                {
-                case NodeIdRole:
-                    return QVariant::fromValue<AZ::EntityId>(nodeId);
-
-                case Qt::DisplayRole:
-                {
-                    if (index.column() == ColumnIndex::Name)
-                    {
-                        AZStd::string title;
-                        
-                        GraphCanvas::NodeTitleRequestBus::EventResult(title, nodeId, &GraphCanvas::NodeTitleRequests::GetTitle);
-                        return QVariant(title.c_str());
-                    }
-                }
-                break;
-
-                default:
-                    break;
-                }
-
-                return QVariant();
-            }
+            QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
             Qt::ItemFlags flags(const QModelIndex &index) const override
             {
@@ -220,7 +187,7 @@ namespace ScriptCanvasEditor
 
         class NodeOutliner 
             : public AzQtComponents::StyledDockWidget
-            , public MainWindowNotificationBus::Handler
+            , public GraphCanvas::AssetEditorNotificationBus::Handler
             , public GraphCanvas::SceneNotificationBus::Handler
         {
             Q_OBJECT
@@ -232,8 +199,8 @@ namespace ScriptCanvasEditor
 
             void RefreshDisplay(const AZStd::vector<AZ::EntityId>& selectedEntities);
 
-            // MainWindowNotificationBus::Handler
-            void OnActiveSceneChanged(const AZ::EntityId& sceneId);
+            // GraphCanvas::AssetEditorNotificationBus::Handler
+            void OnActiveGraphChanged(const GraphCanvas::GraphId& sceneId);
             ////
 
             void OnItemSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);

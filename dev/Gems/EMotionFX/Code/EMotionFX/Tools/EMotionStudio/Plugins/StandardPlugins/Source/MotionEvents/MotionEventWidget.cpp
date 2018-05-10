@@ -16,7 +16,6 @@
 #include <QPushButton>
 #include <QPushButton>
 #include <QIcon>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Compare.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 
@@ -194,7 +193,7 @@ namespace EMStudio
         mLength->blockSignals(false);
 
         mParameter->blockSignals(true);
-        mParameter->setText(mMotionEvent->GetParameterString(mMotionEventTrack).AsChar());
+        mParameter->setText(mMotionEvent->GetParameterString(mMotionEventTrack).c_str());
         mParameter->blockSignals(false);
 
         mType->blockSignals(true);
@@ -214,7 +213,7 @@ namespace EMStudio
         QString newValue = widget->text();
 
         // don't call the command if nothing changed
-        if (mMotionEvent->GetParameterString(mMotionEventTrack).CheckIfIsEqual(FromQtString(newValue).AsChar()))
+        if (mMotionEvent->GetParameterString(mMotionEventTrack) == FromQtString(newValue).c_str())
         {
             return;
         }

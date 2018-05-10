@@ -19,6 +19,8 @@
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
+#include <AzFramework/Entity/EntityContextBus.h>
+
 #include <ScriptCanvas/Data/Data.h>
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Graph.h>
@@ -32,9 +34,15 @@
 #include <ScriptCanvas/Libraries/Math/Math.h>
 #include <ScriptCanvas/Libraries/Comparison/Comparison.h>
 
+#include <ScriptCanvas/Variable/VariableBus.h>
+
+namespace ScriptCanvas
+{
+    class RuntimeAsset;
+}
+
 namespace ScriptCanvasTests
 {
-
     template<typename t_NodeType>
     t_NodeType* GetTestNode(const AZ::EntityId& graphUniqueId, const AZ::EntityId& nodeID)
     {
@@ -75,11 +83,28 @@ namespace ScriptCanvasTests
         return node;
     }
 
+    template<typename t_Value>
+    ScriptCanvas::VariableId CreateVariable(AZ::EntityId graphUniqueId, const t_Value& value, AZStd::string_view variableName)
+    {
+        using namespace ScriptCanvas;
+        AZ::Outcome<VariableId, AZStd::string> addVariableOutcome = AZ::Failure(AZStd::string());
+        GraphVariableManagerRequestBus::EventResult(addVariableOutcome, graphUniqueId, &GraphVariableManagerRequests::AddVariable, variableName, Datum(value));
+        if (!addVariableOutcome)
+        {
+            AZ_Warning("Script Canvas Test", false, "%s", addVariableOutcome.GetError().data());
+            return {};
+        }
+
+        return addVariableOutcome.TakeValue();
+    }
+
     ScriptCanvas::Nodes::Core::BehaviorContextObjectNode* CreateTestObjectNode(const AZ::EntityId& graphUniqueId, AZ::EntityId& entityOut, const AZ::Uuid& objectTypeID);
     AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, const AZStd::string& className, const AZStd::string& methodName);
     const char* SlotTypeToString(ScriptCanvas::SlotType type);
     void DumpSlots(const ScriptCanvas::Node& node);
     bool Connect(ScriptCanvas::Graph& graph, const AZ::EntityId& fromNodeID, const char* fromSlotName, const AZ::EntityId& toNodeID, const char* toSlotName, bool dumpSlotsOnFailure = true);
+
+    AZ::Data::Asset<ScriptCanvas::RuntimeAsset> CreateRuntimeAsset(ScriptCanvas::Graph* graph);
 
     class UnitTestEvents
         : public AZ::EBusTraits
@@ -286,7 +311,6 @@ namespace ScriptCanvasTests
         static void ResetCounts() { s_createdCount = s_destroyedCount = 0; }
 
         TestBehaviorContextObject()
-            : m_value(0)
         {
             ++s_createdCount;
         }
@@ -322,8 +346,14 @@ namespace ScriptCanvasTests
             return *this;
         }
 
+        // make a to string
+
         int GetValue() const { return m_value; }
         void SetValue(int value) { m_value = value; }
+
+        bool IsNormalized() const { return m_isNormalized; }
+        void Normalize() { m_isNormalized = true; }
+        void Denormalize() { m_isNormalized = false; }
 
         bool operator>(const TestBehaviorContextObject& other) const
         {
@@ -356,7 +386,8 @@ namespace ScriptCanvasTests
         }
 
     private:
-        int m_value;
+        int m_value = -1;
+        bool m_isNormalized = false;
         static AZ::u32 s_createdCount;
         static AZ::u32 s_destroyedCount;
     };
@@ -372,7 +403,7 @@ namespace ScriptCanvasTests
         virtual void Event() = 0;
         virtual int Number(int number) = 0;
         virtual AZStd::string String(const AZStd::string& string) = 0;
-        virtual AZ::Vector3 Vector(const AZ::Vector3& vector) = 0;
+        virtual TestBehaviorContextObject Object(const TestBehaviorContextObject& vector) = 0;
     };
 
     using EventTestBus = AZ::EBus<EventTest>;
@@ -383,13 +414,13 @@ namespace ScriptCanvasTests
     {
     public:
         AZ_EBUS_BEHAVIOR_BINDER
-        (EventTestHandler
+            ( EventTestHandler
             , "{29E7F7EE-0867-467A-8389-68B07C184109}"
             , AZ::SystemAllocator
             , Event
             , Number
             , String
-            , Vector);
+            , Object);
 
         static void Reflect(AZ::ReflectContext* context)
         {
@@ -427,14 +458,13 @@ namespace ScriptCanvasTests
             return output;
         }
 
-        AZ::Vector3 Vector(const AZ::Vector3& input) override
+        TestBehaviorContextObject Object(const TestBehaviorContextObject& input) override
         {
-            AZ::Vector3 output;
-            CallResult(output, FN_Vector, input);
+            TestBehaviorContextObject output;
+            CallResult(output, FN_Object, input);
             return output;
         }
     }; // EventTestHandler
-
 
     class ConvertibleToString
     {
@@ -571,6 +601,43 @@ namespace ScriptCanvasTests
         bool m_oldSuppression = false;
     };
 
+    class UnitTestEntityContext
+        : public AzFramework::EntityIdContextQueryBus::MultiHandler
+        , public AzFramework::EntityContextRequestBus::Handler
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(UnitTestEntityContext, AZ::SystemAllocator, 0);
+
+        UnitTestEntityContext() { AzFramework::EntityContextRequestBus::Handler::BusConnect(GetOwningContextId()); }
+
+        //// EntityIdContextQueryBus::MultiHandler
+        // Returns a generate Uuid which represents the UnitTest EntityContext
+        AzFramework::EntityContextId GetOwningContextId() override { return AzFramework::EntityContextId("{36591268-5CE9-4BC1-8277-0AB9AD528447}"); }
+        AZ::SliceComponent::SliceInstanceAddress GetOwningSlice() override { return {}; }
+        ////
+
+        //// EntityContextRequestBus::Handler
+        AZ::SliceComponent* GetRootSlice() override { return {}; }
+        AZ::Entity* CreateEntity(const char* name) override;
+
+        void AddEntity(AZ::Entity* entity) override;
+
+        void ActivateEntity(AZ::EntityId entityId) override;
+        void DeactivateEntity(AZ::EntityId entityId) override;
+        bool DestroyEntity(AZ::Entity* entity) override;
+        bool DestroyEntityById(AZ::EntityId entityId) override;
+        AZ::Entity* CloneEntity(const AZ::Entity& sourceEntity) override;
+        const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& GetLoadedEntityIdMap() override { return m_unitTestEntityIdMap; }
+        void ResetContext() override;
+        ////
+
+        void AddEntity(AZ::EntityId entityId);
+        void RemoveEntity(AZ::EntityId entityId);
+        bool IsOwnedByThisContext(AZ::EntityId entityId) { return m_unitTestEntityIdMap.count(entityId) != 0; }
+
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_unitTestEntityIdMap;
+    };
+
     template<typename t_Operator, typename t_Operand, typename t_Value>
     void BinaryOpTest(const t_Operand& lhs, const t_Operand& rhs, const t_Value& expectedResult, bool forceGraphError = false)
     {
@@ -640,14 +707,18 @@ namespace ScriptCanvasTests
     }
 
     template<typename t_Value>
-    void AssignTest(const t_Value& lhs, const t_Value& rhs)
+    void AssignTest(const t_Value& lhs, const t_Value& rhs, UnitTestEntityContext* entityContext = {})
     {
         using namespace ScriptCanvas;
         using namespace Nodes;
         AZ::Entity graphEntity("Graph");
+        if (entityContext)
+        {
+            entityContext->AddEntity(graphEntity.GetId());
+        }
         graphEntity.Init();
-        SystemRequestBus::Broadcast(&SystemRequests::CreateGraphOnEntity, &graphEntity);
-        auto graph = graphEntity.FindComponent<Graph>();
+        Graph* graph{};
+        SystemRequestBus::BroadcastResult(graph, &SystemRequests::CreateGraphOnEntity, &graphEntity);
         EXPECT_NE(nullptr, graph);
         EXPECT_NE(lhs, rhs);
 
@@ -681,7 +752,10 @@ namespace ScriptCanvasTests
         }
 
         graph->GetEntity()->Deactivate();
-        delete graph;
+        if (entityContext)
+        {
+            entityContext->RemoveEntity(graphEntity.GetId());
+        }
     }
 
     template<typename TBusIdType>
@@ -706,33 +780,11 @@ namespace ScriptCanvasTests
         , public AZ::BehaviorEBusHandler
     {
     public:
-
-        AZ_CLASS_ALLOCATOR(TemplateEventTestHandler, AZ::SystemAllocator, 0);
-        AZ_RTTI((TemplateEventTestHandler, "{AADA0906-C216-4D98-BD51-76BB0C2F7FAF}", TBusIdType), AZ::BehaviorEBusHandler);
-        using ThisType = TemplateEventTestHandler;
-        enum
-        {
-            AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_FUNC_ENUM, AZ_EBUS_SEQ(GenericEvent, UpdateNameEvent, VectorCreatedEvent))
-            FN_MAX
-        };
-
-        int GetFunctionIndex(const char* functionName) const override {
-            AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_FUNC_INDEX, AZ_EBUS_SEQ(GenericEvent, UpdateNameEvent, VectorCreatedEvent))
-                return -1;
-        }
-
-        void Disconnect() override {
-            TemplateEventTestBus<TBusIdType>::Handler::BusDisconnect();
-        }
-
-        TemplateEventTestHandler() {
-            m_events.resize(FN_MAX);
-            AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_REG_EVENT, AZ_EBUS_SEQ(GenericEvent, UpdateNameEvent, VectorCreatedEvent))
-        }
-
-        bool Connect(AZ::BehaviorValueParameter* id = nullptr) override {
-            return AZ::Internal::EBusConnector<TemplateEventTestHandler>::Connect(this, id);
-        }
+        AZ_EBUS_BEHAVIOR_BINDER_TEMPLATE(TemplateEventTestHandler, (TemplateEventTestHandler, "{AADA0906-C216-4D98-BD51-76BB0C2F7FAF}", TBusIdType), AZ::SystemAllocator
+            , GenericEvent
+            , UpdateNameEvent
+            , VectorCreatedEvent
+        );
 
         static void Reflect(AZ::ReflectContext* context)
         {
@@ -824,5 +876,46 @@ namespace ScriptCanvasTests
             Call(FN_Succeeded, description);
         }
     }; // ScriptUnitTestEventHandler
+
+    class ScriptUnitTestNodeNotificationHandler
+        : private ScriptCanvas::NodeNotificationsBus::Handler
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(ScriptUnitTestNodeNotificationHandler, AZ::SystemAllocator, 0);
+
+        ScriptUnitTestNodeNotificationHandler(AZ::EntityId nodeId)
+        {
+            ScriptCanvas::NodeNotificationsBus::Handler::BusConnect(nodeId);
+        }
+
+        ~ScriptUnitTestNodeNotificationHandler()
+        {
+            ScriptCanvas::NodeNotificationsBus::Handler::BusDisconnect();
+        }
+
+        AZ::u32 GetSlotsAdded() const
+        {
+            return m_slotsAdded;
+        }
+
+        AZ::u32 GetSlotsRemoved() const
+        {
+            return m_slotsRemoved;
+        }
+
+    private:
+        void OnSlotAdded(const ScriptCanvas::SlotId& slotId) override
+        {
+            ++m_slotsAdded;
+        }
+
+        void OnSlotRemoved(const ScriptCanvas::SlotId& slotId) override
+        {
+            ++m_slotsRemoved;
+        }
+
+        AZ::u32 m_slotsAdded = 0;
+        AZ::u32 m_slotsRemoved = 0;
+    };
 
 } // ScriptCanvasTests

@@ -116,7 +116,7 @@ namespace MysticQt
 
 
     // return as string
-    MCore::String PropertyWidget::Property::AsString() const
+    AZStd::string PropertyWidget::Property::AsString() const
     {
         if (mAttributeValue->GetType() == MCore::AttributeString::TYPE_ID)
         {
@@ -125,7 +125,7 @@ namespace MysticQt
 
         MCORE_ASSERT(false);
         MCore::LogWarning("Property::AsString(): Cannot convert attribute. Attribute type incorrect");
-        return MCore::String();
+        return AZStd::string();
     }
 
 
@@ -248,18 +248,20 @@ namespace MysticQt
 
 
     // find the tree widget item for the given group name, create it if it doesn't exist yet
-    QTreeWidgetItem* PropertyWidget::GetGroupWidgetItem(const MCore::String& groupName)
+    QTreeWidgetItem* PropertyWidget::GetGroupWidgetItem(const AZStd::string& groupName)
     {
         // split the groun names into their different hierarchy levels
-        MCore::Array<MCore::String> groupNames = groupName.Split(MCore::UnicodeCharacter('.'));
-        if (groupNames.GetIsEmpty())
+        AZStd::vector<AZStd::string> groupNames;
+        AzFramework::StringFunc::Tokenize(groupName.c_str(), groupNames, MCore::CharacterConstants::dot, true /* keep empty strings */, true /* keep space strings */);
+
+        if (groupNames.empty())
         {
             return nullptr;
         }
 
         // get the group root level name and directly remove it from the array
-        MCore::String rootLevelName = groupNames[0];
-        groupNames.RemoveFirst();
+        AZStd::string rootLevelName = groupNames[0];
+        groupNames.erase(groupNames.begin());
 
         // get the number of top level items and iterate through them
         const int32 numTopLevelItems = QTreeWidget::topLevelItemCount();
@@ -268,7 +270,7 @@ namespace MysticQt
             QTreeWidgetItem* topLevelItem = QTreeWidget::topLevelItem(i);
 
             // compare the names of the existing top level items with the one we are searching, if it already exists, just return it
-            if (topLevelItem->text(0) == rootLevelName.AsChar())
+            if (topLevelItem->text(0) == rootLevelName.c_str())
             {
                 return GetGroupWidgetItem(groupNames, topLevelItem);
             }
@@ -276,7 +278,7 @@ namespace MysticQt
 
         // if we reach this line it means that the root level item does not exist, so create it
         QTreeWidgetItem* newItem = new QTreeWidgetItem();
-        newItem->setText(0, rootLevelName.AsChar());
+        newItem->setText(0, rootLevelName.c_str());
         addTopLevelItem(newItem);
 
         // recursive call
@@ -285,17 +287,17 @@ namespace MysticQt
 
 
     // find the tree widget item for the given group name, create it if it doesn't exist yet
-    QTreeWidgetItem* PropertyWidget::GetGroupWidgetItem(MCore::Array<MCore::String>& groupNames, QTreeWidgetItem* parentItem)
+    QTreeWidgetItem* PropertyWidget::GetGroupWidgetItem(AZStd::vector<AZStd::string>& groupNames, QTreeWidgetItem* parentItem)
     {
         // if there are no more levels to deal with, return directly
-        if (groupNames.GetIsEmpty())
+        if (groupNames.empty())
         {
             return parentItem;
         }
 
         // get the first of the group name levels and directly remove it from the array
-        MCore::String currentLevelName = groupNames[0];
-        groupNames.RemoveFirst();
+        AZStd::string currentLevelName = groupNames[0];
+        groupNames.erase(groupNames.begin());
 
         // get the number of child items and iterate through them
         const int32 numChilds = parentItem->childCount();
@@ -304,7 +306,7 @@ namespace MysticQt
             QTreeWidgetItem* childItem = parentItem->child(i);
 
             // compare the names of the existing top level items with the one we are searching, if it already exists, just return it
-            if (childItem->text(0) == currentLevelName.AsChar())
+            if (childItem->text(0) == currentLevelName.c_str())
             {
                 return GetGroupWidgetItem(groupNames, childItem);
             }
@@ -312,7 +314,7 @@ namespace MysticQt
 
         // if we reach this line it means that the item does not exist, so create it
         QTreeWidgetItem* newItem = new QTreeWidgetItem();
-        newItem->setText(0, currentLevelName.AsChar());
+        newItem->setText(0, currentLevelName.c_str());
         parentItem->addChild(newItem);
 
         // recursive call
@@ -401,16 +403,16 @@ namespace MysticQt
         Property* property = new Property(treeWidgetItem, attributeWidget, attributeValue, settings, autoDelete);
         if (mShowHierarchicalNames)
         {
-            treeWidgetItem->setText(2, attributeValue->BuildHierarchicalName().AsChar());
+            treeWidgetItem->setText(2, attributeValue->BuildHierarchicalName().c_str());
         }
         mProperties.Add(property);
 
         if (settings)
         {
             // set the tooltip
-            MCore::String tempString;
+            AZStd::string tempString;
             settings->BuildToolTipString(tempString, attributeValue);
-            property->GetTreeWidgetItem()->setToolTip(0, tempString.AsChar());
+            property->GetTreeWidgetItem()->setToolTip(0, tempString.c_str());
 
             if (settings->GetReferencesOtherAttribute())
             {
@@ -437,9 +439,9 @@ namespace MysticQt
 
         if (settings)
         {
-            MCore::String tempString;
+            AZStd::string tempString;
             settings->BuildToolTipString(tempString, attributeValue);
-            property->GetTreeWidgetItem()->setToolTip(0, tempString.AsChar());
+            property->GetTreeWidgetItem()->setToolTip(0, tempString.c_str());
 
             if (settings->GetReferencesOtherAttribute())
             {
@@ -474,9 +476,9 @@ namespace MysticQt
         }
 
         // set the tooltip
-        MCore::String tempString;
+        AZStd::string tempString;
         settings->BuildToolTipString(tempString, attributeValue);
-        result->GetTreeWidgetItem()->setToolTip(0, tempString.AsChar());
+        result->GetTreeWidgetItem()->setToolTip(0, tempString.c_str());
 
         return result;
     }
@@ -701,7 +703,7 @@ namespace MysticQt
 
             if (mShowHierarchicalNames)
             {
-                finalParent->setText(2, attribute->BuildHierarchicalName().AsChar());
+                finalParent->setText(2, attribute->BuildHierarchicalName().c_str());
             }
 
             // create a new property
@@ -746,9 +748,8 @@ namespace MysticQt
             }
             else
             {
-                MCore::String tempString = "Index #";
-                tempString += MCore::String((uint32)index);
-                result = AddProperty(parentItem, tempString.AsChar(), attributeWidget, attribute, settings, false);
+                const AZStd::string tempString = AZStd::string::format("Index #%d", index);
+                result = AddProperty(parentItem, tempString.c_str(), attributeWidget, attribute, settings, false);
             }
 
             return result;
@@ -861,10 +862,10 @@ namespace MysticQt
 
             if (curProperty->GetAttributeValue())
             {
-                MCore::String valueToString;
+                AZStd::string valueToString;
                 curProperty->GetAttributeValue()->ConvertToString(valueToString);
 
-                finalString += valueToString.AsChar();
+                finalString += valueToString.c_str();
                 if (i < (numSelected - 1))
                 {
                     finalString += "\n";
@@ -959,10 +960,10 @@ namespace MysticQt
 
             if (curProperty->GetAttributeValue())
             {
-                MCore::String valueToString;
+                AZStd::string valueToString;
                 curProperty->GetAttributeValue()->ConvertToString(valueToString);
 
-                finalString += valueToString.AsChar();
+                finalString += valueToString.c_str();
             }
 
             if (i < (numSelected - 1))
@@ -1000,10 +1001,10 @@ namespace MysticQt
 
             if (curProperty->GetAttributeValue())
             {
-                MCore::String valueToString;
+                AZStd::string valueToString;
                 curProperty->GetAttributeValue()->ConvertToString(valueToString);
 
-                finalString += valueToString.AsChar();
+                finalString += valueToString.c_str();
             }
 
             if (i < (numSelected - 1))
@@ -1037,10 +1038,10 @@ namespace MysticQt
 
             if (curProperty->GetAttributeValue())
             {
-                MCore::String valueToString;
+                AZStd::string valueToString;
                 curProperty->GetAttributeValue()->ConvertToString(valueToString);
 
-                finalString += valueToString.AsChar();
+                finalString += valueToString.c_str();
             }
 
             if (i < (numSelected - 1))

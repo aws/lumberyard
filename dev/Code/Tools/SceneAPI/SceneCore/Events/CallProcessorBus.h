@@ -46,6 +46,7 @@ namespace AZ
                 };
 
                 static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::MultipleAndOrdered;
+                using MutexType = AZStd::recursive_mutex;
 
                 virtual ~CallProcessor() = 0;
 

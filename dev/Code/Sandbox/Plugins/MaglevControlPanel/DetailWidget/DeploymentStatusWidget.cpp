@@ -22,8 +22,8 @@
 #include <QPushButton>
 #include <QCheckBox>
 
-DeploymentStatusWidget::DeploymentStatusWidget(ResourceManagementView* view, QSharedPointer<IDeploymentStatusModel> deploymentStatusModel)
-    : StackEventsSplitter{deploymentStatusModel->GetStackEventsModel()}
+DeploymentStatusWidget::DeploymentStatusWidget(ResourceManagementView* view, QSharedPointer<IDeploymentStatusModel> deploymentStatusModel, QWidget* parent)
+    : StackEventsSplitter{deploymentStatusModel->GetStackEventsModel(), parent}
     , m_view{view}
     , m_deploymentStatusModel{deploymentStatusModel}
 {
@@ -35,7 +35,7 @@ DeploymentStatusWidget::DeploymentStatusWidget(ResourceManagementView* view, QSh
 void DeploymentStatusWidget::CreateUI()
 {
     auto stackWidget = new StackWidget {
-        m_view, m_deploymentStatusModel
+        m_view, m_deploymentStatusModel, this
     };
     SetTopWidget(stackWidget);
 

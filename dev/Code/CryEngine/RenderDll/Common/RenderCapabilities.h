@@ -15,6 +15,7 @@
 #pragma once
 
 #include <XRenderD3D9/DeviceManager/Enums.h>
+#include <AzCore/std/containers/bitset.h>
 
 namespace RenderCapabilities
 {
@@ -64,7 +65,19 @@ namespace RenderCapabilities
     //Check if Depth clipping API is enabled
     bool SupportsDepthClipping();
 
-    bool SupportsFrameBufferFetches();
+    // Flags for Frame Buffer Fetch capabilities
+    enum
+    {
+        FBF_ALL_COLORS  = 0,// Can fetch from any color render target that is bound. 
+        FBF_COLOR0,         // Some devices only allows fetching from the first color render target.
+        FBF_DEPTH,          // Can fetch the depth value from the attached buffer.
+        FBF_STENCIL,        // Can fetch the stencil value from the attached buffer.
+        FBF_COUNT
+    };
+
+    using FrameBufferFetchMask = AZStd::bitset<FBF_COUNT>;
+
+    FrameBufferFetchMask GetFrameBufferFetchCapabilities();
 
     // Extracting this out as to not pollute rest of code base with a bunch of "if defined(OPENGL_ES)"
     bool SupportsPLSExtension();

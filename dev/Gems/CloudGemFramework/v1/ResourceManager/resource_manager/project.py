@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 import fnmatch
 import os
@@ -80,7 +80,8 @@ def create_stack(context, args):
             bootstrap_template, 
             args.region,
             created_callback=lambda id: context.config.set_pending_project_stack_id(id),
-            capabilities = capabilities
+            capabilities = capabilities,
+            timeoutinminutes = 30
         )
 
     # Create initial project settings.

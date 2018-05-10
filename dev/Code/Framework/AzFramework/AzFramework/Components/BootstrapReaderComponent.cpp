@@ -28,12 +28,21 @@ namespace AzFramework
 {
 #if defined(AZ_PLATFORM_APPLE_IOS)
     const char* const CURRENT_PLATFORM = "ios";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_APPLE_TV)
     const char* const CURRENT_PLATFORM = "appletv";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_APPLE_OSX)
     const char* const CURRENT_PLATFORM = "osx";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX)
     const char* const CURRENT_PLATFORM = "linux";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(BootstrapReaderComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_WINDOWS)
     const char* const CURRENT_PLATFORM = "windows";
 #elif defined(AZ_PLATFORM_ANDROID)
@@ -87,7 +96,7 @@ namespace AzFramework
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         if (!fileIO)
         {
-            AZ_Error("BootstrapReaderComponent", "%s", "AZ::IO::FileIOBase::GetInstance() not set, please ensure application is setting FileIO instance.");
+            AZ_Error("BootstrapReaderComponent", false, "%s", "AZ::IO::FileIOBase::GetInstance() not set, please ensure application is setting FileIO instance.");
             return;
         }
 

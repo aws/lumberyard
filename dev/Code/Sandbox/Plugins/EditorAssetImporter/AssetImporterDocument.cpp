@@ -28,7 +28,6 @@
 #include <SceneAPI/SceneCore/DataTypes/Groups/IAnimationGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
 #include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
-#include <SceneAPI/SceneCore/Import/Utilities/FileFinder.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>

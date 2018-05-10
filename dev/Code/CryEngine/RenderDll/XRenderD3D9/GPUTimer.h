@@ -59,6 +59,8 @@ private:
 
 #if GPUTIMER_H_TRAIT_DEFINEQUERIES
     ID3D11Query* m_pQueryStart, * m_pQueryStop, * m_pQueryFreq;
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(GPUTimer_h, AZ_RESTRICTED_PLATFORM)
 #endif
 };
 

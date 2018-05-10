@@ -135,6 +135,7 @@ public:
 
     virtual void SetFlags(int flags) { m_Flags = flags; };
     virtual int GetFlags() const { return m_Flags; };
+    virtual void UpdateFlags();
 
     bool IsMaterialGroup() const override;
     bool IsSubMaterial() const override;
@@ -292,10 +293,6 @@ public:
 #ifdef TRACE_MATERIAL_LEAKS
     string  m_sLoadingCallstack;
 #endif
-
-private:
-
-    void UpdateMaterialFlags();
 
 private:
     friend class CMatMan;

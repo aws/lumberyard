@@ -221,7 +221,12 @@ namespace LmbrCentral
         float GetAgentRadius() const        { return m_agentRadius; }
 
     private:
-
+#ifdef LMBR_CENTRAL_EDITOR
+        AZStd::vector<AZStd::string> PopulateAgentTypeList();
+        AZ::u32 HandleAgentTypeChanged();
+        float CalculateAgentNavigationRadius(const char* agentTypeName);
+        const char* GetDefaultAgentNavigationTypeName();
+#endif
         void FindPathImpl();
 
         // Nav Component settings

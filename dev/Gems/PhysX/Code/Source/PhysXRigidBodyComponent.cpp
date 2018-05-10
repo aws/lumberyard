@@ -188,4 +188,10 @@ namespace PhysX
     {
         return m_rigidBody.GetAabb();
     }
+
+    Physics::RigidBody* PhysXRigidBodyComponent::GetRigidBody()
+    {
+        return &m_rigidBody;
+    }
+
 } // namespace PhysX

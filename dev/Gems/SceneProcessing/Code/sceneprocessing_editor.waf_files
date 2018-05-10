@@ -30,6 +30,16 @@
         [
             "Source/Config/Widgets/GraphTypeSelector.h",
             "Source/Config/Widgets/GraphTypeSelector.cpp"
+        ],
+        "Source/SceneBuilder": [
+            "Source/SceneBuilder/SceneBuilderComponent.h",
+            "Source/SceneBuilder/SceneBuilderComponent.cpp",
+            "Source/SceneBuilder/SceneBuilderWorker.h",
+            "Source/SceneBuilder/SceneBuilderWorker.cpp",
+            "Source/SceneBuilder/SceneSerializationHandler.h",
+            "Source/SceneBuilder/SceneSerializationHandler.cpp",
+            "Source/SceneBuilder/TraceMessageHook.h",
+            "Source/SceneBuilder/TraceMessageHook.cpp"
         ]
     }
 }

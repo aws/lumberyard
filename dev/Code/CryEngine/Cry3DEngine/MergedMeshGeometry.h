@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRY3DENGINE_MERGEDMESHGEOMETRY_H
-#define CRYINCLUDE_CRY3DENGINE_MERGEDMESHGEOMETRY_H
 #pragma once
 
 #include "MergedMeshRenderNode.h"
@@ -25,7 +23,12 @@
 
 #if MMRM_USE_VECTORIZED_SSE_INSTRUCTIONS
 # pragma warning(disable:4700)
-# if   defined(MAC)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(MergedMeshGeometry_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+# elif defined(MAC)
 # elif defined(LINUX)
 # else
 # include <intrin.h>
@@ -911,4 +914,3 @@ inline Matrix34 CreateRotationQ(const Quat& q, const Vec3& t)
 
 extern Vec3 SampleWind(const Vec3& pos, const Vec3 (&samples)[MMRM_WIND_DIM][MMRM_WIND_DIM][MMRM_WIND_DIM]);
 extern inline Vec3 SampleWind(const Vec3& pos, const Vec3* samples);
-#endif // CRYINCLUDE_CRY3DENGINE_MERGEDMESHGEOMETRY_H

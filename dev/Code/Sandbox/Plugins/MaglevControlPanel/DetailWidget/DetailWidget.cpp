@@ -17,8 +17,8 @@
 
 #include "DetailWidget/DetailWidget.moc"
 
-DetailWidget::DetailWidget(ResourceManagementView* view)
-    : QFrame{}
+DetailWidget::DetailWidget(ResourceManagementView* view, QWidget* parent)
+    : QFrame{parent}
     , m_view{view}
 {
 }

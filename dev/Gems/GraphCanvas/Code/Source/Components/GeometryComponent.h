@@ -18,6 +18,7 @@
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Types/EntitySaveData.h>
 
 namespace GraphCanvas
 {

@@ -195,6 +195,9 @@ IPlatformOS::EFileOperationCode CCryPakFile::CloseImpl()
 // Update file stats to make sure SaveGame system reads from new info
 void UpdateFileStats(const char* fileName)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(SaveReaderWriter_CryPak_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////

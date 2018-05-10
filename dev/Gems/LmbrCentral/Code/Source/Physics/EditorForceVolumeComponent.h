@@ -29,26 +29,27 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         EditorForceVolumeComponent() = default;
-        explicit EditorForceVolumeComponent(const ForceVolumeConfiguration& configuration);
         ~EditorForceVolumeComponent() override = default;
         
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
     protected:
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
+            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
             required.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c));
         }
         
         // EditorComponentBase
         void DisplayEntity(bool& handled) override;
 
-        bool m_visibleInEditor = true;              ///< Visible in the editor viewport
-        ForceVolumeConfiguration m_configuration;   ///< Configuration of the force volume
+        bool m_visibleInEditor = true; ///< Visible in the editor viewport.
+        bool m_debugForces = false; ///< Draw debug lines for forces in game
+        ForceVolume m_forceVolume; ///< Internal representation.
     };
 } // namespace LmbrCentral

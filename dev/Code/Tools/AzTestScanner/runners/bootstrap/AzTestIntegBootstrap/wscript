@@ -23,8 +23,8 @@ def build(bld):
         platforms           = ['win'],
         configurations      = ['test_all'],
 
-        includes            = [bld.Path('Code/CryEngine/CryCommon'),
-                               bld.Path('Code/SDKs/boost')],
+        includes            = [bld.Path('Code/CryEngine/CryCommon')],
+        uselib              = ['BOOST'],
         use                 = ['AzGameFramework', 'AzTest'],
         
         #==============================

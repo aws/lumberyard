@@ -13,7 +13,6 @@
 #pragma once
 
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 #include "../StandardPluginsConfig.h"
 #include <QDialog>

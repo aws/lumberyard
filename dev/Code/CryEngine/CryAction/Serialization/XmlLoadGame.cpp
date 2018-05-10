@@ -17,6 +17,9 @@
 
 #include <IPlatformOS.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(XmlLoadGame_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
 struct CXmlLoadGame::Impl

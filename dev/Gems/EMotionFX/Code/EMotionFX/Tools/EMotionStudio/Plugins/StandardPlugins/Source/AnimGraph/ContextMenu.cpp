@@ -14,7 +14,6 @@
 #include "AnimGraphPlugin.h"
 #include "NavigateWidget.h"
 #include "NodePaletteWidget.h"
-#include "NodeGraphWidget.h"
 #include "BlendGraphWidget.h"
 #include "BlendGraphViewWidget.h"
 #include "BlendTreeVisualNode.h"
@@ -44,7 +43,7 @@ namespace EMStudio
             parentNode = static_cast<EMotionFX::AnimGraphNode*>(object);
         }
 
-        MCore::String iconString;
+        AZStd::string iconString;
 
         // for all registered objects in the object factory
         const size_t numRegistered = EMotionFX::GetAnimGraphManager().GetObjectFactory()->GetNumRegisteredObjects();

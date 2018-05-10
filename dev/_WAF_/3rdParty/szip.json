@@ -1,6 +1,6 @@
 {
     "name": "szip",
-    "source": "@ROOT@/Code/Tools/SDKs/Alembic/szip",
+    "source": "@3P:szip@",
     "description": "Alembic SZIP library",
     "includes": [
         "include"
@@ -29,6 +29,7 @@
             "lib_release": [
                 "libszip-vc140-mt-s.lib"
             ]
-        }
+        },
+        "win_x64_vs2017": "@win_x64_vs2015"
     }
 }

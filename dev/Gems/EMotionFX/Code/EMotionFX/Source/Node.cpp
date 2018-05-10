@@ -14,7 +14,7 @@
 #include "Node.h"
 #include "NodeAttribute.h"
 #include "Skeleton.h"
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 
 namespace EMotionFX
@@ -36,7 +36,7 @@ namespace EMotionFX
 
         if (name)
         {
-            mNameID         = MCore::GetStringIDGenerator().GenerateIDForString(name);
+            mNameID         = MCore::GetStringIdPool().GenerateIdForString(name);
         }
         else
         {
@@ -343,7 +343,7 @@ namespace EMotionFX
     {
         if (name)
         {
-            mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+            mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
         }
         else
         {
@@ -357,7 +357,7 @@ namespace EMotionFX
     {
         if (name)
         {
-            mSemanticNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+            mSemanticNameID = MCore::GetStringIdPool().GenerateIdForString(name);
         }
         else
         {
@@ -375,28 +375,28 @@ namespace EMotionFX
     // get the name
     const char* Node::GetName() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mNameID).c_str();
     }
 
 
     // get the name of the node as pointer to chars
-    const MCore::String& Node::GetNameString() const
+    const AZStd::string& Node::GetNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID);
+        return MCore::GetStringIdPool().GetName(mNameID);
     }
 
 
     // get the semantic name
     const char* Node::GetSemanticName() const
     {
-        return MCore::GetStringIDGenerator().GetName(mSemanticNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mSemanticNameID).c_str();
     }
 
 
     // get the semantic name of the node as pointer to chars
-    const MCore::String& Node::GetSemanticNameString() const
+    const AZStd::string& Node::GetSemanticNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mSemanticNameID);
+        return MCore::GetStringIdPool().GetName(mSemanticNameID);
     }
 
 

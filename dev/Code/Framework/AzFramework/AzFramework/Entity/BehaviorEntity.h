@@ -31,6 +31,7 @@ namespace AzFramework
     public:
         AZ_TYPE_INFO(BehaviorComponentId, "{60A9A069-9C3D-465A-B7AD-0D6CC803990A}");
         AZ_CLASS_ALLOCATOR(BehaviorComponentId, AZ::SystemAllocator, 0);
+        static void Reflect(AZ::ReflectContext* context);
 
         BehaviorComponentId() = default;
         BehaviorComponentId(AZ::ComponentId id);

@@ -14,16 +14,29 @@ function closedcaption:OnActivate()
 	self.currentWord = {}
 	self.currentWordStartIndex = 0
 	self.currentWordEndIndex = 0
-	
+	self.tickBusHandler = TickBus.Connect(self,self.entityId);
+end
+
+function closedcaption:initUiCanvas()
 	-- Let's load the canvas
    self.canvasEntityId = UiCanvasManagerBus.Broadcast.FindLoadedCanvasByPathName("Levels/TextToSpeechSample/UI/InputUi.uicanvas")
-	
+	if self.canvasEntityId == nil then
+		Debug.Log("(Closed Caption) Could not find InputUiCanvas")
+		return false
+	end
 	-- SHYNE --
 	local ccEntityID = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "ClosedCaption")
 	self.closedCaptionOut = UiElementBus.Event.FindChildByName(ccEntityID, "CaptionOut")
-   	self.notificationHandler = TextToSpeechClosedCaptionNotificationBus.Connect(self, self.entityId)
+	self.notificationHandler = TextToSpeechClosedCaptionNotificationBus.Connect(self, self.entityId)
+	Debug.Log("(Closed Caption) Found InputUiCanvas")
+	return true
 end
 
+function closedcaption:OnTick(deltaTime,timePoint)
+	if self:initUiCanvas() then
+		self.tickBusHandler:Disconnect()
+	end
+end
 
 function closedcaption:OnNewClosedCaptionSentence(sentence, startIndex, endIndex)
 	self.currentSentence = sentence

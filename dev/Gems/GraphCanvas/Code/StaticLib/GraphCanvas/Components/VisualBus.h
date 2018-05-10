@@ -17,6 +17,9 @@
 
 #include <QGraphicsItem>
 
+#include <GraphCanvas/Utils/StateControllers/StateController.h>
+#include <GraphCanvas/Types/Types.h>
+
 namespace AZ
 {
     class Vector2;
@@ -74,9 +77,9 @@ namespace GraphCanvas
         virtual bool Contains(const AZ::Vector2&) const = 0;
 
         //! Show or hide this element.
-        virtual void SetVisibility(bool) {};
+        virtual void SetVisible(bool) = 0;
         //! Get the visibility of this element.
-        virtual bool GetVisibility() const { return false; };
+        virtual bool IsVisible() const = 0;
     };
 
     using VisualRequestBus = AZ::EBus<VisualRequests>;
@@ -89,32 +92,11 @@ namespace GraphCanvas
     public:
         // Allow any number of handlers per address.
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
-        
-
-        //! Indicates that the mouse has begun hovering over a visual.
-        //! This is only emitted for visuals that are hover-enabled (see QGraphicsItem::setAcceptHoverEvents).
-        //!
-        //! The \code QGraphicsItem the event is for is passed because multiple \code QGraphicsItems can be associated
-        //! with one entity (i.e. child visuals).
-        virtual void OnHoverEnter(QGraphicsItem*) {}
-        //! Indicates that the mouse has stopped hovering over a visual.
-        //! This is only emitted for visuals that are hover-enabled (see QGraphicsItem::setAcceptHoverEvents).
-        //!
-        //! The \code QGraphicsItem the event is for is passed because multiple \code QGraphicsItems can be associated
-        //! with one entity (i.e. child visuals).
-        virtual void OnHoverLeave(QGraphicsItem*) {}
-
-        virtual bool OnKeyPress(const AZ::EntityId&, const QKeyEvent*) { return false; };
-        //! Receives KeyRelease events when the visual has focus
-        //! This is only emitted for visuals with GraphicsItemFlag::ItemIsFocusable set
-        virtual bool OnKeyRelease(const AZ::EntityId&, const QKeyEvent*) { return false; };
 
         virtual bool OnMousePress(const AZ::EntityId&, const QGraphicsSceneMouseEvent*) { return false; };
         virtual bool OnMouseRelease(const AZ::EntityId&, const QGraphicsSceneMouseEvent*) { return false; };
-        virtual bool OnMouseDoubleClick(const AZ::EntityId&, const QGraphicsSceneMouseEvent*) { return false; };
 
         //! Forwards QGraphicsItem::onItemChange events to the event bus system.
         //! QGraphicsItems can produce a wide variety of informational events, relating to all sorts of changes in their
@@ -128,5 +110,31 @@ namespace GraphCanvas
     };
 
     using VisualNotificationBus = AZ::EBus<VisualNotifications>;
+
+    class RootGraphicsItemRequests : public AZ::EBusTraits
+    {
+    public:
+        // Allow any number of handlers per address.
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual StateController<RootGraphicsItemDisplayState>* GetDisplayStateStateController() = 0;
+        virtual RootGraphicsItemDisplayState GetDisplayState() const = 0;
+    };
+
+    using RootGraphicsItemRequestBus = AZ::EBus<RootGraphicsItemRequests>;
+
+    class RootGraphicsItemNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void OnDisplayStateChanged(RootGraphicsItemDisplayState oldState, RootGraphicsItemDisplayState newState) = 0;
+    };
+
+    using RootGraphicsItemNotificationBus = AZ::EBus<RootGraphicsItemNotifications>;
 
 }

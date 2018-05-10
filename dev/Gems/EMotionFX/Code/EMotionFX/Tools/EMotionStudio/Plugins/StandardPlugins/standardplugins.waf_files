@@ -204,6 +204,8 @@
             "Source/TimeView/TimeTrackElement.h",
             "Source/TimeView/TimeViewPlugin.cpp",
             "Source/TimeView/TimeViewPlugin.h",
+            "Source/TimeView/TrackDataHeaderWidget.cpp",
+            "Source/TimeView/TrackDataHeaderWidget.h",
             "Source/TimeView/TrackDataWidget.cpp",
             "Source/TimeView/TrackDataWidget.h",
             "Source/TimeView/TrackHeaderWidget.cpp",

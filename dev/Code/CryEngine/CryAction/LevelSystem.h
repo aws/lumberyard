@@ -275,7 +275,7 @@ private:
     // lowercase string and replace backslashes with forward slashes
     // TODO: move this to a more general place in CryEngine
     string& UnifyName(string& name);
-    CHEAT_PROTECTION_EXPORT void ScanFolder(const char* subfolder, bool modFolder, const uint32 tag);
+    void ScanFolder(const char* subfolder, bool modFolder, const uint32 tag);
     void LogLoadingTime();
     bool LoadLevelInfo(CLevelInfo& levelInfo);
 

@@ -15,8 +15,6 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/ComponentBus.h>
 
-#include <random>
-
 namespace AZ
 {
     class BehaviorContext;
@@ -24,44 +22,92 @@ namespace AZ
 }
 namespace LmbrCentral
 {
-    /*
-    * Wrapper for cache of data used for intersection tests
-    */
+    /**
+     * Reason shape cache should be recalculated.
+     */
+    enum class InvalidateShapeCacheReason
+    {
+        TransformChange, ///< The cache is invalid because the transform of the entity changed.
+        ShapeChange ///< The cache is invalid because the shape configuration/properties changed.
+    };
+
+    /**
+     * Wrapper for cache of data used for intersection tests
+     */
     template <typename ShapeConfiguration>
     class IntersectionTestDataCache
     {
     public:
-
-        enum CacheStatus
-        {
-            Current, ///< No cache invalidating operations have happened since the last time the cache was updated and the values therein are ready to use
-            Obsolete_TransformChange, ///< The cache is invalid because the transform of the entity changed, this will result in a partial recalculation of some intersection parameters
-            Obsolete_ShapeChange ///< The cache is invalid because the transform of the entity changed, this will result in a full recalculation of intersection parameters
-        };
+        virtual ~IntersectionTestDataCache() = default;
 
         /**
-        * \brief Updates the intersection Data cache to reflect intersection data for the current state of the shape
-        * \param currentTransform The current Transform of the entity
-        * \param configuration The shape configuration of a specific shape type
-        */
-        virtual void UpdateIntersectionParams(const AZ::Transform& currentTransform, const ShapeConfiguration& configuration) = 0;
-
-        AZ_INLINE CacheStatus GetCacheStatus() const
+         * @brief Updates the intersection data cache to reflect the current state of the shape.
+         * @param currentTransform The current Transform of the entity.
+         * @param configuration The specific configuration of a shape.
+         */
+        void UpdateIntersectionParams(
+            const AZ::Transform& currentTransform, const ShapeConfiguration& configuration)
         {
-            return m_cacheStatus;
+            // does the cache need updating
+            if (m_cacheStatus > ShapeCacheStatus::Current)
+            {
+                UpdateIntersectionParamsImpl(currentTransform, configuration); // shape specifc cache update
+                m_cacheStatus = ShapeCacheStatus::Current; // mark cache as up to date
+            }
         }
 
-        AZ_INLINE void SetCacheStatus(CacheStatus newStatus)
+        /**
+         * Mark the cache as needing to be updated.
+         */
+        void InvalidateCache(const InvalidateShapeCacheReason reason)
         {
-            if (newStatus > m_cacheStatus)
+            switch (reason)
             {
-                m_cacheStatus = newStatus;
+            case InvalidateShapeCacheReason::TransformChange:
+                if (m_cacheStatus < ShapeCacheStatus::ObsoleteTransformChange)
+                {
+                    m_cacheStatus = ShapeCacheStatus::ObsoleteTransformChange;
+                }
+                break;
+            case InvalidateShapeCacheReason::ShapeChange:
+                if (m_cacheStatus < ShapeCacheStatus::ObsoleteShapeChange)
+                {
+                    m_cacheStatus = ShapeCacheStatus::ObsoleteShapeChange;
+                }
+                break;
+            default:
+                break;
             }
         }
 
     protected:
+        /**
+         * Derived shape specific implementation of cache update (called from UpdateIntersectionParams).
+         */
+        virtual void UpdateIntersectionParamsImpl(
+            const AZ::Transform& currentTransform, const ShapeConfiguration& configuration) = 0;
 
-        CacheStatus m_cacheStatus = CacheStatus::Obsolete_ShapeChange;
+        /**
+         * State of shape cache - should the internal shape cache be recalculated, or is it up to date.
+         */
+        enum class ShapeCacheStatus
+        {
+            Current, ///< Cache is up to date.
+            ObsoleteTransformChange, ///< The cache is invalid because the transform of the entity changed.
+            ObsoleteShapeChange ///< The cache is invalid because the shape configuration/properties changed.
+        };
+
+        /**
+         * Expose read only cache status to derived IntersectionTestDataCache if different
+         * logic want to hapoen based on the cache status (shape/transform).
+         */
+        ShapeCacheStatus CacheStatus() const
+        {
+            return m_cacheStatus;
+        }
+
+    private:
+        ShapeCacheStatus m_cacheStatus = ShapeCacheStatus::Current; ///< The current state of the shape cache.
     };
 
     struct ShapeComponentGeneric
@@ -69,50 +115,66 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
     };
 
-    /*!
-    * Services provided by the Shape Component
-    */
+    /**
+     * Services provided by the Shape Component
+     */
     class ShapeComponentRequests : public AZ::ComponentBus
     {
     public:
+        /**
+         * @brief Returns the type of shape that this component holds
+         * @return Crc32 indicating the type of shape
+         */
+        virtual AZ::Crc32 GetShapeType() = 0;
 
         /**
-        * \brief Returns the type of shape that this component holds
-        * \return Crc32 indicating the type of shape
-        */
-        virtual AZ::Crc32 GetShapeType() { return AZ::Crc32(); }
+         * @brief Returns an AABB that encompasses this entire shape
+         * @return AABB that encompasses the shape
+         */
+        virtual AZ::Aabb GetEncompassingAabb() = 0;
 
         /**
-        * \brief Returns an AABB that encompasses this entire shape
-        * \return AABB that encompasses the shape
-        */
-        virtual AZ::Aabb GetEncompassingAabb() { return AZ::Aabb(); }
-
-        /**
-        * \brief Checks if a given point is inside a shape or outside it
-        * \param point Vector3 indicating the point to be tested
-        * \return bool indicating whether the point is inside or out
-        */
+         * @brief Checks if a given point is inside a shape or outside it
+         * @param point Vector3 indicating the point to be tested
+         * @return bool indicating whether the point is inside or out
+         */
         virtual bool IsPointInside(const AZ::Vector3& point) = 0;
 
         /**
-        * \brief Returns the min distance a given point is from the shape
-        * \param point Vector3 indicating point to calculate distance from
-        * \return float indicating distance point is from shape
-        */
+         * @brief Returns the min distance a given point is from the shape
+         * @param point Vector3 indicating point to calculate distance from
+         * @return float indicating distance point is from shape
+         */
         virtual float DistanceFromPoint(const AZ::Vector3& point)
         {
             return sqrtf(DistanceSquaredFromPoint(point));
         }
 
         /**
-        * \brief Returns the min squared distance a given point is from the shape
-        * \param point Vector3 indicating point to calculate square distance from
-        * \return float indicating square distance point is from shape
-        */
+         * @brief Returns the min squared distance a given point is from the shape
+         * @param point Vector3 indicating point to calculate square distance from
+         * @return float indicating square distance point is from shape
+         */
         virtual float DistanceSquaredFromPoint(const AZ::Vector3& point) = 0;
 
-        virtual AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) { return AZ::Vector3::CreateZero(); }
+        /**
+         * @brief Returns a random position inside the volume.
+         * @param randomDistribution An enum representing the different random distributions to use.
+         */
+        virtual AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType /*randomDistribution*/)
+        {
+            AZ_Warning("ShapeComponentRequests", false, "GenerateRandomPointInside not implemented");
+            return AZ::Vector3::CreateZero();
+        }
+
+        /**
+         * @brief Returns if a ray is intersecting the shape.
+         */
+        virtual bool IntersectRay(const AZ::Vector3& /*src*/, const AZ::Vector3& /*dir*/, AZ::VectorFloat& /*distance*/)
+        {
+            AZ_Warning("ShapeComponentRequests", false, "IntersectRay not implemented");
+            return false;
+        }
 
         virtual ~ShapeComponentRequests() = default;
     };
@@ -120,22 +182,23 @@ namespace LmbrCentral
     // Bus to service the Shape component requests event group
     using ShapeComponentRequestsBus = AZ::EBus<ShapeComponentRequests>;
 
-    // Notifications sent by the shape component.
+    /**
+     * Notifications sent by the shape component.
+     */
     class ShapeComponentNotifications : public AZ::ComponentBus
     {
-        public:
+    public:
+        enum class ShapeChangeReasons
+        {
+            TransformChanged,
+            ShapeChanged
+        };
 
-            enum class ShapeChangeReasons
-            {
-                TransformChanged,
-                ShapeChanged
-            };
-
-            /**
-            * Informs listeners that the shape component has been updated (The shape was modified)
-            * @param changeReason Informs listeners of the reason for this shape change (transform change, the shape dimensions being altered)
-            */
-            virtual void OnShapeChanged(ShapeChangeReasons /*changeReason*/) = 0;
+        /**
+         * @brief Informs listeners that the shape component has been updated (The shape was modified)
+         * @param changeReason Informs listeners of the reason for this shape change (transform change, the shape dimensions being altered)
+         */
+        virtual void OnShapeChanged(ShapeChangeReasons changeReason) = 0;
     };
 
     // Bus to service Shape component notifications event group

@@ -346,6 +346,16 @@ namespace AssetUtilities
     {
         QString appDirStr;
         ComputeApplicationInformation(appDirStr, filename);
+
+        static const char AssetProcessorBundleName[] = "/AssetProcessor.app/Contents/MacOS";
+        if (appDirStr.endsWith(AssetProcessorBundleName))
+        {
+            // We are inside a bundle but the rest of the code expects the appRoot
+            // to be outside of that. So go up a few directories to get out of the
+            // App Bundle heirarchy...
+            appDirStr.chop(static_cast<int>(strlen(AssetProcessorBundleName)));
+        }
+
         QDir rootDir(appDirStr);
         QDir appDir(appDirStr);
         appDir.cdUp();
@@ -478,10 +488,12 @@ namespace AssetUtilities
         QCoreApplication::addLibraryPath(finalName);
 
         azstrcpy(appPath, AZ_MAX_PATH_LEN, applicationDir.toUtf8().data());
-#if (_MSC_VER == 1800)
-        azstrcat(appPath, AZ_MAX_PATH_LEN, "..\\Bin64vc120\\qtlibs\\plugins");
-#else
+#if (_MSC_VER >= 1910)
+        azstrcat(appPath, AZ_MAX_PATH_LEN, "..\\Bin64vc141\\qtlibs\\plugins");
+#elif (_MSC_VER >= 1900)
         azstrcat(appPath, AZ_MAX_PATH_LEN, "..\\Bin64vc140\\qtlibs\\plugins");
+#else
+        azstrcat(appPath, AZ_MAX_PATH_LEN, "..\\Bin64vc120\\qtlibs\\plugins");
 #endif
         _fullpath(finalName, appPath, AZ_MAX_PATH_LEN);
         QCoreApplication::addLibraryPath(finalName);
@@ -1128,6 +1140,28 @@ namespace AssetUtilities
         return AZStd::string::format("%s-%u-%u.log", jobEntry.m_relativePathToFile.toUtf8().constData(), jobEntry.GetHash(), jobEntry.m_jobRunKey);
     }
 
+    bool CreateTempRootFolder(QString startFolder, QDir& tempRoot)
+    {
+        tempRoot.setPath(startFolder);
+
+        if (!tempRoot.exists("AssetProcessorTemp"))
+        {
+            if (!tempRoot.mkpath("AssetProcessorTemp"))
+            {
+                AZ_WarningOnce("Asset Utils", false, "Could not create a temp folder at %s", startFolder.toUtf8().constData());
+                return false;
+            }
+        }
+
+        if (!tempRoot.cd("AssetProcessorTemp"))
+        {
+            AZ_WarningOnce("Asset Utils", false, "Could not access temp folder at %s/AssetProcessorTemp", startFolder.toUtf8().constData());
+            return false;
+        }
+
+        return true;
+    }
+
     bool CreateTempWorkspace(QString startFolder, QString& result)
     {
         if (!AssetUtilsInternal::g_hasInitializedRandomNumberGenerator)
@@ -1137,21 +1171,11 @@ namespace AssetUtilities
             // note that 0 is an invalid random seed.
             qsrand(QTime::currentTime().msecsSinceStartOfDay() + AssetUtilsInternal::g_randomNumberSequentialSeed.fetch_add(1) + 1);
         }
-        QDir tempRoot(startFolder);
 
-        if (!tempRoot.exists("AssetProcessorTemp"))
+        QDir tempRoot;
+        
+        if (!CreateTempRootFolder(startFolder, tempRoot))
         {
-            if (!tempRoot.mkpath("AssetProcessorTemp"))
-            {
-                AZ_WarningOnce("Asset Utils", false, "Could not create a temp folder at %s", startFolder.toUtf8().constData());
-                result.clear();
-                return false;
-            }
-        }
-
-        if (!tempRoot.cd("AssetProcessorTemp"))
-        {
-            AZ_WarningOnce("Asset Utils", false, "Could not access temp folder at %s/AssetProcessorTemp", startFolder.toUtf8().constData());
             result.clear();
             return false;
         }

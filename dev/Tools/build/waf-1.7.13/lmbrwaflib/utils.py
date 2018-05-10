@@ -16,7 +16,11 @@ import stat
 import hashlib
 import fnmatch
 import datetime
+import subprocess
 
+from waflib import TaskGen, Utils, Logs
+from waflib.Configure import conf
+from gems import Gem, GemManager
 
 def fast_copyfile(src, dst, buffer_size=1024*1024):
     """
@@ -64,6 +68,7 @@ def fast_copy2(src, dst, check_file_hash=False, buffer_size=1024*1024):
     fast_copyfile(src, dst, buffer_size)
     shutil.copystat(src, dst)
     return True
+
 
 MAX_TIMESTAMP_DELTA_MILS = datetime.timedelta(milliseconds=1)
 
@@ -134,6 +139,18 @@ def calculate_file_hash(file_path):
     digest.update(file_content)
     hash_result = digest.hexdigest()
     return hash_result
+
+def calculate_string_hash(string_to_hash):
+    """
+    Quickly compute a hash (md5) of a string
+    :param file_path:
+    :return:
+    """
+    digest = hashlib.md5()
+    digest.update(string_to_hash)
+    hash_result = digest.hexdigest()
+    return hash_result
+
 
 
 def copy_file_if_needed(source_path, dest_path):
@@ -286,6 +303,7 @@ def parse_json_file(json_file_path):
     except Exception as e:
         raise ValueError('Error reading {}: {}'.format(json_file_path, e.message))
 
+
 def write_json_file(json_file_data, json_file_path):
     """
 
@@ -299,4 +317,213 @@ def write_json_file(json_file_data, json_file_path):
             json_file.write(json_file_content)
     except Exception as e:
         raise ValueError('Error writing {}: {}'.format(json_file_path, e.message))
+
+
+def get_dependencies_recursively_for_task_gen(ctx, task_generator):
+    """
+    Gets the explicit dependencies for a given task_generator and recursivesly
+    gets the explicit dependencies for those task_generators. Explicit
+    dependencies are looked for in the use, uselib, and libs attributes of the
+    task_generator.
+
+    :param ctx: Current context that is being executed
+    :param task_generator: The task_generator to get the dependencies for
+    :return: list of all the dependencies that the task_generator and its dependents have
+    :rtype: set
+    """
+    if task_generator == None:
+        return set()
+
+    Logs.debug('utils: Processing task %s' % task_generator.name)
+
+    dependencies = getattr(task_generator, 'dependencies', None)
+    if not dependencies:
+        dependencies = []
+        uses = getattr(task_generator, 'use', [])
+        uses_libs = getattr(task_generator, 'uselib', [])
+        libs = getattr(task_generator, 'libs', [])
+
+        for use_depend in uses:
+            if use_depend not in dependencies:
+                Logs.debug('utils: %s - has uses dependency of %s' % (task_generator.name, use_depend))
+                dependencies += [use_depend]
+                try:
+                    depend_task_gen = ctx.get_tgen_by_name(use_depend)
+                    dependencies.extend(get_dependencies_recursively_for_task_gen(ctx, depend_task_gen))
+                except:
+                    pass
+
+        for use_depend in uses_libs:
+            if use_depend not in dependencies:
+                Logs.debug('utils: %s - has use_lib dependency of %s' % (task_generator.name, use_depend))
+                dependencies += [use_depend]
+                try:
+                    depend_task_gen = ctx.get_tgen_by_name(use_depend)
+                    dependencies.extend(get_dependencies_recursively_for_task_gen(ctx, depend_task_gen))
+                except:
+                    pass
+
+        for lib in libs:
+            if lib not in dependencies:
+                Logs.debug('utils: %s - has lib dependency of %s' % (task_generator.name, use_depend))
+                dependencies += [lib]
+
+        task_generator.dependencies = set(dependencies)
+
+    return task_generator.dependencies
+
+
+"""
+Parts of the build/package process require the ability to create directory junctions/symlinks to make sure some assets are properly
+included in the build while maintaining as small of a memory footprint as possible (don't want to make copies).  Since we only care
+about directories, we don't need the full power of os.symlink (doesn't work on windows anyway and writing one would require either
+admin privileges or running something such as a VB script to create a shortcut to bypass the admin issue; neither of those options
+are desirable).  The following functions are to make it explicitly clear we only care about directory links.
+"""
+def junction_directory(source, link_name):
+    if not os.path.isdir(source):
+        Logs.error("[ERROR] Attempting to make a junction to a file, which is not supported.  Unexpected behaviour may result.")
+        return
+
+    if Utils.unversioned_sys_platform() == "win32":
+        cleaned_source_name = '"' + os.path.normpath(source) + '"'
+        cleaned_link_name = '"' + os.path.normpath(link_name) + '"'
+
+        # mklink generally requires admin privileges, however directory junctions don't.
+        # subprocess.check_call will auto raise.
+        subprocess.check_call('mklink /D /J %s %s' % (cleaned_link_name, cleaned_source_name), shell=True)
+    else:
+        os.symlink(source, link_name)
+
+
+def remove_junction(junction_path):
+    """
+    Wrapper for correctly deleting a symlink/junction regardless of host platform
+    """
+    if Utils.unversioned_sys_platform() == "win32":
+        os.rmdir(junction_path)
+    else:
+        os.unlink(junction_path)
+
+
+def get_path_to_executable_package_location(platform, executable_name, base_destination_node):
+    """
+    Gets the path to the executable location in a package based on the platform.
+
+    :param platform: The platform to get the executable location for
+    :param executable_name: Name of the executable that is being packaged
+    :param base_destination_node: Location where the platform speicific package is going to be placed
+
+    :return: The path to where the executable should be packaged. May be the same as base_destination_node
+    :rtype: Node
+    """
+
+    if 'darwin' in platform:
+        return base_destination_node.make_node(executable_name + ".app/Contents/MacOS/")
+    elif 'ios' in platform:
+        return base_destination_node.make_node(executable_name + ".app/Contents/")
+    else:
+        return base_destination_node
+
+
+def get_resource_node(platform, executable_name, base_destination_node):
+    """ 
+    Gets the path to where resources should be placed in a package based on the platform.
+
+    :param platform: The platform to get the resource location for
+    :param executable_name: Name of the executable that is being packaged
+    :param base_destination_node: Location where the platform speicific package is going to be placed
+
+    :return: The path to where resources should be packaged. May be the same as base_destination_node
+    :rtype: Node
+    """
+
+    if 'darwin' in platform:
+        return base_destination_node.make_node(executable_name + ".app/Contents/Resources/")
+    elif 'ios' in platform:
+        return base_destination_node.make_node(executable_name + ".app/Contents/")
+    else:
+        return base_destination_node
+
+
+def get_game_assets_node(platform, executable_name, base_destination_node):
+    """ 
+    Gets the path to where game assets should be placed in a package based on the platform.
+
+    :param platform: The platform to get the sources assets location for
+    :param executable_name: Name of the executable that is being packaged
+    :param base_destination_node: Location where the platform speicific package is going to be placed
+
+    :return: The path to where assets should be packaged. May be the same as base_destination_node
+    :rtype: Node
+    """
+
+    if 'darwin' in platform:
+        return base_destination_node.make_node(executable_name + ".app/Contents/Resources/assets")
+    elif 'ios' in platform:
+        return base_destination_node.make_node(executable_name + ".app/Contents/assets")
+    else:
+        return base_asset_location_node
+
+
+def get_spec_dependencies(ctx, modules_spec, valid_gem_types):
+    """
+    Goes through all the modules defined in a spec and determines if they would
+    be a dependency of the current game project set in the bootstrap.cfg file.
+
+    :param ctx: Context that is being executed
+    :type ctx: Context
+    :param modules_spec: The name of the spec to get the modules from
+    :type modules_spec: String
+    :param valid_gem_types: The valid gem module types to include as dependencies
+    :type gem_types: list of Gem.Module.Type
+    """
+
+    modules_in_spec = ctx.loaded_specs_dict[modules_spec]['modules']
+
+    gem_name_list = [gem.name for gem in ctx.get_game_gems(ctx.project)]
+
+    game_engine_module_dependencies = set()
+    for module in modules_in_spec:
+        Logs.debug('utils: Processing dependency {}'.format(module))
+
+        try:
+            module_task_gen = ctx.get_tgen_by_name(module)
+        except:
+            module_task_gen = None
+
+        if module_task_gen is None:
+            Logs.debug('utils: -> could not find a task gen for {} so ignoring it'.format(module))
+        else:
+            # If the ../Resources path exists then the module name must match
+            # our project name otherwise the module is for a different game
+            # project. 
+            path = module_task_gen.path.make_node("../Resources")
+            if not os.path.exists(path.abspath()) or module_task_gen.name == ctx.project:
+                # Need to check if the module is a gem, and if so part of the game gems...
+                if ctx.is_gem(module_task_gen.name):
+                    if module_task_gen.name in gem_name_list:
+                        Logs.debug('utils: -> adding module becaue it is a used gem') 
+                        a_list = [gem_module for gem in GemManager.GetInstance(ctx).gems if gem.name == module for gem_module in gem.modules if gem_module.type in valid_gem_types or 'all' in valid_gem_types]
+                        if len(a_list) > 0:
+                            game_engine_module_dependencies.add(a_list[0].file_name)
+                            module_dependencies = get_dependencies_recursively_for_task_gen(ctx, module_task_gen)
+                            for module_dep in module_dependencies:
+                                if module_dep not in game_engine_module_dependencies:
+                                    Logs.debug('utils: -> adding module dependency {}'.format(module_dep))
+                                    game_engine_module_dependencies.add(module_dep)
+                    else:
+                        Logs.debug('utils: -> skipping gem {} because it is not in the project gem list'.format(module))
+
+                else:
+                    Logs.debug('utils: -> adding the module and its dependencies because it is a module for the game project.')
+                    task_project_name = getattr(module_task_gen, 'project_name', None)
+                    game_engine_module_dependencies.add(module)
+                    module_dependencies = get_dependencies_recursively_for_task_gen(ctx, module_task_gen)
+                    for module_dep in module_dependencies:
+                        if module_dep not in game_engine_module_dependencies:
+                            Logs.debug('utils: -> adding module dependency {}'.format(module_dep))
+                            game_engine_module_dependencies.add(module_dep)
+
+    return game_engine_module_dependencies
 

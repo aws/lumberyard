@@ -1586,10 +1586,10 @@ namespace EMotionFX
 
 
     // extract the original vertex positions
-    void Mesh::ExtractOriginalVertexPositions(MCore::Array<AZ::Vector3>& outPoints) const
+    void Mesh::ExtractOriginalVertexPositions(AZStd::vector<AZ::Vector3>& outPoints) const
     {
         // allocate space
-        outPoints.Resize(mNumOrgVerts);
+        outPoints.resize(mNumOrgVerts);
 
         // get the mesh data
         const AZ::PackedVector3f*   positions = (AZ::PackedVector3f*)FindOriginalVertexData(ATTRIB_POSITIONS);
@@ -1857,7 +1857,7 @@ namespace EMotionFX
 
 
     // find by name as string
-    uint32 Mesh::FindVertexAttributeLayerIndexByNameString(const MCore::String& name) const
+    uint32 Mesh::FindVertexAttributeLayerIndexByNameString(const AZStd::string& name) const
     {
         const uint32 numLayers = mVertexAttributes.GetLength();
         for (uint32 i = 0; i < numLayers; ++i)
@@ -1905,7 +1905,7 @@ namespace EMotionFX
 
 
     // find by name as string
-    uint32 Mesh::FindSharedVertexAttributeLayerIndexByNameString(const MCore::String& name) const
+    uint32 Mesh::FindSharedVertexAttributeLayerIndexByNameString(const AZStd::string& name) const
     {
         const uint32 numLayers = mSharedVertexAttributes.GetLength();
         for (uint32 i = 0; i < numLayers; ++i)

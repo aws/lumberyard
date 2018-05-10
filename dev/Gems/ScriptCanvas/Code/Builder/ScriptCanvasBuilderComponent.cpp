@@ -1,0 +1,78 @@
+/*
+* All or portions of this file Copyright(c) Amazon.com, Inc.or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution(the "License").All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file.Do not
+* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#include <precompiled.h>
+#include <Builder/ScriptCanvasBuilderComponent.h>
+
+#include <AssetBuilderSDK/AssetBuilderBusses.h>
+#include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
+#include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
+
+namespace ScriptCanvasBuilder
+{
+    void PluginComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("ScriptCanvasBuilderService", 0x4929ffcd));
+    }
+    
+    void PluginComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(AZ_CRC("ScriptCanvasService", 0x41fd58f3));
+        required.push_back(AZ_CRC("ScriptCanvasReflectService", 0xb3bfe139));
+    }
+    
+    void PluginComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+    {
+        dependent.push_back(AZ_CRC("AssetCatalogService", 0xc68ffc57));
+    }
+    
+    void PluginComponent::Activate()
+    {
+        // Register ScriptCanvas Builder
+        AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
+        builderDescriptor.m_name = "Script Canvas Builder";
+        builderDescriptor.m_version = 1;
+        builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.scriptcanvas", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+        builderDescriptor.m_busId = ScriptCanvasBuilder::Worker::GetUUID();
+        builderDescriptor.m_createJobFunction = AZStd::bind(&Worker::CreateJobs, &m_scriptCanvasBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+        builderDescriptor.m_processJobFunction = AZStd::bind(&Worker::ProcessJob, &m_scriptCanvasBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+        m_scriptCanvasBuilder.BusConnect(builderDescriptor.m_busId);
+
+        AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Handler::RegisterBuilderInformation, builderDescriptor);
+
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>(), ScriptCanvasEditor::ScriptCanvasAsset::GetFileFilter());
+        m_scriptCanvasBuilder.Activate();
+
+    }
+
+    void PluginComponent::Deactivate()
+    {
+        // Finish all queued work
+        AZ::Data::AssetBus::ExecuteQueuedEvents();
+        
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::UnregisterSourceAssetType, azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>());
+
+        m_scriptCanvasBuilder.Deactivate();
+        m_scriptCanvasBuilder.BusDisconnect();
+    }
+
+    void PluginComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<PluginComponent, AZ::Component>()
+                ->Version(0)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }));
+                ;
+        }
+    }
+}

@@ -9,6 +9,20 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SOCKETDRIVER_CPP_SECTION_1 1
+#define SOCKETDRIVER_CPP_SECTION_2 2
+#define SOCKETDRIVER_CPP_SECTION_3 3
+#define SOCKETDRIVER_CPP_SECTION_4 4
+#define SOCKETDRIVER_CPP_SECTION_5 5
+#define SOCKETDRIVER_CPP_SECTION_6 6
+#define SOCKETDRIVER_CPP_SECTION_7 7
+#define SOCKETDRIVER_CPP_SECTION_8 8
+#define SOCKETDRIVER_CPP_SECTION_9 9
+#endif
+
 #ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Carrier/SocketDriver.h>
@@ -40,6 +54,13 @@
 #   define AZ_EISCONN       WSAEISCONN
 #   define AZ_ENETUNREACH   WSAENETUNREACH
 #   define AZ_ETIMEDOUT     WSAETIMEDOUT
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID)
 #   include <sys/socket.h>
 #   include <sys/select.h>
@@ -108,6 +129,10 @@ namespace GridMate
 
         memset(&sockAddr, 0, sizeof(sockAddr));
         sockAddr.sin_family = AF_INET;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         switch (hints->ai_flags)
         {
         case AI_PASSIVE:
@@ -219,6 +244,13 @@ namespace GridMate
     {
 #if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
         return WSAGetLastError();
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_TRAIT_OS_USE_POSIX_SOCKETS)
         return errno;
 #else
@@ -236,7 +268,7 @@ namespace GridMate
         {
             return htonl(hstLong);
         }
-
+        
         //=========================================================================
         // NetToHostLong
         // [3/23/2017]
@@ -245,7 +277,7 @@ namespace GridMate
         {
             return ntohl(netLong);
         }
-
+        
         //=========================================================================
         // HostToNetShort
         // [3/23/2017]
@@ -343,7 +375,13 @@ namespace GridMate
         //=========================================================================
         Driver::ResultCode SetSocketBlockingMode(SocketDriverCommon::SocketType sock, bool blocking)
         {
-#if   defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
             AZ::s64 result = -1;
             AZ::s32 flags = ::fcntl(sock, F_GETFL);
             flags &= ~O_NONBLOCK;
@@ -369,9 +407,9 @@ namespace GridMate
         //=========================================================================
         GridMate::Driver::ResultCode SetSocketLingerTime(SocketDriverCommon::SocketType sock, bool bDoLinger, AZ::u16 timeout)
         {
-            // Indicates the state of the linger structure associated with a socket. If the l_onoff member of the linger
-            // structure is nonzero, a socket remains open for a specified amount of time after a closesocket function call to
-            // enable queued data to be sent. The amount of time, in seconds, to remain open is specified in the l_linger member
+            // Indicates the state of the linger structure associated with a socket. If the l_onoff member of the linger 
+            // structure is nonzero, a socket remains open for a specified amount of time after a closesocket function call to 
+            // enable queued data to be sent. The amount of time, in seconds, to remain open is specified in the l_linger member 
             // of the linger structure. This option is only valid for reliable, connection - oriented protocols.
             struct linger theLinger;
             theLinger.l_linger = static_cast<decltype(theLinger.l_linger)>(timeout);
@@ -414,7 +452,10 @@ namespace GridMate
                 // is negative?
                 return Driver::EC_SEND;
             }
-#if   defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
             AZ::s32 msgNoSignal = MSG_NOSIGNAL;
 #elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_WINDOWS)
             AZ::s32 msgNoSignal = 0;
@@ -602,6 +643,13 @@ namespace GridMate
 #if defined(AZ_PLATFORM_WINDOWS)
             t.tv_sec = static_cast<long>(timeOut.count() / 1000000);
             t.tv_usec = static_cast<long>(timeOut.count() % 1000000);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
             t.tv_sec = static_cast<time_t>(timeOut.count() / 1000000);
             t.tv_usec = static_cast<suseconds_t>(timeOut.count() % 1000000);
@@ -973,6 +1021,13 @@ namespace GridMate
     {
         unsigned int maxPacketSize = 1400;  // default to reasonable max UDP packet size
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         if(m_isCrossPlatform)
         {
             maxPacketSize = 1264;           // an obsolete platform has the lowest
@@ -981,6 +1036,7 @@ namespace GridMate
         {
             maxPacketSize = 65507;
         }
+#endif
 
         return maxPacketSize - GetPacketOverheadSize();
     }
@@ -992,8 +1048,8 @@ namespace GridMate
     unsigned int
     SocketDriverCommon::GetPacketOverheadSize() const
     {
-        return 8 /* standard UDP*/ + 20 /* min for IPv4 */;
-    }
+            return 8 /* standard UDP*/ + 20 /* min for IPv4 */;
+        }
 
     //=========================================================================
     // CreateSocket
@@ -1135,7 +1191,15 @@ namespace GridMate
     SocketDriverCommon::Initialize(int ft, const char* address, unsigned int port, bool isBroadcast, unsigned int receiveBufferSize, unsigned int sendBufferSize)
     {
         AZ_Assert(ft == BSD_AF_INET || ft == BSD_AF_INET6, "Family type (ft) can be IPV4 or IPV6 only!");
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         m_isIpv6 = (ft == BSD_AF_INET6);
+#endif
 
         m_port = htons(static_cast<unsigned short>(port));
         char portStr[8];
@@ -1392,6 +1456,13 @@ namespace GridMate
     #if defined(AZ_PLATFORM_WINDOWS)
         t.tv_sec = static_cast<long>(timeOut.count() / 1000000);
         t.tv_usec = static_cast<long>(timeOut.count() % 1000000);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
     #else
         t.tv_sec = static_cast<time_t>(timeOut.count() / 1000000);
         t.tv_usec = static_cast<suseconds_t>(timeOut.count() % 1000000);

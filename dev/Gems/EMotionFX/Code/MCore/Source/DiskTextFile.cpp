@@ -13,6 +13,7 @@
 // include the required headers
 #include "DiskTextFile.h"
 #include "LogManager.h"
+#include "StringConversions.h"
 
 namespace MCore
 {
@@ -143,13 +144,13 @@ namespace MCore
 
 
     // read the a line into the string
-    bool DiskTextFile::ReadLine(MCore::String& outResultString, uint32 maxLineLength)
+    bool DiskTextFile::ReadLine(AZStd::string& outResultString, uint32 maxLineLength)
     {
         // reserve space and clear the buffer
         Allocate(maxLineLength);
 
         // clear the result string
-        outResultString.Clear();
+        outResultString.clear();
 
         // read the line into the buffer
         if (fgets(mBuffer, maxLineLength, mFile) == nullptr)
@@ -158,17 +159,18 @@ namespace MCore
         }
 
         outResultString = mBuffer;
-        outResultString.FixLineEnd();
+        AzFramework::StringFunc::TrimWhiteSpace(outResultString, false, true);
+        outResultString += MCore::CharacterConstants::endLine;
         return true;
     }
 
 
     // read all the lines
-    bool DiskTextFile::ReadAllLinesAsString(MCore::String& outResultString, uint32 maxLineLength)
+    bool DiskTextFile::ReadAllLinesAsString(AZStd::string& outResultString, uint32 maxLineLength)
     {
         // reserve space for the line buffer
-        MCore::String lineBuffer;
-        lineBuffer.Reserve(maxLineLength);
+        AZStd::string lineBuffer;
+        lineBuffer.reserve(maxLineLength);
 
         // read all the lines and attach them
         while (ReadLine(lineBuffer, maxLineLength))
@@ -180,14 +182,14 @@ namespace MCore
     }
 
 
-    bool DiskTextFile::ReadAllLinesAsStringArray(MCore::Array<MCore::String>& outResultArray, uint32 maxLineLength)
+    bool DiskTextFile::ReadAllLinesAsStringArray(MCore::Array<AZStd::string>& outResultArray, uint32 maxLineLength)
     {
         // clear the result array
         outResultArray.Clear();
 
         // reserve space for the line buffer
-        MCore::String lineBuffer;
-        lineBuffer.Reserve(maxLineLength);
+        AZStd::string lineBuffer;
+        lineBuffer.reserve(maxLineLength);
 
         // read all the lines and attach them
         while (ReadLine(lineBuffer, maxLineLength))
@@ -200,10 +202,10 @@ namespace MCore
 
 
     // write a string
-    bool DiskTextFile::WriteString(const MCore::String& stringToWrite)
+    bool DiskTextFile::WriteString(const AZStd::string& stringToWrite)
     {
-        MCORE_ASSERT(stringToWrite.AsChar());
-        return (fputs(stringToWrite.AsChar(), mFile) >= 0);
+        MCORE_ASSERT(stringToWrite.c_str());
+        return (fputs(stringToWrite.c_str(), mFile) >= 0);
     }
 
 

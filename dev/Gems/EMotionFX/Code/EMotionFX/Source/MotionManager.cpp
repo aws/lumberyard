@@ -11,7 +11,6 @@
 */
 
 // include the required headers
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "EMotionFXConfig.h"
 #include "MotionManager.h"
 #include "Motion.h"
@@ -98,7 +97,7 @@ namespace EMotionFX
             }
 
             // compare the motion names
-            if (mMotions[i]->GetNameString().CheckIfIsEqual(motionName))
+            if (mMotions[i]->GetNameString() == motionName)
             {
                 return mMotions[i];
             }
@@ -121,7 +120,7 @@ namespace EMotionFX
             }
 
             // compare the motion names
-            if (mMotions[i]->GetFileNameString().CheckIfIsEqualNoCase(fileName))
+            if (AzFramework::StringFunc::Equal(mMotions[i]->GetFileNameString().c_str(), fileName, false /* no case */))
             {
                 return mMotions[i];
             }
@@ -156,7 +155,7 @@ namespace EMotionFX
 
 
     // find the motion set and return a pointer, nullptr if the motion set has not been found
-    MotionSet* MotionManager::FindMotionSetByName(const char* name, bool isTool) const
+    MotionSet* MotionManager::FindMotionSetByName(const char* name, bool isOwnedByRuntime) const
     {
         // get the number of motion sets and iterate through them
         const uint32 numMotionSets = mMotionSets.GetLength();
@@ -164,15 +163,13 @@ namespace EMotionFX
         {
             MotionSet* motionSet = mMotionSets[i];
 
-            if (motionSet->GetIsOwnedByRuntime() == isTool)
+            if (motionSet->GetIsOwnedByRuntime() == isOwnedByRuntime)
             {
-                continue;
-            }
-
-            // compare the motion set names
-            if (AzFramework::StringFunc::Equal(motionSet->GetName(), name))
-            {
-                return motionSet;
+                // compare the motion set names
+                if (AzFramework::StringFunc::Equal(motionSet->GetName(), name))
+                {
+                    return motionSet;
+                }
             }
         }
 
@@ -193,7 +190,7 @@ namespace EMotionFX
             }
 
             // compare the motion names
-            if (mMotions[i]->GetNameString().CheckIfIsEqual(motionName))
+            if (mMotions[i]->GetNameString() == motionName)
             {
                 return i;
             }
@@ -415,7 +412,7 @@ namespace EMotionFX
             }
 
             // compare the motions
-            if (mMotions[i]->GetFileNameString().CheckIfIsEqual(fileName))
+            if (mMotions[i]->GetFileNameString() == fileName)
             {
                 return i;
             }

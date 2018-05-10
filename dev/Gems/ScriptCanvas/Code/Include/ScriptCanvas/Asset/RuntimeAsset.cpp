@@ -12,32 +12,53 @@
 
 #include "precompiled.h"
 
-#include "GraphAsset.h"
+#include "RuntimeAsset.h"
 
 #include <AzCore/Component/Entity.h>
 
 namespace ScriptCanvas
 {
-    GraphAsset::GraphAsset(const AZ::Data::AssetId& assetId, AZ::Data::AssetData::AssetStatus status)
+    void RuntimeData::Reflect(AZ::ReflectContext* reflectContext)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
+        {
+            serializeContext->Class<RuntimeData>()
+                ->Version(0)
+                ->Field("m_graphData", &RuntimeData::m_graphData)
+                ->Field("m_variableData", &RuntimeData::m_variableData)
+                ;
+        }
+    }
+
+    RuntimeData::RuntimeData(RuntimeData&& other)
+        : m_graphData(AZStd::move(other.m_graphData))
+        , m_variableData(AZStd::move(other.m_variableData))
+    {
+    }
+
+    RuntimeData& RuntimeData::operator=(RuntimeData&& other)
+    {
+        if (this != &other)
+        {
+            m_graphData = AZStd::move(other.m_graphData);
+            m_variableData = AZStd::move(other.m_variableData);
+        }
+
+        return *this;
+    }
+
+    RuntimeAsset::RuntimeAsset(const AZ::Data::AssetId& assetId, AZ::Data::AssetData::AssetStatus status)
         : AZ::Data::AssetData(assetId, status)
     {
     }
 
-    GraphAsset::~GraphAsset()
+    RuntimeAsset::~RuntimeAsset()
     {
-        for (auto& nodeRef : m_graphData.m_nodes)
-        {
-            delete nodeRef;
-        }
-
-        for (auto& connectionRef : m_graphData.m_connections)
-        {
-            delete connectionRef;
-        }
+        m_runtimeData.m_graphData.Clear(true);
     }
 
-    void GraphAsset::SetGraphData(const GraphData& graphData)
+    void RuntimeAsset::SetData(const RuntimeData& runtimeData)
     {
-        m_graphData = graphData;
+        m_runtimeData = runtimeData;
     }
 }

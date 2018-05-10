@@ -13,10 +13,9 @@
 #pragma once
 
 #include <MCore/Source/StandardHeaders.h>
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 #include "EMStudioConfig.h"
-#include <QWidget>
 
 
 namespace EMStudio
@@ -91,6 +90,5 @@ namespace EMStudio
 
         void SaveToSettings();
         void CreateDefaultPresets();
-        bool CheckIfHasPreset(const char* eventType) const;
     };
 } // namespace EMStudio

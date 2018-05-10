@@ -16,41 +16,43 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <Maestro/Bus/SequenceAgentComponentBus.h>
 
-#include "../Cinematics/Movie.h"
-#include "../Cinematics/AnimSplineTrack.h"
-#include "../Cinematics/CompoundSplineTrack.h"
-#include "../Cinematics/BoolTrack.h"
-#include "../Cinematics/CharacterTrack.h"
-#include "../Cinematics/CaptureTrack.h"
-#include "../Cinematics/CommentTrack.h"
-#include "../Cinematics/ConsoleTrack.h"
-#include "../Cinematics/EventTrack.h"
-#include "../Cinematics/GotoTrack.h"
-#include "../Cinematics/LookAtTrack.h"
-#include "../Cinematics/MannequinTrack.h"
-#include "../Cinematics/ScreenFaderTrack.h"
-#include "../Cinematics/SelectTrack.h"
-#include "../Cinematics/SequenceTrack.h"
-#include "../Cinematics/SoundTrack.h"
-#include "../Cinematics/TrackEventTrack.h"
+#include <Cinematics/Movie.h>
+#include <Cinematics/AnimSplineTrack.h>
+#include <Maestro/Types/AssetBlendKey.h>
+#include <Cinematics/AssetBlendTrack.h>
+#include <Cinematics/CompoundSplineTrack.h>
+#include <Cinematics/BoolTrack.h>
+#include <Cinematics/CharacterTrack.h>
+#include <Cinematics/CaptureTrack.h>
+#include <Cinematics/CommentTrack.h>
+#include <Cinematics/ConsoleTrack.h>
+#include <Cinematics/EventTrack.h>
+#include <Cinematics/GotoTrack.h>
+#include <Cinematics/LookAtTrack.h>
+#include <Cinematics/MannequinTrack.h>
+#include <Cinematics/ScreenFaderTrack.h>
+#include <Cinematics/SelectTrack.h>
+#include <Cinematics/SequenceTrack.h>
+#include <Cinematics/SoundTrack.h>
+#include <Cinematics/TrackEventTrack.h>
 
-#include "../Cinematics/AnimSequence.h"
-#include "../Cinematics/AnimNode.h"
-#include "../Cinematics/AnimNodeGroup.h"
-#include "../Cinematics/SceneNode.h"
-#include "../Cinematics/AnimAZEntityNode.h"
-#include "../Cinematics/AnimComponentNode.h"
-#include "../Cinematics/AnimScreenFaderNode.h"
-#include "../Cinematics/CommentNode.h"
-#include "../Cinematics/CVarNode.h"
-#include "../Cinematics/ScriptVarNode.h"
-#include "../Cinematics/AnimEnvironmentNode.h"
-#include "../Cinematics/AnimPostFXNode.h"
-#include "../Cinematics/EntityNode.h"
-#include "../Cinematics/EventNode.h"
-#include "../Cinematics/LayerNode.h"
-#include "../Cinematics/MaterialNode.h"
-#include "../Cinematics/ShadowsSetupNode.h"
+#include <Cinematics/AnimSequence.h>
+#include <Cinematics/AnimNode.h>
+#include <Cinematics/AnimNodeGroup.h>
+#include <Cinematics/SceneNode.h>
+#include <Cinematics/AnimAZEntityNode.h>
+#include <Cinematics/AnimComponentNode.h>
+#include <Cinematics/AnimScreenFaderNode.h>
+#include <Cinematics/CommentNode.h>
+#include <Cinematics/CVarNode.h>
+#include <Cinematics/ScriptVarNode.h>
+#include <Cinematics/AnimEnvironmentNode.h>
+#include <Cinematics/AnimPostFXNode.h>
+#include <Cinematics/EntityNode.h>
+#include <Cinematics/EventNode.h>
+#include <Cinematics/LayerNode.h>
+#include <Cinematics/MaterialNode.h>
+#include <Cinematics/ShadowsSetupNode.h>
 
 namespace Maestro
 {
@@ -110,7 +112,7 @@ namespace Maestro
         
         if (serializeContext)
         {
-            serializeContext->Class<SequenceComponent>()
+            serializeContext->Class<SequenceComponent, AZ::Component>()
                 ->Version(2)
                 ->Field("Sequence", &SequenceComponent::m_sequence);
 
@@ -165,6 +167,7 @@ namespace Maestro
         CSequenceTrack::Reflect(context);
         CSoundTrack::Reflect(context);
         CTrackEventTrack::Reflect(context);
+        CAssetBlendTrack::Reflect(context);
 
         // Nodes
         CAnimSequence::Reflect(context);
@@ -211,14 +214,11 @@ namespace Maestro
     {
         Maestro::SequenceComponentRequestBus::Handler::BusConnect(GetEntityId());
 
-        // If the sequence is set to auto play, start it here. The Movie system starts all the loaded
-        // sequences on Reset, but that will not start a sequence spawned in a dynamic slice.
-        // If the sequence is already playing, no harm is done, PlaySequence() will just return.
         if (m_sequence != nullptr && m_sequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset)
         {
-            if (gEnv != nullptr && gEnv->pMovieSystem != nullptr)
+            if (gEnv != nullptr && gEnv->pMovieSystem != nullptr && m_sequence.get() != nullptr)
             {
-                gEnv->pMovieSystem->PlaySequence(m_sequence.get(), /* parentSeq */ nullptr, /* bResetFx */ true, /* bTrackedSequence */ false);
+                gEnv->pMovieSystem->OnSequenceActivated(m_sequence.get());
             }
         }
     }
@@ -226,15 +226,24 @@ namespace Maestro
     void SequenceComponent::Deactivate()
     {
         Maestro::SequenceComponentRequestBus::Handler::BusDisconnect();
+
+        // Remove this sequence from the game movie system.
+        if (nullptr != gEnv->pMovieSystem)
+        {
+            if (m_sequence)
+            {
+                gEnv->pMovieSystem->RemoveSequence(m_sequence.get());
+            }
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     bool SequenceComponent::SetAnimatedPropertyValue(const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value)
     {
-        const Maestro::SequenceAgentEventBusId busId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
         bool changed = false;
         
-        EBUS_EVENT_ID_RESULT(changed, busId, Maestro::SequenceAgentComponentRequestBus, SetAnimatedPropertyValue, animatableAddress, value);
+        EBUS_EVENT_ID_RESULT(changed, ebusId, Maestro::SequenceAgentComponentRequestBus, SetAnimatedPropertyValue, animatableAddress, value);
         
         return changed;
     }
@@ -242,10 +251,10 @@ namespace Maestro
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     void SequenceComponent::GetAnimatedPropertyValue(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, const AnimatablePropertyAddress& animatableAddress)
     {
-        const Maestro::SequenceAgentEventBusId busId(GetEntityId(), animatedEntityId);
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
         float retVal = .0f;
 
-        EBUS_EVENT_ID(busId, Maestro::SequenceAgentComponentRequestBus, GetAnimatedPropertyValue, returnValue, animatableAddress);
+        EBUS_EVENT_ID(ebusId, Maestro::SequenceAgentComponentRequestBus, GetAnimatedPropertyValue, returnValue, animatableAddress);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,6 +266,13 @@ namespace Maestro
         Maestro::SequenceAgentComponentRequestBus::EventResult(typeId, ebusId, &Maestro::SequenceAgentComponentRequestBus::Events::GetAnimatedAddressTypeId, animatableAddress);
 
         return typeId;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SequenceComponent::GetAssetDuration(AnimatedValue& returnValue, const AZ::EntityId& animatedEntityId, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId)
+    {
+        const Maestro::SequenceAgentEventBusId ebusId(GetEntityId(), animatedEntityId);
+        EBUS_EVENT_ID(ebusId, Maestro::SequenceAgentComponentRequestBus, GetAssetDuration, returnValue, componentId, assetId);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////

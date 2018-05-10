@@ -28,6 +28,14 @@
 
 #include <AK/Plugin/AllPluginsRegistrationHelpers.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_1 1
+#define AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_2 2
+#define AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_3 3
+#endif
+
 #if !defined(WWISE_FOR_RELEASE)
     #include <AK/Comm/AkCommunication.h>    // Communication between Wwise and the game (excluded in release build)
     #include <AK/Tools/Common/AkMonitorError.h>
@@ -68,6 +76,10 @@ namespace AK
         azfree(in_pMemAddress, Audio::AudioImplAllocator);
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(AudioSystemImpl_wwise_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 
@@ -348,6 +360,10 @@ namespace Audio
         AK::StreamMgr::GetDefaultDeviceSettings(oDeviceSettings);
         oDeviceSettings.uIOMemorySize = g_audioImplCVars_wwise.m_nStreamDeviceMemoryPoolSize << 10; // 2 MiB is the default value!
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(AudioSystemImpl_wwise_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         eResult = m_oFileIOHandler.Init(oDeviceSettings);
 
@@ -390,6 +406,13 @@ namespace Audio
         oPlatformInitSettings.threadBankManager.dwAffinityMask = 0;
         oPlatformInitSettings.threadLEngine.dwAffinityMask = 0;
         oPlatformInitSettings.threadMonitor.dwAffinityMask = 0;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(AudioSystemImpl_wwise_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_APPLE_OSX)
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
         oInitSettings.uDefaultPoolSize = 1.5 * 1024 * 1024;

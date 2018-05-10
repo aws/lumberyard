@@ -88,6 +88,7 @@
 #include <AzCore/std/typetraits/is_compound.h>
 #include <AzCore/std/typetraits/is_const.h>
 #include <AzCore/std/typetraits/is_convertible.h>
+#include <AzCore/std/typetraits/is_constructible.h>
 #include <AzCore/std/typetraits/is_empty.h>
 #include <AzCore/std/typetraits/is_enum.h>
 #include <AzCore/std/typetraits/is_floating_point.h>

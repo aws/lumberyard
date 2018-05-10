@@ -32,12 +32,12 @@ namespace PhysX
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("ColliderService", 0x902d4e93));
+            provided.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("ColliderService", 0x902d4e93));
+            incompatible.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)

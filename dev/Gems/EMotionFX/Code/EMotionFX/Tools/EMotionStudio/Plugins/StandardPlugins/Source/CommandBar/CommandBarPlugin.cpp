@@ -111,8 +111,8 @@ namespace EMStudio
         mToggleLockSelectionCallback = new CommandToggleLockSelectionCallback(false);
         GetCommandManager()->RegisterCommandCallback("ToggleLockSelection", mToggleLockSelectionCallback);
 
-        mLockEnabledIcon    = new QIcon(MCore::String(MysticQt::GetDataDir() + "/Images/Icons/LockEnabled.png").AsChar());
-        mLockDisabledIcon   = new QIcon(MCore::String(MysticQt::GetDataDir() + "/Images/Icons/LockDisabled.png").AsChar());
+        mLockEnabledIcon    = new QIcon(AZStd::string(MysticQt::GetDataDir() + "/Images/Icons/LockEnabled.png").c_str());
+        mLockDisabledIcon   = new QIcon(AZStd::string(MysticQt::GetDataDir() + "/Images/Icons/LockDisabled.png").c_str());
 
         mCommandEdit = new QLineEdit();
         mCommandEdit->setPlaceholderText("Enter command");
@@ -128,7 +128,7 @@ namespace EMStudio
         mSpeedSlider->setMinimumWidth(30);
         mSpeedSlider->setRange(0, 100);
         mSpeedSlider->setValue(50);
-        mSpeedSlider->setToolTip("The global simulation speed factor, ranging from 0 to 2.0\nThe value of 1.0 is the normal speed, which is when it is in the center\nPress the R button next to this slider to reset it to 1.0");
+        mSpeedSlider->setToolTip("The global simulation speed factor.\nA value of 1.0 means the normal speed, which is when the slider handle is in the center.\nPress the button on the right of this slider to reset to the normal speed.");
         connect(mSpeedSlider, SIGNAL(valueChanged(int)), this, SLOT(OnSpeedSliderValueChanged(int)));
         mBar->addWidget(mSpeedSlider);
 
@@ -261,7 +261,7 @@ namespace EMStudio
 
     void CommandBarPlugin::OnStopButton()
     {
-        MCore::String outResult;
+        AZStd::string outResult;
         GetCommandManager()->ExecuteCommand("StopAllMotionInstances", outResult);
     }
 
@@ -334,32 +334,32 @@ namespace EMStudio
         assert(edit == mCommandEdit);
 
         // get the command string trimmed
-        MCore::String command = FromQtString(edit->text());
-        command.Trim();
+        AZStd::string command = FromQtString(edit->text());
+        AzFramework::StringFunc::TrimWhiteSpace(command, true, true);
 
         // don't do anything on an empty command
-        if (command.GetLength() == 0)
+        if (command.size() == 0)
         {
             edit->clear();
             return;
         }
 
         // execute the command
-        MCore::String resultString;
-        const bool success = EMStudio::GetCommandManager()->ExecuteCommand(command.AsChar(), resultString);
+        AZStd::string resultString;
+        const bool success = EMStudio::GetCommandManager()->ExecuteCommand(command.c_str(), resultString);
 
         // there was an error
         if (success == false)
         {
-            MCore::LogError(resultString.AsChar());
+            MCore::LogError(resultString.c_str());
             mResultEdit->setStyleSheet("color: red;");
-            mResultEdit->setText(resultString.AsChar());
-            mResultEdit->setToolTip(resultString.AsChar());
+            mResultEdit->setText(resultString.c_str());
+            mResultEdit->setToolTip(resultString.c_str());
         }
         else // no error
         {
             mResultEdit->setStyleSheet("color: rgb(0,255,0);");
-            mResultEdit->setText(resultString.AsChar());
+            mResultEdit->setText(resultString.c_str());
         }
 
         // clear the text of the edit box

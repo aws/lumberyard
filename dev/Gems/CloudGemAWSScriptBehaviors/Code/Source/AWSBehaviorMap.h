@@ -24,9 +24,9 @@ namespace CloudGemAWSScriptBehaviors
     {
     public:
         AWSBEHAVIOR_DEFINITION(StringMap, "{EBF5FF7D-644E-4744-9AA1-FFCD7D46740D}")
+        void SetValue(const AZStd::string& key, const AZStd::string& value);
 
     private:
-        void SetValue(const AZStd::string& key, const AZStd::string& value);
         AZStd::string GetValue(const AZStd::string& key);
         void RemoveKey(const AZStd::string& key);
         bool HasKey(const AZStd::string& key);

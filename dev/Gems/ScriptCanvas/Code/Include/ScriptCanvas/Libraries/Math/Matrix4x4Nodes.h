@@ -42,13 +42,13 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromMatrix3x3, "Math/Matrix4x4", "{C7EB3FB9-CAA7-48B3-BFCA-F03BF14E9778}", "returns a matrix from the from the Matrix3x3", "Source");
 
-        AZ_INLINE Data::Matrix4x4Type FromQuaternion(const Data::RotationType& source)
+        AZ_INLINE Data::Matrix4x4Type FromQuaternion(const Data::QuaternionType& source)
         {
             return Data::Matrix4x4Type::CreateFromQuaternion(source);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromQuaternion, "Math/Matrix4x4", "{08EACF1F-E32F-4099-8F87-DFC9BF485FBA}", "returns a rotation matrix using the supplied quaternion", "Source");
 
-        AZ_INLINE Data::Matrix4x4Type FromQuaternionAndTranslation(const Data::RotationType& rotation, const Data::Vector3Type& translation)
+        AZ_INLINE Data::Matrix4x4Type FromQuaternionAndTranslation(const Data::QuaternionType& rotation, const Data::Vector3Type& translation)
         {
             return Data::Matrix4x4Type::CreateFromQuaternionAndTranslation(rotation, translation);
         }

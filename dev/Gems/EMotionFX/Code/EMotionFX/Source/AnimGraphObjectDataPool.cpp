@@ -179,8 +179,7 @@ namespace EMotionFX
             pool->mFreeList.ResizeFast(numInitialObjectDatas);
             for (uint32 i = 0; i < numInitialObjectDatas; ++i)
             {
-                void* memLocation = (void*)(pool->mData + i * pool->mObjectDataSize);
-                ;
+                void* memLocation = (void*)(pool->mData + i * pool->mObjectDataSize);                
                 pool->mFreeList[i].mAddress = memLocation;
                 pool->mFreeList[i].mSubPool = nullptr;
             }

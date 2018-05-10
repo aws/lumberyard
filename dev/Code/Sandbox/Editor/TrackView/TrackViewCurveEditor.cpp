@@ -429,9 +429,11 @@ void CTrackViewCurveEditor::OnKeyAdded(CTrackViewKeyHandle& addedKeyHandle)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewCurveEditor::OnKeySelectionChanged(CTrackViewSequence* pSequence)
 {
-    m_ui->m_wndSpline->update();
-
-    m_ui->buttonTangentUnify->setChecked(m_ui->m_wndSpline->IsUnifiedKeyCurrentlySelected());
+    if (isVisible())
+    {
+        m_ui->m_wndSpline->update();
+        m_ui->buttonTangentUnify->setChecked(m_ui->m_wndSpline->IsUnifiedKeyCurrentlySelected());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

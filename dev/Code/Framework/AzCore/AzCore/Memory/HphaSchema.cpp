@@ -2254,6 +2254,12 @@ namespace AZ {
         BOOL ret = VirtualFree(ptr, 0, MEM_RELEASE);
         (void)ret;
         AZ_Assert(ret, "Failed to free memory!");
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(HphaSchema_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
         ::free(ptr);
 #endif
@@ -2577,9 +2583,6 @@ namespace AZ {
     //=========================================================================
     HphaSchema::HphaSchema(const Descriptor& desc)
     {
-#if defined(AZ_OS64)
-        (void)m_pad;
-#endif // AZ_OS64
         m_capacity = 0;
 
         m_desc = desc;

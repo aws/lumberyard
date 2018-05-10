@@ -39,77 +39,93 @@ namespace AZ
             return false;
         }
 
+        template<typename RetType, typename ... Args>
+        struct AttributeInvokerArgs
+        {
+            static bool Invoke(Attribute* attr, void* instance, const Args& ... args)
+            {
+                AttributeFunction<RetType(Args...)>* func = azrtti_cast<AttributeFunction<RetType(Args...)>*>(attr);
+                if (func)
+                {
+                    func->Invoke(instance, args...);
+                    return true;
+                }
+                return false;
+            }
+        };
+
+
         /**
         * Integral types (except bool) can be converted char <-> short <-> int <-> int64
         * for bool we require exact matching (as comparing to zero is ambiguous)
         * The same applied for floating point types, we can convert float <-> double, but we don't allow to ints
         * if we want to do so it's very easy.
         */
-        template<class AttrType, class DestType, bool IsIntegral = AZStd::is_integral<DestType>::value&& !AZStd::is_same<DestType, bool>::value, bool IsFloat = AZStd::is_floating_point<DestType>::value, typename ... Args >
+        template<class AttrType, class DestType, bool IsIntegral = AZStd::is_integral<DestType>::value && !AZStd::is_same<DestType, bool>::value, bool IsFloat = AZStd::is_floating_point<DestType>::value, typename ... Args >
         struct AttributeReader
         {
-            static bool Read(DestType& value, Attribute* attr, void* instance, Args&& ... args)
+            static bool Read(DestType& value, Attribute* attr, void* instance, const Args& ... args)
             {
-                return AttributeRead<AttrType, DestType>(value, attr, instance, AZStd::forward<Args>(args) ...);
+                return AttributeRead<AttrType, DestType>(value, attr, instance, args...);
             }
         };
 
         template<class AttrType, class DestType, typename ... Args >
         struct AttributeReaderArgs
         {
-            static bool Read(DestType& value, Attribute* attr, void* instance, Args&& ... args)
+            static bool Read(DestType& value, Attribute* attr, void* instance, const Args& ... args)
             {
                 return AttributeReader <
                     AttrType,
                     DestType,
                     AZStd::is_integral<DestType>::value && !AZStd::is_same<DestType, bool>::value,
                     AZStd::is_floating_point<DestType>::value,
-                    Args ... > ::Read(value, attr, instance, AZStd::forward<Args>(args) ...);
+                    Args ... > ::Read(value, attr, instance, args...);
             }
         };
 
         template<class AttrType, class DestType, typename ... Args>
         struct AttributeReader<AttrType, DestType, true, false, Args...>
         {
-            static bool Read(DestType& value, Attribute* attr, void* classInstance, Args&& ... args)
+            static bool Read(DestType& value, Attribute* attr, void* classInstance, const Args& ... args)
             {
-                if (AttributeRead<bool, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<bool, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<char, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<char, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<unsigned char, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<unsigned char, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<short, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<short, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<unsigned short, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<unsigned short, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<int, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<int, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<unsigned int, Args..., DestType>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<unsigned int, Args..., DestType>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<AZ::s64, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<AZ::s64, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<AZ::u64, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<AZ::u64, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<AZ::Crc32, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<AZ::Crc32, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
@@ -120,13 +136,13 @@ namespace AZ
         template<class AttrType, class DestType, typename ... Args>
         struct AttributeReader<AttrType, DestType, false, true, Args...>
         {
-            static bool Read(DestType& value, Attribute* attr, void* classInstance, Args&& ... args)
+            static bool Read(DestType& value, Attribute* attr, void* classInstance, const Args& ... args)
             {
-                if (AttributeRead<float, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<float, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<double, DestType, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<double, DestType, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
@@ -137,13 +153,13 @@ namespace AZ
         template<typename ... Args>
         struct AttributeReader<AZStd::string, AZStd::string, false, false, Args...>
         {
-            static bool Read(AZStd::string& value, Attribute* attr, void* classInstance, Args&& ... args)
+            static bool Read(AZStd::string& value, Attribute* attr, void* classInstance, const Args& ... args)
             {
-                if (AttributeRead<const char*, AZStd::string, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<const char*, AZStd::string, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<AZStd::string, AZStd::string, Args...>(value, attr, classInstance, AZStd::forward<Args>(args) ...))
+                if (AttributeRead<AZStd::string, AZStd::string, Args...>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
@@ -170,9 +186,15 @@ namespace AZ
         // for example, Read<double>(someDouble);
         // for example, Read<MyStruct>(someStruct that has operator=(const other&) defined)
         template <class T, class U, typename ... Args>
-        bool Read(U& value, Args&& ... args)
+        bool Read(U& value, const Args& ... args)
         {
-            return Internal::AttributeReaderArgs<T, U, Args...>::Read(value, m_attribute, m_instancePointer, AZStd::forward<Args>(args) ...);
+            return Internal::AttributeReaderArgs<T, U, Args...>::Read(value, m_attribute, m_instancePointer, args ...);
+        }
+
+        template <typename RetType, typename ... Args>
+        bool Invoke(const Args& ... args)
+        {
+            return Internal::AttributeInvokerArgs<RetType, Args...>::Invoke(m_attribute, m_instancePointer, args...);
         }
 
         // ------------ private implementation ---------------------------------

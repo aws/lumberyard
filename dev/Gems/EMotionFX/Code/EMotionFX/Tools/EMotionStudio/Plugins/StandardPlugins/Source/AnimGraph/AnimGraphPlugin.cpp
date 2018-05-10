@@ -39,7 +39,7 @@
 #include <QSettings>
 #include <QMenu>
 #include <MCore/Source/LogManager.h>
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 #ifdef HAS_GAME_CONTROLLER
     #include "GameControllerWindow.h"
@@ -79,7 +79,6 @@
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/FileIO.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -192,16 +191,19 @@ namespace EMStudio
         QString BuildToolTipItem(OutlinerCategoryItem* item) const override
         {
             EMotionFX::AnimGraph* animGraph = static_cast<EMotionFX::AnimGraph*>(item->mUserData);
-            const MCore::String relativeFileName = animGraph->GetFileNameString().ExtractPathRelativeTo(EMotionFX::GetEMotionFX().GetMediaRootFolder());
+
+            AZStd::string relativeFileName = animGraph->GetFileNameString();
+            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&relativeFileName);
+
             MCore::Array<EMotionFX::AnimGraphNode*> stateMachines;
             animGraph->RecursiveCollectNodesOfType(EMotionFX::AnimGraphStateMachine::TYPE_ID, &stateMachines);
             MCore::Array<EMotionFX::AnimGraphNode*> blendTrees;
             animGraph->RecursiveCollectNodesOfType(EMotionFX::BlendTree::TYPE_ID, &blendTrees);
             QString toolTip = "<table border=\"0\"";
             toolTip += "<tr><td><p style='white-space:pre'><b>Name: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(animGraph->GetNameString().GetIsEmpty() ? "&#60;no name&#62;" : animGraph->GetName());
+            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(animGraph->GetNameString().empty() ? "&#60;no name&#62;" : animGraph->GetName());
             toolTip += "<tr><td><p style='white-space:pre'><b>FileName: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.GetIsEmpty() ? "&#60;not saved yet&#62;" : relativeFileName.AsChar());
+            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.empty() ? "&#60;not saved yet&#62;" : relativeFileName.c_str());
             toolTip += "<tr><td><p style='white-space:pre'><b>Num Nodes: </b></p></td>";
             toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(animGraph->GetNumNodes());
             toolTip += "<tr><td><p style='white-space:pre'><b>Num Connections: </b></p></td>";
@@ -232,7 +234,7 @@ namespace EMStudio
             {
                 EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(items[i]->mID);
                 mPlugin->SaveDirtyAnimGraph(animGraph, nullptr, true, false);
-                commandGroup->AddCommandString(MCore::String().Format("RemoveAnimGraph -animGraphID %i", animGraph->GetID()).AsChar());
+                commandGroup->AddCommandString(AZStd::string::format("RemoveAnimGraph -animGraphID %i", animGraph->GetID()).c_str());
             }
         }
 
@@ -267,7 +269,6 @@ namespace EMStudio
         mResourceWidget                 = nullptr;
         mRecorderWidget                 = nullptr;
         mEventHandler                   = nullptr;
-        mVizScaleProperty               = nullptr;
         mGraphAnimationProperty         = nullptr;
         mPaletteWidget                  = nullptr;
         mNodePaletteDock                = nullptr;
@@ -390,6 +391,7 @@ namespace EMStudio
         attributeFactory->UnregisterCreatorByTypeID(TagPickerAttributeWidgetCreator::TYPE_ID);
         attributeFactory->UnregisterCreatorByTypeID(BlendSpaceMotionsAttributeWidgetCreator::TYPE_ID);
         attributeFactory->UnregisterCreatorByTypeID(BlendSpaceMotionPickerAttributeWidgetCreator::TYPE_ID);
+        attributeFactory->UnregisterCreatorByTypeID(MorphTargetPickerAttributeWidgetCreator::TYPE_ID);
 
 
         // remove the interface callback
@@ -586,6 +588,7 @@ namespace EMStudio
         attributeFactory->RegisterCreator(new TagPickerAttributeWidgetCreator());
         attributeFactory->RegisterCreator(new BlendSpaceMotionsAttributeWidgetCreator());
         attributeFactory->RegisterCreator(new BlendSpaceMotionPickerAttributeWidgetCreator());
+        attributeFactory->RegisterCreator(new MorphTargetPickerAttributeWidgetCreator());
 
         // create a new attribute widget callback and add it to the attribute widget factory
         mAttributeWidgetCallback = new AttributeWidgetCallback(this);
@@ -814,7 +817,7 @@ namespace EMStudio
     // load the options
     void AnimGraphPlugin::LoadOptions()
     {
-        QSettings settings(MCore::String(GetManager()->GetAppDataFolder() + "EMStudioRenderOptions.cfg").AsChar(), QSettings::IniFormat, this);
+        QSettings settings(AZStd::string(GetManager()->GetAppDataFolder() + "EMStudioRenderOptions.cfg").c_str(), QSettings::IniFormat, this);
 
         mOptions.mVisualizeScale = (float)settings.value("visualizeScale",      (double)mOptions.mVisualizeScale).toDouble();
         mOptions.mGraphAnimation = settings.value("useGraphAnimation",          mOptions.mGraphAnimation).toBool();
@@ -835,7 +838,7 @@ namespace EMStudio
     // load the options
     void AnimGraphPlugin::SaveOptions()
     {
-        QSettings settings(MCore::String(GetManager()->GetAppDataFolder() + "EMStudioRenderOptions.cfg").AsChar(), QSettings::IniFormat, this);
+        QSettings settings(AZStd::string(GetManager()->GetAppDataFolder() + "EMStudioRenderOptions.cfg").c_str(), QSettings::IniFormat, this);
         settings.setValue("visualizeScale", (double)mOptions.mVisualizeScale);
         settings.setValue("useGraphAnimation", mOptions.mGraphAnimation);
         settings.setValue("showFPS", mOptions.mShowFPS);
@@ -852,9 +855,6 @@ namespace EMStudio
         }
 
         connect(generalPropertyWidget, SIGNAL(ValueChanged(MysticQt::PropertyWidget::Property*)), this, SLOT(OnValueChanged(MysticQt::PropertyWidget::Property*)));
-
-        // visualization scale property
-        mVizScaleProperty = generalPropertyWidget->AddFloatSpinnerProperty("Anim Graph Plugin Properties", "Visualization Scale", mOptions.mVisualizeScale, mOptions.mVisualizeScale, 0.0001f, 10000.0f);
 
         // graph animation property
         mGraphAnimationProperty = generalPropertyWidget->AddBoolProperty("Anim Graph Plugin Properties", "Graph Animation", mOptions.mGraphAnimation);
@@ -875,19 +875,6 @@ namespace EMStudio
     // on preferences change
     void AnimGraphPlugin::OnValueChanged(MysticQt::PropertyWidget::Property* property)
     {
-        if (property == mVizScaleProperty)
-        {
-            const float value = property->AsFloat();
-            mOptions.mVisualizeScale = value;
-
-            // update all anim graph instances
-            const uint32 numAnimGraphInstances = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
-            for (uint32 i = 0; i < numAnimGraphInstances; ++i)
-            {
-                EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i)->SetVisualizeScale(value);
-            }
-        }
-
         if (property == mGraphAnimationProperty)
         {
             const bool value = property->AsBool();
@@ -1471,7 +1458,7 @@ namespace EMStudio
         EMStudioManager* manager = GetManager();
 
         // get the paremeter name
-        const MCore::String& paramName = animGraphInstance->GetAnimGraph()->GetParameter(paramIndex)->GetNameString();
+        const AZStd::string& paramName = animGraphInstance->GetAnimGraph()->GetParameter(paramIndex)->GetNameString();
 
         // iterate over all gizmos that are active
         MCore::Array<MCommon::TransformationManipulator*>* gizmos = manager->GetTransformationManipulators();
@@ -1493,7 +1480,7 @@ namespace EMStudio
     void AnimGraphEventHandler::OnParameterNodeMaskChanged(EMotionFX::BlendTreeParameterNode* parameterNode)
     {
         uint32 i;
-        MCore::String               commandResult;
+        AZStd::string               commandResult;
         MCore::CommandGroup         commandGroup("Adjust parameter node mask");
         EMotionFX::AnimGraph*      animGraph  = parameterNode->GetAnimGraph();
         EMotionFX::AnimGraphNode*  parentNode  = parameterNode->GetParentNode();
@@ -1566,9 +1553,9 @@ namespace EMStudio
         // execute the command group
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult, false) == false)
         {
-            if (commandResult.GetIsEmpty() == false)
+            if (commandResult.empty() == false)
             {
-                MCore::LogError(commandResult.AsChar());
+                MCore::LogError(commandResult.c_str());
             }
         }
 
@@ -1671,7 +1658,7 @@ namespace EMStudio
         uint32 graphIndex = FindGraphInfo(oldID, animGraph);
 
         // rename the item in the tree view
-        mNavigateWidget->Rename(MCore::GetStringIDGenerator().GetName(oldID).AsChar(), MCore::GetStringIDGenerator().GetName(newID).AsChar());
+        mNavigateWidget->Rename(MCore::GetStringIdPool().GetName(oldID).c_str(), MCore::GetStringIdPool().GetName(newID).c_str());
 
         // it doesn't exist yet, so create it
         if (graphIndex == MCORE_INVALIDINDEX32)
@@ -2320,10 +2307,10 @@ namespace EMStudio
         {
             if (logErrorWhenNotFound)
             {
-                MCore::LogError("AnimGraphPlugin::FindGraphAndNode() - There is no visual node associated with EMotion FX node '%s' in graph of node '%s'", MCore::GetStringIDGenerator().GetName(emfxNodeID).AsChar(), parentNode ? parentNode->GetName() : "<no parent>");
+                MCore::LogError("AnimGraphPlugin::FindGraphAndNode() - There is no visual node associated with EMotion FX node '%s' in graph of node '%s'", MCore::GetStringIdPool().GetName(emfxNodeID).c_str(), parentNode ? parentNode->GetName() : "<no parent>");
             }
             //else
-            //MCore::LogError("AnimGraphPlugin::FindGraphAndNode() - There is no visual node associated with EMotion FX node '%s' in the root graph.", MCore::GetStringIDGenerator().GetName(emfxNodeID).AsChar());
+            //MCore::LogError("AnimGraphPlugin::FindGraphAndNode() - There is no visual node associated with EMotion FX node '%s' in the root graph.", MCore::GetStringIdPool().GetName(emfxNodeID).AsChar());
 
             return false;
         }
@@ -2384,18 +2371,20 @@ namespace EMStudio
 
     void AnimGraphPlugin::SaveAnimGraph(const char* filename, uint32 animGraphIndex, MCore::CommandGroup* commandGroup)
     {
-        AZStd::string command = AZStd::string::format("SaveAnimGraph -index %i -filename \"%s\"", animGraphIndex, filename);
+        const AZStd::string command = AZStd::string::format("SaveAnimGraph -index %i -filename \"%s\"", animGraphIndex, filename);
 
         if (commandGroup == nullptr)
         {
             AZStd::string result;
             if (!EMStudio::GetCommandManager()->ExecuteCommand(command, result))
             {
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "AnimGraph <font color=red>failed</font> to save");
+                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR,
+                    AZStd::string::format("AnimGraph <font color=red>failed</font> to save<br/><br/>%s", result.c_str()).c_str());
             }
             else
             {
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, "AnimGraph <font color=green>successfully</font> saved");
+                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS,
+                    "AnimGraph <font color=green>successfully</font> saved");
 
                 // Send LyMetrics event.
                 //EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(animGraphIndex);
@@ -2546,14 +2535,14 @@ namespace EMStudio
         const uint32 animGraphIndex = EMotionFX::GetAnimGraphManager().FindAnimGraphIndex(animGraph);
         assert(animGraphIndex != MCORE_INVALIDINDEX32);
 
-        const MCore::String filename = animGraph->GetFileName();
-        if (filename.GetIsEmpty())
+        const AZStd::string filename = animGraph->GetFileName();
+        if (filename.empty())
         {
             OnFileSaveAs();
         }
         else
         {
-            SaveAnimGraph(filename.AsChar(), animGraphIndex);
+            SaveAnimGraph(filename.c_str(), animGraphIndex);
         }
     }
 
@@ -2600,7 +2589,9 @@ namespace EMStudio
     void AnimGraphPlugin::ProcessFrame(float timePassedInSeconds)
     {
         if (GetManager()->GetAvoidRendering() || mGraphWidget->visibleRegion().isEmpty())
+        {
             return;
+        }
 
         mTotalTime += timePassedInSeconds;
 
@@ -2817,22 +2808,22 @@ namespace EMStudio
             EMStudio::GetApp()->setOverrideCursor(QCursor(Qt::ArrowCursor));
 
             QMessageBox msgBox(GetMainWindow());
-            MCore::String text;
+            AZStd::string text;
 
-            if (animGraph->GetFileNameString().GetIsEmpty() == false)
+            if (animGraph->GetFileNameString().empty() == false)
             {
-                text.Format("Save changes to '%s'?", animGraph->GetFileName());
+                text = AZStd::string::format("Save changes to '%s'?", animGraph->GetFileName());
             }
-            else if (animGraph->GetNameString().GetIsEmpty() == false)
+            else if (animGraph->GetNameString().empty() == false)
             {
-                text.Format("Save changes to the anim graph named '%s'?", animGraph->GetName());
+                text = AZStd::string::format("Save changes to the anim graph named '%s'?", animGraph->GetName());
             }
             else
             {
                 text = "Save changes to untitled anim graph?";
             }
 
-            msgBox.setText(text.AsChar());
+            msgBox.setText(text.c_str());
             msgBox.setWindowTitle("Save Changes");
 
             if (showCancelButton)

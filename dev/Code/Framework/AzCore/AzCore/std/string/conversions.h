@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_STRING_CONVERSIONS_H
-#define AZSTD_STRING_CONVERSIONS_H
+#pragma once
 
 #include <AzCore/std/string/string.h>
 
@@ -196,6 +195,20 @@ namespace AZStd
         str = buf;
     }
     template<class Str>
+    void to_string(Str& str, long value)
+    {
+        char buf[32];
+        azsnprintf(buf, AZ_ARRAY_SIZE(buf), "%ld", value);
+        str = buf;
+    }
+    template<class Str>
+    void to_string(Str& str, unsigned long value)
+    {
+        char buf[32];
+        azsnprintf(buf, AZ_ARRAY_SIZE(buf), "%lu", value);
+        str = buf;
+    }
+    template<class Str>
     void to_string(Str& str, long long value)
     {
         char buf[32];
@@ -221,10 +234,11 @@ namespace AZStd
     inline AZStd::string to_string(unsigned int val)        { AZStd::string str; to_string(str, val); return str; }
     inline AZStd::string to_string(float val)               { AZStd::string str; to_string(str, val); return str; }
     inline AZStd::string to_string(double val)              { AZStd::string str; to_string(str, val); return str; }
+    inline AZStd::string to_string(long val)                { AZStd::string str; to_string(str, val); return str; }
+    inline AZStd::string to_string(unsigned long val)       { AZStd::string str; to_string(str, val); return str; }
     inline AZStd::string to_string(long long val)           { AZStd::string str; to_string(str, val); return str; }
     inline AZStd::string to_string(unsigned long long val)  { AZStd::string str; to_string(str, val); return str; }
     inline AZStd::string to_string(long double val)         { AZStd::string str; to_string(str, val); return str; }
-
 
     // In our engine we assume AZStd::string is Utf8 encoded!
     template<class Allocator1>
@@ -448,6 +462,3 @@ namespace AZStd
 #endif
     // Add case insensitive compares
 }
-
-#endif // AZSTD_STRING_CONVERSIONS_H
-#pragma once

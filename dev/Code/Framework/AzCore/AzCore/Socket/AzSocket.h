@@ -11,8 +11,6 @@
 */
 
 #pragma once
-#ifndef AZCORE_SOCKET_AZSOCKET_H
-#define AZCORE_SOCKET_AZSOCKET_H
 
 #include <AzCore/Socket/AzSocket_fwd.h>
 #include <AzCore/std/string/string.h>
@@ -45,8 +43,9 @@
 #   define SD_SEND     0x01
 #   define SD_BOTH     0x02
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AzSocket_h, AZ_RESTRICTED_PLATFORM)
 #endif
-
 typedef fd_set  AZFD_SET;
 typedef timeval AZTIMEVAL;
 
@@ -178,4 +177,3 @@ namespace AZ
         };
     }; // namespace AzSock
 }; // namespace AZ
-#endif // AZCORE_SOCKET_AZSOCKET_H

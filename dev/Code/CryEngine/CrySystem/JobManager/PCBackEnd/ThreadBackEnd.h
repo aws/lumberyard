@@ -11,14 +11,22 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYSYSTEM_JOBMANAGER_PCBACKEND_THREADBACKEND_H
-#define CRYINCLUDE_CRYSYSTEM_JOBMANAGER_PCBACKEND_THREADBACKEND_H
 #pragma once
 
 
 #include <IJobManager.h>
 #include "../JobStructs.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define THREADBACKEND_H_SECTION_1 1
+#define THREADBACKEND_H_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREADBACKEND_H_SECTION_1
+#include AZ_RESTRICTED_FILE(ThreadBackEnd_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace JobManager
 {
@@ -63,7 +71,15 @@ namespace JobManager {
 
                 bool TryGetJob()
                 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREADBACKEND_H_SECTION_2
+#include AZ_RESTRICTED_FILE(ThreadBackEnd_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                     return false;
+#endif
                 }
                 void WaitForNewJob(uint32 nWorkerID)
                 {
@@ -182,5 +198,3 @@ namespace JobManager {
         };
     } // namespace ThreadBackEnd
 } // namespace JobManager
-
-#endif // CRYINCLUDE_CRYSYSTEM_JOBMANAGER_PCBACKEND_THREADBACKEND_H

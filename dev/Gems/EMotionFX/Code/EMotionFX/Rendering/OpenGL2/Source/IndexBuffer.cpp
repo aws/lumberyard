@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/std/string/string.h>
 #include <MCore/Source/Config.h>
 #include "GLInclude.h"
 
@@ -143,7 +144,7 @@ namespace RenderGL
         // check for failure
         if (data == nullptr)
         {
-            MCore::String strLock = " ";
+            AZStd::string strLock = " ";
             switch (lockMode)
             {
             case LOCK_WRITEONLY:
@@ -157,7 +158,7 @@ namespace RenderGL
                 break;
             }
 
-            MCore::LogError("Failed to lock %s OpenGL index buffer.", strLock.AsChar());
+            MCore::LogError("Failed to lock %s OpenGL index buffer.", strLock.c_str());
         }
 
         return data;

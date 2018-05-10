@@ -49,7 +49,26 @@ namespace AZ
             const static AZ::Crc32 RemoveNotify = AZ_CRC("RemoveNotify", 0x16ec95f5);
             const static AZ::Crc32 ChangeNotify = AZ_CRC("ChangeNotify", 0xf793bc19);
 
+            /**
+            * Specifies a function to accept or reject a value changed in the Lumberyard Editor.
+            * For example, a component could reject AZ::EntityId values that reference its own entity.
+            *
+            * **Element type to use this with:**   Any type that you reflect using AZ::EditContext::ClassInfo::DataElement().
+            *
+            * **Expected value type:**             A function with signature `bool fn(void* newValue, const AZ::TypeId& valueType)`.
+            *                                      If the function returns false, then the new value will not be applied.
+            *                                      `newValue` is a void* pointing at the new value being validated.
+            *                                      `valueType` is the type ID of the value pointed to by `newValue`.
+            *
+            * **Default value:**                   None
+            */
+            const AZ::Crc32 ChangeValidate = AZ_CRC("ChangeValidate", 0xc65d7180);
+
+            //! Used to bind a callback to the editing complete event of a string line edit control.
+            const static AZ::Crc32 StringLineEditingCompleteNotify = AZ_CRC("StringLineEditingCompleteNotify", 0x139e5fa9);
+
             const static AZ::Crc32 NameLabelOverride = AZ_CRC("NameLabelOverride", 0x9ff79cab);
+            const static AZ::Crc32 ChildNameLabelOverride = AZ_CRC("ChildNameLabelOverride", 0x73dd2909);
             const static AZ::Crc32 DescriptionTextOverride = AZ_CRC("DescriptionTextOverride", 0x608b64a8);
 
             const static AZ::Crc32 PrimaryAssetType = AZ_CRC("PrimaryAssetType", 0xa400a5ce);
@@ -61,7 +80,7 @@ namespace AZ
             const static AZ::Crc32 ViewportIcon = AZ_CRC("ViewportIcon", 0xe7f19a70);
             const static AZ::Crc32 HideIcon = AZ_CRC("HideIcon", 0xfe652ee7);
             const static AZ::Crc32 PreferNoViewportIcon = AZ_CRC("PreferNoViewportIcon", 0x04ae9cb2);
-            const static AZ::Crc32 DynamicIconOverride = AZ_CRC("DynamicIconOverride", 0xcc4cea6b);
+            const static AZ::Crc32 DynamicIconOverride = AZ_CRC("DynamicIconOverride", 0xcc4cea6b);            
 
             //! Data attributes
             const static AZ::Crc32 Min = AZ_CRC("Min", 0xa17b1dd0);
@@ -123,9 +142,12 @@ namespace AZ
 
             // Attribute for tagging a System Component for use in certain contexts
             const static AZ::Crc32 SystemComponentTags = AZ_CRC("SystemComponentTags", 0x2d8bebc9);
-
-            // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
+            
+	    // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
             const static AZ::Crc32 Handler = AZ_CRC("Handler", 0x939715cd);
+
+            // Attribute for skipping a set amount of descendant elements which are not leaves when calculating property visibility
+            const static AZ::Crc32 VisibilitySkipNonLeafDepth = AZ_CRC("VisibilitySkipNonLeafDepth", 0x790293fa);
         }
 
 
@@ -183,6 +205,7 @@ namespace AZ
             const static AZ::Crc32 Show = AZ_CRC("PropertyVisibility_Show", 0xa43c82dd);
             const static AZ::Crc32 ShowChildrenOnly = AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20);
             const static AZ::Crc32 Hide = AZ_CRC("PropertyVisibility_Hide", 0x32ab90f7);
+            const static AZ::Crc32 HideChildren = AZ_CRC("PropertyVisibility_HideChildren", 0x13cbd01e);
         }
 
         namespace SliceFlags

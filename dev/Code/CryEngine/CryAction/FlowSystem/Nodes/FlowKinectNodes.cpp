@@ -14,6 +14,12 @@
 #include "StdAfx.h"
 #include "FlowBaseNode.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(FlowKinectNodes_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Kinect gesture system experiments.
@@ -1150,4 +1156,5 @@ void TestKinectGestureSystem()
 }
 #endif //TEST_KINECT_GESTURE_SYSTEM
 
+#endif
 ////////////////////////////////////////////////////////////////////////////////////////////////////

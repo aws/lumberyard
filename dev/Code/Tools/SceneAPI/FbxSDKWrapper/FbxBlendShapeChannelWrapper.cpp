@@ -47,17 +47,54 @@ namespace AZ
         //current runtime they must be meshes. 
         AZStd::shared_ptr<const FbxMeshWrapper> FbxBlendShapeChannelWrapper::GetTargetShape(int index) const
         {
+            //we need to create a duplicate FbxMesh from the base mesh and the target data
+            //FbxMeshWrapper needs an FbxMesh to point to so we are generating one
+            //by cloning the mesh data and then replacing with the morph data.
             FbxShape* fbxShape = m_fbxBlendShapeChannel->GetTargetShape(index);
-            FbxGeometry* fbxGeom = fbxShape? fbxShape->GetBaseGeometry() : nullptr;
-
-            if (fbxGeom && fbxGeom->GetAttributeType() == FbxNodeAttribute::EType::eMesh)
-            {
-                return AZStd::make_shared<FbxMeshWrapper>(static_cast<FbxMesh*>(fbxGeom));
-            }
-            else
+            if (!fbxShape)
             {
                 return nullptr;
             }
+
+            FbxGeometry* fbxGeom = fbxShape->GetBaseGeometry();
+            if (fbxGeom && fbxGeom->GetAttributeType() == FbxNodeAttribute::EType::eMesh)
+            {
+                FbxMesh* fbxMesh = static_cast<FbxMesh*>(fbxGeom);
+                FbxMesh* fbxBlendMesh = FbxMesh::Create(m_fbxBlendShapeChannel->GetScene(),"");
+                fbxBlendMesh->Copy(*fbxMesh);
+                //TODO: test that mesh is managed by the sdk
+                const int count = fbxBlendMesh->GetControlPointsCount();
+                //set control points from blend shape
+                for (int i = 0; i < count; i++)
+                {
+                    fbxBlendMesh->SetControlPointAt(fbxShape->GetControlPointAt(i), i);
+                }
+
+                //source data
+                FbxLayerElementArrayTemplate<FbxVector4>* normalsTemplate;
+                if (fbxShape->GetNormals(&normalsTemplate))
+                {
+                    int normalCount = normalsTemplate->GetCount();
+
+                    //destination data
+                    FbxLayer* normalLayer = fbxBlendMesh->GetLayer(0, FbxLayerElement::eNormal);
+                    if (normalLayer)
+                    {
+                        FbxLayerElementNormal* normals = normalLayer->GetNormals();
+                        if (normals)
+                        {
+                            //set normal data from blend shape
+                            for (int j = 0; j < normalCount; j++)
+                            {
+                                FbxVector4 normal = normalsTemplate->GetAt(j);
+                                normals->GetDirectArray().SetAt(j, normal);
+                            }
+                        }
+                    }
+                }
+                return AZStd::make_shared<FbxMeshWrapper>(fbxBlendMesh);
+            }
+            return nullptr;
         }
-    } // namespace FbxSDKWrapper
-} // namespace AZ
+    }
+}

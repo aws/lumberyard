@@ -1057,9 +1057,11 @@ namespace AzFramework
 
     void TransformComponent::SetParentImpl(AZ::EntityId parentId, bool isKeepWorldTM)
     {
-        // don't allow self-parenting bugs
         if (parentId == GetEntityId())
+        {
+            AZ_Warning("TransformComponent", false, "An entity can not be set as its own parent.");
             return;
+        }
 
         AZ::EntityId oldParent = m_parentId;
         if (m_parentId.IsValid())

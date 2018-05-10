@@ -156,5 +156,5 @@ namespace PhysX
 
             return updated ? AZ::SceneAPI::Events::ProcessingResult::Success : AZ::SceneAPI::Events::ProcessingResult::Ignored;
         }
-    } // namespace SceneAPI
-} // namespace AZ
+    } // namespace Pipeline
+} // namespace PhysX

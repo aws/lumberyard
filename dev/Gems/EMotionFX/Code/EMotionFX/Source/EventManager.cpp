@@ -268,7 +268,7 @@ namespace EMotionFX
         const uint32 numEvents = mRegisteredEventTypes.GetLength();
         for (uint32 i = 0; i < numEvents; ++i)
         {
-            if (mRegisteredEventTypes[i].mEventType.CheckIfIsEqualNoCase(eventType))
+            if (AzFramework::StringFunc::Equal(mRegisteredEventTypes[i].mEventType.c_str(), eventType, false /* no case */))
             {
                 return mRegisteredEventTypes[i].mEventID;
             }
@@ -322,12 +322,12 @@ namespace EMotionFX
     // get a event type string for a given event number
     const char* EventManager::GetEventTypeString(uint32 eventIndex) const
     {
-        return mRegisteredEventTypes[eventIndex].mEventType.AsChar();
+        return mRegisteredEventTypes[eventIndex].mEventType.c_str();
     }
 
 
     // get a event type string for a given event number
-    const MCore::String& EventManager::GetEventTypeStringAsString(uint32 eventIndex) const
+    const AZStd::string& EventManager::GetEventTypeStringAsString(uint32 eventIndex) const
     {
         return mRegisteredEventTypes[eventIndex].mEventType;
     }
@@ -358,7 +358,7 @@ namespace EMotionFX
         const uint32 numEvents = mRegisteredEventTypes.GetLength();
         for (uint32 i = 0; i < numEvents; ++i)
         {
-            if (mRegisteredEventTypes[i].mEventType.CheckIfIsEqualNoCase(eventType))
+            if (AzFramework::StringFunc::Equal(mRegisteredEventTypes[i].mEventType.c_str(), eventType, false /* no case */))
             {
                 return i;
             }
@@ -763,7 +763,7 @@ namespace EMotionFX
 
 
     // call the callbacks for when we renamed a node
-    void EventManager::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)
+    void EventManager::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
         // get the root state machine and call the callbacks recursively
         AnimGraphStateMachine* rootSM = animGraph->GetRootStateMachine();
@@ -1115,14 +1115,4 @@ namespace EMotionFX
         }
     }
 
-
-    // scale animgraph data
-    void EventManager::OnScaleAnimGraphData(AnimGraph* animGraph, float scaleFactor)
-    {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
-        {
-            mEventHandlers[i]->OnScaleAnimGraphData(animGraph, scaleFactor);
-        }
-    }
 } // namespace EMotionFX

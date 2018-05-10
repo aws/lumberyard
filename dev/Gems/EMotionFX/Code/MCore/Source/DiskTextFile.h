@@ -15,9 +15,8 @@
 // include the Core headers
 #include "StandardHeaders.h"
 #include "DiskFile.h"
-#include "UnicodeString.h"
 #include "MemoryManager.h"
-
+#include "Array.h"
 
 namespace MCore
 {
@@ -70,7 +69,7 @@ namespace MCore
          * @param maxLineLength The maximum length in characters, of a single line. This makes sure the read buffer inside this class is big enough to read this amount of data.
          * @result Returns true when the line has been successfully read, or false when the end of the file has been reached and there are no lines left.
          */
-        bool ReadLine(MCore::String& outResultString, uint32 maxLineLength = 4096);
+        bool ReadLine(AZStd::string& outResultString, uint32 maxLineLength = 4096);
 
         /**
          * Read the entire text file from its current position into a given string.
@@ -79,7 +78,7 @@ namespace MCore
          * @param maxLineLength The maximum length in characters, of a single line. This makes sure the read buffer inside this class is big enough to read this amount of data.
          * @result Returns true when there is no error, or false when an error occurred.
          */
-        bool ReadAllLinesAsString(MCore::String& outResultString, uint32 maxLineLength = 4096);
+        bool ReadAllLinesAsString(AZStd::string& outResultString, uint32 maxLineLength = 4096);
 
         /**
          * Reads the entire text file into an array of strings.
@@ -89,14 +88,14 @@ namespace MCore
          * @param maxLineLength The maximum length in characters, of a single line. This makes sure the read buffer inside this class is big enough to read this amount of data.
          * @result Returns true when there is no error, or false when an error occurred.
          */
-        bool ReadAllLinesAsStringArray(MCore::Array<MCore::String>& outResultArray, uint32 maxLineLength = 4096);
+        bool ReadAllLinesAsStringArray(MCore::Array<AZStd::string>& outResultArray, uint32 maxLineLength = 4096);
 
         /**
          * Write a string to the text file.
          * @param stringToWrite The string to write. Please keep in mind that it does NOT automatically add an 'enter' behind the string.
          * @result Returns true when succeeded or false in case of an error.
          */
-        bool WriteString(const MCore::String& stringToWrite);
+        bool WriteString(const AZStd::string& stringToWrite);
 
         /**
          * Write a string to the text file.

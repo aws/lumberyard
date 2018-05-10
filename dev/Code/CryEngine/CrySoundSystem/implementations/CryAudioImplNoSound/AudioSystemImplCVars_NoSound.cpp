@@ -33,16 +33,27 @@ namespace Audio
 
     #if defined(AZ_PLATFORM_WINDOWS)
         m_nPrimaryPoolSize = 128 << 10;// 128 MiB
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_OSX)
         m_nPrimaryPoolSize = 128 << 10;// 128 MiB
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_LINUX_X64)
         m_nPrimaryPoolSize = 128 << 10;// 128 MiB
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_IOS)
         m_nPrimaryPoolSize = 8 << 10;// 8 MiB
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_TV)
         m_nPrimaryPoolSize = 8 << 10;// 8 MiB
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_ANDROID)
         m_nPrimaryPoolSize = 8 << 10;// 8 MiB
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AudioSystemImplCVars_NoSound_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
     #else
         #error "Unsupported platform!"
     #endif

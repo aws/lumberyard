@@ -35,8 +35,8 @@ namespace EMStudio
     {
         mRootSelected = false;
 
-        mMeshIcon       = new QIcon(MCore::String(MysticQt::GetDataDir() + "Images/Icons/Mesh.png").AsChar());
-        mCharacterIcon  = new QIcon(MCore::String(MysticQt::GetDataDir() + "Images/Icons/Character.png").AsChar());
+        mMeshIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Mesh.png").c_str());
+        mCharacterIcon  = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Character.png").c_str());
 
         QVBoxLayout* layout = new QVBoxLayout();
         layout->setMargin(0);
@@ -175,7 +175,8 @@ namespace EMStudio
     void CollisionMeshesNodeHierarchyWidget::AddActorInstance(EMotionFX::ActorInstance* actorInstance)
     {
         EMotionFX::Actor*   actor       = actorInstance->GetActor();
-        MCore::String       actorName   = actor->GetFileNameString().ExtractFileName();
+        AZStd::string       actorName;
+        AzFramework::StringFunc::Path::GetFileName(actor->GetFileNameString().c_str(), actorName);
         const uint32        numNodes    = actor->GetNumNodes();
 
         // calculate the number of polygons and indices
@@ -185,14 +186,14 @@ namespace EMStudio
         QTreeWidgetItem* rootItem = new QTreeWidgetItem(mHierarchy);
         rootItem->setSelected(mRootSelected);
 
-        rootItem->setText(0, actorName.AsChar());
+        rootItem->setText(0, actorName.c_str());
         rootItem->setText(1, "Character");
-        rootItem->setText(2, MCore::String(numNodes).AsChar());
-        rootItem->setText(3, MCore::String(numIndices / 3).AsChar());
+        rootItem->setText(2, AZStd::to_string(numNodes).c_str());
+        rootItem->setText(3, AZStd::to_string(numIndices / 3).c_str());
         rootItem->setText(4, "");
         rootItem->setExpanded(true);
         rootItem->setIcon(0, *mCharacterIcon);
-        QString whatsthis = MCore::String(actorInstance->GetID()).AsChar();
+        QString whatsthis = AZStd::to_string(actorInstance->GetID()).c_str();
         rootItem->setWhatsThis(0, whatsthis);
 
         mHierarchy->addTopLevelItem(rootItem);
@@ -211,9 +212,11 @@ namespace EMStudio
     }
 
 
-    bool CollisionMeshesNodeHierarchyWidget::CheckIfNodeVisible(const MCore::String& nodeName, bool isMeshNode)
+    bool CollisionMeshesNodeHierarchyWidget::CheckIfNodeVisible(const AZStd::string& nodeName, bool isMeshNode)
     {
-        if ((isMeshNode) && (mFindString.GetIsEmpty() || nodeName.Lowered().Contains(mFindString.AsChar())))
+        AZStd::string loweredNodeName = nodeName;
+        AZStd::to_lower(loweredNodeName.begin(), loweredNodeName.end());
+        if ((isMeshNode) && (mFindString.empty() || loweredNodeName.find(mFindString) != AZStd::string::npos))
         {
             return true;
         }
@@ -246,7 +249,7 @@ namespace EMStudio
     void CollisionMeshesNodeHierarchyWidget::RecursivelyAddChilds(QTreeWidgetItem* parent, EMotionFX::Actor* actor, EMotionFX::ActorInstance* actorInstance, EMotionFX::Node* node)
     {
         const uint32        nodeIndex   = node->GetNodeIndex();
-        MCore::String       nodeName    = node->GetNameString();
+        AZStd::string       nodeName    = node->GetNameString();
         const uint32        numChildren = node->GetNumChildNodes();
         EMotionFX::Mesh*    mesh        = actor->GetMesh(mLODSpinBox->value(), nodeIndex);
         const bool          isMeshNode  = (mesh);
@@ -257,17 +260,17 @@ namespace EMStudio
             item->setSelected(mLODNodeList[mLODSpinBox->value()].Contains(nodeName));
 
             item->setText(0, node->GetName());
-            mTempString.Format("%d", numChildren);
-            item->setText(2, mTempString.AsChar());
+            mTempString = AZStd::string::format("%d", numChildren);
+            item->setText(2, mTempString.c_str());
             item->setExpanded(true);
-            mTempString.Format("%d", actorInstance->GetID());
-            item->setWhatsThis(0, mTempString.AsChar());
+            mTempString = AZStd::string::format("%d", actorInstance->GetID());
+            item->setWhatsThis(0, mTempString.c_str());
 
             // set the correct icon and the type
             item->setIcon(0, *mMeshIcon);
             item->setText(1, "Mesh");
-            mTempString.Format("%d", mesh->GetNumIndices() / 3);
-            item->setText(3, mTempString.AsChar());
+            mTempString = AZStd::string::format("%d", mesh->GetNumIndices() / 3);
+            item->setText(3, mTempString.c_str());
 
             // the mirrored node
             const bool hasMirrorInfo = actor->GetHasMirrorInfo();
@@ -331,7 +334,7 @@ namespace EMStudio
                 continue;
             }
 
-            const MCore::String nodeName = FromQtString(item->text(0));
+            const AZStd::string nodeName = FromQtString(item->text(0));
             if (mLODNodeList[currentLOD].Contains(nodeName) == false)
             {
                 mLODNodeList[currentLOD].Add(nodeName);
@@ -365,17 +368,20 @@ namespace EMStudio
             for (uint32 i = 0; i < numSelectedNodes; ++i)
             {
                 QTreeWidgetItem* item = selectedItems[i];
-                const MCore::String nodeName = FromQtString(item->text(0));
+                const AZStd::string nodeName = FromQtString(item->text(0));
                 EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(mActorInstanceID);
-                EMotionFX::Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(nodeName);
-                EMotionFX::Node* parentNode = node->GetParentNode();
-                while (parentNode)
+                EMotionFX::Node* node = actorInstance->GetActor()->GetSkeleton()->FindNodeByName(nodeName.c_str());
+                if (node)
                 {
-                    if (mLODNodeList[currentLOD].Contains(parentNode->GetNameString()) == false)
+                    EMotionFX::Node* parentNode = node->GetParentNode();
+                    while (parentNode)
                     {
-                        mLODNodeList[currentLOD].Add(parentNode->GetNameString());
+                        if (mLODNodeList[currentLOD].Contains(parentNode->GetNameString()) == false)
+                        {
+                            mLODNodeList[currentLOD].Add(parentNode->GetNameString());
+                        }
+                        parentNode = parentNode->GetParentNode();
                     }
-                    parentNode = parentNode->GetParentNode();
                 }
             }
 
@@ -391,7 +397,7 @@ namespace EMStudio
     void CollisionMeshesNodeHierarchyWidget::TextChanged(const QString& text)
     {
         FromQtString(text, &mFindString);
-        mFindString.ToLower();
+        AZStd::to_lower(mFindString.begin(), mFindString.end());
         Update();
     }
 

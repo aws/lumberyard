@@ -11,15 +11,18 @@
 *
 */
 
-QProgressBar:horizontal
+QProgressBar
 {
     border: 0px transparent #000000;
     border-radius: 0px;
     background: #888888;
+    height: 7px;
+    font-size: 1px; /* hack to get around the fact that QProgressBar's minimumSizeHint
+                       is computed from font size, even when text is invisible */
     qproperty-textVisible: False;
 }
 
-QProgressBar::chunk:horizontal
+QProgressBar::chunk
 {
     background: #B48BFF;
 }

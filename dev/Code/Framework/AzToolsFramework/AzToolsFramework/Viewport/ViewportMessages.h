@@ -93,7 +93,8 @@ namespace AzToolsFramework
             bool Middle() const { return (m_mouseButtons & static_cast<AZ::u32>(MouseButton::Middle)) != 0; }
             bool Right() const { return (m_mouseButtons & static_cast<AZ::u32>(MouseButton::Right)) != 0; }
             bool None() const { return m_mouseButtons == static_cast<AZ::u32>(MouseButton::None); }
-            
+            bool Any() const { return m_mouseButtons != static_cast<AZ::u32>(MouseButton::None); }
+
             AZ::u32 m_mouseButtons = 0;
         };
 

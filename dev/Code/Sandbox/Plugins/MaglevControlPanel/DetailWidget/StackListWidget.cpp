@@ -26,8 +26,9 @@
 #include "ButtonBarWidget.h"
 #include "StackStatusWidget.h"
 
-StackListWidget::StackListWidget(QSharedPointer<IStackStatusListModel> stackStatusListModel)
-    : m_stackStatusListModel{stackStatusListModel}
+StackListWidget::StackListWidget(QSharedPointer<IStackStatusListModel> stackStatusListModel, QWidget* parent)
+    : QFrame(parent)
+    , m_stackStatusListModel{stackStatusListModel}
 {
     CreateUI();
 }
@@ -38,25 +39,23 @@ void StackListWidget::CreateUI()
 
     setObjectName("StackList");
 
-    auto rootLayout = new QVBoxLayout {};
+    auto rootLayout = new QVBoxLayout {this};
     rootLayout->setSpacing(0);
     rootLayout->setMargin(0);
-    setLayout(rootLayout);
 
     // top
 
-    auto topWidget = new QFrame {};
+    auto topWidget = new QFrame {this};
     topWidget->setObjectName("Top");
     rootLayout->addWidget(topWidget);
 
-    auto topLayout = new QVBoxLayout {};
+    auto topLayout = new QVBoxLayout {topWidget};
     topLayout->setSpacing(0);
     topLayout->setMargin(0);
-    topWidget->setLayout(topLayout);
 
     // top - heading
 
-    auto headingWidget = new HeadingWidget {};
+    auto headingWidget = new HeadingWidget {topWidget};
     headingWidget->SetTitleText(m_stackStatusListModel->GetMainTitleText());
     headingWidget->SetMessageText(m_stackStatusListModel->GetMainMessageText());
     connect(headingWidget, &HeadingWidget::RefreshClicked, this, [this](){ m_stackStatusListModel->Refresh(); });
@@ -69,14 +68,13 @@ void StackListWidget::CreateUI()
 
     // bottom
 
-    auto bottomWidget = new QFrame {};
+    auto bottomWidget = new QFrame {this};
     bottomWidget->setObjectName("Bottom");
     rootLayout->addWidget(bottomWidget, 1);
 
-    auto bottomLayout = new QVBoxLayout {};
+    auto bottomLayout = new QVBoxLayout {bottomWidget};
     bottomLayout->setMargin(0);
     bottomLayout->setSpacing(0);
-    bottomWidget->setLayout(bottomLayout);
 
     // bottom - title
 
@@ -86,7 +84,7 @@ void StackListWidget::CreateUI()
     bottomLayout->addLayout(titleRowLayout);
 
     auto listTitleLabel = new QLabel {
-        m_stackStatusListModel->GetListTitleText()
+        m_stackStatusListModel->GetListTitleText(), bottomWidget
     };
     listTitleLabel->setObjectName("Title");
     titleRowLayout->addWidget(listTitleLabel);
@@ -94,7 +92,7 @@ void StackListWidget::CreateUI()
     titleRowLayout->addStretch();
 
     m_refreshingLabel = new QLabel {
-        tr("Refreshing...")
+        tr("Refreshing..."), bottomWidget
     };
     m_refreshingLabel->setObjectName("Refreshing");
     titleRowLayout->addWidget(m_refreshingLabel);
@@ -112,7 +110,7 @@ void StackListWidget::CreateUI()
 
     // bottom - table
 
-    m_listTable = new MaximumSizedTableView {};
+    m_listTable = new MaximumSizedTableView {bottomWidget};
     m_listTable->setObjectName("Table");
     m_listTable->TableView()->setModel(m_stackStatusListModel.data());
     m_listTable->TableView()->verticalHeader()->hide();

@@ -170,7 +170,7 @@ namespace AzToolsFramework
 
             if (visible)
             {
-                pair.second->Draw(display, cameraState, mouseInteraction);
+                pair.second->Draw({ Interacting() }, display, cameraState, mouseInteraction);
             }
         }
 

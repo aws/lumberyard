@@ -37,7 +37,7 @@ class SANDBOX_API CEditTool
 {
     Q_OBJECT
 public:
-    CEditTool(QObject* parent = nullptr);
+    explicit CEditTool(QObject* parent = nullptr);
 
     //////////////////////////////////////////////////////////////////////////
     // For reference counting.

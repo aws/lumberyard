@@ -288,7 +288,6 @@ void ResourceManifest::ReadConfig()
         {
             QTextStream in(&file);
             m_url = in.readAll().trimmed();
-            m_downloader->SetUseCertPinning(false);
             file.close();
         }
     }

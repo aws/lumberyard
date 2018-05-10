@@ -295,7 +295,7 @@ namespace EMStudio
 
         // children
         const uint32 numChildren = node->GetNumChildNodes();
-        MCore::String childNrString;
+        AZStd::string childNrString;
         if (numChildren > 0)
         {
             mPropertyWidget->AddReadOnlyIntProperty("", "Child Nodes", numChildren);
@@ -303,9 +303,9 @@ namespace EMStudio
             for (i = 0; i < numChildren; ++i)
             {
                 EMotionFX::Node* child = actor->GetSkeleton()->GetNode(node->GetChildIndex(i));
-                childNrString.Format("Child #%d", i);
+                childNrString = AZStd::string::format("Child #%d", i);
 
-                mPropertyWidget->AddReadOnlyStringProperty("Child Nodes", childNrString.AsChar(), child->GetName());
+                mPropertyWidget->AddReadOnlyStringProperty("Child Nodes", childNrString.c_str(), child->GetName());
             }
 
             mPropertyWidget->SetIsExpanded("Child Nodes", true);
@@ -336,13 +336,13 @@ namespace EMStudio
 
         if (numMeshes > 0)
         {
-            MCore::String groupName;
+            AZStd::string groupName;
             mPropertyWidget->AddReadOnlyIntProperty("", "Meshes", numMeshes);
             for (i = 0; i < numLODLevels; ++i)
             {
                 EMotionFX::Mesh* mesh = actor->GetMesh(i, node->GetNodeIndex());
-                groupName.Format("Meshes.LOD%d", i);
-                FillMeshInfo(groupName, mesh, node, actorInstance, i, false);
+                groupName = AZStd::string::format("Meshes.LOD%d", i);
+                FillMeshInfo(groupName.c_str(), mesh, node, actorInstance, i, false);
             }
             mPropertyWidget->SetIsExpanded("Meshes", true);
         }
@@ -375,7 +375,7 @@ namespace EMStudio
         }
 
         uint32 i;
-        MCore::String temp, tempGroupName;
+        AZStd::string temp, tempGroupName;
         EMotionFX::Actor* actor = actorInstance->GetActor();
 
         // main mesh property
@@ -414,12 +414,12 @@ namespace EMStudio
         tempGroupName = groupName;
         tempGroupName += ".Max Influences";
         mPropertyWidget->AddReadOnlyIntProperty(groupName, "Max Influences", maxNumInfluences);
-        mPropertyWidget->SetIsExpanded(tempGroupName.AsChar(), true);
+        mPropertyWidget->SetIsExpanded(tempGroupName.c_str(), true);
         for (i = 0; i < maxNumInfluences; ++i)
         {
-            mString.Format("%d Influence%s", i, (i != 1) ? "s" : "");
-            temp.Format("%d vertices", vertexCounts[i]);
-            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.AsChar(), mString.AsChar(), temp.AsChar());
+            mString = AZStd::string::format("%d Influence%s", i, (i != 1) ? "s" : "");
+            temp = AZStd::string::format("%d vertices", vertexCounts[i]);
+            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.c_str(), mString.c_str(), temp.c_str());
         }
 
         // sub meshes
@@ -428,26 +428,26 @@ namespace EMStudio
         tempGroupName = groupName;
         tempGroupName += ".Sub Meshes";
         mPropertyWidget->AddReadOnlyIntProperty(groupName, "Sub Meshes", numSubMeshes);
-        mPropertyWidget->SetIsExpanded(tempGroupName.AsChar(), true);
+        mPropertyWidget->SetIsExpanded(tempGroupName.c_str(), true);
 
         for (i = 0; i < numSubMeshes; ++i)
         {
             EMotionFX::SubMesh* subMesh = mesh->GetSubMesh(i);
             const uint32 numBones = subMesh->GetNumBones();
 
-            mString.Format("Sub Mesh #%d", i);
+            mString = AZStd::string::format("Sub Mesh #%d", i);
 
             tempGroupName = groupName;
             tempGroupName += ".Sub Meshes.";
             tempGroupName += mString;
 
-            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.AsChar(), "Material", actor->GetMaterial(lodLevel, subMesh->GetMaterial())->GetName());
-            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.AsChar(), "Vertices", subMesh->GetNumVertices());
-            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.AsChar(), "Indices", subMesh->GetNumIndices());
-            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.AsChar(), "Polygons", subMesh->GetNumPolygons());
+            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.c_str(), "Material", actor->GetMaterial(lodLevel, subMesh->GetMaterial())->GetName());
+            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.c_str(), "Vertices", subMesh->GetNumVertices());
+            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.c_str(), "Indices", subMesh->GetNumIndices());
+            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.c_str(), "Polygons", subMesh->GetNumPolygons());
 
             // bones
-            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.AsChar(), "Bones", numBones);
+            mPropertyWidget->AddReadOnlyIntProperty(tempGroupName.c_str(), "Bones", numBones);
         }
 
         // vertex attribute layers
@@ -456,7 +456,7 @@ namespace EMStudio
         tempGroupName = groupName;
         tempGroupName += ".Attribute Layers";
         mPropertyWidget->AddReadOnlyIntProperty(groupName, "Attribute Layers", numVertexAttributeLayers);
-        mPropertyWidget->SetIsExpanded(tempGroupName.AsChar(), true);
+        mPropertyWidget->SetIsExpanded(tempGroupName.c_str(), true);
 
         for (i = 0; i < numVertexAttributeLayers; ++i)
         {
@@ -490,15 +490,15 @@ namespace EMStudio
                 mString = "Vertex bitangents";
                 break;
             default:
-                mString.Format("Unknown data (TypeID=%d)", attributeLayerType);
+                mString = AZStd::string::format("Unknown data (TypeID=%d)", attributeLayerType);
             }
 
-            if (attributeLayer->GetNameString().GetLength() > 0)
+            if (attributeLayer->GetNameString().size() > 0)
             {
-                mString.FormatAdd(" [%s]", attributeLayer->GetName());
+                mString += AZStd::string::format(" [%s]", attributeLayer->GetName());
             }
 
-            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.AsChar(), attributeLayer->GetTypeString(), mString.AsChar());
+            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.c_str(), attributeLayer->GetTypeString(), mString.c_str());
         }
 
 
@@ -508,7 +508,7 @@ namespace EMStudio
         tempGroupName = groupName;
         tempGroupName += ".Shared Attribute Layers";
         mPropertyWidget->AddReadOnlyIntProperty(groupName, "Shared Attribute Layers", numSharedVertexAttributeLayers);
-        mPropertyWidget->SetIsExpanded(tempGroupName.AsChar(), true);
+        mPropertyWidget->SetIsExpanded(tempGroupName.c_str(), true);
 
         for (i = 0; i < numSharedVertexAttributeLayers; ++i)
         {
@@ -521,15 +521,15 @@ namespace EMStudio
                 mString = "Skinning info";
                 break;
             default:
-                mString.Format("Unknown data (TypeID=%d)", attributeLayerType);
+                mString = AZStd::string::format("Unknown data (TypeID=%d)", attributeLayerType);
             }
 
-            if (attributeLayer->GetNameString().GetLength() > 0)
+            if (attributeLayer->GetNameString().size() > 0)
             {
-                mString.FormatAdd(" [%s]", attributeLayer->GetName());
+                mString += AZStd::string::format(" [%s]", attributeLayer->GetName());
             }
 
-            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.AsChar(), attributeLayer->GetTypeString(), mString.AsChar());
+            mPropertyWidget->AddReadOnlyStringProperty(tempGroupName.c_str(), attributeLayer->GetTypeString(), mString.c_str());
         }
     }
 
@@ -543,17 +543,17 @@ namespace EMStudio
         /*MysticQt::PropertyWidget::Property* headerProperty = */ mPropertyWidget->AddReadOnlyStringProperty("", "Name", actor->GetName());
 
         // exporter information
-        MCore::String sourceApplication         = actor->GetAttributeSet()->GetStringAttribute("sourceApplication");
-        MCore::String originalFileName          = actor->GetAttributeSet()->GetStringAttribute("originalFileName");
-        MCore::String exporterCompilationDate   = actor->GetAttributeSet()->GetStringAttribute("exporterCompilationDate");
+        AZStd::string sourceApplication         = actor->GetAttributeSet()->GetStringAttribute("sourceApplication");
+        AZStd::string originalFileName          = actor->GetAttributeSet()->GetStringAttribute("originalFileName");
+        AZStd::string exporterCompilationDate   = actor->GetAttributeSet()->GetStringAttribute("exporterCompilationDate");
 
-        mPropertyWidget->AddReadOnlyStringProperty("", "Source Application", sourceApplication);
-        mPropertyWidget->AddReadOnlyStringProperty("", "Original FileName", originalFileName);
-        mPropertyWidget->AddReadOnlyStringProperty("", "Exporter Compilation Date", exporterCompilationDate);
+        mPropertyWidget->AddReadOnlyStringProperty("", "Source Application", sourceApplication.c_str());
+        mPropertyWidget->AddReadOnlyStringProperty("", "Original FileName", originalFileName.c_str());
+        mPropertyWidget->AddReadOnlyStringProperty("", "Exporter Compilation Date", exporterCompilationDate.c_str());
 
         // unit type
-        MCore::String fileUnitType = MCore::Distance::UnitTypeToString(actor->GetFileUnitType());
-        mPropertyWidget->AddReadOnlyStringProperty("", "File Unit Type", fileUnitType.AsChar());
+        AZStd::string fileUnitType = MCore::Distance::UnitTypeToString(actor->GetFileUnitType());
+        mPropertyWidget->AddReadOnlyStringProperty("", "File Unit Type", fileUnitType.c_str());
 
         // nodes
         const uint32 numNodes = actor->GetNumNodes();
@@ -565,8 +565,8 @@ namespace EMStudio
         for (uint32 i = 0; i < numNodeGroups; ++i)
         {
             EMotionFX::NodeGroup* nodeGroup = actor->GetNodeGroup(i);
-            mString.Format("Node Group #%d", i);
-            mPropertyWidget->AddReadOnlyStringProperty("Node Groups", mString.AsChar(), nodeGroup->GetName());
+            mString = AZStd::string::format("Node Group #%d", i);
+            mPropertyWidget->AddReadOnlyStringProperty("Node Groups", mString.c_str(), nodeGroup->GetName());
 
             // construct the full group name
             mTempGroupName = "Node Groups.";
@@ -578,7 +578,7 @@ namespace EMStudio
             {
                 uint16              nodeIndex   = nodeGroup->GetNode(j);
                 EMotionFX::Node*    node        = actor->GetSkeleton()->GetNode(nodeIndex);
-                mPropertyWidget->AddReadOnlyIntProperty(mTempGroupName.AsChar(), node->GetName(), j);
+                mPropertyWidget->AddReadOnlyIntProperty(mTempGroupName.c_str(), node->GetName(), j);
             }
 
             mPropertyWidget->SetIsExpanded("Node Groups", true);
@@ -630,7 +630,8 @@ namespace EMStudio
             return;
         }
 
-        MCore::String filterString  = mHierarchyWidget->GetFilterString().ToLower();
+        AZStd::string filterString = mHierarchyWidget->GetFilterString();
+        AZStd::to_lower(filterString.begin(), filterString.end());
         const bool showNodes        = mHierarchyWidget->GetDisplayNodes();
         const bool showBones        = mHierarchyWidget->GetDisplayBones();
         const bool showMeshes       = mHierarchyWidget->GetDisplayMeshes();
@@ -647,14 +648,14 @@ namespace EMStudio
         actor->ExtractBoneList(actorInstance->GetLODLevel(), &boneList);
 
         // iterate through all nodes and check if the node is visible
-        MCore::String nodeName;
+        AZStd::string nodeName;
         for (uint32 i = 0; i < numNodes; ++i)
         {
             EMotionFX::Node* node = actor->GetSkeleton()->GetNode(i);
 
             // get the node name and lower case it
             nodeName = node->GetNameString();
-            nodeName.ToLower();
+            AZStd::to_lower(nodeName.begin(), nodeName.end());
 
             const uint32        nodeIndex   = node->GetNodeIndex();
             EMotionFX::Mesh*    mesh        = actor->GetMesh(actorInstance->GetLODLevel(), nodeIndex);
@@ -665,7 +666,7 @@ namespace EMStudio
             if (((showMeshes && isMeshNode) ||
                  (showBones && isBone) ||
                  (showNodes && isNode)) &&
-                (filterString.GetIsEmpty() || nodeName.Contains(filterString.AsChar())))
+                (filterString.empty() || nodeName.find(filterString) != AZStd::string::npos))
             {
                 // this node is visible!
                 mVisibleNodeIndices.Add(nodeIndex);

@@ -291,7 +291,7 @@ private:
     // Only when the counter reaches 0 again SubmitPendingListenerNotifcations
     // will submit the notifications
     void QueueNotifications();
-    void SubmitPendingNotifcations();
+    void SubmitPendingNotifcations(bool force = false);
 
     /////////////////////////////////////////////////////////////////////////
     // overrides for ITrackViewSequenceManagerListener

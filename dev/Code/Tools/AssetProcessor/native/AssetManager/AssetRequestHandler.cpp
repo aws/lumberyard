@@ -99,7 +99,7 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         EBUS_EVENT_RESULT(relPathFound, AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, request->m_sourceOrProductPath, relProductPath);
         if (!relPathFound)
         {
-            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Could not find relative product path for the source file (%s).", request->m_sourceOrProductPath);
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Could not find relative product path for the source file (%s).", request->m_sourceOrProductPath.c_str());
         }
 
         GetRelativeProductPathFromFullSourceOrProductPathResponse response(relPathFound, relProductPath);

@@ -66,8 +66,8 @@ public:
     //! This callback will be called on response to object event.
     typedef Functor2<CBaseObject*, int> EventCallback;
 
-    virtual CBaseObject* NewObject(CObjectClassDesc* cls, CBaseObject* prev = 0, const QString& file = "") = 0;
-    virtual CBaseObject* NewObject(const QString& typeName, CBaseObject* prev = 0, const QString& file = "") = 0;
+    virtual CBaseObject* NewObject(CObjectClassDesc* cls, CBaseObject* prev = 0, const QString& file = "", const char* newObjectName = nullptr) = 0;
+    virtual CBaseObject* NewObject(const QString& typeName, CBaseObject* prev = 0, const QString& file = "", const char* newObjectName = nullptr) = 0;
     virtual CBaseObject* NewObject(CObjectArchive& archive, CBaseObject* pUndoObject = 0, bool bMakeNewId = false) = 0;
 
     virtual void DeleteObject(CBaseObject* obj) = 0;

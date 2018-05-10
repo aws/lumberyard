@@ -27,6 +27,7 @@
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/tools.h>
 
 namespace GraphCanvas
@@ -44,7 +45,7 @@ namespace GraphCanvas
                 ->Field("LayoutOrder", &SlotGroupConfiguration::m_layoutOrder)
             ;
 
-            serializeContext->Class<GeneralSlotLayoutComponent>()
+            serializeContext->Class<GeneralSlotLayoutComponent, AZ::Component>()
                 ->Version(2)
                 ->Field("EnableDividers", &GeneralSlotLayoutComponent::m_enableDividers)
                 ->Field("ConfigurationMap", &GeneralSlotLayoutComponent::m_slotGroupConfigurations)
@@ -116,6 +117,7 @@ namespace GraphCanvas
 
     void GeneralSlotLayoutGraphicsWidget::LayoutDividerWidget::UpdateStyle(const Styling::StyleHelper& styleHelper)
     {
+        prepareGeometryChange();
         qreal border = AZStd::max(1., styleHelper.GetAttribute(Styling::Attribute::BorderWidth, 0.));
         
         QColor dividerColor = styleHelper.GetColor(Styling::Attribute::BorderColor);
@@ -127,7 +129,7 @@ namespace GraphCanvas
         setPreferredHeight(border);
         setMaximumHeight(border);
 
-        adjustSize();
+        updateGeometry();
         update();
     }
 
@@ -291,13 +293,10 @@ namespace GraphCanvas
             internalLayout->setSpacing(spacing);
             internalLayout->invalidate();
             internalLayout->updateGeometry();
-        }
-        
-        adjustSize();
+        }        
+
         updateGeometry();
         update();
-
-        m_horizontalSpacer->adjustSize();
     }
 
     QGraphicsLayoutItem* GeneralSlotLayoutGraphicsWidget::LinearSlotGroupWidget::GetLayoutItem(const AZ::EntityId& slotId) const
@@ -424,6 +423,18 @@ namespace GraphCanvas
         }
     }
 
+    bool GeneralSlotLayoutGraphicsWidget::IsSlotGroupVisible(SlotGroup group) const
+    {
+        bool isVisible = false;
+        if (group != SlotGroups::Invalid)
+        {
+            SlotGroupConfiguration& slotConfiguration = m_nodeSlots.m_slotGroupConfigurations[group];
+            isVisible = slotConfiguration.m_visible;
+        }
+
+        return isVisible;
+    }
+
     void GeneralSlotLayoutGraphicsWidget::SetSlotGroupVisible(SlotGroup group, bool visible)
     {
         if (group != SlotGroups::Invalid)
@@ -472,11 +483,6 @@ namespace GraphCanvas
 
         updateGeometry();
         update();
-    }
-
-    void GeneralSlotLayoutGraphicsWidget::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
-    {
-        QGraphicsWidget::paint(painter, option, widget);
     }
 
     bool GeneralSlotLayoutGraphicsWidget::DisplaySlot(const AZ::EntityId& slotId)
@@ -615,7 +621,6 @@ namespace GraphCanvas
         }
         
         updateGeometry();
-        adjustSize();
         RefreshDisplay();
 
         NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
@@ -642,7 +647,6 @@ namespace GraphCanvas
         }
 
         updateGeometry();
-        adjustSize();
         RefreshDisplay();
     }
 

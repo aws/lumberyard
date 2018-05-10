@@ -30,8 +30,6 @@ namespace AZ
 
 namespace ScriptCanvas
 {
-    class SystemComponent;
-
     class BehaviorContextObject final
     {
         friend struct AZStd::IntrusivePtrCountPolicy<BehaviorContextObject>;
@@ -92,8 +90,6 @@ namespace ScriptCanvas
 
         AZ_INLINE static BehaviorContextObject* CreateDefaultHeap(const AZ::BehaviorClass& behaviorClass);
 
-        static SystemComponent* GetSystemComponent();
-
         // use the SSO optimization on behavior class size ALIGNED with a placement new of behavior class create
         AZ_FORCE_INLINE static AnyTypeInfo GetAnyTypeInfoObject(const AZ::BehaviorClass& behaviorClass);
 
@@ -107,7 +103,7 @@ namespace ScriptCanvas
 
         AZ_FORCE_INLINE static AnyTypeHandlerFunction GetHandlerReference();
 
-        AZ_FORCE_INLINE static void CheckClass(const AZ::BehaviorClass& behaviorClass);
+        static void CheckClass(const AZ::BehaviorClass& behaviorClass);
 
         AZStd::atomic_int m_referenceCount;
         AZ::u32 m_flags{ 0 };
@@ -172,15 +168,6 @@ namespace ScriptCanvas
     AZ_INLINE const t_Value* BehaviorContextObject::CastConst() const
     {
         return AZStd::any_cast<const t_Value>(&m_object);
-    }
-
-    AZ_FORCE_INLINE void BehaviorContextObject::CheckClass(const AZ::BehaviorClass& behaviorClass)
-    {
-        AZ_Assert(behaviorClass.m_allocate, "Script Canvas Objects only support fully supported behavior classes. %s does not have an allocate", behaviorClass.m_name.c_str());
-        AZ_Assert(behaviorClass.m_cloner, "Script Canvas Objects only support fully supported behavior classes. %s does not have a cloner", behaviorClass.m_name.c_str());
-        AZ_Assert(behaviorClass.m_mover, "Script Canvas Objects only support fully supported behavior classes. %s does not have a mover", behaviorClass.m_name.c_str());
-        AZ_Assert(behaviorClass.m_destructor, "Script Canvas Objects only support fully supported behavior classes. %s does not have a destructor", behaviorClass.m_name.c_str());
-        AZ_Assert(behaviorClass.m_deallocate, "Script Canvas Objects only support fully supported behavior classes. %s does not have a deallocate", behaviorClass.m_name.c_str());
     }
 
     AZ_FORCE_INLINE void BehaviorContextObject::Clear()

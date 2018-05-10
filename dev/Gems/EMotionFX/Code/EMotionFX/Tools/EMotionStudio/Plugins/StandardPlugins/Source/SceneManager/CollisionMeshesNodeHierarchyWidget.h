@@ -15,7 +15,6 @@
 // include MCore
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <MysticQt/Source/SearchButton.h>
 #include <MysticQt/Source/IntSpinbox.h>
@@ -48,11 +47,11 @@ namespace EMStudio
 
         MCORE_INLINE QTreeWidget* GetTreeWidget()                                                               { return mHierarchy; }
         MCORE_INLINE MysticQt::SearchButton* GetSearchButton()                                                  { return mFindWidget; }
-        MCORE_INLINE MCore::String GetFilterString()                                                            { return FromQtString(mFindWidget->GetSearchEdit()->text()); }
+        MCORE_INLINE AZStd::string GetFilterString()                                                            { return FromQtString(mFindWidget->GetSearchEdit()->text()); }
         MCORE_INLINE uint32 GetActorInstanceID()                                                                { return mActorInstanceID; }
-        MCORE_INLINE MCore::Array<MCore::Array<MCore::String> >& GetLODNodeList()                                { return mLODNodeList; }
+        MCORE_INLINE MCore::Array<MCore::Array<AZStd::string> >& GetLODNodeList()                                { return mLODNodeList; }
 
-        bool CheckIfNodeVisible(const MCore::String& nodeName, bool isMeshNode);
+        bool CheckIfNodeVisible(const AZStd::string& nodeName, bool isMeshNode);
 
     public slots:
         void UpdateSelection();
@@ -71,10 +70,10 @@ namespace EMStudio
         MysticQt::SearchButton*                     mFindWidget;
         QIcon*                                      mMeshIcon;
         QIcon*                                      mCharacterIcon;
-        MCore::String                               mFindString;
+        AZStd::string                               mFindString;
         uint32                                      mActorInstanceID;
-        MCore::String                               mTempString;
-        MCore::Array<MCore::Array<MCore::String> >   mLODNodeList;
+        AZStd::string                               mTempString;
+        MCore::Array<MCore::Array<AZStd::string> >   mLODNodeList;
         bool                                        mRootSelected;
     };
 } // namespace EMStudio

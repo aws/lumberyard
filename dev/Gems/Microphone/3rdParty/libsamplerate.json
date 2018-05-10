@@ -47,6 +47,7 @@
             "lib": [
                 "${lib_names}.lib"
             ]
-        }
+        },
+        "win_x64_vs2017": "@win_x64_vs2015"
     }
 }

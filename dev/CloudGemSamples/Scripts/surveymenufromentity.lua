@@ -286,8 +286,15 @@ function surveymenu:UpdateButtons()
 end
 
 function surveymenu:SaveResults()
-	-- Flush whatever is already in there to support the back option
-	self.answerList.answers[self.currentQuestionIndex].answer:clear()
+    if self.currentQuestionIndex > #self.answerList.answers then
+	    Debug.Log("Skipping SaveResults Current index: "..tonumber(self.currentQuestionIndex).." Answer List Size: "..tonumber(#self.answerList.answers))
+	    return
+    end
+
+    Debug.Log("Saving results")
+    -- Flush whatever is already in there to support the back option
+    self.answerList.answers[self.currentQuestionIndex].answer:clear()
+
 	local newAnswer = CloudGemInGameSurvey_Answer()
 	
 	-- Checkboxes

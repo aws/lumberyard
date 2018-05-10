@@ -21,7 +21,9 @@
             "Behaviors/SkinRuleBehavior.h",
             "Behaviors/SkinRuleBehavior.cpp",
             "Behaviors/MotionRangeRuleBehavior.h",
-            "Behaviors/MotionRangeRuleBehavior.cpp"
+            "Behaviors/MotionRangeRuleBehavior.cpp",
+            "Behaviors/MorphTargetRuleBehavior.h",
+            "Behaviors/MorphTargetRuleBehavior.cpp"
         ],
         "Pipeline/SceneAPIExt/Rules":
         [
@@ -46,7 +48,9 @@
             "Rules/CoordinateSystemRule.h",
             "Rules/CoordinateSystemRule.cpp",
             "Rules/MotionRangeRule.h",
-            "Rules/MotionRangeRule.cpp"
+            "Rules/MotionRangeRule.cpp",
+            "Rules/MorphTargetRule.h",
+            "Rules/MorphTargetRule.cpp"
         ]
     }
 }

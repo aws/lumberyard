@@ -11,8 +11,25 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYENGINE_RENDERDLL_XRENDERD3D9_DEVICEMANAGER_DEVICEMANAGER_H
-#define CRYINCLUDE_CRYENGINE_RENDERDLL_XRENDERD3D9_DEVICEMANAGER_DEVICEMANAGER_H
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DEVICEMANAGER_H_SECTION_1 1
+#define DEVICEMANAGER_H_SECTION_2 2
+#define DEVICEMANAGER_H_SECTION_3 3
+#define DEVICEMANAGER_H_SECTION_4 4
+#define DEVICEMANAGER_H_SECTION_5 5
+#define DEVICEMANAGER_H_SECTION_6 6
+#define DEVICEMANAGER_H_SECTION_7 7
+#define DEVICEMANAGER_H_SECTION_8 8
+#define DEVICEMANAGER_H_SECTION_9 9
+#define DEVICEMANAGER_H_SECTION_10 10
+#define DEVICEMANAGER_H_SECTION_11 11
+#define DEVICEMANAGER_H_SECTION_12 12
+#define DEVICEMANAGER_H_SECTION_13 13
+#define DEVICEMANAGER_H_SECTION_14 14
+#endif
+
 #pragma once
 
 #if !defined(NULL_RENDERER)
@@ -22,13 +39,25 @@
 #include "Enums.h"
 #include <AzCore/PlatformDef.h>
 #ifndef CRY_USE_DX12
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_1
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#  endif
 
 #  if defined(USE_NV_API)
 #    include "DeviceManager_D3D11_NVAPI.h"
 #  endif
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_2
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #define DEVICE_MANAGER_IMMEDIATE_STATE_WRITE 0
+#endif
 
 class CDeviceTexture;
 namespace AzRHI 
@@ -60,6 +89,10 @@ struct STextureInfo
     }
 };
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_3
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 //===============================================================================================================
 
@@ -84,6 +117,10 @@ private:
     friend class CD3DRenderer;
     friend class CDeviceTexture;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_4
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+# endif
 
 private:
 
@@ -207,6 +244,10 @@ private:
         bool operator!= (const SBufferInvalidation& other) const
         {
             return buffer != other.buffer
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_5
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+# endif
             ;
         }
     };
@@ -360,7 +401,11 @@ public:
     void Dispatch(uint32, uint32, uint32);
     void DispatchIndirect(D3DBuffer*, uint32);
 
-    uint32 GetNumInvalidDrawcalls()
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_6
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
+    uint32 GetNumInvalidDrawcalls() const
     {
         return m_numInvalidDrawcalls;
     }
@@ -371,6 +416,10 @@ public:
     static void* GetBackingStorage(D3DBuffer* buffer);
     static void FreebackingStorage(void* base_ptr);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_7
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
 #endif
 
 #if defined(DEVMAN_USE_STAGING_POOL)
@@ -397,6 +446,10 @@ private:
 #endif
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_8
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
 };
 
 class CDeviceTexture
@@ -421,6 +474,10 @@ class CDeviceTexture
 
 #ifdef DEVMAN_USE_STAGING_POOL
     bool                        m_bStagingTextureAllocedOnLock;
+#endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_9
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
 #endif
 
 public:
@@ -468,6 +525,10 @@ public:
 #if defined(USE_NV_API)
         , m_handleMGPU(NULL)
 #endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_10
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
     {
 #ifdef DEVMAN_USE_STAGING_POOL
         m_pStagingResource[0] = m_pStagingResource[1] = nullptr;
@@ -482,6 +543,10 @@ public:
 #if defined(USE_NV_API)
         , m_handleMGPU(NULL)
 #endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_11
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
     {
 #ifdef DEVMAN_USE_STAGING_POOL
         m_pStagingResource[0] = m_pStagingResource[1] = nullptr;
@@ -495,6 +560,10 @@ public:
         , m_bCube(true)
 #if defined(USE_NV_API)
         , m_handleMGPU(NULL)
+#endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_12
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
 #endif
     {
 #ifdef DEVMAN_USE_STAGING_POOL
@@ -522,8 +591,20 @@ public:
 
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_13
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     static uint32 TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF);
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_14
+#include AZ_RESTRICTED_FILE(DeviceManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
@@ -543,5 +624,3 @@ private:
 private:
     int Cleanup();
 };
-
-#endif  // _DeviceManager_H_

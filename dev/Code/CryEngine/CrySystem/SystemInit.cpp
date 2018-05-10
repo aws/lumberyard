@@ -13,6 +13,24 @@
 
 #include "StdAfx.h"
 #include "SystemInit.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SYSTEMINIT_CPP_SECTION_1 1
+#define SYSTEMINIT_CPP_SECTION_2 2
+#define SYSTEMINIT_CPP_SECTION_3 3
+#define SYSTEMINIT_CPP_SECTION_4 4
+#define SYSTEMINIT_CPP_SECTION_5 5
+#define SYSTEMINIT_CPP_SECTION_6 6
+#define SYSTEMINIT_CPP_SECTION_7 7
+#define SYSTEMINIT_CPP_SECTION_8 8
+#define SYSTEMINIT_CPP_SECTION_9 9
+#define SYSTEMINIT_CPP_SECTION_10 10
+#define SYSTEMINIT_CPP_SECTION_11 11
+#define SYSTEMINIT_CPP_SECTION_12 12
+#define SYSTEMINIT_CPP_SECTION_13 13
+#endif
+
 #if defined(MAP_LOADING_SLICING)
 #include "SystemScheduler.h"
 #endif // defined(MAP_LOADING_SLICING)
@@ -45,6 +63,7 @@
 
 #if defined(APPLE) || defined(LINUX) && !defined(DEDICATED_SERVER)
 #include <dlfcn.h>
+#include <cstdlib>
 #endif
 
 #ifdef WIN32
@@ -134,8 +153,6 @@
 
 #include <IGame.h>
 #include <IGameFramework.h>
-
-#include "Stroboscope/Stroboscope.h"
 
 #if USE_STEAM
 #include "Steamworks/public/steam/steam_api.h"
@@ -274,6 +291,13 @@ CUNIXConsole* pUnixConsole;
 #   define DLL_INITFUNC_3DENGINE "CreateCry3DEngine"
 #   define DLL_INITFUNC_ANIMATION "CreateCharManager"
 #   define DLL_INITFUNC_UI "CreateLyShineInterface"
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 #   define DLL_MODULE_INIT_ISYSTEM (LPCSTR)2
 #   define DLL_MODULE_SHUTDOWN_ISYSTEM (LPCSTR)3
@@ -343,6 +367,7 @@ static inline void InlineInitializationProcessing(const char* sDescription)
     }
 }
 
+#pragma warning (disable:4723)  //This is the lowest scope that Visual Studio will allow for this warning. It's for case 2, divide by zero, below.
 //////////////////////////////////////////////////////////////////////////
 static void CmdCrashTest(IConsoleCmdArgs* pArgs)
 {
@@ -398,6 +423,7 @@ static void CmdCrashTest(IConsoleCmdArgs* pArgs)
         }
     }
 }
+#pragma warning(default:4723)
 
 #if USE_STEAM
 //////////////////////////////////////////////////////////////////////////
@@ -493,8 +519,15 @@ struct SysSpecOverrideSinkConsole
 
 static ESystemConfigPlatform GetDevicePlatform()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_LINUX)
     return CONFIG_PC;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_ANDROID)
     return CONFIG_ANDROID;
 #elif defined(AZ_PLATFORM_APPLE_IOS)
@@ -522,6 +555,18 @@ static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, int pla
     case CONFIG_IOS:
         cfgFile = "ios";
         break;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    case CONFIG_##PUBLICNAME:\
+        cfgFile = #publicname;\
+        break;
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
     case CONFIG_APPLETV:
     case CONFIG_OSX_GL:
     case CONFIG_OSX_METAL:
@@ -549,6 +594,10 @@ static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, int pla
         cfgFile += "_high.cfg";
         break;
     case CONFIG_VERYHIGH_SPEC:
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         cfgFile += "_veryhigh.cfg";
         break;
     default:
@@ -690,6 +739,21 @@ static void LoadDetectedSpec(ICVar* pVar)
 #endif
             break;
         }
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        case CONFIG_##PUBLICNAME:\
+        {\
+            pVar->Set(CONFIG_LOW_SPEC);\
+            GetISystem()->LoadConfiguration(#publicname "_low.cfg", pSysSpecOverrideSinkConsole);\
+            break;\
+        }
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
         case CONFIG_APPLETV:
         {
             pVar->Set(CONFIG_MEDIUM_SPEC);
@@ -1013,6 +1077,13 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 
     if (gEnv->IsDedicated())
     {
@@ -1046,6 +1117,7 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
 
     AZ_Assert(false, "Unknown renderer type: %s", t_rend);
     return false;
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1201,6 +1273,10 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
     }
 #endif
 #endif // !defined(DEDICATED_SERVER)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(DEDICATED_SERVER)
     type = R_NULL_RENDERER;
@@ -1475,6 +1551,13 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
 
 #if (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))
         return true;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
         if (h)
         {
@@ -1688,11 +1771,19 @@ bool CSystem::InitPhysics(const SSystemInitParams& initParams)
     MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Physics, 0, "Init Physics");
 
     const char* moduleName = "EngineModule_CryPhysics";
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined (AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     if (!InitializeEngineModule(DLL_PHYSICS, moduleName, initParams))
     {
         AZ_Assert(false, "Physics System did not initialize correctly; the DLL failed to load: %s", DLL_PHYSICS);
         return false;
     }
+#endif
 
     if (!m_env.pPhysicalWorld)
     {
@@ -2059,11 +2150,23 @@ bool CSystem::InitScriptSystem(const SSystemInitParams& initParams)
 
 bool CSystem::LaunchAssetProcessor()
 {
-#if defined(AZ_PLATFORM_WINDOWS) && defined(REMOTE_ASSET_PROCESSOR)
+#if defined(REMOTE_ASSET_PROCESSOR)
+    if (m_pUserCallback)
+    {
+        m_pUserCallback->OnInitProgress("Launching remote Asset Processor...");
+    }
+
     static const char* asset_processor_name = "AssetProcessor";
-    static const char* asset_processor_ext = "exe";
     char assetProcessorExe[AZ_MAX_PATH_LEN] = { 0 };
     char workingDir[AZ_MAX_PATH_LEN] = { 0 };
+
+#if defined(AZ_PLATFORM_WINDOWS)
+    static const char* asset_processor_ext = ".exe";
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    static const char* asset_processor_ext = ".app";
+#else
+    static const char* asset_processor_ext = "";
+#endif
 
     const char* appRoot = nullptr;
     AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
@@ -2072,15 +2175,17 @@ bool CSystem::LaunchAssetProcessor()
         AZStd::string engineBinFolder = AZStd::string::format("%s%s", appRoot, BINFOLDER_NAME);
         azstrncpy(workingDir, AZ_ARRAY_SIZE(workingDir), engineBinFolder.c_str(), engineBinFolder.length());
 
-        AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s.%s",
-                                                                        engineBinFolder.c_str(),
-                                                                        AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING,
-                                                                        asset_processor_name, 
-                                                                        asset_processor_ext);
+        AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s%s",
+                                                                       engineBinFolder.c_str(),
+                                                                       AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING,
+                                                                       asset_processor_name,
+                                                                       asset_processor_ext);
         azstrncpy(assetProcessorExe, AZ_ARRAY_SIZE(assetProcessorExe), engineAssetProcessorPath.c_str(), engineAssetProcessorPath.length());
-
     }
-    else
+
+
+#if defined(AZ_PLATFORM_WINDOWS)
+    if (appRoot == nullptr)
     {
         char exeName[AZ_MAX_PATH_LEN] = { 0 };
         ::GetModuleFileName(::GetModuleHandle(nullptr), exeName, AZ_MAX_PATH_LEN);
@@ -2089,13 +2194,6 @@ bool CSystem::LaunchAssetProcessor()
         _splitpath_s(exeName, drive, AZ_MAX_PATH_LEN, dir, AZ_MAX_PATH_LEN, nullptr, 0, nullptr, 0);
         _makepath_s(assetProcessorExe, AZ_MAX_PATH_LEN, drive, dir, "AssetProcessor", "exe");
         _makepath_s(workingDir, AZ_MAX_PATH_LEN, drive, dir, nullptr, nullptr);
-    }
-
-
-
-    if (m_pUserCallback)
-    {
-        m_pUserCallback->OnInitProgress("Launching remote Asset Processor...");
     }
 
     STARTUPINFO si;
@@ -2123,80 +2221,20 @@ bool CSystem::LaunchAssetProcessor()
 
     return true;
 #elif defined(AZ_PLATFORM_APPLE_OSX)
-    if (m_pUserCallback)
+    char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
+    if (appRoot != nullptr)
     {
-        m_pUserCallback->OnInitProgress("Launching remote Asset Processor...");
-    }
-
-    int pipefds[2];
-    if (pipe(pipefds) || fcntl(pipefds[1], F_SETFD, fcntl(pipefds[1], F_GETFD) | FD_CLOEXEC))
-    {
-        return false;
-    }
-
-    pid_t pid = fork();
-    if (pid == -1)
-    {
-        AZ_Assert(false, "Unable to fork process to start AssetProcessor: %s", strerror(errno));
-        return false;
-    }
-    else if (pid == 0)
-    {
-        // This is the child process that we want to run the asset processor
-        close(pipefds[0]);
-
-        // Because execv requires a non-const array of character pointers we
-        // have to allocate and copy the strings manually. The last entry in
-        // the array has to be a null pointer hence 3 being the size of the 
-        // array.
-        char* args[3] = { 0 };
-
-        const int sizeOfAssetProcessorString = sizeof("AssetProcessor") + 1;
-        args[0] = new char[sizeOfAssetProcessorString];
-        azstrcpy(args[0], sizeOfAssetProcessorString, "AssetProcessor");
-        const int sizeOfStartHiddenArg = sizeof("--start-hidden") + 1;
-        args[1] = new char[sizeOfStartHiddenArg];
-        azstrcpy(args[1], sizeOfStartHiddenArg, "--start-hidden");
-
-        // Current assumption, which is true for the editor, is that the current
-        // directory is at the root of the game/editor directory and so we can
-        // build a directory to the AssetProcessor from there.
-        string assetProcessorCommand = "./BinMac64";
-#ifdef _DEBUG
-        assetProcessorCommand += ".Debug";
-#endif
-        assetProcessorCommand += "/AssetProcessor";
-
-        execv(assetProcessorCommand.c_str(), args);
-
-        // If we get here execv failed to run properly and the only thing we can
-        // do without doing any damage is to exit
-        write(pipefds[1], &errno, sizeof(int));
-        exit(errno);
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "open -g \"%s\" --args --start-hidden --app-root \"%s\"", assetProcessorExe, appRoot);
     }
     else
     {
-        // We are the parent if we get here.
-        close(pipefds[1]);
-        int count = 0; 
-        int err = 0;
-        while ((count = read(pipefds[0], &err, sizeof(errno))) == -1)
-        {
-            if (errno != EAGAIN && errno != EINTR)
-            {
-                break;
-            }
-        }
-
-        if (count) {
-            AZ_Assert(false, "Unable to start AssetProcessor: %s", strerror(err));
-            return false;
-        }
-        close(pipefds[0]);
-        return true;
+        azsnprintf(full_launch_command, AZ_MAX_PATH_LEN, "open -g \"%s\" --args --start-hidden", assetProcessorExe);
     }
-#endif
 
+    int error = system(full_launch_command);
+    return (error == 0);
+#endif // AZ_PLATFORM_APPLE_OSX
+#endif // REMOTE_ASSET_PROCESSOR
     AZ_Assert(false, "Could not start Asset Processor; platform not supported");
     return false;
 }
@@ -2301,6 +2339,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
                     m_pUserCallback->OnInitProgress("Negotiation failed with the Asset Processor! Quitting...");
                 }
 
+                AZ_Error(AZ_TRACE_SYSTEM_WINDOW, false, "Negotiation failed with the Asset Processor. This usually occurs when the Editor is launched from a different branch than the Asset Processor.");
                 return false;
             }
             if (!engineConnection->IsConnected() && !engineConnection->NegotiationFailed())
@@ -2314,7 +2353,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             }
 #endif//defined(AZ_PLATFORM_WINDOWS)
 
-            //give the AP 2.5 seconds to connect BUT if we launched the ap then give the AP 120 seconds to connect (virus scanner can really slow it down on its initial launch!)
+            //give the AP 5 seconds to connect BUT if we launched the ap then give the AP 120 seconds to connect (virus scanner can really slow it down on its initial launch!)
             int timeToConnect = isAssetProcessorLaunched ? 120000 : 5000;
             start = AZStd::chrono::system_clock::now();
             last = start;
@@ -2689,7 +2728,7 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
         }
 
 #endif // defined(AZ_PLATFORM_WINDOWS)&&defined(REMOTE_ASSET_PROCESSOR)
-        AZ_Printf("FileSystem", "Using %s folder for asset cache.", finalCachePath.c_str());
+        AZ_Printf("FileSystem", "Using %s folder for asset cache.\n", finalCachePath.c_str());
         m_env.pFileIO->SetAlias("@cache@", finalCachePath.c_str());
         m_env.pFileIO->CreatePath("@cache@");
     }
@@ -3403,6 +3442,11 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         g_cvars.sys_no_crash_dialog = true;
         AddPlatformOSCreateFlag(IPlatformOS::eCF_NoDialogs);
     }
+
+#if defined(AZ_PLATFORM_LINUX)
+    // Linux is all console for now and so no room for dialog boxes!
+    m_env.bNoAssertDialog = true;
+#endif
     
     m_pCmdLine = new CCmdLine(startupParams.szSystemCmdLine);
 
@@ -3763,10 +3807,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         GetIRemoteConsole()->RegisterConsoleVariables();
 
-#if defined(ENABLE_PROFILING_CODE)
-        CStroboscope::GetInst()->RegisterCommands();
-#endif
-
 #ifdef ENABLE_LOADING_PROFILER
         CBootProfiler::GetInstance().RegisterCVars();
 #endif
@@ -3970,7 +4010,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         {
             SetUnhandledExceptionFilter(CryEngineExceptionFilterWER);
         }
-
 #endif
 
         //////////////////////////////////////////////////////////////////////////
@@ -4660,12 +4699,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         m_env.pLocalMemoryUsage = nullptr;
 #endif
 
-#if defined(WIN32)
-#   if !defined(WIN64)
-        _controlfp(_PC_64, _MCW_PC); // not supported on WIN64
-#   endif
-#endif
-
         if (g_cvars.sys_float_exceptions > 0)
         {
             if (g_cvars.sys_float_exceptions == 3 && gEnv->IsEditor()) // Turn off float exceptions in editor if sys_float_exceptions = 3
@@ -4678,17 +4711,6 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             }
         }
         EnableFloatExceptions(g_cvars.sys_float_exceptions);
-
-#if defined(WIN64) && defined(SECUROM_64)
-        if (!m_bEditor && !IsDedicated())
-        {
-            int res = TestSecurom64();
-            if (res != b64_ok)
-            {
-                _controlfp(0, _MCW_EM); // Enable floating point exceptions (Will eventually cause crash).
-            }
-        }
-#endif
 
         MarkThisThreadForDebugging("Main");
     }
@@ -5998,6 +6020,10 @@ void CSystem::CreateSystemVars()
 
     {
         int nDefaultRenderSplashScreen = 1;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         REGISTER_CVAR2("sys_rendersplashscreen", &g_cvars.sys_rendersplashscreen, nDefaultRenderSplashScreen, VF_NULL,
             "Render the splash screen during game initialization");
         REGISTER_CVAR2("sys_splashscreenscalemode", &g_cvars.sys_splashScreenScaleMode, static_cast<int>(SSystemCVars::SplashScreenScaleMode_Fill), VF_NULL,
@@ -6165,6 +6191,13 @@ void CSystem::CreateSystemVars()
             "2: Show only the execution graph\n");
 #if defined(WIN32) || defined(WIN64)
     const uint32 nJobSystemDefaultCoreNumber = 8;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     const uint32 nJobSystemDefaultCoreNumber = 4;
 #endif
@@ -6216,6 +6249,10 @@ void CSystem::CreateSystemVars()
             "Specifies the physical CPU index physics will run on");
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     m_sys_min_step = REGISTER_FLOAT("sys_min_step", 0.01f, 0,
             "Specifies the minimum physics step in a separate thread");
@@ -6445,6 +6482,9 @@ void CSystem::CreateSystemVars()
 
 #if defined(WIN32)
     REGISTER_CVAR2("sys_display_threads", &g_cvars.sys_display_threads, 0, 0, "Displays Thread info");
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
 #if defined(WIN32)

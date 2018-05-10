@@ -27,8 +27,8 @@
 
 #include "IEditor.h"
 
-LoadingErrorWidget::LoadingErrorWidget(ResourceManagementView* view)
-    : DetailWidget{view}
+LoadingErrorWidget::LoadingErrorWidget(ResourceManagementView* view, QWidget* parent)
+    : DetailWidget{view, parent}
 {
     // root
 

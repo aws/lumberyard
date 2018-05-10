@@ -789,6 +789,10 @@ AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, 
         {
             m_loadedCanvases.push_back(canvasComponent);
             SortCanvasesByDrawOrder();
+            if (canvasComponent->GetIsConsumingAllInputEvents())
+            {
+                EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
+            }
         }
     }
 

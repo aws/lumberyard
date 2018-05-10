@@ -35,6 +35,7 @@ namespace AZ
             }
 
             //assume consistent winding - no stripping or fanning expected (3 index per face)
+            //indices can be used for position and normal
             void MeshData::AddFace(unsigned int index1, unsigned int index2, unsigned int index3, unsigned int faceMaterialId)
             {
                 IMeshData::Face face;

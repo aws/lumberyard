@@ -18,6 +18,19 @@
 #include "DebugCallStack.h"
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DLLMAIN_CPP_SECTION_1 1
+#define DLLMAIN_CPP_SECTION_2 2
+#define DLLMAIN_CPP_SECTION_3 3
+#define DLLMAIN_CPP_SECTION_4 4
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+
 // For lua debugger
 //#include <malloc.h>
 
@@ -137,6 +150,10 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
     pSystem = new CSystem(startupParams.pSharedEnvironment);
     ModuleInitISystem(pSystem, "CrySystem");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #if defined(AZ_MONOLITHIC_BUILD)
     ICryFactoryRegistryImpl* pCryFactoryImpl = static_cast<ICryFactoryRegistryImpl*>(pSystem->GetCryFactoryRegistry());
     pCryFactoryImpl->RegisterFactories(g_pHeadToRegFactories);
@@ -156,6 +173,9 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
 #if defined(WIN32)
         // Install exception handler in Release modes.
         ((DebugCallStack*)IDebugCallStack::instance())->installErrorHandler(pSystem);
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
     }
 
@@ -183,6 +203,10 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
 
 CRYSYSTEM_API void WINAPI CryInstallUnhandledExceptionHandler()
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 #if defined(ENABLE_PROFILING_CODE) && !defined(LINUX) && !defined(APPLE)

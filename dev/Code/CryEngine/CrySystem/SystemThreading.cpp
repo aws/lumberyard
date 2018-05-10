@@ -20,8 +20,23 @@
 #include "CryUtils.h"
 
 #define INCLUDED_FROM_SYSTEM_THREADING_CPP
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SYSTEMTHREADING_CPP_SECTION_1 1
+#define SYSTEMTHREADING_CPP_SECTION_2 2
+#define SYSTEMTHREADING_CPP_SECTION_3 3
+#endif
+
 #if defined(WIN32) || defined(WIN64)
     #include "CryThreadUtil_win32_thread.h"
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMTHREADING_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(SystemThreading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     #include "CryThreadUtil_pthread.h"
 #endif
@@ -116,6 +131,13 @@ public:
 private:
 #if defined(WIN32) || defined(WIN64)
     static unsigned __stdcall RunThread(void* thisPtr);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMTHREADING_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(SystemThreading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     static void* RunThread(void* thisPtr);
 #endif
@@ -157,6 +179,13 @@ private:
 //////////////////////////////////////////////////////////////////////////
 #if defined(WIN32) || defined(WIN64)
 unsigned __stdcall CThreadManager::RunThread(void* thisPtr)
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMTHREADING_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(SystemThreading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 void* CThreadManager::RunThread(void* thisPtr)
 #endif

@@ -14,7 +14,6 @@
 #include "ButtonGroup.h"
 #include <QtWidgets/QPushButton>
 #include <MCore/Source/LogManager.h>
-#include <MCore/Source/UnicodeString.h>
 
 
 namespace MysticQt
@@ -51,7 +50,7 @@ namespace MysticQt
 
 
     // prepare the different border styles depending on where the cell is located
-    void ButtonGroup::GetBorderStyleSheet(MCore::String* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j)
+    void ButtonGroup::GetBorderStyleSheet(AZStd::string* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j)
     {
         if (numRows == 1 && numColumns == 1)
         {
@@ -62,17 +61,17 @@ namespace MysticQt
             // left
             if (i == 0)
             {
-                outStyleSheet->Format("border-bottom: 1px solid rgb(90,90,90); border-top-right-radius: 0px; border-bottom-right-radius: 0px; border-right: none; border-left-width: 1px; border-top-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-bottom: 1px solid rgb(90,90,90); border-top-right-radius: 0px; border-bottom-right-radius: 0px; border-right: none; border-left-width: 1px; border-top-width: 1px;");
             }
             // right
             else if (i == numColumns - 1)
             {
-                outStyleSheet->Format("border-bottom: 1px solid rgb(90,90,90); border-right: 1px solid rgb(90,90,90); border-top-left-radius: 0px; border-bottom-left-radius: 0px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-top-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-bottom: 1px solid rgb(90,90,90); border-right: 1px solid rgb(90,90,90); border-top-left-radius: 0px; border-bottom-left-radius: 0px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-top-width: 1px;");
             }
             // all middle buttons in the horizontal button group
             else
             {
-                outStyleSheet->Format("border-bottom: 1px solid rgb(90,90,90); border-radius: 0px; border-right: none; border-left-width: 1px; border-top-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-bottom: 1px solid rgb(90,90,90); border-radius: 0px; border-right: none; border-left-width: 1px; border-top-width: 1px;");
             }
         }
         // if we are dealing with a vertical button group
@@ -81,17 +80,17 @@ namespace MysticQt
             // top
             if (j == 0)
             {
-                outStyleSheet->Format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom: none; border-left-width: 1px; border-top-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom: none; border-left-width: 1px; border-top-width: 1px;");
             }
             // bottom
             else if (j == numRows - 1)
             {
-                outStyleSheet->Format("border-bottom: 1px solid rgb(90,90,90); border-radius: 0px; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; border-top: none; border-left-width: 1px; border-right-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-bottom: 1px solid rgb(90,90,90); border-radius: 0px; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; border-top: none; border-left-width: 1px; border-right-width: 1px;");
             }
             // all middle buttons in the horizontal button group
             else
             {
-                outStyleSheet->Format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-top: none; border-left-width: 1px; border-bottom-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-top: none; border-left-width: 1px; border-bottom-width: 1px;");
             }
         }
         // most left column
@@ -100,17 +99,17 @@ namespace MysticQt
             // left top
             if (j == 0)
             {
-                outStyleSheet->Format("border-radius: 0px; border-right: none; border-top-left-radius: 5px; border-bottom: none; border-right: none; border-top-width: 1px; border-left-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-radius: 0px; border-right: none; border-top-left-radius: 5px; border-bottom: none; border-right: none; border-top-width: 1px; border-left-width: 1px;");
             }
             // left bottom
             else if (j == numRows - 1)
             {
-                outStyleSheet->Format("border-bottom : 1px solid rgb(90,90,90); border-radius: 0px; border-bottom-left-radius: 5px; border-right: none; border-left-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-bottom : 1px solid rgb(90,90,90); border-radius: 0px; border-bottom-left-radius: 5px; border-right: none; border-left-width: 1px;");
             }
             // all middle buttons in the most left column
             else
             {
-                outStyleSheet->Format("border-radius: 0px; border-bottom: none; border-right: none; border-left-width: 1px;");
+                *outStyleSheet = AZStd::string::format("border-radius: 0px; border-bottom: none; border-right: none; border-left-width: 1px;");
             }
         }
         // most right column
@@ -119,17 +118,17 @@ namespace MysticQt
             // right top
             if (j == 0)
             {
-                outStyleSheet->Format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-top-right-radius: 5px; border-bottom: none;");
+                *outStyleSheet = AZStd::string::format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-top-right-radius: 5px; border-bottom: none;");
             }
             // right bottom
             else if (j == numRows - 1)
             {
-                outStyleSheet->Format("border-right: 1px solid rgb(90,90,90); border-bottom: 1px solid rgb(90,90,90); border-radius: 0px; border-bottom-right-radius: 5px;");
+                *outStyleSheet = AZStd::string::format("border-right: 1px solid rgb(90,90,90); border-bottom: 1px solid rgb(90,90,90); border-radius: 0px; border-bottom-right-radius: 5px;");
             }
             // all middle buttons in the most right columns
             else
             {
-                outStyleSheet->Format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-bottom: none;");
+                *outStyleSheet = AZStd::string::format("border-right: 1px solid rgb(90,90,90); border-radius: 0px; border-bottom: none;");
             }
         }
         // all middle columns
@@ -138,46 +137,46 @@ namespace MysticQt
             // top
             if (j == 0)
             {
-                outStyleSheet->Format("border-right: none; border-radius: 0px; border-bottom: none;");
+                *outStyleSheet = AZStd::string::format("border-right: none; border-radius: 0px; border-bottom: none;");
             }
             // bottom
             else if (j == numRows - 1)
             {
-                outStyleSheet->Format("border-right: none; border-bottom: 1px solid rgb(90,90,90); border-radius: 0px;");
+                *outStyleSheet = AZStd::string::format("border-right: none; border-bottom: 1px solid rgb(90,90,90); border-radius: 0px;");
             }
             // all middle buttons
             else
             {
-                outStyleSheet->Format("border-right: none; border-radius: 0px; border-bottom: none;");
+                *outStyleSheet = AZStd::string::format("border-right: none; border-radius: 0px; border-bottom: none;");
             }
         }
     }
 
 
     // prepare a whole style sheet for a given button
-    void ButtonGroup::PrepareStyleSheet(MCore::String* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j)
+    void ButtonGroup::PrepareStyleSheet(AZStd::string* outStyleSheet, uint32 numRows, uint32 numColumns, uint32 i, uint32 j)
     {
-        MCore::String helperStyleString;
+        AZStd::string helperStyleString;
 
         //////////////////////////////////////////////////////////////////////////////////////////////
         // normal state
         //////////////////////////////////////////////////////////////////////////////////////////////
-        outStyleSheet->FormatAdd("QPushButton#ButtonGroup                                           \n");
-        outStyleSheet->FormatAdd("{                                                                 \n");
-        outStyleSheet->FormatAdd("  background-color: rgb(45, 45, 45);                              \n");
-        outStyleSheet->FormatAdd("  color: rgb(170, 170, 170);                                      \n");
+        *outStyleSheet += AZStd::string::format("QPushButton#ButtonGroup                                           \n");
+        *outStyleSheet += AZStd::string::format("{                                                                 \n");
+        *outStyleSheet += AZStd::string::format("  background-color: rgb(45, 45, 45);                              \n");
+        *outStyleSheet += AZStd::string::format("  color: rgb(170, 170, 170);                                      \n");
 
         GetBorderStyleSheet(&helperStyleString, numRows, numColumns, i, j);
-        outStyleSheet->FormatAdd(" %s \n", helperStyleString.AsChar());
+        *outStyleSheet += AZStd::string::format(" %s \n", helperStyleString.c_str());
 
-        outStyleSheet->FormatAdd("  padding: 3px;                                                   \n");
-        outStyleSheet->FormatAdd("}                                                                 \n\n");
+        *outStyleSheet += AZStd::string::format("  padding: 3px;                                                   \n");
+        *outStyleSheet += AZStd::string::format("}                                                                 \n\n");
 
         //////////////////////////////////////////////////////////////////////////////////////////////
         // checked state
         //////////////////////////////////////////////////////////////////////////////////////////////
-        outStyleSheet->FormatAdd("QPushButton#ButtonGroup:checked                                   \n");
-        outStyleSheet->FormatAdd("{                                                                 \n");
+        *outStyleSheet += AZStd::string::format("QPushButton#ButtonGroup:checked                                   \n");
+        *outStyleSheet += AZStd::string::format("{                                                                 \n");
 
         // these are the global start and end colors for the button group (gradient goes vertically like in the tab headers)
         QColor startColor(244, 156, 28);
@@ -185,55 +184,55 @@ namespace MysticQt
 
         QColor localStartColor, localEndColor;
         GetButtonGradientColors(j, numRows, startColor, endColor, &localStartColor, &localEndColor);
-        outStyleSheet->FormatAdd("background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(%i, %i, %i), stop:1 rgb(%i, %i, %i));\n", localStartColor.red(), localStartColor.green(), localStartColor.blue(), localEndColor.red(), localEndColor.green(), localEndColor.blue());
+        *outStyleSheet += AZStd::string::format("background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgb(%i, %i, %i), stop:1 rgb(%i, %i, %i));\n", localStartColor.red(), localStartColor.green(), localStartColor.blue(), localEndColor.red(), localEndColor.green(), localEndColor.blue());
 
-        outStyleSheet->FormatAdd("  color: black;                                                   \n");
+        *outStyleSheet += AZStd::string::format("  color: black;                                                   \n");
 
         GetBorderStyleSheet(&helperStyleString, numRows, numColumns, i, j);
-        outStyleSheet->FormatAdd(" %s \n", helperStyleString.AsChar());
+        *outStyleSheet += AZStd::string::format(" %s \n", helperStyleString.c_str());
 
-        outStyleSheet->FormatAdd("}                                                                 \n\n");
+        *outStyleSheet += AZStd::string::format("}                                                                 \n\n");
 
 
         //////////////////////////////////////////////////////////////////////////////////////////////
         // hover state
         //////////////////////////////////////////////////////////////////////////////////////////////
-        outStyleSheet->FormatAdd("QPushButton#ButtonGroup:hover                                     \n");
-        outStyleSheet->FormatAdd("{                                                                 \n");
-        outStyleSheet->FormatAdd("  background-color: rgb(144, 152, 160);                           \n");
-        outStyleSheet->FormatAdd("  color: black;                                                   \n");
+        *outStyleSheet += AZStd::string::format("QPushButton#ButtonGroup:hover                                     \n");
+        *outStyleSheet += AZStd::string::format("{                                                                 \n");
+        *outStyleSheet += AZStd::string::format("  background-color: rgb(144, 152, 160);                           \n");
+        *outStyleSheet += AZStd::string::format("  color: black;                                                   \n");
 
         GetBorderStyleSheet(&helperStyleString, numRows, numColumns, i, j);
-        outStyleSheet->FormatAdd(" %s \n", helperStyleString.AsChar());
+        *outStyleSheet += AZStd::string::format(" %s \n", helperStyleString.c_str());
 
-        outStyleSheet->FormatAdd("}                                                                 \n\n");
+        *outStyleSheet += AZStd::string::format("}                                                                 \n\n");
 
         //////////////////////////////////////////////////////////////////////////////////////////////
         // pressed state
         //////////////////////////////////////////////////////////////////////////////////////////////
-        outStyleSheet->FormatAdd("QPushButton#ButtonGroup:pressed                                   \n");
-        outStyleSheet->FormatAdd("{                                                                 \n");
-        outStyleSheet->FormatAdd("  background-color: black;                                        \n");
-        outStyleSheet->FormatAdd("  color: rgb(244, 156, 28);                                       \n");
+        *outStyleSheet += AZStd::string::format("QPushButton#ButtonGroup:pressed                                   \n");
+        *outStyleSheet += AZStd::string::format("{                                                                 \n");
+        *outStyleSheet += AZStd::string::format("  background-color: black;                                        \n");
+        *outStyleSheet += AZStd::string::format("  color: rgb(244, 156, 28);                                       \n");
 
         GetBorderStyleSheet(&helperStyleString, numRows, numColumns, i, j);
-        outStyleSheet->FormatAdd(" %s \n", helperStyleString.AsChar());
+        *outStyleSheet += AZStd::string::format(" %s \n", helperStyleString.c_str());
 
-        outStyleSheet->FormatAdd("}                                                                 \n\n");
+        *outStyleSheet += AZStd::string::format("}                                                                 \n\n");
 
 
         //////////////////////////////////////////////////////////////////////////////////////////////
         // disabled state
         //////////////////////////////////////////////////////////////////////////////////////////////
-        outStyleSheet->FormatAdd("QPushButton#ButtonGroup:disabled                                  \n");
-        outStyleSheet->FormatAdd("{                                                                 \n");
-        outStyleSheet->FormatAdd("  background-color: rgb(55, 55, 55);                              \n");
-        outStyleSheet->FormatAdd("  color: rgb(105, 105, 105);                                      \n");
+        *outStyleSheet += AZStd::string::format("QPushButton#ButtonGroup:disabled                                  \n");
+        *outStyleSheet += AZStd::string::format("{                                                                 \n");
+        *outStyleSheet += AZStd::string::format("  background-color: rgb(55, 55, 55);                              \n");
+        *outStyleSheet += AZStd::string::format("  color: rgb(105, 105, 105);                                      \n");
 
         GetBorderStyleSheet(&helperStyleString, numRows, numColumns, i, j);
-        outStyleSheet->FormatAdd(" %s \n", helperStyleString.AsChar());
+        *outStyleSheet += AZStd::string::format(" %s \n", helperStyleString.c_str());
 
-        outStyleSheet->FormatAdd("}                                                                 \n\n");
+        *outStyleSheet += AZStd::string::format("}                                                                 \n\n");
     }
 
 
@@ -253,8 +252,8 @@ namespace MysticQt
         mGridLayout->setSpacing(0);
 
         // reserve memory upfront to prevent allocs
-        MCore::String styleModString;
-        styleModString.Reserve(16192);
+        AZStd::string styleModString;
+        styleModString.reserve(16192);
 
         // iterate over the columns
         QString temp;
@@ -275,7 +274,7 @@ namespace MysticQt
 
                 // prepare and set the style sheet
                 PrepareStyleSheet(&styleModString, numRows, numColumns, i, j);
-                button->setStyleSheet(styleModString.AsChar());
+                button->setStyleSheet(styleModString.c_str());
 
                 // add our button to the layout
                 mGridLayout->addWidget(button, j, i);

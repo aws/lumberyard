@@ -13,119 +13,242 @@
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Spline.h>
+#include <AzCore/Math/Aabb.h>
+#include <AzCore/Math/Quaternion.h>
 
 namespace LmbrCentral
 {
     /**
-     * Force Mode
+     * Parameters of an entity in the force volume.
+     * Used to calculate final force.
      */
-    enum class ForceMode
+    struct EntityParams
     {
-        ePoint,     ///< The force direction will be calculated relative to the volume's AABB centroid
-        eDirection  ///< The force direction will be calculated using direction specified
-    };   
-
-    /**
-     * Force Space
-     */
-    enum class ForceSpace
-    {
-        eLocalSpace,    ///< The force will be applied in local space relative to the volume's transform
-        eWorldSpace     ///< The force will be applied in world space
+        AZ::EntityId m_id;
+        AZ::Vector3 m_position;
+        AZ::Vector3 m_velocity;
+        AZ::Aabb m_aabb;
+        float m_mass;
     };
 
     /**
-     * Messages serviced by the ForceVolumeComponent
+     * Parameters of the force volume.
+     * Used to calculate final force.
      */
-    class ForceVolumeRequests
+    struct VolumeParams
+    {
+        AZ::EntityId m_id;
+        AZ::Vector3 m_position;
+        AZ::Quaternion m_rotation;
+        AZ::SplinePtr m_spline;
+        AZ::Aabb m_aabb;
+    };
+
+    /**
+     * Represents a single force in the force volume.
+     * 
+     * Developers should implement this interface and register
+     * their class with the EditContext to have their custom
+     * force appear in the ForceVolume dropdown box in the editor.
+     */
+    class Force
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(Force, AZ::SystemAllocator, 0);
+        AZ_RTTI(Force, "{9BD236BD-4580-4D6F-B02F-F8F431EBA593}");
+        static void Reflect(AZ::SerializeContext& context)
+        {
+            context.Class<Force>();
+        }
+        virtual ~Force() = default;
+
+        /**
+         * Connect to any busses.
+         */
+        virtual void Activate(AZ::EntityId /*entityId*/) {}
+
+        /**
+         * Disconnect from any busses.
+         */
+        virtual void Deactivate() {}
+
+        /**
+         * Calculate the size and direction the force.
+         */
+        virtual AZ::Vector3 CalculateForce(const EntityParams& /*entityParams*/, const VolumeParams& /*volumeParams*/)
+        {
+            return AZ::Vector3::CreateZero();
+        }
+    };
+
+    /**
+     * Requests serviced by the WorldSpaceForce.
+     */
+    class WorldSpaceForceRequests
         : public AZ::ComponentBus
     {
     public:
-
         /**
-        * \brief Sets how the direction of the force applied to the entity will be calculated.
-        * \param mode The ForceMode to set.
-        */
-        virtual void SetForceMode(ForceMode mode) = 0;
-
-        /**
-        * \brief Get the way the force direction is calculated.
-        * \return ForceMode indicating how the force direction is calculated.
-        */
-        virtual ForceMode GetForceMode() = 0;
-
-        /**
-        * \brief Sets the space the force direction is calculated in. Only used if the ForceMode is eDirection.
-        * \param space The force space to set.
-        */
-        virtual void SetForceSpace(ForceSpace space) = 0;
-
-        /**
-        * \brief Get the space the force direction is calculated in.
-        * \return The space the force direction is calculated in.
-        */
-        virtual ForceSpace GetForceSpace() = 0;
-
-        /*
-         * \brief Sets if the force applied should be multiplied by the entity's mass
-         * \param useMass If true, the force scales proportionally with the mass of the entity, otherwise lighter entities will be affected more than heavier ones.
+         * @brief Sets the direction of the force in worldspace.
          */
-        virtual void SetUseMass(bool useMass) = 0;
+        virtual void SetDirection(const AZ::Vector3& direction) = 0;
 
         /**
-        * \brief Get if the force applied is scaled with mass.
-        * \return true if the force applied is scaled with mass.
-        */
-        virtual bool GetUseMass() = 0;
-
-        /**
-         * \brief Set the magnitude of the force to use when applying to entities within the volume.
-         * \param magnitude A value representing the length of the force vector in Newtons.
+         * @brief Gets the direction of the force in world space.
          */
-        virtual void SetForceMagnitude(float magnitude) = 0;
+        virtual const AZ::Vector3& GetDirection() = 0;
 
         /**
-         * \brief Gets the magnitude of the force being applied to entities within the volume.
-         * \return A value representing the length of the force vector in Newtons.
+         * @brief Sets the magnitude of the force.
          */
-        virtual float GetForceMagnitude() = 0;
+        virtual void SetMagnitude(float magnitude) = 0;
 
         /**
-         * \brief Sets the direction the force is applied in. Internally this will be transformed into the space defined, normalized, and scaled by the magnitude.
-         * \param direction A vector representing the direction of the force in the space specified by ForceSpace.
+         * @brief Gets the magnitude of the force.
          */
-        virtual void SetForceDirection(const AZ::Vector3& direction) = 0;
-
-        /**
-         * \brief Gets the force direction being applied to entities within the volume.
-         * \return A direction vector in the space defined by ForceSpace.
-         */
-        virtual const AZ::Vector3& GetForceDirection() = 0;
-
-        /**
-         * \brief Sets the damping of the volume. Damping is used to apply a force opposite to the entities velocity vector. The size of the force will be scaled by the entities speed.
-         * \param damping A value representing the size of the damping force.
-         */
-        virtual void SetVolumeDamping(float damping) = 0;
-
-        /**
-         * \brief Gets the volume damping factor.
-         * \return A value representing the size of the damping force.
-         */
-        virtual float GetVolumeDamping() = 0;
-
-        /**
-         * \brief Sets the density of the volume. Density is used to calculate a drag force on entities within the volume.
-         * \param density A value representing the density of the volume in kg/m^3.
-         */
-        virtual void SetVolumeDensity(float density) = 0;
-
-        /**
-         * \brief Gets the density of the volume.
-         * \return A value representing the density of the volume in kg/m^3.
-         */
-        virtual float GetVolumeDensity() = 0;
+        virtual float GetMagnitude() = 0;
     };
 
-    using ForceVolumeRequestBus = AZ::EBus<ForceVolumeRequests>;
+    using WorldSpaceForceRequestBus = AZ::EBus<WorldSpaceForceRequests>;
+
+    /**
+     * Requests serviced by the LocalSpaceForce.
+     */
+    class LocalSpaceForceRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * @brief Sets the direction of the force in localspace.
+         */
+        virtual void SetDirection(const AZ::Vector3& direction) = 0;
+
+        /**
+         * @brief Gets the direction of the force in local space.
+         */
+        virtual const AZ::Vector3& GetDirection() = 0;
+
+        /**
+         * @brief Sets the magnitude of the force.
+         */
+        virtual void SetMagnitude(float magnitude) = 0;
+
+        /**
+         * @brief Gets the magnitude of the force.
+          */
+        virtual float GetMagnitude() = 0;
+    };
+
+    using LocalSpaceForceRequestBus = AZ::EBus<LocalSpaceForceRequests>;
+
+    /**
+     * Requests serviced by the PointSpaceForce.
+     */
+    class PointForceRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * @brief Sets the magnitude of the force.
+         */
+        virtual void SetMagnitude(float magnitude) = 0;
+
+        /**
+         * @brief Gets the magnitude of the force.
+         */
+        virtual float GetMagnitude() = 0;
+    };
+
+    using PointForceRequestBus = AZ::EBus<PointForceRequests>;
+
+    /**
+     * Requests serviced by the PointSpaceForce.
+     */
+    class SplineFollowForceRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * @brief Sets the damping ratio of the force. 
+         */
+        virtual void SetDampingRatio(float ratio) = 0;
+
+        /**
+         * @brief Gets the damping ratio of the force.
+         */
+        virtual float GetDampingRatio() = 0;
+
+        /**
+         * @brief Sets the frequency of the force.
+         */
+        virtual void SetFrequency(float frequency) = 0;
+
+        /**
+         * @brief Gets the frequency of the force.
+         */
+        virtual float GetFrequency() = 0;
+
+        /**
+         * @brief Sets the traget speed of the force.
+         */
+        virtual void SetTargetSpeed(float targetSpeed) = 0;
+
+        /**
+         * @brief Gets the target speed of the force.
+         */
+        virtual float GetTargetSpeed() = 0;
+
+        /**
+         * @brief Sets the lookahead of the force.
+         */
+        virtual void SetLookAhead(float lookAhead) = 0;
+
+        /**
+         * @brief Gets the lookahead of the force.
+         */
+        virtual float GetLookAhead() = 0;
+    };
+
+    using SplineFollowForceRequestBus = AZ::EBus<SplineFollowForceRequests>;
+
+    /**
+     * Requests serviced by the LocalSpaceForce.
+     */
+    class SimpleDragForceRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * @brief Sets the density of the volume.
+         */
+        virtual void SetDensity(float density) = 0;
+
+        /**
+         * @brief Gets the density of the volume.
+         */
+        virtual float GetDensity() = 0;
+    };
+
+    using SimpleDragForceRequestBus = AZ::EBus<SimpleDragForceRequests>;
+
+    /**
+     * Requests serviced by the LocalSpaceForce.
+     */
+    class LinearDampingForceRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * @brief Sets the damping amount of the force.
+         */
+        virtual void SetDamping(float damping) = 0;
+
+        /**
+         * @brief Gets the damping amount of the force.
+         */
+        virtual float GetDamping() = 0;
+    };
+
+    using LinearDampingForceRequestBus = AZ::EBus<LinearDampingForceRequests>;
 }

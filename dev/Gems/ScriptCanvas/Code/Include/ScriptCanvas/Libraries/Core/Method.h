@@ -24,6 +24,8 @@ namespace AZ
 namespace ScriptCanvas
 {
     using Namespaces = AZStd::vector<AZStd::string>;
+    
+    AZ::Outcome<void, AZStd::string> IsExposable(const AZ::BehaviorMethod& method);
 
     namespace Nodes
     {
@@ -48,7 +50,7 @@ namespace ScriptCanvas
                 
                 ~Method() = default;
                                 
-                AZ_INLINE const AZStd::string& GetName() const { return m_name; } 
+                AZ_INLINE const AZStd::string& GetName() const { return m_methodName; } 
                 AZ_INLINE const AZStd::string& GetMethodClassName() const { return m_className; }
                 AZ_INLINE MethodType GetMethodType() const { return m_methodType; }
                 
@@ -64,6 +66,8 @@ namespace ScriptCanvas
 
                 bool HasBusID() const { return (m_method == nullptr) ? false : m_method->HasBusId(); }
                 bool HasResult() const { return (m_method == nullptr) ? false : m_method->HasResult(); }
+
+                SlotId GetBusSlotId() const;
 
                 void OnWriteEnd();
 

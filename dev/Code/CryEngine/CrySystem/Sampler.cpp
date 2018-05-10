@@ -16,13 +16,9 @@
 
 #if defined(WIN32)
 
-#pragma warning(push)
-#pragma warning(disable : 4091) // Needed to bypass the "'typedef ': ignored on left of '' when no variable is declared" brought in by DbgHelp.h
-#include <DbgHelp.h>
-#pragma warning(pop)
-
 #include <ISystem.h>
 #include <Mmsystem.h>
+#include <AzCore/Debug/StackTracer.h>
 
 #define MAX_SYMBOL_LENGTH 512
 
@@ -105,45 +101,6 @@ void CSamplingThread::Run()
 #else
             ip = context.Rip;
 #endif
-            if (ip == 0x7FFE0304) // Special handling for Windows XP sysenter System call.
-            {
-                // Try to walk stack back.
-#ifdef CONTEXT_i386
-                STACKFRAME64 stack_frame;
-                memset(&stack_frame, 0, sizeof(stack_frame));
-                stack_frame.AddrPC.Mode = AddrModeFlat;
-                stack_frame.AddrPC.Offset = context.Eip;
-                stack_frame.AddrStack.Mode = AddrModeFlat;
-                stack_frame.AddrStack.Offset = context.Esp;
-                stack_frame.AddrFrame.Mode = AddrModeFlat;
-                stack_frame.AddrFrame.Offset = 0;
-                stack_frame.AddrFrame.Offset = context.Ebp;
-#else
-                STACKFRAME64 stack_frame;
-                memset(&stack_frame, 0, sizeof(stack_frame));
-                stack_frame.AddrPC.Mode = AddrModeFlat;
-                stack_frame.AddrPC.Offset = context.Rip;
-                stack_frame.AddrStack.Mode = AddrModeFlat;
-                stack_frame.AddrStack.Offset = context.Rsp;
-                stack_frame.AddrFrame.Mode = AddrModeFlat;
-                stack_frame.AddrFrame.Offset = 0;
-                stack_frame.AddrFrame.Offset = context.Rbp;
-#endif
-                if (StackWalk64(IMAGE_FILE_MACHINE_I386,   m_hProcess, m_hSampledThread, &stack_frame, &context,
-                        NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
-                {
-                    ip = stack_frame.AddrPC.Offset;
-                }
-                if (ip == 0x7FFE0304)
-                {
-                    // Repeat.
-                    if (StackWalk64(IMAGE_FILE_MACHINE_I386,   m_hProcess, m_hSampledThread, &stack_frame, &context,
-                            NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
-                    {
-                        ip = stack_frame.AddrPC.Offset;
-                    }
-                }
-            }
         }
         ResumeThread(m_hSampledThread);
 
@@ -163,7 +120,6 @@ CSampler::CSampler()
     SetMaxSamples(2000);
     m_bSamplingFinished = false;
     m_bSampling = false;
-    m_pSymDB = 0;
     m_samplePeriodMs = 1; //1ms
 }
 
@@ -188,17 +144,6 @@ void CSampler::Start()
     }
 
     CryLogAlways("Staring Sampling with interval %dms, max samples: %d ...", m_samplePeriodMs, m_nMaxSamples);
-
-    if (!m_pSymDB)
-    {
-        m_pSymDB = new CSymbolDatabase;
-        if (!m_pSymDB->Init())
-        {
-            delete m_pSymDB;
-            m_pSymDB = 0;
-            return;
-        }
-    }
 
     m_bSampling = true;
     m_bSamplingFinished = false;
@@ -275,43 +220,22 @@ void CSampler::ProcessSampledData()
         }
     }
 
-
-    if (!m_pSymDB)
-    {
-        m_pSymDB = new CSymbolDatabase;
-        if (!m_pSymDB->Init())
-        {
-            delete m_pSymDB;
-            m_pSymDB = 0;
-            return;
-        }
-    }
-
-    /*
-    struct SingleSampleDescription
-    {
-        uint64 ip;
-        string func;
-        uint32 count;
-    };
-    */
-
     std::map<string, int> funcCounts;
 
+    AZ::Debug::SymbolStorage::StackLine func, file, module;
+    int line;
+    void* baseAddr;
     string funcName;
-    //for (cit = counts.begin(); cit != counts.end(); cit++)
     for (i = 0; i < m_rawSamples.size(); i++)
     {
-        /*
-        if (m_pSymDB->LookupFunctionName( cit->first,funcName ))
-        {
-            funcCounts[funcName] += cit->second;
-        }
-        */
-        m_pSymDB->LookupFunctionName(m_rawSamples[i], funcName);
-        {
-            funcCounts[funcName] += 1;
-        }
+        // lookup module name here, and aggregate the results
+        AZ::Debug::SymbolStorage::FindFunctionFromIP((void*)m_rawSamples[i], &func, &file, &module, line, baseAddr);
+
+        // Developer note: this file was using the module name instead of the function name.  There was stub code
+        // to use the function name instead that.  This function was updated to use FindFunctionFromIP(), but
+        // continues to use the module instead of the function.
+        funcName = module;
+        funcCounts[funcName] += 1;
     }
 
     {
@@ -359,169 +283,5 @@ void CSampler::LogSampledData()
     CryLogAlways("=========================================================================");
 }
 
-//////////////////////////////////////////////////////////////////////////
-//
-// CSymbolDatabase Implementation.
-//
-//////////////////////////////////////////////////////////////////////////
-CSymbolDatabase::CSymbolDatabase()
-{
-    m_bInitialized = false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-CSymbolDatabase::~CSymbolDatabase()
-{
-}
-
-//typedef BOOL (CALLBACK *PSYM_ENUMMODULES_CALLBACKW64)( __in PCWSTR ModuleName,__in DWORD64 BaseOfDll,__in_opt PVOID UserContext   );
-
-#if _MSC_VER >= 1500
-BOOL CALLBACK EnumCallcbackM(PCSTR ModuleName, DWORD64 BaseOfDll, PVOID UserContext)
-{
-    return TRUE;
-}
-#else
-BOOL WINAPI EnumCallcbackM(PSTR ModuleName, DWORD64 BaseOfDll, PVOID UserContext)
-{
-    return TRUE;
-}
-#endif
-
-//////////////////////////////////////////////////////////////////////////
-bool CSymbolDatabase::Init()
-{
-    char fullpath[_MAX_PATH + 1];
-    char pathname[_MAX_PATH + 1];
-    char fname[_MAX_PATH + 1];
-    char directory[_MAX_PATH + 1];
-    char drive[10];
-    HANDLE process;
-
-    //  SymSetOptions(SYMOPT_DEFERRED_LOADS|SYMOPT_UNDNAME|SYMOPT_LOAD_LINES|SYMOPT_OMAP_FIND_NEAREST|SYMOPT_INCLUDE_32BIT_MODULES);
-    SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES | SYMOPT_OMAP_FIND_NEAREST);
-    //SymSetOptions(SYMOPT_DEFERRED_LOADS|SYMOPT_UNDNAME|SYMOPT_OMAP_FIND_NEAREST);
-
-    process = GetCurrentProcess();
-
-    // Get module file name.
-    GetModuleFileName(NULL, fullpath, _MAX_PATH);
-
-    // Convert it into search path for symbols.
-    cry_strcpy(pathname, fullpath);
-    _splitpath(pathname, drive, directory, fname, NULL);
-    sprintf_s(pathname, "%s%s", drive, directory);
-
-    // Append the current directory to build a search path forSymInit
-    cry_strcat(pathname, ";.;");
-
-    int result = 0;
-
-    result = SymInitialize(process, pathname, TRUE);
-    if (result)
-    {
-        char pdb[_MAX_PATH + 1];
-        char res_pdb[_MAX_PATH + 1];
-        sprintf_s(pdb, "%s.pdb", fname);
-        sprintf_s(pathname, "%s%s", drive, directory);
-        if (SearchTreeForFile(pathname, pdb, res_pdb))
-        {
-            m_bInitialized = true;
-        }
-    }
-    else
-    {
-        result = SymInitialize(process, pathname, FALSE);
-        if (!result)
-        {
-            CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "SymInitialize failed");
-        }
-        else
-        {
-            m_bInitialized = true;
-        }
-    }
-
-
-    SymEnumerateModules64(GetCurrentProcess(), EnumCallcbackM, 0);
-    return m_bInitialized;
-}
-
-//------------------------------------------------------------------------------------------------------------------------
-bool CSymbolDatabase::LookupFunctionName(uint64 ip, string& funcName)
-{
-    HANDLE process = GetCurrentProcess();
-    char symbolBuf[sizeof(SYMBOL_INFO) + MAX_SYMBOL_LENGTH];
-    memset(symbolBuf, 0, sizeof(symbolBuf));
-    PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuf;
-
-    DWORD displacement = 0;
-    DWORD64 displacement64 = 0;
-    pSymbol->SizeOfStruct = sizeof(symbolBuf);
-    pSymbol->MaxNameLen = MAX_SYMBOL_LENGTH;
-    if (SymFromAddr(process, (DWORD64)ip, &displacement64, pSymbol))
-    {
-        funcName = string(pSymbol->Name);
-        return true;
-    }
-    else
-    {
-        IMAGEHLP_MODULE64 moduleInfo;
-        memset(&moduleInfo, 0, sizeof(moduleInfo));
-        moduleInfo.SizeOfStruct = sizeof(moduleInfo);
-        if (SymGetModuleInfo64(process, (DWORD64)ip, &moduleInfo))
-        {
-            funcName = moduleInfo.ModuleName;
-        }
-        else
-        {
-            funcName.Format("%X", (uint32)ip);
-        }
-    }
-    return false;
-}
-
-
-//------------------------------------------------------------------------------------------------------------------------
-bool CSymbolDatabase::LookupFunctionName(uint64 ip, string& funcName, string& fileName, int& lineNumber)
-{
-    HANDLE process = GetCurrentProcess();
-    char symbolBuf[sizeof(SYMBOL_INFO) + MAX_SYMBOL_LENGTH];
-    memset(symbolBuf, 0, sizeof(symbolBuf));
-    PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbolBuf;
-
-    DWORD displacement = 0;
-    DWORD64 displacement64 = 0;
-    pSymbol->SizeOfStruct = sizeof(symbolBuf);
-    pSymbol->MaxNameLen = MAX_SYMBOL_LENGTH;
-    if (SymFromAddr(process, (DWORD64)ip, &displacement64, pSymbol))
-    {
-        funcName = string(pSymbol->Name);
-
-        // Lookup Line in source file.
-        IMAGEHLP_LINE64 lineImg;
-        memset(&lineImg, 0, sizeof(lineImg));
-        lineImg.SizeOfStruct = sizeof(lineImg);
-
-        if (SymGetLineFromAddr64(process, (DWORD_PTR)ip, &displacement, &lineImg))
-        {
-            fileName = lineImg.FileName;
-            lineNumber = lineImg.LineNumber;
-        }
-        else
-        {
-            fileName = "";
-            lineNumber = 0;
-        }
-        return true;
-    }
-    else
-    {
-        funcName = "<Unknown>";
-        fileName = "<Unknown>";
-        lineNumber = 0;
-    }
-    return false;
-}
 
 #endif // defined(WIN32)

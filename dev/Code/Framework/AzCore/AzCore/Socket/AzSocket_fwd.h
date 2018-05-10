@@ -11,8 +11,6 @@
 */
 
 #pragma once
-#ifndef AZCORE_SOCKET_AZSOCKET_FWD_H
-#define AZCORE_SOCKET_AZSOCKET_FWD_H
 
 #include <AzCore/base.h>
 
@@ -23,8 +21,15 @@
 #define SOCKET_ERROR (-1)
 #define AZ_SOCKET_INVALID (-1)
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AzSocket_fwd_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 struct sockaddr;
 struct sockaddr_in;
+#endif
 
 // Type wrappers for sockets
 typedef sockaddr    AZSOCKADDR;
@@ -40,4 +45,3 @@ namespace AZ
         class AzSocketAddress;
     }; // namespace AzSock
 }; // namespace AZ
-#endif // AZCORE_SOCKET_AZSOCKET_FWD_H

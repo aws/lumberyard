@@ -39,6 +39,7 @@
 #include <ParseEngineConfig.h>
 
 #include <AzGameFramework/Application/GameApplication.h>
+#include <AzCore/Debug/StackTracer.h>
 
 // FIXME: get the correct version string from somewhere, maybe a -D supplied
 // by the build environment?
@@ -96,6 +97,7 @@ bool IncreaseStackSizeToMax()
         return false;
     }
 
+    fprintf(stderr, "Setting minimum stack size from %lu to %lu\n", kLimit.rlim_cur, kLimit.rlim_max);
     if (kLimit.rlim_cur < kLimit.rlim_max)
     {
         kLimit.rlim_cur = kLimit.rlim_max;
@@ -212,67 +214,19 @@ static const char* g_btLibPath = 0;
 
 static void SignalHandler(int sig, siginfo_t* info, void* secret)
 {
-    void* trace[32];
-    int trace_size;
-
-    pid_t pid = getpid();
-
     FILE* ftrace = fopen("backtrace.log", "w");
     if (!ftrace)
     {
         ftrace = stderr;
     }
 
-    // Log symbol dump first
-    fprintf(ftrace, "# Strack Trace with Symbols:\n");
-    fflush(ftrace);
+    AZ::Debug::StackPrinter::Print(ftrace);
 
-    trace_size = backtrace(trace, 32);
-    backtrace_symbols_fd(trace, trace_size, fileno(ftrace));
-
-    // Log demangled Stack trace
-    fprintf(ftrace, "\n# Strack Trace Demangled (note: Some System libraries cannot be demangled correctly:\n");
-
-    // close file since the following ouput is sent there from the shell
     if (ftrace != stderr)
     {
         fclose(ftrace);
     }
 
-    for (int i = 0; i < trace_size; ++i)
-    {
-        char objname[MAX_PATH];
-
-        Dl_info info;
-        if (dladdr(trace[i], &info))
-        {
-            uintptr_t addr = (uintptr_t)trace[i] - (uintptr_t)info.dli_fbase;
-            string base_name = basename((char*)info.dli_fname);
-
-            if (info.dli_fname[0] != '/')
-            {
-                snprintf(objname, MAX_PATH, "%s/%s", g_btLibPath, base_name.c_str());
-            }
-            else
-            {
-                snprintf(objname, MAX_PATH, "%s", info.dli_fname);
-            }
-
-            char cmd[MAX_PATH];
-            // check if it is the launcher or not. If it is the laucnher we need ot use the
-            // absolute address instead of the relative address inside the module
-            size_t pos = base_name.find_first_of("LinuxLauncher", 0);
-            if (pos != 0)
-            {
-                snprintf(cmd, MAX_PATH, "echo [%02d] $(addr2line  -C -f -i -e \"%s\" -p %p) >> 'backtrace.log'", i, objname, (void*) addr);
-            }
-            else
-            {
-                snprintf(cmd, MAX_PATH, "echo [%02d] $(addr2line  -C -f -i -e \"%s\" -p %p) >> 'backtrace.log'", i, objname, trace[i]);
-            }
-            system(cmd);
-        }
-    }
     abort();
 }
 

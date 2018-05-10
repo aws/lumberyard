@@ -19,7 +19,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 #include <AzCore/Debug/Timer.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MysticQt/Source/DialogStack.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphGameControllerSettings.h>
@@ -179,7 +178,7 @@ namespace EMStudio
         QPushButton*                    mAddPresetButton;
         QPushButton*                    mRemovePresetButton;
 
-        MCore::String                   mString;
+        AZStd::string                   mString;
 
         void timerEvent(QTimerEvent* event);
         void InitGameController();

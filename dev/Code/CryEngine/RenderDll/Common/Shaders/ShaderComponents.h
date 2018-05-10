@@ -11,12 +11,14 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef __SHADERCOMPONENTS_H__
-#define __SHADERCOMPONENTS_H__
+#pragma once
 
 #include "../Defs.h"
 #include "ShadersResourcesGroups/PerFrame.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ShaderComponents_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(PF_LOCAL) && !(PF_LOCAL == 1)
 // e.g.: In Mac OS X it is defined in a system header
@@ -512,6 +514,3 @@ struct SCGTexture : SCGBind
     {
     }
 };
-
-#endif
-

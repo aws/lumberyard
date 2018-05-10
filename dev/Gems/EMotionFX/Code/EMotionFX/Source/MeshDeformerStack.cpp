@@ -89,6 +89,32 @@ namespace EMotionFX
         }
     }
 
+    // update the mesh deformer stack for only the modifier type specified
+    void MeshDeformerStack::UpdateByModifierType(ActorInstance* actorInstance, Node* node, float timeDelta, uint32 typeID, bool resetMesh, bool forceUpdateDisabledDeformers)
+    {
+        bool resetDone = false;
+        // if we have deformers in the stack
+        const uint32 numDeformers = mDeformers.GetLength();
+        // iterate through the deformers and update them
+        for (uint32 i = 0; i < numDeformers; ++i)
+        {
+            // if the deformer of the correct type and is enabled
+            if (mDeformers[i]->GetType() == typeID && (mDeformers[i]->GetIsEnabled() || forceUpdateDisabledDeformers))
+            {
+                // if this is the first enabled deformer
+                if (resetMesh && !resetDone)
+                {
+                    // reset all output vertex data to the original vertex data
+                    mMesh->ResetToOriginalData();
+                    resetDone = true;
+                }
+
+                // update the mesh deformer
+                mDeformers[i]->Update(actorInstance, node, timeDelta);
+            }
+        }
+    }
+
 
     // reinitialize mesh deformers
     void MeshDeformerStack::ReinitializeDeformers(Actor* actor, Node* node, uint32 lodLevel)

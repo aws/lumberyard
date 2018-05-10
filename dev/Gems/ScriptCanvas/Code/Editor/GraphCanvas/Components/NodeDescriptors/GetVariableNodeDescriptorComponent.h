@@ -11,99 +11,21 @@
 */
 #pragma once
 
-#include <AzCore/Component/EntityBus.h>
-
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
-#include <GraphCanvas/Components/NodePropertyDisplay/VariableDataInterface.h>
-#include <GraphCanvas/Components/Nodes/Variable/VariableNodeBus.h>
+#include <Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.h>
 
-#include "Editor/GraphCanvas/Components/NodeDescriptorComponent.h"
-
-#include "ScriptCanvas/Core/NodeBus.h"
-#include "ScriptCanvas/Core/Endpoint.h"
+#include <ScriptCanvas/Variable/VariableBus.h>
 
 namespace ScriptCanvasEditor
 {
     class GetVariableNodeDescriptorComponent
-        : public NodeDescriptorComponent
-        , public GetVariableNodeDescriptorRequestBus::Handler
-        , public GraphCanvas::NodeNotificationBus::Handler        
-        , public GraphCanvas::VariableNotificationBus::Handler
+        : public VariableNodeDescriptorComponent
     {
-    private:
-        class GetVariableReferenceDataInterface
-            : public GraphCanvas::VariableReferenceDataInterface
-            , public GetVariableNodeDescriptorNotificationBus::Handler
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(GetVariableReferenceDataInterface, AZ::SystemAllocator, 0);
-
-            GetVariableReferenceDataInterface(const AZ::EntityId& busId);
-            ~GetVariableReferenceDataInterface();
-
-            // VariableReferenceDataInterface
-            AZ::EntityId GetVariableReference() const override;
-            void AssignVariableReference(const AZ::EntityId& variableId) override;
-
-            AZ::Uuid GetVariableDataType() const override;
-            /////
-
-            // GetVariableNodeDescriptNotificationBus
-            void OnVariableActivated() override;
-            void OnAssignVariableChanged() override;
-            ////
-
-        private:
-
-            AZ::EntityId m_busId;
-        };
-
     public:
-        AZ_COMPONENT(GetVariableNodeDescriptorComponent, "{4FE9C826-0CE6-40D0-8253-3A7524358819}", NodeDescriptorComponent);
+        AZ_COMPONENT(GetVariableNodeDescriptorComponent, "{78D946A9-4CC6-4BA7-A46A-A4C87191678D}", VariableNodeDescriptorComponent);
         static void Reflect(AZ::ReflectContext* reflectContext);
-        
-        GetVariableNodeDescriptorComponent();
-        GetVariableNodeDescriptorComponent(const AZ::EntityId& variableId);
-        ~GetVariableNodeDescriptorComponent() = default;
 
-        // Component
-        void Activate() override;
-        void Deactivate() override;
-        ////
-
-        // GetVariableNodeDescriptorRequests
-        GraphCanvas::VariableReferenceDataInterface* CreateVariableDataInterface() override;
-        ScriptCanvas::Endpoint GetSourceEndpoint(ScriptCanvas::SlotId slotId) const override;
-
-        AZ::EntityId GetVariableId() const override;
-        void SetVariableId(const AZ::EntityId& variableId) override;
-        ////
-
-        // VariableNotificationBus::Handler
-        using GraphCanvas::VariableNotificationBus::Handler::OnNameChanged;
-        void OnNameChanged() override;
-        void OnVariableActivated() override;
-        void OnVariableDestroyed() override;
-        ////
-        
-        // GraphCanvas::NodeNotificationBus
-        using GraphCanvas::NodeNotificationBus::Handler::OnNameChanged;
-        void OnAddedToScene(const AZ::EntityId& sceneId) override;
-        void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
-        ////
-        
-    private:
-    
-        void PopulateExternalSlotIds();
-        void ConvertConnections(const AZ::EntityId& oldVariableId);
-    
-        void ClearPins();
-        void PopulatePins();
-
-        void UpdateTitle();
-
-        AZ::EntityId m_variableId;
-
-        AZStd::unordered_set< ScriptCanvas::SlotId > m_externalSlotIds;
+    protected:
+        void UpdateTitle(AZStd::string_view variableName) override;
     };
 }

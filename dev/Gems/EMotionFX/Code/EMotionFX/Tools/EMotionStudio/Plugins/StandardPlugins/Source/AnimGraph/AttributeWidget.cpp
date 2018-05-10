@@ -11,7 +11,6 @@
 */
 
 #include "AttributeWidget.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "AttributesWindow.h"
 #include "AnimGraphPlugin.h"
 #include "BlendResourceWidget.h"
@@ -35,6 +34,7 @@
 #include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/Source/Attachment.h>
 #include <EMotionFX/Source/Actor.h>
+#include <EMotionFX/Source/MorphSetup.h>
 #include <EMotionFX/Source/AnimGraphInstance.h>
 #include <EMotionFX/Source/BlendSpace1DNode.h>
 #include <EMotionFX/Source/BlendSpace2DNode.h>
@@ -44,6 +44,8 @@
 #include <EMotionFX/Source/MotionEventTrack.h>
 #include <EMotionFX/Source/BlendTreeParameterNode.h>
 #include <EMotionFX/Source/ActorManager.h>
+
+#include <EMotionStudio/EMStudioSDK/Source/MorphTargetSelectionWindow.h>
 
 
 #define SPINNER_WIDTH 58
@@ -88,7 +90,7 @@ namespace EMStudio
             // The currently activated anim graph in the plugin differs from the one the current actor instance uses.
             animGraphInstance = nullptr;
         }
-        
+
         return animGraphInstance;
     }
 
@@ -109,7 +111,7 @@ namespace EMStudio
             mFirstAttribute = attributes[0];
 
     //  if (attributeInfo)
-    //      mNameString.Format("%s:", attributeInfo->mName.AsChar());
+    //      mNameString = AZStd::string::format("%s:", attributeInfo->mName.AsChar());
     }
 
 
@@ -874,12 +876,12 @@ namespace EMStudio
             else
             {
                 // show how many nodes there are and setup the tooltip
-                MCore::String labelText;
-                labelText.Reserve(1024 * 100);
-                labelText.Format("%d nodes inside mask", nodeMask->GetNumNodes());
-                nodeLink = new MysticQt::LinkWidget(labelText.AsChar());
+                AZStd::string labelText;
+                labelText.reserve(1024 * 100);
+                labelText = AZStd::string::format("%d nodes inside mask", nodeMask->GetNumNodes());
+                nodeLink = new MysticQt::LinkWidget(labelText.c_str());
 
-                labelText.Clear();
+                labelText.clear();
                 const uint32 numNodes = nodeMask->GetNumNodes();
                 for (uint32 i = 0; i < numNodes; ++i)
                 {
@@ -895,7 +897,7 @@ namespace EMStudio
                 }
 
                 // update the tooltip text
-                nodeLink->setToolTip(labelText.AsChar());
+                nodeLink->setToolTip(labelText.c_str());
             }
         }
 
@@ -943,7 +945,7 @@ namespace EMStudio
         const uint32 numMaskNodes = nodeMask->GetNumNodes();
         for (uint32 i = 0; i < numMaskNodes; ++i)
         {
-            if (nodeMask->GetNode(i).mName.CheckIfIsEqual(nodeName))
+            if (nodeMask->GetNode(i).mName == nodeName)
             {
                 return i;
             }
@@ -976,7 +978,7 @@ namespace EMStudio
             const uint32 numOldMaskNodes = oldNodeMask->GetNumNodes();
             for (uint32 j = 0; j < numOldMaskNodes; ++j)
             {
-                EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(oldNodeMask->GetNode(j).mName.AsChar());
+                EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(oldNodeMask->GetNode(j).mName.c_str());
                 if (node)
                 {
                     mSelectionList->AddNode(node);
@@ -1009,12 +1011,12 @@ namespace EMStudio
             // update the node mask
 
             // remove the ones that got unselected
-            for (i = 0; i < nodeMask->GetNumNodes(); )
+            for (i = 0; i < nodeMask->GetNumNodes();)
             {
-                const MCore::String& nodeName = nodeMask->GetNode(i).mName;
+                const AZStd::string& nodeName = nodeMask->GetNode(i).mName;
 
                 // skip node names that are not inside the current actor
-                if (actor->GetSkeleton()->FindNodeByName(nodeName.AsChar()) == nullptr)
+                if (actor->GetSkeleton()->FindNodeByName(nodeName.c_str()) == nullptr)
                 {
                     i++;
                     continue;
@@ -1034,7 +1036,7 @@ namespace EMStudio
                 }
 
                 // if the node is not selected remove it
-                const uint32 maskEntryIndex = FindMaskEntryIndexByNodeName(nodeMask, nodeName.AsChar());
+                const uint32 maskEntryIndex = FindMaskEntryIndexByNodeName(nodeMask, nodeName.c_str());
                 if  (maskEntryIndex != MCORE_INVALIDINDEX32)
                 {
                     nodeMask->GetNodes().Remove(maskEntryIndex);
@@ -1048,7 +1050,7 @@ namespace EMStudio
             // add the newly selected nodes
             for (i = 0; i < numSelectedNodes; ++i)
             {
-                const uint32 maskEntryIndex = FindMaskEntryIndexByNodeName(nodeMask, mNodeSelection[i].AsChar());
+                const uint32 maskEntryIndex = FindMaskEntryIndexByNodeName(nodeMask, mNodeSelection[i].c_str());
                 if (maskEntryIndex == MCORE_INVALIDINDEX32)
                 {
                     nodeMask->GetNodes().AddEmpty();
@@ -1060,21 +1062,21 @@ namespace EMStudio
             const uint32 numMaskNodes = nodeMask->GetNumNodes();
 
             // update the link name
-            MCore::String htmlLink;
+            AZStd::string htmlLink;
             if (numMaskNodes > 0)
             {
-                htmlLink.Format("%d nodes inside mask", numMaskNodes);
+                htmlLink = AZStd::string::format("%d nodes inside mask", numMaskNodes);
             }
             else
             {
-                htmlLink.Format("select nodes");
+                htmlLink = AZStd::string::format("select nodes");
             }
 
-            mNodeLink->setText(htmlLink.AsChar());
+            mNodeLink->setText(htmlLink.c_str());
 
             // build the tooltip text
-            htmlLink.Clear();
-            htmlLink.Reserve(16384);
+            htmlLink.clear();
+            htmlLink.reserve(16384);
             for (i = 0; i < numMaskNodes; ++i)
             {
                 if (i < numMaskNodes - 1)
@@ -1089,7 +1091,7 @@ namespace EMStudio
             }
 
             // update the tooltip text
-            mNodeLink->setToolTip(htmlLink.AsChar());
+            mNodeLink->setToolTip(htmlLink.c_str());
 
             const uint32 numAttributes = mAttributes.GetLength();
             for (i = 0; i < numAttributes; ++i)
@@ -1127,7 +1129,7 @@ namespace EMStudio
         const uint32 numSelected = selection.GetLength();
         for (uint32 i = 0; i < numSelected; ++i)
         {
-            if (selection[i].GetNodeNameString().GetIsEmpty() == false)
+            if (selection[i].GetNodeNameString().empty() == false)
             {
                 mNodeSelection.Add(selection[i].GetNodeName());
             }
@@ -1171,7 +1173,7 @@ namespace EMStudio
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).AsChar());
+            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).c_str());
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -1268,13 +1270,13 @@ namespace EMStudio
         for (uint32 i = 0; i < numAttributes; ++i)
         {
             MCORE_ASSERT(mAttributes[i]->GetType() == MCore::AttributeString::TYPE_ID);
-            const MCore::String& value = static_cast<MCore::AttributeString*>(mAttributes[i])->GetValue();
+            const AZStd::string& value = static_cast<MCore::AttributeString*>(mAttributes[i])->GetValue();
             QTreeWidgetItemIterator itemIterator(motionPickWindow.GetHierarchyWidget()->GetTreeWidget());
             QTreeWidgetItem* lastItemFound = nullptr;
             while (*itemIterator)
             {
                 QTreeWidgetItem* item = *itemIterator;
-                if (item->text(0) == value.AsChar())
+                if (item->text(0) == value.c_str())
                 {
                     lastItemFound = item;
                 }
@@ -1383,7 +1385,7 @@ namespace EMStudio
         if (numArrayItems == 1)
         {
             MCORE_ASSERT(arrayAttrib->GetAttribute(0)->GetType() == MCore::AttributeString::TYPE_ID);
-            text = static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(0))->GetValue().AsChar();
+            text = static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(0))->GetValue().c_str();
         }
         else
         {
@@ -1397,7 +1399,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numArrayItems; ++i)
         {
             MCORE_ASSERT(arrayAttrib->GetAttribute(i)->GetType() == MCore::AttributeString::TYPE_ID);
-            text += static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(i))->GetValue().AsChar();
+            text += static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(i))->GetValue().c_str();
             if (i != numArrayItems - 1)
             {
                 text += "\n";
@@ -1446,13 +1448,13 @@ namespace EMStudio
             for (uint32 j = 0; j < numArrayItems; ++j)
             {
                 MCORE_ASSERT(arrayAttrib->GetAttribute(j)->GetType() == MCore::AttributeString::TYPE_ID);
-                const MCore::String& value = static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(j))->GetValue();
+                const AZStd::string& value = static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(j))->GetValue();
                 QTreeWidgetItemIterator itemIterator(motionPickWindow.GetHierarchyWidget()->GetTreeWidget());
                 QTreeWidgetItem* lastItemFound = nullptr;
                 while (*itemIterator)
                 {
                     QTreeWidgetItem* item = *itemIterator;
-                    if (item->text(0) == value.AsChar())
+                    if (item->text(0) == value.c_str())
                     {
                         lastItemFound = item;
                     }
@@ -2101,7 +2103,7 @@ namespace EMStudio
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(stringValue).AsChar());
+            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(stringValue).c_str());
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -2174,7 +2176,7 @@ namespace EMStudio
         assert(sender()->inherits("QLineEdit"));
         QLineEdit* widget = qobject_cast<QLineEdit*>(sender());
 
-        if (ValidateNodeName(FromQtString(text).AsChar()) == false)
+        if (ValidateNodeName(FromQtString(text).c_str()) == false)
         {
             GetManager()->SetWidgetAsInvalidInput(widget);
         }
@@ -2191,19 +2193,19 @@ namespace EMStudio
         assert(sender()->inherits("QLineEdit"));
         QLineEdit* widget = qobject_cast<QLineEdit*>(sender());
         QString newName = widget->text();
-        MCore::String coreString;
+        AZStd::string coreString;
         FromQtString(newName, &coreString);
 
         // if the name didn't change do nothing
-        if (mNode->GetNameString().CheckIfIsEqual(coreString.AsChar()))
+        if (mNode->GetNameString() == coreString)
         {
             return;
         }
 
         // validate the name
-        if (ValidateNodeName(coreString.AsChar()) == false)
+        if (ValidateNodeName(coreString.c_str()) == false)
         {
-            MCore::LogWarning("The name '%s' is either invalid or already in use by another node, please select another name.", coreString.AsChar());
+            MCore::LogWarning("The name '%s' is either invalid or already in use by another node, please select another name.", coreString.c_str());
             widget->setText(mNode->GetName());
         }
         else // trigger the rename
@@ -2216,14 +2218,14 @@ namespace EMStudio
             }
 
             // build the command string
-            MCore::String commandString;
-            commandString.Format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), mNode->GetName(), coreString.AsChar());
+            AZStd::string commandString;
+            commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), mNode->GetName(), coreString.c_str());
 
             // execute the command
-            MCore::String commandResult;
-            if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), commandResult) == false)
+            AZStd::string commandResult;
+            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), commandResult) == false)
             {
-                MCore::LogError(commandResult.AsChar());
+                MCore::LogError(commandResult.c_str());
                 return;
             }
         }
@@ -2248,7 +2250,7 @@ namespace EMStudio
         EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
 
         // get the initial value
-        const MCore::String initialValue = (mFirstAttribute) ? static_cast<MCore::AttributeString*>(mFirstAttribute)->AsChar() : "";
+        const AZStd::string initialValue = (mFirstAttribute) ? static_cast<MCore::AttributeString*>(mFirstAttribute)->AsChar() : "";
 
         // add all anim graph parameters
         int32 initialIndex = -1;
@@ -2284,7 +2286,7 @@ namespace EMStudio
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(stringValue).AsChar());
+            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(stringValue).c_str());
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -2328,7 +2330,7 @@ namespace EMStudio
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).AsChar());
+            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).c_str());
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -2351,7 +2353,7 @@ namespace EMStudio
         }
 
         // mark edit field in red in case the currently entered text is no valid node name
-        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(text).AsChar());
+        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(text).c_str());
         if (node == nullptr)
         {
             GetManager()->SetWidgetAsInvalidInput(mLineEdit);
@@ -2410,6 +2412,191 @@ namespace EMStudio
 
     //-----------------------------------------------------------------------------------------------------------------
 
+    MorphTargetPickerAttributeWidget::MorphTargetPickerAttributeWidget(const MCore::Array<MCore::Attribute*> attributes, MCore::AttributeSettings* attributeSettings, void* customData, bool readOnly, bool creationMode, const MysticQt::AttributeChangedFunction& func)
+        : MysticQt::AttributeWidget(attributes, attributeSettings, customData, readOnly, creationMode, func)
+    {
+        mPlugin = AttributeWidgetFindAnimGraphPlugin();
+
+        AZStd::string linkName;
+        if (mFirstAttribute)
+        {
+            mLinkWidget = CreateLink("select morph targets");
+
+            if (mFirstAttribute)
+            {
+                MCore::AttributeArray* arrayAttrib = static_cast<MCore::AttributeArray*>(mFirstAttribute);
+                UpdateLinkWidget(arrayAttrib);
+            }
+
+            mLinkWidget->setEnabled(!readOnly);
+            connect(mLinkWidget, SIGNAL(clicked()), this, SLOT(OnLinkWidgetClicked()));
+
+            mResetSelectionButton = new QPushButton();
+            EMStudioManager::MakeTransparentButton(mResetSelectionButton, "/Images/Icons/SearchClearButton.png", "Reset selection");
+            connect(mResetSelectionButton, SIGNAL(clicked()), this, SLOT(OnResetSelection()));
+
+            QWidget*        helperWidget = new QWidget();
+            QHBoxLayout*    helperLayout = new QHBoxLayout();
+            helperLayout->setSpacing(0);
+            helperLayout->setMargin(0);
+
+            helperLayout->addWidget(mLinkWidget, 0, Qt::AlignLeft);
+            helperLayout->addWidget(mResetSelectionButton, 0, Qt::AlignLeft);
+            QWidget* spacerWidget = new QWidget();
+            spacerWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+            helperLayout->addWidget(spacerWidget);
+            helperWidget->setLayout(helperLayout);
+
+            CreateStandardLayout(helperWidget, attributeSettings);
+        }
+    }
+
+
+    void MorphTargetPickerAttributeWidget::OnResetSelection()
+    {
+        const uint32 numAttributes = mAttributes.GetLength();
+        for (uint32 i = 0; i < numAttributes; ++i)
+        {
+            AZ_Assert(mAttributes[i]->GetType() == MCore::AttributeString::TYPE_ID, "Expected an MCore::AttributeArray attribute type.");
+            MCore::AttributeArray* arrayAttrib = static_cast<MCore::AttributeArray*>(mAttributes[i]);
+            arrayAttrib->Clear();
+            if (mAttribChangedFunc)
+            {
+                mAttribChangedFunc(mAttributes[i], mAttributeSettings);
+            }
+        }
+
+        mLinkWidget->setText("select morph targets");
+        mLinkWidget->setToolTip("");
+        FireValueChangedSignal();
+        UpdateInterface();
+    }
+
+
+    MysticQt::LinkWidget* MorphTargetPickerAttributeWidget::CreateLink(const char* name)
+    {
+        MysticQt::LinkWidget* link = nullptr;
+        if (!name || strlen(name) == 0)
+        {
+            link = new MysticQt::LinkWidget("select morph targets");
+        }
+        else
+        {
+            link = new MysticQt::LinkWidget(name);
+        }
+
+        link->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        return link;
+    }
+
+
+    void MorphTargetPickerAttributeWidget::UpdateLinkWidget(MCore::AttributeArray* morphTargets)
+    {
+        if (!mLinkWidget)
+        {
+            return;
+        }
+
+        const uint32 numMorphTargets = morphTargets->GetNumAttributes();
+        if (numMorphTargets == 0)
+        {
+            mLinkWidget->setText("select morph targets");
+            mLinkWidget->setToolTip("");
+        }
+        else
+        if (numMorphTargets == 1)
+        {
+            AZ_Assert(morphTargets->GetAttribute(0)->GetType() == MCore::AttributeString::TYPE_ID, "Invalid attribute types, expected MCore::AttributeString types inside the MCore::AttributeArray.");
+            MCore::AttributeString* nameAttrib = static_cast<MCore::AttributeString*>(morphTargets->GetAttribute(0));
+            mLinkWidget->setText(nameAttrib->AsChar());
+            mLinkWidget->setToolTip(nameAttrib->AsChar());
+        }
+        else // Multiple items.
+        {
+            AZStd::string text = AZStd::string::format("%d morph targets", numMorphTargets);
+            mLinkWidget->setText(text.c_str());
+
+            text.clear();
+            for (uint32 i = 0; i < numMorphTargets; ++i)
+            {
+                text += static_cast<MCore::AttributeString*>(morphTargets->GetAttribute(i))->AsChar();
+                if (i < numMorphTargets - 1)
+                {
+                    text += "\n";
+                }
+            }
+            mLinkWidget->setToolTip(text.c_str());
+        }
+    }
+
+
+    void MorphTargetPickerAttributeWidget::OnLinkWidgetClicked()
+    {
+        EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
+        if (!actorInstance)
+        {
+            QMessageBox::warning(this, "Selection Invalid", "Cannot open the selection window. Please make sure exactly one actor instance is selected.");
+            return;
+        }
+
+        EMotionFX::MorphSetup* morphSetup = actorInstance->GetActor()->GetMorphSetup(0);
+        AZStd::vector<uint32> selection;
+        if (mAttributes.GetLength() > 0)
+        {
+            MCore::AttributeArray* arrayAttrib = static_cast<MCore::AttributeArray*>(mAttributes[0]);
+            for (uint32 i = 0; i < arrayAttrib->GetNumAttributes(); ++i)
+            {
+                const char* morphName = static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(i))->AsChar();
+                EMotionFX::MorphTarget* morphTarget = actorInstance->GetActor()->GetMorphSetup(0)->FindMorphTargetByName(morphName);
+                if (morphTarget)
+                {
+                    selection.emplace_back(morphTarget->GetID());
+                }
+            }
+        }
+
+        MorphTargetSelectionWindow selectionWindow(this, false /* multiSelect disabled */);
+        selectionWindow.Update(actorInstance->GetActor()->GetMorphSetup(0), selection);
+        selectionWindow.setModal(true);
+
+        if (selectionWindow.exec() == QDialog::Accepted)
+        {
+            const uint32 numAttributes = mAttributes.GetLength();
+            for (uint32 i = 0; i < numAttributes; ++i)
+            {
+                MCore::AttributeArray* arrayAttrib = static_cast<MCore::AttributeArray*>(mAttributes[i]);
+                arrayAttrib->Clear();
+
+                const size_t numSelectedMorphs = selectionWindow.GetMorphTargetIDs().size();
+                for (size_t j = 0; j < numSelectedMorphs; ++j)
+                {
+                    const uint32 morphId = selectionWindow.GetMorphTargetIDs()[j];
+                    EMotionFX::MorphTarget* morphTarget = morphSetup->FindMorphTargetByID(morphId);
+                    if (!morphTarget)
+                    {
+                        continue;
+                    }
+                    arrayAttrib->AddAttribute(MCore::AttributeString::Create(morphTarget->GetName()));
+                }
+
+                if (mAttribChangedFunc)
+                {
+                    mAttribChangedFunc(mAttributes[i], mAttributeSettings);
+                }
+
+                if (i == 0)
+                {
+                    UpdateLinkWidget(arrayAttrib);
+                }
+            }
+        }
+
+        FireValueChangedSignal();
+        UpdateInterface();
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------
+
     BlendTreeMotionAttributeWidget::BlendTreeMotionAttributeWidget(const MCore::Array<MCore::Attribute*> attributes, MCore::AttributeSettings* attributeSettings, void* customData, bool readOnly, bool creationMode, const MysticQt::AttributeChangedFunction& func)
         : MysticQt::AttributeWidget(attributes, attributeSettings, customData, readOnly, creationMode, func)
     {
@@ -2440,7 +2627,7 @@ namespace EMStudio
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).AsChar());
+            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).c_str());
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -2463,7 +2650,7 @@ namespace EMStudio
         }
 
         // mark edit field in red in case the currently entered text is no valid node name
-        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(text).AsChar());
+        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(text).c_str());
         if (node == nullptr)
         {
             GetManager()->SetWidgetAsInvalidInput(mLineEdit);
@@ -2551,7 +2738,7 @@ namespace EMStudio
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).AsChar());
+            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(FromQtString(text).c_str());
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -2574,7 +2761,7 @@ namespace EMStudio
         }
 
         // mark edit field in red in case the currently entered text is no valid node name
-        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(text).AsChar());
+        EMotionFX::AnimGraphNode* node = animGraph->RecursiveFindNode(FromQtString(text).c_str());
         if (node == nullptr)
         {
             GetManager()->SetWidgetAsInvalidInput(mLineEdit);
@@ -2679,7 +2866,7 @@ namespace EMStudio
                     const uint32 numMotionTracks = eventTable->GetNumTracks();
                     for (uint32 i = 0; i < numMotionTracks; ++i)
                     {
-                        if (eventTable->GetTrack(i)->GetNameString().GetIsEmpty() == false)
+                        if (eventTable->GetTrack(i)->GetNameString().empty() == false)
                         {
                             mComboBox->addItem(eventTable->GetTrack(i)->GetName());
                         }
@@ -2703,10 +2890,10 @@ namespace EMStudio
             mComboBox->setEnabled(false);
         }
 
-        MCore::String text = (mFirstAttribute) ? static_cast<MCore::AttributeString*>(mFirstAttribute)->AsChar() : "";
-        int index = mComboBox->findText(text.AsChar());
+        AZStd::string text = (mFirstAttribute) ? static_cast<MCore::AttributeString*>(mFirstAttribute)->AsChar() : "";
+        int index = mComboBox->findText(text.c_str());
 
-        if (text.GetIsEmpty())
+        if (text.empty())
         {
             index = 0;
         }
@@ -2721,14 +2908,14 @@ namespace EMStudio
     {
         int index = value;
 
-        MCore::String itemText;
+        AZStd::string itemText;
         FromQtString(mComboBox->itemText(index), &itemText);
 
         // get the number of attributes and iterate through them
         const uint32 numAttributes = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(itemText.AsChar());
+            static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(itemText.c_str());
             if (mAttribChangedFunc)
             {
                 mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -2821,7 +3008,7 @@ namespace EMStudio
         MysticQt::LinkWidget* nodeLink = nullptr;
 
         // if there is no mask setup yet
-        if (nodeName == nullptr || MCore::String(nodeName).GetIsEmpty())
+        if (nodeName == nullptr || AZStd::string(nodeName).empty())
         {
             nodeLink = new MysticQt::LinkWidget("select node");
         }
@@ -2854,15 +3041,15 @@ namespace EMStudio
         }
 
         // get the old and current node name and set the selection of the selection window to it
-        MCore::String       oldNodeName = (mFirstAttribute) ? static_cast<MCore::AttributeString*>(mFirstAttribute)->AsChar() : "";
+        AZStd::string       oldNodeName = (mFirstAttribute) ? static_cast<MCore::AttributeString*>(mFirstAttribute)->AsChar() : "";
         EMotionFX::Actor*   actor       = actorInstance->GetActor();
 
         mSelectionList->Clear();
 
         // add the old selected node to the selection list
-        if (oldNodeName.GetIsEmpty() == false)
+        if (oldNodeName.empty() == false)
         {
-            EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(oldNodeName.AsChar());
+            EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(oldNodeName.c_str());
             if (node)
             {
                 mSelectionList->AddNode(node);
@@ -2874,9 +3061,9 @@ namespace EMStudio
         mNodeSelectionWindow->setModal(true);
         if (mNodeSelectionWindow->exec() != QDialog::Rejected)  // we pressed cancel or the close cross
         {
-            if (mSelectedNodeName.GetIsEmpty() == false)
+            if (mSelectedNodeName.empty() == false)
             {
-                mNodeLink->setText(mSelectedNodeName.AsChar());
+                mNodeLink->setText(mSelectedNodeName.c_str());
             }
             else
             {
@@ -2887,7 +3074,7 @@ namespace EMStudio
             const uint32 numAttributes = mAttributes.GetLength();
             for (uint32 i = 0; i < numAttributes; ++i)
             {
-                static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(mSelectedNodeName.AsChar());
+                static_cast<MCore::AttributeString*>(mAttributes[i])->SetValue(mSelectedNodeName.c_str());
                 if (mAttribChangedFunc)
                 {
                     mAttribChangedFunc(mAttributes[i], mAttributeSettings);
@@ -2903,7 +3090,7 @@ namespace EMStudio
     // when the selection succeeded
     void NodeSelectionAttributeWidget::OnNodeSelected(MCore::Array<SelectionItem> selection)
     {
-        mSelectedNodeName.Clear();
+        mSelectedNodeName.clear();
 
         // check if selection is valid
         if (selection.GetLength() == 0)
@@ -2929,7 +3116,7 @@ namespace EMStudio
     // when the node selection got cancelled
     void NodeSelectionAttributeWidget::OnNodeSelectionCancelled()
     {
-        mSelectedNodeName.Clear();
+        mSelectedNodeName.clear();
     }
 
     //-----------------------------------------------------------------------------------------------------------------
@@ -3004,9 +3191,9 @@ namespace EMStudio
                     else
                     {
                         // show how many nodes there are and setup the tooltip
-                        MCore::String labelText;
+                        AZStd::string labelText;
                         labelText.Reserve( 1024 * 100 );
-                        labelText.Format("%d nodes inside mask", nodeMask->GetNumNodes());
+                        labelText = AZStd::string::format("%d nodes inside mask", nodeMask->GetNumNodes());
                         nodeLink = new MysticQt::LinkWidget( labelText.AsChar() );
 
                         labelText.Clear();
@@ -3075,7 +3262,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numItems; ++i)
         {
             MCore::AttributeString* name = static_cast<MCore::AttributeString*>(stringArray->GetAttribute(i));
-            if (name->GetValue().CheckIfIsEqual(nodeName))
+            if (name->GetValue() == nodeName)
             {
                 return i;
             }
@@ -3100,7 +3287,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numItems; ++i)
         {
             MCore::AttributeString* name = static_cast<MCore::AttributeString*>(stringArray->GetAttribute(i));
-            if (name->GetValue().CheckIfIsEqual(morphName))
+            if (name->GetValue() == morphName)
             {
                 return i;
             }
@@ -3153,7 +3340,7 @@ namespace EMStudio
                 // remove the ones that got unselected
                 for (i=0; i<nodeMask->GetNumNodes();)
                 {
-                    const MCore::String& nodeName = nodeMask->GetNode(i).mName;
+                    const AZStd::string& nodeName = nodeMask->GetNode(i).mName;
 
                     // skip node names that are not inside the current actor
                     if (actor->FindNodeByName( nodeName.AsChar() ) == nullptr)
@@ -3196,11 +3383,11 @@ namespace EMStudio
                 const uint32 numMaskNodes = nodeMask->GetNumNodes();
 
                 // update the link name
-                MCore::String htmlLink;
+                AZStd::string htmlLink;
                 if (numMaskNodes > 0)
-                    htmlLink.Format("%d nodes inside mask", numMaskNodes);
+                    htmlLink = AZStd::string::format("%d nodes inside mask", numMaskNodes);
                 else
-                    htmlLink.Format("select nodes");
+                    htmlLink = AZStd::string::format("select nodes");
 
                 mNodeLink->setText( htmlLink.AsChar() );
 
@@ -3249,7 +3436,7 @@ namespace EMStudio
         const uint32 numSelected = selection.GetLength();
         for (uint32 i = 0; i < numSelected; ++i)
         {
-            if (selection[i].GetNodeNameString().GetIsEmpty() == false)
+            if (selection[i].GetNodeNameString().empty() == false)
             {
                 mNodeSelection.Add(selection[i].GetNodeName());
             }
@@ -3360,7 +3547,7 @@ namespace EMStudio
         MysticQt::LinkWidget* nodeLink = nullptr;
 
         // if there is no mask setup yet
-        if (nodeName == nullptr || MCore::String(nodeName).GetIsEmpty())
+        if (nodeName == nullptr || AZStd::string(nodeName).empty())
         {
             nodeLink = new MysticQt::LinkWidget("select node");
         }
@@ -3374,13 +3561,14 @@ namespace EMStudio
                 EMotionFX::AttributeGoalNode* goalNodeAttrib = static_cast<EMotionFX::AttributeGoalNode*>(mFirstAttribute);
                 if (goalNodeAttrib)
                 {
-                    MCore::String linkText;
+                    AZStd::string linkText;
                     EMotionFX::ActorInstance* parentInstance = animGraphInstance->FindActorInstanceFromParentDepth(goalNodeAttrib->GetParentDepth());
                     if (parentInstance)
                     {
-                        const MCore::String& fileName = parentInstance->GetActor()->GetFileName();
-                        linkText.Format("%s (%s)", nodeName, fileName.ExtractFileName().AsChar());
-                        nodeLink = new MysticQt::LinkWidget(linkText.AsChar());
+                        AZStd::string fileName;
+                        AzFramework::StringFunc::Path::GetFileName(parentInstance->GetActor()->GetFileName(), fileName);
+                        linkText = AZStd::string::format("%s (%s)", nodeName, fileName.c_str());
+                        nodeLink = new MysticQt::LinkWidget(linkText.c_str());
                     }
                     else
                     {
@@ -3415,15 +3603,15 @@ namespace EMStudio
         }
 
         // get the old and current node name and set the selection of the selection window to it
-        MCore::String       oldNodeName = (mFirstAttribute) ? static_cast<EMotionFX::AttributeGoalNode*>(mFirstAttribute)->GetNodeName() : "";
+        AZStd::string       oldNodeName = (mFirstAttribute) ? static_cast<EMotionFX::AttributeGoalNode*>(mFirstAttribute)->GetNodeName() : "";
         EMotionFX::Actor*   actor       = actorInstance->GetActor();
 
         mSelectionList->Clear();
 
         // add the old selected node to the selection list
-        if (oldNodeName.GetIsEmpty() == false)
+        if (oldNodeName.empty() == false)
         {
-            EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(oldNodeName.AsChar());
+            EMotionFX::Node* node = actor->GetSkeleton()->FindNodeByName(oldNodeName.c_str());
             if (node)
             {
                 mSelectionList->AddNode(node);
@@ -3459,12 +3647,13 @@ namespace EMStudio
             uint32 parentDepth = actorInstanceIDs.Find(mSelectedNodeActorInstanceID);
             MCORE_ASSERT(parentDepth != MCORE_INVALIDINDEX32);  // the selected actor instance must be one of the ones we showed in the list
 
-            if (mSelectedNodeName.GetIsEmpty() == false)
+            if (mSelectedNodeName.empty() == false)
             {
-                MCore::String linkText;
-                const MCore::String& actorFile = EMotionFX::GetActorManager().FindActorInstanceByID(mSelectedNodeActorInstanceID)->GetActor()->GetFileName();
-                linkText.Format("%s (%s)", mSelectedNodeName.AsChar(), actorFile.ExtractFileName().AsChar());
-                mGoalLink->setText(linkText.AsChar());
+                AZStd::string linkText;
+                AZStd::string actorFile;
+                AzFramework::StringFunc::Path::GetFileName(EMotionFX::GetActorManager().FindActorInstanceByID(mSelectedNodeActorInstanceID)->GetActor()->GetFileName(), actorFile);
+                linkText = AZStd::string::format("%s (%s)", mSelectedNodeName.c_str(), actorFile.c_str());
+                mGoalLink->setText(linkText.c_str());
             }
             else
             {
@@ -3475,7 +3664,7 @@ namespace EMStudio
             const uint32 numAttributes = mAttributes.GetLength();
             for (uint32 i = 0; i < numAttributes; ++i)
             {
-                static_cast<EMotionFX::AttributeGoalNode*>(mAttributes[i])->SetNodeName(mSelectedNodeName.AsChar());
+                static_cast<EMotionFX::AttributeGoalNode*>(mAttributes[i])->SetNodeName(mSelectedNodeName.c_str());
                 static_cast<EMotionFX::AttributeGoalNode*>(mAttributes[i])->SetParentDepth(parentDepth);
 
                 if (mAttribChangedFunc)
@@ -3493,7 +3682,7 @@ namespace EMStudio
     // when the selection succeeded
     void GoalNodeSelectionAttributeWidget::OnNodeSelected(MCore::Array<SelectionItem> selection)
     {
-        mSelectedNodeName.Clear();
+        mSelectedNodeName.clear();
         mSelectedNodeActorInstanceID = MCORE_INVALIDINDEX32;
 
         // check if selection is valid
@@ -3521,7 +3710,7 @@ namespace EMStudio
     // when the node selection got cancelled
     void GoalNodeSelectionAttributeWidget::OnNodeSelectionCancelled()
     {
-        mSelectedNodeName.Clear();
+        mSelectedNodeName.clear();
     }
 
 
@@ -3713,7 +3902,7 @@ namespace EMStudio
         const uint32 numParameters = mask->GetNumParameterNames();
         for (uint32 i = 0; i < numParameters; ++i)
         {
-            if (mask->GetParameterNameString(i).CheckIfIsEqual(parameterName))
+            if (mask->GetParameterNameString(i) == parameterName)
             {
                 return i;
             }
@@ -3795,7 +3984,7 @@ namespace EMStudio
 
             // remove the ones that got unselected
             AZStd::string parameterName;
-            for (i = 0; i < mask->GetNumParameterNames(); )
+            for (i = 0; i < mask->GetNumParameterNames();)
             {
                 parameterName = mask->GetParameterName(i);
 
@@ -3845,21 +4034,21 @@ namespace EMStudio
         const uint32 numMaskParameters = mask->GetNumParameterNames();
 
         // update the link name
-        MCore::String labelText;
-        labelText.Reserve(1024 * 100);
+        AZStd::string labelText;
+        labelText.reserve(1024 * 100);
         if (numMaskParameters > 0)
         {
-            labelText.Format("%d parameters inside mask", numMaskParameters);
+            labelText = AZStd::string::format("%d parameters inside mask", numMaskParameters);
         }
         else
         {
-            labelText.Format("select parameters");
+            labelText = AZStd::string::format("select parameters");
         }
 
-        mParameterLink->setText(GetManager()->ConstructHTMLLink(labelText.AsChar()));
+        mParameterLink->setText(GetManager()->ConstructHTMLLink(labelText.c_str()));
 
         // build the tooltip text
-        labelText.Clear();
+        labelText.clear();
         for (i = 0; i < numMaskParameters; ++i)
         {
             if (i < numMaskParameters - 1)
@@ -3874,7 +4063,7 @@ namespace EMStudio
         }
 
         // update the tooltip text
-        mParameterLink->setToolTip(labelText.AsChar());
+        mParameterLink->setToolTip(labelText.c_str());
     }
 
 
@@ -3959,19 +4148,19 @@ namespace EMStudio
         const uint32 numStates = attributeStateFilter->CalcNumTotalStates(animGraph, parentNode);
 
         // update the link name
-        MCore::String htmlLink;
+        AZStd::string htmlLink;
         if (attributeStateFilter->GetIsEmpty() == false)
         {
             if (numStates == 1)
             {
-                htmlLink.Format("1 state", numStates);
+                htmlLink = AZStd::string::format("1 state", numStates);
             }
             else
             {
-                htmlLink.Format("%d states", numStates);
+                htmlLink = AZStd::string::format("%d states", numStates);
             }
 
-            mNodeLink->setText(htmlLink.AsChar());
+            mNodeLink->setText(htmlLink.c_str());
         }
         else
         {
@@ -3980,8 +4169,8 @@ namespace EMStudio
         }
 
         // build the tooltip text
-        htmlLink.Clear();
-        htmlLink.Reserve(16384);
+        htmlLink.clear();
+        htmlLink.reserve(16384);
 
         // add the node names
         const uint32 numNodes = attributeStateFilter->GetNumNodes();
@@ -4010,7 +4199,7 @@ namespace EMStudio
         }
 
         // update the tooltip text
-        mNodeLink->setToolTip(htmlLink.AsChar());
+        mNodeLink->setToolTip(htmlLink.c_str());
     }
 
 
@@ -4143,7 +4332,9 @@ namespace EMStudio
         m_tagSelector->SelectTags(tagStrings);
 
         m_tagSelector->setEnabled(!readOnly);
-        connect(m_tagSelector, &AzQtComponents::TagSelector::TagsChanged, [this] { OnTagsChanged();
+        connect(m_tagSelector, &AzQtComponents::TagSelector::TagsChanged, [this]
+            {
+                OnTagsChanged();
             });
 
         CreateStandardLayout(m_tagSelector, attributeSettings);
@@ -4186,7 +4377,7 @@ namespace EMStudio
             for (AZ::u32 j = 0; j < numArrayAttributes; ++j)
             {
                 MCore::AttributeString* stringAttribute = static_cast<MCore::AttributeString*>(arrayAttrib->GetAttribute(j));
-                outTags.push_back(stringAttribute->GetValue().AsChar());
+                outTags.push_back(stringAttribute->GetValue().c_str());
             }
         }
     }

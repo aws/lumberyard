@@ -175,7 +175,8 @@ namespace AzToolsFramework
 
             AZStd::vector<AZ::u8> buffer;
             AZ::IO::ByteContainerStream<decltype(buffer)> stream(&buffer);
-            if (!AZ::Utils::SaveObjectToStream(stream, AZ::DataStream::ST_BINARY, asset.Get(), asset.Get()->RTTI_GetType(), m_serializeContext))
+            auto assetHandler = const_cast<AZ::Data::AssetHandler*>(AZ::Data::AssetManager::Instance().GetHandler(asset.GetType()));
+            if (!assetHandler->SaveAssetData(asset, &stream))
             {
                 m_asset = AZ::Data::Asset<AZ::Data::AssetData>();
                 AZ_Error("Asset Editor", false, "Failed to create working asset.");
@@ -183,7 +184,7 @@ namespace AzToolsFramework
             }
 
             stream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-            if (!AZ::Utils::LoadObjectFromStreamInPlace(stream, m_serializeContext, m_asset.Get()->RTTI_GetType(), m_asset.Get(), AZ::ObjectStream::FilterDescriptor()))
+            if (!assetHandler->LoadAssetData(m_asset, &stream, {}))
             {
                 m_asset = AZ::Data::Asset<AZ::Data::AssetData>();
                 AZ_Error("Asset Editor", false, "Failed to initialize working asset.");
@@ -388,7 +389,8 @@ namespace AzToolsFramework
                 AZ::IO::FileIOStream fileStream(targetFilePath.c_str(), AZ::IO::OpenMode::ModeWrite);
                 if (fileStream.IsOpen())
                 {
-                    if (AZ::Utils::SaveObjectToStream(fileStream, AZ::DataStream::ST_XML, newAsset.Get(), assetType, m_serializeContext))
+                    auto assetHandler = const_cast<AZ::Data::AssetHandler*>(AZ::Data::AssetManager::Instance().GetHandler(assetType));
+                    if (assetHandler->SaveAssetData(newAsset, &fileStream))
                     {
                         m_newAssetPath = targetFilePath;
                         m_newAssetType = assetType;

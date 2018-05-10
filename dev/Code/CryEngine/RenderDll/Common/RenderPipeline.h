@@ -11,8 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef __RENDERPIPELINE_H__
-#define __RENDERPIPELINE_H__
+#pragma once
 
 #include <CryThreadSafeRendererContainer.h>
 #include <CryThreadSafeWorkerContainer.h>
@@ -103,6 +102,9 @@ typedef union UnINT64
 #define FB_IGNORE_SG_MASK   0x100000
 
 // FIXME: probably better to sort by shaders (Currently sorted by resources)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(RenderPipeline_h, AZ_RESTRICTED_PLATFORM)
+#endif
 struct SRendItem
 {
     uint32 SortVal;
@@ -1240,7 +1242,3 @@ struct SCompareByOnlyStableFlagsOctreeID
         return rA.rendItemSorter < rB.rendItemSorter;
     }
 };
-
-#endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERPIPELINE_H
-
-

@@ -9,35 +9,34 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "LmbrCentral_precompiled.h"
 #include "EditorCapsuleShapeComponent.h"
 
-#include <AzCore/Math/IntersectPoint.h>
 #include <AzCore/Serialization/EditContext.h>
 #include "CapsuleShapeComponent.h"
-#include "ShapeComponentConverters.h"
+#include "EditorShapeComponentConverters.h"
+#include "ShapeDisplay.h"
 
 namespace LmbrCentral
 {
     void EditorCapsuleShapeComponent::Reflect(AZ::ReflectContext* context)
     {
-        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             // Deprecate: EditorCapsuleColliderComponent -> EditorCapsuleShapeComponent
             serializeContext->ClassDeprecate(
                 "EditorCapsuleColliderComponent",
                 "{63247EE1-B081-40D9-8AE2-98E5C738EBD8}",
-                &ClassConverters::DeprecateEditorCapsuleColliderComponent
-                );
-
-            serializeContext->Class<EditorCapsuleShapeComponent, EditorBaseShapeComponent>()
-                ->Version(2, &ClassConverters::UpgradeEditorCapsuleShapeComponent)
-                ->Field("Configuration", &EditorCapsuleShapeComponent::m_configuration)
+                &ClassConverters::DeprecateEditorCapsuleColliderComponent)
                 ;
 
-            AZ::EditContext* editContext = serializeContext->GetEditContext();
-            if (editContext)
+            serializeContext->Class<EditorCapsuleShapeComponent, EditorBaseShapeComponent>()
+                ->Version(3, &ClassConverters::UpgradeEditorCapsuleShapeComponent)
+                ->Field("CapsuleShape", &EditorCapsuleShapeComponent::m_capsuleShape)
+                ;
+
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<EditorCapsuleShapeComponent>("Capsule Shape", "The Capsule Shape component creates a capsule around the associated entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
@@ -47,7 +46,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
-                    ->DataElement(0, &EditorCapsuleShapeComponent::m_configuration, "Configuration", "Capsule Shape Configuration")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCapsuleShapeComponent::m_capsuleShape, "Capsule Shape", "Capsule Shape Configuration")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCapsuleShapeComponent::ConfigurationChanged)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
@@ -55,51 +54,70 @@ namespace LmbrCentral
         }
     }
 
-    void EditorCapsuleShapeComponent::DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const
-    {
-        float straightSideLength = AZStd::max(0.f, m_configuration.GetHeight() - (2.f * m_configuration.GetRadius()));
-        if (displayContext)
-        {
-            displayContext->SetColor(s_shapeWireColor);
-            displayContext->DrawWireCapsule(AZ::Vector3::CreateZero(), AZ::Vector3::CreateAxisZ(1), m_configuration.GetRadius(), straightSideLength);
-        }
-    }
-
     void EditorCapsuleShapeComponent::Activate()
     {
         EditorBaseShapeComponent::Activate();
-        CapsuleShape::Activate(GetEntityId());        
+        m_capsuleShape.Activate(GetEntityId());
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+
+        GenerateVertices();
     }
 
     void EditorCapsuleShapeComponent::Deactivate()
-    {        
-        CapsuleShape::Deactivate();
+    {
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
+        m_capsuleShape.Deactivate();
         EditorBaseShapeComponent::Deactivate();
     }
 
-    void EditorCapsuleShapeComponent::ConfigurationChanged()
-    {        
-        InvalidateCache(CapsuleShapeComponent::CapsuleIntersectionDataCache::Obsolete_ShapeChange);
+    void EditorCapsuleShapeComponent::DisplayEntity(bool& handled)
+    {
+        DisplayShape(handled,
+            [this]() { return CanDraw(); },
+            [this](AzFramework::EntityDebugDisplayRequests* /*displayContext*/)
+            {
+                DrawShape({ m_shapeColor, m_shapeWireColor, m_displayFilled }, m_capsuleShapeMesh);
+            },
+            m_capsuleShape.GetCurrentTransform());
     }
 
-    AZ::Crc32 EditorCapsuleShapeComponent::OnConfigurationChanged()
+    void EditorCapsuleShapeComponent::ConfigurationChanged()
     {
-        // if radius is large enough that shape is essentially a sphere, ensure height remains accurate
-        if ((m_configuration.m_height - 2 * m_configuration.m_radius) < std::numeric_limits<float>::epsilon())
-        {
-            m_configuration.m_height = 2 * m_configuration.m_radius;
-            return AZ::Edit::PropertyRefreshLevels::EntireTree;
-        }
-
-        return AZ::Edit::PropertyRefreshLevels::None;
+        GenerateVertices();
+        m_capsuleShape.InvalidateCache(InvalidateShapeCacheReason::ShapeChange);
+        ShapeComponentNotificationsBus::Event(
+            GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged,
+            ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
 
     void EditorCapsuleShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        auto component = gameEntity->CreateComponent<CapsuleShapeComponent>();
-        if (component)
+        if (auto component = gameEntity->CreateComponent<CapsuleShapeComponent>())
         {
-            component->SetConfiguration(m_configuration);
+            component->SetConfiguration(m_capsuleShape.GetCapsuleConfiguration());
+        }
+
+        if (m_visibleInGameView)
+        {
+            if (auto component = gameEntity->CreateComponent<CapsuleShapeDebugDisplayComponent>())
+            {
+                component->SetConfiguration(m_capsuleShape.GetCapsuleConfiguration());
+            }
         }
     }
+
+    void EditorCapsuleShapeComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
+    {
+        EditorBaseShapeComponent::OnTransformChanged(local, world);
+        GenerateVertices();
+    }
+
+    void EditorCapsuleShapeComponent::GenerateVertices()
+    {
+        GenerateCapsuleMesh(
+            m_capsuleShape.GetCurrentTransform(), m_capsuleShape.GetCapsuleConfiguration().m_radius,
+            m_capsuleShape.GetCapsuleConfiguration().m_height, g_capsuleDebugShapeSides, g_capsuleDebugShapeCapSegments,
+            m_capsuleShapeMesh.m_vertexBuffer, m_capsuleShapeMesh.m_indexBuffer,m_capsuleShapeMesh.m_lineBuffer);
+    }
+
 } // namespace LmbrCentral

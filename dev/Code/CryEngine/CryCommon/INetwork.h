@@ -14,15 +14,20 @@
 // Description : Message definition to id management
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_INETWORK_H
-#define CRYINCLUDE_CRYCOMMON_INETWORK_H
 #pragma once
 
 #include <ISerialize.h>
 
 #define NUM_ASPECTS                         32              // Number of GameObject aspects supported.
 #define MAXIMUM_NUMBER_OF_CONNECTIONS       64              // Maximum number of connections supported.
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(INetwork_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #define LOBBY_DEFAULT_PORT                  30090           // Default local UDP port.
+#endif
 #define SERVER_DEFAULT_PORT LOBBY_DEFAULT_PORT
 #define SERVER_DEFAULT_PORT_STRING #SERVER_DEFAULT_PORT
 static const int NumAspects = NUM_ASPECTS;
@@ -538,5 +543,3 @@ public:
     virtual EntityId LocalEntityIdToServerEntityId(EntityId localId) const = 0;
     virtual EntityId ServerEntityIdToLocalEntityId(EntityId serverId, bool allowForcedEstablishment = false) const = 0;
 };
-
-#endif // CRYINCLUDE_CRYCOMMON_INETWORK_H

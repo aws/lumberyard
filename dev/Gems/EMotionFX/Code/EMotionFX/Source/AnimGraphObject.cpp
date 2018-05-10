@@ -146,11 +146,11 @@ namespace EMotionFX
 
     // generate a command line string from the current parameter values
     // this builds a string like: "-numIterations 10 -maxValue 3.54665474 -enabled true"
-    MCore::String AnimGraphObject::CreateAttributesString() const
+    AZStd::string AnimGraphObject::CreateAttributesString() const
     {
-        MCore::String result;
-        MCore::String valueString;
-        result.Reserve(1024);
+        AZStd::string result;
+        AZStd::string valueString;
+        result.reserve(1024);
 
         // for all attributes
         const AnimGraphManager& animGraphManager = GetAnimGraphManager();
@@ -170,7 +170,7 @@ namespace EMotionFX
                 result += "-";
                 result += attribInfo->GetInternalName();
                 result += " {";
-                result += valueString.AsChar();
+                result += valueString;
                 result += "}";
             }
         }
@@ -194,7 +194,7 @@ namespace EMotionFX
         for (uint32 a = 0; a < numAttribs; ++a)
         {
             MCore::AttributeSettings* attributeInfo = animGraphManager.GetAttributeInfo(this, a);
-            if (attributeInfo->GetInternalNameString().CheckIfIsEqualNoCase(internalName))
+            if (AzFramework::StringFunc::Equal(attributeInfo->GetInternalNameString().c_str(), internalName, false /* no case */))
             {
                 return a;
             }
@@ -207,8 +207,8 @@ namespace EMotionFX
     // init parameter values by a command line
     void AnimGraphObject::InitAttributesFromCommandLine(const MCore::CommandLine& commandLine)
     {
-        MCore::String attribName;
-        MCore::String attribValue;
+        AZStd::string attribName;
+        AZStd::string attribValue;
 
         // for all attributes in the command line
         const uint32 numAttributes = commandLine.GetNumParameters();
@@ -219,10 +219,10 @@ namespace EMotionFX
             attribValue = commandLine.GetParameterValue(a);
 
             // find the attribute number
-            const uint32 attribIndex = FindAttributeByInternalName(attribName.AsChar());
+            const uint32 attribIndex = FindAttributeByInternalName(attribName.c_str());
             if (attribIndex == MCORE_INVALIDINDEX32)
             {
-                MCore::LogWarning("EMotionFX::AnimGraphObject::InitAttributesFromCommandLine() - Failed to find internal attribute with name '%s' for object type '%s'", attribName.AsChar(), GetTypeString());
+                MCore::LogWarning("EMotionFX::AnimGraphObject::InitAttributesFromCommandLine() - Failed to find internal attribute with name '%s' for object type '%s'", attribName.c_str(), GetTypeString());
                 continue;
             }
 
@@ -230,7 +230,7 @@ namespace EMotionFX
             // so for example converting a "5.3546,10.234" into Vector2 data
             if (GetAttribute(attribIndex)->InitFromString(attribValue) == false)
             {
-                MCore::LogWarning("EMotionFX::AnimGraphObject::InitAttributesFromCommandLine() - Failed to convert the value string '%s' for attribute '%s' into real data for object type '%s'", attribValue.AsChar(), attribName.AsChar(), GetTypeString());
+                MCore::LogWarning("EMotionFX::AnimGraphObject::InitAttributesFromCommandLine() - Failed to convert the value string '%s' for attribute '%s' into real data for object type '%s'", attribValue.c_str(), attribName.c_str(), GetTypeString());
             }
         }
     }
@@ -327,11 +327,11 @@ namespace EMotionFX
         {
             MCore::Attribute*           attribute       = GetAttribute(i);
             MCore::AttributeSettings*   attributeInfo   = animGraphManager.GetAttributeInfo(const_cast<AnimGraphObject*>(this), i);
-            uint32                      numCharacters   = attributeInfo->GetInternalNameString().GetLength();
+            uint32                      numCharacters   = static_cast<uint32>(attributeInfo->GetInternalNameString().size());
             uint32                      attributeType   = attribute->GetType();
             uint32                      attributeSize   = attribute->GetStreamSize();
 
-            if (attributeInfo->GetInternalNameString().GetLength() == 0)
+            if (attributeInfo->GetInternalNameString().size() == 0)
             {
                 numCharacters = 0;
             }
@@ -358,7 +358,7 @@ namespace EMotionFX
             stream->Write(&numCharacters, sizeof(uint32));
             if (numChars > 0)
             {
-                if (stream->Write(attributeInfo->GetInternalName(), attributeInfo->GetInternalNameString().GetLength()) == 0)
+                if (stream->Write(attributeInfo->GetInternalName(), attributeInfo->GetInternalNameString().size()) == 0)
                 {
                     return false;
                 }
@@ -381,8 +381,8 @@ namespace EMotionFX
         MCORE_UNUSED(version);
 
         // our string that we use to read string data
-        MCore::String name;
-        name.Reserve(32);
+        AZStd::string name;
+        name.reserve(32);
 
         // for all attributes
         for (uint32 i = 0; i < numAttributes; ++i)
@@ -414,15 +414,15 @@ namespace EMotionFX
             // read the string
             if (numCharacters > 0)
             {
-                name.Resize(numCharacters);
-                if (stream->Read(name.GetPtr(), numCharacters) == 0)
+                name.resize(numCharacters);
+                if (stream->Read(name.data(), numCharacters) == 0)
                 {
                     return false;
                 }
             }
 
             // read the data
-            const uint32 index = FindAttributeByInternalName(name.AsChar());
+            const uint32 index = FindAttributeByInternalName(name.c_str());
             if (index == MCORE_INVALIDINDEX32)
             {
                 // try to convert the attribute
@@ -438,11 +438,11 @@ namespace EMotionFX
                     // try to convert the attribute
                     if (ConvertAttribute(index, tempAttribute, name) == false)
                     {
-                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as it doesn't exist in the object and cannot be converted (fileAttribType=%s, objectType=%s).", name.AsChar(), tempAttribute->GetTypeString(), GetTypeString());
+                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as it doesn't exist in the object and cannot be converted (fileAttribType=%s, objectType=%s).", name.c_str(), tempAttribute->GetTypeString(), GetTypeString());
                     }
                     else
                     {
-                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Successfully converted attribute '%s' from which the key name changed (fileAttribType=%s, objectType=%s).", name.AsChar(), tempAttribute->GetTypeString(), GetTypeString());
+                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Successfully converted attribute '%s' from which the key name changed (fileAttribType=%s, objectType=%s).", name.c_str(), tempAttribute->GetTypeString(), GetTypeString());
                     }
 
                     // get rid of the temp attribute again
@@ -450,7 +450,7 @@ namespace EMotionFX
                 }
                 else
                 {
-                    MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute is not found in the node (objectType='%s').", name.AsChar(), GetTypeString());
+                    MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute is not found in the node (objectType='%s').", name.c_str(), GetTypeString());
 
                     // skip the attribute data
                     uint8 tempByte;
@@ -478,11 +478,11 @@ namespace EMotionFX
                         // try to convert the attribute
                         if (ConvertAttribute(index, tempAttribute, name) == false)
                         {
-                            MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute type changed (fileAttribType=%s, nodeAttribType=%s, objectType=%s). The conversion failed.", name.AsChar(), tempAttribute->GetTypeString(), GetAttribute(index)->GetTypeString(), GetTypeString());
+                            MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute type changed (fileAttribType=%s, nodeAttribType=%s, objectType=%s). The conversion failed.", name.c_str(), tempAttribute->GetTypeString(), GetAttribute(index)->GetTypeString(), GetTypeString());
                         }
                         else
                         {
-                            MCore::LogWarning("AnimGraphObject::ReadAttributes() - Converted attribute attribute '%s' from type (fileAttribType=%s, nodeAttribType=%s, objectType=%s).", name.AsChar(), tempAttribute->GetTypeString(), GetAttribute(index)->GetTypeString(), GetTypeString());
+                            MCore::LogWarning("AnimGraphObject::ReadAttributes() - Converted attribute attribute '%s' from type (fileAttribType=%s, nodeAttribType=%s, objectType=%s).", name.c_str(), tempAttribute->GetTypeString(), GetAttribute(index)->GetTypeString(), GetTypeString());
                         }
 
                         // get rid of the temp attribute again
@@ -490,7 +490,7 @@ namespace EMotionFX
                     }
                     else
                     {
-                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute type changed (fileAttribType=%d, nodeAttribType=%d (%s), objectType=%s). We also cannot convert the attribute.", name.AsChar(), attribType, GetAttribute(index)->GetType(), GetAttribute(index)->GetTypeString(), GetTypeString());
+                        MCore::LogWarning("AnimGraphObject::ReadAttributes() - Skipping attribute '%s' as the attribute type changed (fileAttribType=%d, nodeAttribType=%d (%s), objectType=%s). We also cannot convert the attribute.", name.c_str(), attribType, GetAttribute(index)->GetType(), GetAttribute(index)->GetTypeString(), GetTypeString());
 
                         // skip the attribute data
                         uint8 tempByte;
@@ -583,18 +583,18 @@ namespace EMotionFX
     */
 
     // construct and output the information summary string for this object
-    void AnimGraphObject::GetSummary(MCore::String* outResult) const
+    void AnimGraphObject::GetSummary(AZStd::string* outResult) const
     {
-        MCore::String attributeString = CreateAttributesString();
-        outResult->Format("%s: %s", GetTypeString(), attributeString.AsChar());
+        AZStd::string attributeString = CreateAttributesString();
+        *outResult = AZStd::string::format("%s: %s", GetTypeString(), attributeString.c_str());
     }
 
 
     // construct and output the tooltip for this object
-    void AnimGraphObject::GetTooltip(MCore::String* outResult) const
+    void AnimGraphObject::GetTooltip(AZStd::string* outResult) const
     {
-        MCore::String attributeString = CreateAttributesString();
-        outResult->Format("%s: %s", GetTypeString(), attributeString.AsChar());
+        AZStd::string attributeString = CreateAttributesString();
+        *outResult = AZStd::string::format("%s: %s", GetTypeString(), attributeString.c_str());
     }
 
 
@@ -752,7 +752,7 @@ namespace EMotionFX
 
 
     // convert attributes
-    bool AnimGraphObject::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName)
+    bool AnimGraphObject::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
     {
         MCORE_UNUSED(attributeName);
         if (attributeIndex == MCORE_INVALIDINDEX32)
@@ -841,20 +841,4 @@ namespace EMotionFX
         }
     }
 
-
-    // scale
-    void AnimGraphObject::Scale(float scaleFactor)
-    {
-        AnimGraphManager::AttributeInfoSet* attributeInfoSet = GetAnimGraphManager().FindAttributeInfoSet(this);
-
-        const uint32 numAttribs = attributeInfoSet->mAttributes->GetNumAttributes();
-        for (uint32 i = 0; i < numAttribs; ++i)
-        {
-            MCore::AttributeSettings* attribute = attributeInfoSet->mAttributes->GetAttribute(i);
-            if (attribute->GetCanScale())
-            {
-                attribute->Scale(scaleFactor);
-            }
-        }
-    }
 }   // namespace EMotionFX

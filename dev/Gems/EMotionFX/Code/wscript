@@ -113,14 +113,14 @@ def build(bld):
                                'AWS_CPP_SDK_CORE',
                                'AWS_CPP_SDK_COGNITO_IDENTITY_STATIC',
                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
-                               'AWS_CPP_SDK_MOBILEANALYTICS'
+                               'AWS_CPP_SDK_MOBILEANALYTICS',
+                               'GLEW'
                               ],
             includes        = ['./Include',
                                './Source',
                                './EMotionFX/Tools',
                                './EMotionFX/Pipeline',
                                './',
-                               bld.Path('Code/SDKs/glew/include'),
                                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                bld.Path('Code/Sandbox/Editor'),
                                bld.Path('Code/Sandbox/Editor/Include'),
@@ -132,13 +132,7 @@ def build(bld):
             debug_defines   = list(editor_defines) + list(debug_defines),
             profile_defines = list(editor_defines),
 
-            win_libpath     = [ bld.Path('Code/SDKs/GLEW/lib/win64') ],
-            win_lib         = ['glew32', 'opengl32', 'dxguid', 'dinput8'],
-            #win_cxxflags   = msvc_cxx_flags,
+            win_lib         = ['opengl32', 'dxguid', 'dinput8']
 
-            darwin_libpath  = [ bld.Path('Code/SDKs/GLEW/lib/mac') ],
-            darwin_lib      = ['glew'],
-            
-            copy_dependent_files = ['Bin64/glew32.dll']
         )
     )

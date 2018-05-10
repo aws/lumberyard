@@ -14,11 +14,12 @@
 // Description : Helper macros/methods/classes for boost.
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_BOOSTHELPERS_H
-#define CRYINCLUDE_CRYCOMMON_BOOSTHELPERS_H
 #pragma once
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(BoostHelpers_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
@@ -99,5 +100,3 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/find.hpp>
 #pragma warning(pop)
-
-#endif // CRYINCLUDE_CRYCOMMON_BOOSTHELPERS_H

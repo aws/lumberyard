@@ -34,6 +34,8 @@ QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
 namespace EMStudio
 {
     // forward declarations
+    class TrackDataHeaderWidget;
+    class TargetDataWidget;
     class TimeViewPlugin;
     class TimeTrack;
     class TrackHeaderWidget;
@@ -81,6 +83,7 @@ namespace EMStudio
         Q_OBJECT
                  MCORE_MEMORYOBJECTCATEGORY(TrackHeaderWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
+        friend class TrackDataHeaderWidget;
         friend class TrackDataWidget;
         friend class TimeViewPlugin;
     public:
@@ -95,7 +98,7 @@ namespace EMStudio
     public slots:
         void OnAddTrackButtonClicked()                                                                      { CommandSystem::CommandAddEventTrack(); }
         void OnRemoveTrackButtonClicked(int eventTrackNr)                                                   { CommandSystem::CommandRemoveEventTrack(eventTrackNr); }
-        void OnTrackNameChanged(const QString& text, int trackNr)                                           { CommandSystem::CommandRenameEventTrack(trackNr, FromQtString(text).AsChar()); }
+        void OnTrackNameChanged(const QString& text, int trackNr)                                           { CommandSystem::CommandRenameEventTrack(trackNr, FromQtString(text).c_str()); }
         void OnTrackEnabledStateChanged(bool enabled, int trackNr)                                          { CommandSystem::CommandEnableEventTrack(trackNr, enabled); }
         void OnDetailedNodesCheckBox(int state);
         void OnCheckBox(int state);

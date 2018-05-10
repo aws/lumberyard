@@ -33,36 +33,40 @@ namespace GridMate
 
         m_lastCheckTime = now;
 
-        for (ReplicaPeer* peer : rm->m_remotePeers)
         {
-            if (peer->GetConnectionId() == InvalidConnectionID)
-            {
-                continue;
-            }
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(rm->m_mutexRemotePeers);
 
-            // Updating averages
-            peer->m_dataSentLastSecond.Update(dt, peer->m_sentBytes);
-            peer->m_avgSendRateBurst += (peer->m_dataSentLastSecond.GetSum() - peer->m_avgSendRateBurst) * (dt / rm->GetSendLimitBurstRange());
-
-            if (dt >= 1.0f)
+            for (ReplicaPeer* peer : rm->m_remotePeers)
             {
-                peer->m_sendBytesAllowed = rm->GetSendLimit();      //Frame processing took >= one second, so reset send limit
-            }
-            else
-            {
-                //Calculate carryOver
-                int carryOver = peer->m_sendBytesAllowed - peer->m_sentBytes;
-                // Calculate Window with carry over from last burst; max at BytesPerSecond
-                int allow = AZStd::GetMin(static_cast<unsigned int>(carryOver + (rm->GetSendLimit()*dt)), rm->GetSendLimit());
-                peer->m_sendBytesAllowed = AZStd::GetMax(allow, 0);
-                AZ_Assert(peer->m_sendBytesAllowed <= 100000000, "peer->m_sendBytesAllowed > 100,000,000");
-                //if(rm->GetSendLimit() > 0)
-                //{
-                //    AZ_Printf("GridMate", "allow %d carryOv %d dt %f sendLimit %d\n", allow, carryOver, dt, rm->GetSendLimit(), rm->GetSendLimit());
-                //}
-            }
+                if (peer->GetConnectionId() == InvalidConnectionID)
+                {
+                    continue;
+                }
 
-            peer->m_sentBytes = 0;      //Reset
+                // Updating averages
+                peer->m_dataSentLastSecond.Update(dt, peer->m_sentBytes);
+                peer->m_avgSendRateBurst += (peer->m_dataSentLastSecond.GetSum() - peer->m_avgSendRateBurst) * (dt / rm->GetSendLimitBurstRange());
+
+                if (dt >= 1.0f)
+                {
+                    peer->m_sendBytesAllowed = rm->GetSendLimit();      //Frame processing took >= one second, so reset send limit
+                }
+                else
+                {
+                    //Calculate carryOver
+                    int carryOver = peer->m_sendBytesAllowed - peer->m_sentBytes;
+                    // Calculate Window with carry over from last burst; max at BytesPerSecond
+                    int allow = AZStd::GetMin(static_cast<unsigned int>(carryOver + (rm->GetSendLimit()*dt)), rm->GetSendLimit());
+                    peer->m_sendBytesAllowed = AZStd::GetMax(allow, 0);
+                    AZ_Assert(peer->m_sendBytesAllowed <= 100000000, "peer->m_sendBytesAllowed > 100,000,000");
+                    //if(rm->GetSendLimit() > 0)
+                    //{
+                    //    AZ_Printf("GridMate", "allow %d carryOv %d dt %f sendLimit %d\n", allow, carryOver, dt, rm->GetSendLimit(), rm->GetSendLimit());
+                    //}
+                }
+
+                peer->m_sentBytes = 0;      //Reset
+            }
         }
     }
 

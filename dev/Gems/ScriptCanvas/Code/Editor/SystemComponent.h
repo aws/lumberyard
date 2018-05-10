@@ -51,6 +51,8 @@ namespace ScriptCanvasEditor
         ////////////////////////////////////////////////////////////////////////
         // SystemRequestBus::Handler        
         void AddAsyncJob(AZStd::function<void()>&& jobFunc) override;
+        void GetEditorCreatableTypes(AZStd::unordered_set<ScriptCanvas::Data::Type>& outCreatableTypes);
+        void CreateEditorComponentsOnEntity(AZ::Entity* entity) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////
@@ -60,12 +62,15 @@ namespace ScriptCanvasEditor
         ////////////////////////////////////////////////////////////////////////
 
     private:
-		SystemComponent(const SystemComponent&) = delete;
+        SystemComponent(const SystemComponent&) = delete;
 
         void FilterForScriptCanvasEnabledEntities(AzToolsFramework::EntityIdList& sourceList, AzToolsFramework::EntityIdList& targetList);
+        void PopulateEditorCreatableTypes();
 
         AZStd::unique_ptr<AZ::JobManager> m_jobManager;
         AZStd::unique_ptr<AZ::JobContext> m_jobContext;
         DocumentContext m_documentContext;
+        AZStd::vector<AZStd::unique_ptr<AzToolsFramework::PropertyHandlerBase>> m_propertyHandlers;
+        AZStd::unordered_set<ScriptCanvas::Data::Type> m_creatableTypes;
     };
 }

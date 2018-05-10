@@ -25,8 +25,6 @@ namespace AZ
         public:
             virtual ~ISceneConfig() = 0;
 
-            virtual const char* GetManifestFileExtension() const = 0;
-
             virtual size_t GetErrorCount() const = 0;
         };
 

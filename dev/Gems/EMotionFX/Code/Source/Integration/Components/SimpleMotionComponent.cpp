@@ -39,6 +39,7 @@ namespace EMotionFX
                     ->Field("Reverse", &Configuration::m_reverse)
                     ->Field("Mirror", &Configuration::m_mirror)
                     ->Field("PlaySpeed", &Configuration::m_playspeed)
+                    ->Field("PlayOnActive", &Configuration::m_playOnActive)
                     ;
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -59,6 +60,8 @@ namespace EMotionFX
                             "Mirror motion", "Toggles mirroring of the animation")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_playspeed,
                             "Play speed", "Determines the rate at which the motion is played")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_playOnActive,
+                            "Play on active", "Determines if the motion should be played immediately")
                         ;
                 }
             }
@@ -87,6 +90,8 @@ namespace EMotionFX
                     ->Event("ReverseMotion", &SimpleMotionComponentRequestBus::Events::ReverseMotion)
                     ->Event("MirrorMotion", &SimpleMotionComponentRequestBus::Events::MirrorMotion)
                     ->Event("SetPlaySpeed", &SimpleMotionComponentRequestBus::Events::SetPlaySpeed)
+                    ->Event("SetPlayOnActive", &SimpleMotionComponentRequestBus::Events::SetPlayOnActive)
+                    ->Event("PlayAnimation", &SimpleMotionComponentRequestBus::Events::PlayAnimation)
                     ;
             }
         }
@@ -97,6 +102,7 @@ namespace EMotionFX
             , m_reverse(false)
             , m_mirror(false)
             , m_playspeed(1.f)
+            , m_playOnActive(true)
         {
         }
 
@@ -133,10 +139,12 @@ namespace EMotionFX
             }
 
             ActorComponentNotificationBus::Handler::BusConnect(GetEntityId());
+            SimpleMotionComponentRequestBus::Handler::BusConnect(GetEntityId());
         }
 
         void SimpleMotionComponent::Deactivate()
         {
+            SimpleMotionComponentRequestBus::Handler::BusDisconnect();
             ActorComponentNotificationBus::Handler::BusDisconnect();
             AZ::Data::AssetBus::MultiHandler::BusDisconnect();
 
@@ -176,30 +184,11 @@ namespace EMotionFX
         {
             RemoveMotionInstanceFromActor();
 
-            auto& cfg = m_configuration;
-
-            if (!m_actorInstance || !cfg.m_motionAsset.IsReady())
+            //Init the PlaybackInfo based on our config
+            if (m_configuration.m_playOnActive)
             {
-                return;
+                PlayAnimation();
             }
-
-            auto* motionAsset = cfg.m_motionAsset.GetAs<MotionAsset>();
-            AZ_Error("EMotionFX", motionAsset, "Motion asset is not valid.");
-            if (!motionAsset || !m_actorInstance)
-            {
-                return;
-            }
-            //init the PlaybackInfo based on our config
-            EMotionFX::PlayBackInfo info;
-            info.mNumLoops = cfg.m_loop ? EMFX_LOOPFOREVER : 1;
-            info.mRetarget = cfg.m_retarget;
-            info.mPlayMode = cfg.m_reverse ? EMotionFX::EPlayMode::PLAYMODE_BACKWARD : EMotionFX::EPlayMode::PLAYMODE_FORWARD;
-            info.mFreezeAtLastFrame = info.mNumLoops == 1;
-            info.mMirrorMotion = cfg.m_mirror;
-            info.mPlaySpeed = cfg.m_playspeed;
-            info.mPlayNow = true;
-            info.mDeleteOnZeroWeight = true;
-            m_motionInstance = m_actorInstance->GetMotionSystem()->PlayMotion(motionAsset->m_emfxMotion.get(), &info);
         }
 
         void SimpleMotionComponent::RemoveMotionInstanceFromActor()
@@ -216,22 +205,60 @@ namespace EMotionFX
 
         void SimpleMotionComponent::LoopMotion(bool enable)
         {
+            m_configuration.m_loop = enable;
         }
 
         void SimpleMotionComponent::RetargetMotion(bool enable)
         {
+            m_configuration.m_retarget = enable;
         }
 
         void SimpleMotionComponent::ReverseMotion(bool enable)
         {
+            m_configuration.m_reverse = enable;
         }
 
         void SimpleMotionComponent::MirrorMotion(bool enable)
         {
+            m_configuration.m_mirror = enable;
         }
 
         void SimpleMotionComponent::SetPlaySpeed(float speed)
         {
+            m_configuration.m_playspeed = speed;
+        }
+
+        void SimpleMotionComponent::SetPlayOnActive(bool play)
+        {
+            m_configuration.m_playOnActive = play;
+        }
+
+        void SimpleMotionComponent::PlayAnimation()
+        {
+            auto& cfg = m_configuration;
+
+            if (!m_actorInstance || !cfg.m_motionAsset.IsReady())
+            {
+                return;
+            }
+
+            auto* motionAsset = cfg.m_motionAsset.GetAs<MotionAsset>();
+            AZ_Error("EMotionFX", motionAsset, "Motion asset is not valid.");
+            if (!motionAsset || !m_actorInstance)
+            {
+                return;
+            }
+
+            EMotionFX::PlayBackInfo info;
+            info.mNumLoops = cfg.m_loop ? EMFX_LOOPFOREVER : 1;
+            info.mRetarget = cfg.m_retarget;
+            info.mPlayMode = cfg.m_reverse ? EMotionFX::EPlayMode::PLAYMODE_BACKWARD : EMotionFX::EPlayMode::PLAYMODE_FORWARD;
+            info.mFreezeAtLastFrame = info.mNumLoops == 1;
+            info.mMirrorMotion = cfg.m_mirror;
+            info.mPlaySpeed = cfg.m_playspeed;
+            info.mPlayNow = true;
+            info.mDeleteOnZeroWeight = true;
+            m_motionInstance = m_actorInstance->GetMotionSystem()->PlayMotion(motionAsset->m_emfxMotion.get(), &info);
         }
     } // namespace integration
 } // namespace EMotionFX

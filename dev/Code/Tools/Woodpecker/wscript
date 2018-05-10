@@ -51,7 +51,7 @@ def build(bld):
                                     'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
 
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
-        darwin_frameworkpath    = [bld.CreateRootRelativePath('Code/Sandbox/SDKs/Qt/lib')],
+        darwin_frameworkpath    = [bld.ThirdPartyPath('qt','lib')],
         darwin_cxxflags         = [
             '-Werror',  # warnings as errors
             '-Wall',  # warning level
@@ -99,7 +99,7 @@ def build(bld):
                                     'AWS_CPP_SDK_MOBILEANALYTICS',
                                     'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
-        darwin_frameworkpath    = [bld.CreateRootRelativePath('Code/Sandbox/SDKs/Qt/lib')],
+        darwin_frameworkpath    = [bld.ThirdPartyPath('qt','lib')],
         darwin_cxxflags = [
             '-Werror', # warnings as errors
             '-Wall', # warning level

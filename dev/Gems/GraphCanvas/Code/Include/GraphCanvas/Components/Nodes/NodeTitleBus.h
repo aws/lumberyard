@@ -55,6 +55,10 @@ namespace GraphCanvas
         //! Get the Node's sub-title.
         virtual AZStd::string GetSubTitle() const = 0;
 
+        //! Sets the base palette for the title. This won't be saved out.
+        virtual void SetDefaultPalette(const AZStd::string& basePalette) = 0;
+
+        //! Sets an override for the palette. This will be saved out.
         virtual void SetPaletteOverride(const AZStd::string& paletteOverride) = 0;
         virtual void SetDataPaletteOverride(const AZ::Uuid& uuid) = 0;
 

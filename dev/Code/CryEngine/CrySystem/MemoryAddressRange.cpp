@@ -107,6 +107,8 @@ void CMemoryAddressRange::UnmapPage(size_t pageIdx)
 #pragma warning( pop )
 }
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(MemoryAddressRange_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(APPLE) || defined(LINUX)
 
 void* CMemoryAddressRange::ReserveSpace(size_t capacity)

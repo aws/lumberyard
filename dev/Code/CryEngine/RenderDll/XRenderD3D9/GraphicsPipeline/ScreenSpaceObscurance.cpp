@@ -62,6 +62,9 @@ void CScreenSpaceObscurancePass::Execute()
     int texStatePointWrap = CTexture::GetTexState(STexState(FILTER_POINT, false));
 
     CTexture* pDestRT = CTexture::s_ptexStereoR;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ScreenSpaceObscurance_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     const bool bLowResOutput = (CRenderer::CV_r_ssdoHalfRes == 3);
     if (bLowResOutput)

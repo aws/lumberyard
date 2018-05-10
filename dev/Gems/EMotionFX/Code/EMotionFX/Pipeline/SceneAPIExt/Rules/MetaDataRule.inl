@@ -13,7 +13,6 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <SceneAPI/SceneCore/Containers/Scene.h>
@@ -21,6 +20,7 @@
 #include <SceneAPI/SceneCore/DataTypes/Groups/IGroup.h>
 #include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
 #include <SceneAPIExt/Rules/MetaDataRule.h>
+#include <MCore/Source/StringConversions.h>
 
 namespace EMotionFX
 {

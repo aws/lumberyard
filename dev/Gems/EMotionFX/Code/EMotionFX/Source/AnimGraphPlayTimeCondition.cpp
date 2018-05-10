@@ -13,7 +13,6 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Random.h>
 #include <MCore/Source/AttributeSettings.h>
 #include "AnimGraphPlayTimeCondition.h"
@@ -165,38 +164,38 @@ namespace EMotionFX
 
 
     // construct and output the information summary string for this object
-    void AnimGraphPlayTimeCondition::GetSummary(MCore::String* outResult) const
+    void AnimGraphPlayTimeCondition::GetSummary(AZStd::string* outResult) const
     {
         MCore::AttributeSettings* modeParam = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_MODE);
         const int32 mode = GetAttributeFloatAsInt32(ATTRIB_MODE);
-        outResult->Format("%s: NodeName='%s', Play Time=%.2f secs, Mode='%s'", GetTypeString(), GetAttributeString(ATTRIB_NODE)->AsChar(), GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue(), modeParam->GetComboValue(mode));
+        *outResult += AZStd::string::format("%s: NodeName='%s', Play Time=%.2f secs, Mode='%s'", GetTypeString(), GetAttributeString(ATTRIB_NODE)->AsChar(), GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue(), modeParam->GetComboValue(mode));
     }
 
 
     // construct and output the tooltip for this object
-    void AnimGraphPlayTimeCondition::GetTooltip(MCore::String* outResult) const
+    void AnimGraphPlayTimeCondition::GetTooltip(AZStd::string* outResult) const
     {
         MCore::AttributeSettings* modeParam = GetAnimGraphManager().GetAttributeInfo(this, ATTRIB_MODE);
         const int32 mode = GetAttributeFloatAsInt32(ATTRIB_MODE);
 
-        MCore::String columnName, columnValue;
+        AZStd::string columnName, columnValue;
 
         // add the condition type
         columnName = "Condition Type: ";
         columnValue = GetTypeString();
-        outResult->Format("<table border=\"0\"><tr><td width=\"105\"><b>%s</b></td><td>%s</td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"105\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the node
         columnName = "Node: ";
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.AsChar(), GetAttributeString(ATTRIB_NODE)->AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), GetAttributeString(ATTRIB_NODE)->AsChar());
 
         // add the time
         columnName = "Play Time: ";
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.AsChar(), GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.c_str(), GetAttributeFloat(ATTRIB_PLAYTIME)->GetValue());
 
         // add the mode
         columnName = "Mode: ";
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.AsChar(), modeParam->GetComboValue(mode));
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), modeParam->GetComboValue(mode));
     }
 
 
@@ -222,10 +221,10 @@ namespace EMotionFX
 
 
     // callback for when we renamed a node
-    void AnimGraphPlayTimeCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)
+    void AnimGraphPlayTimeCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_NODE)->GetValue().CheckIfIsEqual(oldName))
+        if (GetAttributeString(ATTRIB_NODE)->GetValue() == oldName)
         {
             GetAttributeString(ATTRIB_NODE)->SetValue(node->GetName());
         }
@@ -236,7 +235,7 @@ namespace EMotionFX
     void AnimGraphPlayTimeCondition::OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_NODE)->GetValue().CheckIfIsEqual(nodeToRemove->GetName()))
+        if (GetAttributeString(ATTRIB_NODE)->GetValue() == nodeToRemove->GetName())
         {
             GetAttributeString(ATTRIB_NODE)->SetValue("");
         }

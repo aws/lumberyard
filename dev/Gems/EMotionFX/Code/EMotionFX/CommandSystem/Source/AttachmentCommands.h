@@ -23,7 +23,7 @@ namespace CommandSystem
     // add attachment
     MCORE_DEFINECOMMAND_START(CommandAddAttachment, "Add attachment", true)
 public:
-    static bool AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, MCore::String& outResult, bool remove);
+    static bool AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, AZStd::string& outResult, bool remove);
     MCORE_DEFINECOMMAND_END
 
     // remove attachment
@@ -36,7 +36,7 @@ public:
     // add multi-node attachment
     MCORE_DEFINECOMMAND_START(CommandAddDeformableAttachment, "Add skin attachment", true)
 public:
-    static bool AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, MCore::String& outResult, bool remove);
+    static bool AddAttachment(MCore::Command* command, const MCore::CommandLine& parameters, AZStd::string& outResult, bool remove);
     MCORE_DEFINECOMMAND_END
 } // namespace CommandSystem
 

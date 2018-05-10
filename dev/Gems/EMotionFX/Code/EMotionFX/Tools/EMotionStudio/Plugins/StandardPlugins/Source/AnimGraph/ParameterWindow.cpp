@@ -389,7 +389,7 @@ namespace EMStudio
         MCore::AttributeSettings* attributeSettings = animGraph->GetParameter(parameterIndex);
 
         // make sure we only show the parameters that are wanted after the name are filtering
-        if (!mFilterString.empty() && !attributeSettings->GetNameString().Contains(mFilterString.c_str()))
+        if (!mFilterString.empty() && attributeSettings->GetNameString().find(mFilterString) == AZStd::string::npos)
         {
             return;
         }
@@ -636,7 +636,7 @@ namespace EMStudio
             return;
         }
 
-        //MCore::LOG("PreInit:: param=%s, group=%s", mSelectedParameterName.AsChar(), mSelectedParameterGroupName.AsChar());
+        //MCore::LOG("PreInit:: param=%s, group=%s", mSelectedParameterName.c_str(), mSelectedParameterGroupName.c_str());
 
         // get the selected actor instance
         EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
@@ -915,15 +915,15 @@ namespace EMStudio
         }
 
         // generate a unique parameter name
-        MCore::String uniqueParameterName;
-        uniqueParameterName.GenerateUniqueString("Parameter",   [&](const MCore::String& value)
+        const AZStd::string uniqueParameterName = MCore::GenerateUniqueString("Parameter",   
+            [&](const AZStd::string& value)
             {
-                return (animGraph->FindParameter(value.AsChar()) == nullptr);
+                return (animGraph->FindParameter(value.c_str()) == nullptr);
             });
 
         // show the create parameter dialog
         ParameterCreateEditDialog dialog(mPlugin, this);
-        dialog.SetName(uniqueParameterName.AsChar());
+        dialog.SetName(uniqueParameterName.c_str());
         dialog.GetAttributeSettings()->SetInterfaceType(MCore::ATTRIBUTE_INTERFACETYPE_FLOATSLIDER);
         dialog.Init();
         if (dialog.exec() == QDialog::Rejected)
@@ -932,7 +932,7 @@ namespace EMStudio
         }
 
         //------------------------
-        MCore::String       commandResult;
+        AZStd::string       commandResult;
         AZStd::string       commandString;
         MCore::CommandGroup commandGroup("Add parameter");
 
@@ -945,8 +945,7 @@ namespace EMStudio
             dialog.GetMaxValue(),
             dialog.GetDefaultValue(),
             dialog.GetDescription(),
-            MCORE_INVALIDINDEX32,
-            dialog.GetIsScalable());
+            MCORE_INVALIDINDEX32);
         commandGroup.AddCommandString(commandString);
 
         const AZStd::string selectedParameterName   = GetSingleSelectedParameterName();
@@ -995,7 +994,7 @@ namespace EMStudio
 
         // get the parameter info
         MCore::AttributeSettings* parameter = animGraph->GetParameter(parameterIndex);
-        const MCore::String oldName = parameter->GetName();
+        const AZStd::string oldName = parameter->GetName();
 
         // create and init the dialog
         ParameterCreateEditDialog dialog(mPlugin, this, true);
@@ -1015,10 +1014,10 @@ namespace EMStudio
 
         //------------------------
         AZStd::string commandString;
-        MCore::String resultString;
-        MCore::String minValue;
-        MCore::String maxValue;
-        MCore::String defaultValue;
+        AZStd::string resultString;
+        AZStd::string minValue;
+        AZStd::string maxValue;
+        AZStd::string defaultValue;
 
         // convert the values to strings
         dialog.GetMinValue()->ConvertToString(minValue);
@@ -1031,11 +1030,26 @@ namespace EMStudio
         // Build the command string and execute it.
         if (dialog.GetDescription().empty())
         {
-            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\" -isScalable %s", animGraph->GetID(), oldName.AsChar(), dialog.GetName().c_str(), interfaceType, minValue.AsChar(), maxValue.AsChar(), defaultValue.AsChar(), dialog.GetIsScalable() ? "true" : "false");
+            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\"", 
+                animGraph->GetID(), 
+                oldName.c_str(), 
+                dialog.GetName().c_str(), 
+                interfaceType, 
+                minValue.c_str(), 
+                maxValue.c_str(), 
+                defaultValue.c_str());
         }
         else
         {
-            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -description \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\" -isScalable %s", animGraph->GetID(), oldName.AsChar(), dialog.GetName().c_str(), dialog.GetDescription().c_str(), interfaceType, minValue.AsChar(), maxValue.AsChar(), defaultValue.AsChar(), dialog.GetIsScalable() ? "true" : "false");
+            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -description \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\"", 
+                animGraph->GetID(), 
+                oldName.c_str(), 
+                dialog.GetName().c_str(), 
+                dialog.GetDescription().c_str(), 
+                interfaceType, 
+                minValue.c_str(), 
+                maxValue.c_str(), 
+                defaultValue.c_str());
         }
 
         AZStd::string result;
@@ -1075,7 +1089,7 @@ namespace EMStudio
         }
 
         // find the parameter group and return its name
-        EMotionFX::AnimGraphParameterGroup* parameterGroup = animGraph->FindParameterGroupByName(FromQtString(selectedItem->text(0)).AsChar());
+        EMotionFX::AnimGraphParameterGroup* parameterGroup = animGraph->FindParameterGroupByName(FromQtString(selectedItem->text(0)).c_str());
         if (parameterGroup)
         {
             return parameterGroup->GetName();
@@ -1806,14 +1820,13 @@ namespace EMStudio
         }
 
         // generate a unique group name
-        MCore::String uniqueGroupName;
-        uniqueGroupName.GenerateUniqueString("ParameterGroup",  [&](const MCore::String& value)
+        const AZStd::string uniqueGroupName = MCore::GenerateUniqueString("ParameterGroup",  [&](const AZStd::string& value)
             {
-                return (animGraph->FindParameterGroupByName(value.AsChar()) == nullptr);
+                return (animGraph->FindParameterGroupByName(value.c_str()) == nullptr);
             });
 
         // show the create window
-        ParameterCreateRenameWindow createWindow("Create Group", "Please enter the group name:", uniqueGroupName.AsChar(), "", invalidNames, this);
+        ParameterCreateRenameWindow createWindow("Create Group", "Please enter the group name:", uniqueGroupName.c_str(), "", invalidNames, this);
         if (createWindow.exec() != QDialog::Accepted)
         {
             return;
@@ -1897,7 +1910,7 @@ namespace EMStudio
         }
 
         // find the parameter group
-        EMotionFX::AnimGraphParameterGroup* parameterGroup = animGraph->FindParameterGroupByName(FromQtString(item->text(0)).AsChar());
+        EMotionFX::AnimGraphParameterGroup* parameterGroup = animGraph->FindParameterGroupByName(FromQtString(item->text(0)).c_str());
         if (parameterGroup)
         {
             parameterGroup->SetIsCollapsed(false);
@@ -1915,7 +1928,7 @@ namespace EMStudio
         }
 
         // find the parameter group
-        EMotionFX::AnimGraphParameterGroup* parameterGroup = animGraph->FindParameterGroupByName(FromQtString(item->text(0)).AsChar());
+        EMotionFX::AnimGraphParameterGroup* parameterGroup = animGraph->FindParameterGroupByName(FromQtString(item->text(0)).c_str());
         if (parameterGroup)
         {
             parameterGroup->SetIsCollapsed(true);

@@ -10,7 +10,8 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
+
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -31,10 +32,12 @@ namespace AzFramework
 
         void SetUp() override
         {
+            AllocatorsFixture::SetUp();
         }
 
         void TearDown() override
         {
+            AllocatorsFixture::TearDown();
         }
     };
 

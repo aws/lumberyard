@@ -992,7 +992,7 @@ void CVars::Init()
     REGISTER_CVAR(e_ObjShadowCastSpec, 0, VF_NULL,
         "Object shadow casting spec. Only objects with Shadow Cast Spec <= e_ObjShadowCastSpec will cast shadows");
 
-    REGISTER_CVAR(e_ParticlesPoolSize, 16 << 10, VF_CHEAT | VF_CHEAT_NOCHECK,
+    REGISTER_CVAR(e_ParticlesPoolSize, 16 << 10, VF_REQUIRE_APP_RESTART,
         "Particle system pool memory size in KB");
 
     DefineConstIntCVar(e_ParticlesLights, 1, VF_NULL,

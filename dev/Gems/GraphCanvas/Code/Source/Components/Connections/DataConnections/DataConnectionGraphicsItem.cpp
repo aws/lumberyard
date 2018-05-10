@@ -13,8 +13,8 @@
 
 #include <Components/Connections/DataConnections/DataConnectionGraphicsItem.h>
 
-#include <Components/ColorPaletteManager/ColorPaletteManagerBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
+#include <GraphCanvas/Components/StyleBus.h>
 
 namespace GraphCanvas
 {
@@ -60,6 +60,7 @@ namespace GraphCanvas
         : ConnectionGraphicsItem(connectionEntityId)
         , m_dataPinStyleMonitor((*this))
     {
+        RootGraphicsItemNotificationBus::Handler::BusConnect(connectionEntityId);
     }
 
     void DataConnectionGraphicsItem::OnStyleChanged()
@@ -128,11 +129,16 @@ namespace GraphCanvas
         UpdatePen();
     }
 
+    void DataConnectionGraphicsItem::OnDisplayStateChanged(RootGraphicsItemDisplayState, RootGraphicsItemDisplayState)
+    {
+        UpdatePen();
+    }
+
     void DataConnectionGraphicsItem::UpdatePen()
     {
         ConnectionGraphicsItem::UpdatePen();
 
-        if (!isSelected() && GetDisplayState() == ConnectionDisplayState::None)
+        if (!isSelected() && GetDisplayState() == RootGraphicsItemDisplayState::Neutral)
         {
             QLinearGradient gradient(path().pointAtPercent(0), path().pointAtPercent(1));
 
@@ -151,11 +157,6 @@ namespace GraphCanvas
         UpdatePen();
     }
 
-    void DataConnectionGraphicsItem::OnDisplayStateChanged()
-    {
-        UpdatePen();
-    }
-
     void DataConnectionGraphicsItem::PopulateDataColor(QColor& targetColor, const AZ::EntityId& slotId)
     {
         // Leave the color alone if we don't have a valid connection. Other logic deals with its coloring then.
@@ -166,9 +167,12 @@ namespace GraphCanvas
 
             AZ::EntityId sceneId;
             SceneMemberRequestBus::EventResult(sceneId, slotId, &SceneMemberRequests::GetScene);
+            
+            EditorId editorId;
+            SceneRequestBus::EventResult(editorId, sceneId, &SceneRequests::GetEditorId);
 
             const Styling::StyleHelper* stylingHelper = nullptr;
-            ColorPaletteManagerRequestBus::EventResult(stylingHelper, sceneId, &ColorPaletteManagerRequests::FindDataColorPalette, dataType);
+            StyleManagerRequestBus::EventResult(stylingHelper, editorId, &StyleManagerRequests::FindDataColorPalette, dataType);
 
             if (stylingHelper != nullptr)
             {

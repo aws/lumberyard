@@ -35,6 +35,9 @@
             "CommandLine/CommandLine.cpp",
             "CommandLine/CommandLine.h"
         ],
+        "Viewport": [
+            "Viewport/ViewportColors.h"
+        ],
         "Entity": [
             "Entity/BehaviorEntity.cpp",
             "Entity/BehaviorEntity.h",
@@ -190,6 +193,7 @@
             "Network/InterestManagerComponent.cpp",
             "Network/NetBindable.h",
             "Network/NetBindable.cpp",
+            "Network/NetBindingEventsBus.h",
             "Network/NetBindingHandlerBus.h",
             "Network/NetBindingSystemBus.h",
             "Network/NetBindingComponent.h",
@@ -250,6 +254,7 @@
         "Physics/ConstraintComponentBus.h",
         "Physics/PhysicsComponentBus.h",
         "Physics/PhysicsSystemComponentBus.h",
+        "Physics/PhysicsSystemComponentBus.inl",
         "Physics/RagdollPhysicsBus.h"
       ]
     },

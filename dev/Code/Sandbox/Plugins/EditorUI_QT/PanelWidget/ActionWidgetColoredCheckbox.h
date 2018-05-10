@@ -43,8 +43,8 @@ class ActionWidgetColoredCheckboxAction
     : public QWidgetAction
 {
 public:
-    ActionWidgetColoredCheckboxAction(QWidget* parrent);
-    QWidget* createWidget(QWidget* parrent);
+    ActionWidgetColoredCheckboxAction(QWidget* parent);
+    QWidget* createWidget(QWidget* parent);
     void deleteWidget(QWidget* widget);
 
     void setCaption(QString caption){m_caption = caption; }

@@ -59,6 +59,7 @@
 #   include <EMotionStudio/Plugins/StandardPlugins/Source/NodeGroups/NodeGroupsPlugin.h>
 #   include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
 #   include <EMotionStudio/Plugins/RenderPlugins/Source/OpenGLRender/OpenGLRenderPlugin.h>
+#   include <Source/Editor/PropertyWidgets/PropertyTypes.h>
 #endif // EMOTIONFXANIMATION_EDITOR
 
 #include <ISystem.h>
@@ -99,9 +100,9 @@ namespace EMotionFX
                     motionEvent.m_isEventStart = emfxInfo.mIsEventStart;
 
                     // Copy parameter string, and truncate if it doesn't fit in fixed storage.
-                    if (emfxInfo.mParameters && !emfxInfo.mParameters->GetIsEmpty())
+                    if (emfxInfo.mParameters && !emfxInfo.mParameters->empty())
                     {
-                        motionEvent.SetParameterString(emfxInfo.mParameters->AsChar(), emfxInfo.mParameters->GetLength());
+                        motionEvent.SetParameterString(emfxInfo.mParameters->c_str(), emfxInfo.mParameters->size());
                     }
 
                     // Queue the event to flush on the main thread.
@@ -337,7 +338,6 @@ namespace EMotionFX
         SystemComponent::SystemComponent()
             : m_numThreads(1)
         {
-            AZ::TickBus::Handler::m_tickOrder = AZ::TICK_ANIMATION;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -396,6 +396,9 @@ namespace EMotionFX
             AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
             AzToolsFramework::EditorAnimationSystemRequestsBus::Handler::BusConnect();
             m_updateTimer.Stamp();
+
+            // Register custom property handlers for the reflected property editor.
+            RegisterPropertyTypes();
 #endif // EMOTIONFXANIMATION_EDITOR
         }
 
@@ -403,6 +406,9 @@ namespace EMotionFX
         void SystemComponent::Deactivate()
         {
 #if defined(EMOTIONFXANIMATION_EDITOR)
+            // Unregister custom property handlers for the reflected property editor.
+            UnregisterPropertyTypes();
+
             if (EMStudio::GetManager())
             {
                 EMStudio::Initializer::Shutdown();
@@ -517,6 +523,11 @@ namespace EMotionFX
 #endif
         }
 
+        int SystemComponent::GetTickOrder()
+        {
+            return AZ::TICK_ANIMATION;
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void SystemComponent::RegisterAnimGraphObjectType(EMotionFX::AnimGraphObject* objectTemplate)
         {
@@ -594,9 +605,10 @@ namespace EMotionFX
             using namespace AzToolsFramework;
 
             // Construct data folder that is used by the tool for loading assets (images etc.).
-            AZStd::string devRootPath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devroot@");
-            devRootPath += "/Gems/EMotionFX/Assets/Editor/";
-            EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, devRootPath);
+            AZStd::string devRootPath;
+            AzFramework::ApplicationRequests::Bus::BroadcastResult(devRootPath, &AzFramework::ApplicationRequests::GetEngineRoot);
+            devRootPath += "Gems/EMotionFX/Assets/Editor/";
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePathKeepCase, devRootPath);
 
             // Re-initialize EMStudio.
             int argc = 0;

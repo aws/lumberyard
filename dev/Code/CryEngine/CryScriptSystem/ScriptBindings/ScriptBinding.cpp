@@ -25,6 +25,9 @@
 
 #include <IScriptSystem.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ScriptBinding_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 CScriptBindings::CScriptBindings()
 {

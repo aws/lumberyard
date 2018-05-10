@@ -15,7 +15,6 @@
 
 //
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "MysticQtConfig.h"
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QPushButton>

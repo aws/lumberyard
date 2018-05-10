@@ -16,7 +16,6 @@
 #include "BaseObject.h"
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Array.h>
 
 

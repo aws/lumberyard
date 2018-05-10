@@ -15,6 +15,7 @@
 // include required headers
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
+#include <AzCore/std/string/string.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/Endian.h>
 
@@ -48,8 +49,8 @@ namespace EMotionFX
         bool    GetIsDeformable() const     { return mDeformable; }
 
         void SetName(const char* name)              { mName = name; }
-        const char* GetName() const                 { return mName.AsChar(); }
-        const MCore::String& GetNameString() const  { return mName; }
+        const char* GetName() const                 { return mName.c_str(); }
+        const AZStd::string& GetNameString() const  { return mName; }
 
         virtual uint32 GetAttributeSizeInBytes() const = 0;
         virtual uint32 GetNumOrgVertices() const = 0;
@@ -67,7 +68,7 @@ namespace EMotionFX
 
     protected:
         uint32          mLayerTypeID;
-        MCore::String   mName;
+        AZStd::string   mName;
         bool            mIsScale;
         bool            mDeformable;
 

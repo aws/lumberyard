@@ -1671,7 +1671,7 @@ namespace AzToolsFramework
             if (!transactionMap[asset.GetId()])
             {
                 QMessageBox::warning(this, QStringLiteral("Cannot Push to Slice"),
-                                     QString("Unable to create transaction for slice asset %1").arg(asset.GetId().ToString<AZStd::string>().c_str()),
+                                     QString("Unable to create transaction for slice asset %1").arg(asset.ToString<AZStd::string>().c_str()),
                                      QMessageBox::Ok);
                 return false;
             }

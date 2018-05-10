@@ -48,7 +48,7 @@ namespace RenderGL
         bool Init(EMotionFX::Actor* actor, const char* texturePath, bool gpuSkinning = true, bool removeGPUSkinnedMeshes = true);
 
         MCORE_INLINE EMotionFX::Actor* GetActor() { return mActor; }
-        MCORE_INLINE const MCore::String& GetTexturePath() const { return mTexturePath; }
+        MCORE_INLINE const AZStd::string& GetTexturePath() const { return mTexturePath; }
 
         void Render(EMotionFX::ActorInstance* actorInstance, uint32 renderFlags = RENDER_LIGHTING | RENDER_TEXTURING);
 
@@ -67,7 +67,7 @@ namespace RenderGL
             MaterialPrimitives(Material* mat) { mMaterial = mat; mPrimitives[0].Reserve(64); mPrimitives[1].Reserve(64); mPrimitives[2].Reserve(64); }
         };
 
-        MCore::String                   mTexturePath;
+        AZStd::string                   mTexturePath;
         EMotionFX::Actor*               mActor;
         bool                            mEnableGPUSkinning;
 

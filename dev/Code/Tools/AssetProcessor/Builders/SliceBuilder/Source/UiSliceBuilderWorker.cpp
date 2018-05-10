@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/IO/IOUtils.h>
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Slice/SliceAssetHandler.h>
@@ -52,7 +53,7 @@ namespace SliceBuilder
 
         // Open the source canvas file
         AZ::IO::FileIOStream stream(fullPath.c_str(), AZ::IO::OpenMode::ModeRead);
-        if (!stream.IsOpen())
+        if (!AZ::IO::RetryOpenStream(stream))
         {
             AZ_Warning(s_uiSliceBuilder, false, "CreateJobs for \"%s\" failed because the source file could not be opened.", fullPath.c_str());
             return;
@@ -73,14 +74,6 @@ namespace SliceBuilder
                     response.m_sourceFileDependencyList.push_back(dependency);
                 }
             }
-            else
-            if (asset.GetType() == AZ::Uuid("{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}")) // ScriptCanvasAsset
-            {
-                AssetBuilderSDK::SourceFileDependency dependency;
-                dependency.m_sourceFileDependencyUUID = asset.GetId().m_guid;
-
-                response.m_sourceFileDependencyList.push_back(dependency);
-            }
 
             return false;
         };
@@ -88,7 +81,7 @@ namespace SliceBuilder
         // Serialize in the canvas from the stream. This uses the LyShineSystemComponent to do it because
         // it does some complex support for old canvas formats
         UiSystemToolsInterface::CanvasAssetHandle* canvasAsset = nullptr;
-        UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream, AZ::ObjectStream::FilterDescriptor(assetFilter));
+        UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream, AZ::ObjectStream::FilterDescriptor(assetFilter, AZ::ObjectStream::FilterFlags::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         if (!canvasAsset)
         {
             AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to load canvas from stream.", fullPath.c_str());
@@ -138,7 +131,7 @@ namespace SliceBuilder
         AZStd::string outputPath;
         AzFramework::StringFunc::Path::GetFullFileName(request.m_sourceFile.c_str(), fileNameOnly);
         AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), fileNameOnly.c_str(), outputPath, true, true, true);
-        AzFramework::StringFunc::Path::ConstructFull(request.m_watchFolder.c_str(), request.m_sourceFile.c_str(), fullPath, false);
+        fullPath = request.m_fullPath.c_str();
         AzFramework::StringFunc::Path::Normalize(fullPath);
 
         AZ_TracePrintf(s_uiSliceBuilder, "Processing UI canvas \"%s\"\n", fullPath.c_str());
@@ -164,7 +157,7 @@ namespace SliceBuilder
         // Serialize in the canvas from the stream. This uses the LyShineSystemComponent to do it because
         // it does some complex support for old canvas formats
         UiSystemToolsInterface::CanvasAssetHandle* canvasAsset = nullptr;
-        UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream, AZ::ObjectStream::FilterDescriptor(assetFilter));
+        UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream, AZ::ObjectStream::FilterDescriptor(assetFilter, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         if (!canvasAsset)
         {
             AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to load canvas from stream.", fullPath.c_str());

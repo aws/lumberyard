@@ -115,29 +115,29 @@ static const char* sCodeCoverageContextFile = "ccContext.txt";
     }
 
 template<>
-std::vector < SAIObjectMapIter <CWeakRef>* > SAIObjectMapIter <CWeakRef>::pool = std::vector<SAIObjectMapIter <CWeakRef>*>();
+AZStd::vector < SAIObjectMapIter <CWeakRef>* > SAIObjectMapIter <CWeakRef>::pool = AZStd::vector<SAIObjectMapIter <CWeakRef>*>();
 template<>
-std::vector < SAIObjectMapIterOfType <CWeakRef>* > SAIObjectMapIterOfType <CWeakRef>::pool = std::vector<SAIObjectMapIterOfType <CWeakRef>*>();
+AZStd::vector < SAIObjectMapIterOfType <CWeakRef>* > SAIObjectMapIterOfType <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterOfType <CWeakRef>*>();
 template<>
-std::vector < SAIObjectMapIterInRange <CWeakRef>* > SAIObjectMapIterInRange <CWeakRef>::pool = std::vector<SAIObjectMapIterInRange <CWeakRef>*>();
+AZStd::vector < SAIObjectMapIterInRange <CWeakRef>* > SAIObjectMapIterInRange <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterInRange <CWeakRef>*>();
 template<>
-std::vector < SAIObjectMapIterOfTypeInRange <CWeakRef>* > SAIObjectMapIterOfTypeInRange <CWeakRef>::pool = std::vector<SAIObjectMapIterOfTypeInRange <CWeakRef>*>();
+AZStd::vector < SAIObjectMapIterOfTypeInRange <CWeakRef>* > SAIObjectMapIterOfTypeInRange <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInRange <CWeakRef>*>();
 template<>
-std::vector < SAIObjectMapIterInShape <CWeakRef>* > SAIObjectMapIterInShape <CWeakRef>::pool = std::vector<SAIObjectMapIterInShape <CWeakRef>*>();
+AZStd::vector < SAIObjectMapIterInShape <CWeakRef>* > SAIObjectMapIterInShape <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterInShape <CWeakRef>*>();
 template<>
-std::vector < SAIObjectMapIterOfTypeInShape <CWeakRef>* > SAIObjectMapIterOfTypeInShape <CWeakRef>::pool = std::vector<SAIObjectMapIterOfTypeInShape <CWeakRef>*>();
+AZStd::vector < SAIObjectMapIterOfTypeInShape <CWeakRef>* > SAIObjectMapIterOfTypeInShape <CWeakRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInShape <CWeakRef>*>();
 template<>
-std::vector < SAIObjectMapIter <CCountedRef>* > SAIObjectMapIter <CCountedRef>::pool = std::vector<SAIObjectMapIter <CCountedRef>*>();
+AZStd::vector < SAIObjectMapIter <CCountedRef>* > SAIObjectMapIter <CCountedRef>::pool = AZStd::vector<SAIObjectMapIter <CCountedRef>*>();
 template<>
-std::vector < SAIObjectMapIterOfType <CCountedRef>* > SAIObjectMapIterOfType <CCountedRef>::pool = std::vector<SAIObjectMapIterOfType <CCountedRef>*>();
+AZStd::vector < SAIObjectMapIterOfType <CCountedRef>* > SAIObjectMapIterOfType <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterOfType <CCountedRef>*>();
 template<>
-std::vector < SAIObjectMapIterInRange <CCountedRef>* > SAIObjectMapIterInRange <CCountedRef>::pool = std::vector<SAIObjectMapIterInRange <CCountedRef>*>();
+AZStd::vector < SAIObjectMapIterInRange <CCountedRef>* > SAIObjectMapIterInRange <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterInRange <CCountedRef>*>();
 template<>
-std::vector < SAIObjectMapIterOfTypeInRange <CCountedRef>* > SAIObjectMapIterOfTypeInRange <CCountedRef>::pool = std::vector<SAIObjectMapIterOfTypeInRange <CCountedRef>*>();
+AZStd::vector < SAIObjectMapIterOfTypeInRange <CCountedRef>* > SAIObjectMapIterOfTypeInRange <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInRange <CCountedRef>*>();
 template<>
-std::vector < SAIObjectMapIterInShape <CCountedRef>* > SAIObjectMapIterInShape <CCountedRef>::pool = std::vector<SAIObjectMapIterInShape <CCountedRef>*>();
+AZStd::vector < SAIObjectMapIterInShape <CCountedRef>* > SAIObjectMapIterInShape <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterInShape <CCountedRef>*>();
 template<>
-std::vector < SAIObjectMapIterOfTypeInShape <CCountedRef>* > SAIObjectMapIterOfTypeInShape <CCountedRef>::pool = std::vector<SAIObjectMapIterOfTypeInShape <CCountedRef>*>();
+AZStd::vector < SAIObjectMapIterOfTypeInShape <CCountedRef>* > SAIObjectMapIterOfTypeInShape <CCountedRef>::pool = AZStd::vector<SAIObjectMapIterOfTypeInShape <CCountedRef>*>();
 
 //===================================================================
 // ClearAIObjectIteratorPools

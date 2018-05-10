@@ -15,9 +15,11 @@
 #include <AzCore/Socket/AzSocket.h>
 #include <AzCore/std/string/conversions.h>
 
-#if _MSC_VER == 1900
+#if _MSC_VER >= 1910
+    #define CRYSCOMPILESERVER_EXE_BUILD_TOOL "_vc141x64"
+#elif _MSC_VER >= 1900
     #define CRYSCOMPILESERVER_EXE_BUILD_TOOL "_vc140x64"
-#elif _MSC_VER == 1800
+#elif _MSC_VER >= 1800
     #define CRYSCOMPILESERVER_EXE_BUILD_TOOL "_vc120x64"
 #else // _MSC_VER
     #define CRYSCOMPILESERVER_EXE_BUILD_TOOL ""

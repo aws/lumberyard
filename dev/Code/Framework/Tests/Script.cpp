@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -137,6 +137,7 @@ namespace UnitTest
                     scriptAsset.Get()->m_scriptBuffer.insert(scriptAsset.Get()->m_scriptBuffer.begin(), script.begin(), script.end());
                     EBUS_EVENT(Data::AssetManagerBus, OnAssetReady, scriptAsset);
                     app.Tick();
+                    app.TickSystem();
 
                     Entity* entity1 = aznew Entity();
                     entity1->CreateComponent<ScriptComponent>()->SetScript(scriptAsset);
@@ -175,8 +176,9 @@ namespace UnitTest
 
                     scriptAsset1.Get()->m_scriptBuffer.insert(scriptAsset1.Get()->m_scriptBuffer.begin(), script1.begin(), script1.end());
                     EBUS_EVENT(Data::AssetManagerBus, OnAssetReady, scriptAsset1);
-                    app.Tick();
 
+                    app.Tick();
+                    app.TickSystem(); // flush assets etc.
 
                     Entity* entity = aznew Entity();
                     entity->CreateComponent<ScriptComponent>()->SetScript(scriptAsset1);

@@ -1,96 +1,126 @@
 {
     "name": [
-        "gmock", 
+        "gmock",
         "gmock_main"
-    ], 
-    "source": "@ROOT@/Code/SDKs/GoogleMock", 
-    "description": "Google Mock", 
+    ],
+    "source": "@3P:GoogleMock@",
+    "description": "Google Mock",
     "includes": [
-        "include"
-    ], 
-    "defines": [], 
-    "lib_required": "True", 
+        "googlemock/include",
+        "googletest/include"
+    ],
+    "defines": [
+        "_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING"
+    ],
+    "lib_required": "True",
     "platform": {
         "win_x64_vs2013": {
             "libpath_debug": [
                 "lib/x64/vc120-md/LIB/Debug"
-            ], 
+            ],
             "libpath_release": [
                 "lib/x64/vc120-md/LIB/RelWithDebInfo"
-            ], 
+            ],
             "gmock/lib": [
                 "gmock.lib"
-            ], 
+            ],
             "gmock_main/lib": [
                 "gmock_main.lib"
             ]
-        }, 
+        },
         "win_x64_vs2015": {
             "libpath_debug": [
                 "lib/x64/vc140-md/LIB/Debug"
-            ], 
+            ],
             "libpath_release": [
                 "lib/x64/vc140-md/LIB/RelWithDebInfo"
-            ], 
+            ],
             "gmock/lib": [
                 "gmock.lib"
-            ], 
+            ],
             "gmock_main/lib": [
                 "gmock_main.lib"
-            ], 
-            "linkflags": [
+            ],
+            "linkflags" : [
                 "/ignore:4099"
             ]
-        }, 
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "darwin_x64": {
             "libpath_debug": [
                 "lib/osx/Debug"
-            ], 
+            ],
             "libpath_release": [
                 "lib/osx/Release"
-            ], 
+            ],
             "gmock/lib": [
                 "libgmock.a"
-            ], 
+            ],
             "gmock_main/lib": [
                 "libgmock_main.a"
             ]
-        }, 
+        },
         "android_armv7_gcc": {
             "libpath_debug": [
                 "lib/android/armv7_gcc/Debug"
-            ], 
+            ],
             "libpath_release": [
                 "lib/android/armv7_gcc/Release"
-            ], 
+            ],
             "gmock/lib": [
                 "libgmock.a"
-            ], 
+            ],
             "gmock_main/lib": [
                 "libgmock_main.a"
             ]
-        }, 
+        },
         "android_armv7_clang": {
             "libpath_debug": [
                 "lib/android/armv7_clang/Debug"
-            ], 
+            ],
             "libpath_release": [
                 "lib/android/armv7_clang/Release"
-            ], 
+            ],
             "gmock/lib": [
                 "libgmock.a"
-            ], 
+            ],
             "gmock_main/lib": [
                 "libgmock_main.a"
             ]
-        }, 
+        },
+        "durango_vs2015": {
+            "libpath_debug": [
+                "lib/Durango/Debug"
+            ],
+            "libpath_release": [
+                "lib/Durango/Release"
+            ],
+            "gmock/lib": [
+                "gmock.lib"
+            ],
+            "gmock_main/lib": [
+                "gmock_main.lib"
+            ]
+        },
+        "durango_vs2017": "@durango_vs2015",
+        "orbis_vs2015": {
+            "libpath_debug": [
+                "lib/orbis/Debug"
+            ],
+            "libpath_release": [
+                "lib/orbis/Release"
+            ],
+            "gmock/lib": [
+                "libgmock.a"
+            ]
+        },
         "linux_x64": {
             "libpath_debug": [
                 "lib/linux/debug"
-            ], 
+            ],
             "libpath_release": [
                 "lib/linux/release"
-            ], 
+            ],
             "gmock/lib": [
                 "libgmock.a"
             ]

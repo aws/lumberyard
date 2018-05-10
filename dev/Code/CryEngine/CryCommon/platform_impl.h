@@ -14,8 +14,6 @@
 // Description : This file should only be included Once in DLL module.
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_PLATFORM_IMPL_H
-#define CRYINCLUDE_CRYCOMMON_PLATFORM_IMPL_H
 #pragma once
 
 #include <platform.h>
@@ -46,7 +44,7 @@ SC_API struct SSystemGlobalEnvironment* gEnv = NULL;
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BITFIDDLING_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(platform_impl_h)
+#include AZ_RESTRICTED_FILE(platform_impl_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(LINUX) || defined(APPLE)
 #define PLATFORM_IMPL_H_TRAIT_DEFINE_GLOBAL_SREGFACTORYNODE 1
 #endif
@@ -222,7 +220,7 @@ void CryLowLatencySleep(unsigned int dwMilliseconds)
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::System);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRYLOWLATENCYSLEEP
-#include AZ_RESTRICTED_FILE(platform_impl_h)
+#include AZ_RESTRICTED_FILE(platform_impl_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -449,7 +447,7 @@ uint32 CryGetFileAttributes(const char* lpFileName)
     BOOL res;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRYGETFILEATTRIBUTES
-#include AZ_RESTRICTED_FILE(platform_impl_h)
+#include AZ_RESTRICTED_FILE(platform_impl_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -464,7 +462,7 @@ bool CrySetFileAttributes(const char* lpFileName, uint32 dwFileAttributes)
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRYSETFILEATTRIBUTES
-#include AZ_RESTRICTED_FILE(platform_impl_h)
+#include AZ_RESTRICTED_FILE(platform_impl_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -485,7 +483,7 @@ threadID CryGetCurrentThreadId()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_LOADLIBRARY
-#include AZ_RESTRICTED_FILE(platform_impl_h)
+#include AZ_RESTRICTED_FILE(platform_impl_h, AZ_RESTRICTED_PLATFORM)
 #endif
 
 #if defined(AZ_PLATFORM_WINDOWS) && (!defined(AZ_MONOLITHIC_BUILD) || defined(_LAUNCHER))
@@ -603,4 +601,3 @@ _MS_ALIGN(64) uint32  BoxSides[0x40 * 8] = {
     0, 0, 0, 0, 0, 0, 0, 0, //3f
 };
 #endif // !AZ_MONOLITHIC_BUILD || _LAUNCHER
-#endif // CRYINCLUDE_CRYCOMMON_PLATFORM_IMPL_H

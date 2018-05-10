@@ -1395,8 +1395,6 @@ struct I3DEngine
     //      None
     virtual void DestroyDeformableNode( IDeformableNode* node) = 0;
 
-    virtual void ResetCoverageBufferSignalVariables() = 0;
-
     // Summary:
     //     Gets gsm range
     // Return Value:

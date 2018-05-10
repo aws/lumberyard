@@ -123,8 +123,6 @@ namespace EMotionFX
 
             void ExtractActorSettings(const Group::IActorGroup& actorGroup, ActorSettings& outSettings);
 
-            void GatherGlobalTransform(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::Transform& outTransform);
-
             bool GetMaterialInfoForActorGroup(const ActorBuilderContext& context);
             void SetupMaterialDataForMesh(const ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex);
 

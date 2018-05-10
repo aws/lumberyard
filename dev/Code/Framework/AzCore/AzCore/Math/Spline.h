@@ -16,6 +16,8 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/VertexContainer.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/functional.h>
 
 namespace AZ
 {
@@ -43,7 +45,7 @@ namespace AZ
         bool operator==(const SplineAddress& splineAddress) const
         {
             return m_segmentIndex == splineAddress.m_segmentIndex
-                   && IsClose(m_segmentFraction, splineAddress.m_segmentFraction, s_segmentFractionEpsilon);
+                && IsClose(m_segmentFraction, splineAddress.m_segmentFraction, s_segmentFractionEpsilon);
         }
 
         static const float s_segmentFractionEpsilon; ///< Epsilon value for segment fraction spline address comparison.
@@ -188,33 +190,35 @@ namespace AZ
         /**
          * Return if the spline is closed (looping) or not
          */
-        AZ_MATH_FORCE_INLINE bool IsClosed() const { return m_closed; }
+        bool IsClosed() const { return m_closed; }
 
         /**
          * Return number of vertices composing the spline.
          */
-        AZ_MATH_FORCE_INLINE size_t GetVertexCount() const { return m_vertexContainer.Size(); }
+        size_t GetVertexCount() const { return m_vertexContainer.Size(); }
 
         /**
          * Return immutable stored vertices (local space).
          */
-        AZ_MATH_FORCE_INLINE const AZStd::vector<Vector3>& GetVertices() const { return m_vertexContainer.GetVertices(); }
+        const AZStd::vector<Vector3>& GetVertices() const { return m_vertexContainer.GetVertices(); }
 
         /**
          * Return immutable position of vertex at index (local space).
          */
-        AZ_MATH_FORCE_INLINE const Vector3& GetVertex(size_t index) const { return m_vertexContainer.GetVertices()[index]; }
+        const Vector3& GetVertex(size_t index) const { return m_vertexContainer.GetVertices()[index]; }
 
         /**
          * Override callbacks to be used when spline changes/is modified (general).
          */
-        void SetCallbacks(const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer);
+        void SetCallbacks(
+            const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer);
 
         /**
          * Override callbacks to be used when spline changes/is modified (specific).
          * (use if you need more fine grained control over modifications to the container)
          */
-        void SetCallbacks(const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
+        void SetCallbacks(
+            const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
             const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
             const AZStd::function<void()>& OnClearVertices);
 
@@ -340,7 +344,7 @@ namespace AZ
         /**
          * Return immutable bezier data for each vertex
          */
-        AZ_MATH_FORCE_INLINE const AZStd::vector<BezierData>& GetBezierData() const { return m_bezierData; }
+        const AZStd::vector<BezierData>& GetBezierData() const { return m_bezierData; }
 
     protected:
         void OnVertexAdded(size_t index) override;
@@ -409,7 +413,7 @@ namespace AZ
          * 0 = uniform; 0.5 = centriperal; 1 = chordal
          * @param knotParameterization value between [0, 1] to control spline interpolation
          */
-        AZ_MATH_FORCE_INLINE void SetKnotParameterization(float knotParameterization) { m_knotParameterization = GetClamp(knotParameterization, 0.0f, 1.0f); }
+        void SetKnotParameterization(float knotParameterization) { m_knotParameterization = GetClamp(knotParameterization, 0.0f, 1.0f); }
 
         static void Reflect(SerializeContext& context);
 
@@ -419,4 +423,20 @@ namespace AZ
         float m_knotParameterization = 0.0f; ///< Knot parameterization value to control spline interpolation - range [0, 1]
         u16 m_granularity = 8; ///< The granularity (tessellation) of each segment in the spline.
     };
+
+    /**
+     * @brief Util function to intersect a ray in world space against a spline.
+     * Use the provided transform to transform the ray into the local space of the spline.
+     */
+    inline RaySplineQueryResult IntersectSpline(
+        const Transform& worldFromLocal, const Vector3& src, const Vector3& dir, const Spline& spline)
+    {
+        Transform worldFromLocalNormalized = worldFromLocal;
+        const Vector3 scale = worldFromLocalNormalized.ExtractScale();
+        const Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
+
+        const Vector3 localRayOrigin = localFromWorldNormalized * src * scale.GetReciprocal();
+        const Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(dir);
+        return spline.GetNearestAddressRay(localRayOrigin, localRayDirection);
+    }
 }

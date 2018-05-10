@@ -36,56 +36,66 @@ namespace LmbrCentral
         AZ_RTTI(CylinderShapeConfig, "{53254779-82F1-441E-9116-81E1FACFECF4}", ComponentConfig);
         static void Reflect(AZ::ReflectContext* context);
 
-        AZ_INLINE void SetHeight(float newHeight)
+        void SetHeight(float height)
         {
-            m_height = newHeight;
+            AZ_WarningOnce("LmbrCentral", false, "SetHeight Deprecated - Please use m_height");
+            m_height = height;
         }
 
-        AZ_INLINE float GetHeight() const
+        float GetHeight() const
         {
+            AZ_WarningOnce("LmbrCentral", false, "GetHeight Deprecated - Please use m_height");
             return m_height;
         }
 
-        AZ_INLINE void SetRadius(float newRadius)
+        void SetRadius(float radius)
         {
-            m_radius = newRadius;
+            AZ_WarningOnce("LmbrCentral", false, "SetRadius Deprecated - Please use m_radius");
+            m_radius = radius;
         }
 
-        AZ_INLINE float GetRadius() const
+        float GetRadius() const
         {
+            AZ_WarningOnce("LmbrCentral", false, "GetRadius Deprecated - Please use m_radius");
             return m_radius;
         }
 
-        //! The height of this cylinder
-        float m_height = 1.f;
-
-        //! The radius of this cylinder
-        float m_radius = 0.5f;
+        float m_height = 1.f; ///< The height of this cylinder.
+        float m_radius = 0.5f; ///< The radius of this cylinder.
     };
 
     using CylinderShapeConfiguration = CylinderShapeConfig; ///< @deprecated Use CylinderShapeConfig.
-   
 
-    /*!
-    * Services provided by the Cylinder Shape Component
-    */
-    class CylinderShapeComponentRequests : public AZ::ComponentBus
+    /**
+     * Services provided by the Cylinder Shape Component.
+     */
+    class CylinderShapeComponentRequests
+        : public AZ::ComponentBus
     {
     public:
         virtual CylinderShapeConfig GetCylinderConfiguration() = 0;
 
         /**
-        * \brief Sets height of the cylinder
-        * \param newHeight new height of the cylinder
-        */
-        virtual void SetHeight(float newHeight) = 0;
+         * @brief Returns the end to end height of the cylinder.
+         */
+        virtual float GetHeight() = 0;
 
         /**
-        * \brief Sets radius of the cylinder
-        * \param newRadius new radius of the cylinder
-        */
-        virtual void SetRadius(float newRadius) = 0;
+         * @brief Returns the radius of the cylinder.
+         */
+        virtual float GetRadius() = 0;
+        
+        /**
+         * @brief Sets height of the cylinder
+         * @param height new height of the cylinder
+         */
+        virtual void SetHeight(float height) = 0;
 
+        /**
+         * @brief Sets radius of the cylinder
+         * @param radius new radius of the cylinder
+         */
+        virtual void SetRadius(float radius) = 0;
     };
 
     // Bus to service the Cylinder Shape component event group

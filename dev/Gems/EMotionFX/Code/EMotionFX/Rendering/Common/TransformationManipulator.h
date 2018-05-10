@@ -150,13 +150,13 @@ namespace MCommon
          * Function to set the name of the gizmo.
          * @param name The name of the gizmo. (e.g. used to identify different parameters)
          */
-        void SetName(const MCore::String& name)                         { mName = name; }
+        void SetName(const AZStd::string& name)                         { mName = name; }
 
         /**
          * Function to get the gizmo name.
          * @return The name of the gizmo.
          */
-        const MCore::String& GetName() const                            { return mName; }
+        const AZStd::string& GetName() const                            { return mName; }
 
         /**
          * Get the selection lock state.
@@ -276,8 +276,8 @@ namespace MCommon
     protected:
         AZ::Vector3             mPosition;
         AZ::Vector3             mRenderOffset;
-        MCore::String           mName;
-        MCore::String           mTempString;
+        AZStd::string           mName;
+        AZStd::string           mTempString;
         uint32                  mMode;
         float                   mScalingFactor;
         ManipulatorCallback*    mCallback;

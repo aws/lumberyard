@@ -13,10 +13,38 @@
 
 def build(bld):
 
+    enableDetailProfiling = 'GRAPH_CANVAS_ENABLE_DETAILED_PROFILING=0'
+    availableConfigurations = ['debug', 'profile','debug_test', 'profile_test']
+
+    # Common GraphCanvas Widgets that are built as a static library for sharing.
+    bld.CryEngineStaticLibrary(
+
+        target          = 'GraphCanvasWidgets',
+
+        platforms       = ['darwin', 'win'],
+        configurations  = availableConfigurations,
+        file_list       = ['GraphCanvas_widgets.waf_files'],
+
+        includes        = ['StaticLib'],
+        defines         = ['NOT_USE_CRY_MEMORY_MANAGER', enableDetailProfiling],
+        use             = ['AzCore', 'AzFramework', 'EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework'],            
+        win_features    = ['crcfix'],
+        features        = ['qt5'],
+        vs_filter       = 'Gems',
+        disable_pch     = True,
+        
+        autod_uselib    = ['QT5CORE',
+                           'QT5GUI',
+                           'QT5WIDGETS'],
+
+        export_includes = ['.', 'StaticLib'] # the gem's includes
+
+    )
+
     bld.DefineGem(
         file_list       = ['GraphCanvas_game.waf_files'],
         pch             = '',
-        test_all_file_list = ['GraphCanvas_test.waf_files'],
+        test_all_file_list = ['GraphCanvas_test.waf_files'],                
 
         ########################################
         # Editor Gem configuration
@@ -27,9 +55,12 @@ def build(bld):
             file_list       = 'GraphCanvas.waf_files',
             pch             = 'precompiled.cpp',
             win_features    = ['crcfix'],
-            defines         = ['NOT_USE_CRY_MEMORY_MANAGER'],
+            configurations  = availableConfigurations,
+            defines         = ['NOT_USE_CRY_MEMORY_MANAGER', enableDetailProfiling],
+            
+            use             = ['GraphCanvasWidgets'],
 
-            includes        = ['.', '..', 'Include', 'Include/GraphCanvas', 'Source'],
+            includes        = ['.', '..', 'Include', 'Source'],
 
             autod_uselib    = ['QT5CORE',
                                'QT5GUI',

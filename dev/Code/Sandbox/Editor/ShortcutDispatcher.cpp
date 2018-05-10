@@ -354,14 +354,6 @@ void ShortcutDispatcher::setNewFocus(QObject* obj)
         return;
     }
 
-#ifdef AZ_PLATFORM_APPLE
-    if (!widget->isActiveWindow())
-    {
-        widget->activateWindow();
-        widget->setFocus();
-    }
-#endif
-
     // track it for later
     s_lastFocus = widget;
 

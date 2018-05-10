@@ -23,7 +23,7 @@ class NoProfileWidget
 
 public:
 
-    NoProfileWidget(ResourceManagementView* view);
+    NoProfileWidget(ResourceManagementView* view, QWidget* parent);
 
 protected:
 

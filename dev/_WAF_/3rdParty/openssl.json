@@ -1,6 +1,6 @@
 {
     "name": "openssl",
-    "source": "@ROOT@/Code/SDKs/OpenSSL",
+    "source": "@3P:OpenSSL@",
     "description": "OpenSSL Library",
     "includes": [
         "include"
@@ -38,6 +38,7 @@
                 "/ignore:4099"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "linux_x64": {
             "libpath_debug": [
                 "lib/linux-x86_64-clang-debug"

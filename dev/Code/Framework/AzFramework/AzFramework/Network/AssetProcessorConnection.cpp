@@ -36,15 +36,6 @@ namespace AzFramework
     {
         namespace
         {
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-            // Some versions of android cannot handle INT_MAX being the number
-            // of semaphores to create...
-            const int maxSemaphoreCount = AZStd::semaphore::MAXIMUM_COUNT;
-#else
-            // Consoles need at least 150k semaphores for VFS to work properly due
-            // to Logging writing out a huge log file a little bit at a time.
-            const int maxSemaphoreCount = INT_MAX;
-#endif
             bool GetValidAzSocket(AZSOCKET& outSocket)
             {
                 // Socket already valid
@@ -75,7 +66,7 @@ namespace AzFramework
             : m_socket(AZ_SOCKET_INVALID)
             , m_connectionState(EConnectionState::Disconnected)
             , m_port(0)
-            , m_sendEvent("APConn::m_sendEvent", 0, maxSemaphoreCount)
+            , m_sendEvent("APConn::m_sendEvent")
         {
             m_requestSerial = 1;
             m_unitTesting = false;
@@ -144,6 +135,12 @@ namespace AzFramework
 #   if AZ_TRAIT_OS_USE_WINDOWS_THREADS
             // on these platforms, this_thread::getId returns an unsigned.
             azsnprintf(buffer, 2048, "(%p/%u): %s\n", this, AZStd::this_thread::get_id().m_id, msg);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AssetProcessorConnection_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #   elif defined(AZ_PLATFORM_ANDROID)
             // on android, the thread id is a long int.
             azsnprintf(buffer, 2048, "(%p/%li): %s\n", this, AZStd::this_thread::get_id().m_id, msg);

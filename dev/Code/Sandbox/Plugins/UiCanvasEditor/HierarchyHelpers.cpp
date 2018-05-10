@@ -91,6 +91,7 @@ namespace HierarchyHelpers
                 hierarchy);
         QObject::connect(action,
             &QAction::triggered,
+            hierarchy,
             [hierarchy, addAtRoot, optionalPos](bool checked)
             {
                 if (addAtRoot)

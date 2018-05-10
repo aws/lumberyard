@@ -19,6 +19,11 @@ namespace ScriptCanvas
     const char* PureData::k_getThis("Get");
     const char* PureData::k_setThis("Set");
     
+    const AZStd::unordered_map<AZStd::string, AZStd::pair<SlotId, SlotId>>& PureData::GetPropertyNameSlotMap() const
+    {
+        return m_propertyAccount.m_getterSetterIdPairs;
+    }
+
     void PureData::AddInputAndOutputTypeSlot(const Data::Type& type, const void* source)
     {
         const Data::Type copy(type);
@@ -69,7 +74,7 @@ namespace ScriptCanvas
 
             if (!outputNodes.empty())
             {
-                auto getterOutcome = getterFuncIt->second.m_getterFunction(m_inputData[k_thisDatumIndex]);
+                auto getterOutcome = getterFuncIt->second.m_getterFunction(m_varDatums.begin()->GetData());
                 if (!getterOutcome)
                 {
                     SCRIPTCANVAS_REPORT_ERROR((*this), getterOutcome.GetError().data());
@@ -90,7 +95,7 @@ namespace ScriptCanvas
 
     void PureData::SetInput(const Datum& input, const SlotId& id)
     {
-        if (IsSetThisSlot(id))
+        if (id == GetSlotIdByType(GetInputDataName(), SlotType::DataIn))
         {
             // push this value, as usual
             Node::SetInput(input, id);
@@ -108,6 +113,26 @@ namespace ScriptCanvas
         }
     }
 
+    void PureData::SetInput(Datum&& input, const SlotId& id)
+    {
+        if (id == GetSlotIdByType(GetInputDataName(), SlotType::DataIn))
+        {
+            // push this value, as usual
+            Node::SetInput(AZStd::move(input), id);
+
+            // now, call every getter, as every property has (presumably) been changed
+            for (const auto& propertyNameSlotIdsPair : m_propertyAccount.m_getterSetterIdPairs)
+            {
+                const SlotId& getterSlotId = propertyNameSlotIdsPair.second.first;
+                CallGetter(getterSlotId);
+            }
+        }
+        else
+        {
+            SetProperty(AZStd::move(input), id);
+        }
+    }
+
     void PureData::SetProperty(const Datum& input, const SlotId& setterId)
     {
         auto methodBySlotIter = m_propertyAccount.m_settersByInputSlot.find(setterId);
@@ -121,7 +146,7 @@ namespace ScriptCanvas
             AZ_Error("Script Canvas", false, "BehaviorContextObject setter is not invocable for SlotId %s is nullptr", setterId.m_id.ToString<AZStd::string>().data());
             return;
         }
-        auto setterOutcome = methodBySlotIter->second.m_setterFunction(m_inputData[k_thisDatumIndex], input);
+        auto setterOutcome = methodBySlotIter->second.m_setterFunction(m_varDatums.begin()->GetData(), input);
         if (!setterOutcome)
         {
             SCRIPTCANVAS_REPORT_ERROR((*this), setterOutcome.TakeError().data());
@@ -152,7 +177,6 @@ namespace ScriptCanvas
             {
                 editContext->Class<PureData>("PureData", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ;
             }
         }

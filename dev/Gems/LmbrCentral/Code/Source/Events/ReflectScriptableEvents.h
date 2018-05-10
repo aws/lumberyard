@@ -13,14 +13,13 @@
 
 namespace AZ
 {
-    class BehaviorContext;
+    class ReflectContext;
 }
-
 
 namespace LmbrCentral
 {
     struct ReflectScriptableEvents
     {
-        static void Reflect(AZ::BehaviorContext* context);
+        static void Reflect(AZ::ReflectContext* context);
     };
 }

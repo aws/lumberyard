@@ -1177,7 +1177,6 @@ public:
     virtual void GetSvoBricksForUpdate(PodArray<SSvoNodeInfo>& arrNodeInfo, float fNodeSize, PodArray<SVF_P3F_C4B_T2F>* pVertsOut);
 #endif
 
-    void SetupLightScissors(CDLight* pLight, const SRenderingPassInfo& passInfo);
     bool IsTerrainTextureStreamingInProgress() const;
 
     bool IsTerrainSyncLoad() { return m_bContentPrecacheRequested && GetCVars()->e_AutoPrecacheTerrainAndProcVeget; }
@@ -1200,7 +1199,6 @@ public:
     void OnCasterDeleted(IShadowCaster* pCaster);
 
     CCullBuffer* GetCoverageBuffer() { return m_pCoverageBuffer; }
-    virtual void ResetCoverageBufferSignalVariables();
 
     void InitShadowFrustums(const SRenderingPassInfo& passInfo);
 

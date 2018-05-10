@@ -42,7 +42,6 @@ namespace ScriptCanvas
                             editContext->Class<Plane>("Plane", "A plane value according to the equation: Ax + By + Cz + D = 0")
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Plane.png")
-                                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                                 ;
                         }
                     }

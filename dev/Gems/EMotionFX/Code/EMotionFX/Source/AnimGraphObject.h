@@ -96,8 +96,8 @@ namespace EMotionFX
         virtual uint32 GetBaseType() const = 0;
         virtual const char* GetTypeString() const = 0;
         virtual const char* GetPaletteName() const = 0;
-        virtual void GetSummary(MCore::String* outResult) const;
-        virtual void GetTooltip(MCore::String* outResult) const;
+        virtual void GetSummary(AZStd::string* outResult) const;
+        virtual void GetTooltip(AZStd::string* outResult) const;
         virtual ECategory GetPaletteCategory() const = 0;
         virtual AnimGraphObject* Clone(AnimGraph* animGraph) = 0;
         virtual void PostClone(AnimGraphObject* sourceObject, AnimGraph* sourceAnimGraph) { MCORE_UNUSED(sourceObject); MCORE_UNUSED(sourceAnimGraph); }
@@ -114,7 +114,7 @@ namespace EMotionFX
         virtual void OnUpdateAttributes() {}
         virtual void OnUpdateAttribute(MCore::Attribute* attribute, MCore::AttributeSettings* settings)          { MCORE_UNUSED(attribute);         MCORE_UNUSED(settings); }
         virtual void OnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)            { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(newMotionSet); }
-        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)      { MCORE_UNUSED(animGraph);         MCORE_UNUSED(node);         MCORE_UNUSED(oldName); }
+        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)      { MCORE_UNUSED(animGraph);         MCORE_UNUSED(node);         MCORE_UNUSED(oldName); }
         virtual void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node)                                    { MCORE_UNUSED(animGraph);         MCORE_UNUSED(node); }
         virtual void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)                             { MCORE_UNUSED(animGraph);         MCORE_UNUSED(nodeToRemove); }
         virtual void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet)   { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(newMotionSet); }
@@ -136,7 +136,7 @@ namespace EMotionFX
         void SetAttributeDisabled(uint32 index)                 { mAttributeFlags[index] |= FLAG_DISABLED; }
         #endif
 
-        MCore::String CreateAttributesString() const;
+        AZStd::string CreateAttributesString() const;
         void InitAttributesFromString(const char* attribString);
         void InitAttributesFromCommandLine(const MCore::CommandLine& commandLine);
 
@@ -205,21 +205,19 @@ namespace EMotionFX
         MCore::AttributeSettings* RegisterSyncAttribute();
         MCore::AttributeSettings* RegisterEventFilterAttribute();
 
-        virtual bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName);
+        virtual bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName);
 
         bool GetHasErrorFlag(AnimGraphInstance* animGraphInstance) const;
         void SetHasErrorFlag(AnimGraphInstance* animGraphInstance, bool hasError);
 
-        void Scale(float scaleFactor);
-
     protected:
         MCore::Array<MCore::Attribute*>         mAttributeValues;
-        AnimGraph*                             mAnimGraph;
+        AnimGraph*                              mAnimGraph;
         uint32                                  mObjectIndex;
         uint32                                  mTypeID;
 
         #ifdef EMFX_EMSTUDIOBUILD
-        MCore::Array<uint8>                 mAttributeFlags;
+        MCore::Array<uint8>                     mAttributeFlags;
         #endif
 
         AnimGraphObject(AnimGraph* animGraph, uint32 typeID);

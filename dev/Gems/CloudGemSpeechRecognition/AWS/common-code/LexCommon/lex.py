@@ -135,9 +135,12 @@ def put_bot(bot_section):
             return "ERROR: Unknown parameter in input."
     return "ACCEPTED"
 
-def delete_bot(name):
-    try: 
-        boto3.client('lex-models').delete_bot(name = name)
+def delete_bot(name, version = None):
+    try:
+        if version:
+            boto3.client('lex-models').delete_bot_version(name = name, version = version)
+        else:
+            boto3.client('lex-models').delete_bot(name = name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceInUseException':
             return "INUSE"
@@ -241,11 +244,17 @@ def put_intent(intent_section):
 
     return "ACCEPTED"
 
-def delete_intent(name):
-    try: 
-        boto3.client('lex-models').delete_intent(name = name)
+def delete_intent(name, version = None):
+    try:
+        if version:
+            boto3.client('lex-models').delete_intent_version(name = name, version = version)
+        else:
+            boto3.client('lex-models').delete_intent(name = name)
     except ClientError as e:
-        return "ERROR: " + e.response['Error']['Message']
+        if e.response['Error']['Code'] == 'ResourceInUseException':
+            return "INUSE"
+        else:
+            return "ERROR: " + e.response['Error']['Message']
     return "DELETED"
 
 def create_intent_version(name):
@@ -334,11 +343,17 @@ def put_slot_type(slot_type_section):
             return "ERROR: Unknown parameter in input."
     return "ACCEPTED"
 
-def delete_slot_type(name):
-    try: 
-        boto3.client('lex-models').delete_slot_type(name = name)
+def delete_slot_type(name, version = None):
+    try:
+        if version:
+            boto3.client('lex-models').delete_slot_type_version(name = name, version = version)
+        else:
+            boto3.client('lex-models').delete_slot_type(name = name)
     except ClientError as e:
-        return "ERROR: " + e.response['Error']['Message']
+        if e.response['Error']['Code'] == 'ResourceInUseException':
+            return "INUSE"
+        else:
+            return "ERROR: " + e.response['Error']['Message']
     return "DELETED"
 
 def create_slot_type_version(name):

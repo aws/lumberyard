@@ -237,6 +237,7 @@ namespace AZ
         void Clear() {};
         void SetActive(bool /*isActive*/) {};
         bool IsActive() { return false; }
+        size_t Count() const { return 0; }
     };
 
     template <class Bus, class MutexType>
@@ -284,25 +285,29 @@ namespace AZ
 
         void Clear()
         {
-            m_messagesMutex.lock();
+            AZStd::lock_guard<MutexType> lock(m_messagesMutex);
             m_messages.get_container().clear();
-            m_messagesMutex.unlock();
         }
 
         void SetActive(bool isActive)
         {
-            m_messagesMutex.lock();
+            AZStd::lock_guard<MutexType> lock(m_messagesMutex);
             m_isActive = isActive;
             if (!m_isActive)
             {
                 m_messages.get_container().clear();
             }
-            m_messagesMutex.unlock();
         };
 
         bool IsActive()
         {
             return m_isActive;
+        }
+
+        size_t Count()
+        {
+            AZStd::lock_guard<MutexType> lock(m_messagesMutex);
+            return m_messages.size();
         }
     };
 

@@ -53,6 +53,10 @@ struct CRoadSector
 
 typedef std::vector<CRoadSector> CRoadSectorVector;
 
+namespace RoadsAndRivers
+{
+    class RoadsAndRiversConverter;
+}
 
 /*!
  *  CRoadObject is an object that represent named 3d position in world.
@@ -62,6 +66,7 @@ class SANDBOX_API CRoadObject
     : public CSplineObject
 {
     Q_OBJECT
+    friend class RoadsAndRivers::RoadsAndRiversConverter;
 protected:
     friend class CRoadObjectClassDesc;
     CRoadObject();

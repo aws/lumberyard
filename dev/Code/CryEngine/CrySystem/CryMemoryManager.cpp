@@ -622,6 +622,9 @@ void BucketAllocatorReplayRegisterAddressRange(const char* name)
 }
 #endif //defined(USE_GLOBAL_BUCKET_ALLOCATOR)
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(CryMemoryManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #ifdef CRT_IS_DLMALLOC
 #include "CryDLMalloc.h"

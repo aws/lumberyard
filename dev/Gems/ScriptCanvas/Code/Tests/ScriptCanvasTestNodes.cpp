@@ -22,18 +22,18 @@ namespace TestNodes
     {
         AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
         AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
-        AddInputDatumUntypedSlot("Value");
+        AddInputDatumOverloadedSlot("Value");
     }
 
     void TestResult::OnInputSignal(const ScriptCanvas::SlotId&)
     {
-        const int onlyDatumIndex(0);
-        const ScriptCanvas::Datum* input = GetInput(onlyDatumIndex);
-
-        if (input && !input->Empty())
+        auto valueDatum = GetInput(GetSlotId("Value"));
+        if (!valueDatum)
         {
-            input->ToString(m_string);
+            return;
         }
+
+        valueDatum->ToString(m_string);
 
         // technically, I should remove this, make it an object that holds a string, with an untyped slot, and this could be a local value
         if (!m_string.empty())
@@ -201,12 +201,10 @@ namespace TestNodes
                     }
                 }
             }
-            const ScriptCanvas::Data::Type* resultType = GetNonDatumType(m_resultSlotId);
-            EXPECT_NE(nullptr, resultType);
-            ScriptCanvas::Datum output(*resultType, ScriptCanvas::Datum::eOriginality::Copy);
-            auto rawOutput = output.ModAs<ScriptCanvas::Data::NumberType>();
-            EXPECT_NE(nullptr, rawOutput);
-            *rawOutput = result;
+
+            auto resultType = GetSlotDataType(m_resultSlotId);
+            EXPECT_TRUE(resultType.IsValid());
+            ScriptCanvas::Datum output(result);;
             PushOutput(output, *GetSlot(m_resultSlotId));
             SignalOutput(GetSlotId("Out"));
         }
@@ -243,16 +241,16 @@ namespace TestNodes
 
     void StringView::OnInputSignal(const ScriptCanvas::SlotId&)
     {
-        const int onlyInputDatumIndex(0);
-        const int onlyOutputSlotIndex(0);
-        const ScriptCanvas::Datum* input = GetInput(onlyInputDatumIndex);
-        ScriptCanvas::Data::StringType result;
-        if (input && !input->Empty())
+        auto viewDatum = GetInput(GetSlotId("View"));
+        if (!viewDatum)
         {
-            input->ToString(result);
+            return;
         }
 
-        ScriptCanvas::Datum output(ScriptCanvas::Datum::CreateInitializedCopy(result));
+        ScriptCanvas::Data::StringType result;
+        viewDatum->ToString(result);
+
+        ScriptCanvas::Datum output(result);
         auto resultSlot = GetSlot(m_resultSlotId);
         if (resultSlot)
         {
@@ -272,4 +270,65 @@ namespace TestNodes
         }
     }
 
+    //////////////////////////////////////////////////////////////////////////////
+
+    void InsertSlotConcatNode::Reflect(AZ::ReflectContext* reflection)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
+        {
+            serializeContext->Class<InsertSlotConcatNode, ScriptCanvas::Node>()
+                ->Version(0)
+                ;
+
+        }
+    }
+
+    ScriptCanvas::SlotId InsertSlotConcatNode::InsertSlot(AZ::s64 index, AZStd::string_view slotName)
+    {
+        using namespace ScriptCanvas;
+        SlotId addedSlotId;
+        if (!SlotExists(slotName, SlotType::DataIn, addedSlotId))
+        {
+            AZStd::vector<ContractDescriptor> contracts{ { []() { return aznew TypeContract(); } } };
+            addedSlotId = InsertInputDatumSlot(index, { slotName, "", SlotType::DataIn, contracts }, Datum(Data::StringType()));
+        }
+
+        return addedSlotId;
+    }
+
+
+    void InsertSlotConcatNode::OnInputSignal(const ScriptCanvas::SlotId& slotId)
+    {
+        if (slotId == GetSlotId("In"))
+        {
+            ScriptCanvas::Data::StringType result{};
+            for (const ScriptCanvas::Slot* concatSlot : GetSlotsByType(ScriptCanvas::SlotType::DataIn))
+            {
+                if (auto inputDatum = GetInput(concatSlot->GetId()))
+                {
+                    ScriptCanvas::Data::StringType stringArg;
+                    if (inputDatum->ToString(stringArg))
+                    {
+                        result += stringArg;
+                    }
+                }
+            }
+
+            auto resultSlotId = GetSlotId("Result");
+            auto resultType = GetSlotDataType(resultSlotId);
+            EXPECT_TRUE(resultType.IsValid());
+            if (auto resultSlot = GetSlot(resultSlotId))
+            {
+                PushOutput(ScriptCanvas::Datum(result), *resultSlot);
+            }
+            SignalOutput(GetSlotId("Out"));
+        }
+    }
+
+    void InsertSlotConcatNode::OnInit()
+    {
+        Node::AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
+        Node::AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
+        AddOutputTypeSlot("Result", "", ScriptCanvas::Data::Type::String(), OutputStorage::Optional);
+    }
 }

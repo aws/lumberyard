@@ -26,7 +26,7 @@ namespace LmbrCentral
         SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<StereoRendererComponent>()
+            serializeContext->Class<StereoRendererComponent, AZ::Component>()
                 ->Version(1);
         }
 

@@ -15,8 +15,8 @@
 
 
 // include the required headers
+#include <AzCore/std/string/string.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "../StandardPluginsConfig.h"
 
 #ifdef HAS_GAME_CONTROLLER
@@ -70,8 +70,8 @@ public:
 
     MCORE_INLINE IDirectInputDevice8* GetJoystick() const                       { return mJoystick; }       // returns nullptr when no joystick found during init
 
-    MCORE_INLINE const char* GetDeviceName() const                              { return mDeviceInfo.mName.AsChar(); }
-    MCORE_INLINE const MCore::String& GetDeviceNameString() const               { return mDeviceInfo.mName; }
+    MCORE_INLINE const char* GetDeviceName() const                              { return mDeviceInfo.mName.c_str(); }
+    MCORE_INLINE const AZStd::string& GetDeviceNameString() const               { return mDeviceInfo.mName; }
     MCORE_INLINE uint32 GetNumButtons() const                                   { return mDeviceInfo.mNumButtons; }
     MCORE_INLINE uint32 GetNumSliders() const                                   { return mDeviceInfo.mNumSliders; }
     MCORE_INLINE uint32 GetNumPOVs() const                                      { return mDeviceInfo.mNumPOVs; }
@@ -79,7 +79,7 @@ public:
     void SetDeadZone(float deadZone)                                            { mDeadZone = deadZone; }
     MCORE_INLINE float GetDeadZone() const                                      { return mDeadZone; }
     const char* GetElementEnumName(uint32 index);
-    uint32 FindElemendIDByName(const MCore::String& elementEnumName);
+    uint32 FindElemendIDByName(const AZStd::string& elementEnumName);
 
     MCORE_INLINE bool GetIsPresent(uint32 elementID) const                      { return mDeviceElements[elementID].mPresent; }
     MCORE_INLINE bool GetIsButtonPressed(uint8 buttonIndex) const
@@ -91,7 +91,7 @@ public:
         return false;
     }
     MCORE_INLINE float GetValue(uint32 elementID) const                         { return mDeviceElements[elementID].mValue; }
-    MCORE_INLINE const char* GetElementName(uint32 elementID) const             { return mDeviceElements[elementID].mName.AsChar(); }
+    MCORE_INLINE const char* GetElementName(uint32 elementID) const             { return mDeviceElements[elementID].mName.c_str(); }
     MCORE_INLINE bool GetIsValid() const                                        { return mValid; }
 
 private:
@@ -99,7 +99,7 @@ private:
     {
         MCORE_MEMORYOBJECTCATEGORY(GameController::DeviceInfo, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
-        MCore::String   mName;
+        AZStd::string   mName;
         uint32          mNumButtons;
         uint32          mNumAxes;
         uint32          mNumPOVs;
@@ -110,7 +110,7 @@ private:
     {
         MCORE_MEMORYOBJECTCATEGORY(GameController::DeviceElement, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
-        MCore::String   mName;
+        AZStd::string   mName;
         float           mValue;
         float           mCalibrationValue;
         ElementType     mType;

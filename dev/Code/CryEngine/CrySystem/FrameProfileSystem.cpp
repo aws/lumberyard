@@ -1167,8 +1167,8 @@ void CFrameProfileSystem::EndFrame()
                 nProfileCalls += pProfiler->m_count;
             }
 
-            float aveValue;
-            float currentValue;
+            float aveValue = 0;
+            float currentValue = 0;
 
             if (m_nThreadSupport == 1 && pProfiler->m_threadId == m_ProfilerThreads.GetMainThreadId())
             {

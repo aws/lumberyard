@@ -17,17 +17,18 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/Component.h>
 
-#include <QVariant>
+#include <GraphCanvas/Styling/definitions.h>
+#include <GraphCanvas/Styling/Selector.h>
+#include <GraphCanvas/Components/StyleBus.h>
 
-#include <Styling/definitions.h>
-#include <Styling/Selector.h>
-#include <Components/StyleBus.h>
+class QVariant;
 
 namespace GraphCanvas
 {
+    class StyleManager;
+
     namespace Styling
     {
-
         class Style
         {
         public:
@@ -40,7 +41,7 @@ namespace GraphCanvas
             Style(const Style& other) = default;
             Style(const SelectorVector& selectors);
             Style(std::initializer_list<Selector> selectors);
-            virtual ~Style() = default;
+            virtual ~Style();
 
             SelectorVector GetSelectors() const { return m_selectors; }
 
@@ -61,16 +62,13 @@ namespace GraphCanvas
             SelectorVector Selectors() { return m_selectors; }
 
         private:
-            void MakeSelectorsDefault();
-
-
             using ValueMap = AZStd::unordered_map<Attribute, QVariant>;
 
             SelectorVector m_selectors;
             AZStd::string m_selectorsAsString;
             ValueMap m_values;
 
-            friend class StyleSheet;
+            friend class StyleManager;
         };
 
         using StyleVector = AZStd::vector<Style*>;
@@ -79,7 +77,7 @@ namespace GraphCanvas
         class ComputedStyle
             : public AZ::Component
             , protected StyleRequestBus::Handler
-            , protected StyleSheetNotificationBus::Handler
+            , protected StyleManagerNotificationBus::Handler
         {
         public:
             AZ_COMPONENT(ComputedStyle, "{695DEBB5-45A1-4CD5-B6B7-D9F7EF801194}");
@@ -87,12 +85,10 @@ namespace GraphCanvas
             static void Reflect(AZ::ReflectContext* context);
 
             ComputedStyle() = default;
-            ComputedStyle(const SelectorVector& objectSelectors, StyleVector&& styles);
-            virtual ~ComputedStyle() = default;
+            ComputedStyle(const EditorId& editorId, const SelectorVector& objectSelectors, StyleVector&& styles);
+            virtual ~ComputedStyle();
 
             const SelectorVector& ObjectSelectors() { return m_objectSelectors; }
-
-            void SetStyleSheetId(const AZ::EntityId& sceneId);
 
         private:
             // StyleRequestBus::Handler
@@ -103,7 +99,7 @@ namespace GraphCanvas
             ////
 
             // StyleSheetNotificationBus
-            void OnStyleSheetUnloaded() override;
+            void OnStylesUnloaded() override;
             ////
 
             // AZ::Component
@@ -114,61 +110,6 @@ namespace GraphCanvas
             SelectorVector m_objectSelectors;
             AZStd::string m_objectSelectorsAsString;
             StyleVector m_styles;
-        };
-
-
-        class StyleSheet
-            : public AZ::Component
-            , protected StyleSheetRequestBus::Handler
-        {
-        public:
-            AZ_COMPONENT(StyleSheet, "{34B81206-2C69-4886-945B-4A9ECC0FDAEE}");
-
-            static void Reflect(AZ::ReflectContext* context);
-
-            StyleSheet();
-            virtual ~StyleSheet();
-            StyleSheet& operator=(const StyleSheet& other);
-            StyleSheet& operator=(StyleSheet&& other);
-
-            static AZ::EntityId Create();
-
-            // AZ::Component
-            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-            {
-                provided.push_back(AZ_CRC("GraphCanvas_StyleService", 0x1a69884f));
-            }
-
-            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
-            {
-                (void)dependent;
-            }
-
-            static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
-            {
-                (void)required;
-            }
-            ////
-
-
-        private:
-            void MakeStylesDefault();
-
-            // StyleSheetRequestBus::Handler
-            AZ::EntityId ResolveStyles(const AZ::EntityId& object) const override;
-            ////
-
-            // AZ::Component
-            void Activate() override;
-            void Deactivate() override;
-            ////
-
-            void ClearStyles();
-
-            StyleVector m_styles;
-
-
-            friend class Parser;
         };
 
     } // namespace Styling

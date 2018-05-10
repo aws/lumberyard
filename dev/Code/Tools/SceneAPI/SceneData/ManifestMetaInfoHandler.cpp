@@ -53,11 +53,11 @@ namespace AZ
                 const DataTypes::IManifestObject& target)
             {
                 AZ_TraceContext("Object Type", target.RTTI_GetTypeName());
+                modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
 
                 if (target.RTTI_IsTypeOf(DataTypes::IMeshGroup::TYPEINFO_Uuid()))
                 {
                     const DataTypes::IMeshGroup* group = azrtti_cast<const DataTypes::IMeshGroup*>(&target);
-                    modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
                     const Containers::RuleContainer& rules = group->GetRuleContainerConst();
 
                     AZStd::unordered_set<Uuid> existingRules;
@@ -90,7 +90,6 @@ namespace AZ
                 else if (target.RTTI_IsTypeOf(DataTypes::ISkinGroup::TYPEINFO_Uuid()))
                 {
                     const DataTypes::ISkinGroup* group = azrtti_cast<const DataTypes::ISkinGroup*>(&target);
-                    modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
                     const Containers::RuleContainer& rules = group->GetRuleContainerConst();
 
                     AZStd::unordered_set<AZ::Uuid> existingRules;
@@ -120,7 +119,6 @@ namespace AZ
                 else if (target.RTTI_IsTypeOf(DataTypes::ISkeletonGroup::TYPEINFO_Uuid()))
                 {
                     const DataTypes::ISkeletonGroup* group = azrtti_cast<const DataTypes::ISkeletonGroup*>(&target);
-                    modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
                     const Containers::RuleContainer& rules = group->GetRuleContainerConst();
 
                     AZStd::unordered_set<AZ::Uuid> existingRules;
@@ -129,16 +127,6 @@ namespace AZ
                     {
                         existingRules.insert(rules.GetRule(i)->RTTI_GetType());
                     }
-
-                    // Temporarily remove skeleton proxy rule because we currently don't support that.
-                    // if (existingRules.find(SceneData::SkeletonProxyRule::TYPEINFO_Uuid()) == existingRules.end())
-                    // {
-                    //     modifiers.push_back(SceneData::SkeletonProxyRule::TYPEINFO_Uuid());
-                    // }
-                }
-                else if (target.RTTI_IsTypeOf(DataTypes::IAnimationGroup::TYPEINFO_Uuid()))
-                {
-                    modifiers.push_back(SceneData::CommentRule::TYPEINFO_Uuid());
                 }
             }
 

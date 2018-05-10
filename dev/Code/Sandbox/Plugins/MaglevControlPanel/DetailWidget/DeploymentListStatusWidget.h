@@ -24,7 +24,7 @@ class DeploymentListStatusWidget
 
 public:
 
-    DeploymentListStatusWidget(ResourceManagementView* view, QSharedPointer<IDeploymentListStatusModel> stackStatusModel);
+    DeploymentListStatusWidget(ResourceManagementView* view, QSharedPointer<IDeploymentListStatusModel> stackStatusModel, QWidget* parent);
 
 private:
 

@@ -883,7 +883,7 @@ namespace ExporterLib
     uint32 GetAnimGraphGameControllerParamInfoSize(EMotionFX::AnimGraphGameControllerSettings::ParameterInfo* paramInfo)
     {
         uint32 result = sizeof(EMotionFX::FileFormat::AnimGraph_GameControllerParameterInfo);
-        result += GetStringChunkSize(paramInfo->mParameterName.AsChar());
+        result += GetStringChunkSize(paramInfo->mParameterName.c_str());
         return result;
     }
 
@@ -892,7 +892,7 @@ namespace ExporterLib
     uint32 GetAnimGraphGameControllerButtonInfoSize(EMotionFX::AnimGraphGameControllerSettings::ButtonInfo* buttonInfo)
     {
         uint32 result = sizeof(EMotionFX::FileFormat::AnimGraph_GameControllerButtonInfo);
-        result += GetStringChunkSize(buttonInfo->mString.AsChar());
+        result += GetStringChunkSize(buttonInfo->mString.c_str());
         return result;
     }
 
@@ -938,7 +938,7 @@ namespace ExporterLib
         // followed by:
 
         // 1. save the string of the parameter
-        SaveString(parameterInfo->mParameterName.AsChar(), file, targetEndianType);
+        SaveString(parameterInfo->mParameterName.c_str(), file, targetEndianType);
     }
 
 
@@ -959,7 +959,7 @@ namespace ExporterLib
         // followed by:
 
         // 1. save the string of the button
-        SaveString(buttonInfo->mString.AsChar(), file, targetEndianType);
+        SaveString(buttonInfo->mString.c_str(), file, targetEndianType);
     }
 
 
@@ -1118,10 +1118,7 @@ namespace ExporterLib
 
         // write the additional info
         EMotionFX::FileFormat::AnimGraph_AdditionalInfo info;
-        info.mUnitType = static_cast<uint8>(animGraph->GetUnitType());
-
-        // convert endian
-        // (no conversions needed)
+        info.mUnitType = static_cast<uint8>(MCore::Distance::EUnitType::UNITTYPE_METERS);
 
         // write to the file
         file->Write(&info, sizeof(EMotionFX::FileFormat::AnimGraph_AdditionalInfo));

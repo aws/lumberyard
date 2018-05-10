@@ -15,7 +15,6 @@
 // include the required headers
 #include "EMStudioConfig.h"
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <AzCore/Debug/Timer.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 #include "NodeSelectionWindow.h"
@@ -85,9 +84,10 @@ namespace EMStudio
 
         void LoadActor(const char* fileName, bool replaceCurrentScene);
         void LoadCharacter(const AZ::Data::AssetId& actorAssetId, const AZ::Data::AssetId& animgraphId, const AZ::Data::AssetId& motionSetId);
-        void LoadFile(const MCore::String& fileName, int32 contextMenuPosX = 0, int32 contextMenuPosY = 0, bool contextMenuEnabled = true, bool reload = false);
+        void LoadFile(const AZStd::string& fileName, int32 contextMenuPosX = 0, int32 contextMenuPosY = 0, bool contextMenuEnabled = true, bool reload = false);
         void LoadFiles(const AZStd::vector<AZStd::string>& filenames, int32 contextMenuPosX = 0, int32 contextMenuPosY = 0, bool contextMenuEnabled = true, bool reload = false);
 
+        void Activate(const AZ::Data::AssetId& actorAssetId, const EMotionFX::AnimGraph* animGraph, const EMotionFX::MotionSet* motionSet);
         void SetLastUsedApplicationModeString(const QString& lastUsedApplicationMode, bool saveToConfigFile);
         void SetMaxRecentFiles(uint32 numRecentFiles, bool saveToConfigFile);
         MCORE_INLINE uint32 GetMaxRecentFiles()                                 { return mMaxNumRecentFiles; }
@@ -119,7 +119,7 @@ namespace EMStudio
         void keyReleaseEvent(QKeyEvent* event) override;
 
         uint32 GetNumLayouts() const                                            { return mLayoutNames.GetLength(); }
-        const char* GetLayoutName(uint32 index) const                           { return mLayoutNames[index].AsChar(); }
+        const char* GetLayoutName(uint32 index) const                           { return mLayoutNames[index].c_str(); }
         const char* GetCurrentLayoutName() const;
 
         static const char* GetEMotionFXPaneName();
@@ -127,9 +127,6 @@ namespace EMStudio
 
     public slots:
         void OnAutosaveTimeOut();
-        void OnScaleSelectedActors();
-        void OnScaleSelectedMotions();
-        void OnScaleSelectedAnimGraphs();
         void LoadLayoutAfterShow();
         void RaiseFloatingWidgets();
         void LoadCharacterFiles();
@@ -149,7 +146,7 @@ namespace EMStudio
         MysticQt::KeyboardShortcutManager* mShortcutManager;
 
         // layouts (application modes)
-        MCore::Array<MCore::String> mLayoutNames;
+        MCore::Array<AZStd::string> mLayoutNames;
 
         // menu actions
         QAction*                mResetAction;
@@ -166,9 +163,6 @@ namespace EMStudio
 
         PreferencesWindow*      mPreferencesWindow;
 
-        // node selection window
-        NodeSelectionWindow*    mNodeSelectionWindow;
-
         EMStudio::FileManager*  mFileManager;
 
         MysticQt::RecentFiles   mRecentActors;
@@ -178,12 +172,12 @@ namespace EMStudio
         // dirty files
         DirtyFileManager*       mDirtyFileManager;
 
-        void SetWindowTitleFromFileName(const MCore::String& fileName);
+        void SetWindowTitleFromFileName(const AZStd::string& fileName);
 
         // drag & drop support
         void dragEnterEvent(QDragEnterEvent* event) override;
         void dropEvent(QDropEvent* event) override;
-        MCore::String           mDroppedActorFileName;
+        AZStd::string           mDroppedActorFileName;
 
         // general properties (preferences dialog)
         MysticQt::PropertyWidget::Property*     mEnableAutosaveProperty;
@@ -204,6 +198,8 @@ namespace EMStudio
         bool                                    mLayoutLoaded;
 
         AZStd::vector<AZStd::string>            mCharacterFiles;
+
+        NativeEventFilter*                      mNativeEventFilter;
 
         void closeEvent(QCloseEvent* event) override;
         void showEvent(QShowEvent* event) override;
@@ -261,10 +257,6 @@ namespace EMStudio
         void OnOpenAutosaveFolder();
         void OnOpenSettingsFolder();
         void OnPreferences();
-        void OnSelectAllActorInstances();
-        void OnUnselectAllActorInstances();
-        void OnAdjustNodeSelection();
-        void OnNodeSelected(MCore::Array<SelectionItem> selection);
         void OnSaveAll();
         void ApplicationModeChanged(const QString& text);
         void OnUpdateRenderPlugins();
@@ -282,28 +274,16 @@ namespace EMStudio
 
     public:
         ResetSettingsWindow(QWidget* parent);
-        ~ResetSettingsWindow() {}
 
-    public slots:
-        void OnOKButton()                   { emit accept(); }
-        void OnCancelButton()               { emit reject(); }
-        void OnActorCheckbox(int state)     { MCORE_UNUSED(state); mActors = mActorCheckbox->isChecked(); }
-        void OnMotionCheckbox(int state)    { MCORE_UNUSED(state); mMotions = mMotionCheckbox->isChecked(); }
-        void OnMotionSetCheckbox(int state) { MCORE_UNUSED(state); mMotionSets = mMotionSetCheckbox->isChecked(); }
-        void OnAnimGraphCheckbox(int state){ MCORE_UNUSED(state); mAnimGraphs = mAnimGraphCheckbox->isChecked(); }
+        bool IsActorsChecked() const;
+        bool IsMotionsChecked() const;
+        bool IsMotionSetsChecked() const;
+        bool IsAnimGraphsChecked() const;
 
     private:
-        QPushButton*        mOK;
-        QPushButton*        mCancel;
-        QCheckBox*          mActorCheckbox;
-        QCheckBox*          mMotionSetCheckbox;
-        QCheckBox*          mMotionCheckbox;
-        QCheckBox*          mAnimGraphCheckbox;
-
-    public:
-        bool                mActors;
-        bool                mMotionSets;
-        bool                mMotions;
-        bool                mAnimGraphs;
+        QCheckBox* m_actorCheckbox;
+        QCheckBox* m_motionSetCheckbox;
+        QCheckBox* m_motionCheckbox;
+        QCheckBox* m_animGraphCheckbox;
     };
 } // namespace EMStudio

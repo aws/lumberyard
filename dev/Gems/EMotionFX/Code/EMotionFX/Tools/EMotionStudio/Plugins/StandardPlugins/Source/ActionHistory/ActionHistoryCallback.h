@@ -14,7 +14,6 @@
 
 #include "../StandardPluginsConfig.h"
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/CommandManagerCallback.h>
 #include <MCore/Source/Command.h>
@@ -55,7 +54,7 @@ namespace EMStudio
         ~ActionHistoryCallback();
 
         void OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override;
-        void OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const MCore::String& outResult) override;
+        void OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult) override;
         void OnAddCommandToHistory(uint32 historyIndex, MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override;
         void OnPreExecuteCommandGroup(MCore::CommandGroup* group, bool undo) override;
         void OnPostExecuteCommandGroup(MCore::CommandGroup* group, bool wasSuccess) override;

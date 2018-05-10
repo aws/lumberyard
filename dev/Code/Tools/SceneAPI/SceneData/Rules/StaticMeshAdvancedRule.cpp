@@ -95,6 +95,14 @@ namespace AZ
                             ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
                         ->DataElement(AZ::Edit::UIHandlers::RadioButton, &StaticMeshAdvancedRule::m_use32bitVertices, "Vertex Precision",
                             "Selecting 32-bits of precision increases the accuracy of the position of each vertex which can be useful when the mesh is located far from its pivot.\n\n"
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(StaticMeshAdvancedRule_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(StaticMeshAdvancedRule_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
                         )
                             ->Attribute(AZ::Edit::Attributes::FalseText, "16-bit")
                             ->Attribute(AZ::Edit::Attributes::TrueText, "32-bit")

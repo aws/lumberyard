@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/Math/Vector2.h>
-#include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/VertexContainer.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 
@@ -79,25 +78,4 @@ namespace AZ
 
     using PolygonPrismPtr = AZStd::shared_ptr<PolygonPrism>;
     using ConstPolygonPrismPtr = AZStd::shared_ptr<const PolygonPrism>;
-
-    /**
-     * Small set of util functions for polygon prism
-     */
-    namespace PolygonPrismUtil
-    {
-        /**
-         * Routine to calculate Aabb for orientated polygon prism shape
-         */
-        Aabb CalculateAabb(const PolygonPrism& polygonPrism, const Transform& transform);
-
-        /**
-         * Return if a point in world space is contained within a polygon prism shape
-         */
-        bool IsPointInside(const PolygonPrism& polygonPrism, const Vector3& point, const Transform& transform);
-
-        /**
-         * Return distance squared from point in world space from polygon prism shape
-         */
-        float DistanceSquaredFromPoint(const PolygonPrism& polygonPrism, const Vector3& point, const Transform& transform);
-    }
 }

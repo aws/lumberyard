@@ -270,7 +270,7 @@ namespace EMotionFX
         virtual void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode)                                                      { MCORE_UNUSED(parameterNode); }
         virtual void OnConditionTriggered(AnimGraphInstance* animGraphInstance, AnimGraphTransitionCondition* condition)                      { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(condition); }
 
-        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)                              { MCORE_UNUSED(animGraph); MCORE_UNUSED(node); MCORE_UNUSED(oldName); }
+        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)                              { MCORE_UNUSED(animGraph); MCORE_UNUSED(node); MCORE_UNUSED(oldName); }
         virtual void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node)                                                            { MCORE_UNUSED(animGraph); MCORE_UNUSED(node); }
         virtual void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)                                                     { MCORE_UNUSED(animGraph); MCORE_UNUSED(nodeToRemove); }
         virtual void OnRemovedChildNode(AnimGraph* animGraph, AnimGraphNode* parentNode)                                                 { MCORE_UNUSED(animGraph); MCORE_UNUSED(parentNode); }

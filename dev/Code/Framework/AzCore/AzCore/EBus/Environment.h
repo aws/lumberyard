@@ -75,7 +75,43 @@ namespace AZ
 
             static AZ_THREAD_LOCAL EBusEnvironment* s_tlsCurrentEnvironment; ///< Pointer to the current environment for the current thread.
         };
-    }   
+
+        class EBusEnvironmentAllocator
+        {
+            /**
+            * AZStd allocator wrapper for the EBus context internals. Don't expose to external code, this allocation are NOT
+            * tracked, etc. These are only for EBus internal usage.
+            */
+        public:
+            typedef void*               pointer_type;
+            typedef AZStd::size_t       size_type;
+            typedef AZStd::ptrdiff_t    difference_type;
+            typedef AZStd::false_type   allow_memory_leaks;
+
+            EBusEnvironmentAllocator();
+            EBusEnvironmentAllocator(const EBusEnvironmentAllocator& rhs);
+            pointer_type allocate(size_t byteSize, size_t alignment, int flags = 0);
+            size_type resize(pointer_type, size_type) { return 0; }
+            void deallocate(pointer_type ptr, size_type byteSize, size_type alignment);
+
+            bool operator==(const EBusEnvironmentAllocator&) { return true; }
+            bool operator!=(const EBusEnvironmentAllocator&) { return false; }
+            EBusEnvironmentAllocator& operator=(const EBusEnvironmentAllocator&) { return *this; }
+
+            const char* get_name() const { return m_name; }
+            void        set_name(const char* name) { m_name = name; }
+            size_type   get_max_size() const { return AZ_CORE_MAX_ALLOCATOR_SIZE; }
+            size_type   get_allocated_size() const { return 0; }
+
+            bool is_lock_free() { return false; }
+            bool is_stale_read_allowed() { return false; }
+            bool is_delayed_recycling() { return false; }
+
+        private:
+            const char* m_name;
+            Environment::AllocatorInterface* m_allocator;
+        };
+    }
 
     /**
      * EBusEnvironment defines a separate EBus execution context. All EBuses will have unique instances in each environment, unless specially configured to not do that (not supported yet as it's tricky and will likely create contention and edge cases).
@@ -225,15 +261,18 @@ namespace AZ
 
         if (s_defaultGlobalContext)
         {
-            Context* globalContext = &s_defaultGlobalContext.Get();
-
-#if !defined(AZ_PLATFORM_APPLE) // thread_local not supported prior to iOS9
-            if (EBusEnvironment* tlsEnvironment = globalContext->m_ebusEnvironmentGetter())
+            if (s_defaultGlobalContext.IsConstructed())
             {
-                return tlsEnvironment->GetBusContext<Context>(globalContext->m_ebusEnvironmentTLSIndex);
+                Context* globalContext = &s_defaultGlobalContext.Get();
+
+    #if !defined(AZ_PLATFORM_APPLE) // thread_local not supported prior to iOS9
+                if (EBusEnvironment* tlsEnvironment = globalContext->m_ebusEnvironmentGetter())
+                {
+                    return tlsEnvironment->GetBusContext<Context>(globalContext->m_ebusEnvironmentTLSIndex);
+                }
+    #endif // #if !defined(AZ_PLATFORM_APPLE)
+                return globalContext;
             }
-#endif // #if !defined(AZ_PLATFORM_APPLE)
-            return globalContext;
         }
 
         return nullptr;

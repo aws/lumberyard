@@ -117,6 +117,8 @@ public:
     QModelIndex GetIndexFromEntity(const AZ::EntityId& entityId, int column = 0) const;
     AZ::EntityId GetEntityFromIndex(const QModelIndex& index) const;
 
+    bool FilterEntity(const AZ::EntityId& entityId);
+
 Q_SIGNALS:
     void ExpandEntity(const AZ::EntityId& entityId, bool expand);
     void SelectEntity(const AZ::EntityId& entityId, bool select);
@@ -208,7 +210,6 @@ protected:
     void RestoreDescendantExpansion(const AZ::EntityId& entityId);
     void RestoreDescendantSelection(const AZ::EntityId& entityId);
 
-    bool FilterEntity(const AZ::EntityId& entityId);
     bool IsFiltered(const AZ::EntityId& entityId) const;
     AZStd::unordered_map<AZ::EntityId, bool> m_entityFilteredState;
 

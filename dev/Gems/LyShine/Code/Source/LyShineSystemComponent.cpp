@@ -43,6 +43,7 @@
 #include "UiLayoutColumnComponent.h"
 #include "UiLayoutRowComponent.h"
 #include "UiLayoutGridComponent.h"
+#include "UiParticleEmitterComponent.h"
 #include "UiRadioButtonComponent.h"
 #include "UiRadioButtonGroupComponent.h"
 #include "UiTooltipComponent.h"
@@ -201,6 +202,7 @@ namespace LyShine
         RegisterComponentTypeForMenuOrdering(UiTooltipDisplayComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiDynamicLayoutComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiDynamicScrollBoxComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiParticleEmitterComponent::RTTI_Type());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -212,6 +212,8 @@ def get_lmbr_setup_tools_output_folder(ctx, platform_override=None, configuratio
             output_folder_compiler = "vc120"
         elif "vs2015" in curr_platform:
             output_folder_compiler = "vc140"
+        elif "vs2017" in curr_platform:
+            output_folder_compiler = "vc141"
 
     elif curr_platform.startswith("darwin_"):
         output_folder_platform  = "Mac"

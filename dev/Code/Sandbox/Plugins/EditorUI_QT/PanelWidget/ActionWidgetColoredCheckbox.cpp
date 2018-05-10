@@ -34,7 +34,7 @@ ActionWidgetColoredCheckbox::ActionWidgetColoredCheckbox(QWidget* parent, Action
     ui->chkContextMenuCheckbock->setChecked(action->getChecked());
 
     //Trigger the menu action when the checkbox is clicked
-    connect(ui->chkContextMenuCheckbock, &QCheckBox::clicked, [action]()
+    connect(ui->chkContextMenuCheckbock, &QCheckBox::clicked, action, [action]()
         {
             action->trigger();
         }
@@ -101,20 +101,20 @@ void ActionWidgetColoredCheckbox::focusOutEvent(QFocusEvent* event)
     return QWidget::focusInEvent(event);
 }
 
-ActionWidgetColoredCheckboxAction::ActionWidgetColoredCheckboxAction(QWidget* parrent)
-    : QWidgetAction(parrent)
+ActionWidgetColoredCheckboxAction::ActionWidgetColoredCheckboxAction(QWidget* parent)
+    : QWidgetAction(parent)
     , m_caption("No caption set")
     , m_colored(false)
     , m_checked(false)
 {
 }
 
-QWidget* ActionWidgetColoredCheckboxAction::createWidget(QWidget* parrent)
+QWidget* ActionWidgetColoredCheckboxAction::createWidget(QWidget* parent)
 {
-    ActionWidgetColoredCheckbox* w = new ActionWidgetColoredCheckbox(parrent, this);
+    ActionWidgetColoredCheckbox* w = new ActionWidgetColoredCheckbox(parent, this);
     w->show();
 
-    connect(this, &QAction::hovered, [w](){w->setFocus(); }); //When the action is highlighted (by mouse or keyboard) set focus to our widget.
+    connect(this, &QAction::hovered, w, [w]{w->setFocus(); }); //When the action is highlighted (by mouse or keyboard) set focus to our widget.
     return w;
 }
 

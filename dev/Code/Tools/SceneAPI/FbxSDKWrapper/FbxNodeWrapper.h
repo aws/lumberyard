@@ -46,6 +46,7 @@ namespace AZ
             virtual const std::shared_ptr<FbxMeshWrapper> GetMesh() const;
             virtual const std::shared_ptr<FbxPropertyWrapper> FindProperty(const char* name) const;
             virtual bool IsBone() const;
+            virtual bool IsMesh() const;
             virtual const char* GetName() const;
             virtual AZ::u64 GetUniqueId() const;
 

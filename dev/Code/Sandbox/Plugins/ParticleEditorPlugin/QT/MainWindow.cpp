@@ -1685,12 +1685,8 @@ void CMainWindow::UpdatePalette()
         QColorEyeDropper* cedp = UIFactory::GetColorEyeDropper();
         cedp->setStyleSheet(processedStyle);
 
-        m_attributeViewDock->setStyleSheet(processedStyle);
         m_attributeViewDock->UpdateColors(m_StyleColors);
-        m_previewDock->setStyleSheet(processedStyle);
-        m_libraryTreeViewDock->setStyleSheet(processedStyle);
         m_libraryTreeViewDock->UpdateColors(m_StyleColors);
-        m_LoDDock->setStyleSheet(processedStyle);
         ensurePolished();
         show();
     }

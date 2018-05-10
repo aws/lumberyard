@@ -13,8 +13,8 @@
 #include <platform_impl.h>
 
 #include "CryEntityRemovalSystemComponent.h"
-
 #ifdef CRY_ENTITY_REMOVAL_EDITOR
+#include <IEditor.h>
 #include "EditorCoreAPI.h"
 #endif
 

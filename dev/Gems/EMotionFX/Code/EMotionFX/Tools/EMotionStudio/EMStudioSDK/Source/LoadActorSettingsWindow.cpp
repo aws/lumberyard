@@ -12,7 +12,6 @@
 
 #include "EMStudioManager.h"
 #include "LoadActorSettingsWindow.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -258,7 +257,7 @@ namespace EMStudio
 
     QString LoadActorSettingsWindow::GetConfigFilename() const
     {
-        QString result = GetManager()->GetAppDataFolder().AsChar();
+        QString result = GetManager()->GetAppDataFolder().c_str();
         result += "EMStudioLoadActorSettings.cfg";
         return result;
     }

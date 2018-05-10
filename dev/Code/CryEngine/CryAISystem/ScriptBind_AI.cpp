@@ -52,6 +52,13 @@
 #include <list>
 #include <functional>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SCRIPTBIND_AI_CPP_SECTION_1 1
+#define SCRIPTBIND_AI_CPP_SECTION_2 2
+#endif
+
 #if defined(LINUX)
 #include <float.h> // for FLT_MAX
 #endif
@@ -4019,7 +4026,15 @@ int CScriptBind_AI::FindObjectOfType(IFunctionHandler* pH)
 
         if (chooseRandom && !randomObjs.empty())
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SCRIPTBIND_AI_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(ScriptBind_AI_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             std::random_shuffle(randomObjs.begin(), randomObjs.end());
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SCRIPTBIND_AI_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(ScriptBind_AI_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             pFoundObject = randomObjs[0];
         }
 

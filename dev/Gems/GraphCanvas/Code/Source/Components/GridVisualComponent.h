@@ -15,11 +15,11 @@
 
 #include <AzCore/Component/Component.h>
 
-#include <Components/GridBus.h>
-#include <Components/StyleBus.h>
-#include <Components/VisualBus.h>
-#include <Styling/StyleHelper.h>
-#include <Ui/RootVisualNotificationsHelper.h>
+#include <GraphCanvas/Components/GridBus.h>
+#include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Widgets/RootGraphicsItem.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {
@@ -72,6 +72,9 @@ namespace GraphCanvas
         QGraphicsItem* AsGraphicsItem() override;
 
         bool Contains(const AZ::Vector2&) const override;
+
+        void SetVisible(bool visible) override;
+        bool IsVisible() const override;
         ////
 
         // SceneMemberUIRequestBus
@@ -98,9 +101,10 @@ namespace GraphCanvas
     };
     
     class GridGraphicsItem
-        : public RootVisualNotificationsHelper<QGraphicsItem>
+        : public RootGraphicsItem<QGraphicsItem>
         , protected StyleNotificationBus::Handler
     {
+        static const int k_stencilScaleFactor;
     public:
         AZ_TYPE_INFO(GridGraphicsItem, "{D483E19C-8046-472B-801D-A6B1A9F2FF33}");
         AZ_CLASS_ALLOCATOR(GridGraphicsItem, AZ::SystemAllocator, 0);
@@ -112,6 +116,10 @@ namespace GraphCanvas
         void Init();
         void Activate();
         void Deactivate();
+
+        // RootVisualNotificationsHelper
+        QRectF GetBoundingRect() const override;
+        ////
 
         // StyleNotificationBus
         void OnStyleChanged() override;
@@ -130,7 +138,14 @@ namespace GraphCanvas
     private:
         GridGraphicsItem(const GridGraphicsItem&) = delete;
 
+        void CacheStencils();
+
         Styling::StyleHelper m_style;
+
+        AZStd::fixed_vector< QPixmap*, 4> m_levelOfDetails;
+
+        int m_majorXOffset;
+        int m_majorYOffset;
 
         GridVisualComponent& m_gridVisual;
     };

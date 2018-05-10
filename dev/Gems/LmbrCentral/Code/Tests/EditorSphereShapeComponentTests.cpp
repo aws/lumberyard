@@ -45,13 +45,20 @@ namespace LmbrCentral
             if (m_object)
             {
                 m_editorSphereShapeComponent = m_object.get();
-                m_SphereShapeConfig = m_editorSphereShapeComponent->GetConfiguration();
+                m_entity.Init();
+                m_entity.AddComponent(m_editorSphereShapeComponent);
+                m_entity.Activate();
             }
         }
+        
+        void TearDown() override
+        {
+            m_entity.Deactivate();
+            LoadReflectedObjectTest::TearDown();
+        }
 
+        AZ::Entity m_entity;
         EditorSphereShapeComponent* m_editorSphereShapeComponent = nullptr;
-        SphereShapeConfig m_SphereShapeConfig;
-
     };
 
     TEST_F(LoadEditorSphereShapeComponentFromVersion1, Application_IsRunning)
@@ -71,7 +78,10 @@ namespace LmbrCentral
 
     TEST_F(LoadEditorSphereShapeComponentFromVersion1, Radius_MatchesSourceData)
     {
-        EXPECT_FLOAT_EQ(m_SphereShapeConfig.m_radius, 0.57f);
+        float radius = 0.0f;
+        SphereShapeComponentRequestsBus::EventResult(
+            radius, m_entity.GetId(), &SphereShapeComponentRequests::GetRadius);
+
+        EXPECT_FLOAT_EQ(radius, 0.57f);
     }
 }
-

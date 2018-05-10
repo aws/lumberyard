@@ -13,7 +13,20 @@
 
 #include <AzCore/std/time.h>
 
-#if   defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define TIME_CPP_SECTION_1 1
+#define TIME_CPP_SECTION_2 2
+#define TIME_CPP_SECTION_3 3
+#define TIME_CPP_SECTION_4 4
+#define TIME_CPP_SECTION_5 5
+#define TIME_CPP_SECTION_6 6
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TIME_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(time_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include <time.h>
 #   include <errno.h>
 #elif defined(AZ_PLATFORM_WINDOWS)
@@ -37,6 +50,13 @@ namespace AZStd
         {
             QueryPerformanceFrequency((LARGE_INTEGER*)&freq);
         }
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TIME_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(time_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif (defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE))
         // Value is in nano seconds, return number of nano seconds in one second
         AZStd::sys_time_t freq = 1000000000L;
@@ -51,6 +71,13 @@ namespace AZStd
         AZStd::sys_time_t timeNow;
 #if AZ_TRAIT_OS_USE_WINDOWS_QUERY_PERFORMANCE_COUNTER
         QueryPerformanceCounter((LARGE_INTEGER*)&timeNow);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TIME_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(time_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif (defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE))
         struct timespec ts;
 #   if defined(AZ_PLATFORM_APPLE)
@@ -98,7 +125,13 @@ namespace AZStd
     AZStd::sys_time_t GetTimeNowMicroSecond()
     {
         AZStd::sys_time_t timeNowMicroSecond;
-#if   defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TIME_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(time_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         timeNowMicroSecond =  GetTimeNowTicks() / 1000L;
 #elif defined(AZ_PLATFORM_WINDOWS)
         // NOTE: The default line below was not working on systems with smaller TicksPerSecond() values (like in Windows7, for example)
@@ -117,6 +150,13 @@ namespace AZStd
 #if AZ_TRAIT_OS_USE_WINDOWS_QUERY_PERFORMANCE_COUNTER
         // Using get tick count, since it's more stable for longer time measurements.
         timeNowSecond = GetTickCount() / 1000;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TIME_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(time_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif (defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE))
         struct timespec ts;
 #   if defined(AZ_PLATFORM_APPLE)
@@ -166,6 +206,13 @@ namespace AZStd
         utc -= 116444736000000000;
         // convert to millisecond
         utc /= 10000;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TIME_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(time_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
         struct timespec ts;
 #   if defined(AZ_PLATFORM_APPLE)

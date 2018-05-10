@@ -1,0 +1,12 @@
+{
+    "auto": {
+         "Editor/View/EditCtrls": [
+            "Editor/Static/Include/ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.h",
+            "Editor/Static/Source/View/EditCtrls/GenericComboBoxCtrl.cpp",
+            "Editor/Static/Include/ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.inl",
+            "Editor/Static/Include/ScriptCanvas/View/EditCtrls/GenericLineEditCtrl.h",
+            "Editor/Static/Source/View/EditCtrls/GenericLineEditCtrl.cpp",
+            "Editor/Static/Include/ScriptCanvas/View/EditCtrls/GenericLineEditCtrl.inl"
+        ]
+    }
+}

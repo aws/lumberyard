@@ -347,8 +347,6 @@ namespace AZ
         struct CallstackEntry;
     public:
         template <class Iterator>
-        struct MultiThreadCallstackEntryIterator;
-        template <class Iterator>
         struct CallstackEntryIterator;
 
         /**
@@ -477,8 +475,8 @@ namespace AZ
          */
         using DispatchLockGuard = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch || AZStd::is_same<MutexType, NullMutex>::value, Internal::NullLockGuard<MutexType>, AZStd::lock_guard<MutexType>>::type;
 
-        using CallstackForwardIterator = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch, MultiThreadCallstackEntryIterator<typename EBNode::iterator>, CallstackEntryIterator<typename EBNode::iterator>>::type;
-        using CallstackReverseIterator = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch, MultiThreadCallstackEntryIterator<typename EBNode::reverse_iterator>, CallstackEntryIterator<typename EBNode::reverse_iterator>>::type;
+        using CallstackForwardIterator = CallstackEntryIterator<typename EBNode::iterator>; 
+        using CallstackReverseIterator = CallstackEntryIterator<typename EBNode::reverse_iterator>;
 
         /**
          * Specifies whether the %EBus supports an event queue.
@@ -644,18 +642,67 @@ namespace AZ
         static const char* GetName();
 
         /// @cond EXCLUDE_DOCS
+    private:
+        struct CallstackEntry
+        {
+            CallstackEntry(const BusIdType* id);
+            virtual ~CallstackEntry();
+
+            virtual void OnRemoveHandler(InterfaceType* handler) = 0;
+
+            virtual void SetRouterProcessingState(typename RouterPolicy::EventProcessingState /* state */);
+
+            virtual bool IsRoutingQueuedEvent() const;
+
+            virtual bool IsRoutingReverseEvent() const;
+
+            CallstackEntry* Next() const { return m_prevCall; }
+
+            const BusIdType* m_busId;
+            CallstackEntry* m_prevCall;
+        };
+
+        struct CallstackEntryBasic
+            : public CallstackEntry
+        {
+            CallstackEntryBasic(const BusIdType* busId);
+
+            virtual ~CallstackEntryBasic();
+
+            AZStd::native_thread_id_type m_threadId;
+        };
+
+        // One of these will be allocated per thread. It acts as the bottom of any callstack during dispatch within
+        // that thread. It has to be stored in the context so that it is shared across DLLs. We accelerate this by
+        // caching the root into a thread_local pointer (Context::s_callstack) on first access. Since global bus contexts
+        // never die, the TLS pointer does not need to be lifetime managed.
+        struct CallstackEntryRoot
+            : public CallstackEntry
+        {
+            CallstackEntryRoot()
+                : CallstackEntry(nullptr)
+            {}
+
+            void OnRemoveHandler(InterfaceType*) override { AZ_Assert(false, "Callstack root should never attempt to handle the removal of a bus handler"); }
+            void SetRouterProcessingState(RouterProcessingState) override { AZ_Assert(false, "Callstack root should never attempt to alter router processing state"); }
+            bool IsRoutingQueuedEvent() const override { return false; }
+            bool IsRoutingReverseEvent() const override { return false; }
+        };
+
+    public:
         class Context : public Internal::ContextBase
         {
             friend ThisType;
             friend Router;
         public:
             BusesContainer          m_buses;        ///< The actual bus container, which is a static map for each bus type.
-            MutexType               m_mutex;        ///< Mutex to control access to the bus.
+            mutable MutexType       m_mutex;        ///< Mutex to control access to the bus.
             QueuePolicy             m_queue;
             RouterPolicy            m_routing;
 
             Context();
             Context(EBusEnvironment* environment);
+            ~Context() override;
 
             // Disallow all copying/moving
             Context(const Context&) = delete;
@@ -664,7 +711,9 @@ namespace AZ
             Context& operator=(Context&&) = delete;
 
         private:
-            CallstackEntry*         m_callstack;
+            mutable AZStd::unordered_map<AZStd::native_thread_id_type, CallstackEntryRoot, AZStd::hash<AZStd::native_thread_id_type>, AZStd::equal_to<AZStd::native_thread_id_type>, Internal::EBusEnvironmentAllocator> m_callstackRoots;
+            AZ_THREAD_LOCAL static CallstackEntry* s_callstack;    ///< Linked list of other bus calls to this bus on the stack, per thread
+            AZStd::atomic_uint m_dispatches;   ///< Number of active dispatches in progress
         };
         /// @endcond
 
@@ -699,58 +748,8 @@ namespace AZ
         static Context& GetOrCreateContext();
         
         static bool IsInDispatch(Context* context = GetContext());
-
-    private:
-        struct CallstackEntry
-        {
-            CallstackEntry(const BusIdType* id);
-            virtual ~CallstackEntry();
-
-            virtual void OnRemoveHandler(InterfaceType* handler) = 0;
-
-            virtual void SetRouterProcessingState(typename RouterPolicy::EventProcessingState /* state */);
-
-            virtual bool IsRoutingQueuedEvent() const;
-
-            virtual bool IsRoutingReverseEvent() const;
-
-            virtual CallstackEntry* Next() const = 0;
-
-            const BusIdType* m_busId;
-        };
-
-        struct CallstackEntryBasic
-            : public CallstackEntry
-        {
-            CallstackEntryBasic(const BusIdType* busId);
-            
-            virtual ~CallstackEntryBasic();
-
-            CallstackEntry* Next() const override;
-
-            CallstackEntry* m_prevCall;
-            AZStd::native_thread_id_type m_threadId;
-        };
-
     public:
         /// @cond EXCLUDE_DOCS
-        template <class Iterator>
-        struct MultiThreadCallstackEntryIterator
-            : public CallstackEntry
-        {
-            MultiThreadCallstackEntryIterator(Iterator it, const BusIdType* id);
-
-            virtual ~MultiThreadCallstackEntryIterator();
-            
-            void OnRemoveHandler(InterfaceType*) override;
-
-            CallstackEntry* Next() const override;
-
-            Iterator m_iterator;
-            MultiThreadCallstackEntryIterator* m_next;
-            MultiThreadCallstackEntryIterator* m_prev;
-        };
-
         template <class Iterator>
         struct CallstackEntryIterator 
             : public CallstackEntryBasic
@@ -985,13 +984,16 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     // EBus implementations
 
+    template <class Interface, class Traits>
+    AZ_THREAD_LOCAL typename EBus<Interface, Traits>::CallstackEntry* EBus<Interface, Traits>::Context::s_callstack = nullptr;
     //=========================================================================
     // Context::Context
     //=========================================================================
     template<class Interface, class Traits>
     EBus<Interface, Traits>::Context::Context()
-        : m_callstack(nullptr)
+        : m_dispatches(0)
     {
+        s_callstack = nullptr;
     }
 
     //=========================================================================
@@ -1000,8 +1002,18 @@ namespace AZ
     template<class Interface, class Traits>
     EBus<Interface, Traits>::Context::Context(EBusEnvironment* environment)
         : Internal::ContextBase(environment)
-        , m_callstack(nullptr)
+        , m_dispatches(0)
     {
+        s_callstack = nullptr;
+    }
+
+    template <class Interface, class Traits>
+    EBus<Interface, Traits>::Context::~Context()
+    {
+        // Clear the callstack in this thread. It is expected that most buses will be lifetime managed
+        // by the thread that creates them (almost certainly the main thread). This allows a bus
+        // to be re-entrant within the same main thread (useful for unit tests and code reloading).
+        s_callstack = nullptr;
     }
 
     //=========================================================================
@@ -1034,7 +1046,7 @@ namespace AZ
 
         // To call this while executing a message, you need to make sure this mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
         AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(&context), "It is not safe to connect during dispatch on a lockless dispatch EBus");
-        if (context.m_callstack) // Make sure we don't change the iterator order because we are in the middle of a message.
+        if (context.s_callstack->m_prevCall) // Make sure we don't change the iterator order because we are in the middle of a message.
         {
             context.m_buses.KeepIteratorsStable();
         }
@@ -1054,7 +1066,7 @@ namespace AZ
             AZStd::lock_guard<MutexType> lock(context->m_mutex);
 
             AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
-            if (context->m_callstack)
+            if (context->s_callstack->m_prevCall)
             {
                 DisconnectCallstackFix(handler, ptr->m_busId);
             }
@@ -1076,7 +1088,7 @@ namespace AZ
 
             // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
             AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
-            if (context->m_callstack)
+            if (context->s_callstack->m_prevCall)
             {
                 DisconnectCallstackFix(handler, id);
             }
@@ -1098,7 +1110,7 @@ namespace AZ
         // If so, adjust the iterators.
         Context* context = GetContext();
 
-        CallstackEntry* entry = context ? context->m_callstack : nullptr;
+        CallstackEntry* entry = context ? context->s_callstack->m_prevCall : nullptr;
         while (entry != nullptr)
         {
             if(entry->m_busId == nullptr || *entry->m_busId == id)
@@ -1165,7 +1177,7 @@ namespace AZ
         Context* context = GetContext();
         if (IsInDispatch(context))
         {
-            return context->m_callstack->m_busId;
+            return context->s_callstack->m_prevCall->m_busId;
         }
         return nullptr;
     }
@@ -1179,7 +1191,7 @@ namespace AZ
         Context* context = GetContext();
         if (IsInDispatch(context))
         {
-            context->m_callstack->SetRouterProcessingState(state);
+            context->s_callstack->m_prevCall->SetRouterProcessingState(state);
         }
     }
 
@@ -1192,7 +1204,7 @@ namespace AZ
         Context* context = GetContext();
         if (IsInDispatch(context))
         {
-            return context->m_callstack->IsRoutingQueuedEvent();
+            return context->s_callstack->m_prevCall->IsRoutingQueuedEvent();
         }
 
         return false;
@@ -1207,7 +1219,7 @@ namespace AZ
         Context* context = GetContext();
         if (IsInDispatch(context))
         {
-            return context->m_callstack->IsRoutingReverseEvent();
+            return context->s_callstack->m_prevCall->IsRoutingReverseEvent();
         }
 
         return false;
@@ -1228,7 +1240,14 @@ namespace AZ
     template<class Interface, class Traits>
     typename EBus<Interface, Traits>::Context* EBus<Interface, Traits>::GetContext()
     {
-        return StoragePolicy::Get();
+        Context* context = StoragePolicy::Get();
+        if (context && !context->s_callstack)
+        {
+            // cache the callstack into this thread/dll
+            AZStd::lock_guard<MutexType> lock(context->m_mutex);
+            context->s_callstack = &context->m_callstackRoots[AZStd::this_thread::get_id().m_id];
+        }
+        return context;
     }
 
     //=========================================================================
@@ -1237,7 +1256,14 @@ namespace AZ
     template<class Interface, class Traits>
     typename EBus<Interface, Traits>::Context& EBus<Interface, Traits>::GetOrCreateContext()
     {
-        return StoragePolicy::GetOrCreate();
+        Context& context = StoragePolicy::GetOrCreate();
+        if (!context.s_callstack)
+        {
+            // cache the callstack into this thread/dll
+            AZStd::lock_guard<MutexType> lock(context.m_mutex);
+            context.s_callstack = &context.m_callstackRoots[AZStd::this_thread::get_id().m_id];
+        }
+        return context;
     }
 
     //=========================================================================
@@ -1246,13 +1272,14 @@ namespace AZ
     template<class Interface, class Traits>
     bool EBus<Interface, Traits>::IsInDispatch(Context* context)
     {
-        return context != nullptr && context->m_callstack != nullptr;
+        return context != nullptr && context->m_dispatches > 0;
     }
 
     //=========================================================================
     template<class Interface, class Traits>
     EBus<Interface, Traits>::CallstackEntry::CallstackEntry(const BusIdType* id)
         : m_busId(id)
+        , m_prevCall(nullptr)
     {
     }
 
@@ -1290,10 +1317,13 @@ namespace AZ
     {
         Context* context = GetContext();
         AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
-        AZ_Assert(!context->m_callstack || static_cast<CallstackEntryBasic*>(context->m_callstack)->m_threadId == m_threadId,
+        AZ_Assert(!context->s_callstack->m_prevCall || static_cast<CallstackEntryBasic*>(context->s_callstack->m_prevCall)->m_threadId == m_threadId,
             "Bus has multiple threads in its callstack records. Configure MutexType on the bus, or don't send to it from multiple threads");
-        m_prevCall = context->m_callstack;
-        context->m_callstack = this;
+        
+        this->m_prevCall = context->s_callstack->m_prevCall;
+        context->s_callstack->m_prevCall = this;
+
+        context->m_dispatches++;
     }
 
     //=========================================================================
@@ -1302,8 +1332,11 @@ namespace AZ
     {
         Context* context = GetContext();
         AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
-        context->m_callstack = m_prevCall;
-        if (context->m_callstack == nullptr && context->m_buses.IsKeepIteratorsStable())
+        context->m_dispatches--;
+
+        context->s_callstack->m_prevCall = this->m_prevCall;
+
+        if (context->s_callstack->m_prevCall == nullptr && context->m_buses.IsKeepIteratorsStable())
         {
             context->m_buses.AllowUnstableIterators();
         }
@@ -1311,79 +1344,10 @@ namespace AZ
 
     //=========================================================================
     template<class Interface, class Traits>
-    typename EBus<Interface, Traits>::CallstackEntry* EBus<Interface, Traits>::CallstackEntryBasic::Next() const
-    { 
-        return m_prevCall; 
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::MultiThreadCallstackEntryIterator(Iterator it, const BusIdType* id)
-                : CallstackEntry(id)
-                , m_iterator(it)
-                , m_prev(nullptr)
-    {
-        Context* context = GetContext();
-        AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
-        AZStd::lock_guard<MutexType> lock(context->m_mutex);
-        if (context->m_callstack)
-        {
-            static_cast<MultiThreadCallstackEntryIterator*>(context->m_callstack)->m_prev = this;
-        }
-        m_next = static_cast<MultiThreadCallstackEntryIterator*>(context->m_callstack);
-        context->m_callstack = this;
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::~MultiThreadCallstackEntryIterator()
-    {
-        Context* context = GetContext();
-        AZ_Assert(context, "Internal error: context deleted while execution still in progress.");
-        AZStd::lock_guard<MutexType> lock(context->m_mutex);
-        if (context->m_callstack == this)
-        {
-            context->m_callstack = m_next;
-            if (m_next)
-            {
-                m_next->m_prev = nullptr;
-            }
-        }
-        else
-        {
-            if (m_prev)
-            {
-                m_prev->m_next = m_next;
-            }
-            if (m_next)
-            {
-                m_next->m_prev = m_prev;
-            }
-        }
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    void EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::OnRemoveHandler(InterfaceType*) 
-    {}
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    typename EBus<Interface, Traits>::CallstackEntry* EBus<Interface, Traits>::MultiThreadCallstackEntryIterator<Iterator>::Next() const
-    { 
-        return m_next; 
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
     template<class Iterator>
     EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::CallstackEntryIterator(Iterator it, const BusIdType* busId)
-                : CallstackEntryBasic(busId)
-                , m_iterator(it)
+        : CallstackEntryBasic(busId)
+        , m_iterator(it)
     {
     }
 
@@ -1542,7 +1506,7 @@ namespace AZ
                 typename EBus::HandlerNode  m_handlerNode; ///< This can be bad for cache and is stored in a different memory location, but it is not used very often.
                 typename EBus::BusPtr       m_busPtr;  ///< Keeps a reference to the bus it is bound to.
             };
-            typedef AZStd::unordered_map<typename EBus::BusIdType, BusConnector, AZStd::hash<typename EBus::BusIdType>, AZStd::equal_to<typename EBus::BusIdType>, typename EBus::InterfaceType::AllocatorType> BusPtrArray;
+            typedef AZStd::unordered_map<typename EBus::BusIdType, BusConnector, AZStd::hash<typename EBus::BusIdType>, AZStd::equal_to<typename EBus::BusIdType>, typename EBus::Traits::AllocatorType> BusPtrArray;
             BusPtrArray m_busArray;
         public:
             typedef EBus BusType;
@@ -1952,7 +1916,7 @@ namespace AZ
                 // function because there is already a stack entry. This is typically not a good pattern because routers are 
                 // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
                 // on the TickBus or another safe bus.
-                AZ_Assert(context.m_callstack == nullptr, "Current we don't allow router connect while in a message on the bus!");
+                AZ_Assert(context.s_callstack->m_prevCall == nullptr, "Current we don't allow router connect while in a message on the bus!");
                 context.m_mutex.lock();
                 context.m_routing.m_routers.insert(&m_routerNode);
                 context.m_mutex.unlock();
@@ -1973,7 +1937,7 @@ namespace AZ
                 // function because there is already a stack entry. This is typically not a good pattern because routers are 
                 // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
                 // on the TickBus or another safe bus.
-                AZ_Assert(context->m_callstack == nullptr, "Current we don't allow router disconnect while in a message on the bus!");
+                AZ_Assert(context->s_callstack->m_prevCall == nullptr, "Current we don't allow router disconnect while in a message on the bus!");
                 context->m_routing.m_routers.erase(&m_routerNode);
                 context->m_mutex.unlock();
                 m_isConnected = false;

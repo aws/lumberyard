@@ -363,7 +363,7 @@ class javac(Task.Task):
 					output_file.write('{}\n'.format(class_node.path_from(output_parent)))
 					class_node.sig = Utils.h_file(class_node.abspath()) # careful with this
 		except:
-			self.bld.fatal('[ERROR] Unable to write output log for javac task')
+			self.generator.bld.fatal('[ERROR] Unable to write output log for javac task.  File: {}'.format(output_log.abspath()))
 
 		self.generator.bld.task_sigs[self.uid()] = self.cache_sig
 

@@ -15,6 +15,7 @@
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphDownwardsIterator.h>
 #include <SceneAPI/SceneCore/Containers/Views/SceneGraphChildIterator.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
+#include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IBoneData.h>
@@ -219,7 +220,7 @@ namespace EMotionFX
                 }
                 bindPose->SetLocalTransform(emfxNodeIndex, outTransform);
             }
-
+            SceneEvents::ProcessingResultCombiner result;
             if (actorSettings.m_loadMeshes && !selectedMeshNodeIndices.empty())
             {
                 GetMaterialInfoForActorGroup(context);
@@ -246,6 +247,18 @@ namespace EMotionFX
                         BuildMesh(context, emfxNode, nodeMesh, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter);
                     }
                 }
+                //Process Morph Targets
+                {
+                    AZStd::vector< AZ::u32>  meshIndices;
+                    for (auto& nodeIndex : selectedMeshNodeIndices)
+                    {
+                        meshIndices.push_back(nodeIndex.AsNumber());
+                    }
+                    ActorMorphBuilderContext actorMorphBuilderContext(context.m_scene, actorSettings.m_optimizeTriangleList, &meshIndices, context.m_group, context.m_actor, coordSysConverter, AZ::RC::Phase::Construction);
+                    result += SceneEvents::Process(actorMorphBuilderContext);
+                    result += SceneEvents::Process<ActorMorphBuilderContext>(actorMorphBuilderContext, AZ::RC::Phase::Filling);
+                    result += SceneEvents::Process<ActorMorphBuilderContext>(actorMorphBuilderContext, AZ::RC::Phase::Finalizing);
+                }
             }
 
             // Post create actor
@@ -264,7 +277,11 @@ namespace EMotionFX
                 }
             }
 
-            return SceneEvents::ProcessingResult::Success;
+            if (result.GetResult() != AZ::SceneAPI::Events::ProcessingResult::Failure)
+            {
+                return SceneEvents::ProcessingResult::Success;
+            }
+            return AZ::SceneAPI::Events::ProcessingResult::Failure;
         }
 
         void ActorBuilder::BuildPreExportStructure(const SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
@@ -281,7 +298,7 @@ namespace EMotionFX
             {
                 // We always skip the first node because it's introduced by scenegraph
                 ++it;
-                if (!it->second)
+                if (!it->second && it != graphDownwardsRootBoneView.end())
                 {
                     // In maya / max, we skip 1 root node when it have no content (emotionfx always does this)
                     // However, fbx doesn't restrain itself from having multiple root nodes. We might want to revisit here if it ever become a problem.
@@ -404,17 +421,14 @@ namespace EMotionFX
                 }
             }
 
-            AZ::Transform globalTransform;
-            // No need to make it identity because GatherGlobalTransform does it.
-            GatherGlobalTransform(graph, meshNodeIndex, globalTransform);
+            const AZ::Transform globalTransform = SceneUtil::BuildWorldTransform(graph, meshNodeIndex);
             // Inverse transpose for normal
-            AZ::Transform globalTranformN = globalTransform.GetInverseFull().GetTranspose();
+            const AZ::Transform globalTranformN = globalTransform.GetInverseFull().GetTranspose();
 
             // Data for each vertex
             AZ::Vector2 uv;
             AZ::Vector3 pos;
             AZ::Vector3 normal;
-
             for (AZ::u32 i = 0; i < numFaces; ++i)
             {
                 AZ::u32 materialID = 0;
@@ -492,7 +506,6 @@ namespace EMotionFX
             {
                 meshBuilder->OptimizeTriangleList();
             }
-
             // Link the mesh to the node
             EMotionFX::Mesh* emfxMesh = meshBuilder->ConvertToEMotionFXMesh();
             actor->SetMesh(0, emfxNode->GetNodeIndex(), emfxMesh);
@@ -613,42 +626,6 @@ namespace EMotionFX
             {
                 outSettings.m_maxWeightsPerVertex = skinRule->GetMaxWeightsPerVertex();
                 outSettings.m_weightThreshold = skinRule->GetWeightThreshold();
-            }
-        }
-
-        void ActorBuilder::GatherGlobalTransform(const SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& nodeIndex, AZ::Transform& outTransform)
-        {
-            outTransform = AZ::Transform::Identity();
-            SceneContainers::SceneGraph::NodeIndex nodeIndexCopy = nodeIndex;
-            while (nodeIndexCopy.IsValid())
-            {
-                auto view = SceneViews::MakeSceneGraphChildView<SceneViews::AcceptEndPointsOnly>(graph, nodeIndexCopy,
-                        graph.GetContentStorage().begin(), true);
-                auto result = AZStd::find_if(view.begin(), view.end(), SceneContainers::DerivedTypeFilter<SceneDataTypes::ITransform>());
-                if (result != view.end())
-                {
-                    // Check if the node has any child transform node
-                    AZ::Transform azTransform = azrtti_cast<const SceneDataTypes::ITransform*>(result->get())->GetMatrix();
-                    outTransform = azTransform * outTransform;
-                }
-                else
-                {
-                    // Check if the node itself is a transform node.
-                    AZStd::shared_ptr<const SceneDataTypes::ITransform> transformData = azrtti_cast<const SceneDataTypes::ITransform*>(graph.GetNodeContent(nodeIndexCopy));
-                    if (transformData)
-                    {
-                        outTransform = transformData->GetMatrix() * outTransform;
-                    }
-                }
-
-                if (graph.HasNodeParent(nodeIndexCopy))
-                {
-                    nodeIndexCopy = graph.GetNodeParent(nodeIndexCopy);
-                }
-                else
-                {
-                    break;
-                }
             }
         }
 

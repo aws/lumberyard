@@ -48,8 +48,8 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("Start", "Starts the countdown"));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled every frame while the duration is active."));
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Done", "Signalled once the duration is complete."));
+                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Out", "Signaled every frame while the duration is active."));
+                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Done", "Signaled once the duration is complete."));
 
                 // Data
                 ScriptCanvas_Property(float,

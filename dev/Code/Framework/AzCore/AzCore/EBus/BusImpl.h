@@ -479,6 +479,15 @@ namespace AZ
                 }
             }
 
+            static size_t QueuedEventCount()
+            {
+                if (auto* context = Bus::GetContext())
+                {
+                    return context->m_queue.Count();
+                }
+                return 0;
+            }
+
             /**
              * Sets whether function queuing is allowed.
              * This does not affect event queuing.

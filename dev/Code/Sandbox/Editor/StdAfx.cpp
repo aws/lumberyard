@@ -11,4 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+// For compat, this comment causes the pch to be dirty - this is required because CryEdit.h is in its own pch.
+// every time you change CryEdit.h, make a change to this file
 #include "StdAfx.h"

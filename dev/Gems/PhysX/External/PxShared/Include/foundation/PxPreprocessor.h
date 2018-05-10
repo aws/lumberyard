@@ -71,7 +71,9 @@ Compiler defines, see http://sourceforge.net/p/predef/wiki/Compilers/
 /**
 Operating system defines, see http://sourceforge.net/p/predef/wiki/OperatingSystems/
 */
-#if   defined(_WIN64) // note: _XBOX_ONE implies _WIN64
+#if defined(_XBOX_ONE)
+#define PX_XBOXONE 1
+#elif defined(_WIN64) // note: _XBOX_ONE implies _WIN64
 #define PX_WIN64 1
 #elif defined(_WIN32) // note: _M_PPC implies _WIN32
 #define PX_WIN32 1
@@ -83,6 +85,8 @@ Operating system defines, see http://sourceforge.net/p/predef/wiki/OperatingSyst
 #define PX_IOS 1
 #elif defined(__APPLE__)
 #define PX_OSX 1
+#elif defined(__ORBIS__)
+#define PX_PS4 1
 #elif defined(__NX__)
 #define PX_NX 1
 #else

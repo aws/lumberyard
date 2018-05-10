@@ -14,19 +14,24 @@
 // Description : Precompiled Header.
 
 
-#ifndef CRYINCLUDE_stdafx_H
-#define CRYINCLUDE_stdafx_H
-
-#if _MSC_VER > 1000
 #pragma once
-#endif
 
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <fcntl.h>
 
-#if   defined(LINUX) // Scrubber friendly negated define pattern
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include <AzCore/PlatformRestrictedFileDef.h>
+#undef AZ_RESTRICTED_SECTION
+#define STDAFX_H_SECTION_1 1
+#define STDAFX_H_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_1
+#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+#elif defined(LINUX) // Scrubber friendly negated define pattern
 #elif !defined(APPLE)
     #include <memory.h>
     #include <malloc.h>
@@ -38,7 +43,13 @@
 
 #include <vector>
 
-#if   defined(APPLE) // Scrubber friendly negated define pattern
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_2
+#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(APPLE) // Scrubber friendly negated define pattern
 #elif defined(ANDROID) // Scrubber friendly negated define pattern
 #elif defined(LINUX)
     #   include <sys/io.h>
@@ -127,6 +138,5 @@ struct IPhysicalWorld;
 
 #endif //__cplusplus
 
-#endif // CRYINCLUDE_stdafx_H
 
 

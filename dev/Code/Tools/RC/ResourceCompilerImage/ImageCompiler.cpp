@@ -686,7 +686,7 @@ bool CImageCompiler::ProcessImplementation()
         // contains generated data tables which don't use mipmaps.
         // Anyway, our vision is that every image file should have settings.
         // In rare situations when settings are missing a manual user action
-        // is recommended anyway ("rc <filename.tif> /userdialog", for example).
+        // is recommended anyway ("rc <filename.tif> -userdialog", for example).
         if (settings.empty())
         {
             m_Props.SetAutoOptimizeFile(false);

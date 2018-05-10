@@ -39,6 +39,12 @@
 #include <INetwork.h>
 #include <ISystem.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MULTIPLAYERTEST_CPP_SECTION_1 1
+#define MULTIPLAYERTEST_CPP_SECTION_2 2
+#endif
+
 // see also: dev/Code/Framework/AzCore/Tests/TestTypes.h
 namespace UnitTest
 {
@@ -269,7 +275,16 @@ public:
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERTEST_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(MultiplayerTest_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             p.SetValue(GridMate::Driver::BSD_AF_INET);
+#endif
         }
 
         return p;
@@ -350,7 +365,6 @@ namespace LuaTesting
         AZStd::string script(onSetUp(behaviorContext));
 
         Multiplayer::MultiplayerEventsComponent::Reflect(behaviorContext);
-        Multiplayer::GridMateSystemContext::Reflect(behaviorContext);
 
         AZ::Data::Asset<AZ::ScriptAsset> scriptAsset = AZ::Data::AssetManager::Instance().CreateAsset<AZ::ScriptAsset>(AZ::Uuid::CreateRandom());
         // put the script into the script asset by all means including a const_cast<>!
@@ -358,7 +372,7 @@ namespace LuaTesting
         buffer.assign(script.begin(), script.end());
 
         AZ::Data::AssetManagerBus::Broadcast(&AZ::Data::AssetManagerBus::Events::OnAssetReady, scriptAsset);
-        app.Tick();
+        app.TickSystem();
 
         AZ::Entity* entity = aznew AZ::Entity();
         entity->CreateComponent<AzFramework::ScriptComponent>()->SetScript(scriptAsset);
@@ -367,7 +381,7 @@ namespace LuaTesting
 
         while (numTicks--)
         {
-            app.Tick();
+            app.TickSystem();
             if (onUpdate())
             {
                 // all done?
@@ -395,7 +409,15 @@ namespace LuaTesting
         }
         else if (!strcmp(param, "gm_ipversion"))
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERTEST_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(MultiplayerTest_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             p.SetValue(GridMate::Driver::BSD_AF_INET);
+#endif
         }
 
         return p;
@@ -516,7 +538,6 @@ return testlua;
             AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
 
             Multiplayer::MultiplayerEventsComponent::Reflect(behaviorContext);
-            Multiplayer::GridMateSystemContext::Reflect(behaviorContext);
 
             AZStd::string script(k_LuaScript);
 
@@ -686,7 +707,7 @@ return testlua;
 
             auto update = [&]()
             {
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(400));
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
                 GetGridMate()->Update();
                 return GridMateLuaListSesionsTesting::s_count > 0;
             };
@@ -697,7 +718,8 @@ return testlua;
                 TearDown();
             };
 
-            RunLuaScript(5, setup, update, teardown);
+            // it can take an average of 2000ms to actually register as session, so we give it up to 500x10ms here.
+            RunLuaScript(400, setup, update, teardown);
             AZ_TEST_ASSERT(GridMateLuaListSesionsTesting::s_count > 0);
         }
     };

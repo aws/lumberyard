@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_MATH_INTERNAL_MATHTYPES_H
-#define AZCORE_MATH_INTERNAL_MATHTYPES_H 1
+#pragma once
 
 #include <AzCore/base.h>
 
@@ -21,7 +20,7 @@
 // are using SIMD on the specified platform.
 #if defined(AZ_ALLOW_SIMD)
     #if defined(AZ_RESTRICTED_PLATFORM)
-        #include AZ_RESTRICTED_FILE(MathTypes_h)
+        #include AZ_RESTRICTED_FILE(MathTypes_h, AZ_RESTRICTED_PLATFORM)
     #elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
         #define AZ_TRAIT_USE_PLATFORM_SIMD 1
     #endif
@@ -37,6 +36,3 @@
 #else
     #include <AzCore/Math/Internal/MathTypesFpu.inl>
 #endif
-
-#endif // AZCORE_MATH_INTERNAL_MATHTYPES_H
-#pragma once

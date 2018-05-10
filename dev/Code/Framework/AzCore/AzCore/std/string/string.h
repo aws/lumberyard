@@ -242,8 +242,8 @@ namespace AZStd
         inline const_reverse_iterator   rbegin() const      { return const_reverse_iterator(end()); }
         inline const_reverse_iterator   crbegin() const     { return const_reverse_iterator(end()); }
         inline reverse_iterator     rend()              { return reverse_iterator(begin()); }
-        inline const_reverse_iterator   rend() const        { return const_reverse_iterator(end()); }
-        inline const_reverse_iterator   crend() const       { return const_reverse_iterator(end()); }
+        inline const_reverse_iterator   rend() const        { return const_reverse_iterator(begin()); }
+        inline const_reverse_iterator   crend() const       { return const_reverse_iterator(begin()); }
 
         inline this_type& operator=(const this_type& rhs)       { return assign(rhs); }
 #if defined(AZ_HAS_RVALUE_REFS)
@@ -338,10 +338,16 @@ namespace AZStd
         //  return replace(end(), end(), first, last);
         //}
 
+        // 1.14 only - disable warning for buffer overflow here
+        // It's only cropping up in very specific build configurations (non-uber file, release, and LTCG)
+        // and the related CL that exposed this only removed code - so just disable the warning for now.
+#pragma warning(push)
+#pragma warning(disable : 4789)
         inline this_type& assign(const this_type& rhs)
         {
             return assign(rhs, 0, npos);
         }
+#pragma warning(pop)
 
 #if defined(AZ_HAS_RVALUE_REFS)
         inline this_type& assign(this_type&& rhs)

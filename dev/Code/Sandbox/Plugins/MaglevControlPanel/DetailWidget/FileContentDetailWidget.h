@@ -40,8 +40,8 @@ class FileContentDetailWidget
 
 public:
 
-    FileContentDetailWidget(ResourceManagementView* view, QSharedPointer<IFileContentModel> fileContentModel)
-        : TextDetailWidget{view, fileContentModel->GetStackStatusModel()}
+    FileContentDetailWidget(ResourceManagementView* view, QSharedPointer<IFileContentModel> fileContentModel, QWidget* parent = nullptr)
+        : TextDetailWidget{view, fileContentModel->GetStackStatusModel(), parent}
         , m_fileContentModel{fileContentModel}
         , m_stackStatusModel{fileContentModel->GetStackStatusModel()}
         , m_sourceControlModel{new SourceControlStatusModel}
@@ -84,8 +84,6 @@ public:
     void show() override
     {
         TextDetailWidget::show();
-
-        OnSourceControlStatusChanged();
 
         UpdateSourceControlState();
 
@@ -450,10 +448,11 @@ private:
         QSharedPointer<IFileSourceControlModel> sourceModel = m_sourceControlModel;
 
         using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-        SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, m_fileContentModel->Path().toStdString().c_str(), [sourceModel](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
+        SCCommandBus::Broadcast(&SCCommandBus::Events::GetFileInfo, m_fileContentModel->Path().toStdString().c_str(), [this, sourceModel](bool wasSuccess, const AzToolsFramework::SourceControlFileInfo& fileInfo)
             {
                 sourceModel->SetFlags(fileInfo.m_flags);
                 sourceModel->SetStatus(fileInfo.m_status);
+                OnSourceControlStatusChanged();
             }
             );
     }

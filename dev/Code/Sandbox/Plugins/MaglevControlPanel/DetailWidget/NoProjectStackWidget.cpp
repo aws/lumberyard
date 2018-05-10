@@ -17,8 +17,9 @@
 
 #include "DetailWidget/NoProjectStackWidget.moc"
 
-NoProjectStackWidget::NoProjectStackWidget(ResourceManagementView* view)
-    : m_view{view}
+NoProjectStackWidget::NoProjectStackWidget(ResourceManagementView* view, QWidget* parent)
+    : ActionWidget(parent)
+    , m_view{view}
 {
     SetTitleText(tr(
             "You have not yet enabled Cloud Canvas for your Lumberyard project."

@@ -16,6 +16,15 @@
 // This header should only be include by SystemThreading.cpp only
 // It provides an interface for WinApi intrinsics
 // It's only client should be CThreadManager which should manage all thread interaction
+
+#pragma once
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYTHREADUTIL_WIN32_THREAD_H_SECTION_1 1
+#define CRYTHREADUTIL_WIN32_THREAD_H_SECTION_2 2
+#endif
+
 #if !defined(INCLUDED_FROM_SYSTEM_THREADING_CPP)
 #   error "CRYTEK INTERNAL HEADER. ONLY INCLUDE FROM SYSTEMTHRADING.CPP."
 #endif
@@ -33,6 +42,13 @@ static string GetLastErrorAsString()
         return "";
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYTHREADUTIL_WIN32_THREAD_H_SECTION_1
+#include AZ_RESTRICTED_FILE(CryThreadUtil_win32_thread_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     LPSTR messageBuffer = nullptr;
     size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), messageBuffer, 0, NULL);
 
@@ -42,6 +58,7 @@ static string GetLastErrorAsString()
     LocalFree(messageBuffer);
 
     return message;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -176,7 +193,15 @@ namespace CryThreadUtil
 
         // Create thread
         unsigned int threadId = 0;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYTHREADUTIL_WIN32_THREAD_H_SECTION_2
+#include AZ_RESTRICTED_FILE(CryThreadUtil_win32_thread_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         *pThreadHandle = (void*)_beginthreadex(NULL, nStackSize, threadDesc.fpEntryFunc, threadDesc.pArgList, CREATE_SUSPENDED, &threadId);
+#endif
 
         if (!(*pThreadHandle))
         {

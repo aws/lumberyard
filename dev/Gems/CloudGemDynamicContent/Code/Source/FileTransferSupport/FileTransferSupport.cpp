@@ -15,6 +15,7 @@
 #include <FileTransferSupport/FileTransferSupport.h>
 
 #include <AzCore/IO/SystemFile.h>
+#include <AzFramework/IO/LocalFileIO.h>
 
 namespace CloudCanvas
 {
@@ -29,7 +30,7 @@ namespace CloudCanvas
         AZStd::string ResolvePath(const char* dirName, bool returnDirOnFailure)
         {
             char resolvedGameFolder[AZ_MAX_PATH_LEN] = { 0 };
-            if (!gEnv->pFileIO->ResolvePath(dirName, resolvedGameFolder, AZ_MAX_PATH_LEN))
+            if (!AZ::IO::LocalFileIO::GetInstance()->ResolvePath(dirName, resolvedGameFolder, AZ_MAX_PATH_LEN))
             {
                 return returnDirOnFailure ? dirName : "";
             }
@@ -53,11 +54,13 @@ namespace CloudCanvas
         {
             auto lastSeparator = fileName.find_last_of('/');
             AZStd::string writeFolder = lastSeparator != AZStd::string::npos ? fileName.substr(0, lastSeparator) : fileName;
+            writeFolder = ResolvePath(writeFolder.c_str());
             // If the directory doesn't exist and we create it and can then write to the file, we're ok
             if (!AZ::IO::SystemFile::Exists(writeFolder.c_str()))
             {
                 // This call currently returns a failure even when it succeeds
-                AZ::IO::SystemFile::CreateDir(writeFolder.c_str());
+
+                AZ::IO::LocalFileIO::GetInstance()->CreatePath(writeFolder.c_str());
             }
             return CanWriteToFile(fileName.c_str());
         }

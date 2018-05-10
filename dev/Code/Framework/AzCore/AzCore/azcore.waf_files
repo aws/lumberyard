@@ -21,7 +21,13 @@
             "Asset/AssetManagerComponent.h",
             "Asset/AssetSerializer.cpp",
             "Asset/AssetSerializer.h",
-            "Asset/AssetTypeInfoBus.h"
+            "Asset/AssetTypeInfoBus.h",
+            "Asset/LegacyAssetHandler.h"
+        ],
+        "Asset/AssetInternal":
+        [
+            "Asset/AssetInternal/LegacyBlockingAssetTypeManager.cpp",
+            "Asset/AssetInternal/LegacyBlockingAssetTypeManager.h"
         ],
         "Casting":
         [
@@ -385,6 +391,7 @@
             "Serialization/DynamicSerializableField.h",
             "Serialization/EditContext.cpp",
             "Serialization/EditContext.h",
+            "Serialization/EditContext.inl",
             "Serialization/EditContextConstants.inl",
             "Serialization/IdUtils.inl",
             "Serialization/IdUtils.h",

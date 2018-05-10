@@ -17,10 +17,22 @@
 
 #include <AzCore/std/typetraits/typetraits.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MAIN_CPP_SECTION_1 1
+#define MAIN_CPP_SECTION_2 2
+#define MAIN_CPP_SECTION_3 3
+#endif
+
 #if defined(AZ_TESTS_ENABLED)
 DECLARE_AZ_UNIT_TEST_MAIN()
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace AZ
 {
@@ -61,6 +73,10 @@ public:
     {
         AllocatorInstance<OSAllocator>::Create(); // used by the bus
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         BusConnect();
     }
@@ -69,6 +85,10 @@ public:
     {
         BusDisconnect();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         AllocatorInstance<OSAllocator>::Destroy(); // used by the bus
     }

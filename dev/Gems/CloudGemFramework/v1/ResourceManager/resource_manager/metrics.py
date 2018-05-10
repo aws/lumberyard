@@ -30,7 +30,7 @@ def get_lymetrics_library_path():
     if platform.system() == "Windows":
         path = os.path.join(path, 'windows', 'intel64')
         for build in ['Release', 'Debug']:
-            for vs in ['vs2015', 'vs2013']:
+            for vs in ['vs2017', 'vs2015', 'vs2013']:
                 dll = os.path.join(path, vs, build, 'LyMetricsProducer_python.dll')
                 if os.path.exists(dll):
                     return dll

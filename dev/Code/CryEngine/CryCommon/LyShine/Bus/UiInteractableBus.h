@@ -37,6 +37,18 @@ public: // member functions
     //! \return true if the interactable handled the event
     virtual bool HandleReleased(AZ::Vector2 point) = 0;
 
+    //! Called on an interactable component when a multi-touch pressed event is received over it
+    //! \param point, the point at which the event occurred (viewport space)
+    //! \param multiTouchIndex, the index of the multi-touch (the 'primary' touch with index 0 is sent to HandlePressed)
+    //! \return true if the interactable handled the event
+    virtual bool HandleMultiTouchPressed(AZ::Vector2 point, int multiTouchIndex) = 0;
+
+    //! Called on the currently pressed interactable component when a multi-touch release event is received
+    //! \param point, the point at which the event occurred (viewport space)
+    //! \param multiTouchIndex, the index of the multi-touch (the 'primary' touch with index 0 is sent to HandlePressed)
+    //! \return true if the interactable handled the event
+    virtual bool HandleMultiTouchReleased(AZ::Vector2 point, int multiTouchIndex) = 0;
+
     //! Called on an interactable component when an enter pressed event is received
     //! \param shouldStayActive, output - true if the interactable wants to become the active element for the canvas
     //! \return true if the interactable handled the event
@@ -61,6 +73,11 @@ public: // member functions
     //! Called on the currently active interactable component when a mouse/touch position event is received
     //! \param point, the current mouse/touch position (viewport space)
     virtual void InputPositionUpdate(AZ::Vector2 point) {};
+
+    //! Called on the currently pressed interactable component when a multi-touch position event is received
+    //! \param point, the current mouse/touch position (viewport space)
+    //! \param multiTouchIndex, the index of the multi-touch (the 'primary' touch with index 0 is sent to HandlePressed)
+    virtual void MultiTouchPositionUpdate(AZ::Vector2 point, int multiTouchIndex) {};
 
     //! Returns true if this interactable supports taking active status when a drag is started on a child
     //! interactble AND the given drag startPoint would be a valid drag start point
@@ -91,9 +108,16 @@ public: // member functions
     //! Called when the interactable becomes the hover interactable by being navigated to from one of its descendants
     virtual void HandleReceivedHoverByNavigatingFromDescendant(AZ::EntityId descendantEntityId) {};
 
+    //! Query whether the interactable is currently pressed
+    virtual bool IsPressed() { return false; }
+
     //! Enable/disable event handling
     virtual bool IsHandlingEvents() { return true; }
     virtual void SetIsHandlingEvents(bool isHandlingEvents) {}
+
+    //! Enable/disable multi-touch event handling
+    virtual bool IsHandlingMultiTouchEvents() { return true; }
+    virtual void SetIsHandlingMultiTouchEvents(bool isHandlingMultiTouchEvents) {}
 
     //! Get/set whether the interactable automatically becomes active when navigated to via gamepad/keyboard
     virtual bool GetIsAutoActivationEnabled() = 0;

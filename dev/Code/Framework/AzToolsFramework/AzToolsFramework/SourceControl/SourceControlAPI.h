@@ -155,7 +155,6 @@ namespace AzToolsFramework
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single; // there's only one source control listener right now
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;  // theres only one source control listener right now
         typedef AZStd::recursive_mutex MutexType;
-        static const bool LocklessDispatch = true;
 
         virtual ~SourceControlCommands() {}
 

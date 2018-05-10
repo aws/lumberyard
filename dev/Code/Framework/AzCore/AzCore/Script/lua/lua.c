@@ -37,7 +37,9 @@ void script_randseed(unsigned int seed)
 // Note: First merge with the CryLua, we should probably remove loslib, print, etc. libs that we already provide functionality for
 
 // Handle CryTek defines
-
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(lua_c, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(__ANDROID__)
 #   ifndef ANDROID

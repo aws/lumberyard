@@ -193,7 +193,7 @@ namespace ExporterLib
         const uint32 numNodes = nodes.GetLength();
 
         // get the node names based on the collected node numbers
-        MCore::Array<MCore::String> nodeNames;
+        MCore::Array<AZStd::string> nodeNames;
         nodes.Reserve(numNodes);
         for (i = 0; i < numNodes; ++i)
         {
@@ -409,7 +409,7 @@ namespace ExporterLib
         EMotionFX::GetEventManager().OnProgressText("Saving skin attachments");
 
         // some variables we will need
-        MCore::String tempFileName, nodeName;
+        AZStd::string tempFileName, nodeName;
         MCore::Array<EMotionFX::Node*> meshNodes;
 
         // calculate the number of mesh nodes
@@ -436,13 +436,11 @@ namespace ExporterLib
                 saveTimer.Stamp();
 
                 // add the mesh name post fix to the filename
-                tempFileName = fileNameWithoutExtension;
-                tempFileName.RemoveFileExtension();
-                tempFileName.TrimRight();
-
+                AzFramework::StringFunc::Path::GetFileName(fileNameWithoutExtension, tempFileName);
+                
                 nodeName = node->GetName();
-                nodeName.RemoveAllParts(" ");
-                nodeName.RemoveAllParts("\t");
+                AzFramework::StringFunc::Replace(nodeName, " ", "", true);
+                AzFramework::StringFunc::Replace(nodeName, "\t", "", true);
                 tempFileName += "_";
                 tempFileName += nodeName;
 
@@ -462,15 +460,18 @@ namespace ExporterLib
 
                 // save the actor
                 Exporter* exporter = Exporter::Create();
-                MCore::FileSystem::SaveToFileSecured(tempFileName, [exporter, tempFileName, clone, targetEndianType] { return exporter->SaveActor(tempFileName, clone, targetEndianType);
-                    }, commandManager);
+                MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(), 
+                    [exporter, tempFileName, clone, targetEndianType] { 
+                        return exporter->SaveActor(tempFileName, clone, targetEndianType);
+                    }, 
+                    commandManager);
                 exporter->Destroy();
 
                 // delete our cloned actor again
                 clone->Destroy();
 
                 const float saveTime = saveTimer.GetDeltaTimeInSeconds() * 1000.0f;
-                MCore::LogDetailedInfo("Skin attachment '%s' saved in %.2f ms.", nodeName.AsChar(), saveTime);
+                MCore::LogDetailedInfo("Skin attachment '%s' saved in %.2f ms.", nodeName.c_str(), saveTime);
             }
         }
 
@@ -480,9 +481,7 @@ namespace ExporterLib
         saveTimer.Stamp();
 
         // add the mesh name post fix to the filename
-        tempFileName = fileNameWithoutExtension;
-        tempFileName.RemoveFileExtension();
-        tempFileName.TrimRight();
+        AzFramework::StringFunc::Path::GetFileName(fileNameWithoutExtension, tempFileName);
         tempFileName += "_Skeleton";
 
         // set the progress information
@@ -498,8 +497,11 @@ namespace ExporterLib
 
         // save the actor
         Exporter* exporter = Exporter::Create();
-        MCore::FileSystem::SaveToFileSecured(tempFileName, [exporter, tempFileName, skeleton, targetEndianType] { return exporter->SaveActor(tempFileName, skeleton, targetEndianType);
-            }, commandManager);
+        MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(), 
+            [exporter, tempFileName, skeleton, targetEndianType] { 
+                return exporter->SaveActor(tempFileName, skeleton, targetEndianType);
+            }, 
+            commandManager);
         exporter->Destroy();
 
         // delete our cloned actor again

@@ -15,7 +15,7 @@
 #include <QGraphicsLayoutItem>
 
 #include <GraphCanvas/Components/VisualBus.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {
@@ -59,54 +59,6 @@ namespace GraphCanvas
             if (!result)
             {
                 QGraphicsItem::mouseReleaseEvent(event);
-            }
-        }
-
-        void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override
-        {
-            if (GetEntityId().IsValid())
-            {
-                VisualNotificationBus::Event(GetEntityId(), &VisualNotifications::OnHoverEnter, this);
-            }
-            QGraphicsItem::hoverEnterEvent(event);
-        }
-
-        void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override
-        {
-            if (GetEntityId().IsValid())
-            {
-                VisualNotificationBus::Event(GetEntityId(), &VisualNotifications::OnHoverLeave, this);
-            }
-            QGraphicsItem::hoverLeaveEvent(event);
-        }
-
-        void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override
-        {
-            bool result = false;
-            VisualNotificationBus::EventResult(result, GetEntityId(), &VisualNotifications::OnMouseDoubleClick, GetEntityId(), event);
-            if (!result)
-            {
-                QGraphicsItem::mouseDoubleClickEvent(event);
-            }
-        }
-
-        void keyPressEvent(QKeyEvent* event) override
-        {
-            bool result = false;
-            VisualNotificationBus::EventResult(result, GetEntityId(), &VisualNotifications::OnKeyPress, GetEntityId(), event);
-            if (!result)
-            {
-                QGraphicsItem::keyPressEvent(event);
-            }
-        }
-
-        void keyReleaseEvent(QKeyEvent* event) override
-        {
-            bool result = false;
-            VisualNotificationBus::EventResult(result, GetEntityId(), &VisualNotifications::OnKeyRelease, GetEntityId(), event);
-            if (!result)
-            {
-                QGraphicsItem::keyReleaseEvent(event);
             }
         }
 

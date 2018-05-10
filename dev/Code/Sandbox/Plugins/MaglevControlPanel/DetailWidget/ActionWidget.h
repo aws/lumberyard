@@ -29,7 +29,7 @@ class ActionWidget
 
 public:
 
-    ActionWidget();
+    ActionWidget(QWidget* parent);
 
     void SetTitleText(const QString& text);
     void SetMessageText(const QString& text);

@@ -14,25 +14,31 @@
 
 #include <AzCore/std/parallel/config.h>
 
-#include <execinfo.h>
-#include <errno.h>
 #include <cxxabi.h>
 #include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
 
 #include <AzCore/std/parallel/mutex.h>
+
+#if defined(AZ_PLATFORM_APPLE)
+    #define UNW_WORD_FORMAT "llx"
+#else
+    #define UNW_WORD_FORMAT "lx"
+#endif
 
 using namespace AZ;
 using namespace AZ::Debug;
 
 AZStd::mutex g_mutex;               /// All dbg help functions are single threaded, so we need to control the access.
 
-void SymbolStorage::RegisterModuleListeners() 
+void SymbolStorage::RegisterModuleListeners()
 {
 }
 
-void SymbolStorage::UnregisterModuleListeners() 
+void SymbolStorage::UnregisterModuleListeners()
 {
 }
 
@@ -47,29 +53,35 @@ void SymbolStorage::UnregisterModuleListeners()
 // [7/29/2009]
 //=========================================================================
 unsigned int
-StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned int suppressCount /* = 0 */, void* nativeContext /*= NULL*/)
+StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned int suppressCount /* = 0 */, void* nativeThread /*= NULL*/)
 {
-    void* addrlist[maxNumOfFrames];
+    int count = 0;
+    unw_cursor_t cursor;
+    unw_context_t context;
 
-    unsigned int addrlen = backtrace(addrlist, maxNumOfFrames);
-    if (addrlen == 0)
+    // Initialize cursor to current frame for local unwinding.
+    unw_getcontext(&context);
+    unw_init_local(&cursor, &context);
+
+    int skip = static_cast<int>((suppressCount == 0) ? 1 : suppressCount); // Skip at least this function
+    while ((unw_step(&cursor) > 0) && (count < maxNumOfFrames))
     {
-        return 0;
+        unw_word_t offset, pc;
+        unw_get_reg(&cursor, UNW_REG_IP, &pc);
+        if (pc == 0)
+        {
+            break;
+        }
+        else if (--skip < 0)
+        {
+            frames[count++].m_programCounter = pc;
+        }
     }
 
-    int count = 0;
-    if (nativeContext == nullptr)
+    // Clear reset of the buffer
+    for (int i = count; i < maxNumOfFrames; ++i)
     {
-        ++suppressCount; // Skip current call
-
-        s32 frame = -(s32)suppressCount;
-        for (; frame < (s32)addrlen; ++frame)
-        {
-            if (frame >= 0)
-            {
-                frames[count++].m_programCounter = static_cast<ProgramCounterType>(addrlist[frame]);
-            }
-        }
+        frames[i].m_programCounter = 0;
     }
 
     return count;
@@ -78,113 +90,94 @@ StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned 
 void
 SymbolStorage::DecodeFrames(const StackFrame* frames, unsigned int numFrames, StackLine* textLines)
 {
-    // storage array for stack trace address data
-    void* addrlist[numFrames];
-
-    int addrlen = 0;
-    auto count = sizeof(addrlist) / sizeof(void*);
-    for (int i = 0; i < count; ++i)
-    {
-        if (frames[i].IsValid())
-        {
-            addrlist[addrlen++] = frames[i].m_programCounter;
-        }
-    }
-
-    char** symbollist = backtrace_symbols(addrlist, addrlen);
-    size_t funcnamesize = 2048;
-    char funcname[2048];
-
-    unsigned int textLineSize = sizeof(SymbolStorage::StackLine);
+    int count = 0;
+    unw_cursor_t cursor;
+    unw_context_t context;
 
     g_mutex.lock();
 
-    // iterate over the returned symbol lines. skip the first, it is the
-    // address of this function.
+    // Initialize cursor to current frame for local unwinding.
+    unw_getcontext(&context);
+    unw_init_local(&cursor, &context);
+
     for (unsigned int i = 0; i < numFrames; ++i)
     {
-        SymbolStorage::StackLine& textLine = textLines[i];
-        textLine[0] = 0;
-
-        if (i >= addrlen)
+        if (frames[i].IsValid())
         {
-            continue;
-        }
+            unw_set_reg(&cursor, UNW_REG_IP, frames[i].m_programCounter);
 
-        if (!frames[i].IsValid())
-        {
-            continue;
-        }
+            SymbolStorage::StackLine& textLine = textLines[count++];
+            textLine[0] = 0;
 
-        char* begin_name   = NULL;
-        char* begin_offset = NULL;
-        char* end_offset   = NULL;
-
-        // find parentheses and +address offset surrounding the mangled name
-
-        // not OSX style
-        // ./module(function+0x15c) [0x8048a6d]
-        for (char* p = symbollist[i]; *p; ++p)
-        {
-            if (*p == '(')
+            unw_word_t offset;
+            char sym[1024] = { '\0' };
+            if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0)
             {
-                begin_name = p;
-            }
-            else if (*p == '+')
-            {
-                begin_offset = p;
-            }
-            else if (*p == ')' && (begin_offset || begin_name))
-            {
-                end_offset = p;
-            }
-        }
-
-        if (begin_name && end_offset && (begin_name < end_offset))
-        {
-            *begin_name++   = '\0';
-            *end_offset++   = '\0';
-            if (begin_offset)
-            {
-                *begin_offset++ = '\0';
-            }
-
-            // mangled name is now in [begin_name, begin_offset) and caller
-            // offset in [begin_offset, end_offset). now apply
-            // __cxa_demangle():
-
-            int status = 0;
-            char* ret = abi::__cxa_demangle(begin_name, funcname, &funcnamesize, &status);
-            char* fname = begin_name;
-            if (status == 0)
-            {
-                fname = ret;
-            }
-
-            if (begin_offset)
-            {
-                if (fname[0] == 0)
+                char* nameptr = sym;
+                int status = 0;
+                char* demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &status);
+                if (status == 0)
                 {
-                    snprintf(textLine, textLineSize, "%-40s + %-6s %s", symbollist[i], begin_offset, end_offset);
+                    nameptr = demangled;
                 }
-                else
-                {
-                    snprintf(textLine, textLineSize, "%-40s + %-6s %s", fname, begin_offset, end_offset);
-                }
+
+                std::snprintf(textLine, AZ_ARRAY_SIZE(textLine), "%s (+0x%" UNW_WORD_FORMAT ") [0x%" UNW_WORD_FORMAT "]",
+                    nameptr, offset, frames[i].m_programCounter);
+                std::free(demangled);
             }
             else
             {
-                snprintf(textLine, textLineSize, "%-40s %-6s %s", symbollist[i], "", end_offset);
+                std::snprintf(textLine, AZ_ARRAY_SIZE(textLine), "%s", " -- error: unable to obtain symbol name for this frame");
             }
-        }
-        else
-        {
-            snprintf(textLine, textLineSize, "%-40s", symbollist[i]);
         }
     }
 
-    g_mutex.unlock();
+    // Empty rest of the buffer so we don't print junk
+    for (unsigned int i = count; i < numFrames; ++i)
+    {
+        textLines[i][0] = '\0';
+    }
 
-    free(symbollist);
+    g_mutex.unlock();
 }
 
+void StackPrinter::Print(FILE *const ftrace)
+{
+    unw_cursor_t cursor;
+    unw_context_t context;
+
+    // Initialize cursor to current frame for local unwinding.
+    unw_getcontext(&context);
+    unw_init_local(&cursor, &context);
+
+    while (unw_step(&cursor) > 0)
+    {
+        unw_word_t pc = 0;
+        unw_get_reg(&cursor, UNW_REG_IP, &pc);
+        if (pc == 0)
+        {
+            break;
+        }
+
+        unw_word_t offset = 0;
+        char sym[1024] = { '\0' };
+        if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0)
+        {
+            char* nameptr = sym;
+            int status = 0;
+            char* demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &status);
+            if (status == 0)
+            {
+                nameptr = demangled;
+            }
+
+            std::fprintf(ftrace, "%s (+0x%" UNW_WORD_FORMAT ") [0x%" UNW_WORD_FORMAT "]", nameptr, offset, pc);
+            std::free(demangled);
+        }
+        else
+        {
+            std::fprintf(ftrace, "%s", " -- error: unable to obtain symbol name for this frame");
+        }
+    }
+    std::fflush(ftrace);
+}

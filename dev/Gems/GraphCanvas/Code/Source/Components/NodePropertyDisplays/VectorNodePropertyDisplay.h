@@ -17,11 +17,11 @@
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyVectorCtrl.hxx>
 
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
-#include <Components/NodePropertyDisplay/VectorDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h>
 
-#include <Components/MimeDataHandlerBus.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Components/MimeDataHandlerBus.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 class QGraphicsLinearLayout;
 

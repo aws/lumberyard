@@ -57,6 +57,7 @@ public slots:
 
 private slots:
     void ToggleCutsceneOptions(bool);
+    void UpdateSequenceProps(const QString& name);
 };
 
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_TVSEQUENCEPROPS_H

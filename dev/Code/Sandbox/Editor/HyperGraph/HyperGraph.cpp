@@ -1001,7 +1001,7 @@ bool CHyperGraph::CanConnectPorts(CHyperNode* pSrcNode, CHyperNodePort* pSrcPort
     assert(pTrgPort);
     if (!pSrcPort)
     {
-        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Unable to connect output of node '%s' ('%s')", pSrcNode->GetName(), pSrcNode->GetDescription());
+        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Unable to connect output of node '%s' ('%s')", pSrcNode->GetName().toUtf8().constData(), pSrcNode->GetDescription().toUtf8().constData());
         return false;
     }
     if (pSrcPort->pVar->GetType() != pTrgPort->pVar->GetType())

@@ -19,7 +19,7 @@ namespace AZ
         namespace GraphData
         {
             AnimationData::AnimationData()
-                : m_timeStepBetweenFrames(1/30.0) // default value
+                : m_timeStepBetweenFrames(1.0/30.0) // default value
             {
             }
 
@@ -50,6 +50,54 @@ namespace AZ
             }
 
             double AnimationData::GetTimeStepBetweenFrames() const
+            {
+                return m_timeStepBetweenFrames;
+            }
+
+
+
+            BlendShapeAnimationData::BlendShapeAnimationData()
+                : m_timeStepBetweenFrames(1 / 30.0) // default value
+            {
+            }
+
+            void BlendShapeAnimationData::SetBlendShapeName(const char* blendShapeName)
+            {
+                m_blendShapeName = blendShapeName;
+            }
+
+            void BlendShapeAnimationData::AddKeyFrame(double keyFrameValue)
+            {
+                m_keyFrames.push_back(keyFrameValue);
+            }
+
+            void BlendShapeAnimationData::ReserveKeyFrames(size_t count)
+            {
+                m_keyFrames.reserve(count);
+            }
+
+            void BlendShapeAnimationData::SetTimeStepBetweenFrames(double timeStep)
+            {
+                m_timeStepBetweenFrames = timeStep;
+            }
+
+            const char* BlendShapeAnimationData::GetBlendShapeName() const
+            {
+                return m_blendShapeName.c_str();
+            }
+
+            size_t BlendShapeAnimationData::GetKeyFrameCount() const
+            {
+                return m_keyFrames.size();
+            }
+
+            double BlendShapeAnimationData::GetKeyFrame(size_t index) const
+            {
+                AZ_Assert(index < m_keyFrames.size(), "BlendShapeAnimationData::GetKeyFrame index %i is out of range for frame count %i", index, m_keyFrames.size());
+                return m_keyFrames[index];
+            }
+
+            double BlendShapeAnimationData::GetTimeStepBetweenFrames() const
             {
                 return m_timeStepBetweenFrames;
             }

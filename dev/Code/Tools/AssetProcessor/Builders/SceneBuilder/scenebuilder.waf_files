@@ -1,18 +1,7 @@
 {
-    "auto": {
-        "Root": [
-        ],
-        
+    "auto": {        
         "SceneBuilder": [
-            "Source/SceneBuilderComponent.h",
-            "Source/SceneBuilderComponent.cpp",
-            "Source/SceneBuilderWorker.h",
-            "Source/SceneBuilderWorker.cpp",
-            "Source/SceneBuilderApplication.cpp",
-            "Source/SceneSerializationHandler.h",
-            "Source/SceneSerializationHandler.cpp",
-            "Source/TraceMessageHook.h",
-            "Source/TraceMessageHook.cpp"
+            "Source/SceneBuilderApplication.cpp"
         ]
     }
 }

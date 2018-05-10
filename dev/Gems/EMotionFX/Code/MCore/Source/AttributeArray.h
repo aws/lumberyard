@@ -48,8 +48,8 @@ namespace MCore
         const char* GetTypeString() const override                                  { return "AttributeArray"; }
         uint8 GetStreamWriteVersion() const                                         { return 2; }
         bool InitFrom(const Attribute* other) override;
-        bool InitFromString(const String& valueString) override;
-        bool ConvertToString(String& outString) const override;
+        bool InitFromString(const AZStd::string& valueString) override;
+        bool ConvertToString(AZStd::string& outString) const override;
         uint32 GetClassSize() const override                                        { return sizeof(AttributeArray); }
         uint32 GetDefaultInterfaceType() const override;
 

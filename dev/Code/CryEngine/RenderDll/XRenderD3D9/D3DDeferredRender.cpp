@@ -21,6 +21,9 @@
 
 #pragma warning(disable: 4244)
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(D3DDeferredRender_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
 bool CD3D9Renderer::FX_DeferredShadowPassSetupBlend(const Matrix44& mShadowTexGen, int nFrustumNum, float maskRTWidth, float maskRTHeight)
@@ -30,11 +33,11 @@ bool CD3D9Renderer::FX_DeferredShadowPassSetupBlend(const Matrix44& mShadowTexGe
     CShadowUtils::ProjectScreenToWorldExpansionBasis(mShadowTexGen, GetCamera(), Vec2(m_TemporalJitterClipSpace.x, m_TemporalJitterClipSpace.y), maskRTWidth, maskRTHeight, vWBasisX, vWBasisY, vWBasisZ, vCamPos, true, &m_RenderTileInfo);
 
     Matrix44A* mat = &gRenDev->m_TempMatrices[nFrustumNum][2];
-    mat->SetRow4(0, vWBasisX);
-    mat->SetRow4(1, vWBasisY);
-    mat->SetRow4(2, vWBasisZ);
-    mat->SetRow4(3, vCamPos);
-
+    mat->SetRow4(0, Vec4r(vWBasisX.x, vWBasisY.x, vWBasisZ.x, vCamPos.x));
+    mat->SetRow4(1, Vec4r(vWBasisX.y, vWBasisY.y, vWBasisZ.y, vCamPos.y));
+    mat->SetRow4(2, Vec4r(vWBasisX.z, vWBasisY.z, vWBasisZ.z, vCamPos.z));
+    mat->SetRow4(3, Vec4r(vWBasisX.w, vWBasisY.w, vWBasisZ.w, vCamPos.w));
+    
     return true;
 }
 
@@ -755,7 +758,7 @@ void CD3D9Renderer::FX_StencilCullPass(int nStencilID, int nNumVers, int nNumInd
     //the correct input layout of the correct pass
     if (FAILED(FX_SetVertexDeclaration(0, eVF_P3F_C4B_T2F)))
     {
-        AZ_Assert(false, "Skipping the draw inside FX_StencilCullPass as the vertex declaration for shader %s pass %i failed", pShader->m_NameShader.c_str(), backFacePass);
+        //AZ_Assert(false, "Skipping the draw inside FX_StencilCullPass as the vertex declaration for shader %s pass %i failed", pShader->m_NameShader.c_str(), backFacePass);
         pShader->FXEndPass();
         return;
     }
@@ -942,8 +945,8 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
     CRenderMesh* pRenderMesh = static_cast<CRenderMesh*>(pWaterTightMesh);
     pRenderMesh->CheckUpdate(0);
 
-    const buffer_handle_t hVertexStream = pRenderMesh->_GetVBStream(VSF_GENERAL);
-    const buffer_handle_t hIndexStream = pRenderMesh->_GetIBStream();
+    const buffer_handle_t hVertexStream = pRenderMesh->GetVBStream(VSF_GENERAL);
+    const buffer_handle_t hIndexStream = pRenderMesh->GetIBStream();
 
     if (hVertexStream != ~0u && hIndexStream != ~0u)
     {
@@ -956,7 +959,6 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
         FX_SetVStream(0, pVB, nOffsV, pRenderMesh->GetStreamStride(VSF_GENERAL));
         FX_SetIStream(pIB, nOffsI, (sizeof(vtx_idx) == 2 ? Index16 : Index32));
 
-        if (!FAILED(FX_SetVertexDeclaration(0, pRenderMesh->_GetVertexFormat())))
         {
             ECull nPrevCullMode = m_RP.m_eCull;
             int nPrevState = m_RP.m_CurState;
@@ -999,9 +1001,10 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
             {
                 pShader->FXBeginPass(CD3D9Renderer::DS_SHADOW_CULL_PASS);
             }
-
-            // Mark all pixels that might be inside volume first (z-fail on back-faces)
+            
+            if (!FAILED(FX_SetVertexDeclaration(0, pRenderMesh->_GetVertexFormat())))
             {
+                // Mark all pixels that might be inside volume first (z-fail on back-faces)
                 D3DSetCull(eCULL_Front);
                 if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
                 {
@@ -1022,7 +1025,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
                 }
                 FX_SetState(newState);
                 FX_Commit();
-                FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->_GetNumVerts(), 0, pRenderMesh->_GetNumInds());
+                FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->GetNumVerts(), 0, pRenderMesh->GetNumInds());
             }
 
             // Flip bits for each face
@@ -1045,7 +1048,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
                         STENCOP_PASS(FSS_STENCOP_KEEP),
                         ~nStencilID, 0xFFFFFFFF, 0xFFFFFFFF);
                 }
-                FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->_GetNumVerts(), 0, pRenderMesh->_GetNumInds());
+                FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->GetNumVerts(), 0, pRenderMesh->GetNumInds());
             }
             pShader->FXEndPass();
 
@@ -1087,7 +1090,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
                         ~nStencilID, 0xFFFFFFFF, 0xFFFFFFFF);
                 }
 
-                FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->_GetNumVerts(), 0, pRenderMesh->_GetNumInds());
+                FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->GetNumVerts(), 0, pRenderMesh->GetNumInds());
                 pShader->FXEndPass();
             }
 

@@ -19,7 +19,6 @@ namespace GraphCanvas
     {
         namespace Elements
         {
-
             const char* const Graph = "graph";
             const char* const Node = "node";
             const char* const Slot = "slot";
@@ -29,6 +28,7 @@ namespace GraphCanvas
             const char* const Group = "group";
             const char* const Connection = "connection";
             const char* const Comment = "comment";
+            const char* const BookmarkAnchor = "BookmarkAnchor";
 
             // General Node Styles
             const char* const GeneralSlotLayout = "generalSlotLayout";
@@ -82,7 +82,6 @@ namespace GraphCanvas
 
         namespace States
         {
-
             const char* const Hovered = ":hovered";
             const char* const Selected = ":selected";
             const char* const Disabled = ":disabled";
@@ -94,7 +93,8 @@ namespace GraphCanvas
             const char* const Editing = ":editing";
             const char* const Deletion = ":deletion";
             const char* const Pressed = ":pressed";
-
+            const char* const Preview = ":preview";
+            const char* const InspectionTransparent = ":inspection_transparent";
         } // namespace States
 
         // Style of curve for connection lines
@@ -163,6 +163,7 @@ namespace GraphCanvas
             const char* const ConnectionDefaultMarquee = "connection-default-marquee";
 
             const char* const ZValue = "z-value";
+            const char* const Opacity = "opacity";
 
         } // namespace Attributes
 
@@ -223,6 +224,8 @@ namespace GraphCanvas
             ConnectionDefaultMarquee,
 
             ZValue,
+
+            Opacity,
 
             // The selectors are an array "attribute" in the same JSON scope as the rest
             Selectors = 0x80fffffe,

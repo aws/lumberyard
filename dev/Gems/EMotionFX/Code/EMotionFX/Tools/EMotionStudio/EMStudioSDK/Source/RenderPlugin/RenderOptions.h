@@ -13,9 +13,8 @@
 #ifndef __EMSTUDIO_RENDEROPTIONS_H
 #define __EMSTUDIO_RENDEROPTIONS_H
 
-//
+#include <AzCore/std/string/string.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Color.h>
 #include "../EMStudioConfig.h"
 #include <QSettings>
@@ -90,13 +89,13 @@ namespace EMStudio
         MCore::RGBAColor        mRimColor;
         bool                    mShowFPS;
 
-        MCore::String           mTexturePath;
+        AZStd::string           mTexturePath;
         bool                    mCreateMipMaps;
         MCore::RGBAColor        mGradientSourceColor;
         MCore::RGBAColor        mGradientTargetColor;
         MCore::RGBAColor        mTrajectoryArrowBorderColor;
         MCore::RGBAColor        mTrajectoryArrowInnerColor;
-        MCore::String           mLastUsedLayout;
+        AZStd::string           mLastUsedLayout;
         bool                    mRenderSelectionBox;
 
         RenderOptions();

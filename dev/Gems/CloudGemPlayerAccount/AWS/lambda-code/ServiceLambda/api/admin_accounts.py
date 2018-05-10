@@ -71,6 +71,7 @@ def put_account(AccountId, AccountRequest, create_account):
     account = account_updates.copy()
     account['AccountId'] = AccountId
     if create_account:
+        account_utils.create_account(account)
         updated_account = account
         print 'Created account: ', account
     elif account_updates or delete_keys:

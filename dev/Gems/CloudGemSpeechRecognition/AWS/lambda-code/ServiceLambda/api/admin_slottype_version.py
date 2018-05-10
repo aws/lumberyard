@@ -18,3 +18,9 @@ def put(request, name):
         'status' : lex.create_slot_type_version(name)
     }
 
+@service.api
+def delete(request, name, version):
+    return {
+        'status' : lex.delete_slot_type(name, version)
+    }
+

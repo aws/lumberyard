@@ -31,8 +31,8 @@ namespace ExporterLib
         const uint32 numMotionEvents    = motionEventTrack->GetNumEvents();
 
         // iterate through the motion events and construct a motion event type array
-        MCore::Array<MCore::String> motionEventTypes;
-        MCore::Array<MCore::String> mirrorEventTypes;
+        MCore::Array<AZStd::string> motionEventTypes;
+        MCore::Array<AZStd::string> mirrorEventTypes;
         motionEventTypes.Reserve(numMotionEvents);
         mirrorEventTypes.Reserve(numMotionEvents);
         for (i = 0; i < numMotionEvents; ++i)
@@ -60,7 +60,7 @@ namespace ExporterLib
         uint32 result = sizeof(EMotionFX::FileFormat::FileMotionEventTrack) + numMotionEvents * sizeof(EMotionFX::FileFormat::FileMotionEvent) + GetStringChunkSize(motionEventTrack->GetName());
         for (i = 0; i < numMotionEventTypes; ++i)
         {
-            result += GetStringChunkSize(motionEventTypes[i].AsChar());
+            result += GetStringChunkSize(motionEventTypes[i].c_str());
         }
         for (i = 0; i < numParameters; ++i)
         {
@@ -68,7 +68,7 @@ namespace ExporterLib
         }
         for (i = 0; i < numMirrorEventTypes; ++i)
         {
-            result += GetStringChunkSize(mirrorEventTypes[i].AsChar());
+            result += GetStringChunkSize(mirrorEventTypes[i].c_str());
         }
 
         return result;
@@ -86,8 +86,8 @@ namespace ExporterLib
         const uint32 numMotionEvents    = motionEventTrack->GetNumEvents();
 
         // iterate through the motion events and construct a motion event type array
-        MCore::Array<MCore::String> motionEventTypes;
-        MCore::Array<MCore::String> mirrorEventTypes;
+        MCore::Array<AZStd::string> motionEventTypes;
+        MCore::Array<AZStd::string> mirrorEventTypes;
         motionEventTypes.Reserve(numMotionEvents);
         mirrorEventTypes.Reserve(numMotionEvents);
         for (i = 0; i < numMotionEvents; ++i)
@@ -134,7 +134,7 @@ namespace ExporterLib
         // followed by: the motion event type strings
         for (i = 0; i < numMotionEventTypes; ++i)
         {
-            SaveString(motionEventTypes[i].AsChar(), file, targetEndianType);
+            SaveString(motionEventTypes[i].c_str(), file, targetEndianType);
         }
 
         // followed by: the motion event parameters
@@ -146,7 +146,7 @@ namespace ExporterLib
         // followed by: the motion event parameters
         for (i = 0; i < numMirrorEventTypes; ++i)
         {
-            SaveString(mirrorEventTypes[i].AsChar(), file, targetEndianType);
+            SaveString(mirrorEventTypes[i].c_str(), file, targetEndianType);
         }
 
         // log info
@@ -160,13 +160,13 @@ namespace ExporterLib
         MCore::LogDetailedInfo("    - Event Types (%i)", numMotionEventTypes);
         for (i = 0; i < numMotionEventTypes; ++i)
         {
-            MCore::LogDetailedInfo("       + %s", motionEventTypes[i].AsChar());
+            MCore::LogDetailedInfo("       + %s", motionEventTypes[i].c_str());
         }
 
         MCore::LogDetailedInfo("    - Mirror Types (%i)", numMirrorEventTypes);
         for (i = 0; i < numMirrorEventTypes; ++i)
         {
-            MCore::LogDetailedInfo("       + %s", mirrorEventTypes[i].AsChar());
+            MCore::LogDetailedInfo("       + %s", mirrorEventTypes[i].c_str());
         }
 
         MCore::LogDetailedInfo("    - Motion Events (%i)", numMotionEvents);

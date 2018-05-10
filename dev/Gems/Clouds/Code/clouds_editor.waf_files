@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/CloudsGemEditor.h",
+            "Source/CloudsGemEditor.cpp",
+            "Source/EditorCloudComponent.cpp",
+            "Source/EditorCloudComponent.h",
+            "Source/CloudGenerator.h",
+            "Source/CloudGenerator.cpp"
+        ]
+    }
+}

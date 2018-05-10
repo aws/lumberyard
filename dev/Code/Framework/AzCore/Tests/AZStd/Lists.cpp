@@ -57,6 +57,12 @@ namespace UnitTest
         };
     };
 
+    TEST_F(ListContainers, InitializerListCtor)
+    {
+        list<int> intList({ 1, 2, 3, 4, 5, 6 });
+        EXPECT_EQ(6, intList.size());
+    }
+
     TEST_F(ListContainers, ListCtorAssign)
     {
         list<int>   int_list;

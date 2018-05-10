@@ -28,8 +28,9 @@
 
 #include "DetailWidget/StackWidget.moc"
 
-StackWidget::StackWidget(ResourceManagementView* view, QSharedPointer<IStackStatusModel> stackStatusModel)
-    : m_view{view}
+StackWidget::StackWidget(ResourceManagementView* view, QSharedPointer<IStackStatusModel> stackStatusModel, QWidget* parent)
+    : QFrame(parent)
+    , m_view{view}
     , m_stackStatusModel{stackStatusModel}
 {
     CreateUI();
@@ -43,25 +44,23 @@ void StackWidget::CreateUI()
 
     setObjectName("Stack");
 
-    auto rootLayout = new QVBoxLayout {};
+    auto rootLayout = new QVBoxLayout {this};
     rootLayout->setSpacing(0);
     rootLayout->setContentsMargins(0, 0, 0, 0);
-    setLayout(rootLayout);
 
     // top
 
-    auto topWidget = new QFrame {};
+    auto topWidget = new QFrame {this};
     topWidget->setObjectName("Top");
     rootLayout->addWidget(topWidget);
 
-    auto topLayout = new QVBoxLayout {};
+    auto topLayout = new QVBoxLayout {topWidget};
     topLayout->setSpacing(0);
     topLayout->setMargin(0);
-    topWidget->setLayout(topLayout);
 
     // heading
 
-    auto headingWidget = new HeadingWidget {};
+    auto headingWidget = new HeadingWidget {topWidget};
     headingWidget->HideTitle();
     headingWidget->SetMessageText(m_stackStatusModel->GetMainMessageText());
     connect(headingWidget, &HeadingWidget::RefreshClicked, this, [this](){ m_stackStatusModel->Refresh(); });
@@ -70,7 +69,7 @@ void StackWidget::CreateUI()
     // status
 
     m_statusWidget = new StackStatusWidget {
-        m_stackStatusModel
+        m_stackStatusModel, topWidget
     };
     topLayout->addWidget(m_statusWidget);
 
@@ -81,19 +80,18 @@ void StackWidget::CreateUI()
 
     // bottom
 
-    auto bottomWidget = new QFrame {};
+    auto bottomWidget = new QFrame {this};
     bottomWidget->setObjectName("Bottom");
     rootLayout->addWidget(bottomWidget);
 
-    auto bottomLayout = new QVBoxLayout {};
+    auto bottomLayout = new QVBoxLayout {bottomWidget};
     bottomLayout->setSpacing(0);
     bottomLayout->setMargin(0);
-    bottomWidget->setLayout(bottomLayout);
 
     // resources
 
     auto resourcesWidget = new StackResourcesWidget {
-        m_stackStatusModel->GetStackResourcesModel(), m_view
+        m_stackStatusModel->GetStackResourcesModel(), m_view, bottomWidget
     };
     bottomLayout->addWidget(resourcesWidget);
 

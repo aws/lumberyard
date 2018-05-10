@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/Component.h>

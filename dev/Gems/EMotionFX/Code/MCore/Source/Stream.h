@@ -13,8 +13,7 @@
 #pragma once
 
 #include "StandardHeaders.h"
-#include "UnicodeString.h"
-
+#include <AZCore/std/string/string.h>
 
 namespace MCore
 {
@@ -72,7 +71,7 @@ namespace MCore
         virtual Stream& operator<<(int64 number)                    { Write(&number, sizeof(int64)); return *this; }
         virtual Stream& operator<<(float number)                    { Write(&number, sizeof(float)); return *this; }
         virtual Stream& operator<<(double number)                   { Write(&number, sizeof(double)); return *this; }
-        virtual Stream& operator<<(String& text)                    { Write((void*)text.AsChar(), text.GetLength() + 1); return *this; }  // +1 to include the '\0'
+        virtual Stream& operator<<(AZStd::string& text)              { Write((void*)text.c_str(), text.size() + 1); return *this; }  // +1 to include the '\0'
         virtual Stream& operator<<(const char* text)                { Write((void*)text, (int32)strlen(text)); char c = '\0'; Write(&c, 1); return *this; }
 
         // read operators
@@ -87,7 +86,7 @@ namespace MCore
         virtual Stream& operator>>(uint64& number)                  { Read(&number, sizeof(uint64)); return *this; }
         virtual Stream& operator>>(float& number)                   { Read(&number, sizeof(float)); return *this; }
         virtual Stream& operator>>(double& number)                  { Read(&number, sizeof(double)); return *this; }
-        virtual Stream& operator>>(String& text)
+        virtual Stream& operator>>(AZStd::string& text)
         {
             char c;
             for (;; )

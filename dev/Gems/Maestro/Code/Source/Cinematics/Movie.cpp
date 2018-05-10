@@ -209,22 +209,28 @@ CMovieSystem::CMovieSystem(ISystem* pSystem)
 {
     m_pSystem = pSystem;
     m_bRecording = false;
-    m_pCallback = NULL;
-    m_pUser = NULL;
+    m_pCallback = nullptr;
+    m_pUser = nullptr;
     m_bPaused = false;
     m_bEnableCameraShake = true;
     m_bCutscenesPausedInEditor = true;
     m_sequenceStopBehavior = eSSB_GotoEndTime;
     m_lastUpdateTime.SetValue(0);
     m_bStartCapture = false;
+    m_captureFrame = -1;
     m_bEndCapture = false;
     m_fixedTimeStepBackUp = 0;
-    m_cvar_capture_file_format = NULL;
-    m_cvar_capture_frame_once = NULL;
-    m_cvar_capture_folder = NULL;
-    m_cvar_t_FixedStep = NULL;
-    m_cvar_capture_frames = NULL;
-    m_cvar_capture_file_prefix = NULL;
+    m_maxStepBackUp = 0;
+    m_smoothingBackUp = 0;
+    m_cvar_capture_file_format = nullptr;
+    m_cvar_capture_frame_once = nullptr;
+    m_cvar_capture_folder = nullptr;
+    m_cvar_t_FixedStep = nullptr;
+    m_cvar_t_MaxStep = nullptr;
+    m_cvar_t_Smoothing = nullptr;
+    m_cvar_sys_maxTimeStepForMovieSystem = nullptr;
+    m_cvar_capture_frames = nullptr;
+    m_cvar_capture_file_prefix = nullptr;
     m_bPhysicsEventsEnabled = true;
     m_bBatchRenderMode = false;
 
@@ -299,22 +305,24 @@ bool CMovieSystem::Load(const char* pszFile, const char* pszMission)
 }
 
 //////////////////////////////////////////////////////////////////////////
-IAnimSequence* CMovieSystem::CreateSequence(const char* pSequenceName, bool bLoad, uint32 id, SequenceType sequenceType, AZ::EntityId entityId)
+IAnimSequence* CMovieSystem::CreateSequence(const char* sequenceName, bool load, uint32 id, SequenceType sequenceType, AZ::EntityId entityId)
 {
-    if (!bLoad)
+    if (!load)
     {
         id = m_nextSequenceId++;
     }
 
-    IAnimSequence* pSequence = aznew CAnimSequence(this, id, sequenceType);
-    pSequence->SetName(pSequenceName);
+    IAnimSequence* sequence = aznew CAnimSequence(this, id, sequenceType);
+    sequence->SetName(sequenceName);
 
     if (sequenceType == SequenceType::SequenceComponent)
     {
-        pSequence->SetSequenceEntityId(entityId);
+        sequence->SetSequenceEntityId(entityId);
     }
-    m_sequences.push_back(pSequence);
-    return pSequence;
+
+    m_sequences.push_back(sequence);;
+
+    return sequence;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -330,22 +338,23 @@ IAnimSequence* CMovieSystem::LoadSequence(const char* pszFilePath)
 }
 
 //////////////////////////////////////////////////////////////////////////
-IAnimSequence* CMovieSystem::LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty)
+IAnimSequence* CMovieSystem::LoadSequence(XmlNodeRef& xmlNode, bool loadEmpty)
 {
-    IAnimSequence* pSequence = aznew CAnimSequence(this, 0);
-    pSequence->Serialize(xmlNode, true, bLoadEmpty);
+    IAnimSequence* sequence = aznew CAnimSequence(this, 0);
+    sequence->Serialize(xmlNode, true, loadEmpty);
 
     // Delete previous sequence with the same name.
-    const char* pFullName = pSequence->GetName();
+    const char* fullName = sequence->GetName();
 
-    IAnimSequence* pPrevSeq = FindLegacySequenceByName(pFullName);
-    if (pPrevSeq)
+    IAnimSequence* prevSeq = FindLegacySequenceByName(fullName);
+    if (prevSeq)
     {
-        RemoveSequence(pPrevSeq);
+        RemoveSequence(prevSeq);
     }
 
-    m_sequences.push_back(pSequence);
-    return pSequence;
+    m_sequences.push_back(sequence);;
+
+    return sequence;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -481,9 +490,9 @@ int CMovieSystem::GetNumPlayingSequences() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMovieSystem::AddSequence(IAnimSequence* pSequence)
+void CMovieSystem::AddSequence(IAnimSequence* sequence)
 {
-    m_sequences.push_back(pSequence);
+    m_sequences.push_back(sequence);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -503,25 +512,37 @@ bool CMovieSystem::IsCutScenePlaying() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMovieSystem::RemoveSequence(IAnimSequence* pSequence)
+void CMovieSystem::RemoveSequence(IAnimSequence* sequence)
 {
-    assert(pSequence != 0);
-    if (pSequence)
-    {
-        IMovieCallback* pCallback = GetCallback();
-        SetCallback(NULL);
-        StopSequence(pSequence);
+    AZ_Assert(sequence != nullptr, "sequence should not be nullptr.");
 
-        for (Sequences::iterator it = m_sequences.begin(); it != m_sequences.end(); ++it)
+    if (sequence)
+    {
+        IMovieCallback* callback = GetCallback();
+        SetCallback(nullptr);
+        StopSequence(sequence);
+
+        // remove from m_newlyActivatedSequences in the edge case something was added but not processed yet.
+        for (auto iter = m_newlyActivatedSequences.begin(); iter != m_newlyActivatedSequences.end(); ++iter)
         {
-            if (pSequence == *it)
+            if (sequence == *iter)
             {
-                m_movieListenerMap.erase(pSequence);
-                m_sequences.erase(it);
+                m_newlyActivatedSequences.erase(iter);
                 break;
             }
         }
-        SetCallback(pCallback);
+
+        for (Sequences::iterator iter = m_sequences.begin(); iter != m_sequences.end(); ++iter)
+        {
+            if (sequence == *iter)
+            {
+                m_movieListenerMap.erase(sequence);
+                m_sequences.erase(iter);
+                break;
+            }
+        }
+
+        SetCallback(callback);
     }
 }
 
@@ -943,13 +964,28 @@ void CMovieSystem::StopAllCutScenes()
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMovieSystem::IsPlaying(IAnimSequence* pSequence) const
+bool CMovieSystem::IsPlaying(IAnimSequence* sequence) const
 {
+    if (nullptr == sequence)
+    {
+        return false;
+    }
+
     for (PlayingSequences::const_iterator it = m_playingSequences.begin(); it != m_playingSequences.end(); ++it)
     {
-        if (it->sequence == pSequence)
+        if (sequence->GetSequenceType() == SequenceType::Legacy)
         {
-            return true;
+            if (it->sequence == sequence)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            if (it->sequence->GetSequenceEntityId() == sequence->GetSequenceEntityId())
+            {
+                return true;
+            }
         }
     }
 
@@ -1088,6 +1124,18 @@ void CMovieSystem::ShowPlayedSequencesDebug()
 //////////////////////////////////////////////////////////////////////////
 void CMovieSystem::PreUpdate(float deltaTime)
 {
+    // Sequences can be spawned in game via a dynamic slice, so process newly activated sequences to see
+    // if they should be auto played.
+    for (auto iter = m_newlyActivatedSequences.begin(); iter != m_newlyActivatedSequences.end(); ++iter)
+    {
+        IAnimSequence* sequence = *iter;
+        if (sequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset && !IsPlaying(sequence))
+        {
+            PlaySequence(sequence);
+        }
+    }
+    m_newlyActivatedSequences.clear();
+
     UpdateInternal(deltaTime, true);
 }
 
@@ -1101,11 +1149,6 @@ void CMovieSystem::PostUpdate(float deltaTime)
 void CMovieSystem::UpdateInternal(const float deltaTime, const bool bPreUpdate)
 {
     SAnimContext animContext;
-
-    if (m_bPaused)
-    {
-        return;
-    }
 
     if (m_bPaused)
     {
@@ -1166,7 +1209,12 @@ void CMovieSystem::UpdateInternal(const float deltaTime, const bool bPreUpdate)
 
         // Check time out of range, setting up playingSequence for the next Update
         bool wasLooped = false;
-        if (playingSequence.currentTime > playingSequence.endTime)
+
+        // Add a tolerance to this check because we want currentTime == currentTime to keep
+        // animating so the last frame is animated. This comes into play with a fixed time step
+        // like when capturing render output.
+        const float precisionTolerance = 0.0001f;
+        if ((playingSequence.currentTime - precisionTolerance) > playingSequence.endTime)
         {
             int seqFlags = playingSequence.sequence->GetFlags();
             bool isLoop = ((seqFlags& IAnimSequence::eSeqFlags_OutOfRangeLoop) != 0);
@@ -1596,10 +1644,63 @@ void CMovieSystem::GoToFrame(const char* seqName, float targetFrame)
     }
 }
 
-void CMovieSystem::StartCapture(const ICaptureKey& key)
+void CMovieSystem::EnableFixedStepForCapture(float step)
+{
+    if (nullptr == m_cvar_t_FixedStep)
+    {
+        m_cvar_t_FixedStep = gEnv->pConsole->GetCVar("t_FixedStep");
+    }
+
+    m_fixedTimeStepBackUp = m_cvar_t_FixedStep->GetFVal();
+    m_cvar_t_FixedStep->Set(step);
+
+    if (nullptr == m_cvar_t_MaxStep)
+    {
+        m_cvar_t_MaxStep = gEnv->pConsole->GetCVar("t_MaxStep");
+    }
+
+    // Make sure to make the max step large enough
+    m_maxStepBackUp = m_cvar_t_MaxStep->GetFVal();
+    if (step > m_maxStepBackUp)
+    {
+        m_cvar_t_MaxStep->Set(step);
+    }
+
+    if (nullptr == m_cvar_t_Smoothing)
+    {
+        m_cvar_t_Smoothing = gEnv->pConsole->GetCVar("t_Smoothing");
+    }
+
+    // Turn off framerate smoothing
+    m_smoothingBackUp = m_cvar_t_Smoothing->GetFVal();
+    m_cvar_t_Smoothing->Set(0);
+
+    if (nullptr == m_cvar_sys_maxTimeStepForMovieSystem)
+    {
+        m_cvar_sys_maxTimeStepForMovieSystem = gEnv->pConsole->GetCVar("sys_maxTimeStepForMovieSystem");
+    }
+
+    // Make sure the max step for the movie system is big enough
+    m_maxTimeStepForMovieSystemBackUp = m_cvar_sys_maxTimeStepForMovieSystem->GetFVal();
+    if (step > m_maxTimeStepForMovieSystemBackUp)
+    {
+        m_cvar_sys_maxTimeStepForMovieSystem->Set(step);
+    }
+}
+
+void CMovieSystem::DisableFixedStepForCapture()
+{
+    m_cvar_t_FixedStep->Set(m_fixedTimeStepBackUp);
+    m_cvar_t_MaxStep->Set(m_maxStepBackUp);
+    m_cvar_t_Smoothing->Set(m_smoothingBackUp);
+    m_cvar_sys_maxTimeStepForMovieSystem->Set(m_maxTimeStepForMovieSystemBackUp);
+}
+
+void CMovieSystem::StartCapture(const ICaptureKey& key, int frame)
 {
     m_bStartCapture = true;
     m_captureKey = key;
+    m_captureFrame = frame;
 }
 
 void CMovieSystem::EndCapture()
@@ -1611,40 +1712,33 @@ void CMovieSystem::CheckForEndCapture()
 {
     if (m_bEndCapture)
     {
+        m_captureFrame = -1;
         m_cvar_capture_frames->Set(0);
-        m_cvar_t_FixedStep->Set(m_fixedTimeStepBackUp);
-
         m_bEndCapture = false;
     }
 }
 
 void CMovieSystem::ControlCapture()
 {
-    if (!gEnv->IsEditor())
-    {
-        return;
-    }
-
     bool bBothStartAndEnd = m_bStartCapture && m_bEndCapture;
     assert(!bBothStartAndEnd);
 
     bool bAllCVarsReady
         = m_cvar_capture_file_format && m_cvar_capture_frame_once
-            && m_cvar_capture_folder && m_cvar_t_FixedStep && m_cvar_capture_frames;
+            && m_cvar_capture_folder && m_cvar_capture_frames;
 
     if (!bAllCVarsReady)
     {
         m_cvar_capture_file_format = gEnv->pConsole->GetCVar("capture_file_format");
         m_cvar_capture_frame_once = gEnv->pConsole->GetCVar("capture_frame_once");
         m_cvar_capture_folder = gEnv->pConsole->GetCVar("capture_folder");
-        m_cvar_t_FixedStep = gEnv->pConsole->GetCVar("t_FixedStep");
         m_cvar_capture_frames = gEnv->pConsole->GetCVar("capture_frames");
         m_cvar_capture_file_prefix = gEnv->pConsole->GetCVar("capture_file_prefix");
     }
 
     bAllCVarsReady
         = m_cvar_capture_file_format && m_cvar_capture_frame_once
-            && m_cvar_capture_folder && m_cvar_t_FixedStep && m_cvar_capture_frames
+            && m_cvar_capture_folder && m_cvar_capture_frames
             && m_cvar_capture_file_prefix;
     assert(bAllCVarsReady);
 
@@ -1661,9 +1755,8 @@ void CMovieSystem::ControlCapture()
         m_cvar_capture_folder->Set(m_captureKey.folder.c_str());
         m_cvar_capture_file_prefix->Set(m_captureKey.prefix.c_str());
 
-        m_fixedTimeStepBackUp = m_cvar_t_FixedStep->GetFVal();
-        m_cvar_t_FixedStep->Set(m_captureKey.timeStep);
-        m_cvar_capture_frames->Set(1);
+        // one-based frame number, zero disables capture.
+        m_cvar_capture_frames->Set(1 + m_captureFrame);
 
         m_bStartCapture = false;
     }
@@ -1918,6 +2011,13 @@ const AZStd::string& CMovieSystem::GetUserNotificationMsgs() const
     static AZStd::string emptyMsg;
     return emptyMsg;
 #endif
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CMovieSystem::OnSequenceActivated(IAnimSequence* sequence)
+{
+    // Queue for processing, sequences will be removed after checked for auto start.
+    m_newlyActivatedSequences.push_back(sequence);
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -204,8 +204,13 @@ namespace AssetProcessor
         int portNumber = 0;
         ApplicationServerBus::BroadcastResult(portNumber, &ApplicationServerBus::Events::GetServerListeningPort);
 
-        auto params = AZStd::string::format(R"(-task=%s -id="%s" -module="%s" -gamename="%s" -gamecache="%s" -gameroot="%s" -port %d)",
-                task, builderGuid.c_str(), moduleFilePath, gameName.toStdString().c_str(), projectCacheRoot.absolutePath().toStdString().c_str(), gameRoot.toStdString().c_str(), portNumber);
+        auto params = AZStd::string::format(R"(-task=%s -id="%s" -gamename="%s" -gamecache="%s" -gameroot="%s" -port %d)",
+                task, builderGuid.c_str(), gameName.toStdString().c_str(), projectCacheRoot.absolutePath().toStdString().c_str(), gameRoot.toStdString().c_str(), portNumber);
+
+        if (moduleFilePath && moduleFilePath[0])
+        {
+            params.append(AZStd::string::format(R"( -module="%s")", moduleFilePath).c_str());
+        }
 
         if (!jobDescriptionFile.empty() && !jobResponseFile.empty())
         {

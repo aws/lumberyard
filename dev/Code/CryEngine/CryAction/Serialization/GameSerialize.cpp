@@ -34,10 +34,6 @@
 #include "Network/GameContext.h"
 #include "IEntityPoolManager.h"
 
-#ifdef USE_COPYPROTECTION
-#include "CopyProtection.h"
-#endif
-
 #include <IPlatformOS.h>
 #include <IDeferredCollisionEvent.h>
 

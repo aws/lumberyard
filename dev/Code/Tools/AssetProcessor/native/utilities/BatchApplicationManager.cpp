@@ -28,6 +28,7 @@
 #include <native/AssetManager/AssetRequestHandler.h>
 #include <native/utilities/CommunicatorTracePrinter.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/Logging/LogLine.h>
@@ -66,6 +67,9 @@ static const int s_MaximumProcessJobsTimeSeconds = 60 * 60;
 
 //! Reserve extra disk space when doing disk space checks to leave a little room for logging, database operations, etc
 static const qint64 s_ReservedDiskSpaceInBytes = 256 * 1024;
+
+//! Maximum number of temp folders allowed
+static const int s_MaximumTempFolders = 10000;
 
 #if defined(AZ_PLATFORM_WINDOWS) && defined(BATCH_MODE)
 namespace BatchApplicationManagerPrivate
@@ -286,8 +290,6 @@ void BatchApplicationManager::InitFileMonitor()
         m_folderWatches.push_back(AZStd::unique_ptr<FolderWatchCallbackEx>(newFolderWatch));
         m_watchHandles.push_back(m_fileWatcher.AddFolderWatch(newFolderWatch));
     }
-
-    m_fileWatcher.StartWatching();
 }
 
 void BatchApplicationManager::DestroyFileMonitor()
@@ -628,13 +630,16 @@ bool BatchApplicationManager::Run()
     }
 
     AZ_Printf(AssetProcessor::ConsoleChannel, "Asset Processor Batch Processing Started.\n");
+    AZ_Printf(AssetProcessor::ConsoleChannel, "-----------------------------------------\n");
     m_duringStartup = false;
     qApp->exec();
 
+    AZ_Printf(AssetProcessor::ConsoleChannel, "-----------------------------------------\n");
+    AZ_Printf(AssetProcessor::ConsoleChannel, "Asset Processor Batch Processing complete\n");
     AZ_Printf(AssetProcessor::ConsoleChannel, "Number of Assets Successfully Processed: %d.\n", ProcessedAssetCount());
     AZ_Printf(AssetProcessor::ConsoleChannel, "Number of Assets Failed to Process: %d.\n", FailedAssetsCount());
     AZ_Printf(AssetProcessor::ConsoleChannel, "Asset Processor Batch Processing Completed.\n");
-
+    RemoveOldTempFolders();
     Destroy();
 
     return (startedSuccessfully && FailedAssetsCount() == 0);
@@ -642,10 +647,32 @@ bool BatchApplicationManager::Run()
 
 void BatchApplicationManager::CheckForIdle()
 {
+    if (InitiatedShutdown())
+    {
+        return;
+    }
+
+#if defined(BATCH_MODE)
+    if (m_connectionsToRemoveOnShutdown.empty())
+    {
+        // we've already entered this state once.  Ignore repeats.  this can happen if another sender of events
+        // rapidly flicks between idle/not idle and sends many "I'm done!" messages which are all queued up.
+        return;
+    }
+#endif
+
     if ((m_rcController->IsIdle() && m_AssetProcessorManagerIdleState))
     {
-        // if we are here it implies that both the APM and RCController are idle.
 #if defined(BATCH_MODE)
+        // in batch mode, when we become idle, we save the registry and then we quit.
+        AZ_Printf(AssetProcessor::ConsoleChannel, "No assets remain in the build queue.  Saving the catalog, and then shutting down.\n");
+        // stop accepting any further idle messages, as we will shut down - don't want this function to repeat!
+        for (const QMetaObject::Connection& connection : m_connectionsToRemoveOnShutdown)
+        {
+            QObject::disconnect(connection);
+        }
+        m_connectionsToRemoveOnShutdown.clear();
+
         // Checking the status of the asset catalog here using qt's signal slot mechanism
         // to ensure that we do not have any pending events in the event loop that can make the catalog dirty again
         QObject::connect(m_assetCatalog, &AssetProcessor::AssetCatalog::AsyncAssetCatalogStatusResponse, this, [&](AssetProcessor::AssetCatalogStatus status)
@@ -660,6 +687,7 @@ void BatchApplicationManager::CheckForIdle()
 
         QMetaObject::invokeMethod(m_assetCatalog, "AsyncAssetCatalogStatusRequest", Qt::QueuedConnection);
 #else
+        // in GUI Mode, we save the registry when we become idle, but we stay running.
         AssetProcessor::AssetRegistryRequestBus::Broadcast(&AssetProcessor::AssetRegistryRequests::SaveRegistry);
 #endif
     }
@@ -768,6 +796,8 @@ bool BatchApplicationManager::Activate()
         return false;
     }
 
+    AZ_TracePrintf(AssetProcessor::ConsoleChannel, "AssetProcessor will process assets from gameproject %s.\n", AssetUtilities::ComputeGameName().toUtf8().data());
+
     // Shutdown if the disk has less than 128MB of free space
     if (!CheckSufficientDiskSpace(projectCache.absolutePath(), 128 * 1024 * 1024, true))
     {
@@ -830,8 +860,9 @@ bool BatchApplicationManager::Activate()
     RegisterObjectForQuit(m_assetProcessorManager);
     RegisterObjectForQuit(m_rcController);
 
-    connect(m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::AssetProcessorManagerIdleState, this,
-        [this](bool state)
+    m_connectionsToRemoveOnShutdown << QObject::connect(
+        m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::AssetProcessorManagerIdleState, 
+        this, [this](bool state)
         {
             if (state)
             {
@@ -839,16 +870,20 @@ bool BatchApplicationManager::Activate()
             }
         });
 
-    connect(m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::AssetProcessorManagerIdleState,
+    m_connectionsToRemoveOnShutdown << QObject::connect(
+        m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::AssetProcessorManagerIdleState,
         this, &BatchApplicationManager::OnAssetProcessorManagerIdleState);
 
-    connect(m_rcController, &AssetProcessor::RCController::BecameIdle,
-        [this]()
+    m_connectionsToRemoveOnShutdown << QObject::connect(
+        m_rcController, &AssetProcessor::RCController::BecameIdle,
+        this, [this]()
         {
             Q_EMIT CheckAssetProcessorManagerIdleState();
         });
 
-    connect(this, &BatchApplicationManager::CheckAssetProcessorManagerIdleState, m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::CheckAssetProcessorIdleState);
+    m_connectionsToRemoveOnShutdown << QObject::connect(
+        this, &BatchApplicationManager::CheckAssetProcessorManagerIdleState, 
+        m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::CheckAssetProcessorIdleState);
 
 
 #if defined(BATCH_MODE)
@@ -892,21 +927,15 @@ bool BatchApplicationManager::Activate()
             }
         });
 
-    AZ_Printf(AssetProcessor::ConsoleChannel, QCoreApplication::translate("Batch Mode", "Starting to scan for changes...\n").toUtf8().constData());
-
-
-    QObject::connect(m_assetScanner, &AssetProcessor::AssetScanner::AssetScanningStatusChanged,
+    m_connectionsToRemoveOnShutdown << QObject::connect(m_assetScanner, &AssetProcessor::AssetScanner::AssetScanningStatusChanged,
         [this](AssetProcessor::AssetScanningStatus status)
         {
             if ((status == AssetProcessor::AssetScanningStatus::Completed) || (status == AssetProcessor::AssetScanningStatus::Stopped))
             {
-                AZ_Printf(AssetProcessor::ConsoleChannel, QCoreApplication::translate("Batch Mode", "Checking changes\n").toUtf8().constData());
+                AZ_Printf(AssetProcessor::ConsoleChannel, QCoreApplication::translate("Batch Mode", "Analyzing scanned files for changes...\n").toUtf8().constData());
                 CheckForIdle();
             }
         });
-
-    m_assetScanner->StartScan();
-
 
 #endif // BATCH_MODE
 
@@ -938,6 +967,15 @@ bool BatchApplicationManager::PostActivate()
             AZ::SystemTickBus::Broadcast(&AZ::SystemTickEvents::OnSystemTick);
         });
 
+    // now that everything is up and running, we start scanning and watching.  Before this, we don't want file events to start percolating through the 
+    // asset system.
+
+#if !defined(BATCH_MODE)
+    // in batch mode, we don't watch for changes, since its just supposed to do with whatever files are present.
+    m_fileWatcher.StartWatching();
+#endif
+    GetAssetScanner()->StartScan();
+
     return true;
 }
 
@@ -960,15 +998,11 @@ bool BatchApplicationManager::InitializeExternalBuilders()
 
 
     // Get the list of external build modules (full paths)
-
-
     QStringList fileList;
     GetExternalBuilderFileList(fileList);
 
     for (const QString& filePath : fileList)
     {
-        AZStd::string filePathStr = filePath.toStdString().c_str();
-        bool externalBuilderLoaded = false;
         if (QLibrary::isLibrary(filePath))
         {
             AssetProcessor::ExternalModuleAssetBuilderInfo* externalAssetBuilderInfo = new AssetProcessor::ExternalModuleAssetBuilderInfo(filePath);
@@ -979,17 +1013,22 @@ bool BatchApplicationManager::InitializeExternalBuilders()
                 return false;
             }
 
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Initializing and registering builder %s\n", externalAssetBuilderInfo->GetName().toUtf8().data());
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Initializing and registering builder %s\n", externalAssetBuilderInfo->GetName().toUtf8().data());
 
-            this->m_currentExternalAssetBuilder = { externalAssetBuilderInfo, filePath.toStdString().c_str() };
+            m_currentExternalAssetBuilder = externalAssetBuilderInfo;
 
             externalAssetBuilderInfo->Initialize();
 
-            this->m_currentExternalAssetBuilder = {};
+            m_currentExternalAssetBuilder = nullptr;
 
-            this->m_externalAssetBuilders.push_back(externalAssetBuilderInfo);
+            m_externalAssetBuilders.push_back(externalAssetBuilderInfo);
         }
     }
+
+    // Also init external builders which may be inside of Gems
+    AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
+        &AzToolsFramework::ToolsApplicationRequests::CreateAndAddEntityFromComponentTags,
+        AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }), "AssetBuilders Entity");
 
     return true;
 }
@@ -1067,14 +1106,18 @@ void BatchApplicationManager::RegisterBuilderInformation(const AssetBuilderSDK::
         "Bus ID for %s builder is empty.\n",
         builderDesc.m_name.c_str()); 
 
-    auto modifiedBuilderDesc = builderDesc;
 
     // This is an external builder registering, we will want to track its builder desc since it can register multiple ones
-    if (m_currentExternalAssetBuilder.m_builderInfo)
+    AZStd::string builderFilePath;
+    if (m_currentExternalAssetBuilder)
     {
-        m_currentExternalAssetBuilder.m_builderInfo->RegisterBuilderDesc(builderDesc.m_busId);
-        AZStd::string builderFilePath = m_currentExternalAssetBuilder.m_builderFilePath;
+        m_currentExternalAssetBuilder->RegisterBuilderDesc(builderDesc.m_busId);
+        builderFilePath = m_currentExternalAssetBuilder->GetModuleFullPath().toUtf8().data();
+    }
 
+    AssetBuilderSDK::AssetBuilderDesc modifiedBuilderDesc = builderDesc;
+    if (builderDesc.IsExternalBuilder())
+    {
         // We're going to override the createJob function so we can run it externally in AssetBuilder, rather than having it run inside the AP
         modifiedBuilderDesc.m_createJobFunction = [this, builderFilePath](const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
             {
@@ -1101,7 +1144,7 @@ void BatchApplicationManager::RegisterBuilderInformation(const AssetBuilderSDK::
 
                 if (builderRef)
                 {
-                    builderRef->RunJob<AssetBuilderSDK::ProcessJobNetRequest, AssetBuilderSDK::ProcessJobNetResponse>(request, response, s_MaximumProcessJobsTimeSeconds, "process", builderFilePath, &jobCancelListener);
+                    builderRef->RunJob<AssetBuilderSDK::ProcessJobNetRequest, AssetBuilderSDK::ProcessJobNetResponse>(request, response, s_MaximumProcessJobsTimeSeconds, "process", builderFilePath, &jobCancelListener, request.m_tempDirPath);
                 }
                 else
                 {
@@ -1134,9 +1177,9 @@ void BatchApplicationManager::RegisterBuilderInformation(const AssetBuilderSDK::
 void BatchApplicationManager::RegisterComponentDescriptor(AZ::ComponentDescriptor* descriptor)
 {
     ApplicationManager::RegisterComponentDescriptor(descriptor);
-    if (m_currentExternalAssetBuilder.m_builderInfo)
+    if (m_currentExternalAssetBuilder)
     {
-        m_currentExternalAssetBuilder.m_builderInfo->RegisterComponentDesc(descriptor);
+        m_currentExternalAssetBuilder->RegisterComponentDesc(descriptor);
     }
     else
     {
@@ -1252,8 +1295,55 @@ bool BatchApplicationManager::CheckSufficientDiskSpace(const QString& savePath, 
     return true;
 }
 
+void BatchApplicationManager::RemoveOldTempFolders()
+{
+    QDir rootDir;
+    if (!AssetUtilities::ComputeAssetRoot(rootDir))
+    {
+        return;
+    }
+
+    QString startFolder = rootDir.absolutePath();
+    QDir root;
+    if (!AssetUtilities::CreateTempRootFolder(startFolder, root))
+    {
+        return;
+    }
+
+    // We will remove old temp folders if either their modified time is older than the cutoff time or 
+    // if the total number of temp folders have exceeded the maximum number of temp folders.   
+    QFileInfoList entries = root.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Time); // sorting by modification time
+    int folderCount = 0;
+    bool removeFolder = false;
+    QDateTime cutoffTime = QDateTime::currentDateTime().addDays(-7);
+    for (const QFileInfo& entry : entries)
+    {
+        if (!entry.fileName().startsWith("JobTemp-"))
+        {
+            continue;
+        }
+
+        // Since we are sorting the folders list from latest to oldest, we will either be in a state where we have to delete all the remaining folders or not
+        // because either we have reached the folder limit or reached the cutoff date limit.
+        removeFolder = removeFolder || (folderCount++ >= s_MaximumTempFolders) || 
+            (entry.lastModified() < cutoffTime);
+        
+        if (removeFolder)
+        {
+            QDir dir(entry.absoluteFilePath());
+            dir.removeRecursively();
+        }
+    }
+}
+
 void BatchApplicationManager::OnAssetProcessorManagerIdleState(bool isIdle)
 {
+    // these can come in during shutdown.
+    if (InitiatedShutdown())
+    {
+        return;
+    }
+
     if (isIdle)
     {
         if (!m_AssetProcessorManagerIdleState)

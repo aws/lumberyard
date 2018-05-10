@@ -21,7 +21,7 @@ def build(bld):
         target          = 'DynamicContentEditorPlugin',
         vs_filter       = 'CloudGemDynamicContent/Plugins',
         file_list       = 'dynamiccontentplugin.waf_files',
-        platforms       = ['win'],
+        platforms       = ['win', 'darwin'],
         configurations  = ['debug', 'debug_test', 'profile', 'profile_test'],
         defines         = ['DYNAMIC_CONTENT_EDITOR',
                            'EDITOR_COMMON_IMPORTS'],

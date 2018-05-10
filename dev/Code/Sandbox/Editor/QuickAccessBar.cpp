@@ -43,7 +43,7 @@ CQuickAccessBar::CQuickAccessBar(QWidget* pParent)
     setFocusProxy(m_ui->m_inputEdit);
     OnInitDialog();
 
-    connect(m_ui->m_inputEdit, &QLineEdit::editingFinished, this, &CQuickAccessBar::OnOK);
+    connect(m_ui->m_inputEdit, &QLineEdit::returnPressed, this, &CQuickAccessBar::OnOK);
 }
 
 CQuickAccessBar::~CQuickAccessBar()

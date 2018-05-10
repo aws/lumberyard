@@ -19,8 +19,8 @@ class EmptyDetailWidget
 {
 public:
 
-    EmptyDetailWidget(ResourceManagementView* view)
-        : DetailWidget{view}
+    EmptyDetailWidget(ResourceManagementView* view, QWidget* parent = nullptr)
+        : DetailWidget{view, parent}
     {
     }
 };

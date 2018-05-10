@@ -20,7 +20,6 @@
 
 
 #include <ProjectDefines.h>
-#include <CheatProtection.h>
 
 namespace ZipDir
 {
@@ -89,7 +88,7 @@ namespace ZipDir
         bool Prepare();
 
         // return the CRC that has been hard coded into the exe for this pak (tamper protection + build validation for patches)
-        CHEAT_PROTECTION_EXPORT unsigned long GetReferenceCRCForPak();
+        unsigned long GetReferenceCRCForPak();
 
         // searches for CDREnd record in the given file
         bool FindCDREnd();// throw(ErrorEnum);

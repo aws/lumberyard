@@ -1,0 +1,48 @@
+{
+    "name": "etc2comp",
+    "source": "@3P:etc2comp@",
+    "description": "Etc2comp Libraries",
+    "defines": [],
+    "lib_required": "False",
+    "includes": [
+        "EtcLib/Etc",
+        "EtcLib/EtcCodec"
+    ],
+    "platform": {
+        "win_x64_vs2013": {
+            "libpath_debug": [
+                "EtcLib/Windows_x86_64/vc120/Debug"
+            ],
+            "libpath_release": [
+                "EtcLib/Windows_x86_64/vc120/Release"
+            ],
+            "lib": [
+                "EtcLib.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "libpath_debug": [
+                "EtcLib/Windows_x86_64/vc140/Debug"
+            ],
+            "libpath_release": [
+                "EtcLib/Windows_x86_64/vc140/Release"
+            ],
+            "lib": [
+                "EtcLib.lib"
+            ]
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "darwin_x64": {
+            "libpath_debug": [
+                "EtcLib/OSX_x86/Debug"
+            ],
+            "libpath_release": [
+                "EtcLib/OSX_x86/Release"
+            ],
+            "lib": [
+                "libEtcLib.a"
+            ]
+        }
+    }
+}
+

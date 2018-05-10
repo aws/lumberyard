@@ -24,6 +24,14 @@
 #include "DeviceManager/PartitionTable.h"
 #include "AzCore/std/parallel/mutex.h"
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DEVBUFFER_CPP_SECTION_1 1
+#define DEVBUFFER_CPP_SECTION_2 2
+#define DEVBUFFER_CPP_SECTION_3 3
+#endif
+
 #if defined(min)
 # undef min
 #endif
@@ -101,7 +109,15 @@ namespace
             POOL_STAGING_COUNT = 1,
             POOL_ALIGNMENT = 128,
             POOL_FRAME_QUERY_COUNT = 4,
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVBUFFER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(DevBuffer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             POOL_MAX_ALLOCATION_SIZE = 64 << 20,
+#endif
             POOL_FRAME_QUERY_MASK = POOL_FRAME_QUERY_COUNT - 1
         };
 
@@ -1530,7 +1546,13 @@ namespace
             #pragma warning( push )
             #pragma warning( disable : 4244)
 #endif
-#if   defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVBUFFER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(DevBuffer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(APPLE)
 	    // using a C-cast here breaks
             item_handle_t handle = reinterpret_cast<TRUNCATE_PTR>(pContext);
 #elif defined(LINUX)
@@ -3629,6 +3651,10 @@ void WrappedDX11Buffer::Create(uint32 numElements, uint32 elementSize, DXGI_FORM
     Data.SysMemPitch = Desc.ByteWidth;
     Data.SysMemSlicePitch = Desc.ByteWidth;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVBUFFER_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(DevBuffer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     gcpRendD3D->m_DevMan.CreateD3D11Buffer(&Desc, (pData != NULL) ? &Data : NULL, &m_pBuffer, "WrappedDX11Buffer");
 

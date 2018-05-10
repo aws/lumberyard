@@ -67,6 +67,7 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
         arch = "x64"
         if host in ('win_x64', 'win32'):
             vs = {
+                "15" : 'vs2017',
                 "14" : 'vs2015',
                 "12" : 'vs2013'
             }

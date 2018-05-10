@@ -418,6 +418,10 @@ CFileSystemSearcher::CFileSystemSearcher()
 
     m_assetTypes[6] = SFileSystemAssetDesc("Material", IVariable::DT_MATERIAL);
     m_assetTypes[6].AddExt("mtl");
+
+    m_assetTypes[7] = SFileSystemAssetDesc("Motion", IVariable::DT_MOTION);
+    m_assetTypes[7].AddExt("motion");
+
 }
 
 ////////////////////////////////////////////////////////////////////////////

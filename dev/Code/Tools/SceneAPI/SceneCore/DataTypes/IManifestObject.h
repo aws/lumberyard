@@ -26,11 +26,14 @@ namespace AZ
                 AZ_RTTI(IManifestObject, "{3B839407-1884-4FF4-ABEA-CA9D347E83F7}");
 
                 virtual ~IManifestObject() = 0;
+                virtual void OnUserAdded() {};
+                virtual void OnUserRemoved() const {};
             };
 
             inline IManifestObject::~IManifestObject()
             {
             }
+
         }  //namespace DataTypes
     }  //namespace SceneAPI
 }  //namespace AZ

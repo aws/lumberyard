@@ -54,12 +54,12 @@ namespace ScriptCanvas
                     
                     if (result.IsSuccess())
                     {
-                        return Datum::CreateInitializedCopy(result.GetValue());
+                        return Datum(result.GetValue());
                     }
                     else
                     {
                         SCRIPTCANVAS_REPORT_ERROR((*this), result.GetError().c_str());
-                        return Datum::CreateInitializedCopy(false);
+                        return Datum(false);
                     }
                 }
             };

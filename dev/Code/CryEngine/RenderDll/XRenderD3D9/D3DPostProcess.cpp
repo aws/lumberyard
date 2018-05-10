@@ -22,6 +22,12 @@
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DPOSTPROCESS_CPP_SECTION_1 1
+#define D3DPOSTPROCESS_CPP_SECTION_2 2
+#endif
+
 #pragma warning(disable: 4244)
 
 enum COLORSPACES
@@ -81,8 +87,17 @@ void SD3DPostEffectsUtils::ResolveRT(CTexture*& pDst, const RECT* pSrcRect)
         }
         box.back = 1;
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DPOSTPROCESS_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DPostProcess_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #else
         ID3D11Resource* pSrcResource;
         pOrigRT->GetResource(&pSrcResource);
+    #endif
 
         HRESULT hr = 0;
         gcpRendD3D->m_RP.m_PS[gcpRendD3D->m_RP.m_nProcessThreadID].m_RTCopied++;
@@ -297,6 +312,10 @@ void SD3DPostEffectsUtils::StretchRect(CTexture* pSrc, CTexture*& pDst, bool bCl
 
 void SD3DPostEffectsUtils::SwapRedBlue(CTexture* pSrc, CTexture* pDst)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DPOSTPROCESS_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DPostProcess_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool bFromSingleChannel)

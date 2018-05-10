@@ -296,8 +296,37 @@
     <file alias="Editor/Style/EditorStylesheetVariables_Dark.json">../../../../Sandbox/Editor/Style/EditorStylesheetVariables_Dark.json</file>
     <file alias="Editor/Style/NewEditorStylesheet.qss">../../../../Sandbox/Editor/Style/NewEditorStylesheet.qss</file>
 </qresource>
+<qresource prefix="/Cards">
+    <file>img/UI20/Cards/point_hand.png</file>
+    <file>img/UI20/Cards/cross-circle-small.png</file>
+    <file>img/UI20/Cards/cross-small.png</file>
+    <file>img/UI20/Cards/list-add-small.png</file>
+    <file>img/UI20/Cards/group_closed.png</file>
+    <file>img/UI20/Cards/group_open.png</file>
+    <file>img/UI20/Cards/tool_cancel.png</file>
+    <file>img/UI20/Cards/tool_cancel_highlight.png</file>
+    <file>img/UI20/Cards/tool_cancel_hover.png</file>
+    <file>img/UI20/Cards/tool_filter.png</file>
+    <file>img/UI20/Cards/Browse.png</file>
+    <file>img/UI20/Cards/Browse_on.png</file>
+    <file>img/UI20/Cards/edit-asset.png</file>
+    <file>img/UI20/Cards/slice_item.png</file>
+    <file>img/UI20/Cards/changed_data_item.png</file>
+    <file>img/UI20/Cards/new_data_item.png</file>
+    <file>img/UI20/Cards/removed_data_item.png</file>
+    <file>img/UI20/Cards/menu_ico.png</file>
+    <file>img/UI20/Cards/error_icon.png</file>
+    <file>img/UI20/Cards/warning.png</file>
+    <file>img/UI20/Cards/search.png</file>
+    <file>img/UI20/Cards/close.png</file>
+    <file>img/UI20/Cards/disabled_header.png</file>
+    <file>img/UI20/Cards/help.png</file>
+    <file>img/UI20/Cards/eye_dropper.png</file>
+</qresource>
 <qresource prefix="/AzQtComponents">
     <file>Widgets/BaseStyleSheet.qss</file>
+    <file>Widgets/Card.qss</file>
+    <file>Widgets/CardConfig.ini</file>
     <file>Widgets/CheckBox.qss</file>
     <file>Widgets/CheckBoxConfig.ini</file>
     <file>Widgets/Menu.qss</file>
@@ -317,6 +346,7 @@
     <file>img/UI20/combo-checked-disabled.png</file>
     <file>img/UI20/combo-checked-focus.png</file>
     <file>img/UI20/combo-tristate.png</file>
+    <file>img/UI20/combo-tristate-focus.png</file>
     <file>img/UI20/radio-checked.png</file>
     <file>img/UI20/radio-checked-disabled.png</file>
     <file>img/UI20/radio-checked-focus.png</file>

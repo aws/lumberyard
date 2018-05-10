@@ -320,9 +320,10 @@ void DockWidgetUtils::correctVisibility(QDockWidget* dw)
 
 void DockWidgetUtils::startPeriodicDebugDump(QMainWindow *mainWindow)
 {
-    auto t = new QTimer();
+    const auto t = new QTimer{mainWindow};
     t->start(5000);
-    QObject::connect(t, &QTimer::timeout, [mainWindow] {
+    QObject::connect(t, &QTimer::timeout, mainWindow, [mainWindow]
+    {
         DockWidgetUtils::dumpDockWidgets(mainWindow);
     });
 }

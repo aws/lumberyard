@@ -13,6 +13,7 @@
 // include required headers
 #include "Skeleton.h"
 #include "Node.h"
+#include <Mcore/Source/StringConversions.h>
 
 
 namespace EMotionFX
@@ -110,7 +111,7 @@ namespace EMotionFX
         const uint32 numNodes = mNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            if (mNodes[i]->GetNameString().CheckIfIsEqual(name))
+            if (mNodes[i]->GetNameString() == name)
             {
                 return mNodes[i];
             }
@@ -127,7 +128,7 @@ namespace EMotionFX
         const uint32 numNodes = mNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            if (mNodes[i]->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(mNodes[i]->GetNameString().c_str(), name, false /* no case */))
             {
                 return mNodes[i];
             }

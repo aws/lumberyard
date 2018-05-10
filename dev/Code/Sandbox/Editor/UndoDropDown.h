@@ -41,7 +41,7 @@ class UndoStackStateAdapter
     Q_OBJECT
 
 public:
-    UndoStackStateAdapter(QObject* parent = nullptr);
+    explicit UndoStackStateAdapter(QObject* parent = nullptr);
 
     ~UndoStackStateAdapter();
 

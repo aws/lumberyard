@@ -55,6 +55,8 @@ namespace AzQtComponents
 
         QPalette standardPalette() const override;
 
+        void repolishOnSettingsChange(QWidget* widget);
+
         bool hasClass(const QWidget* button, const QString& className) const;
         static void addClass(QWidget* button, const QString& className);
 
@@ -62,6 +64,8 @@ namespace AzQtComponents
         void settingsReloaded(); // emitted when any config settings (*.ini) files reload
 
     private:
+        void repolishWidgetDestroyed(QObject* obj);
+
         QScopedPointer<Data> m_data;
     };
 } // namespace AzQtComponents

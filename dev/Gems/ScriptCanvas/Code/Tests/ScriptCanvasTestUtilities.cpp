@@ -10,12 +10,17 @@
 *
 */
 
-#include "precompiled.h"
+#include <precompiled.h>
+
+#include <AzCore/Component/TickBus.h>
+
 #include "ScriptCanvasTestUtilities.h"
+#include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
+#include <ScriptCanvas/Execution/RuntimeComponent.h>
 
 namespace ScriptCanvasTests
 {
-
     TestBehaviorContextObject TestBehaviorContextObject::MaxReturnByValue(TestBehaviorContextObject lhs, TestBehaviorContextObject rhs)
     {
         return lhs.GetValue() >= rhs.GetValue() ? lhs : rhs;
@@ -46,6 +51,12 @@ namespace ScriptCanvasTests
         return lhs >= rhs ? lhs : rhs;
     }
 
+    static void TestBehaviorContextObjectGenericConstructor(TestBehaviorContextObject* thisPtr)
+    {
+        new (thisPtr) TestBehaviorContextObject();
+        thisPtr->SetValue(0);
+    }
+
     void TestBehaviorContextObject::Reflect(AZ::ReflectContext* reflectContext)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
@@ -53,14 +64,20 @@ namespace ScriptCanvasTests
             serializeContext->Class<TestBehaviorContextObject>()
                 ->Version(0)
                 ->Field("m_value", &TestBehaviorContextObject::m_value)
+                ->Field("isNormalized", &TestBehaviorContextObject::m_isNormalized)
                 ;
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflectContext))
         {
             behaviorContext->Class<TestBehaviorContextObject>("TestBehaviorContextObject")
+                ->Attribute(AZ::Script::Attributes::ConstructorOverride, &TestBehaviorContextObjectGenericConstructor)
+                ->Attribute(AZ::Script::Attributes::GenericConstructorOverride, &TestBehaviorContextObjectGenericConstructor)
                 ->Method("In", &TestBehaviorContextObject::GetValue)
                 ->Method("Out", &TestBehaviorContextObject::SetValue)
+                ->Method("Normalize", &TestBehaviorContextObject::Normalize)
+                ->Method("IsNormalized", &TestBehaviorContextObject::IsNormalized)
+                ->Method("Denormalize", &TestBehaviorContextObject::Denormalize)
                 ->Method("MaxReturnByValue", &TestBehaviorContextObject::MaxReturnByValue)
                 ->Method("MaxReturnByPointer", &TestBehaviorContextObject::MaxReturnByPointer)
                 ->Method("MaxReturnByReference", &TestBehaviorContextObject::MaxReturnByReference)
@@ -176,8 +193,8 @@ namespace ScriptCanvasTests
             node = CreateTestNode<Nodes::Math::Plane>(graphUniqueId, nodeIDout);
             break;
 
-        case Data::eType::Rotation:
-            node = CreateTestNode<Nodes::Math::Rotation>(graphUniqueId, nodeIDout);
+        case Data::eType::Quaternion:
+            node = CreateTestNode<Nodes::Math::Quaternion>(graphUniqueId, nodeIDout);
             break;
 
         case Data::eType::String:
@@ -263,6 +280,141 @@ namespace ScriptCanvasTests
         }
 
         return false;
+    }
+
+    AZ::Data::Asset<ScriptCanvas::RuntimeAsset> CreateRuntimeAsset(ScriptCanvas::Graph* graph)
+    {
+        using namespace ScriptCanvas;
+        RuntimeAssetHandler runtimeAssetHandler;
+        AZ::Data::Asset<RuntimeAsset> runtimeAsset;
+        runtimeAsset.Create(AZ::Uuid::CreateRandom());
+
+        AZ::SerializeContext* serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
+        serializeContext->CloneObjectInplace(runtimeAsset.Get()->GetData().m_graphData, graph->GetGraphDataConst());
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> graphToAssetEntityIdMap{ { graph->GetUniqueId(), ScriptCanvas::InvalidUniqueRuntimeId } };
+        AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&runtimeAsset.Get()->GetData().m_graphData, graphToAssetEntityIdMap, serializeContext);
+
+        return runtimeAsset;
+    }
+
+    AZ::Entity* UnitTestEntityContext::CreateEntity(const char* name)
+    {
+        auto entity = aznew AZ::Entity(name);
+        AddEntity(entity);
+        return entity;
+    }
+
+    void UnitTestEntityContext::AddEntity(AZ::Entity* entity)
+    {
+        AddEntity(entity->GetId());
+    }
+
+    void UnitTestEntityContext::AddEntity(AZ::EntityId entityId)
+    {
+        AZ_Assert(!AzFramework::EntityIdContextQueryBus::FindFirstHandler(entityId), "Entity already belongs to a context.");
+        m_unitTestEntityIdMap.emplace(entityId, entityId);
+        AzFramework::EntityIdContextQueryBus::MultiHandler::BusConnect(entityId);
+    }
+
+    void UnitTestEntityContext::RemoveEntity(AZ::EntityId entityId)
+    {
+        auto foundIt = m_unitTestEntityIdMap.find(entityId);
+        if (foundIt != m_unitTestEntityIdMap.end())
+        {
+            AzFramework::EntityIdContextQueryBus::MultiHandler::BusDisconnect(entityId);
+            m_unitTestEntityIdMap.erase(foundIt);
+        }
+    }
+
+    void UnitTestEntityContext::ActivateEntity(AZ::EntityId entityId)
+    {
+        if (IsOwnedByThisContext(entityId))
+        {
+            AZ::Entity* entity{};
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+            if (entity)
+            {
+                if (entity->GetState() == AZ::Entity::ES_CONSTRUCTED)
+                {
+                    entity->Init();
+                }
+                if (entity->GetState() == AZ::Entity::ES_INIT)
+                {
+                    entity->Activate();
+                }
+            }
+        }
+    }
+
+    void UnitTestEntityContext::DeactivateEntity(AZ::EntityId entityId)
+    {
+        if (IsOwnedByThisContext(entityId))
+        {
+            AZ::Entity* entity{};
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+            if (entity)
+            {
+                if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+                {
+                    entity->Deactivate();
+                }
+                else if (entity->GetState() == AZ::Entity::ES_ACTIVATING)
+                {
+                    // Queue Deactivation to next frame
+                    AZ::SystemTickBus::QueueFunction(&AZ::Entity::Activate, entity);
+                }
+            }
+        }
+    }
+
+    bool UnitTestEntityContext::DestroyEntity(AZ::Entity* entity)
+    {
+        if (entity)
+        {
+            auto foundIt = m_unitTestEntityIdMap.find(entity->GetId());
+            if (foundIt != m_unitTestEntityIdMap.end())
+            {
+                AzFramework::EntityIdContextQueryBus::MultiHandler::BusDisconnect(entity->GetId());
+                m_unitTestEntityIdMap.erase(foundIt);
+                delete entity;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool UnitTestEntityContext::DestroyEntityById(AZ::EntityId entityId)
+    {
+        AZ::Entity* entity{};
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+        return DestroyEntity(entity);
+    }
+
+    void UnitTestEntityContext::ResetContext()
+    {
+        AzFramework::EntityIdContextQueryBus::MultiHandler::BusDisconnect();
+        m_unitTestEntityIdMap.clear();
+    }
+
+    AZ::Entity* UnitTestEntityContext::CloneEntity(const AZ::Entity& sourceEntity)
+    {
+        if (!IsOwnedByThisContext(sourceEntity.GetId()))
+        {
+            AZ_Warning("Script Canvas", false, "Entity %s does not belong to the unit test entity context.", sourceEntity.GetName().data());
+            return {};
+        }
+
+        AZ::SerializeContext* serializeContext{};
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+        AZ::Entity* cloneEntity = serializeContext->CloneObject(&sourceEntity);
+        if (cloneEntity)
+        {
+            cloneEntity->SetId(AZ::Entity::MakeId());
+            AddEntity(cloneEntity);
+        }
+
+        return cloneEntity;
     }
 
 } // ScriptCanvasTests

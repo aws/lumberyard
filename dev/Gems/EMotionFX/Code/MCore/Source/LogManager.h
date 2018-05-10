@@ -15,7 +15,6 @@
 // include the required headers
 #include <AzCore/std/string/string.h>
 #include "StandardHeaders.h"
-#include "UnicodeString.h"
 #include "Array.h"
 #include "MultiThreadManager.h"
 

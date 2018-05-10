@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_IINPUT_H
-#define CRYINCLUDE_CRYCOMMON_IINPUT_H
 #pragma once
 
 
@@ -1089,8 +1087,15 @@ struct IKinectInput
     virtual bool Init() = 0;
     virtual void Update() = 0;
     virtual bool IsEnabled() = 0;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(IInput_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     virtual void RegisterInputListener(IKinectInputListener* pInputListener, const char* name) = 0;
     virtual void UnregisterInputListener(IKinectInputListener* pInputListener) = 0;
+#endif
 
     virtual const char* GetUserStatusMessage() = 0;
     // Summary:
@@ -1590,6 +1595,3 @@ CRYINPUT_API IInput* CreateInput(ISystem* pSystem, void* hwnd);
 #ifdef __cplusplus
 };
 #endif
-
-
-#endif // CRYINCLUDE_CRYCOMMON_IINPUT_H

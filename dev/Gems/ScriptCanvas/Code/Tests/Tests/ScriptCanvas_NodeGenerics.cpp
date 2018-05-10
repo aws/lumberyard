@@ -84,7 +84,7 @@ namespace
     {
         return std::make_tuple
         ((lhs && rhs && (lhs->GetValue() >= rhs->GetValue())) ? lhs : rhs
-            , lhsInt >= rhsInt ? lhsInt : rhsInt);
+            , lhsInt && rhsInt && *lhsInt >= *rhsInt ? lhsInt : rhsInt);
     }
 
     std::tuple<const TestBehaviorContextObject&, const int&> MaxReturnByReferenceMulti(const TestBehaviorContextObject& lhs, const TestBehaviorContextObject& rhs, const int& lhsInt, const int& rhsInt)

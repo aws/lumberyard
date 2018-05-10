@@ -43,7 +43,6 @@ namespace ScriptCanvas
                             editContext->Class<Matrix3x3>("Matrix3x3", "A 3x3 matrix value")
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Matrix3x3.png")
-                                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                                 ;
                         }
                     }

@@ -22,6 +22,7 @@
 #include <SceneAPI/SceneCore/Components/LoadingComponent.h>
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 #include <SceneAPI/SceneCore/Components/Utilities/EntityConstructor.h>
+#include <SceneAPI/SceneCore/Components/SceneSystemComponent.h>
 
 #include <SceneAPI/SceneCore/Containers/RuleContainer.h>
 #include <SceneAPI/SceneCore/Containers/SceneManifest.h>
@@ -92,6 +93,11 @@ public:
 
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
+    if (AZ::Environment::IsReady())
+    {
+        return;
+    }
+
     AZ::Environment::Attach(static_cast<AZ::EnvironmentInstance>(env));
 
     if (!g_entityMonitor)
@@ -146,6 +152,8 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
         AZ::SceneAPI::SceneCore::BehaviorComponent::Reflect(context);
         AZ::SceneAPI::SceneCore::LoadingComponent::Reflect(context);
         AZ::SceneAPI::SceneCore::ExportingComponent::Reflect(context);
+        AZ::SceneAPI::SceneCore::RCExportingComponent::Reflect(context);
+        AZ::SceneAPI::SceneCore::SceneSystemComponent::Reflect(context);
         // Register group interfaces
         context->Class<AZ::SceneAPI::DataTypes::IGroup, AZ::SceneAPI::DataTypes::IManifestObject>()->Version(1);
         context->Class<AZ::SceneAPI::DataTypes::ISceneNodeGroup, AZ::SceneAPI::DataTypes::IGroup>()->Version(1);
@@ -223,6 +231,11 @@ extern "C" AZ_DLL_EXPORT void Deactivate()
 
 extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
 {
+    if (!AZ::Environment::IsReady())
+    {
+        return;
+    }
+
     AZ::SerializeContext* context = nullptr;
     AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
     if (context)
@@ -253,6 +266,17 @@ extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
     {
         delete g_entityMonitor;
         g_entityMonitor = nullptr;
+    }
+
+    // This module does not own these allocators, but must clear its cached EnvironmentVariables
+    // because it is linked into other modules, and thus does not get unloaded from memory always
+    if (AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+    {
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+    }
+    if (AZ::AllocatorInstance<AZ::OSAllocator>::IsReady())
+    {
+        AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
     }
 
     AZ::Environment::Detach();

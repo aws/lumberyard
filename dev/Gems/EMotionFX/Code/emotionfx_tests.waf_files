@@ -6,7 +6,7 @@
             "Tests/AnimGraphTransitionTests.cpp",
             "Tests/EMotionFXTest.cpp",
             "Tests/EmotionFXMathLibTests.cpp",
-            "Tests/SystemComponentFixture.cpp",
+            "Tests/MorphTargetRuntimeTests.cpp",
             "Tests/SystemComponentFixture.h",
             "Tests/SystemComponentTests.cpp"
         ]

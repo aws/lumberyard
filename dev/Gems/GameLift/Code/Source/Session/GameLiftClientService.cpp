@@ -21,8 +21,7 @@
 #pragma warning(disable:4251)
 #include <aws/core/auth/AWSCredentialsProvider.h>
 #include <aws/core/utils/Outcome.h>
-#include <aws/gamelift/model/UpdateFleetAttributesRequest.h>
-#include <aws/gamelift/model/UpdateAliasRequest.h>
+#include <aws/gamelift/model/DescribeGameSessionsRequest.h>
 #include <aws/gamelift/GameLiftClient.h>
 #pragma warning(pop)
 
@@ -134,36 +133,29 @@ namespace GridMate
             {
                 auto outcome = callable.get();
                 if (outcome.IsSuccess())
-            {
-                AZ_TracePrintf("GameLift", "Initialized GameLift client successfully.\n");
-                m_clientStatus = GameLift_Ready;
+                {
+                    AZ_TracePrintf("GameLift", "Initialized GameLift client successfully.\n");
+                    m_clientStatus = GameLift_Ready;
 
-                EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceReady, this);
-                EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionServiceReady);
-                EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);
-            }
-            else
-            {
+                    EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceReady, this);
+                    EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionServiceReady);
+                    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);
+                }
+                else
+                {
                     auto errorMessage = outcome.GetError().GetMessage();
-                AZ_TracePrintf("GameLift", "Failed to initialize GameLift client: %s\n", errorMessage.c_str());
+                    AZ_TracePrintf("GameLift", "Failed to initialize GameLift client: %s\n", errorMessage.c_str());
 
-                m_clientStatus = GameLift_Failed;
+                    m_clientStatus = GameLift_Failed;
                     EBUS_EVENT_ID(m_gridMate, GameLiftClientServiceEventsBus, OnGameLiftSessionServiceFailed, this, errorMessage.c_str());
                 }
             }
-            }
         }
+    }
 
     void GameLiftClientService::Update()
     {
-        if (m_useFleetId)
-        {
-            UpdateImpl(m_updateFleetAttributesOutcomeCallable);
-        }
-        else
-        {
-            UpdateImpl(m_updateAliasOutcomeCallable);
-        }
+        UpdateImpl(m_describeGameSessionsOutcomeCallable);
 
         SessionService::Update();
     }
@@ -272,7 +264,17 @@ namespace GridMate
             Aws::Client::ClientConfiguration config;
             config.region = m_serviceDesc.m_region.c_str();
             config.endpointOverride = m_serviceDesc.m_endpoint.c_str();
-            config.verifySSL = true;
+
+            if( m_serviceDesc.m_useGameLiftLocalServer )
+            {
+                config.verifySSL = false;
+                config.scheme = Aws::Http::Scheme::HTTP;
+            }
+            else
+            {
+                config.verifySSL = true;
+                config.scheme = Aws::Http::Scheme::HTTPS;
+            }
 
             Aws::String accessKey(m_serviceDesc.m_accessKey.c_str());
             Aws::String secretKey(m_serviceDesc.m_secretKey.c_str());
@@ -280,18 +282,18 @@ namespace GridMate
 
             m_client = new Aws::GameLift::GameLiftClient(cred, config);
 
+            Aws::GameLift::Model::DescribeGameSessionsRequest request;
+
             if (m_useFleetId)
             {
-                Aws::GameLift::Model::UpdateFleetAttributesRequest request;
                 request.SetFleetId(m_fleetId);
-                m_updateFleetAttributesOutcomeCallable = m_client->UpdateFleetAttributesCallable(request);
             }
             else
             {
-                Aws::GameLift::Model::UpdateAliasRequest request;
                 request.SetAliasId(m_aliasId);
-                m_updateAliasOutcomeCallable = m_client->UpdateAliasCallable(request);
             }
+
+            m_describeGameSessionsOutcomeCallable = m_client->DescribeGameSessionsCallable(request);
         }
 
         return m_clientStatus != GameLift_Failed;

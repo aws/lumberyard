@@ -102,6 +102,12 @@ namespace AzToolsFramework
         void UpdateAssetDisplay();
         void OnEditButtonClicked();
         void ShowContextMenu(const QPoint& pos);
+
+        void SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint, void* editNotifyTarget);
+        void SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint);
+
+    private:
+        void ForceSetCurrentAssetID(const AZ::Data::AssetId& newID);
     };
 
     class AssetPropertyHandlerDefault

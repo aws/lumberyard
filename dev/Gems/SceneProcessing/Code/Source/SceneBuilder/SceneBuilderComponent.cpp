@@ -9,8 +9,10 @@
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <SceneBuilder/Source/SceneBuilderComponent.h>
+#include <SceneBuilder/SceneBuilderComponent.h>
 
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
@@ -55,30 +57,29 @@ namespace SceneBuilder
         const char* gameFolder = nullptr;
         AzToolsFramework::AssetSystemRequestBus::BroadcastResult(gameFolder, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAbsoluteDevGameFolderPath);
         AZStd::string configPath = AZStd::string::format("%s/Config/Editor.xml", gameFolder);
-        m_sceneSystemEntity = AZ::SceneAPI::SceneCore::EntityConstructor::BuildSceneSystemEntity(configPath.c_str());
+        AZ::Entity* sceneSystemEntity = AZ::SceneAPI::SceneCore::EntityConstructor::BuildSceneSystemEntity(configPath.c_str());
 
-        AZ_Error(AZ::SceneAPI::Utilities::ErrorWindow, m_sceneSystemEntity, "Unable to create a system component for the SceneAPI.\n");
-        if (m_sceneSystemEntity)
+        AZ_Error(AZ::SceneAPI::Utilities::ErrorWindow, sceneSystemEntity, "Unable to create a system component for the SceneAPI.\n");
+        if (sceneSystemEntity)
         {
-            m_sceneSystemEntity->Init();
-            m_sceneSystemEntity->Activate();
+            sceneSystemEntity->Init();
+            sceneSystemEntity->Activate();
         }
     }
 
     void BuilderPluginComponent::Deactivate()
     {
-        if (m_sceneSystemEntity)
-        {
-            m_sceneSystemEntity->Deactivate();
-            delete m_sceneSystemEntity;
-            m_sceneSystemEntity = nullptr;
-        }
-
         m_sceneBuilder.BusDisconnect();
     }
 
     void BuilderPluginComponent::Reflect(AZ::ReflectContext* context)
     {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serializeContext)
+        {
+            serializeContext->Class<BuilderPluginComponent, AZ::Component>()->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }));
+        }
     }
 
 } // namespace SceneBuilder

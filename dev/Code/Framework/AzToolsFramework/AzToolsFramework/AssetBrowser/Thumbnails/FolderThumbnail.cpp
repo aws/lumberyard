@@ -50,7 +50,7 @@ namespace AzToolsFramework
 
         void FolderThumbnail::LoadThread()
         {
-            auto folderKey = qobject_cast<const FolderThumbnailKey*>(m_key);
+            auto folderKey = azrtti_cast<const FolderThumbnailKey*>(m_key.data());
             AZ_Assert(folderKey, "Incorrect key type, excpected FolderThumbnailKey");
 
             const char* engineRoot = nullptr;
@@ -71,7 +71,7 @@ namespace AzToolsFramework
 
         bool FolderThumbnailCache::IsSupportedThumbnail(SharedThumbnailKey key) const
         {
-            return qobject_cast<const FolderThumbnailKey*>(key.data());
+            return azrtti_istypeof<const FolderThumbnailKey*>(key.data());
         }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

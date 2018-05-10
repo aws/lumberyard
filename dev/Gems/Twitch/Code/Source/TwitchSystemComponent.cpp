@@ -50,10 +50,8 @@ namespace Twitch
     {
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serialize->Class<TwitchSystemComponent>()
-                ->Version(1)
-                ->SerializerForEmptyClass()
-                ;
+            serialize->Class<TwitchSystemComponent, AZ::Component>()
+                ->Version(1);
 
             if (AZ::EditContext* ec = serialize->GetEditContext())
             {

@@ -168,7 +168,7 @@ export class PlayerAccountIndexComponent extends AbstractCloudGemIndexComponent 
             this.isLoading = false;
         }, err => {            
             this.isLoading = false;
-            this.list();
+            this.listModel = [];
         })
 
     }

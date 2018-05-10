@@ -88,10 +88,10 @@ namespace AZ
 *    - Asserts should be used for critical errors, where the program cannot continue. They print the message together
 *      with file and line number, and a call stack if available. They then break program execution.
 *    - Errors should be used where something is clearly wrong, but the program can continue safely. They print the message
-*      together with file and line number, and a call stack if available. Depending on platform they will notify the user that
+*      together with file and line number. Depending on platform they will notify the user that
 *      an error has occurred, e.g. with a message box or an on-screen message.
-*    - Warnings should be used when something could be wrong. They print the message together with file and line number, and
-*      a call stack if available, but take no other action.
+*    - Warnings should be used when something could be wrong. They print the message together with file and line number, but
+*      take no other action.
 *    - Printfs are purely informational. They print the message unadorned.
 *    - Traces which have "Once" at the end will display the message only once for the life of the application instance.
 *

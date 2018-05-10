@@ -13,13 +13,15 @@
 
 #include <SystemComponent.h>
 
-#include <Builder/CoreBuilderSystemComponent.h>
+#include <Asset/RuntimeAssetSystemComponent.h>
 #include <ScriptCanvas/Core/Graph.h>
 
 #include <ScriptCanvas/Data/DataRegistry.h>
 #include <ScriptCanvas/Libraries/Libraries.h>
 
 #include <ScriptCanvas/Debugger/Debugger.h>
+#include <ScriptCanvas/Execution/RuntimeComponent.h>
+#include <ScriptCanvas/Variable/GraphVariableManagerComponent.h>
 
 namespace ScriptCanvas
 {
@@ -38,9 +40,11 @@ namespace ScriptCanvas
             // Components
             ScriptCanvas::Debugger::Component::CreateDescriptor(),
             ScriptCanvas::Graph::CreateDescriptor(),
+            ScriptCanvas::GraphVariableManagerComponent::CreateDescriptor(),
+            ScriptCanvas::RuntimeComponent::CreateDescriptor(),
             
             // ScriptCanvasBuilder
-            ScriptCanvasBuilder::CoreBuilderSystemComponent::CreateDescriptor()
+            ScriptCanvas::RuntimeAssetSystemComponent::CreateDescriptor()
         });
         
         ScriptCanvas::InitNodeRegistry();
@@ -60,7 +64,7 @@ namespace ScriptCanvas
     {   
         return std::initializer_list<AZ::Uuid> {
             azrtti_typeid<ScriptCanvas::SystemComponent>(),
-            azrtti_typeid<ScriptCanvasBuilder::CoreBuilderSystemComponent>(),
+            azrtti_typeid<ScriptCanvas::RuntimeAssetSystemComponent>(),
             azrtti_typeid<ScriptCanvas::Debugger::Component>(),
         };
     }

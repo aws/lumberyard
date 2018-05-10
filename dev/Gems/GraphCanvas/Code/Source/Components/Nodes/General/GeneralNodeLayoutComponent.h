@@ -15,10 +15,10 @@
 
 #include <AzCore/Component/Component.h>
 
-#include <Components/Nodes/NodeLayoutBus.h>
 #include <Components/Nodes/NodeLayoutComponent.h>
-#include <Components/StyleBus.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
+#include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 class QGraphicsGridLayout;
 

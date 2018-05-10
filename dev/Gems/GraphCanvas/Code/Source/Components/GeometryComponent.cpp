@@ -71,7 +71,7 @@ namespace GraphCanvas
             ->Field("Position", &GeometryComponentSaveData::m_position)
         ;
 
-        serializeContext->Class<GeometryComponent>()
+        serializeContext->Class<GeometryComponent, AZ::Component>()
             ->Version(4, &GeometryComponentVersionConverter)
             ->Field("SaveData", &GeometryComponent::m_saveData)
         ;
@@ -89,12 +89,12 @@ namespace GraphCanvas
     void GeometryComponent::Init()
     {
         GeometryRequestBus::Handler::BusConnect(GetEntityId());
+        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void GeometryComponent::Activate()
     {
-        SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
-        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
+        SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());        
     }
 
     void GeometryComponent::Deactivate()
@@ -106,6 +106,8 @@ namespace GraphCanvas
     void GeometryComponent::OnSceneSet(const AZ::EntityId& scene)
     {
         VisualNotificationBus::Handler::BusConnect(GetEntityId());
+
+        m_saveData.RegisterIds(GetEntityId(), scene);
     }
 
     AZ::Vector2 GeometryComponent::GetPosition() const
@@ -119,6 +121,7 @@ namespace GraphCanvas
         {
             m_saveData.m_position = position;
             GeometryNotificationBus::Event(GetEntityId(), &GeometryNotifications::OnPositionChanged, GetEntityId(), position);
+            m_saveData.SignalDirty();
         }
     }
 
@@ -141,7 +144,7 @@ namespace GraphCanvas
 
     void GeometryComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
     {
-        GeometryComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<GeometryComponent, GeometryComponentSaveData>();
+        GeometryComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<GeometryComponentSaveData>();
 
         if (saveData)
         {
@@ -151,7 +154,7 @@ namespace GraphCanvas
 
     void GeometryComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
     {
-        GeometryComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<GeometryComponent, GeometryComponentSaveData>();
+        GeometryComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<GeometryComponentSaveData>();
 
         if (saveData)
         {

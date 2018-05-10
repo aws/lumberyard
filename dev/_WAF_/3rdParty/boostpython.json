@@ -1,19 +1,19 @@
 {
 	"name": "boostpython",
-	"source": "@ROOT@/Code/SDKs/boost",
+	"source": "@3P:boost@",
 	"description": "Boost header library including python support libraries",
 	"defines": [],
 	"lib_required": "False",
 	"platform": {
 		"win_x64_vs2013": {
 			"includes": [
-				"@ROOT@/Code/SDKs/boost"
+				"."
 			],
 			"importlibpath": [
-				"@ROOT@/Code/Sandbox/SDKs/boost/lib/windows/x64"
+				"lib/windows/x64"
 			],
 			"sharedlibpath": [
-				"@ROOT@/Code/Sandbox/SDKs/boost/lib/windows/x64"
+				"lib/windows/x64"
 			],
 			"import_debug": [
 				"boost_python-vc120-mt-gd-1_61.lib"
@@ -33,13 +33,13 @@
 		},
 		"win_x64_vs2015": {
 			"includes": [
-				"@ROOT@/Code/SDKs/boost"
+				"."
 			],
 			"importlibpath": [
-				"@ROOT@/Code/Sandbox/SDKs/boost/lib/windows/x64"
+				"lib/windows/x64"
 			],
 			"sharedlibpath": [
-				"@ROOT@/Code/Sandbox/SDKs/boost/lib/windows/x64"
+				"lib/windows/x64"
 			],
 			"import_debug": [
 				"boost_python-vc140-mt-gd-1_61.lib"
@@ -57,15 +57,16 @@
 				"boost_python-vc120-mt-gd-1_61.pdb"
 			]
 		},
+		"win_x64_vs2017": "@win_x64_vs2015",
 		"darwin_x64": {
 			"includes": [
-				"@ROOT@/Code/SDKs/boost"
+				"."
 			],
 			"libpath": [
-				"@ROOT@/Code/Sandbox/SDKs/boost/lib/macos"
+				"lib/macos"
 			],
 			"sharedlibpath": [
-				"@ROOT@/Code/Sandbox/SDKs/boost/lib/macos"
+				"lib/macos"
 			],
 			"lib": [
 				"libboost_python.a"

@@ -516,13 +516,13 @@ void CTrackViewTrack::SelectKey(unsigned int keyIndex, bool bSelect)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewTrack::SetKeyTime(const int index, const float time)
+void CTrackViewTrack::SetKeyTime(const int index, const float time, bool notifyListeners)
 {
     const float bOldTime = m_pAnimTrack->GetKeyTime(index);
 
     m_pAnimTrack->SetKeyTime(index, time);
 
-    if (bOldTime != time)
+    if (notifyListeners && (bOldTime != time))
     {
         m_pTrackAnimNode->GetSequence()->OnKeysChanged();
     }
@@ -764,16 +764,19 @@ void CTrackViewTrack::PasteKeys(XmlNodeRef xmlNode, const float timeOffset)
 {
 
     CTrackViewSequence* sequence = GetSequence();
+    AZ_Assert(sequence, "Expected sequence not to be null.");
 
     if (sequence->GetSequenceType() == SequenceType::Legacy)
-    {
-        m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
-    }
-    else
     {
         AZ_Assert(CUndo::IsRecording(), "Expected Undo Recording");
         CUndo::Record(new CUndoTrackObject(this, sequence));
         m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
         CUndo::Record(new CUndoAnimKeySelection(sequence));
+    }
+    else
+    {
+        AzToolsFramework::ScopedUndoBatch undoBatch("Paste Keys");
+        m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
+        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
     }
 }

@@ -107,3 +107,6 @@ def show_signature_check(signature, to_sign, result):
 
 def show_signature(file_path, signature):
     output_message('Signature of {} is {}'.format(file_path, signature))  
+
+def skipping_unmodified_pak(file_path):
+    output_message('No updated content in {} - skipping'.format(file_path))

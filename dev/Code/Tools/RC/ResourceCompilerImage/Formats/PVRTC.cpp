@@ -30,8 +30,8 @@
 #define _WINDLL_IMPORT
 #endif
 
-#include "PowerVRTexTool/Include/PVRTexture.h"
-#include "PowerVRTexTool/Include/PVRTextureUtilities.h"
+#include <PVRTexture.h>
+#include <PVRTextureUtilities.h>
 
 //////////////////////////////////////////////////////////////////////////
 

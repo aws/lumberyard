@@ -298,6 +298,13 @@ enum
     GMEM_FLOAT_START_SLOT = 96
 };
 
+enum
+{
+    GMEM_ARM_COLOR_SLOT = 93,
+    GMEM_ARM_DEPTH_SLOT = 94,
+    GMEM_ARM_STENCIL_SLOT = 95
+};
+
 /* CONFETTI NOTE: DAVID SROUR
  * Following is the reserved slot for PLS extension (https://www.khronos.org/registry/gles/extensions/EXT/EXT_shader_pixel_local_storage.txt).
  * It will get picked up when a RWStructuredBuffer resource is defined at the following reserved slot.
@@ -324,6 +331,16 @@ enum
     GMEM_PLS_RW_SLOT = 62
 };                              // READ/WRITE
 
+typedef enum _FRAMEBUFFER_FETCH_TYPE
+{
+    FBF_NONE = 0,
+    FBF_EXT_COLOR = 1 << 0,
+    FBF_ARM_COLOR = 1 << 1,
+    FBF_ARM_DEPTH = 1 << 2,
+    FBF_ARM_STENCIL = 1 << 3,
+    FBF_ANY = FBF_EXT_COLOR | FBF_ARM_COLOR | FBF_ARM_DEPTH | FBF_ARM_STENCIL
+} FRAMEBUFFER_FETCH_TYPE;
+
 
 static const uint32_t MAIN_PHASE = 0;
 static const uint32_t HS_FORK_PHASE = 1;
@@ -339,6 +356,12 @@ enum
     MAX_COLOR_MRT = 8
 };
 
+enum
+{
+    INPUT_RENDERTARGET = 1 << 0,
+    OUTPUT_RENDERTARGET = 1 << 1
+};
+
 typedef struct HLSLCrossCompilerContext_TAG
 {
 	bstring glsl;
@@ -351,10 +374,7 @@ typedef struct HLSLCrossCompilerContext_TAG
 	int havePostShaderCode[NUM_PHASES];
 	uint32_t currentPhase;
 
-    // GMEM INPUT AND OUTPUT TYPES MUST MATCH!
-    // THIS TABLE KEEPS TRACK OF WHAT THE OUTPUT TYPE SHOULD
-    // BE IF GMEM INPUT WAS DECLARED TO THE SAME SLOT #
-    uint32_t gmemOutputNumElements[MAX_COLOR_MRT];
+	uint32_t rendertargetUse[MAX_COLOR_MRT];
 
 	int indent;
 	unsigned int flags;

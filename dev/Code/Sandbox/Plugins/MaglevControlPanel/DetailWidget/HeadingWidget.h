@@ -24,7 +24,7 @@ class HeadingWidget
 
 public:
 
-    HeadingWidget();
+    HeadingWidget(QWidget* parent);
 
     void SetTitleText(const QString& text);
     void HideTitle();

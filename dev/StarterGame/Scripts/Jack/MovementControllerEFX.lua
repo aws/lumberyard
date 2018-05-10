@@ -297,14 +297,14 @@ local movementcontroller =
 		{
 			OnEmotionAnimationEvent = function(self, event, sm)
 				if(event.eventTypeName == "IdleTurnTransition") then
-					sm.UserData:SetAnimTagParameter(sm.UserData.idleTurnTransitionReachedParam, true);
+					sm.UserData:SetNamedAnimTagParameter("IdleTurnTransition", true);
 				end
 			end,
 			OnEnter = function(self, sm)
 				sm.UserData.animParamUpdateFlags:reset();
 				sm.UserData.animParamUpdateFlags.TurnAngle.update = false;
 				sm.UserData.animParamUpdateFlags.TurnAngle.show = true;
-				sm.UserData:SetAnimTagParameter(sm.UserData.idleTurnTransitionReachedParam, false);
+				sm.UserData:SetNamedAnimTagParameter("IdleTurnTransition", false);
 				StarterGameEntityUtility.SetCharacterHalfHeight(sm.EntityId, sm.UserData.Properties.CrouchingHalfHeight);
 				sm.UserData:SetCanFire(false);
 			end,
@@ -336,13 +336,13 @@ local movementcontroller =
 		{
 			OnEmotionAnimationEvent = function(self, event, sm)
 				if(event.eventTypeName == "TransitionReached") then
-					sm.UserData:SetAnimTagParameter(sm.UserData.motionTurnTransitionReachedParam, event.isEventStart);
+					sm.UserData:SetNamedAnimTagParameter("MotionTurnTransitionReached", event.isEventStart);
 				end
 				if(event.eventTypeName == "EarlyOut") then
-					sm.UserData:SetAnimTagParameter(sm.UserData.motionTurnEarlyOutParam, event.isEventStart);
+					sm.UserData:SetNamedAnimTagParameter("MotionTurnEarlyOut", event.isEventStart);
 				end
 				if(event.eventTypeName == "MotionTurn") then
-					sm.UserData:SetAnimTagParameter(sm.UserData.motionTurnMotionTurnTagParam, event.isEventStart);
+					sm.UserData:SetNamedAnimTagParameter("MotionTurnMotionTurnTag", event.isEventStart);
 				end
 			end,
 			OnEnter = function(self, sm)
@@ -355,9 +355,9 @@ local movementcontroller =
 				sm.UserData.animParamUpdateFlags.MotionTurnTransitionReached.show = true;
 				sm.UserData.animParamUpdateFlags.MotionTurnEarlyOut.show = true;
 				sm.UserData.animParamUpdateFlags.MotionTurnMotionTurnTag.show = true;
-				sm.UserData:SetAnimTagParameter(sm.UserData.motionTurnTransitionReachedParam, false);
-				sm.UserData:SetAnimTagParameter(sm.UserData.motionTurnEarlyOutParam, false);
-				sm.UserData:SetAnimTagParameter(sm.UserData.motionTurnMotionTurnTagParam, false);
+				sm.UserData:SetNamedAnimTagParameter("MotionTurnTransitionReached", false);
+				sm.UserData:SetNamedAnimTagParameter("MotionTurnEarlyOut", false);
+				sm.UserData:SetNamedAnimTagParameter("MotionTurnMotionTurnTag", false);
 				sm.UserData:SetCanFire(true);
 			end,
 			OnExit = function(self, sm)
@@ -421,7 +421,8 @@ local movementcontroller =
 				-- This is primarily for the thruster particle effects because they can't be
 				-- done through the animation event system.
 				local eventId = GameplayNotificationId(sm.UserData.entityId, "DoubleJumped", "float");
-				GameplayNotificationBus.Event.OnEventBegin(eventId, sm.UserData.entityId);	
+				GameplayNotificationBus.Event.OnEventBegin(eventId, sm.UserData.entityId);
+				AudioTriggerComponentRequestBus.Event.ExecuteTrigger(sm.UserData.entityId, "Play_pla_foley_jump_doublejump");
 				sm.UserData:SetCanFire(false);
 				sm.UserData.fallngPrevTm = nil;
 			end,
@@ -489,7 +490,7 @@ local movementcontroller =
 		{
 			OnEmotionAnimationEvent = function(self, event, sm)
 				if(event.eventTypeName == "IdleTurnTransition") then
-					sm.UserData:SetAnimTagParameter(sm.UserData.idleTurnTransitionReachedParam, true);
+					sm.UserData:SetNamedAnimTagParameter("IdleTurnTransition", true);
 				end
 			end,
 			OnEnter = function(self, sm)
@@ -497,7 +498,7 @@ local movementcontroller =
 				sm.UserData.animParamUpdateFlags.TurnAngle.update = false;
 				sm.UserData.animParamUpdateFlags.TurnAngle.show = true;
 				sm.UserData.animParamUpdateFlags.Speed.show = true;
-				sm.UserData:SetAnimTagParameter(sm.UserData.idleTurnTransitionReachedParam, false);
+				sm.UserData:SetNamedAnimTagParameter("IdleTurnTransition", false);
 				sm.UserData:SetCanFire(true);
 			end,
 			OnExit = function(self, sm)
@@ -757,29 +758,6 @@ function movementcontroller:OnActivate()
 	self.teleportToHandler = GameplayNotificationBus.Connect(self, self.teleportToEventId);
 	
 	self.previousSpeed = 0;
-    self.speedParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "Speed");
-    self.aimingParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "Aiming");
-    self.speedDBufferParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "SpeedDBuffer");
-    self.turnSpeedParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "TurnSpeed");
-    self.turnAngleParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "TurnAngle");
-    self.turnAngleDBufferParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "TurnAngleDBuffer");
-    self.previousSpeedParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "PreviousSpeed");
-    self.slopeAngleParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "SlopeAngle");
-    self.isFallingParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "IsFalling");
-    self.wantsToJumpParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "WantsToJump");
-    self.shouldLandParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "ShouldLand");
-    self.landTypeParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "LandType");
-    self.previousTurningParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "PreviousTurning");
-    self.wantsToStrafeParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "WantsToStrafe");
-    self.motionTurnTransitionReachedParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "MotionTurnTransitionReached");
-    self.motionTurnEarlyOutParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "MotionTurnEarlyOut");
-    self.motionTurnMotionTurnTagParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "MotionTurnMotionTurnTag");
-    self.wantsToCrouchParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "WantsToCrouch");
-    self.wantsToInteractParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "WantsToInteract");
-    self.deathStateParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "DeathState");
-    self.idleTurnTransitionReachedParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "IdleTurnTransition");
-    self.wasHitParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "WasHit");
-    self.hitDirectionParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "HitDirection");
 	self.actorNotificationHandler = ActorNotificationBus.Connect(self, self.entityId);
 	self.turningLastFrame = false;
 	self.hitParam = 0;
@@ -787,48 +765,49 @@ function movementcontroller:OnActivate()
 	self:OnStateTransitionStart(nil, self.Properties.InitialState);
 	self.fallingPrevTm = nil;
 end
-function movementcontroller:paramToStringIntro(name, paramIndex)
+function movementcontroller:paramToStringIntro(name)
+    paramIndex = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, name);
 	return name.."["..tostring(paramIndex).."]: ";
 end
-function movementcontroller:floatParamToString(name, paramIndex, show)
+function movementcontroller:floatParamToString(name, show)
 	if(show) then
-		return self:paramToStringIntro(name, paramIndex)..tostring(AnimGraphComponentRequestBus.Event.GetParameterFloat(self.entityId, paramIndex))..", ";
+		return self:paramToStringIntro(name)..tostring(AnimGraphComponentRequestBus.Event.GetNamedParameterFloat(self.entityId, name))..", ";
 	else
 		return "";
 	end
 end
-function movementcontroller:boolParamToString(name, paramIndex, show)
+function movementcontroller:boolParamToString(name, show)
 	if(show) then
-		return self:paramToStringIntro(name, paramIndex)..tostring(AnimGraphComponentRequestBus.Event.GetParameterBool(self.entityId, paramIndex))..", ";
+		return self:paramToStringIntro(name)..tostring(AnimGraphComponentRequestBus.Event.GetNamedParameterBool(self.entityId, name))..", ";
 	else
 		return "";
 	end
 end
 function movementcontroller:printAnimState()
 	local output = self.animState.."::";
-	output = output..self:floatParamToString("Speed", self.speedParam, self.animParamUpdateFlags.Speed.show);
-	output = output..self:floatParamToString("SpeedDBuffer", self.speedDBufferParam, self.animParamUpdateFlags.Speed.show and not self.animParamUpdateFlags.Speed.update);
-	output = output..self:floatParamToString("TurnSpeed", self.turnSpeedParam, self.animParamUpdateFlags.TurnSpeed.show);
-	output = output..self:floatParamToString("TurnAngle", self.turnAngleParam, self.animParamUpdateFlags.TurnAngle.show);
-	output = output..self:floatParamToString("TurnAngleDBuffer", self.turnAngleDBufferParam, self.animParamUpdateFlags.TurnAngle.show and not self.animParamUpdateFlags.TurnAngle.update);
-	output = output..self:floatParamToString("PreviousSpeed", self.previousSpeedParam, self.animParamUpdateFlags.PreviousSpeed.show);
-	output = output..self:floatParamToString("PreviousTurning", self.previousTurningParam, self.animParamUpdateFlags.PreviousTurning.show);
-	output = output..self:floatParamToString("SlopeAngle", self.slopeAngleParam, self.animParamUpdateFlags.SlopeAngle.show);
-	output = output..self:boolParamToString("IsFalling", self.isFallingParam, self.animParamUpdateFlags.IsFalling.show);
-	output = output..self:boolParamToString("WantsToJump", self.wantsToJumpParam, self.animParamUpdateFlags.WantsToJump.show);
-	output = output..self:boolParamToString("ShouldLand", self.shouldLandParam, self.animParamUpdateFlags.ShouldLand.show);
-	output = output..self:floatParamToString("LandType", self.landTypeParam, self.animParamUpdateFlags.LandType.show);
-	output = output..self:boolParamToString("WantsToStrafe", self.wantsToStrafeParam, self.animParamUpdateFlags.WantsToStrafe.show);
-	output = output..self:boolParamToString("MotionTurnTransitionReached", self.motionTurnTransitionReachedParam, self.animParamUpdateFlags.MotionTurnTransitionReached.show);
-	output = output..self:boolParamToString("MotionTurnEarlyOut", self.motionTurnEarlyOutParam, self.animParamUpdateFlags.MotionTurnEarlyOut.show);
-	output = output..self:boolParamToString("MotionTurnMotionTurnTag", self.motionTurnMotionTurnTagParam, self.animParamUpdateFlags.MotionTurnMotionTurnTag.show);
-	output = output..self:boolParamToString("WantsToCrouch", self.wantsToCrouchParam, self.animParamUpdateFlags.WantsToCrouch.show);
-	output = output..self:boolParamToString("WantsToInteract", self.wantsToInteractParam, self.animParamUpdateFlags.WantsToInteract.show);
-	output = output..self:floatParamToString("DeathState", self.deathStateParam, self.animParamUpdateFlags.DeathState.show);
-	output = output..self:boolParamToString("IdleTurnTransition", self.idleTurnTransitionReachedParam, self.animParamUpdateFlags.IdleTurnTransition.show);
-	output = output..self:boolParamToString("WasHit", self.wasHitParam, self.animParamUpdateFlags.WasHit.show);
-	output = output..self:floatParamToString("HitDirection", self.hitDirectionParam, self.animParamUpdateFlags.HitDirection.show);
-	output = output..self:floatParamToString("Aiming", self.aimingParam, self.animParamUpdateFlags.Aiming.show);
+	output = output..self:floatParamToString("Speed", self.animParamUpdateFlags.Speed.show);
+	output = output..self:floatParamToString("SpeedDBuffer", self.animParamUpdateFlags.Speed.show and not self.animParamUpdateFlags.Speed.update);
+	output = output..self:floatParamToString("TurnSpeed", self.animParamUpdateFlags.TurnSpeed.show);
+	output = output..self:floatParamToString("TurnAngle", self.animParamUpdateFlags.TurnAngle.show);
+	output = output..self:floatParamToString("TurnAngleDBuffer", self.animParamUpdateFlags.TurnAngle.show and not self.animParamUpdateFlags.TurnAngle.update);
+	output = output..self:floatParamToString("PreviousSpeed", self.animParamUpdateFlags.PreviousSpeed.show);
+	output = output..self:floatParamToString("PreviousTurning", self.animParamUpdateFlags.PreviousTurning.show);
+	output = output..self:floatParamToString("SlopeAngle", self.animParamUpdateFlags.SlopeAngle.show);
+	output = output..self:boolParamToString("IsFalling", self.animParamUpdateFlags.IsFalling.show);
+	output = output..self:boolParamToString("WantsToJump", self.animParamUpdateFlags.WantsToJump.show);
+	output = output..self:boolParamToString("ShouldLand", self.animParamUpdateFlags.ShouldLand.show);
+	output = output..self:floatParamToString("LandType", self.animParamUpdateFlags.LandType.show);
+	output = output..self:boolParamToString("WantsToStrafe", self.animParamUpdateFlags.WantsToStrafe.show);
+	output = output..self:boolParamToString("MotionTurnTransitionReached", self.animParamUpdateFlags.MotionTurnTransitionReached.show);
+	output = output..self:boolParamToString("MotionTurnEarlyOut", self.animParamUpdateFlags.MotionTurnEarlyOut.show);
+	output = output..self:boolParamToString("MotionTurnMotionTurnTag", self.animParamUpdateFlags.MotionTurnMotionTurnTag.show);
+	output = output..self:boolParamToString("WantsToCrouch", self.animParamUpdateFlags.WantsToCrouch.show);
+	output = output..self:boolParamToString("WantsToInteract", self.animParamUpdateFlags.WantsToInteract.show);
+	output = output..self:floatParamToString("DeathState", self.animParamUpdateFlags.DeathState.show);
+	output = output..self:boolParamToString("IdleTurnTransition", self.animParamUpdateFlags.IdleTurnTransition.show);
+	output = output..self:boolParamToString("WasHit", self.animParamUpdateFlags.WasHit.show);
+	output = output..self:floatParamToString("HitDirection", self.animParamUpdateFlags.HitDirection.show);
+	output = output..self:floatParamToString("Aiming", self.animParamUpdateFlags.Aiming.show);
 	Debug.Log(output);
 end
 function movementcontroller:GetLandType()
@@ -1082,43 +1061,43 @@ function movementcontroller:UpdateAnimationParams(deltaTime, lockTurnAngle)
 	local vel = (tm:GetColumn(1) * moveMag * maxSpeed);
 	speed = moveMag * maxSpeed;
 	if(self.animParamUpdateFlags.Speed.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.speedParam, speed);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "Speed", speed);
 	else
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.speedDBufferParam, speed);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "SpeedDBuffer", speed);
 	end
 	if(self.animParamUpdateFlags.PreviousSpeed.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.previousSpeedParam, self.previousSpeed);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "PreviousSpeed", self.previousSpeed);
 	end
 	local slopeAngle = utilities.GetSlopeAngle(self);
 	if(self.animParamUpdateFlags.SlopeAngle.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.slopeAngleParam, slopeAngle);	
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "SlopeAngle", slopeAngle);	
 	end
 	if(self.animParamUpdateFlags.ShouldLand.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.shouldLandParam, self:ShouldLand());
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "ShouldLand", self:ShouldLand());
 	end
 	if(self.animParamUpdateFlags.IsFalling.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.isFallingParam, self:IsFalling());
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "IsFalling", self:IsFalling());
 	end
 	if(self.animParamUpdateFlags.WantsToJump.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.wantsToJumpParam, self:WantsToJump());
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "WantsToJump", self:WantsToJump());
 	end
 	if(self.animParamUpdateFlags.LandType.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.landTypeParam, self:GetLandType());
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "LandType", self:GetLandType());
 	end
 	if(self.animParamUpdateFlags.PreviousTurning.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.previousTurningParam, self.turningLastFrame);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "PreviousTurning", self.turningLastFrame);
 	end	
 	if(self.animParamUpdateFlags.WantsToStrafe.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.wantsToStrafeParam, self.wantsToStrafe);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "WantsToStrafe", self.wantsToStrafe);
 	end	
 	if(self.animParamUpdateFlags.WantsToCrouch.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.wantsToCrouchParam, self.wantsToCrouch);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "WantsToCrouch", self.wantsToCrouch);
 	end		
 	if(self.animParamUpdateFlags.WasHit.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.wasHitParam, self.wasHit);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "WasHit", self.wasHit);
 	end	
 	if(self.animParamUpdateFlags.HitDirection.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.hitDirectionParam, self.hitParam);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "HitDirection", self.hitParam);
 	end		
 	self.previousSpeed = speed;
 	self.turningLastFrame = self:IsLargeAngleDelta();
@@ -1139,12 +1118,12 @@ function movementcontroller:UpdateRotation(deltaTime, angleDelta, lockTurnAngle)
 	local turnSpeed = self:Rad2Deg(turnSpeedRad);
 	local turnAngle = self:Rad2Deg(angleDelta);
 	if(self.animParamUpdateFlags.TurnSpeed.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.turnSpeedParam, turnSpeed);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "TurnSpeed", turnSpeed);
 	end
 	if(self.animParamUpdateFlags.TurnAngle.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.turnAngleParam, turnAngle);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "TurnAngle", turnAngle);
 	else
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.turnAngleDBufferParam, turnAngle);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "TurnAngleDBuffer", turnAngle);
 	end
 end
 
@@ -1224,7 +1203,7 @@ function movementcontroller:Die()
 		if ((self.hitParam > 0.25) and (self.hitParam < 0.75)) then
 			deathState = self.DeathStateBack;
 		end
-    	AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.deathStateParam, deathState);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "DeathState", deathState);
 	end		
 end
 
@@ -1299,14 +1278,14 @@ function movementcontroller:StartInteract(posEntity, camEntity)
 	self.InteractPosEntity = posEntity;
 	self.InteractCamEntity = camEntity;
 	if(self.animParamUpdateFlags.WantsToInteract.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.wantsToInteractParam, true);
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "WantsToInteract", true);
 	end		
 end
 
 function movementcontroller:EndInteract()
 	if(self.animParamUpdateFlags.WantsToInteract.update == true) then
-    	AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.wantsToInteractParam, false);
-	end		
+    	AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "WantsToInteract", false);
+	end
 end
 	
 function movementcontroller:SetControlsEnabled(newControlsEnabled)
@@ -1442,8 +1421,8 @@ function movementcontroller:RotateCharacterToSlope()
 	local worldTm = Transform.CreateFromColumns(right, forward, up, pos);
 	TransformBus.Event.SetWorldTM(self.entityId, worldTm);
 end
-function movementcontroller:SetAnimTagParameter(paramId, state)
-    AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, paramId, state);
+function movementcontroller:SetNamedAnimTagParameter(paramName, state)
+    AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, paramName, state);
 end
 
 return movementcontroller;

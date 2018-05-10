@@ -409,5 +409,26 @@ private:
     static bool s_reflectionDone;
 };
 
+//Class to hold ePropertyMotion (IVariable::DT_MOTION )
+class CReflectedVarMotion
+    : public CReflectedVar
+{
+public:
+    AZ_RTTI(CReflectedVarMotion, "{66397EFB-620A-40B8-8C66-D6AECF690DF5}", CReflectedVar)
+
+    CReflectedVarMotion(const AZStd::string& name)
+        : CReflectedVar(name)
+        , m_assetId(0) {}
+
+    CReflectedVarMotion()
+        : m_assetId(0) {}
+
+    AZStd::string varName() const { return m_varName; }
+    AZStd::string description() const { return m_description; }
+
+    AZStd::string m_motion;
+    AZ::Data::AssetId m_assetId;
+};
+
 
 #endif // CRYINCLUDE_EDITOR_UTILS_REFLECTEDVAR_H

@@ -51,7 +51,7 @@ namespace StarterGameGem
 		AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
 		if (serializeContext)
 		{
-			serializeContext->Class<ParticleManagerComponent>()
+			serializeContext->Class<ParticleManagerComponent, AZ::Component>()
 				->Version(1)
 				//->Field("Waypoints", &ParticleManagerComponent::m_waypoints)
 				//->Field("CurrentWaypoint", &ParticleManagerComponent::m_currentWaypoint)

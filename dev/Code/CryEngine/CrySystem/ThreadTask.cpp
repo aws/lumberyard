@@ -20,6 +20,13 @@
 #pragma warning(disable : 6312) // Possible infinite loop: use of the constant EXCEPTION_CONTINUE_EXECUTION in the exception-filter expression of a try-except. Execution restarts in the protected block
 #pragma warning(disable : 6322) // Empty _except block
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define THREADTASK_CPP_SECTION_1 1
+#define THREADTASK_CPP_SECTION_2 2
+#endif
+
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -256,6 +263,13 @@ void CThreadTask_Thread::ChangeProcessor(int nProcessor)
     }
     assert(THREAD_PRIORITY_IDLE <= m_nThreadPriority && m_nThreadPriority <= THREAD_PRIORITY_TIME_CRITICAL);
     SetThreadPriority(m_hThreadHandle, m_nThreadPriority);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREADTASK_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(ThreadTask_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(ANDROID)
     int err, syscallres;
     pid_t pid = gettid();
@@ -721,6 +735,10 @@ void CThreadTaskManager::SetThreadName(threadID dwThreadId, const char* sThreadN
 
     int old(CryGetIMemoryManager()->LocalSwitchToGlobalHeap());
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREADTASK_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(ThreadTask_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     {
         m_threadNameLock.Lock();

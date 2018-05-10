@@ -13,7 +13,6 @@
 #pragma once
 
 #include "CommandSystemConfig.h"
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/Command.h>
 #include <MCore/Source/CommandGroup.h>
 #include <EMotionFX/Source/Motion.h>

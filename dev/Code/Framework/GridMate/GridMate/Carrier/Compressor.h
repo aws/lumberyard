@@ -62,15 +62,28 @@ namespace GridMate
 
         /*
         * Finalizes the stream, and returns composed packet
-        * compData should be able to fit at least GetMaxCompressedBufferSize(uncompSize) bytes
+        * \param uncompData - buffer to compress
+        * \param uncompSize - length of data to compress from uncompData
+        * \param compData - should be able to fit at least GetMaxCompressedBufferSize(uncompSize) bytes
+        * \param compDataSize - size of compData buffer
+        * \param compSize - length of compressed data written into compData
+        *
+        * Chunk based compressors should loop internally in Compress() to compress all chunks of uncompData.
         */
-        virtual CompressorError Compress(const void* uncompData, size_t uncompSize, void* compData, size_t& compSize) = 0;
+        virtual CompressorError Compress(const void* uncompData, size_t uncompSize, void* compData, size_t compDataSize, size_t& compSize) = 0;
 
         /*
-         * Decompress packet
-         * uncompData should be able to fit at least GetDecompressedBufferSize(compressedDataSize)
+        * Decompress packet
+        * \param compData - buffer to decompress
+        * \param compSize - length of data to deccompress from compData
+        * \param uncompData - should be able to fit at least GetDecompressedBufferSize(compressedDataSize)
+        * \param uncompDataSize - size of uncompData buffer.
+        * \param consumedSize - the number of bytes processed out of compData. (previously named chunkSize)
+        * \param uncompSize - length of decompressed data written into uncompData
+        *
+        * Chunk based decompressors should loop internally in Decompress() to decompress all chunks of compData.
         */
-        virtual CompressorError Decompress(const void* compData, size_t compDataSize, void* uncompData, size_t& chunkSize, size_t& uncompSize) = 0;
+        virtual CompressorError Decompress(const void* compData, size_t compDataSize, void* uncompData, size_t uncompDataSize, size_t& consumedSize, size_t& uncompSize) = 0;
     };
 
     /**

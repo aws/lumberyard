@@ -77,8 +77,10 @@ namespace ThreadUtils
         // Called from main thread
         void Join(JobTraces& traces)
         {
-            m_handle.join();
-            m_handle.detach();
+            if(m_handle.joinable())
+            {
+                m_handle.join();
+            }
 
             if (m_trace)
             {

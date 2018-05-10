@@ -21,6 +21,17 @@
 #include "../Common/ReverseDepth.h"
 #include "../Common/RenderCapabilities.h"
 #include "D3DTiledShading.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DDEFERREDSHADING_CPP_SECTION_1 1
+#define D3DDEFERREDSHADING_CPP_SECTION_2 2
+#define D3DDEFERREDSHADING_CPP_SECTION_3 3
+#define D3DDEFERREDSHADING_CPP_SECTION_4 4
+#define D3DDEFERREDSHADING_CPP_SECTION_5 5
+#define D3DDEFERREDSHADING_CPP_SECTION_6 6
+#endif
+
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
@@ -263,6 +274,300 @@ float CTexPoolAtlas::_GetDebugUsage() const
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SRenderLight::CalculateScissorRect()
+{
+    Vec3 cameraPos = gcpRendD3D->GetCamera().GetPosition();
+    Vec3 vViewVec = m_Origin - cameraPos;
+    float fDistToLS =  vViewVec.GetLength();
+
+    // Use max of width/height for area lights.
+    float fMaxRadius = m_fRadius;
+    
+    if (m_Flags & DLF_AREA_LIGHT) // Use max for area lights.
+    {
+        fMaxRadius += max(m_fAreaWidth, m_fAreaHeight);
+    }
+    else if (m_Flags & DLF_DEFERRED_CUBEMAPS)
+    {
+        fMaxRadius = m_ProbeExtents.len();  // This is not optimal for a box
+    }
+    ITexture* pLightTexture = m_pLightImage ? m_pLightImage : NULL;
+    bool bProjectiveLight = (m_Flags & DLF_PROJECT) && pLightTexture && !(pLightTexture->GetFlags() & FT_REPLICATE_TO_ALL_SIDES);
+    bool bInsideLightVolume = fDistToLS <= fMaxRadius;
+    if (bInsideLightVolume && !bProjectiveLight)
+    {
+        //optimization when we are inside light frustum
+        m_sX = 0;
+        m_sY = 0;
+        m_sWidth  = gcpRendD3D->GetWidth();
+        m_sHeight = gcpRendD3D->GetHeight();
+
+        return;
+    }
+
+    // e_ScissorDebug will modify the view matrix here, so take a local copy
+    const Matrix44& mView = gcpRendD3D->m_RP.m_TI[gcpRendD3D->m_RP.m_nProcessThreadID].m_matView;
+    const Matrix44& mProj = gcpRendD3D->m_RP.m_TI[gcpRendD3D->m_RP.m_nProcessThreadID].m_matProj;
+
+    Vec3 vCenter = m_Origin;
+    float fRadius = fMaxRadius;
+
+    const int nMaxVertsToProject = 10;
+    int nVertsToProject = 4;
+    Vec3 pBRectVertices[nMaxVertsToProject];
+
+    Vec4 vCenterVS = Vec4(vCenter, 1) * mView;
+
+    if (!bInsideLightVolume)
+    {
+        // Compute tangent planes
+        float r = fRadius;
+        float sq_r = r * r;
+
+        Vec3 vLPosVS = Vec3(vCenterVS.x, vCenterVS.y, vCenterVS.z);
+        float lx = vLPosVS.x;
+        float ly = vLPosVS.y;
+        float lz = vLPosVS.z;
+        float sq_lx = lx * lx;
+        float sq_ly = ly * ly;
+        float sq_lz = lz * lz;
+
+        // Compute left and right tangent planes to light sphere
+        float sqrt_d = sqrt_tpl(max(sq_r * sq_lx  - (sq_lx + sq_lz) * (sq_r - sq_lz), 0.0f));
+        float nx = iszero(sq_lx + sq_lz) ? 1.0f : (r * lx + sqrt_d) / (sq_lx + sq_lz);
+        float nz = iszero(lz) ? 1.0f : (r - nx * lx) / lz;
+
+        Vec3 vTanLeft = Vec3(nx, 0, nz).normalized();
+
+        nx = iszero(sq_lx + sq_lz) ? 1.0f : (r * lx - sqrt_d) / (sq_lx + sq_lz);
+        nz = iszero(lz) ? 1.0f : (r - nx * lx) / lz;
+        Vec3 vTanRight = Vec3(nx, 0, nz).normalized();
+
+        pBRectVertices[0] = vLPosVS - r * vTanLeft;
+        pBRectVertices[1] = vLPosVS - r * vTanRight;
+
+        // Compute top and bottom tangent planes to light sphere
+        sqrt_d = sqrt_tpl(max(sq_r * sq_ly  - (sq_ly + sq_lz) * (sq_r - sq_lz), 0.0f));
+        float ny = iszero(sq_ly + sq_lz) ? 1.0f : (r * ly - sqrt_d) / (sq_ly + sq_lz);
+        nz = iszero(lz) ? 1.0f : (r - ny * ly) / lz;
+        Vec3 vTanBottom = Vec3(0, ny, nz).normalized();
+
+        ny = iszero(sq_ly + sq_lz) ? 1.0f :  (r * ly + sqrt_d) / (sq_ly + sq_lz);
+        nz = iszero(lz) ? 1.0f : (r - ny * ly) / lz;
+        Vec3 vTanTop = Vec3(0, ny, nz).normalized();
+
+        pBRectVertices[2] = vLPosVS - r * vTanTop;
+        pBRectVertices[3] = vLPosVS - r * vTanBottom;
+    }
+
+    if (bProjectiveLight)
+    {
+        // todo: improve/simplify projective case
+
+        Vec3 vRight  = m_ObjMatrix.GetColumn2();
+        Vec3 vUp      = -m_ObjMatrix.GetColumn1();
+        Vec3 pDirFront = m_ObjMatrix.GetColumn0();
+        pDirFront.NormalizeFast();
+
+        // Cone radius
+        float fConeAngleThreshold = 0.0f;
+        float fConeRadiusScale = /*min(1.0f,*/ tan_tpl((m_fLightFrustumAngle + fConeAngleThreshold) * (gf_PI / 180.0f));  //);
+        float fConeRadius = fRadius * fConeRadiusScale;
+
+        Vec3 pDiagA = (vUp + vRight);
+        float fDiagLen = 1.0f / pDiagA.GetLengthFast();
+        pDiagA *= fDiagLen;
+
+        Vec3 pDiagB = (vUp - vRight);
+        pDiagB *= fDiagLen;
+
+        float fPyramidBase =  sqrt_tpl(fConeRadius * fConeRadius * 2.0f);
+        pDirFront *= fRadius;
+
+        Vec3 pEdgeA  = (pDirFront + pDiagA * fPyramidBase);
+        Vec3 pEdgeA2 = (pDirFront - pDiagA * fPyramidBase);
+        Vec3 pEdgeB  = (pDirFront + pDiagB * fPyramidBase);
+        Vec3 pEdgeB2 = (pDirFront - pDiagB * fPyramidBase);
+
+        uint32 nOffset = 4;
+
+        // Check whether the camera is inside the extended bounding sphere that contains pyramid
+
+        // we are inside light frustum
+        // Put all pyramid vertices in view space
+        Vec4 pPosVS = Vec4(vCenter, 1) * mView;
+        pBRectVertices[nOffset++] = Vec3(pPosVS.x, pPosVS.y, pPosVS.z);
+        pPosVS = Vec4(vCenter + pEdgeA, 1) * mView;
+        pBRectVertices[nOffset++] = Vec3(pPosVS.x, pPosVS.y, pPosVS.z);
+        pPosVS = Vec4(vCenter + pEdgeB, 1) * mView;
+        pBRectVertices[nOffset++] = Vec3(pPosVS.x, pPosVS.y, pPosVS.z);
+        pPosVS = Vec4(vCenter + pEdgeA2, 1) * mView;
+        pBRectVertices[nOffset++] = Vec3(pPosVS.x, pPosVS.y, pPosVS.z);
+        pPosVS = Vec4(vCenter + pEdgeB2, 1) * mView;
+        pBRectVertices[nOffset++] = Vec3(pPosVS.x, pPosVS.y, pPosVS.z);
+
+        nVertsToProject = nOffset;
+    }
+
+    Vec3 vPMin = Vec3(1, 1, 999999.0f);
+    Vec2 vPMax = Vec2(0, 0);
+    Vec2 vMin = Vec2(1, 1);
+    Vec2 vMax = Vec2(0, 0);
+
+    int nStart = 0;
+
+    if (bInsideLightVolume)
+    {
+        nStart = 4;
+        vMin = Vec2(0, 0);
+        vMax = Vec2(1, 1);
+    }
+
+    const ICVar* scissorDebugCVar = iConsole->GetCVar("e_ScissorDebug");
+    int scissorDebugEnabled = scissorDebugCVar ? scissorDebugCVar->GetIVal() : 0;
+    Matrix44 invertedView;
+    if (scissorDebugEnabled)
+    {
+        invertedView = mView.GetInverted();
+    }
+
+    // Project all vertices
+    for (int i = nStart; i < nVertsToProject; i++)
+    {
+        if (scissorDebugEnabled)
+        {
+            if (gcpRendD3D->GetIRenderAuxGeom() != NULL)
+            {
+                Vec4 pVertWS = Vec4(pBRectVertices[i], 1) * invertedView;
+                Vec3 v = Vec3(pVertWS.x, pVertWS.y, pVertWS.z);
+                gcpRendD3D->GetIRenderAuxGeom()->DrawPoint(v, RGBA8(0xff, 0xff, 0xff, 0xff), 10);
+
+                int32 nPrevVert = (i - 1) < 0 ? nVertsToProject - 1 : (i - 1);
+                pVertWS = Vec4(pBRectVertices[nPrevVert], 1) * invertedView;
+                Vec3 v2 = Vec3(pVertWS.x, pVertWS.y, pVertWS.z);
+                gcpRendD3D->GetIRenderAuxGeom()->DrawLine(v, RGBA8(0xff, 0xff, 0x0, 0xff), v2, RGBA8(0xff, 0xff, 0x0, 0xff), 3.0f);
+            }
+        }
+
+        Vec4 vScreenPoint = Vec4(pBRectVertices[i], 1.0) * mProj;
+
+        //projection space clamping
+        vScreenPoint.w = max(vScreenPoint.w, 0.00000000000001f);
+        vScreenPoint.x = max(vScreenPoint.x, -(vScreenPoint.w));
+        vScreenPoint.x = min(vScreenPoint.x, vScreenPoint.w);
+        vScreenPoint.y = max(vScreenPoint.y, -(vScreenPoint.w));
+        vScreenPoint.y = min(vScreenPoint.y, vScreenPoint.w);
+
+        //NDC
+        vScreenPoint /= vScreenPoint.w;
+
+        //output coords
+        //generate viewport (x=0,y=0,height=1,width=1)
+        Vec2 vWin;
+        vWin.x = (1.0f + vScreenPoint.x) *  0.5f;
+        vWin.y = (1.0f + vScreenPoint.y) *  0.5f;  //flip coords for y axis
+
+        assert(vWin.x >= 0.0f && vWin.x <= 1.0f);
+        assert(vWin.y >= 0.0f && vWin.y <= 1.0f);
+
+        if (bProjectiveLight && i >= 4)
+        {
+            // Get light pyramid screen bounds
+            vPMin.x = min(vPMin.x, vWin.x);
+            vPMin.y = min(vPMin.y, vWin.y);
+            vPMax.x = max(vPMax.x, vWin.x);
+            vPMax.y = max(vPMax.y, vWin.y);
+
+            vPMin.z = min(vPMin.z, vScreenPoint.z); // if pyramid intersects the nearplane, the test is unreliable. (requires proper clipping)
+        }
+        else
+        {
+            // Get light sphere screen bounds
+            vMin.x = min(vMin.x, vWin.x);
+            vMin.y = min(vMin.y, vWin.y);
+            vMax.x = max(vMax.x, vWin.x);
+            vMax.y = max(vMax.y, vWin.y);
+        }
+    }
+
+    int iWidth = gcpRendD3D->GetWidth();
+    int iHeight = gcpRendD3D->GetHeight();
+    float fWidth = (float)iWidth;
+    float fHeight = (float)iHeight;
+
+    if (bProjectiveLight)
+    {
+        vPMin.x = (float)fsel(vPMin.z, vPMin.x, vMin.x); // Use sphere bounds if pyramid bounds are unreliable
+        vPMin.y = (float)fsel(vPMin.z, vPMin.y, vMin.y);
+        vPMax.x = (float)fsel(vPMin.z, vPMax.x, vMax.x);
+        vPMax.y = (float)fsel(vPMin.z, vPMax.y, vMax.y);
+
+        // Clamp light pyramid bounds to light sphere screen bounds
+        vMin.x = clamp_tpl<float>(vPMin.x, vMin.x, vMax.x);
+        vMin.y = clamp_tpl<float>(vPMin.y, vMin.y, vMax.y);
+        vMax.x = clamp_tpl<float>(vPMax.x, vMin.x, vMax.x);
+        vMax.y = clamp_tpl<float>(vPMax.y, vMin.y, vMax.y);
+    }
+
+    m_sX = (short)(vMin.x * fWidth);
+    m_sY = (short)((1.0f - vMax.y) * fHeight);
+    m_sWidth = (short)ceilf((vMax.x - vMin.x) * fWidth);
+    m_sHeight = (short)ceilf((vMax.y - vMin.y) * fHeight);
+
+    // make sure we don't create a scissor rect out of bound (D3DError)
+    m_sWidth = (m_sX + m_sWidth) > iWidth ? iWidth - m_sX : m_sWidth;
+    m_sHeight = (m_sY + m_sHeight) > iHeight ? iHeight - m_sY : m_sHeight;
+
+#if !defined(RELEASE)
+    if (scissorDebugEnabled)
+    {
+        // Render 2d areas additively on screen
+        IRenderAuxGeom* pAuxRenderer = gEnv->pRenderer->GetIRenderAuxGeom();
+        if (pAuxRenderer)
+        {
+            SAuxGeomRenderFlags oldRenderFlags = pAuxRenderer->GetRenderFlags();
+
+            SAuxGeomRenderFlags newRenderFlags;
+            newRenderFlags.SetDepthTestFlag(e_DepthTestOff);
+            newRenderFlags.SetAlphaBlendMode(e_AlphaAdditive);
+            newRenderFlags.SetMode2D3DFlag(e_Mode2D);
+            pAuxRenderer->SetRenderFlags(newRenderFlags);
+
+            const float screenWidth = (float)gcpRendD3D->GetWidth();
+            const float screenHeight = (float)gcpRendD3D->GetHeight();
+
+            // Calc resolve area
+            const float left = m_sX / screenWidth;
+            const float top = m_sY / screenHeight;
+            const float right = (m_sX + m_sWidth) / screenWidth;
+            const float bottom = (m_sY + m_sHeight) / screenHeight;
+
+            // Render resolve area
+            ColorB areaColor(50, 0, 50, 255);
+
+            if (vPMin.z < 0.0f)
+            {
+                areaColor = ColorB(0, 100, 0, 255);
+            }
+
+            const uint vertexCount = 6;
+            const Vec3 vert[vertexCount] = {
+                Vec3(left, top, 0.0f),
+                Vec3(left, bottom, 0.0f),
+                Vec3(right, top, 0.0f),
+                Vec3(left, bottom, 0.0f),
+                Vec3(right, bottom, 0.0f),
+                Vec3(right, top, 0.0f)
+            };
+            pAuxRenderer->DrawTriangles(vert, vertexCount, areaColor);
+
+            // Set previous Aux render flags back again
+            pAuxRenderer->SetRenderFlags(oldRenderFlags);
+        }
+    }
+#endif
+}
 
 uint32 CDeferredShading::AddLight(const CDLight& pDL, float fMult, const SRenderingPassInfo& passInfo, const SRendItemSorter& rendItemSorter)
 {
@@ -731,6 +1036,10 @@ void CDeferredShading::FilterGBuffer()
 {
     if (!CRenderer::CV_r_DeferredShadingFilterGBuffer)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         return;
     }
 
@@ -740,8 +1049,16 @@ void CDeferredShading::FilterGBuffer()
 
     static CCryNameTSCRC tech("FilterGBuffer");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     PostProcessUtils().StretchRect(CTexture::s_ptexSceneSpecular, CTexture::s_ptexStereoR);
     CTexture* pSceneSpecular = CTexture::s_ptexStereoR;
+#endif
 
     rd->FX_PushRenderTarget(0, CTexture::s_ptexSceneSpecular, NULL);
     SD3DPostEffectsUtils::ShBeginPass(m_pShader, tech, FEF_DONTSETSTATES);
@@ -1095,6 +1412,12 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     DynArrayRef<SShaderParam>& shaderParams = sItem.m_pShaderResources->GetParameters();
     GetDynamicDecalParams(shaderParams, decalAlphaMult, decalFalloff, decalDiffuseOpacity, emittanceMapGamma);
 
+    // Params to linearize depth for cases when we can't fetch the linearized depth render target
+    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && RenderCapabilities::GetFrameBufferFetchCapabilities().test(RenderCapabilities::FBF_DEPTH))
+    {
+        rd->SetupLinearizeDepthParams(m_pShader);
+    }
+
     float fGrowAlphaRef = rDecal.fGrowAlphaRef;
 
     // Debug shader params
@@ -1303,6 +1626,12 @@ void CDeferredShading::DeferredDecalEmissivePass(const SDeferredDecal& rDecal, u
     Vec4 vEmissive = sItem.m_pShaderResources->GetColorValue(EFTT_EMITTANCE).toVec4();
     vEmissive.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_EMITTANCE);
     m_pShader->FXSetPSFloat(m_pParamDecalEmissive, &vEmissive, 1);
+
+    // Params to linearize depth for cases when we can't fetch the linearized depth render target
+    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && RenderCapabilities::GetFrameBufferFetchCapabilities().test(RenderCapabilities::FBF_DEPTH))
+    {
+        rd->SetupLinearizeDepthParams(m_pShader);
+    }
 
     // __________________________________________________________________________________________
     // State
@@ -1901,8 +2230,8 @@ void CDeferredShading::RenderPortalBlendValues(int nClipAreaReservedStencilBit)
                 CRenderMesh* pRenderMesh = static_cast<CRenderMesh*>(pClipVolumeData.m_pRenderMesh.get());
                 pRenderMesh->CheckUpdate(0);
 
-                const buffer_handle_t hVertexStream = pRenderMesh->_GetVBStream(VSF_GENERAL);
-                const buffer_handle_t hIndexStream = pRenderMesh->_GetIBStream();
+                const buffer_handle_t hVertexStream = pRenderMesh->GetVBStream(VSF_GENERAL);
+                const buffer_handle_t hIndexStream = pRenderMesh->GetIBStream();
 
                 if (hVertexStream != ~0u && hIndexStream != ~0u)
                 {
@@ -1922,7 +2251,7 @@ void CDeferredShading::RenderPortalBlendValues(int nClipAreaReservedStencilBit)
 
                         rd->D3DSetCull(eCULL_Front);
                         rd->FX_Commit();
-                        rd->FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->_GetNumVerts(), 0, pRenderMesh->_GetNumInds());
+                        rd->FX_DrawIndexedPrimitive(eptTriangleList, 0, 0, pRenderMesh->GetNumVerts(), 0, pRenderMesh->GetNumInds());
                     }
                 }
             }
@@ -3091,6 +3420,10 @@ void CDeferredShading::DirectionalOcclusionPass()
 
     rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2]);
     CTexture* pDstSSDO = CTexture::s_ptexStereoR;// re-using stereo buffers (only full resolution 32bit non-multisampled available at this step)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     const bool bLowResOutput = (CRenderer::CV_r_ssdoHalfRes == 3);
     if (bLowResOutput)
@@ -4273,6 +4606,10 @@ void CDeferredShading::CreateDeferredMaps()
         SD3DPostEffectsUtils::CreateRenderTarget("$SceneDiffuse", CTexture::s_ptexSceneDiffuse, nWidth, nHeight, Clr_Empty, true, false, eTF_R8G8B8A8, -1, nMsaaAndSrgbFlag);
         //  Confetti End: Igor Lobanchikov
         SD3DPostEffectsUtils::CreateRenderTarget("$SceneSpecular", CTexture::s_ptexSceneSpecular, nWidth, nHeight, Clr_Empty, true, false, eTF_R8G8B8A8, -1, nMsaaAndSrgbFlag);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         //  Confetti BEGIN: Igor Lobanchikov :END
         ETEX_Format fmtZScaled = gcpRendD3D->UseHalfFloatRenderTargets() ? eTF_R16G16F : eTF_R16G16U;
@@ -4444,6 +4781,7 @@ void CDeferredShading::SetupGmemPath()
     bool bTiledDeferredShading = CRenderer::CV_r_DeferredShadingTiled >= 2;
     assert(!bTiledDeferredShading); // NOT SUPPORTED IN GMEM PATH!
 
+    SetupPasses();
     TArray<SRenderLight>& rDeferredLights = m_pLights[eDLT_DeferredLight][m_nThreadID][m_nRecurseLevel];
 
     m_bClearPool = (CRenderer::CV_r_ShadowPoolMaxFrames > 0) ? false : true;
@@ -4528,6 +4866,9 @@ void CDeferredShading::Render()
     rd->FX_ResetPipe();
 
     SetupPasses();
+
+    // Calculate screenspace scissor bounds
+    CalculateLightScissorBounds();
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
@@ -4879,6 +5220,23 @@ void CDeferredShading::SetupScissors(bool bEnable, uint16 x, uint16 y, uint16 w,
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void CDeferredShading::CalculateLightScissorBounds()
+{
+    // Update our light scissor bounds.
+    for (int lightType=0; lightType<eDLT_NumLightTypes; ++lightType)
+    {
+        TArray<SRenderLight>& lightArray = m_pLights[lightType][m_nThreadID][m_nRecurseLevel];
+        for (uint32 nCurrentLight = 0; nCurrentLight < lightArray.Num(); ++nCurrentLight)
+        {
+            SRenderLight& light = lightArray[nCurrentLight];
+            light.CalculateScissorRect();
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void CDeferredShading::Debug()
 {
     uint64 nFlagsShaderRT = gcpRendD3D->m_RP.m_FlagsShader_RT;
@@ -5175,89 +5533,108 @@ bool CD3D9Renderer::FX_DeferredRendering(bool bDebugPass, bool bUpdateRTOnly)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool IsDeferredDecalsSupported()
+{
+    bool isSupported = true;
+    // For deferred decals we need to access the Normals and Linearize Depth. In GMEM both textures are bound as RT at this point.
+    // Check if we can access both of them to see if we support Deferred Decals.
+    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    {
+        RenderCapabilities::FrameBufferFetchMask capabilities = RenderCapabilities::GetFrameBufferFetchCapabilities();
+        isSupported =   (capabilities.test(RenderCapabilities::FBF_ALL_COLORS)) || // We can access to the Normals and Linearize depth render targets directly.
+                        ((capabilities.test(RenderCapabilities::FBF_COLOR0)) && (capabilities.test(RenderCapabilities::FBF_DEPTH))); // Normals are in COLOR0 and with access to the Depth buffer we can linearize in the shader.
+    }
+
+    return isSupported;
+}
+
 bool CD3D9Renderer::FX_DeferredDecals()
 {
-    CD3D9Renderer* const __restrict rd = gcpRendD3D;
-
-    if (CV_r_deferredDecals)
+    if (!CV_r_deferredDecals)
     {
-        // If GMEM path is enabled but no framebuffer fetches are supported, then neither are deferred decals.
-        // The reason for this is that normals need to be read from the bound Gbuffer.  We cannot copy them since
-        // it would break the GMEM path.
-        if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsFrameBufferFetches())
-        {
-            AZ_Assert(RenderCapabilities::SupportsFrameBufferFetches(), "Device does not support framebuffer fetches. Deferred decals not supported with GMEM paths.");
-            return false;
-        }
-
-
-        uint32 nThreadID = rd->m_RP.m_nProcessThreadID;
-        int32 nRecurseLevel = SRendItem::m_RecurseLevel[nThreadID];
-        assert(nRecurseLevel >= 0);
-
-        DynArray<SDeferredDecal>& deferredDecals = rd->m_RP.m_DeferredDecals[nThreadID][nRecurseLevel];
-        // Want the buffer cleared or we'll just get black out
-        if (deferredDecals.empty())
-        {
-            return false;
-        }
-
-        PROFILE_LABEL_SCOPE("DEFERRED_DECALS");
-
-        CDeferredShading& rDS = CDeferredShading::Instance();
-        rDS.SetupPasses();
-
-        if (eGT_256bpp_PATH == gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
-        {
-            // GMEM 256bpp path copies normals temporarily to the diffuse light buffer (rgba16)
-            uint32 prevState = m_RP.m_CurState;
-            uint32 newState = 0;
-            FX_SetState(newState);
-            SD3DPostEffectsUtils::PrepareGmemDeferredDecals();
-            FX_SetState(prevState);
-        }
-        else if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
-        {
-            ID3D11Texture2D* pBBRes = CTexture::s_ptexBackBuffer->GetDevTexture()->Get2DTexture();
-            ID3D11Texture2D* pNMRes = NULL;
-
-            assert(CTexture::s_ptexBackBuffer->m_pPixelFormat->DeviceFormat == CTexture::s_ptexSceneNormalsMap->m_pPixelFormat->DeviceFormat);
-
-            if (rd->m_RP.m_MSAAData.Type > 1) //always copy when deferredDecals is not empty
-            {
-                pNMRes = (D3DTexture*)CTexture::s_ptexSceneNormalsMap->m_pRenderTargetData->m_pDeviceTextureMSAA->Get2DTexture();
-                rd->GetDeviceContext().ResolveSubresource(pBBRes, 0, pNMRes, 0, (DXGI_FORMAT)CTexture::s_ptexBackBuffer->m_pPixelFormat->DeviceFormat);
-            }
-            else
-            {
-                pNMRes = CTexture::s_ptexSceneNormalsMap->GetDevTexture()->Get2DTexture();
-                rd->GetDeviceContext().CopyResource(pBBRes, pNMRes);
-            }
-        }
-
-        std::stable_sort(deferredDecals.begin(), deferredDecals.end(), DeffDecalSort());
-
-        //if (CV_r_deferredDecalsDebug == 0)
-        //  rd->FX_PushRenderTarget(1, CTexture::s_ptexSceneNormalsMap, NULL);
-
-        const uint32 nNumDecals = deferredDecals.size();
-        for (uint32 d = 0; d < nNumDecals; ++d)
-        {
-            rDS.DeferredDecalPass(deferredDecals[d], d);
-        }
-
-        //if (CV_r_deferredDecalsDebug == 0)
-        //  rd->FX_PopRenderTarget(1);
-
-        rd->SetCullMode(R_CULL_BACK);
-
-        // Commit any potential render target changes - required for when shadows disabled
-        rd->FX_SetActiveRenderTargets(false);
-        rd->FX_ResetPipe();
-
-        return true;
+        return false;
     }
-    return false;
+
+    CD3D9Renderer* const __restrict rd = gcpRendD3D;
+    uint32 nThreadID = rd->m_RP.m_nProcessThreadID;
+    int32 nRecurseLevel = SRendItem::m_RecurseLevel[nThreadID];
+    assert(nRecurseLevel >= 0);
+
+    DynArray<SDeferredDecal>& deferredDecals = rd->m_RP.m_DeferredDecals[nThreadID][nRecurseLevel];
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
+    // Want the buffer cleared or we'll just get black out
+    if (deferredDecals.empty())
+    {
+        return false;
+    }
+#endif
+
+    if (!IsDeferredDecalsSupported())
+    {
+        AZ_Warning("Rendering", false, "Deferred decals is not supported in the current configuration");
+        return false;
+    }
+
+    PROFILE_LABEL_SCOPE("DEFERRED_DECALS");
+
+    CDeferredShading& rDS = CDeferredShading::Instance();
+    rDS.SetupPasses();
+
+    if (eGT_256bpp_PATH == gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    {
+        // GMEM 256bpp path copies normals temporarily to the diffuse light buffer (rgba16)
+        uint32 prevState = m_RP.m_CurState;
+        uint32 newState = 0;
+        FX_SetState(newState);
+        SD3DPostEffectsUtils::PrepareGmemDeferredDecals();
+        FX_SetState(prevState);
+    }
+    else if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    {
+        ID3D11Texture2D* pBBRes = CTexture::s_ptexBackBuffer->GetDevTexture()->Get2DTexture();
+        ID3D11Texture2D* pNMRes = NULL;
+
+        assert(CTexture::s_ptexBackBuffer->m_pPixelFormat->DeviceFormat == CTexture::s_ptexSceneNormalsMap->m_pPixelFormat->DeviceFormat);
+
+        if (rd->m_RP.m_MSAAData.Type > 1) //always copy when deferredDecals is not empty
+        {
+            pNMRes = (D3DTexture*)CTexture::s_ptexSceneNormalsMap->m_pRenderTargetData->m_pDeviceTextureMSAA->Get2DTexture();
+            rd->GetDeviceContext().ResolveSubresource(pBBRes, 0, pNMRes, 0, (DXGI_FORMAT)CTexture::s_ptexBackBuffer->m_pPixelFormat->DeviceFormat);
+        }
+        else
+        {
+            pNMRes = CTexture::s_ptexSceneNormalsMap->GetDevTexture()->Get2DTexture();
+            rd->GetDeviceContext().CopyResource(pBBRes, pNMRes);
+        }
+    }
+
+    std::stable_sort(deferredDecals.begin(), deferredDecals.end(), DeffDecalSort());
+
+    //if (CV_r_deferredDecalsDebug == 0)
+    //  rd->FX_PushRenderTarget(1, CTexture::s_ptexSceneNormalsMap, NULL);
+
+    const uint32 nNumDecals = deferredDecals.size();
+    for (uint32 d = 0; d < nNumDecals; ++d)
+    {
+        rDS.DeferredDecalPass(deferredDecals[d], d);
+    }
+
+    //if (CV_r_deferredDecalsDebug == 0)
+    //  rd->FX_PopRenderTarget(1);
+
+    rd->SetCullMode(R_CULL_BACK);
+
+    // Commit any potential render target changes - required for when shadows disabled
+    rd->FX_SetActiveRenderTargets(false);
+    rd->FX_ResetPipe();
+
+    return true;
 }
 
 // Renders emissive part of all deferred decals
@@ -5271,8 +5648,7 @@ bool CD3D9Renderer::FX_DeferredDecalsEmissive()
     if (!CV_r_deferredDecals)
         return false;
 
-    // See FX_DeferredDecals
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsFrameBufferFetches())
+    if (!IsDeferredDecalsSupported())
     {
         return false;
     }
@@ -5283,11 +5659,19 @@ bool CD3D9Renderer::FX_DeferredDecalsEmissive()
 
     DynArray<SDeferredDecal>& deferredDecals = rd->m_RP.m_DeferredDecals[nThreadID][nRecurseLevel];
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     // Want the buffer cleared or we'll just get black out
     if (deferredDecals.empty())
     {
         return false;
     }
+#endif
 
     PROFILE_LABEL_SCOPE("DEFERRED_DECALS");
 

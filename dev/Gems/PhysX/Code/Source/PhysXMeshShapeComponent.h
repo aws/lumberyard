@@ -21,6 +21,7 @@ namespace PhysX
         , private LmbrCentral::ShapeComponentRequestsBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , public PhysXMeshShapeComponentRequestBus::Handler
+        , public AZ::Data::AssetBus::Handler
     {
     public:
         AZ_COMPONENT(PhysXMeshShapeComponent, "{87A02711-8D7F-4966-87E1-77001EB6B29E}");
@@ -41,6 +42,10 @@ namespace PhysX
         AZ::Aabb GetEncompassingAabb() override;
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
+
+        // AZ::Data::AssetBus::Handler implementation
+        void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+        void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
         // Transform notification bus listener
         // Called when the local transform of the entity has changed. Local transform update always implies world transform change too.
@@ -72,6 +77,8 @@ namespace PhysX
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+        void UpdateMeshAsset();
+
         AZ::Data::Asset<Pipeline::PhysXMeshAsset> m_meshColliderAsset;
         AZ::Transform m_currentTransform; ///< Caches the current transform for the entity on which this component lives.
     };

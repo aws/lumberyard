@@ -15,7 +15,6 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Attribute.h"
-#include "UnicodeString.h"
 
 namespace MCore
 {
@@ -33,17 +32,17 @@ namespace MCore
             TYPE_ID = 0x00000003
         };
 
-        static AttributeString* Create(const String& value);
+        static AttributeString* Create(const AZStd::string& value);
         static AttributeString* Create(const char* value = "");
 
-        MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(mValue.GetPtr()); }
-        MCORE_INLINE uint32 GetRawDataSize() const                  { return mValue.GetLength(); }
+        MCORE_INLINE uint8* GetRawDataPointer()                     { return reinterpret_cast<uint8*>(mValue.data()); }
+        MCORE_INLINE uint32 GetRawDataSize() const                  { return static_cast<uint32>(mValue.size()); }
         bool GetSupportsRawDataPointer() const override             { return true; }
 
         // adjust values
-        MCORE_INLINE const char* AsChar() const                     { return mValue.AsChar(); }
-        MCORE_INLINE const MCore::String& GetValue() const          { return mValue; }
-        MCORE_INLINE void SetValue(const MCore::String& value)      { mValue = value; }
+        MCORE_INLINE const char* AsChar() const                     { return mValue.c_str(); }
+        MCORE_INLINE const AZStd::string& GetValue() const          { return mValue; }
+        MCORE_INLINE void SetValue(const AZStd::string& value)      { mValue = value; }
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeString::Create(mValue); }
@@ -58,27 +57,27 @@ namespace MCore
             mValue = static_cast<const AttributeString*>(other)->GetValue();
             return true;
         }
-        bool InitFromString(const String& valueString) override     { mValue = valueString; return true; }
-        bool ConvertToString(String& outString) const override      { outString = mValue; return true; }
+        bool InitFromString(const AZStd::string& valueString) override     { mValue = valueString; return true; }
+        bool ConvertToString(AZStd::string& outString) const override      { outString = mValue; return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeString); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_STRING; }
 
     private:
-        MCore::String   mValue;     /**< The string value. */
+        AZStd::string   mValue;     /**< The string value. */
 
         AttributeString()
             : Attribute(TYPE_ID)  { }
-        AttributeString(const MCore::String& value)
+        AttributeString(const AZStd::string& value)
             : Attribute(TYPE_ID)
             , mValue(value) { }
         AttributeString(const char* value)
             : Attribute(TYPE_ID)
             , mValue(value) { }
-        ~AttributeString()                              { mValue.Clear(false); }
+        ~AttributeString()                              { mValue.clear(); }
 
         uint32 GetDataSize() const override
         {
-            return sizeof(uint32) + mValue.GetLength();
+            return sizeof(uint32) + static_cast<uint32>(mValue.size());
         }
 
         // read from a stream
@@ -97,12 +96,12 @@ namespace MCore
             Endian::ConvertUnsignedInt32(&numCharacters, streamEndianType);
             if (numCharacters == 0)
             {
-                mValue.Clear();
+                mValue.clear();
                 return true;
             }
 
-            mValue.Resize(numCharacters);
-            if (stream->Read(mValue.GetPtr(), numCharacters) == 0)
+            mValue.resize(numCharacters);
+            if (stream->Read(mValue.data(), numCharacters) == 0)
             {
                 return false;
             }
@@ -114,16 +113,16 @@ namespace MCore
         bool WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const override
         {
             // write the number of characters
-            if (mValue.GetLength() > 0)
+            if (mValue.size() > 0)
             {
-                uint32 numCharacters = mValue.GetLength();
+                uint32 numCharacters = static_cast<uint32>(mValue.size());
                 Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
                 if (stream->Write(&numCharacters, sizeof(uint32)) == 0)
                 {
                     return false;
                 }
 
-                if (stream->Write(mValue.GetPtr(), mValue.GetLength()) == 0)
+                if (stream->Write(mValue.data(), mValue.size()) == 0)
                 {
                     return false;
                 }

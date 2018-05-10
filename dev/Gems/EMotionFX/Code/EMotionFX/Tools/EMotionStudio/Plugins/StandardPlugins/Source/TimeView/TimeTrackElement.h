@@ -13,7 +13,6 @@
 #pragma once
 
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "../StandardPluginsConfig.h"
 #include <QPen>
 #include <QFont>

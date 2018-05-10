@@ -11,9 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYSYSTEM_LOG_H
-#define CRYINCLUDE_CRYSYSTEM_LOG_H
-
 #pragma once
 
 #include <ILog.h>
@@ -24,9 +21,15 @@
 //////////////////////////////////////////////////////////////////////
 #if defined(ANDROID) || defined(AZ_PLATFORM_APPLE_OSX)
     #define MAX_TEMP_LENGTH_SIZE    4098
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Log_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     #define MAX_TEMP_LENGTH_SIZE    8196
-#endif // defined(ANDROID)
+#endif
 #define MAX_FILENAME_SIZE           256
 
 #define KEEP_LOG_FILE_OPEN
@@ -227,7 +230,3 @@ public: // -------------------------------------------------------------------
     threadID m_nMainThreadId;
     CryMT::queue<SLogMsg> m_threadSafeMsgQueue;
 };
-
-
-#endif // CRYINCLUDE_CRYSYSTEM_LOG_H
-

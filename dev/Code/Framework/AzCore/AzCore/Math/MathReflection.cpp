@@ -3173,7 +3173,7 @@ namespace AZ
 
         // Random
         context.Class<SimpleLcgRandom>("Random")->
-            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::ConstructorOverride, &Internal::ScriptRandomConstructor)->
             Method("SetSeed", &SimpleLcgRandom::SetSeed, {{{ "Seed", "" }}})->
             Method("GetRandom", &SimpleLcgRandom::GetRandom)->
@@ -3201,7 +3201,7 @@ namespace AZ
 
         // Aabb
         context.Class<Aabb>()->
-            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)->
             Attribute(AZ::Script::Attributes::GenericConstructorOverride, &Internal::AabbDefaultConstructor)->
             Property("min", &Aabb::GetMin, &Aabb::SetMin)->

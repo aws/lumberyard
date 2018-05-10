@@ -18,6 +18,7 @@
 #include "UiInteractableComponent.h"
 #include <LyShine/UiSerializeHelpers.h>
 
+#include <LyShine/Bus/UiParticleEmitterBus.h>
 #include <LyShine/Bus/UiImageBus.h>
 #include <LyShine/Bus/UiTransform2dBus.h>
 
@@ -300,6 +301,30 @@ namespace UiSerialize
                     ->Property("top", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_top))
                     ->Property("right", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_right))
                     ->Property("bottom", BehaviorValueProperty(&UiTransform2dInterface::Anchors::m_bottom));
+            }
+        }
+
+        // ParticleColorKeyframe
+        {
+            if (serializeContext)
+            {
+                serializeContext->Class<UiParticleEmitterInterface::ParticleColorKeyframe>()
+                    ->Field("Time", &UiParticleEmitterInterface::ParticleColorKeyframe::time)
+                    ->Field("Color", &UiParticleEmitterInterface::ParticleColorKeyframe::color)
+                    ->Field("InTangent", &UiParticleEmitterInterface::ParticleColorKeyframe::inTangent)
+                    ->Field("OutTangent", &UiParticleEmitterInterface::ParticleColorKeyframe::outTangent);
+            }
+        }
+
+        // ParticleFloatKeyframe
+        {
+            if (serializeContext)
+            {
+                serializeContext->Class<UiParticleEmitterInterface::ParticleFloatKeyframe>()
+                    ->Field("Time", &UiParticleEmitterInterface::ParticleFloatKeyframe::time)
+                    ->Field("Multiplier", &UiParticleEmitterInterface::ParticleFloatKeyframe::multiplier)
+                    ->Field("InTangent", &UiParticleEmitterInterface::ParticleFloatKeyframe::inTangent)
+                    ->Field("OutTangent", &UiParticleEmitterInterface::ParticleFloatKeyframe::outTangent);
             }
         }
 

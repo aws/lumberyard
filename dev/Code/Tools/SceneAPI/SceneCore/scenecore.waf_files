@@ -109,7 +109,8 @@
             "Containers/Utilities/Filters.h",
             "Containers/Utilities/Filters.inl",
             "Containers/Utilities/SceneGraphUtilities.h",
-            "Containers/Utilities/SceneGraphUtilities.inl"
+            "Containers/Utilities/SceneGraphUtilities.inl",
+            "Containers/Utilities/SceneGraphUtilities.cpp"
         ],
         "Events":
         [
@@ -139,11 +140,6 @@
         [
             "Import/ManifestImportRequestHandler.h",
             "Import/ManifestImportRequestHandler.cpp"
-        ],
-        "Import/Utilities":
-        [
-            "Import/Utilities/FileFinder.h",
-            "Import/Utilities/FileFinder.cpp"
         ],
         "Export":
         [

@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <RenderBus.h>
 #include <IMaterial.h>
 #include <AzCore/RTTI/TypeInfo.h>
 
@@ -24,10 +25,28 @@ namespace LmbrCentral
 {
     //! Wraps a IMaterial pointer in a way that BehaviorContext can use it
     class MaterialHandle
+        : public AZ::RenderNotificationsBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(MaterialHandle, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(MaterialHandle, "{BF659DC6-ACDD-4062-A52E-4EC053286F4F}")
+        AZ_TYPE_INFO(MaterialHandle, "{BF659DC6-ACDD-4062-A52E-4EC053286F4F}");
+
+        MaterialHandle()
+        {
+            AZ::RenderNotificationsBus::Handler::BusConnect();
+        }
+        ~MaterialHandle()
+        {
+            AZ::RenderNotificationsBus::Handler::BusDisconnect();
+        }
+
+        //! Handle the renderer's free resources event by nullifying m_material.
+        //! This is used to prevent material handles that may have been queued for release in the next frame
+        //! from having dangling pointers after the renderer has already shut down.
+        void OnRendererFreeResources() override
+        {
+            m_material = nullptr;
+        }
 
         _smart_ptr<IMaterial> m_material;
 

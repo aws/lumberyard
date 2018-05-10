@@ -28,11 +28,16 @@ namespace ScriptCanvas
     {
         AZ_TYPE_INFO(GraphData, "{ADCB5EB5-8D3F-42ED-8F65-EAB58A82C381}");
         AZ_CLASS_ALLOCATOR(GraphData, AZ::SystemAllocator, 0);
-
         static void Reflect(AZ::ReflectContext* context);
 
+        GraphData() = default;
+        GraphData(const GraphData&) = default;
+        GraphData& operator=(const GraphData&) = default;
+        GraphData(GraphData&&);
+        GraphData& operator=(GraphData&&);
+
         void BuildEndpointMap();
-        void Clear();
+        void Clear(bool deleteData = false);
 
         using NodeContainer = AZStd::unordered_set<AZ::Entity*>;
         using ConnectionContainer = AZStd::vector<AZ::Entity*>;

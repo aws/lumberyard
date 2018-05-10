@@ -1243,7 +1243,7 @@ void CHDRPostProcess::ToneMapping()
     bool bColorGrading = false;
 
     SColorGradingMergeParams pMergeParams;
-    if (CRenderer::CV_r_colorgrading && CRenderer::CV_r_colorgrading_charts && CRenderer::CV_r_ToneMapTechnique== static_cast<int>(ToneMapOperators::FilmicCurveUC2)) //color grading is only supported for Uncharted2 filmic curve
+    if (CRenderer::CV_r_colorgrading && CRenderer::CV_r_colorgrading_charts)
     {
         CColorGrading* pColorGrad = 0;
         if (!PostEffectMgr()->GetEffects().empty())

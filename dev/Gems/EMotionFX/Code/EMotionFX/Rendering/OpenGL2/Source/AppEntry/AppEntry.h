@@ -165,7 +165,7 @@ void RenderGrid()
 
     // debug output
     //static MCore::String debugText;
-    //debugText.Format("GridArea: start=(%f, %f), end=(%f, %f)", gridStart.x, gridStart.y, gridEnd.x, gridEnd.y);
+    //debugText = AZStd::string::format("GridArea: start=(%f, %f), end=(%f, %f)", gridStart.x, gridStart.y, gridEnd.x, gridEnd.y);
     //renderUtil->DrawFont( 5, gScreenHeight/2, 0.0f, MCore::RGBAColor(1.0f, 1.0f, 1.0f, 1.0f).ToDWORD(), 10, debugText.AsChar() );
 }
 

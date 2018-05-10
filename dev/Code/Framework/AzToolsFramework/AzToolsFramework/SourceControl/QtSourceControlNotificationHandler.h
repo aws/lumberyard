@@ -25,7 +25,7 @@ namespace AzToolsFramework
     {
         Q_OBJECT
     public:
-        QtSourceControlNotificationHandler(QWidget* pParent);
+        explicit QtSourceControlNotificationHandler(QWidget* pParent);
         virtual ~QtSourceControlNotificationHandler();
 
         void Init();

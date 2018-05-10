@@ -796,7 +796,9 @@ bool CGameEngine::InitGame(const char* sGameDLL)
 
 void CGameEngine::SetLevelPath(const QString& path)
 {
-    QByteArray levelPath = Path::ToUnixPath(Path::RemoveBackslash(path)).toUtf8().data();
+    QByteArray levelPath;
+    levelPath.reserve(AZ_MAX_PATH_LEN);
+    levelPath = Path::ToUnixPath(Path::RemoveBackslash(path)).toUtf8();
     AZ::IO::FileIOBase::GetInstance()->ConvertToAlias(levelPath.data(), levelPath.capacity());
     m_levelPath = levelPath;
 

@@ -355,7 +355,7 @@ namespace EMStudio
             mSelectedRow = currentRow;
 
             // set the node group
-            EMotionFX::NodeGroup* nodeGroup = mActor->FindNodeGroupByName(FromQtString(mNodeGroupsTable->item(mSelectedRow, 1)->text()).AsChar());
+            EMotionFX::NodeGroup* nodeGroup = mActor->FindNodeGroupByName(FromQtString(mNodeGroupsTable->item(mSelectedRow, 1)->text()).c_str());
             mNodeGroupWidget->SetNodeGroup(nodeGroup);
         }
         else
@@ -381,7 +381,7 @@ namespace EMStudio
             mSelectedRow = current->row();
 
             // set the node group
-            NodeGroup* nodeGroup = mActor->FindNodeGroupByName( FromQtString(mNodeGroupsTable->item(current->row(), 1)->text()).AsChar() );
+            NodeGroup* nodeGroup = mActor->FindNodeGroupByName( FromQtString(mNodeGroupsTable->item(current->row(), 1)->text()).c_str() );
             mNodeGroupWidget->SetNodeGroup( nodeGroup );
         }
         else
@@ -446,9 +446,9 @@ namespace EMStudio
             // call command for adding a new node group
             String outResult;
             String command;
-            command.Format( "AdjustNodeGroup -actorID %i -name \"%s\" -newName \"%s\"", mActor->GetID(), FromQtString(item->text()).AsChar(), FromQtString(senderWidget->text()).AsChar() );
-            if (EMStudio::GetCommandManager()->ExecuteCommand( command.AsChar(), outResult ) == false)
-                LogError( outResult.AsChar() );
+            command.Format( "AdjustNodeGroup -actorID %i -name \"%s\" -newName \"%s\"", mActor->GetID(), FromQtString(item->text()).c_str(), FromQtString(senderWidget->text()).c_str() );
+            if (EMStudio::GetCommandManager()->ExecuteCommand( command.c_str(), outResult ) == false)
+                LogError( outResult.c_str() );
         }
         else
         {
@@ -483,7 +483,7 @@ namespace EMStudio
         mNodeGroupsTable->selectRow(insertPosition);
 
         // find insert position
-        /*int insertPosition = SearchTableForString( mNodeGroupsTable, groupName.AsChar() );
+        /*int insertPosition = SearchTableForString( mNodeGroupsTable, groupName.c_str() );
         if (insertPosition >= 0)
             NodeGroupeNameDoubleClicked( mNodeGroupsTable->item(insertPosition, 0) );*/
     }
@@ -507,7 +507,7 @@ namespace EMStudio
 
         // get the nodegroup
         QTableWidgetItem* item = mNodeGroupsTable->item(currentRow, 1);
-        EMotionFX::NodeGroup* nodeGroup = mActor->FindNodeGroupByName(FromQtString(item->text()).AsChar());
+        EMotionFX::NodeGroup* nodeGroup = mActor->FindNodeGroupByName(FromQtString(item->text()).c_str());
 
         // call command for removing a nodegroup
         AZStd::string outResult;
@@ -534,7 +534,7 @@ namespace EMStudio
     {
         // get the nodegroup
         QTableWidgetItem* item = mNodeGroupsTable->item(mNodeGroupsTable->currentRow(), 1);
-        EMotionFX::NodeGroup* nodeGroup = mActor->FindNodeGroupByName(FromQtString(item->text()).AsChar());
+        EMotionFX::NodeGroup* nodeGroup = mActor->FindNodeGroupByName(FromQtString(item->text()).c_str());
 
         // show the rename window
         NodeGroupManagementRenameWindow nodeGroupManagementRenameWindow(this, mActor, nodeGroup->GetName());
@@ -569,7 +569,10 @@ namespace EMStudio
 
         // execute the command
         AZStd::string outResult;
-        const AZStd::string command = AZStd::string::format("AdjustNodeGroup -actorID %i -name \"%s\" -enabledOnDefault \"%s\"", mActor->GetID(), nodeGroupName.c_str(), ((checked) ? "true" : "false"));
+        const AZStd::string command = AZStd::string::format("AdjustNodeGroup -actorID %i -name \"%s\" -enabledOnDefault \"%s\"", 
+            mActor->GetID(), 
+            nodeGroupName.c_str(), 
+            AZStd::to_string(checked).c_str());
         if (EMStudio::GetCommandManager()->ExecuteCommand(command.c_str(), outResult) == false)
         {
             AZ_Error("EMotionFX", false, outResult.c_str());

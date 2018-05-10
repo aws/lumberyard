@@ -15,8 +15,8 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Array.h"
-#include "UnicodeString.h"
 #include "Endian.h"
+#include <AzCore/std/string/string.h>
 
 
 namespace MCore
@@ -39,8 +39,7 @@ namespace MCore
             FLAGINDEX_REINITGUI_ONVALUECHANGE       = 0,    // do we need to trigger a GUI reinit when the value of the interface widget linked to this attribute info is changed?
             FLAGINDEX_REFERENCE_OTHERATTRIBUTE      = 1,    // this attribute references another attribute
             FLAGINDEX_REINITOBJECT_ONVALUECHANGE    = 2,    // we need to reinitialize the object (can be a unique data update in the EMotion FX anim graph nodes for example)
-            FLAGINDEX_CAN_SCALE                     = 3,    // this attribute has to be scaled when the Scale call is performed
-            FLAGINDEX_REINIT_ATTRIBUTEWINDOW        = 4     // Set this flag in case a change of the attribute should trigger a complete reinit of the attributes window (used for attributes that influence other attributes).
+            FLAGINDEX_REINIT_ATTRIBUTEWINDOW        = 3     // Set this flag in case a change of the attribute should trigger a complete reinit of the attributes window (used for attributes that influence other attributes).
         };
 
         static AttributeSettings* Create();
@@ -52,9 +51,6 @@ namespace MCore
 
         bool GetReinitObjectOnValueChange() const;
         void SetReinitObjectOnValueChange(bool enabled);
-
-        bool GetCanScale() const;
-        void SetCanScale(bool enabled);
 
         uint16 GetFlags() const;
         bool GetFlag(uint32 index) const;
@@ -71,9 +67,9 @@ namespace MCore
         const char* GetName() const;
         const char* GetDescription() const;
 
-        const String& GetInternalNameString() const;
-        const String& GetNameString() const;
-        const String& GetDescriptionString() const;
+        const AZStd::string& GetInternalNameString() const;
+        const AZStd::string& GetNameString() const;
+        const AZStd::string& GetDescriptionString() const;
 
         void SetReferencesOtherAttribute(bool doesReference);
         bool GetReferencesOtherAttribute() const;
@@ -84,7 +80,7 @@ namespace MCore
         const Array<uint32>& GetComboValues() const;
         Array<uint32>& GetComboValues();
         const char* GetComboValue(uint32 index) const;
-        const String& GetComboValueString(uint32 index) const;
+        const AZStd::string& GetComboValueString(uint32 index) const;
         uint32 GetNumComboValues() const;
         void ReserveComboValues(uint32 numToReserve);
         void ResizeComboValues(uint32 numToResize);
@@ -107,10 +103,10 @@ namespace MCore
         bool Read(Stream* stream, Endian::EEndianType endianType);
         uint32 CalcStreamSize() const;
 
-        bool ConvertToString(String& outString) const;
-        bool InitFromString(const String& valueString);
+        bool ConvertToString(AZStd::string& outString) const;
+        bool InitFromString(const AZStd::string& valueString);
 
-        void BuildToolTipString(String& outString, Attribute* value);   // value is allowed to be nullptr
+        void BuildToolTipString(AZStd::string& outString, Attribute* value);   // value is allowed to be nullptr
 
         Attribute* GetParent() const;
         bool GetHasParent() const;
@@ -126,7 +122,7 @@ namespace MCore
         Attribute*          mMaxValue;          /**< The maximum value, can be nullptr. */
         Attribute*          mParent;            /**< The parent attribute where the described one is a child of, or nullptr in case it has no parent. */
         Array<uint32>       mComboValues;       /**< The string ID's of the combo box. */
-        String              mDescription;       /**< The description of the attribute. */
+        AZStd::string       mDescription;       /**< The description of the attribute. */
         uint32              mName;              /**< The name id as it will appear in the interface. */
         uint32              mInternalName;      /**< The internal name id, which is a short name used for lookups. */
         uint32              mInterfaceType;     /**< The interface type ID. */

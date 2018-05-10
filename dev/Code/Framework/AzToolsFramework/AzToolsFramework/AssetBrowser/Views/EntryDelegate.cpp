@@ -33,7 +33,7 @@ namespace AzToolsFramework
 
         EntryDelegate::~EntryDelegate() = default;
 
-        QSize EntryDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
+        QSize EntryDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
         {
             QSize baseHint = QStyledItemDelegate::sizeHint(option, index);
             if (baseHint.height() < m_iconSize)

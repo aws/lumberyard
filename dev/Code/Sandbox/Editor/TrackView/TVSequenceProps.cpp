@@ -27,7 +27,7 @@
 #include "QtUtilWin.h"
 #include <TrackView/ui_TVSequenceProps.h>
 #include <QMessageBox>
-
+#include <Maestro/Types/SequenceType.h>
 
 CTVSequenceProps::CTVSequenceProps(CTrackViewSequence* pSequence, float fps, QWidget* pParent)
     : QDialog(pParent)
@@ -54,8 +54,7 @@ CTVSequenceProps::~CTVSequenceProps()
 // CTVSequenceProps message handlers
 BOOL CTVSequenceProps::OnInitDialog()
 {
-    QString name = QtUtil::ToQString(m_pSequence->GetName());
-    ui->NAME->setText(name);
+    ui->NAME->setText(m_pSequence->GetName());
     int seqFlags = m_pSequence->GetFlags();
 
     ui->ALWAYS_PLAY->setChecked((seqFlags & IAnimSequence::eSeqFlags_PlayOnReset));
@@ -117,23 +116,8 @@ void CTVSequenceProps::MoveScaleKeys()
     }
 }
 
-void CTVSequenceProps::OnOK()
+void CTVSequenceProps::UpdateSequenceProps(const QString& name)
 {
-    QString name = ui->NAME->text();
-    if (name.isEmpty())
-    {
-        QMessageBox::warning(this, "Sequence Properties", "A sequence name cannot be empty!");
-        return;
-    }
-    else if (name.contains('/'))
-    {
-        QMessageBox::warning(this, "Sequence Properties", "A sequence name cannot contain a '/' character!");
-        return;
-    }
-
-    CUndo undo("Change TrackView Sequence Settings");
-    CUndo::Record(new CUndoSequenceSettings(m_pSequence));
-
     if (ui->MOVE_SCALE_KEYS->isChecked())
     {
         MoveScaleKeys();
@@ -243,6 +227,38 @@ void CTVSequenceProps::OnOK()
     }
 
     m_pSequence->SetFlags((IAnimSequence::EAnimSequenceFlags)seqFlags);
+}
+
+void CTVSequenceProps::OnOK()
+{
+    QString name = ui->NAME->text();
+    if (name.isEmpty())
+    {
+        QMessageBox::warning(this, "Sequence Properties", "A sequence name cannot be empty!");
+        return;
+    }
+    else if (name.contains('/'))
+    {
+        QMessageBox::warning(this, "Sequence Properties", "A sequence name cannot contain a '/' character!");
+        return;
+    }
+
+    if (m_pSequence != nullptr)
+    {
+        if (m_pSequence->GetSequenceType() == SequenceType::Legacy)
+        {
+            CUndo undo("Change TrackView Sequence Settings");
+            CUndo::Record(new CUndoSequenceSettings(m_pSequence));
+            UpdateSequenceProps(name);
+        }
+        else
+        {
+            AzToolsFramework::ScopedUndoBatch undoBatch("Change TrackView Sequence Settings");
+            UpdateSequenceProps(name);
+            undoBatch.MarkEntityDirty(m_pSequence->GetSequenceComponentEntityId());
+        }
+    }
+
     accept();
 }
 

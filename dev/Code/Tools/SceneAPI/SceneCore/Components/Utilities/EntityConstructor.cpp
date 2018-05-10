@@ -131,7 +131,8 @@ namespace AZ
                         return nullptr;
                     }
 
-                    AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+                    // do not actually try to LOAD assets here, just load their Id's.  We're still booting up
+                    AZ::ObjectStream::FilterDescriptor loadFilter(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
                     if (!AZ::ObjectStream::LoadBlocking(&fileStream, *context, classReadyCb, loadFilter, inplaceLoadCb))
                     {
                         AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "Failed to load gem config file.");

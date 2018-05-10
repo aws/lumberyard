@@ -18,6 +18,7 @@
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Widgets/NodePropertyBus.h>
 
 #include <QGraphicsScene>
 #include <QGraphicsView>
@@ -26,20 +27,23 @@ class QGraphicsLayoutItem;
 
 namespace GraphCanvas
 {
-	// Base class for displaying a NodeProperty.
-	//
-	// Main idea is that in QGraphics, we want to use QWidgets
-	// for a lot of our in-node editing, but this is slow with a large
-	// number of instances.
-	//
-	// This provides an interface for allowing widgets to be swapped out depending
-	// on state(thus letting us have a QWidget editable field, with a QGraphicsWidget display).
+    // Base class for displaying a NodeProperty.
+    //
+    // Main idea is that in QGraphics, we want to use QWidgets
+    // for a lot of our in-node editing, but this is slow with a large
+    // number of instances.
+    //
+    // This provides an interface for allowing widgets to be swapped out depending
+    // on state(thus letting us have a QWidget editable field, with a QGraphicsWidget display).
     class NodePropertyDisplay
         : public AzQtComponents::ShortcutDispatchTraits::Bus::Handler
     {
     public:
         NodePropertyDisplay() = default;
-        virtual ~NodePropertyDisplay() = default;
+        virtual ~NodePropertyDisplay()
+        {
+            NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
+        }
         
         void SetId(const AZ::EntityId& id)
         {

@@ -9,7 +9,8 @@
     },
     "auto": {
         "Buses": [
-            "Buses/DragAndDrop.h"
+            "Buses/DragAndDrop.h",
+            "Buses/ShortcutDispatch.h"
         ],
         "DragAndDrop": [
             "DragAndDrop/MainWindowDragAndDrop.h",
@@ -94,6 +95,14 @@
         ],
         "Components/Widgets": [
             "Components/Widgets/BaseStyleSheet.qss",
+            "Components/Widgets/Card.cpp",
+            "Components/Widgets/Card.h",
+            "Components/Widgets/CardConfig.ini",
+            "Components/Widgets/Card.qss",
+            "Components/Widgets/CardHeader.cpp",
+            "Components/Widgets/CardHeader.h",
+            "Components/Widgets/CardNotification.cpp",
+            "Components/Widgets/CardNotification.h",
             "Components/Widgets/CheckBox.cpp",
             "Components/Widgets/CheckBox.h",
             "Components/Widgets/CheckBox.qss",
@@ -125,7 +134,9 @@
             "Utilities/QtPluginPaths.cpp",
             "Utilities/QtPluginPaths.h",
             "Utilities/QtWindowUtilities.cpp",
-            "Utilities/QtWindowUtilities.h"
+            "Utilities/QtWindowUtilities.h",
+            "Utilities/DesktopUtilities.cpp",
+            "Utilities/DesktopUtilities.h"
         ]
     }
 }

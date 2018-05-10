@@ -33,10 +33,10 @@ def load_darwin_x64_host_settings(conf):
                                         '/System/Library/Frameworks/Python.framework/Versions/2.7/lib',
                                         '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7',
                                         '/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload',
-                                        conf.Path('Code/SDKs/markupsafe/x64'),
-                                        conf.Path('Code/SDKs/jinja2/x64')]
-    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Code/SDKs/markupsafe/x64'),
-                                              conf.Path('Code/SDKs/jinja2/x64')]
+                                        conf.ThirdPartyPath('markupsafe', 'x64'),
+                                        conf.ThirdPartyPath('jinja2', 'x64')]
+    v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.ThirdPartyPath('markupsafe', 'x64'),
+                                              conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_HOME'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
 
@@ -47,5 +47,7 @@ def load_darwin_x64_host_settings(conf):
         clang_search_paths[type] = dirs.split(':')
     v['CLANG_SEARCH_PATHS'] = clang_search_paths
 
-    # Detect the QT binaries that should be symlinked to Code/Sandbox/SDKs/Qt at this point
-    conf.find_qt5_binaries(PLATFORM)
+    # Detect the QT binaries, if the current capabilities selected requires it.
+    _, enabled, _, _ = conf.tp.get_third_party_path(PLATFORM, 'qt')
+    if enabled:
+        conf.find_qt5_binaries(PLATFORM)

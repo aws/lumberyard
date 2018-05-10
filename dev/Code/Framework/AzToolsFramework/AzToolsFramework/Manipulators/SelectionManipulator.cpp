@@ -12,7 +12,6 @@
 
 #include "SelectionManipulator.h"
 
-#include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
@@ -83,15 +82,15 @@ namespace AzToolsFramework
     }
 
     void SelectionManipulator::Draw(
+        const ManipulatorManagerState& managerState,
         AzFramework::EntityDebugDisplayRequests& display,
         const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        AZ::Transform worldFromLocal;
-        AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
-        m_manipulatorView->Draw(GetManipulatorManagerId(), GetManipulatorId(), MouseOver(),
-            m_position, worldFromLocal, display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
+        m_manipulatorView->Draw(
+            GetManipulatorManagerId(), managerState,
+            GetManipulatorId(), { WorldFromLocalWithUniformScale(GetEntityId()), m_position, MouseOver() },
+            display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
     }
 
     void SelectionManipulator::SetBoundsDirtyImpl()

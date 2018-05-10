@@ -16,17 +16,20 @@
 
 #include <AzCore/Math/Color.h>
 
-#include <Components/EntitySaveDataBus.h>
-#include <Components/GeometryBus.h>
-#include <Components/GraphCanvasPropertyBus.h>
-#include <Components/Nodes/Comment/CommentBus.h>
-#include <Components/Nodes/NodeBus.h>
 #include <Components/Nodes/NodeFrameGraphicsWidget.h>
-#include <Components/Nodes/NodeLayoutBus.h>
-#include <Components/Nodes/NodeUIBus.h>
-#include <Components/VisualBus.h>
 
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Components/Bookmarks/BookmarkBus.h>
+#include <GraphCanvas/Components/EntitySaveDataBus.h>
+#include <GraphCanvas/Components/GeometryBus.h>
+#include <GraphCanvas/Components/GraphCanvasPropertyBus.h>
+#include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
+#include <GraphCanvas/Components/Nodes/NodeBus.h>
+#include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
+#include <GraphCanvas/Components/Nodes/NodeUIBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
+#include <GraphCanvas/Types/EntitySaveData.h>
+#include <GraphCanvas/Utils/StateControllers/StateController.h>
 
 #include <Widgets/GraphCanvasLabel.h>
 
@@ -40,10 +43,14 @@ namespace GraphCanvas
         : public GraphCanvasPropertyComponent
         , public NodeNotificationBus::Handler
         , public StyleNotificationBus::Handler
-        , public VisualNotificationBus::Handler
         , public BlockCommentRequestBus::Handler
         , public EntitySaveDataRequestBus::Handler
-        , public SceneNotificationBus::Handler        
+        , public BookmarkRequestBus::Handler
+        , public SceneBookmarkRequestBus::Handler
+        , public BookmarkNotificationBus::Handler
+        , public CommentNotificationBus::Handler
+        , public SceneNotificationBus::Handler
+        , public SceneMemberNotificationBus::Handler
         , public GeometryNotificationBus::Handler
     {
         friend class BlockCommentNodeFrameGraphicsWidget;
@@ -66,10 +73,14 @@ namespace GraphCanvas
             void operator=(const BlockCommentNodeFrameComponentSaveData& other);
 
             void OnColorChanged();
+            void OnBookmarkStatusChanged();
 
             AZ::Color m_color;
             float     m_displayHeight;
             float     m_displayWidth;
+
+            bool      m_enableAsBookmark;
+            int       m_shortcut;
 
         private:
             BlockCommentNodeFrameComponent* m_callback;
@@ -121,6 +132,11 @@ namespace GraphCanvas
         // NodeNotificationBus
         void OnNodeActivated() override;
         void OnAddedToScene(const AZ::EntityId& sceneId) override;
+        void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
+        ////
+
+        // SceneMemberNotificationBus
+        void OnSceneMemberDeserializedForGraph(const AZ::EntityId& graphId) override;
         ////
 
         // StyleNotificationBus
@@ -136,9 +152,32 @@ namespace GraphCanvas
         void ReadSaveData(const EntitySaveDataContainer& saveDataContainer) override;
         ////
 
+        // SceneBookmarkRequests
+        AZ::EntityId GetBookmarkId() const override;
+        ////
+
+        // BookmarkBus
+        void RemoveBookmark() override;
+        int GetShortcut() const override;
+        void SetShortcut(int shortcut) override;
+
+        AZStd::string GetBookmarkName() const override;
+        void SetBookmarkName(const AZStd::string& bookmarkName) override;
+        QRectF GetBookmarkTarget() const override;
+        QColor GetBookmarkColor() const override;
+        ////
+
+        // BookmarkNotifications
+        void OnBookmarkTriggered() override;
+        ////
+
+        // CommentNotificationBus
+        void OnCommentChanged(const AZStd::string&) override;
+        ////
+
         // SceneNotificationBus
-        void OnSceneMemberDragBegin(const AZ::EntityId&) override;
-        void OnSceneMemberDragComplete(const AZ::EntityId&) override;
+        void OnSceneMemberDragBegin() override;
+        void OnSceneMemberDragComplete() override;
 
         void OnDragSelectStart() override;
         void OnDragSelectEnd() override;
@@ -153,9 +192,14 @@ namespace GraphCanvas
         void FindInteriorElements(AZStd::vector< AZ::EntityId >& interiorElements);
 
         void OnColorChanged();
+        void OnBookmarkStatusChanged();
 
     private:
+
+        // Fix for VS2013
         BlockCommentNodeFrameComponent(const BlockCommentNodeFrameComponent&) = delete;
+        const BlockCommentNodeFrameComponent& operator=(const BlockCommentNodeFrameComponent&) = delete;
+        ////
 
         void FindElementsForDrag();
 
@@ -175,7 +219,7 @@ namespace GraphCanvas
         AZStd::vector< AZ::EntityId >           m_movingElements;
         AZStd::unordered_set< AZ::EntityId >    m_containedBlockComments;
 
-        AZStd::vector< AZ::EntityId >           m_highlightEntities;
+        StateSetter< RootGraphicsItemDisplayState > m_highlightDisplayStateStateSetter;
     };
 
     //! The QGraphicsItem for the block comment title area
@@ -289,6 +333,7 @@ namespace GraphCanvas
         void contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent) override;
         void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
 
+        void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
         QPainterPath shape() const override;
         ////
 
@@ -318,6 +363,8 @@ namespace GraphCanvas
 
         bool m_allowMovement;
         bool m_resizeComment;
+
+        bool m_allowDraw;
 
         int m_adjustVertical;
         int m_adjustHorizontal;

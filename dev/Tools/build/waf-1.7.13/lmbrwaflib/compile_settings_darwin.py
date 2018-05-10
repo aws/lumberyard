@@ -16,8 +16,7 @@ from waflib.Configure import conf
 from waflib.TaskGen import feature, before_method, after_method
 from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 from waflib.Errors import WafError
-import subprocess
-import re
+import subprocess, re, os
 
 # the default file permissions after copies are made.  511 => 'chmod 777 <file>'
 FILE_PERMISSIONS = 511
@@ -117,84 +116,48 @@ def load_release_darwin_settings(conf):
     conf.load_darwin_common_settings()
 
 
-@feature('cprogram', 'cxxprogram')
-@after_method('post_command_exec')
-def add_post_build_mac_command(self):
-    """
-    Function to add a post build method if we are creating a mac launcher and
-    add copy jobs for any 3rd party libraries that are used by the launcher to
-    the executable directory.
-    """
-    if getattr(self, 'mac_launcher', False) and self.env['PLATFORM'] != 'project_generator':
-        self.bld.add_post_fun(add_transfer_jobs_for_mac_launcher)
-
-        # Screen the potential libpaths first
-        libpaths = []
-        for libpath in self.libpath:
-            full_libpath = os.path.join(self.bld.root.abspath(), libpath)
-            if not os.path.exists(full_libpath):
-                Logs.warn('[WARN] Unable to find library path {} to copy libraries from.')
-            else:
-                libpaths.append(libpath)
-
-        for lib in self.lib:
-            for libpath in libpaths:
-                libpath_node = self.bld.root.find_node(libpath)
-                library = libpath_node.ant_glob("lib" + lib + ".dylib")
-                if library:
-                    self.copy_files(library[0])
-
-import os, shutil
-def add_transfer_jobs_for_mac_launcher(self):
-    """
-    Function to move CryEngine libraries that the mac launcher uses to the
-    project .app Contents/MacOS folder where they need to be for the executable
-    to run
-    """
-    output_folders = self.get_output_folders(self.env['PLATFORM'], self.env['CONFIGURATION'])
-    for folder in output_folders:
-        files_to_copy = folder.ant_glob("*.dylib")
-        for project in self.get_enabled_game_project_list():
-            executable_name = self.get_executable_name(project)
-            destination_folder = folder.abspath() + "/" + executable_name + ".app/Contents/MacOS/"
-            for file in files_to_copy:
-                # Some of the libraries/files we copy over may have read-only
-                # permissions. If they do the copy2 will fail. Delete the file
-                # first then do the copy. If it does not exist then we will
-                # have no issues doing the copy so we can pass on the
-                # exception.
-                try:
-                    os.remove(destination_folder + file.name)
-                except:
-                    pass
-                     
-                shutil.copy2(file.abspath(), destination_folder)
-
-
 class update_to_use_rpath(Task):
     '''
     Updates dependent libraries to use rpath if they are not already using
     rpath or are referenced by an absolute path 
     '''
     color = 'CYAN'
+    queued_libs = set()
+    processed_libs = set()
+    lib_dependencies = {}
 
     def runnable_status(self):
-        if Task.runnable_status(self) == ASK_LATER:
+        self_status = Task.runnable_status(self)
+        if self_status == ASK_LATER: 
             return ASK_LATER
 
         source_lib = self.inputs[0]
-        depenedent_libs = self.get_dependent_libs(source_lib.abspath())
-        for dependent_name in depenedent_libs:
-            if dependent_name and dependent_name != source_lib.name and re.match("[@/]", dependent_name) is None:
-                return RUN_ME
+        if source_lib.abspath() in self.processed_libs or source_lib in self.queued_libs:
+            return SKIP_ME
 
-        return SKIP_ME
+        self.queued_libs.add(source_lib)
+
+        return RUN_ME
 
     def run(self):
         self.update_lib_to_use_rpath(self.inputs[0])
         return 0
 
     def update_lib_to_use_rpath(self, source_lib):
+        if source_lib.abspath() in self.processed_libs:
+            Logs.debug("update_rpath: %s --> source_lib already processed" % (self.inputs[0].name))
+            return
+             
+        if not os.path.exists(source_lib.abspath()):
+            Logs.warn("Could not find library %s, skipping the update to have it use rpath." % (self.inputs[0].abspath()))
+            return
+             
+        Logs.debug("update_rpath: %s --> processing..." % (self.inputs[0].abspath()))
+
+        # Make sure that we can write to the source lib since we will be
+        # changing various references to libraries and its ID
+        source_lib.chmod(FILE_PERMISSIONS)
+
         self.update_dependent_libs_to_use_rpath(source_lib)
 
         # Always update the id. If we are operating on an executable then this does nothing.
@@ -202,37 +165,35 @@ class update_to_use_rpath(Task):
         # properly load the library when using the rpath system.
         self.update_lib_id_to_use_rpath(source_lib)
 
+        self.processed_libs.add(source_lib.abspath())
+
     def update_dependent_libs_to_use_rpath(self, source_lib):
-        depenedent_libs = self.get_dependent_libs(source_lib.abspath())
-        for dependent_name in depenedent_libs:
-            if dependent_name and dependent_name != source_lib.name and re.match("[@/]", dependent_name) is None:
+        for dependent_name in self.get_dependent_libs(source_lib):
+            if dependent_name != source_lib.name and re.match("[@/]", dependent_name) is None:
+                Logs.debug("update_rpath: %s - processing dependent_name %s" % (self.inputs[0].name, dependent_name))
                 self.update_lib_to_reference_dependent_by_rpath(source_lib, dependent_name)
 
                 dependent_lib = source_lib.parent.make_node(dependent_name)
+                self.update_lib_to_use_rpath(dependent_lib)
 
-                try:
-                    dependent_lib.chmod(FILE_PERMISSIONS)
-                    self.update_lib_to_use_rpath(dependent_lib)
-                except:
-                    # File most likely does not exist so just continue on processing the other dependencies
-                    Logs.debug("update_rpath: dependent lib does not exist: %s" % (dependent_lib.abspath()))
-                    pass
+    def get_dependent_libs(self, lib_path_node):
+        if lib_path_node.name in self.lib_dependencies:
+            return self.lib_dependencies[lib_path_node.name]
 
-    def get_dependent_libs(self, lib_path_name):
-        otool_command = "otool -L '%s' | cut -d ' ' -f 1 | grep .*dylib$" % (lib_path_name) 
+        otool_command = "otool -L '%s' | cut -d ' ' -f 1 | grep .*dylib$" % (lib_path_node.abspath()) 
         output = subprocess.check_output(otool_command, shell=True)
-        depenedent_libs = re.split("\s+", output.strip())
-        Logs.debug("update_rpath: dependent libs: %s" % (depenedent_libs))
-        return depenedent_libs
+        dependent_libs = re.split("\s+", output.strip())
+
+        self.lib_dependencies[lib_path_node.name] = dependent_libs
+        Logs.debug("update_rpath: %s - dependent libs: %s" % (self.inputs[0].name, dependent_libs))
+        return dependent_libs
 
     def update_lib_to_reference_dependent_by_rpath(self, source_lib, dependent):
         install_name_command = "install_name_tool -change %s @rpath/%s '%s'" % (dependent, dependent, source_lib.abspath())
-        Logs.debug("update_rpath: executing %s" % (install_name_command))
         output = subprocess.check_output(install_name_command, shell=True)
 
     def update_lib_id_to_use_rpath(self, source_lib):
         install_name_command = "install_name_tool -id @rpath/%s '%s'" % (source_lib.name, source_lib.abspath())
-        Logs.debug("update_rpath: updating lib id - %s" % (install_name_command))
         subprocess.check_output(install_name_command, shell=True)
 
 
@@ -298,7 +259,6 @@ def add_rpath_update_tasks(self):
         return
 
     for src in self.link_task.outputs:
-        Logs.debug("update_rpath: creating task to update {}".format(src.abspath()))
         self.create_task('update_to_use_rpath', src)
 
 

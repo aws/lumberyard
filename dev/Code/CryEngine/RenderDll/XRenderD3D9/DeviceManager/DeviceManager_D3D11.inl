@@ -13,6 +13,19 @@
 
 //=============================================================================
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DEVICEMANAGER_D3D11_INL_SECTION_1 1
+#define DEVICEMANAGER_D3D11_INL_SECTION_2 2
+#define DEVICEMANAGER_D3D11_INL_SECTION_3 3
+#define DEVICEMANAGER_D3D11_INL_SECTION_4 4
+#define DEVICEMANAGER_D3D11_INL_SECTION_5 5
+#define DEVICEMANAGER_D3D11_INL_SECTION_6 6
+#define DEVICEMANAGER_D3D11_INL_SECTION_7 7
+#define DEVICEMANAGER_D3D11_INL_SECTION_8 8
+#endif
+
 #ifdef DEVMAN_USE_STAGING_POOL
 D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool bUpload)
 {
@@ -256,6 +269,10 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
     //    Desc.CPUAccessFlags |= D3D11_CPU_ACCESS_READ;
     Desc.MiscFlags = nMiscFlags;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_1
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#endif
 
     D3D11_SUBRESOURCE_DATA* pSRD = NULL;
     D3D11_SUBRESOURCE_DATA SRD[20];
@@ -268,9 +285,17 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
             SRD[i].SysMemPitch = pTI->m_pData[i].SysMemPitch;
             SRD[i].SysMemSlicePitch = pTI->m_pData[i].SysMemSlicePitch;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_2
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#endif
         }
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_3
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#endif
 
     hr = gcpRendD3D->GetDevice().CreateTexture2D(&Desc, pSRD, &pD3DTex);
 
@@ -289,7 +314,7 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
             // Register the VRAM allocation with the driller
             void* address = static_cast<void*>(pD3DTex);
             size_t byteSize = pDeviceTexture->m_nBaseAllocatedSize;
-            EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, address, byteSize, textureName, Render::Debug::VRAM_CATEGORY_TEXTURE, Render::Debug::VRAM_SUBCATEGORY_TEXTURE_TEXTURE);
+            EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, address, byteSize, textureName.c_str(), Render::Debug::VRAM_CATEGORY_TEXTURE, Render::Debug::VRAM_SUBCATEGORY_TEXTURE_TEXTURE);
         }
 
         if (nUsage & USAGE_STAGE_ACCESS)
@@ -367,10 +392,18 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
                 SRD[nSubresInd].SysMemPitch = pTI->m_pData[nSubresInd].SysMemPitch;
                 SRD[nSubresInd].SysMemSlicePitch = pTI->m_pData[nSubresInd].SysMemSlicePitch;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_4
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#endif
             }
         }
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_5
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#endif
 
     hr = gcpRendD3D->GetDevice().CreateTexture2D(&Desc, pSRD, &pD3DTex);
 
@@ -457,6 +490,10 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
             SRD[i].SysMemPitch = pTI->m_pData[i].SysMemPitch;
             SRD[i].SysMemSlicePitch = pTI->m_pData[i].SysMemSlicePitch;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_6
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#endif
         }
     }
     hr = gcpRendD3D->GetDevice().CreateTexture3D(&Desc, pSRD, &pD3DTex);
@@ -515,6 +552,10 @@ HRESULT CDeviceManager::CreateBuffer(
     D3D11_BUFFER_DESC BufDesc;
     ZeroStruct(BufDesc);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_7
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#endif
 
     BufDesc.ByteWidth = nSize * elemSize;
     int nD3DUsage = D3D11_USAGE_DEFAULT;
@@ -610,6 +651,10 @@ void CDeviceManager::ExtractBasePointer(D3DBuffer* buffer, uint8*& base_ptr)
     base_ptr = (uint8*)DXMETALGetBufferStorage(buffer);
 #else
 #   if BUFFER_ENABLE_DIRECT_ACCESS
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_8
+#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+#       endif
 #   else
     base_ptr = NULL;
 #   endif

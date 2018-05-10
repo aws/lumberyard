@@ -66,14 +66,6 @@ namespace MCore
     void CommandGroup::AddCommandString(const AZStd::string& commandString)
     {
         mCommands.AddEmpty();
-        mCommands.GetLast().mCommandString = commandString.c_str();
-    }
-
-
-    // add a command string to the group
-    void CommandGroup::AddCommandString(const MCore::String& commandString)
-    {
-        mCommands.AddEmpty();
         mCommands.GetLast().mCommandString = commandString;
     }
 
@@ -81,12 +73,12 @@ namespace MCore
     // get the command string for a given command
     const char* CommandGroup::GetCommandString(uint32 index) const
     {
-        return mCommands[index].mCommandString;
+        return mCommands[index].mCommandString.c_str();
     }
 
 
     // get the command string for a given command
-    const MCore::String& CommandGroup::GetCommandStringAsString(uint32 index)   const
+    const AZStd::string& CommandGroup::GetCommandStringAsString(uint32 index)   const
     {
         return mCommands[index].mCommandString;
     }

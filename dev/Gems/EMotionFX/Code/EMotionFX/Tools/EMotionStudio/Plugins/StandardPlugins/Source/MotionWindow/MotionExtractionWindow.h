@@ -16,7 +16,6 @@
 // include MCore
 #include "../StandardPluginsConfig.h"
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "../../../../EMStudioSDK/Source/NodeSelectionWindow.h"
 #include <MysticQt/Source/LinkWidget.h>
 #include <EMotionFX/Source/PlayBackInfo.h>

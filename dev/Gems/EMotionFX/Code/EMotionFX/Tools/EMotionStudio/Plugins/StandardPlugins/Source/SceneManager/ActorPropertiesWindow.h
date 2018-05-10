@@ -15,7 +15,6 @@
 #include "../StandardPluginsConfig.h"
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/PlayBackInfo.h>
 #include "../../../../EMStudioSDK/Source/NodeSelectionWindow.h"
 #include "CollisionMeshesSetupWindow.h"

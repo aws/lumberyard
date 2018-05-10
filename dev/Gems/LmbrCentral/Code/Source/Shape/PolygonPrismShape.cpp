@@ -1,0 +1,616 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#include "LmbrCentral_precompiled.h"
+#include "PolygonPrismShape.h"
+
+#include <AzCore/Math/Aabb.h>
+#include <AzCore/Math/IntersectSegment.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/VectorConversions.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <MathConversion.h>
+#include <Shape/ShapeGeometryUtil.h>
+#include <Shape/ShapeDisplay.h>
+#include <ISystem.h>
+#include <IRenderAuxGeom.h>
+
+namespace LmbrCentral
+{
+    /**
+     * Templated to provide generation of vertices (Vec3) for rendering, or
+     * vertices (AZ::Vector3) for intersection testing.
+     */
+    template<typename V3, typename Transform>
+    static void GenerateSolidPolygonPrismMesh(
+        const Transform& worldFromLocal,
+        const AZStd::vector<AZ::Vector2> vertices,
+        const float height,
+        AZStd::vector<V3>& meshTriangles)
+    {
+        // must have at least one triangle
+        if (vertices.size() < 3)
+        {
+            return;
+        }
+
+        // generate triangles for one face of polygon prism
+        const AZStd::vector<V3> faceTriangles = GenerateTriangles<V3>(vertices);
+
+        const size_t halfTriangleCount = faceTriangles.size();
+        const size_t fullTriangleCount = faceTriangles.size() * 2;
+        const size_t wallTriangleCount = vertices.size() * 2 * 3;
+
+        // allocate space for both faces (polygons) and walls
+        meshTriangles.resize_no_construct(fullTriangleCount + wallTriangleCount);
+
+        // copy vertices into triangle list
+        const typename AZStd::vector<V3>::iterator midFace = meshTriangles.begin() + halfTriangleCount;
+        AZStd::copy(faceTriangles.begin(), faceTriangles.end(), meshTriangles.begin());
+        // due to winding order, reverse copy triangles for other face/polygon
+        std::reverse_copy(faceTriangles.begin(), faceTriangles.end(), midFace);
+        
+        const V3 heightOffset = V3(0.0f, 0.0f, height);
+
+        // top face/polygon
+        for (size_t i = 0; i < halfTriangleCount; ++i)
+        {
+            const V3 triangle = meshTriangles[i];
+            meshTriangles[i] = worldFromLocal * (triangle + heightOffset);
+        }
+        // bottom face/polygon
+        for (size_t i = halfTriangleCount; i < fullTriangleCount; ++i)
+        {
+            const V3 triangle = meshTriangles[i];
+            meshTriangles[i] = worldFromLocal * triangle;
+        }
+
+        // end of face/polygon vertices is start of side/wall vertices
+        const typename AZStd::vector<V3>::iterator endFaceIt = meshTriangles.begin() + fullTriangleCount;
+        typename AZStd::vector<V3>::iterator sideIt = endFaceIt;
+
+        // build quad triangles from vertices util
+        const auto quadTriangles =
+            [](const V3& a, const V3& b, const V3& c, const V3& d, typename AZStd::vector<V3>::iterator& tri)
+        {
+            *tri = a; ++tri;
+            *tri = b; ++tri;
+            *tri = c; ++tri;
+            *tri = c; ++tri;
+            *tri = b; ++tri;
+            *tri = d; ++tri;
+        };
+
+        // generate walls
+        const bool clockwise = ClockwiseOrder(vertices);
+        const size_t vertexCount = vertices.size();
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            // local vertex positions
+            const V3 p1l = V3(AZ::Vector2ToVector3(vertices[i]));
+            const V3 p2l = V3(AZ::Vector2ToVector3(vertices[(i + 1) % vertexCount]));
+
+            // transform to world space
+            const V3 p1w = worldFromLocal * p1l;
+            const V3 p2w = worldFromLocal * p2l;
+            const V3 p3w = worldFromLocal * (p1l + heightOffset);
+            const V3 p4w = worldFromLocal * (p2l + heightOffset);
+
+            // generate triangles for wall quad
+            if (clockwise)
+            {
+                quadTriangles(p1w, p3w, p2w, p4w, sideIt);
+            }
+            else
+            {
+                quadTriangles(p1w, p2w, p3w, p4w, sideIt);
+            }
+        }
+    }
+
+    static void GenerateWirePolygonPrismMesh(
+        const AZ::Transform& worldFromLocal,
+        const AZStd::vector<AZ::Vector2> vertices,
+        const float height,
+        AZStd::vector<Vec3>& lines)
+    {
+        const size_t vertexCount = vertices.size();
+        const size_t verticalLineCount = vertexCount;
+        const size_t horizontalLineCount = vertexCount > 2
+            ? vertexCount
+            : vertexCount > 1
+            ? 1
+            : 0;
+
+        const Matrix34 worldFromLocalCry = AZTransformToLYTransform(worldFromLocal);
+        lines.resize((verticalLineCount + (horizontalLineCount * 2)) * 2);
+
+        size_t lineVertIndex = 0;
+        for (size_t i = 0; i < verticalLineCount; ++i)
+        {
+            // vertical line
+            lines[lineVertIndex++] =
+                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i]));
+            lines[lineVertIndex++] =
+                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i], height));
+        }
+
+        for (size_t i = 0; i < horizontalLineCount; ++i)
+        {
+            // bottom line
+            lines[lineVertIndex++] =
+                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i]));
+            lines[lineVertIndex++] =
+                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[(i + 1) % vertexCount]));
+        }
+
+        for (size_t i = 0; i < horizontalLineCount; ++i)
+        {
+            // top line
+            lines[lineVertIndex++] =
+                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[i], height));
+            lines[lineVertIndex++] =
+                worldFromLocalCry * AZVec3ToLYVec3(Vector2ToVector3(vertices[(i + 1) % vertexCount], height));
+        }
+    }
+
+    void GeneratePolygonPrismMesh(
+        const AZ::Transform& worldFromLocal,
+        const AZStd::vector<AZ::Vector2> vertices,
+        const float height, PolygonPrismMesh& polygonPrismMeshOut)
+    {
+        AZ::Transform worldFromLocalUniformScale = worldFromLocal;
+        const AZ::VectorFloat maxScale = worldFromLocalUniformScale.ExtractScale().GetMaxElement();
+        worldFromLocalUniformScale *= AZ::Transform::CreateScale(AZ::Vector3(maxScale));
+
+        GenerateSolidPolygonPrismMesh<Vec3>(
+            AZTransformToLYTransform(worldFromLocalUniformScale), vertices, height, polygonPrismMeshOut.m_triangles);
+        GenerateWirePolygonPrismMesh(
+            worldFromLocalUniformScale, vertices, height, polygonPrismMeshOut.m_lines);
+    }
+
+    PolygonPrismShape::PolygonPrismShape()
+        : m_polygonPrism(AZStd::make_shared<AZ::PolygonPrism>()) {}
+
+    void PolygonPrismShape::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<PolygonPrismShape>()
+                ->Version(1)
+                ->Field("PolygonPrism", &PolygonPrismShape::m_polygonPrism)
+                ;
+
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+            {
+                editContext->Class<PolygonPrismShape>("Configuration", "Polygon Prism configuration parameters")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &PolygonPrismShape::m_polygonPrism,
+                        "Polygon Prism", "Data representing the shape in the entity's local coordinate space.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ;
+            }
+        }
+    }
+
+    void PolygonPrismShape::Activate(AZ::EntityId entityId)
+    {
+        m_entityId = entityId;
+        m_currentTransform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(m_currentTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
+        m_intersectionDataCache.InvalidateCache(InvalidateShapeCacheReason::ShapeChange);
+
+        AZ::TransformNotificationBus::Handler::BusConnect(entityId);
+        ShapeComponentRequestsBus::Handler::BusConnect(entityId);
+        PolygonPrismShapeComponentRequestBus::Handler::BusConnect(entityId);
+
+        const auto polygonPrismChanged = [this]()
+        {
+            ShapeChanged();
+        };
+
+        m_polygonPrism->SetCallbacks(
+            polygonPrismChanged,
+            polygonPrismChanged,
+            polygonPrismChanged);
+    }
+
+    void PolygonPrismShape::Deactivate()
+    {
+        PolygonPrismShapeComponentRequestBus::Handler::BusDisconnect();
+        ShapeComponentRequestsBus::Handler::BusDisconnect();
+        AZ::TransformNotificationBus::Handler::BusDisconnect();
+    }
+
+    void PolygonPrismShape::InvalidateCache(InvalidateShapeCacheReason reason)
+    {
+        m_intersectionDataCache.InvalidateCache(reason);
+    }
+
+    void PolygonPrismShape::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
+    {
+        m_currentTransform = world;
+        m_intersectionDataCache.InvalidateCache(InvalidateShapeCacheReason::TransformChange);
+        ShapeComponentNotificationsBus::Event(
+            m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged,
+            ShapeComponentNotifications::ShapeChangeReasons::TransformChanged);
+    }
+
+    void PolygonPrismShape::ShapeChanged()
+    {
+        ShapeComponentNotificationsBus::Event(
+            m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged,
+            ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+        
+        m_intersectionDataCache.InvalidateCache(
+            InvalidateShapeCacheReason::ShapeChange);
+    }
+
+    AZ::PolygonPrismPtr PolygonPrismShape::GetPolygonPrism()
+    {
+        return m_polygonPrism;
+    }
+
+    bool PolygonPrismShape::GetVertex(size_t index, AZ::Vector2& vertex) const
+    {
+        return m_polygonPrism->m_vertexContainer.GetVertex(index, vertex);
+    }
+
+    void PolygonPrismShape::AddVertex(const AZ::Vector2& vertex)
+    {
+        m_polygonPrism->m_vertexContainer.AddVertex(vertex);
+    }
+
+    bool PolygonPrismShape::UpdateVertex(size_t index, const AZ::Vector2& vertex)
+    {
+        return m_polygonPrism->m_vertexContainer.UpdateVertex(index, vertex);
+    }
+
+    bool PolygonPrismShape::InsertVertex(size_t index, const AZ::Vector2& vertex)
+    {
+        return m_polygonPrism->m_vertexContainer.InsertVertex(index, vertex);
+    }
+
+    bool PolygonPrismShape::RemoveVertex(size_t index)
+    {
+        return m_polygonPrism->m_vertexContainer.RemoveVertex(index);
+    }
+
+    void PolygonPrismShape::SetVertices(const AZStd::vector<AZ::Vector2>& vertices)
+    {
+        m_polygonPrism->m_vertexContainer.SetVertices(vertices);
+    }
+
+    void PolygonPrismShape::ClearVertices()
+    {
+        m_polygonPrism->m_vertexContainer.Clear();
+    }
+
+    size_t PolygonPrismShape::Size() const
+    {
+        return m_polygonPrism->m_vertexContainer.Size();
+    }
+
+    bool PolygonPrismShape::Empty() const
+    {
+        return m_polygonPrism->m_vertexContainer.Empty();
+    }
+
+    void PolygonPrismShape::SetHeight(float height)
+    {
+        m_polygonPrism->SetHeight(height);
+        m_intersectionDataCache.InvalidateCache(InvalidateShapeCacheReason::ShapeChange);
+    }
+
+    AZ::Aabb PolygonPrismShape::GetEncompassingAabb()
+    {
+        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, *m_polygonPrism);
+
+        return m_intersectionDataCache.m_aabb;
+    }
+
+    /**
+     * Return if the point is inside of the polygon prism volume or not.
+     * Use 'Crossings Test' to determine if point lies in or out of the polygon.
+     * @param point Position in world space to test against.
+     */
+    bool PolygonPrismShape::IsPointInside(const AZ::Vector3& point)
+    {
+        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, *m_polygonPrism);
+
+        // initial early aabb rejection test
+        // note: will implicitly do height test too
+        if (!GetEncompassingAabb().Contains(point))
+        {
+            return false;
+        }
+
+        return PolygonPrismUtil::IsPointInside(*m_polygonPrism, point, m_currentTransform);
+    }
+
+    float PolygonPrismShape::DistanceSquaredFromPoint(const AZ::Vector3& point)
+    {
+        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, *m_polygonPrism);
+
+        return PolygonPrismUtil::DistanceSquaredFromPoint(*m_polygonPrism, point, m_currentTransform);;
+    }
+
+    bool PolygonPrismShape::IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+    {
+        m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, *m_polygonPrism);
+
+        return PolygonPrismUtil::IntersectRay(m_intersectionDataCache.m_triangles, m_currentTransform, src, dir, distance);
+    }
+
+    void PolygonPrismShape::PolygonPrismIntersectionDataCache::UpdateIntersectionParamsImpl(
+        const AZ::Transform& currentTransform, const AZ::PolygonPrism& polygonPrism)
+    {
+        m_aabb = PolygonPrismUtil::CalculateAabb(polygonPrism, currentTransform);
+        GenerateSolidPolygonPrismMesh<AZ::Vector3>(
+            AZ::Transform::CreateIdentity(), polygonPrism.m_vertexContainer.GetVertices(),
+            polygonPrism.GetHeight(), m_triangles);
+    }
+    
+    void DrawPolygonPrismShape(
+        const ShapeDrawParams& shapeDrawParams, const PolygonPrismMesh& polygonPrismMesh,
+        AzFramework::EntityDebugDisplayRequests& /*displayContext*/)
+    {
+        auto geomRenderer = gEnv->pRenderer->GetIRenderAuxGeom();
+
+        const SAuxGeomRenderFlags oldFlags = geomRenderer->GetRenderFlags();
+        SAuxGeomRenderFlags newFlags = oldFlags;
+
+        // ensure render state is configured correctly - we want to read the depth
+        // buffer but do not want to write to it (ensure objects inside the volume are not obscured)
+        newFlags.SetAlphaBlendMode(e_AlphaBlended);
+        newFlags.SetDepthWriteFlag(e_DepthWriteOff);
+        newFlags.SetDepthTestFlag(e_DepthTestOn);
+
+        geomRenderer->SetRenderFlags(newFlags);
+
+        if (shapeDrawParams.m_filled)
+        {
+            if (polygonPrismMesh.m_triangles.size() != 0)
+            {
+                geomRenderer->DrawTriangles(
+                    polygonPrismMesh.m_triangles.data(),
+                    polygonPrismMesh.m_triangles.size(),
+                    AZColorToLYColorF(shapeDrawParams.m_shapeColor));
+            }
+        }
+
+        geomRenderer->SetRenderFlags(oldFlags);
+
+        if (polygonPrismMesh.m_lines.size() != 0)
+        {
+            geomRenderer->DrawLines(
+                polygonPrismMesh.m_lines.data(),
+                polygonPrismMesh.m_lines.size(),
+                AZColorToLYColorF(shapeDrawParams.m_wireColor));
+        }
+    }
+    
+    namespace PolygonPrismUtil
+    {
+        AZ::Aabb CalculateAabb(const AZ::PolygonPrism& polygonPrism, const AZ::Transform& worldFromLocal)
+        {
+            const AZ::VertexContainer<AZ::Vector2>& vertexContainer = polygonPrism.m_vertexContainer;
+
+            const AZ::VectorFloat zero = AZ::VectorFloat::CreateZero();
+            const AZ::VectorFloat height = AZ::VectorFloat(polygonPrism.GetHeight());
+
+            AZ::Transform worldFromLocalUniformScale = worldFromLocal;
+            const AZ::VectorFloat entityScale = worldFromLocalUniformScale.ExtractScale().GetMaxElement();
+            worldFromLocalUniformScale *= AZ::Transform::CreateScale(AZ::Vector3(entityScale));
+
+            AZ::Aabb aabb = AZ::Aabb::CreateNull();
+            // check base of prism
+            for (const AZ::Vector2& vertex : vertexContainer.GetVertices())
+            {
+                aabb.AddPoint(worldFromLocalUniformScale * AZ::Vector3(vertex.GetX(), vertex.GetY(), zero));
+            }
+
+            // check top of prism
+            // set aabb to be height of prism - ensure entire polygon prism shape is enclosed in aabb
+            for (const AZ::Vector2& vertex : vertexContainer.GetVertices())
+            {
+                aabb.AddPoint(worldFromLocalUniformScale * AZ::Vector3(vertex.GetX(), vertex.GetY(), height));
+            }
+
+            return aabb;
+        }
+
+        bool IsPointInside(const AZ::PolygonPrism& polygonPrism, const AZ::Vector3& point, const AZ::Transform& worldFromLocal)
+        {
+            using namespace PolygonPrismUtil;
+
+            const AZ::VectorFloat epsilon = AZ::VectorFloat(0.0001f);
+            const AZ::VectorFloat projectRayLength = AZ::VectorFloat(1000.0f);
+            const AZ::VectorFloat zero = AZ::VectorFloat::CreateZero();
+
+            const AZStd::vector<AZ::Vector2>& vertices = polygonPrism.m_vertexContainer.GetVertices();
+            const size_t vertexCount = vertices.size();
+
+            AZ::Transform worldFromLocalUniformScale = worldFromLocal;
+            const AZ::VectorFloat entityScale = worldFromLocalUniformScale.ExtractScale().GetMaxElement();
+            worldFromLocalUniformScale *= AZ::Transform::CreateScale(AZ::Vector3(entityScale));
+
+            // transform point to local space
+            const AZ::Vector3 localPoint = worldFromLocalUniformScale.GetInverseFast() * point;
+
+            // ensure the point is not above or below the prism (in its local space)
+            if (localPoint.GetZ().IsLessThan(AZ::VectorFloat::CreateZero()) ||
+                localPoint.GetZ().IsGreaterThan(polygonPrism.GetHeight()))
+            {
+                return false;
+            }
+
+            const AZ::Vector3 localPointFlattened = AZ::Vector3(localPoint.GetX(), localPoint.GetY(), zero);
+            const AZ::Vector3 localEndFlattened = localPointFlattened + AZ::Vector3::CreateAxisX() * projectRayLength;
+
+            size_t intersections = 0;
+            // use 'crossing test' algorithm to decide if the point lies within the volume or not
+            // (odd number of intersections - inside, even number of intersections - outside)
+            for (size_t i = 0; i < vertexCount; ++i)
+            {
+                const AZ::Vector3 segmentStart = AZ::Vector2ToVector3(vertices[i]);
+                const AZ::Vector3 segmentEnd = AZ::Vector2ToVector3(vertices[(i + 1) % vertexCount]);
+
+                AZ::Vector3 closestPosRay, closestPosSegment;
+                AZ::VectorFloat rayProportion, segmentProportion;
+                AZ::Intersect::ClosestSegmentSegment(localPointFlattened, localEndFlattened, segmentStart, segmentEnd, rayProportion, segmentProportion, closestPosRay, closestPosSegment);
+                const AZ::VectorFloat delta = (closestPosRay - closestPosSegment).GetLengthSq();
+
+                // have we crossed/touched a line on the polygon
+                if (delta.IsLessThan(epsilon))
+                {
+                    const AZ::Vector3 highestVertex = segmentStart.GetY().IsGreaterThan(segmentEnd.GetY()) ? segmentStart : segmentEnd;
+
+                    const AZ::VectorFloat threshold = (highestVertex - point).Dot(AZ::Vector3::CreateAxisY());
+                    if (segmentProportion.IsZero())
+                    {
+                        // if at beginning of segment, only count intersection if segment is going up (y-axis)
+                        // (prevent counting segments twice when intersecting at vertex)
+                        if (threshold.IsGreaterThan(zero))
+                        {
+                            intersections++;
+                        }
+                    }
+                    else
+                    {
+                        intersections++;
+                    }
+                }
+            }
+
+            // odd inside, even outside - bitwise AND to convert to bool
+            return intersections & 1;
+        }
+
+        float DistanceSquaredFromPoint(const AZ::PolygonPrism& polygonPrism, const AZ::Vector3& point, const AZ::Transform& worldFromLocal)
+        {
+            const AZ::VectorFloat zero = AZ::VectorFloat::CreateZero();
+            const AZ::VectorFloat height = AZ::VectorFloat(polygonPrism.GetHeight());
+
+            AZ::Transform worldFromLocalUniformScale = worldFromLocal;
+            const AZ::VectorFloat entityScale = worldFromLocalUniformScale.ExtractScale().GetMaxElement();
+            worldFromLocalUniformScale *= AZ::Transform::CreateScale(AZ::Vector3(entityScale));
+
+            const AZ::Vector3 localPoint = worldFromLocalUniformScale.GetInverseFast() * point;
+            const AZ::Vector3 localPointFlattened = AZ::Vector3(localPoint.GetX(), localPoint.GetY(), AZ::VectorFloat::CreateZero());
+            const AZ::Vector3 worldPointFlattened = worldFromLocalUniformScale * localPointFlattened;
+
+            // first test if the point is contained within the polygon (flatten)
+            if (IsPointInside(polygonPrism, worldPointFlattened, worldFromLocalUniformScale))
+            {
+                if (localPoint.GetZ().IsLessThan(zero))
+                {
+                    // if it's inside the 2d polygon but below the volume
+                    const AZ::VectorFloat distance = fabsf(localPoint.GetZ());
+                    return distance * distance;
+                }
+
+                if (localPoint.GetZ().IsGreaterThan(height))
+                {
+                    // if it's inside the 2d polygon but above the volume
+                    const AZ::VectorFloat distance = localPoint.GetZ() - height;
+                    return distance * distance;
+                }
+
+                // if it's fully contained, return 0
+                return zero;
+            }
+
+            const AZStd::vector<AZ::Vector2>& vertices = polygonPrism.m_vertexContainer.GetVertices();
+            const size_t vertexCount = vertices.size();
+
+            // find closest segment
+            AZ::Vector3 closestPos;
+            AZ::VectorFloat minDistanceSq = AZ::VectorFloat(FLT_MAX);
+            for (size_t i = 0; i < vertexCount; ++i)
+            {
+                const AZ::Vector3 segmentStart = AZ::Vector2ToVector3(vertices[i]);
+                const AZ::Vector3 segmentEnd = AZ::Vector2ToVector3(vertices[(i + 1) % vertexCount]);
+
+                AZ::Vector3 position;
+                AZ::VectorFloat proportion;
+                AZ::Intersect::ClosestPointSegment(localPointFlattened, segmentStart, segmentEnd, proportion, position);
+
+                const AZ::VectorFloat distanceSq = (position - localPointFlattened).GetLengthSq();
+                if (distanceSq < minDistanceSq)
+                {
+                    minDistanceSq = distanceSq;
+                    closestPos = position;
+                }
+            }
+
+            // constrain closest pos to [0, height] of volume
+            closestPos += AZ::Vector3(zero, zero, localPoint.GetZ().GetClamp(zero, height));
+
+            // return distanceSq from closest pos on prism
+            return (closestPos - localPoint).GetLengthSq();
+        }
+
+        bool IntersectRay(
+            AZStd::vector<AZ::Vector3> triangles, const AZ::Transform& worldFromLocal,
+            const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+        {
+            // must have at least one triangle
+            if (triangles.size() < 3)
+            {
+                distance = AZ::VectorFloat(std::numeric_limits<float>::max());
+                return false;
+            }
+            
+            // transform ray into local space
+            AZ::Transform worldFromLocalNomalized = worldFromLocal;
+            const AZ::VectorFloat entityScale = worldFromLocalNomalized.ExtractScale().GetMaxElement();
+            const AZ::Transform localFromWorldNormalized = worldFromLocalNomalized.GetInverseFast();
+            const AZ::VectorFloat rayLength = AZ::VectorFloat(1000.0f);
+            const AZ::Vector3 localSrc = localFromWorldNormalized * src;
+            const AZ::Vector3 localDir = localFromWorldNormalized.Multiply3x3(dir);
+            const AZ::Vector3 localEnd = localSrc + localDir * rayLength;
+
+            // iterate over all triangles in polygon prism and
+            // test ray against each in turn
+            bool intersection = false;
+            distance = AZ::VectorFloat(std::numeric_limits<float>::max());
+            for (size_t i = 0; i < triangles.size(); i += 3)
+            {
+                AZ::VectorFloat t;
+                AZ::Vector3 normal;
+                if (AZ::Intersect::IntersectSegmentTriangle(
+                    localSrc, localEnd,
+                    triangles[i] * entityScale,
+                    triangles[i + 1] * entityScale,
+                    triangles[i + 2] * entityScale, normal, t))
+                {
+                    intersection |= true;
+
+                    const AZ::VectorFloat dist = t * rayLength;
+                    if (dist < distance)
+                    {
+                        distance = dist;
+                    }
+                }
+            }
+
+            return intersection;
+        }
+    }
+} // namespace LmbrCentral

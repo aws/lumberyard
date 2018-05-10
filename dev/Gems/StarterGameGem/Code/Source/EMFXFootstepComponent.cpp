@@ -27,6 +27,12 @@
 #include <AzCore/Component/TransformBus.h>
 #include <MathConversion.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define EMFXFOOTSTEPCOMPONENT_CPP_SECTION_1 1
+#define EMFXFOOTSTEPCOMPONENT_CPP_SECTION_2 2
+#endif
+
 namespace StarterGameGem
 {
     void EMFXFootstepComponent::Reflect(AZ::ReflectContext* context)
@@ -136,10 +142,19 @@ namespace StarterGameGem
 			}
 
 			effectId = pMaterialEffects->GetEffectIdByName(fxLibName.c_str(), effectName.c_str());
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION EMFXFOOTSTEPCOMPONENT_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(EMFXFootstepComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 			if (effectId == InvalidEffectId)
 			{
 				gEnv->pSystem->Warning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, VALIDATOR_FLAG_AUDIO, 0, "Failed to find material for footstep sounds in FXLib %s, Effect: %s", fxLibName.c_str(), effectName);
 			}
+#endif
 		}
 		else
 		{
@@ -148,10 +163,18 @@ namespace StarterGameGem
 			livingStatus.groundSlope.Set(0.f, 0.f, 1.f);
 			LmbrCentral::CryPhysicsComponentRequestBus::Event(GetEntityId(), &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicsStatus, livingStatus);
 			effectId = pMaterialEffects->GetEffectId(fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION EMFXFOOTSTEPCOMPONENT_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(EMFXFootstepComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 			if (effectId == InvalidEffectId)
 			{
 				gEnv->pSystem->Warning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, VALIDATOR_FLAG_AUDIO, 0, "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
 			}
+#endif
 		}
 
 		if (effectId != InvalidEffectId)

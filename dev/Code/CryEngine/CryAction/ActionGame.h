@@ -260,11 +260,11 @@ public:
     CActionGame(CScriptRMI*);
     ~CActionGame();
 
-    CHEAT_PROTECTION_EXPORT bool Init(const SGameStartParams*);
+    bool Init(const SGameStartParams*);
 
     bool IsServer() const { return gEnv->bServer; }
 
-    CHEAT_PROTECTION_EXPORT void PostInit(const SGameStartParams* pGameStartParams, bool* io_ok, bool* io_requireBlockingConnection);
+    void PostInit(const SGameStartParams* pGameStartParams, bool* io_ok, bool* io_requireBlockingConnection);
 
     bool IsInited(void) {return (m_initState == eIS_InitDone); }
     bool IsIniting(void) {return (m_initState > eIS_Uninited) && (m_initState < eIS_InitDone); }
@@ -274,7 +274,7 @@ public:
     CGameContext* GetGameContext() { return m_pGameContext; }
 
     void UnloadLevel();
-    CHEAT_PROTECTION_EXPORT void UnloadPhysicsData();
+    void UnloadPhysicsData();
     void FixBrokenObjects(bool bRestoreBroken);
 
     void CloneBrokenObjectsByIndex(uint16* pBreakEventIndices, int32& iNumBreakEvents, IRenderNode** outClonedNodes, int32& iNumClonedNodes, SRenderNodeCloneLookup& nodeLookup);
@@ -295,7 +295,7 @@ public:
 
     void Serialize(TSerialize ser);
     void SerializeBreakableObjects(TSerialize ser);
-    CHEAT_PROTECTION_EXPORT void FlushBreakableObjects();
+    void FlushBreakableObjects();
     void ClearBreakHistory();
 
     void OnBreakageSpawnedEntity(IEntity* pEntity, IPhysicalEntity* pPhysEntity, IPhysicalEntity* pSrcPhysEntity);

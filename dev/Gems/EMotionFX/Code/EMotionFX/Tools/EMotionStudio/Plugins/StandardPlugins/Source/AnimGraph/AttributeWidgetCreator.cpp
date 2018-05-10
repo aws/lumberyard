@@ -126,6 +126,14 @@ namespace EMStudio
     }
 
 
+    // init morph target picker
+    void MorphTargetPickerAttributeWidgetCreator::InitAttributes(MCore::Array<MCore::Attribute*>& attributes, MCore::AttributeSettings* attributeSettings, bool forceInitMinMaxAttributes, bool resetMinMaxAttributes)
+    {
+        MCORE_UNUSED(resetMinMaxAttributes);
+        CreateAttributes(attributes, attributeSettings, forceInitMinMaxAttributes);
+    }
+
+
     // init blend tree motion attribute
     void BlendTreeMotionAttributeWidgetCreator::InitAttributes(MCore::Array<MCore::Attribute*>& attributes, MCore::AttributeSettings* attributeSettings, bool forceInitMinMaxAttributes, bool resetMinMaxAttributes)
     {

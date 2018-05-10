@@ -342,7 +342,7 @@ namespace ServiceAPI {
             if (serializeContext)
             {
                 // we must include any fields we want to expose to the editor or lua in the serialize context
-                serializeContext->Class<CloudGemTextToSpeechClientComponent>()
+                serializeContext->Class<CloudGemTextToSpeechClientComponent, AZ::Component>()
                     ->Version(1);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();

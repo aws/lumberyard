@@ -156,7 +156,7 @@ namespace CharacterTool {
     {
         Q_OBJECT
     public:
-        CharacterDocument(System* system);
+        explicit CharacterDocument(System* system);
         ~CharacterDocument();
 
         void ConnectExternalSignals();

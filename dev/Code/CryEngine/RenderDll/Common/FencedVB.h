@@ -11,8 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef _FencedVB_H_
-#define _FencedVB_H_
+#pragma once
 
 ///////////////////////////////////////////////////////////////////////////////
 // Vertex Data container optmized for direct VideoMemory access on Consoles
@@ -102,8 +101,15 @@ void FencedVB<VertexType>::UnlockVB()
     if (m_pLockedData && m_pVB)
     {
         gRenDev->m_DevMan.UnlockDirectAccessBuffer((D3DBuffer*)m_pVB, CDeviceManager::BIND_VERTEX_BUFFER);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(FencedVB_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#   else
         CDeviceManager::InvalidateCpuCache(m_pLockedData, 0, m_nVertexCount * m_nVertStride);
         CDeviceManager::InvalidateGpuCache((D3DBuffer*)m_pVB, m_pLockedData, 0, m_nVertexCount * m_nVertStride);
+#   endif
         m_pLockedData = NULL;
     }
 }
@@ -141,5 +147,3 @@ void FencedVB<VertexType>::WaitForFence()
     gRenDev->m_DevMan.SyncFence(m_Fence, true, false);
 #endif
 }
-
-#endif  //_FencedVB_H_

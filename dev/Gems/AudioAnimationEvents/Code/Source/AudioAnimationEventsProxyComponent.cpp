@@ -105,7 +105,14 @@ namespace AudioAnimationEvents
 			Audio::AudioSystemRequestBus::BroadcastResult(triggerId, &Audio::AudioSystemRequestBus::Events::GetAudioTriggerID, event.m_parameter);
             if (triggerId == INVALID_AUDIO_CONTROL_ID)
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AudioAnimationEventsProxyComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 AZ_Warning("AudioAnimationEventProxy", triggerId != INVALID_AUDIO_CONTROL_ID, "AudioAnimationEventsProxy given invalid trigger ID %d", triggerId);
+#endif
                 return;
             }
 

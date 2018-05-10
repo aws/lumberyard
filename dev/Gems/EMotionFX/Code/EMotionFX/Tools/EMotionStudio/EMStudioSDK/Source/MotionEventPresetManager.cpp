@@ -125,22 +125,7 @@ namespace EMStudio
             eventPreset->SetIsDefault(true);
         }
     }
-
-
-    bool MotionEventPresetManager::CheckIfHasPreset(const char* eventType) const
-    {
-        for (const MotionEventPreset* eventPreset : mEventPresets)
-        {
-            if (eventPreset->GetEventType() == eventType)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-
+    
     void MotionEventPresetManager::Load(const AZStd::string& filename)
     {
         mFileName = filename;
@@ -171,12 +156,7 @@ namespace EMStudio
             eventParameter  = settings.value("MotionEventPresetParameter").toString().toUtf8().data();
 
             settings.endGroup();
-
-            if (CheckIfHasPreset(eventType.c_str()))
-            {
-                continue;
-            }
-
+                
             MotionEventPreset* preset = new MotionEventPreset(eventType, eventParameter, mirrorType, color.ToInt());
             AddPreset(preset);
         }
@@ -194,7 +174,16 @@ namespace EMStudio
 
         QSettings settings(mFileName.c_str(), QSettings::IniFormat, GetManager()->GetMainWindow());
 
-        const size_t numEventPresets = mEventPresets.size();
+        size_t numEventPresets = 0;
+
+        // Remove the default ones
+        for (MotionEventPreset* eventPreset : mEventPresets)
+        {
+            if (!eventPreset->GetIsDefault())
+            {
+                ++numEventPresets;
+            }
+        }
         {
             // QVariant doesnt like direct conversions from size_t in Mac
             QVariant vNumEventPresets;
@@ -203,20 +192,22 @@ namespace EMStudio
         }
         
         // Loop trough all entries and save them to the settings file.
-        for (size_t i = 0; i < numEventPresets; ++i)
+        size_t presetIndex = 0;
+        for (MotionEventPreset* eventPreset : mEventPresets)
         {
-            const MotionEventPreset* preset = mEventPresets[i];
-            if (!preset)
+            if (!eventPreset || eventPreset->GetIsDefault())
             {
                 continue;
             }
 
-            settings.beginGroup(AZStd::string::format("%i", i).c_str());
-            settings.setValue("MotionEventPresetColor", RenderOptions::ColorToString(preset->GetEventColor()));
-            settings.setValue("MotionEventPresetType", preset->GetEventType().c_str());
-            settings.setValue("MotionEventPresetMirrorType", preset->GetMirrorType().c_str());
-            settings.setValue("MotionEventPresetParameter", preset->GetEventParameter().c_str());
+            settings.beginGroup(AZStd::string::format("%i", presetIndex).c_str());
+            settings.setValue("MotionEventPresetColor", RenderOptions::ColorToString(eventPreset->GetEventColor()));
+            settings.setValue("MotionEventPresetType", eventPreset->GetEventType().c_str());
+            settings.setValue("MotionEventPresetMirrorType", eventPreset->GetMirrorType().c_str());
+            settings.setValue("MotionEventPresetParameter", eventPreset->GetEventParameter().c_str());
             settings.endGroup();
+
+            ++presetIndex;
         }
 
         // Sync to ensure the status is correct because qt delays the write to file.

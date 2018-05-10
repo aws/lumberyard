@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include <MCore/Source/StandardHeaders.h>
 #include <AzCore/std/string/string.h>
+#include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/LogManager.h>
 #include "../StandardPluginsConfig.h"
 #include <QWidget>

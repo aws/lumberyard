@@ -1,0 +1,155 @@
+{
+    "name": "clang",
+    "source": "@3P:Clang@",
+    "description": "Clang",
+    "defines": [],
+    "suppress_warning": "True",
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "includes_debug": [
+                "llvm/include",
+                "vs2013/debug/include"
+            ],
+            "includes_release": [
+                "llvm/include",
+                "vs2013/release/include"
+            ],
+            "libpath_debug": [
+                "vs2013/debug/lib"
+            ],
+            "libpath_release": [
+                "vs2013/release/lib"
+            ],
+            "lib": [
+                "clangFrontend.lib",
+                "clangSerialization.lib",
+                "clangDriver.lib",
+                "clangTooling.lib",
+                "clangParse.lib",
+                "clangSema.lib",
+                "clangAnalysis.lib",
+                "clangRewriteFrontend.lib",
+                "clangRewrite.lib",
+                "clangEdit.lib",
+                "clangAST.lib",
+                "clangLex.lib",
+                "clangBasic.lib",
+                "LLVMMC.lib",
+                "LLVMSupport.lib",
+                "LLVMOption.lib",
+                "LLVMBitReader.lib",
+                "LLVMMCParser.lib"
+            ]
+        },
+        "win_x64_vs2015": {
+            "includes_debug": [
+                "llvm/include",
+                "vs2015/debug/include"
+            ],
+            "includes_release": [
+                "llvm/include",
+                "vs2015/release/include"
+            ],
+            "libpath_debug": [
+                "vs2015/debug/lib"
+            ],
+            "libpath_release": [
+                "vs2015/release/lib"
+            ],
+            "lib": [
+                "clangFrontend.lib",
+                "clangSerialization.lib",
+                "clangDriver.lib",
+                "clangTooling.lib",
+                "clangParse.lib",
+                "clangSema.lib",
+                "clangAnalysis.lib",
+                "clangRewriteFrontend.lib",
+                "clangRewrite.lib",
+                "clangEdit.lib",
+                "clangAST.lib",
+                "clangLex.lib",
+                "clangBasic.lib",
+                "LLVMMC.lib",
+                "LLVMSupport.lib",
+                "LLVMOption.lib",
+                "LLVMBitReader.lib",
+                "LLVMMCParser.lib"
+            ]
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "darwin_x64": {
+            "includes_debug": [
+                "llvm/include",
+                "xcode/debug/include"
+            ],
+            "includes_release": [
+                "llvm/include",
+                "xcode/release/include"
+            ],
+            "libpath_debug": [
+                "xcode/debug/lib"
+            ],
+            "libpath_release": [
+                "xcode/release/lib"
+            ],
+            "lib": [
+                "libclangFrontend.a",
+                "libclangSerialization.a",
+                "libclangDriver.a",
+                "libclangTooling.a",
+                "libclangParse.a",
+                "libclangSema.a",
+                "libclangAnalysis.a",
+                "libclangRewriteFrontend.a",
+                "libclangRewrite.a",
+                "libclangEdit.a",
+                "libclangAST.a",
+                "libclangLex.a",
+                "libclangBasic.a",
+                "libLLVMMC.a",
+                "libLLVMSupport.a",
+                "libLLVMOption.a",
+                "libLLVMBitReader.a",
+                "libLLVMMCParser.a"
+            ]
+        },
+        "linux_x64": {
+            "includes_debug": [
+                "llvm/include",
+                "linux_x64/debug/include"
+            ],
+            "includes_release": [
+                "llvm/include",
+                "linux_x64/release/include"
+            ],
+            "libpath_debug": [
+                "linux_x64/debug/lib"
+            ],
+            "libpath_release": [
+                "linux_x64/release/lib"
+            ],
+            "lib": [
+                "libclangFrontend.a",
+                "libclangSerialization.a",
+                "libclangDriver.a",
+                "libclangTooling.a",
+                "libclangParse.a",
+                "libclangSema.a",
+                "libclangAnalysis.a",
+                "libclangRewriteFrontend.a",
+                "libclangRewrite.a",
+                "libclangEdit.a",
+                "libclangAST.a",
+                "libclangLex.a",
+                "libclangBasic.a",
+                "libLLVMMC.a",
+                "libLLVMSupport.a",
+                "libLLVMOption.a",
+                "libLLVMBitReader.a",
+                "libLLVMMCParser.a"
+            ]
+        }
+    }
+}

@@ -22,7 +22,7 @@ class ProjectDetailWidget
 {
 public:
 
-    ProjectDetailWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> projectStatusModel);
+    ProjectDetailWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> projectStatusModel, QWidget* parent = nullptr);
 
     void show() override;
 

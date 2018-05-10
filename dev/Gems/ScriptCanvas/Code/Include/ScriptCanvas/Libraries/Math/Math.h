@@ -23,6 +23,7 @@
 #include "CRCNodes.h"
 #include "Divide.h"
 #include "MathGenerics.h"
+#include "MathRandom.h"
 #include "Matrix3x3Node.h"
 #include "Matrix3x3Nodes.h"
 #include "Matrix4x4Node.h"

@@ -17,13 +17,19 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Outcome/Outcome.h>
+#include <AzCore/Math/Vector2.h>
 
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
 #include <ScriptCanvas/Bus/NodeIdPair.h>
 
+#include <ScriptCanvas/Data/Data.h>
+
 namespace GraphCanvas
 {
     struct Endpoint;
+
+    class GraphCanvasMimeEvent;
+    class GraphCanvasTreeItem;    
 }
 
 namespace ScriptCanvasEditor
@@ -50,25 +56,27 @@ namespace ScriptCanvasEditor
 
         virtual void OnChangeActiveGraphTab(const Widget::GraphTabMetadata&) {}
 
-        virtual AZ::EntityId GetActiveSceneId() const
+        virtual AZ::EntityId GetActiveScriptCanvasGraphId() const
         {
             return AZ::EntityId();
         }
 
-        virtual AZ::EntityId GetActiveGraphId() const
+        virtual AZ::EntityId GetActiveGraphCanvasGraphId() const
         {
             return AZ::EntityId();
         }
 
-        virtual AZ::EntityId GetGraphId(const AZ::EntityId& /*sceneId*/) const
+        virtual AZ::EntityId GetGraphCanvasGraphId(const AZ::EntityId& scriptCanvasGraphId) const
         {
             return AZ::EntityId();
         }
 
-        virtual AZ::EntityId GetSceneId(const AZ::EntityId& /*graphId*/) const
+        virtual AZ::EntityId GetScriptCanvasGraphId(const AZ::EntityId& graphCanvasSceneId) const
         {
             return AZ::EntityId();
         }
+
+        virtual bool IsInUndoRedo(const AZ::EntityId& graphCanvasGraphId) const = 0;
 
         virtual void UpdateName(const AZ::EntityId& /*graphId*/, const AZStd::string& /*name*/) {}
 
@@ -101,4 +109,25 @@ namespace ScriptCanvasEditor
     };
 
     using NodeCreationNotificationBus = AZ::EBus<NodeCreationNotifications>;
+
+    class VariablePaletteRequests : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual void RegisterVariableType(const ScriptCanvas::Data::Type& variabletype) = 0;
+    };
+
+    using VariablePaletteRequestBus = AZ::EBus<VariablePaletteRequests>;
+
+    class AutomationRequests : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual NodeIdPair ProcessCreateNodeMimeEvent(GraphCanvas::GraphCanvasMimeEvent* mimeEvent, const AZ::EntityId& graphCanvasGraphId, AZ::Vector2 nodeCreationPos) = 0;
+        virtual const GraphCanvas::GraphCanvasTreeItem* GetNodePaletteRoot() const = 0;
+    };
+
+    using AutomationRequestBus = AZ::EBus<AutomationRequests>;
 }

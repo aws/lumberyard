@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/std/string/string.h>
@@ -111,13 +111,23 @@ namespace UnitTest
 
         FileIOStreamTest()
         {
+        }
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
             m_prevFileIO = AZ::IO::FileIOBase::GetInstance();
             AZ::IO::FileIOBase::SetInstance(&m_fileIO);
         }
 
         ~FileIOStreamTest()
         {
+        }
+
+        void TearDown() override
+        {
             AZ::IO::FileIOBase::SetInstance(m_prevFileIO);
+            AllocatorsFixture::TearDown();
         }
 
         void run()
@@ -148,9 +158,6 @@ namespace UnitTest
             : public AllocatorsFixture
         {
         public:
-            // Contains random folder name, but needs to be same for all tests
-            static int randomFolderKey;
-
             AZStd::string m_root;
             AZStd::string folderName;
             AZStd::string deepFolder;
@@ -160,16 +167,15 @@ namespace UnitTest
             AZStd::string file01Name;
             AZStd::string file02Name;
             AZStd::string file03Name;
+            int m_randomFolderKey = 0;
 
             FolderFixture()
             {
-                if (randomFolderKey == 0)
-                {
-                    // lets use a random temp folder name
-                    srand(clock());
-                    randomFolderKey = rand();
-                }
+            }
 
+
+            void ChooseRandomFolder()
+            {
                 char currentDir[AZ_MAX_PATH_LEN];
 #if AZ_TRAIT_USE_WINDOWS_FILE_API
                 GetCurrentDirectoryA(AZ_MAX_PATH_LEN, currentDir);
@@ -185,7 +191,7 @@ namespace UnitTest
                     folderName = PathUtil::AddSlash(folderName);
                 }
 
-                AZStd::string tempName = AZStd::string::format("tmp%08x", randomFolderKey);
+                AZStd::string tempName = AZStd::string::format("tmp%08x", m_randomFolderKey);
                 folderName.append(tempName.c_str());
                 folderName = PathUtil::AddSlash(folderName);
                 AZStd::replace(folderName.begin(), folderName.end(), '\\', '/');
@@ -211,13 +217,56 @@ namespace UnitTest
 
                 // make a couple files there, and in the root:
                 fileRoot = PathUtil::AddSlash(extraFolder);
+            }
+
+            void SetUp() override
+            {
+                AllocatorsFixture::SetUp();
+
+                // lets use a random temp folder name
+                srand(clock());
+                m_randomFolderKey = rand();
+
+                LocalFileIO local;
+                do
+                {
+                    ChooseRandomFolder();
+                    ++m_randomFolderKey;
+                } while (local.IsDirectory(fileRoot.c_str()));
 
                 file01Name = fileRoot + "file01.txt";
                 file02Name = fileRoot + "file02.asdf";
                 file03Name = fileRoot + "test123.wha";
             }
+        
+            void TearDown() override
+            {
+                if ((!folderName.empty())&&(strstr(folderName.c_str(), "/temp") != nullptr))
+                {
+                    // cleanup!
+                    LocalFileIO local;
+                    local.DestroyPath(folderName.c_str());
+                }
+                AllocatorsFixture::TearDown();
+            }
+            void CreateTestFiles()
+            {
+                LocalFileIO local;
+                AZ_TEST_ASSERT(local.CreatePath(fileRoot.c_str()));
+                AZ_TEST_ASSERT(local.IsDirectory(fileRoot.c_str()));
+                for (const AZStd::string& filename : { file01Name, file02Name, file03Name })
+                {
+#ifdef AZ_COMPILER_MSVC
+                    FILE* tempFile;
+                    fopen_s(&tempFile, filename.c_str(), "wb");
+#else
+                    FILE* tempFile = fopen(filename.c_str(), "wb");
+#endif
+                    fwrite("this is just a test", 1, 19, tempFile);
+                    fclose(tempFile);
+                }
+            }
         };
-        int FolderFixture::randomFolderKey = 0;
 
         class DirectoryTest
             : public FolderFixture
@@ -395,6 +444,8 @@ namespace UnitTest
             {
                 LocalFileIO local;
 
+                CreateTestFiles();
+
 #if !defined(AZ_PLATFORM_ANDROID) // CHMOD never works, ever, on android due to security constraints on internal storage.  You'd need root.
 
 #ifdef AZ_PLATFORM_WINDOWS
@@ -429,6 +480,19 @@ namespace UnitTest
             void run()
             {
                 LocalFileIO local;
+                
+                AZ_TEST_ASSERT(local.CreatePath(fileRoot.c_str()));
+                AZ_TEST_ASSERT(local.IsDirectory(fileRoot.c_str()));
+                {
+#ifdef AZ_COMPILER_MSVC
+                    FILE* tempFile;
+                    fopen_s(&tempFile, file01Name.c_str(), "wb");
+#else
+                    FILE* tempFile = fopen(file01Name.c_str(), "wb");
+#endif
+                    fwrite("this is just a test", 1, 19, tempFile);
+                    fclose(tempFile);
+                }
 
                 // make sure attributes are copied (such as modtime) even if they're copied:
                 AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1500));
@@ -469,6 +533,8 @@ namespace UnitTest
             void run()
             {
                 AZ::IO::LocalFileIO local;
+
+                CreateTestFiles();
 
                 AZ::u64 modTimeC = 0;
                 AZ::u64 modTimeD = 0;
@@ -520,6 +586,8 @@ namespace UnitTest
             void run()
             {
                 AZ::IO::LocalFileIO local;
+
+                CreateTestFiles();
 
                 AZStd::vector<AZStd::string> resultFiles;
                 bool foundOK = local.FindFiles(fileRoot.c_str(), "*.*",
@@ -613,7 +681,7 @@ namespace UnitTest
 
                 AZ::u64 f3s = 0;
                 AZ_TEST_ASSERT(local.Size(file04Name.c_str(), f3s));
-                AZ_TEST_ASSERT(f3s == 4);
+                AZ_TEST_ASSERT(f3s == 19);
 
                 // deep destroy directory:
                 AZ_TEST_ASSERT(local.DestroyPath(folderName.c_str()));

@@ -19,8 +19,9 @@
 
 #include "DetailWidget/NoDeploymentWidget.moc"
 
-NoDeploymentWidget::NoDeploymentWidget(ResourceManagementView* view)
-    : m_view{view}
+NoDeploymentWidget::NoDeploymentWidget(ResourceManagementView* view, QWidget* parent)
+    : ActionWidget(parent)
+    , m_view{view}
 {
     SetTitleText(tr(
             "You have not yet created any deployments."

@@ -22,3 +22,6 @@ namespace AZ
 }
 
 //Platform specific Utils go in an .h.inl file here
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Utils_h, AZ_RESTRICTED_PLATFORM)
+#endif

@@ -17,9 +17,12 @@
 #include "Algorithm.h"
 #include "System.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ImageHandler_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
-#if !(defined(ANDROID) || defined(IOS) || defined(APPLETV) || defined(LINUX)) // Rally US1050 - Compile libtiff for Android and IOS
-    #include "../../../SDKs/tiff/libtiff/tiffio.h"
+#if !(defined(ANDROID) || defined(IOS) || defined(APPLETV) || defined(LINUX)) && AZ_LEGACY_CRYSYSTEM_TRAIT_IMAGEHANDLER_TIFFIO // Rally US1050 - Compile libtiff for Android and IOS
+    #include <libtiff/tiffio.h>
 
 AZ_STATIC_ASSERT(sizeof(thandle_t) >= sizeof(AZ::IO::HandleType), "Platform defines thandle_t to be smaller than required");
 #endif

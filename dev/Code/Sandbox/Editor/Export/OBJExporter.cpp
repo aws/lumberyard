@@ -192,27 +192,27 @@ bool COBJExporter::ExportToFile(const char* filename, const Export::IData* pExpo
                 fprintf(hFile, "Ns %s\n", TrimFloat(mtl.smoothness));
                 if (strlen(mtl.mapDiffuse))
                 {
-                    fprintf(hFile, "map_Kd %s\n", MakeRelativePath(filename, mtl.mapDiffuse));
+                    fprintf(hFile, "map_Kd %s\n", MakeRelativePath(filename, mtl.mapDiffuse).toUtf8().constData());
                 }
                 if (strlen(mtl.mapSpecular))
                 {
-                    fprintf(hFile, "map_Ns %s\n", MakeRelativePath(filename, mtl.mapSpecular));
+                    fprintf(hFile, "map_Ns %s\n", MakeRelativePath(filename, mtl.mapSpecular).toUtf8().constData());
                 }
                 if (strlen(mtl.mapOpacity))
                 {
-                    fprintf(hFile, "map_d %s\n", MakeRelativePath(filename, mtl.mapOpacity));
+                    fprintf(hFile, "map_d %s\n", MakeRelativePath(filename, mtl.mapOpacity).toUtf8().constData());
                 }
                 if (strlen(mtl.mapNormals))
                 {
-                    fprintf(hFile, "bump %s\n", MakeRelativePath(filename, mtl.mapNormals));
+                    fprintf(hFile, "bump %s\n", MakeRelativePath(filename, mtl.mapNormals).toUtf8().constData());
                 }
                 if (strlen(mtl.mapDecal))
                 {
-                    fprintf(hFile, "decal %s\n", MakeRelativePath(filename, mtl.mapDecal));
+                    fprintf(hFile, "decal %s\n", MakeRelativePath(filename, mtl.mapDecal).toUtf8().constData());
                 }
                 if (strlen(mtl.mapDisplacement))
                 {
-                    fprintf(hFile, "disp %s\n", MakeRelativePath(filename, mtl.mapDisplacement));
+                    fprintf(hFile, "disp %s\n", MakeRelativePath(filename, mtl.mapDisplacement).toUtf8().constData());
                 }
                 fprintf(hFile, "\n");
             }

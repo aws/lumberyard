@@ -13,7 +13,6 @@
 #pragma once
 
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
-#include <AzCore/std/string/string.h>
 
 namespace EMotionFX
 {

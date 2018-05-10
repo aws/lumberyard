@@ -277,9 +277,9 @@ public:
     IReadStreamPtr m_pReadStream;
 
 #if defined(STREAMENGINE_SUPPORT_DECRYPT)
-    AZ::LegacyJobExecutor m_decryptJobExecutor;
+    AZStd::unique_ptr<AZ::LegacyJobExecutor> m_decryptJobExecutor;
 #endif  //STREAMENGINE_SUPPORT_DECRYPT
-    AZ::LegacyJobExecutor m_decompJobExecutor;
+    AZStd::unique_ptr<AZ::LegacyJobExecutor> m_decompJobExecutor;
 
     // Only POD data should exist beyond this point - will be memsetted to 0 on Reset !
 

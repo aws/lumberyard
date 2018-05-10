@@ -23,7 +23,7 @@ class NoProjectStackWidget
 
 public:
 
-    NoProjectStackWidget(ResourceManagementView* view);
+    NoProjectStackWidget(ResourceManagementView* view, QWidget* parent);
 
 private:
 

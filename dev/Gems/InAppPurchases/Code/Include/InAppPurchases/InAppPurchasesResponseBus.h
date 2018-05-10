@@ -30,6 +30,7 @@ namespace InAppPurchases
         virtual void PurchasedProductsRetrieved(const AZStd::vector<AZStd::unique_ptr<PurchasedProductDetails const> >& purchasedProductDetails) { (void)purchasedProductDetails;  }
         virtual void PurchasedProductsRestored(const AZStd::vector<AZStd::unique_ptr<PurchasedProductDetails const> >& purchasedProductDetails) { (void)purchasedProductDetails;  }
         virtual void NewProductPurchased(const PurchasedProductDetails* purchasedProductDetails) { (void)purchasedProductDetails; }
+        virtual void PurchaseConsumed(const AZStd::string& purchaseToken) { (void)purchaseToken; }
         virtual void PurchaseCancelled(const PurchasedProductDetails* purchasedProductDetails) { (void)purchasedProductDetails; }
         virtual void PurchaseRefunded(const PurchasedProductDetails* purchasedProductDetails) { (void)purchasedProductDetails; }
         virtual void PurchaseFailed(const PurchasedProductDetails* purchasedProductDetails) { (void)purchasedProductDetails; }

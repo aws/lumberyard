@@ -28,7 +28,8 @@ namespace Ui
 
 namespace GraphCanvas
 {
-    class CanvasGraphicsView;
+    class GraphCanvasGraphicsView;
+    class MiniMapGraphicsView;
 }
 
 namespace ScriptCanvasEditor
@@ -50,6 +51,8 @@ namespace ScriptCanvasEditor
 
         protected:
 
+            void resizeEvent(QResizeEvent *ev);
+
             void OnClicked();
 
             bool m_attached;
@@ -66,7 +69,23 @@ namespace ScriptCanvasEditor
             void showEvent(QShowEvent *event) override;
 
         private:
-            GraphCanvas::CanvasGraphicsView* m_graphicsView;
+
+            enum MiniMapPosition
+            {
+                MM_Not_Visible,
+                MM_Upper_Left,
+                MM_Upper_Right,
+                MM_Lower_Right,
+                MM_Lower_Left,
+
+                MM_Position_Count
+            };
+
+            void PositionMiniMap();
+
+            GraphCanvas::GraphCanvasGraphicsView* m_graphicsView;
+            GraphCanvas::MiniMapGraphicsView* m_miniMapView;
+            MiniMapPosition m_miniMapPosition = MM_Upper_Left;
         };
     }
 }

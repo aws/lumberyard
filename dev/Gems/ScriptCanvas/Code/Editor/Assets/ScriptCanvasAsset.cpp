@@ -13,14 +13,78 @@
 #include "precompiled.h"
 
 #include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/Serialization/Utils.h>
+
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
-#include <Core/ScriptCanvasBus.h>
+#include <ScriptCanvas/Core/ScriptCanvasBus.h>
 #include <ScriptCanvas/Components/EditorGraph.h>
+#include <ScriptCanvas/Components/EditorGraphVariableManagerComponent.h>
 
 namespace ScriptCanvasEditor
 {
+    static bool ScriptCanvasDataVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootDataElementNode)
+    {
+        if (rootDataElementNode.GetVersion() == 0)
+        {
+            int scriptCanvasEntityIndex = rootDataElementNode.FindElement(AZ_CRC("m_scriptCanvas", 0xfcd20d85));
+            if (scriptCanvasEntityIndex == -1)
+            {
+                AZ_Error("Script Canvas", false, "Version Converter failed, The Script Canvas Entity is missing");
+                return false;
+            }
+
+            auto scComponentElements = AZ::Utils::FindDescendantElements(context, rootDataElementNode, AZStd::vector<AZ::Crc32>{AZ_CRC("m_scriptCanvas", 0xfcd20d85),
+                AZ_CRC("element", 0x41405e39), AZ_CRC("Components", 0xee48f5fd)});
+            if (!scComponentElements.empty())
+            {
+                scComponentElements.front()->AddElementWithData(context, "element", ScriptCanvasEditor::EditorGraphVariableManagerComponent());
+            }
+        }
+
+        if (rootDataElementNode.GetVersion() < 4)
+        {
+            auto scEntityElements = AZ::Utils::FindDescendantElements(context, rootDataElementNode,
+                AZStd::vector<AZ::Crc32>{AZ_CRC("m_scriptCanvas", 0xfcd20d85), AZ_CRC("element", 0x41405e39)});
+            if (scEntityElements.empty())
+            {
+                AZ_Error("Script Canvas", false, "Version Converter failed, The Script Canvas Entity is missing");
+                return false;
+            }
+            auto& scEntityDataElement = *scEntityElements.front();
+
+            AZ::Entity scEntity;
+            if (!scEntityDataElement.GetData(scEntity))
+            {
+                AZ_Error("Script Canvas", false, "Unable to retrieve entity data from the Data Element");
+                return false;
+            }
+
+            auto graph = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Graph>(&scEntity);
+            if (!graph)
+            {
+                AZ_Error("Script Canvas", false, "Script Canvas graph component could not be found on Script Canvas Entity for ScriptCanvasData version %u", rootDataElementNode.GetVersion());
+                return false;
+            }
+            auto variableManager = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::GraphVariableManagerComponent>(&scEntity);
+            if (!variableManager)
+            {
+                AZ_Error("Script Canvas", false, "Script Canvas variable manager component could not be found on Script Canvas Entity for ScriptCanvasData version %u", rootDataElementNode.GetVersion());
+                return false;
+            }
+
+            variableManager->SetUniqueId(graph->GetUniqueId());
+            if (!scEntityDataElement.SetData(context, scEntity))
+            {
+                AZ_Error("Script Canvas", false, "Failed to set converted Script Canvas Entity back on data element node when transitioning from version %u to version 4", rootDataElementNode.GetVersion());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     ScriptCanvasData::ScriptCanvasData()
     {
 
@@ -47,6 +111,7 @@ namespace ScriptCanvasEditor
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
         {
             serializeContext->Class<ScriptCanvasData>()
+                ->Version(4, &ScriptCanvasDataVersionConverter)
                 ->Field("m_scriptCanvas", &ScriptCanvasData::m_scriptCanvasEntity)
                 ;
         }

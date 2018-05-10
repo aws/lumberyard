@@ -26,7 +26,8 @@ def build(bld):
 
     COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'NOT_USE_CRY_MEMORY_MANAGER', 'AZCORE_ENABLE_MEMORY_TRACKING', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
 
-    CODEGEN_FILE_LIST = [    
+    CODEGEN_FILE_LIST = [
+            'Include/ScriptCanvas/Internal/Nodes/StringFormatted.h',
             'Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h',
             'Include/ScriptCanvas/Libraries/Core/Start.h',
             'Include/ScriptCanvas/Libraries/Logic/Gate.h',
@@ -39,6 +40,11 @@ def build(bld):
             'Include/ScriptCanvas/Libraries/Time/Countdown.h',
             'Include/ScriptCanvas/Libraries/Time/Duration.h',
             'Include/ScriptCanvas/Libraries/Time/Timer.h',
+            'Include/ScriptCanvas/Libraries/Core/ExtractProperty.h',
+            'Include/ScriptCanvas/Libraries/Core/GetVariable.h',
+            'Include/ScriptCanvas/Libraries/Core/SetVariable.h',
+            'Include/ScriptCanvas/Libraries/String/Print.h',
+            'Include/ScriptCanvas/Libraries/String/Format.h'
         ]
 
     # ScriptCanvas core execution engine is built as a static library.
@@ -48,7 +54,7 @@ def build(bld):
 
         platforms       = ['all'],
         configurations  = ['all'],
-        file_list       = ['scriptcanvasgem_common.waf_files', 'scriptcanvasgem_corebuilder.waf_files'],
+        file_list       = ['scriptcanvasgem_common.waf_files', 'scriptcanvasgem_runtime_asset.waf_files'],
         defines         = COMMON_DEFINES,
         export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
@@ -56,7 +62,7 @@ def build(bld):
         use             = ['AzCore', 'AzFramework'],
         features        = ['az_code_gen'],
         win_features    = ['crcfix'],
-        vs_filter       = 'Gems',
+        vs_filter       = 'Gems/ScriptCanvas',
         disable_pch     = True,
 
         export_includes = ['.', 'Include'], # the gem's includes
@@ -69,9 +75,31 @@ def build(bld):
         ],
     )
 
+    # ScriptCanvas editor engine is built as a static library. Contains class that need to be complete in order to run across dll boundaries.
+    bld.CryEngineStaticLibrary(
+
+        target          = 'ScriptCanvasEditor',
+
+        platforms       = ['win', 'darwin'],
+        configurations  = ['debug', 'profile'],
+        file_list       = ['scriptcanvasgem_editor_static.waf_files'],
+        defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
+        export_defines  = ['SCRIPTCANVAS_ERRORS_ENABLED'],
+
+        includes        = [ 'Editor/Static/Include', 'Editor/Static/Source' ],
+        export_includes = [ 'Editor/Static/Include' ],
+        use             = list(USE) + ['ScriptCanvas'],
+
+        features        = ['qt5','az_code_gen'],
+        win_features    = ['crcfix'],
+        autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+        vs_filter       = 'Gems/ScriptCanvas',
+        disable_pch     = True
+    )
+
     bld.DefineGem(
 
-         includes           = [ '.' , '..', 
+        includes           = [ '.' , '..', 
                                 'Include',
                                 'Include/ScriptCanvas'
                                 ],
@@ -90,7 +118,7 @@ def build(bld):
 
         file_list           = ['scriptcanvasgem_game.waf_files' ],
         test_all_file_list  = ['scriptcanvasgem_tests.waf_files'],
-
+        vs_filter           = 'Gems/ScriptCanvas',
 
         ########################################
         # Editor Gem configuration
@@ -103,8 +131,9 @@ def build(bld):
             configurations  = ['debug', 'profile'],
 
             autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+            vs_filter       = 'Gems/ScriptCanvas',
 
-            file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_builder.waf_files'],
+            file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_editor_asset.waf_files', 'scriptcanvasgem_editor_builder.waf_files'],
             includes        = [ 'Include',
                                 'Include/ScriptCanvas',
                                 'Editor/Include',
@@ -112,7 +141,7 @@ def build(bld):
                                 bld.Path('Code/CryEngine/CryCommon'),
                                 bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                 bld.Path('Code/Sandbox/Editor'),
-                                bld.Path('Code/Sandbox/Editor/Include'),
+                                bld.Path('Code/Sandbox/Editor/Include')
                                 ],
 
             export_includes = [ 'Editor/Include' ],
@@ -120,13 +149,11 @@ def build(bld):
             pch                 = 'Editor/precompiled.cpp',
 
             # Platform Specific
-            use             = list(USE) + ['ScriptCanvas','CryCommon','AssetBuilderSDK'],
+            use             = list(USE) + ['ScriptCanvasEditor','CryCommon','AssetBuilderSDK', 'GraphCanvasWidgets'],
             win_features    = ['crcfix'],
             darwin_cxxflags = ['-Wno-error', '-Wno-unused-local-typedef'],
             darwin_uselib   =['AWS_CPP_SDK_ALL'],
 
-
         )
         ########################################
     )
-

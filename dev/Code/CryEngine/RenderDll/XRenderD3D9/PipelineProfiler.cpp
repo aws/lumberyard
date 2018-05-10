@@ -728,7 +728,14 @@ void CRenderPipelineProfiler::DisplayBasicStats()
         float frameTime = m_threadTimings.frameTime;
         float mainThreadTime = max(m_threadTimings.frameTime - m_threadTimings.waitForRender, 0.0f);
         float renderThreadTime = max(m_threadTimings.renderTime - m_threadTimings.waitForGPU, 0.0f);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PipelineProfiler_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         float gpuTime = max(m_threadTimings.gpuFrameTime, 0.0f);
+#endif
         float waitForGPU = max(m_threadTimings.waitForGPU, 0.0f);
 
         DebugUI::DrawTableBar(0.335f, 0.1f, 0, mainThreadTime / frameTime, Col_Yellow);

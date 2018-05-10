@@ -10,14 +10,14 @@
 *
 */
 
+#include <native/utilities/AssetBuilderInfo.h>
 
 #include <QFileInfo>
 
 #include <AzCore/Component/Entity.h>
 
-#include "native/assetprocessor.h"
-#include "native/utilities/assetUtils.h"
-#include "AssetBuilderInfo.h"
+#include <native/assetprocessor.h>
+#include <native/utilities/assetUtils.h>
 
 namespace AssetProcessor
 {
@@ -35,88 +35,89 @@ namespace AssetProcessor
         , m_moduleRegisterDescriptorsFunction(nullptr)
         , m_moduleAddComponentsFunction(nullptr)
         , m_uninitializeModuleFunction(nullptr)
-        , m_modulePath(modulePath)
         , m_library(modulePath)
     {
     }
 
     const QString& ExternalModuleAssetBuilderInfo::GetName() const
     {
-        return this->m_builderName;
+        return m_builderName;
+    }
+
+    QString ExternalModuleAssetBuilderInfo::GetModuleFullPath() const
+    {
+        return m_library.fileName();
     }
 
     //! Sanity check for the module's status
     bool ExternalModuleAssetBuilderInfo::IsLoaded() const
     {
-        return this->m_library.isLoaded();
+        return m_library.isLoaded();
     }
 
     void ExternalModuleAssetBuilderInfo::Initialize()
     {
-        AZ_Error(AssetProcessor::ConsoleChannel, this->IsLoaded(), "External module %s not loaded.", m_builderName.toUtf8().data());
+        AZ_Error(AssetProcessor::ConsoleChannel, IsLoaded(), "External module %s not loaded.", GetName().toUtf8().data());
 
-        this->m_initializeModuleFunction(AZ::Environment::GetInstance());
+        m_initializeModuleFunction(AZ::Environment::GetInstance());
 
-        this->m_moduleRegisterDescriptorsFunction();
-
-        QFileInfo moduleFileName(this->m_modulePath);
+        m_moduleRegisterDescriptorsFunction();
 
         AZStd::string entityName = AZStd::string::format("%s Entity", GetName().toUtf8().data());
-        this->m_entity = aznew AZ::Entity(entityName.c_str());
+        m_entity = aznew AZ::Entity(entityName.c_str());
 
-        this->m_moduleAddComponentsFunction(this->m_entity);
+        m_moduleAddComponentsFunction(m_entity);
 
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Init Entity %s", GetName().toUtf8().data());
-        this->m_entity->Init();
+        m_entity->Init();
 
         //Activate all the components
-        this->m_entity->Activate();
+        m_entity->Activate();
     }
 
 
     void ExternalModuleAssetBuilderInfo::UnInitialize()
     {
-        AZ_Error(AssetProcessor::ConsoleChannel, this->IsLoaded(), "External module %s not loaded.", m_builderName.toUtf8().data());
+        AZ_Error(AssetProcessor::ConsoleChannel, IsLoaded(), "External module %s not loaded.", GetName().toUtf8().data());
 
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "Uninitializing builder: %s\n", this->m_modulePath.toUtf8().data());
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "Uninitializing builder: %s\n", GetModuleFullPath().toUtf8().data());
 
-        if (this->m_entity)
+        if (m_entity)
         {
-            this->m_entity->Deactivate();
-            delete this->m_entity;
-            this->m_entity = nullptr;
+            m_entity->Deactivate();
+            delete m_entity;
+            m_entity = nullptr;
         }
 
-        for (AZ::ComponentDescriptor* componentDesc : this->m_componentDescriptorList)
+        for (AZ::ComponentDescriptor* componentDesc : m_componentDescriptorList)
         {
             componentDesc->ReleaseDescriptor();
         }
-        this->m_componentDescriptorList.clear();
+        m_componentDescriptorList.clear();
 
         for (const AZ::Uuid& builderDescID : m_registeredBuilderDescriptorIDs)
         {
-            EBUS_EVENT(AssetBuilderRegistrationBus, UnRegisterBuilderDescriptor, builderDescID);
+            AssetBuilderRegistrationBus::Broadcast(&AssetBuilderRegistrationBusTraits::UnRegisterBuilderDescriptor, builderDescID);
         }
-        this->m_registeredBuilderDescriptorIDs.clear();
+        m_registeredBuilderDescriptorIDs.clear();
 
-        this->m_uninitializeModuleFunction();
+        m_uninitializeModuleFunction();
 
-        if (this->m_library.isLoaded())
+        if (IsLoaded())
         {
-            this->m_library.unload();
+            m_library.unload();
         }
     }
 
     bool ExternalModuleAssetBuilderInfo::Load()
     {
-        if (this->IsLoaded())
+        if (IsLoaded())
         {
-            AZ_Warning(AssetProcessor::ConsoleChannel, false, "External module %s already.", m_builderName.toUtf8().data());
+            AZ_Warning(AssetProcessor::ConsoleChannel, false, "External module %s already.", GetName().toUtf8().data());
             return true;
         }
 
-        this->m_library.setFileName(this->m_modulePath);
-        if (!this->m_library.load())
+        if (!m_library.load())
         {
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Unable to load builder : %s\n", GetName().toUtf8().data());
             return false;
@@ -132,18 +133,18 @@ namespace AssetProcessor
         if (missingFunctionsList.size() == 0)
         {
             //if we are here than it is a builder
-            this->m_initializeModuleFunction = initializeModuleAddress;
-            this->m_moduleRegisterDescriptorsFunction = moduleRegisterDescriptorsAddress;
-            this->m_moduleAddComponentsFunction = moduleAddComponentsAddress;
-            this->m_uninitializeModuleFunction = uninitializeModuleAddress;
+            m_initializeModuleFunction = initializeModuleAddress;
+            m_moduleRegisterDescriptorsFunction = moduleRegisterDescriptorsAddress;
+            m_moduleAddComponentsFunction = moduleAddComponentsAddress;
+            m_uninitializeModuleFunction = uninitializeModuleAddress;
             return true;
         }
         else
         {
             // Not a valid builder module
-            QString errorMessage = QString("Builder library %1 is missing one or more exported functions: %2").arg(QString(this->GetName()), missingFunctionsList.join(','));
+            QString errorMessage = QString("Builder library %1 is missing one or more exported functions: %2").arg(QString(GetName()), missingFunctionsList.join(','));
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "One or more builder functions is missing in the library: %s\n", errorMessage.toUtf8().data());
-            this->m_library.unload();
+            m_library.unload();
             return false;
         }
     }
@@ -156,7 +157,7 @@ namespace AssetProcessor
                 false,
                 "Builder description id '%s' already registered to external builder module %s",
                 builderDescID.ToString<AZStd::string>().c_str(),
-                this->m_builderName.toUtf8().data());
+                GetName().toUtf8().data());
             return;
         }
         m_registeredBuilderDescriptorIDs.insert(builderDescID);
@@ -164,13 +165,13 @@ namespace AssetProcessor
 
     void ExternalModuleAssetBuilderInfo::RegisterComponentDesc(AZ::ComponentDescriptor* descriptor)
     {
-        this->m_componentDescriptorList.push_back(descriptor);
+        m_componentDescriptorList.push_back(descriptor);
     }
 
     template<typename T>
     T ExternalModuleAssetBuilderInfo::ResolveModuleFunction(const char* functionName, QStringList& missingFunctionsList)
     {
-        T functionAddr = reinterpret_cast<T>(this->m_library.resolve(functionName));
+        T functionAddr = reinterpret_cast<T>(m_library.resolve(functionName));
         if (!functionAddr)
         {
             missingFunctionsList.append(QString(functionName));

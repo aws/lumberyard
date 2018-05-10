@@ -33,7 +33,7 @@ class StackResourcesWidget
 
 public:
 
-    StackResourcesWidget(QSharedPointer<IStackResourcesModel> stackResourcesModel, ResourceManagementView* mainView);
+    StackResourcesWidget(QSharedPointer<IStackResourcesModel> stackResourcesModel, ResourceManagementView* mainView, QWidget* parent);
 
     void ViewConsoleResource(const QString& resourceType, const QString& resourceName);
 

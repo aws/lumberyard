@@ -53,7 +53,8 @@ namespace LmbrCentral
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<WindVolumeRequestBus>("WindVolumeRequestBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::All)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
+                ->Attribute(AZ::Script::Attributes::Category, "Physics")
                 ->Event("SetFalloff", &WindVolumeRequestBus::Events::SetFalloff)
                 ->Event("GetFalloff", &WindVolumeRequestBus::Events::GetFalloff)
                 ->Event("SetSpeed", &WindVolumeRequestBus::Events::SetSpeed)

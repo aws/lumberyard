@@ -14,7 +14,6 @@
 #define __EMSTUDIO_EMSTUDIOCONFIG_H
 
 #include <QString>
-#include <MCore/Source/UnicodeString.h>
 
 // when we use DLL files, setup the EMFX_API macro
 #if defined(EMSTUDIO_DLL_EXPORT)

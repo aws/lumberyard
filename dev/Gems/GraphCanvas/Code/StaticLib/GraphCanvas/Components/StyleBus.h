@@ -9,21 +9,32 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #pragma once
+
+#include <QColor>
+#include <QPixmap>
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 
-#include <QVariant>
-
+#include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Styling/Selector.h>
+
+class QVariant;
 
 namespace GraphCanvas
 {
+    namespace Styling
+    {
+        class StyleHelper;
+    }
+
     static const AZ::Crc32 StyledGraphicItemServiceCrc = AZ_CRC("GraphCanvas_StyledGraphicItemService", 0xeae4cdf4);
 
+    ///////////////////////////////////////////////////////////////////////////////////
     //! StyledEntityRequests
     //! Provide details about an entity to support it being styled.
     class StyledEntityRequests : public AZ::EBusTraits
@@ -49,39 +60,60 @@ namespace GraphCanvas
         virtual AZStd::string GetElement() const = 0;
         //! Get the "style class" that the entity has. This should start with a '.' and contain [A-Za-z_-].
         virtual AZStd::string GetClass() const = 0;
-        //! Get the "element ID" that the entity has. This should start with a '#' and contain [A-Za-z_-].
-        virtual AZStd::string GetId() const = 0;
     };
 
     using StyledEntityRequestBus = AZ::EBus<StyledEntityRequests>;
+    ///////////////////////////////////////////////////////////////////////////////////
 
-    //! StyledSheetRequests
-    //! Requests that can be made of a stylesheet.
-    class StyleSheetRequests : public AZ::EBusTraits
+    ///////////////////////////////////////////////////////////////////////////////////
+    // StyleManager
+    // Requests
+    class StyleManagerRequests : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = EditorId;
 
         //! Match the selectors an entity has against known styles and provide an aggregate meta - style for it.
         virtual AZ::EntityId ResolveStyles(const AZ::EntityId& object) const = 0;
+
+        virtual void RegisterDataPaletteStyle(const AZ::Uuid& dataType, const AZStd::string& palette) = 0;
+
+        virtual AZStd::string GetDataPaletteStyle(const AZ::Uuid& dataType) const = 0;
+        virtual const Styling::StyleHelper* FindDataColorPalette(const AZ::Uuid& uuid) = 0;
+        virtual QColor GetDataTypeColor(const AZ::Uuid& dataType) = 0;
+        virtual const QPixmap* GetDataTypeIcon(const AZ::Uuid& dataType) = 0;        
+
+        virtual const Styling::StyleHelper* FindColorPalette(const AZStd::string& paletteString) = 0;
+        virtual QColor GetPaletteColor(const AZStd::string& palette) = 0;
+        virtual const QPixmap* GetPaletteIcon(const AZStd::string& iconStyle, const AZStd::string& palette) = 0;
+
+        virtual QPixmap* CreateIcon(const QColor& colorType, const AZStd::string& iconStyle) = 0;
+
+        virtual AZStd::vector<AZStd::string> GetColorPaletteStyles() const = 0;
+
+        // Pixmap Caching Mechanism
+        virtual QPixmap* FindPixmap(const AZ::Crc32& keyName) = 0;
+        virtual void CachePixmap(const AZ::Crc32& keyName, QPixmap* pixmap) = 0;
     };
 
-    using StyleSheetRequestBus = AZ::EBus<StyleSheetRequests>;
+    using StyleManagerRequestBus = AZ::EBus<StyleManagerRequests>;
 
-    //! StyleSheetNotifications
-    class StyleSheetNotifications : public AZ::EBusTraits
+    //! Notifications
+    class StyleManagerNotifications : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = EditorId;
 
-        virtual void OnStyleSheetUnloaded() {}
-        virtual void OnStyleSheetLoaded() {}
+        virtual void OnStylesUnloaded() {}
+        virtual void OnStylesLoaded() {}
     };
 
-    using StyleSheetNotificationBus = AZ::EBus<StyleSheetNotifications>;
+    using StyleManagerNotificationBus = AZ::EBus<StyleManagerNotifications>;
+    ///////////////////////////////////////////////////////////////////////////////////
 
+    ///////////////////////////////////////////////////////////////////////////////////
     //! StyleRequests
     //! Get the style for an entity (per its current state)
     class StyleRequests : public AZ::EBusTraits
@@ -114,5 +146,6 @@ namespace GraphCanvas
     };
 
     using StyleNotificationBus = AZ::EBus<StyleNotifications>;
+    ///////////////////////////////////////////////////////////////////////////////////
 
 }

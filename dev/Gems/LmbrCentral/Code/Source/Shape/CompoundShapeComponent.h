@@ -28,7 +28,6 @@ namespace LmbrCentral
         , public AZ::EntityBus::MultiHandler
     {
     public:
-
         friend class EditorCompoundShapeComponent;
 
         AZ_COMPONENT(CompoundShapeComponent, "{C0C817DE-843F-44C8-9FC1-989CDE66B662}");
@@ -37,13 +36,10 @@ namespace LmbrCentral
             m_currentlyActiveChildren(0)
         {}
 
-        //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
+        
         // ShapeComponent::Handler implementation
         AZ::Crc32 GetShapeType() override
         {
@@ -51,33 +47,24 @@ namespace LmbrCentral
         }
 
         AZ::Aabb GetEncompassingAabb() override;
-
         bool IsPointInside(const AZ::Vector3& point) override;
-
-        virtual float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
+        float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
+        bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        
         // CompoundShapeComponentRequestsBus::Handler implementation
         CompoundShapeConfiguration GetCompoundShapeConfiguration() override
         {
             return m_configuration;
         }
-        //////////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////
         // EntityEvents
         void OnEntityActivated(const AZ::EntityId&) override;
         void OnEntityDeactivated(const AZ::EntityId&) override;
-        ////////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////
         // ShapeComponentNotificationsBus::MultiHandler
         void OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons) override;
-        ////////////////////////////////////////////////////////////////////////
-
+    
     protected:
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
@@ -93,11 +80,7 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-
-        //! Stores configuration for this component
-        CompoundShapeConfiguration m_configuration;
-
-        //! Number of compound shape children shape entities that are currently active
-        int m_currentlyActiveChildren;
+        CompoundShapeConfiguration m_configuration; ///< Stores configuration for this component.
+        int m_currentlyActiveChildren; ///< Number of compound shape children shape entities that are currently active.
     };
 } // namespace LmbrCentral

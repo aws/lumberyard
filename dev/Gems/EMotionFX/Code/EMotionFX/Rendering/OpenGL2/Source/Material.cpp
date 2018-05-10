@@ -13,6 +13,7 @@
 #include "Material.h"
 #include "GraphicsManager.h"
 #include "glactor.h"
+#include <MCore/Source/StringConversions.h>
 
 
 namespace RenderGL
@@ -55,12 +56,13 @@ namespace RenderGL
     Texture* Material::LoadTexture(const char* fileName, bool genMipMaps)
     {
         Texture*        result      = nullptr;
-        MCore::String   filename    = mActor->GetTexturePath() + fileName;
-        MCore::String   extension   = filename.ExtractFileExtension();
+        AZStd::string   filename    = mActor->GetTexturePath() + fileName;
+        AZStd::string   extension;
+        AzFramework::StringFunc::Path::GetExtension(fileName, extension, false /* include dot */);
 
         // the filename may or may not have an extension on it
-        MCore::String texturePath;
-        if (extension.GetLength() == 0)
+        AZStd::string texturePath;
+        if (extension.size() == 0)
         {
             // supported texture formats
             static uint32     numExtensions = 9;
@@ -72,7 +74,7 @@ namespace RenderGL
                 texturePath = filename + extensions[i];
 
                 // try to load the texture
-                result = GetGraphicsManager()->LoadTexture(texturePath.AsChar(), genMipMaps);
+                result = GetGraphicsManager()->LoadTexture(texturePath.c_str(), genMipMaps);
                 if (result)
                 {
                     break;
@@ -87,7 +89,7 @@ namespace RenderGL
         // check if we were able to load the texture correctly
         if (result == nullptr)
         {
-            MCore::LogWarning("[OpenGL] Failed to load the texture '%s'", filename.AsChar());
+            MCore::LogWarning("[OpenGL] Failed to load the texture '%s'", filename.c_str());
             //result = GetGraphicsManager()->GetTextureCache()->GetWhiteTexture();
         }
 

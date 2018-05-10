@@ -35,12 +35,14 @@ namespace ScriptCanvas
                     editContext->Class<Core>("Core", "")->
                         ClassElement(AZ::Edit::ClassElements::EditorData, "")->
                         Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Libraries/Core.png")->
-                        Attribute(AZ::Edit::Attributes::CategoryStyle, ".time")
+                        Attribute(AZ::Edit::Attributes::CategoryStyle, ".time")->
+                        Attribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride, "TimeNodeTitlePalette")
                         ;
                 }
             }
 
             Nodes::Core::EBusEventEntry::Reflect(reflection);
+            Nodes::Core::ExtractProperty::SlotMetadata::Reflect(reflection);
         }
 
         void Core::InitNodeRegistry(NodeRegistry& nodeRegistry)
@@ -52,8 +54,11 @@ namespace ScriptCanvas
             AddNodeToRegistry<Core, Method>(nodeRegistry);
             AddNodeToRegistry<Core, BehaviorContextObjectNode>(nodeRegistry);
             AddNodeToRegistry<Core, Start>(nodeRegistry);
-            AddNodeToRegistry<Core, String>(nodeRegistry);
+            AddNodeToRegistry<Core, ScriptCanvas::Nodes::Core::String>(nodeRegistry);
             AddNodeToRegistry<Core, EBusEventHandler>(nodeRegistry);
+            AddNodeToRegistry<Core, ExtractProperty>(nodeRegistry);
+            AddNodeToRegistry<Core, GetVariableNode>(nodeRegistry);
+            AddNodeToRegistry<Core, SetVariableNode>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Core::GetComponentDescriptors()
@@ -67,6 +72,9 @@ namespace ScriptCanvas
                 ScriptCanvas::Nodes::Core::Start::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::String::CreateDescriptor(),
                 ScriptCanvas::Nodes::Core::EBusEventHandler::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::ExtractProperty::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::GetVariableNode::CreateDescriptor(),
+                ScriptCanvas::Nodes::Core::SetVariableNode::CreateDescriptor(),
             });
         }
     }

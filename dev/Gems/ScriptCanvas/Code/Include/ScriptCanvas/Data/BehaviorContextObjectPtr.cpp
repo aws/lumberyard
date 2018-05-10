@@ -18,27 +18,27 @@
 
 namespace ScriptCanvas
 {
-    /// This class does nothing but allow BehaviorContextObjectPtr to be serialized within an any class.
-    class BehaviorContextObjectPtrReflector
-    {
-    public:
-        AZ_TYPE_INFO(BehaviorContextObjectPtr, "{93EC97EC-939C-44F6-ADBE-D82DC0AE432C}");
-
-        static void Reflect(AZ::ReflectContext* context)
-        {
-            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
-            {
-                serializeContext->Class<BehaviorContextObjectPtrReflector>()
-                    ->Version(0)
-                    ->Field("m_reflected", &BehaviorContextObjectPtrReflector::m_reflected);
-            }
-        }
-
-        BehaviorContextObjectPtr m_reflected;
-    };
-
     void BehaviorContextObjectPtrReflect(AZ::ReflectContext* context)
     {
-        BehaviorContextObjectPtrReflector::Reflect(context);
+        BehaviorContextObject::Reflect(context);
+        auto behaviorContextObjectPtrGenericClassInfo = AZ::SerializeGenericTypeInfo<BehaviorContextObjectPtr>::GetGenericInfo();
+        if (!behaviorContextObjectPtrGenericClassInfo)
+        {
+            return;
+        }
+
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            behaviorContextObjectPtrGenericClassInfo->Reflect(serializeContext);
+
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+            {
+                editContext->Class<BehaviorContextObjectPtr>("BehaviorContextObjectPtr", "Intrusive pointer which keeps a count of ScriptCanvas references to data from the BehaviorContext")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ;
+            }
+
+        }
     }
 }

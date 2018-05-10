@@ -7,6 +7,7 @@
     },
     "auto": {
         "Resources": [
+            "../Assets/Editor/Layouts/Layouts.qrc",
             "../Assets/Editor/Images/Icons/Resources.qrc",
             "../Assets/Editor/Images/Icons/ActorComponent.png",
             "../Assets/Editor/Images/Icons/AnimGraphComponent.png"
@@ -18,6 +19,13 @@
             "Source/Integration/Editor/Components/EditorAnimGraphComponent.cpp",
             "Source/Integration/Editor/Components/EditorSimpleMotionComponent.h",
             "Source/Integration/Editor/Components/EditorSimpleMotionComponent.cpp"
+        ],
+        "Source/Editor/PropertyWidgets":
+        [
+            "Source/Editor/PropertyWidgets/MotionSetNameHandler.h",
+            "Source/Editor/PropertyWidgets/MotionSetNameHandler.cpp",
+            "Source/Editor/PropertyWidgets/PropertyTypes.h",
+            "Source/Editor/PropertyWidgets/PropertyTypes.cpp"
         ]
     }
 }

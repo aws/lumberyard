@@ -13,7 +13,6 @@
 #pragma once
 
 #include <MCore/Source/StandardHeaders.h>
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/Motion.h>

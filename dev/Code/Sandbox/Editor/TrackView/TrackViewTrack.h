@@ -202,7 +202,7 @@ private:
     void SelectKey(unsigned int keyIndex, bool bSelect);
     bool IsKeySelected(unsigned int keyIndex) const;
 
-    void SetKeyTime(const int index, const float time);
+    void SetKeyTime(const int index, const float time, bool notifyListeners = true);
     float GetKeyTime(const int index) const;
 
     void RemoveKey(const int index);

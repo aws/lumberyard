@@ -60,6 +60,7 @@ def find_dx12(conf, windows_kit):
                             break
                     if DX12_LIB_DIR[windows_kit]:
                         break
+
     conf.env['DX12_INCLUDES'] = DX12_INCLUDE_DIR[windows_kit]
     conf.env['DX12_LIBPATH'] = DX12_LIB_DIR[windows_kit]
 
@@ -76,7 +77,7 @@ def load_win_x64_host_settings(conf):
     # Look for the most recent version of the code generator subfolder.  This should be either installed or built by the bootstrap process at this point
     global AZCG_VALIDATED_PATH
     if AZCG_VALIDATED_PATH is None:
-        az_code_gen_subfolders = ['bin/vc140', 'bin/vc120']
+        az_code_gen_subfolders = ['bin/vc141', 'bin/vc140', 'bin/vc120']
         validated_azcg_dir = None
         for az_code_gen_subfolder in az_code_gen_subfolders:
             azcg_dir = conf.Path('Tools/AzCodeGenerator/{}'.format(az_code_gen_subfolder))
@@ -87,20 +88,20 @@ def load_win_x64_host_settings(conf):
                 break
         AZCG_VALIDATED_PATH = validated_azcg_dir
         if validated_azcg_dir is None:
-            conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have either the VS2013 or VS2015 binaries available')
+            conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have either the VS2013, VS2015, or VS2017 binaries available')
 
     v['CODE_GENERATOR_EXECUTABLE'] = AZ_CODE_GEN_EXECUTABLE
     v['CODE_GENERATOR_PATH'] = [AZCG_VALIDATED_PATH]
     v['CODE_GENERATOR_PYTHON_PATHS'] = [conf.Path('Tools/Python/2.7.12/windows/Lib'),
                                         conf.Path('Tools/Python/2.7.12/windows/libs'),
                                         conf.Path('Tools/Python/2.7.12/windows/DLLs'),
-                                        conf.Path('Code/SDKs/markupsafe/x64'),
-                                        conf.Path('Code/SDKs/jinja2/x64')]
+                                        conf.ThirdPartyPath('markupsafe', 'x64'),
+                                        conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.Path('Tools/Python/2.7.12/windows/Lib'),
                                               conf.Path('Tools/Python/2.7.12/windows/libs'),
                                               conf.Path('Tools/Python/2.7.12/windows/DLLs'),
-                                              conf.Path('Code/SDKs/markupsafe/x64'),
-                                              conf.Path('Code/SDKs/jinja2/x64')]
+                                              conf.ThirdPartyPath('markupsafe', 'x64'),
+                                              conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.12/windows')
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/windows')
 

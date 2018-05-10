@@ -392,10 +392,6 @@ namespace LUAEditor
             {
                 statusString += tr(" Unknown: P4 SSL Certificate Invalid");
             }
-            else if (!newInfo.m_sourceControlInfo.IsManaged())
-            {
-            	statusString += tr(" Not Tracked");
-            }
             else if (newInfo.m_sourceControlInfo.m_flags & AzToolsFramework::SCF_OpenByUser)
             {
                 if (newInfo.m_sourceControlInfo.m_flags & AzToolsFramework::SCF_PendingAdd)
@@ -425,6 +421,10 @@ namespace LUAEditor
             	statusString += msg;
 
             	checkWriteIsWrong = true;
+            }
+            else if (!newInfo.m_sourceControlInfo.IsManaged())
+            {
+                statusString += tr(" Not Tracked");
             }
             else
             {

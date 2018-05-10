@@ -123,16 +123,37 @@ namespace AZ
                                 }
                             }
 
+                            void* objectPtr = nullptr;
+                            AZ::SerializeContext::IEventHandler* eventHandler = nullptr;
                             if (parentToNotifyAboutWrite != -1 && parentStack[parentToNotifyAboutWrite].m_classData->m_eventHandler)
                             {
-                                parentStack[parentToNotifyAboutWrite].m_classData->m_eventHandler->OnWriteBegin(parentStack[parentToNotifyAboutWrite].m_dataPtr);
+                                objectPtr = parentStack[parentToNotifyAboutWrite].m_dataPtr;
+                                eventHandler = parentStack[parentToNotifyAboutWrite].m_classData->m_eventHandler;
+                                const AZ::SerializeContext::ClassElement* parentToNotifyClassElement = parentStack[parentToNotifyAboutWrite].m_elementData;
+                                if (parentToNotifyClassElement && parentToNotifyClassElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
+                                {
+                                    objectPtr = *(void**)(objectPtr);
+                                    if (objectPtr && parentToNotifyClassElement->m_azRtti)
+                                    {
+                                        AZ::Uuid actualClassId = parentToNotifyClassElement->m_azRtti->GetActualUuid(objectPtr);
+                                        if (actualClassId != parentToNotifyClassElement->m_typeId)
+                                        {
+                                            objectPtr = parentToNotifyClassElement->m_azRtti->Cast(objectPtr, actualClassId);
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (objectPtr)
+                            {
+                                eventHandler->OnWriteBegin(objectPtr);
                             }
 
                             *originalIdPtr = newId;
 
-                            if (parentToNotifyAboutWrite != -1 && parentStack[parentToNotifyAboutWrite].m_classData->m_eventHandler)
+                            if (objectPtr)
                             {
-                                parentStack[parentToNotifyAboutWrite].m_classData->m_eventHandler->OnWriteEnd(parentStack[parentToNotifyAboutWrite].m_dataPtr);
+                                eventHandler->OnWriteEnd(objectPtr);
                             }
 
                             replaced++;

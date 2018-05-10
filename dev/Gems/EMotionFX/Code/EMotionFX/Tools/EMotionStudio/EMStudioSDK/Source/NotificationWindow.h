@@ -13,6 +13,7 @@
 #pragma once
 
 #include "EMStudioConfig.h"
+#include <MCore/Source/MemoryManager.h>
 #include <QToolButton>
 #include <QWidget>
 #include <QTimer>

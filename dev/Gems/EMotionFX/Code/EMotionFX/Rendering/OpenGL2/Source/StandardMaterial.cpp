@@ -15,7 +15,6 @@
 #include "GraphicsManager.h"
 #include "glactor.h"
 #include <EMotionFX/Source/TransformData.h>
-#include <MCore/Source/UnicodeString.h>
 
 
 namespace RenderGL
@@ -361,7 +360,7 @@ namespace RenderGL
             // if this function gets called at runtime something is wrong, go bug hunting!
 
             // construct an array of string attributes
-            MCore::Array<MCore::String> defines;
+            MCore::Array<AZStd::string> defines;
             for (uint32 n = 0; n < NUM_ATTRIBUTES; ++n)
             {
                 if (mAttributes[n])

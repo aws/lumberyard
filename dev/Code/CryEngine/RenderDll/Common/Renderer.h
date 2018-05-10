@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERER_H
-#define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERER_H
 #pragma once
 
 #include <CryPool/PoolAlloc.h>
@@ -26,7 +24,18 @@
 
 #include <LoadScreenBus.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define RENDERER_H_SECTION_1 1
+#define RENDERER_H_SECTION_2 2
+#define RENDERER_H_SECTION_3 3
+#define RENDERER_H_SECTION_4 4
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_1
+#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 typedef void (PROCRENDEF)(SShaderPass* l, int nPrimType);
 
@@ -140,6 +149,10 @@ typedef int (* pDrawModelFunc)(void);
     #define CBUFFER_NATIVE_DEPTH_DEAFULT_VAL 0
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_2
+#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 //////////////////////////////////////////////////////////////////////
 // Class to manage memory for Skinning Renderer Data
@@ -517,6 +530,10 @@ private:
 struct SRenderPipeline;
 class CRenderer
     : public IRenderer
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_3
+#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+#endif
 {
 public:
 
@@ -749,6 +766,10 @@ public:
     void PostShutDown();
 
     // Multithreading support
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_4
+#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     virtual void SyncComputeVerticesJobs();
 
@@ -1728,7 +1749,7 @@ public:
     virtual void ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
     virtual void RefreshShaderResourceConstants(SShaderItem* pShaderItem, _smart_ptr<IMaterial> pMaterial);
 
-    void RT_UpdateShaderItem (SShaderItem* pShaderItem);
+    void RT_UpdateShaderItem (SShaderItem* pShaderItem, IMaterial* material);
 
     bool UseHalfFloatRenderTargets();
 
@@ -2636,5 +2657,3 @@ private:
 #include "CommonRender.h"
 
 #define SKY_BOX_SIZE 32.f
-
-#endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERER_H

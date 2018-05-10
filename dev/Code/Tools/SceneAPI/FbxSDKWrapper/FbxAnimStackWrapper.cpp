@@ -31,6 +31,11 @@ namespace AZ
             m_fbxAnimStack = nullptr;
         }
 
+        const char* FbxAnimStackWrapper::GetName() const
+        {
+            return m_fbxAnimStack->GetName();
+        }
+
         int FbxAnimStackWrapper::GetAnimationLayerCount() const
         {
             return m_fbxAnimStack->GetMemberCount<FbxAnimLayer>();

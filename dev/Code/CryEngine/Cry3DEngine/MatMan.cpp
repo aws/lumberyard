@@ -250,23 +250,29 @@ void CMatMan::RenameMaterial(_smart_ptr<IMaterial> pMtl, const char* sNewName)
     
     AZStd::lock_guard<AZStd::recursive_mutex> lock(m_materialMapMutex);
     const char* sName = pMtl->GetName();
-    AZStd::unique_ptr<ManualResetEvent> resetEvent;
+    AZStd::unique_ptr<ManualResetEvent> resetEvent = nullptr;
 
     if (*sName != '\0')
     {
         AZStd::string unifiedName = UnifyName(pMtl->GetName());
         
-        resetEvent = std::move(m_pendingMaterialLoads[unifiedName]);
+        if (m_pendingMaterialLoads.find(unifiedName) != m_pendingMaterialLoads.end())
+        {
+            resetEvent = std::move(m_pendingMaterialLoads[unifiedName]);
+            m_pendingMaterialLoads.erase(unifiedName);
+        }
 
         m_mtlNameMap.erase(unifiedName);
-        m_pendingMaterialLoads.erase(unifiedName);
     }
 
     pMtl->SetName(sNewName);
     AZStd::string newUnifiedName = UnifyName(sNewName);
 
     m_mtlNameMap[newUnifiedName] = pMtl;
-    m_pendingMaterialLoads[newUnifiedName] = std::move(resetEvent);
+    if (resetEvent != nullptr)
+    {
+        m_pendingMaterialLoads[newUnifiedName] = std::move(resetEvent);
+    }
 
 }
 

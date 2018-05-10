@@ -22,32 +22,11 @@
 #include <Components/Connections/ConnectionVisualComponent.h>
 #include <Components/StylingComponent.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
+#include <GraphCanvas/Editor/GraphModelBus.h>
 
 namespace GraphCanvas
 {
-    ////////////////////
-    // ScopedUndoBlock
-    ////////////////////
-
-    class ScopedUndoBlock
-    {
-    public:
-        ScopedUndoBlock(const AZ::EntityId& sceneId)
-            : m_sceneId(sceneId)
-        {
-            SceneUIRequestBus::Event(m_sceneId, &SceneUIRequests::RequestPushPreventUndoStateUpdate);
-        }
-
-        ~ScopedUndoBlock()
-        {
-            SceneUIRequestBus::Event(m_sceneId, &SceneUIRequests::RequestPopPreventUndoStateUpdate);
-        }
-
-    private:
-
-        AZ::EntityId m_sceneId;
-    };
-
     ////////////////////////
     // ConnectionComponent
     ////////////////////////
@@ -61,9 +40,8 @@ namespace GraphCanvas
             return;
         }
 
-        serializeContext->Class<ConnectionComponent>()
-            ->Version(2)
-            ->Field("Scene", &ConnectionComponent::m_sceneId)
+        serializeContext->Class<ConnectionComponent, AZ::Component>()
+            ->Version(3)
             ->Field("Source", &ConnectionComponent::m_sourceEndpoint)
             ->Field("Target", &ConnectionComponent::m_targetEndpoint)
             ->Field("Tooltip", &ConnectionComponent::m_tooltip)
@@ -83,20 +61,20 @@ namespace GraphCanvas
             ;
     }
 
-    AZ::Entity* ConnectionComponent::CreateBaseConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, const AZStd::string& selectorClass)
+    AZ::Entity* ConnectionComponent::CreateBaseConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection, const AZStd::string& selectorClass)
     {
         // Create this Connection's entity.
         AZ::Entity* entity = aznew AZ::Entity("Connection");
 
-        entity->CreateComponent<ConnectionComponent>(sourceEndpoint, targetEndpoint);
+        entity->CreateComponent<ConnectionComponent>(sourceEndpoint, targetEndpoint, createModelConnection);
         entity->CreateComponent<StylingComponent>(Styling::Elements::Connection, AZ::EntityId(), selectorClass);
 
         return entity;
     }
 
-    AZ::Entity* ConnectionComponent::CreateGeneralConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, const AZStd::string& substyle)
+    AZ::Entity* ConnectionComponent::CreateGeneralConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection, const AZStd::string& substyle)
     {
-        AZ::Entity* entity = CreateBaseConnectionEntity(sourceEndpoint, targetEndpoint, substyle);
+        AZ::Entity* entity = CreateBaseConnectionEntity(sourceEndpoint, targetEndpoint, createModelConnection, substyle);
         entity->CreateComponent<ConnectionVisualComponent>();
 
         entity->Init();
@@ -110,7 +88,7 @@ namespace GraphCanvas
     {
     }
 
-    ConnectionComponent::ConnectionComponent(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
+    ConnectionComponent::ConnectionComponent(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection)
         : AZ::Component()
     {
         m_sourceEndpoint = sourceEndpoint;
@@ -118,7 +96,7 @@ namespace GraphCanvas
 
         AZ_Warning("GraphCanvas", m_targetEndpoint.IsValid() || m_sourceEndpoint.IsValid(), "Either source or target endpoint must be valid when creating a connection.");
 
-        if (m_sourceEndpoint.IsValid() && m_targetEndpoint.IsValid())
+        if (createModelConnection && m_sourceEndpoint.IsValid() && m_targetEndpoint.IsValid())
         {
             m_dragContext = DragContext::TryConnection;
         }
@@ -137,6 +115,11 @@ namespace GraphCanvas
         {
             m_dragContext = DragContext::Connected;
         }
+
+        StateController<RootGraphicsItemDisplayState>* displayStateController = nullptr;
+        RootGraphicsItemRequestBus::EventResult(displayStateController, GetEntityId(), &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+        m_connectionStateStateSetter.AddStateController(displayStateController);
     }
 
     void ConnectionComponent::Deactivate()
@@ -256,13 +239,13 @@ namespace GraphCanvas
             AZStd::unordered_set<AZ::EntityId> deletion;
             deletion.insert(GetEntityId());
 
-            SceneRequestBus::Event(m_sceneId, &SceneRequests::Delete, deletion);
+            SceneRequestBus::Event(m_graphId, &SceneRequests::Delete, deletion);
         }
     }
 
-    void ConnectionComponent::SetScene(const AZ::EntityId& sceneId)
+    void ConnectionComponent::SetScene(const GraphId& graphId)
     {
-        m_sceneId = sceneId;
+        m_graphId = graphId;
 
         if (!m_sourceEndpoint.IsValid())
         {
@@ -277,21 +260,21 @@ namespace GraphCanvas
             OnConnectionMoveComplete(QPointF(), QPoint());
         }
 
-        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneSet, m_sceneId);
+        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneSet, m_graphId);
     }
 
     void ConnectionComponent::ClearScene(const AZ::EntityId& oldSceneId)
     {
-        AZ_Warning("Graph Canvas", m_sceneId.IsValid(), "This connection (ID: %s) is not in a scene (ID: %s)!", GetEntityId().ToString().data(), m_sceneId.ToString().data());
+        AZ_Warning("Graph Canvas", m_graphId.IsValid(), "This connection (ID: %s) is not in a scene (ID: %s)!", GetEntityId().ToString().data(), m_graphId.ToString().data());
         AZ_Warning("Graph Canvas", GetEntityId().IsValid(), "This connection (ID: %s) doesn't have an Entity!", GetEntityId().ToString().data());
 
-        if (!m_sceneId.IsValid() || !GetEntityId().IsValid())
+        if (!m_graphId.IsValid() || !GetEntityId().IsValid())
         {
             return;
         }
 
-        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneCleared, m_sceneId);
-        m_sceneId.SetInvalid();
+        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneCleared, m_graphId);
+        m_graphId.SetInvalid();
     }
 
     void ConnectionComponent::SignalMemberSetupComplete()
@@ -301,7 +284,7 @@ namespace GraphCanvas
 
     AZ::EntityId ConnectionComponent::GetScene() const
     {
-        return m_sceneId;
+        return m_graphId;
     }
 
     bool ConnectionComponent::LockForExternalMovement(const AZ::EntityId& sceneMemberId)
@@ -356,7 +339,7 @@ namespace GraphCanvas
 
     void ConnectionComponent::OnConnectionMoveStart()
     {
-        ConnectionSceneRequestBus::Event(m_sceneId, &ConnectionSceneRequests::DisconnectConnection, GetEntityId());
+        GraphModelRequestBus::Event(m_graphId, &GraphModelRequests::DisconnectConnection, GetEntityId());
     }
 
     bool ConnectionComponent::OnConnectionMoveCancelled()
@@ -375,7 +358,7 @@ namespace GraphCanvas
             }
 
             bool acceptConnection = false;
-            ConnectionSceneRequestBus::EventResult(acceptConnection, m_sceneId, &ConnectionSceneRequests::CreateConnection, GetEntityId(), m_sourceEndpoint, m_targetEndpoint);
+            GraphModelRequestBus::EventResult(acceptConnection, m_graphId, &GraphModelRequests::CreateConnection, GetEntityId(), m_sourceEndpoint, m_targetEndpoint);
 
             AZ_Error("GraphCanvas", acceptConnection, "Cancelled a move, and was unable to reconnect to the previous connection.");
             if (acceptConnection)
@@ -391,7 +374,7 @@ namespace GraphCanvas
     bool ConnectionComponent::OnConnectionMoveComplete(const QPointF& scenePos, const QPoint& screenPos)
     {
         bool acceptConnection = false;
-        ConnectionSceneRequestBus::EventResult(acceptConnection, m_sceneId, &ConnectionSceneRequests::CreateConnection, GetEntityId(), m_sourceEndpoint, m_targetEndpoint);
+        GraphModelRequestBus::EventResult(acceptConnection, m_graphId, &GraphModelRequests::CreateConnection, GetEntityId(), m_sourceEndpoint, m_targetEndpoint);
 
         if (!acceptConnection && !m_previousEndPoint.IsValid() && m_dragContext != DragContext::TryConnection)
         {
@@ -404,7 +387,7 @@ namespace GraphCanvas
 
             GraphCanvas::Endpoint otherEndpoint;
 
-            SceneUIRequestBus::EventResult(otherEndpoint, m_sceneId, &SceneUIRequests::CreateNodeForProposal, GetEntityId(), knownEndpoint, scenePos, screenPos);
+            SceneUIRequestBus::EventResult(otherEndpoint, m_graphId, &SceneUIRequests::CreateNodeForProposal, GetEntityId(), knownEndpoint, scenePos, screenPos);
 
             if (otherEndpoint.IsValid())
             {
@@ -439,7 +422,7 @@ namespace GraphCanvas
             m_eventFilter = aznew ConnectionEventFilter((*this));
 
             QGraphicsScene* graphicsScene = nullptr;
-            SceneRequestBus::EventResult(graphicsScene, m_sceneId, &SceneRequests::AsQGraphicsScene);
+            SceneRequestBus::EventResult(graphicsScene, m_graphId, &SceneRequests::AsQGraphicsScene);
 
             if (graphicsScene)
             {
@@ -453,9 +436,26 @@ namespace GraphCanvas
             }
 
             connectionGraphicsItem->installSceneEventFilter(m_eventFilter);
-            connectionGraphicsItem->grabMouse();
+            connectionGraphicsItem->grabMouse();            
 
             StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::AddSelectorState, Styling::States::Dragging);
+
+            AZ::EntityId nodeId;
+            StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
+
+            if (m_dragContext == DragContext::MoveSource)
+            {
+                nodeId = GetTargetEndpoint().GetNodeId();
+            }
+            else
+            {
+                nodeId = GetSourceEndpoint().GetNodeId();
+            }
+
+            RootGraphicsItemRequestBus::EventResult(stateController, nodeId, &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+            m_nodeDisplayStateStateSetter.AddStateController(stateController);
+            m_nodeDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::Inspection);
 
             OnConnectionMoveStart();
         }
@@ -489,6 +489,8 @@ namespace GraphCanvas
             SlotRequestBus::Event(GetTargetEndpoint().GetSlotId(), &SlotRequests::RemoveProposedConnection, GetEntityId(), GetSourceEndpoint());
             StyledEntityRequestBus::Event(GetTargetEndpoint().GetSlotId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::ValidDrop);
         }
+
+        m_nodeDisplayStateStateSetter.ResetStateSetter();
     }
 
     bool ConnectionComponent::UpdateProposal(Endpoint& activePoint, const Endpoint& proposalPoint, AZStd::function< void(const AZ::EntityId&, const AZ::EntityId&)> endpointChangedFunctor)
@@ -504,6 +506,11 @@ namespace GraphCanvas
 
             if (activePoint.IsValid())
             {
+                StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
+                RootGraphicsItemRequestBus::EventResult(stateController, activePoint.GetNodeId(), &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+                m_nodeDisplayStateStateSetter.RemoveStateController(stateController);
+
                 StyledEntityRequestBus::Event(activePoint.m_slotId, &StyledEntityRequests::RemoveSelectorState, Styling::States::ValidDrop);
                 if (connectionGraphicsItem)
                 {
@@ -518,6 +525,11 @@ namespace GraphCanvas
 
             if (activePoint.IsValid())
             {
+                StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
+                RootGraphicsItemRequestBus::EventResult(stateController, activePoint.GetNodeId(), &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+                m_nodeDisplayStateStateSetter.AddStateController(stateController);
+
                 StyledEntityRequestBus::Event(activePoint.m_slotId, &StyledEntityRequests::AddSelectorState, Styling::States::ValidDrop);
                 if (connectionGraphicsItem)
                 {
@@ -538,16 +550,19 @@ namespace GraphCanvas
             knownEndpoint = m_sourceEndpoint;
         }
 
+        EditorId editorId;
+        SceneRequestBus::EventResult(editorId, m_graphId, &SceneRequests::GetEditorId);
+
         Endpoint retVal;
 
         double snapDist = 10.0;
-        ConnectionSceneRequestBus::EventResult(snapDist, m_sceneId, &ConnectionSceneRequestBus::Events::GetSnapDistance);
+        AssetEditorSettingsRequestBus::EventResult(snapDist, editorId, &AssetEditorSettingsRequests::GetSnapDistance);
 
         QPointF dist(snapDist, snapDist);
         QRectF rect(scenePos - dist, scenePos + dist);
 
         AZStd::vector<Endpoint> endpoints;
-        SceneRequestBus::EventResult(endpoints, m_sceneId, &SceneRequestBus::Events::GetEndpointsInRect, rect);
+        SceneRequestBus::EventResult(endpoints, m_graphId, &SceneRequestBus::Events::GetEndpointsInRect, rect);
 
         for (Endpoint endpoint : endpoints)
         {
@@ -614,8 +629,9 @@ namespace GraphCanvas
 
         StopMove();
 
-        // Have to copy the Scene Id here because deletion of the Entity this component is attached to deletes this component.
-        AZ::EntityId sceneId = m_sceneId;
+        // Have to copy the GraphId here because deletion of the Entity this component is attached to deletes this component.
+        GraphId graphId = m_graphId;
+
         bool acceptConnection = OnConnectionMoveComplete(scenePos, screenPos);
 
         if (!acceptConnection)
@@ -624,7 +640,7 @@ namespace GraphCanvas
             bool preventUndoState = !m_previousEndPoint.IsValid();
             if (preventUndoState)
             {
-                SceneUIRequestBus::Event(sceneId, &SceneUIRequests::RequestPushPreventUndoStateUpdate);
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestPushPreventUndoStateUpdate);
             }
 
             AZStd::unordered_set<AZ::EntityId> deletion;
@@ -632,16 +648,16 @@ namespace GraphCanvas
 
             // The SceneRequests::Delete will delete the Entity this component is attached.
             // Therefore it is invalid to access the members of this component after the call.
-            SceneRequestBus::Event(sceneId, &SceneRequests::Delete, deletion);
+            SceneRequestBus::Event(graphId, &SceneRequests::Delete, deletion);
             if (preventUndoState)
             {
-                SceneUIRequestBus::Event(sceneId, &SceneUIRequests::RequestPopPreventUndoStateUpdate);
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestPopPreventUndoStateUpdate);
             }
         }
         else
         {
             FinalizeMove();
-            SceneUIRequestBus::Event(sceneId, &SceneUIRequests::RequestUndoPoint);
+            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
         }
     }
 }

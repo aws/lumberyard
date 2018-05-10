@@ -19,9 +19,41 @@
 
 namespace GraphCanvas
 {
+    /////////////////////////////
+    // StylingComponentSaveData
+    /////////////////////////////
+
+    StylingComponent::StylingComponentSaveData::StylingComponentSaveData(const AZStd::string& subStyle)
+        : m_subStyle(subStyle)
+    {
+    }
+
     /////////////////////
     // StylingComponent
     /////////////////////
+    bool StylingComponentVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() <= 1)
+        {
+            AZ::Crc32 classId = AZ_CRC("Class", 0xed4b199f);
+
+            StylingComponent::StylingComponentSaveData saveData;
+
+            AZ::SerializeContext::DataElementNode* dataNode = classElement.FindSubElement(classId);
+
+            if (dataNode)
+            {
+                dataNode->GetData(saveData.m_subStyle);
+            }
+
+            classElement.RemoveElementByName(classId);
+            classElement.AddElementWithData(context, "SaveData", saveData);
+            classElement.RemoveElementByName(AZ_CRC("Id", 0xbf396750));
+        }
+
+        return true;
+    }
+
     void StylingComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -30,13 +62,17 @@ namespace GraphCanvas
             return;
         }
 
-        serializeContext->Class<StylingComponent>()
+        serializeContext->Class<StylingComponentSaveData, ComponentSaveData>()
             ->Version(1)
+            ->Field("SubStyle", &StylingComponentSaveData::m_subStyle)
+        ;
+
+        serializeContext->Class<StylingComponent, AZ::Component>()
+            ->Version(2, StylingComponentVersionConverter)
             ->Field("Parent", &StylingComponent::m_parentStyledEntity)
             ->Field("Element", &StylingComponent::m_element)
-            ->Field("Class", &StylingComponent::m_class)
-            ->Field("Id", &StylingComponent::m_id)
-            ;
+            ->Field("SaveData", &StylingComponent::m_saveData)
+        ;
     }
 
     AZ::EntityId StylingComponent::CreateStyleEntity(const AZStd::string& element)
@@ -50,11 +86,10 @@ namespace GraphCanvas
         return entity->GetId();
     }
 
-    StylingComponent::StylingComponent(const AZStd::string& element, const AZ::EntityId& parentStyledEntity, const AZStd::string& styleClass, const AZStd::string& id)
+    StylingComponent::StylingComponent(const AZStd::string& element, const AZ::EntityId& parentStyledEntity, const AZStd::string& subStyle)
         : m_parentStyledEntity(parentStyledEntity)
         , m_element(element)
-        , m_class(styleClass)
-        , m_id(id)
+        , m_saveData(subStyle)
     {
     }
 
@@ -70,18 +105,7 @@ namespace GraphCanvas
         AZ_Assert(elementSelector.IsValid(), "The item's element selector (\"%s\") is not valid", m_element.c_str());
         m_coreSelectors.emplace_back(elementSelector);
 
-        Styling::Selector classSelector = Styling::Selector::Get(m_class);
-        if (classSelector.IsValid())
-        {
-            m_coreSelectors.emplace_back(classSelector);
-        }
-
-        Styling::Selector idSelector = Styling::Selector::Get(m_id);
-        if (idSelector.IsValid())
-        {
-            m_coreSelectors.emplace_back(idSelector);
-        }
-
+        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
         StyledEntityRequestBus::Handler::BusConnect(GetEntityId());
         VisualNotificationBus::Handler::BusConnect(GetEntityId());
         SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
@@ -99,24 +123,6 @@ namespace GraphCanvas
         m_collapsedSelector = Styling::Selector();
         m_highlightedSelector = Styling::Selector();
         m_coreSelectors.clear();
-    }
-
-    void StylingComponent::OnHoverEnter(QGraphicsItem * item)
-    {
-        m_hovered = true;
-        StyleNotificationBus::Event(GetEntityId(), &StyleNotificationBus::Events::OnStyleChanged);
-    }
-
-    void StylingComponent::OnHoverLeave(QGraphicsItem* item)
-    {
-        QGraphicsItem* root = nullptr;
-        SceneMemberUIRequestBus::EventResult(root, GetEntityId(), &SceneMemberUIRequests::GetRootGraphicsItem);
-
-        if (!root || item == root)
-        {
-            m_hovered = false;
-            StyleNotificationBus::Event(GetEntityId(), &StyleNotificationBus::Events::OnStyleChanged);
-        }
     }
 
     void StylingComponent::OnItemChange(const AZ::EntityId&, QGraphicsItem::GraphicsItemChange change, const QVariant&)
@@ -182,7 +188,11 @@ namespace GraphCanvas
         }
         else
         {
-            AZ_Assert(false, "Pushing the same state(%s) onto the selector stack twice. State cannot be correctly removed.", selectorState);
+            // Temporary disabling, since with the block comments, we can add the same selector twice(no reasonable way of resolving this)
+            //
+            // Will need to port some code to deal with a voting type system of what selectors to add on here rather then just assuming a one on
+            // one off system.
+            //AZ_Assert(false, "Pushing the same state(%s) onto the selector stack twice. State cannot be correctly removed.", selectorState);
         }
     }
 
@@ -203,16 +213,19 @@ namespace GraphCanvas
 
     AZStd::string StylingComponent::GetClass() const
     {
-        return m_class;
-    }
-
-    AZStd::string StylingComponent::GetId() const
-    {
-        return m_id;
+        return m_saveData.m_subStyle;
     }
 
     void StylingComponent::OnSceneSet(const AZ::EntityId& scene)
     {
+        Styling::Selector classSelector = Styling::Selector::Get(GetClass());
+        if (classSelector.IsValid())
+        {
+            m_coreSelectors.emplace_back(classSelector);
+        }
+
+        m_saveData.RegisterIds(scene, GetEntityId());
+
         SceneNotificationBus::Handler::BusDisconnect();
         SceneNotificationBus::Handler::BusConnect(scene);
         StyleNotificationBus::Event(GetEntityId(), &StyleNotificationBus::Events::OnStyleChanged);
@@ -223,8 +236,28 @@ namespace GraphCanvas
         SceneNotificationBus::Handler::BusDisconnect();
     }
 
-    void StylingComponent::OnStyleSheetChanged()
+    void StylingComponent::OnStylesChanged()
     {
         StyleNotificationBus::Event(GetEntityId(), &StyleNotificationBus::Events::OnStyleChanged);
+    }
+
+    void StylingComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
+    {
+        StylingComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<StylingComponentSaveData>();
+
+        if (saveData)
+        {
+            (*saveData) = m_saveData;
+        }
+    }
+
+    void StylingComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
+    {
+        StylingComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<StylingComponentSaveData>();
+
+        if (saveData)
+        {
+            m_saveData = (*saveData);
+        }
     }
 }

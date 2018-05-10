@@ -32,6 +32,7 @@ namespace GraphicsReflectContext
             ScriptCanvas_Node::Name("Set Color Chart") // The localization tool doesn't support custom SC nodes, so we have to put the spaces in here.
             ScriptCanvas_Node::Category("Rendering/Post Effects")
             ScriptCanvas_Node::Description("Applies a color chart texture for color grading")
+            ScriptCanvas_Node::Version(1, SetColorChartNodeVersionConverter)
         );
 
     public:

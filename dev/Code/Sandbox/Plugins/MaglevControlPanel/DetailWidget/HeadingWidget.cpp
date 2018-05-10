@@ -20,7 +20,8 @@
 
 #include <DetailWidget/HeadingWidget.moc>
 
-HeadingWidget::HeadingWidget()
+HeadingWidget::HeadingWidget(QWidget* parent)
+    : QFrame(parent)
 {
     CreateUI();
 }

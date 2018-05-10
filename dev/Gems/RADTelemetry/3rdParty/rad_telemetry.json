@@ -21,7 +21,8 @@
             ]
         },
         "win_x64_vs2015": "@win_x64_vs2013",
-        "durango": {
+		"win_x64_vs2017": "@win_x64_vs2013",
+        "durango_vs2015": {
             "libpath": [
                 "External/Lib"
             ],
@@ -35,7 +36,8 @@
                 "/ignore:4099"
             ]
         },
-        "orbis": {
+		"durango_vs2017": "@durango_vs2015",
+		"orbis_vs2015": {
             "libpath": [
                 "External/Lib"
             ],

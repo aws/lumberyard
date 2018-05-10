@@ -16,6 +16,7 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/typetraits/alignment_of.h>
+#include <AzCore/std/typetraits/is_constructible.h>
 
 namespace AZStd
 {
@@ -281,6 +282,7 @@ namespace AZStd
 
 #if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE list(std::initializer_list<T> list)
+            : m_numElements(0)
         {
             m_head.m_next = m_head.m_prev = &m_head;
             insert(begin(), list.begin(), list.end());
@@ -367,7 +369,8 @@ namespace AZStd
         AZ_FORCE_INLINE void pop_back()                         { erase(--end()); }
 
 #if defined(AZ_HAS_RVALUE_REFS)
-        list(this_type&& rhs)
+        template <typename MyAllocator=allocator_type>
+        list(this_type&& rhs, typename AZStd::enable_if_t<AZStd::is_default_constructible<MyAllocator>::value>* = nullptr)
             : m_numElements(0)
         {
             m_head.m_next = m_head.m_prev = &m_head;

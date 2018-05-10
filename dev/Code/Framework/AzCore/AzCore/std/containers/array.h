@@ -65,12 +65,12 @@ namespace AZStd
         AZ_FORCE_INLINE reverse_iterator        rbegin()            { return reverse_iterator(end()); }
         AZ_FORCE_INLINE const_reverse_iterator  rbegin() const      { return const_reverse_iterator(end()); }
         AZ_FORCE_INLINE reverse_iterator        rend()              { return reverse_iterator(begin()); }
-        AZ_FORCE_INLINE const_reverse_iterator  rend() const        { return const_reverse_iterator(end()); }
+        AZ_FORCE_INLINE const_reverse_iterator  rend() const        { return const_reverse_iterator(begin()); }
 
         AZ_FORCE_INLINE const_iterator          cbegin() const      { return m_elements; }
         AZ_FORCE_INLINE const_iterator          cend() const        { return m_elements + N; }
         AZ_FORCE_INLINE const_reverse_iterator  crbegin() const     { return const_reverse_iterator(end()); }
-        AZ_FORCE_INLINE const_reverse_iterator  crend() const       { return const_reverse_iterator(end()); }
+        AZ_FORCE_INLINE const_reverse_iterator  crend() const       { return const_reverse_iterator(begin()); }
 
         AZ_FORCE_INLINE reference       front()         { return m_elements[0]; }
         AZ_FORCE_INLINE const_reference front() const   { return m_elements[0]; }

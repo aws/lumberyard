@@ -146,7 +146,7 @@ void CommandBrowserPlugin::GenerateCommandList()
             newString.sprintf("<td>%s</td>", command->GetSyntax().GetParamName(p));                     infoString += newString;
             newString.sprintf("<td>%s</td>", command->GetSyntax().GetParamTypeString(p));               infoString += newString;
             newString.sprintf("<td>%s</td>", command->GetSyntax().GetParamRequired(p) ? "Yes" : "No");  infoString += newString;
-            newString.sprintf("<td>%s</td>", command->GetSyntax().GetDefaultValue(p).AsChar());         infoString += newString;
+            newString.sprintf("<td>%s</td>", command->GetSyntax().GetDefaultValue(p).c_str());         infoString += newString;
             newString.sprintf("<td>%s</td>", command->GetSyntax().GetParamDescription(p));              infoString += newString;
             infoString += "</tr>";
         }

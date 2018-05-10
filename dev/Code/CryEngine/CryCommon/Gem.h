@@ -13,6 +13,9 @@
 
 #include <platform.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Gem_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(LINUX) || defined(APPLE) || defined(ANDROID)
     #define OPENGL 1

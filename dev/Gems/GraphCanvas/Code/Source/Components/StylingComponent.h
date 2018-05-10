@@ -13,11 +13,13 @@
 
 #include <AzCore/Component/Component.h>
 
-#include <Components/VisualBus.h>
-#include <Components/StyleBus.h>
-#include <Components/SceneBus.h>
-#include <Styling/definitions.h>
-#include <Styling/Selector.h>
+#include <GraphCanvas/Components/EntitySaveDataBus.h>
+#include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Styling/definitions.h>
+#include <GraphCanvas/Styling/Selector.h>
+#include <GraphCanvas/Types/EntitySaveData.h>
 
 namespace GraphCanvas
 {
@@ -29,15 +31,30 @@ namespace GraphCanvas
         , public StyledEntityRequestBus::Handler
         , public SceneMemberNotificationBus::Handler
         , public SceneNotificationBus::Handler
+        , public EntitySaveDataRequestBus::Handler
     {
     public:
+        class StylingComponentSaveData
+            : public ComponentSaveData
+        {
+        public:
+            AZ_RTTI(StylingComponentSaveData, "{B0B99C8A-03AF-4CF6-A926-F65C874C3D97}", ComponentSaveData);
+            AZ_CLASS_ALLOCATOR(StylingComponentSaveData, AZ::SystemAllocator, 0);
+
+            StylingComponentSaveData() = default;
+            StylingComponentSaveData(const AZStd::string& subStyle);
+            ~StylingComponentSaveData() = default;
+
+            AZStd::string m_subStyle;
+        };
+
         AZ_COMPONENT(StylingComponent, "{94BF24F3-0EF1-41D9-B869-27AAB2B7F9AF}");
         static void Reflect(AZ::ReflectContext*);
 
         static AZ::EntityId CreateStyleEntity(const AZStd::string& element);
 
         StylingComponent() {}
-        StylingComponent(const AZStd::string& element, const AZ::EntityId& parentStyledEntity = AZ::EntityId(), const AZStd::string& styleClass = AZStd::string(), const AZStd::string& id = AZStd::string());
+        StylingComponent(const AZStd::string& element, const AZ::EntityId& parentStyledEntity = AZ::EntityId(), const AZStd::string& styleClass = AZStd::string());
         ~StylingComponent() override = default;
 
         // AZ::Component
@@ -66,9 +83,6 @@ namespace GraphCanvas
         ////
     
         // VisualNotificationBus
-        void OnHoverEnter(QGraphicsItem* item) override;
-        void OnHoverLeave(QGraphicsItem* item) override;
-
         void OnItemChange(const AZ::EntityId&, QGraphicsItem::GraphicsItemChange, const QVariant&) override;
         ////
 
@@ -82,7 +96,6 @@ namespace GraphCanvas
 
         AZStd::string GetElement() const override;
         AZStd::string GetClass() const override;
-        AZStd::string GetId() const override;
         ////
 
         // SceneMemberNotificationBus
@@ -91,7 +104,12 @@ namespace GraphCanvas
         ////
 
         // SceneNotificationBus
-        void OnStyleSheetChanged() override;
+        void OnStylesChanged() override;
+        ////
+
+        // EntitySaveDataRequestBus
+        void WriteSaveData(EntitySaveDataContainer& saveDataContainer) const override;
+        void ReadSaveData(const EntitySaveDataContainer& saveDataContainer) override;
         ////
 
     private:
@@ -99,8 +117,7 @@ namespace GraphCanvas
         const AZ::EntityId m_parentStyledEntity;
 
         AZStd::string m_element;
-        AZStd::string m_class;
-        AZStd::string m_id;
+        StylingComponentSaveData m_saveData;
 
         // The selectors for the element, class and ID
         Styling::SelectorVector m_coreSelectors;

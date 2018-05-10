@@ -26,7 +26,7 @@ namespace CharacterTool
     {
         Q_OBJECT
     public:
-        AnimationTagList(EditorCompressionPresetTable* presets, EditorDBATable* dbaTable);
+        explicit AnimationTagList(EditorCompressionPresetTable* presets, EditorDBATable* dbaTable);
 
     protected:
         void AddRef() override {}

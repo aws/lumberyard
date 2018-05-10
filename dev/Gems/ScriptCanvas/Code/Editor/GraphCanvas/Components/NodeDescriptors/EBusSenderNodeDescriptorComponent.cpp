@@ -33,17 +33,13 @@ namespace ScriptCanvasEditor
         if (serializeContext)
         {
             serializeContext->Class<EBusSenderNodeDescriptorComponent, NodeDescriptorComponent>()
-                ->Version(1)
-                ->Field("BusName", &EBusSenderNodeDescriptorComponent::m_busName)
-                ->Field("EventName", &EBusSenderNodeDescriptorComponent::m_eventName)
+                ->Version(2)
             ;
         }
     }
     
-    EBusSenderNodeDescriptorComponent::EBusSenderNodeDescriptorComponent(const AZStd::string& busName, const AZStd::string& eventName)
+    EBusSenderNodeDescriptorComponent::EBusSenderNodeDescriptorComponent()
         : NodeDescriptorComponent(NodeDescriptorType::EBusSender)
-        , m_busName(busName)
-        , m_eventName(eventName)
     {
     }
 
@@ -78,24 +74,7 @@ namespace ScriptCanvasEditor
                 {
                     if (method->HasBusID())
                     {
-                        ScriptCanvas::SlotId slotId;
-
-                        int index = -1;
-
-                        // Assuming that data input 0 is the BusId in this case.
-                        const AZStd::vector< ScriptCanvas::Slot >& slotList = method->GetSlots();
-
-                        for (const ScriptCanvas::Slot& currentSlot : slotList)
-                        {
-                            if (currentSlot.GetType() == ScriptCanvas::SlotType::DataIn)
-                            {
-                                if (index < 0 || currentSlot.GetIndex() < index)
-                                {
-                                    index = currentSlot.GetIndex();
-                                    slotId = currentSlot.GetId();
-                                }
-                            }
-                        }
+                        ScriptCanvas::SlotId slotId = method->GetBusSlotId();
 
                         AZStd::vector< AZ::EntityId > graphCanvasSlots;
                         GraphCanvas::NodeRequestBus::EventResult(graphCanvasSlots, GetEntityId(), &GraphCanvas::NodeRequests::GetSlotIds);

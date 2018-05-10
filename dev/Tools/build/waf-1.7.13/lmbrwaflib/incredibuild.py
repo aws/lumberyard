@@ -148,8 +148,6 @@ def _incredibuild_disclaimer(ctx):
     Logs.info('\nWAF is using Incredibuild for distributed Builds')
     Logs.info('To be able to compile with WAF, various licenses are required:')
     Logs.info('The "IncrediBuild for Make && Build Tools Package"   is always needed')
-    Logs.info('The "IncrediBuild for PlayStation Package"          is needed for PS4 Builds') # ACCEPTED_USE
-    Logs.info('The "IncrediBuild for Xbox One Package"             is needed for Xbox One Builds') # ACCEPTED_USE
     Logs.info('If some packages are missing, please ask IT')
     Logs.info('to assign the needed ones to your machine')
 

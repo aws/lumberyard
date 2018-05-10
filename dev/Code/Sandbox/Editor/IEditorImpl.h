@@ -47,6 +47,7 @@ class CEditorFileMonitor;
 class AzAssetWindow;
 class AzAssetBrowserRequestHandler;
 class AssetEditorRequestsHandler;
+class CAlembicCompiler;
 
 namespace Editor
 {
@@ -114,6 +115,7 @@ public:
     IGame*      GetGame();
     I3DEngine*  Get3DEngine();
     IRenderer*  GetRenderer();
+    void WriteToConsole(const char* string) { CLogFile::WriteLine(string); };
     void WriteToConsole(const QString& string) { CLogFile::WriteLine(string); };
     // Change the message in the status bar
     void SetStatusText(const QString& pszString);
@@ -473,6 +475,7 @@ protected:
     CToolBoxManager* m_pToolBoxManager;
     CEntityPrototypeManager* m_pEntityManager;
     CMaterialManager* m_pMaterialManager;
+    CAlembicCompiler* m_pAlembicCompiler;
     IEditorParticleManager* m_particleManager;
     IEditorParticleUtils* m_particleEditorUtils;
     CMusicManager* m_pMusicManager;

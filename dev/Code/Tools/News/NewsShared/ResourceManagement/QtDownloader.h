@@ -40,28 +40,17 @@ namespace News
 
         void Abort();
 
-        void SetUseCertPinning(bool value);
-
 Q_SIGNALS:
         void downloadFinishedSignal(QtDownloader*);
 
     private:
         QNetworkAccessManager m_networkManager;
         QNetworkReply* m_reply;
-        bool m_useCertPinning = true;
-        bool m_certValid = false;
 
         std::function<void(QByteArray)> m_downloadSuccessCallback;
         std::function<void()> m_downloadFailCallback;
 
     private Q_SLOTS:
-        //! Performs certificate verification of the request
-        /*!
-        This is always called before downloadFinishedSlot when SSL/TLS session 
-        has successfully completed the initial handshake. The request's public key 
-        hash is then checked against local copy to verify whether certificate is valid.
-        */
-        void encryptedSlot(QNetworkReply* pReply);
         //! Performs actual handling of the request
         void downloadFinishedSlot(QNetworkReply* pReply);
     };

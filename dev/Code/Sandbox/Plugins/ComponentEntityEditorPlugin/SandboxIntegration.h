@@ -130,9 +130,11 @@ private:
     bool IsLevelDocumentOpen() override;
     AZStd::string SelectResource(const AZStd::string& resourceType, const AZStd::string& previousValue) override;
     void GenerateNavigationArea(const AZStd::string& name, const AZ::Vector3& position, const AZ::Vector3* points, size_t numPoints, float height) override;
-    AZStd::vector<AZStd::string> GetAgentTypes() override;
+    virtual const char* GetDefaultAgentNavigationTypeName() override;
+    float CalculateAgentNavigationRadius(const char* agentTypeName) override;
     void OpenPinnedInspector(const AzToolsFramework::EntityIdList& entities) override;
     void ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* editor) override;
+    AZStd::vector<AZStd::string> GetAgentTypes() override;
     void GoToSelectedOrHighlightedEntitiesInViewports() override;
 
     //////////////////////////////////////////////////////////////////////////
@@ -161,6 +163,7 @@ private:
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::EditorRequests::Bus::Handler overrides
     void SetColor(float r, float g, float b, float a) override;
+    void SetColor(const AZ::Color& color) override;
     void SetColor(const AZ::Vector4& color) override;
     void SetAlpha(float a) override;
     void DrawQuad(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4) override;

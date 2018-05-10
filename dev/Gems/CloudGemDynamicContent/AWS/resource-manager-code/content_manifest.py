@@ -333,9 +333,10 @@ def _add_file_to_pak(context, file_name, file_platform, pak_file, manifest_path,
     pak_list = _get_paks_list(context, manifest)
     pak_platform_type = ''
     pak_found = False
-    for existing_file in pak_list:
-        if existing_file['pakFile'] == pak_file:
-            pak_platform_type = existing_file['platformType']
+    pak_entry = {}
+    for pak_entry in pak_list:
+        if pak_entry['pakFile'] == pak_file:
+            pak_platform_type = pak_entry['platformType']
             pak_found = True
             break
 
@@ -344,19 +345,22 @@ def _add_file_to_pak(context, file_name, file_platform, pak_file, manifest_path,
 
     file_list = _get_files_list(context, manifest, 'Files')
     file_found = False
-    for existing_file in file_list:
-        if not entry_matches_platform(existing_file, pak_platform_type):
+    file_entry = {}
+    for file_entry in file_list:
+        if not entry_matches_platform(file_entry, pak_platform_type):
             continue
 
-        if entry_matches_file(existing_file, file_name, file_platform):
-            existing_file['pakFile'] = pak_file
-            platform_name = existing_file.get('platformType')
+        if entry_matches_file(file_entry, file_name, file_platform):
+            file_entry['pakFile'] = pak_file
+            file_entry['hash'] = '' # Need to be sure to add this to the pak next update
+            platform_name = file_entry.get('platformType')
             file_found = True
+            break
     if not file_found:
         raise HandledError('No matching file found {} platform {}'.format(file_name,pak_platform_type))
     manifest['Files'] = file_list
     _save_content_manifest(context, manifest_path, manifest)
-             
+
 def command_add_file_entry(context, args):
     add_file_entry(context, args.manifest_path, args.file_name, args.file_section, None, args.cache_root, args.bucket_prefix, args.output_root, args.platform_type)
       
@@ -742,7 +746,7 @@ def command_upload_manifest_content(context, args):
 # 4 - Upload each unmatched pak file
 # 5 - Upload the manifest
 def upload_manifest_content(context, manifest_path, deployment_name, staging_args, upload_all = False, do_signing=False):
-    build_new_paks(context, manifest_path)
+    build_new_paks(context, manifest_path, upload_all)
     manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
     _update_file_hashes(context, manifest_path, manifest)
     remainingContent = _get_unmatched_content(context, manifest, manifest_path, deployment_name)
@@ -884,34 +888,55 @@ def _get_pak_for_entry(context, fileEntry, manifest_path):
 
     return pak_path.replace('\\','/')
 
+# manifest_path - full path and file name of manifest.json
+# manifest - full manifest dictionary object
+# pak_all - Disregard whether data appears to have been updated and return all of the paks with their content lists
 def _get_updated_local_content(context, manifest_path, manifest, pak_all):
     # sorts manifest files by pak_folder_path
     filesList = _get_files_list(context, manifest, 'Files')
     thisFile = {}
     context.view.finding_updated_content(manifest_path)
     returnData = {}
+    updated_paks = set()
     for thisFile in filesList:
         this_file_path = _get_path_for_file_entry(context, thisFile, context.config.game_directory_name)
         if not os.path.isfile(this_file_path):
             context.view.invalid_file(this_file_path)
             thisFile['hash'] = ''
             continue
-        hex_return = hashlib.md5(open(this_file_path, 'rb').read()).hexdigest()
-        manifestHash = thisFile.get('hash', '')
-        context.view.hash_comparison_disk(this_file_path, manifestHash, hex_return)
-        
+
         relative_pak_folder = _get_pak_for_entry(context, thisFile, manifest_path)
 
         if not relative_pak_folder:
             continue
 
-        output_pak_path = get_pak_game_folder(context, relative_pak_folder)
-        
-        pak_exists = os.path.isfile(output_pak_path)
-        if hex_return != manifestHash or pak_all or not pak_exists:
-            if not returnData.get(relative_pak_folder):
-                returnData[relative_pak_folder] = []
-            returnData[relative_pak_folder].append(thisFile)
+        if not returnData.get(relative_pak_folder):
+            returnData[relative_pak_folder] = []
+        # Add an entry for every file regardless of whether it's updated - we'll remove the paks that
+        # have no updates at the end
+        returnData[relative_pak_folder].append(thisFile)
+
+        if relative_pak_folder in updated_paks:
+            #We know this pak needs an update already
+            continue
+
+        hex_return = hashlib.md5(open(this_file_path, 'rb').read()).hexdigest()
+        manifestHash = thisFile.get('hash', '')
+        context.view.hash_comparison_disk(this_file_path, manifestHash, hex_return)
+
+        if hex_return != manifestHash:
+            updated_paks.add(relative_pak_folder)
+
+    # pak_all is just a simple way to say give me back all of the data in the expected pak_file, list of files format
+    # regardless of updates.  In most cases we want to strip out the paks we haven't found any updates for
+    if not pak_all:
+        for this_pak in returnData.keys():
+            output_pak_path = get_pak_game_folder(context, this_pak)
+            pak_exists = os.path.isfile(output_pak_path)
+
+            if pak_exists and this_pak not in updated_paks:
+                show_manifest.skipping_unmodified_pak(this_pak)
+                del returnData[this_pak]
 
     return returnData
 
@@ -957,7 +982,6 @@ def build_new_paks(context, manifest_path, pak_All = False):
 #todo add variable for a pak name, and add the pak name to the file entry in the manifest
     manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
     updatedContent = _get_updated_local_content(context, manifest_path, manifest, pak_All)
-    pak_file_list = []
     for relative_folder_path, files in updatedContent.iteritems():
         # currently this command is only supported on windows
         archiver = pak_files.PakFileArchiver()
@@ -971,7 +995,6 @@ def build_new_paks(context, manifest_path, pak_All = False):
             files_to_pak.append(file_pair)
             print file_pair
         archiver.archive_files(files_to_pak, pak_folder_path)
-        pak_file_list.append(pak_folder_path)
     _save_content_manifest(context, manifest_path, manifest)
     
     create_standalone_manifest_pak(context, manifest_path)  

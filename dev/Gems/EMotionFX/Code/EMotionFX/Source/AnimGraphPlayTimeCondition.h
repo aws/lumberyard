@@ -60,8 +60,8 @@ namespace EMotionFX
         void RegisterAttributes() override;
 
         const char* GetTypeString() const override;
-        void GetSummary(MCore::String* outResult) const override;
-        void GetTooltip(MCore::String* outResult) const override;
+        void GetSummary(AZStd::string* outResult) const override;
+        void GetTooltip(AZStd::string* outResult) const override;
         const char* GetPaletteName() const override;
         AnimGraphObjectData* CreateObjectData() override;
 
@@ -69,7 +69,7 @@ namespace EMotionFX
         bool TestCondition(AnimGraphInstance* animGraphInstance) const override;
         AnimGraphObject* Clone(AnimGraph* animGraph) override;
 
-        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName) override;
+        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
 
     private:

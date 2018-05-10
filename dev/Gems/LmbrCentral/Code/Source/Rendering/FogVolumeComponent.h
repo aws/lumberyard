@@ -48,35 +48,25 @@ namespace LmbrCentral
             m_configuration = AZStd::forward<T>(configuration);
         }
 
-        /////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        /////////////////////////////////////////////
 
         static void Reflect(AZ::ReflectContext* context);
 
-        /////////////////////////////////////////////
         // RenderNodeRequestBus::Handler interface implementation
         IRenderNode* GetRenderNode() override;
         float GetRenderNodeRequestBusOrder() const override;
         static const float s_renderNodeRequestBusOrder;
-        /////////////////////////////////////////////
 
-        /////////////////////////////////////////////
         // TransformNotificationBus::Handler
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        /////////////////////////////////////////////
 
-        /////////////////////////////////////////////
         // ShapeComponentNotificationsBus::Handler
         void OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons changeReason) override;
-        /////////////////////////////////////////////
 
-        /////////////////////////////////////////////
         // FogVolumeComponentRequestBus::Handler
         void RefreshFog() override;
-        /////////////////////////////////////////////
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void ExposeRequestsBusInBehaviorContext(AZ::BehaviorContext* behaviorContext, const char* name);

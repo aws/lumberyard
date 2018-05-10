@@ -631,3 +631,36 @@ void ReflectedVarSplineAdapter::SyncIVarToReflectedVar(IVariable* pVariable)
 
     m_parentItem->SendOnItemChange();
 }
+
+void ReflectedVarMotionAdapter::SetVariable(IVariable *pVariable)
+{
+    // Create new reflected var
+    m_reflectedVar.reset(new CReflectedVarMotion(pVariable->GetHumanName().toLatin1().data()));
+    m_reflectedVar->m_description = pVariable->GetDescription().toLatin1().data();
+
+    // Set the asset id
+    AZStd::string stringGuid = pVariable->GetDisplayValue().toLatin1().data();
+    AZ::Uuid guid(stringGuid.c_str(), stringGuid.length());
+    AZ::u32 subId = pVariable->GetUserData().value<AZ::u32>();
+    m_reflectedVar->m_assetId = AZ::Data::AssetId(guid, subId);
+
+    // Lookup Filename by assetId and get the filename part of the description
+    EBUS_EVENT_RESULT(m_reflectedVar->m_motion, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, m_reflectedVar->m_assetId);
+}
+
+void ReflectedVarMotionAdapter::SyncReflectedVarToIVar(IVariable *pVariable)
+{
+    AZStd::string stringGuid = pVariable->GetDisplayValue().toLatin1().data();
+    AZ::Uuid guid(stringGuid.c_str(), stringGuid.length());
+    AZ::u32 subId = pVariable->GetUserData().value<AZ::u32>();
+    m_reflectedVar->m_assetId = AZ::Data::AssetId(guid, subId);
+
+    // Lookup Filename by assetId and get the filename part of the description
+    EBUS_EVENT_RESULT(m_reflectedVar->m_motion, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, m_reflectedVar->m_assetId);
+}
+
+void ReflectedVarMotionAdapter::SyncIVarToReflectedVar(IVariable *pVariable)
+{
+    pVariable->SetUserData(m_reflectedVar->m_assetId.m_subId);
+    pVariable->SetDisplayValue(m_reflectedVar->m_assetId.m_guid.ToString<AZStd::string>().c_str());
+}

@@ -73,16 +73,16 @@ class TextDetailWidget
 
 public:
 
-    TextDetailWidget(ResourceManagementView* view, QSharedPointer<IStackStatusModel> stackStatusModel)
-        : DetailWidget{view}
+    TextDetailWidget(ResourceManagementView* view, QSharedPointer<IStackStatusModel> stackStatusModel, QWidget* parent)
+        : DetailWidget{view, parent}
     {
         QWidget* root;
         if (stackStatusModel && stackStatusModel->GetStackEventsModel())
         {
-            root = new QFrame {};
             auto splitter = new StackEventsSplitter {
-                stackStatusModel->GetStackEventsModel()
+                stackStatusModel->GetStackEventsModel(), this
             };
+            root = new QFrame {splitter};
             splitter->SetTopWidget(root);
 
             auto thisLayout = new QVBoxLayout {};
@@ -96,10 +96,9 @@ public:
             root = this;
         }
 
-        auto layout = new QVBoxLayout();
+        auto layout = new QVBoxLayout(root);
         layout->setMargin(0);
         layout->setSpacing(0);
-        root->setLayout(layout);
 
         m_helpLabel = new QLabel {
             this

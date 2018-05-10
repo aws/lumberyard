@@ -16,7 +16,6 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/function/function_fwd.h>
 
-
 namespace MCore
 {
     // forward declarations

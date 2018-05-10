@@ -203,6 +203,7 @@
             "Movement/MovementBlock_UninstallAgentFromCover.h",
             "Movement/MovementBlock_UseExactPositioning.h",
             "Movement/MovementBlock_UseExactPositioningBase.h",
+            "Movement/MovementBlock_UseSmartObject.h",
             "Movement/MovementBlock_DefaultEmpty.h"
         ],
         "Movement/System":
@@ -215,7 +216,8 @@
             "Movement/MovementActor.h",
             "Movement/MovementPlanner.h",
             "Movement/MovementPlan.h",
-            "Movement/MovementSystem.h"
+            "Movement/MovementSystem.h",
+            "Movement/MovementSystemCreator.h"
         ],
         "Movement/Helpers":
         [
@@ -266,6 +268,7 @@
             "BehaviorTree/BehaviorTreeManager.cpp",
             "BehaviorTree/BehaviorTreeNodes_AI.cpp",
             "BehaviorTree/BehaviorTreeNodes_Helicopter.cpp",
+            "BehaviorTree/TreeVisualizer.h",
             "BehaviorTree/TreeVisualizer.cpp",
             "BehaviorTree/BehaviorTreeGraft.h",
             "BehaviorTree/BehaviorTreeManager.h",
@@ -415,7 +418,8 @@
             "Navigation/MNM/Profiler.h",
             "Navigation/MNM/Tile.h",
             "Navigation/MNM/TileGenerator.h",
-            "Navigation/MNM/OpenList.h"
+            "Navigation/MNM/OpenList.h",
+            "Navigation/MNM/Voxelizer.h"
         ],
         "Navigation/NavigationSystem":
         [

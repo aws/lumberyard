@@ -28,11 +28,35 @@ namespace AZ
             public:
                 AZ_RTTI(IBlendShapeData, "{55E7384D-9333-4C51-BC91-E90CAC2C30E2}", IGraphObject);
 
+                struct Face
+                {
+                    unsigned int vertexIndex[3];
+                    inline bool operator==(const Face& rhs) const
+                    {
+                        return (vertexIndex[0] == rhs.vertexIndex[0] && vertexIndex[1] == rhs.vertexIndex[1] &&
+                            vertexIndex[2] == rhs.vertexIndex[2]);
+                    }
+
+                    inline bool operator!=(const Face& rhs) const
+                    {
+                        return (vertexIndex[0] != rhs.vertexIndex[0] || vertexIndex[1] != rhs.vertexIndex[1] ||
+                            vertexIndex[2] != rhs.vertexIndex[2] );
+                    }
+                };
+
                 virtual ~IBlendShapeData() override = default;
 
-                virtual unsigned int GetVertexCount() const = 0;
-                virtual const AZ::Vector3& GetPosition(unsigned int index) const = 0;
+                virtual size_t GetUsedControlPointCount() const = 0;
+                virtual int GetControlPointIndex(int vertexIndex) const = 0;
+                virtual int GetUsedPointIndexForControlPoint(int controlPointIndex) const = 0;
 
+                virtual unsigned int GetVertexCount() const = 0;
+                virtual unsigned int GetFaceCount() const = 0;
+
+                virtual const AZ::Vector3& GetPosition(unsigned int index) const = 0;
+                virtual const AZ::Vector3& GetNormal(unsigned int index) const = 0;
+
+                virtual unsigned int GetFaceVertexIndex(unsigned int face, unsigned int vertexIndex) const = 0;
             };
         }  //namespace DataTypes
     }  //namespace SceneAPI

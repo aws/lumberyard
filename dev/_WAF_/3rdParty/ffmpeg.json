@@ -1,6 +1,6 @@
 {
     "name": "FFmpeg",
-    "source": "@ROOT@/Code/SDKs/FFmpeg",
+    "source": "@3P:FFmpeg@",
     "description": "Support library for FFmpeg",
     "aliases": {
         "lib_names": [
@@ -45,6 +45,7 @@
                 "${dll_names}.dll"
             ]
         },
-        "win_x64_vs2015": "@win_x64_vs2013"
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
     }
 }

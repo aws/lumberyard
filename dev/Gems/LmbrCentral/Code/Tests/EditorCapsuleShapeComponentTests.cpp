@@ -46,13 +46,20 @@ namespace LmbrCentral
             if (m_object)
             {
                 m_editorCapsuleShapeComponent = m_object.get();
-                m_CapsuleShapeConfig = m_editorCapsuleShapeComponent->GetConfiguration();
+                m_entity.Init();
+                m_entity.AddComponent(m_editorCapsuleShapeComponent);
+                m_entity.Activate();
             }
         }
+        
+        void TearDown() override
+        {
+            m_entity.Deactivate();
+            LoadReflectedObjectTest::TearDown();
+        }
 
+        AZ::Entity m_entity;
         EditorCapsuleShapeComponent* m_editorCapsuleShapeComponent = nullptr;
-        CapsuleShapeConfig m_CapsuleShapeConfig;
-
     };
 
     TEST_F(LoadEditorCapsuleShapeComponentFromVersion1, Application_IsRunning)
@@ -72,12 +79,20 @@ namespace LmbrCentral
 
     TEST_F(LoadEditorCapsuleShapeComponentFromVersion1, Height_MatchesSourceData)
     {
-        EXPECT_FLOAT_EQ(m_CapsuleShapeConfig.m_height, 0.57f);
+        float height = 0.0f;
+        CapsuleShapeComponentRequestsBus::EventResult(
+            height, m_entity.GetId(), &CapsuleShapeComponentRequests::GetHeight);
+
+        EXPECT_FLOAT_EQ(height, 0.57f);
     }
 
     TEST_F(LoadEditorCapsuleShapeComponentFromVersion1, Radius_MatchesSourceData)
     {
-        EXPECT_FLOAT_EQ(m_CapsuleShapeConfig.m_radius, 1.57f);
+        float radius = 0.0f;
+        CapsuleShapeComponentRequestsBus::EventResult(
+            radius, m_entity.GetId(), &CapsuleShapeComponentRequests::GetRadius);
+
+        EXPECT_FLOAT_EQ(radius, 1.57f);
     }
 }
 

@@ -120,7 +120,6 @@ namespace CommandSystem
         // anim graph commands
         RegisterCommand(new CommandAnimGraphCreateNode());
         RegisterCommand(new CommandAnimGraphAdjustNode());
-        RegisterCommand(new CommandScaleAnimGraphData());
         RegisterCommand(new CommandAnimGraphCreateConnection());
         RegisterCommand(new CommandAnimGraphRemoveConnection());
         RegisterCommand(new CommandAnimGraphAdjustConnection());

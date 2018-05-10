@@ -11,19 +11,26 @@
 *
 */
 
-
 QRadioButton
 {
     font-size: 12px;
     line-height: 18px;
     color: rgb(204, 204, 204);
+    outline: 0;
 }
 
-QRadioButton::indicator
+QRadioButton::indicator:!focus
 {
     width: 16px;
     height: 16px;
     margin: 2px;
+}
+
+QRadioButton::indicator:focus
+{
+    width: 20px;
+    height: 20px;
+    margin: 0px;
 }
 
 QRadioButton::indicator:checked
@@ -38,9 +45,6 @@ QRadioButton::indicator:checked:disabled
 
 QRadioButton::indicator:checked:focus
 {
-    width: 20px;
-    height: 20px;
-    margin: 0px;
     image: url(:/stylesheet/img/UI20/radio-checked-focus.png);
 }
 
@@ -56,9 +60,6 @@ QRadioButton::indicator:unchecked:disabled
 
 QRadioButton::indicator:unchecked:focus
 {
-    width: 20px;
-    height: 20px;
-    margin: 0px;
     image: url(:/stylesheet/img/UI20/radio-unchecked-disabled.png);
 }
 

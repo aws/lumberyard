@@ -27,7 +27,7 @@ namespace CommandSystem
     uint32          mAnimGraphID;
     uint32          mOldConditionIndex;
     bool            mOldDirtyFlag;
-    MCore::String   mOldAttributesString;
+    AZStd::string   mOldAttributesString;
     MCORE_DEFINECOMMAND_END
 
     // remove a transition condition
@@ -35,7 +35,7 @@ namespace CommandSystem
     uint32          mAnimGraphID;
     uint32          mOldConditionType;
     uint32          mOldConditionIndex;
-    MCore::String   mOldAttributesString;
+    AZStd::string   mOldAttributesString;
     bool            mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
 } // namespace CommandSystem

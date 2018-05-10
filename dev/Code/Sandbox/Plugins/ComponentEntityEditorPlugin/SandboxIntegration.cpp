@@ -81,6 +81,7 @@
 #include "MainWindow.h"
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <Azcore/std/algorithm.h>
 
 #ifdef CreateDirectory
 #undef CreateDirectory
@@ -585,7 +586,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
             continue;
         }
 
-        AZ::Data::Asset<AZ::SliceAsset> sliceAsset = assetManager.GetAsset<AZ::SliceAsset>(sliceAssetId, false);
+        AZ::Data::Asset<AZ::SliceAsset> sliceAsset = assetManager.FindAsset<AZ::SliceAsset>(sliceAssetId);
         if (!sliceAsset)
         {
             AZ_Warning("Slice", false, "Failed to retrieve slice asset with id %s", sliceAssetId.ToString<AZStd::string>().c_str());
@@ -597,7 +598,7 @@ void SandboxIntegrationManager::SetupSliceContextMenu_Push(QMenu* menu, const Az
         AzFramework::StringFunc::Path::GetFullFileName(sliceAssetPath.c_str(), sliceAssetName);
         if (sliceAssetName.empty())
         {
-            AZ_Warning("Slice", false, "Failed to determine path/name for slice with id %s", sliceAssetId.ToString<AZStd::string>().c_str());
+            AZ_Warning("Slice", false, "Failed to determine path/name for slice with id %s", sliceAsset.ToString<AZStd::string>().c_str());
             continue;
         }
 
@@ -1351,6 +1352,30 @@ void SandboxIntegrationManager::GenerateNavigationArea(const AZStd::string& name
             CCryEditApp::instance()->OnAINavigationShowAreas();
         }
     }
+}
+
+const char* SandboxIntegrationManager::GetDefaultAgentNavigationTypeName()
+{
+    CAIManager* manager = GetIEditor()->GetAI();
+
+    const size_t agentTypeCount = manager->GetNavigationAgentTypeCount();
+    if (agentTypeCount > 0)
+    {
+        return manager->GetNavigationAgentTypeName(0);
+    }
+
+    return "";
+}
+
+float SandboxIntegrationManager::CalculateAgentNavigationRadius(const char* agentTypeName)
+{
+    Vec3 voxelSize;
+    uint16 radiusInVoxelUnits;
+    if (gEnv->pAISystem->GetNavigationSystem()->TryGetAgentRadiusData(agentTypeName, voxelSize, radiusInVoxelUnits))
+    {
+        return AZStd::max<f32>(voxelSize.x, voxelSize.y) * radiusInVoxelUnits;
+    }
+    return -1.0f;
 }
 
 AZStd::vector<AZStd::string> SandboxIntegrationManager::GetAgentTypes()
@@ -2233,19 +2258,13 @@ void SandboxIntegrationManager::GenerateCubemapForEntity(AZ::EntityId entityId, 
         {
             QString levelfolder = GetIEditor()->GetGameEngine()->GetLevelPath();
             QString levelname = Path::GetFile(levelfolder).toLower();
-            QString fullGameFolder = QString(Path::GetEditingGameDataFolder().c_str()) + QString("\\");
+            QString fullGameFolder = QString(Path::GetEditingGameDataFolder().c_str());
             QString texturename = QStringLiteral("%1_cm.tif").arg(static_cast<qulonglong>(componentEntity->GetAssociatedEntityId()));
             texturename = texturename.toLower();
 
-            QString relFolder = QString("textures\\cubemaps\\") + levelname;
-            if (!QFile::exists(fullGameFolder + relFolder))
-            {
-                relFolder = QString("Textures\\cubemaps\\") + levelname;
-            }
-
-            QString relFilename = relFolder + "\\" + texturename;
-            QString fullFolder = fullGameFolder + relFolder + "\\";
-            QString fullFilename = fullGameFolder + relFilename;
+            QString fullFolder = Path::SubDirectoryCaseInsensitive(fullGameFolder, {"textures", "cubemaps", levelname});
+            QString fullFilename = QDir(fullFolder).absoluteFilePath(texturename);
+            QString relFilename = QDir(fullGameFolder).relativeFilePath(fullFilename);
 
             bool directlyExists = CFileUtil::CreateDirectory(fullFolder.toUtf8().data());
             if (!directlyExists)
@@ -2303,6 +2322,14 @@ void SandboxIntegrationManager::SetColor(float r, float g, float b, float a)
     if (m_dc)
     {
         m_dc->SetColor(Vec3(r, g, b), a);
+    }
+}
+
+void SandboxIntegrationManager::SetColor(const AZ::Color& color)
+{
+    if (m_dc)
+    {
+        m_dc->SetColor(AZColorToLYColorF(color));
     }
 }
 

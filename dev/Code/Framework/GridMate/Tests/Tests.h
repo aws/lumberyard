@@ -9,6 +9,17 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define TESTS_H_SECTION_1 1
+#define TESTS_H_SECTION_2 2
+#define TESTS_H_SECTION_3 3
+#define TESTS_H_SECTION_4 4
+#define TESTS_H_SECTION_5 5
+#define TESTS_H_SECTION_6 6
+#endif
+
 #ifndef GM_UNITTEST_FIXTURE_H
 #define GM_UNITTEST_FIXTURE_H
 
@@ -27,7 +38,15 @@
 
 #define GM_TEST_MEMORY_DRILLING 0
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TESTS_H_SECTION_1
+#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TESTS_H_SECTION_2
+#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <WinSock2.h>
@@ -53,6 +72,10 @@ namespace UnitTest
     };
 
     class GridMateTestFixture
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TESTS_H_SECTION_3
+#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+#endif
     {
     protected:
         GridMate::IGridMate* m_gridMate;
@@ -110,12 +133,20 @@ namespace UnitTest
                 records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
             }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TESTS_H_SECTION_4
+#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         virtual ~GridMateTestFixture()
         {
             if (m_gridMate)
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TESTS_H_SECTION_5
+#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
                 StopDrilling();
 
@@ -189,6 +220,10 @@ namespace UnitTest
             //              AZ::Debug::DrillerManager::Instance().FrameUpdate();
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TESTS_H_SECTION_6
+#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+#endif
     };
 
     /**

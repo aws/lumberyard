@@ -84,12 +84,12 @@ namespace EMStudio
 
                 if (AZ::Vector3(mOldValueVec - newPos).GetLength() >= MCore::Math::epsilon)
                 {
-                    MCore::String outResult;
+                    AZStd::string outResult;
                     if (GetCommandManager()->ExecuteCommand(
-                            MCore::String().Format("AdjustActorInstance -actorInstanceID %i -pos %s", actorInstance->GetID(),
-                                MCore::String(newPos).AsChar()).AsChar(), outResult) == false)
+                        AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos %s",  actorInstance->GetID(), AZStd::to_string(newPos).c_str()), 
+                        outResult) == false)
                     {
-                        MCore::LogError(outResult.AsChar());
+                        MCore::LogError(outResult.c_str());
                     }
                     else
                     {
@@ -172,10 +172,14 @@ namespace EMStudio
                 const float dot = newRot.Dot(mOldValueQuat);
                 if (dot < 1.0f - MCore::Math::epsilon && dot > -1.0f + MCore::Math::epsilon)
                 {
-                    MCore::String outResult;
-                    if (GetCommandManager()->ExecuteCommand(MCore::String().Format("AdjustActorInstance -actorInstanceID %i -rot \"%s\"", actorInstance->GetID(), MCore::String(AZ::Vector4(newRot.x, newRot.y, newRot.z, newRot.w)).AsChar()).AsChar(), outResult) == false)
+                    AZStd::string outResult;
+                    if (GetCommandManager()->ExecuteCommand(
+                        AZStd::string::format("AdjustActorInstance -actorInstanceID %i -rot \"%s\"", 
+                            actorInstance->GetID(), 
+                            AZStd::to_string(AZ::Vector4(newRot.x, newRot.y, newRot.z, newRot.w)).c_str()).c_str(), 
+                        outResult) == false)
                     {
-                        MCore::LogError(outResult.AsChar());
+                        MCore::LogError(outResult.c_str());
                     }
                     else
                     {
@@ -269,12 +273,13 @@ namespace EMStudio
 
                 if (AZ::Vector3(mOldValueVec - newScale).GetLength() >= MCore::Math::epsilon)
                 {
-                    MCore::String outResult;
+                    AZStd::string outResult;
                     if (GetCommandManager()->ExecuteCommand(
-                            MCore::String().Format("AdjustActorInstance -actorInstanceID %i -scale %s", actorInstance->GetID(),
-                                MCore::String(newScale).AsChar()).AsChar(), outResult) == false)
+                            AZStd::string::format("AdjustActorInstance -actorInstanceID %i -scale %s", actorInstance->GetID(),
+                                AZStd::to_string(newScale).c_str()).c_str(),
+                        outResult) == false)
                     {
-                        MCore::LogError(outResult.AsChar());
+                        MCore::LogError(outResult.c_str());
                     }
                     else
                     {

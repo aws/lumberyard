@@ -129,7 +129,7 @@ namespace AzFramework
             };
 
             // There's other stuff in the file we may not recognize (system components), but we're not interested in that stuff.
-            AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+            AZ::ObjectStream::FilterDescriptor loadFilter(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
 
             if (!AZ::ObjectStream::LoadBlocking(&appDescriptorFileStream, serializeContext, classReadyCb, loadFilter, inplaceLoadCb))
             {
@@ -232,7 +232,9 @@ namespace AzFramework
     {
         if (!AZ::AllocatorInstance<AZ::OSAllocator>::IsReady())
         {
-            AZ::AllocatorInstance<AZ::OSAllocator>::Create();
+            AZ::OSAllocator::Descriptor osAllocatorDesc;
+            osAllocatorDesc.m_custom = startupParameters.m_allocator;
+            AZ::AllocatorInstance<AZ::OSAllocator>::Create(osAllocatorDesc);
             m_isOSAllocatorOwner = true;
         }
 
@@ -425,7 +427,9 @@ namespace AzFramework
         RegisterComponentDescriptor(AzFramework::NetBindingSystemComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzFramework::TransformComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzFramework::GameEntityContextComponent::CreateDescriptor());
+#if !defined(_RELEASE)
         RegisterComponentDescriptor(AzFramework::TargetManagementComponent::CreateDescriptor());
+#endif
         RegisterComponentDescriptor(AzFramework::CreateScriptDebugAgentFactory());
         RegisterComponentDescriptor(AzFramework::AssetSystem::AssetSystemComponent::CreateDescriptor());
         RegisterComponentDescriptor(AzFramework::InputSystemComponent::CreateDescriptor());
@@ -453,7 +457,9 @@ namespace AzFramework
             azrtti_typeid<AzFramework::NetBindingSystemComponent>(),
             azrtti_typeid<AzFramework::TransformComponent>(),
             azrtti_typeid<AzFramework::GameEntityContextComponent>(),
+#if !defined(_RELEASE)
             azrtti_typeid<AzFramework::TargetManagementComponent>(),
+#endif
             azrtti_typeid<AzFramework::AssetSystem::AssetSystemComponent>(),
             azrtti_typeid<AzFramework::InputSystemComponent>(),
             azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),
@@ -538,7 +544,12 @@ namespace AzFramework
         else
         {
             CalculateExecutablePath();
-#if   defined(AZ_PLATFORM_ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Application_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_ANDROID)
             // On Android, all file reads should be relative.
             SetRootPath(RootPathType::AppRoot, "");
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)

@@ -3,7 +3,7 @@
 #if (defined(WIN32) || defined(APPLE) || defined(LINUX))
     #define FEATURE_SPI_INDEXED_CB
 
-    #if DXGLES || defined(CRY_USE_METAL) || defined(DONT_USE_SPI_INDEXED_CB)
+    #if defined(DONT_USE_SPI_INDEXED_CB)
         #undef FEATURE_SPI_INDEXED_CB
     #endif
 #endif
@@ -36,18 +36,18 @@ public:
 
     using ConstantUpdateCB = AZStd::function<void(void*)>;
 
-    void SetConstantBuffer(SRendItem* renderItem);
-    void UpdateConstantBuffer(ConstantUpdateCB callback, float realTime);
-
     inline SRendItem* GetCurrentRenderItem()
     {
         return m_CurrentRenderItem;
     }
 
     void Init();
-    void Update(CRenderView& renderView, float realTime);
     void Shutdown();
 
+    ENGINE_API void SetConstantBuffer(SRendItem* renderItem);
+    ENGINE_API void UpdateConstantBuffer(ConstantUpdateCB callback, float realTime);
+    ENGINE_API void Update(CRenderView& renderView, float realTime);
+    
 private:
     SRendItem* m_CurrentRenderItem;
 

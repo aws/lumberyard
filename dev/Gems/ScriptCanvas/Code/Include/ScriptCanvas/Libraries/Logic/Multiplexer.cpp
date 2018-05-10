@@ -23,29 +23,29 @@ namespace ScriptCanvas
         namespace Logic
         {
             Multiplexer::Multiplexer()
-                : Node()
-                , m_selectedIndex(0)
-                , m_inputIndex(-1)
             {}
 
-            void  Multiplexer::OnInputSignal(const SlotId& slot)
+            void Multiplexer::OnInputSignal(const SlotId& slotId)
             {
-                auto slotIt = m_slotContainer.m_slotIdSlotMap.find(slot);
-                if (slotIt != m_slotContainer.m_slotIdSlotMap.end())
+                auto findSlotOutcome = FindSlotIndex(slotId);
+                if (!findSlotOutcome)
                 {
-                    m_inputIndex = slotIt->second;
+                    AZ_Warning("Script Canvas", false, "%s", findSlotOutcome.GetError().data());
+                    return;
                 }
+
+                const AZ::s64 inputIndex = findSlotOutcome.GetValue();
 
                 // These are generated from CodeGen, they essentially
                 // check if there's anything connected on the slot and
                 // they assign the local member with the value, otherwise
                 // they use the default property value.
-                m_selectedIndex = MultiplexerProperty::GetIndex(this);
+                const AZ::s64 selectedIndex = MultiplexerProperty::GetIndex(this);
 
-                if (m_selectedIndex == m_inputIndex)
+                if (selectedIndex == inputIndex)
                 {
-                    const SlotId outSlot = MultiplexerProperty::GetOutSlotId(this);
-                    SignalOutput(outSlot);
+                    const SlotId outSlotId = MultiplexerProperty::GetOutSlotId(this);
+                    SignalOutput(outSlotId);
                 }
             }
         }

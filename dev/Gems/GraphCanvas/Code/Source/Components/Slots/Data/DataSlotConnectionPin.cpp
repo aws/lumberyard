@@ -15,10 +15,10 @@
 
 #include <Components/Slots/Data/DataSlotConnectionPin.h>
 
-#include <Components/ColorPaletteManager/ColorPaletteManagerBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
-#include <Styling/definitions.h>
+#include <GraphCanvas/Styling/definitions.h>
 
 namespace GraphCanvas
 {
@@ -36,7 +36,7 @@ namespace GraphCanvas
     {    
     }
     
-    void DataSlotConnectionPin::RefreshStyle()
+    void DataSlotConnectionPin::OnRefreshStyle()
     {
         m_style.SetStyle(m_slotId, Styling::Elements::DataConnectionPin);
 
@@ -48,7 +48,10 @@ namespace GraphCanvas
             AZ::EntityId sceneId;
             SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
 
-            ColorPaletteManagerRequestBus::EventResult(m_colorPalette, sceneId, &ColorPaletteManagerRequests::FindDataColorPalette, dataType);
+            EditorId editorId;
+            SceneRequestBus::EventResult(editorId, sceneId, &SceneRequests::GetEditorId);
+
+            StyleManagerRequestBus::EventResult(m_colorPalette, editorId, &StyleManagerRequests::FindDataColorPalette, dataType);
         }
 
         update();

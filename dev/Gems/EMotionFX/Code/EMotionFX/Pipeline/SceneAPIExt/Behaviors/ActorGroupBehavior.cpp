@@ -27,7 +27,6 @@
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneData/Rules/MaterialRule.h>
-#include <SceneAPI/SceneData/Rules/CommentRule.h>
 
 #include <SceneAPIExt/Groups/ActorGroup.h>
 #include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
@@ -38,6 +37,7 @@
 #include <SceneAPIExt/Rules/MeshRule.h>
 #include <SceneAPIExt/Rules/SkinRule.h>
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
+#include <SceneAPIExt/Rules/MorphTargetRule.h>
 
 namespace EMotionFX
 {
@@ -53,6 +53,7 @@ namespace EMotionFX
                 Rule::ActorScaleRule::Reflect(context);
                 Rule::MetaDataRule::Reflect(context);
                 Rule::CoordinateSystemRule::Reflect(context);
+                Rule::MorphTargetRule::Reflect(context);
 
                 AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serializeContext)
@@ -75,9 +76,7 @@ namespace EMotionFX
 
             void ActorGroupBehavior::GetCategoryAssignments(CategoryRegistrationList& categories, const AZ::SceneAPI::Containers::Scene& scene)
             {
-                const bool hasRequiredData =
-                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IBoneData>(scene, false) &&
-                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::ISkinWeightData>(scene, false);
+                const bool hasRequiredData = AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IBoneData>(scene, false);
                 if (SceneHasActorGroup(scene) || hasRequiredData)
                 {
                     categories.emplace_back("Actors", Group::ActorGroup::TYPEINFO_Uuid(), s_animationsPreferredTabOrder);
@@ -89,7 +88,6 @@ namespace EMotionFX
                 AZ_TraceContext("Object Type", target.RTTI_GetTypeName());
                 if (target.RTTI_IsTypeOf(Group::IActorGroup::TYPEINFO_Uuid()))
                 {
-                    modifiers.push_back(AZ::SceneAPI::SceneData::CommentRule::TYPEINFO_Uuid());
                     const Group::IActorGroup* group = azrtti_cast<const Group::IActorGroup*>(&target);
                     const AZ::SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainerConst();
 
@@ -118,6 +116,15 @@ namespace EMotionFX
                     if (existingRules.find(Rule::CoordinateSystemRule::TYPEINFO_Uuid()) == existingRules.end())
                     {
                         modifiers.push_back(Rule::CoordinateSystemRule::TYPEINFO_Uuid());
+                    }
+                    if (existingRules.find(Rule::MorphTargetRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        AZ::SceneAPI::SceneData::SceneNodeSelectionList selection;
+                        const size_t morphTargetShapeCount = Rule::MorphTargetRule::SelectMorphTargets(scene, selection);
+                        if (morphTargetShapeCount > 0)
+                        {
+                            modifiers.push_back(Rule::MorphTargetRule::TYPEINFO_Uuid());
+                        }
                     }
                 }
             }
@@ -172,11 +179,10 @@ namespace EMotionFX
 
             AZ::SceneAPI::Events::ProcessingResult ActorGroupBehavior::BuildDefault(AZ::SceneAPI::Containers::Scene& scene) const
             {
-                const bool hasRequiredData =
-                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IBoneData>(scene, true) &&
-                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::ISkinWeightData>(scene, true);
-                if (SceneHasActorGroup(scene) || !hasRequiredData || 
-                    AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IAnimationData>(scene, true))
+                const bool hasBoneOrSkinData = AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IBoneData>(scene, true) ||
+                                                AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::ISkinWeightData>(scene, true);
+                const bool hasAnimationData = AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IAnimationData>(scene, true);
+                if (SceneHasActorGroup(scene) || !hasBoneOrSkinData || hasAnimationData)
                 {
                     return AZ::SceneAPI::Events::ProcessingResult::Ignored;
                 }

@@ -27,6 +27,17 @@
 
 namespace LUAEditor
 {
+
+    Application::Application(int &argc, char **argv) : BaseApplication(argc, argv)
+    {
+        AzToolsFramework::SourceControlNotificationBus::Handler::BusConnect();
+    }
+
+    Application::~Application()
+    {
+        AzToolsFramework::SourceControlNotificationBus::Handler::BusDisconnect();
+    }
+
     void Application::RegisterCoreComponents()
     {
         Woodpecker::BaseApplication::RegisterCoreComponents();
@@ -57,4 +68,17 @@ namespace LUAEditor
         EnsureComponentCreated(AzFramework::AssetSystem::AssetSystemComponent::RTTI_Type());
         EnsureComponentCreated(AzToolsFramework::AssetSystem::AssetSystemComponent::RTTI_Type());
     }
+
+    void Application::ConnectivityStateChanged(const AzToolsFramework::SourceControlState state)
+    {
+        using SCConnectionBus = AzToolsFramework::SourceControlConnectionRequestBus;
+        using AzToolsFramework::SourceControlState;
+
+        // If status invalid, just disconnect from source control
+        if (state == SourceControlState::ConfigurationInvalid)
+        {
+            SCConnectionBus::Broadcast(&SCConnectionBus::Events::EnableSourceControl, false);
+        }
+    }
+
 }

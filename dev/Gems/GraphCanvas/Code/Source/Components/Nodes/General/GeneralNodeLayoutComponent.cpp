@@ -27,7 +27,7 @@
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/tools.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {
@@ -40,7 +40,7 @@ namespace GraphCanvas
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<GeneralNodeLayoutComponent>()
+            serializeContext->Class<GeneralNodeLayoutComponent, NodeLayoutComponent>()
                 ->Version(1)
                 ;
         }

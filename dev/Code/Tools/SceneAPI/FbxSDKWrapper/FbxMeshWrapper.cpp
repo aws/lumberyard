@@ -32,6 +32,11 @@ namespace AZ
             m_fbxMesh = nullptr;
         }
 
+        const char* FbxMeshWrapper::GetName() const
+        {
+            return m_fbxMesh->GetName();
+        }
+
         int FbxMeshWrapper::GetDeformerCount() const
         {
             return m_fbxMesh->GetDeformerCount();
@@ -67,6 +72,8 @@ namespace AZ
 
         AZStd::shared_ptr<const FbxBlendShapeWrapper> FbxMeshWrapper::GetBlendShape(int index) const
         {
+            int deformerCount = m_fbxMesh->GetDeformerCount();
+            int blendshapeCount = m_fbxMesh->GetDeformerCount(FbxDeformer::eBlendShape);
             FbxBlendShape* blendShape = static_cast<FbxBlendShape*>(m_fbxMesh->GetDeformer(index, FbxDeformer::eBlendShape));
             return blendShape ? AZStd::make_shared<const FbxBlendShapeWrapper>(blendShape) : nullptr;
         }

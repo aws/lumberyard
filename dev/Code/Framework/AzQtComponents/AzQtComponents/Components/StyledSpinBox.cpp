@@ -39,7 +39,7 @@ namespace AzQtComponents
             , m_spinBox(spinBox) {}
 
     protected:
-        bool eventFilter(QObject* obj, QEvent* event)
+        bool eventFilter(QObject* obj, QEvent* event) override
         {
             if (event->type() == QEvent::FocusIn)
             {
@@ -70,7 +70,7 @@ namespace AzQtComponents
         : public QObject
     {
     public:
-        ClickEventFilterPrivate(StyledDoubleSpinBox* spinBox, QSlider* slider)
+        explicit ClickEventFilterPrivate(StyledDoubleSpinBox* spinBox, QSlider* slider)
             : QObject(spinBox)
             , m_spinBox(spinBox)
         {

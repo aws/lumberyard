@@ -159,6 +159,8 @@ namespace AZ
             AVFrame* m_tempFrame = nullptr;             //A temporary frame that acts as a buffer to avoid writing garbage frames directly into m_RGBAFrames
             AZStd::vector<AVFrame*> m_RGBAFrames;       //A collection of frame data that is accessed like a ring buffer. 
 
+            AZ::u64 m_totalFrameCount;
+
             float m_totalDuration;  //The total time in seconds that this video lasts
             float m_currentTime;    //The timestamp of the last frame that was presented
 

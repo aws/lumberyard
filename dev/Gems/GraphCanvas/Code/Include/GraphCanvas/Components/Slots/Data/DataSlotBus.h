@@ -85,21 +85,6 @@ namespace GraphCanvas
 
     using DataSlotLayoutRequestBus = AZ::EBus<DataSlotLayoutRequests>;
 
-    //! Actions that occur from a DataSlot that require some interaction with the underlying data model.
-    class DataSlotActionRequests : public AZ::EBusTraits
-    {
-    public:
-        // The id here is the SceneId that the slot belongs to.
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-        using BusIdType = AZ::EntityId;
-
-        //! Get the ScriptCanvas type name for the given AZ type
-        virtual AZStd::string GetTypeString(const AZ::Uuid& typeId) = 0;
-    };
-
-    using DataSlotActionRequestBus = AZ::EBus<DataSlotActionRequests>;
-
     //! Actions that are keyed off of the Node, but should be handled by the individual slots
     class NodeDataSlotRequests : public AZ::EBusTraits
     {

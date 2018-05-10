@@ -14,7 +14,6 @@
 
 // include the required headers
 #include "../EMotionFXConfig.h"
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/CompressedQuaternion.h>
 #include "../MemoryCategories.h"
 #include "../BaseObject.h"

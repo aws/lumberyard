@@ -16,6 +16,7 @@
         "Header Files":
         [
             "CryFont.h",
+            "FBitmap.h",
             "FFont.h",
             "FontRenderer.h",
             "FontTexture.h",

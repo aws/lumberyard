@@ -601,7 +601,7 @@ ConsoleTextEdit::ConsoleTextEdit(QWidget* parent)
 
     connect(this, &QPlainTextEdit::copyAvailable, copyAction, &QAction::setEnabled);
     connect(this, &QPlainTextEdit::copyAvailable, deleteAction, &QAction::setEnabled);
-    connect(this, &QPlainTextEdit::textChanged, [=]()
+    connect(this, &QPlainTextEdit::textChanged, selectAllAction, [=]
         {
             if (document() && !document()->isEmpty())
             {

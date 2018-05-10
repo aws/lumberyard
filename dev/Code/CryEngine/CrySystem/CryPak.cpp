@@ -27,7 +27,7 @@
 #include <IGameStartup.h>
 #include "CryCrc32.h"
 #include "CryZlib.h"
-#include <md5/md5.h>
+#include <md5.h>
 #include "System.h"
 #include "CustomMemoryHeap.h"
 #include "CryArchive.h"
@@ -2936,45 +2936,18 @@ size_t CZipPseudoFile::FRead(void* pDest, size_t nSize, size_t nCount, AZ::IO::H
         nTotal -= nTotal % nSize;
     }
 
+    int64 nReadBytes = GetFile()->ReadData(pDest, m_nCurSeek, nTotal);
+    if (nReadBytes == -1)
     {
-        if (!(m_nFlags & _O_TEXT))
-        {
-            int64 nReadBytes = GetFile()->ReadData(pDest, m_nCurSeek, nTotal);
-            if (nReadBytes == -1)
-            {
-                return 0;
-            }
-
-            if (nReadBytes != nTotal)
-            {
-                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "FRead did not read expected number of byte from file, only %" PRISIZE_T " of %lld bytes read", nTotal, nReadBytes);
-                nTotal = (size_t)nReadBytes;
-            }
-            m_nCurSeek += nTotal;
-        }
-        else
-        {
-            unsigned char* pSrc = (unsigned char*)GetFile()->GetData();
-            if (!pSrc)
-            {
-                return 0;
-            }
-            pSrc += m_nCurSeek;
-            m_nCurSeek += nTotal;
-
-            unsigned char* itDest = (unsigned char*)pDest;
-            unsigned char* itSrc = pSrc, * itSrcEnd = pSrc + nTotal;
-            nTotal = 0;
-            for (; itSrc != itSrcEnd; ++itSrc)
-            {
-                if (*itSrc != 0xd)
-                {
-                    *(itDest++) = *itSrc;
-                    nTotal++;
-                }
-            }
-        }
+        return 0;
     }
+
+    if (nReadBytes != nTotal)
+    {
+        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "FRead did not read expected number of byte from file, only %" PRISIZE_T " of %lld bytes read", nTotal, nReadBytes);
+        nTotal = (size_t)nReadBytes;
+    }
+    m_nCurSeek += nTotal;
     return nTotal / nSize;
 }
 
@@ -4262,8 +4235,7 @@ void CCryPak::RecordFile(AZ::IO::HandleType inFileHandle, const char* szFilename
     {
         // we only want to record ASSET access
         // assets are identified as things which start with no alias, or with the @assets@ alias
-        stack_string assetPath;
-        assetPath.reserve(AZ_MAX_PATH_LEN);
+        stack_string assetPath = szFilename;
         AZ::IO::FileIOBase::GetInstance()->ConvertToAlias(assetPath.m_str, AZ_MAX_PATH_LEN);
         if ((assetPath.c_str()[0] != '@') || (strnicmp(assetPath.c_str(), "@assets@", 8) == 0))
         {

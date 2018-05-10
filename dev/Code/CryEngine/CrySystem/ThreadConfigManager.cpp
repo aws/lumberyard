@@ -534,7 +534,12 @@ void CThreadConfigManager::LoadThreadConfig(const XmlNodeRef& rXmlThreadRef, STh
 //////////////////////////////////////////////////////////////////////////
 const char* CThreadConfigManager::IdentifyPlatform()
 {
-#if   defined(ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ThreadConfigManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(ANDROID)
     return "android";
 #elif defined(LINUX)
     return "linux";

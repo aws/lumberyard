@@ -226,6 +226,7 @@ struct INavigationSystem
 
     virtual void RegisterArea(const char* shapeName) = 0;
     virtual void UnRegisterArea(const char* shapeName) = 0;
+    virtual bool IsAreaPresent(const char* shapeName) = 0;
     virtual NavigationVolumeID GetAreaId(const char* shapeName) const = 0;
     virtual void SetAreaId(const char* shapeName, NavigationVolumeID id) = 0;
     virtual void UpdateAreaNameForId(const NavigationVolumeID id, const char* newShapeName) = 0;
@@ -245,7 +246,7 @@ struct INavigationSystem
     virtual const IOffMeshNavigationManager& GetIOffMeshNavigationManager() const = 0;
     virtual IOffMeshNavigationManager& GetIOffMeshNavigationManager() = 0;
     virtual void ComputeAccessibility(const Vec3& seedPos, NavigationAgentTypeID agentTypeId = NavigationAgentTypeID(0), float range = 0.f, EAccessbilityDir dir = AccessibilityAway) = 0;
-
+    virtual bool TryGetAgentRadiusData(const char* agentType, Vec3& voxelSize, uint16& radiusInVoxels) const = 0;
     // </interfuscator:shuffle>
 };
 

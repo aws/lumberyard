@@ -65,6 +65,7 @@ public:
 UiInteractableComponent::UiInteractableComponent()
     : m_isAutoActivationEnabled(false)
     , m_isHandlingEvents(true)
+    , m_isHandlingMultiTouchEvents(true)
     , m_isHover(false)
     , m_isPressed(false)
     , m_pressedPoint(0.0f, 0.0f)
@@ -127,6 +128,21 @@ bool UiInteractableComponent::HandleReleased(AZ::Vector2 point)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiInteractableComponent::HandleMultiTouchPressed(AZ::Vector2 point, int multiTouchIndex)
+{
+    AZ_UNUSED(multiTouchIndex);
+    bool shouldStayActive = false;
+    return m_isHandlingMultiTouchEvents && HandlePressed(point, shouldStayActive);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiInteractableComponent::HandleMultiTouchReleased(AZ::Vector2 point, int multiTouchIndex)
+{
+    AZ_UNUSED(multiTouchIndex);
+    return m_isHandlingMultiTouchEvents && HandleReleased(point);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiInteractableComponent::HandleEnterPressed(bool& shouldStayActive)
 {
     bool handled = false;
@@ -182,6 +198,16 @@ void UiInteractableComponent::InputPositionUpdate(AZ::Vector2 point)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableComponent::MultiTouchPositionUpdate(AZ::Vector2 point, int multiTouchIndex)
+{
+    AZ_UNUSED(multiTouchIndex);
+    if (m_isHandlingMultiTouchEvents)
+    {
+        InputPositionUpdate(point);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiInteractableComponent::LostActiveStatus()
 {
     m_isPressed = false;
@@ -210,6 +236,12 @@ void UiInteractableComponent::HandleReceivedHoverByNavigatingFromDescendant(AZ::
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiInteractableComponent::IsPressed()
+{
+    return m_isPressed;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiInteractableComponent::IsHandlingEvents()
 {
     return m_isHandlingEvents;
@@ -219,6 +251,18 @@ bool UiInteractableComponent::IsHandlingEvents()
 void UiInteractableComponent::SetIsHandlingEvents(bool isHandlingEvents)
 {
     m_isHandlingEvents = isHandlingEvents;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiInteractableComponent::IsHandlingMultiTouchEvents()
+{
+    return m_isHandlingMultiTouchEvents;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableComponent::SetIsHandlingMultiTouchEvents(bool isHandlingMultiTouchEvents)
+{
+    m_isHandlingMultiTouchEvents = isHandlingMultiTouchEvents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,6 +401,7 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
         serializeContext->Class<UiInteractableComponent, AZ::Component>()
             ->Version(2, &VersionConverter)
             ->Field("IsHandlingEvents", &UiInteractableComponent::m_isHandlingEvents)
+            ->Field("IsHandlingMultiTouchEvents", &UiInteractableComponent::m_isHandlingMultiTouchEvents)
 
             ->Field("HoverStateActions", &UiInteractableComponent::m_hoverStateActions)
             ->Field("PressedStateActions", &UiInteractableComponent::m_pressedStateActions)
@@ -381,7 +426,14 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
 
             editInfo->DataElement("CheckBox", &UiInteractableComponent::m_isHandlingEvents, "Input enabled",
                 "When checked, this interactable will handle events.\n"
-                "When unchecked, this interactable is drawn in the Disabled state.");
+                "When unchecked, this interactable is drawn in the Disabled state.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
+
+            editInfo->DataElement("CheckBox", &UiInteractableComponent::m_isHandlingMultiTouchEvents, "Multi-touch input enabled",
+                "When checked, this interactable will handle all multi-touch input events.\n"
+                "When unchecked, this interactable will handle only primary touch input events.\n"
+                "Will be ignored if the parent UICanvasComponent does not support multi-touch.")
+                ->Attribute(AZ::Edit::Attributes::Visibility, &UiInteractableComponent::IsHandlingEvents);
 
             // Navigation
             editInfo->DataElement(0, &UiInteractableComponent::m_navigationSettings, "Navigation",
@@ -427,6 +479,8 @@ void UiInteractableComponent::Reflect(AZ::ReflectContext* context)
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("IsHandlingEvents", &UiInteractableBus::Events::IsHandlingEvents)
             ->Event("SetIsHandlingEvents", &UiInteractableBus::Events::SetIsHandlingEvents)
+            ->Event("IsHandlingMultiTouchEvents", &UiInteractableBus::Events::IsHandlingMultiTouchEvents)
+            ->Event("SetIsHandlingMultiTouchEvents", &UiInteractableBus::Events::SetIsHandlingMultiTouchEvents)
             ->Event("GetIsAutoActivationEnabled", &UiInteractableBus::Events::GetIsAutoActivationEnabled)
             ->Event("SetIsAutoActivationEnabled", &UiInteractableBus::Events::SetIsAutoActivationEnabled);
 

@@ -51,7 +51,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
     ENGINE_JSON_DATA = json.load(ENGINE_FILE)
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
-LUMBERYARD_BUILD = 570429
+LUMBERYARD_BUILD = 608525
 LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
 
 # validate the Lumberyard version string above
@@ -77,6 +77,7 @@ PLATFORMS = {
         'appletv'
     ],
     'win32' : [
+        'win_x64_vs2017',
         'win_x64_vs2015',
         'win_x64_vs2013',
         'android_armv7_clang',
@@ -139,6 +140,7 @@ PLATFORM_CONFIGURATION_FILTER = {
 ## monolithic builds produce just a statically linked executable with no dlls.
 
 MONOLITHIC_BUILDS = [
+    'win_x64_vs2017_release',
     'win_x64_vs2015_release',
     'win_x64_vs2013_release',
     'release_dedicated',

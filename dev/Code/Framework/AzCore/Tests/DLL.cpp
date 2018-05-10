@@ -126,6 +126,7 @@ namespace UnitTest
         createDLLVar = m_handle->GetFunction<CreateDLLVar>("CreateDLLTestVirtualClass");
         createDLLVar(envVariableName);
 
+        envVariable = AZ::Environment::FindVariable<UnitTest::DLLTestVirtualClass>(envVariableName);
         EXPECT_TRUE(envVariable.IsConstructed()); // createDLLVar should construct the variable if already there
         EXPECT_EQ(1, envVariable->m_data);
 

@@ -273,7 +273,7 @@ public:
 
     // ----------------------------------------------------------------
     // Helper functions
-    _inline int GetStreamStride(int nStream) const
+   _inline int GetStreamStride(int nStream) const override
     {
         if (nStream == VSF_GENERAL)
         {
@@ -287,7 +287,7 @@ public:
 
     _inline uint32 _GetFlags() const { return m_nFlags; }
     _inline int GetStreamSize(int nStream, int nVerts = 0) const { return GetStreamStride(nStream) * (nVerts ? nVerts : m_nVerts); }
-    _inline const buffer_handle_t _GetVBStream(int nStream) const
+    _inline const buffer_handle_t GetVBStream(int nStream) const
     {
         if (!m_VBStream[nStream])
         {
@@ -295,7 +295,7 @@ public:
         }
         return m_VBStream[nStream]->m_nID;
     }
-    _inline const buffer_handle_t _GetIBStream() const { return m_IBStream.m_nID; }
+    _inline const buffer_handle_t GetIBStream() const { return m_IBStream.m_nID; }
     _inline bool _HasVBStream(int nStream) const { return m_VBStream[nStream] && m_VBStream[nStream]->m_nID != ~0u; }
     _inline bool _HasIBStream() const { return m_IBStream.m_nID != ~0u; }
     _inline int _IsVBStreamLocked(int nStream) const
@@ -309,11 +309,11 @@ public:
     _inline int _IsIBStreamLocked() const { return m_IBStream.m_nLockFlags & FSL_LOCKED; }
     _inline AZ::Vertex::Format _GetVertexFormat() const { return m_vertexFormat; }
     _inline void _SetVertexFormat(const AZ::Vertex::Format& vertexFormat) { m_vertexFormat = vertexFormat; }
-    _inline int _GetNumVerts() const { return m_nVerts; }
+    _inline int GetNumVerts() const override { return m_nVerts; }
     _inline void _SetNumVerts(int nVerts) { m_nVerts = max(nVerts, 0); }
-    _inline int _GetNumInds() const { return m_nInds; }
+    _inline int GetNumInds() const override { return m_nInds; }
     _inline void _SetNumInds(int nInds) { m_nInds = nInds; }
-    _inline const eRenderPrimitiveType _GetPrimitiveType() const { return m_nPrimetiveType; }
+    _inline const eRenderPrimitiveType GetPrimitiveType() const override { return m_nPrimetiveType; }
     _inline void _SetPrimitiveType(const eRenderPrimitiveType nPrimType) { m_nPrimetiveType = nPrimType; }
     _inline void _SetRenderMeshType(ERenderMeshType eType) { m_eType = eType; }
     _inline CRenderMesh* _GetVertexContainer()
@@ -349,7 +349,7 @@ public:
     bool RT_CheckUpdate(CRenderMesh* pVContainer, uint32 nStreamMask, bool bTessellation = false, bool stall = true);
     void RT_SetMeshCleanup();
     void RT_AllocationFailure(const char* sPurpose, uint32 nSize);
-    bool CheckUpdate(uint32 nStreamMask);
+    bool CheckUpdate(uint32 nStreamMask) override;
     void AssignChunk(CRenderChunk * pChunk, class CREMeshImpl * pRE);
     void InitRenderChunk(CRenderChunk& rChunk);
 

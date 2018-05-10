@@ -11,12 +11,10 @@
 */
 
 #include "EMStudioManager.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "SaveChangedFilesManager.h"
 #include <MysticQt/Source/MysticQtConfig.h>
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/CommandManager.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/MotionManager.h>

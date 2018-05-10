@@ -12,6 +12,9 @@
 *
 */
 
+#include <AzCore/Math/Transform.h>
+#include <SceneAPI/SceneCore/Containers/SceneGraph.h>
+
 namespace AZ
 {
     namespace SceneAPI
@@ -27,6 +30,7 @@ namespace AZ
             //      virtual type.
             template<typename T>
             bool DoesSceneGraphContainDataLike(const Containers::Scene& scene, bool checkVirtualTypes);
+            SCENE_CORE_API AZ::Transform BuildWorldTransform(const Containers::SceneGraph& graph, Containers::SceneGraph::NodeIndex nodeIndex);
         } // Utilities
     } // SceneAPI
 } // AZ

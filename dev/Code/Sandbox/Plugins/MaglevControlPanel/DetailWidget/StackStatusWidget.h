@@ -28,7 +28,7 @@ class StackStatusWidget
 
 public:
 
-    StackStatusWidget(QSharedPointer<IStackStatusModel> stackStatusModel);
+    StackStatusWidget(QSharedPointer<IStackStatusModel> stackStatusModel, QWidget* parent);
 
 private:
 

@@ -34,7 +34,7 @@ public:
         MCORE_DEFINECOMMAND_START(CommandImportMotion, "Import motion", true)
 public:
     uint32          mOldMotionID;
-    MCore::String   mOldFileName;
+    AZStd::string   mOldFileName;
     bool            mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 

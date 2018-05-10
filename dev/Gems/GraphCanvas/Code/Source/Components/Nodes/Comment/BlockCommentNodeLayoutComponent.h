@@ -16,12 +16,13 @@
 
 #include <QGraphicsLinearLayout>
 
-#include <Components/Nodes/NodeLayoutBus.h>
-#include <Components/Nodes/NodeTitleBus.h>
-#include <Components/StyleBus.h>
+#include <Components/Nodes/NodeLayoutComponent.h>
 
-#include "Components/Nodes/NodeLayoutComponent.h"
-#include "Styling/StyleHelper.h"
+#include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
+#include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
+#include <GraphCanvas/Components/StyleBus.h>
+
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 class QGraphicsGridLayout;
 
@@ -32,7 +33,6 @@ namespace GraphCanvas
         : public NodeLayoutComponent
         , protected NodeNotificationBus::Handler
         , protected StyleNotificationBus::Handler
-        , protected SceneMemberNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(BlockCommentNodeLayoutComponent, "{0DD4204A-8A75-48C1-AA91-9878BCB0C4D0}", NodeLayoutComponent);
@@ -62,10 +62,6 @@ namespace GraphCanvas
 
         // StyleNotificationBus::Handler
         void OnStyleChanged() override;
-        ////
-
-        // SceneMemberNotificationBus::Handler
-        void OnSceneSet(const AZ::EntityId&) override;
         ////
 
         // AZ::Component

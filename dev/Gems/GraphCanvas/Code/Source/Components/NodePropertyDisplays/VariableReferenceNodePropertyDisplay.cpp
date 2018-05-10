@@ -127,7 +127,7 @@ namespace GraphCanvas
             {
                 AZ::EntityId variableId = variableRequests->GetVariableId();
                 AZ::Uuid dataType;
-                VariableRequestBus::EventResult(dataType, variableId, &VariableRequests::GetVariableDataType);
+                VariableRequestBus::EventResult(dataType, variableId, &VariableRequests::GetDataType);
 
                 if (dataType == m_dataType)
                 {

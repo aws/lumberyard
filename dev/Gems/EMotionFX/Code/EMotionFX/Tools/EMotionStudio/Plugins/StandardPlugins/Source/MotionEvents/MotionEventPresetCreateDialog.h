@@ -13,7 +13,6 @@
 #pragma once
 
 #include "../StandardPluginsConfig.h"
-#include <AzCore/std/string/string.h>
 #include <MysticQt/Source/ColorLabel.h>
 #include <QDialog>
 

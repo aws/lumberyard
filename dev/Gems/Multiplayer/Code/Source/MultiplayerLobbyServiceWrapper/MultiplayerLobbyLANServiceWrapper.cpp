@@ -21,82 +21,88 @@ namespace Multiplayer
 {
     MultiplayerLobbyLANServiceWrapper::MultiplayerLobbyLANServiceWrapper(const AZ::EntityId& multiplayerLobbyEntityId)
         : MultiplayerLobbyServiceWrapper(multiplayerLobbyEntityId)
-    {    
+    {
     }
-    
+
     MultiplayerLobbyLANServiceWrapper::~MultiplayerLobbyLANServiceWrapper()
-    {    
+    {
     }
-    
+
     bool MultiplayerLobbyLANServiceWrapper::SanityCheck(GridMate::IGridMate* gridMate)
     {
         // Nothing in LAN Session Service we need to sanity check
         return true;
     }
-    
+
     bool MultiplayerLobbyLANServiceWrapper::StartSessionService(GridMate::IGridMate* gridMate)
     {
         Multiplayer::LAN::StartSessionService(gridMate);
         return GridMate::HasGridMateService<GridMate::LANSessionService>(gridMate);
     }
-    
+
     void MultiplayerLobbyLANServiceWrapper::StopSessionService(GridMate::IGridMate* gridMate)
     {
         Multiplayer::LAN::StopSessionService(gridMate);
-    }    
-    
+    }
+
     GridMate::GridSession* MultiplayerLobbyLANServiceWrapper::CreateServerForService(GridMate::IGridMate* gridMate, GridMate::CarrierDesc& carrierDesc)
     {
         GridMate::GridSession* gridSession = nullptr;
-        
+
         // Setup and create the LANSessionParams
         GridMate::LANSessionParams sessionParams;
-        sessionParams.m_port = GetServerPort();        
+        sessionParams.m_port = GetServerPort();
 
         // Collect the shared session params from the MultiplayerLobby
-        EBUS_EVENT_ID(GetTargetEntityId(),Multiplayer::MultiplayerLobbyBus,ConfigureSessionParams,sessionParams);        
-        
+        EBUS_EVENT_ID(GetTargetEntityId(),Multiplayer::MultiplayerLobbyBus,ConfigureSessionParams,sessionParams);
+
         EBUS_EVENT_ID_RESULT(gridSession,gridMate,GridMate::LANSessionServiceBus,HostSession,sessionParams,carrierDesc);
-        
+
         return gridSession;
     }
-    
+
     GridMate::GridSearch* MultiplayerLobbyLANServiceWrapper::ListServersForService(GridMate::IGridMate* gridMate)
     {
         GridMate::GridSearch* retVal = nullptr;
-        
+
         GridMate::LANSearchParams searchParams;
         searchParams.m_serverPort = GetServerPort();
-        searchParams.m_listenPort = 0;		
+        searchParams.m_listenPort = 0;
+
+        searchParams.m_maxSessions = gEnv->pConsole->GetCVar("gm_maxSearchResults")->GetIVal();
+        AZ_TracePrintf("MultiplayerModule", "Limiting search results to a maximum of %d sessions.\n", searchParams.m_maxSessions);
 
         searchParams.m_version = gEnv->pConsole->GetCVar("gm_version")->GetIVal();
-        searchParams.m_familyType = Multiplayer::Utils::CVarToFamilyType(gEnv->pConsole->GetCVar("gm_ipversion")->GetString());		
+        searchParams.m_familyType = Multiplayer::Utils::CVarToFamilyType(gEnv->pConsole->GetCVar("gm_ipversion")->GetString());
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(MultiplayerLobbyLANServiceWrapper_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         EBUS_EVENT_ID_RESULT(retVal, gridMate, GridMate::LANSessionServiceBus, StartGridSearch, searchParams);
-        
+
         return retVal;
-    }    
-    
+    }
+
     GridMate::GridSession* MultiplayerLobbyLANServiceWrapper::JoinSessionForService(GridMate::IGridMate* gridMate, GridMate::CarrierDesc& carrierDesc, const GridMate::SearchInfo* searchInfo)
-    {                
+    {
         GridMate::GridSession* gridSession = nullptr;
         const GridMate::LANSearchInfo& lanSearchInfo = static_cast<const GridMate::LANSearchInfo&>(*searchInfo);
         GridMate::JoinParams joinParams;
-        
+
         EBUS_EVENT_ID_RESULT(gridSession, gridMate, GridMate::LANSessionServiceBus, JoinSessionBySearchInfo, lanSearchInfo, joinParams, carrierDesc);
-        
+
         return gridSession;
     }
-    
+
     int MultiplayerLobbyLANServiceWrapper::GetServerPort() const
     {
         // GamePort is reserved for game traffic, we want to go 1 above it to manage our server duties. i.e. Responding to search requests.
         int port = 0;
         EBUS_EVENT_ID_RESULT(port,GetTargetEntityId(),MultiplayerLobbyBus,GetGamePort);
-        
+
         port += 1;
-        
+
         return port;
     }
 }

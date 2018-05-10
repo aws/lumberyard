@@ -13,10 +13,9 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/JSON/document.h>
 #include <AzCore/JSON/stringbuffer.h>
-#include <AzFramework/StringFunc/StringFunc.h>
-#include <MCore/Source/UnicodeCharacter.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include <EMotionFX/Source/Importer/Importer.h>
+#include <MCore/Source/StringConversions.h>
 #include "RecoverFilesWindow.h"
 #include <QHeaderView>
 #include <QVBoxLayout>
@@ -126,7 +125,7 @@ namespace EMStudio
                 {
                     // Get the extension of the backup filename.
                     AZStd::string extensionOnly;
-                    AzFramework::StringFunc::Path::GetExtension(backupFilename.c_str(), extensionOnly, false);
+                    AzFramework::StringFunc::Path::GetExtension(backupFilename.c_str(), extensionOnly, false /* include dot */);
 
                     // Check the extension to set the file type text.
                     if (AzFramework::StringFunc::Equal(extensionOnly.c_str(), "emfxworkspace"))
@@ -249,7 +248,7 @@ namespace EMStudio
                 document.Parse(fileBuffer.data());
                 if (document.HasParseError())
                 {
-                    AZ_Error("EMotionStudio", "Cannot parse json file %s.", jsonFilename.c_str());
+                    AZ_Error("EMotionStudio", false, "Cannot parse json file %s.", jsonFilename.c_str());
                 }
                 else
                 {

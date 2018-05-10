@@ -38,7 +38,7 @@
         "Qt5XmlPatterns",
         "Qt5Xml"
     ],
-    "source": "@ROOT@/Code/Sandbox/SDKs/Qt",
+    "source": "@3P:qt@",
     "description": "QT Library",
     "defines": [],
     "lib_required": "True",
@@ -1881,6 +1881,7 @@
                 "QtXml"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "apple_tv": "@darwin_x64",
         "ios": "@darwin_x64",
         "linux_x64": {

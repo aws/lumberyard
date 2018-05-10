@@ -564,6 +564,11 @@ namespace AzToolsFramework
                 {
                     return false;
                 }
+
+                if (sourceLine->GetLogType() == Logging::LogLine::TYPE_CONTEXT)
+                {
+                    return false;
+                }
             }
 
             bool showDebug = ((m_tabSettings.m_filterFlags & (0x01 << TabSettings::FILTER_DEBUG)) != 0);

@@ -618,12 +618,18 @@ namespace EMotionFX
             MCore::LogInfo("Transform(%s):", name);
         }
 
-        MCore::LogInfo("mPosition = %.6f, %.6f, %.6f", mPosition.GetX(), mPosition.GetY(), mPosition.GetZ());
+        MCore::LogInfo("mPosition = %.6f, %.6f, %.6f", 
+            static_cast<float>(mPosition.GetX()), 
+            static_cast<float>(mPosition.GetY()), 
+            static_cast<float>(mPosition.GetZ()));
         MCore::LogInfo("mRotation = %.6f, %.6f, %.6f, %.6f", mRotation.x, mRotation.y, mRotation.z, mRotation.w);
 
         EMFX_SCALECODE
         (
-            MCore::LogInfo("mScale    = %.6f, %.6f, %.6f", mScale.GetX(), mScale.GetY(), mScale.GetZ());
+            MCore::LogInfo("mScale    = %.6f, %.6f, %.6f", 
+                static_cast<float>(mScale.GetX()), 
+                static_cast<float>(mScale.GetY()), 
+                static_cast<float>(mScale.GetZ()));
         )
     }
 

@@ -92,7 +92,9 @@ namespace EMStudio
             if (attachedTo == nullptr)
             {
                 QTreeWidgetItem* item = new QTreeWidgetItem(mHierarchy);
-                item->setText(0, QString("%1 (ID:%2)").arg(actor->GetFileNameString().ExtractFileName().AsChar()).arg(actorInstance->GetID()));
+                AZStd::string actorFilename;
+                AzFramework::StringFunc::Path::GetFileName(actor->GetFileNameString().c_str(), actorFilename);
+                item->setText(0, QString("%1 (ID:%2)").arg(actorFilename.c_str()).arg(actorInstance->GetID()));
                 item->setExpanded(true);
                 mHierarchy->addTopLevelItem(item);
 
@@ -118,7 +120,9 @@ namespace EMStudio
 
         // add the current actor instance to the hierarchy
         QTreeWidgetItem* item = new QTreeWidgetItem(parent);
-        item->setText(0, QString("%1 (ID:%2)").arg(actor->GetFileNameString().ExtractFileName().AsChar()).arg(actorInstance->GetID()));
+        AZStd::string actorFilename;
+        AzFramework::StringFunc::Path::GetFileName(actor->GetFileNameString().c_str(), actorFilename);
+        item->setText(0, QString("%1 (ID:%2)").arg(actorFilename.c_str()).arg(actorInstance->GetID()));
         item->setExpanded(true);
         parent->addChild(item);
 

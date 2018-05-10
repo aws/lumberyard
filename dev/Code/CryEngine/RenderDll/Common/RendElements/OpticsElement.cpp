@@ -340,15 +340,6 @@ void COpticsElement::ApplyOcclusionPattern(CShader* shader)
     }
 }
 
-void COpticsElement::ApplyVSParam_ScreenWidthHeight(CShader* shader)
-{
-    static CCryNameR ScreenWidthHeightName("ScreenWidthHeight");
-    int x(0), y(0), width(0), height(0);
-    gcpRendD3D->GetViewport(&x, &y, &width, &height);
-    Vec4 vScreenWidthHeight((float)width, (float)height, 0, 0);
-    shader->FXSetVSFloat(ScreenWidthHeightName, &vScreenWidthHeight, 1);
-}
-
 void COpticsElement::ApplyOcclusionBokehFlag(CShader* shader)
 {
     if (m_globalOcclusionBokeh)

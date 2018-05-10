@@ -13,23 +13,38 @@
 #include "precompiled.h"
 
 #include <Libraries/Libraries.h>
-#include <Core/NodeFunctionGeneric.h>
 
 #include "Entity.h"
 
 namespace ScriptCanvas
 {
-    namespace EntityNodes
+   
+    
+    static bool OldEntityIdIsValidNodeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootNodeElement)
     {
-        AZ_INLINE bool IsValid(AZ::EntityId id)
+        int nodeElementIndex = rootNodeElement.FindElement(AZ_CRC("BaseClass1", 0xd4925735));
+        if (nodeElementIndex == -1)
         {
-            return id.IsValid();
+            AZ_Error("Script Canvas", false, "Unable to find base class node element for old EntityId::IsValid function node");
+            return false;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(IsValid, "Entity/Game Entity", "{7CEC53AE-E12B-4738-B542-4587B8B95DC2}", "returns true if the entity id is valid", "");
 
-        using EntityRegistrar = RegistrarGeneric<
-            IsValidNode
-        >;
+        // The DataElementNode is being copied purposefully in this statement to clone the data
+        AZ::SerializeContext::DataElementNode baseNodeElement = rootNodeElement.GetSubElement(nodeElementIndex);
+        if (!rootNodeElement.Convert(context, azrtti_typeid<EntityIDNodes::IsValidNode>()))
+        {
+            AZ_Error("Script Canvas", false, "Unable to convert old Entity::IsValid function node(%s) to new EntityId::IsValid function node(%s)",
+                rootNodeElement.GetId().ToString<AZStd::string>().data(), azrtti_typeid<EntityIDNodes::IsValidNode>().ToString<AZStd::string>().data());
+            return false;
+        }
+
+        if (rootNodeElement.AddElement(baseNodeElement) == -1)
+        {
+            AZ_Error("Script Canvas", false, "Unable to add base class node element to new EntityId::IsValid function node");
+            return false;
+        }
+
+        return true;
     }
 
     namespace Library
@@ -52,6 +67,15 @@ namespace ScriptCanvas
                         ;
                 }
 
+                // Reflects the old EntityId IsValid function node
+                const AZ::TypeId nodeFunctionGenericMultiReturnTemplateTypeId("{DC5B1799-6C5B-4190-8D90-EF0C2D1BCE4E}");
+                const AZ::TypeId oldEntityIdIsValidFuncSignatureTypeId = azrtti_typeid<bool(*)(AZ::EntityId)>();
+                const AZ::TypeId oldEntityIdIsValidTypeId("{7CEC53AE-E12B-4738-B542-4587B8B95DC2}");
+                
+                // Aggregate NodeFunctionGenericMultiReturn<bool(*)(AZ::EntityId), OldIsValidTraits> typeid
+                // NOTE: Aggregation order addition is not commutative and must be in the added last to first: (FirstUuid + ( SecondUuid + (ThirdUuid + ... + (NthUuid))
+                const AZ::TypeId oldIsValidNodeAggregateTypeId = nodeFunctionGenericMultiReturnTemplateTypeId + (oldEntityIdIsValidFuncSignatureTypeId + oldEntityIdIsValidTypeId);
+                serializeContext->ClassDeprecate("EntityId::IsValidNode", oldIsValidNodeAggregateTypeId, &OldEntityIdIsValidNodeVersionConverter);
             }
         }
 
@@ -61,19 +85,20 @@ namespace ScriptCanvas
             AddNodeToRegistry<Entity, Rotate>(nodeRegistry);
             AddNodeToRegistry<Entity, EntityID>(nodeRegistry);
             AddNodeToRegistry<Entity, EntityRef>(nodeRegistry);
-
-            EntityNodes::EntityRegistrar::AddToRegistry<Entity>(nodeRegistry);
+            EntityIDNodes::Registrar::AddToRegistry<Entity>(nodeRegistry);
+            EntityNodes::Registrar::AddToRegistry<Entity>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Entity::GetComponentDescriptors()
         {
-            auto descriptors = AZStd::vector<AZ::ComponentDescriptor*>({
+            AZStd::vector<AZ::ComponentDescriptor*> descriptors = {
                 ScriptCanvas::Nodes::Entity::Rotate::CreateDescriptor(),
                 ScriptCanvas::Nodes::Entity::EntityID::CreateDescriptor(),
-                ScriptCanvas::Nodes::Entity::EntityRef::CreateDescriptor(),
-            });
+                ScriptCanvas::Nodes::Entity::EntityRef::CreateDescriptor()
+            };
 
-            EntityNodes::EntityRegistrar::AddDescriptors(descriptors);
+            EntityIDNodes::Registrar::AddDescriptors(descriptors);
+            EntityNodes::Registrar::AddDescriptors(descriptors);
 
             return descriptors;
         }

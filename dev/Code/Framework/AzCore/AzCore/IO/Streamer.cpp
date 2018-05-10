@@ -237,6 +237,7 @@ GetDeviceSpecsFromPath(const char* fullpath, AZStd::string* deviceName, Device::
         return true;
     }
     return false;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 
     #pragma message("AZ_PLATFORM_LINUX: Device and path info, not fully implemented - defaults Device::DT_MAGNETIC_DRIVE.")
@@ -251,6 +252,12 @@ GetDeviceSpecsFromPath(const char* fullpath, AZStd::string* deviceName, Device::
     }
 
     return true;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Streamer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     AZ_Assert(false, "GetDeviceSpecsFromPath is not implemented on this platform");
     (void)deviceType;

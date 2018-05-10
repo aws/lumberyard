@@ -26,6 +26,13 @@ JobManager::ThreadBackEnd::CThreadBackEnd::CThreadBackEnd()
 {
     m_JobQueue.Init();
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define THREADBACKEND_CPP_SECTION_1 1
+#define THREADBACKEND_CPP_SECTION_2 2
+#endif
+
 #if defined(JOBMANAGER_SUPPORT_FRAMEPROFILER)
     m_pBackEndWorkerProfiler = 0;
 #endif
@@ -40,8 +47,16 @@ JobManager::ThreadBackEnd::CThreadBackEnd::~CThreadBackEnd()
 bool JobManager::ThreadBackEnd::CThreadBackEnd::Init(uint32 nSysMaxWorker)
 {
     // find out how many workers to create
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREADBACKEND_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(ThreadBackEnd_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     CCpuFeatures* pCPU = ((CSystem*)gEnv->pSystem)->GetCPUFeatures();
     const uint32 nNumCores = pCPU->GetLogicalCPUCount();
+#endif
 
     uint32 nNumWorkerToCreate = 0;
 
@@ -241,6 +256,10 @@ void JobManager::ThreadBackEnd::CThreadBackEndWorkerThread::Run()
     // set up thread id
     JobManager::detail::SetWorkerThreadId(m_nId);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREADBACKEND_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(ThreadBackEnd_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #if defined(WIN32)
     ((CSystem*)gEnv->pSystem)->EnableFloatExceptions(g_cvars.sys_float_exceptions);
 #endif

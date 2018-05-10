@@ -11,9 +11,8 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_INETWORKINGSTATE_H
-#define CRYINCLUDE_CRYCOMMON_INETWORKINGSTATE_H
 #pragma once
 
-
-#endif // CRYINCLUDE_CRYCOMMON_INETWORKINGSTATE_H
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(INetworkingState_h, AZ_RESTRICTED_PLATFORM)
+#endif

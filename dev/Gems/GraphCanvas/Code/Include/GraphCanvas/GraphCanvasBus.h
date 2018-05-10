@@ -13,6 +13,7 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Math/Crc.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/std/string/string.h>
 
@@ -20,11 +21,11 @@
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/BooleanDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/EntityIdDataInterface.h>
-#include <GraphCanvas/Components/NodePropertyDisplay/DoubleDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/ItemModelDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/ReadOnlyDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/StringDataInterface.h>
-#include <GraphCanvas/Components/NodePropertyDisplay/VariableDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h>
 
 namespace AZ
@@ -40,8 +41,8 @@ class QWidget;
 namespace GraphCanvas
 {
     struct Endpoint;
-    class CanvasGraphicsView;
-    class SceneRequests;
+
+    static const AZ::Crc32 GraphCanvasRequestsServiceId = AZ_CRC("GraphCanvasService", 0x138a9c46);
 
     //! GraphCanvasRequests
     //! Factory methods that allow default configurations of the Graph Canvas entities to be created, ready for
@@ -53,6 +54,15 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
         using EntityGroup = AZStd::vector<AZ::EntityId>;
+
+        //! Create a Bookmark Anchor
+        virtual AZ::Entity* CreateBookmarkAnchor() const = 0;
+
+        //! Create and activate a Bookmark Anchor.
+        virtual AZ::Entity* CreateBookmarkAnchorAndActivate() const
+        {
+            return InitActivateEntity(CreateBookmarkAnchor());
+        }
 
         //! Create an empty scene.
         virtual AZ::Entity* CreateScene() const = 0;
@@ -131,15 +141,25 @@ namespace GraphCanvas
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateBooleanNodePropertyDisplay(BooleanDataInterface* dataInterface) const = 0;
 
+        //! Creates a DoubleNodeProperty display using the specified DoubleDataInterface
+        //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
+        //! The PropertyDisplay will take ownership of the DataInterface
+        virtual NodePropertyDisplay* CreateNumericNodePropertyDisplay(NumericDataInterface* dataInterface) const = 0;
+
+        AZ_DEPRECATED(NodePropertyDisplay* CreateDoubleNodePropertyDisplay(NumericDataInterface* dataInterface) const, "CreateDoubleNodePropertyDisplay renamed to CreateNumericNdoePropertyDisplay.")
+        {
+            return CreateNumericNodePropertyDisplay(dataInterface);
+        }
+
         //! Creates an EntityIdNodeProperty display using the specified EntityIdDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateEntityIdNodePropertyDisplay(EntityIdDataInterface* dataInterface) const = 0;
 
-        //! Creates a DoubleNodeProperty display using the specified DoubleDataInterface
-        //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
+        //! Create a TextEdit display that will auto complete using the specified ItemModelDataInterface
+        //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay,
         //! The PropertyDisplay will take ownership of the DataInterface
-        virtual NodePropertyDisplay* CreateDoubleNodePropertyDisplay(DoubleDataInterface* dataInterface) const = 0;
+        virtual NodePropertyDisplay* CreateItemModelNodePropertyDisplay(ItemModelDataInterface* dataInterface) const = 0;
 
         //! Creates a ReadOnlyNodeProperty display using the specified ReadOnlyDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
@@ -150,11 +170,6 @@ namespace GraphCanvas
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateStringNodePropertyDisplay(StringDataInterface* dataInterface) const = 0;
-
-        //! Create a VariableReferenceNodeProperty display using the specified VariableReferenceDataInterface
-        //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay,
-        //! The PropertyDisplay will take ownership of the DataInterface
-        virtual NodePropertyDisplay* CreateVariableReferenceNodePropertyDisplay(VariableReferenceDataInterface* dataInterface) const = 0;
 
         //! Creates a VectorNodeProperty display using the specified VectorDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
@@ -171,17 +186,6 @@ namespace GraphCanvas
         //! param: propertyId is the id to identify the property
         //! param: slotConfiguration is the various configurable aspects of the slot.
         virtual AZ::Entity* CreatePropertySlot(const AZ::EntityId& nodeId, const AZ::Crc32& propertyId, const SlotConfiguration& slotConfiguration) const = 0;
-
-        //! Create a default connection (between two endpoints).
-        //! The connection will link the specified endpoints and have a default visual. It will be styled.
-        //! 
-        //! # Parameters
-        //! 1. The source endpoint.
-        //! 2. The target endpoint.
-        virtual AZ::Entity* CreateDefaultConnection(const Endpoint&, const Endpoint&) const = 0;
-
-        //! Retrieves the SceneRequest interfaces from the scene on the entity if one exist
-        virtual SceneRequests* GetSceneRequests(AZ::Entity*) const = 0;
 
     private:
         AZ::Entity* InitActivateEntity(AZ::Entity* entity) const

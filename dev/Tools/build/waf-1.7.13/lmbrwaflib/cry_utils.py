@@ -36,6 +36,8 @@ except ImportError:
 ###############################################################################
 WAF_EXECUTABLE = 'lmbr_waf.bat'
 
+REGEX_PATH_ALIAS = re.compile('@(.*)@')
+
 #############################################################################
 # Helper method for getting the host platform's command line character limit 
 def get_command_line_limit():
@@ -299,6 +301,8 @@ def get_output_folder_name(self, platform, configuration):
     # Find the path for the current platform based on build options
     if platform == 'win_x86':
         path = self.options.out_folder_win32
+    elif platform == 'win_x64_vs2017':
+        path = self.options.out_folder_win64_vs2017
     elif platform == 'win_x64_vs2015':
         path = self.options.out_folder_win64_vs2015
     elif platform == 'win_x64_vs2013':
@@ -399,9 +403,42 @@ def get_output_folders(self, platform, configuration, ctx=None, target=None):
 
 @conf
 def read_file_list(bld, file):
-    file_node = bld.path.make_node(file)
 
-    return bld.parse_json_file(file_node)
+
+    def _invalid_alias_callback(alias_key):
+        error_message = "Invalid alias '{}' specified in {}".format(alias_key, file)
+        raise Errors.WafError(error_message)
+
+    def _alias_not_enabled_callback(alias_key, roles):
+        error_message = "3rd Party alias '{}' specified in {} is not enabled. Make sure that at least one of the " \
+                        "following roles is enabled: [{}]".format(alias_key, file, ', '.join(roles))
+        raise Errors.WafError(error_message)
+
+    file_node = bld.path.make_node(file)
+    original_file_list = bld.parse_json_file(file_node)
+
+    processed_file_list = {}
+
+    for uber_level_key, uber_level_map in original_file_list.iteritems():
+
+        uber_level_copy = {}
+
+        for vs_filter_key, vs_filter_list in uber_level_map.iteritems():
+            vs_filter_copy = []
+
+            for file_reference in vs_filter_list:
+
+                if file_reference.startswith('@'):
+                    processed_path = bld.PreprocessFilePath(file_reference, _invalid_alias_callback, _alias_not_enabled_callback)
+                    vs_filter_copy.append(processed_path)
+                else:
+                    vs_filter_copy.append(file_reference)
+
+            uber_level_copy[vs_filter_key] = vs_filter_copy
+
+        processed_file_list[uber_level_key] = uber_level_copy
+
+    return processed_file_list
 
 @conf
 def get_platform_and_configuration(bld):
@@ -692,6 +729,34 @@ def get_configuration(ctx, target):
 
 cached_folders = {}
 
+def detect_windows_sdk_folder(fallback_path):
+    """
+    Detect the current installed windows sdk folder from the registry
+    :return: The windows sdk folder from the registry
+    """
+
+    if not winreg_available:
+        raise SystemError('[ERR] Windows registry is not supported on this platform.')
+
+    cache_key = 'windows_sdk_folder'
+    if cache_key in cached_folders:
+        return cached_folders[cache_key]
+
+    microsoft_sdks_folder = fallback_path
+    try:
+        microsoft_sdks_folder_entry = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Microsoft SDKs\\Windows", 0, _winreg.KEY_READ)
+        (microsoft_sdks_folder, type) = _winreg.QueryValueEx(microsoft_sdks_folder_entry, 'CurrentInstallFolder')
+        microsoft_sdks_folder = microsoft_sdks_folder.encode('ascii')  # Make asci string (as we get unicode)
+    except:
+        Logs.warn('[WARN] Unable to find windows sdk folder from the registry. Falling back to path {} as a good guess..."'.format(fallback_path))
+
+    if not os.path.exists(microsoft_sdks_folder):
+        raise SystemError('[ERR] Unable to locate the windows sdk folder {})'.format(microsoft_sdks_folder))
+    
+    cached_folders[cache_key] = microsoft_sdks_folder
+
+    return microsoft_sdks_folder
+
 
 def detect_visual_studio_vc_path(version, fallback_path):
     """
@@ -747,7 +812,8 @@ def detect_windows_kits_include_path(fallback_path):
         windows_sdk_include_path += 'Include'
     except:
         Logs.warn('[WARN] Unable to find windows sdk include path from the registry. Falling back to path {} as a good guess..."'.format(fallback_path))
-                   
+        windows_sdk_include_path = fallback_path
+
     if not os.path.exists(windows_sdk_include_path):
         raise SystemError('[ERR] Unable to locate the Windows SDK include folder {}'.format(windows_sdk_include_path))
 

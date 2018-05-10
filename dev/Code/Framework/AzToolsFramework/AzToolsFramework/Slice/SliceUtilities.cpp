@@ -656,9 +656,8 @@ namespace AzToolsFramework
 
             if (!sliceAsset)
             {
-                return AZ::Failure(AZStd::string::format("Asset \"%s\" with id %s is not loaded, or is not a slice.",
-                    sliceAsset.GetHint().c_str(),
-                    sliceAsset.GetId().ToString<AZStd::string>().c_str()));
+                return AZ::Failure(AZStd::string::format("Asset %s is not loaded, or is not a slice.",
+                    sliceAsset.ToString<AZStd::string>().c_str()));
             }
 
             // Make a transaction targeting the specified slice and add all the entities in this set.
@@ -670,9 +669,9 @@ namespace AzToolsFramework
                     auto result = transaction->UpdateEntity(entityId);
                     if (!result)
                     {
-                        return AZ::Failure(AZStd::string::format("Failed to add entity with Id %1 to slice transaction for \"%s\". Slice push aborted.\n\nError:\n%s",
+                        return AZ::Failure(AZStd::string::format("Failed to add entity with Id %1 to slice transaction for %s. Slice push aborted.\n\nError:\n%s",
                             entityId.ToString().c_str(),
-                            sliceAsset.GetHint().c_str(),
+                            sliceAsset.ToString<AZStd::string>().c_str(),
                             result.GetError().c_str()));
                     }
                 }

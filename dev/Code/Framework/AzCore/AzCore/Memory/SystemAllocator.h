@@ -63,7 +63,8 @@ namespace AZ
                     , m_poolPageSize(m_defaultPoolPageSize)
                     , m_isPoolAllocations(true)
                     , m_numMemoryBlocks(0)
-                    , m_subAllocator(0)
+                    , m_subAllocator(nullptr)
+                    , m_systemChunkSize(0)
                 {}
                 static const int        m_defaultPageSize = AZ_TRAIT_OS_DEFAULT_PAGE_SIZE;
                 static const int        m_defaultPoolPageSize = 4 * 1024;
@@ -76,6 +77,7 @@ namespace AZ
                 void*                   m_memoryBlocks[m_maxNumBlocks];             ///< Pointers to provided memory blocks or NULL if you want the system to allocate them for you with the System Allocator.
                 size_t                  m_memoryBlocksByteSize[m_maxNumBlocks];     ///< Sizes of different memory blocks (MUST be multiple of m_pageSize), if m_memoryBlock is 0 the block will be allocated for you with the System Allocator.
                 IAllocatorAllocate*     m_subAllocator;                             ///< Allocator that m_memoryBlocks memory was allocated from or should be allocated (if NULL).
+                size_t                  m_systemChunkSize;                          ///< Size of chunk to request from the OS when more memory is needed (defaults to m_pageSize)
             }                           m_heap;
             bool                        m_allocationRecords;    ///< True if we want to track memory allocations, otherwise false.
             unsigned char               m_stackRecordLevels;    ///< If stack recording is enabled, how many stack levels to record.

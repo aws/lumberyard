@@ -478,6 +478,7 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
         else
         {
             text = tr("Idle...");
+            m_guiApplicationManager->RemoveOldTempFolders();  
         }
         break;
     case AssetProcessorStatus::Processing_Jobs:
@@ -490,6 +491,7 @@ void MainWindow::OnAssetProcessorStatusChanged(const AssetProcessor::AssetProces
         else
         {
             text = tr("Idle...");
+            m_guiApplicationManager->RemoveOldTempFolders();
         }
         break;
     default:

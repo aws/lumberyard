@@ -285,15 +285,15 @@ namespace EMStudio
                 fpsNumFrames    = 0;
             }
 
-            static MCore::String perfTempString;
+            static AZStd::string perfTempString;
             float theoreticalFPS = 1000.0f / renderTime;
-            perfTempString.Format("%d FPS - %.0fms (%d FPS)", lastFPS, renderTime, (int)theoreticalFPS);
+            perfTempString = AZStd::string::format("%d FPS - %.0fms (%d FPS)", lastFPS, renderTime, (int)theoreticalFPS);
 
             // initialize the painter and get the font metrics
             //painter.setBrush( Qt::NoBrush );
             //painter.setPen( QColor(130, 130, 130) );
             //painter.setFont( mFont );
-            EMStudioManager::RenderText(painter, perfTempString.AsChar(), QColor(150, 150, 150), mFont, *mFontMetrics, Qt::AlignRight, QRect(width() - 55, height() - 20, 50, 20));
+            EMStudioManager::RenderText(painter, perfTempString.c_str(), QColor(150, 150, 150), mFont, *mFontMetrics, Qt::AlignRight, QRect(width() - 55, height() - 20, 50, 20));
             //painter.drawText( QPoint(width() - 133, height() - 14), perfTempString.AsChar() );
         }
     }

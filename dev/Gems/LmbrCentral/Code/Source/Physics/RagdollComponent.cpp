@@ -59,14 +59,17 @@ namespace LmbrCentral
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<RagdollComponent>("Ragdoll", "The Ragdoll component uses physics to drive characters and is ideal for simulating environmental effects upon unconscious characters")
+                editContext->Class<RagdollComponent>("Ragdoll", "X The Ragdoll component uses physics to drive characters and is ideal for simulating environmental effects upon unconscious characters")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Ragdoll.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Ragdoll.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physics-ragdoll.html")
+#ifndef ENABLE_LEGACY_ANIMATION
+                        ->Attribute(AZ::Edit::Attributes::AddableByUser, false)
+#endif
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_isActiveInitially, "Enabled initially", "When true the model will start off as a ragdoll")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_tryToUsePhysicsComponentMass, "Use physics component mass", "When true tries to use mass set by a physics component first.  Defaults to 'Mass' if unchecked or no component is found")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_mass, "Mass", "Simulated mass for the ragdoll. Used as defined by 'Use physics component mass'")

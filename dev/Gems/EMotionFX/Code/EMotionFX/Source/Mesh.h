@@ -14,6 +14,7 @@
 
 #include "EMotionFXConfig.h"
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 #include "BaseObject.h"
 #include "VertexAttributeLayer.h"
 
@@ -384,11 +385,11 @@ namespace EMotionFX
         VertexAttributeLayer* FindVertexAttributeLayer(uint32 layerTypeID, uint32 occurence = 0) const;
 
         uint32 FindVertexAttributeLayerIndexByName(const char* name) const;
-        uint32 FindVertexAttributeLayerIndexByNameString(const MCore::String& name) const;
+        uint32 FindVertexAttributeLayerIndexByNameString(const AZStd::string& name) const;
         uint32 FindVertexAttributeLayerIndexByNameID(uint32 nameID) const;
 
         uint32 FindSharedVertexAttributeLayerIndexByName(const char* name) const;
-        uint32 FindSharedVertexAttributeLayerIndexByNameString(const MCore::String& name) const;
+        uint32 FindSharedVertexAttributeLayerIndexByNameString(const AZStd::string& name) const;
         uint32 FindSharedVertexAttributeLayerIndexByNameID(uint32 nameID) const;
 
         /**
@@ -471,7 +472,7 @@ namespace EMotionFX
          * For a cube, which normally might have 32 vertices, it will result in 8 positions.
          * @param outPoints The output array to store the points in. The array will be automatically resized.
          */
-        void ExtractOriginalVertexPositions(MCore::Array<AZ::Vector3>& outPoints) const;
+        void ExtractOriginalVertexPositions(AZStd::vector<AZ::Vector3>& outPoints) const;
 
         /**
          * Clone the mesh.

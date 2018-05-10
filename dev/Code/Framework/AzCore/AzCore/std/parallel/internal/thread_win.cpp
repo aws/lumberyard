@@ -9,6 +9,15 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define THREAD_WIN_CPP_SECTION_1 1
+#define THREAD_WIN_CPP_SECTION_2 2
+#define THREAD_WIN_CPP_SECTION_3 3
+#define THREAD_WIN_CPP_SECTION_4 4
+#endif
+
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformIncl.h>
@@ -40,8 +49,16 @@ namespace AZStd
 
             EBUS_EVENT(ThreadEventBus, OnThreadExit, this_thread::get_id());
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(thread_win_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             _endthreadex(0);
             return 0;
+#endif
         }
 
         /**
@@ -57,7 +74,15 @@ namespace AZStd
                 stackSize = desc->m_stackSize;
             }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(thread_win_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             hThread = (HANDLE)_beginthreadex(0, stackSize, &thread_run_function, ti, CREATE_SUSPENDED, id);
+#endif
             if (hThread == NULL)
             {
                 return hThread;
@@ -68,10 +93,18 @@ namespace AZStd
                 ::SetThreadPriority(hThread, desc->m_priority);
             }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(thread_win_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             if (desc && desc->m_cpuId >= 0 && desc->m_cpuId < 32)
             {
                 SetThreadAffinityMask(hThread, DWORD_PTR(1) << desc->m_cpuId);
             }
+#endif
 
             EBUS_EVENT(ThreadEventBus, OnThreadEnter, thread::id(*id), desc);
 
@@ -155,9 +188,17 @@ namespace AZStd
     /// Return number of physical processors
     unsigned thread::hardware_concurrency()
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(thread_win_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         SYSTEM_INFO info = {};
         GetSystemInfo(&info);
         return info.dwNumberOfProcessors;
+#endif
     }
     //////////////////////////////////////////////////////////////////////////
 }

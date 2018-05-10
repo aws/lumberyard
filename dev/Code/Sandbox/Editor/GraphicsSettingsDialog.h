@@ -113,6 +113,10 @@ private:
 
     // Setup collapsed buttons
     void SetCollapsedLayout(QPushButton* togglebutton, QGridLayout* layout);
+    // Sets the platform entry index for the given platform
+    void SetPlatformEntry(ESystemConfigPlatform platform);
+    // Gets the platform enum given the platform name
+    ESystemConfigPlatform GetConfigPlatformFromName(const AZStd::string& platformName);
 
     ////////////////////////////////////////////
     // Members
@@ -146,7 +150,7 @@ private:
 
     AZStd::unordered_map<ESystemConfigPlatform, AZStd::vector<AZStd::string>> m_cfgFiles;
 
-    AZStd::unordered_map<AZStd::string, ESystemConfigPlatform> m_platformStrings;
+    AZStd::vector<AZStd::pair<AZStd::string, ESystemConfigPlatform>> m_platformStrings;
 
     struct CVarGroupInfo
     {

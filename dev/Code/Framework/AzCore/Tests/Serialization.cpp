@@ -61,7 +61,12 @@
 
 #include <AzCore/RTTI/AttributeReader.h>
 
-#if   defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Serialization_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
 #   define AZ_ROOT_TEST_FOLDER  "./"
 #elif defined(AZ_PLATFORM_ANDROID)
 #   define AZ_ROOT_TEST_FOLDER  "/sdcard/"
@@ -5577,6 +5582,8 @@ namespace UnitTest
         {
             ContainerTest loadedContainer;
             AZ::SerializeContext sc;
+            auto genericClassInfo = AZ::SerializeGenericTypeInfo<AZStd::unordered_set<int>>::GetGenericInfo();
+            genericClassInfo->Reflect(&sc);
             sc.Class<ContainerTest>()
                 ->Version(1, &ContainerTestVersionConverter)
                 ->Field("m_addedVector", &ContainerTest::m_addedVector)
@@ -5705,6 +5712,101 @@ namespace UnitTest
             binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
             EXPECT_TRUE(Utils::LoadObjectFromStreamInPlace(binaryStream, loadedContainer, &sc));
         }
+    }
+
+    class SerializeDataElementNodeGetDataTest
+        : public AllocatorsFixture
+    {
+    public:
+        struct TemporarilyReflected
+        {
+            AZ_CLASS_ALLOCATOR(TemporarilyReflected, AZ::SystemAllocator, 0);
+            AZ_TYPE_INFO(TemporarilyReflected, "{F0909A1D-09BF-44D5-A1D8-E27C8E45579D}");
+
+            AZ::u64 m_num{};
+        };
+
+        struct ReflectionWrapper
+        {
+            AZ_CLASS_ALLOCATOR(ReflectionWrapper, AZ::SystemAllocator, 0);
+            AZ_TYPE_INFO(ReflectionWrapper, "{EACE8B18-CC31-4E7F-A34C-2A6AA8EB998D}");
+
+            TemporarilyReflected m_tempReflected;
+        };
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+        }
+
+        void TearDown() override
+        {
+            AllocatorsFixture::TearDown();
+        }
+
+        static bool GetDataOnNonReflectedClassVersionConverter(AZ::SerializeContext& sc, AZ::SerializeContext::DataElementNode& rootElement)
+        {
+            (void)sc;
+            if (rootElement.GetVersion() == 0)
+            {
+                // The GetData should not crash
+                ReflectionWrapper reflectionWrapper;
+                EXPECT_FALSE(rootElement.GetData(reflectionWrapper));
+
+                // Drop the m_tempReflectedElement from the ReflectionWrapper
+                EXPECT_TRUE(rootElement.RemoveElementByName(AZ_CRC("m_tempReflected")));
+
+                EXPECT_TRUE(rootElement.GetData(reflectionWrapper));
+            }
+
+            return true;
+        }
+    };
+
+    TEST_F(SerializeDataElementNodeGetDataTest, GetDataOnNonReflectedClassTest)
+    {
+        ReflectionWrapper testReflectionWrapper;
+        AZ::SerializeContext sc;
+        sc.Class<TemporarilyReflected>()
+            ->Version(0)
+            ->Field("m_num", &TemporarilyReflected::m_num)
+            ;
+
+        sc.Class<ReflectionWrapper>()
+            ->Version(0)
+            ->Field("m_tempReflected", &ReflectionWrapper::m_tempReflected)
+            ;
+
+        AZStd::vector<AZ::u8> binaryBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> binaryStream(&binaryBuffer);
+        AZ::ObjectStream* binaryObjStream = ObjectStream::Create(&binaryStream, sc, ObjectStream::ST_BINARY);
+        binaryObjStream->WriteClass(&testReflectionWrapper);
+        EXPECT_TRUE(binaryObjStream->Finalize());
+
+        sc.EnableRemoveReflection();
+        // Remove the TemporarilyReflected struct so that it is not found when loading
+        sc.Class<TemporarilyReflected>()
+            ->Version(0)
+            ->Field("m_num", &TemporarilyReflected::m_num)
+            ;
+
+        // Unreflect ReflectionWrapper version 0 and Reflect it again as version 1
+        sc.Class<ReflectionWrapper>()
+            ->Version(0)
+            ->Field("m_tempReflected", &ReflectionWrapper::m_tempReflected)
+            ;
+        sc.DisableRemoveReflection();
+
+        sc.Class<ReflectionWrapper>()
+            ->Version(1, &GetDataOnNonReflectedClassVersionConverter)
+            ->Field("m_tempReflected", &ReflectionWrapper::m_tempReflected)
+            ;
+
+        ReflectionWrapper loadReflectionWrapper;
+        binaryStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_TRUE(Utils::LoadObjectFromStreamInPlace(binaryStream, loadReflectionWrapper, &sc));
+        AZ_TEST_STOP_ASSERTTEST(1);
     }
 
     class SerializableAnyFieldTest

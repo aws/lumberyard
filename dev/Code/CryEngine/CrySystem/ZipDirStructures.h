@@ -32,7 +32,6 @@
 #include "CryEndian.h"
 #include <IMemory.h>
 #include <ProjectDefines.h>
-#include <CheatProtection.h>
 
 #include "MTSafeAllocator.h"
 #include "ZipFileFormat.h"
@@ -557,7 +556,7 @@ namespace ZipDir
     extern void Encrypt(char* buffer, size_t size);
     extern void StreamCipher(char* buffer, size_t size, uint32 inKey);
     extern void StreamCipher(char* buffer, const FileEntry* inEntry);
-    CHEAT_PROTECTION_EXPORT extern unsigned long GetStreamCipherKey(const FileEntry* inEntry);
+    extern unsigned long GetStreamCipherKey(const FileEntry* inEntry);
 #endif
 
 #if defined(SUPPORT_XTEA_PAK_ENCRYPTION)

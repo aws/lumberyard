@@ -17,7 +17,6 @@
 #include "BaseObject.h"
 
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 
 
 namespace EMotionFX

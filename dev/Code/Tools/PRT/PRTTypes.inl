@@ -191,11 +191,7 @@ namespace NSH
 
 	template<class T>
 	template<class TE>
-	inline
-#if defined(_MSC_VER)
-	typename
-#endif
-	prtlist<T>::SListElem<TE> prtlist<T>::SListElem<TE>::CreateDummy()
+	inline struct prtlist<T>::SListElem<TE> prtlist<T>::SListElem<TE>::CreateDummy()
 	{
 		return SListElem<TE>((SListElem<TE>*)(UINT_PTR)0xFFFFFFFF, NULL);
 	}
@@ -255,15 +251,8 @@ namespace NSH
 
 	template<class T>
 	template<class TE>
-	inline
-#if defined(_MSC_VER)
-	typename
-#endif
-	prtlist<T>::SListElem<TE>& prtlist<T>::SListElem<TE>::operator=(const
-#if defined(_MSC_VER)
-	    typename
-#endif
-	    prtlist<T>::SListElem<TE>& crElem)
+	inline struct prtlist<T>::SListElem<TE>& prtlist<T>::SListElem<TE>::operator=(const
+	struct prtlist<T>::SListElem<TE>& crElem)
 	{	
 		pNext = crElem.pNext;
 		pPrevious = crElem.pPrevious;
@@ -273,11 +262,7 @@ namespace NSH
 
 	template<class T>
 	template<class TE>
-	inline
-#if defined(_MSC_VER)
-	typename
-#endif
-	prtlist<T>::SListElem<TE>& prtlist<T>::SListElem<TE>::operator++()
+	inline struct prtlist<T>::SListElem<TE>& prtlist<T>::SListElem<TE>::operator++()
 	{	
 		SListElem<TE> *pNextTmp = pNext;
 		if(!pNextTmp)
@@ -293,11 +278,7 @@ namespace NSH
 
 	template<class T>
 	template<class TE>
-	inline
-#if defined(_MSC_VER)
-	typename
-#endif
-	prtlist<T>::SListElem<TE> prtlist<T>::SListElem<TE>::operator++(int)
+	inline struct prtlist<T>::SListElem<TE> prtlist<T>::SListElem<TE>::operator++(int)
 	{
 		SListElem<TE> old(*this);
 		SListElem<TE> *pNextTmp = pNext;

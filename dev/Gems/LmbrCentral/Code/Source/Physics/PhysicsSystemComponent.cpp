@@ -171,7 +171,7 @@ namespace LmbrCentral
         {
             // RayCast return type
             behaviorContext->Class<RayCastHit>()
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Property("distance", BehaviorValueGetter(&RayCastHit::m_distance), nullptr)
                 ->Property("position", BehaviorValueGetter(&RayCastHit::m_position), nullptr)
                 ->Property("normal", BehaviorValueGetter(&RayCastHit::m_normal), nullptr)
@@ -181,7 +181,7 @@ namespace LmbrCentral
 
             // RayCastConfiguration
             behaviorContext->Class<RayCastConfiguration>()
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Property("origin", BehaviorValueProperty(&RayCastConfiguration::m_origin))
                 ->Property("direction", BehaviorValueProperty(&RayCastConfiguration::m_direction))
@@ -194,7 +194,7 @@ namespace LmbrCentral
 
             // RayCastResult
             behaviorContext->Class<RayCastResult>()
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Method("GetHitCount", &RayCastResult::GetHitCount)
                 ->Method("GetHit", &RayCastResult::GetHit)
@@ -226,7 +226,7 @@ namespace LmbrCentral
                 ;
 
             behaviorContext->EBus<PhysicsSystemRequestBus>("PhysicsSystemRequestBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Event("RayCast", &PhysicsSystemRequestBus::Events::RayCast)
                 ->Event("GatherPhysicalEntitiesInAABB", &PhysicsSystemRequestBus::Events::GatherPhysicalEntitiesInAABB)
                 ->Event("GatherPhysicalEntitiesAroundPoint", &PhysicsSystemRequestBus::Events::GatherPhysicalEntitiesAroundPoint)

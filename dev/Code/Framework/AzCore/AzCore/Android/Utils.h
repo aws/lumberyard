@@ -15,6 +15,7 @@
 
 #include <jni.h>
 #include <android/asset_manager.h>
+#include <android/configuration.h>
 #include <android/native_window.h>
 
 
@@ -32,6 +33,13 @@ namespace AZ
 
             //! Get the global pointer to the Android asset manager, which is used for APK file i/o.
             AAssetManager* GetAssetManager();
+
+            //! Get the global pointer to the device/application configuration,
+            AConfiguration* GetConfiguration();
+
+            //! If the AndroidEnv owns the native configuration, it will be updated with the latest configuration
+            //! information, otherwise nothing will happen.
+            void UpdateConfiguration();
 
             //! Get the hidden internal storage, typically this is where the application is installed
             //! on the device.

@@ -20,7 +20,19 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#if   defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define TRACE_CPP_SECTION_1 1
+#define TRACE_CPP_SECTION_2 2
+#define TRACE_CPP_SECTION_3 3
+#define TRACE_CPP_SECTION_4 4
+#define TRACE_CPP_SECTION_5 5
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
 
 #   if defined(AZ_PLATFORM_ANDROID)
 #       include <android/log.h>
@@ -54,6 +66,9 @@ namespace AZ {
     #if defined(AZ_PLATFORM_WINDOWS)
     LONG WINAPI ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo);
     LPTOP_LEVEL_EXCEPTION_FILTER g_previousExceptionHandler = NULL;
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
     #endif
 #endif // defined(AZ_ENABLE_DEBUG_TOOLS)
 
@@ -84,6 +99,13 @@ namespace AZ {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
 #   if defined(AZ_PLATFORM_WINDOWS)
         return ::IsDebuggerPresent() ? true : false;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #   elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
         return IsDebuggerAttached();
 #   elif defined(AZ_PLATFORM_APPLE)
@@ -138,6 +160,13 @@ namespace AZ {
 #   endif
 #   if defined(AZ_PLATFORM_WINDOWS)
         __debugbreak();
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #   elif defined(AZ_PLATFORM_LINUX)
         DEBUG_BREAK;
 #   elif defined(AZ_PLATFORM_ANDROID)
@@ -146,7 +175,7 @@ namespace AZ {
         __builtin_trap();
 #   else
         (*((int*)0)) = 1;
-#   endif // AZ_COMPILER_MSVC
+#   endif
 #endif // AZ_ENABLE_DEBUG_TOOLS
     }
 
@@ -154,6 +183,13 @@ namespace AZ {
     {
 #if defined(AZ_PLATFORM_WINDOWS)
         ::ExitProcess(exitCode);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
         _exit(exitCode);
 #endif
@@ -261,16 +297,13 @@ namespace AZ {
 
         EBUS_EVENT(TraceMessageDrillerBus, OnError, window, message);
         EBUS_EVENT_RESULT(result, TraceMessageBus, OnError, window, message);
+        Output(window, "==================================================================\n");
         if (result.m_value)
         {
-            Output(window, "==================================================================\n");
             g_alreadyHandlingAssertOrFatal = false;
             return;
         }
 
-        Output(window, "------------------------------------------------\n");
-        PrintCallstack(window, 1);
-        Output(window, "==================================================================\n");
 #if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_DEBUG_BUILD)
         //show error message box
         char fullMsg[8 * 1024];
@@ -315,14 +348,6 @@ namespace AZ {
 
         EBUS_EVENT(TraceMessageDrillerBus, OnWarning, window, message);
         EBUS_EVENT_RESULT(result, TraceMessageBus, OnWarning, window, message);
-        if (result.m_value)
-        {
-            Output(window, "==================================================================\n");
-            return;
-        }
-
-        Output(window, "------------------------------------------------\n");
-        PrintCallstack(window, 1);
         Output(window, "==================================================================\n");
     }
 

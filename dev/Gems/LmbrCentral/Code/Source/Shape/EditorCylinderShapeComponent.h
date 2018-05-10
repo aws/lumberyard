@@ -12,50 +12,44 @@
 #pragma once
 
 #include "EditorBaseShapeComponent.h"
+#include "CylinderShapeComponent.h"
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <LmbrCentral/Shape/CylinderShapeComponentBus.h>
-#include "CylinderShape.h"
 
 namespace LmbrCentral
 {
     class EditorCylinderShapeComponent
         : public EditorBaseShapeComponent
-        , public CylinderShape
+        , private AzFramework::EntityDebugDisplayEventBus::Handler
     {
     public:
-
         AZ_EDITOR_COMPONENT(EditorCylinderShapeComponent, EditorCylinderShapeComponentTypeId, EditorBaseShapeComponent);
         static void Reflect(AZ::ReflectContext* context);
 
-        ~EditorCylinderShapeComponent() override = default;
+        EditorCylinderShapeComponent() = default;
 
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
-        ////////////////////////////////////////////////////////////////////////
-        // EditorComponentBase implementation
-        void BuildGameEntity(AZ::Entity* gameEntity) override;
-        ////////////////////////////////////////////////////////////////////////
-
-        ////////////////////////////////////////////////////////////////////////
-        void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;
-        ////////////////////////////////////////////////////////////////////////
-
-        // CylinderShape
-        CylinderShapeConfig& GetConfiguration() override { return m_configuration; }
-
     protected:
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("CylinderShapeService", 0x507c688e));
         }
 
+        // EditorComponentBase
+        void BuildGameEntity(AZ::Entity* gameEntity) override;
+
     private:
+        AZ_DISABLE_COPY_MOVE(EditorCylinderShapeComponent)
+
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntity(bool& handled) override;
+
         void ConfigurationChanged();
 
-        //! Stores configuration of a cylinder for this component
-        CylinderShapeConfig m_configuration;
+        CylinderShape m_cylinderShape; ///< Stores underlying cylinder representation for this component.
     };
 } // namespace LmbrCentral

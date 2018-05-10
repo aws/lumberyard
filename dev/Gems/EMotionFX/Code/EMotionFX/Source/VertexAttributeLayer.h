@@ -15,7 +15,7 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
-#include <MCore/Source/UnicodeString.h>
+#include <AzCore/std/string/string.h>
 
 
 namespace EMotionFX
@@ -128,7 +128,7 @@ namespace EMotionFX
 
         void SetName(const char* name);
         const char* GetName() const;
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
         uint32 GetNameID() const;
 
 

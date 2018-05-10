@@ -20,6 +20,14 @@
 #include "../RenderCapabilities.h"
 #include <AzCore/std/string/string.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define PARSERBIN_CPP_SECTION_1 1
+#define PARSERBIN_CPP_SECTION_2 2
+#define PARSERBIN_CPP_SECTION_3 3
+#endif
+
 #if defined(OPENGL_ES) || defined(CRY_USE_METAL)
 #include "../../XRenderD3D9/DriverD3D.h" // for gcpRendD3D
 #endif
@@ -799,6 +807,13 @@ void CParserBin::Init()
     {
 #if defined(CRY_USE_METAL)
         SetupForMETAL();
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PARSERBIN_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(ParserBin_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(OPENGL_ES) && DXGL_INPUT_GLSL
         SetupForGLES3();
 #elif defined(OPENGL) && DXGL_INPUT_GLSL
@@ -1104,6 +1119,18 @@ const char* CParserBin::GetPlatformShaderlistName()
         }
     }
 #endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PARSERBIN_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(ParserBin_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    else if (CParserBin::m_nPlatform == SF_##PRIVATENAME)\
+    {\
+        return "ShaderList_" #PrivateName ".txt";\
+    }
+    AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
     // Confetti Nicholas Baldwin: adding metal shader language support
     else if (CParserBin::m_nPlatform == SF_METAL)
     {
@@ -1132,6 +1159,10 @@ CCryNameTSCRC CParserBin::GetPlatformSpecName(CCryNameTSCRC orgName)
     {
         nmTemp.add(0x800);
     }
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PARSERBIN_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(ParserBin_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     // Confetti Nicholas Baldwin: adding metal shader language support
     else
     if (CParserBin::m_nPlatform == SF_METAL)
@@ -2258,7 +2289,7 @@ bool CParserBin::Preprocess(int nPass, ShaderTokensVec& Tokens, FXShaderToken* p
     // real storage in Tokens once we know the full quantity
     enum
     {
-        TOKENS_BUFFER_SIZE = 80000
+        TOKENS_BUFFER_SIZE = 90000
     };
 
     PodArray<uint32> tokensBuffer(TOKENS_BUFFER_SIZE);

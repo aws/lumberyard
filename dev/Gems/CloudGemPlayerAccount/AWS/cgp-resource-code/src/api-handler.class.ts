@@ -33,7 +33,12 @@ export class PlayerAccountApi extends ApiHandler {
     }
 
     public searchAccountId(id: string): Observable<any> {
-        return super.get("admin/accounts/" + encodeURIComponent(id));
+        if (id != "") {
+            return super.get("admin/accounts/" + encodeURIComponent(id));
+        }
+        else {
+            return super.get("admin/accountSearch");
+        }
     }
 
     public searchBannedPlayers(id: string): Observable<any> {

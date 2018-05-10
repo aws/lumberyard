@@ -103,6 +103,9 @@ background: #6e7071;</string>
      </item>
      <item>
       <widget class="QPushButton" name="assetTypeSelector">
+       <property name="styleSheet">
+        <string notr="true">QPushButton::menu-indicator{ image:  url(none.jpg); }</string>
+       </property>
        <property name="icon">
         <iconset resource="resources.qrc">
          <normaloff>:/stylesheet/img/filter.png</normaloff>:/stylesheet/img/filter.png</iconset>

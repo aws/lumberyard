@@ -421,7 +421,7 @@ namespace JpgImage {
 
 bool WriteJPG(const byte* dat, int wdt, int hgt, const char* name, int bpp, int nQuality)
 {
-#if defined(APPLE) || defined(LINUX)
+#if defined(AZ_PLATFORMS_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_LINUX)
     return false;
 #else
     return JpgImage::jo_write_jpg(name, dat, wdt, hgt, bpp >> 3, nQuality);

@@ -15,6 +15,16 @@ namespace AZ
 {
     namespace IO
     {        
-        int TranslateOpenModeToSystemFileMode(const char* path, OpenMode mode);   
+        class FileIOStream;
+
+        int TranslateOpenModeToSystemFileMode(const char* path, OpenMode mode);
+
+        /**
+        * ReOpen a stream until it opens - this can help avoid transient problems where the OS has a brief
+        * lock on a file stream.
+        * returns false if the stream is not open at the end of the retries.
+        */
+        bool RetryOpenStream(FileIOStream& stream, int numRetries = 10, int delayBetweenRetry = 250);
     }   // namespace IO
+   
 }   // namespace AZ

@@ -13,7 +13,16 @@
 
 #include <AzCore/Math/Random.h>
 
-#if   defined(AZ_PLATFORM_WINDOWS)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define RANDOM_CPP_SECTION_1 1
+#define RANDOM_CPP_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RANDOM_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Random_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_PLATFORM_WINDOWS)
 #   include <AzCore/PlatformIncl.h>
 #   include <Wincrypt.h>
 #endif
@@ -85,6 +94,9 @@ bool BetterPseudoRandom::GetRandom(void* data, size_t dataSize)
         m_generatorHandle = nullptr;
         return false;
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RANDOM_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Random_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
     return true;
 }

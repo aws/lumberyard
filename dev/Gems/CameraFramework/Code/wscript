@@ -14,7 +14,7 @@ def build(bld):
 
     bld.DefineGem(
         use    = [ 'AzFramework' ],
-        disable_tests = not 'win' in bld.env['PLATFORM'],
+        disable_tests = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         file_list     = ['CameraFramework.waf_files'],
         win_features  = ['crcfix'],
     )

@@ -1013,7 +1013,7 @@ CFlowNode* CFlowGraphManager::CreatePrefabInstanceNode(CFlowGraph* pFlowGraph, C
             bool bResult = pPrefabEvents->AddPrefabInstanceNodeFromSelection(pNode, pPrefabObj);
             if (!bResult)
             {
-                Warning("FlowGraphManager: Failed to add prefab instance node for prefab instance: %s", pPrefabObj->GetName());
+                Warning("FlowGraphManager: Failed to add prefab instance node for prefab instance: %s", pPrefabObj->GetName().toUtf8().constData());
             }
         }
     }

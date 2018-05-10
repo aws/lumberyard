@@ -681,6 +681,9 @@ void CRemoteCommandServer::Run()
 
     CryThreadSetName(-1, "RemoteCommandThread");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(RemoteCommandServer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     while (!m_bCloseThread)
     {

@@ -60,9 +60,6 @@
 #include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
 #include <EMotionFX/CommandSystem/Source/MotionSetCommands.h>
 
-// AzCore
-#include <AzCore/std/string/string.h>
-
 
 namespace EMStudio
 {
@@ -220,9 +217,9 @@ namespace EMStudio
                 return;
 
             if (mCurrentNode)
-                mTextString.Format("%s (%d nodes)", mCurrentNode->GetName(), mActiveGraph->GetNumNodes());
+                mTextString = AZStd::string::format("%s (%d nodes)", mCurrentNode->GetName(), mActiveGraph->GetNumNodes());
             else
-                mTextString.Format("ROOT (%d state machines)", mActiveGraph->GetNumNodes());
+                mTextString = AZStd::string::format("ROOT (%d state machines)", mActiveGraph->GetNumNodes());
 
             painter.setPen( QColor(255,128,0) );
             painter.resetTransform();
@@ -254,8 +251,8 @@ namespace EMStudio
         }
 
         // if we have text, get it
-        MCore::String dropText = FromQtString(event->mimeData()->text());
-        MCore::CommandLine commandLine(dropText.AsChar());
+        AZStd::string dropText = FromQtString(event->mimeData()->text());
+        MCore::CommandLine commandLine(dropText.c_str());
 
         // calculate the drop position
         QPoint offset = LocalToGlobal(event->pos());
@@ -263,16 +260,19 @@ namespace EMStudio
         // check if the drag & drop is coming from an external window
         if (commandLine.CheckIfHasParameter("window"))
         {
-            MCore::String currentLine;
-            MCore::Array<MCore::String> droppedLines = dropText.Split(MCore::UnicodeCharacter::endLine);
-            const uint32 numDroppedLines = droppedLines.GetLength();
-            for (uint32 l = 0; l < numDroppedLines; ++l)
+            AZStd::string currentLine;
+            
+            AZStd::vector<AZStd::string> droppedLines;
+            AzFramework::StringFunc::Tokenize(dropText.c_str(), droppedLines, MCore::CharacterConstants::endLine, true /* keep empty strings */, true /* keep space strings */);
+
+            const size_t numDroppedLines = droppedLines.size();
+            for (size_t l = 0; l < numDroppedLines; ++l)
             {
                 currentLine = droppedLines[l];
-                MCore::CommandLine currentCommandLine(currentLine.AsChar());
+                MCore::CommandLine currentCommandLine(currentLine.c_str());
 
                 // get the name of the window where the drag came from
-                MCore::String dragWindow;
+                AZStd::string dragWindow;
                 currentCommandLine.GetValue("window", "", &dragWindow);
 
                 // drag&drop coming from the motion set window from the standard plugins
@@ -282,16 +282,16 @@ namespace EMStudio
                     //uint32 motionSetID = currentCommandLine.GetValueAsInt( "motionSetID", MCORE_INVALIDINDEX32);
 
                     // get the name of the motion
-                    MCore::String motionNameID;
+                    AZStd::string motionNameID;
                     currentCommandLine.GetValue("motionNameID", "", &motionNameID);
 
                     // get the motion set
                     //MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID( motionSetID );
 
-                    MCore::String attributeString;
-                    attributeString.Format("-motionID \"%s\"", motionNameID.AsChar());
+                    AZStd::string attributeString;
+                    attributeString = AZStd::string::format("-motionID \"%s\"", motionNameID.c_str());
 
-                    CommandSystem::CreateAnimGraphNode(animGraph, "BlendTreeMotionNode", "Motion", mCurrentNode, offset.x(), offset.y(), attributeString.AsChar());
+                    CommandSystem::CreateAnimGraphNode(animGraph, "BlendTreeMotionNode", "Motion", mCurrentNode, offset.x(), offset.y(), attributeString.c_str());
 
                     // Send LyMetrics event.
                     MetricsEventSender::SendCreateNodeEvent(azrtti_typeid<EMotionFX::AnimGraphMotionNode>());
@@ -362,16 +362,16 @@ namespace EMStudio
                         motionSet->BuildIdStringList(idStrings);
 
                         // remove the media root folder from the absolute motion filename so that we get the relative one to the media root folder
-                        MCore::String motionEntryFileName = motion->GetFileName();
+                        AZStd::string motionEntryFileName = motion->GetFileName();
                         EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&motionEntryFileName);
 
-                        if (EMotionFX::MotionSet::MotionEntry::CheckIfIsAbsoluteFilename(motionEntryFileName.AsChar()))
+                        if (EMotionFX::MotionSet::MotionEntry::CheckIfIsAbsoluteFilename(motionEntryFileName.c_str()))
                         {
                             AZStd::string text = AZStd::string::format("Some of the motions are located outside of the asset folder of your project:\n\n%s\n\nThis means that the motion set cannot store relative filenames and will hold absolute filenames.", EMotionFX::GetEMotionFX().GetMediaRootFolder());
                             QMessageBox::warning(this, "Warning", text.c_str());
                         }
 
-                        const AZStd::string idString = CommandSystem::AddMotionSetEntry(motionSet->GetID(), "", idStrings, motionEntryFileName.AsChar());
+                        const AZStd::string idString = CommandSystem::AddMotionSetEntry(motionSet->GetID(), "", idStrings, motionEntryFileName.c_str());
 
                         // now create our new node
                         const AZStd::string attributeString = AZStd::string("-motionID \"%s\"", idString.c_str());
@@ -391,19 +391,21 @@ namespace EMStudio
         else
         {
             // extract the class name
-            MCore::Array<MCore::String> parts = dropText.Split(MCore::UnicodeCharacter::semiColon);
-            if (parts.GetLength() != 3)
+            AZStd::vector<AZStd::string> parts;
+            AzFramework::StringFunc::Tokenize(dropText.c_str(), parts, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
+
+            if (parts.size() != 3)
             {
-                MCore::LogError("BlendGraphWidget::dropEvent() - Incorrect syntax using drop data '%s'", FromQtString(event->mimeData()->text()).AsChar());
+                MCore::LogError("BlendGraphWidget::dropEvent() - Incorrect syntax using drop data '%s'", FromQtString(event->mimeData()->text()).c_str());
                 event->ignore();
                 return;
             }
 
-            MCore::String commandString;
-            MCore::String resultString;
+            AZStd::string commandString;
+            AZStd::string resultString;
             if (mCurrentNode == nullptr)
             {
-                if (parts[1].CheckIfIsEqualNoCase("AnimGraphStateMachine") == false)
+                if (AzFramework::StringFunc::Equal(parts[1].c_str(), "AnimGraphStateMachine", false /* no case */) == false)
                 {
                     MCore::LogError("You can only drop State Machines as root nodes!");
                     event->ignore();
@@ -412,10 +414,10 @@ namespace EMStudio
             }
 
             // build the name prefix
-            MCore::String namePrefix = parts[2];
-            namePrefix.RemoveAllParts(" ");
+            AZStd::string namePrefix = parts[2];
+            AzFramework::StringFunc::Strip(namePrefix, MCore::CharacterConstants::space, true /* case sensitive */);
 
-            AZStd::string objectTypeString = parts[1].AsChar();
+            AZStd::string objectTypeString = parts[1].c_str();
             CommandSystem::CreateAnimGraphNode(animGraph, objectTypeString.c_str(), namePrefix, mCurrentNode, offset.x(), offset.y(), "");
 
             // Send LyMetrics event.
@@ -435,8 +437,8 @@ namespace EMStudio
         }
 
         // if we have text, get it
-        MCore::String dropText = FromQtString(event->mimeData()->text());
-        MCore::CommandLine commandLine(dropText.AsChar());
+        AZStd::string dropText = FromQtString(event->mimeData()->text());
+        MCore::CommandLine commandLine(dropText.c_str());
 
         // check if the drag & drop is coming from an external window
         if (commandLine.CheckIfHasParameter("window"))
@@ -458,15 +460,16 @@ namespace EMStudio
             return false;
         }
 
-        MCore::Array<MCore::String> parts = dropText.Split(MCore::UnicodeCharacter::semiColon);
+        AZStd::vector<AZStd::string> parts;
+        AzFramework::StringFunc::Tokenize(dropText.c_str(), parts, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
 
-        if (parts.GetLength() != 3)
+        if (parts.size() != 3)
         {
             //MCore::LogError("BlendGraphWidget::dropEvent() - Incorrect syntax using drop data '%s'", FromQtString(event->mimeData()->text()).AsChar());
             return false;
         }
 
-        if (parts[0].Find("EMotionFX::AnimGraphNode") != 0)
+        if (parts[0].find("EMotionFX::AnimGraphNode") != 0)
         {
             return false;
         }
@@ -474,7 +477,7 @@ namespace EMStudio
         // check if the dropped node is a state machine node
         bool canActAsState = false;
         EMotionFX::AnimGraphObjectFactory* nodeFactory = EMotionFX::GetAnimGraphManager().GetObjectFactory();
-        const uint32 nodeIndex = nodeFactory->FindRegisteredObjectByTypeString(parts[1].AsChar());
+        const uint32 nodeIndex = nodeFactory->FindRegisteredObjectByTypeString(parts[1].c_str());
         if (nodeIndex != MCORE_INVALIDINDEX32)
         {
             EMotionFX::AnimGraphObject* registeredObject = nodeFactory->GetRegisteredObject(nodeIndex);
@@ -567,13 +570,13 @@ namespace EMStudio
         const QPoint offset = SnapLocalToGrid(LocalToGlobal(mContextMenuEventMousePos), 10);
 
         // build the name prefix and create the node
-        MCore::String typeString = FromQtString(action->whatsThis());
-        MCore::String namePrefix = FromQtString(action->data().toString());
-        namePrefix.RemoveAllParts(" ");
+        AZStd::string typeString = FromQtString(action->whatsThis());
+        AZStd::string namePrefix = FromQtString(action->data().toString());
+        AzFramework::StringFunc::Strip(namePrefix, MCore::CharacterConstants::space, true /* case sensitive */);
         CommandSystem::CreateAnimGraphNode(animGraph, typeString, namePrefix, mCurrentNode, offset.x(), offset.y(), "");
 
         // Send LyMetrics event.
-        AZ::Uuid uuid = EMotionFX::GetAnimGraphManager().GetObjectFactory()->FindObjectTypeByTypeString(typeString.AsChar());
+        AZ::Uuid uuid = EMotionFX::GetAnimGraphManager().GetObjectFactory()->FindObjectTypeByTypeString(typeString.c_str());
         MetricsEventSender::SendCreateNodeEvent(uuid);
     }
 
@@ -667,7 +670,7 @@ namespace EMStudio
         MCore::CommandGroup commandGroup("Enable/disable transitions", numTransitions);
 
         // iterate through the selected transitions and and enable or disable them
-        MCore::String commandString;
+        AZStd::string commandString;
         for (uint32 i = 0; i < numTransitions; ++i)
         {
             // get the transition and its visual representation
@@ -691,17 +694,17 @@ namespace EMStudio
             }
 
             // enable or disable the transition and sync it with the visual version
-            commandString.Format("AnimGraphAdjustConnection -animGraphID %i -stateMachine \"%s\" -transitionID %i -isDisabled %i", animGraph->GetID(), parentNode->GetName(), transition->GetID(), !isEnabled);
-            commandGroup.AddCommandString(commandString.AsChar());
+            commandString = AZStd::string::format("AnimGraphAdjustConnection -animGraphID %i -stateMachine \"%s\" -transitionID %i -isDisabled %i", animGraph->GetID(), parentNode->GetName(), transition->GetID(), !isEnabled);
+            commandGroup.AddCommandString(commandString.c_str());
         }
 
         // execute the command
-        MCore::String resultString;
+        AZStd::string resultString;
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, resultString) == false)
         {
-            if (resultString.GetLength() > 0)
+            if (resultString.size() > 0)
             {
-                MCore::LogError(resultString.AsChar());
+                MCore::LogError(resultString.c_str());
             }
         }
     }
@@ -771,7 +774,7 @@ namespace EMStudio
             // create the context menu
             QMenu menu(this);
 
-            MCore::String actionName;
+            AZStd::string actionName;
             if (CheckIfIsStateMachine())
             {
                 if (selectedConnections.GetLength() == 1)
@@ -865,7 +868,7 @@ namespace EMStudio
                 }
             }
 
-            QAction* removeConnectionAction = menu.addAction(actionName.AsChar());
+            QAction* removeConnectionAction = menu.addAction(actionName.c_str());
             removeConnectionAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Remove.png"));
             connect(removeConnectionAction, SIGNAL(triggered()), this, SLOT(DeleteSelectedItems()));
 
@@ -991,24 +994,24 @@ namespace EMStudio
         }
 
         // build the command string
-        mMoveString.Format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -xPos %d -yPos %d", animGraph->GetID(), MCore::GetStringIDGenerator().GetName(node->GetID()).AsChar(), x, y);
+        mMoveString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -xPos %d -yPos %d", animGraph->GetID(), MCore::GetStringIdPool().GetName(node->GetID()).c_str(), x, y);
 
         // add it to the group
-        mMoveGroup.AddCommandString(mMoveString.AsChar());
+        mMoveGroup.AddCommandString(mMoveString.c_str());
     }
 
 
     // end moving
     void BlendGraphWidget::OnMoveEnd()
     {
-        MCore::String resultString;
+        AZStd::string resultString;
 
         // execute the command
         if (GetCommandManager()->ExecuteCommandGroup(mMoveGroup, resultString) == false)
         {
-            if (resultString.GetLength() > 0)
+            if (resultString.size() > 0)
             {
-                MCore::LogError(resultString.AsChar());
+                MCore::LogError(resultString.c_str());
             }
         }
     }
@@ -1340,16 +1343,16 @@ namespace EMStudio
             }
         }
 
-        const MCore::String& sourceName = MCore::GetStringIDGenerator().GetName(realSourceNode->GetID());
-        const MCore::String& targetName = MCore::GetStringIDGenerator().GetName(realTargetNode->GetID());
+        const AZStd::string& sourceName = MCore::GetStringIdPool().GetName(realSourceNode->GetID());
+        const AZStd::string& targetName = MCore::GetStringIdPool().GetName(realTargetNode->GetID());
 
         if (transitionType == MCORE_INVALIDINDEX32)
         {
-            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d", animGraph->GetID(), sourceName.AsChar(), targetName.AsChar(), realOutputPortNr, realInputPortNr, startOffset.x(), startOffset.y(), endOffset.x(), endOffset.y());
+            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d", animGraph->GetID(), sourceName.c_str(), targetName.c_str(), realOutputPortNr, realInputPortNr, startOffset.x(), startOffset.y(), endOffset.x(), endOffset.y());
         }
         else
         {
-            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -transitionType %d", animGraph->GetID(), sourceName.AsChar(), targetName.AsChar(), realOutputPortNr, realInputPortNr, startOffset.x(), startOffset.y(), endOffset.x(), endOffset.y(), transitionType);
+            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -transitionType %d", animGraph->GetID(), sourceName.c_str(), targetName.c_str(), realOutputPortNr, realInputPortNr, startOffset.x(), startOffset.y(), endOffset.x(), endOffset.y(), transitionType);
         }
 
         commandGroup.AddCommandString(command);
@@ -1554,13 +1557,13 @@ namespace EMStudio
         }
         else
         {
-            const MCore::String nodeGroupName = FromQtString(action->text());
-            newNodeGroup = animGraph->FindNodeGroupByName(nodeGroupName.AsChar());
+            const AZStd::string nodeGroupName = FromQtString(action->text());
+            newNodeGroup = animGraph->FindNodeGroupByName(nodeGroupName.c_str());
         }
 
         // create the command group
         MCore::CommandGroup commandGroup("Adjust anim graph node group");
-        MCore::String tempString;
+        AZStd::string tempString;
 
         // add each command
         if (newNodeGroup)
@@ -1572,13 +1575,13 @@ namespace EMStudio
                 EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->FindNodeGroupForNode(selectedNodes[i]);
                 if (nodeGroup)
                 {
-                    tempString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -nodeNames \"%s\" -nodeAction \"remove\"", animGraph->GetID(), nodeGroup->GetName(), selectedNodes[i]->GetName());
-                    commandGroup.AddCommandString(tempString.AsChar());
+                    tempString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -nodeNames \"%s\" -nodeAction \"remove\"", animGraph->GetID(), nodeGroup->GetName(), selectedNodes[i]->GetName());
+                    commandGroup.AddCommandString(tempString.c_str());
                 }
             }
 
             // build the node names
-            MCore::String nodeNames;
+            AZStd::string nodeNames;
             for (uint32 i = 0; i < numSelectedNodes; ++i)
             {
                 nodeNames += selectedNodes[i]->GetName();
@@ -1589,8 +1592,8 @@ namespace EMStudio
             }
 
             // add the "add" command
-            tempString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -nodeNames \"%s\" -nodeAction \"add\"", animGraph->GetID(), newNodeGroup->GetName(), nodeNames.AsChar());
-            commandGroup.AddCommandString(tempString.AsChar());
+            tempString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -nodeNames \"%s\" -nodeAction \"add\"", animGraph->GetID(), newNodeGroup->GetName(), nodeNames.c_str());
+            commandGroup.AddCommandString(tempString.c_str());
         }
         else
         {
@@ -1600,8 +1603,8 @@ namespace EMStudio
                 EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->FindNodeGroupForNode(selectedNodes[i]);
                 if (nodeGroup)
                 {
-                    tempString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -nodeNames \"%s\" -nodeAction \"remove\"", animGraph->GetID(), nodeGroup->GetName(), selectedNodes[i]->GetName());
-                    commandGroup.AddCommandString(tempString.AsChar());
+                    tempString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -nodeNames \"%s\" -nodeAction \"remove\"", animGraph->GetID(), nodeGroup->GetName(), selectedNodes[i]->GetName());
+                    commandGroup.AddCommandString(tempString.c_str());
                 }
             }
         }
@@ -1609,7 +1612,7 @@ namespace EMStudio
         // execute the command group
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, tempString) == false)
         {
-            MCore::LogError(tempString.AsChar());
+            MCore::LogError(tempString.c_str());
         }
     }
 
@@ -1691,8 +1694,8 @@ namespace EMStudio
 
             if (mActiveGraph)
             {
-                MCore::String toolTipString;
-                toolTipString.Reserve(16384);
+                AZStd::string toolTipString;
+                toolTipString.reserve(16384);
 
                 QPoint localPos     = helpEvent->pos();
                 QPoint globalPos    = LocalToGlobal(localPos);
@@ -1719,8 +1722,8 @@ namespace EMStudio
                         EMotionFX::AnimGraphTransitionCondition* condition = stateConnection->FindCondition(globalPos);
                         if (condition)
                         {
-                            MCore::String tempConditionString;
-                            tempConditionString.Reserve(16384);
+                            AZStd::string tempConditionString;
+                            tempConditionString.reserve(16384);
 
                             condition->GetTooltip(&tempConditionString);
 
@@ -1754,7 +1757,7 @@ namespace EMStudio
                         }
 
                         // prepare the node names
-                        MCore::String sourceNodeName, targetNodeName;
+                        AZStd::string sourceNodeName, targetNodeName;
                         if (sourceNode)
                         {
                             sourceNodeName = sourceNode->GetName();
@@ -1774,7 +1777,7 @@ namespace EMStudio
                             EMotionFX::AnimGraphNode* sourceEMFXNode = blendSourceNode->GetEMFXNode();
 
                             // prepare the port names
-                            MCore::String outputPortName, inputPortName;
+                            AZStd::string outputPortName, inputPortName;
                             if (sourceNode)
                             {
                                 outputPortName = sourceNode->GetOutputPort(outputPortNr)->GetName();
@@ -1786,11 +1789,11 @@ namespace EMStudio
                             //outputPortName.ConvertToNonBreakingHTMLSpaces();
                             //inputPortName.ConvertToNonBreakingHTMLSpaces();
 
-                            int columnSourceWidth = boldFontMetrics.width(sourceNodeName.AsChar()) + boldFontMetrics.width(" ") + fontMetrics.width("(Port: ") +  fontMetrics.width(outputPortName.AsChar()) + fontMetrics.width(")");
-                            int columnTargetWidth = boldFontMetrics.width(targetNodeName.AsChar()) + boldFontMetrics.width(" ") + fontMetrics.width("(Port: ") +  fontMetrics.width(inputPortName.AsChar()) + fontMetrics.width(")");
+                            int columnSourceWidth = boldFontMetrics.width(sourceNodeName.c_str()) + boldFontMetrics.width(" ") + fontMetrics.width("(Port: ") +  fontMetrics.width(outputPortName.c_str()) + fontMetrics.width(")");
+                            int columnTargetWidth = boldFontMetrics.width(targetNodeName.c_str()) + boldFontMetrics.width(" ") + fontMetrics.width("(Port: ") +  fontMetrics.width(inputPortName.c_str()) + fontMetrics.width(")");
 
                             // construct the html tooltip string
-                            toolTipString.FormatAdd("<qt><table border=\"0\"><tr><td width=\"%i\"><p style=\"color:rgb(%i,%i,%i)\"><b>%s </b>(Port: %s)</p></td> <td>to</td> <td width=\"%i\"><p style=\"color:rgb(%i,%i,%i)\"><b>%s </b>(Port: %s)</p></td></tr>", columnSourceWidth, sourceColor.red(), sourceColor.green(), sourceColor.blue(), sourceNodeName.AsChar(), outputPortName.AsChar(), columnTargetWidth, targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.AsChar(), inputPortName.AsChar());
+                            toolTipString += AZStd::string::format("<qt><table border=\"0\"><tr><td width=\"%i\"><p style=\"color:rgb(%i,%i,%i)\"><b>%s </b>(Port: %s)</p></td> <td>to</td> <td width=\"%i\"><p style=\"color:rgb(%i,%i,%i)\"><b>%s </b>(Port: %s)</p></td></tr>", columnSourceWidth, sourceColor.red(), sourceColor.green(), sourceColor.blue(), sourceNodeName.c_str(), outputPortName.c_str(), columnTargetWidth, targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str(), inputPortName.c_str());
 
                             // now check if the connection is coming from a parameter node
                             if (sourceEMFXNode->GetType() == EMotionFX::BlendTreeParameterNode::TYPE_ID)
@@ -1806,7 +1809,7 @@ namespace EMStudio
                                     MCore::AttributeSettings* parameter = animGraph->GetParameter(parameterIndex);
 
                                     toolTipString += "\n<qt><table border=\"0\"><tr>";
-                                    toolTipString.FormatAdd("<td><p style=\"color:rgb(80, 80, 80)\"><b>Parameter:</b></p></td><td><p style=\"color:rgb(115, 115, 115)\">%s</p></td>", parameter->GetName());
+                                    toolTipString += AZStd::string::format("<td><p style=\"color:rgb(80, 80, 80)\"><b>Parameter:</b></p></td><td><p style=\"color:rgb(115, 115, 115)\">%s</p></td>", parameter->GetName());
                                     toolTipString += "</tr></table></qt>";
                                 }
                             }
@@ -1819,11 +1822,11 @@ namespace EMStudio
                             // construct the html tooltip string
                             if (sourceNode && targetNode)
                             {
-                                toolTipString.FormatAdd("<td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td> <td>to</td> <td width=\"%i\"><b><nobr><p style=\"color:rgb(%i,%i,%i)\">%s</p></nobr></b></td>", boldFontMetrics.width(sourceNodeName.AsChar()), sourceColor.red(), sourceColor.green(), sourceColor.blue(), sourceNodeName.AsChar(), boldFontMetrics.width(targetNodeName.AsChar()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.AsChar());
+                                toolTipString += AZStd::string::format("<td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td> <td>to</td> <td width=\"%i\"><b><nobr><p style=\"color:rgb(%i,%i,%i)\">%s</p></nobr></b></td>", boldFontMetrics.width(sourceNodeName.c_str()), sourceColor.red(), sourceColor.green(), sourceColor.blue(), sourceNodeName.c_str(), boldFontMetrics.width(targetNodeName.c_str()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str());
                             }
                             else if (targetNode)
                             {
-                                toolTipString.FormatAdd("<td>to</td> <td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td>", boldFontMetrics.width(targetNodeName.AsChar()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.AsChar());
+                                toolTipString += AZStd::string::format("<td>to</td> <td width=\"%i\"><b><p style=\"color:rgb(%i,%i,%i)\">%s</p></b></td>", boldFontMetrics.width(targetNodeName.c_str()), targetColor.red(), targetColor.green(), targetColor.blue(), targetNodeName.c_str());
                             }
 
                             toolTipString += "</tr></table></qt>";
@@ -1839,25 +1842,25 @@ namespace EMStudio
                     BlendTreeVisualNode* blendNode   = static_cast<BlendTreeVisualNode*>(node);
                     animGraphNode              = blendNode->GetEMFXNode();
 
-                    MCore::String tempString;
+                    AZStd::string tempString;
 
                     toolTipString = "<qt><table border=\"0\">";
 
                     // node name
-                    tempString.Format("<tr><td><b>Name:</b></td><td><nobr>%s</nobr></td></tr>", animGraphNode->GetName());
+                    tempString = AZStd::string::format("<tr><td><b>Name:</b></td><td><nobr>%s</nobr></td></tr>", animGraphNode->GetName());
                     toolTipString += tempString;
 
                     // node palette name
-                    tempString.Format("<tr><td><b>Type:</b></td><td><nobr>%s</nobr></td></tr>", animGraphNode->GetPaletteName());
+                    tempString = AZStd::string::format("<tr><td><b>Type:</b></td><td><nobr>%s</nobr></td></tr>", animGraphNode->GetPaletteName());
                     toolTipString += tempString;
 
                     if (animGraphNode->GetCanHaveChildren())
                     {
                         // child nodes
-                        toolTipString.FormatAdd("<tr><td><b><nobr>Child Nodes:</nobr></b></td><td>%i</td></tr>", animGraphNode->GetNumChildNodes());
+                        toolTipString += AZStd::string::format("<tr><td><b><nobr>Child Nodes:</nobr></b></td><td>%i</td></tr>", animGraphNode->GetNumChildNodes());
 
                         // recursive child nodes
-                        tempString.Format("<tr><td width=\"140\"><b><nobr>Recursive Child Nodes:</nobr></b></td><td>%i</td></tr>", animGraphNode->RecursiveCalcNumNodes());
+                        tempString = AZStd::string::format("<tr><td width=\"140\"><b><nobr>Recursive Child Nodes:</nobr></b></td><td>%i</td></tr>", animGraphNode->RecursiveCalcNumNodes());
                         toolTipString += tempString;
                     }
 
@@ -1867,7 +1870,7 @@ namespace EMStudio
                     //CommandLine commandLine(toolTipString);
 
                     //toolTipString = "<table border=\"0\"><tr>";
-                    //toolTipString.FormatAdd("<td><b>nodeType</b></td><td>%s</td>", animGraphNode->GetTypeString());
+                    //toolTipString += AZStd::string::format("<td><b>nodeType</b></td><td>%s</td>", animGraphNode->GetTypeString());
                     //const uint32 numParameters = commandLine.GetNumParameters();
                     //for (uint32 n=0; n<numParameters; ++n)
                     //{
@@ -1875,8 +1878,8 @@ namespace EMStudio
                     //toolTipString += "</tr><tr>";
 
                     // add the name and its value and add them to the table
-                    //toolTipString.FormatAdd("<td><b>%s</b></td>", commandLine.GetParameterName(n).AsChar());
-                    //toolTipString.FormatAdd("<td>%s</td>", commandLine.GetParameterValue(n).AsChar());
+                    //toolTipString += AZStd::string::format("<td><b>%s</b></td>", commandLine.GetParameterName(n).AsChar());
+                    //toolTipString += AZStd::string::format("<td>%s</td>", commandLine.GetParameterValue(n).AsChar());
                     //}
 
 
@@ -1892,11 +1895,11 @@ namespace EMStudio
                         }
 
                         // incoming transitions
-                        tempString.Format("<tr><td><b>Incoming Transitions:</b></td><td>%i</td></tr>", stateMachine->CalcNumIncomingTransitions(animGraphNode));
+                        tempString = AZStd::string::format("<tr><td><b>Incoming Transitions:</b></td><td>%i</td></tr>", stateMachine->CalcNumIncomingTransitions(animGraphNode));
                         toolTipString += tempString;
 
                         // outgoing transitions
-                        tempString.Format("<tr><td width=\"130\"><b>Outgoing Transitions:</b></td><td>%i</td></tr>", stateMachine->CalcNumOutgoingTransitions(animGraphNode));
+                        tempString = AZStd::string::format("<tr><td width=\"130\"><b>Outgoing Transitions:</b></td><td>%i</td></tr>", stateMachine->CalcNumOutgoingTransitions(animGraphNode));
                         toolTipString += tempString;
                     }
 
@@ -1904,10 +1907,10 @@ namespace EMStudio
                     toolTipString += "</table></qt>";
                 }
 
-                if (toolTipString.GetIsEmpty() == false)
+                if (toolTipString.empty() == false)
                 {
                     QRect toolTipRect(globalPos.x() - 4, globalPos.y() - 4, 8, 8);
-                    QToolTip::showText(tooltipPos, toolTipString.AsChar(), this, toolTipRect);
+                    QToolTip::showText(tooltipPos, toolTipString.c_str(), this, toolTipRect);
                 }
 
                 return NodeGraphWidget::event(event);
@@ -1933,23 +1936,23 @@ namespace EMStudio
 
         StateConnection* stateConnection = static_cast<StateConnection*>(connection);
 
-        MCore::String commandString;
-        commandString.Reserve(2048);
+        AZStd::string commandString;
+        commandString.reserve(2048);
 
         // get the state machine name and the transition id to work on
-        MCore::String stateMachineName = mCurrentNode->GetName();
+        AZStd::string stateMachineName = mCurrentNode->GetName();
         const uint32 transitionID = connection->GetID();
 
         // construct the command including the required parameters
-        commandString.Format("AnimGraphAdjustConnection -animGraphID %i -stateMachine \"%s\" -transitionID %i -startOffsetX %i -startOffsetY %i -endOffsetX %i -endOffsetY %i ", animGraph->GetID(), stateMachineName.AsChar(), transitionID, stateConnection->GetStartOffset().x(), stateConnection->GetStartOffset().y(), stateConnection->GetEndOffset().x(), stateConnection->GetEndOffset().y());
+        commandString = AZStd::string::format("AnimGraphAdjustConnection -animGraphID %i -stateMachine \"%s\" -transitionID %i -startOffsetX %i -startOffsetY %i -endOffsetX %i -endOffsetY %i ", animGraph->GetID(), stateMachineName.c_str(), transitionID, stateConnection->GetStartOffset().x(), stateConnection->GetStartOffset().y(), stateConnection->GetEndOffset().x(), stateConnection->GetEndOffset().y());
 
         if (stateConnection->GetSourceNode())
         {
-            commandString.FormatAdd("-sourceNode \"%s\" ", stateConnection->GetSourceNode()->GetName());
+            commandString += AZStd::string::format("-sourceNode \"%s\" ", stateConnection->GetSourceNode()->GetName());
         }
         if (stateConnection->GetTargetNode())
         {
-            commandString.FormatAdd("-targetNode \"%s\" ", stateConnection->GetTargetNode()->GetName());
+            commandString += AZStd::string::format("-targetNode \"%s\" ", stateConnection->GetTargetNode()->GetName());
         }
 
         mActiveGraph->StopReplaceTransitionHead();
@@ -1963,12 +1966,12 @@ namespace EMStudio
 
         if (mActiveGraph->GetReplaceTransitionValid())
         {
-            MCore::String outResult;
-            if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), outResult, true) == false)
+            AZStd::string outResult;
+            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), outResult, true) == false)
             {
-                if (outResult.GetIsEmpty() == false)
+                if (outResult.empty() == false)
                 {
-                    MCore::LogError(outResult.AsChar());
+                    MCore::LogError(outResult.c_str());
                 }
             }
         }

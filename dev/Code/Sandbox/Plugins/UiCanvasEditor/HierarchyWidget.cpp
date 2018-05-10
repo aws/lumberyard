@@ -65,6 +65,7 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
 
     QObject::connect(this,
         &QTreeWidget::itemClicked,
+        this,
         [this](QTreeWidgetItem* item, int column)
         {
             HierarchyItem* i = dynamic_cast<HierarchyItem*>(item);

@@ -13,6 +13,7 @@
 // include the required headers
 #include "MorphSetup.h"
 #include "MorphTarget.h"
+#include <MCore/Source/StringConversions.h>
 
 
 namespace EMotionFX
@@ -119,13 +120,43 @@ namespace EMotionFX
     }
 
 
-    // find a morph target by name (case sensitive)
-    MorphTarget* MorphSetup::FindMorphTargetByName(const char* name)
+    uint32 MorphSetup::FindMorphTargetIndexByName(const char* name) const
     {
         const uint32 numTargets = mMorphTargets.GetLength();
         for (uint32 i = 0; i < numTargets; ++i)
         {
-            if (mMorphTargets[i]->GetNameString().CheckIfIsEqual(name))
+            if (mMorphTargets[i]->GetNameString() == name)
+            {
+                return i;
+            }
+        }
+
+        return MCORE_INVALIDINDEX32;
+    }
+
+
+    uint32 MorphSetup::FindMorphTargetIndexByNameNoCase(const char* name) const
+    {
+        const uint32 numTargets = mMorphTargets.GetLength();
+        for (uint32 i = 0; i < numTargets; ++i)
+        {
+            if (AzFramework::StringFunc::Equal(mMorphTargets[i]->GetNameString().c_str(), name, false /* no case */))
+            {
+                return i;
+            }
+        }
+
+        return MCORE_INVALIDINDEX32;
+    }
+
+
+    // find a morph target by name (case sensitive)
+    MorphTarget* MorphSetup::FindMorphTargetByName(const char* name) const
+    {
+        const uint32 numTargets = mMorphTargets.GetLength();
+        for (uint32 i = 0; i < numTargets; ++i)
+        {
+            if (mMorphTargets[i]->GetNameString() == name)
             {
                 return mMorphTargets[i];
             }
@@ -136,12 +167,12 @@ namespace EMotionFX
 
 
     // find a morph target by name (not case sensitive)
-    MorphTarget* MorphSetup::FindMorphTargetByNameNoCase(const char* name)
+    MorphTarget* MorphSetup::FindMorphTargetByNameNoCase(const char* name) const
     {
         const uint32 numTargets = mMorphTargets.GetLength();
         for (uint32 i = 0; i < numTargets; ++i)
         {
-            if (mMorphTargets[i]->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(mMorphTargets[i]->GetNameString().c_str(), name, false /* no case */))
             {
                 return mMorphTargets[i];
             }

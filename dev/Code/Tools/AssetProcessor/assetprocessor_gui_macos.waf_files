@@ -1,0 +1,11 @@
+{
+    "none":
+    {
+        "FileWatcher": [
+            "native/FileWatcher/FileWatcher_macos.cpp"
+        ],
+        "Resources": [
+            "gui_info.plist"
+        ]
+    }
+}

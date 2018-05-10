@@ -86,19 +86,19 @@ namespace EMStudio
                 continue;
             }
 
-            MCore::String commandParameters;
+            AZStd::string commandParameters;
             if (playbackInfo->mMirrorMotion != mMotionMirroringButton->isChecked())
             {
-                commandParameters += MCore::String().Format("-mirrorMotion %s ", mMotionMirroringButton->isChecked() ? "true" : "false");
+                commandParameters += AZStd::string::format("-mirrorMotion %s ", AZStd::to_string(mMotionMirroringButton->isChecked()).c_str());
             }
 
             // debug output, remove me later on!
-            //LogDebug("commandParameters: %s", commandParameters.AsChar());
+            //LogDebug("commandParameters: %s", commandParameters.c_str());
 
             // in case the command parameters are empty it means nothing changed, so we can skip this command
-            if (commandParameters.GetIsEmpty() == false)
+            if (commandParameters.empty() == false)
             {
-                commandGroup.AddCommandString(MCore::String().Format("AdjustDefaultPlayBackInfo -filename \"%s\" %s", motion->GetFileName(), commandParameters.AsChar()).AsChar());
+                commandGroup.AddCommandString(AZStd::string::format("AdjustDefaultPlayBackInfo -filename \"%s\" %s", motion->GetFileName(), commandParameters.c_str()).c_str());
             }
 
             // adjust all motion instances if we modified the mirroring settings
@@ -139,10 +139,10 @@ namespace EMStudio
         }
 
         // execute the group command
-        MCore::String outResult;
+        AZStd::string outResult;
         if (CommandSystem::GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
     }
 

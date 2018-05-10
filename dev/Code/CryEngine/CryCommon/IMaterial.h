@@ -264,6 +264,7 @@ struct IMaterial
     //! @see EMaterialFlags
     virtual void SetFlags(int flags) = 0;
     virtual int GetFlags() const = 0;
+    virtual void UpdateFlags() = 0;
 
     // Returns true if this is the default material.
     virtual bool IsDefault() = 0;

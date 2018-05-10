@@ -34,7 +34,7 @@ namespace GraphCanvas
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<NodeLayoutComponent>()
+                serializeContext->Class<NodeLayoutComponent, AZ::Component>()
                     ->Version(1)
                 ;
             }

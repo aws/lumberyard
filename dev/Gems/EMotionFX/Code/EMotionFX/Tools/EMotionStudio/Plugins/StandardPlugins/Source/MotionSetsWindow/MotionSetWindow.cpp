@@ -12,8 +12,6 @@
 
 #include "MotionSetsWindowPlugin.h"
 #include <AzCore/IO/FileIO.h>
-#include <AzCore/std/string/conversions.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <QPushButton>
 #include <QLabel>
 #include <QWidget>
@@ -39,9 +37,6 @@
 #include <MCore/Source/FileSystem.h>
 #include "../MotionWindow/MotionListWindow.h"
 #include "MotionSetManagementWindow.h"
-
-// include required AzCore headers
-#include <AzCore/std/string/string.h>
 
 
 namespace EMStudio
@@ -945,7 +940,7 @@ namespace EMStudio
 
         // iterate over all motions and add them
         AZStd::string idString;
-        MCore::String motionName;
+        AZStd::string motionName;
         bool isAbsoluteMotion = false;
         for (const AZStd::string& filename : filenames)
         {
@@ -953,12 +948,12 @@ namespace EMStudio
             motionName = filename.c_str();
             EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&motionName);
 
-            if (EMotionFX::MotionSet::MotionEntry::CheckIfIsAbsoluteFilename(motionName.AsChar()))
+            if (EMotionFX::MotionSet::MotionEntry::CheckIfIsAbsoluteFilename(motionName.c_str()))
             {
                 isAbsoluteMotion = true;
             }
 
-            idString = CommandSystem::AddMotionSetEntry(selectedSet->GetID(), "", idStrings, motionName.AsChar(), &commandGroup);
+            idString = CommandSystem::AddMotionSetEntry(selectedSet->GetID(), "", idStrings, motionName.c_str(), &commandGroup);
 
             // add the id we gave to this motion to the id string list so that the other new motions can't get that one
             idStrings.push_back(idString);
@@ -1007,7 +1002,7 @@ namespace EMStudio
                 // get the complete file name and extract the extension
                 //fileName  = urls[i].toLocalFile().toAscii().data();
                 filename = urls[i].toLocalFile().toUtf8().data();
-                AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false);
+                AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
                 // check if we are dealing with a valid motion file
                 if (extension == "motion")
@@ -1043,7 +1038,7 @@ namespace EMStudio
                 MCore::CommandLine currentCommandLine(tokens[i].c_str());
 
                 // get the name of the window where the drag came from
-                MCore::String dragWindow;
+                AZStd::string dragWindow;
                 currentCommandLine.GetValue("window", "", &dragWindow);
 
                 // drag&drop coming from the motion window from the standard plugins
@@ -1445,9 +1440,7 @@ namespace EMStudio
             CommandSystem::LoadMotionsCommand(onlyOneMotionFileNames);
 
             // Remove the media root folder from the absolute motion filename so that we get the relative one to the media root folder.
-            MCore::String relativeFilename = motionFilename.c_str();
-            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&relativeFilename);
-            motionFilename = relativeFilename.AsChar();
+            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&motionFilename);
         }
 
         // Find the motion entry by the table widget item.
@@ -1948,7 +1941,7 @@ namespace EMStudio
 
         // Modify each ID using the operation in the modified array.
         AZStd::string newMotionID;
-        MCore::String tempString;
+        AZStd::string tempString;
         for (uint32 i = 0; i < numMotionIDs; ++i)
         {
             // 0=Replace All, 1=Replace First, 2=Replace Last
@@ -1960,24 +1953,24 @@ namespace EMStudio
                 case 0:
                 {
                     tempString = mMotionIDs[i].c_str();
-                    tempString.Replace(mStringALineEdit->text().toUtf8().data(), mStringBLineEdit->text().toUtf8().data());
-                    newMotionID = tempString.AsChar();
+                    AzFramework::StringFunc::Replace(tempString, mStringALineEdit->text().toUtf8().data(), mStringBLineEdit->text().toUtf8().data(), true /* case sensitive */);
+                    newMotionID = tempString.c_str();
                     break;
                 }
 
                 case 1:
                 {
                     tempString = mMotionIDs[i].c_str();
-                    tempString.ReplaceFirst(mStringALineEdit->text().toUtf8().data(), mStringBLineEdit->text().toUtf8().data());
-                    newMotionID = tempString.AsChar();
+                    AzFramework::StringFunc::Replace(tempString, mStringALineEdit->text().toUtf8().data(), mStringBLineEdit->text().toUtf8().data(), true /* case sensitive */, true /* replace first */, false /* replace last */);
+                    newMotionID = tempString.c_str();
                     break;
                 }
 
                 case 2:
                 {
                     tempString = mMotionIDs[i].c_str();
-                    tempString.ReplaceLast(mStringALineEdit->text().toUtf8().data(), mStringBLineEdit->text().toUtf8().data());
-                    newMotionID = tempString.AsChar();
+                    AzFramework::StringFunc::Replace(tempString, mStringALineEdit->text().toUtf8().data(), mStringBLineEdit->text().toUtf8().data(), true /* case sensitive */, false /* replace first */, true /* replace last */);
+                    newMotionID = tempString.c_str();
                     break;
                 }
             }

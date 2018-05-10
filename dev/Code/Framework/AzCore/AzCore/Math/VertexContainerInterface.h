@@ -97,4 +97,35 @@ namespace AZ
          */
         virtual void ClearVertices() = 0;
     };
+
+    /**
+     * Interface for vertex container notifications.
+     */
+    template<typename Vertex>
+    class VertexContainerNotificationInterface
+    {
+    public:
+        virtual ~VertexContainerNotificationInterface() = default;
+
+        /**
+         * Called when a new vertex is added.
+         */
+        virtual void OnVertexAdded(size_t index) = 0;
+        /**
+         * Called when a vertex is removed.
+         */
+        virtual void OnVertexRemoved(size_t index) = 0;
+        /**
+         * Called when a vertex is updated.
+         */
+        virtual void OnVertexUpdated(size_t index) = 0;
+        /**
+         * Called when a new set of vertices is set.
+         */
+        virtual void OnVerticesSet(const AZStd::vector<Vertex>& vertices) = 0;
+        /**
+         * Called when all vertices are cleared.
+         */
+        virtual void OnVerticesCleared() = 0;
+    };
 }

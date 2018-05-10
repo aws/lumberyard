@@ -184,7 +184,7 @@ namespace ScriptCanvasDeveloperEditor
                     }
                     else
                     {
-                        AZ_Error("ScriptCanvas", "XMLDoc::LoadTSDoc-Zero byte Qt .ts file! filename=\"%s\".", tsFilePath);
+                        AZ_Error("ScriptCanvas", false, "XMLDoc::LoadTSDoc-Zero byte Qt .ts file! filename=\"%s\".", tsFilePath);
                     }
                 }
                 else

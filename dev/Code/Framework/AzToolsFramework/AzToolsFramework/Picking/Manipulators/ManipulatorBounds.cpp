@@ -43,13 +43,13 @@ namespace AzToolsFramework
 
         void ManipulatorBoundBox::SetShapeData(const BoundRequestShapeBase& shapeData)
         {
-            if (const BoundShapeBox* quadData = azrtti_cast<const BoundShapeBox*>(&shapeData))
+            if (const BoundShapeBox* boxData = azrtti_cast<const BoundShapeBox*>(&shapeData))
             {
-                m_center = quadData->m_center;
-                m_axis1 = quadData->m_orientation * AZ::Vector3::CreateAxisX();
-                m_axis2 = quadData->m_orientation * AZ::Vector3::CreateAxisY();
-                m_axis3 = quadData->m_orientation * AZ::Vector3::CreateAxisZ();
-                m_halfExtents = quadData->m_halfExtents;
+                m_center = boxData->m_center;
+                m_axis1 = boxData->m_orientation * AZ::Vector3::CreateAxisX();
+                m_axis2 = boxData->m_orientation * AZ::Vector3::CreateAxisY();
+                m_axis3 = boxData->m_orientation * AZ::Vector3::CreateAxisZ();
+                m_halfExtents = boxData->m_halfExtents;
             }
         }
 
@@ -201,13 +201,7 @@ namespace AzToolsFramework
         {
             if (const AZStd::shared_ptr<const AZ::Spline> spline = m_spline.lock())
             {
-                AZ::Transform worldFromLocalNormalized = m_transform;
-                const AZ::Vector3 scale = worldFromLocalNormalized.ExtractScale();
-                const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
-
-                const AZ::Vector3 localRayOrigin = localFromWorldNormalized * rayOrigin * scale.GetReciprocal();
-                const AZ::Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(rayDirection);
-                AZ::RaySplineQueryResult splineQueryResult = spline->GetNearestAddressRay(localRayOrigin, localRayDirection);
+                AZ::RaySplineQueryResult splineQueryResult = AZ::IntersectSpline(m_transform, rayOrigin, rayDirection, *spline);
                 rayIntersectionDistance = splineQueryResult.m_rayDistance;
                 return splineQueryResult.m_distanceSq.IsLessEqualThan(AZ::VectorFloat(powf(m_width, 2.0f)));
             }

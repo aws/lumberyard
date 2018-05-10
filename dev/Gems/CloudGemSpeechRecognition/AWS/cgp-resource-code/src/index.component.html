@@ -96,6 +96,7 @@
                                     <td>
                                         <div class="float-right">
                                             <action-stub-items *ngIf="bot.version == '$LATEST'" class="float-right" [model]="bot" [delete]="deleteModal" [custom]="botActions"></action-stub-items>
+                                            <i *ngIf="bot.version != '$LATEST'" (click)="deleteModal(bot)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                                         </div>
                                     </td>
                                 </tr>
@@ -383,6 +384,7 @@
                                         <td>
                                             <div *ngIf="intentCategory=='Custom'" class="float-right">
                                                 <i *ngIf="intent.version == '$LATEST'" (click)="deleteModal(intent)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                                                <i *ngIf="intent.version != '$LATEST'" (click)="deleteModal(intent)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                                             </div>
                                         </td>
                                     </tr>
@@ -488,6 +490,7 @@
                                     <td>
                                         <div *ngIf="slotTypeCategory=='Custom'" class="float-right">
                                             <i *ngIf="slotType.version == '$LATEST'" (click)="deleteModal(slotType)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                                            <i *ngIf="slotType.version != '$LATEST'" (click)="deleteModal(slotType)" class="fa fa-trash-o delete-icon" data-toggle="tooltip" data-placement="top" title="Delete"></i>
                                         </div>
                                     </td>
                                 </tr>

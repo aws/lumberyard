@@ -57,11 +57,6 @@ private:
     CRemoteConsole();
     virtual ~CRemoteConsole();
 
-#if 0 // currently no stroboscope support
-    void SendThreadData();
-    void SendStroboscopeResult();
-#endif
-
 private:
     SRemoteServer* m_pServer;
     volatile bool m_running;

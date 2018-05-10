@@ -13,6 +13,7 @@
         ],
         "Implementation": [
             "Source/InAppPurchasesModule.cpp",
+            "Source/InAppPurchasesSystemComponent.cpp",
             "Source/InAppPurchasesInterface.cpp",
             "Source/InAppPurchasesFlowNodes.cpp"
         ]

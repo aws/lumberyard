@@ -9,9 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_SEMAPHORE_WINDOWS_H
-#define AZSTD_SEMAPHORE_WINDOWS_H
+#pragma once
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(semaphore_win_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 /**
 * This file is to be included from the semaphore.h only. It should NOT be included by the user.
@@ -72,6 +74,3 @@ namespace AZStd
         return m_semaphore;
     }
 }
-
-#endif // AZSTD_SEMAPHORE_WINDOWS_H
-#pragma once

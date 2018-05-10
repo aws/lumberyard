@@ -73,7 +73,7 @@ public: // member functions
     virtual void SetKeepLoadedOnLevelUnload(bool keepLoaded) = 0;
 
     //! Force a layout recompute. Layouts marked for a recompute are handled on the canvas update,
-    //! so this can be used if an immediate recompute is desired 
+    //! so this can be used if an immediate recompute is desired
     virtual void RecomputeChangedLayouts() = 0;
 
     //! Get the number child elements of this canvas
@@ -264,16 +264,28 @@ public: // member functions
     //! Set flag that controls whether this canvas automatically handles positional input (mouse/touch)
     virtual void SetIsPositionalInputSupported(bool isSupported) = 0;
 
+    //! Get flag that controls whether this canvas consumes all input events while it is enabled
+    virtual bool GetIsConsumingAllInputEvents() = 0;
+
+    //! Set flag that controls whether this canvas consumes all input events while it is enabled
+    virtual void SetIsConsumingAllInputEvents(bool isConsuming) = 0;
+
+    //! Get flag that controls whether this canvas automatically handles multi-touch input
+    virtual bool GetIsMultiTouchSupported() = 0;
+
+    //! Set flag that controls whether this canvas automatically handles multi-touch input
+    virtual void SetIsMultiTouchSupported(bool isSupported) = 0;
+
     //! Get flag that controls whether this canvas automatically handles navigation input (via keyboard/gamepad)
     virtual bool GetIsNavigationSupported() = 0;
 
     //! Set flag that controls whether this canvas automatically handles navigation input (via keyboard/gamepad)
     virtual void SetIsNavigationSupported(bool isSupported) = 0;
-    
+
     //! Handle an input event for the canvas
     virtual bool HandleInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,
-                                  const AZ::Vector2* viewportPos = nullptr,
-                                  AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None) = 0;
+        const AZ::Vector2* viewportPos = nullptr,
+        AzFramework::ModifierKeyMask activeModifierKeys = AzFramework::ModifierKeyMask::None) = 0;
 
     //! Handle a unicode text event for the canvas
     virtual bool HandleTextEvent(const AZStd::string& textUTF8) = 0;
@@ -320,6 +332,9 @@ public: // member functions
     //! keyboard/gamepad navigation and the current hover interactable is deleted by a script and the script
     //! wants to specify the new hover interactable
     virtual void ForceHoverInteractable(AZ::EntityId interactableId) = 0;
+
+    //! Clear all active and hover interactables, this is intended for internal use by UI components
+    virtual void ClearAllInteractables() = 0;
 
     //! Internal method used to tell the canvas that some elements need their transform recomputed
     virtual void SetTransformsNeedRecomputeFlag() = 0;
@@ -375,6 +390,20 @@ public: // member functions
 typedef AZ::EBus<UiCanvasOrderNotification> UiCanvasOrderNotificationBus;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+//! Interface class that listeners need to implement to be notified of canvas size or scale changes
+class UiCanvasSizeNotification
+    : public AZ::EBusTraits
+{
+public:
+    virtual ~UiCanvasSizeNotification() {}
+
+    //! Called when the target canvas size or uniform device scale changes.
+    virtual void OnCanvasSizeOrScaleChange(AZ::EntityId canvasEntityId) = 0;
+};
+
+typedef AZ::EBus<UiCanvasSizeNotification> UiCanvasSizeNotificationBus;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Interface class that listeners need to implement to be notified of canvas input.
 //! Note that interactables already get methods called on them when they themselves are interacted
 //! with. This notification bus is intended for other entities or Lua to know when some other
@@ -393,6 +422,14 @@ public: // member functions
     //! Called when an element is released. The released entity that is sent is the entity that was
     //! active (if any).
     virtual void OnCanvasPrimaryReleased(AZ::EntityId entityId) {};
+
+    //! Called when an element is pressed. Will be an invalid entity id if no interactable was
+    //! pressed.
+    virtual void OnCanvasMultiTouchPressed(AZ::EntityId entityId, int multiTouchIndex) {};
+
+    //! Called when an element is released. The released entity that is sent is the entity that was
+    //! active (if any).
+    virtual void OnCanvasMultiTouchReleased(AZ::EntityId entityId, int multiTouchIndex) {};
 
     //! Called when an element starts being hovered
     virtual void OnCanvasHoverStart(AZ::EntityId entityId) {};

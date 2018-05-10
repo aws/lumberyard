@@ -15,17 +15,15 @@
 #include "BoxShape.h"
 #include "EditorBaseShapeComponent.h"
 #include <AzCore/std/containers/array.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Manipulators/LinearManipulator.h>
 
 namespace LmbrCentral
 {
-    class EditorBoxShapeComponent;
-
     class EditorBoxShapeComponent
         : public EditorBaseShapeComponent
-        , public BoxShape
+        , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
     {
     public:
@@ -34,19 +32,9 @@ namespace LmbrCentral
 
         EditorBoxShapeComponent() = default;
 
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
-
-        // EditorComponentBase implementation
-        void BuildGameEntity(AZ::Entity* gameEntity) override;
-
-        // AZ::TransformNotificationBus::Handler
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-
-        void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const override;
-
-        BoxShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -55,25 +43,33 @@ namespace LmbrCentral
             provided.push_back(AZ_CRC("BoxShapeService", 0x946a0032));
         }
 
+        // EditorComponentBase
+        void BuildGameEntity(AZ::Entity* gameEntity) override;
+
+        // AZ::TransformNotificationBus::Handler
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
     private:
-        AZ_DISABLE_COPY_MOVE(EditorBoxShapeComponent);
-
-        void ConfigurationChanged();
-
+        AZ_DISABLE_COPY_MOVE(EditorBoxShapeComponent)
+        
         /// AzToolsFramework::EntitySelectionEvents::Bus::Handler
         void OnSelected() override;
         void OnDeselected() override;
 
-        BoxShapeConfig m_configuration; ///< Stores configuration of a Box for this component
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntity(bool& handled) override;
 
-        // Linear Manipulators
-        void RegisterManipulators();
-        void UnregisterManipulators();
+        // Manipulators
+        void CreateManipulators();
+        void DestroyManipulators();
         void UpdateManipulators();
 
         void OnMouseMoveManipulator(
             const AzToolsFramework::LinearManipulator::Action& action, const AZ::Vector3& axis);
 
-        AZStd::array<AZStd::unique_ptr<AzToolsFramework::LinearManipulator>, 6> m_linearManipulators;
+        void ConfigurationChanged();
+
+        BoxShape m_boxShape; ///< Stores underlying box representation for this component.
+        AZStd::array<AZStd::unique_ptr<AzToolsFramework::LinearManipulator>, 6> m_linearManipulators; ///< Manipulators for editing box size.
     };
 } // namespace LmbrCentral

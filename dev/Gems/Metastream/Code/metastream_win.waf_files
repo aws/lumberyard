@@ -1,10 +1,10 @@
 {
     "NoUberFile": {
         "CivetWeb": [
-            "../../../Code/SDKs/civetweb/include/CivetServer.h",
-            "../../../Code/SDKs/civetweb/src/CivetServer.cpp",
-            "../../../Code/SDKs/civetweb/include/civetweb.h",
-            "../../../Code/SDKs/civetweb/src/civetweb.c"
+            "@3P:civetweb@/include/CivetServer.h",
+            "@3P:civetweb@/src/CivetServer.cpp",
+            "@3P:civetweb@/include/civetweb.h",
+            "@3P:civetweb@/src/civetweb.c"
         ]
     },
     "auto": {

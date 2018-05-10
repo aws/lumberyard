@@ -9,10 +9,15 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_BASE_H
-#define AZCORE_BASE_H 1
+#pragma once
 
 #include <AzCore/PlatformDef.h> ///< Platform/compiler specific defines
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define BASE_H_SECTION_1 1
+#define BASE_H_SECTION_2 2
+#endif
 
 #if defined(AZ_DEBUG_BUILD) && defined(AZ_PLATFORM_WINDOWS) && !defined(AZ_PLATFORM_WINDOWS_X64)
 // for x86 we need to stop FPO (Frame Pointer Omit) so we can record good callstack fast!
@@ -65,8 +70,16 @@ namespace AZ
 
 #if defined(AZ_PLATFORM_WINDOWS_X64)
     static const PlatformID g_currentPlatform = PLATFORM_WINDOWS_64;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_WINDOWS)
     static const PlatformID g_currentPlatform = PLATFORM_WINDOWS_32;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BASE_H_SECTION_1
+#include AZ_RESTRICTED_FILE(base_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX_X64)
     static const PlatformID g_currentPlatform = PLATFORM_LINUX_64;
 #elif defined(AZ_PLATFORM_ANDROID_X32)
@@ -365,6 +378,13 @@ namespace AZ
 
 // Platform includes
 #ifdef AZ_PLATFORM_WINDOWS
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BASE_H_SECTION_2
+#include AZ_RESTRICTED_FILE(base_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX)
 
 #elif defined(AZ_PLATFORM_ANDROID)
@@ -416,6 +436,3 @@ inline  EnumType operator ^ (EnumType a, EnumType b) \
     { return EnumType(((AZStd::underlying_type<EnumType>::type)a) ^ ((AZStd::underlying_type<EnumType>::type)b)); } \
 inline EnumType &operator ^= (EnumType &a, EnumType b) \
     { return (EnumType &)(((AZStd::underlying_type<EnumType>::type &)a) ^= ((AZStd::underlying_type<EnumType>::type)b)); }
-
-#endif // AZCORE_BASE_H
-#pragma once

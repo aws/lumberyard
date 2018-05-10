@@ -750,13 +750,8 @@ namespace AzToolsFramework
 
     bool PerforceComponent::ExecuteAndParseFstat(const char* filePath, bool& sourceAwareFile)
     {
-        sourceAwareFile = false;
         s_perforceConn->m_command.ExecuteFstat(filePath);
-        if (CommandSucceeded())
-        {
-            sourceAwareFile = true;
-        }
-
+        sourceAwareFile = CommandSucceeded();
         return ParseOutput(s_perforceConn->m_command.m_commandOutputMap, s_perforceConn->m_command.m_rawOutput.outputResult);
     }
 
@@ -782,6 +777,14 @@ namespace AzToolsFramework
 
     bool PerforceComponent::CommandSucceeded()
     {
+        // This is misleading - FileExists only returns false if the phrase 'no such file(s)'
+        // is present in output.  Therefore, this is safe to call even on perforce commands
+        // that are not directly related to files (p4 set / p4 change / p4 describe / etc)
+        if (!s_perforceConn->m_command.FileExists())
+        {
+            return false;
+        }
+
         if (s_perforceConn->CommandHasFailed())
         {
             m_testTrust = true;
@@ -961,6 +964,7 @@ namespace AzToolsFramework
         AZ_Assert(m_ProcessThreadID != AZStd::thread::id(), "The perforce worker thread has not started.");
         AZ_Assert(AZStd::this_thread::get_id() == m_ProcessThreadID, "You may only call this function from the perforce worker thread.");
 
+        SourceControlState prevState = m_connectionState;
         if (m_testConnection)
         {
             TestConnectionValid();
@@ -974,17 +978,20 @@ namespace AzToolsFramework
 
         m_connectionState = currentState;
 
-        switch (m_connectionState)
+        if (m_connectionState != prevState)
         {
-        case SourceControlState::Disabled:
-            AZ_TracePrintf(SCC_WINDOW, "Perforce disabled");
-            break;
-        case SourceControlState::ConfigurationInvalid:
-            AZ_TracePrintf(SCC_WINDOW, "Perforce configuration invalid");
-            break;
-        case SourceControlState::Active:
-            AZ_TracePrintf(SCC_WINDOW, "Perforce connected");
-            break;
+            switch (m_connectionState)
+            {
+            case SourceControlState::Disabled:
+                AZ_TracePrintf(SCC_WINDOW, "Perforce disabled");
+                break;
+            case SourceControlState::ConfigurationInvalid:
+                AZ_TracePrintf(SCC_WINDOW, "Perforce configuration invalid");
+                break;
+            case SourceControlState::Active:
+                AZ_TracePrintf(SCC_WINDOW, "Perforce connected");
+                break;
+            }
         }
 
         if (AZ::TickBus::IsFunctionQueuing())

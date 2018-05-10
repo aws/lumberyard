@@ -63,29 +63,29 @@ namespace PhysX
             LmbrCentral::SphereShapeConfiguration config;
             LmbrCentral::SphereShapeComponentRequestsBus::EventResult(config, entityId,
                 &LmbrCentral::SphereShapeComponentRequests::GetSphereConfiguration);
-            return Physics::SphereShapeConfiguration::Create(config.GetRadius());
+            return Physics::SphereShapeConfiguration::Create(config.m_radius);
         }
 
-        else if (shapeType == AZ_CRC("Box", 0x08a9483a))
+        if (shapeType == AZ_CRC("Box", 0x08a9483a))
         {
             LmbrCentral::BoxShapeConfiguration config;
             LmbrCentral::BoxShapeComponentRequestsBus::EventResult(config, entityId,
                 &LmbrCentral::BoxShapeComponentRequests::GetBoxConfiguration);
             // config.m_dimensions[i] is total length of side, BoxShapeConfiguration uses half extents
-            AZ::Vector3 halfExtents = config.GetDimensions() * 0.5f;
+            const AZ::Vector3 halfExtents = config.m_dimensions * 0.5f;
             return Physics::BoxShapeConfiguration::Create(halfExtents);
         }
 
-        else if (shapeType == AZ_CRC("Capsule", 0xc268a183))
+        if (shapeType == AZ_CRC("Capsule", 0xc268a183))
         {
             LmbrCentral::CapsuleShapeConfiguration config;
             LmbrCentral::CapsuleShapeComponentRequestsBus::EventResult(config, entityId,
                 &LmbrCentral::CapsuleShapeComponentRequests::GetCapsuleConfiguration);
-            float hh = AZStd::max(0.f, (0.5f * config.GetHeight()) - config.GetRadius());
-            return Physics::CapsuleShapeConfiguration::Create(AZ::Vector3(0.0f, 0.0f, hh), AZ::Vector3(0.0f, 0.0f, -hh), config.GetRadius());
+            const float hh = AZStd::max(0.0f, (0.5f * config.m_height) - config.m_radius);
+            return Physics::CapsuleShapeConfiguration::Create(AZ::Vector3(0.0f, 0.0f, hh), AZ::Vector3(0.0f, 0.0f, -hh), config.m_radius);
         }
 
-        else if (shapeType == AZ_CRC("PhysXMesh", 0xe86bc8a6))
+        if (shapeType == AZ_CRC("PhysXMesh", 0xe86bc8a6))
         {
             // It is a valid case to have PhysXMesh shape but we don't create any configurations for this
             return nullptr;

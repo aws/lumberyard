@@ -13,6 +13,7 @@
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/RTTI/ReflectContext.h>
 
 namespace GraphCanvas
 {

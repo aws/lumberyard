@@ -92,7 +92,7 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         virtual void Init(AnimGraphInstance* animGraphInstance) override;
         virtual void OnUpdateAttributes() override;
-        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName) override;
+        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
         virtual void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node) override;
         virtual void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
         virtual void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
@@ -112,7 +112,7 @@ namespace EMotionFX
         float GetBlendTime(AnimGraphInstance* animGraphInstance) const;
 
         void RegisterPorts() {}
-        virtual bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName) override;
+        virtual bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName) override;
 
         uint32 GetBaseType() const override;
         const char* GetTypeString() const override;

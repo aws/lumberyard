@@ -73,7 +73,7 @@ namespace EMStudio
 
 
     // called to init for a new anim graph
-    void StateFilterSelectionWindow::ReInit(EMotionFX::AnimGraph* animGraph, const MCore::Array<MCore::String>& oldNodeSelection, const MCore::Array<MCore::String>& oldGroupSelection)
+    void StateFilterSelectionWindow::ReInit(EMotionFX::AnimGraph* animGraph, const MCore::Array<AZStd::string>& oldNodeSelection, const MCore::Array<AZStd::string>& oldGroupSelection)
     {
         mAnimGraph             = animGraph;
         mSelectedGroupNames     = oldGroupSelection;
@@ -244,7 +244,7 @@ namespace EMStudio
         {
             if (mWidgetTable[i].mIsGroup && mWidgetTable[i].mWidget == widget)
             {
-                return mAnimGraph->FindNodeGroupByName(mWidgetTable[i].mName.AsChar());
+                return mAnimGraph->FindNodeGroupByName(mWidgetTable[i].mName.c_str());
             }
         }
 
@@ -268,7 +268,7 @@ namespace EMStudio
         {
             if (mWidgetTable[i].mIsGroup == false && mWidgetTable[i].mWidget == widget)
             {
-                return mAnimGraph->RecursiveFindNode(mWidgetTable[i].mName.AsChar());
+                return mAnimGraph->RecursiveFindNode(mWidgetTable[i].mName.c_str());
             }
         }
 

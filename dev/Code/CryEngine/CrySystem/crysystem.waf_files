@@ -96,6 +96,7 @@
             "DebugCallStack.h",
             "GeneralMemoryHeap.h",
             "IDebugCallStack.h",
+            "IThreadConfigManager.h",
             "Log.h",
             "NotificationNetwork.h",
             "PakVars.h",
@@ -108,6 +109,7 @@
             "SystemEventDispatcher.h",
             "Timer.h",
             "Validator.h",
+            "WindowsConsole.h",
             "XConsole.h",
             "XConsoleVariable.h",
             "BootProfiler.h",
@@ -208,6 +210,7 @@
             "LocalizedStringManager.h"
         ],
         "Threading": [
+            "CryThreadUtil_win32_thread.h",
             "ThreadInfo.cpp",
             "ThreadProfiler.cpp",
             "ThreadSampler.cpp",
@@ -331,10 +334,6 @@
             "RemoteCommandHelpers.h",
             "RemoteCommandServer.cpp",
             "RemoteCommandClient.cpp"
-        ],
-        "Stroboscope": [
-            "Stroboscope/Stroboscope.cpp",
-            "Stroboscope/Stroboscope.h"
         ],
         "ZLibDecompressor": [
             "ZLibDecompressor.h",

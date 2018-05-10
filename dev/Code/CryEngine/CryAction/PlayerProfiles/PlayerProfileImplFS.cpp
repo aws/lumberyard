@@ -29,6 +29,9 @@
 #include "Serialization/XMLCPBin/Reader/XMLCPB_ReaderInterface.h"
 #include "Serialization/XMLCPBin/XMLCPB_Utils.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlayerProfileImplFS_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 using namespace PlayerProfileImpl;
 

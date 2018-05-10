@@ -23,6 +23,7 @@
 #include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/Types/TranslationTypes.h>
 #include <Widgets/GraphCanvasLabel.h>
+#include <GraphCanvas/Types/EntitySaveData.h>
 
 namespace GraphCanvas
 {
@@ -32,8 +33,28 @@ namespace GraphCanvas
     class GeneralNodeTitleComponent
         : public AZ::Component
         , public NodeTitleRequestBus::Handler
+        , public SceneMemberNotificationBus::Handler
     {
     public:
+
+        class GeneralNodeTitleComponentSaveData
+            : public SceneMemberComponentSaveData<GeneralNodeTitleComponentSaveData>
+        {
+        public:
+            AZ_RTTI(GeneralNodeTitleComponentSaveData, "{328FF15C-C302-458F-A43D-E1794DE0904E}", ComponentSaveData);
+            AZ_CLASS_ALLOCATOR(GeneralNodeTitleComponentSaveData, AZ::SystemAllocator, 0);
+
+            GeneralNodeTitleComponentSaveData() = default;
+            ~GeneralNodeTitleComponentSaveData() = default;
+
+            bool RequiresSave() const override
+            {
+                return !m_paletteOverride.empty();
+            }
+
+            AZStd::string m_paletteOverride;
+        };
+
         AZ_COMPONENT(GeneralNodeTitleComponent, "{67D54B26-A924-4028-8544-5684B16BF04A}");
         static void Reflect(AZ::ReflectContext*);
 
@@ -78,19 +99,29 @@ namespace GraphCanvas
 
         QGraphicsWidget* GetGraphicsWidget() override;
 
+        void SetDefaultPalette(const AZStd::string& palette) override;
+
         void SetPaletteOverride(const AZStd::string& paletteOverride) override;
         void SetDataPaletteOverride(const AZ::Uuid& uuid) override;
 
         void ClearPaletteOverride() override;
         /////
 
+        // SceneMemberNotificationBus
+        void OnSceneSet(const AZ::EntityId& graphId) override;
+        ////
+
     private:
         GeneralNodeTitleComponent(const GeneralNodeTitleComponent&) = delete;
 
         TranslationKeyedString m_title;
         TranslationKeyedString m_subTitle;
+
+        AZStd::string          m_basePalette;
+
+        GeneralNodeTitleComponentSaveData m_saveData;
         
-        GeneralNodeTitleGraphicsWidget* m_generalNodeTitleWidget;
+        GeneralNodeTitleGraphicsWidget* m_generalNodeTitleWidget = nullptr;
     };    
 
     //! The Title QGraphicsWidget for displaying a title
@@ -123,12 +154,12 @@ namespace GraphCanvas
         void RefreshDisplay();
     
         // SceneNotificationBus
-        void OnStyleSheetChanged() override;
+        void OnStylesChanged() override;
         ////
 
         // SceneMemberNotificationBus
-        void OnSceneSet(const AZ::EntityId& scene) override;
-        void OnSceneCleared(const AZ::EntityId& scene) override;
+        void OnAddedToScene(const AZ::EntityId& scene) override;
+        void OnRemovedFromScene(const AZ::EntityId& scene) override;
         ////
 
         // NodeNotificationBus

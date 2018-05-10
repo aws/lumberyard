@@ -11,17 +11,52 @@
 */
 
 #include "LmbrCentral_precompiled.h"
+
 #include "BoxShapeComponent.h"
-#include <AzCore/Math/Transform.h>
-#include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <Cry_GeoOverlap.h>
-#include <Cry_Vector3.h>
-#include <MathConversion.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <Shape/ShapeComponentConverters.h>
+#include <Shape/ShapeDisplay.h>
 
 namespace LmbrCentral
 {
+    void BoxShapeDebugDisplayComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<BoxShapeDebugDisplayComponent, EntityDebugDisplayComponent>()
+                ->Version(1)
+                ->Field("Configuration", &BoxShapeDebugDisplayComponent::m_boxShapeConfig)
+                ;
+        }
+    }
+
+    void BoxShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* displayContext)
+    {
+        DrawBoxShape(g_defaultShapeDrawParams, m_boxShapeConfig, *displayContext);
+    }
+
+    bool BoxShapeDebugDisplayComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
+    {
+        if (const auto config = azrtti_cast<const BoxShapeConfig*>(baseConfig))
+        {
+            m_boxShapeConfig = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool BoxShapeDebugDisplayComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<BoxShapeConfig*>(outBaseConfig))
+        {
+            *outConfig = m_boxShapeConfig;
+            return true;
+        }
+        return false;
+    }
+
     namespace ClassConverters
     {
         static bool DeprecateBoxColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
@@ -36,8 +71,8 @@ namespace LmbrCentral
             serializeContext->ClassDeprecate(
                 "BoxColliderConfiguration",
                 "{282E47CB-9F6D-47AE-A210-4CE879527EFD}",
-                &ClassConverters::DeprecateBoxColliderConfiguration
-            );
+                &ClassConverters::DeprecateBoxColliderConfiguration)
+                ;
 
             serializeContext->Class<BoxShapeConfig>()
                 ->Version(1)
@@ -47,46 +82,45 @@ namespace LmbrCentral
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<BoxShapeConfig>("Configuration", "Box shape configuration parameters")
-                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(0, &BoxShapeConfig::m_dimensions, "Dimensions", "Dimensions of the box along its axes")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "Shape Configuration")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &BoxShapeConfig::m_dimensions, "Dimensions", "Dimensions of the box along its axes")
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
-                    ;
+                        ;
             }
         }
-        
+
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Class<BoxShapeConfig>()
                 ->Constructor()
                 ->Constructor<AZ::Vector3&>()
-                ->Property("Dimensions", BehaviorValueProperty(&BoxShapeConfig::m_dimensions));
+                ->Property("Dimensions", BehaviorValueProperty(&BoxShapeConfig::m_dimensions))
+                ;
         }
     }
 
     void BoxShapeComponent::Reflect(AZ::ReflectContext* context)
     {
-        BoxShapeConfig::Reflect(context);
+        BoxShape::Reflect(context);
 
-        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             // Deprecate: BoxColliderComponent -> BoxShapeComponent
-            serializeContext->ClassDeprecate( 
+            serializeContext->ClassDeprecate(
                 "BoxColliderComponent",
                 "{C215EB2A-1803-4EDC-B032-F7C92C142337}",
-                &ClassConverters::DeprecateBoxColliderComponent
-                );
+                &ClassConverters::DeprecateBoxColliderComponent)
+                ;
 
-            serializeContext->Class<BoxShapeComponent, AZ::Component>()
-                ->Version(1)
-                ->Field("Configuration", &BoxShapeComponent::m_configuration)
+            serializeContext->Class<BoxShapeComponent, Component>()
+                ->Version(2, &ClassConverters::UpgradeBoxShapeComponent)
+                ->Field("BoxShape", &BoxShapeComponent::m_boxShape)
                 ;
         }
 
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
-        if (behaviorContext)
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Constant("BoxShapeComponentTypeId", BehaviorConstant(BoxShapeComponentTypeId));
 
@@ -100,19 +134,19 @@ namespace LmbrCentral
 
     void BoxShapeComponent::Activate()
     {
-        BoxShape::Activate(GetEntityId());
+        m_boxShape.Activate(GetEntityId());
     }
 
     void BoxShapeComponent::Deactivate()
     {
-        BoxShape::Deactivate();
+        m_boxShape.Deactivate();
     }
 
     bool BoxShapeComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        if (auto config = azrtti_cast<const BoxShapeConfig*>(baseConfig))
+        if (const auto config = azrtti_cast<const BoxShapeConfig*>(baseConfig))
         {
-            m_configuration = *config;
+            m_boxShape.SetBoxConfiguration(*config);
             return true;
         }
         return false;
@@ -122,7 +156,7 @@ namespace LmbrCentral
     {
         if (auto config = azrtti_cast<BoxShapeConfig*>(outBaseConfig))
         {
-            *config = m_configuration;
+            *config = m_boxShape.GetBoxConfiguration();
             return true;
         }
         return false;
@@ -146,17 +180,17 @@ namespace LmbrCentral
 
             // Cache the Dimensions
             AZ::Vector3 oldDimensions;
-            int oldIndex = classElement.FindElement(AZ_CRC("Size", 0xf7c0246a));
+            const int oldIndex = classElement.FindElement(AZ_CRC("Size", 0xf7c0246a));
             if (oldIndex != -1)
             {
                 classElement.GetSubElement(oldIndex).GetData<AZ::Vector3>(oldDimensions);
             }
 
             // Convert to BoxShapeConfig
-            bool result = classElement.Convert(context, "{F034FBA2-AC2F-4E66-8152-14DFB90D6283}");
+            const bool result = classElement.Convert(context, "{F034FBA2-AC2F-4E66-8152-14DFB90D6283}");
             if (result)
             {
-                int newIndex = classElement.AddElement<AZ::Vector3>(context, "Dimensions");
+                const int newIndex = classElement.AddElement<AZ::Vector3>(context, "Dimensions");
                 if (newIndex != -1)
                 {
                     classElement.GetSubElement(newIndex).SetData<AZ::Vector3>(context, oldDimensions);
@@ -193,7 +227,7 @@ namespace LmbrCentral
             }
 
             // Convert to BoxShapeComponent
-            bool result = classElement.Convert(context, BoxShapeComponentTypeId);
+            const bool result = classElement.Convert(context, BoxShapeComponentTypeId);
             if (result)
             {
                 configIndex = classElement.AddElement<BoxShapeConfig>(context, "Configuration");

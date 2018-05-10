@@ -30,7 +30,6 @@
 #include <QMenu>
 #include <QShortcut>
 #include <QKeySequence>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/ApplicationAPI.h>
 
 
@@ -58,7 +57,7 @@ namespace EMStudio
     // init the geometry lod window
     void AttachmentsWindow::Init()
     {
-        mTempString.Reserve(16384);
+        mTempString.reserve(16384);
 
         setObjectName("StackFrameOnlyBG");
         setAcceptDrops(true);
@@ -270,14 +269,14 @@ namespace EMStudio
             }
 
             // create table items
-            mTempString.Format("%i", attachmentInstance->GetID());
-            QTableWidgetItem* tableItemID           = new QTableWidgetItem(mTempString.AsChar());
-            mTempString.Format("%s", attachmentActor->GetFileNameString().ExtractFileName().AsChar());
-            QTableWidgetItem* tableItemName         = new QTableWidgetItem(mTempString.AsChar());
-            mTempString.Format("%s", (attachment->GetIsInfluencedByMultipleNodes() ? "Yes" : "No"));
-            QTableWidgetItem* tableItemDeformable   = new QTableWidgetItem(mTempString.AsChar());
-            mTempString.Format("%i", attachmentInstance->GetNumNodes());
-            QTableWidgetItem* tableItemNumNodes     = new QTableWidgetItem(mTempString.AsChar());
+            mTempString = AZStd::string::format("%i", attachmentInstance->GetID());
+            QTableWidgetItem* tableItemID           = new QTableWidgetItem(mTempString.c_str());
+            AzFramework::StringFunc::Path::GetFileName(attachmentActor->GetFileNameString().c_str(), mTempString);
+            QTableWidgetItem* tableItemName         = new QTableWidgetItem(mTempString.c_str());
+            mTempString = attachment->GetIsInfluencedByMultipleNodes() ? "Yes" : "No";
+            QTableWidgetItem* tableItemDeformable   = new QTableWidgetItem(mTempString.c_str());
+            mTempString = AZStd::string::format("%i", attachmentInstance->GetNumNodes());
+            QTableWidgetItem* tableItemNumNodes     = new QTableWidgetItem(mTempString.c_str());
             QTableWidgetItem* tableItemNodeName     = new QTableWidgetItem("");
             // set node name if exists
             if (attachedToNode)
@@ -366,7 +365,7 @@ namespace EMStudio
             {
                 // get the complete file name and extract the extension
                 filename = urls[i].toLocalFile().toUtf8().data();
-                AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false);
+                AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
                 if (extension == "actor")
                 {
@@ -426,7 +425,7 @@ namespace EMStudio
     void AttachmentsWindow::AddAttachments(const AZStd::vector<AZStd::string>& filenames)
     {
         // create our command group
-        MCore::String outString;
+        AZStd::string outString;
         MCore::CommandGroup commandGroup("Add attachments");
 
         // skip adding if no actor instance is selected
@@ -455,30 +454,30 @@ namespace EMStudio
             // create instance for the attachment
             if (actorIndex == MCORE_INVALIDINDEX32)
             {
-                commandGroup.AddCommandString(MCore::String().Format("ImportActor -filename \"%s\"", filename.c_str()).AsChar());
+                commandGroup.AddCommandString(AZStd::string::format("ImportActor -filename \"%s\"", filename.c_str()).c_str());
                 commandGroup.AddCommandString("CreateActorInstance -actorID %LASTRESULT%");
             }
             else
             {
                 EMotionFX::Actor* attachmentActor = EMotionFX::GetActorManager().GetActor(actorIndex);
                 uint32 attachmentActorID = attachmentActor->GetID();
-                commandGroup.AddCommandString(MCore::String().Format("CreateActorInstance -actorID %i", attachmentActorID).AsChar());
+                commandGroup.AddCommandString(AZStd::string::format("CreateActorInstance -actorID %i", attachmentActorID).c_str());
             }
 
             // add the attachment
             if (mIsDeformableAttachment == false)
             {
-                commandGroup.AddCommandString(MCore::String().Format("AddAttachment -attachmentID %%LASTRESULT%% -attachToID %i -attachToNode \"%s\"", mActorInstance->GetID(), nodeName).AsChar());
+                commandGroup.AddCommandString(AZStd::string::format("AddAttachment -attachmentID %%LASTRESULT%% -attachToID %i -attachToNode \"%s\"", mActorInstance->GetID(), nodeName).c_str());
             }
             else
             {
-                commandGroup.AddCommandString(MCore::String().Format("AddDeformableAttachment -attachmentID %%LASTRESULT%% -attachToID %i", mActorInstance->GetID()).AsChar());
+                commandGroup.AddCommandString(AZStd::string::format("AddDeformableAttachment -attachmentID %%LASTRESULT%% -attachToID %i", mActorInstance->GetID()).c_str());
             }
         }
 
         // select the old actorinstance
         commandGroup.AddCommandString("ClearSelection");
-        commandGroup.AddCommandString(MCore::String().Format("Select -actorinstanceID %i", mActorInstance->GetID()).AsChar());
+        commandGroup.AddCommandString(AZStd::string::format("Select -actorinstanceID %i", mActorInstance->GetID()).c_str());
 
         // execute the command group
         GetCommandManager()->ExecuteCommandGroup(commandGroup, outString);
@@ -489,8 +488,8 @@ namespace EMStudio
     void AttachmentsWindow::RemoveTableItems(const QList<QTableWidgetItem*>& items)
     {
         // import and start playing the animation
-        MCore::String outResult;
-        MCore::CommandGroup group(MCore::String("Remove Attachment Actor").AsChar());
+        AZStd::string outResult;
+        MCore::CommandGroup group(AZStd::string("Remove Attachment Actor").c_str());
 
         // iterate trough all selected items
         const uint32 numItems = items.length();
@@ -504,9 +503,9 @@ namespace EMStudio
 
             // the attachment id
             const uint32 id                 = GetIDFromTableRow(item->row());
-            const MCore::String nodeName    = GetNodeNameFromTableRow(item->row());
+            const AZStd::string nodeName    = GetNodeNameFromTableRow(item->row());
 
-            group.AddCommandString(MCore::String().Format("RemoveAttachment -attachmentID %i -attachToID %i -attachToNode \"%s\"", id, mActorInstance->GetID(), nodeName.AsChar()).AsChar());
+            group.AddCommandString(AZStd::string::format("RemoveAttachment -attachmentID %i -attachToID %i -attachToNode \"%s\"", id, mActorInstance->GetID(), nodeName.c_str()).c_str());
         }
 
         // execute the group command
@@ -574,22 +573,22 @@ namespace EMStudio
         mActorInstance->RemoveAttachment(attachmentInstance);
 
         // execute command for the attachment
-        MCore::String outResult;
+        AZStd::string outResult;
         MCore::CommandGroup commandGroup("Add Attachment");
 
         // add the attachment
         if (mIsDeformableAttachment == false)
         {
-            commandGroup.AddCommandString(MCore::String().Format("AddAttachment -attachToID %i -attachmentID %i -attachToNode \"%s\"", mActorInstance->GetID(), attachmentInstance->GetID(), nodeName).AsChar());
+            commandGroup.AddCommandString(AZStd::string::format("AddAttachment -attachToID %i -attachmentID %i -attachToNode \"%s\"", mActorInstance->GetID(), attachmentInstance->GetID(), nodeName).c_str());
         }
         else
         {
-            commandGroup.AddCommandString(MCore::String().Format("AddDeformableAttachment -attachToID %i -attachmentID %i", mActorInstance->GetID(), attachmentInstance->GetID()).AsChar());
+            commandGroup.AddCommandString(AZStd::string::format("AddDeformableAttachment -attachToID %i -attachmentID %i", mActorInstance->GetID(), attachmentInstance->GetID()).c_str());
         }
 
         // clear selection and select the actor instance the attachment is attached to
-        commandGroup.AddCommandString(MCore::String().Format("ClearSelection"));
-        commandGroup.AddCommandString(MCore::String().Format("Select -actorInstanceID %i", mActorInstance->GetID()));
+        commandGroup.AddCommandString(AZStd::string::format("ClearSelection"));
+        commandGroup.AddCommandString(AZStd::string::format("Select -actorInstanceID %i", mActorInstance->GetID()));
 
         // reset the state for selection
         mWaitingForAttachment = false;
@@ -797,7 +796,7 @@ namespace EMStudio
         }
 
         // create command group
-        MCore::String outResult;
+        AZStd::string outResult;
         MCore::CommandGroup commandGroup("Adjust attachment node");
 
         // get the attachment
@@ -807,11 +806,11 @@ namespace EMStudio
             return;
         }
 
-        MCore::String oldNodeName = GetSelectedNodeName();
+        AZStd::string oldNodeName = GetSelectedNodeName();
 
         // remove and readd the attachment
-        commandGroup.AddCommandString(MCore::String().Format("RemoveAttachment -attachmentID %i -attachToID %i -attachToNode \"%s\"", attachment->GetID(), mActorInstance->GetID(), oldNodeName.AsChar()).AsChar());
-        commandGroup.AddCommandString(MCore::String().Format("AddAttachment -attachToID %i -attachmentID %i -attachToNode \"%s\"", mActorInstance->GetID(), attachment->GetID(), nodeName).AsChar());
+        commandGroup.AddCommandString(AZStd::string::format("RemoveAttachment -attachmentID %i -attachToID %i -attachToNode \"%s\"", attachment->GetID(), mActorInstance->GetID(), oldNodeName.c_str()).c_str());
+        commandGroup.AddCommandString(AZStd::string::format("AddAttachment -attachToID %i -attachmentID %i -attachToNode \"%s\"", mActorInstance->GetID(), attachment->GetID(), nodeName).c_str());
 
         // execute the command group
         GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult);
@@ -819,13 +818,13 @@ namespace EMStudio
 
 
     // get the selected node name
-    MCore::String AttachmentsWindow::GetSelectedNodeName()
+    AZStd::string AttachmentsWindow::GetSelectedNodeName()
     {
         const QList<QTableWidgetItem*> items = mTableWidget->selectedItems();
         const uint32 numItems = items.length();
         if (numItems < 1)
         {
-            return MCore::String();
+            return AZStd::string();
         }
 
         return GetNodeNameFromTableRow(items[0]->row());
@@ -848,9 +847,8 @@ namespace EMStudio
         const int id = widget->property("attachmentInstanceID").toInt();
 
         // execute visible command
-        MCore::String outResult;
-        const char* doRender = (widget->isChecked()) ? "true" : "false";
-        GetCommandManager()->ExecuteCommand(MCore::String().Format("AdjustActorInstance -actorInstanceID %d -attachmentFastUpdate %s", id, doRender).AsChar(), outResult);
+        AZStd::string outResult;
+        GetCommandManager()->ExecuteCommand(AZStd::string::format("AdjustActorInstance -actorInstanceID %d -attachmentFastUpdate %s", id, AZStd::to_string(widget->isChecked()).c_str()), outResult);
     }
 
 
@@ -870,9 +868,8 @@ namespace EMStudio
         const int id = widget->property("attachmentInstanceID").toInt();
 
         // execute visible command
-        MCore::String outResult;
-        const char* doRender = (widget->isChecked()) ? "true" : "false";
-        GetCommandManager()->ExecuteCommand(MCore::String().Format("AdjustActorInstance -actorInstanceID %d -doRender %s", id, doRender).AsChar(), outResult);
+        AZStd::string outResult;
+        GetCommandManager()->ExecuteCommand(AZStd::string::format("AdjustActorInstance -actorInstanceID %d -doRender %s", id, AZStd::to_string(widget->isChecked()).c_str()), outResult);
     }
 
 
@@ -885,20 +882,20 @@ namespace EMStudio
             return MCORE_INVALIDINDEX32;
         }
 
-        MCore::String id;
+        AZStd::string id;
         FromQtString(item->text(), &id);
 
-        return id.ToInt();
+        return AzFramework::StringFunc::ToInt(id.c_str());
     }
 
 
     // extracts the node name from a given row
-    MCore::String AttachmentsWindow::GetNodeNameFromTableRow(int row)
+    AZStd::string AttachmentsWindow::GetNodeNameFromTableRow(int row)
     {
         QTableWidgetItem* item = mTableWidget->item(row, 4);
         if (item == nullptr)
         {
-            return MCore::String();
+            return AZStd::string();
         }
 
         return FromQtString(item->whatsThis());

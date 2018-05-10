@@ -15,7 +15,6 @@
 
 // include MCore
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <MysticQt/Source/ButtonGroup.h>
 #include <MysticQt/Source/SearchButton.h>
@@ -47,7 +46,7 @@ namespace EMStudio
         NodeSelectionWindow(QWidget* parent, bool useSingleSelection);
         virtual ~NodeSelectionWindow();
 
-        MCORE_INLINE NodeHierarchyWidget* GetNodeHierarchyWidget()                                                      { return mHierarchyWidget; }
+        MCORE_INLINE NodeHierarchyWidget* GetNodeHierarchyWidget()                                                                { return mHierarchyWidget; }
         void Update(uint32 actorInstanceID, CommandSystem::SelectionList* selectionList = nullptr)                                { mHierarchyWidget->Update(actorInstanceID, selectionList); }
         void Update(const MCore::Array<uint32>& actorInstanceIDs, CommandSystem::SelectionList* selectionList = nullptr)          { mHierarchyWidget->Update(actorInstanceIDs, selectionList); }
 

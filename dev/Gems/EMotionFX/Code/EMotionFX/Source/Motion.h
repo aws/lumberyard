@@ -18,8 +18,7 @@
 #include "PlayBackInfo.h"
 #include "BaseObject.h"
 
-#include <MCore/Source/StringIDGenerator.h>
-#include <MCore/Source/UnicodeString.h>
+#include <MCore/Source/StringIdPool.h>
 #include <MCore/Source/Distance.h>
 
 MCORE_FORWARD_DECLARE(AttributeSet);
@@ -61,10 +60,10 @@ namespace EMotionFX
         const char* GetName() const;
 
         /**
-         * Returns the name of the motion, as a MCore::String object.
+         * Returns the name of the motion, as a AZStd::string object.
          * @result The name of the motion.
          */
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
 
         /**
          * Set the filename of the motion.
@@ -79,10 +78,10 @@ namespace EMotionFX
         const char* GetFileName() const;
 
         /**
-         * Returns the filename of the motion, as a MCore::String object.
+         * Returns the filename of the motion, as a AZStd::string object.
          * @result The filename of the motion.
          */
-        const MCore::String& GetFileNameString() const;
+        const AZStd::string& GetFileNameString() const;
 
         /**
          * Returns the type identification number of the motion class.
@@ -313,7 +312,7 @@ namespace EMotionFX
         void ScaleToUnitType(MCore::Distance::EUnitType targetUnitType);
 
     protected:
-        MCore::String               mFileName;              /**< The filename of the motion. */
+        AZStd::string               mFileName;              /**< The filename of the motion. */
         PlayBackInfo*               mDefaultPlayBackInfo;   /**< The default/fallback motion playback info which will be used when no playback info is passed to the Play() function. */
         MotionEventTable*           mEventTable;            /**< The event table, which contains all events, and will make sure events get executed. */
         MCore::AttributeSet*        mAttributeSet;          /**< The attribute set that stores custom data. */

@@ -49,12 +49,7 @@ bool PushButton::polish(Style* style, QWidget* widget, const PushButton::Config&
 
         toolButton->setMaximumSize(config.smallIcon.width + (toolButton->menu() != nullptr ? config.smallIcon.arrowWidth : 0), config.smallIcon.frame.height);
 
-        QObject::connect(style, &Style::settingsReloaded, toolButton, [toolButton]() {
-            // since we are setting the size policy and size in here, when the settings are reloaded, we
-            // have to re-polish the tool button
-            toolButton->style()->unpolish(toolButton);
-            toolButton->style()->polish(toolButton);
-        });
+        style->repolishOnSettingsChange(toolButton);
 
         return true;
     }

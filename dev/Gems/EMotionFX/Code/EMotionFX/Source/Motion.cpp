@@ -91,7 +91,7 @@ namespace EMotionFX
     void Motion::SetName(const char* name)
     {
         // calculate the ID
-        mNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 
@@ -149,13 +149,13 @@ namespace EMotionFX
 
     const char* Motion::GetName() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mNameID).c_str();
     }
 
 
-    const MCore::String& Motion::GetNameString() const
+    const AZStd::string& Motion::GetNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID);
+        return MCore::GetStringIdPool().GetName(mNameID);
     }
 
 
@@ -251,11 +251,11 @@ namespace EMotionFX
 
     const char* Motion::GetFileName() const
     {
-        return mFileName.AsChar();
+        return mFileName.c_str();
     }
 
 
-    const MCore::String& Motion::GetFileNameString() const
+    const AZStd::string& Motion::GetFileNameString() const
     {
         return mFileName;
     }

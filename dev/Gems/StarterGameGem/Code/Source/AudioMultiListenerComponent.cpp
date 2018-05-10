@@ -98,7 +98,7 @@ namespace StarterGameGem
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<AudioMultiListenerComponent>()
+            serializeContext->Class<AudioMultiListenerComponent, AZ::Component>()
                 ->Version(1)
                 ->Field("Events", &AudioMultiListenerComponent::m_events)
                 ;

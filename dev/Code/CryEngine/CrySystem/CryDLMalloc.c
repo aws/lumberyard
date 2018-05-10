@@ -14,8 +14,13 @@
 #define DEFAULT_GRANULARITY (64 * 1024) //this gets #undef and redefined in the .inl this has to come before that
 
 #if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYDLMALLOC_C_SECTION_1 1
+#define CRYDLMALLOC_C_SECTION_2 2
+
+#define AZ_RESTRICTED_SECTION CRYDLMALLOC_C_SECTION_1
 #include <AzCore/PlatformRestrictedFileDef.h>
-#include AZ_RESTRICTED_FILE(CryDLMalloc_c)
+#include AZ_RESTRICTED_FILE(CryDLMalloc_c, AZ_RESTRICTED_PLATFORM)
 #elif defined(_WIN32) || defined(LINUX) || defined(APPLE)
 #define TRAIT_ENABLE_DLMALLOC 1
 #endif
@@ -1560,7 +1565,15 @@ extern void*     sbrk(ptrdiff_t);
 /* Declarations for locking */
 #if USE_LOCKS
 #ifndef WIN32
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYDLMALLOC_C_SECTION_2
+#include AZ_RESTRICTED_FILE(CryDLMalloc_c, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #include <pthread.h>
+#endif
 #if defined (__SVR4) && defined (__sun)  /* solaris */
 #include <thread.h>
 #endif /* solaris */

@@ -77,6 +77,8 @@ public:
             ActivateOutput(pActInfo, eOutPort_iOS, GetPortAny(pActInfo, eInPort_Get));
 #elif defined(APPLETV)
             ActivateOutput(pActInfo, eOutPort_AppleTV, GetPortAny(pActInfo, eInPort_Get));
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(FlowPlatformNode_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
         }
     }

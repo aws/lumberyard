@@ -175,7 +175,6 @@ private: //Variables
     FluidTabBar* m_openParticleTabBar;
     CParticleUIDefinition* m_pParticleUI;
     QMenu* m_titleBarMenu;
-    ContextMenu* m_tabBarContextMenu;
 
     DefaultViewWidget* m_defaultView;
 

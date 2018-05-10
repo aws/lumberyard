@@ -27,16 +27,33 @@ namespace AzFramework
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Category, "Input")
                 ->Constructor<const char*>()
-                ->Property("name", BehaviorValueProperty(&InputChannelId::m_name))
+                ->Property("name", [](InputChannelId* thisPtr) { return thisPtr->GetName(); }, nullptr)
             ;
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputChannelId::InputChannelId(const char* name)
-        : m_name(name)
-        , m_crc32(name)
+        : m_crc32(name)
     {
+        memset(m_name, 0, AZ_ARRAY_SIZE(m_name));
+        azstrncpy(m_name, NAME_BUFFER_SIZE, name, MAX_NAME_LENGTH);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    InputChannelId::InputChannelId(const InputChannelId& other)
+        : m_crc32(other.m_crc32)
+    {
+        memset(m_name, 0, AZ_ARRAY_SIZE(m_name));
+        azstrcpy(m_name, NAME_BUFFER_SIZE, other.m_name);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    InputChannelId& InputChannelId::operator=(const InputChannelId& other)
+    {
+        azstrcpy(m_name, NAME_BUFFER_SIZE, other.m_name);
+        m_crc32 = other.m_crc32;
+        return *this;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

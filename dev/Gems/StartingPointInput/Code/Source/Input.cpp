@@ -282,7 +282,12 @@ namespace Input
 
     void Input::GatherEditableInputRecords(AZ::EditableInputRecords& outResults)
     {
-        outResults.push_back(AZ::EditableInputRecord());
+        AZ::EditableInputRecord inputRecord;
+        inputRecord.m_deviceName = m_inputDeviceType;
+        inputRecord.m_inputName = m_inputName;
+        inputRecord.m_eventGroup = m_outgoingBusId.m_actionNameCrc;
+        inputRecord.m_profile = m_outgoingBusId.m_profileIdCrc;
+        outResults.push_back(inputRecord);
     }
 
     void Input::SetInputRecord(const AZ::EditableInputRecord& newInputRecord)

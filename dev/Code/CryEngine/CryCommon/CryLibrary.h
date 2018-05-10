@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_CRYLIBRARY_H
-#define CRYINCLUDE_CRYCOMMON_CRYLIBRARY_H
 #pragma once
 
 
@@ -58,7 +56,7 @@
 #include <AzCore/PlatformDef.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-    #include AZ_RESTRICTED_FILE(CryLibrary_h)
+    #include AZ_RESTRICTED_FILE(CryLibrary_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(WIN32)
     #if !defined(WIN32_LEAN_AND_MEAN)
         #define WIN32_LEAN_AND_MEAN
@@ -160,5 +158,3 @@ static HMODULE CryLoadLibrary(const char* libName, bool bLazy = false, bool bInM
 #endif
 #define CryLibraryDefName(libName) CrySharedLibraryPrefix libName CrySharedLibraryExtension
 #define CryLoadLibraryDefName(libName) CryLoadLibrary(CryLibraryDefName(libName))
-
-#endif // CRYINCLUDE_CRYCOMMON_CRYLIBRARY_H

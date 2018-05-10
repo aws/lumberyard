@@ -31,6 +31,7 @@
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <MysticQt/Source/ColorLabel.h>
 #include <MCore/Source/LogManager.h>
+#include <MCore/Source/StringConversions.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/AnimGraphNodeGroup.h>
 #include <EMotionFX/Source/BlendTreeParameterNode.h>
@@ -43,7 +44,7 @@
 
 namespace EMStudio
 {
-    NodeGroupRenameWindow::NodeGroupRenameWindow(QWidget* parent, EMotionFX::AnimGraph* animGraph, const MCore::String& nodeGroup)
+    NodeGroupRenameWindow::NodeGroupRenameWindow(QWidget* parent, EMotionFX::AnimGraph* animGraph, const AZStd::string& nodeGroup)
         : QDialog(parent)
     {
         // Store the values
@@ -68,7 +69,7 @@ namespace EMStudio
         layout->addWidget(mLineEdit);
 
         // set the current name and select all
-        mLineEdit->setText(nodeGroup.AsChar());
+        mLineEdit->setText(nodeGroup.c_str());
         mLineEdit->selectAll();
 
         // create add the error message
@@ -96,7 +97,7 @@ namespace EMStudio
 
     void NodeGroupRenameWindow::TextEdited(const QString& text)
     {
-        const MCore::String convertedNewName = FromQtString(text);
+        const AZStd::string convertedNewName = FromQtString(text);
         if (text.isEmpty())
         {
             //mErrorMsg->setVisible(false);
@@ -136,12 +137,12 @@ namespace EMStudio
     void NodeGroupRenameWindow::Accepted()
     {
         // Execute the command
-        MCore::String commandString, outResult;
-        const MCore::String convertedNewName = FromQtString(mLineEdit->text());
-        commandString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -newName \"%s\"", mAnimGraph->GetID(), mNodeGroup.AsChar(), convertedNewName.AsChar());
-        if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), outResult) == false)
+        AZStd::string commandString, outResult;
+        const AZStd::string convertedNewName = FromQtString(mLineEdit->text());
+        commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -newName \"%s\"", mAnimGraph->GetID(), mNodeGroup.c_str(), convertedNewName.c_str());
+        if (GetCommandManager()->ExecuteCommand(commandString.c_str(), outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
 
         // accept
@@ -292,7 +293,7 @@ namespace EMStudio
     void NodeGroupWindow::Init()
     {
         // selected node groups array
-        MCore::Array<MCore::String> selectedNodeGroups;
+        MCore::Array<AZStd::string> selectedNodeGroups;
 
         // get the current selection
         const QList<QTableWidgetItem*> selectedItems = mTableWidget->selectedItems();
@@ -305,7 +306,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numSelectedItems; ++i)
         {
             const uint32 rowIndex = selectedItems[i]->row();
-            const MCore::String nodeGroupName = FromQtString(mTableWidget->item(rowIndex, 2)->text());
+            const AZStd::string nodeGroupName = FromQtString(mTableWidget->item(rowIndex, 2)->text());
             if (selectedNodeGroups.Find(nodeGroupName) == MCORE_INVALIDINDEX32)
             {
                 selectedNodeGroups.Add(nodeGroupName);
@@ -445,31 +446,31 @@ namespace EMStudio
         const uint32 groupIndex = row;
         AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup( groupIndex );
 
-        MCore::String mcoreName;
+        AZStd::string mcoreName;
         FromQtString(newName, &mcoreName);
 
         // if the name didn't change do nothing
-        if (nodeGroup->GetNameString().CheckIfIsEqual( mcoreName.AsChar() ))
+        if (nodeGroup->GetNameString().CheckIfIsEqual( mcoreName.c_str() ))
             return;
 
         // validate the name
-        if (ValidateName( nodeGroup, mcoreName.AsChar() ) == false)
+        if (ValidateName( nodeGroup, mcoreName.c_str() ) == false)
         {
-            MCore::LogWarning("The name '%s' is either invalid or already in use by another node group, please type in another name.", mcoreName.AsChar());
+            MCore::LogWarning("The name '%s' is either invalid or already in use by another node group, please type in another name.", mcoreName.c_str());
             item->setText( nodeGroup->GetName() );
         }
         else    // trigger the rename
         {
             // build the command string
-            MCore::String commandString;
-            commandString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), nodeGroup->GetName(), mcoreName.AsChar());
+            AZStd::string commandString;
+            commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -newName \"%s\"", animGraph->GetID(), nodeGroup->GetName(), mcoreName.c_str());
 
             // execute the command
-            MCore::String commandResult;
-            if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), commandResult) == false)
+            AZStd::string commandResult;
+            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), commandResult) == false)
             {
                 if (commandResult.GetIsEmpty() == false)
-                    MCore::LogError( commandResult.AsChar() );
+                    MCore::LogError( commandResult.c_str() );
             }
         }
     }*/
@@ -535,16 +536,16 @@ namespace EMStudio
             return;
         }
 
-        MCore::String commandString;
-        MCore::String resultString;
-        commandString.Format("AnimGraphAddNodeGroup -animGraphID %i", animGraph->GetID());
+        AZStd::string commandString;
+        AZStd::string resultString;
+        commandString = AZStd::string::format("AnimGraphAddNodeGroup -animGraphID %i", animGraph->GetID());
 
         // execute the command
-        if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), resultString) == false)
+        if (GetCommandManager()->ExecuteCommand(commandString.c_str(), resultString) == false)
         {
-            if (resultString.GetLength() > 0)
+            if (resultString.size() > 0)
             {
-                MCore::LogError(resultString.AsChar());
+                MCore::LogError(resultString.c_str());
             }
         }
         else
@@ -600,16 +601,16 @@ namespace EMStudio
         bool isVisible = state == Qt::Checked;
 
         // construct the command
-        MCore::String commandString;
-        commandString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %i", animGraph->GetID(), nodeGroup->GetName(), isVisible);
+        AZStd::string commandString;
+        commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -isVisible %s", animGraph->GetID(), nodeGroup->GetName(), AZStd::to_string(isVisible).c_str());
 
         // execute the command
-        MCore::String resultString;
-        if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), resultString) == false)
+        AZStd::string resultString;
+        if (GetCommandManager()->ExecuteCommand(commandString.c_str(), resultString) == false)
         {
-            if (resultString.GetLength() > 0)
+            if (resultString.size() > 0)
             {
-                MCore::LogError(resultString.AsChar());
+                MCore::LogError(resultString.c_str());
             }
         }
     }
@@ -638,16 +639,16 @@ namespace EMStudio
         AZ::Vector4 finalColor(r / 255.0f, g / 255.0f, b / 255.0f, 1.0f);
 
         // construct the command
-        MCore::String commandString;
-        commandString.Format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -color \"%s\"", animGraph->GetID(), nodeGroup->GetName(), MCore::String(finalColor).AsChar());
+        AZStd::string commandString;
+        commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %i -name \"%s\" -color \"%s\"", animGraph->GetID(), nodeGroup->GetName(), AZStd::to_string(finalColor).c_str());
 
         // execute the command
-        MCore::String resultString;
-        if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), resultString) == false)
+        AZStd::string resultString;
+        if (GetCommandManager()->ExecuteCommand(commandString.c_str(), resultString) == false)
         {
-            if (resultString.GetLength() > 0)
+            if (resultString.size() > 0)
             {
-                MCore::LogError(resultString.AsChar());
+                MCore::LogError(resultString.c_str());
             }
         }
     }
@@ -728,18 +729,18 @@ namespace EMStudio
         MCore::CommandGroup internalCommandGroup(commandGroupName);
 
         // Add each command
-        MCore::String tempString;
+        AZStd::string tempString;
         for (uint32 i = 0; i < numRowIndices; ++i)
         {
-            const MCore::String nodeGroupName = FromQtString(mTableWidget->item(rowIndices[i], 2)->text());
-            tempString.Format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroupName.AsChar());
-            internalCommandGroup.AddCommandString(tempString.AsChar());
+            const AZStd::string nodeGroupName = FromQtString(mTableWidget->item(rowIndices[i], 2)->text());
+            tempString = AZStd::string::format("AnimGraphRemoveNodeGroup -animGraphID %i -name \"%s\"", animGraph->GetID(), nodeGroupName.c_str());
+            internalCommandGroup.AddCommandString(tempString.c_str());
         }
 
         // execute the command group
         if (GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, tempString) == false)
         {
-            MCore::LogError(tempString.AsChar());
+            MCore::LogError(tempString.c_str());
         }
 
         // selected the next row

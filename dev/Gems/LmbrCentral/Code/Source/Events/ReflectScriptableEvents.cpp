@@ -12,6 +12,7 @@
 #include "LmbrCentral_precompiled.h"
 #include "Events/ReflectScriptableEvents.h"
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/Script/ScriptContextAttributes.h>
 #include <GameplayEventBus.h>
@@ -238,9 +239,25 @@ namespace LmbrCentral
         }
     }
 
-    void ReflectScriptableEvents::Reflect(AZ::BehaviorContext* behaviorContext)
+    void ReflectScriptableEvents::Reflect(AZ::ReflectContext* context)
     {
-        if (behaviorContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<AZ::GameplayNotificationId>()
+                ->Version(1)
+                ->Field("Channel", &AZ::GameplayNotificationId::m_channel)
+                ->Field("ActionName", &AZ::GameplayNotificationId::m_actionNameCrc)
+                ->Field("PayloadType", &AZ::GameplayNotificationId::m_payloadTypeId)
+            ;
+
+            serializeContext->Class<AZ::InputEventNotificationId>()
+                ->Version(1)
+                ->Field("ProfileId", &AZ::InputEventNotificationId::m_profileIdCrc)
+                ->Field("ActionName", &AZ::InputEventNotificationId::m_actionNameCrc)
+            ;
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Class<AZ::GameplayNotificationId>("GameplayNotificationId")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
@@ -274,7 +291,7 @@ namespace LmbrCentral
                 ;
 
             behaviorContext->EBus<AZ::GameplayNotificationBus>("GameplayNotificationBus")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                 ->Handler<BehaviorGameplayNotificationBusHandler>()
                 ->Event("OnEventBegin", &AZ::GameplayNotificationBus::Events::OnEventBegin)
                 ->Event("OnEventUpdating", &AZ::GameplayNotificationBus::Events::OnEventUpdating)
@@ -291,12 +308,15 @@ namespace LmbrCentral
             behaviorContext->Class<MathUtils>("MathUtils")
                 ->Method("ConvertTransformToEulerDegrees", &AzFramework::ConvertTransformToEulerDegrees)
                 ->Method("ConvertTransformToEulerRadians", &AzFramework::ConvertTransformToEulerRadians)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerDegreesToTransform", &AzFramework::ConvertEulerDegreesToTransform)
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerDegreesToTransformPrecise", &AzFramework::ConvertEulerDegreesToTransformPrecise)
                 ->Method("ConvertQuaternionToEulerDegrees", &AzFramework::ConvertQuaternionToEulerDegrees)
                 ->Method("ConvertQuaternionToEulerRadians", &AzFramework::ConvertQuaternionToEulerRadians)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerRadiansToQuaternion", &AzFramework::ConvertEulerRadiansToQuaternion)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ConvertEulerDegreesToQuaternion", &AzFramework::ConvertEulerDegreesToQuaternion)
                 ->Method("CreateLookAt", &AzFramework::CreateLookAt);
 

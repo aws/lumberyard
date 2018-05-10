@@ -15,8 +15,8 @@
 // include required files
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/SmallArray.h>
+#include <AzCore/std/string/string.h>
 
 
 namespace EMotionFX
@@ -81,10 +81,10 @@ namespace EMotionFX
         const char* GetName() const;
 
         /**
-         * Get the name of the group, in form of a MCore::String object.
-         * @result The name as a reference to a MCore::String object.
+         * Get the name of the group, in form of a AZStd::string object.
+         * @result The name as a reference to a AZStd::string object.
          */
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
 
         /**
          * Set the number of nodes that remain inside this group.
@@ -184,7 +184,7 @@ namespace EMotionFX
         void SetIsEnabledOnDefault(bool enabledOnDefault);
 
     private:
-        MCore::String               mName;              /**< The name of the group. */
+        AZStd::string               mName;              /**< The name of the group. */
         MCore::SmallArray<uint16>   mNodes;             /**< The node index numbers that are inside this group. */
         bool                        mEnabledOnDefault;  /**< Specifies whether this group is enabled on default (true) or disabled (false). With on default we mean after directly after the actor instance using this group has been created. */
 

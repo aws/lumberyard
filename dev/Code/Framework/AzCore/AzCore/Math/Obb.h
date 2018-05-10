@@ -13,6 +13,7 @@
 #define AZCORE_MATH_OBB_H 1
 
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Matrix3x3.h>
 
 namespace AZ
 {
@@ -56,37 +57,45 @@ namespace AZ
         ///Converts an AABB into an OBB
         static const Obb CreateFromAabb(const Aabb& aabb);
 
-        AZ_MATH_FORCE_INLINE const Vector3& GetPosition() const         { return m_position; }
-        AZ_MATH_FORCE_INLINE const Vector3& GetAxisX() const            { return m_axes[0].m_axis; }
-        AZ_MATH_FORCE_INLINE const Vector3& GetAxisY() const            { return m_axes[1].m_axis; }
-        AZ_MATH_FORCE_INLINE const Vector3& GetAxisZ() const            { return m_axes[2].m_axis; }
-        AZ_MATH_FORCE_INLINE const Vector3& GetAxis(int index) const
+        const Vector3& GetPosition() const         { return m_position; }
+        Matrix3x3 GetOrientation() const
+        {
+            return Matrix3x3::CreateFromColumns(
+                m_axes[0].m_axis,
+                m_axes[1].m_axis,
+                m_axes[2].m_axis);
+        }
+
+        const Vector3& GetAxisX() const            { return m_axes[0].m_axis; }
+        const Vector3& GetAxisY() const            { return m_axes[1].m_axis; }
+        const Vector3& GetAxisZ() const            { return m_axes[2].m_axis; }
+        const Vector3& GetAxis(int index) const
         {
             AZ_Assert((index >= 0) && (index < 3), "Invalid axis");
             return m_axes[index].m_axis;
         }
-        AZ_MATH_FORCE_INLINE float GetHalfLengthX() const               { return m_axes[0].m_halfLength; }
-        AZ_MATH_FORCE_INLINE float GetHalfLengthY() const               { return m_axes[1].m_halfLength; }
-        AZ_MATH_FORCE_INLINE float GetHalfLengthZ() const               { return m_axes[2].m_halfLength; }
-        AZ_MATH_FORCE_INLINE float GetHalfLength(int index) const
+        float GetHalfLengthX() const               { return m_axes[0].m_halfLength; }
+        float GetHalfLengthY() const               { return m_axes[1].m_halfLength; }
+        float GetHalfLengthZ() const               { return m_axes[2].m_halfLength; }
+        float GetHalfLength(int index) const
         {
             AZ_Assert((index >= 0) && (index < 3), "Invalid axis");
             return m_axes[index].m_halfLength;
         }
 
-        AZ_MATH_FORCE_INLINE void SetPosition(const Vector3& position)  { m_position = position; }
-        AZ_MATH_FORCE_INLINE void SetAxisX(const Vector3& axis)         { m_axes[0].m_axis = axis; }
-        AZ_MATH_FORCE_INLINE void SetAxisY(const Vector3& axis)         { m_axes[1].m_axis = axis; }
-        AZ_MATH_FORCE_INLINE void SetAxisZ(const Vector3& axis)         { m_axes[2].m_axis = axis; }
-        AZ_MATH_FORCE_INLINE void SetAxis(int index, const Vector3& axis)
+        void SetPosition(const Vector3& position)  { m_position = position; }
+        void SetAxisX(const Vector3& axis)         { m_axes[0].m_axis = axis; }
+        void SetAxisY(const Vector3& axis)         { m_axes[1].m_axis = axis; }
+        void SetAxisZ(const Vector3& axis)         { m_axes[2].m_axis = axis; }
+        void SetAxis(int index, const Vector3& axis)
         {
             AZ_Assert((index >= 0) && (index < 3), "Invalid axis");
             m_axes[index].m_axis = axis;
         }
-        AZ_MATH_FORCE_INLINE void SetHalfLengthX(float halfLength)          { m_axes[0].m_halfLength = halfLength; }
-        AZ_MATH_FORCE_INLINE void SetHalfLengthY(float halfLength)          { m_axes[1].m_halfLength = halfLength; }
-        AZ_MATH_FORCE_INLINE void SetHalfLengthZ(float halfLength)          { m_axes[2].m_halfLength = halfLength; }
-        AZ_MATH_FORCE_INLINE void SetHalfLength(int index, float halfLength)
+        void SetHalfLengthX(float halfLength)          { m_axes[0].m_halfLength = halfLength; }
+        void SetHalfLengthY(float halfLength)          { m_axes[1].m_halfLength = halfLength; }
+        void SetHalfLengthZ(float halfLength)          { m_axes[2].m_halfLength = halfLength; }
+        void SetHalfLength(int index, float halfLength)
         {
             AZ_Assert((index >= 0) && (index < 3), "Invalid axis");
             m_axes[index].m_halfLength = halfLength;

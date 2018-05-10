@@ -12,6 +12,7 @@
 #include <AzCore/base.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/std/parallel/thread.h> /// this_thread sleep_for.
 
 namespace AZ
 {
@@ -58,6 +59,17 @@ namespace AZ
             }
 
             return systemFileMode;
+        }
+
+        bool RetryOpenStream(FileIOStream& stream, int numRetries, int delayBetweenRetry)
+        {
+            while ((!stream.IsOpen()) && (numRetries > 0))
+            {
+                numRetries--;
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(delayBetweenRetry));
+                stream.ReOpen();
+            }
+            return stream.IsOpen();
         }
     }   // namespace IO
 }   // namespace AZ

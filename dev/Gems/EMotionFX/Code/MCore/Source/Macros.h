@@ -14,9 +14,6 @@
 
 namespace MCore
 {
-    // forward declaration
-    class UnicodeString;
-
     /**
      * Forward declare an MCore class.
      */
@@ -62,7 +59,7 @@ namespace MCore
      * ::FunctionName().
      */
 #define MCORE_NOCLASS_HERE \
-    MCore::UnicodeString(MCore::UnicodeString("Global::") + MCore::String(MCORE_THIS_FUNCTION))
+    AZStd::string(AZStd::string("Global::") + AZStd::string(MCORE_THIS_FUNCTION))
 
     /**
      * Macro that returns the current location including namespace, class name
@@ -70,7 +67,7 @@ namespace MCore
      */
 #if (MCORE_COMPILER == MCORE_COMPILER_MSVC)
     #define MCORE_HERE \
-    MCore::UnicodeString(MCore::UnicodeString(MCORE_THIS_CLASS) + MCore::UnicodeString("::") + MCore::String(MCORE_THIS_FUNCTION))
+    AZStd::string(AZStd::string(MCORE_THIS_CLASS) + AZStd::string("::") + AZStd::string(MCORE_THIS_FUNCTION))
 #else
     #define MCORE_HERE ""
 #endif
@@ -79,5 +76,5 @@ namespace MCore
      * Macro that returns the current location. Global::.
      */
 #define MCORE_GLOBAL_HERE \
-    MCore::UnicodeString("Global::")
+    AZStd::string("Global::")
 }   // namespace MCore

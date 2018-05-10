@@ -25,7 +25,7 @@ void CFragmentSplitter::showEvent(QShowEvent* event)
 {
     if (auto pMannequinDialog = CMannequinDialog::GetCurrentInstance())
     {
-        connect(pMannequinDialog->findDockWidget<CFragmentBrowser*>(), &QDockWidget::visibilityChanged, [](bool visible)
+        connect(pMannequinDialog->findDockWidget<CFragmentBrowser*>(), &QDockWidget::visibilityChanged, pMannequinDialog, [](bool visible)
             {
                 if (!visible)
                 {

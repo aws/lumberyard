@@ -272,6 +272,8 @@
             "IEditorImpl.h",
             "CryEdit.cpp",
             "CryEdit.h",
+            "EditorToolsApplication.cpp",
+            "EditorToolsApplication.h",
             "Core/EditorMetricsPlainTextNameRegistration.cpp",
             "Core/EditorMetricsPlainTextNameRegistration.h",
             "MainWindow.cpp",
@@ -292,6 +294,7 @@
             "LevelTreeModel.h"
         ],
         "HyperGraph": [
+            "HyperGraph/HyperGraphConstants.h",
             "HyperGraph/HyperGraphDialog.qrc",
             "HyperGraph/HyperGraphDialog.cpp",
             "HyperGraph/HyperGraphWidget.cpp"
@@ -355,8 +358,10 @@
             "Include/IExportManager.h",
             "Include/IGizmoManager.h",
             "Include/IIconManager.h",
+            "Include/ILogFile.h",
             "Include/IKeyTimeSet.h",
             "Include/IObjectManager.h",
+            "Include/IMissingAssetResolver.h",
             "Include/IPlugin.h",
             "Include/IPreferencesPage.h",
             "Include/IRenderListener.h",
@@ -527,6 +532,13 @@
             "AI/NavDataGeneration/PolygonSetOps/Polygon2d.h",
             "AI/NavDataGeneration/PolygonSetOps/Utils.h"
         ],
+        "Alembic": [
+            "Alembic/AlembicCompileDialog.cpp",
+            "Alembic/AlembicCompileDialog.h",
+            "Alembic/AlembicCompileDialog.ui",
+            "Alembic/AlembicCompiler.h",
+            "Alembic/AlembicCompiler.cpp"
+        ],
         "Amazon": [
             "Amazon/Login.qrc",
             "Amazon/Login.cpp",
@@ -585,7 +597,7 @@
             "AzAssetBrowser/AzAssetBrowserDialog.cpp",
             "AzAssetBrowser/AzAssetBrowserDialog.h",
             "AzAssetBrowser/AzAssetBrowserDialog.ui"
-        ],        
+        ],
         "AzAssetBrowser/Preview": [
             "AzAssetBrowser/Preview/PreviewWidget.cpp",
             "AzAssetBrowser/Preview/PreviewWidget.h",
@@ -786,6 +798,8 @@
             "Controls/ReflectedPropertyControl/PropertyGenericCtrl.h",
             "Controls/ReflectedPropertyControl/PropertyMiscCtrl.cpp",
             "Controls/ReflectedPropertyControl/PropertyMiscCtrl.h",
+            "Controls/ReflectedPropertyControl/PropertyMotionCtrl.cpp",
+            "Controls/ReflectedPropertyControl/PropertyMotionCtrl.h",
             "Controls/ReflectedPropertyControl/PropertyResourceCtrl.cpp",
             "Controls/ReflectedPropertyControl/PropertyResourceCtrl.h",
             "Controls/ReflectedPropertyControl/PropertyCtrl.cpp",
@@ -894,9 +908,6 @@
             "DialogEditor/ComboBoxItemDelegate.h"
         ],
         "Dialogs": [
-            "Alembic/AlembicCompileDialog.cpp",
-            "Alembic/AlembicCompileDialog.h",
-            "Alembic/AlembicCompileDialog.ui",
             "CheckOutDialog.cpp",
             "CheckOutDialog.h",
             "CheckOutDialog.ui",
@@ -1132,7 +1143,6 @@
         "Header Files": [
             "AboutDialog.h",
             "AboutDialog.ui",
-            "Alembic/AlembicCompiler.h",
             "AnimUtils.h",
             "DatabaseFrameWnd.h",
             "DatabaseFrameWnd.ui",
@@ -1463,6 +1473,7 @@
             "Objects/CloudGroup.h",
             "Objects/CloudObject.cpp",
             "Objects/CloudObject.h",
+            "Objects/IEntityObjectListener.h",
             "Objects/ParticleEffectObject.cpp",
             "Objects/RefPicture.cpp",
             "Objects/TagComment.cpp",
@@ -1711,7 +1722,6 @@
         ],
         "Source Files": [
             "AboutDialog.cpp",
-            "Alembic/AlembicCompiler.cpp",
             "DatabaseFrameWnd.cpp",
             "Dialogs/DuplicatedObjectsHandlerDlg.cpp",
             "Dialogs/DuplicatedObjectsHandlerDlg.ui",
@@ -1902,6 +1912,7 @@
         ],
         "TrackView/Dialog/Key Dialogs": [
             "TrackView/2DBezierKeyUIControls.cpp",
+            "TrackView/AssetBlendKeyUIControls.cpp",
             "TrackView/CaptureKeyUIControls.cpp",
             "TrackView/CharacterKeyUIControls.cpp",
             "TrackView/ConsoleKeyUIControls.cpp",

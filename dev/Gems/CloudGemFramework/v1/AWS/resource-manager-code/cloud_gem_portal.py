@@ -65,7 +65,7 @@ def open_portal(context, args):
     cgp_s3_resource = project_resources[constant.PROJECT_CGP_RESOURCE_NAME]
     stackid = cgp_s3_resource['StackId']
     bucket_id = cgp_s3_resource['PhysicalResourceId']
-    expiration = args.duration_seconds
+    expiration = args.duration_seconds if args.duration_seconds else constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS # default comes from argparse only on cli, gui call doesn't provide a default expiration
     region = resource_manager.util.get_region_from_arn(stackid)
     s3_client = context.aws.session.client('s3',region, config=Config(signature_version='s3v4'))
 

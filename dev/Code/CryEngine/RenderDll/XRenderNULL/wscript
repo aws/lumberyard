@@ -42,8 +42,7 @@ def build(bld):
 
         pch                 = '../StdAfx.cpp',
         includes            = ['..',
-                               bld.Path('Code/SDKs'),
-                               bld.Path('Code/SDKs/squish-ccr'),
+                               bld.ThirdPartyPath('squish'),
                                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9')],
         defines             = ['NULL_RENDERER', '_RENDERER', 'RENDERER_EXPORTS', 'ENGINE_EXPORTS' ],
         use                 = ['AzFramework'],

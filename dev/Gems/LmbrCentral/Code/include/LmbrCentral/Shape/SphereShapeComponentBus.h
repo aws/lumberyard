@@ -9,13 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
-#include <LmbrCentral/Shape/ShapeComponentBus.h>
+#include <AzCore/Component/ComponentBus.h>
 
 namespace LmbrCentral
 {
-    /** 
+    /**
      * Type ID for SphereShapeComponent
      */
     static const AZ::Uuid SphereShapeComponentTypeId = "{E24CBFF0-2531-4F8D-A8AB-47AF4D54BCD2}";
@@ -34,39 +35,48 @@ namespace LmbrCentral
     public:
         AZ_CLASS_ALLOCATOR(SphereShapeConfig, AZ::SystemAllocator, 0);
         AZ_RTTI(SphereShapeConfig, "{4AADFD75-48A7-4F31-8F30-FE4505F09E35}", ComponentConfig);
+        
         static void Reflect(AZ::ReflectContext* context);
 
         SphereShapeConfig() = default;
-        SphereShapeConfig(float radius) : m_radius(radius) {}
+        explicit SphereShapeConfig(float radius) : m_radius(radius) {}
 
-        AZ_INLINE void SetRadius(float newRadius)
+        void SetRadius(float radius)
         {
-            m_radius = newRadius;
+            AZ_WarningOnce("LmbrCentral", false, "SetRadius Deprecated - Please use m_radius");
+            m_radius = radius;
         }
 
-        AZ_INLINE float GetRadius() const
+        float GetRadius() const
         {
+            AZ_WarningOnce("LmbrCentral", false, "GetRadius Deprecated - Please use m_radius");
             return m_radius;
         }
 
         float m_radius = 0.5f;
     };
 
-    using SphereShapeConfiguration = SphereShapeConfig; ///< @deprecated Use SphereShapeConfig.   
+    using SphereShapeConfiguration = SphereShapeConfig; ///< @deprecated Use SphereShapeConfig.
 
-    /*!
-    * Services provided by the Sphere Shape Component
-    */
-    class SphereShapeComponentRequests : public AZ::ComponentBus
+    /**
+     * Services provided by the Sphere Shape Component.
+     */
+    class SphereShapeComponentRequests 
+        : public AZ::ComponentBus
     {
     public:
         virtual SphereShapeConfig GetSphereConfiguration() = 0;
 
         /**
-        * \brief Sets the radius for the sphere shape component
-        * \param new Radius of the sphere shape 
-        */
-        virtual void SetRadius(float newRadius) = 0;
+         * @brief Returns the radius for the sphere shape component.
+         */
+        virtual float GetRadius() = 0;
+
+        /**
+         * @brief Sets the radius for the sphere shape component.
+         * @param radius new Radius of the sphere shape.
+         */
+        virtual void SetRadius(float radius) = 0;
     };
 
     // Bus to service the Sphere Shape component event group

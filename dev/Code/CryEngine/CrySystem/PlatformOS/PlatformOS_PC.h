@@ -14,11 +14,15 @@
 // Description : Interface to the Platform OS
 
 
-#ifndef CRYINCLUDE_CRYSYSTEM_PLATFORMOS_PLATFORMOS_PC_H
-#define CRYINCLUDE_CRYSYSTEM_PLATFORMOS_PLATFORMOS_PC_H
 #pragma once
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlatformOS_PC_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 
 #include "IPlatformOS.h"
 #include <CryListenerSet.h>
@@ -146,4 +150,4 @@ private:
     bool m_bSaveDuringLevelLoad;
 };
 
-#endif // CRYINCLUDE_CRYSYSTEM_PLATFORMOS_PLATFORMOS_PC_H
+#endif

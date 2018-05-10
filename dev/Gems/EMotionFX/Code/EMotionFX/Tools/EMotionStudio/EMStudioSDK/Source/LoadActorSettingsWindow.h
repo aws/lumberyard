@@ -13,7 +13,6 @@
 #pragma once
 
 #include "EMStudioConfig.h"
-#include <AzCore/std/string/string.h>
 #include <QCheckBox>
 #include <QDialog>
 

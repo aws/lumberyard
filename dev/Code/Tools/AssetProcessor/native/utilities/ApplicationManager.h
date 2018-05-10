@@ -181,16 +181,10 @@ struct ApplicationDependencyInfo
 {
     QString m_fileName;
     QDateTime m_timestamp;
-    bool m_isModified;
-    bool m_stillUpdating;
-    bool m_wasPresentEver; // files that were never present in the first place are not relevant
 
-    ApplicationDependencyInfo(QString fileName, QDateTime timestamp, bool modified = false, bool stillUpdating = false, bool wasPresentEver = false)
+    ApplicationDependencyInfo(QString fileName, QDateTime timestamp)
         : m_fileName(fileName)
         , m_timestamp(timestamp)
-        , m_isModified(modified)
-        , m_stillUpdating(stillUpdating)
-        , m_wasPresentEver(wasPresentEver)
     {
     }
 
@@ -199,10 +193,4 @@ public:
     void SetFileName(QString FileName);
     QDateTime Timestamp() const;
     void SetTimestamp(const QDateTime& Timestamp);
-    bool IsModified() const;
-    void SetIsModified(bool IsModified);
-    bool StillUpdating() const;
-    void SetStillUpdating(bool StillUpdating);
-    bool WasPresentEver() const;
-    void SetWasPresentEver();
 };

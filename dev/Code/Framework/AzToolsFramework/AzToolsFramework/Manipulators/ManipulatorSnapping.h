@@ -46,16 +46,8 @@ namespace AzToolsFramework
      * value < 0 return -1.0
      * value == 0 return 0.0
      */
-    AZ_INLINE float Sign(float value)
+    inline float Sign(float value)
     {
         return static_cast<float>((0.0f < value) - (value < 0.0f));
-    }
-
-    /**
-     * Get largest element in Vector.
-     */
-    AZ_INLINE float MaxElement(const AZ::Vector3& vector)
-    {
-        return GetMax(vector.GetX(), GetMax(vector.GetY(), vector.GetZ()));
     }
 }

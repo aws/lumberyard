@@ -47,9 +47,6 @@ namespace ScriptCanvas
             static const int k_datumIndexLHS = 0;
             static const int k_datumIndexRHS = 1;
 
-            // Indices into m_slotContainer.m_slots
-            int m_outputSlotIndex = -1;
-
             void OnInit() override;
 
             // must be overridden with the binary operations
@@ -57,6 +54,8 @@ namespace ScriptCanvas
 
             // Triggered by the execution signal
             void OnInputSignal(const SlotId& slot) override;
+
+            SlotId GetOutputSlotId() const;
 
             void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
@@ -123,84 +122,5 @@ namespace ScriptCanvas
             void InitializeBooleanExpression() override;
             void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
         };
-
-#if defined(EXPRESSION_TEMPLATES_ENABLED)
-        template<typename Derived, typename BinaryFunctor>
-        class BinaryOperatorGeneric
-            : public Node
-        {
-        public:
-            AZ_STATIC_ASSERT(AZStd::function_traits<BinaryFunctor>::num_args == 2, "Binary member function must accept two arguments");
-            using ResultType = std::remove_cv_t<std::remove_reference_t<typename AZStd::function_traits<BinaryFunctor>::result_type>>;
-            using FirstArgType = std::remove_cv_t<std::remove_reference_t<AZStd::function_traits_get_arg_t<BinaryFunctor, 0>>>;
-            using SecondArgType = std::remove_cv_t<std::remove_reference_t<AZStd::function_traits_get_arg_t<BinaryFunctor, 1>>>;
-            
-            AZ_RTTI((BinaryOperatorGeneric, "{45E0919C-C831-4B49-BE1F-FF13BC100F49}", Derived), Node, AZ::Component);
-            AZ_COMPONENT_INTRUSIVE_DESCRIPTOR_TYPE(BinaryOperatorGeneric);
-            AZ_COMPONENT_BASE(BinaryOperatorGeneric)
-
-            static void Reflect(AZ::ReflectContext* reflection);
-
-            BinaryOperatorGeneric() = default;
-            ~BinaryOperatorGeneric() override = default;
-
-            static const char* GetFirstArgName() { return "Arg1"; }
-            static const char* GetSecondArgName() { return "Arg2"; }
-            static const char* GetResultName() { return "Result"; }
-
-        protected:
-            static const char* GetOperatorName() { return "BinaryOperatorGeneric"; }
-            static const char* GetOperatorDesc() { return "Performs Binary Operator on two provided arguments"; }
-            static const char* GetIconPath() { return ""; }
-            static AZStd::vector<ContractDescriptor> GetFirstArgContractDesc() { return AZStd::vector<ContractDescriptor>{}; }
-            static AZStd::vector<ContractDescriptor> GetSecondArgContractDesc() { return AZStd::vector<ContractDescriptor>{}; }
-            static AZStd::vector<ContractDescriptor> GetResultContractDesc() { return AZStd::vector<ContractDescriptor>{}; }
-
-            template<typename ValueType>
-            bool SetValueOnFirstEndpoint(ValueType& property, const SlotId& slotId);
-
-        private:
-            FirstArgType m_arg1{};
-            SecondArgType m_arg2{};
-            ResultType m_result{};
-        };
-
-        template<typename Derived, typename BinaryFunctor>
-        void BinaryOperatorGeneric<Derived, BinaryFunctor>::Reflect(AZ::ReflectContext* reflection)
-        {
-            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-            if (serializeContext)
-            {
-                // Reflect BinaryOperatorGeneric as a derived class from the base Node class
-                serializeContext->Class<BinaryOperatorGeneric, Node>()
-                    ->Version(0)
-                    ;
-
-                // Reflect Derived class to the serialization context
-                serializeContext->Class<Derived, BinaryOperatorGeneric>()
-                    ->Version(1)
-                    ;
-
-                AZ::EditContext* editContext = serializeContext->GetEditContext();
-                if (editContext)
-                {
-                    editContext->Class<Derived>(Derived::GetOperatorName(), Derived::GetOperatorDesc())
-                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Icon, Derived::GetIconPath())
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                        ;
-                }
-            }
-        }
-
-        template<typename Derived, typename BinaryFunctor>
-        void BinaryOperatorGeneric<Derived, BinaryFunctor>::Initialize(const AZ::Uuid& classId)
-        {
-            AddSlot({ Derived::GetFirstArgName(), SlotType::DataIn, Derived::GetFirstArgContractDesc() });
-            AddSlot({ Derived::GetSecondArgName(), SlotType::DataIn, Derived::GetSecondArgContractDesc() });
-            AddSlot({ Derived::GetResultName(), SlotType::DataOut, Derived::GetResultContractDesc() });
-        }
-#endif // defined(EXPRESSION_TEMPLATES_ENABLED)
-
     } // namespace Nodes
 } // namespace ScriptCanvas

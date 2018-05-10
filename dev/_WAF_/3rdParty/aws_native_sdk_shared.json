@@ -16,7 +16,7 @@
         "aws_cpp_sdk_transfer_shared", 
         "aws_cpp_sdk_identity_metrics_shared"
     ], 
-    "source": "@ROOT@/Code/SDKs/AWSNativeSDK", 
+    "source": "@3P:AWSNativeSDK@", 
     "description": "Shared libraries for AWS Native SDK", 
     "aliases": {
         "aws_cpp_sdk_all": [
@@ -424,6 +424,7 @@
                 "{aws_cpp_sdk_identity_metrics}.pdb"
             ]
         }, 
+        "win_x64_vs2017": "@win_x64_vs2015", 
         "darwin_x64": {
             "sharedlibpath_debug": [
                 "lib/mac/Debug"
@@ -618,6 +619,99 @@
             "aws_cpp_sdk_identity_metrics_shared/shared": [
                 "lib${aws_cpp_sdk_identity_metrics}.so"
             ]
-        }
+        }, 
+        "durango_vs2015": {
+            "importlibpath_debug": [
+                "bin/durango/170300/Debug"
+            ], 
+            "importlibpath_release": [
+                "bin/durango/170300/Release"
+            ], 
+            "aws_cpp_sdk_all_shared/import": [
+                "${aws_cpp_sdk_all}.lib"
+            ], 
+            "aws_cpp_sdk_core_shared/import": [
+                "${aws_cpp_sdk_core}.lib"
+            ], 
+            "aws_cpp_sdk_gamelift_shared/import": [
+                "${aws_cpp_sdk_gamelift}.lib"
+            ], 
+            "aws_cpp_sdk_s3_shared/import": [
+                "${aws_cpp_sdk_s3}.lib"
+            ], 
+            "aws_cpp_sdk_sts_shared/import": [
+                "${aws_cpp_sdk_sts}.lib"
+            ], 
+            "aws_cpp_sdk_mobileanalytics_shared/import": [
+                "${aws_cpp_sdk_mobileanalytics}.lib"
+            ], 
+            "aws_cpp_sdk_identity_management_shared/import": [
+                "${aws_cpp_sdk_identity_management}.lib"
+            ], 
+            "aws_cpp_sdk_cognito_identity_shared/import": [
+                "${aws_cpp_sdk_cognito_identity}.lib"
+            ], 
+            "aws_cpp_sdk_cognito_idp_shared/import": [
+                "${aws_cpp_sdk_cognito_idp}.lib"
+            ], 
+            "aws_cpp_sdk_kinesis_shared/import": [
+                "${aws_cpp_sdk_kinesis}.lib"
+            ], 
+            "aws_cpp_sdk_lambda_shared/import": [
+                "${aws_cpp_sdk_lambda}.lib"
+            ], 
+            "aws_cpp_sdk_identity_lambda_shared/import": [
+                "${aws_cpp_sdk_identity_lambda}.lib"
+            ], 
+            "aws_cpp_sdk_identity_metrics_shared/import": [
+                "${aws_cpp_sdk_identity_metrics}.lib"
+            ], 
+            "sharedlibpath_debug": [
+                "bin/durango/170300/Debug"
+            ], 
+            "sharedlibpath_release": [
+                "bin/durango/170300/Release"
+            ], 
+            "aws_cpp_sdk_all_shared/shared": [
+                "${aws_cpp_sdk_all}.dll"
+            ], 
+            "aws_cpp_sdk_core_shared/shared": [
+                "${aws_cpp_sdk_core}.dll"
+            ], 
+            "aws_cpp_sdk_gamelift_shared/shared": [
+                "${aws_cpp_sdk_gamelift}.dll"
+            ], 
+            "aws_cpp_sdk_s3_shared/shared": [
+                "${aws_cpp_sdk_s3}.dll"
+            ], 
+            "aws_cpp_sdk_sts_shared/shared": [
+                "${aws_cpp_sdk_sts}.dll"
+            ], 
+            "aws_cpp_sdk_mobileanalytics_shared/shared": [
+                "${aws_cpp_sdk_mobileanalytics}.dll"
+            ], 
+            "aws_cpp_sdk_identity_management_shared/shared": [
+                "${aws_cpp_sdk_identity_management}.dll"
+            ], 
+            "aws_cpp_sdk_cognito_identity_shared/shared": [
+                "${aws_cpp_sdk_cognito_identity}.dll"
+            ], 
+            "aws_cpp_sdk_cognito_idp_shared/shared": [
+                "${aws_cpp_sdk_cognito_idp}.dll"
+            ], 
+            "aws_cpp_sdk_kinesis_shared/shared": [
+                "${aws_cpp_sdk_kinesis}.dll"
+            ], 
+            "aws_cpp_sdk_lambda_shared/shared": [
+                "${aws_cpp_sdk_lambda}.dll"
+            ], 
+            "aws_cpp_sdk_identity_lambda_shared/shared": [
+                "${aws_cpp_sdk_identity_lambda}.dll"
+            ], 
+            "aws_cpp_sdk_identity_metrics_shared/shared": [
+                "${aws_cpp_sdk_identity_metrics}.dll"
+            ]
+        }, 
+        "durango_vs2017": "@durango_vs2015"
     }
 }

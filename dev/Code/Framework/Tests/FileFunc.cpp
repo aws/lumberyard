@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 #include <AzCore/Outcome/Outcome.h>
 
 namespace AzFramework
@@ -36,14 +36,6 @@ public:
     }
 
     ~FileFuncTest()
-    {
-    }
-
-    void SetUp() override
-    {
-    }
-
-    void TearDown() override
     {
     }
 };

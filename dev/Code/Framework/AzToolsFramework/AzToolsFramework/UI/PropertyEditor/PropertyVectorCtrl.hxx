@@ -48,7 +48,7 @@ namespace AzToolsFramework
 
         AZ_CLASS_ALLOCATOR(VectorElement, AZ::SystemAllocator, 0);
 
-        VectorElement(QWidget* pParent = nullptr);
+        explicit VectorElement(QWidget* pParent = nullptr);
         ~VectorElement() override {}
 
         /**

@@ -403,7 +403,10 @@ def LoadFileLists(ctx, kw, file_lists):
                         file_node = ctx.engine_node.make_node(file_entry[len('@ENGINE@'):])
                         file = file_node.abspath()
                     else:
-                        file_node = ctx.path.make_node(file_entry)
+                        if os.path.isabs(file_entry):
+                            file_node = ctx.root.make_node(file_entry)
+                        else:
+                            file_node = ctx.path.make_node(file_entry)
                         file = file_entry
 
                     filenode_abs_path = file_node.abspath()
@@ -466,9 +469,7 @@ def LoadFileLists(ctx, kw, file_lists):
         kw['source'] = uber_files | source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
         kw['mac_plist'] = list(plist_files)
         if len(plist_files) != 0:
-            if 'darwin' in ctx.cmd or 'mac' in ctx.cmd:
-                kw['mac_app'] = True
-            elif 'appletv' in ctx.cmd:
+            if 'appletv' in ctx.cmd:
                 kw['appletv_app'] = True
             else:
                 kw['ios_app'] = True
@@ -498,9 +499,7 @@ def LoadFileLists(ctx, kw, file_lists):
             kw['source'].extend(sorted(objc_source_files, key=lambda file: file.abspath()))
             kw['mac_plist'] = list(sorted(plist_files, key=lambda file:file.abspath()))
             if len(plist_files) != 0:
-                if 'darwin' in ctx.cmd or 'mac' in ctx.cmd:
-                    kw['mac_app'] = True
-                elif 'appletv' in ctx.cmd:
+                if 'appletv' in ctx.cmd:
                     kw['appletv_app'] = True
                 else:
                     kw['ios_app'] = True
@@ -562,7 +561,7 @@ def VerifyInput(ctx, kw):
             current_platform, current_configuration = ctx.get_platform_and_configuration()
 
             # Special case: If the platform is win_x64, reduce it to win
-            if current_platform == 'win_x64' or current_platform == 'win_x64_vs2015' or current_platform == 'win_x64_vs2013':
+            if current_platform in ('win_x64', 'win_x64_vs2017', 'win_x64_vs2015', 'win_x64_vs2013'):
                 current_platform = 'win'
 
             # Search for the keywords in 'path_check_key_values'
@@ -614,8 +613,14 @@ def AppendCommonModules(ctx,kw):
         kw['use'] = []
 
     # Append common module's dependencies
-    if any(p == ctx.env['PLATFORM'] for p in ('win_x86', 'win_x64', 'win_x64_vs2015', 'win_x64_vs2013', 'durango')): # ACCEPTED_USE
-        common_modules_dependencies = ['bcrypt']
+    if any(p == ctx.env['PLATFORM'] for p in (
+        'win_x86',
+        'win_x64',
+        'win_x64_vs2017',
+        'win_x64_vs2015',
+        'win_x64_vs2013',
+        )):
+            common_modules_dependencies = ['bcrypt']
 
     if 'test' in ctx.env['CONFIGURATION'] or 'project_generator' == ctx.env['PLATFORM']:
         append_to_unique_list(kw['use'], 'AzTest')
@@ -1096,6 +1101,18 @@ def BuildTaskGenerator(ctx, kw):
     current_platform = ctx.env['PLATFORM']
     current_configuration = ctx.env['CONFIGURATION']
     if ctx.cmd == 'configure':
+
+        # During the configure process, do an extra check on the module's declared 'use' or 'uselib' to see if it matches
+        # any tagged invalid uselibs that was detected during the 3rd party initialization.
+        if hasattr(ctx,'InvalidUselibs'):
+            declared_uselibs = kw.get('uselib',[]) + kw.get('use',[])
+            illegal_uselib = []
+            for declared_uselib in declared_uselibs:
+                if declared_uselib in ctx.InvalidUselibs:
+                    illegal_uselib.append(declared_uselib)
+            if len(illegal_uselib)>0:
+                Logs.warn("[WARN] Module '{}' may fail to build due to invalid use or uselib dependencies ({})".format(target,','.join(illegal_uselib)))
+
         return False        # Dont build during configure
 
     if ctx.cmd == 'generate_uber_files':
@@ -1179,7 +1196,7 @@ def tg_apply_additional_settings(self):
 def set_cryengine_flags(ctx, kw):
 
     prepend_kw_entry(kw,'includes',['.',
-                                    ctx.CreateRootRelativePath('Code/SDKs/boost'),
+                                    ctx.ThirdPartyPath('boost'),
                                     ctx.CreateRootRelativePath('Code/CryEngine/CryCommon')])
 
 
@@ -1259,7 +1276,7 @@ def CryEngineModule(ctx, *k, **kw):
         if has_resource_h:
             append_kw_entry(kw,'features',['generate_rc_file'])     # Always Generate RC files for Engine DLLs
 
-    if ctx.env['PLATFORM'] == 'darwin_x64' or ctx.env['PLATFORM'] == 'ios' or ctx.env['PLATFORM'] == 'appletv':
+    if ctx.env['PLATFORM'] == 'ios' or ctx.env['PLATFORM'] == 'appletv':
         kw['mac_bundle']        = True                                      # Always create a Mac Bundle on darwin
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
@@ -1515,7 +1532,6 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     kw_per_launcher['idx']              = kw_per_launcher['idx'] + (1000 * (ctx.project_idx(project) + 1));
     # Setup values for Launcher Projects
     append_kw_entry(kw_per_launcher,'features',[ 'generate_rc_file' ])
-    kw_per_launcher['is_launcher']          = True
     kw_per_launcher['resource_path']        = ctx.launch_node().make_node(ctx.game_code_folder(project) + '/Resources')
     kw_per_launcher['project_name']         = project
     kw_per_launcher['output_file_name']     = ctx.get_executable_name( project )
@@ -1530,9 +1546,7 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
 
     codegen_static_modules_cpp_for_launcher(ctx, project, k, kw_per_launcher)
 
-    if 'mac_launcher' in kw_per_launcher:
-        kw_per_launcher['output_sub_folder'] = ctx.get_executable_name( project ) + ".app/Contents/MacOS"
-    elif 'appletv_launcher' in kw_per_launcher:
+    if 'appletv_launcher' in kw_per_launcher:
         kw_per_launcher['output_sub_folder'] = ctx.get_executable_name( project ) + ".app"
     elif 'ios_launcher' in kw_per_launcher:
         kw_per_launcher['output_sub_folder'] = ctx.get_executable_name( project ) + ".app"
@@ -1540,8 +1554,7 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     if is_monolithic_build(ctx):
         append_kw_entry(kw_per_launcher,'defines',[ '_LIB', 'AZ_MONOLITHIC_BUILD' ])
         append_kw_entry(kw_per_launcher,'features',[ 'apply_monolithic_build_settings' ])
-
-    if not is_monolithic_build(ctx) and 'mac_launcher' in kw_per_launcher:
+    elif 'mac_launcher' in kw_per_launcher:
     	append_kw_entry(kw_per_launcher, 'features', ['apply_non_monolithic_launcher_settings'])
 
     # android doesn't have the concept of native executables so we need to build it as a lib

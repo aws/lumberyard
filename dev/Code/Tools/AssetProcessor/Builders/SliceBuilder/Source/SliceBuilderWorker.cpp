@@ -17,6 +17,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/IO/IOUtils.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Slice/SliceAssetHandler.h>
 #include <AzCore/Slice/SliceComponent.h>
@@ -66,7 +67,7 @@ namespace SliceBuilder
 
         // Serialize in the source slice to determine if we need to generate a .dynamicslice.
         AZ::IO::FileIOStream stream(fullPath.c_str(), AZ::IO::OpenMode::ModeRead);
-        if (!stream.IsOpen())
+        if (!AZ::IO::RetryOpenStream(stream))
         {
             AZ_Warning(s_sliceBuilder, false, "CreateJobs for \"%s\" failed because the source file could not be opened.", fullPath.c_str());
             return;
@@ -86,14 +87,6 @@ namespace SliceBuilder
 
                     response.m_sourceFileDependencyList.push_back(dependency);
                 }
-            }
-            else
-            if (asset.GetType() == AZ::Uuid("{FA10C3DA-0717-4B72-8944-CD67D13DFA2B}")) // ScriptCanvasAsset
-            {
-                AssetBuilderSDK::SourceFileDependency dependency;
-                dependency.m_sourceFileDependencyUUID = asset.GetId().m_guid;
-
-                response.m_sourceFileDependencyList.push_back(dependency);
             }
 
             return false;
@@ -185,8 +178,8 @@ namespace SliceBuilder
 
         AZStd::string fullPath;
         AZStd::string fileNameOnly;
-        AzFramework::StringFunc::Path::GetFileName(request.m_sourceFile.c_str(), fileNameOnly);
-        AzFramework::StringFunc::Path::ConstructFull(request.m_watchFolder.c_str(), request.m_sourceFile.c_str(), fullPath, false);
+        AzFramework::StringFunc::Path::GetFullFileName(request.m_sourceFile.c_str(), fileNameOnly);
+        fullPath = request.m_fullPath.c_str();
         AzFramework::StringFunc::Path::Normalize(fullPath);
 
         AZ_TracePrintf(s_sliceBuilder, "Processing slice \"%s\".\n", fullPath.c_str());

@@ -14,8 +14,6 @@
 // Description : to get some defines available in every CryEngine project
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_PROJECTDEFINES_H
-#define CRYINCLUDE_CRYCOMMON_PROJECTDEFINES_H
 #pragma once
 
 
@@ -36,7 +34,7 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PROJECTDEFINES_H_SECTION_STATS_AGENT
-#include AZ_RESTRICTED_FILE(ProjectDefines_h)
+#include AZ_RESTRICTED_FILE(ProjectDefines_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(WIN32) || defined(WIN64)
 #if !defined(_RELEASE) || defined(PERFORMANCE_BUILD)
 #define ENABLE_STATS_AGENT
@@ -59,7 +57,7 @@ typedef uint16 vtx_idx;
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PROJECTDEFINES_H_SECTION_VTX_IDX
-#include AZ_RESTRICTED_FILE(ProjectDefines_h)
+#include AZ_RESTRICTED_FILE(ProjectDefines_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -106,7 +104,7 @@ typedef uint32 vtx_idx;
         #define CAPTURE_REPLAY_LOG 1
     #elif defined(AZ_RESTRICTED_PLATFORM)
         #define AZ_RESTRICTED_SECTION PROJECTDEFINES_H_SECTION_CAPTURE_REPLAY
-        #include AZ_RESTRICTED_FILE(ProjectDefines_h)
+        #include AZ_RESTRICTED_FILE(ProjectDefines_h, AZ_RESTRICTED_PLATFORM)
     #endif
 #endif
 
@@ -120,7 +118,7 @@ typedef uint32 vtx_idx;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PROJECTDEFINES_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(ProjectDefines_h)
+#include AZ_RESTRICTED_FILE(ProjectDefines_h, AZ_RESTRICTED_PLATFORM)
 #else
 #define PROJECTDEFINES_H_TRAIT_DISABLE_MONOLITHIC_PROFILING_MARKERS 1
 #if !defined(LINUX) && !defined(APPLE)
@@ -396,5 +394,3 @@ typedef uint32 vtx_idx;
 
 // The maximum number of joints in an animation
 #define MAX_JOINT_AMOUNT 1024
-
-#endif // CRYINCLUDE_CRYCOMMON_PROJECTDEFINES_H

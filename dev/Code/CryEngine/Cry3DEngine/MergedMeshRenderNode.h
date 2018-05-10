@@ -346,14 +346,14 @@ class CMergedMeshRenderNode
     // Number of active projectiles
     int m_nProjectiles = 0;
 
-    // The jobstate for all cull jobs 
-    AZ::LegacyJobExecutor m_cullJobExecutor;
+    // The number of culling jobs in progress for this node
+    AZStd::atomic_uint m_cullJobsInFlight{0};
 
-    // The jobstate for all mesh update jobs
-    AZ::LegacyJobExecutor m_updateJobExecutor;
+    // The number of update jobs in progress for this node
+    AZStd::atomic_uint m_updateJobsInFlight{0};
 
-    // The jobstate for initializing spines
-    AZ::LegacyJobExecutor m_spineInitializationJobExecutor;
+    // The number of spine initialization jobs in progress for this node
+    AZStd::atomic_uint m_spineInitJobsInFlight{0};
 
     // The list of rendermeshes that belong to this object
     std::vector<SMMRM> m_renderMeshes[2];
@@ -651,6 +651,12 @@ class CMergedMeshesManager
     NodeArrayT m_PostRenderNodes;
     ProjectileArrayT m_Projectiles;
     volatile int m_ProjectileLock;
+
+    AZ::LegacyJobExecutor m_nodeCullJobExecutor;
+
+    AZ::LegacyJobExecutor m_nodeUpdateJobExecutor;
+
+    AZ::LegacyJobExecutor m_nodeSpineInitJobExecutor;
 
     // The jobstate for all mesh update jobs
     AZ::LegacyJobExecutor m_updateCompletionMergedMeshesManager;

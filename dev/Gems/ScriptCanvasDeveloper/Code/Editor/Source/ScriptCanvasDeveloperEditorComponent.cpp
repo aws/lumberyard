@@ -11,14 +11,21 @@
 */
 #include "precompiled.h"
 
+#include <ScriptCanvas/Libraries/Libraries.h>
+#include <ScriptCanvas/Data/Data.h>
+#include <ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.h>
 #include <ScriptCanvasDeveloperEditor/ScriptCanvasDeveloperEditorComponent.h>
 #include <ScriptCanvasDeveloperEditor/NodeListDumpAction.h>
 #include <ScriptCanvasDeveloperEditor/TSGenerateAction.h>
+#include <ScriptCanvasDeveloperEditor/NodePaletteFullCreation.h>
+#include <ScriptCanvasDeveloperEditor/Developer.h>
 
 namespace ScriptCanvasDeveloperEditor
 {
     void SystemComponent::Reflect(AZ::ReflectContext* context)
     {
+        ScriptCanvasDeveloper::Libraries::Developer::Reflect(context);
+
         if (auto serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<SystemComponent, AZ::Component>()
@@ -39,6 +46,12 @@ namespace ScriptCanvasDeveloperEditor
 
     void SystemComponent::Init()
     {
+        AZ::EnvironmentVariable<ScriptCanvas::NodeRegistry> nodeRegistryVariable = AZ::Environment::FindVariable<ScriptCanvas::NodeRegistry>(ScriptCanvas::s_nodeRegistryName);
+        if (nodeRegistryVariable)
+        {
+            ScriptCanvas::NodeRegistry& nodeRegistry = nodeRegistryVariable.Get();
+            ScriptCanvasDeveloper::Libraries::Developer::InitNodeRegistry(nodeRegistry);
+        }
     }
 
     void SystemComponent::Activate()
@@ -50,6 +63,8 @@ namespace ScriptCanvasDeveloperEditor
             MainWindowCreationEvent(mainWindow);
         }
         ScriptCanvasEditor::UINotificationBus::Handler::BusConnect();
+
+        ScriptCanvasEditor::RegisterGenericComboBoxHandler<ScriptCanvas::Data::Type>();
     }
 
     void SystemComponent::Deactivate()
@@ -61,6 +76,6 @@ namespace ScriptCanvasDeveloperEditor
     {
         NodeListDumpAction::CreateNodeListDumpAction(mainWindow);
         TSGenerateAction::SetupTSFileAction(mainWindow);
+        NodePaletteFullCreation::CreateNodePaletteFullCreationAction(mainWindow);
     }
-
 }

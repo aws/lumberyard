@@ -9,77 +9,80 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
-#include <AzCore/Math/Transform.h>
 #include <AzCore/Component/TransformBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
 
+namespace AzFramework
+{
+    class EntityDebugDisplayRequests;
+}
+
 namespace LmbrCentral
 {
+    struct ShapeDrawParams;
+
     class SphereShape
         : public ShapeComponentRequestsBus::Handler
         , public SphereShapeComponentRequestsBus::Handler
         , public AZ::TransformNotificationBus::Handler
     {
-
     public:
-        // Runtime data 
-        class SphereIntersectionDataCache : public IntersectionTestDataCache<SphereShapeConfig>
-        {
-        public:
-            void UpdateIntersectionParams(const AZ::Transform& currentTransform,
-                const SphereShapeConfig& configuration) override;
+        AZ_CLASS_ALLOCATOR(SphereShape, AZ::SystemAllocator, 0)
+        AZ_RTTI(SphereShape, "{FC63856F-318C-406A-AF3A-FDFF448D850A}")
 
-            AZ_INLINE float GetRadiusSquared() const
-            {
-                return m_radiusSquared;
-            }
+        static void Reflect(AZ::ReflectContext* context);
 
-            AZ_INLINE const AZ::Vector3& GetCenterPosition() const
-            {
-                return m_currentCenterPosition;
-            }
+        void Activate(AZ::EntityId entityId);
+        void Deactivate();
+        void InvalidateCache(InvalidateShapeCacheReason reason);
 
-        private:
-            // Radius of the sphere squared
-            float m_radiusSquared;
-
-            // Position of the center of the sphere
-            AZ::Vector3 m_currentCenterPosition;
-        };
-
-        void Activate(const AZ::EntityId& entityId);
-        void Deactivate();        
-        void InvalidateCache(SphereIntersectionDataCache::CacheStatus reason);
-
-        // Get a reference to the underlying sphere configuration
-        virtual SphereShapeConfig& GetConfiguration() = 0;
-
-        // ShapeComponent::Handler implementation
-        AZ::Crc32 GetShapeType() override { return AZ::Crc32("Sphere"); }
+        // ShapeComponentRequestsBus::Handler
+        AZ::Crc32 GetShapeType() override { return AZ_CRC("Sphere", 0x55f96687); }
         AZ::Aabb GetEncompassingAabb() override;
         bool IsPointInside(const AZ::Vector3& point)  override;
-        float DistanceSquaredFromPoint(const AZ::Vector3& point) override;        
-        
-        // SphereShapeComponentRequestsBus::Handler implementation
-        void SetRadius(float newRadius) override;
-        SphereShapeConfig GetSphereConfiguration() override { return GetConfiguration(); }
+        float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
+        bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
 
-        // Transform notification bus listener        
-        void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;        
+        // SphereShapeComponentRequestsBus::Handler
+        SphereShapeConfig GetSphereConfiguration() override { return m_sphereShapeConfig; }
+        void SetRadius(float radius) override;
+        float GetRadius() override;
+
+        // AZ::TransformNotificationBus::Handler
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        const SphereShapeConfig& GetSphereConfiguration() const { return m_sphereShapeConfig; }
+        void SetSphereConfiguration(const SphereShapeConfig& sphereShapeConfig) { m_sphereShapeConfig = sphereShapeConfig; }
+        const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
     private:
-       
-        //! Caches transient intersection data
-        SphereIntersectionDataCache m_intersectionDataCache;        
+        /**
+         * Runtime data - cache potentially expensive operations.
+         */
+        class SphereIntersectionDataCache
+            : public IntersectionTestDataCache<SphereShapeConfig>
+        {
+            void UpdateIntersectionParamsImpl(
+                const AZ::Transform& currentTransform, const SphereShapeConfig& configuration) override;
 
-        //! Caches the current World transform
-        AZ::Transform m_currentTransform;
+            friend class SphereShape;
+            
+            AZ::Vector3 m_position; ///< Position of the center of the sphere.
+            float m_radius = 0.0f; ///< Radius of the sphere (including entity scale).
+        };
 
-        //! The Id of the entity the shape is attached to
-        AZ::EntityId m_entityId;
-        
+        SphereShapeConfig m_sphereShapeConfig; ///< Underlying sphere configuration.
+        SphereIntersectionDataCache m_intersectionDataCache; ///< Caches transient intersection data.
+        AZ::Transform m_currentTransform; ///< Caches the current world transform.
+        AZ::EntityId m_entityId; ///< The Id of the entity the shape is attached to.
     };
+
+    void DrawSphereShape(
+        const ShapeDrawParams& shapeDrawParams, const SphereShapeConfig& sphereShapeConfig,
+        AzFramework::EntityDebugDisplayRequests& displayContext);
+
 } // namespace LmbrCentral

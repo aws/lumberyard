@@ -28,7 +28,7 @@ class StackWidget
 
 public:
 
-    StackWidget(ResourceManagementView* view, QSharedPointer<IStackStatusModel> stackStatusModel);
+    StackWidget(ResourceManagementView* view, QSharedPointer<IStackStatusModel> stackStatusModel, QWidget* parent);
 
     void AddButton(QPushButton* button);
     void AddCheckBox(QCheckBox* checkBox);

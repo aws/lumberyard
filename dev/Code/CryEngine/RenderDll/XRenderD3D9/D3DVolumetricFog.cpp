@@ -1770,6 +1770,11 @@ void CVolumetricFog::RaymarchVolumetricFog()
 {
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
 
+    // Unbind the VolumetricFog SRV (used in the recursive pass). It gets 
+    // implicitly unbound when used as a UAV. Without explicitly calling 
+    // Unbind(), it may not get re-bound as an SRV for future shaders.
+    CTexture::s_ptexVolumetricFog->Unbind();
+
     // store state
     SRenderPipeline& rp(rd->m_RP);
     const uint64 prevShaderRtFlags = rp.m_FlagsShader_RT;

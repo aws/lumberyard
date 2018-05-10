@@ -599,6 +599,13 @@ namespace nedalloc
             tc->freeInCache -= blksize;
             assert((long) tc->freeInCache >= 0);
         }
+#if defined(DEBUG) && 0
+        if (!(tc->mallocs & 0xfff))
+        {
+            printf("*** threadcache=%u, mallocs=%u (%f), free=%u (%f), freeInCache=%u\n", (unsigned int) tc->threadid, tc->mallocs,
+                (float) tc->successes / tc->mallocs, tc->frees, (float) tc->successes / tc->frees, (unsigned int) tc->freeInCache);
+        }
+#endif
 #ifdef FULLSANITYCHECKS
         tcfullsanitycheck(tc);
 #endif

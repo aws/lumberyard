@@ -415,7 +415,7 @@ namespace AZ
             {
                 s_allocator = Environment::FindVariable<Allocator>(AzTypeInfo<Allocator>::Name());
             }
-            return s_allocator;
+            return s_allocator && s_allocator->IsReady();
         }
     private:
         static EnvironmentVariable<Allocator> s_allocator;

@@ -21,9 +21,10 @@
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 
-#include "native/assetprocessor.h"
-#include "native/utilities/PlatformConfiguration.h"
-#include "native/resourcecompiler/RCBuilder.h"
+#include <native/assetprocessor.h>
+#include <native/utilities/PlatformConfiguration.h>
+#include <native/resourcecompiler/RCBuilder.h>
+
 class FolderWatchCallbackEx;
 class QCoreApplication;
 
@@ -40,6 +41,7 @@ namespace AssetProcessor
         virtual ~ExternalModuleAssetBuilderInfo() = default;
 
         const QString& GetName() const;
+        QString GetModuleFullPath() const;
 
         //! Perform a load of the external module, this is required before initialize.
         bool Load();
@@ -53,10 +55,10 @@ namespace AssetProcessor
         //! Perform the necessary process of uninitializing an external builder
         void UnInitialize();
 
-        //! Register a builder descriptor ID to track as part of this builders lifecycle managementg
+        //! Register a builder descriptor ID to track as part of this builders lifecycle management
         void RegisterBuilderDesc(const AZ::Uuid& builderDesc);
 
-        //! Register a component descriptor to track as part of this builders lifecycle managementg
+        //! Register a component descriptor to track as part of this builders lifecycle management
         void RegisterComponentDesc(AZ::ComponentDescriptor* descriptor);
     protected:
         AZStd::set<AZ::Uuid>    m_registeredBuilderDescriptorIDs;
@@ -77,7 +79,6 @@ namespace AssetProcessor
         AZ::Entity* m_entity = nullptr;
 
         QString m_builderName;
-        QString m_modulePath;
         QLibrary m_library;
     };
 

@@ -213,7 +213,7 @@ void CWaterShapeObject::SetMaterial(CMaterial* mtl)
             const SShaderItem& si = mtl->GetMatInfo()->GetShaderItem();
             if (si.m_pShader && si.m_pShader->GetShaderType() != eST_Water)
             {
-                CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, "Incorrect shader set for water / water fog volume \"%s\"!", GetName());
+                CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, "Incorrect shader set for water / water fog volume \"%s\"!", GetName().toUtf8().constData());
             }
 
             m_pWVRN->SetMaterial(mtl->GetMatInfo());

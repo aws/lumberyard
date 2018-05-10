@@ -15,6 +15,7 @@
 #include <ScriptCanvasDeveloper/ScriptCanvasDeveloperGem.h>
 #include <ScriptCanvasDeveloper/ScriptCanvasDeveloperComponent.h>
 #include <ScriptCanvasDeveloperEditor/ScriptCanvasDeveloperEditorComponent.h>
+#include <ScriptCanvasDeveloperEditor/Developer.h>
 
 namespace ScriptCanvasDeveloper
 {
@@ -32,6 +33,9 @@ namespace ScriptCanvasDeveloper
             ScriptCanvasDeveloper::SystemComponent::CreateDescriptor(),
             ScriptCanvasDeveloperEditor::SystemComponent::CreateDescriptor()
         });
+
+        AZStd::vector<AZ::ComponentDescriptor*> componentDescriptors(ScriptCanvasDeveloper::Libraries::Developer::GetComponentDescriptors());
+        m_descriptors.insert(m_descriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
     }
 
     ScriptCanvasDeveloperModule::~ScriptCanvasDeveloperModule()

@@ -81,9 +81,7 @@
             "ObjManDrawEntity.cpp",
             "ObjManShadows.cpp",
             "ObjManStreaming.cpp",
-            "ObjManCullQueue.cpp",
-            "ObjMan.h",
-            "ObjManCullQueue.h"
+            "ObjMan.h"
         ],
         "Objects Tree":
         [
@@ -264,8 +262,8 @@
             "MeshCompiler/PVRTTriStrip/PVRTTriStrip.cpp",
             "MeshCompiler/VertexCacheOptimizer.cpp",
             "MeshCompiler/VertexCacheOptimizer.h",
-            "../../SDKs/TangentBasisComputation/mikkelsen/mikktspace.cpp",
-            "../../SDKs/TangentBasisComputation/mikkelsen/mikktspace.h"
+            "@3P:mikkelsen@/mikkelsen/mikktspace.cpp",
+            "@3P:mikkelsen@/mikkelsen/mikktspace.h"
         ],
         "CVars":
         [

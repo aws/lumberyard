@@ -187,7 +187,9 @@ int CRenderViewport::OnCreate()
 //////////////////////////////////////////////////////////////////////////
 void CRenderViewport::resizeEvent(QResizeEvent* event)
 {
+    PushDisableRendering();
     QtViewport::resizeEvent(event);
+    PopDisableRendering();
 
     const QRect rcWindow = rect().translated(mapToGlobal(QPoint()));
 
@@ -814,6 +816,11 @@ void CRenderViewport::Update()
 {
     FUNCTION_PROFILER(GetIEditor()->GetSystem(), PROFILE_EDITOR);
 
+    if (Editor::EditorQtApplication::instance()->isMovingOrResizing())
+    {
+        return;
+    }
+
     if (!m_renderer || !m_engine || m_rcClient.isEmpty() || GetIEditor()->IsInMatEditMode())
     {
         return;
@@ -859,6 +866,18 @@ void CRenderViewport::Update()
         {
             // Disable rendering to avoid recursion into Update()
             PushDisableRendering();
+
+            AzFramework::EntityDebugDisplayRequestBus::Broadcast(&AzFramework::EntityDebugDisplayRequestBus::Events::SetDC, &m_displayContext);
+            const AZ::u32 prevState = m_displayContext.GetState();
+            m_displayContext.SetState(e_Mode3D | e_AlphaBlended | e_FillModeSolid | e_CullModeBack | e_DepthWriteOn | e_DepthTestOn);
+
+            bool unused;
+            // draw debug shapes in game mode
+            AzFramework::EntityDebugDisplayEventBus::Broadcast(&AzFramework::EntityDebugDisplayEvents::DisplayEntity, unused);
+
+            m_displayContext.SetState(prevState);
+            AzFramework::EntityDebugDisplayRequestBus::Broadcast(&AzFramework::EntityDebugDisplayRequestBus::Events::SetDC, nullptr);
+
             QtViewport::Update();
             PopDisableRendering();
         }
@@ -884,6 +903,7 @@ void CRenderViewport::Update()
             return;
         }
     }
+    
     {
         SScopedCurrentContext context(this);
 
@@ -1469,7 +1489,8 @@ void CRenderViewport::RenderAll()
                     BuildKeyboardModifiers(QGuiApplication::queryKeyboardModifiers()),
                     BuildMousePickInternal(mapFromGlobal(QCursor::pos()))));
             azEntityDebugDisplay->DepthTestOn();
-}
+        }
+
         AzFramework::EntityDebugDisplayRequestBus::Broadcast(&AzFramework::EntityDebugDisplayRequestBus::Events::SetDC, nullptr);
     }
 }

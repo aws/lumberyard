@@ -17,7 +17,12 @@
 #include "../../Common/ReverseDepth.h"
 #include "CryUtils.h"
 
-#if !defined(CRY_USE_DX12_NATIVE) && !defined(CRY_USE_GNM_DEVICE)
+#if !defined(CRY_USE_DX12_NATIVE)
+#define DEVICEWRAPPER12_D3D11_CPP_WRAP_DX11
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(DeviceWrapper12_D3D11_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(DEVICEWRAPPER12_D3D11_CPP_WRAP_DX11)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define DX11_COMMANDLIST_REDUNDANT_STATE_FILTERING
 
@@ -1038,4 +1043,6 @@ void CDeviceObjectFactory::ForfeitGraphicsCommandLists(std::vector<CDeviceGraphi
     // pContext->ExecuteCommandList(ID3D11CommandList)
 }
 
+#undef DEVICEWRAPPER12_D3D11_CPP_WRAP_DX11
+#endif
 #endif

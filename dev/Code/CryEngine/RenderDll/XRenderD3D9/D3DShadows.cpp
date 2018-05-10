@@ -31,6 +31,9 @@
 #include "D3D_SVO.h"
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(D3DShadows_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace
 {

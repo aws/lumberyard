@@ -34,6 +34,7 @@ namespace InAppPurchases
         virtual void QueryProductInfoById(const AZStd::string& productId) const = 0;
         virtual void QueryProductInfoByIds(AZStd::vector<AZStd::string>& productIds) const = 0;
         virtual void QueryProductInfo() const = 0;
+        virtual void QueryProductInfoFromJson(const AZStd::string& filePath) const = 0;
 
         virtual const AZStd::vector<AZStd::unique_ptr<ProductDetails const> >* GetCachedProductInfo() const = 0;
         virtual const AZStd::vector<AZStd::unique_ptr<PurchasedProductDetails const> >* GetCachedPurchasedProductInfo() const = 0;
@@ -58,4 +59,44 @@ namespace InAppPurchases
     };
 
     using InAppPurchasesRequestBus = AZ::EBus<InAppPurchasesRequests>;
+
+    class InAppPurchasesResponseAccessor
+        : public AZ::EBusTraits
+    {
+    public:
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual bool GetNextProduct() { return false; }
+        virtual bool GetPreviousProduct() { return false; }
+        virtual bool GetNextPurchasedProduct() { return false; }
+        virtual bool GetPreviousPurchasedProduct() { return false; }
+
+        virtual AZStd::string GetProductId() { return ""; }
+        virtual AZStd::string GetProductTitle() { return ""; }
+        virtual AZStd::string GetProductDescription() { return ""; }
+        virtual AZStd::string GetProductPrice() { return ""; }
+        virtual AZStd::string GetProductCurrencyCode() { return ""; }
+        virtual AZ::u64 GetProductPriceMicro() { return 0; }
+
+        virtual AZStd::string GetPurchasedProductId() { return ""; }
+        virtual AZStd::string GetOrderId() { return ""; }
+        virtual AZStd::string GetDeveloperPayload() { return ""; }
+        virtual AZStd::string GetPurchaseSignature() { return ""; }
+        virtual AZStd::string GetPurchaseToken() { return""; }
+        virtual AZStd::string GetRestoredOrderId() { return ""; }
+        virtual AZStd::string GetPackageName() { return ""; }
+        virtual AZStd::string GetPurchaseTime() { return ""; }
+        virtual AZ::u64 GetSubscriptionExpirationTime() { return 0; }
+        virtual AZ::u64 GetRestoredPurchaseTime() { return 0; }
+        virtual bool IsAutoRenewing() { return false; }
+        virtual bool HasDownloads() { return false; }
+        virtual bool IsProductOwned() { return false; }
+
+        virtual void ResetIndices() {}
+    };
+
+    using InAppPurchasesResponseAccessorBus = AZ::EBus<InAppPurchasesResponseAccessor>;
 }

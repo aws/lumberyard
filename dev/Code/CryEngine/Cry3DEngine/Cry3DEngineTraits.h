@@ -14,7 +14,7 @@
 #include "ProjectDefines.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Cry3DEngineTraits_h)
+#include AZ_RESTRICTED_FILE(Cry3DEngineTraits_h, AZ_RESTRICTED_PLATFORM)
 #else
 #if defined(WIN32) || defined(WIN64)
 #define AZ_LEGACY_3DENGINE_TRAIT_DEFINE_MM_MULLO_EPI32_EMU 1

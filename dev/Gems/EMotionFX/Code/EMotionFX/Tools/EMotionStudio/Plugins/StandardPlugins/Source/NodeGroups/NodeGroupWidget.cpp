@@ -356,19 +356,19 @@ namespace EMStudio
         }
 
         // generate node list string
-        MCore::String nodeList;
-        nodeList.Reserve(16448);
+        AZStd::string nodeList;
+        nodeList.reserve(16448);
         const uint32 numSelectedNodes = selectionList.GetLength();
         for (uint32 i = 0; i < numSelectedNodes; ++i)
         {
             nodeList += selectionList[i].GetNodeName();
             nodeList += ";";
         }
-        nodeList.TrimRight(MCore::UnicodeCharacter::semiColon);
+        AzFramework::StringFunc::Strip(nodeList, MCore::CharacterConstants::semiColon, true /* case sensitive */, false /* beginning */, true /* ending */);
 
         // call command for adjusting disable on default flag
         AZStd::string outResult;
-        AZStd::string command = AZStd::string::format("AdjustNodeGroup -actorID %i -name \"%s\" -nodeAction \"%s\" -nodeNames \"%s\"", mActor->GetID(), mNodeGroup->GetName(), mNodeAction.c_str(), nodeList.AsChar());
+        AZStd::string command = AZStd::string::format("AdjustNodeGroup -actorID %i -name \"%s\" -nodeAction \"%s\" -nodeNames \"%s\"", mActor->GetID(), mNodeGroup->GetName(), mNodeAction.c_str(), nodeList.c_str());
         if (EMStudio::GetCommandManager()->ExecuteCommand(command, outResult) == false)
         {
             AZ_Error("EMotionFX", false, outResult.c_str());

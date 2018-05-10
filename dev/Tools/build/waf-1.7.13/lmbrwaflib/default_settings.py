@@ -182,12 +182,12 @@ def _output_folder_disclaimer(ctx):
     Logs.info("(Press ENTER to keep the current default value shown in [])")
     ctx.output_folder_disclaimer_shown = True
 
-def _auto_populate_windows_kit(ctx, option_name):
+def _auto_populate_windows_kit(ctx, option_name, compiler):
     wsdk_version = ''
     try:
         wsdk_version = ctx.find_valid_wsdk_version()
         if wsdk_version == '':
-            Logs.info('\nFailed to find a valid Windows Kit for Visual Studio 2015.')
+            Logs.info('\nFailed to find a valid Windows Kit for {}.'.format(compiler))
         setattr(ctx.options, option_name, wsdk_version)
     except:
         pass
@@ -195,9 +195,16 @@ def _auto_populate_windows_kit(ctx, option_name):
 
 ###############################################################################
 @register_attribute_callback
+def win_vs2017_winkit(ctx, section_name, option_name, value):
+    """ Configure vs2017 windows kit. """
+    return _auto_populate_windows_kit(ctx, option_name, "Visual Studio 2017")
+
+
+###############################################################################
+@register_attribute_callback
 def win_vs2015_winkit(ctx, section_name, option_name, value):
     """ Configure vs2015 windows kit. """
-    return _auto_populate_windows_kit(ctx, option_name)
+    return _auto_populate_windows_kit(ctx, option_name, "Visual Studio 2015")
 
 
 ###############################################################################
@@ -214,6 +221,22 @@ def out_folder_win32(ctx, section_name, option_name, value):
         
     _output_folder_disclaimer(ctx)
     return _get_string_value(ctx, 'Win x86 Output Folder', value)
+
+
+###############################################################################
+@register_attribute_callback
+def out_folder_win64_vs2017(ctx, section_name, option_name, value):
+    """ Configure output folder for win x64 (vs2017) """
+    if not _is_user_input_allowed(ctx, option_name, value):
+        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: ""%s"' % (value, option_name))
+        return value
+        
+    # GUI
+    if not ctx.is_option_true('console_mode'):
+        return ctx.gui_get_attribute(section_name, option_name, value)
+        
+    _output_folder_disclaimer(ctx)
+    return _get_string_value(ctx, 'Win x64 Visual Studio 2017 Output Folder', value)
 
 
 ###############################################################################
@@ -665,9 +688,17 @@ def load_user_settings(ctx):
         user_settings.read( [user_setting_file] )
 
     Logs.debug('default_settings: sys.argv = {}'.format(sys.argv))
-        
-    # Load settings and check for newly set ones
+
+    # 'Misc Options' must be evaluated first because the values in 'Game Projects' relies on its values
+    section_name_and_settings_tuple_list = []
     for section_name, settings_list in ctx.default_settings.items():
+        if section_name == 'Misc Options':
+            section_name_and_settings_tuple_list.insert(0,(section_name, settings_list))
+        else:
+            section_name_and_settings_tuple_list.append((section_name, settings_list))
+
+    # Load settings and check for newly set ones
+    for section_name, settings_list in section_name_and_settings_tuple_list:
         
         # Add not already present sections
         if not user_settings.has_section(section_name):
@@ -746,9 +777,6 @@ def load_user_settings(ctx):
         except:
             Logs.warn('unable to query hardware for number of hw threads, using "%d"' % max_cores)
         setattr(ctx.options, 'max_cores', max_cores)
-
-    # removing temporarily while we refactor how code scrubbing works. Do not re-enable without talking with JM Albertson.
-    setattr(ctx.options, 'disable_orbis', 'True') # really. I'm not kidding. ACCEPTED_USE
 
     return user_settings, new_options
 

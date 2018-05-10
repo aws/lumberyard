@@ -13,11 +13,12 @@
 
 // Description : unified vector math lib
 
-
-#ifndef __VMATH__
-#define __VMATH__
+#pragma once
 
 #define VEC4_SSE
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(VMath_hpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 //#include <math.h>
 #include <Cry_Math.h>
@@ -33,7 +34,3 @@ namespace NVMath
     #include "VMath_C.hpp"
 #endif
 }
-
-
-#endif
-

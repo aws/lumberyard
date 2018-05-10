@@ -29,6 +29,8 @@
 #   include "std/parallel/internal/thread_win.cpp"
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include "std/parallel/internal/thread_linux.cpp"
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(UnityBuild_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
 #include "Debug/Trace.cpp"

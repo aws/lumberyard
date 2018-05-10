@@ -37,8 +37,9 @@ namespace AZ
 
         VertexContainer() = default;
         VertexContainer(
-            const IndexFunction& addCallback, const IndexFunction& removeCallback, const VoidFunction& updateCallback, 
-            const VoidFunction& setCallback, const VoidFunction& clearCallback);
+            const IndexFunction& addCallback, const IndexFunction& removeCallback,
+            const VoidFunction& updateCallback, const VoidFunction& setCallback,
+            const VoidFunction& clearCallback);
         ~VertexContainer() = default;
 
         /**
@@ -105,14 +106,15 @@ namespace AZ
         const Vertex& operator[](size_t index) const;
 
         /**
-        * Provide callbacks for this container 
-        *
-        * Useful if you could not provide callbacks at construction or
-        * you need to re-supply callbacks after de-serialization
-        */
+         * Provide callbacks for this container
+         *
+         * Useful if you could not provide callbacks at construction or
+         * you need to re-supply callbacks after de-serialization
+         */
         void SetCallbacks(
-            const IndexFunction& addCallback, const IndexFunction& removeCallback, const VoidFunction& updateCallback, 
-            const VoidFunction& setCallback, const VoidFunction& clearCallback);
+            const IndexFunction& addCallback, const IndexFunction& removeCallback,
+            const VoidFunction& updateCallback, const VoidFunction& setCallback,
+            const VoidFunction& clearCallback);
 
         static void Reflect(ReflectContext* context);
 

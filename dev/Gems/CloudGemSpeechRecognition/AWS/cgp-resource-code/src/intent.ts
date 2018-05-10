@@ -136,21 +136,40 @@ export class IntentEntry {
 	**/
     public delete(): any {
         var promise = new Promise(function (resolve, reject) {
-            this._apiHandler.deleteIntent(this.name).subscribe(response => {
-                let obj = JSON.parse(response.body.text());
-                if (obj.result.status == "INUSE") {
-                    this.toastr.error("The intent '" + this.name + "' is in use.");
-                    reject();
-                }
-                else if (obj.result.status == "DELETED") {
-                    this.toastr.success("The intent '" + this.name + "' was deleted.");
-                    resolve();
-                }
-                else {
-                    this.toastr.error("The intent '" + this.name + "' could not be deleted. " + obj.result.status);
-                    reject();
-                }
-            });
+            if (this.version == "$LATEST") {
+                this._apiHandler.deleteIntent(this.name).subscribe(response => {
+                    let obj = JSON.parse(response.body.text());
+                    if (obj.result.status == "INUSE") {
+                        this.toastr.error("The intent '" + this.name + "' is in use.");
+                        reject();
+                    }
+                    else if (obj.result.status == "DELETED") {
+                        this.toastr.success("The intent '" + this.name + "' was deleted.");
+                        resolve();
+                    }
+                    else {
+                        this.toastr.error("The intent '" + this.name + "' could not be deleted. " + obj.result.status);
+                        reject();
+                    }
+                });
+            }
+            else {
+                this._apiHandler.deleteIntentVersion(this.name, this.version).subscribe(response => {
+                    let obj = JSON.parse(response.body.text());
+                    if (obj.result.status == "INUSE") {
+                        this.toastr.error("The selected version of the intent '" + this.name + "' is in use.");
+                        reject();
+                    }
+                    else if (obj.result.status == "DELETED") {
+                        this.toastr.success("The selected version of the intent '" + this.name + "' was deleted.");
+                        resolve();
+                    }
+                    else {
+                        this.toastr.error("The selected version of the intent '" + this.name + "' could not be deleted. " + obj.result.status);
+                        reject();
+                    }
+                });
+            }
         }.bind(this))
         return promise;
     }

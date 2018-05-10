@@ -126,17 +126,17 @@ namespace EMStudio
             EMotionFX::Motion*          motion          = entry->mMotion;
             EMotionFX::PlayBackInfo*    playbackInfo    = motion->GetDefaultPlayBackInfo();
 
-            MCore::String commandParameters;
+            AZStd::string commandParameters;
 
             if (MCore::Compare<float>::CheckIfIsClose(playbackInfo->mPlaySpeed, GetPlaySpeed(), 0.001f) == false)
             {
-                commandParameters += MCore::String().Format("-playSpeed %f ", GetPlaySpeed());
+                commandParameters += AZStd::string::format("-playSpeed %f ", GetPlaySpeed());
             }
 
             // Either loop forever or freeze at the last frame after playing the animation once.
             if (mButtonLoopForever->isChecked())
             {
-                commandParameters += MCore::String().Format("-numLoops %i ", EMFX_LOOPFOREVER);
+                commandParameters += AZStd::string::format("-numLoops %i ", EMFX_LOOPFOREVER);
             }
             else
             {
@@ -145,7 +145,7 @@ namespace EMStudio
 
             if (playbackInfo->mMirrorMotion != mButtonMirror->isChecked())
             {
-                commandParameters += MCore::String().Format("-mirrorMotion %s", mButtonMirror->isChecked() ? "true" : "false");
+                commandParameters += AZStd::string::format("-mirrorMotion %s", AZStd::to_string(mButtonMirror->isChecked()).c_str());
             }
 
             // playmode
@@ -162,21 +162,21 @@ namespace EMStudio
 
             if (playForward != mButtonPlayForward->isChecked())
             {
-                commandParameters += MCore::String().Format("-playMode %i ", playMode);
+                commandParameters += AZStd::string::format("-playMode %i ", playMode);
             }
 
             // in case the command parameters are empty it means nothing changed, so we can skip this command
-            if (commandParameters.GetIsEmpty() == false)
+            if (commandParameters.empty() == false)
             {
-                commandGroup.AddCommandString(MCore::String().Format("AdjustDefaultPlayBackInfo -filename \"%s\" %s", motion->GetFileName(), commandParameters.AsChar()).AsChar());
+                commandGroup.AddCommandString(AZStd::string::format("AdjustDefaultPlayBackInfo -filename \"%s\" %s", motion->GetFileName(), commandParameters.c_str()).c_str());
             }
         }
 
         // execute the group command
-        MCore::String outResult;
+        AZStd::string outResult;
         if (CommandSystem::GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
     }
 

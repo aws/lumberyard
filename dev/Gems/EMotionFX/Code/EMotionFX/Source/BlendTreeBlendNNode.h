@@ -102,7 +102,7 @@ namespace EMotionFX
 
         void RegisterPorts() override;
         void RegisterAttributes() override;
-        bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName) override;
+        bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName) override;
 
         const char* GetTypeString() const override;
         const char* GetPaletteName() const override;

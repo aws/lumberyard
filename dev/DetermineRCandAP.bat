@@ -70,6 +70,12 @@ IF NOT [%BINFOLDER%]==[] (
 )
 
 REM There was an error determining the folder from the registry, try from the most recent to oldest vc version
+IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc141\AssetProcessorBatch.exe" (
+    IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc141\rc\rc.exe" (
+        SET BINFOLDER=Bin64vc141
+        GOTO BinFolderFound
+    )
+)
 IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc140\AssetProcessorBatch.exe" (
     IF EXIST "%MYBATCHFILEDIRECTORY%\Bin64vc140\rc\rc.exe" (
         SET BINFOLDER=Bin64vc140

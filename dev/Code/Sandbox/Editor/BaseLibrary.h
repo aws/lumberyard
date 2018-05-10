@@ -36,7 +36,7 @@ class EDITOR_CORE_API CBaseLibrary
     Q_OBJECT
 
 public:
-    CBaseLibrary(IBaseLibraryManager* pManager);
+    explicit CBaseLibrary(IBaseLibraryManager* pManager);
     ~CBaseLibrary();
 
     //! Set library name.

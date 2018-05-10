@@ -37,6 +37,7 @@ namespace LyShine
     const char* const UiLayoutGridComponentUuid =       "{ADDA3AE5-B9AB-44B7-A462-8B89B398A837}";
     const char* const UiLayoutRowComponentUuid =        "{7B2820C4-7FC7-4F02-B777-6727EB4BAC13}";
     const char* const UiMaskComponentUuid =             "{2279AA38-271D-4D4F-A472-E42B984088AC}";
+    const char* const UiParticleEmitterComponentUuid =  "{E8B1288C-CB49-4CAD-B366-AF1B40C47E74}";
     const char* const UiRadioButtonComponentUuid =      "{773A0F4B-F9F9-4B82-9951-BBD73A737DE4}";
     const char* const UiRadioButtonGroupComponentUuid = "{F89D5EF2-37C4-4CA7-9AA2-23DC3867EC9D}";
     const char* const UiScrollBarComponentUuid =        "{6B283F90-3519-47DA-A1DD-65A79CE119CF}";

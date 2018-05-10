@@ -29,6 +29,7 @@
 #include <ITimeOfDay.h>
 #include <IEntitySystem.h>
 #include <I3DEngine.h>
+
 #include "IAISystem.h"
 
 namespace
@@ -64,6 +65,8 @@ CMission::CMission(CCryEditDoc* doc)
     m_minimap.vCenter = Vec2(512, 512);
     m_minimap.vExtends = Vec2(512, 512);
     m_minimap.textureWidth = m_minimap.textureHeight = 1024;
+
+    m_reentrancyProtector = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -337,6 +340,14 @@ void CMission::ExportLegacyAnimations(XmlNodeRef& root)
 //////////////////////////////////////////////////////////////////////////
 void CMission::SyncContent(bool bRetrieve, bool bIgnoreObjects, bool bSkipLoadingAI /* = false */)
 {
+    // The function may take a longer time when executing objMan->Serialize, which uses CWaitProgress internally
+    // Adding a sync flag to prevent the function from being re-entered after the data is modified by OnEnvironmentChange
+    if (m_reentrancyProtector)
+    {
+        return;
+    }
+    m_reentrancyProtector = true;
+
     // Save data from current Document to Mission.
     IObjectManager* objMan = GetIEditor()->GetObjectManager();
     if (bRetrieve)
@@ -420,13 +431,22 @@ void CMission::SyncContent(bool bRetrieve, bool bIgnoreObjects, bool bSkipLoadin
             }
         }
     }
+
+    m_reentrancyProtector = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CMission::OnEnvironmentChange()
 {
+    // Only execute the reload function if there is no ongoing SyncContent.
+    if (m_reentrancyProtector)
+    {
+        return;
+    }
+    m_reentrancyProtector = true;
     m_environment = XmlHelpers::CreateXmlNode("Environment");
     CXmlTemplate::SetValues(m_doc->GetEnvironmentTemplate(), m_environment);
+    m_reentrancyProtector = false;
 }
 
 //////////////////////////////////////////////////////////////////////////

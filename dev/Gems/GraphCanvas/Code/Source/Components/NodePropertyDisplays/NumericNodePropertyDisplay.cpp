@@ -14,7 +14,7 @@
 #include <qgraphicsproxywidget.h>
 #include <qspinbox.h>
 
-#include <Components/NodePropertyDisplays/DoubleNodePropertyDisplay.h>
+#include <Components/NodePropertyDisplays/NumericNodePropertyDisplay.h>
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
@@ -24,10 +24,10 @@
 
 namespace GraphCanvas
 {
-    //////////////////////////////
-    // DoubleNodePropertyDisplay
-    //////////////////////////////
-    DoubleNodePropertyDisplay::DoubleNodePropertyDisplay(DoubleDataInterface* dataInterface)
+    ///////////////////////////////
+    // NumericNodePropertyDisplay
+    ///////////////////////////////
+    NumericNodePropertyDisplay::NumericNodePropertyDisplay(NumericDataInterface* dataInterface)
         : m_dataInterface(dataInterface)
         , m_displayLabel(nullptr)
         , m_proxyWidget(nullptr)
@@ -41,7 +41,8 @@ namespace GraphCanvas
         m_proxyWidget->setFocusPolicy(Qt::StrongFocus);
         
         m_spinBox = aznew Internal::FocusableDoubleSpinBox();
-        m_spinBox->setProperty("HasNoWindowDecorations", true);        
+        m_spinBox->setProperty("HasNoWindowDecorations", true);
+        m_spinBox->setProperty("DisableFocusWindowFix", true);
         
         QObject::connect(m_spinBox, &Internal::FocusableDoubleSpinBox::OnFocusIn, [this]() { this->EditStart(); });
         QObject::connect(m_spinBox, &Internal::FocusableDoubleSpinBox::OnFocusOut, [this]() { this->EditFinished(); });
@@ -58,10 +59,8 @@ namespace GraphCanvas
         RegisterShortcutDispatcher(m_spinBox);
     }
     
-    DoubleNodePropertyDisplay::~DoubleNodePropertyDisplay()
+    NumericNodePropertyDisplay::~NumericNodePropertyDisplay()
     {
-        NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
-
         delete m_dataInterface;
 
         delete m_proxyWidget;
@@ -69,7 +68,7 @@ namespace GraphCanvas
         delete m_disabledLabel;
     }
 
-    void DoubleNodePropertyDisplay::RefreshStyle()
+    void NumericNodePropertyDisplay::RefreshStyle()
     {
         m_disabledLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisabledLabelStyle("double").c_str());
         m_displayLabel->SetSceneStyle(GetSceneId(), NodePropertyDisplay::CreateDisplayLabelStyle("double").c_str());
@@ -81,14 +80,14 @@ namespace GraphCanvas
         m_spinBox->setMaximumSize(maximumSize.width(), maximumSize.height());
     }
     
-    void DoubleNodePropertyDisplay::UpdateDisplay()
+    void NumericNodePropertyDisplay::UpdateDisplay()
     {
-        double value = m_dataInterface->GetDouble();
+        double value = m_dataInterface->GetNumber();
         
         {
             QSignalBlocker signalBlocker(m_spinBox);
 
-            AZStd::string displayValue = AZStd::string::format("%.*f%s", m_dataInterface->GetDisplayDecimalPlaces(), value, m_dataInterface->GetSuffix());
+            AZStd::string displayValue = AZStd::string::format("%.*g%s", m_dataInterface->GetDisplayDecimalPlaces(), value, m_dataInterface->GetSuffix());
             
             m_spinBox->setValue(value);
             m_spinBox->deselectAll();
@@ -99,37 +98,37 @@ namespace GraphCanvas
         m_proxyWidget->update();
     }
 
-    QGraphicsLayoutItem* DoubleNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
+    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetDisabledGraphicsLayoutItem() const
     {
         return m_disabledLabel;
     }
 
-    QGraphicsLayoutItem* DoubleNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
+    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetDisplayGraphicsLayoutItem() const
     {
         return m_displayLabel;
     }
 
-    QGraphicsLayoutItem* DoubleNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
+    QGraphicsLayoutItem* NumericNodePropertyDisplay::GetEditableGraphicsLayoutItem() const
     {
         return m_proxyWidget;
     }
 
-    void DoubleNodePropertyDisplay::EditStart()
+    void NumericNodePropertyDisplay::EditStart()
     {
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::LockEditState, this);
 
         TryAndSelectNode();
     }
     
-    void DoubleNodePropertyDisplay::SubmitValue()
+    void NumericNodePropertyDisplay::SubmitValue()
     {
-        m_dataInterface->SetDouble(m_spinBox->value());
+        m_dataInterface->SetNumber(m_spinBox->value());
         UpdateDisplay();
 
         m_spinBox->selectAll();
     }
 
-    void DoubleNodePropertyDisplay::EditFinished()
+    void NumericNodePropertyDisplay::EditFinished()
     {
         SubmitValue();
         m_spinBox->deselectAll();
@@ -137,5 +136,5 @@ namespace GraphCanvas
         NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
     }
 
-#include <Source/Components/NodePropertyDisplays/DoubleNodePropertyDisplay.moc>
+#include <Source/Components/NodePropertyDisplays/NumericNodePropertyDisplay.moc>
 }

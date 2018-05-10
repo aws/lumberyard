@@ -12,8 +12,9 @@
 
 #pragma once
 
+#include <AzCore/std/string/string.h>
 #include <QtCore/QString>
-#include <MCore/Source/UnicodeString.h>
+#include <MCore/Source/Config.h>
 
 // when we use DLL files, setup the EMFX_API macro
     #if defined(MYSTICQT_DLL_EXPORT)
@@ -36,15 +37,15 @@ enum
 };
 
 
-// convert from a QString into an MCore::String
-MCORE_INLINE MCore::String FromQtString(const QString& s)
+// convert from a QString into an AZStd::string
+MCORE_INLINE AZStd::string FromQtString(const QString& s)
 {
     return s.toUtf8().data();
 }
 
 
-// convert from a QString into an MCore::String
-MCORE_INLINE void FromQtString(const QString& s, MCore::String* result)
+// convert from a QString into an AZStd::string
+MCORE_INLINE void FromQtString(const QString& s, AZStd::string* result)
 {
     *result = s.toUtf8().data();
 }

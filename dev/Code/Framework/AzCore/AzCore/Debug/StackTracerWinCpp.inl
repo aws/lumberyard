@@ -32,6 +32,7 @@ namespace AZ {
 
     namespace Debug
     {
+        // its important that this struct is POD
         struct DynamicallyLoadedModuleInfo
         {
             char    m_fileName[1024];
@@ -43,7 +44,7 @@ namespace AZ {
         struct SymbolStorageDynamicallyLoadedModules
         {
             size_t m_size;
-            DynamicallyLoadedModuleInfo m_modules[300];
+            DynamicallyLoadedModuleInfo m_modules[256];
 
             SymbolStorageDynamicallyLoadedModules()
                 : m_size(0)
@@ -106,48 +107,6 @@ namespace AZ {
     } // namespace Debug
 
 
-    /*struct IMAGEHLP_MODULE64_V3 {
-    DWORD    SizeOfStruct;           // set to sizeof(IMAGEHLP_MODULE64)
-    DWORD64  BaseOfImage;            // base load address of module
-    DWORD    ImageSize;              // virtual size of the loaded module
-    DWORD    TimeDateStamp;          // date/time stamp from pe header
-    DWORD    CheckSum;               // checksum from the pe header
-    DWORD    NumSyms;                // number of symbols in the symbol table
-    SYM_TYPE SymType;                // type of symbols loaded
-    CHAR     ModuleName[32];         // module name
-    CHAR     ImageName[256];         // image name
-    // new elements: 07-Jun-2002
-    CHAR     LoadedImageName[256];   // symbol file name
-    CHAR     LoadedPdbName[256];     // pdb file name
-    DWORD    CVSig;                  // Signature of the CV record in the debug directories
-    CHAR         CVData[MAX_PATH * 3];   // Contents of the CV record
-    DWORD    PdbSig;                 // Signature of PDB
-    GUID     PdbSig70;               // Signature of PDB (VC 7 and up)
-    DWORD    PdbAge;                 // DBI age of pdb
-    BOOL     PdbUnmatched;           // loaded an unmatched pdb
-    BOOL     DbgUnmatched;           // loaded an unmatched dbg
-    BOOL     LineNumbers;            // we have line number information
-    BOOL     GlobalSymbols;          // we have internal symbol information
-    BOOL     TypeInfo;               // we have type information
-    // new elements: 17-Dec-2003
-    BOOL     SourceIndexed;          // pdb supports source server
-    BOOL     Publics;                // contains public symbols
-    };
-    */
-    struct IMAGEHLP_MODULE64_V2
-    {
-        DWORD    SizeOfStruct;       // set to sizeof(IMAGEHLP_MODULE64)
-        DWORD64  BaseOfImage;        // base load address of module
-        DWORD    ImageSize;          // virtual size of the loaded module
-        DWORD    TimeDateStamp;      // date/time stamp from pe header
-        DWORD    CheckSum;           // checksum from the pe header
-        DWORD    NumSyms;            // number of symbols in the symbol table
-        SYM_TYPE SymType;            // type of symbols loaded
-        CHAR     ModuleName[32];     // module name
-        CHAR     ImageName[256];     // image name
-        CHAR     LoadedImageName[256];// symbol file name
-    };
-
     // this first typedef is for the USER CALLBACK function. 
     typedef BOOL    (CALLBACK *PSYMBOL_REGISTERED_CALLBACK64)(_In_ HANDLE hProcess, _In_ ULONG ActionCode, _In_opt_ ULONG64 CallbackData, _In_opt_ ULONG64 UserContext);
 
@@ -156,7 +115,7 @@ namespace AZ {
     typedef PVOID   (__stdcall * SymFunctionTableAccess64_t)(HANDLE hProcess, DWORD64 AddrBase);
     typedef BOOL    (__stdcall * SymGetLineFromAddr64_t)(IN HANDLE hProcess, IN DWORD64 dwAddr, OUT PDWORD pdwDisplacement, OUT PIMAGEHLP_LINE64 Line);
     typedef DWORD64 (__stdcall * SymGetModuleBase64_t)(IN HANDLE hProcess, IN DWORD64 dwAddr);
-    typedef BOOL    (__stdcall * SymGetModuleInfo64_t)(IN HANDLE hProcess, IN DWORD64 dwAddr, OUT IMAGEHLP_MODULE64_V2* ModuleInfo);
+    typedef BOOL    (__stdcall * SymGetModuleInfo64_t)(IN HANDLE hProcess, IN DWORD64 dwAddr, OUT IMAGEHLP_MODULE64* ModuleInfo);
     typedef DWORD   (__stdcall * SymGetOptions_t)(VOID);
     typedef BOOL    (__stdcall * SymGetSymFromAddr64_t)(IN HANDLE hProcess, IN DWORD64 dwAddr, OUT PDWORD64 pdwDisplacement, OUT PIMAGEHLP_SYMBOL64 Symbol);
     typedef BOOL    (__stdcall * SymInitialize_t)(IN HANDLE hProcess, IN PCSTR UserSearchPath, IN BOOL fInvadeProcess);
@@ -299,6 +258,7 @@ namespace AZ {
                 // Module loaded
                 AZStd::lock_guard<AZStd::mutex> locker(AZ::Debug::GetDynamicallyLoadedModulesMutex());
                 AZ::Debug::SymbolStorageDynamicallyLoadedModules& loadedModules = AZ::Debug::GetRegisteredLoadedModules();
+
                 if (loadedModules.m_size < AZ_ARRAY_SIZE(loadedModules.m_modules))
                 {
                     AZ::Debug::DynamicallyLoadedModuleInfo& modInfo = loadedModules.m_modules[loadedModules.m_size];
@@ -307,7 +267,31 @@ namespace AZ {
                     wcstombs_s(&numCharsConverted, modInfo.m_name, AZ_ARRAY_SIZE(modInfo.m_name), NotificationData->Loaded.BaseDllName->Buffer, AZStd::min(AZ_ARRAY_SIZE(modInfo.m_name) - 1, (size_t)NotificationData->Loaded.BaseDllName->Length));
                     modInfo.m_baseAddress = (AZ::u64)NotificationData->Loaded.DllBase;
                     modInfo.m_size = (AZ::u32)NotificationData->Loaded.SizeOfImage;
-                    loadedModules.m_size++;
+
+                    // it might already be in the list.   If it is, we'll just use the existing one and overwrite it instead of pushing the last one 
+                    // so that it doesn't grow unbounded as plugins / etc are loaded and unloaded, which can happen via operating system hooks or even
+                    // via external app launching.
+                    DynamicallyLoadedModuleInfo* toWriteTo = nullptr;
+                    for (int idx = 0; idx < loadedModules.m_size; ++idx)
+                    {
+                        if ((strcmp(loadedModules.m_modules[idx].m_fileName, modInfo.m_fileName) == 0) &&
+                            (strcmp(loadedModules.m_modules[idx].m_name, modInfo.m_name) == 0))
+                        {
+                            toWriteTo = &loadedModules.m_modules[idx];
+                            break;
+                        }
+                    }
+
+                    if (toWriteTo)
+                    {
+                        // if we found one to replace,
+                        // update existing entry using this one as scratch space:
+                        memcpy(toWriteTo, &modInfo, sizeof(AZ::Debug::DynamicallyLoadedModuleInfo));
+                    }
+                    else
+                    {
+                        loadedModules.m_size++;
+                    }
                 }
                 else
                 {
@@ -434,7 +418,9 @@ namespace AZ {
             DWORD symOptions = g_SymGetOptions();
             symOptions |= SYMOPT_LOAD_LINES;
             symOptions |= SYMOPT_FAIL_CRITICAL_ERRORS;
-            
+            symOptions |= SYMOPT_OMAP_FIND_NEAREST;
+            symOptions |= SYMOPT_DEFERRED_LOADS;
+
             //symOptions |= SYMOPT_DEBUG; // uncomment if you want the debug callback to print out why it cannot load syms.
             //symOptions |= SYMOPT_NO_PROMPTS;
 
@@ -485,7 +471,7 @@ namespace AZ {
                 }
                 else
                 {
-                    IMAGEHLP_MODULE64_V2 module;
+                    IMAGEHLP_MODULE64 module;
                     if (GetModuleInfo(g_currentProcess, pc, &module) && module.ModuleName[0] != 0)
                     {
                         azsnprintf(textLine, textLineSize, "%p (%s) : ", (LPVOID)pc, module.ModuleName);
@@ -519,36 +505,61 @@ namespace AZ {
             LeaveCriticalSection(&g_csDbgHelpDll);
         }
 
+        void FindFunctionFromIP(void* ip, SymbolStorage::StackLine* func_name, SymbolStorage::StackLine* file_name, SymbolStorage::StackLine* module_name, int& line_num, void*& baseAddr)
+        {
+            const int maxNameLen = 1024;    // includes decorations, will be trimmed before assigned to StackLine
+            char buffer[sizeof(IMAGEHLP_SYMBOL64) + maxNameLen] = { 0 };
+            IMAGEHLP_SYMBOL64& sym = *(IMAGEHLP_SYMBOL64*)buffer;
+            sym.SizeOfStruct = sizeof(sym);
+            sym.MaxNameLength = maxNameLen;
+            sym.Name[0] = '\0';
+
+            IMAGEHLP_LINE64 line = { 0 };
+            line.SizeOfStruct = sizeof(line);
+
+            EnterCriticalSection(&g_csDbgHelpDll);
+            {
+                DWORD displacement;
+                if (g_SymGetLineFromAddr64(g_currentProcess, (DWORD64)ip, &displacement, &line))
+                {
+                    if (line.FileName[0])
+                    {
+                        azstrcpy(*file_name, sizeof(*file_name), line.FileName);
+                        line_num = line.LineNumber;
+                        baseAddr = (void*)((DWORD64)ip - displacement);
+                    }
+                }
+
+                IMAGEHLP_MODULE64 module;
+                if (GetModuleInfo(g_currentProcess, (DWORD64)ip, &module))
+                {
+                    if (module.ModuleName[0])
+                    {
+                        azstrcpy(*module_name, sizeof(*module_name), module.ModuleName);
+                    }
+                }
+
+                DWORD64 offsetFromSymbol;
+                if (g_SymGetSymFromAddr64(g_currentProcess, (DWORD64)ip, &offsetFromSymbol, &sym))
+                {
+                    if (sym.Name[0])
+                    {
+                        g_UnDecorateSymbolName(sym.Name, *func_name, sizeof(*func_name), UNDNAME_NAME_ONLY);
+                    }
+                }
+            }
+            LeaveCriticalSection(&g_csDbgHelpDll);
+        }
+
     private:
-        BOOL GetModuleInfo(HANDLE hProcess, DWORD64 baseAddr, IMAGEHLP_MODULE64_V2* pModuleInfo)
+        BOOL GetModuleInfo(HANDLE hProcess, DWORD64 baseAddr, IMAGEHLP_MODULE64* pModuleInfo)
         {
             if (g_SymGetModuleInfo64 == NULL)
             {
                 return FALSE;
             }
-            // First try to use the larger ModuleInfo-Structure
-            //    memset(pModuleInfo, 0, sizeof(IMAGEHLP_MODULE64_V3));
-            //    pModuleInfo->SizeOfStruct = sizeof(IMAGEHLP_MODULE64_V3);
-            //    if (this->pSGMI_V3 != NULL)
-            //    {
-            //      if (this->pSGMI_V3(hProcess, baseAddr, pModuleInfo) != FALSE)
-            //        return TRUE;
-            //      // check if the parameter was wrong (size is bad...)
-            //      if (GetLastError() != ERROR_INVALID_PARAMETER)
-            //        return FALSE;
-            //    }
-            // could not retrieve the bigger structure, try with the smaller one (as defined in VC7.1)...
-            pModuleInfo->SizeOfStruct = sizeof(IMAGEHLP_MODULE64_V2);
-            char pData[4096];
-            memcpy(pData, pModuleInfo, sizeof(IMAGEHLP_MODULE64_V2));
-            if (g_SymGetModuleInfo64(hProcess, baseAddr, (IMAGEHLP_MODULE64_V2*) pData) != FALSE)
-            {
-                // only copy as much memory as is reserved...
-                memcpy(pModuleInfo, pData, sizeof(IMAGEHLP_MODULE64_V2));
-                pModuleInfo->SizeOfStruct = sizeof(IMAGEHLP_MODULE64_V2);
-                return TRUE;
-            }
-            return FALSE;
+            pModuleInfo->SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
+            return g_SymGetModuleInfo64(hProcess, baseAddr, (IMAGEHLP_MODULE64*) pModuleInfo);
         }
 
         DWORD LoadModule(HANDLE hProcess, LPCSTR img, LPCSTR mod, DWORD64 baseAddr, DWORD size)
@@ -603,7 +614,7 @@ namespace AZ {
                 }
 
                 // Retrive some additional-infos about the module
-                IMAGEHLP_MODULE64_V2 Module;
+                IMAGEHLP_MODULE64 Module;
                 const char* szSymType = "-unknown-";
                 if (GetModuleInfo(hProcess, baseAddr, &Module) != FALSE)
                 {
@@ -645,8 +656,10 @@ namespace AZ {
                     g_moduleInfo.push_back();
                     SymbolStorage::ModuleInfo& modInfo = g_moduleInfo.back();
                     modInfo.m_baseAddress = (u64)baseAddr;
+                    azstrcpy(modInfo.m_modName, AZ_ARRAY_SIZE(modInfo.m_modName), szMod);
                     azstrcpy(modInfo.m_fileName, AZ_ARRAY_SIZE(modInfo.m_fileName), img);
                     modInfo.m_fileVersion = (u64)fileVersion;
+                    modInfo.m_size = size;
                 }
                 else
                 {
@@ -1014,12 +1027,12 @@ cleanup:
     // [7/29/2009]
     //=========================================================================
     unsigned int
-    StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned int suppressCount /* = 0 */, void* nativeContext /*= NULL*/)
+    StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned int suppressCount /* = 0 */, void* nativeThread /*= NULL*/)
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
         unsigned int numFrames = 0;
 
-        if (nativeContext == NULL)
+        if (nativeThread == NULL)
         {
             ++suppressCount; // Skip current call
             if (s_pfnCaptureStackBackTrace == 0)
@@ -1044,9 +1057,10 @@ cleanup:
                 LoadDbgHelp();
             }
 
-            HANDLE currentThread = GetCurrentThread();
+            HANDLE hThread = nativeThread;
             AZ_ALIGN(CONTEXT context, 8); // Without this alignment the function randomly crashes in release.
-            memcpy(&context, nativeContext, sizeof(CONTEXT));
+            context.ContextFlags = CONTEXT_ALL;
+            GetThreadContext(hThread, &context);
 
             STACKFRAME64 sf /*= {0}*/;
             memset(&sf, 0, sizeof(STACKFRAME64));
@@ -1074,7 +1088,7 @@ cleanup:
             s32 frame = -(s32)suppressCount;
             for (; frame < (s32)maxNumOfFrames; ++frame)
             {
-                if (!g_StackWalk64(imageType, g_currentProcess, currentThread, &sf, &context, 0, g_SymFunctionTableAccess64, g_SymGetModuleBase64, 0))
+                if (!g_StackWalk64(imageType, g_currentProcess, hThread, &sf, &context, 0, g_SymFunctionTableAccess64, g_SymGetModuleBase64, 0))
                 {
                     break;
                 }
@@ -1098,7 +1112,7 @@ cleanup:
         (void)frames;
         (void)maxNumOfFrames;
         (void)suppressCount;
-        (void)nativeContext;
+        (void)nativeThread;
         return 0;
 #endif // AZ_ENABLE_DEBUG_TOOLS
     }
@@ -1123,17 +1137,6 @@ cleanup:
         (void)moduleInfoData;
         (void)moduleInfoDataSize;
 #endif
-    }
-
-    //=========================================================================
-    // GetModuleInfoDataSize
-    // [7/29/2009]
-    //=========================================================================
-    unsigned int
-    SymbolStorage::GetModuleInfoDataSize()
-    {
-        // We don't really need this now.
-        return 0;
     }
 
     //=========================================================================
@@ -1253,19 +1256,50 @@ cleanup:
             LoadDbgHelp();
         }
 
-        if (GetSymbols().IsSymLoaded())
+        WindowsSymbols& symbols = GetSymbols();
+        if (symbols.IsSymLoaded())
         {
-            if (GetSymbols().ModuleSymbolsNeedRefreshed())
+            if (symbols.ModuleSymbolsNeedRefreshed())
             {
-                GetSymbols().RefreshModuleSymbols();
+                symbols.RefreshModuleSymbols();
             }
-            GetSymbols().DecodeFrames(frames, numFrames, textLines);
+            symbols.DecodeFrames(frames, numFrames, textLines);
         }
 
 #else
         (void)frames;
         (void)numFrames;
         (void)textLines;
+#endif
+    }
+
+    //=========================================================================
+    // FindFunctionFromIP
+    // [4/25/2018]
+    //=========================================================================
+    void
+    SymbolStorage::FindFunctionFromIP(void* address, StackLine* func, StackLine* file, StackLine* module, int& line, void*& baseAddr)
+    {
+        *func[0] = '\0';
+        *file[0] = '\0';
+        *module[0] = '\0';
+        line = 0;
+        baseAddr = address;
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+        if (!g_dbgHelpLoaded)
+        {
+            LoadDbgHelp();
+        }
+
+        WindowsSymbols& symbols = GetSymbols();
+        if (symbols.IsSymLoaded())
+        {
+            if (symbols.ModuleSymbolsNeedRefreshed())
+            {
+                symbols.RefreshModuleSymbols();
+            }
+            symbols.FindFunctionFromIP(address, func, file, module, line, baseAddr);
+        }
 #endif
     }
 } // namespace AZ

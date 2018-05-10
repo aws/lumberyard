@@ -14,8 +14,7 @@
 
 // include the required headers
 #include "EMotionFXConfig.h"
-#include <MCore/Source/UnicodeString.h>
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 #include "AnimGraphAttributeTypes.h"
 #include "BlendTreeConnection.h"
 #include "AnimGraphObject.h"
@@ -66,11 +65,11 @@ namespace EMotionFX
             BlendTreeConnection*    mConnection;            // the connection plugged in this port
             uint32                  mCompatibleTypes[4];    // four possible compatible types
             uint32                  mPortID;                // the unique port ID (unique inside the node input or output port lists)
-            uint32                  mNameID;                // the name of the port (using the StringIDGenerator)
+            uint32                  mNameID;                // the name of the port (using the StringIdPool)
             uint32                  mAttributeIndex;        // the index into the animgraph instance global attributes array
 
-            MCORE_INLINE const char* GetName() const                    { return MCore::GetStringIDGenerator().GetName(mNameID).AsChar(); }
-            MCORE_INLINE const MCore::String& GetNameString() const     { return MCore::GetStringIDGenerator().GetName(mNameID); }
+            MCORE_INLINE const char* GetName() const                    { return MCore::GetStringIdPool().GetName(mNameID).c_str(); }
+            MCORE_INLINE const AZStd::string& GetNameString() const     { return MCore::GetStringIdPool().GetName(mNameID); }
 
             // copy settings from another port (always makes the mConnection and mValue nullptr though)
             void InitFrom(const Port& other)
@@ -173,7 +172,7 @@ namespace EMotionFX
         void RecursiveOnUpdateUniqueData(AnimGraphInstance* animGraphInstance);
         virtual void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         virtual void OnUpdateAttributes() override;
-        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName) override;
+        virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
         virtual void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node) override;
         virtual void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
         void RecursiveUpdateAttributes();
@@ -188,7 +187,7 @@ namespace EMotionFX
 
         MCORE_INLINE float GetDuration(AnimGraphInstance* animGraphInstance) const                 { return FindUniqueNodeData(animGraphInstance)->GetDuration(); }
         virtual void SetCurrentPlayTime(AnimGraphInstance* animGraphInstance, float timeInSeconds) { FindUniqueNodeData(animGraphInstance)->SetCurrentPlayTime(timeInSeconds); }
-        virtual float GetCurrentPlayTime(AnimGraphInstance* animGraphInstance) const               { return FindUniqueNodeData(animGraphInstance)->GetCurrentPlayTime(); }
+        virtual float GetCurrentPlayTime(const AnimGraphInstance* animGraphInstance) const         { return FindUniqueNodeData(animGraphInstance)->GetCurrentPlayTime(); }
 
         MCORE_INLINE uint32 GetSyncIndex(AnimGraphInstance* animGraphInstance) const               { return FindUniqueNodeData(animGraphInstance)->GetSyncIndex(); }
         MCORE_INLINE void SetSyncIndex(AnimGraphInstance* animGraphInstance, uint32 syncIndex)     { FindUniqueNodeData(animGraphInstance)->SetSyncIndex(syncIndex); }
@@ -277,7 +276,7 @@ namespace EMotionFX
         void RecursiveOnChangeMotionSet(AnimGraphInstance* animGraphInstance, MotionSet* newMotionSet) override;
 
         const char* GetName() const;
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
         void SetName(const char* name);
 
         MCORE_INLINE uint32 GetID() const                                   { return mNameID; }
@@ -760,7 +759,7 @@ namespace EMotionFX
 
         void SetNodeInfo(const char* info);
         const char* GetNodeInfo() const;
-        const MCore::String& GetNodeInfoString() const;
+        const AZStd::string& GetNodeInfoString() const;
 
         void AddChildNode(AnimGraphNode* node);
         void ReserveChildNodes(uint32 numChildNodes);
@@ -773,7 +772,7 @@ namespace EMotionFX
         void MarkConnectionVisited(AnimGraphNode* sourceNode);
         void OutputIncomingNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeToOutput);
 
-        MCORE_INLINE AnimGraphNodeData* FindUniqueNodeData(AnimGraphInstance* animGraphInstance) const            { return animGraphInstance->FindUniqueNodeData(this); }
+        MCORE_INLINE AnimGraphNodeData* FindUniqueNodeData(const AnimGraphInstance* animGraphInstance) const            { return animGraphInstance->FindUniqueNodeData(this); }
 
         bool GetIsEnabled() const;
         void SetIsEnabled(bool enabled);
@@ -824,7 +823,7 @@ namespace EMotionFX
         MCore::Array<Port>                  mInputPorts;
         MCore::Array<Port>                  mOutputPorts;
         MCore::Array<AnimGraphNode*>        mChildNodes;
-        MCore::String                       mNodeInfo;
+        AZStd::string                       mNodeInfo;
         void*                               mCustomData;
         uint32                              mNameID;
         uint32                              mUniqueID;

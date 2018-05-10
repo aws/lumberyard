@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_SEMAPHORE_H
-#define AZSTD_SEMAPHORE_H 1
+#pragma once
 
 #include <AzCore/std/parallel/config.h>
 #include <AzCore/std/chrono/types.h>
@@ -63,6 +62,12 @@ namespace AZStd
 
 #if defined(AZ_PLATFORM_WINDOWS)
     #include <AzCore/std/parallel/internal/semaphore_win.h>
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(semaphore_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
     #include <AzCore/std/parallel/internal/semaphore_linux.h>
 #elif defined(AZ_PLATFORM_APPLE)
@@ -70,6 +75,3 @@ namespace AZStd
 #else
     #error Platform not supported
 #endif
-
-#endif // AZSTD_SEMAPHORE_H
-#pragma once

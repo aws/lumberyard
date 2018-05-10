@@ -357,7 +357,7 @@ void CVegetationObject::OnFileNameChange(IVariable* var)
     {
         QString value;
         mv_fileName->Get(value);
-        AZ_Error("Vegetation", false, "'%s' File not found.", value);
+        AZ_Error("Vegetation", false, "'%s' File not found.", value.toUtf8().constData());
     }
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedTerrain);

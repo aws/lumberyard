@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/Importer/Importer.h>
@@ -99,7 +98,7 @@ namespace EMotionFX
             filename += ".xac";
 
             // use this line to load the actor from the saved actor file
-            EMotionFX::Actor* testLoadingActor = EMotionFX::GetImporter().LoadActor(MCore::String(filename.c_str()));
+            EMotionFX::Actor* testLoadingActor = EMotionFX::GetImporter().LoadActor(AZStd::string(filename.c_str()));
             MCore::Destroy(testLoadingActor);
 #endif // EMOTIONFX_ACTOR_DEBUG
 

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/Math/Aabb.h>
+#include <AzCore/Math/Obb.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/Math/Transform.h>
@@ -137,6 +138,29 @@ inline AABB AZAabbToLyAABB(const AZ::Aabb& source)
 inline AZ::Aabb LyAABBToAZAabb(const AABB& source)
 {
     return AZ::Aabb::CreateFromMinMax(LYVec3ToAZVec3(source.min), LYVec3ToAZVec3(source.max));
+}
+
+inline AZ::Obb LyOBBtoAZObb(const OBB& source)
+{
+    return AZ::Obb::CreateFromPositionAndAxes(
+        LYVec3ToAZVec3(source.c),
+        LYVec3ToAZVec3(source.m33.GetColumn0()),
+        source.h.x,
+        LYVec3ToAZVec3(source.m33.GetColumn1()),
+        source.h.y,
+        LYVec3ToAZVec3(source.m33.GetColumn2()),
+        source.h.z);
+}
+
+inline OBB AZObbToLyOBB(const AZ::Obb& source)
+{
+    return OBB::CreateOBB(
+        Matrix33::CreateFromVectors(
+            AZVec3ToLYVec3(source.GetAxisX()),
+            AZVec3ToLYVec3(source.GetAxisY()),
+            AZVec3ToLYVec3(source.GetAxisZ())),
+        Vec3(source.GetHalfLengthX(), source.GetHalfLengthY(), source.GetHalfLengthZ()),
+        AZVec3ToLYVec3(source.GetPosition()));
 }
 
 inline AZ::Plane LyPlaneToAZPlane(const Plane& source)

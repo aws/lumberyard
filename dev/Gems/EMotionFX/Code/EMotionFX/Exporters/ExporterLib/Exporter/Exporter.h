@@ -15,7 +15,6 @@
 // include the required headers
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/MemoryFile.h>
 #include <MCore/Source/Endian.h>
 #include <MCore/Source/Quaternion.h>
@@ -98,7 +97,7 @@ namespace ExporterLib
      * @param textToSave The string to save.
      * @param file The file stream to save the string to.
      */
-    void SaveString(const MCore::String& textToSave, MCore::Stream* file, MCore::Endian::EEndianType targetEndianType);
+    void SaveString(const AZStd::string& textToSave, MCore::Stream* file, MCore::Endian::EEndianType targetEndianType);
     void SaveAzString(const AZStd::string& textToSave, MCore::Stream* file, MCore::Endian::EEndianType targetEndianType);
 
     /**
@@ -106,7 +105,7 @@ namespace ExporterLib
      * @param text The string to check the chunk size for.
      * @return The size the string chunk will have in bytes.
      */
-    uint32 GetStringChunkSize(const MCore::String& text);
+    uint32 GetStringChunkSize(const AZStd::string& text);
     size_t GetAzStringChunkSize(const AZStd::string& text);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +136,7 @@ namespace ExporterLib
     void SaveMorphTarget(MCore::Stream* file, EMotionFX::Actor* actor, EMotionFX::MorphTarget* inputMorphTarget, uint32 lodLevel, MCore::Endian::EEndianType targetEndianType);
     void SaveMorphTargets(MCore::Stream* file, EMotionFX::Actor* actor, uint32 lodLevel, MCore::Endian::EEndianType targetEndianType);
     void SaveMorphTargets(MCore::Stream* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType);
-    bool AddMorphTarget(EMotionFX::Actor* actor, MCore::MemoryFile* file, const MCore::String& morphTargetName, uint32 captureMode, uint32 phonemeSets, float rangeMin, float rangeMax, uint32 geomLODLevel);
+    bool AddMorphTarget(EMotionFX::Actor* actor, MCore::MemoryFile* file, const AZStd::string& morphTargetName, uint32 captureMode, uint32 phonemeSets, float rangeMin, float rangeMax, uint32 geomLODLevel);
 
     // actors
     const char* GetActorExtension(bool includingDot = true);
@@ -187,14 +186,14 @@ namespace ExporterLib
     void SaveMorphSubMotions(MCore::Stream* file, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType, bool onlyAnimated);
 
     // TODO: not a nice function yet, no file processor, ignoring the file processor passes, change later on
-    bool ConvertToWaveletSkeletalMotion(const MCore::String& fileName, EMotionFX::WaveletSkeletalMotion::Settings* settings, MCore::Endian::EEndianType targetEndianType);
+    bool ConvertToWaveletSkeletalMotion(const AZStd::string& fileName, EMotionFX::WaveletSkeletalMotion::Settings* settings, MCore::Endian::EEndianType targetEndianType);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Morphing
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    EMotionFX::MorphSubMotion* GetMorphSubMotionByName(EMotionFX::SkeletalMotion* motion, const MCore::String& name);
-    EMotionFX::MorphSubMotion* CreateAddMorphSubMotion(EMotionFX::SkeletalMotion* motion, const MCore::String& subMotionName);
+    EMotionFX::MorphSubMotion* GetMorphSubMotionByName(EMotionFX::SkeletalMotion* motion, const AZStd::string& name);
+    EMotionFX::MorphSubMotion* CreateAddMorphSubMotion(EMotionFX::SkeletalMotion* motion, const AZStd::string& subMotionName);
 
     const char* GetMorphSubMotionName(EMotionFX::MorphSubMotion* subMotion);
     void OptimizeMorphSubMotions(EMotionFX::SkeletalMotion* motion, float maxError = 0.001f);

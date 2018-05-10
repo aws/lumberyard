@@ -18,13 +18,9 @@
 
 using namespace News;
 
-static const char* s_serverHash = "+77ArWoHPEIIqyPWDyw00dbEbpeZgGqvEKC01WXtpzQ=";
-
 QtDownloader::QtDownloader()
     : QObject()
 {
-    connect(&m_networkManager, &QNetworkAccessManager::encrypted,
-        this, &QtDownloader::encryptedSlot);
     connect(&m_networkManager, &QNetworkAccessManager::finished,
         this, &QtDownloader::downloadFinishedSlot);
 }
@@ -48,30 +44,9 @@ void QtDownloader::Abort()
     }
 }
 
-void QtDownloader::SetUseCertPinning(bool value)
-{
-    m_useCertPinning = value;
-}
-
-void QtDownloader::encryptedSlot(QNetworkReply* pReply)
-{
-    if (m_useCertPinning)
-    {
-        m_certValid = false;
-        QSslCertificate cert = pReply->sslConfiguration().peerCertificate();
-        QString serverHash = QCryptographicHash::hash(cert.publicKey().toDer(),
-                QCryptographicHash::Sha256).toBase64();
-
-        if (QString(s_serverHash).compare(serverHash) == 0)
-        {
-            m_certValid = true;
-        }
-    }
-}
-
 void QtDownloader::downloadFinishedSlot(QNetworkReply* pReply)
 {
-    if (pReply->error() == QNetworkReply::NoError && (m_certValid || !m_useCertPinning))
+    if (pReply->error() == QNetworkReply::NoError)
     {
         m_downloadSuccessCallback(pReply->readAll());
     }

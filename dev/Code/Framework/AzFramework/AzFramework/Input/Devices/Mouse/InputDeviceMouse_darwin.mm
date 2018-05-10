@@ -565,23 +565,24 @@ namespace AzFramework
         // Get the location of the event relative to the bottom left of the screen, needed
         // so that it can be checked against the cursor bounds from this co-ordinate space.
         CGPoint eventLocation = CGEventGetUnflippedLocation(eventRef);
+
+        // Get the current cursor bounds of the main view, then adjust them to exclude the
+        // corner radius, whose value was deduced by trial and error because there doesn't
+        // appear to be any other way to get it (mainView.layer.cornerRadius returns 0.0f).
         NSRect cursorBoundsInWindowSpace = [mainView convertRect: mainView.bounds toView: nil];
         NSRect cursorBounds = [mainView.window convertRectToScreen: cursorBoundsInWindowSpace];
+        const float cornerRadius = 2.0f;
+        cursorBounds = NSInsetRect(cursorBounds, cornerRadius, cornerRadius);
+
         if (NSPointInRect(NSPointFromCGPoint(eventLocation), cursorBounds))
         {
             // Do nothing if the event occured inside of the application's main view
             return eventRef;
         }
 
-        // Constrain the event location to the cursor bounds, adjusting MaxX by -1 to account for
-        // the right edge being considered outside the boundary, adjusting MinY by +1 to account
-        // for the bottom edge being considerd outside the boundary, and then MinY by another +2
-        // to account for the bottom corners of osx windows being rounded by 2 pixels. Basically,
-        // if we don't make these adjustments then it is still possible for the user to deselect
-        // the application by clicking outside of its main window, which is what we're trying to
-        // prevent with this whole event tap/event location adjustment in the first place.
-        eventLocation.x = AZ::GetClamp(eventLocation.x, NSMinX(cursorBounds), NSMaxX(cursorBounds) - 1.0f);
-        eventLocation.y = AZ::GetClamp(eventLocation.y, NSMinY(cursorBounds) + 3.0f, NSMaxY(cursorBounds));
+        // Constrain the event location to the cursor bounds.
+        eventLocation.x = AZ::GetClamp(eventLocation.x, NSMinX(cursorBounds), NSMaxX(cursorBounds));
+        eventLocation.y = AZ::GetClamp(eventLocation.y, NSMinY(cursorBounds), NSMaxY(cursorBounds));
 
         // Reset the event location after flipping it back to be relative to the top of the screen
         eventLocation.y = NSMaxY(NSScreen.mainScreen.frame) - eventLocation.y;

@@ -28,9 +28,7 @@ namespace ScriptCanvas
         
         void ArithmeticExpression::OnInit()
         {
-            SlotId slotId = AddOutputTypeSlot(k_resultName, "", Data::Type::Number(), OutputStorage::Optional);
-            const Slot* slot{};
-            GetValidSlotIndex(slotId, slot, m_outputSlotIndex);
+            AddOutputTypeSlot(k_resultName, "", Data::Type::Number(), OutputStorage::Optional);
 
             BinaryOperator::OnInit();
 
@@ -40,13 +38,15 @@ namespace ScriptCanvas
             AddInputDatumSlot(k_rhsName, "", AZStd::move(Data::Type::Number()), Datum::eOriginality::Original);
         }
 
-        void ArithmeticExpression::OnInputSignal(const SlotId& slot)
+        void ArithmeticExpression::OnInputSignal(const SlotId& slotId)
         {
-            AZ_Assert(m_outputSlotIndex != -1, "m_outputSlotIndex was not configured to the index of the result slot");
-            if (slot == GetSlotId(k_evaluateName))
+            if (slotId == GetSlotId(k_evaluateName))
             {
-                const Datum output = Evaluate(m_inputData[k_datumIndexLHS], m_inputData[k_datumIndexRHS]);
-                PushOutput(output, m_slotContainer.m_slots[m_outputSlotIndex]);
+                const Datum output = Evaluate(*GetDatumByIndex(k_datumIndexLHS), *GetDatumByIndex(k_datumIndexRHS));
+                if (auto slot = GetSlot(GetOutputSlotId()))
+                {
+                    PushOutput(output, *slot);
+                }
 
                 SignalOutput(GetSlotId(k_outName));
             }
@@ -64,7 +64,6 @@ namespace ScriptCanvas
                 {
                     editContext->Class<ArithmeticExpression>("ArithmeticExpression", "ArithmeticExpression")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
             }
@@ -86,6 +85,11 @@ namespace ScriptCanvas
             AddSlot(k_evaluateName, "Signal to perform the evaluation when desired.", ScriptCanvas::SlotType::ExecutionIn);
         }
 
+        SlotId BinaryOperator::GetOutputSlotId() const
+        {
+            return GetSlotId(k_resultName);
+        }
+
         void BinaryOperator::Reflect(AZ::ReflectContext* reflection)
         {
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
@@ -98,7 +102,6 @@ namespace ScriptCanvas
                 {
                     editContext->Class<BinaryOperator>("BinaryOperator", "BinaryOperator")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
             }
@@ -109,13 +112,15 @@ namespace ScriptCanvas
             AZ_Assert(false, "InitializeBooleanExpression must be overridden");
         }
 
-        void BooleanExpression::OnInputSignal(const SlotId& slot)
+        void BooleanExpression::OnInputSignal(const SlotId& slotId)
         {
-            AZ_Assert(m_outputSlotIndex != -1, "m_outputSlotIndex was not configured to the index of the result slot");
-            if (slot == GetSlotId(k_evaluateName))
+            if (slotId == GetSlotId(k_evaluateName))
             {
-                const Datum output = Evaluate(m_inputData[k_datumIndexLHS], m_inputData[k_datumIndexRHS]);
-                PushOutput(output, m_slotContainer.m_slots[m_outputSlotIndex]);
+                const Datum output = Evaluate(*GetDatumByIndex(k_datumIndexLHS), *GetDatumByIndex(k_datumIndexRHS));
+                if (auto slot = GetSlot(GetOutputSlotId()))
+                {
+                    PushOutput(output, *slot);
+                }
 
                 const bool* result = output.GetAs<bool>();
                 if (result && *result)
@@ -131,9 +136,7 @@ namespace ScriptCanvas
 
         void BooleanExpression::OnInit()
         {
-            SlotId slotId = AddOutputTypeSlot(k_resultName, "", Data::Type::Boolean(), OutputStorage::Optional);
-            const Slot* slot{};
-            GetValidSlotIndex(slotId, slot, m_outputSlotIndex);
+            AddOutputTypeSlot(k_resultName, "", Data::Type::Boolean(), OutputStorage::Optional);
 
             BinaryOperator::OnInit();
 
@@ -156,7 +159,6 @@ namespace ScriptCanvas
                 {
                     editContext->Class<BooleanExpression>("BooleanExpression", "BooleanExpression")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
             }
@@ -168,19 +170,55 @@ namespace ScriptCanvas
             AddOutputTypeSlot(k_resultName, "", Data::Type::Boolean(), OutputStorage::Optional);
         }
 
+        static bool ComparisonExpressionVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
+        {
+            if (rootElement.GetVersion() == 0)
+            {
+                int nodeElementIndex = rootElement.FindElement(AZ_CRC("BaseClass1", 0xd4925735));
+                if (nodeElementIndex == -1)
+                {
+                    AZ_Error("Script Canvas", false, "Unable to find base class node element for ComparisonExpression class %s", false, rootElement.GetNameString());
+                    return false;
+                }
+
+                // There was change to the ComparisonExpression Base Class type from BooleanExpression to ComparisonExpression.
+                // Because the version was not incremented when this change took place version 0 instances of ComparisonExpression class will fail to load when the base class
+                // is BinaryExpression
+                // Explicitly making a copy of the baseNodeElement notice there is no "&" after AZ::SerializeContext::DataElementNode
+                AZ::SerializeContext::DataElementNode baseNodeElement = rootElement.GetSubElement(nodeElementIndex);
+                if (baseNodeElement.GetId() == azrtti_typeid<BooleanExpression>())
+                {
+                    rootElement.RemoveElement(nodeElementIndex);
+                    int equalityExpressionElementIndex = rootElement.AddElement(serializeContext, "BaseClass1", azrtti_typeid<EqualityExpression>());
+                    if (equalityExpressionElementIndex == -1)
+                    {
+                        AZ_Error("Script Canvas", false, "Unable to convert BooleanExpression data element to ComparisonExpression data element");
+                        return false;
+                    }
+
+                    auto& equalityExpressionElement = rootElement.GetSubElement(equalityExpressionElementIndex);
+                    if (equalityExpressionElement.AddElement(baseNodeElement) == -1)
+                    {
+                        AZ_Error("Script Canvas", false, "Unable to add boolean expression data element node as a base class to the equality expression data element node");
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         void ComparisonExpression::Reflect(AZ::ReflectContext* reflection)
         {
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
                 serializeContext->Class<ComparisonExpression, EqualityExpression>()
-                    ->Version(0)
+                    ->Version(1, &ComparisonExpressionVersionConverter)
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<ComparisonExpression>("ComparisonExpression", "ComparisonExpression")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
             }
@@ -188,8 +226,8 @@ namespace ScriptCanvas
         
         void EqualityExpression::InitializeBooleanExpression()
         {
-            AddInputDatumUntypedSlot(k_lhsName);
-            AddInputDatumUntypedSlot(k_rhsName);
+            AddInputDatumOverloadedSlot(k_lhsName);
+            AddInputDatumOverloadedSlot(k_rhsName);
         }
 
         void EqualityExpression::Reflect(AZ::ReflectContext* reflection)
@@ -204,7 +242,6 @@ namespace ScriptCanvas
                 {
                     editContext->Class<EqualityExpression>("EqualityExpression", "EqualityExpression")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
             }

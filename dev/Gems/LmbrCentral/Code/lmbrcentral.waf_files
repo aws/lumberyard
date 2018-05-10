@@ -81,7 +81,10 @@
             "include/LmbrCentral/Shape/CapsuleShapeComponentBus.h",
             "include/LmbrCentral/Shape/CompoundShapeComponentBus.h",
             "include/LmbrCentral/Shape/SplineComponentBus.h",
-            "include/LmbrCentral/Shape/PolygonPrismShapeComponentBus.h"
+            "include/LmbrCentral/Shape/PolygonPrismShapeComponentBus.h",
+            "include/LmbrCentral/Shape/TubeShapeComponentBus.h",
+            "include/LmbrCentral/Shape/SplineAttribute.h",
+            "include/LmbrCentral/Shape/SplineAttribute.inl"
         ],
         "Source/Ai": [
             "Source/Ai/BehaviorTreeAssetHandler.h",
@@ -150,6 +153,10 @@
             "Source/Physics/WindVolume.cpp",
             "Source/Physics/WindVolumeComponent.h",
             "Source/Physics/WindVolumeComponent.cpp",
+            "Source/Physics/ForceVolume.h",
+            "Source/Physics/ForceVolume.cpp",
+            "Source/Physics/ForceVolumeForces.h",
+            "Source/Physics/ForceVolumeForces.cpp",
             "Source/Physics/ForceVolumeComponent.h",
             "Source/Physics/ForceVolumeComponent.cpp"
         ],
@@ -198,7 +205,9 @@
             "Source/Rendering/HighQualityShadowComponent.h",
             "Source/Rendering/HighQualityShadowComponent.cpp",
             "Source/Rendering/GeomCacheComponent.h",
-            "Source/Rendering/GeomCacheComponent.cpp"
+            "Source/Rendering/GeomCacheComponent.cpp",
+            "Source/Rendering/EntityDebugDisplayComponent.h",
+            "Source/Rendering/EntityDebugDisplayComponent.cpp"
         ],
         "Source/Scripting": [
             "Source/Scripting/FlowGraphComponent.h",
@@ -217,6 +226,7 @@
             "Source/Scripting/TriggerAreaComponent.cpp"
         ],
         "Source/Shape": [
+            "Source/Shape/ShapeDisplay.h",
             "Source/Shape/ShapeComponent.cpp",
             "Source/Shape/SphereShape.h",
             "Source/Shape/SphereShape.cpp",
@@ -238,8 +248,19 @@
             "Source/Shape/CompoundShapeComponent.cpp",
             "Source/Shape/SplineComponent.h",
             "Source/Shape/SplineComponent.cpp",
+            "Source/Shape/PolygonPrismShape.h",
+            "Source/Shape/PolygonPrismShape.cpp",
             "Source/Shape/PolygonPrismShapeComponent.h",
-            "Source/Shape/PolygonPrismShapeComponent.cpp"
+            "Source/Shape/PolygonPrismShapeComponent.cpp",
+            "Source/Shape/TubeShape.h",
+            "Source/Shape/TubeShape.cpp",
+            "Source/Shape/TubeShapeComponent.h",
+            "Source/Shape/TubeShapeComponent.cpp",
+            "Source/Shape/ShapeComponentConverters.h",
+            "Source/Shape/ShapeComponentConverters.cpp",
+            "Source/Shape/ShapeComponentConverters.inl",
+            "Source/Shape/ShapeGeometryUtil.h",
+            "Source/Shape/ShapeGeometryUtil.cpp"
         ],
         "Source/Unhandled/Animation": [
             "Source/Unhandled/Animation/AnimationEventsAssetTypeInfo.cpp",

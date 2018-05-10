@@ -1,109 +1,133 @@
 {
-    "name": "md5", 
-    "source": "@ROOT@/Code/SDKs/md5", 
-    "description": "MD5 Library", 
+    "name": "md5",
+    "source": "@3P:md5@",
+    "description": "MD5 Library",
     "includes": [
         "."
-    ], 
-    "defines": [], 
-    "lib_required": "True", 
-    "shared_required": "False", 
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "shared_required": "False",
     "platform": {
         "win_x64_vs2013": {
             "libpath_debug": [
                 "build/win_x64/vc120/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/vc120/release"
-            ], 
+            ],
             "lib": [
                 "md5.lib"
             ]
-        }, 
+        },
         "win_x64_vs2015": {
             "libpath_debug": [
                 "build/win_x64/vc140/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/vc140/release"
-            ], 
+            ],
             "lib": [
                 "md5.lib"
             ]
-        }, 
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "durango_vs2015": {
+            "libpath_debug": [
+                "build/win_x64/durango_xdk_03_2016_qfe3/debug"
+            ],
+            "libpath_release": [
+                "build/win_x64/durango_xdk_03_2016_qfe3/release"
+            ],
+            "lib": [
+                "md5.lib"
+            ]
+        },
+        "durango_vs2017": "@durango_vs2015",
+        "orbis_vs2015": {
+            "libpath_debug": [
+                "build/win_x64/orbis_sdk_3.5/debug"
+            ],
+            "libpath_release": [
+                "build/win_x64/orbis_sdk_3.5/release"
+            ],
+            "lib": [
+                "libmd5.a"
+            ]
+        },
         "darwin_x64": {
             "libpath_debug": [
                 "build/osx/darwin-clang-703.0.31/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/osx/darwin-clang-703.0.31/release"
-            ], 
+            ],
             "lib": [
                 "libmd5.a"
             ]
-        }, 
+        },
         "ios": {
             "libpath_debug": [
                 "build/osx/ios-clang-703.0.31/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/osx/ios-clang-703.0.31/release"
-            ], 
+            ],
             "lib": [
                 "libmd5.a"
             ]
-        }, 
+        },
         "appletv": {
             "libpath_debug": [
                 "build/osx/appletv-clang-703.0.31/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/osx/appletv-clang-703.0.31/release"
-            ], 
+            ],
             "lib": [
                 "libmd5.a"
             ]
-        }, 
+        },
         "android_armv7_gcc": {
             "libpath_debug": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/release"
-            ], 
+            ],
             "lib": [
                 "libmd5.a"
             ]
-        }, 
+        },
         "android_armv7_clang": {
             "libpath_debug": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/clang-3.8/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/clang-3.8/release"
-            ], 
+            ],
             "lib": [
                 "libmd5.a"
             ]
-        }, 
+        },
         "android_armv8_clang": {
             "libpath_debug": [
                 "build/win_x64/android_ndk_r12/android-21/arm64-v8a/clang-3.8/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/win_x64/android_ndk_r12/android-21/arm64-v8a/clang-3.8/release"
-            ], 
+            ],
             "lib": [
                 "libmd5.a"
             ]
-        }, 
+        },
         "linux_x64": {
             "libpath_debug": [
                 "build/linux/clang-3.4/debug"
-            ], 
+            ],
             "libpath_release": [
                 "build/linux/clang-3.4/release"
-            ], 
+            ],
             "lib": [
                 "libmd5.a"
             ]

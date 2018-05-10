@@ -42,27 +42,20 @@ namespace ScriptCanvas
     bool IsIn(SlotType type);
     bool IsOut(SlotType type);
     
-    class Slot
+    class Slot final
     {
     public:
         AZ_CLASS_ALLOCATOR(Slot, AZ::SystemAllocator, 0);
-        AZ_RTTI(Slot, "{FBFE0F02-4C26-475F-A28B-18D3A533C13C}");
+        AZ_TYPE_INFO(Slot, "{FBFE0F02-4C26-475F-A28B-18D3A533C13C}");
 
         Slot() = default;
-
         Slot(const Slot& slot);
-
         Slot(Slot&& slot);
-        
-        Slot(AZStd::string_view name, AZStd::string_view toolTip, SlotType type, int index, const AZStd::vector<ContractDescriptor>& contractDescs = AZStd::vector<ContractDescriptor>{});
-        
-        Slot(AZStd::string_view name, AZStd::string_view toolTip, int index, const AZStd::vector<ContractDescriptor>& contractDescs = AZStd::vector<ContractDescriptor>{})
-            : Slot(name, toolTip, SlotType::None, index, contractDescs)
-        {}
+        Slot(AZStd::string_view name, AZStd::string_view toolTip, SlotType type, const AZStd::vector<ContractDescriptor>& contractDescs = AZStd::vector<ContractDescriptor>{});
 
         Slot& operator=(const Slot& slot);
 
-        virtual ~Slot() = default;
+        ~Slot() = default;
 
         void AddContract(const ContractDescriptor& contractDesc);
 
@@ -71,7 +64,6 @@ namespace ScriptCanvas
 
         const SlotType& GetType() const { return m_type; }        
         const SlotId& GetId() const { return m_id; }
-        const int GetIndex() const { return m_index; }
 
         const AZ::EntityId& GetNodeId() const { return m_nodeId; }
         void SetNodeId(const AZ::EntityId& nodeId) { m_nodeId = nodeId; }
@@ -89,7 +81,6 @@ namespace ScriptCanvas
         SlotType m_type{ SlotType::None };
         SlotId m_id;
         AZ::EntityId m_nodeId;
-        int m_index;
 
         AZStd::vector<AZStd::unique_ptr<Contract>> m_contracts;
     };

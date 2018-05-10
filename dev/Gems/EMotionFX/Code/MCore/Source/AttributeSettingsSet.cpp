@@ -13,11 +13,11 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "AttributeSettingsSet.h"
-#include "StringIDGenerator.h"
+#include "StringIdPool.h"
 #include "LogManager.h"
-#include "UnicodeString.h"
 #include "Stream.h"
 #include "AttributeSettings.h"
+#include "StringConversions.h"
 
 
 namespace MCore
@@ -217,7 +217,7 @@ namespace MCore
         const uint32 numAttribs = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttribs; ++i)
         {
-            if (mAttributes[i]->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(mAttributes[i]->GetNameString().c_str(), name, false /* no case */))
             {
                 return i;
             }
@@ -304,7 +304,6 @@ namespace MCore
     // log the data inside the set
     void AttributeSettingsSet::Log()
     {
-        String valueString;
         const uint32 numAttribs = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttribs; ++i)
         {

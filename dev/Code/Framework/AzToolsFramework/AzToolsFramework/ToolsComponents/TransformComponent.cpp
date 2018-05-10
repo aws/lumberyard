@@ -29,6 +29,8 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponentBus.h>
 
+#include <QMessageBox>
+
 namespace AzToolsFramework
 {
     namespace Components
@@ -165,6 +167,9 @@ namespace AzToolsFramework
             {
                 m_parentEntityId = AZ::EntityId();
             }
+            
+            //Ensure that when we init that our previous/parent match
+            m_previousParentEntityId = m_parentEntityId;
         }
 
         void TransformComponent::Activate()
@@ -938,33 +943,51 @@ namespace AzToolsFramework
             }
             /// End 1.7 Release hack
 
-            AZ::EntityId parentId = GetParentId();
-            if (parentId == entityId)
+            auto parentTComp = this;
+            while (parentTComp)
             {
-                return true;
+                if (parentTComp->GetEntityId() == entityId)
+                {
+                    return true;
+                }
+
+                parentTComp = parentTComp->GetParentTransformComponent();
             }
-            if (!parentId.IsValid())
+
+            return false;
+        }
+
+        bool TransformComponent::ValidatePotentialParent(void* newValue, const AZ::Uuid& valueType)
+        {
+            if (azrtti_typeid<AZ::EntityId>() != valueType)
             {
-                return false;
-            }
-            auto parentTComp = GetParentTransformComponent();
-            if (!parentTComp)
-            {
+                AZ_Assert(false, "Unexpected value type");
                 return false;
             }
 
-            return parentTComp->IsEntityInHierarchy(entityId);
+            AZ::EntityId actualValue = static_cast<AZ::EntityId>(*((AZ::EntityId*)newValue));
+
+            // Prevent setting the parent to the entity itself.
+            if (actualValue == GetEntityId())
+            {
+                return false;
+            }
+            else
+            {
+                // Don't allow the change if it will result in a cycle hierarchy			    
+                auto potentialParentTransformComponent = GetTransformComponent(actualValue);
+                if (potentialParentTransformComponent && potentialParentTransformComponent->IsEntityInHierarchy(GetEntityId()))
+                {
+                    QMessageBox::warning(QApplication::activeWindow(), "Invalid Parent Assignment", "You cannot set an entity to be a child of one of its own children!", QMessageBox::Ok);
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         AZ::u32 TransformComponent::ParentChanged()
         {
-            // Prevent setting the parent to the entity itself.
-            // When this happens, make sure to refresh the interface, so it goes back where it was.
-            if (m_parentEntityId == GetEntityId())
-            {
-                m_parentEntityId = m_previousParentEntityId;
-                return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
-            }
             auto parentId = m_parentEntityId;
             m_parentEntityId = m_previousParentEntityId;
             SetParent(parentId);
@@ -1109,6 +1132,7 @@ namespace AzToolsFramework
                             Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Transform.png")->
                             Attribute(AZ::Edit::Attributes::AutoExpand, true)->
                         DataElement(0, &TransformComponent::m_parentEntityId, "Parent entity", "")->
+                            Attribute(AZ::Edit::Attributes::ChangeValidate, &TransformComponent::ValidatePotentialParent)->
                             Attribute(AZ::Edit::Attributes::ChangeNotify, &TransformComponent::ParentChanged)->
                             Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::DontGatherReference | AZ::Edit::SliceFlags::NotPushableOnSliceRoot)->
                         DataElement(0, &TransformComponent::m_editorTransform, "Values", "")->

@@ -12,19 +12,19 @@
 
 #pragma once
 
+#include <AzCore/Component/Component.h>
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/string/string.h>
 #include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
-#include <SceneAPI/SceneCore/Components/SceneSystemComponent.h>
 
 namespace SceneBuilder
 {
     class SceneSerializationHandler
-        : public AZ::SceneAPI::SceneCore::SceneSystemComponent
+        : public AZ::Component
         , public AZ::SceneAPI::Events::SceneSerializationBus::Handler
     {
     public:
-        AZ_COMPONENT(SceneSerializationHandler, "{5917845E-2A6A-4C6C-BD02-E9CECC8D4E13}", AZ::SceneAPI::SceneCore::SceneSystemComponent);
+        AZ_COMPONENT(SceneSerializationHandler, "{5917845E-2A6A-4C6C-BD02-E9CECC8D4E13}", AZ::Component);
 
         SceneSerializationHandler() = default;
         ~SceneSerializationHandler() override = default;

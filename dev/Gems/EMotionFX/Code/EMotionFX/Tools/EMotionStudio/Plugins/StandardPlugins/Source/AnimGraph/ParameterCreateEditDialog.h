@@ -14,7 +14,6 @@
 
 #include <MCore/Source/StandardHeaders.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/Attribute.h>
 #include "../StandardPluginsConfig.h"
 #include "AttributesWindow.h"
@@ -55,7 +54,6 @@ namespace EMStudio
         const MCore::Attribute* GetMaxValue() const                                             { return mAttributes[VALUE_MAXIMUM]; }
         const MCore::Attribute* GetDefaultValue() const                                         { return mAttributes[VALUE_DEFAULT]; }
         MCore::AttributeSettings* GetAttributeSettings() const                                  { return mAttributeSettings; }
-        bool GetIsScalable() const                                                              { return mScaleBox->isChecked(); }
 
         void SetName(const char* name)                                                          { mName = name; }
         void SetDescription(const char* description)                                            { mDescription = description; }
@@ -93,7 +91,6 @@ namespace EMStudio
         QTextEdit*                          mDescriptionEdit;
         QLineEdit*                          mNameEdit;
         QPushButton*                        mCreateButton;
-        QCheckBox*                          mScaleBox;
         AZStd::vector<MCore::Attribute*>    mAttributes;
         AZStd::string                       mName;
         AZStd::string                       mDescription;

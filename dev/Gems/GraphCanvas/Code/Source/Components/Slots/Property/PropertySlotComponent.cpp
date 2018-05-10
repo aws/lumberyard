@@ -13,10 +13,10 @@
 
 #include <Components/Slots/Property/PropertySlotComponent.h>
 
-#include <Components/Connections/ConnectionFilters/ConnectionFilters.h>
 #include <Components/Slots/Property/PropertySlotLayoutComponent.h>
 #include <Components/Slots/SlotConnectionFilterComponent.h>
 #include <Components/StylingComponent.h>
+#include <GraphCanvas/Components/Connections/ConnectionFilters/ConnectionFilters.h>
 
 namespace GraphCanvas
 {
@@ -99,7 +99,7 @@ namespace GraphCanvas
         return m_propertyId;
     }
 
-    AZ::Entity* PropertySlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    AZ::Entity* PropertySlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
     {
         AZ_Error("Graph Canvas", false, "Property slots cannot have connections.");
         return nullptr;

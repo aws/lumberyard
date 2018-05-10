@@ -45,13 +45,20 @@ namespace LmbrCentral
             if (m_object)
             {
                 m_editorBoxShapeComponent = m_object.get();
-                m_boxShapeConfig = m_editorBoxShapeComponent->GetConfiguration();
+                m_entity.Init();
+                m_entity.AddComponent(m_editorBoxShapeComponent);
+                m_entity.Activate();
             }
         }
 
-        EditorBoxShapeComponent* m_editorBoxShapeComponent = nullptr;
-        BoxShapeConfig m_boxShapeConfig;
+        void TearDown() override
+        {
+            m_entity.Deactivate();
+            LoadReflectedObjectTest::TearDown();
+        }
 
+        AZ::Entity m_entity;
+        EditorBoxShapeComponent* m_editorBoxShapeComponent = nullptr;
     };
 
     TEST_F(LoadEditorBoxShapeComponentFromVersion1, Application_IsRunning)
@@ -71,7 +78,11 @@ namespace LmbrCentral
 
     TEST_F(LoadEditorBoxShapeComponentFromVersion1, Dimensions_MatchesSourceData)
     {
-       EXPECT_EQ(m_boxShapeConfig.m_dimensions, AZ::Vector3(0.37, 0.57, 0.66));
+        AZ::Vector3 dimensions = AZ::Vector3::CreateZero();
+        BoxShapeComponentRequestsBus::EventResult(
+            dimensions, m_entity.GetId(), &BoxShapeComponentRequests::GetBoxDimensions);
+
+       EXPECT_EQ(dimensions, AZ::Vector3(0.37, 0.57, 0.66));
     }
 }
 

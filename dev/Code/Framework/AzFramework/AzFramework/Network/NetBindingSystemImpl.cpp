@@ -24,10 +24,21 @@
 #include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/ReplicaChunkDescriptor.h>
 #include <GridMate/Replica/ReplicaFunctions.h>
-#include <GridMate/Serialize/CompressionMarshal.h>
+
+//#define Extra_Tracing
+#undef  Extra_Tracing
+
+#if defined(Extra_Tracing)
+#include <AzCore/Debug/Timer.h>
+#define AZ_ExtraTracePrintf(window, ...)     AZ::Debug::Trace::Instance().Printf(window, __VA_ARGS__);
+#else
+#define AZ_ExtraTracePrintf(window, ...)
+#endif
 
 namespace AzFramework
 {
+    const AZStd::chrono::milliseconds NetBindingSystemImpl::s_sliceBindingTimeout = AZStd::chrono::milliseconds(5000);
+
     namespace
     {
         NetBindingHandlerInterface* GetNetBindingHandler(AZ::Entity* entity)
@@ -45,52 +56,107 @@ namespace AzFramework
         }
     }
 
+    NetBindingSliceInstantiationHandler::~NetBindingSliceInstantiationHandler()
+    {
+        for (AZ::Entity* entity : m_boundEntities)
+        {
+            AZ_ExtraTracePrintf("NetBindingSystemImpl", "Cleanup - deleting %llu\n", entity->GetId());
+            EBUS_EVENT(GameEntityContextRequestBus, DestroyGameEntity, entity->GetId());
+        }
+    }
+
     void NetBindingSliceInstantiationHandler::InstantiateEntities()
     {
         if (m_sliceAssetId.IsValid())
         {
-            auto RemapFunc = [this](AZ::EntityId originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
+            AZ_ExtraTracePrintf("NetBindingSystemImpl", "InstantiateEntities sliceid %s\n",
+                m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str());
+
+            if (AZ::Data::AssetManager::IsReady())
             {
-                auto iter = m_bindingQueue.find(originalId);
-                if (iter != m_bindingQueue.end())
+                auto remapFunc = [this](AZ::EntityId originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
                 {
-                    return iter->second.m_desiredRuntimeEntityId;
-                }
-                return AZ::Entity::MakeId();
-            };
-            AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::DynamicSliceAsset>(m_sliceAssetId, false);
-            EBUS_EVENT_RESULT(m_ticket, GameEntityContextRequestBus, InstantiateDynamicSlice, asset, AZ::Transform::Identity(), RemapFunc);
-            AzFramework::SliceInstantiationResultBus::Handler::BusConnect(m_ticket);
+                    auto iter = m_bindingQueue.find(originalId);
+                    if (iter != m_bindingQueue.end())
+                    {
+                        return iter->second.m_desiredRuntimeEntityId;
+                    }
+                    return AZ::Entity::MakeId();
+                };
+
+                AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::DynamicSliceAsset>(m_sliceAssetId, false);
+                EBUS_EVENT_RESULT(m_ticket, GameEntityContextRequestBus, InstantiateDynamicSlice, asset, AZ::Transform::Identity(), remapFunc);
+                SliceInstantiationResultBus::Handler::BusConnect(m_ticket);
+
+                m_state = State::Spawning;
+            }
+            else
+            {
+                AZ_Warning("NetBindingSystemImpl", false, "AssetManager was not ready when attempting to instantiate sliceid %s\n",
+                    m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str());
+                InstantiationFailureCleanup();
+            }
         }
     }
 
-    bool NetBindingSliceInstantiationHandler::IsInstantiated()
+    bool NetBindingSliceInstantiationHandler::IsInstantiated() const
     {
-        return !m_sliceAssetId.IsValid() || m_ticket;
+        return m_state == State::Spawned;
     }
 
-    bool NetBindingSliceInstantiationHandler::IsBindingComplete()
+    bool NetBindingSliceInstantiationHandler::IsANewSliceRequest() const
+    {
+        return m_state == State::NewRequest && m_sliceAssetId.IsValid() && !m_ticket;
+    }
+
+    bool NetBindingSliceInstantiationHandler::IsBindingComplete() const
     {
         return !SliceInstantiationResultBus::Handler::BusIsConnected() && m_bindingQueue.empty();
     }
 
+    bool NetBindingSliceInstantiationHandler::HasActiveEntities() const
+    {
+        for (const AZ::Entity* entity : m_boundEntities)
+        {
+            if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void NetBindingSliceInstantiationHandler::OnSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
     {
+        const auto& entityMapping = sliceAddress.second->GetEntityIdToBaseMap();
+
         const AZ::SliceComponent::EntityList& sliceEntities = sliceAddress.second->GetInstantiated()->m_entities;
         for (AZ::Entity *sliceEntity : sliceEntities)
         {
-            auto it = sliceAddress.second->GetEntityIdToBaseMap().find(sliceEntity->GetId());
-            AZ_Assert(it != sliceAddress.second->GetEntityIdToBaseMap().end(), "Failed to retrieve static entity id for a slice entity!");
-            AZ::EntityId staticEntityId = it->second;
+            auto it = entityMapping.find(sliceEntity->GetId());
+            AZ_Assert(it != entityMapping.end(), "Failed to retrieve static entity id for a slice entity!");
+            const AZ::EntityId staticEntityId = it->second;
 
-            // We instantiate slices once for each replicated entity, so if the newly spawned entity is not already in the binding map,
-            // then we don't want to add it.
             auto itBindRecord = m_bindingQueue.find(staticEntityId);
             if (itBindRecord != m_bindingQueue.end())
             {
                 AZ_Assert(GetNetBindingHandler(sliceEntity), "Slice entity matched the static id of replicated entity, but there is no valid NetBindingHandlerInterface on it!");
- 
+
                 itBindRecord->second.m_actualRuntimeEntityId = sliceEntity->GetId();
+            }
+            else if (GetNetBindingHandler(sliceEntity))
+            {
+                AZ_ExtraTracePrintf("NetBindingSystemImpl", "OnSlicePreInstantiate late bindRequest, slice %s, staticid %llu, spawned %llu\n",
+                    m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str(),
+                    static_cast<AZ::u64>(staticEntityId),
+                    static_cast<AZ::u64>(sliceEntity->GetId()));
+
+                BindRequest& request = m_bindingQueue[staticEntityId];
+                request.m_desiredRuntimeEntityId = staticEntityId;
+                request.m_actualRuntimeEntityId = sliceEntity->GetId();
+                request.m_requestTime = m_bindTime;
+                request.m_state = BindRequest::State::PlaceholderBind;
             }
 
             sliceEntity->SetRuntimeActiveByDefault(false);
@@ -101,61 +167,134 @@ namespace AzFramework
     {
         SliceInstantiationResultBus::Handler::BusDisconnect();
 
+        CloseEntityMap(sliceAddress.second->GetEntityIdMap());
+
         const AZ::SliceComponent::EntityList sliceEntities = sliceAddress.second->GetInstantiated()->m_entities;
         for (AZ::Entity *sliceEntity : sliceEntities)
         {
             auto it = sliceAddress.second->GetEntityIdToBaseMap().find(sliceEntity->GetId());
             AZ_Assert(it != sliceAddress.second->GetEntityIdToBaseMap().end(), "Failed to retrieve static entity id for a slice entity!");
-            AZ::EntityId staticEntityId = it->second;
-            auto itUnbound = m_bindingQueue.find(staticEntityId);
+            const AZ::EntityId staticEntityId = it->second;
+            const auto itUnbound = m_bindingQueue.find(staticEntityId);
             if (itUnbound == m_bindingQueue.end())
             {
-                EBUS_EVENT(GameEntityContextRequestBus, DestroyGameEntity, sliceEntity->GetId());
+                /*
+                 * Remove entities that aren't meant to be net bounded.
+                 */
+                if (!GetNetBindingHandler(sliceEntity))
+                {
+                    EBUS_EVENT(GameEntityContextRequestBus, DestroyGameEntity, sliceEntity->GetId());
+                    continue;
+                }
             }
+
+            AZ_ExtraTracePrintf("NetBindingSystemImpl", "Adding %llu \n", sliceEntity->GetId());
+            m_boundEntities.push_back(sliceEntity);
         }
+
+        m_state = State::Spawned;
     }
 
-    void NetBindingSliceInstantiationHandler::OnSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/)
+    void NetBindingSliceInstantiationHandler::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
     {
         SliceInstantiationResultBus::Handler::BusDisconnect();
+
+        AZ_UNUSED(sliceAssetId);
+        AZ_TracePrintf("NetBindingSystemImpl", "Failed to instantiate a slice %s!", sliceAssetId.ToString<AZStd::string>().c_str());
+
+        InstantiationFailureCleanup();
     }
-    
-    class NetBindingSystemContextData
-        : public GridMate::ReplicaChunk
+
+    void NetBindingSliceInstantiationHandler::InstantiationFailureCleanup()
     {
-    public:
-        AZ_CLASS_ALLOCATOR(NetBindingSystemContextData, AZ::SystemAllocator, 0);
+        m_boundEntities.clear();
+        m_bindingQueue.clear();
 
-        static const char* GetChunkName() { return "NetBindingSystemContextData"; }
+        // With m_bindingQueue empty, this slice instance handler will be removed on the next tick of NetBindingSystemImpl
+        m_state = State::Failed;
+    }
 
-        NetBindingSystemContextData()
-            : m_bindingContextSequence("BindingContextSequence", UnspecifiedNetBindingContextSequence)
+    void NetBindingSliceInstantiationHandler::UseCacheFor(BindRequest& request, const AZ::EntityId& staticEntityId)
+    {
+        AZ_Warning("NetBindingSystemImpl", !m_staticToRuntimeEntityMap.empty(), "An empty slice, really? static %llu",
+            static_cast<AZ::u64>(staticEntityId));
+
+        const auto actualRuntimeIter = m_staticToRuntimeEntityMap.find(staticEntityId);
+        if (actualRuntimeIter == m_staticToRuntimeEntityMap.end())
         {
-        }
+            AZ_Warning("NetBindingSystemImpl", false, "Wrong mapping, expected cache to have entity %llu for slice %s \n",
+                static_cast<AZ::u64>(staticEntityId),
+                m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str());
 
-        bool IsReplicaMigratable() override { return true; }
-        bool IsBroadcast() override { return true; }
-
-        void OnReplicaActivate(const GridMate::ReplicaContext& rc) override
-        {
-            (void)rc;
-            NetBindingSystemImpl* system = static_cast<NetBindingSystemImpl*>(NetBindingSystemBus::FindFirstHandler());
-            AZ_Assert(system, "NetBindingSystemContextData requires a valid NetBindingSystemComponent to function!");
-            system->OnContextDataActivated(this);
-        }
-
-        void OnReplicaDeactivate(const GridMate::ReplicaContext& rc) override
-        {
-            (void)rc;
-            NetBindingSystemImpl* system = static_cast<NetBindingSystemImpl*>(NetBindingSystemBus::FindFirstHandler());
-            if (system)
+#if defined(Extra_Tracing)
+            for (auto& item: m_staticToRuntimeEntityMap)
             {
-                system->OnContextDataDeactivated(this);
+                AZ_UNUSED(item);
+                AZ_ExtraTracePrintf("NetBindingSystemImpl", "mapping had %llu to %llu \n",
+                    static_cast<AZ::u64>(item.first),
+                    static_cast<AZ::u64>(item.second));
             }
+#endif
+
+            return;
         }
 
-        GridMate::DataSet<AZ::u32, GridMate::VlqU32Marshaler> m_bindingContextSequence;
-    };
+        const AZ::EntityId actualRuntimeEntityId = actualRuntimeIter->second;
+        const auto itCache = AZStd::find_if(m_boundEntities.begin(), m_boundEntities.end(), [&actualRuntimeEntityId](AZ::Entity* entity) {
+            return entity->GetId() == actualRuntimeEntityId;
+        });
+
+        if (itCache != m_boundEntities.end())
+        {
+            AZ_ExtraTracePrintf("NetBindingSystemImpl", "OnSlicePreInstantiate late bindRequest, slice %s, staticid %llu, spawned %llu\n",
+                m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str(),
+                static_cast<AZ::u64>(staticEntityId),
+                static_cast<AZ::u64>(actualRuntimeEntityId));
+
+            request.m_actualRuntimeEntityId = actualRuntimeEntityId;
+            request.m_desiredRuntimeEntityId = staticEntityId;
+        }
+        else
+        {
+            AZ_Warning("NetBindingSystemImpl", false, "Expected cache to have entity %llu for slice %s \n",
+                static_cast<AZ::u64>(request.m_desiredRuntimeEntityId),
+                m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str());
+        }
+    }
+
+    void NetBindingSliceInstantiationHandler::CloseEntityMap(
+        const AZ::SliceComponent::EntityIdToEntityIdMap& staticToRuntimeMap)
+    {
+        m_staticToRuntimeEntityMap.clear();
+        for (auto& item : staticToRuntimeMap)
+        {
+            m_staticToRuntimeEntityMap[item.first] = item.second;
+        }
+    }
+
+    NetBindingSystemContextData::NetBindingSystemContextData()
+        : m_bindingContextSequence("BindingContextSequence", UnspecifiedNetBindingContextSequence)
+    {
+    }
+
+    void NetBindingSystemContextData::OnReplicaActivate(const GridMate::ReplicaContext& rc)
+    {
+        (void)rc;
+        NetBindingSystemImpl* system = static_cast<NetBindingSystemImpl*>(NetBindingSystemBus::FindFirstHandler());
+        AZ_Assert(system, "NetBindingSystemContextData requires a valid NetBindingSystemComponent to function!");
+        system->OnContextDataActivated(this);
+    }
+
+    void NetBindingSystemContextData::OnReplicaDeactivate(const GridMate::ReplicaContext& rc)
+    {
+        (void)rc;
+        NetBindingSystemImpl* system = static_cast<NetBindingSystemImpl*>(NetBindingSystemBus::FindFirstHandler());
+        if (system)
+        {
+            system->OnContextDataDeactivated(this);
+        }
+    }
+
 
     NetBindingSystemImpl::NetBindingSystemImpl()
         : m_bindingSession(nullptr)
@@ -194,9 +333,7 @@ namespace AzFramework
 
     bool NetBindingSystemImpl::ShouldBindToNetwork()
     {
-        return m_contextData
-               && m_contextData->GetReplica()
-               && m_contextData->GetReplica()->IsActive();
+        return m_contextData && m_contextData->ShouldBindToNetwork();
     }
 
     NetBindingContextSequence NetBindingSystemImpl::GetCurrentContextSequence()
@@ -230,14 +367,14 @@ namespace AzFramework
     AZ::EntityId NetBindingSystemImpl::GetStaticIdFromEntityId(AZ::EntityId entityId)
     {
         AZ::EntityId staticId = entityId; // if no static id mapping is found, then the static id is the same as the runtime id
-        
+
         // If entity came from a slice, try to get the mapping from it
         AZ::SliceComponent::SliceInstanceAddress sliceInfo;
         EBUS_EVENT_ID_RESULT(sliceInfo, entityId, EntityIdContextQueryBus, GetOwningSlice);
         AZ::SliceComponent::SliceInstance* sliceInstance = sliceInfo.second;
         if (sliceInstance)
         {
-            auto it = sliceInstance->GetEntityIdToBaseMap().find(entityId);
+            const auto it = sliceInstance->GetEntityIdToBaseMap().find(entityId);
             if (it != sliceInstance->GetEntityIdToBaseMap().end())
             {
                 staticId = it->second;
@@ -250,7 +387,7 @@ namespace AzFramework
     AZ::EntityId NetBindingSystemImpl::GetEntityIdFromStaticId(AZ::EntityId staticEntityId)
     {
         AZ::EntityId runtimeId = AZ::EntityId();
-        
+
         // if we can find an entity with the static id, then the static id is the same as the runtime id.
         AZ::Entity* entity = nullptr;
         EBUS_EVENT(AZ::ComponentApplicationBus, FindEntity, staticEntityId);
@@ -258,20 +395,49 @@ namespace AzFramework
         {
             runtimeId = staticEntityId;
         }
-        
+
         return runtimeId;
     }
 
     void NetBindingSystemImpl::SpawnEntityFromSlice(GridMate::ReplicaId bindTo, const NetBindingSliceContext& bindToContext)
     {
         auto& sliceQueue = m_bindRequests[bindToContext.m_contextSequence];
-        auto iterSliceRequest = sliceQueue.insert_key(bindToContext.m_runtimeEntityId);
+
+        const bool slicePresent = sliceQueue.find(bindToContext.m_sliceInstanceId) != sliceQueue.end();
+
+        auto iterSliceRequest = sliceQueue.insert_key(bindToContext.m_sliceInstanceId);
         NetBindingSliceInstantiationHandler& sliceHandler = iterSliceRequest.first->second;
         sliceHandler.m_sliceAssetId = bindToContext.m_sliceAssetId;
+        sliceHandler.m_sliceInstanceId = bindToContext.m_sliceInstanceId;
+
         BindRequest& request = sliceHandler.m_bindingQueue[bindToContext.m_staticEntityId];
+
+        if (!slicePresent)
+        {
+            request.m_state = BindRequest::State::FirstBindInSlice;
+        }
+        else
+        {
+            request.m_state = BindRequest::State::LateBind;
+        }
+
+        AZ_ExtraTracePrintf("NetBindingSystemImpl", "SpawnEntityFromSlice late, slice %s, static %llu, desired %llu, state %d \n",
+            bindToContext.m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str(),
+            static_cast<AZ::u64>(bindToContext.m_staticEntityId),
+            static_cast<AZ::u64>(bindToContext.m_runtimeEntityId),
+            request.m_state);
+
+        sliceHandler.m_bindTime = Now();
+
         request.m_bindTo = bindTo;
         request.m_desiredRuntimeEntityId = bindToContext.m_runtimeEntityId;
-        request.m_requestTime = AZStd::chrono::system_clock::now();
+        request.m_requestTime = Now();
+
+        if (sliceHandler.IsInstantiated())
+        {
+            // The slice has been instantiated now, thus we have to use the cache to populated the request with the entity.
+            sliceHandler.UseCacheFor(request, bindToContext.m_staticEntityId);
+        }
     }
 
     void NetBindingSystemImpl::SpawnEntityFromStream(AZ::IO::GenericStream& spawnData, AZ::EntityId useEntityId, GridMate::ReplicaId bindTo, NetBindingContextSequence addToContext)
@@ -308,9 +474,48 @@ namespace AzFramework
         }
     }
 
+    void NetBindingSystemImpl::UnbindGameEntity(AZ::EntityId entityId, const AZ::SliceComponent::SliceInstanceId& sliceInstanceId)
+    {
+        if (!m_bindRequests.empty())
+        {
+            const auto itCurrentContextQueue = m_bindRequests.lower_bound(GetCurrentContextSequence());
+
+            if (itCurrentContextQueue != m_bindRequests.end())
+            {
+                if (itCurrentContextQueue->first == GetCurrentContextSequence())
+                {
+                    const auto itSliceHandler = itCurrentContextQueue->second.find(sliceInstanceId);
+                    if (itSliceHandler != itCurrentContextQueue->second.end())
+                    {
+                        NetBindingSliceInstantiationHandler& sliceHandler = itSliceHandler->second;
+                        for (AZ::Entity* entity : sliceHandler.m_boundEntities)
+                        {
+                            if (entity->GetId() == entityId)
+                            {
+                                entity->Deactivate();
+                                return;
+                            }
+                        }
+
+                        // clean any relevant bind requests as well
+                        const auto bindQueueItem = sliceHandler.m_bindingQueue.find(entityId);
+                        if (bindQueueItem != sliceHandler.m_bindingQueue.end())
+                        {
+                            sliceHandler.m_bindingQueue.erase(bindQueueItem);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        AZ_ExtraTracePrintf("NetBindingSystemImpl", "Not in cache - deleting %llu \n", entityId);
+        EBUS_EVENT(GameEntityContextRequestBus, DestroyGameEntity, entityId);
+    }
+
     void NetBindingSystemImpl::OnEntityContextReset()
     {
-        bool isContextOwner = m_contextData && m_contextData->IsMaster() && m_bindingSession && m_bindingSession->IsHost();
+        const bool isContextOwner = m_contextData && m_contextData->IsMaster() && m_bindingSession && m_bindingSession->IsHost();
         if (isContextOwner)
         {
             ++m_currentBindingContextSequence;
@@ -329,9 +534,19 @@ namespace AzFramework
         return !m_bindingSession || m_bindingSession->IsHost();
     }
 
+    void NetBindingSystemImpl::UpdateClock(float deltaTime)
+    {
+        m_currentTime += AZStd::chrono::milliseconds(aznumeric_cast<int>(deltaTime * AZStd::milli::den));
+    }
+
+    AZStd::chrono::system_clock::time_point NetBindingSystemImpl::Now() const
+    {
+        return m_currentTime;
+    }
+
     void NetBindingSystemImpl::OnEntityContextLoadedFromStream(const AZ::SliceComponent::EntityList& contextEntities)
     {
-        bool isAuthoritativeLoad = IsAuthoritateLoad();
+        const bool isAuthoritativeLoad = IsAuthoritateLoad();
 
         for (AZ::Entity* entity : contextEntities)
         {
@@ -346,20 +561,47 @@ namespace AzFramework
                 entity->SetRuntimeActiveByDefault(false);
 
                 auto& slicesQueue = m_bindRequests[GetCurrentContextSequence()];
-                auto& sliceHandler = slicesQueue[entity->GetId()];
+                auto& sliceHandler = slicesQueue[UnspecifiedSliceInstanceId];
                 BindRequest& request = sliceHandler.m_bindingQueue[entity->GetId()];
                 request.m_actualRuntimeEntityId = entity->GetId();
-                request.m_requestTime = AZStd::chrono::system_clock::now();
+                request.m_requestTime = Now();
             }
         }
     }
 
     void NetBindingSystemImpl::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
-        (void)deltaTime;
-        (void)time;
+        AZ_UNUSED(time);
+
+        UpdateClock(deltaTime);
         UpdateContextSequence();
+
+#if defined(Extra_Tracing)
+        static AZ::Debug::Timer sTimer;
+        sTimer.Stamp();
+#endif
         ProcessBindRequests();
+#if defined(Extra_Tracing)
+        const float seconds = sTimer.StampAndGetDeltaTimeInSeconds();
+
+        static float debugPeriod = 2.f;
+        static float accumulator = 0;
+        static float totalTimeTaken = 0;
+        static AZ::u32 totalTicks = 0;
+        accumulator += deltaTime;
+        totalTimeTaken += seconds;
+        totalTicks++;
+
+        if (accumulator >= debugPeriod)
+        {
+            AZ_ExtraTracePrintf("NetBindingSystemImpl", "ProcessBindRequests() took %f sec \n", totalTicks > 0 ? totalTimeTaken / totalTicks : 0);
+
+            accumulator -= debugPeriod;
+            totalTimeTaken = 0;
+            totalTicks = 0;
+        }
+#endif
+
         ProcessSpawnRequests();
     }
 
@@ -428,7 +670,7 @@ namespace AzFramework
         AZ::SerializeContext* serializeContext = nullptr;
         EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
         AZ_Assert(serializeContext, "NetBindingSystemComponent requires a valid SerializeContext in order to spawn entities!");
-        auto SpawnFunc = [=](SpawnRequest& spawnData, AZ::EntityId useEntityId, bool addToContext)
+        const auto spawnFunc = [=](SpawnRequest& spawnData, AZ::EntityId useEntityId, bool addToContext)
         {
             AZ::Entity* proxyEntity = nullptr;
             AZ::ObjectStream::ClassReadyCB readyCB([&](void* classPtr, const AZ::Uuid& classId, AZ::SerializeContext* sc)
@@ -440,23 +682,40 @@ namespace AzFramework
             AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > stream(&spawnData.m_spawnDataBuffer);
             AZ::ObjectStream::LoadBlocking(&stream, *serializeContext, readyCB);
 
+            AZ_Warning("NetBindingSystemImpl", proxyEntity, "Could not spawn entity from stream %llu", useEntityId);
             if (proxyEntity)
             {
                 proxyEntity->SetId(useEntityId);
-                BindAndActivate(proxyEntity, spawnData.m_bindTo, addToContext);
+                if (!BindAndActivate(proxyEntity, spawnData.m_bindTo, addToContext, AZ::Uuid::CreateNull()))
+                {
+                    AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
+                    AzFramework::EntityIdContextQueryBus::EventResult(
+                        contextId, proxyEntity->GetId(), &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
+
+                    if (contextId.IsNull())
+                    {
+                        delete proxyEntity;
+                    }
+                    else
+                    {
+                        GameEntityContextRequestBus::Broadcast(
+                            &GameEntityContextRequestBus::Events::DestroyGameEntity, proxyEntity->GetId());
+                    }
+
+                }
             }
         };
 
         if (!m_spawnRequests.empty())
         {
             SpawnRequestContextContainerType::iterator itContextQueue = m_spawnRequests.lower_bound(UnspecifiedNetBindingContextSequence);
-            AZ_Assert(itContextQueue->first == UnspecifiedNetBindingContextSequence, "We should always have the unspecified (aka global entity) spawn queue!");
+            AZ_Assert(itContextQueue->first == UnspecifiedNetBindingContextSequence, "We should always have the unspecified (aka global entity) spawn queue!");//
 
             // Process requests for global entities (not part of any context)
             SpawnRequestContainerType& globalQueue = itContextQueue->second;
             for (SpawnRequest& request : globalQueue)
             {
-                SpawnFunc(request, request.m_useEntityId, false);
+                spawnFunc(request, request.m_useEntityId, false);
             }
             globalQueue.clear();
 
@@ -478,7 +737,7 @@ namespace AzFramework
                     {
                         for (SpawnRequest& request : itCurrentContextQueue->second)
                         {
-                            SpawnFunc(request, request.m_useEntityId, true);
+                            spawnFunc(request, request.m_useEntityId, true);
                         }
                         itCurrentContextQueue->second.clear();
                     }
@@ -510,7 +769,6 @@ namespace AzFramework
                 }
 
                 // Spawn any proxy entities for the current context
-                AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
                 if (itCurrentContextQueue != m_bindRequests.end())
                 {
                     if (itCurrentContextQueue->first == GetCurrentContextSequence())
@@ -520,49 +778,91 @@ namespace AzFramework
                             NetBindingSliceInstantiationHandler& sliceHandler = itSliceHandler->second;
 
                             // If this is a new slice request, instantiate it
-                            if (!sliceHandler.IsInstantiated())
+                            if (sliceHandler.IsANewSliceRequest())
                             {
                                 sliceHandler.InstantiateEntities();
+                            }
+                            /*
+                             * A slice instance is kept alive for caching purposes. As we check each bind request for its readiness,
+                             * we are also going to check if the slice instance itself has become inactive and needs to be removed.
+                             */
+                            bool mightBeInactiveSlice = true;
+                            if (sliceHandler.m_bindingQueue.empty() && sliceHandler.HasActiveEntities())
+                            {
+                                // The slice instance is spawned and full bound.
+                                mightBeInactiveSlice = false;
                             }
 
                             // If the entity is ready to be bound to the network, bind it.
                             // NOTE: It is possible for entities spawned from a slice containing multiple entities with net binding
                             // to never receive their replica counterpart, either because the replica was destroyed, or was interest
                             // filtered. We don't have a very good pipeline to prevent these slices from being authored, so if we
-                            // encounter them, we will delete them after 5000ms for now.
+                            // encounter them, we will delete them after a timeout.
                             for (auto itRequest = sliceHandler.m_bindingQueue.begin(); itRequest != sliceHandler.m_bindingQueue.end(); /*++itRequest*/)
                             {
                                 BindRequest& request = itRequest->second;
+
                                 if (request.m_bindTo != GridMate::InvalidReplicaId && request.m_actualRuntimeEntityId.IsValid())
                                 {
-                                    AZ_Warning("NetBindingSystemImpl", request.m_actualRuntimeEntityId == request.m_desiredRuntimeEntityId, "Entity id does not match desired id. Binding may not work as intended!");
                                     AZ::Entity* proxyEntity = nullptr;
                                     EBUS_EVENT_RESULT(proxyEntity, AZ::ComponentApplicationBus, FindEntity, request.m_actualRuntimeEntityId);
+                                    AZ_Warning("NetBindingSystemImpl", proxyEntity, "Could not find entity for binding %llu", request.m_actualRuntimeEntityId);
                                     if (proxyEntity)
                                     {
-                                        BindAndActivate(proxyEntity, request.m_bindTo, false);
+                                        AZ_ExtraTracePrintf("NetBindingSystemImpl", "BindAndActivate desired id %llu, actual %llu, slice %s \n",
+                                            static_cast<AZ::u64>(request.m_desiredRuntimeEntityId),
+                                            static_cast<AZ::u64>(request.m_actualRuntimeEntityId),
+                                            sliceHandler.m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str());
+
+                                        BindAndActivate(proxyEntity, request.m_bindTo, false, sliceHandler.m_sliceInstanceId);
                                     }
                                     itRequest = sliceHandler.m_bindingQueue.erase(itRequest);
+
+                                    // The slice instance is not fully bound. It may remain for a while for caching purposes.
+                                    mightBeInactiveSlice = false;
                                 }
-                                else if (AZStd::chrono::milliseconds(now - request.m_requestTime).count() > 5000)
+                                else if (AZStd::chrono::milliseconds(Now() - request.m_requestTime) > s_sliceBindingTimeout)
                                 {
-                                    AZ_TracePrintf("NetBindingSystemImpl", "Entity with static id %llu is still unbound after 5000ms. Discarding unbound entity.", static_cast<AZ::u64>(itRequest->first));
-                                    AZ::Entity* unboundEntity = nullptr;
-                                    EBUS_EVENT_RESULT(unboundEntity, AZ::ComponentApplicationBus, FindEntity, request.m_actualRuntimeEntityId);
-                                    if (unboundEntity)
+                                    // If the real request never showed up, then no need for a trace
+                                    if (request.m_state == BindRequest::State::FirstBindInSlice ||
+                                        request.m_state == BindRequest::State::LateBind)
                                     {
-                                        EBUS_EVENT(GameEntityContextRequestBus, DestroyGameEntity, unboundEntity->GetId());
+                                        AZ_TracePrintf("NetBindingSystemImpl", "Entity with static id [%llu], slice [%s]\n is still unbound after %llu ms. Discarding unbound entity.\n",
+                                            static_cast<AZ::u64>(request.m_actualRuntimeEntityId),
+                                            sliceHandler.m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str(),
+                                            s_sliceBindingTimeout.count());
                                     }
-                                    itRequest = sliceHandler.m_bindingQueue.erase(itRequest);
+
+                                    switch (sliceHandler.m_state)
+                                    {
+                                    case NetBindingSliceInstantiationHandler::State::NewRequest:
+                                    case NetBindingSliceInstantiationHandler::State::Spawning:
+                                        // The slice instance isn't ready yet. We will wait to consider the timing logic until it is ready.
+                                        mightBeInactiveSlice = false;
+                                        break;
+                                    case NetBindingSliceInstantiationHandler::State::Spawned:
+                                    case NetBindingSliceInstantiationHandler::State::Failed:
+                                        // Now the timing logic for removing the slice instance becomes valid.
+                                        mightBeInactiveSlice = true;
+                                        break;
+                                    default:
+                                        break;
+                                    }
+
+                                    ++itRequest;
                                 }
                                 else
                                 {
+                                    mightBeInactiveSlice = false;
                                     ++itRequest;
                                 }
                             }
 
-                            if (sliceHandler.IsBindingComplete())
+                            if (mightBeInactiveSlice && !sliceHandler.HasActiveEntities())
                             {
+                                AZ_ExtraTracePrintf("NetBindingSystemImpl", "Removing inactive slice %s \n",
+                                    sliceHandler.m_sliceInstanceId.ToString<AZStd::string>(false, false).c_str());
+
                                 itSliceHandler = itCurrentContextQueue->second.erase(itSliceHandler);
                             }
                             else
@@ -588,12 +888,17 @@ namespace AzFramework
         m_addMasterRequests.clear();
     }
 
-    void NetBindingSystemImpl::BindAndActivate(AZ::Entity* entity, GridMate::ReplicaId replicaId, bool addToContext)
+    bool NetBindingSystemImpl::BindAndActivate(AZ::Entity* entity, GridMate::ReplicaId replicaId, bool addToContext,
+        const AZ::SliceComponent::SliceInstanceId& sliceInstanceId)
     {
         bool success = false;
-        if (ShouldBindToNetwork())
+        const bool shouldBindToNetwork = ShouldBindToNetwork();
+
+        AZ_Warning("NetBindingSystemImpl", shouldBindToNetwork, "Failed to bind entity %llu", entity->GetId());
+        if (shouldBindToNetwork)
         {
-            GridMate::ReplicaPtr bindTo = m_contextData->GetReplicaManager()->FindReplica(replicaId);
+            const GridMate::ReplicaPtr bindTo = m_contextData->GetReplicaManager()->FindReplica(replicaId);
+            AZ_Warning("NetBindingSystemImpl", bindTo, "Failed to bind entity %llu - could not find replica %u", entity->GetId(), replicaId);
             if (bindTo)
             {
                 if (addToContext)
@@ -609,26 +914,14 @@ namespace AzFramework
                 NetBindingHandlerInterface* binding = GetNetBindingHandler(entity);
                 AZ_Assert(binding, "Can't find NetBindingHandlerInterface!");
                 binding->BindToNetwork(bindTo);
+                binding->SetSliceInstanceId(sliceInstanceId);
 
                 entity->Activate();
                 success = true;
             }
         }
 
-        if (!success)
-        {
-            // If binding failed for whatever reason, destroy the entity that was spawned.
-            AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
-            EBUS_EVENT_ID_RESULT(contextId, entity->GetId(), AzFramework::EntityIdContextQueryBus, GetOwningContextId);
-            if (contextId.IsNull())
-            {
-                delete entity;
-            }
-            else
-            {
-                EBUS_EVENT(GameEntityContextRequestBus, DestroyGameEntity, entity->GetId());
-            }
-        }
+        return success;
     }
 
     void NetBindingSystemImpl::Reflect(AZ::ReflectContext* context)

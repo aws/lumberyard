@@ -16,6 +16,7 @@
 #include "../StandardPluginsConfig.h"
 #include <QWidget>
 #include <MysticQt/Source/ButtonGroup.h>
+#include <EMotionFX/Source/RecorderBus.h>
 
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
@@ -29,6 +30,7 @@ namespace EMStudio
 
     class RecorderWidget
         : public QWidget
+        , private EMotionFX::RecorderNotificationBus::Handler
     {
         MCORE_MEMORYOBJECTCATEGORY(RecorderWidget, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
         Q_OBJECT
@@ -72,5 +74,6 @@ namespace EMStudio
 
         TimeViewPlugin* GetTimeViewPlugin() const;
         void UpdateSignalConnections();
+        void OnRecordingFailed(const AZStd::string& why) override;
     };
 } // namespace EMStudio

@@ -18,7 +18,6 @@
 #include "MotionEvent.h"
 
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 
 
 namespace EMotionFX
@@ -86,7 +85,7 @@ namespace EMotionFX
          * @param nr The parameter number, which must be in range of [0..GetNumParameters() - 1].
          * @result The string containing the parameter.
          */
-        const MCore::String& GetParameterString(uint32 nr) const;
+        const AZStd::string& GetParameterString(uint32 nr) const;
 
         /**
          * Get the number of parameter strings stored inside the table.
@@ -218,7 +217,7 @@ namespace EMotionFX
         void Clear();
 
         const char* GetName() const;
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
 
         uint32 GetNameID() const;
         void SetNameID(uint32 id);
@@ -236,7 +235,7 @@ namespace EMotionFX
 
     private:
         MCore::Array< MotionEvent >     mEvents;        /**< The collection of motion events. */
-        MCore::Array< MCore::String >   mParameters;    /**< The collection of different parameters for a specific motion. */
+        MCore::Array< AZStd::string >   mParameters;    /**< The collection of different parameters for a specific motion. */
         Motion*                         mMotion;        /**< The motion where this track belongs to. */
         uint32                          mNameID;        /**< The name ID. */
         bool                            mEnabled;       /**< Is this track enabled? */

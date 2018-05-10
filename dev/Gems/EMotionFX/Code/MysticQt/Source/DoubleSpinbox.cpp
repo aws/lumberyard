@@ -371,10 +371,10 @@ namespace MysticQt
     void DoubleSpinboxLineEdit::focusOutEvent(QFocusEvent* event)
     {
         FromQtString(text(), &mTemp);
-        mTemp.Trim();
-        mTemp.Replace(MCore::UnicodeCharacter::comma, MCore::UnicodeCharacter::dot);
+        AzFramework::StringFunc::TrimWhiteSpace(mTemp, true, true);
+        AzFramework::StringFunc::Replace(mTemp, MCore::CharacterConstants::comma, MCore::CharacterConstants::dot);
 
-        if (mTemp.GetIsEmpty())
+        if (mTemp.empty())
         {
             mSpinbox->Update();
         }
@@ -506,15 +506,13 @@ namespace MysticQt
     {
         // get the value string from the line edit
         FromQtString(newText, &mTemp);
-        mTemp.Trim();
-        mTemp.Replace(MCore::UnicodeCharacter::comma, MCore::UnicodeCharacter::dot);
+        AzFramework::StringFunc::TrimWhiteSpace(mTemp, true, true);
+        AzFramework::StringFunc::Replace(mTemp, MCore::CharacterConstants::comma, MCore::CharacterConstants::dot);
 
         // check if the text is a valid value
-        if (mTemp.CheckIfIsValidFloat())
+        float newValue;
+        if (AzFramework::StringFunc::LooksLikeFloat(mTemp.c_str(), &newValue))
         {
-            // interpret the text and convert it to a value
-            const double newValue = mTemp.ToFloat();
-
             // check if the value is in range
             if (newValue >= mMinimum && newValue <= mMaximum)
             {
@@ -537,20 +535,18 @@ namespace MysticQt
     {
         // get the value string from the line edit
         FromQtString(mLineEdit->text(), &mTemp);
-        mTemp.Trim();
-        mTemp.Replace(MCore::UnicodeCharacter::comma, MCore::UnicodeCharacter::dot);
+        AzFramework::StringFunc::TrimWhiteSpace(mTemp, true, true);
+        AzFramework::StringFunc::Replace(mTemp, MCore::CharacterConstants::comma, MCore::CharacterConstants::dot);
 
         // check if the text is an invalid value
-        if (mTemp.CheckIfIsValidFloat() == false)
+        float newValue;
+        if (!AzFramework::StringFunc::LooksLikeFloat(mTemp.c_str(), &newValue))
         {
             // reset the value to the last valid and used one
             setValue(mValue);
             emit valueChanged(mValue);
             return;
         }
-
-        // interpret the text and convert it to a new value
-        double newValue = mTemp.ToFloat();
 
         // in case the new value is out of range, use the last valid value
         if (newValue > mMaximum || newValue < mMinimum)

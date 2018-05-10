@@ -17,8 +17,8 @@
 
 #include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
 
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
-#include <Components/NodePropertyDisplay/DoubleDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
 
 namespace GraphCanvas
 {
@@ -65,13 +65,13 @@ namespace GraphCanvas
         };
     }
     
-    class DoubleNodePropertyDisplay
+    class NumericNodePropertyDisplay
         : public NodePropertyDisplay
     {    
     public:
-        AZ_CLASS_ALLOCATOR(DoubleNodePropertyDisplay, AZ::SystemAllocator, 0);
-        DoubleNodePropertyDisplay(DoubleDataInterface* dataInterface);
-        virtual ~DoubleNodePropertyDisplay();
+        AZ_CLASS_ALLOCATOR(NumericNodePropertyDisplay, AZ::SystemAllocator, 0);
+        NumericNodePropertyDisplay(NumericDataInterface* dataInterface);
+        virtual ~NumericNodePropertyDisplay();
     
         // NodePropertyDisplay
         void RefreshStyle() override;
@@ -88,7 +88,7 @@ namespace GraphCanvas
         void SubmitValue();
         void EditFinished();
     
-        DoubleDataInterface*   m_dataInterface;
+        NumericDataInterface*   m_dataInterface;
     
         GraphCanvasLabel*                   m_disabledLabel;
         GraphCanvasLabel*                   m_displayLabel;

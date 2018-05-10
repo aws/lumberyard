@@ -24,7 +24,7 @@ namespace AZ
     {
         namespace SceneData
         {
-            AZ_CLASS_ALLOCATOR_IMPL(BlendShapeRule, SystemAllocator, 0)
+            AZ_CLASS_ALLOCATOR_IMPL(BlendShapeRule, AZ::SystemAllocator, 0)
 
             SceneNodeSelectionList& BlendShapeRule::GetNodeSelectionList()
             {

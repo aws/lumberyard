@@ -182,7 +182,7 @@ namespace EMStudio
 
             // add all attributes
             mAttributeLinks.Clear(false);
-            MCore::String labelString;
+            AZStd::string labelString;
             MCore::Array<MCore::Attribute*> attributes;
             const uint32 attribInfoSetIndex = EMotionFX::GetAnimGraphManager().FindAttributeInfoSetIndex(object);
             const uint32 numAttributes = object->GetNumAttributes();
@@ -252,23 +252,23 @@ namespace EMStudio
         EMotionFX::AnimGraphStateTransition* stateTransition = static_cast<EMotionFX::AnimGraphStateTransition*>(object);
 
         // for all transition conditions
-        MCore::String conditionName;
-        MCore::String conditionGroupName;
+        AZStd::string conditionName;
+        AZStd::string conditionGroupName;
         const uint32 numConditions = stateTransition->GetNumConditions();
         for (uint32 c = 0; c < numConditions; ++c)
         {
             EMotionFX::AnimGraphTransitionCondition* condition = stateTransition->GetCondition(c);
 
             // create the condition group name
-            conditionName.Format("#%i: %s", c, condition->GetPaletteName());
-            conditionGroupName.Format("%s.%s", groupName, conditionName.AsChar());
+            conditionName = AZStd::string::format("#%i: %s", c, condition->GetPaletteName());
+            conditionGroupName = AZStd::string::format("%s.%s", groupName, conditionName.c_str());
 
             // create the remove condition attribute widget and add it as property to the property widget
             using AZStd::placeholders::_1;
             using AZStd::placeholders::_2;
             MysticQt::AttributeChangedFunction func = AZStd::bind(&EMStudio::AttributesWindow::OnAttributeChanged, this, _1, _2);
             ButtonAttributeWidget* removeConditionAttributeWidget = new ButtonAttributeWidget(MCore::Array<MCore::Attribute*>(), nullptr, nullptr, readOnly, false, func);
-            mAttributes->AddProperty(groupName, conditionName.AsChar(), removeConditionAttributeWidget, nullptr, nullptr);
+            mAttributes->AddProperty(groupName, conditionName.c_str(), removeConditionAttributeWidget, nullptr, nullptr);
 
             // get the button from the property widget and adjust it
             QPushButton* removeConditionButton = removeConditionAttributeWidget->GetButton();
@@ -299,7 +299,7 @@ namespace EMStudio
                 // create the attribute and add it to the layout
                 MysticQt::AttributeWidget* attributeWidget = MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->CreateAttributeWidget(attributes, attributeSettings, object, readOnly, false, true, MysticQt::AttributeWidgetFactory::ATTRIBUTE_NORMAL, false, func2);
 
-                mAttributes->AddProperty(conditionGroupName.AsChar(), attributeSettings->GetName(), attributeWidget, attribute, attributeSettings, false);
+                mAttributes->AddProperty(conditionGroupName.c_str(), attributeSettings->GetName(), attributeWidget, attribute, attributeSettings, false);
 
                 mAttributeLinks.AddEmpty();
                 mAttributeLinks.GetLast().mAttributeIndex = i;
@@ -308,7 +308,7 @@ namespace EMStudio
             }
 
             // expand the condition group
-            mAttributes->SetIsExpanded(conditionGroupName.AsChar(), true);
+            mAttributes->SetIsExpanded(conditionGroupName.c_str(), true);
         } // for all conditions
 
         mAttributes->SetIsExpanded(groupName, true);
@@ -352,13 +352,13 @@ namespace EMStudio
             EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
 
             // execute the command
-            MCore::String commandString, outResult;
-            commandString.Format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType %i", animGraph->GetID(), stateMachine->GetName(), transition->GetID(), selectedConditionType);
-            if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), outResult) == false)
+            AZStd::string commandString, outResult;
+            commandString = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType %i", animGraph->GetID(), stateMachine->GetName(), transition->GetID(), selectedConditionType);
+            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), outResult) == false)
             {
-                if (outResult.GetIsEmpty() == false)
+                if (outResult.empty() == false)
                 {
-                    MCore::LogError(outResult.AsChar());
+                    MCore::LogError(outResult.c_str());
                 }
             }
 
@@ -373,14 +373,14 @@ namespace EMStudio
                     EMotionFX::AnimGraphMotionCondition* motionCondition = static_cast<EMotionFX::AnimGraphMotionCondition*>(transitionCondition);
 
                     // get the transition source node name
-                    MCore::String transitionSourceNodeName;
+                    AZStd::string transitionSourceNodeName;
                     if (transition->GetSourceNode() && transition->GetSourceNode()->GetType() == EMotionFX::AnimGraphMotionNode::TYPE_ID)
                     {
                         transitionSourceNodeName = transition->GetSourceNode()->GetName();
                     }
 
                     // set the new source node to the condition and update its data
-                    motionCondition->GetAttributeString(EMotionFX::AnimGraphMotionCondition::ATTRIB_MOTIONNODE)->SetValue(transitionSourceNodeName.AsChar());
+                    motionCondition->GetAttributeString(EMotionFX::AnimGraphMotionCondition::ATTRIB_MOTIONNODE)->SetValue(transitionSourceNodeName.c_str());
                     motionCondition->OnUpdateAttributes();
                 }
 
@@ -391,14 +391,14 @@ namespace EMStudio
                     EMotionFX::AnimGraphStateCondition* stateCondition = static_cast<EMotionFX::AnimGraphStateCondition*>(transitionCondition);
 
                     // get the transition source node name
-                    MCore::String transitionSourceNodeName;
+                    AZStd::string transitionSourceNodeName;
                     if (transition->GetSourceNode() && transition->GetSourceNode()->GetType() == EMotionFX::AnimGraphStateMachine::TYPE_ID)
                     {
                         transitionSourceNodeName = transition->GetSourceNode()->GetName();
                     }
 
                     // set the new source node to the condition and update its data
-                    stateCondition->GetAttributeString(EMotionFX::AnimGraphStateCondition::ATTRIB_STATE)->SetValue(transitionSourceNodeName.AsChar());
+                    stateCondition->GetAttributeString(EMotionFX::AnimGraphStateCondition::ATTRIB_STATE)->SetValue(transitionSourceNodeName.c_str());
                     stateCondition->OnUpdateAttributes();
                 }
 
@@ -409,14 +409,14 @@ namespace EMStudio
                     EMotionFX::AnimGraphPlayTimeCondition* playtimeCondition = static_cast<EMotionFX::AnimGraphPlayTimeCondition*>(transitionCondition);
 
                     // get the transition source node name
-                    MCore::String transitionSourceNodeName;
+                    AZStd::string transitionSourceNodeName;
                     if (transition->GetSourceNode())
                     {
                         transitionSourceNodeName = transition->GetSourceNode()->GetName();
                     }
 
                     // set the new source node to the condition and update its data
-                    playtimeCondition->GetAttributeString(EMotionFX::AnimGraphPlayTimeCondition::ATTRIB_NODE)->SetValue(transitionSourceNodeName.AsChar());
+                    playtimeCondition->GetAttributeString(EMotionFX::AnimGraphPlayTimeCondition::ATTRIB_NODE)->SetValue(transitionSourceNodeName.c_str());
                     playtimeCondition->OnUpdateAttributes();
                 }
             }
@@ -507,13 +507,13 @@ namespace EMStudio
             EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
 
             // execute the command
-            MCore::String commandString, outResult;
-            commandString.Format("AnimGraphRemoveCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionIndex %i", animGraph->GetID(), stateMachine->GetName(), transition->GetID(), index);
-            if (GetCommandManager()->ExecuteCommand(commandString.AsChar(), outResult) == false)
+            AZStd::string commandString, outResult;
+            commandString = AZStd::string::format("AnimGraphRemoveCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionIndex %i", animGraph->GetID(), stateMachine->GetName(), transition->GetID(), index);
+            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), outResult) == false)
             {
-                if (outResult.GetIsEmpty() == false)
+                if (outResult.empty() == false)
                 {
-                    MCore::LogError(outResult.AsChar());
+                    MCore::LogError(outResult.c_str());
                 }
             }
 
@@ -579,8 +579,8 @@ namespace EMStudio
         mCopyPasteClipboard.Clear(false);
 
         // iterate through the conditions and put them into the clipboard
-        MCore::String commandString;
-        MCore::String attributesString;
+        AZStd::string commandString;
+        AZStd::string attributesString;
         const uint32 numConditions = transition->GetNumConditions();
         for (uint32 i = 0; i < numConditions; ++i)
         {
@@ -634,7 +634,7 @@ namespace EMStudio
         const uint32 numConditions = mCopyPasteClipboard.GetLength();
         for (uint32 i = 0; i < numConditions; ++i)
         {
-            command = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType %i -attributesString \"%s\"", animGraph->GetID(), parentNode->GetName(), transition->GetID(), mCopyPasteClipboard[i].mConditionType, mCopyPasteClipboard[i].mAttributes.AsChar());
+            command = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType %i -attributesString \"%s\"", animGraph->GetID(), parentNode->GetName(), transition->GetID(), mCopyPasteClipboard[i].mConditionType, mCopyPasteClipboard[i].mAttributes.c_str());
             commandGroup.AddCommandString(command);
         }
 
@@ -699,7 +699,7 @@ namespace EMStudio
                 continue;
             }
 
-            command = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType %i -attributesString \"%s\"", animGraph->GetID(), parentNode->GetName(), transition->GetID(), mCopyPasteClipboard[i].mConditionType, mCopyPasteClipboard[i].mAttributes.AsChar());
+            command = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType %i -attributesString \"%s\"", animGraph->GetID(), parentNode->GetName(), transition->GetID(), mCopyPasteClipboard[i].mConditionType, mCopyPasteClipboard[i].mAttributes.c_str());
             commandGroup.AddCommandString(command);
             numPastedConditions++;
         }
@@ -779,7 +779,7 @@ namespace EMStudio
         const uint32 numConditions = copyPasteClipboard.GetLength();
         for (uint32 i = 0; i < numConditions; ++i)
         {
-            QCheckBox* checkbox = new QCheckBox(copyPasteClipboard[i].mSummary.AsChar());
+            QCheckBox* checkbox = new QCheckBox(copyPasteClipboard[i].mSummary.c_str());
             mCheckboxes.Add(checkbox);
             checkbox->setCheckState(Qt::Checked);
             layout->addWidget(checkbox);

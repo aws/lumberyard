@@ -25,7 +25,8 @@
 
 #include <DetailWidget/ActionWidget.moc>
 
-ActionWidget::ActionWidget()
+ActionWidget::ActionWidget(QWidget* parent)
+    : QFrame(parent)
 {
     CreateUI();
 
@@ -54,7 +55,7 @@ void ActionWidget::CreateUI()
 
     // heading
 
-    m_headingWidget = new HeadingWidget {};
+    m_headingWidget = new HeadingWidget {this};
     m_headingWidget->HideRefresh();
     rootLayout->addWidget(m_headingWidget);
 

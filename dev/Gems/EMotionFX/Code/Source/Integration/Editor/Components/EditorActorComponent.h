@@ -19,6 +19,8 @@
 #include <AzCore/Asset/AssetCommon.h>
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 
 #include <Integration/Components/ActorComponent.h>
 
@@ -42,6 +44,8 @@ namespace EMotionFX
             , private LmbrCentral::RenderNodeRequestBus::Handler
             , private ActorComponentRequestBus::Handler
             , private EditorActorComponentRequestBus::Handler
+            , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
+            , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
         {
         public:
 
@@ -50,27 +54,21 @@ namespace EMotionFX
             EditorActorComponent();
             ~EditorActorComponent() override;
 
-            //////////////////////////////////////////////////////////////////////////
             // AZ::Component interface implementation
             void Init() override;
             void Activate() override;
             void Deactivate() override;
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
             // ActorComponentRequestBus::Handler
-            //////////////////////////////////////////////////////////////////////////
             EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance.get(); }
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
             // EditorActorComponentRequestBus::Handler
-            //////////////////////////////////////////////////////////////////////////
             const AZ::Data::AssetId& GetActorAssetId() override;
             AZ::EntityId GetAttachedToEntityId() const override;
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
+            // EditorVisibilityNotificationBus::Handler
+            void OnEntityVisibilityChanged(bool visibility) override;
+
             // LmbrCentral::MeshComponentRequestBus::Handler
             AZ::Aabb GetWorldBounds() override;
             AZ::Aabb GetLocalBounds() override;
@@ -78,16 +76,15 @@ namespace EMotionFX
             void SetVisibility(bool isVisible) override;
             void SetMeshAsset(const AZ::Data::AssetId& id) override { (void)id; }
             AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_actorAsset; }
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
+            // EditorComponentSelectionRequestsBus::Handler
+            AZ::Aabb GetEditorSelectionBounds() override;
+
             // ActorComponentNotificationBus::Handler
             IRenderNode* GetRenderNode() override;
             float GetRenderNodeRequestBusOrder() const override;
             static const float s_renderNodeRequestBusOrder;
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
             {
                 ActorComponent::GetProvidedServices(provided);
@@ -109,7 +106,6 @@ namespace EMotionFX
             }
 
             static void Reflect(AZ::ReflectContext* context);
-            //////////////////////////////////////////////////////////////////////////
 
         private:
             //vs 2013 build limitation
@@ -155,6 +151,7 @@ namespace EMotionFX
             ActorAsset::MaterialList            m_materialPerLOD;           ///< Material assignment for each LOD level.
             bool                                m_renderSkeleton;           ///< Toggles rendering of character skeleton.
             bool                                m_renderCharacter;          ///< Toggles rendering of character model.
+            bool                                m_entityVisible;            ///< Entity visible from the EditorVisibilityNotificationBus
             SkinningMethod                      m_skinningMethod;           ///< The skinning method for this actor
             AttachmentType                      m_attachmentType;           ///< Attachment type.
             AZ::EntityId                        m_attachmentTarget;         ///< Target entity to attach to, if any.

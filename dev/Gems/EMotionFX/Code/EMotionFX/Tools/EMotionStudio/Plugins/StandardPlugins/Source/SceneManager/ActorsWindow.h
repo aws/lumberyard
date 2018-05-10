@@ -12,9 +12,8 @@
 
 #pragma once
 
-#include "../StandardPluginsConfig.h"
 #include <AzCore/std/string/string.h>
-#include <MCore/Source/UnicodeString.h>
+#include "../StandardPluginsConfig.h"
 #include <QPushButton>
 #include <QTreeWidget>
 #include <QWidget>

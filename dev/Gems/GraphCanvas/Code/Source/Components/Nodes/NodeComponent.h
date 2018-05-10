@@ -92,16 +92,10 @@ namespace GraphCanvas
         ////
 
         // SceneNotificationsBus
-        void OnStyleSheetChanged() override;
+        void OnStylesChanged() override;
         ////
 
         // NodeRequestBus
-        void SetName(const AZStd::string& name) override;
-        const AZStd::string& GetName() const override { return m_configuration.GetName(); }
-
-        void SetDescription(const AZStd::string& description) override;
-        const AZStd::string& GetDescription() const override { return m_configuration.GetDescription(); }
-
         void SetTooltip(const AZStd::string& tooltip) override;
         void SetTranslationKeyedTooltip(const TranslationKeyedString& tooltip) override;
         const AZStd::string& GetTooltip() const override { return m_configuration.GetTooltip(); }
@@ -115,6 +109,10 @@ namespace GraphCanvas
         AZStd::vector<AZ::EntityId> GetSlotIds() const override;
 
         AZStd::any* GetUserData() override;
+
+        bool IsWrapped() const override;
+        void SetWrappingNode(const AZ::EntityId& wrappingNode) override;
+        AZ::EntityId GetWrappingNode() const override;
         ////
 
     protected:
@@ -128,6 +126,7 @@ namespace GraphCanvas
         //! Serialized configuration settings
         NodeConfiguration m_configuration;
 
+        AZ::EntityId m_wrappingNode;
         AZ::EntityId m_lockingSceneMember;
 
         //! Stores custom user data for this node

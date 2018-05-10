@@ -134,7 +134,7 @@ private:
     bool SaveGameData(SSaveEnvironment& savEnv, TSerialize& gameState, TEntitiesToSerialize& entities);
 
     //load process steps
-    CHEAT_PROTECTION_EXPORT void LoadEngineSystems(SLoadEnvironment& loadEnv);
+    void LoadEngineSystems(SLoadEnvironment& loadEnv);
     bool LoadLevel(SLoadEnvironment& loadEnv, SGameStartParams& startParams, STempAutoResourcesLock& autoResourcesLock, bool bIsQuickLoading, bool requireQuickLoad);
     bool LoadEntities(SLoadEnvironment& loadEnv, std::shared_ptr<TSerialize> pGameStateSer);
     void LoadBasicEntityData(SLoadEnvironment& loadEnv);

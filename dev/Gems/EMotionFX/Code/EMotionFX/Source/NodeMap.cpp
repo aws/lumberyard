@@ -66,22 +66,22 @@ namespace EMotionFX
     // modify the first name of a given entry
     void NodeMap::SetFirstName(uint32 entryIndex, const char* name)
     {
-        mEntries[entryIndex].mFirstNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mEntries[entryIndex].mFirstNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 
     // modify the second name
     void NodeMap::SetSecondName(uint32 entryIndex, const char* name)
     {
-        mEntries[entryIndex].mSecondNameID = MCore::GetStringIDGenerator().GenerateIDForString(name);
+        mEntries[entryIndex].mSecondNameID = MCore::GetStringIdPool().GenerateIdForString(name);
     }
 
 
     // modify a given entry
     void NodeMap::SetEntry(uint32 entryIndex, const char* firstName, const char* secondName)
     {
-        mEntries[entryIndex].mFirstNameID = MCore::GetStringIDGenerator().GenerateIDForString(firstName);
-        mEntries[entryIndex].mSecondNameID = MCore::GetStringIDGenerator().GenerateIDForString(secondName);
+        mEntries[entryIndex].mFirstNameID = MCore::GetStringIdPool().GenerateIdForString(firstName);
+        mEntries[entryIndex].mSecondNameID = MCore::GetStringIdPool().GenerateIdForString(secondName);
     }
 
 
@@ -160,24 +160,24 @@ namespace EMotionFX
     // get the filename
     const char* NodeMap::GetFileName() const
     {
-        return mFileName.AsChar();
+        return mFileName.c_str();
     }
 
 
     // get the filename
-    const MCore::String& NodeMap::GetFileNameString() const
+    const AZStd::string& NodeMap::GetFileNameString() const
     {
         return mFileName;
     }
 
 
     // try to write a string to the file
-    bool NodeMap::WriteFileString(MCore::DiskFile* f, const MCore::String& textToSave, MCore::Endian::EEndianType targetEndianType) const
+    bool NodeMap::WriteFileString(MCore::DiskFile* f, const AZStd::string& textToSave, MCore::Endian::EEndianType targetEndianType) const
     {
         MCORE_ASSERT(f);
 
         // convert endian and write the number of characters that follow
-        if (textToSave.GetLength() == 0)
+        if (textToSave.size() == 0)
         {
             uint32 numCharacters = 0;
             MCore::Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
@@ -190,7 +190,7 @@ namespace EMotionFX
         }
         else
         {
-            uint32 numCharacters = textToSave.GetLength();
+            uint32 numCharacters = static_cast<uint32>(textToSave.size());
             MCore::Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
             if (f->Write(&numCharacters, sizeof(uint32)) == 0)
             {
@@ -199,7 +199,7 @@ namespace EMotionFX
         }
 
         // write the string in UTF8 format
-        if (f->Write(textToSave.AsChar(), textToSave.GetLength()) == 0)
+        if (f->Write(textToSave.c_str(), textToSave.size()) == 0)
         {
             return false;
         }
@@ -209,9 +209,9 @@ namespace EMotionFX
 
 
     // calculate the size of a string on disk
-    uint32 NodeMap::CalcFileStringSize(const MCore::String& text) const
+    uint32 NodeMap::CalcFileStringSize(const AZStd::string& text) const
     {
-        return (sizeof(uint32) + text.GetLength() * sizeof(char));
+        return static_cast<uint32>(sizeof(uint32) + text.size() * sizeof(char));
     }
 
 
@@ -287,7 +287,7 @@ namespace EMotionFX
         // write the source actor string
         if (WriteFileString(&f, mSourceActorFileName, targetEndianType) == false)
         {
-            MCore::LogError("NodeMap::Save() - Cannot write the source actor filename string '%s' to node map file.", mSourceActorFileName.AsChar());
+            MCore::LogError("NodeMap::Save() - Cannot write the source actor filename string '%s' to node map file.", mSourceActorFileName.c_str());
             return false;
         }
 
@@ -358,12 +358,12 @@ namespace EMotionFX
     // get the source actor filename
     const char* NodeMap::GetSourceActorFileName() const
     {
-        return mSourceActorFileName.AsChar();
+        return mSourceActorFileName.c_str();
     }
 
 
     // get the source actor filename as string object
-    const MCore::String& NodeMap::GetSourceActorFileNameString() const
+    const AZStd::string& NodeMap::GetSourceActorFileNameString() const
     {
         return mSourceActorFileName;
     }
@@ -373,9 +373,9 @@ namespace EMotionFX
     bool NodeMap::LoadSourceActor()
     {
         // check if the source actor filename has been set
-        if (mSourceActorFileName.GetIsEmpty())
+        if (mSourceActorFileName.empty())
         {
-            MCore::LogInfo("EMotionFX::NodeMap::LoadSourceActor() - The source actor filename is not set, so there is nothing to load for nodemap '%s'...", mFileName.AsChar());
+            MCore::LogInfo("EMotionFX::NodeMap::LoadSourceActor() - The source actor filename is not set, so there is nothing to load for nodemap '%s'...", mFileName.c_str());
             return true;
         }
 
@@ -396,7 +396,7 @@ namespace EMotionFX
         settings.mLoadCollisionMeshes       = false;
 
         // Build the filename and load the actor.
-        AZStd::string filename = GetEMotionFX().ConstructAbsoluteFilename(mSourceActorFileName.AsChar());
+        AZStd::string filename = GetEMotionFX().ConstructAbsoluteFilename(mSourceActorFileName.c_str());
         mSourceActor = GetImporter().LoadActor(filename.c_str(), &settings);
         return (mSourceActor != nullptr);
     }
@@ -412,28 +412,28 @@ namespace EMotionFX
     // get the first name as char pointer
     const char* NodeMap::GetFirstName(uint32 entryIndex) const
     {
-        return MCore::GetStringIDGenerator().GetName(mEntries[entryIndex].mFirstNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mEntries[entryIndex].mFirstNameID).c_str();
     }
 
 
     // get the second node name as char pointer
     const char* NodeMap::GetSecondName(uint32 entryIndex) const
     {
-        return MCore::GetStringIDGenerator().GetName(mEntries[entryIndex].mSecondNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mEntries[entryIndex].mSecondNameID).c_str();
     }
 
 
     // get the first node name as string
-    const MCore::String& NodeMap::GetFirstNameString(uint32 entryIndex) const
+    const AZStd::string& NodeMap::GetFirstNameString(uint32 entryIndex) const
     {
-        return MCore::GetStringIDGenerator().GetName(mEntries[entryIndex].mFirstNameID);
+        return MCore::GetStringIdPool().GetName(mEntries[entryIndex].mFirstNameID);
     }
 
 
     // get the second node name as string
-    const MCore::String& NodeMap::GetSecondNameString(uint32 entryIndex) const
+    const AZStd::string& NodeMap::GetSecondNameString(uint32 entryIndex) const
     {
-        return MCore::GetStringIDGenerator().GetName(mEntries[entryIndex].mSecondNameID);
+        return MCore::GetStringIdPool().GetName(mEntries[entryIndex].mSecondNameID);
     }
 
 
@@ -450,8 +450,8 @@ namespace EMotionFX
         const uint32 numEntries = mEntries.GetLength();
         for (uint32 i = 0; i < numEntries; ++i)
         {
-            const MCore::String& firstNameEntry = GetFirstName(i);
-            if (firstNameEntry.CheckIfIsEqual(firstName))
+            const AZStd::string& firstNameEntry = GetFirstName(i);
+            if (firstNameEntry == firstName)
             {
                 return i;
             }
@@ -491,12 +491,12 @@ namespace EMotionFX
 
 
     // find the second name based on a first given name
-    void NodeMap::FindSecondName(const char* firstName, MCore::String* outString)
+    void NodeMap::FindSecondName(const char* firstName, AZStd::string* outString)
     {
         const uint32 entryIndex = FindEntryIndexByName(firstName);
         if (entryIndex == MCORE_INVALIDINDEX32)
         {
-            outString->Clear();
+            outString->clear();
             return;
         }
 

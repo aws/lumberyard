@@ -11,6 +11,7 @@
 */
 #include "FileWatcher.h"
 #include <AzCore/Debug/Trace.h>
+#include <native/assetprocessor.h>
 
 //////////////////////////////////////////////////////////////////////////////
 /// FolderWatchRoot
@@ -172,7 +173,8 @@ void FileWatcher::StartWatching()
     {
         root->Start();
     }
-    
+
+    AZ_TracePrintf(AssetProcessor::ConsoleChannel, "File Change Monitoring started.\n");
     m_startedWatching = true;
 }
 

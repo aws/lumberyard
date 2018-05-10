@@ -162,13 +162,13 @@ namespace ExporterLib
         for (uint32 i = 0; i < numMorphSubMotions; i++)
         {
             EMotionFX::MorphSubMotion* subMotion = motion->GetMorphSubMotion(i);
-            const MCore::String& nameString = MCore::GetStringIDGenerator().GetName(subMotion->GetID());
+            const AZStd::string& nameString = MCore::GetStringIdPool().GetName(subMotion->GetID());
 
             EMotionFX::FileFormat::Motion_WaveletMorphSubMotion fileSubMorphMotion;
             fileSubMorphMotion.mPoseWeight = subMotion->GetPoseWeight();
 
             MCore::LogDetailedInfo("- Wavelet Morph SubMotion:");
-            MCore::LogDetailedInfo("    + Name:         %s", nameString.AsChar());
+            MCore::LogDetailedInfo("    + Name:         %s", nameString.c_str());
             MCore::LogDetailedInfo("    + Pose Weight:  %f", fileSubMorphMotion.mPoseWeight);
 
             // convert endian
@@ -190,7 +190,7 @@ namespace ExporterLib
         const uint32 numSubMotions = motion->GetNumMorphSubMotions();
         for (uint32 i = 0; i < numSubMotions; ++i)
         {
-            const MCore::String& name = MCore::GetStringIDGenerator().GetName(motion->GetMorphSubMotion(i)->GetID());
+            const AZStd::string& name = MCore::GetStringIdPool().GetName(motion->GetMorphSubMotion(i)->GetID());
             sizeInBytes += GetStringChunkSize(name);
         }
 
@@ -480,13 +480,13 @@ namespace ExporterLib
 
 
     // convert the given skeletal motion file to a wavelet motion
-    bool ConvertToWaveletSkeletalMotion(const MCore::String& fileName, EMotionFX::WaveletSkeletalMotion::Settings* settings, MCore::Endian::EEndianType targetEndianType)
+    bool ConvertToWaveletSkeletalMotion(const AZStd::string& fileName, EMotionFX::WaveletSkeletalMotion::Settings* settings, MCore::Endian::EEndianType targetEndianType)
     {
         // load the skeletal motion from disk
         EMotionFX::Importer::SkeletalMotionSettings loadSettings;
         loadSettings.mForceLoading = true;
         loadSettings.mUnitTypeConvert = false;
-        EMotionFX::SkeletalMotion* skeletalMotion = EMotionFX::GetImporter().LoadSkeletalMotion(fileName.AsChar(), &loadSettings);
+        EMotionFX::SkeletalMotion* skeletalMotion = EMotionFX::GetImporter().LoadSkeletalMotion(fileName.c_str(), &loadSettings);
         if (skeletalMotion == nullptr)
         {
             return false;
@@ -501,7 +501,7 @@ namespace ExporterLib
 
         // overwrite the disk file with the new wavelet motion
         MCore::DiskFile diskFile;
-        if (diskFile.Open(fileName.AsChar(), MCore::DiskFile::WRITE) == false)
+        if (diskFile.Open(fileName.c_str(), MCore::DiskFile::WRITE) == false)
         {
             return false;
         }

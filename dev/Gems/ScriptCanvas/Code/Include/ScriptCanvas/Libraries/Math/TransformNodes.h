@@ -56,13 +56,13 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromMatrix3x3AndTranslation, "Math/Transform", "{AD0725EB-0FF0-4F99-A45F-C3F8CBABF11D}", "returns a transform from the 3x3 matrix and the translation", "Matrix", "Translation");
 
-        AZ_INLINE TransformType FromRotation(RotationType rotation)
+        AZ_INLINE TransformType FromRotation(QuaternionType rotation)
         {
             return TransformType::CreateFromQuaternion(rotation);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromRotation, "Math/Transform", "{8BBF4F22-EA7D-4E7B-81FD-7D11CA237BA6}", "returns a transform from the rotation and with the translation set to zero", "Source");
 
-        AZ_INLINE TransformType FromRotationAndTranslation(RotationType rotation, Vector3Type translation)
+        AZ_INLINE TransformType FromRotationAndTranslation(QuaternionType rotation, Vector3Type translation)
         {
             return TransformType::CreateFromQuaternionAndTranslation(rotation, translation);
         }
@@ -97,6 +97,33 @@ namespace ScriptCanvas
             return source.GetColumn(AZ::GetClamp(aznumeric_cast<int>(index), 0, 3));
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(GetColumn, "Math/Transform", "{B1B515E8-BAEC-4E82-8966-E91485385BCB}", "returns the column specified by the index, [0,3]", "Source", "Column");
+
+        template<int t_Index>
+        AZ_INLINE void DefaultScale(Node& node) { Node::SetDefaultValuesByIndex<t_Index>::_(node, Data::One()); }
+
+        AZ_INLINE Vector3Type GetRight(const TransformType& source, NumberType scale)
+        {
+            Vector3Type vector = source.GetBasisX();
+            vector.SetLength(aznumeric_cast<float>(scale));
+            return vector;
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetRight, DefaultScale<1>, "Math/Transform", "{65811752-711F-4566-869E-5AEF53206342}", "returns the right direction vector from the specified transform scaled by a given value (Lumberyard uses Z up, right handed)", "Source", "Scale");
+
+        AZ_INLINE Vector3Type GetForward(const TransformType& source, NumberType scale)
+        {
+            Vector3Type vector = source.GetBasisY();
+            vector.SetLength(aznumeric_cast<float>(scale));
+            return vector;
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetForward, DefaultScale<1>, "Math/Transform", "{3602a047-9f12-46d4-9648-8f53770c8130}", "returns the forward direction vector from the specified transform scaled by a given value (Lumberyard uses Z up, right handed)", "Source", "Scale");
+
+        AZ_INLINE Vector3Type GetUp(const TransformType& source, NumberType scale)
+        {
+            Vector3Type vector = source.GetBasisZ();
+            vector.SetLength(aznumeric_cast<float>(scale));
+            return vector;
+        }
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetUp, DefaultScale<1>, "Math/Transform", "{F10F52D2-E6F2-4E39-84D5-B4A561F186D3}", "returns the up direction vector from the specified transform scaled by a given value (Lumberyard uses Z up, right handed)", "Source", "Scale");
 
         AZ_INLINE std::tuple<Vector3Type, Vector3Type, Vector3Type, Vector3Type> GetColumns(const TransformType& source)
         {
@@ -299,6 +326,9 @@ namespace ScriptCanvas
             , GetRowNode
             , GetRowsNode
             , GetTranslationNode
+            , GetUpNode
+            , GetRightNode
+            , GetForwardNode
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
             , InvertOrthogonalNode

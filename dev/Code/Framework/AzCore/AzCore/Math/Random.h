@@ -90,8 +90,15 @@ namespace AZ
 #   else
         unsigned long m_generatorHandle;
 #   endif // AZ_OS64
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif AZ_TRAIT_PSUEDO_RANDOM_USE_FILE
         FILE * m_generatorHandle;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Random_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 #       error Platform not supported
 #endif

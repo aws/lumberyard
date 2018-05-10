@@ -512,14 +512,7 @@ char* GetDeclaredOutputName(const HLSLCrossCompilerContext* psContext,
     }
     else if (eShaderType == PIXEL_SHADER)
     {
-        if (!psContext->gmemOutputNumElements[psOperand->ui32RegisterNumber])
-        {
-            outputName = bformat("PixOutput%d", psOperand->ui32RegisterNumber);
-        }
-        else // GMEM reserved slot
-        {
-            outputName = bformat("GMEM_Input%d", psOperand->ui32RegisterNumber);
-        }
+        outputName = bformat("PixOutput%d", psOperand->ui32RegisterNumber);
     }
     else
     {
@@ -1085,7 +1078,8 @@ void AddUserOutput(HLSLCrossCompilerContext* psContext, const Declaration* psDec
 
                     uint32_t renderTarget = psDecl->asOperands[0].ui32RegisterNumber;
 
-                    if (!psContext->gmemOutputNumElements[renderTarget])
+                    // Check if we already defined this as a "inout"
+                    if ((psContext->rendertargetUse[renderTarget] & INPUT_RENDERTARGET) == 0)
                     {
                         if (HaveInOutLocationQualifier(psContext->psShader->eTargetLanguage, psContext->psShader->extensions) || HaveLimitedInOutLocationQualifier(psContext->psShader->eTargetLanguage))
                         {
@@ -2081,40 +2075,66 @@ void TranslateDeclaration(HLSLCrossCompilerContext* psContext, const Declaration
     }
     case OPCODE_DCL_RESOURCE:
     {
-        // CONFETTI BEGIN: David Srour
-        if (psDecl->asOperands[0].ui32RegisterNumber >= GMEM_FLOAT_START_SLOT)
+        bool isGmemResource = false;
+        const int initialMemSize = 64;
+        bstring earlyMain = bfromcstralloc(initialMemSize, "");
+        if (IsGmemReservedSlot(FBF_EXT_COLOR, psDecl->asOperands[0].ui32RegisterNumber))
         {
             // A GMEM reserve slot was used.
-            // This is not a resource but an inout RT of the pixel shader
+            // This is not a resource but an inout RT of the pixel shader            
             int regNum = GetGmemInputResourceSlot(psDecl->asOperands[0].ui32RegisterNumber);
+            // FXC thinks this is a texture so we can't trust the number of elements. We get that from the "register number".
             int numElements = GetGmemInputResourceNumElements(psDecl->asOperands[0].ui32RegisterNumber);
-            psContext->gmemOutputNumElements[regNum] = numElements;
-
-            // If this is the first GMEM Framebuffer fetch texture, then let's declare the needed extension
-            int num_gmem_tex = 0;
-            for (int i = 0; i < MAX_COLOR_MRT; i++)
-            {
-                num_gmem_tex += psContext->gmemOutputNumElements[i] != 0 ? 1 : 0;
-            }
-
-            if (1 == num_gmem_tex)
-            {
-                // Extensions need to be declared before any non-preprocessor symbols. So we put it all the way at the beginning.
-                bstring ext = bfromcstralloc(1024, "#extension GL_EXT_shader_framebuffer_fetch : require\n");
-                bconcat(ext, glsl);
-                bassign(glsl, ext);
-                bdestroy(ext);
-            }
+            ASSERT(numElements);
 
             const char* Precision = "highp";
+            const char* outputName = "PixOutput";
+            const char* qualifier = psContext->rendertargetUse[regNum] & OUTPUT_RENDERTARGET ? "inout" : "in";
 
-            // GMEM output type must match the input and have "inout" qualifier
             bformata(glsl, "layout(location = %d) ", regNum);
-            bformata(glsl, "inout %s vec%d GMEM_Input%d;\n", Precision, psContext->gmemOutputNumElements[regNum], regNum);
+            bformata(glsl, "inout %s vec%d %s%d;\n", Precision, numElements, outputName, regNum);
 
+            const char* mask[] = { "x", "y", "z", "w" };
+            // Since we are using Textures as GMEM inputs FXC will threat them as vec4 values. The rendertarget may not be a vec4 (numElements != 4)
+            // so we create a new variable (GMEM_InputXX) at the beginning of the shader that wraps the rendertarget value.
+            bformata(earlyMain, "%s vec4 GMEM_Input%d = %s vec4(%s%d.", Precision, regNum, Precision, outputName, regNum);
+            for (int i = 0; i < 4; ++i)
+            {
+                bformata(earlyMain, "%s", i < numElements ? mask[i] : mask[numElements - 1]);
+            }
+            bcatcstr(earlyMain, ");\n");
+            isGmemResource = true;
+        }
+        else if (IsGmemReservedSlot(FBF_ARM_COLOR, psDecl->asOperands[0].ui32RegisterNumber))
+        {
+            bcatcstr(earlyMain, "vec4 GMEM_Input0 = vec4(gl_LastFragColorARM);\n");
+            isGmemResource = true;
+        }
+        else if (IsGmemReservedSlot(FBF_ARM_DEPTH, psDecl->asOperands[0].ui32RegisterNumber))
+        {
+            bcatcstr(earlyMain, "vec4 GMEM_Depth = vec4(gl_LastFragDepthARM);\n");
+            isGmemResource = true;
+        }
+        else if (IsGmemReservedSlot(FBF_ARM_STENCIL, psDecl->asOperands[0].ui32RegisterNumber))
+        {
+            bcatcstr(earlyMain, "ivec4 GMEM_Stencil = ivec4(gl_LastFragStencilARM);\n");
+            isGmemResource = true;
+        }
+
+        if (isGmemResource)
+        {
+            if (earlyMain->slen)
+            {
+                bstring* savedStringPtr = psContext->currentGLSLString;
+                psContext->currentGLSLString = &psContext->earlyMain;
+                psContext->indent++;
+                AddIndentation(psContext);
+                bconcat(*psContext->currentGLSLString, earlyMain);
+                psContext->indent--;
+                psContext->currentGLSLString = savedStringPtr;
+            }
             break;
         }
-        // CONFETTI END
 
         char* szResourceTypeName = "";
         uint32_t bCanBeCompare;

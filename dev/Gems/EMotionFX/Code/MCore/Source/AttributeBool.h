@@ -15,6 +15,7 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Attribute.h"
+#include "StringConversions.h"
 
 namespace MCore
 {
@@ -55,16 +56,11 @@ namespace MCore
             mValue = static_cast<const AttributeBool*>(other)->GetValue();
             return true;
         }
-        bool InitFromString(const String& valueString) override
+        bool InitFromString(const AZStd::string& valueString) override
         {
-            if (valueString.CheckIfIsValidBool() == false)
-            {
-                return false;
-            }
-            mValue = valueString.ToBool();
-            return true;
+            return AzFramework::StringFunc::LooksLikeBool(valueString.c_str(), &mValue);
         }
-        bool ConvertToString(String& outString) const override      { outString.Format("%d", (mValue) ? 1 : 0); return true; }
+        bool ConvertToString(AZStd::string& outString) const override      { outString = AZStd::string::format("%d", (mValue) ? 1 : 0); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeBool); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_CHECKBOX; }
 

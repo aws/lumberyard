@@ -49,6 +49,7 @@
 #include "MainWindow.h"
 #include "BaseLibraryDialog.h"
 #include "Material/Material.h"
+#include "Alembic/AlembicCompiler.h"
 #include "EntityPrototype.h"
 #include "Particles/ParticleManager.h"
 #include "Prefabs/PrefabManager.h"
@@ -290,6 +291,7 @@ CEditorImpl::CEditorImpl()
     m_pEquipPackLib = new CEquipPackLib;
     m_pToolBoxManager = new CToolBoxManager;
     m_pMaterialManager = new CMaterialManager(regCtx);
+    m_pAlembicCompiler = new CAlembicCompiler();
     m_pSequenceManager = new CTrackViewSequenceManager;
     m_pAnimationContext = new CAnimationContext;
     m_pEntityManager = new CEntityPrototypeManager;
@@ -488,6 +490,7 @@ CEditorImpl::~CEditorImpl()
     SAFE_DELETE(m_particleManager)
     SAFE_DELETE(m_pEntityManager)
     SAFE_DELETE(m_pMaterialManager)
+    SAFE_DELETE(m_pAlembicCompiler)
     SAFE_DELETE(m_pEquipPackLib)
     SAFE_DELETE(m_pIconManager)
     SAFE_DELETE(m_pViewManager)
@@ -1220,15 +1223,12 @@ CBaseObject* CEditorImpl::NewObject(const char* typeName, const char* fileName, 
         editor->SetModifiedFlag();
         editor->SetModifiedModule(eModifiedBrushes);
     }
-    CBaseObject* object = editor->GetObjectManager()->NewObject(typeName, 0, fileName);
+    CBaseObject* object = editor->GetObjectManager()->NewObject(typeName, 0, fileName, name);
     if (!object)
     {
         return nullptr;
     }
-    if (name && name[0])
-    {
-        object->SetName(name);
-    }
+
     object->SetPos(Vec3(x, y, z));
 
     return object;

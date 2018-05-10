@@ -15,7 +15,7 @@
 #include "SQLiteResultSet.h"
 #include "SQLiteConnection.h"
 #include "SQLiteStatement.h"
-#include <SQLite/sqlite3.h>
+#include <sqlite3.h>
 
 CSQLiteResultSet::CSQLiteResultSet(CSQLiteConnection* Connection, IDBStatement* Statement, sqlite3_stmt* hStatement, int LastMode)
     : m_Connection(Connection)

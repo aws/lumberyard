@@ -625,7 +625,7 @@ void CAssetBrowserManager::AddAssetsToTag(const QString& tag, const QString& cat
         for (int idx = 0; idx < assetArrayLen; ++idx)
         {
             assetsStr[idx] = new char[kMaxStrLen];
-            _snprintf(assetsStr[idx], kMaxStrLen, "%s", assets[idx]);
+            _snprintf(assetsStr[idx], kMaxStrLen, "%s", assets[idx].toUtf8().constData());
         }
 
         pAssetTagging->AddAssetsToTag(tag.toUtf8().data(), category.toUtf8().data(), GetProjectName().toUtf8().data(), assetsStr, assetArrayLen);
@@ -668,7 +668,7 @@ void CAssetBrowserManager::RemoveAssetsFromTag(const QString& tag, const QString
         for (int idx = 0; idx < kAssetArrayLen; ++idx)
         {
             assetsStr[idx] = new char[maxStrLen];
-            _snprintf(assetsStr[idx], maxStrLen, "%s", assets[idx]);
+            _snprintf(assetsStr[idx], maxStrLen, "%s", assets[idx].toUtf8().constData());
         }
 
         pAssetTagging->RemoveAssetsFromTag(tag.toUtf8().data(), category.toUtf8().data(), GetProjectName().toUtf8().data(), assetsStr, kAssetArrayLen);

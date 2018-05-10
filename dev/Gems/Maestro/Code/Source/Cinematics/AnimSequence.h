@@ -186,7 +186,7 @@ private:
     bool m_bPaused;
     bool m_bActive;
 
-    uint32 m_lastGenId;
+    uint32 m_nextGenId;
 
     IAnimLegacySequenceObject* m_legacySequenceObject;   // legacy sequence objects are connected by pointer
 

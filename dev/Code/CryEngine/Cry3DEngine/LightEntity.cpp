@@ -202,8 +202,6 @@ void C3DEngine::UpdateSun(const SRenderingPassInfo& passInfo)
         gEnv->p3DEngine->SetSunAnimColor(Vec3(lightProps->m_Color.r, lightProps->m_Color.g, lightProps->m_Color.b));
 
         RegisterEntity(m_pSun);
-
-        SetupLightScissors(lightProps, passInfo);
     }
     else if (m_pSun)
     {
@@ -1827,11 +1825,6 @@ void CLightEntity::Render(const SRendParams& rParams, const SRenderingPassInfo& 
         const float mult = SATURATE(6.f * (1.f - (rParams.fDistance / m_fWSMaxViewDist)));
         IF (m_light.m_Color.Luminance() * mult > 0, 1)
         {
-            if (passInfo.IsGeneralPass())
-            {
-                Get3DEngine()->SetupLightScissors(&m_light, passInfo);
-            }
-
             Get3DEngine()->AddLightToRenderer(m_light, mult, passInfo, SRendItemSorter(rParams.rendItemSorter));
         }
     }

@@ -15,7 +15,6 @@
 
 // include MCore
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "../StandardPluginsConfig.h"
 #include "AnimGraphHierarchyWidget.h"
 #include <QDialog>

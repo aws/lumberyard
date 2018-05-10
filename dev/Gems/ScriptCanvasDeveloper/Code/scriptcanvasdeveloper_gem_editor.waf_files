@@ -1,10 +1,19 @@
 {
     "auto": {
         "Editor": [
-            "Editor/Include/ScriptCanvasDeveloperEditor/NodeListDumpAction.h",
+            "Editor/Source/Developer.cpp",
+            "Editor/Include/ScriptCanvasDeveloperEditor/Developer.h",
+            "Editor/Source/Mock.cpp",
+            "Editor/Source/WrapperMock.cpp",
+            "Editor/Include/ScriptCanvasDeveloperEditor/Mock.h",
+            "Editor/Include/ScriptCanvasDeveloperEditor/MockBus.h",
+            "Editor/Include/ScriptCanvasDeveloperEditor/WrapperMock.h",            
             "Editor/Source/NodeListDumpAction.cpp",
-            "Editor/Include/ScriptCanvasDeveloperEditor/TSGenerateAction.h",
+            "Editor/Include/ScriptCanvasDeveloperEditor/NodeListDumpAction.h",
             "Editor/Source/TSGenerateAction.cpp",
+            "Editor/Include/ScriptCanvasDeveloperEditor/TSGenerateAction.h",
+            "Editor/Source/NodePaletteFullCreation.cpp",
+            "Editor/Include/ScriptCanvasDeveloperEditor/NodePaletteFullCreation.h",
             "Editor/Source/XMLDoc.cpp",
             "Editor/Source/XMLDoc.h"
         ],

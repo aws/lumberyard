@@ -14,10 +14,29 @@
 #include "VertexCacheOptimizer.h"
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define VERTEXCACHEOPTIMIZER_CPP_SECTION_1 1
+#define VERTEXCACHEOPTIMIZER_CPP_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION VERTEXCACHEOPTIMIZER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(VertexCacheOptimizer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+
 namespace vcache
 {
     bool VertexCacheOptimizer::ReorderIndicesInPlace(void* pIndices, uint32 numIndices, int indexSize)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION VERTEXCACHEOPTIMIZER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(VertexCacheOptimizer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+        #else
         return true;
+        #endif
     }
 }

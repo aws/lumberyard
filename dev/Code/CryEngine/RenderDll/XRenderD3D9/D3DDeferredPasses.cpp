@@ -475,9 +475,9 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
 
     // If GMEM path is enabled but no framebuffer fetches are supported, then neither can this pass.
     // We would have to resolve which would break the GMEM path.
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsFrameBufferFetches())
+    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !(RenderCapabilities::GetFrameBufferFetchCapabilities().test(RenderCapabilities::FBF_ALL_COLORS)))
     {
-        AZ_Assert(RenderCapabilities::SupportsFrameBufferFetches(), "Device does not support framebuffer fetches. Deferred rain not supported with GMEM paths.");
+        AZ_Assert(false, "Device does not support framebuffer fetches for all color attachments. Deferred rain not supported with GMEM paths.");
         return false;
     }
 
@@ -511,7 +511,9 @@ bool CD3D9Renderer::FX_DeferredRainGBuffer()
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr)) // needed RTs already in GMEM
     {
         CTexture* pSceneSpecular = CTexture::s_ptexSceneSpecular;
-
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(D3DDeferredPasses_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         // TODO: Try avoiding the copy by directly accessing UAVs
         PostProcessUtils().StretchRect(CTexture::s_ptexSceneNormalsMap, CTexture::s_ptexStereoL);
         PostProcessUtils().StretchRect(pSceneSpecular, CTexture::s_ptexStereoR);
@@ -671,9 +673,9 @@ bool CD3D9Renderer::FX_DeferredSnowLayer()
 
     // If GMEM path is enabled but no framebuffer fetches are supported, then neither can this pass.
     // We would have to resolve which would break the GMEM path.
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsFrameBufferFetches())
+    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !(RenderCapabilities::GetFrameBufferFetchCapabilities().test(RenderCapabilities::FBF_ALL_COLORS)))
     {
-        AZ_Assert(RenderCapabilities::SupportsFrameBufferFetches(), "Device does not support framebuffer fetches. Deferred snow not supported with GMEM paths.");
+        AZ_Assert(false, "Device does not support framebuffer fetches for all color attachments. Deferred snow not supported with GMEM paths.");
         return false;
     }
 

@@ -13,7 +13,6 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Random.h>
 #include <MCore/Source/AttributeSettings.h>
 #include "AnimGraphTimeCondition.h"
@@ -178,33 +177,33 @@ namespace EMotionFX
 
 
     // construct and output the information summary string for this object
-    void AnimGraphTimeCondition::GetSummary(MCore::String* outResult) const
+    void AnimGraphTimeCondition::GetSummary(AZStd::string* outResult) const
     {
-        outResult->Format("%s: Count Down=%.2f secs, RandomizationUsed=%d, Random Count Down Range=(%.2f secs, %.2f secs)", GetTypeString(), GetAttributeFloat(ATTRIB_COUNTDOWNTIME)->GetValue(), GetAttributeFloat(ATTRIB_USERANDOMIZATION)->GetValue(), GetAttributeFloat(ATTRIB_MINRANDOMTIME)->GetValue(), GetAttributeFloat(ATTRIB_MAXRANDOMTIME)->GetValue());
+        *outResult = AZStd::string::format("%s: Count Down=%.2f secs, RandomizationUsed=%d, Random Count Down Range=(%.2f secs, %.2f secs)", GetTypeString(), GetAttributeFloat(ATTRIB_COUNTDOWNTIME)->GetValue(), GetAttributeFloat(ATTRIB_USERANDOMIZATION)->GetValue(), GetAttributeFloat(ATTRIB_MINRANDOMTIME)->GetValue(), GetAttributeFloat(ATTRIB_MAXRANDOMTIME)->GetValue());
     }
 
 
     // construct and output the tooltip for this object
-    void AnimGraphTimeCondition::GetTooltip(MCore::String* outResult) const
+    void AnimGraphTimeCondition::GetTooltip(AZStd::string* outResult) const
     {
-        MCore::String columnName, columnValue;
+        AZStd::string columnName, columnValue;
 
         // add the condition type
         columnName = "Condition Type: ";
         columnValue = GetTypeString();
-        outResult->Format("<table border=\"0\"><tr><td width=\"165\"><b>%s</b></td><td>%s</td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"165\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the count down
         columnName = "Count Down: ";
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.AsChar(), GetAttributeFloat(ATTRIB_COUNTDOWNTIME)->GetValue());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%.2f secs</td>", columnName.c_str(), GetAttributeFloat(ATTRIB_COUNTDOWNTIME)->GetValue());
 
         // add the randomization used flag
         columnName = "Randomization Used: ";
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.AsChar(), GetAttributeFloat(ATTRIB_USERANDOMIZATION)->GetValue() ? "Yes" : "No");
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), GetAttributeFloat(ATTRIB_USERANDOMIZATION)->GetValue() ? "Yes" : "No");
 
         // add the random count down range
         columnName = "Random Count Down Range: ";
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>(%.2f secs, %.2f secs)</td></tr></table>", columnName.AsChar(), GetAttributeFloat(ATTRIB_MINRANDOMTIME)->GetValue(), GetAttributeFloat(ATTRIB_MAXRANDOMTIME)->GetValue());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>(%.2f secs, %.2f secs)</td></tr></table>", columnName.c_str(), GetAttributeFloat(ATTRIB_MINRANDOMTIME)->GetValue(), GetAttributeFloat(ATTRIB_MAXRANDOMTIME)->GetValue());
     }
 
 

@@ -20,23 +20,23 @@
 
 struct IVolumeObjectRenderNode;
 
+struct IVolumeTexture
+{
+public:
+    virtual ~IVolumeTexture() {}
+    virtual void Release() = 0;
+    virtual bool Create(unsigned int width, unsigned int height, unsigned int depth, unsigned char* pData) = 0;
+    virtual bool Update(unsigned int width, unsigned int height, unsigned int depth, const unsigned char* pData) = 0;
+    virtual int GetTexID() const = 0;
+    virtual uint32 GetWidth() const = 0;
+    virtual uint32 GetHeight() const = 0;
+    virtual uint32 GetDepth() const = 0;
+    virtual CTexture* GetTexture() const  = 0;
+};
 
 class CREVolumeObject
     : public CRendElementBase
 {
-public:
-    struct IVolumeTexture
-    {
-    public:
-        virtual void Release() = 0;
-        virtual bool Create(unsigned int width, unsigned int height, unsigned int depth, unsigned char* pData) = 0;
-        virtual bool Update(unsigned int width, unsigned int height, unsigned int depth, const unsigned char* pData) = 0;
-        virtual int GetTexID() const = 0;
-
-    protected:
-        virtual ~IVolumeTexture() {}
-    };
-
 public:
     CREVolumeObject();
 

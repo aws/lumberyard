@@ -1,10 +1,10 @@
 {
     "auto": {
-        "Include": [
-            "Builder/BuilderSystemComponent.h"
-        ],
-        "Source": [
-            "Builder/BuilderSystemComponent.cpp"
+        "Builder": [
+            "Builder/ScriptCanvasBuilderComponent.cpp",
+            "Builder/ScriptCanvasBuilderComponent.h",
+            "Builder/ScriptCanvasBuilderWorker.cpp",
+            "Builder/ScriptCanvasBuilderWorker.h"
         ]
     }
 }

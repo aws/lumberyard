@@ -28,7 +28,7 @@ namespace GraphCanvas
         
         if (serializeContext)
         {
-            serializeContext->Class<DataConnectionVisualComponent>()
+            serializeContext->Class<DataConnectionVisualComponent, ConnectionVisualComponent>()
                 ->Version(1)
             ;
         }

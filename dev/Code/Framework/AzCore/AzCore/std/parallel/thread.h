@@ -9,13 +9,18 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_THREAD_H
-#define AZSTD_THREAD_H 1
+#pragma once
 
 #include <AzCore/std/parallel/config.h>
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/chrono/types.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define THREAD_H_SECTION_1 1
+#define THREAD_H_SECTION_2 2
+#endif
 
 namespace AZStd
 {
@@ -77,6 +82,10 @@ namespace AZStd
          *      THREAD_PRIORITY_ABOVE_NORMAL
          *      THREAD_PRIORITY_TIME_CRITICAL
          */
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREAD_H_SECTION_1
+#include AZ_RESTRICTED_FILE(thread_h, AZ_RESTRICTED_PLATFORM)
+#endif
         int             m_priority;
 
         /**
@@ -267,11 +276,15 @@ namespace AZStd
 
 #if defined(AZ_PLATFORM_WINDOWS)
     #include <AzCore/std/parallel/internal/thread_win.h>
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION THREAD_H_SECTION_2
+#include AZ_RESTRICTED_FILE(thread_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     #include <AzCore/std/parallel/internal/thread_linux.h>
 #else
     #error Platform not supported
 #endif
-
-#endif // AZSTD_THREAD_H
-#pragma once

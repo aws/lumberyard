@@ -141,7 +141,9 @@ public:
     void PostUpdate(const float dt);
     void Render();
 
-    void StartCapture(const ICaptureKey& key);
+    void EnableFixedStepForCapture(float step);
+    void DisableFixedStepForCapture();
+    void StartCapture(const ICaptureKey& key, int frame);
     void EndCapture();
     void ControlCapture();
 
@@ -212,6 +214,8 @@ public:
     void ClearUserNotificationMsgs() override;
     const AZStd::string& GetUserNotificationMsgs() const override;
 
+    void OnSequenceActivated(IAnimSequence* sequence) override;
+
     static void Reflect(AZ::SerializeContext* serializeContext);
 
 private:
@@ -253,6 +257,12 @@ private:
 
     PlayingSequences m_playingSequences;
 
+    // A list of sequences that just got Activated. Queue them up here
+    // and process them in Update to see if the sequence should be auto-played.
+    // We don't want to auto-play OnActivate because of the timing of
+    // how entity ids get remapped in the editor and game.
+    AZStd::vector<IAnimSequence*> m_newlyActivatedSequences;
+
     typedef AZStd::vector<IMovieListener*> TMovieListenerVec;
     typedef AZStd::map<IAnimSequence*, TMovieListenerVec> TMovieListenerMap;
 
@@ -270,13 +280,20 @@ private:
     ESequenceStopBehavior m_sequenceStopBehavior;
 
     bool m_bStartCapture;
+    int m_captureFrame;
     bool m_bEndCapture;
     ICaptureKey m_captureKey;
     float m_fixedTimeStepBackUp;
+    float m_maxStepBackUp;
+    float m_smoothingBackUp;
+    float m_maxTimeStepForMovieSystemBackUp;
     ICVar* m_cvar_capture_file_format;
     ICVar* m_cvar_capture_frame_once;
     ICVar* m_cvar_capture_folder;
     ICVar* m_cvar_t_FixedStep;
+    ICVar* m_cvar_t_MaxStep;
+    ICVar* m_cvar_t_Smoothing;
+    ICVar* m_cvar_sys_maxTimeStepForMovieSystem;
     ICVar* m_cvar_capture_frames;
     ICVar* m_cvar_capture_file_prefix;
     ICVar* m_cvar_capture_buffer;

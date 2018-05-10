@@ -15,7 +15,7 @@
 #include "CryZlib.h"
 #include "ZLibCompressor.h"
 #include "TypeInfo_impl.h"
-#include <md5/md5.h>
+#include <md5.h>
 
 // keep these in sync with the enums in IZLibCompressor.h
 static const int k_stratMap[] = {Z_DEFAULT_STRATEGY, Z_FILTERED, Z_HUFFMAN_ONLY, Z_RLE};

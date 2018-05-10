@@ -12,6 +12,7 @@
 
 #include "stdafx.h"
 #include "paneltitlebar.h"
+#include "ContextMenu.h"
 #include <PanelWidget/ui_PanelTitleBar.h>
 #include <PanelWidget/paneltitlebar.moc>
 #include <IEditor.h>
@@ -407,17 +408,19 @@ bool ItemPanelTitleBar::onEventFilter(QObject* obj, QEvent* ev)
 
 void ItemPanelTitleBar::LaunchMenu(QPoint pos)
 {
+    ContextMenu menu(this);
+
     //RebuildMenu();
     if (m_isCustom)
     {
-        BuildCustomMenu();
+        BuildCustomMenu(&menu);
     }
     else
     {
-        RebuildMenu();
+        BuildMenu(&menu);
     }
-    m_menu->setFocus();
-    m_menu->exec(pos);
+    menu.setFocus();
+    menu.exec(pos);
 }
 
 void ItemPanelTitleBar::RenameRequest()
@@ -433,13 +436,13 @@ void ItemPanelTitleBar::RenamePanelName(QString name)
     EndRename();
 }
 
-void ItemPanelTitleBar::BuildCustomMenu()
+void ItemPanelTitleBar::BuildCustomMenu(QMenu *menu)
 {
     // just rebuild menu by clearing
-    m_menu->clear();
+    menu->clear();
 
-    QAction* action = new QAction("Rename", m_menu);
-    m_menu->addAction(action);
+    QAction* action = new QAction("Rename", menu);
+    menu->addAction(action);
     if (action)
     {
         connect(action, &QAction::triggered, [this]()
@@ -447,8 +450,8 @@ void ItemPanelTitleBar::BuildCustomMenu()
                 StartRename();
             });
     }
-    action = new QAction("Remove all", m_menu);
-    m_menu->addAction(action);
+    action = new QAction("Remove all", menu);
+    menu->addAction(action);
     if (action)
     {
         connect(action, &QAction::triggered, [this]()
@@ -457,9 +460,9 @@ void ItemPanelTitleBar::BuildCustomMenu()
             });
     }
 
-    action = new QAction("Export", m_menu);
+    action = new QAction("Export", menu);
     action->setShortcut(GetIEditor()->GetParticleUtils()->HotKey_GetShortcut("Attributes.Export Panel"));
-    m_menu->addAction(action);
+    menu->addAction(action);
     if (action)
     {
         connect(action, &QAction::triggered, [this]()
@@ -473,8 +476,8 @@ void ItemPanelTitleBar::BuildCustomMenu()
             });
     }
 
-    action = new QAction("Close", m_menu);
-    m_menu->addAction(action);
+    action = new QAction("Close", menu);
+    menu->addAction(action);
     if (action)
     {
         connect(action, &QAction::triggered, [this]()

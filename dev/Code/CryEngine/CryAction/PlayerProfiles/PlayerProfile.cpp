@@ -462,7 +462,14 @@ bool CPlayerProfile::LoadAttributes(const XmlNodeRef& root, int requiredVersion)
             bool platformValid = true;
             if (platform != NULL && platform[0])
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlayerProfile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 platformValid = (strstr(platform, "pc") != 0);
+#endif
             }
 
             if (name && value && platformValid)

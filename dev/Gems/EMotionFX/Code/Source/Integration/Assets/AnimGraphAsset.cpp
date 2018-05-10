@@ -26,12 +26,12 @@ namespace EMotionFX
 
         //////////////////////////////////////////////////////////////////////////
         AnimGraphAsset::AnimGraphInstancePtr AnimGraphAsset::CreateInstance(
-            const EMotionFXPtr<EMotionFX::ActorInstance>& actorInstance,
-            const EMotionFXPtr<EMotionFX::MotionSet>& motionSet)
+            EMotionFX::ActorInstance* actorInstance,
+            EMotionFX::MotionSet* motionSet)
         {
             AZ_Assert(m_emfxAnimGraph, "Anim graph asset is not loaded");
             auto animGraphInstance = EMotionFXPtr<EMotionFX::AnimGraphInstance>::MakeFromNew(
-                EMotionFX::AnimGraphInstance::Create(m_emfxAnimGraph.get(), actorInstance.get(), motionSet.get()));
+                EMotionFX::AnimGraphInstance::Create(m_emfxAnimGraph.get(), actorInstance, motionSet));
 
             if (animGraphInstance)
             {
@@ -54,7 +54,7 @@ namespace EMotionFX
                 assetData->m_emfxAnimGraph->SetIsOwnedByRuntime(true);
             }
 
-            AZ_Error("EMotionFX", assetData->m_emfxAnimGraph, "Failed to initialize anim graph asset %s", asset.GetId().ToString<AZStd::string>().c_str());
+            AZ_Error("EMotionFX", assetData->m_emfxAnimGraph, "Failed to initialize anim graph asset %s", asset.ToString<AZStd::string>().c_str());
             return (assetData->m_emfxAnimGraph);
         }
 
@@ -88,8 +88,13 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         AZ::Uuid AnimGraphAssetHandler::GetComponentTypeId() const
         {
+            // The system is not in place to allow for components to drive creation of required components
+            // Future work will enable this functionality which will allow dropping in viewport or Inspector panel
             // EditorAnimGraphComponent
-            return AZ::Uuid("{770F0A71-59EA-413B-8DAB-235FB0FF1384}");
+            // return AZ::Uuid("{770F0A71-59EA-413B-8DAB-235FB0FF1384}");
+            
+            // Returning null keeps the animgraph from being drag/dropped
+            return AZ::Uuid::CreateNull();
         }
 
         //////////////////////////////////////////////////////////////////////////

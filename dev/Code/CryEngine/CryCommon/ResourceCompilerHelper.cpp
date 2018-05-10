@@ -430,7 +430,7 @@ bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wcha
 #if defined(__APPLE__)
         const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinMac64/rc" };
 #elif defined(_WIN32)
-        const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc140/rc", L"Bin64vc120/rc"};
+        const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"Bin64vc141/rc", L"Bin64vc140/rc", L"Bin64vc120/rc"};
 #elif defined(LINUX64)
         const wchar_t* folderNames[] = { szBinFolderFromRegistry, szBinFolderFromSettings, L"BinLinux64/rc"};
 #else
@@ -563,12 +563,12 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
 
         if (!enableSourceControl)
         {
-            wRemoteCmdLine.appendAscii(" /nosourcecontrol ");
+            wRemoteCmdLine.appendAscii(" -nosourcecontrol ");
         }
 
         if (!szFileName)
         {
-            wRemoteCmdLine.appendAscii(" /userdialog=0 ");
+            wRemoteCmdLine.appendAscii(" -userdialog=0 ");
             wRemoteCmdLine.appendAscii(szActualAdditionalSettings);
             wRemoteCmdLine.appendAscii(" ");
             wRemoteCmdLine.append(szRegSettingsBuffer);
@@ -578,7 +578,7 @@ IResourceCompilerHelper::ERcCallResult CResourceCompilerHelper::CallResourceComp
             wRemoteCmdLine.appendAscii(" \"");
             wRemoteCmdLine.appendAscii(szActualFileName);
             wRemoteCmdLine.appendAscii("\"");
-            wRemoteCmdLine.appendAscii(bNoUserDialog ? " /userdialog=0 " : " /userdialog=1 ");
+            wRemoteCmdLine.appendAscii(bNoUserDialog ? " -userdialog=0 " : " -userdialog=1 ");
             wRemoteCmdLine.appendAscii(szActualAdditionalSettings);
             wRemoteCmdLine.appendAscii(" ");
             wRemoteCmdLine.append(szRegSettingsBuffer);
@@ -826,12 +826,12 @@ IResourceCompilerHelper::RCProcessHandle CResourceCompilerHelper::AsyncCallResou
 
     if (!enableSourceControl)
     {
-        wRemoteCmdLine.appendAscii(" /nosourcecontrol ");
+        wRemoteCmdLine.appendAscii(" -nosourcecontrol ");
     }
 
     if (!szFileName)
     {
-        wRemoteCmdLine.appendAscii(" /userdialog=0 ");
+        wRemoteCmdLine.appendAscii(" -userdialog=0 ");
         wRemoteCmdLine.appendAscii(szAdditionalSettings);
         wRemoteCmdLine.appendAscii(" ");
         wRemoteCmdLine.append(szRegSettingsBuffer);
@@ -841,7 +841,7 @@ IResourceCompilerHelper::RCProcessHandle CResourceCompilerHelper::AsyncCallResou
         wRemoteCmdLine.appendAscii(" \"");
         wRemoteCmdLine.appendAscii(szActualFileName);
         wRemoteCmdLine.appendAscii("\"");
-        wRemoteCmdLine.appendAscii(bNoUserDialog ? " /userdialog=0 " : " /userdialog=1 ");
+        wRemoteCmdLine.appendAscii(bNoUserDialog ? " -userdialog=0 " : " -userdialog=1 ");
         wRemoteCmdLine.appendAscii(szActualAdditionalSettings);
         wRemoteCmdLine.appendAscii(" ");
         wRemoteCmdLine.append(szRegSettingsBuffer);

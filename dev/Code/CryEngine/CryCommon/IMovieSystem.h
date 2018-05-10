@@ -36,6 +36,16 @@ class XmlNodeRef;
 struct ISplineInterpolator;
 struct ILightAnimWrapper;
 
+namespace AZ
+{
+    namespace Data
+    {
+        class AssetData;
+        template<typename AssetType>
+        struct AssetBlends;
+    }
+}
+
 typedef IMovieSystem* (* PFNCREATEMOVIESYSTEM)(struct ISystem*);
 
 #define LIGHT_ANIMATION_SET_NAME "_LightAnimationSet"
@@ -443,6 +453,8 @@ struct IAnimTrack
     virtual void GetValue(float time, Vec4& value, bool applyMultiplier = false) = 0;
     virtual void GetValue(float time, Quat& value) = 0;
     virtual void GetValue(float time, bool& value) = 0;
+    virtual void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) = 0;
+
     // support for AZ:: vector types - re-route to legacy types
     void GetValue(float time, AZ::Vector3& value, bool applyMultiplier = false)
     {
@@ -466,6 +478,8 @@ struct IAnimTrack
     virtual void SetValue(float time, const Vec4& value, bool bDefault = false, bool applyMultiplier = false) = 0;
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const bool& value, bool bDefault = false) = 0;
+    virtual void SetValue(float time, const AZ::Data::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) = 0;
+
     // support for AZ:: vector types - re-route to legacy types
     void SetValue(float time, AZ::Vector3& value, bool bDefault = false, bool applyMultiplier = false)
     {
@@ -1267,8 +1281,14 @@ struct IMovieSystem
     // Render function call of some special node.
     virtual void Render() = 0;
 
+    // Set and enable Fixed Step cvars
+    virtual void EnableFixedStepForCapture(float step) = 0;
+
+    // Disable Fixed Step cvars and return to previous settings
+    virtual void DisableFixedStepForCapture() = 0;
+ 
     // Signal the capturing start.
-    virtual void StartCapture(const ICaptureKey& key) = 0;
+    virtual void StartCapture(const ICaptureKey& key, int frame) = 0;
 
     // Signal the capturing end.
     virtual void EndCapture() = 0;
@@ -1359,6 +1379,9 @@ struct IMovieSystem
     virtual void LogUserNotificationMsg(const AZStd::string& msg) = 0;
     virtual void ClearUserNotificationMsgs() = 0;
     virtual const AZStd::string& GetUserNotificationMsgs() const = 0;
+
+    // Call this from OnActivate() when a new sequence component entity is activated.
+    virtual void OnSequenceActivated(IAnimSequence* sequence) = 0;
 
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
     virtual AnimNodeType GetNodeTypeFromString(const char* pString) const = 0;

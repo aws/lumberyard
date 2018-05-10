@@ -160,7 +160,7 @@ bool CPrefabEvents::AddPrefabInstanceNodeFromSelection(CFlowNode* pNode, CPrefab
     }
     else
     {
-        Warning("CPrefabEvents::AddPrefabInstanceNode: Node already added for prefab: %s", prefabName);
+        Warning("CPrefabEvents::AddPrefabInstanceNode: Node already added for prefab: %s", prefabName.toUtf8().constData());
         return false;
     }
 }

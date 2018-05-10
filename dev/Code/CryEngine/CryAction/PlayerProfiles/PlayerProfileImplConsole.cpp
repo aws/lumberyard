@@ -220,7 +220,14 @@ bool CPlayerProfileImplConsole::LoginUser(SUserEntry* pEntry)
             string name = profile->GetName();
             profile->SetName(pEntry->userId);
             m_pMgr->LoadGamerProfileDefaults(profile);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlayerProfileImplConsole_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             SaveProfile(pEntry, profile, pEntry->userId.c_str(), true);
+#endif
             profile->SetName(name);
         }
     }

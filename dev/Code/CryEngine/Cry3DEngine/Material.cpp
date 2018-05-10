@@ -243,7 +243,7 @@ bool CMatInfo::IsSubMaterial() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMatInfo::UpdateMaterialFlags()
+void CMatInfo::UpdateFlags()
 {
     m_Flags &= ~(MTL_FLAG_REQUIRE_FORWARD_RENDERING | MTL_FLAG_REQUIRE_NEAREST_CUBEMAP);
 
@@ -312,7 +312,7 @@ void CMatInfo::SetShaderItem(const SShaderItem& _ShaderItem)
     m_shaderItem = _ShaderItem;
     gEnv->pRenderer->UpdateShaderItem(&m_shaderItem, this);
 
-    UpdateMaterialFlags();
+    UpdateFlags();
 
     int sketchMode = m_pMatMan->GetSketchMode();
     if (sketchMode)
@@ -336,7 +336,7 @@ void CMatInfo::AssignShaderItem(const SShaderItem& _ShaderItem)
     m_shaderItem = _ShaderItem;
     gEnv->pRenderer->UpdateShaderItem(&m_shaderItem, this);
 
-    UpdateMaterialFlags();
+    UpdateFlags();
 }
 
 //////////////////////////////////////////////////////////////////////////

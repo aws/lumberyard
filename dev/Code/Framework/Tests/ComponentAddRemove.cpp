@@ -10,17 +10,32 @@
 *
 */
 
-#include "Tests/TestTypes.h"
-#include <AzToolsFramework/Application/ToolsApplication.h>
-#include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+#include <Tests/TestTypes.h>
+
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Outcome/Outcome.h>
+#include <AzCore/Slice/SliceMetadataInfoComponent.h>
+
+#include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorPendingCompositionBus.h>
-#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorPendingCompositionComponent.h>
+#include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+
 
 namespace UnitTest
 {
+    using namespace AZ;
+    using namespace AzToolsFramework;
+    using namespace AZ::Data;
+    using namespace AZ::IO;
     //
     // Declaring several clothing-themed components for use in tests.
     //
@@ -1048,5 +1063,299 @@ namespace UnitTest
         ASSERT_EQ(4, m_entity1Counter.GetCount());
         ASSERT_EQ(0, m_entity1Counter.GetPendingCount());
         ASSERT_EQ(3, m_entity1Counter.GetDisabledCount());
+    }
+
+    // A reusable testing fixture that ensures basic application services are mocked.
+    // Provided:
+    //      Basic Component descriptor functionality
+    //      Memory
+    //      Serialize (and Edit) contexts
+    class MockApplicationFixture
+        : public AllocatorsFixture
+        , public AZ::ComponentApplicationBus::Handler
+    {
+    public:
+        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
+        AZStd::vector<const ComponentDescriptor*> m_descriptors;
+
+        //////////////////////////////////////////////////////////////////////////
+        // ComponentApplicationMessages
+        ComponentApplication* GetApplication() override { return nullptr; }
+        void RegisterComponentDescriptor(const ComponentDescriptor* descriptor) override
+        {
+            m_descriptors.push_back(descriptor);
+            descriptor->Reflect(m_serializeContext.get());
+        }
+
+        void UnregisterComponentDescriptor(const ComponentDescriptor*) override {}
+        bool AddEntity(Entity*) override { return true; }
+        bool RemoveEntity(Entity*) override { return true; }
+        bool DeleteEntity(const EntityId&) override { return true; }
+        Entity* FindEntity(const EntityId&) override { return nullptr; }
+        SerializeContext* GetSerializeContext() override { return m_serializeContext.get(); }
+        BehaviorContext*  GetBehaviorContext() override { return nullptr; }
+        const char* GetExecutableFolder() override { return nullptr; }
+        const char* GetAppRoot() override { return nullptr; }
+        Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
+        void EnumerateEntities(const EntityCallback& /*callback*/) override {}
+        //////////////////////////////////////////////////////////////////////////
+
+        MockApplicationFixture()
+            : AllocatorsFixture(150)
+        {
+        }
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            ComponentApplicationBus::Handler::BusConnect();
+            m_serializeContext.reset(aznew AZ::SerializeContext(true, true));
+
+            Entity::Reflect(m_serializeContext.get());
+        }
+
+        void TearDown() override
+        {
+            for (auto descriptor : m_descriptors)
+            {
+                delete descriptor;
+            }
+            m_descriptors.set_capacity(0);
+
+            m_serializeContext.reset();
+            ComponentApplicationBus::Handler::BusDisconnect();
+
+            AllocatorsFixture::TearDown();
+        }
+    };
+
+    // add scrubbing capability to the above fixture by adding some components to it.
+    class EntityTest_Scrubbing : public MockApplicationFixture
+    {
+    protected:
+        AZStd::unique_ptr<Entity> m_fakeSystemEntity;
+
+    public:
+        class VisibleComponent
+            : public AzToolsFramework::Components::EditorComponentBase
+        {
+        public:
+            AZ_COMPONENT(VisibleComponent, "{6CEC2D1E-08CF-4609-9BEE-BA9D32B4C223}", AzToolsFramework::Components::EditorComponentBase);
+
+            void Activate() override {}
+            void Deactivate() override {}
+
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+            {
+                provided.push_back(AZ_CRC("ValidComponentService"));
+            }
+
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+            {
+                incompatible.push_back(AZ_CRC("ValidComponentService"));
+            }
+
+            static void Reflect(ReflectContext* reflection)
+            {
+                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+                if (serializeContext)
+                {
+                    serializeContext->Class<VisibleComponent, AzToolsFramework::Components::EditorComponentBase>();
+
+                    AZ::EditContext* ec = serializeContext->GetEditContext();
+                    ec->Class<VisibleComponent>("Visible Component", "A class that should show up in the property editor")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c));
+                }
+            }
+        };
+
+        class HiddenComponent
+            : public AzToolsFramework::Components::EditorComponentBase
+        {
+        public:
+            AZ_COMPONENT(HiddenComponent, "{E4D2AD8B-3930-46FC-837A-8DDFCA0FB1AF}", AzToolsFramework::Components::EditorComponentBase);
+
+            static Component* s_wasDeleted;
+            virtual ~HiddenComponent()
+            {
+                s_wasDeleted = this;
+            }
+
+            void Activate() override {}
+            void Deactivate() override {}
+
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+            {
+                provided.push_back(AZ_CRC("HiddenComponentService"));
+            }
+
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+            {
+                incompatible.push_back(AZ_CRC("HiddenComponentService"));
+            }
+
+            static void Reflect(ReflectContext* reflection)
+            {
+                SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(reflection);
+                if (serializeContext)
+                {
+                    serializeContext->Class<HiddenComponent, AzToolsFramework::Components::EditorComponentBase>();
+
+                    AZ::EditContext* ec = serializeContext->GetEditContext();
+                    ec->Class<HiddenComponent>("Hidden Component", "A class that should not show up in the property editor")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
+                        ->Attribute(AZ::Edit::Attributes::HideIcon, true)
+                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::HideOnAdd | AZ::Edit::SliceFlags::PushWhenHidden);
+                }
+            }
+        };
+
+
+        void SetUp() override
+        {
+            MockApplicationFixture::SetUp();
+            RegisterComponentDescriptor(VisibleComponent::CreateDescriptor());
+            RegisterComponentDescriptor(HiddenComponent::CreateDescriptor());
+            RegisterComponentDescriptor(AzToolsFramework::Components::EditorPendingCompositionComponent::CreateDescriptor());
+
+            m_fakeSystemEntity.reset(aznew Entity());
+            m_fakeSystemEntity.get()->AddComponent(aznew AzToolsFramework::Components::EditorEntityActionComponent());
+            m_fakeSystemEntity.get()->Init();
+            m_fakeSystemEntity.get()->Activate();
+        }
+
+        void TearDown() override
+        {
+            m_fakeSystemEntity.get()->Deactivate();
+            m_fakeSystemEntity.reset();
+            MockApplicationFixture::TearDown();
+        }
+    };
+
+    Component* EntityTest_Scrubbing::HiddenComponent::s_wasDeleted = nullptr;
+
+    TEST_F(EntityTest_Scrubbing, ConflictingVisibleComponents_AreInvalidated)
+    {
+        // in this test we make sure that visible components (ones which show up on the UI)
+        // that conflict with each other are properly disabled and moved to the pending list during scrubbing.
+
+        // Component setup:
+        AZ::Entity newEntity;
+
+        AZ::Component* firstValidComponent = aznew VisibleComponent();
+        newEntity.AddComponent(firstValidComponent);
+        AZ::Component* conflictingVisibleComponent = aznew VisibleComponent();
+        newEntity.AddComponent(conflictingVisibleComponent);
+
+        EntityList entities;
+        entities.push_back(&newEntity);
+        EntityCompositionRequests::ScrubEntitiesOutcome resultValue = AZ::Failure<AZStd::string>("Didn't get called");
+        EntityCompositionRequestBus::BroadcastResult(resultValue, &EntityCompositionRequestBus::Events::ScrubEntities, entities);
+
+        ASSERT_TRUE(resultValue.IsSuccess());
+        ASSERT_EQ(resultValue.GetValue().size(), 1);
+
+        EntityCompositionRequests::ScrubEntityResults& resultForThisEntity = resultValue.GetValue()[entities[0]->GetId()];
+        
+        EXPECT_EQ(resultForThisEntity.m_invalidatedComponents.size(), 1);
+        EXPECT_TRUE(AZStd::find(resultForThisEntity.m_invalidatedComponents.begin(), resultForThisEntity.m_invalidatedComponents.end(), conflictingVisibleComponent) != resultForThisEntity.m_invalidatedComponents.end());
+
+        // The "Validated components" array should be empty becuase it should only list previously invalid components that were somehow validated by the scrubbing.
+        EXPECT_EQ(resultForThisEntity.m_validatedComponents.size(), 0);
+
+        // make sure the valid visible one wasn't removed:
+        EXPECT_EQ(newEntity.FindComponent(azrtti_typeid<VisibleComponent>()), firstValidComponent);
+    }
+
+    TEST_F(EntityTest_Scrubbing, ConflictingHiddenComponents_AreDeleted)
+    {
+        // in this test we make sure that when an entity contains a conflicting hidden component
+        // the hidden component is deleted as part of thes scrubbing.
+
+        // Component setup:
+        AZ::Entity newEntity;
+
+        AZ::Component* validHiddenComponent = aznew HiddenComponent();
+        AZ::Component* conflictingHiddenComponent = aznew HiddenComponent();
+        newEntity.AddComponent(validHiddenComponent);
+        newEntity.AddComponent(conflictingHiddenComponent);
+
+        EntityTest_Scrubbing::HiddenComponent::s_wasDeleted = nullptr;
+
+        EntityList entities;
+        entities.push_back(&newEntity);
+        EntityCompositionRequests::ScrubEntitiesOutcome resultValue = AZ::Failure<AZStd::string>("Didn't get called");
+        EntityCompositionRequestBus::BroadcastResult(resultValue, &EntityCompositionRequestBus::Events::ScrubEntities, entities);
+
+        // we cannnot test anything further if the array is empty or it failed.
+        ASSERT_TRUE(resultValue.IsSuccess());
+        ASSERT_EQ(resultValue.GetValue().size(), 1);
+
+        EntityCompositionRequests::ScrubEntityResults& resultForThisEntity = resultValue.GetValue()[entities[0]->GetId()];
+
+        // we must NOT find the conflicting component - should have been deleted.
+        EXPECT_EQ(EntityTest_Scrubbing::HiddenComponent::s_wasDeleted, conflictingHiddenComponent);
+
+        // we must also not find it on the invalidated list, since it has been deleted.
+        EXPECT_EQ(resultForThisEntity.m_invalidatedComponents.size(), 0);
+
+        // The "Validated components" array should be empty becuase it should only list previously invalid components that were somehow validated by the scrubbing.
+        EXPECT_EQ(resultForThisEntity.m_validatedComponents.size(), 0);
+        // make sure the remaining component on the entity is the correct hidden component 
+        EXPECT_EQ(newEntity.FindComponents(azrtti_typeid<HiddenComponent>()).size(), 1); // there should only be one of them.
+        EXPECT_EQ(newEntity.FindComponent(azrtti_typeid<HiddenComponent>()), validHiddenComponent);
+        
+    }
+
+    TEST_F(EntityTest_Scrubbing, NonConflictingVisibleComponents_AreReinstated)
+    {
+        // in this test we make sure that if a pending component (inactive due to prior problems)
+        // no longer has those problems, it is made valid and active when scrubbing occurs.
+
+        // Component setup:
+        AZ::Entity newEntity;
+
+        AZ::Component* firstValidComponent = aznew VisibleComponent();
+        AZ::Component* conflictingVisibleComponent = aznew VisibleComponent();
+        newEntity.AddComponent(firstValidComponent);
+        newEntity.AddComponent(conflictingVisibleComponent);
+
+        EntityList entities;
+        entities.push_back(&newEntity);
+        {
+            EntityCompositionRequests::ScrubEntitiesOutcome resultValue = AZ::Failure<AZStd::string>("Didn't get called");
+            EntityCompositionRequestBus::BroadcastResult(resultValue, &EntityCompositionRequestBus::Events::ScrubEntities, entities);
+
+            ASSERT_TRUE(resultValue.IsSuccess());
+            ASSERT_EQ(resultValue.GetValue().size(), 1);
+            // note that the actual results of the above operation are already verified in another test.  now we go further with this
+            // and actually delete the original component so that the second one can become valid.
+        }
+
+        newEntity.RemoveComponent(firstValidComponent);
+        delete firstValidComponent;
+
+        // now re-scrub and expect to see the previously disabled conflicting one become the active one:
+        {
+            EntityCompositionRequests::ScrubEntitiesOutcome resultValue = AZ::Failure<AZStd::string>("Didn't get called");
+            EntityCompositionRequestBus::BroadcastResult(resultValue, &EntityCompositionRequestBus::Events::ScrubEntities, entities);
+            ASSERT_TRUE(resultValue.IsSuccess());
+            ASSERT_EQ(resultValue.GetValue().size(), 1);
+            EntityCompositionRequests::ScrubEntityResults& resultForThisEntity = resultValue.GetValue()[entities[0]->GetId()];
+
+            // nothing should be invalidated
+            EXPECT_EQ(resultForThisEntity.m_invalidatedComponents.size(), 0);
+            // the visible component should now be activated.
+            ASSERT_EQ(resultForThisEntity.m_validatedComponents.size(), 1);
+            EXPECT_EQ(resultForThisEntity.m_validatedComponents[0], conflictingVisibleComponent);
+
+            // make sure its actually active, on the entity.
+            EXPECT_EQ(newEntity.FindComponent(azrtti_typeid<VisibleComponent>()), conflictingVisibleComponent);
+
+        }
     }
 } // namespace UnitTest

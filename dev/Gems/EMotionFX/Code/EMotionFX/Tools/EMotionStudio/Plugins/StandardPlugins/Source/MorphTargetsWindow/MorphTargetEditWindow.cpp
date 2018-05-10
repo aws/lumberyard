@@ -11,7 +11,6 @@
 */
 
 #include "MorphTargetEditWindow.h"
-#include <AzCore/std/string/string.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <MysticQt/Source/DoubleSpinbox.h>
 #include <QVBoxLayout>
@@ -71,10 +70,6 @@ namespace EMStudio
         gridLayout->addWidget(rangeMaxLabel, 1, 0);
         gridLayout->addWidget(mRangeMax, 1, 1);
 
-        // create the edit phonemes button
-        QPushButton* editPhonemes = new QPushButton("Setup Phonemes");
-        connect(editPhonemes, SIGNAL(clicked()), this, SLOT(EditPhonemeButtonClicked()));
-
         // create the buttons layout
         QHBoxLayout* buttonsLayout = new QHBoxLayout();
         buttonsLayout->setMargin(0);
@@ -93,7 +88,6 @@ namespace EMStudio
 
         // add widgets in the layout
         layout->addLayout(gridLayout);
-        layout->addWidget(editPhonemes);
         layout->addLayout(buttonsLayout);
 
         // set the layout
@@ -160,7 +154,7 @@ namespace EMStudio
         const float rangeMax = (float)mRangeMax->value();
 
         AZStd::string result;
-        AZStd::string command = AZStd::string::format("AdjustMorphTarget -actorInstanceID %i -lodLevel %i -name \"%s\" -rangeMin %f -rangeMax %f", mActorInstance->GetID(), mActorInstance->GetLODLevel(), mMorphTarget->GetNameString().AsChar(), rangeMin, rangeMax);
+        AZStd::string command = AZStd::string::format("AdjustMorphTarget -actorInstanceID %i -lodLevel %i -name \"%s\" -rangeMin %f -rangeMax %f", mActorInstance->GetID(), mActorInstance->GetLODLevel(), mMorphTarget->GetNameString().c_str(), rangeMin, rangeMax);
         if (EMStudio::GetCommandManager()->ExecuteCommand(command, result) == false)
         {
             AZ_Error("EMotionFX", false, result.c_str());

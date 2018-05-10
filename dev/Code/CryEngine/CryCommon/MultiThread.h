@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_MULTITHREAD_H
-#define CRYINCLUDE_CRYCOMMON_MULTITHREAD_H
 #pragma once
 
 #if defined(APPLE) || defined(LINUX)
@@ -40,7 +38,7 @@
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(MultiThread_h)
+#include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 #else
 #define MULTITHREAD_H_TRAIT_SLOCKFREESINGLELINKEDLISTENTRY_ATTRIBUTE_ALIGN_16 0
 #if defined(WIN64)
@@ -127,7 +125,7 @@ void   CryLeaveCriticalSection(void* cs);
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_DEFINE_CRYINTERLOCKEXCHANGE
-    #include AZ_RESTRICTED_FILE(MultiThread_h)
+    #include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 #endif
 
 ILINE void CrySpinLock(volatile int* pLock, int checkVal, int setVal)
@@ -163,7 +161,7 @@ Spin:
 #else // !_CPU_X86
 # if defined(AZ_RESTRICTED_PLATFORM)
 #  define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_IMPLEMENT_CRYSPINLOCK
-#  include AZ_RESTRICTED_FILE(MultiThread_h)
+#  include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #  undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -268,7 +266,7 @@ ILINE void CryInterlockedAdd(volatile int* pVal, int iAdd)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_IMPLEMENT_CRYINTERLOCKEDADD
-#include AZ_RESTRICTED_FILE(MultiThread_h)
+#include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -291,7 +289,7 @@ ILINE void CryInterlockedAddSize(volatile size_t* pVal, ptrdiff_t iAdd)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_IMPLEMENT_CRYINTERLOCKEDADDSIZE
-#include AZ_RESTRICTED_FILE(MultiThread_h)
+#include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -407,7 +405,7 @@ ILINE void CryReadLock(volatile int* rw, bool yield)
                 // give other threads with other prio right to run
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_CRYINTERLOCKEDFLUSHSLIST_PT1
-#include AZ_RESTRICTED_FILE(MultiThread_h)
+#include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 #elif defined (LINUX)
                 usleep(1);
 #endif
@@ -417,7 +415,7 @@ ILINE void CryReadLock(volatile int* rw, bool yield)
                 // give threads with same prio chance to run
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_CRYINTERLOCKEDFLUSHSLIST_PT2
-#include AZ_RESTRICTED_FILE(MultiThread_h)
+#include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 #elif defined (LINUX)
                 sched_yield();
 #endif
@@ -577,7 +575,7 @@ ILINE int64 CryInterlockedCompareExchange64(volatile int64* addr, int64 exchange
     // forward to system call
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTITHREAD_H_SECTION_IMPLEMENT_CRYINTERLOCKEDCOMPAREEXCHANGE64
-#include AZ_RESTRICTED_FILE(MultiThread_h)
+#include AZ_RESTRICTED_FILE(MultiThread_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -604,6 +602,3 @@ ILINE void JobSpinLock(volatile int* pLock, int checkVal, int setVal) { SpinLock
 
 ILINE void JobAtomicAdd(volatile int* pVal, int iAdd) { CryInterlockedAdd(pVal, iAdd); }
 ILINE void JobAtomicAdd(volatile unsigned int* pVal, int iAdd) { CryInterlockedAdd((volatile int*)pVal, iAdd); }
-
-
-#endif // CRYINCLUDE_CRYCOMMON_MULTITHREAD_H

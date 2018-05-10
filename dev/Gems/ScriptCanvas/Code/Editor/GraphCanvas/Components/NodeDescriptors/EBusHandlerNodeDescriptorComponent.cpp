@@ -14,46 +14,116 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 
-#include <QString>
+#include <qstring.h>
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 
-#include "Editor/GraphCanvas/Components/EBusHandlerNodeDescriptorComponent.h"
+#include <Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerNodeDescriptorComponent.h>
 
-#include "ScriptCanvas/Libraries/Core/EBusEventHandler.h"
-#include "Editor/GraphCanvas/Components/EBusHandlerEventNodeDescriptorComponent.h"
-#include "Editor/GraphCanvas/PropertySlotIds.h"
-#include "Editor/Translation/TranslationHelper.h"
+#include <ScriptCanvas/Libraries/Core/EBusEventHandler.h>
+#include <Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerEventNodeDescriptorComponent.h>
+#include <Editor/GraphCanvas/PropertySlotIds.h>
+#include <Editor/Translation/TranslationHelper.h>
+#include <Editor/Nodes/NodeUtils.h>
+#include <Editor/Include/ScriptCanvas/GraphCanvas/SlotMappingBus.h>
 
 #include <Editor/View/Widgets/PropertyGridBus.h>
+#include <Editor/Include/ScriptCanvas/Bus/RequestBus.h>
 
 namespace ScriptCanvasEditor
 {
+    //////////////////////////////////////
+    // EBusHandlerNodeDescriptorSaveData
+    //////////////////////////////////////
+
+    EBusHandlerNodeDescriptorComponent::EBusHandlerNodeDescriptorSaveData::EBusHandlerNodeDescriptorSaveData()
+        : m_displayConnections(false)
+        , m_callback(nullptr)
+    {
+    }
+
+    EBusHandlerNodeDescriptorComponent::EBusHandlerNodeDescriptorSaveData::EBusHandlerNodeDescriptorSaveData(EBusHandlerNodeDescriptorComponent* component)
+        : m_displayConnections(false)
+        , m_callback(component)
+    {
+    }
+
+    void EBusHandlerNodeDescriptorComponent::EBusHandlerNodeDescriptorSaveData::operator=(const EBusHandlerNodeDescriptorSaveData& other)
+    {
+        // Purposefully skipping over the callback
+        m_displayConnections = other.m_displayConnections;
+        m_enabledEvents = other.m_enabledEvents;
+    }
+
+    void EBusHandlerNodeDescriptorComponent::EBusHandlerNodeDescriptorSaveData::OnDisplayConnectionsChanged()
+    {
+        if (m_callback)
+        {
+            m_callback->OnDisplayConnectionsChanged();
+            SignalDirty();
+        }
+    }
+
     ///////////////////////////////////////
     // EBusHandlerNodeDescriptorComponent
     ///////////////////////////////////////
+
+    bool EBusHandlerDescriptorVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() <= 1)
+        {
+            AZ::Crc32 displayConnectionId = AZ_CRC("DisplayConnections", 0x710635cc);
+
+            EBusHandlerNodeDescriptorComponent::EBusHandlerNodeDescriptorSaveData saveData;
+
+            AZ::SerializeContext::DataElementNode* dataNode = classElement.FindSubElement(displayConnectionId);
+
+            if (dataNode)
+            {
+                dataNode->GetData(saveData.m_displayConnections);
+            }
+
+            classElement.RemoveElementByName(displayConnectionId);
+            classElement.RemoveElementByName(AZ_CRC("BusName", 0x1bbf25c5));
+            classElement.AddElementWithData(context, "SaveData", saveData);
+        }
+
+        return true;
+    }
     
     void EBusHandlerNodeDescriptorComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<EBusHandlerNodeDescriptorComponent, NodeDescriptorComponent>()
+            serializeContext->Class<EBusHandlerNodeDescriptorSaveData, GraphCanvas::ComponentSaveData>()
                 ->Version(1)
+                ->Field("DisplayConnections", &EBusHandlerNodeDescriptorSaveData::m_displayConnections)
+                ->Field("EventNames", &EBusHandlerNodeDescriptorSaveData::m_enabledEvents)
+            ;
+            
+            serializeContext->Class<EBusHandlerNodeDescriptorComponent, NodeDescriptorComponent>()
+                ->Version(3, &EBusHandlerDescriptorVersionConverter)
+                ->Field("SaveData", &EBusHandlerNodeDescriptorComponent::m_saveData)
                 ->Field("BusName", &EBusHandlerNodeDescriptorComponent::m_busName)
-                ->Field("DisplayConnections", &EBusHandlerNodeDescriptorComponent::m_displayConnections)
             ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
             {
+                editContext->Class<EBusHandlerNodeDescriptorSaveData>("SaveData", "")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "Properties")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EBusHandlerNodeDescriptorSaveData::m_displayConnections, "Display Connection Controls", "Controls whether or not manual connection controls are visible for this node.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EBusHandlerNodeDescriptorSaveData::OnDisplayConnectionsChanged)
+                    ;
+
                 editContext->Class<EBusHandlerNodeDescriptorComponent>("Event Handler", "Configuration values for the EBus node.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "Properties")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EBusHandlerNodeDescriptorComponent::m_displayConnections, "Display Connection Controls", "Controls whether or not manual connection controls are visible for this node.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EBusHandlerNodeDescriptorComponent::OnDisplayConnectionsChanged)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EBusHandlerNodeDescriptorComponent::m_saveData, "SaveData", "The modifiable information about this comment.")
                 ;
             }
         }
@@ -61,14 +131,16 @@ namespace ScriptCanvasEditor
 
     EBusHandlerNodeDescriptorComponent::EBusHandlerNodeDescriptorComponent()
         : NodeDescriptorComponent(NodeDescriptorType::EBusHandler)
-        , m_displayConnections(false)
+        , m_saveData(this)
+        , m_loadingEvents(false)
     {
     }
     
     EBusHandlerNodeDescriptorComponent::EBusHandlerNodeDescriptorComponent(const AZStd::string& busName)
         : NodeDescriptorComponent(NodeDescriptorType::EBusHandler)
-        , m_displayConnections(false)
+        , m_saveData(this)
         , m_busName(busName)
+        , m_loadingEvents(false)
     {
     }
 
@@ -76,23 +148,34 @@ namespace ScriptCanvasEditor
     {
         NodeDescriptorComponent::Activate();
 
-        EBusNodeDescriptorRequestBus::Handler::BusConnect(GetEntityId());
+        EBusHandlerNodeDescriptorRequestBus::Handler::BusConnect(GetEntityId());
         GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
         GraphCanvas::WrapperNodeNotificationBus::Handler::BusConnect(GetEntityId());
         GraphCanvas::GraphCanvasPropertyBus::Handler::BusConnect(GetEntityId());
+        GraphCanvas::WrapperNodeConfigurationRequestBus::Handler::BusConnect(GetEntityId());
+        GraphCanvas::EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
+        GraphCanvas::SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
     void EBusHandlerNodeDescriptorComponent::Deactivate()
     {
         NodeDescriptorComponent::Deactivate();
 
+        GraphCanvas::SceneMemberNotificationBus::Handler::BusDisconnect();
+        GraphCanvas::EntitySaveDataRequestBus::Handler::BusDisconnect();
+        GraphCanvas::WrapperNodeConfigurationRequestBus::Handler::BusDisconnect();
         GraphCanvas::GraphCanvasPropertyBus::Handler::BusDisconnect();
         GraphCanvas::WrapperNodeNotificationBus::Handler::BusDisconnect();
         GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
-        EBusNodeDescriptorRequestBus::Handler::BusDisconnect();
+        EBusHandlerNodeDescriptorRequestBus::Handler::BusDisconnect();
     }
 
-    void EBusHandlerNodeDescriptorComponent::OnAddedToScene(const AZ::EntityId& sceneId)
+    void EBusHandlerNodeDescriptorComponent::OnNodeActivated()
+    {
+        GraphCanvas::WrapperNodeRequestBus::Event(GetEntityId(), &GraphCanvas::WrapperNodeRequests::SetWrapperType, AZ::Crc32(m_busName.c_str()));
+    }
+
+    void EBusHandlerNodeDescriptorComponent::OnAddedToScene(const AZ::EntityId& graphCanvasGraphId)
     {
         AZStd::any* userData = nullptr;
         GraphCanvas::NodeRequestBus::EventResult(userData, GetEntityId(), &GraphCanvas::NodeRequests::GetUserData);
@@ -103,7 +186,7 @@ namespace ScriptCanvasEditor
         }
 
         GraphCanvas::WrapperNodeRequestBus::Event(GetEntityId(), &GraphCanvas::WrapperNodeRequests::SetActionString, "Add/Remove Events");
-        GraphCanvas::SlotLayoutRequestBus::Event(GetEntityId(), &GraphCanvas::SlotLayoutRequests::SetSlotGroupVisible, SlotGroups::EBusConnectionSlotGroup, m_displayConnections);
+        GraphCanvas::SlotLayoutRequestBus::Event(GetEntityId(), &GraphCanvas::SlotLayoutRequests::SetSlotGroupVisible, SlotGroups::EBusConnectionSlotGroup, m_saveData.m_displayConnections);
 
         if (m_scriptCanvasId.IsValid())
         {
@@ -134,6 +217,65 @@ namespace ScriptCanvasEditor
                     }
                 }
             }
+        }
+    }
+
+    void EBusHandlerNodeDescriptorComponent::OnNodeDeserialized(const AZ::EntityId&, const GraphCanvas::GraphSerialization&)
+    {
+        m_saveData.m_enabledEvents.clear();
+    }
+
+    void EBusHandlerNodeDescriptorComponent::OnMemberSetupComplete()
+    {
+        m_loadingEvents = true;
+        AZ::EntityId graphCanvasGraphId;
+        GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
+
+        bool inUndoRedo = false;
+        GeneralRequestBus::BroadcastResult(inUndoRedo, &GeneralRequests::IsInUndoRedo, graphCanvasGraphId);
+
+        // If we are in undo/redo we don't want to repopulate ourselves
+        // as all the visual information gets recreated through the undo/redo stack.
+        if (!inUndoRedo)
+        {
+            for (const AZStd::string& eventName : m_saveData.m_enabledEvents)
+            {
+                if (m_eventTypeToId.find(eventName) == m_eventTypeToId.end())
+                {
+                    AZ::EntityId internalNode = Nodes::DisplayEbusEventNode(graphCanvasGraphId, m_busName, eventName);
+
+                    if (internalNode.IsValid())
+                    {
+                        GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::Add, internalNode);
+
+                        GraphCanvas::WrappedNodeConfiguration configuration = GetEventConfiguration(eventName);
+                        GraphCanvas::WrapperNodeRequestBus::Event(GetEntityId(), &GraphCanvas::WrapperNodeRequests::WrapNode, internalNode, configuration);
+                    }
+                }
+            }
+        }
+        m_loadingEvents = false;
+
+        m_saveData.RegisterIds(GetEntityId(), graphCanvasGraphId);
+    }
+
+    void EBusHandlerNodeDescriptorComponent::WriteSaveData(GraphCanvas::EntitySaveDataContainer& saveDataContainer) const
+    {
+        EBusHandlerNodeDescriptorSaveData* saveData = saveDataContainer.FindCreateSaveData<EBusHandlerNodeDescriptorSaveData>();
+
+        if (saveData)
+        {
+            (*saveData) = m_saveData;
+        }
+    }
+
+    void EBusHandlerNodeDescriptorComponent::ReadSaveData(const GraphCanvas::EntitySaveDataContainer& saveDataContainer)
+    {
+        const EBusHandlerNodeDescriptorSaveData* saveData = saveDataContainer.FindSaveDataAs<EBusHandlerNodeDescriptorSaveData>();
+
+        if (saveData)
+        {
+            m_saveData = (*saveData);
         }
     }
 
@@ -221,10 +363,29 @@ namespace ScriptCanvasEditor
         return retVal;
     }
 
+    GraphCanvas::Endpoint EBusHandlerNodeDescriptorComponent::FindEventNodeEndpoint(const ScriptCanvas::SlotId& scriptCanvasSlotId) const
+    {
+        GraphCanvas::Endpoint endpoint;
+
+        for (auto& mapPair : m_eventTypeToId)
+        {
+            AZ::EntityId graphCanvasSlotId;
+            SlotMappingRequestBus::EventResult(graphCanvasSlotId, mapPair.second, &SlotMappingRequests::MapToGraphCanvasId, scriptCanvasSlotId);
+
+            if (graphCanvasSlotId.IsValid())
+            {
+                endpoint = GraphCanvas::Endpoint(mapPair.second, graphCanvasSlotId);
+                break;
+            }
+        }
+
+        return endpoint;
+    }
+
     void EBusHandlerNodeDescriptorComponent::OnWrappedNode(const AZ::EntityId& wrappedNode)
     {
         AZStd::string eventName;
-        EBusEventNodeDescriptorRequestBus::EventResult(eventName, wrappedNode, &EBusEventNodeDescriptorRequests::GetEventName);
+        EBusHandlerEventNodeDescriptorRequestBus::EventResult(eventName, wrappedNode, &EBusHandlerEventNodeDescriptorRequests::GetEventName);
 
         if (eventName.empty())
         {
@@ -246,6 +407,12 @@ namespace ScriptCanvasEditor
                 (*userData) = m_scriptCanvasId;
 
                 GraphCanvas::NodeDataSlotRequestBus::Event(wrappedNode, &GraphCanvas::NodeDataSlotRequests::RecreatePropertyDisplay);
+            }
+            
+            if (!m_loadingEvents)
+            {
+                m_saveData.m_enabledEvents.emplace_back(eventName);
+                m_saveData.SignalDirty();
             }
         }
         // If we are wrapping the same node twice for just ignore it and log a message
@@ -272,8 +439,35 @@ namespace ScriptCanvasEditor
 
         if (iter != m_idToEventType.end())
         {
-            m_eventTypeToId.erase(iter->second);
+            AZStd::string eventType = iter->second;
+
+            m_eventTypeToId.erase(eventType);
             m_idToEventType.erase(iter);
+
+            for (auto eventIter = m_saveData.m_enabledEvents.begin(); eventIter != m_saveData.m_enabledEvents.end(); ++eventIter)
+            {
+                if (eventIter->compare(eventType) == 0)
+                {
+                    m_saveData.m_enabledEvents.erase(eventIter);
+                    m_saveData.SignalDirty();
+                    break;
+                }
+            }
+        }
+    }
+
+    GraphCanvas::WrappedNodeConfiguration EBusHandlerNodeDescriptorComponent::GetWrappedNodeConfiguration(const AZ::EntityId& wrappedNodeId) const
+    {
+        AZStd::string eventName;
+        EBusHandlerEventNodeDescriptorRequestBus::EventResult(eventName, wrappedNodeId, &EBusHandlerEventNodeDescriptorRequests::GetEventName);
+
+        if (eventName.empty())
+        {
+            return GraphCanvas::WrappedNodeConfiguration();
+        }
+        else
+        {
+            return GetEventConfiguration(eventName);
         }
     }
 
@@ -286,7 +480,7 @@ namespace ScriptCanvasEditor
     {
         // If we are hiding the connections, we need to confirm that
         // everything will be ok(i.e. no active connections)
-        if (!m_displayConnections)
+        if (!m_saveData.m_displayConnections)
         {
             AZ::Entity* entity = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, m_scriptCanvasId);
@@ -315,13 +509,13 @@ namespace ScriptCanvasEditor
                     if (!allowChange)
                     {
                         AZ_Warning("Script Canvas", false, "Cannot hide EBus Connection Controls because one ore more slots are currently connected. Please disconnect all slots to hide.");
-                        m_displayConnections = true;
+                        m_saveData.m_displayConnections = true;
                         PropertyGridRequestBus::Broadcast(&PropertyGridRequests::RefreshPropertyGrid);
                     }
                 }
             }
         }
 
-        GraphCanvas::SlotLayoutRequestBus::Event(GetEntityId(), &GraphCanvas::SlotLayoutRequests::SetSlotGroupVisible, SlotGroups::EBusConnectionSlotGroup, m_displayConnections);
+        GraphCanvas::SlotLayoutRequestBus::Event(GetEntityId(), &GraphCanvas::SlotLayoutRequests::SetSlotGroupVisible, SlotGroups::EBusConnectionSlotGroup, m_saveData.m_displayConnections);
     }
 }

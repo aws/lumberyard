@@ -80,6 +80,19 @@ namespace AzFramework
         }
 
         /**
+         * Overloads the inequality operator to indicate that two slice instantiation
+         * tickets are not equal do not have the same entity context ID and request ID.
+         * @param rhs The slice instantiation ticket you want to compare to the
+         * current ticket.
+         * @return Returns true if the entity context ID and the request ID of the
+         * slice instantiation tickets are not equal.
+         */
+        inline bool operator!=(const SliceInstantiationTicket& rhs) const
+        {
+            return !((*this) == rhs);
+        }
+
+        /**
          * Overloads the boolean operator to indicate that a slice instantiation  
          * ticket is true if its request ID is valid.
          * @return Returns true if the request ID is not equal to zero.

@@ -14,6 +14,8 @@
 #include <QtWidgets/QFrame>
 #include <AzCore/std/string/string.h>
 
+#include <AzQtComponents/Components/Widgets/CardHeader.h>
+
 class QHBoxLayout;
 class QLabel;
 class QPushButton;
@@ -27,7 +29,7 @@ namespace AzToolsFramework
      * via the appropriate setter (ex: SetIcon causes the icon widget to appear).
      */
     class ComponentEditorHeader
-        : public QFrame
+        : public AzQtComponents::CardHeader
     {
         Q_OBJECT;
     public:
@@ -68,9 +70,6 @@ namespace AzToolsFramework
         void OnExpanderChanged(bool expanded);
 
     private:
-        void mousePressEvent(QMouseEvent *event) override;
-        void mouseDoubleClickEvent(QMouseEvent *event) override;
-        void contextMenuEvent(QContextMenuEvent *event) override;
         void TriggerContextMenuUnderButton();
         void UpdateStyleSheets();
         void TriggerHelpButton();

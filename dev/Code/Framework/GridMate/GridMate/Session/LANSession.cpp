@@ -363,6 +363,12 @@ LANMember::LANMember(const LANMemberID& id, LANSession* session)
 {
     string extendedName;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(LANSession_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     char hostName[64];
     gethostname(hostName, AZ_ARRAY_SIZE(hostName));
 
@@ -383,6 +389,7 @@ LANMember::LANMember(const LANMemberID& id, LANSession* session)
     extendedName = string::format("%s::%s", hostName, procName);
 #else
     extendedName = string::format("%s", hostName);
+#endif
 #endif
 
     m_session = session;
@@ -1023,6 +1030,7 @@ LANSearch::Update()
     // Receive all the
     static const int k_maxDataSize = 2048;
     char data[k_maxDataSize];
+    bool haveMaxResults = false;
     while (true)
     {
         AZStd::intrusive_ptr<DriverAddress> from;
@@ -1086,14 +1094,14 @@ LANSearch::Update()
 
         if (m_results.size() == m_searchParams.m_maxSessions)
         {
-            SearchDone(); // We are done
+            haveMaxResults = true;
             break;
         }
     }
 
     // check the timeout
     timeElapsed = now - m_timeStart;
-    if (timeElapsed.count() > m_timeOutMS)
+    if (haveMaxResults || timeElapsed.count() > m_timeOutMS)
     {
         // we are done
         SearchDone();
@@ -1164,7 +1172,7 @@ void LANSessionService::OnServiceRegistered(IGridMate* gridMate)
     LANSessionServiceBus::Handler::BusConnect(gridMate);
 
     EBUS_DBG_EVENT(Debug::SessionDrillerBus, OnSessionServiceReady);
-    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);    
+    EBUS_EVENT_ID(m_gridMate, SessionEventBus, OnSessionServiceReady);
 }
 
 void LANSessionService::OnServiceUnregistered(IGridMate* gridMate)

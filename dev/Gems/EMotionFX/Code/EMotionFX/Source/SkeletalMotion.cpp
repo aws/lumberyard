@@ -1055,7 +1055,7 @@ namespace EMotionFX
         const uint32 numSubMotions = mSubMotions.GetLength();
         for (uint32 i = 0; i < numSubMotions; ++i)
         {
-            if (mSubMotions[i]->GetNameString().CheckIfIsEqual(name))
+            if (mSubMotions[i]->GetNameString() == name)
             {
                 return mSubMotions[i];
             }
@@ -1085,7 +1085,7 @@ namespace EMotionFX
         const uint32 numSubMotions = mSubMotions.GetLength();
         for (uint32 i = 0; i < numSubMotions; ++i)
         {
-            if (mSubMotions[i]->GetNameString().CheckIfIsEqual(name))
+            if (mSubMotions[i]->GetNameString() == name)
             {
                 return i;
             }

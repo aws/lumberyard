@@ -13,7 +13,6 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/UnicodeString.h>
 #include "AnimGraphStateCondition.h"
 #include "AnimGraph.h"
 #include "AnimGraphStateMachine.h"
@@ -107,22 +106,12 @@ namespace EMotionFX
     bool AnimGraphStateCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
         // add the unique data for the condition to the anim graph
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        const UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
 
         // in case a event got triggered constantly fire true until the condition gets reset
         if (uniqueData->mTriggered)
         {
             return true;
-        }
-
-        // update the unique data
-        if (uniqueData->mAnimGraphInstance != animGraphInstance ||
-            uniqueData->mAnimGraphInstance->FindEventHandlerIndex(uniqueData->mEventHandler) == MCORE_INVALIDINDEX32)
-        {
-            // create a new event handler for this motion condition and add it to the motion instance
-            uniqueData->mAnimGraphInstance = animGraphInstance;
-            uniqueData->mEventHandler = new AnimGraphStateCondition::EventHandler(const_cast<AnimGraphStateCondition*>(this), uniqueData);
-            uniqueData->mAnimGraphInstance->AddEventHandler(uniqueData->mEventHandler);
         }
 
         // get the condition test function type
@@ -169,16 +158,6 @@ namespace EMotionFX
         }
         break;
 
-        default:
-        {
-            // check if any event got triggered since we tested the condition the last time
-            if (functionIndex == uniqueData->mLastTriggeredType)
-            {
-                uniqueData->mLastTriggeredType  = FUNCTION_NONE;
-                uniqueData->mTriggered          = true;
-                return true;
-            }
-        }
         }
         ;
 
@@ -236,7 +215,6 @@ namespace EMotionFX
         // find the unique data and reset it
         UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
         uniqueData->mTriggered          = false;
-        uniqueData->mLastTriggeredType  = FUNCTION_NONE;
     }
 
 
@@ -248,7 +226,6 @@ namespace EMotionFX
         if (uniqueData == nullptr)
         {
             uniqueData = (UniqueData*)GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().RequestNew(TYPE_ID, this, animGraphInstance);
-            //uniqueData = new UniqueData(this, nullptr);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
     }
@@ -266,31 +243,31 @@ namespace EMotionFX
 
 
     // construct and output the information summary string for this object
-    void AnimGraphStateCondition::GetSummary(MCore::String* outResult) const
+    void AnimGraphStateCondition::GetSummary(AZStd::string* outResult) const
     {
-        outResult->Format("%s: State='%s', Test Function='%s'", GetTypeString(), GetAttributeString(ATTRIB_STATE)->AsChar(), GetTestFunctionString());
+        *outResult = AZStd::string::format("%s: State='%s', Test Function='%s'", GetTypeString(), GetAttributeString(ATTRIB_STATE)->AsChar(), GetTestFunctionString());
     }
 
 
     // construct and output the tooltip for this object
-    void AnimGraphStateCondition::GetTooltip(MCore::String* outResult) const
+    void AnimGraphStateCondition::GetTooltip(AZStd::string* outResult) const
     {
-        MCore::String columnName, columnValue;
+        AZStd::string columnName, columnValue;
 
         // add the condition type
         columnName = "Condition Type: ";
         columnValue = GetTypeString();
-        outResult->Format("<table border=\"0\"><tr><td width=\"100\"><b>%s</b></td><td>%s</td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"100\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the state name
         columnName = "State Name: ";
         columnValue = GetAttributeString(ATTRIB_STATE)->AsChar();
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // add the test function
         columnName = "Test Function: ";
         columnValue = GetTestFunctionString();
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td width=\"180\">%s</td></tr></table>", columnName.AsChar(), columnValue.AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td width=\"180\">%s</td></tr></table>", columnName.c_str(), columnValue.c_str());
     }
 
     //--------------------------------------------------------------------------------
@@ -300,36 +277,47 @@ namespace EMotionFX
     // constructor
     AnimGraphStateCondition::UniqueData::UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance)
         : AnimGraphObjectData(object, animGraphInstance)
+        , mAnimGraphInstance(animGraphInstance)
     {
-        mLastTriggeredType  = FUNCTION_NONE;
-        mAnimGraphInstance = animGraphInstance;
         mEventHandler       = nullptr;
         mTriggered          = false;
+        CreateEventHandler();
     }
 
 
     // destructor
     AnimGraphStateCondition::UniqueData::~UniqueData()
     {
-        // get rid of the event handler
-        if (mEventHandler)
-        {
-            if (mAnimGraphInstance)
-            {
-                mAnimGraphInstance->RemoveEventHandler(mEventHandler, false);
-            }
+        DeleteEventHandler();
+    }
 
-            mEventHandler->Destroy();
-            mAnimGraphInstance = nullptr;
+    void AnimGraphStateCondition::UniqueData::CreateEventHandler()
+    {
+        DeleteEventHandler();
+
+        if (mAnimGraphInstance)
+        {
+            mEventHandler = new AnimGraphStateCondition::EventHandler(static_cast<AnimGraphStateCondition*>(mObject), this);
+            mAnimGraphInstance->AddEventHandler(mEventHandler);
         }
     }
 
+    void AnimGraphStateCondition::UniqueData::DeleteEventHandler()
+    {
+        if (mEventHandler)
+        {
+            mAnimGraphInstance->RemoveEventHandler(mEventHandler, false);
+
+            mEventHandler->Destroy();
+            mEventHandler = nullptr;
+        }
+    }
 
     // callback for when we renamed a node
-    void AnimGraphStateCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)
+    void AnimGraphStateCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_STATE)->GetValue().CheckIfIsEqual(oldName))
+        if (GetAttributeString(ATTRIB_STATE)->GetValue() == oldName)
         {
             GetAttributeString(ATTRIB_STATE)->SetValue(node->GetName());
         }
@@ -340,7 +328,7 @@ namespace EMotionFX
     void AnimGraphStateCondition::OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_STATE)->GetValue().CheckIfIsEqual(nodeToRemove->GetName()))
+        if (GetAttributeString(ATTRIB_STATE)->GetValue() == nodeToRemove->GetName())
         {
             GetAttributeString(ATTRIB_STATE)->SetValue("");
         }
@@ -367,70 +355,25 @@ namespace EMotionFX
 
     void AnimGraphStateCondition::EventHandler::OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // check if the state and the anim graph instance are valid and return directly in case one of them is not
-        if (state == nullptr || animGraphInstance == nullptr)
-        {
-            return;
-        }
-
-        const MCore::String& stateName = mCondition->GetAttributeString(ATTRIB_STATE)->GetValue();
-        if (stateName.GetIsEmpty() || stateName.CheckIfIsEqual(state->GetName()))
-        {
-            mUniqueData->mLastTriggeredType = FUNCTION_ENTER;
-        }
+        OnStateChange(animGraphInstance, state, FUNCTION_ENTER);
     }
 
 
     void AnimGraphStateCondition::EventHandler::OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // check if the state and the anim graph instance are valid and return directly in case one of them is not
-        if (state == nullptr || animGraphInstance == nullptr)
-        {
-            return;
-        }
-
-        // get the condition test function type
-        const int32 functionIndex = mCondition->GetAttributeFloatAsInt32(ATTRIB_FUNCTION);
-        if (functionIndex == FUNCTION_ENTERING)
-        {
-            const MCore::String& stateName = mCondition->GetAttributeString(ATTRIB_STATE)->GetValue();
-            if (stateName.GetIsEmpty() || stateName.CheckIfIsEqual(state->GetName()))
-            {
-                mUniqueData->mLastTriggeredType = FUNCTION_ENTERING;
-            }
-        }
+        OnStateChange(animGraphInstance, state, FUNCTION_ENTERING);
     }
 
 
     void AnimGraphStateCondition::EventHandler::OnStateExit(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // check if the state and the anim graph instance are valid and return directly in case one of them is not
-        if (state == nullptr || animGraphInstance == nullptr)
-        {
-            return;
-        }
-
-        const MCore::String& stateName = mCondition->GetAttributeString(ATTRIB_STATE)->GetValue();
-        if (stateName.GetIsEmpty() || stateName.CheckIfIsEqual(state->GetName()))
-        {
-            mUniqueData->mLastTriggeredType = FUNCTION_EXIT;
-        }
+        OnStateChange(animGraphInstance, state, FUNCTION_EXIT);
     }
 
 
     void AnimGraphStateCondition::EventHandler::OnStateEnd(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // check if the state and the anim graph instance are valid and return directly in case one of them is not
-        if (state == nullptr || animGraphInstance == nullptr)
-        {
-            return;
-        }
-
-        const MCore::String& stateName = mCondition->GetAttributeString(ATTRIB_STATE)->GetValue();
-        if (stateName.GetIsEmpty() || stateName.CheckIfIsEqual(state->GetName()))
-        {
-            mUniqueData->mLastTriggeredType = FUNCTION_END;
-        }
+        OnStateChange(animGraphInstance, state, FUNCTION_END);
     }
 }   // namespace EMotionFX
 

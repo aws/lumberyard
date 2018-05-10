@@ -32,7 +32,8 @@
             "../../../CryEngine/Cry3DEngine/MeshCompiler/TangentSpaceCalculation.cpp",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/PVRTTriStrip/PVRTTriStrip.h",
             "../../../CryEngine/Cry3DEngine/MeshCompiler/PVRTTriStrip/PVRTTriStrip.cpp",
-            "../../../SDKs/TangentBasisComputation/mikkelsen/mikktspace.cpp"
+            "@3P:mikkelsen@/mikkelsen/mikktspace.cpp",
+            "@3P:mikkelsen@/mikkelsen/mikktspace.h"
         ],
         "Source Files":
         [

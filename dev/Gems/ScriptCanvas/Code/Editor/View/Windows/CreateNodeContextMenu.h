@@ -22,7 +22,7 @@ namespace ScriptCanvasEditor
 {
     namespace Widget
     {
-        class NodePalette;
+        class NodePaletteDockWidget;
     }
 
     class CreateNodeAction
@@ -35,10 +35,10 @@ namespace ScriptCanvasEditor
     public:
         virtual ~CreateNodeAction() = default;
 
-        virtual void RefreshAction(const AZ::EntityId& sceneId) = 0;
+        virtual void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) = 0;
 
         // Returns whether or not the action needs to create an Undo state after executing.
-        virtual bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) = 0;
+        virtual bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) = 0;
     };
 
     class AddSelectedEntitiesAction
@@ -49,8 +49,8 @@ namespace ScriptCanvasEditor
         AddSelectedEntitiesAction(QObject* parent);
         virtual ~AddSelectedEntitiesAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
     };
 
     class CutGraphSelectionAction
@@ -61,8 +61,8 @@ namespace ScriptCanvasEditor
         CutGraphSelectionAction(QObject* parent);
         virtual ~CutGraphSelectionAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
     };
 
     class CopyGraphSelectionAction
@@ -73,8 +73,8 @@ namespace ScriptCanvasEditor
         CopyGraphSelectionAction(QObject* parent);
         virtual ~CopyGraphSelectionAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
     };
 
     class PasteGraphSelectionAction
@@ -85,8 +85,8 @@ namespace ScriptCanvasEditor
         PasteGraphSelectionAction(QObject* parent);
         virtual ~PasteGraphSelectionAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
     };
 
     class DuplicateGraphSelectionAction
@@ -97,8 +97,8 @@ namespace ScriptCanvasEditor
         DuplicateGraphSelectionAction(QObject* parent);
         virtual ~DuplicateGraphSelectionAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
     };
 
     class DeleteGraphSelectionAction
@@ -109,8 +109,8 @@ namespace ScriptCanvasEditor
         DeleteGraphSelectionAction(QObject* parent);
         virtual ~DeleteGraphSelectionAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
     };
 
     class AddCommentAction
@@ -121,8 +121,24 @@ namespace ScriptCanvasEditor
         AddCommentAction(QObject* parent);
         virtual ~AddCommentAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
+    };
+
+    class EndpointSelectionAction
+        : public QAction
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(EndpointSelectionAction, AZ::SystemAllocator, 0);
+
+        EndpointSelectionAction(const GraphCanvas::Endpoint& endpoint);
+        ~EndpointSelectionAction() = default;
+
+        const GraphCanvas::Endpoint& GetEndpoint() const;
+
+    private:
+        GraphCanvas::Endpoint m_endpoint;
     };
 
     class CreateBlockCommentAction
@@ -133,8 +149,20 @@ namespace ScriptCanvasEditor
         CreateBlockCommentAction(QObject* parent);
         virtual ~CreateBlockCommentAction() = default;
 
-        void RefreshAction(const AZ::EntityId& sceneId) override;
-        bool TriggerAction(const AZ::EntityId& sceneId, const AZ::Vector2& scenePos) override;
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
+    };
+
+    class AddBookmarkAction
+        : public CreateNodeAction
+    {
+        Q_OBJECT
+    public:
+        AddBookmarkAction(QObject* parent);
+        virtual ~AddBookmarkAction() = default;
+
+        void RefreshAction(const AZ::EntityId& scriptCanvasSceneId) override;
+        bool TriggerAction(const AZ::EntityId& scriptCanvasSceneId, const AZ::Vector2& scenePos) override;
     };
 
     class CreateNodeContextMenu
@@ -148,11 +176,11 @@ namespace ScriptCanvasEditor
         ~CreateNodeContextMenu() = default;
 
         void DisableCreateActions();
-        void RefreshActions(const AZ::EntityId& sceneId);
+        void RefreshActions(const AZ::EntityId& scriptCanvasSceneId);
 
         void ResetSourceSlotFilter();
-        void FilterForSourceSlot(const AZ::EntityId& sceneId, const AZ::EntityId& sourceSlotId);
-        const Widget::NodePalette* GetNodePalette() const;
+        void FilterForSourceSlot(const AZ::EntityId& scriptCanvasGraphId, const AZ::EntityId& sourceSlotId);
+        const Widget::NodePaletteDockWidget* GetNodePalette() const;
 
     public slots:
 
@@ -163,6 +191,6 @@ namespace ScriptCanvasEditor
         void keyPressEvent(QKeyEvent* keyEvent) override;
         
         AZ::EntityId            m_sourceSlotId;
-        Widget::NodePalette*    m_palette;
+        Widget::NodePaletteDockWidget*    m_palette;
     };
 }

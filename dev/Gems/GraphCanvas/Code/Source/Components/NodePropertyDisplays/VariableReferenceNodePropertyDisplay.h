@@ -24,8 +24,8 @@
 
 #include <Components/NodePropertyDisplays/StringNodePropertyDisplay.h>
 
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
-#include <Components/NodePropertyDisplay/VariableDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/VariableDataInterface.h>
 #include <GraphCanvas/Components/Nodes/Variable/VariableNodeBus.h>
 
 namespace GraphCanvas

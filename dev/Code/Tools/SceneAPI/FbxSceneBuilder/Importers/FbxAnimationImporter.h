@@ -35,6 +35,7 @@ namespace AZ
                 static void Reflect(ReflectContext* context);
 
                 Events::ProcessingResult ImportAnimation(SceneNodeAppendedContext& context);
+                Events::ProcessingResult ImportBlendShapeAnimation(SceneNodeAppendedContext& context);
 
             protected:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800

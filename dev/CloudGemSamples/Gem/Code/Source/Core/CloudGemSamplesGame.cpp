@@ -235,6 +235,8 @@ LYGame::Platform CloudGemSamplesGame::GetPlatform() const
     platform = ePlatform_iOS;
 #elif defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
     platform = ePlatform_PC;
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(CloudGemSamplesGame_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
     return platform;

@@ -11,7 +11,6 @@
 */
 
 #include "MotionEventPresetsWidget.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "MotionEventsPlugin.h"
 #include "MotionEventPresetCreateDialog.h"
 #include <QVBoxLayout>
@@ -409,13 +408,13 @@ namespace EMStudio
         case 0:
             break;
         case 1:
-            motionEventPreset->SetEventType(FromQtString(item->text()).AsChar());
+            motionEventPreset->SetEventType(FromQtString(item->text()).c_str());
             break;
         case 2:
-            motionEventPreset->SetEventParameter(FromQtString(item->text()).AsChar());
+            motionEventPreset->SetEventParameter(FromQtString(item->text()).c_str());
             break;
         case 3:
-            motionEventPreset->SetMirrorType(FromQtString(item->text()).AsChar());
+            motionEventPreset->SetMirrorType(FromQtString(item->text()).c_str());
             break;
         default:
             break;
@@ -440,7 +439,7 @@ namespace EMStudio
 
             if (filename.isEmpty() == false)
             {
-                GetEventPresetManager()->Load(FromQtString(filename).AsChar());
+                GetEventPresetManager()->Load(FromQtString(filename).c_str());
             }
         }
         else

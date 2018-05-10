@@ -429,7 +429,7 @@ namespace AZStd
         AZ_FORCE_INLINE reverse_iterator rbegin()               { return reverse_iterator(end()); }
         AZ_FORCE_INLINE const_reverse_iterator rbegin() const   { return const_reverse_iterator(end()); }
         AZ_FORCE_INLINE reverse_iterator rend()                 { return reverse_iterator(begin()); }
-        AZ_FORCE_INLINE const_reverse_iterator rend() const     { return const_reverse_iterator(end()); }
+        AZ_FORCE_INLINE const_reverse_iterator rend() const     { return const_reverse_iterator(begin()); }
 
         AZ_FORCE_INLINE const_iterator root() const { return const_iterator(get_root()); }
         AZ_FORCE_INLINE iterator root() { return iterator(get_root()); }

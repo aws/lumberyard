@@ -19,7 +19,7 @@
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
 
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {
@@ -70,14 +70,18 @@ namespace GraphCanvas
         // NodeNotifications
         void OnNodeActivated();
 
-        void OnNodeWrapped(const AZ::EntityId&) override;
-        void OnNodeUnwrapped(const AZ::EntityId&) override;
+        void OnNodeWrapped(const AZ::EntityId& wrappingNode) override;
+        void OnNodeUnwrapped(const AZ::EntityId& wrappingNode) override;
         ////
 
     private:
-        GeneralNodeFrameComponent(const GeneralNodeFrameComponent&) = delete;
 
-        bool                            m_deleteWidget;
+        // Fix for VS2013
+        GeneralNodeFrameComponent(const GeneralNodeFrameComponent&) = delete;
+        const GeneralNodeFrameComponent& operator=(const GeneralNodeFrameComponent&) = delete;
+        ////
+
+        bool                            m_shouldDeleteFrame;
         GeneralNodeFrameGraphicsWidget* m_frameWidget;
     };
 

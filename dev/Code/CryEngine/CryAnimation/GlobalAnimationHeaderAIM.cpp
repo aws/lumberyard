@@ -1325,9 +1325,8 @@ void VExampleInit::Init(const CDefaultSkeleton* pDefaultSkeleton, const DynArray
                 m_fSmallest = 9999.0f;
                 RecursiveTest(Vec2d(fx, fy), rAIM, rRot, rPos, nWeaponBoneIdx, i0, i1, i2, i3, w0, w1, w2, w3);
 
-                if (m_fSmallest < 10.0)
+                if (m_fSmallest < (PRECISION * 2))
                 {
-                    CRY_ASSERT(m_fSmallest < (PRECISION * 2));
                     PolarGrid[y * CHUNK_GAHAIM_INFO::XGRID + x].m_fSmalest = f32(m_fSmallest);
                     PolarGrid[y * CHUNK_GAHAIM_INFO::XGRID + x].i0 = i0;
                     PolarGrid[y * CHUNK_GAHAIM_INFO::XGRID + x].i1 = i1;
@@ -1844,7 +1843,10 @@ void VExampleInit::RecursiveTest(const Vec2d& ControlPoint, GlobalAnimationHeade
         }
 
         uint32 sum = o0 + o1 + o2 + o3;
-        CRY_ASSERT(sum);
+        if (sum == 0)
+        {
+            return;
+        }
 
         m_nIterations++;
         if (m_nIterations > 50)

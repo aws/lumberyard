@@ -172,6 +172,11 @@ namespace UnitTest
         //AZ_TEST_ASSERT(hTable.bucket_count()==hash_set_traits::min_buckets);
         EXPECT_EQ((float)hash_set_traits::max_load_factor, hTable.max_load_factor());
 
+        hTable.reserve(50);
+        ValidateHash(hTable, hTable1.size());
+        AZ_TEST_ASSERT(hTable.bucket_count() * hTable.max_load_factor() >= 50);
+        AZ_TEST_ASSERT(hTable.bucket_count() < 100); // Make sure it doesn't interfere with the next test
+
         hTable.rehash(100);
         ValidateHash(hTable, hTable1.size());
         AZ_TEST_ASSERT(hTable.bucket_count() >= 100);
@@ -1072,6 +1077,35 @@ namespace UnitTest
         aset2.insert("PlacementObstructionBase");
         aset2.insert("DamageableBase");
         EXPECT_EQ(aset1, aset2); 
+    }
+
+    TEST_F(HashedContainers, UnorderedMapIterateEmpty)
+    {
+        AZStd::unordered_map<int, MoveOnlyType> map;
+        for (auto& item : map)
+        {
+            AZ_UNUSED(item);
+            EXPECT_TRUE(false) << "Iteration should never have occurred on an empty unordered_map";
+        }
+    }
+
+    TEST_F(HashedContainers, UnorderedMapIterateItems)
+    {
+        AZStd::unordered_map<int, int> map{
+            {1, 2},
+            {3, 4},
+            {5, 6},
+            {7, 8}
+        };
+
+        unsigned idx = 0;
+        for (auto& item : map)
+        {
+            EXPECT_EQ(item.second, item.first + 1);
+            ++idx;
+        }
+
+        EXPECT_EQ(idx, map.size());
     }
             
 #if defined(HAVE_BENCHMARK)

@@ -14,5 +14,5 @@ def build(bld):
 
     bld.DefineGem(
         includes = [ bld.Path('Code/CryEngine/CryAction') ],
-        disable_tests = not 'win' in bld.env['PLATFORM'],
+        disable_tests = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
     )

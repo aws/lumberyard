@@ -15,7 +15,6 @@
 #include "GLInclude.h"
 
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 #include "GBuffer.h"
 #include "RenderTexture.h"
 #include "GLSLShader.h"

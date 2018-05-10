@@ -28,8 +28,8 @@ namespace AzQtComponents
         public QObject
     {
     public:
-        TitleBarOverdrawHandler(QObject* parent);
-        ~TitleBarOverdrawHandler() override {}
+        explicit TitleBarOverdrawHandler(QObject* parent);
+        ~TitleBarOverdrawHandler() override;
 
         virtual void polish(QWidget* /*widget*/) {}
         virtual void addTitleBarOverdrawWidget(QWidget* /*widget*/) {}

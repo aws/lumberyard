@@ -64,8 +64,8 @@ namespace EMotionFX
         {
             MCore::LogInfo("Event #%d: (time=%f) (type=%s) (param=%s) (emitter=%s) (locWeight=%.4f  globWeight=%.4f)", i,
                 mEvents[i].mTimeValue,
-                mEvents[i].mTypeString->AsChar(),
-                mEvents[i].mParameters->AsChar(),
+                mEvents[i].mTypeString->c_str(),
+                mEvents[i].mParameters->c_str(),
                 mEvents[i].mEmitter->GetName(),
                 mEvents[i].mLocalWeight,
                 mEvents[i].mGlobalWeight);

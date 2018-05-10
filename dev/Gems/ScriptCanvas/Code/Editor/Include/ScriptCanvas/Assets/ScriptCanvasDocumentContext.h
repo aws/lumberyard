@@ -20,6 +20,14 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
+namespace AZ
+{
+    namespace Data
+    {
+        class AssetStreamInfo;
+    }
+}
+
 namespace ScriptCanvasEditor
 {
     class DocumentContext

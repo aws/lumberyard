@@ -28,7 +28,14 @@
 
 #include "AnimationThreadTask.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AnimationBase_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #undef GetClassName
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 struct CSystemEventListner_Animation

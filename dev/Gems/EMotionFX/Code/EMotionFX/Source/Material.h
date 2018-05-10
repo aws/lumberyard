@@ -78,7 +78,7 @@ namespace EMotionFX
          * Get the material name in String format.
          * @result The name of the material.
          */
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
 
         /**
          * Set the material name.

@@ -118,7 +118,7 @@ public:
     void AddToCache();
 
     const SVolumeDataSrcB* GetData() const;
-    CREVolumeObject::IVolumeTexture* GetVolumeTexture() const;
+    IVolumeTexture* GetVolumeTexture() const;
 
     const AABB& GetTightBounds() const;
     float GetScale() const;
@@ -138,7 +138,7 @@ private:
     float m_scale;
     string m_volDataFilePath;
     SVolumeDataSrcB* m_pData;
-    CREVolumeObject::IVolumeTexture* m_pVolTex;
+    IVolumeTexture* m_pVolTex;
     SVolumeDataHull* m_pHull;
     _smart_ptr<IRenderMesh> m_pHullMesh;
 };
@@ -259,7 +259,7 @@ const SVolumeDataSrcB* CVolumeDataItem::GetData() const
 }
 
 
-CREVolumeObject::IVolumeTexture* CVolumeDataItem::GetVolumeTexture() const
+IVolumeTexture* CVolumeDataItem::GetVolumeTexture() const
 {
     return m_pVolTex;
 }
@@ -301,7 +301,7 @@ public:
     int AddRef();
     int Release();
 
-    void CalculateShadows(const Vec3& newLightDir, float shadowStrength, const CVolumeDataItem* pVolSrc, CREVolumeObject::IVolumeTexture* pShadDst);
+    void CalculateShadows(const Vec3& newLightDir, float shadowStrength, const CVolumeDataItem* pVolSrc, IVolumeTexture* pShadDst);
 
 private:
     CVolumeShadowCreator();
@@ -350,7 +350,7 @@ int CVolumeShadowCreator::Release()
 }
 
 
-void CVolumeShadowCreator::CalculateShadows(const Vec3& newLightDir, float shadowStrength, const CVolumeDataItem* pVolSrc, CREVolumeObject::IVolumeTexture* pShadDst)
+void CVolumeShadowCreator::CalculateShadows(const Vec3& newLightDir, float shadowStrength, const CVolumeDataItem* pVolSrc, IVolumeTexture* pShadDst)
 {
     const SVolumeDataSrcB* pSrc(pVolSrc->GetData());
     if (!pSrc)

@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include "NodePaletteTreeItem.h"
+#include <GraphCanvas/Widgets/NodePalette/TreeItems/DraggableNodePaletteTreeItem.h>
 #include "CreateNodeMimeEvent.h"
 
 namespace ScriptCanvasEditor
@@ -39,7 +39,7 @@ namespace ScriptCanvasEditor
     };
     
     class EBusSendEventPaletteTreeItem
-        : public DraggableNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
     {
     private:
         static const QString& GetDefaultIcon();
@@ -100,21 +100,21 @@ namespace ScriptCanvasEditor
         const AZStd::string& GetBusName() { return m_busName; }
         const AZStd::string& GetEventName() { return m_eventName; }
 
-        NodeIdPair ConstructNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition) override;
-        bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId) override;
+        NodeIdPair ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) override;
+        bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId) override;
 
-        NodeIdPair CreateEventNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition) const;        
+        NodeIdPair CreateEventNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) const;
 
     private:
         AZStd::string m_busName;
         AZStd::string m_eventName;
     };
     
-    // These nodes will create a purely visual representation of the data. They do not have a corresponding ScriptCavnas node, but instead
+    // These nodes will create a purely visual representation of the data. They do not have a corresponding ScriptCanvas node, but instead
     // share slots from the owning EBus Handler node. This creates a bit of weirdness with the general creation, since we no longer have a 1:1
     // and need to create a bus wrapper for these things whenever we try to make them.
     class EBusHandleEventPaletteTreeItem
-        : public DraggableNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
     {
     private:
         static const QString& GetDefaultIcon();

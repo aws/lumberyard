@@ -48,10 +48,10 @@
 #define fObjectToNodeSizeRatio (1.f / 8.f)
 #define fMinShadowCasterViewDist (8.f)
 
-namespace
+namespace LegacyInternal
 {
     // File scoped LegacyJobExecutor instance used to run all RenderContent jobs
-    AZ::LegacyJobExecutor* s_renderContentJobExecutor;
+    static AZ::LegacyJobExecutor* s_renderContentJobExecutor;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -120,12 +120,12 @@ void COctreeNode::RenderContent(int nRenderMask, const SRenderingPassInfo& passI
         GetObjManager()->AddCullJobProducer();
     }
 
-    if (!s_renderContentJobExecutor)
+    if (!LegacyInternal::s_renderContentJobExecutor)
     {
-        s_renderContentJobExecutor = new AZ::LegacyJobExecutor;
+        LegacyInternal::s_renderContentJobExecutor = new AZ::LegacyJobExecutor;
     }
 
-    s_renderContentJobExecutor->StartJob(
+    LegacyInternal::s_renderContentJobExecutor->StartJob(
         [this, nRenderMask, passInfo, rendItemSorter, pCam]
         {
             this->RenderContentJobEntry(nRenderMask, passInfo, rendItemSorter, pCam);
@@ -136,8 +136,8 @@ void COctreeNode::RenderContent(int nRenderMask, const SRenderingPassInfo& passI
 //////////////////////////////////////////////////////////////////////////
 void COctreeNode::Shutdown()
 {
-    delete s_renderContentJobExecutor;
-    s_renderContentJobExecutor = nullptr;
+    delete LegacyInternal::s_renderContentJobExecutor;
+    LegacyInternal::s_renderContentJobExecutor = nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1496,7 +1496,6 @@ bool CObjManager::IsBoxOccluded(const AABB& objBox,
 
     if (GetCVars()->e_CoverageBuffer)
     {
-        CullQueue().AddItem(objBox, fDistance, pOcclTestVars, mainFrameID);
         return pOcclTestVars->nLastOccludedMainFrameID == mainFrameID - 1;
     }
 

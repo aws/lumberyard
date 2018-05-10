@@ -41,6 +41,8 @@ public:
     DWORD GetPluginVersion();
     const char* GetPluginName();
     bool CanExitNow();
+    static QString GetFFMPEGExectablePath();
+    static bool RuntimeTest();
     static void RegisterTheCommand();
     void OnEditorNotify(EEditorNotifyEvent aEventId);
 };

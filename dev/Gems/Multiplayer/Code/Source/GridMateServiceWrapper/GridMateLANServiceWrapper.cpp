@@ -61,6 +61,9 @@ namespace Multiplayer
         searchParams.m_version = params.m_version;
         searchParams.m_familyType = static_cast<GridMate::Driver::BSDSocketFamilyType>(params.FetchValueOrDefault<int>("gm_ipversion", GridMate::Driver::BSDSocketFamilyType::BSD_AF_INET));
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(GridMateLANServiceWrapper_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         EBUS_EVENT_ID_RESULT(retVal, gridMate, GridMate::LANSessionServiceBus, StartGridSearch, searchParams);
         

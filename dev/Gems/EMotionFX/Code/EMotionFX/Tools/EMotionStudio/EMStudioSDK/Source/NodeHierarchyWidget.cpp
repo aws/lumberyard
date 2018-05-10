@@ -42,10 +42,10 @@ namespace EMStudio
             GetCommandManager()->RegisterCommandCallback( "Unselect", mUnselectCallback );
             GetCommandManager()->RegisterCommandCallback( "ClearSelection", mClearSelectionCallback );*/
 
-        mBoneIcon       = new QIcon(MCore::String(MysticQt::GetDataDir() + "Images/Icons/Bone.png").AsChar());
-        mNodeIcon       = new QIcon(MCore::String(MysticQt::GetDataDir() + "Images/Icons/Node.png").AsChar());
-        mMeshIcon       = new QIcon(MCore::String(MysticQt::GetDataDir() + "Images/Icons/Mesh.png").AsChar());
-        mCharacterIcon  = new QIcon(MCore::String(MysticQt::GetDataDir() + "Images/Icons/Character.png").AsChar());
+        mBoneIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Bone.png").c_str());
+        mNodeIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Node.png").c_str());
+        mMeshIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Mesh.png").c_str());
+        mCharacterIcon  = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Character.png").c_str());
 
         mActorInstanceIDs.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK);
 
@@ -224,7 +224,8 @@ namespace EMStudio
     void NodeHierarchyWidget::AddActorInstance(EMotionFX::ActorInstance* actorInstance)
     {
         EMotionFX::Actor*   actor       = actorInstance->GetActor();
-        MCore::String       actorName   = actor->GetFileNameString().ExtractFileName();
+        AZStd::string       actorName;
+        AzFramework::StringFunc::Path::GetFileName(actor->GetFileNameString().c_str(), actorName);
         const uint32        numNodes    = actor->GetNumNodes();
 
         // extract the bones from the actor
@@ -242,14 +243,14 @@ namespace EMStudio
             rootItem->setSelected(true);
         }
 
-        rootItem->setText(0, actorName.AsChar());
+        rootItem->setText(0, actorName.c_str());
         rootItem->setText(1, "Character");
-        rootItem->setText(2, MCore::String(numNodes).AsChar());
-        rootItem->setText(3, MCore::String(numIndices / 3).AsChar());
+        rootItem->setText(2, AZStd::to_string(numNodes).c_str());
+        rootItem->setText(3, AZStd::to_string(numIndices / 3).c_str());
         rootItem->setText(4, "");
         rootItem->setExpanded(true);
         rootItem->setIcon(0, *mCharacterIcon);
-        QString whatsthis = MCore::String(actorInstance->GetID()).AsChar();
+        QString whatsthis = AZStd::to_string(actorInstance->GetID()).c_str();
         rootItem->setWhatsThis(0, whatsthis);
 
         mHierarchy->addTopLevelItem(rootItem);
@@ -276,7 +277,8 @@ namespace EMStudio
         }
 
         const uint32        nodeIndex   = node->GetNodeIndex();
-        MCore::String       nodeName    = node->GetNameString().Lowered();
+        AZStd::string       nodeName = node->GetNameString();
+        AZStd::to_lower(nodeName.begin(), nodeName.end());
         EMotionFX::Mesh*    mesh        = actorInstance->GetActor()->GetMesh(actorInstance->GetLODLevel(), nodeIndex);
         const bool          isMeshNode  = (mesh);
         const bool          isBone      = (mBoneList.Find(nodeIndex) != MCORE_INVALIDINDEX32);
@@ -286,12 +288,12 @@ namespace EMStudio
     }
 
 
-    bool NodeHierarchyWidget::CheckIfNodeVisible(const MCore::String& nodeName, bool isMeshNode, bool isBone, bool isNode)
+    bool NodeHierarchyWidget::CheckIfNodeVisible(const AZStd::string& nodeName, bool isMeshNode, bool isBone, bool isNode)
     {
         if (((mDisplayMeshesButton->isChecked() && isMeshNode) ||
              (mDisplayBonesButton->isChecked() && isBone) ||
              (mDisplayNodesButton->isChecked() && isNode)) &&
-            (mFindString.GetIsEmpty() || nodeName.Contains(mFindString.AsChar())))
+            (mFindString.empty() || nodeName.find(mFindString) != AZStd::string::npos))
         {
             return true;
         }
@@ -303,7 +305,8 @@ namespace EMStudio
     void NodeHierarchyWidget::RecursivelyAddChilds(QTreeWidgetItem* parent, EMotionFX::Actor* actor, EMotionFX::ActorInstance* actorInstance, EMotionFX::Node* node)
     {
         const uint32        nodeIndex   = node->GetNodeIndex();
-        MCore::String       nodeName    = node->GetNameString().Lowered();
+        AZStd::string       nodeName = node->GetNameString();
+        AZStd::to_lower(nodeName.begin(), nodeName.end());
         const uint32        numChildren = node->GetNumChildNodes();
         EMotionFX::Mesh*    mesh        = actor->GetMesh(actorInstance->GetLODLevel(), nodeIndex);
         const bool          isMeshNode  = (mesh);
@@ -321,11 +324,11 @@ namespace EMStudio
             }
 
             item->setText(0, node->GetName());
-            mTempString.Format("%d", numChildren);
-            item->setText(2, mTempString.AsChar());
+            mTempString = AZStd::string::format("%d", numChildren);
+            item->setText(2, mTempString.c_str());
             item->setExpanded(true);
-            mTempString.Format("%d", actorInstance->GetID());
-            item->setWhatsThis(0, mTempString.AsChar());
+            mTempString = AZStd::string::format("%d", actorInstance->GetID());
+            item->setWhatsThis(0, mTempString.c_str());
 
             // set the correct icon and the type
             if (isBone)
@@ -338,8 +341,8 @@ namespace EMStudio
             {
                 item->setIcon(0, *mMeshIcon);
                 item->setText(1, "Mesh");
-                mTempString.Format("%d", mesh->GetNumIndices() / 3);
-                item->setText(3, mTempString.AsChar());
+                mTempString = AZStd::string::format("%d", mesh->GetNumIndices() / 3);
+                item->setText(3, mTempString.c_str());
             }
             else if (isNode)
             {
@@ -396,7 +399,7 @@ namespace EMStudio
     void NodeHierarchyWidget::RemoveNodeFromSelectedNodes(const char* nodeName, uint32 actorInstanceID)
     {
         // generate the string id for the given node name
-        const uint32 nodeNameID = MCore::GetStringIDGenerator().GenerateIDForString(nodeName);
+        const uint32 nodeNameID = MCore::GetStringIdPool().GenerateIdForString(nodeName);
 
         // iterate through the selected nodes and remove the given ones
         for (uint32 i = 0; i < mSelectedNodes.GetLength(); )
@@ -417,7 +420,7 @@ namespace EMStudio
 
     void NodeHierarchyWidget::RemoveActorInstanceFromSelectedNodes(uint32 actorInstanceID)
     {
-        const uint32 emptyStringID = MCore::GetStringIDGenerator().GenerateIDForString("");
+        const uint32 emptyStringID = MCore::GetStringIdPool().GenerateIdForString("");
 
         // iterate through the selected nodes and remove the given ones
         for (uint32 i = 0; i < mSelectedNodes.GetLength(); )
@@ -440,7 +443,7 @@ namespace EMStudio
     void NodeHierarchyWidget::AddNodeToSelectedNodes(const char* nodeName, uint32 actorInstanceID)
     {
         // generate the string id for the given node name
-        const uint32 nodeNameID = MCore::GetStringIDGenerator().GenerateIDForString(nodeName);
+        const uint32 nodeNameID = MCore::GetStringIdPool().GenerateIdForString(nodeName);
 
         // get the number of nodes and iterate through them
         const uint32 numSelectedNodes = mSelectedNodes.GetLength();
@@ -472,11 +475,12 @@ namespace EMStudio
         {
             // get the actor instance id to which this item belongs to
             mActorInstanceIDString = FromQtString(item->whatsThis(0));
-            MCORE_ASSERT(mActorInstanceIDString.CheckIfIsValidInt());
-            uint32 actorInstanceID = mActorInstanceIDString.ToInt();
+            int actorInstanceID;
+            const bool validConversion = AzFramework::StringFunc::LooksLikeInt(mActorInstanceIDString.c_str(), &actorInstanceID);
+            MCORE_ASSERT(validConversion);
 
             // remove the node from the selected nodes
-            RemoveNodeFromSelectedNodes(FromQtString(item->text(0)).AsChar(), actorInstanceID);
+            RemoveNodeFromSelectedNodes(FromQtString(item->text(0)).c_str(), actorInstanceID);
 
             // remove the selected actor
             QTreeWidgetItem* parent = item->parent();
@@ -504,7 +508,7 @@ namespace EMStudio
         //String debugString;
         //debugString.Reserve(10000);
         //for (uint32 s=0; s<mSelectedNodes.GetLength(); ++s)
-        //  debugString.FormatAdd("%s,", mSelectedNodes[s].GetNodeName());
+        //  debugString += AZStd::string::format("%s,", mSelectedNodes[s].GetNodeName());
         //LOG(debugString.AsChar());
 
         // get the selected items and the number of them
@@ -527,8 +531,9 @@ namespace EMStudio
             FromQtString(item->text(0), &mItemName);
             FromQtString(item->whatsThis(0), &mActorInstanceIDString);
 
-            MCORE_ASSERT(mActorInstanceIDString.CheckIfIsValidInt());
-            uint32 actorInstanceID = mActorInstanceIDString.ToInt();
+            int actorInstanceID;
+            const bool validConversion = AzFramework::StringFunc::LooksLikeInt(mActorInstanceIDString.c_str(), &actorInstanceID);
+            MCORE_ASSERT(validConversion);
 
             EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(actorInstanceID);
             if (actorInstance == nullptr)
@@ -539,9 +544,9 @@ namespace EMStudio
 
             // check if the item name is actually a valid node
             EMotionFX::Actor* actor = actorInstance->GetActor();
-            if (actor->GetSkeleton()->FindNodeByName(mItemName.AsChar()))
+            if (actor->GetSkeleton()->FindNodeByName(mItemName.c_str()))
             {
-                AddNodeToSelectedNodes(mItemName.AsChar(), actorInstanceID);
+                AddNodeToSelectedNodes(mItemName.c_str(), actorInstanceID);
             }
 
             // check if we are dealing with an actor instance
@@ -584,7 +589,7 @@ namespace EMStudio
         // show the menu if at least one selected
         const uint32 numSelectedNodes = mSelectedNodes.GetLength();
         if (numSelectedNodes == 0 ||
-            (numSelectedNodes == 1 && mSelectedNodes[0].GetNodeNameString().GetIsEmpty()))
+            (numSelectedNodes == 1 && mSelectedNodes[0].GetNodeNameString().empty()))
         {
             return;
         }
@@ -618,7 +623,7 @@ namespace EMStudio
     {
         //mFindString = String(text.toAscii().data()).Lowered();
         FromQtString(text, &mFindString);
-        mFindString.ToLower();
+        AZStd::to_lower(mFindString.begin(), mFindString.end());
         Update();
     }
 
@@ -643,7 +648,7 @@ namespace EMStudio
         const uint32 numSelectedNodes = mSelectedNodes.GetLength();
         for (uint32 i = 0; i < numSelectedNodes; ++i)
         {
-            if (mSelectedNodes[i].mActorInstanceID == actorInstanceID && mSelectedNodes[i].GetNodeNameString().CheckIfIsEqual(nodeName))
+            if (mSelectedNodes[i].mActorInstanceID == actorInstanceID && mSelectedNodes[i].GetNodeNameString() == nodeName)
             {
                 return true;
             }
@@ -661,7 +666,7 @@ namespace EMStudio
         const uint32 numSelectedNodes = mSelectedNodes.GetLength();
         for (uint32 i = 0; i < numSelectedNodes; ++i)
         {
-            if (mSelectedNodes[i].mActorInstanceID == actorInstanceID && mSelectedNodes[i].GetNodeNameString().GetIsEmpty())
+            if (mSelectedNodes[i].mActorInstanceID == actorInstanceID && mSelectedNodes[i].GetNodeNameString().empty())
             {
                 return true;
             }

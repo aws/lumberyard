@@ -17,6 +17,7 @@
 #include "ParticleSubEmitter.h"
 #include "ParticleEmitter.h"
 #include <IAudioSystem.h>
+#include <AzCore/Math/Internal/MathTypes.h>
 
 #include <PNoise3.h>
 
@@ -239,7 +240,7 @@ void CParticleSubEmitter::EmitParticles(SParticleUpdateContext& context)
         
         //Since we are using the original particle lifetime without the strength curve, it's relatively safe to keep this code here; 
         //i.e. it won't ramp down toward zero and suddenly jump up to fEmitterLife.
-        if (fParticleLife == 0.f)
+        if (fParticleLife < AZ_FLT_EPSILON)
         {
             fParticleLife = fEmitterLife;
             if (fParticleLife <= 0.f)

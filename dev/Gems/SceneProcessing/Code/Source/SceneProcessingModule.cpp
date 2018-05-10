@@ -13,6 +13,8 @@
 #include <AzCore/Module/Module.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
+#include <SceneBuilder/SceneBuilderComponent.h>
+#include <SceneBuilder/SceneSerializationHandler.h>
 #include <Config/Components/SceneProcessingConfigSystemComponent.h>
 #include <Config/Components/SoftNameBehavior.h>
 #include <Config/Widgets/GraphTypeSelector.h>
@@ -42,6 +44,8 @@ namespace AZ
                 {
                     SceneProcessingConfig::SceneProcessingConfigSystemComponent::CreateDescriptor(),
                     SceneProcessingConfig::SoftNameBehavior::CreateDescriptor(),
+                    SceneBuilder::BuilderPluginComponent::CreateDescriptor(),
+                    SceneBuilder::SceneSerializationHandler::CreateDescriptor()
                 });
 
                 SceneProcessingConfig::GraphTypeSelector::Register();

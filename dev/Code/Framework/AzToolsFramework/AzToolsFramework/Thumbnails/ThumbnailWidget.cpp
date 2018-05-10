@@ -30,11 +30,11 @@ namespace AzToolsFramework
         {
             if (m_key)
             {
-                disconnect(m_key.data(), &ThumbnailKey::Updated, this, &ThumbnailWidget::KeyUpdatedSlot);
+                disconnect(m_key.data(), &ThumbnailKey::ThumbnailUpdatedSignal, this, &ThumbnailWidget::KeyUpdatedSlot);
             }
             m_key = key;
             m_contextName = contextName;
-            connect(m_key.data(), &ThumbnailKey::Updated, this, &ThumbnailWidget::KeyUpdatedSlot);
+            connect(m_key.data(), &ThumbnailKey::ThumbnailUpdatedSignal, this, &ThumbnailWidget::KeyUpdatedSlot);
             repaint();
         }
 

@@ -38,7 +38,14 @@ namespace AZ
             char resolvedDestPath[AZ_MAX_PATH_LEN];
             ResolvePath(destinationFilePath, resolvedDestPath, AZ_MAX_PATH_LEN);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(LocalFileIO_win_inl, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             if (::CopyFileA(resolvedSourcePath, resolvedDestPath, true) == 0)
+#endif
             {
                 return ResultCode::Error;
             }

@@ -14,13 +14,15 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/EBus/Results.h>
+#include <AzCore/UserSettings/UserSettingsProvider.h>
 
 #include <AzFramework/Entity/EntityContextBus.h>
 
 #include <AzToolsFramework/API/ViewPaneOptions.h>
+
+#include <GraphCanvas/GraphCanvasBus.h>
 
 #include "SystemComponent.h"
 
@@ -30,24 +32,20 @@
 #include <Editor/Metrics.h>
 #include <Editor/Settings.h>
 
-#include <Libraries/Libraries.h>
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <ScriptCanvas/Core/Datum.h>
-#include <Editor/Assets/ScriptCanvasAssetHolder.h>
-#include <Editor/Assets/ScriptCanvasAssetReference.h>
-#include <Editor/Assets/ScriptCanvasAssetInstance.h>
-#include <Editor/Nodes/EditorLibrary.h>
-#include <Editor/Undo/ScriptCanvasUndoCache.h>
+#include <ScriptCanvas/Data/DataRegistry.h>
+#include <ScriptCanvas/Libraries/Libraries.h>
+#include <ScriptCanvas/Variable/VariableCore.h>
+#include <ScriptCanvas/Components/EditorGraph.h>
+#include <ScriptCanvas/Components/EditorGraphVariableManagerComponent.h>
 
 #include <LyViewPaneNames.h>
 
 #include <QMenu>
 
-#include <Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.h>
-#include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
-#include <Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h>
-#include <Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.h>
-#include <Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h>
+#include <ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.h>
+#include <ScriptCanvas/View/EditCtrls/GenericLineEditCtrl.h>
 
 namespace ScriptCanvasEditor
 {
@@ -65,15 +63,6 @@ namespace ScriptCanvasEditor
 
     void SystemComponent::Reflect(AZ::ReflectContext* context)
     {
-        ScriptCanvasData::Reflect(context);
-        ScriptCanvasAssetReference::Reflect(context);
-        ScriptCanvasAssetInstance::Reflect(context);
-        ScriptCanvasAssetHolder::Reflect(context);
-        EditorSettings::WindowSavedState::Reflect(context);
-        EditorSettings::PreviewSettings::Reflect(context);
-        Library::Editor::Reflect(context);
-        UndoData::Reflect(context);
-
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             ScriptCanvasEditor::Settings::Reflect(serialize);
@@ -92,24 +81,6 @@ namespace ScriptCanvasEditor
                     ;
             }
         }
-
-        // Base Mime Event
-        CreateNodeMimeEvent::Reflect(context);
-        SpecializedCreateNodeMimeEvent::Reflect(context);
-
-        // Specific Mime Event Implementations
-        CreateClassMethodMimeEvent::Reflect(context);
-        CreateBlockCommentNodeMimeEvent::Reflect(context);
-        CreateCommentNodeMimeEvent::Reflect(context);
-        CreateCustomNodeMimeEvent::Reflect(context);
-        CreateEBusHandlerMimeEvent::Reflect(context);
-        CreateEBusHandlerEventMimeEvent::Reflect(context);
-        CreateEBusSenderMimeEvent::Reflect(context);
-        CreateEntityRefNodeMimeEvent::Reflect(context);
-        CreateGetVariableNodeMimeEvent::Reflect(context);
-        CreateSetVariableNodeMimeEvent::Reflect(context);
-        CreateVariablePrimitiveNodeMimeEvent::Reflect(context);
-        CreateVariableObjectNodeMimeEvent::Reflect(context);
     }
 
     void SystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -125,7 +96,8 @@ namespace ScriptCanvasEditor
     void SystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
         required.push_back(AZ_CRC("ScriptCanvasService", 0x41fd58f3));
-        required.push_back(AZ_CRC("GraphCanvasService", 0x138a9c46));
+        required.push_back(GraphCanvas::GraphCanvasRequestsServiceId);
+        required.push_back(AZ_CRC("ScriptCanvasReflectService", 0xb3bfe139));
     }
 
     void SystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
@@ -144,10 +116,14 @@ namespace ScriptCanvasEditor
         }
         m_jobManager = AZStd::make_unique<AZ::JobManager>(jobDesc);
         m_jobContext = AZStd::make_unique<AZ::JobContext>(*m_jobManager);
+
+        PopulateEditorCreatableTypes();
     }
 
     void SystemComponent::Activate()
     {
+        m_propertyHandlers.emplace_back(RegisterGenericComboBoxHandler<ScriptCanvas::VariableId>());
+        m_propertyHandlers.emplace_back(RegisterGenericComboBoxHandler<AZ::Crc32>());
         SystemRequestBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
 
@@ -171,12 +147,32 @@ namespace ScriptCanvasEditor
 
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
         SystemRequestBus::Handler::BusDisconnect();
+
+        for (auto&& propertyHandler : m_propertyHandlers)
+        {
+            AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, propertyHandler.get());
+        }
+        m_propertyHandlers.clear();
     }
 
     void SystemComponent::AddAsyncJob(AZStd::function<void()>&& jobFunc)
     {
         auto* asyncFunction = AZ::CreateJobFunction(AZStd::move(jobFunc), true, m_jobContext.get());
         asyncFunction->Start();
+    }
+
+    void SystemComponent::GetEditorCreatableTypes(AZStd::unordered_set<ScriptCanvas::Data::Type>& outCreatableTypes)
+    {
+        outCreatableTypes.insert(m_creatableTypes.begin(), m_creatableTypes.end());
+    }
+
+    void SystemComponent::CreateEditorComponentsOnEntity(AZ::Entity* entity)
+    {
+        if (entity)
+        {
+            auto graph = entity->CreateComponent<Graph>();
+            entity->CreateComponent<EditorGraphVariableManagerComponent>(graph->GetUniqueId());
+        }
     }
 
     void SystemComponent::PopulateEditorGlobalContextMenu(QMenu* menu, const AZ::Vector2& point, int flags)
@@ -268,6 +264,42 @@ namespace ScriptCanvasEditor
                     }
                 }
             }
+        }
+    }
+
+    void SystemComponent::PopulateEditorCreatableTypes()
+    {
+        AZ::BehaviorContext* behaviorContext{};
+        AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+        AZ_Assert(behaviorContext, "Behavior Context should not be missing at this point");
+
+        bool showExcludedPreviewNodes = false;
+        // Local User Settings are not registered in an asset builders
+        if (AZ::UserSettingsBus::GetNumOfEventHandlers(AZ::UserSettings::CT_LOCAL) > 0)
+        {
+            AZStd::intrusive_ptr<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
+            showExcludedPreviewNodes = settings ? settings->m_showExcludedNodes : false;
+        }
+
+        auto dataRegistry = ScriptCanvas::GetDataRegistry();
+        for (const auto& scType : dataRegistry->m_creatableTypes)
+        {
+            if (!showExcludedPreviewNodes && scType.GetType() == ScriptCanvas::Data::eType::BehaviorContextObject)
+            {
+                if (const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(behaviorContext, ScriptCanvas::Data::ToAZType(scType)))
+                {
+                    // BehaviorContext classes with the ExcludeFrom attribute with a value of the ExcludeFlags::Preview are not added to the list of 
+                    // types that can be created in the editor
+                    const AZ::u64 exclusionFlags = AZ::Script::Attributes::ExcludeFlags::Preview;
+                    auto excludeClassAttributeData = azrtti_cast<const AZ::Edit::AttributeData<AZ::Script::Attributes::ExcludeFlags>*>(AZ::FindAttribute(AZ::Script::Attributes::ExcludeFrom, behaviorClass->m_attributes));
+                    if (excludeClassAttributeData && (excludeClassAttributeData->Get(nullptr) & exclusionFlags))
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            m_creatableTypes.insert(scType);
         }
     }
 }

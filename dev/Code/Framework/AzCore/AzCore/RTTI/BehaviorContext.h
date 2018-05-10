@@ -1543,6 +1543,29 @@ namespace AZ
         return AZ::Internal::EBusConnector<_Handler>::Connect(this, id);\
     }
 
+#define AZ_EBUS_BEHAVIOR_BINDER_TEMPLATE(_Handler,_TemplateUuid,_Allocator,...)\
+    AZ_CLASS_ALLOCATOR(_Handler,_Allocator,0)\
+    AZ_RTTI(_TemplateUuid, AZ::BehaviorEBusHandler)\
+    typedef _Handler ThisType;\
+    enum {\
+        AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_FUNC_ENUM, AZ_EBUS_SEQ(__VA_ARGS__))\
+        FN_MAX\
+    };\
+    int GetFunctionIndex(const char* functionName) const override {\
+        AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_FUNC_INDEX, AZ_EBUS_SEQ(__VA_ARGS__))\
+        return -1;\
+    }\
+    void Disconnect() override {\
+        this->BusDisconnect();\
+    }\
+    _Handler(){\
+        m_events.resize(FN_MAX);\
+        AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_REG_EVENT, AZ_EBUS_SEQ(__VA_ARGS__))\
+    }\
+    bool Connect(AZ::BehaviorValueParameter* id = nullptr) override {\
+        return AZ::Internal::EBusConnector<_Handler>::Connect(this, id);\
+    }
+
  /**
  * Provides the same functionality of the AZ_EBUS_BEHAVIOR_BINDER macro above with the additional ability to specifiy the names and a tooltips of handler methods
  * after listing the handler method in the macro.
@@ -2058,6 +2081,9 @@ namespace AZ
                 m_getter = nullptr;
                 return false;
             }
+
+            // assure that TR_THIS_PTR is set on the first parameter
+            m_getter->OverrideParameterTraits(0, AZ::BehaviorParameter::TR_THIS_PTR, 0);
         }
         else
         {
@@ -2079,6 +2105,9 @@ namespace AZ
                         isValidSignature = thisPtrType == currentClass->m_typeId;
                     }
                 }
+
+                // assure that TR_THIS_PTR is set on the first parameter
+                m_getter->OverrideParameterTraits(0, AZ::BehaviorParameter::TR_THIS_PTR, 0);
 
                 if (!isValidSignature)
                 {
@@ -2387,7 +2416,14 @@ namespace AZ
             name = AzTypeInfo<T>::Name();
         }
 
-        auto classTypeIt = m_typeToClassMap.find(AzTypeInfo<T>::Uuid());
+        AZ::Uuid typeUuid = AzTypeInfo<T>::Uuid();
+        AZ_Assert(!typeUuid.IsNull(), "Type %s has no AZ_TYPE_INFO or AZ_RTTI.  Please use an AZ_RTTI or AZ_TYPE_INFO declaration before trying to use it in reflection contexts.", name ? name : "<Unknown class>");
+        if (typeUuid.IsNull())
+        {
+            return ClassBuilder<T>(this, static_cast<BehaviorClass*>(nullptr));
+        }
+        
+        auto classTypeIt = m_typeToClassMap.find(typeUuid);
         if (IsRemovingReflection())
         {
             if (classTypeIt != m_typeToClassMap.end())

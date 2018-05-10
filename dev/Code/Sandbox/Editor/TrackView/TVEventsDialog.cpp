@@ -19,8 +19,9 @@
 #include "AnimationContext.h"
 #include <limits>
 
-#include "Maestro/Types/AnimNodeType.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
 
 // CTVEventsDialog dialog
 
@@ -45,9 +46,9 @@ public:
         {
             return 0;
         }
-        CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-        assert(pSequence);
-        return pSequence->GetTrackEventsCount();
+        CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+        assert(sequence);
+        return sequence->GetTrackEventsCount();
     }
 
     int columnCount(const QModelIndex& parent = QModelIndex()) const override
@@ -62,25 +63,58 @@ public:
             return false;
         }
 
-        for (int r = row; r < row + count; ++r)
+        bool result = true;
+
+        CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+        assert(sequence);
+
+        if (sequence->GetSequenceType() != SequenceType::Legacy)
         {
-            const QString eventName = index(r, 0).data().toString();
-            beginRemoveRows(QModelIndex(), r, r);
-            CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-            assert(pSequence);
-            pSequence->RemoveTrackEvent(eventName.toUtf8().data());
-            endRemoveRows();
+            AzToolsFramework::ScopedUndoBatch undo("Remove Track Event");
+
+            for (int r = row; r < row + count; ++r)
+            {
+                const QString eventName = index(r, 0).data().toString();
+                beginRemoveRows(QModelIndex(), r, r);
+                result &= sequence->RemoveTrackEvent(eventName.toUtf8().data());
+                endRemoveRows();
+
+                undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            }
         }
-        return true;
+        else
+        {
+            for (int r = row; r < row + count; ++r)
+            {
+                const QString eventName = index(r, 0).data().toString();
+                beginRemoveRows(QModelIndex(), r, r);
+                result &= sequence->RemoveTrackEvent(eventName.toUtf8().data());
+                endRemoveRows();
+            }
+        }
+
+        return result;
     }
 
     bool addRow(const QString& name)
     {
-        CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-        assert(pSequence);
+        CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+        assert(sequence);
         const int index = rowCount();
         beginInsertRows(QModelIndex(), index, index);
-        const bool result = pSequence->AddTrackEvent(name.toUtf8().data());
+        bool result = false;
+
+        if (sequence->GetSequenceType() != SequenceType::Legacy)
+        {
+            AzToolsFramework::ScopedUndoBatch undo("Add Track Event");
+            result = sequence->AddTrackEvent(name.toUtf8().data());
+            undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+        }
+        else
+        {
+            result = sequence->AddTrackEvent(name.toUtf8().data());
+        }
+
         endInsertRows();
         if (!result)
         {
@@ -92,42 +126,65 @@ public:
 
     bool moveRow(const QModelIndex& index, bool up)
     {
-        CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-        assert(pSequence);
+        CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+        assert(sequence);
         if (!index.isValid() || (up && index.row() == 0) || (!up && index.row() == rowCount() - 1))
         {
             return false;
         }
-        if (up)
+
+        bool result = false;
+
+        if (sequence->GetSequenceType() != SequenceType::Legacy)
         {
-            beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
-            pSequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
+            AzToolsFramework::ScopedUndoBatch undo("Move Track Event");
+            if (up)
+            {
+                beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
+                result = sequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
+            }
+            else
+            {
+                beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
+                result = sequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
+            }
+            undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
         else
         {
-            beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
-            pSequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
+            if (up)
+            {
+                beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
+                result = sequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
+            }
+            else
+            {
+                beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
+                result = sequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
+            }
         }
+
         endMoveRows();
-        return true;
+
+        return result;
     }
 
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override
     {
-        CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-        assert(pSequence);
+        CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+        assert(sequence);
         if (role != Qt::DisplayRole)
         {
             return QVariant();
         }
 
         float timeFirstUsed;
-        int usageCount = GetNumberOfUsageAndFirstTimeUsed(pSequence->GetTrackEvent(index.row()), timeFirstUsed);
+        int usageCount = GetNumberOfUsageAndFirstTimeUsed(sequence->GetTrackEvent(index.row()), timeFirstUsed);
 
         switch (index.column())
         {
         case 0:
-            return QString::fromLatin1(pSequence->GetTrackEvent(index.row()));
+            return QString::fromLatin1(sequence->GetTrackEvent(index.row()));
         case 1:
             return usageCount;
         case 2:
@@ -139,8 +196,8 @@ public:
 
     bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override
     {
-        CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-        assert(pSequence);
+        CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+        assert(sequence);
         if (role != Qt::DisplayRole && role != Qt::EditRole)
         {
             return false;
@@ -150,11 +207,23 @@ public:
             return false;
         }
 
+        bool result = false;
+
         const QString oldName = index.data().toString();
         const QString newName = value.toString();
-        pSequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
+
+        if (sequence->GetSequenceType() != SequenceType::Legacy)
+        {
+            AzToolsFramework::ScopedUndoBatch undo("Set Track Event Data");
+            result = sequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
+            undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+        }
+        else
+        {
+            result = sequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
+        }
         emit dataChanged(index, index);
-        return true;
+        return result;
     }
 
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override
@@ -204,7 +273,7 @@ CTVEventsDialog::~CTVEventsDialog()
 
 void CTVEventsDialog::OnBnClickedButtonAddEvent()
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
     const QString add = QInputDialog::getText(this, tr("Track Event Name"), QString());
     if (!add.isEmpty() && static_cast<TVEventsModel*>(m_ui->m_List->model())->addRow(add))
@@ -216,7 +285,7 @@ void CTVEventsDialog::OnBnClickedButtonAddEvent()
 
 void CTVEventsDialog::OnBnClickedButtonRemoveEvent()
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
     QList<QPersistentModelIndex> indexes;
     for (auto index : m_ui->m_List->selectionModel()->selectedRows())
@@ -268,8 +337,8 @@ void CTVEventsDialog::OnInitDialog()
     m_ui->m_List->setModel(new TVEventsModel(this));
     m_ui->m_List->header()->resizeSections(QHeaderView::ResizeToContents);
 
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-    assert(pSequence);
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
+    assert(sequence);
 
     UpdateButtons();
 }
@@ -312,12 +381,12 @@ void CTVEventsDialog::UpdateButtons()
 
 int TVEventsModel::GetNumberOfUsageAndFirstTimeUsed(const char* eventName, float& timeFirstUsed) const
 {
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
+    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
     int usageCount = 0;
     float firstTime = std::numeric_limits<float>::max();
 
-    CTrackViewAnimNodeBundle nodeBundle = pSequence->GetAnimNodesByType(AnimNodeType::Event);
+    CTrackViewAnimNodeBundle nodeBundle = sequence->GetAnimNodesByType(AnimNodeType::Event);
     const unsigned int numNodes = nodeBundle.GetCount();
 
     for (unsigned int currentNode = 0; currentNode < numNodes; ++currentNode)

@@ -19,8 +19,12 @@
 #include <AzFramework/Physics/SystemBus.h>
 #include <Terrain/Bus/LegacyTerrainBus.h>
 #include <AzFramework/Components/TransformComponent.h>
+#include <LmbrCentral/Scripting/TriggerAreaComponentBus.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
+#include <LmbrCentral/Shape/SphereShapeComponentBus.h>
+#include <PhysXColliderComponent.h>
 #include <PhysXRigidBodyComponent.h>
+#include <PhysXTriggerAreaComponent.h>
 
 namespace PhysX
 {
@@ -37,6 +41,51 @@ namespace PhysX
         }
 
         float tolerance = 1e-3f;
+    };
+
+    namespace PhysXTests
+    {
+        typedef AZ::Entity*(*EntityFactoryFunc)(const AZ::Vector3&, const char*);
+    }
+
+    class PhysXEntityFactoryParamTest
+        : public PhysXSpecificTest
+        , public ::testing::WithParamInterface<PhysXTests::EntityFactoryFunc>
+    {
+    };
+
+
+    // Create a listener of the trigger events. When an entity enters or leaves it, it will record its entity ID.
+    class TestTriggerAreaNotificationListener 
+        : protected LmbrCentral::TriggerAreaNotificationBus::Handler
+    {
+    public:
+        TestTriggerAreaNotificationListener(AZ::EntityId triggerAreaEntityId)
+        {
+            LmbrCentral::TriggerAreaNotificationBus::Handler::BusConnect(triggerAreaEntityId);
+        }
+
+        ~TestTriggerAreaNotificationListener()
+        {
+            LmbrCentral::TriggerAreaNotificationBus::Handler::BusDisconnect();
+        }
+
+        void OnTriggerAreaEntered(AZ::EntityId enteringEntityId) override
+        {
+            m_enteredEntities.push_back(enteringEntityId);
+        }
+
+        void OnTriggerAreaExited(AZ::EntityId exitingEntityId) override
+        {
+            m_exitedEntities.push_back(exitingEntityId);
+        }
+
+        const AZStd::vector<AZ::EntityId>& getEnteredEntities() const { return m_enteredEntities; }
+        const AZStd::vector<AZ::EntityId>& getExitedEntities() const { return m_exitedEntities; }
+
+    private:
+        AZStd::vector<AZ::EntityId> m_enteredEntities;
+        AZStd::vector<AZ::EntityId> m_exitedEntities;
     };
 
     TEST_F(PhysXSpecificTest, VectorConversion_ConvertToPxVec3_ConvertedVectorsCorrect)
@@ -314,7 +363,33 @@ namespace PhysX
         return entity;
     }
 
-    TEST_F(PhysXSpecificTest, TerrainCollision_RigidBodiesFallingOnTerrain_CollideWithTerrain)
+    AZ::Entity* AddUnitTestBoxComponentsMix(const AZ::Vector3& position, const char* name = "TestBoxEntity")
+    {
+        auto entity = aznew AZ::Entity(name);
+
+        AZ::TransformConfig transformConfig;
+        transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
+        entity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
+
+        auto boxComponent = entity->CreateComponent(AZ::Uuid::CreateString("{5EDF4B9E-0D3D-40B8-8C91-5142BCFC30A6}")); // BoxShapeComponent
+        entity->CreateComponent(AZ::Uuid::CreateString("{C53C7C88-7131-4EEB-A602-A7DF5B47898E}")); // PhysXColliderComponent
+
+        PhysXRigidBodyConfiguration rigidBodyConfig;
+        rigidBodyConfig.m_motionType = Physics::MotionType::Dynamic;
+        entity->CreateComponent<PhysXRigidBodyComponent>(rigidBodyConfig);
+
+        // Removing and adding component can cause race condition in component activation code if dependencies are not correct
+        // Simulation of user removing one collider and adding another
+        entity->RemoveComponent(boxComponent);
+        entity->CreateComponent(AZ::Uuid::CreateString("{5EDF4B9E-0D3D-40B8-8C91-5142BCFC30A6}")); // BoxShapeComponent
+
+        entity->Init();
+        entity->Activate();
+
+        return entity;
+    }
+
+    TEST_P(PhysXEntityFactoryParamTest, TerrainCollision_RigidBodiesFallingOnTerrain_CollideWithTerrain)
     {
         // set up a flat terrain with height 0 from x, y co-ordinates 0, 0 to 20, 20
         LegacyTerrain::LegacyTerrainNotificationBus::Broadcast(&LegacyTerrain::LegacyTerrainNotifications::SetNumTiles, 1, 4);
@@ -322,18 +397,20 @@ namespace PhysX
         LegacyTerrain::LegacyTerrainNotificationBus::Broadcast(&LegacyTerrain::LegacyTerrainNotifications::UpdateTile,
             0, 0, heightMap, 0.0f, 0.01f, 4, 5);
 
+        auto testEntityFactory = GetParam();
+
         // create some box entities inside the edges of the terrain and some beyond the edges
         AZStd::vector<AZ::Entity*> boxesInsideTerrain;
-        boxesInsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(1.0f, 1.0f, 2.0f), "Interior box A"));
-        boxesInsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(19.0f, 1.0f, 2.0f), "Interior box B"));
-        boxesInsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(5.0f, 18.0f, 2.0f), "Interior box C"));
-        boxesInsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(13.0f, 2.0f, 2.0f), "Interior box D"));
+        boxesInsideTerrain.push_back(testEntityFactory(AZ::Vector3(1.0f, 1.0f, 2.0f), "Interior box A"));
+        boxesInsideTerrain.push_back(testEntityFactory(AZ::Vector3(19.0f, 1.0f, 2.0f), "Interior box B"));
+        boxesInsideTerrain.push_back(testEntityFactory(AZ::Vector3(5.0f, 18.0f, 2.0f), "Interior box C"));
+        boxesInsideTerrain.push_back(testEntityFactory(AZ::Vector3(13.0f, 2.0f, 2.0f), "Interior box D"));
 
         AZStd::vector<AZ::Entity*> boxesOutsideTerrain;
-        boxesOutsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(-1.0f, -1.0f, 2.0f), "Exterior box A"));
-        boxesOutsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(1.0f, 22.0f, 2.0f), "Exterior box B"));
-        boxesOutsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(-2.0f, 14.0f, 2.0f), "Exterior box C"));
-        boxesOutsideTerrain.push_back(AddUnitTestBox(AZ::Vector3(22.0f, 8.0f, 2.0f), "Exterior box D"));
+        boxesOutsideTerrain.push_back(testEntityFactory(AZ::Vector3(-1.0f, -1.0f, 2.0f), "Exterior box A"));
+        boxesOutsideTerrain.push_back(testEntityFactory(AZ::Vector3(1.0f, 22.0f, 2.0f), "Exterior box B"));
+        boxesOutsideTerrain.push_back(testEntityFactory(AZ::Vector3(-2.0f, 14.0f, 2.0f), "Exterior box C"));
+        boxesOutsideTerrain.push_back(testEntityFactory(AZ::Vector3(22.0f, 8.0f, 2.0f), "Exterior box D"));
 
         // run the simulation for a while
         Physics::Ptr<Physics::World> world = nullptr;
@@ -366,6 +443,9 @@ namespace PhysX
         LegacyTerrain::LegacyTerrainNotificationBus::Broadcast(&LegacyTerrain::LegacyTerrainNotifications::SetNumTiles, 0, 0);
     }
 
+    auto entityFactories = { AddUnitTestBox, AddUnitTestBoxComponentsMix };
+    INSTANTIATE_TEST_CASE_P(DifferentBoxes, PhysXEntityFactoryParamTest, ::testing::ValuesIn(entityFactories));
+
     TEST_F(PhysXSpecificTest, RigidBody_GetNativeType_ReturnsPhysXRigidBodyType)
     {
         Physics::Ptr<Physics::RigidBodySettings> rigidBodySettings = Physics::RigidBodySettings::Create();
@@ -381,6 +461,101 @@ namespace PhysX
         Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodySettings);
         physx::PxBase* nativePointer = static_cast<physx::PxBase*>(rigidBody->GetNativePointer());
         EXPECT_TRUE(strcmp(nativePointer->getConcreteTypeName(), "PxRigidStatic") == 0);
+    }
+
+    AZ::Entity* CreateTriggerAtPosition(const AZ::Vector3& position, const AZ::Uuid& shapeUuid)
+    {
+        auto triggerEntity = aznew AZ::Entity("TriggerEntity");
+
+        AZ::TransformConfig transformConfig;
+        transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
+        triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
+        triggerEntity->CreateComponent(shapeUuid);
+        triggerEntity->CreateComponent<PhysXColliderComponent>();
+
+        PhysXRigidBodyConfiguration rigidBodyConfig;
+        triggerEntity->CreateComponent<PhysXRigidBodyComponent>(rigidBodyConfig);
+
+        triggerEntity->CreateComponent<PhysXTriggerAreaComponent>();
+
+        triggerEntity->Init();
+        triggerEntity->Activate();
+
+        return triggerEntity;
+    }
+
+    TEST_F(PhysXSpecificTest, TriggerArea_RigidBodyEnteringAndLeavingTrigger_EnterLeaveCallbackCalled)
+    {
+        // set up a trigger box
+        auto triggerBox = CreateTriggerAtPosition(AZ::Vector3(0.0f, 0.0f, 12.0f), LmbrCentral::BoxShapeComponentTypeId);
+
+        TestTriggerAreaNotificationListener testTriggerAreaNotificationListener(triggerBox->GetId());
+
+        // Create a test box above the trigger so when it falls down it'd enter and leave the trigger box
+        AZ::Entity* testBox = AddUnitTestBox(AZ::Vector3(0.0f, 0.0f, 16.0f), "TestBox");
+
+        // run the simulation for a while
+        Physics::Ptr<Physics::World> world = nullptr;
+        Physics::SystemRequestBus::BroadcastResult(world, &Physics::SystemRequests::GetDefaultWorld);
+
+        for (int timeStep = 0; timeStep < 500; timeStep++)
+        {
+            world->Update(1.0f / 60.0f);
+        }
+
+        const auto& enteredEntities = testTriggerAreaNotificationListener.getEnteredEntities();
+        const auto& exitedEntities = testTriggerAreaNotificationListener.getExitedEntities();
+        EXPECT_EQ(enteredEntities.size(), 1);
+        EXPECT_EQ(exitedEntities.size(), 1);
+        if (enteredEntities.size() > 0 && exitedEntities.size() > 0)
+        {
+            EXPECT_EQ(enteredEntities[0], testBox->GetId());
+            EXPECT_EQ(exitedEntities[0], testBox->GetId());
+        }
+        
+        delete testBox;
+        delete triggerBox;
+    }
+
+    TEST_F(PhysXSpecificTest, TriggerArea_RigidBodiesEnteringAndLeavingTriggers_EnterLeaveCallbackCalled)
+    {
+        // set up triggers and dynamic objects
+        auto triggerBox = CreateTriggerAtPosition(AZ::Vector3(0.0f, 0.0f, 12.0f), LmbrCentral::BoxShapeComponentTypeId);
+        auto triggerSphere = CreateTriggerAtPosition(AZ::Vector3(0.0f, 0.0f, 8.0f), LmbrCentral::SphereShapeComponentTypeId);
+
+        TestTriggerAreaNotificationListener testTriggerBoxNotificationListener(triggerBox->GetId());
+        TestTriggerAreaNotificationListener testTriggerSphereNotificationListener(triggerSphere->GetId());
+
+        AZStd::vector<AZ::Entity*> testBoxes = { 
+            AddUnitTestBox(AZ::Vector3(0.0f, 0.0f, 16.0f), "TestBox"),
+            AddUnitTestBox(AZ::Vector3(0.0f, 0.0f, 18.0f), "TestBox2") 
+        };
+
+        // run the simulation for a while
+        Physics::Ptr<Physics::World> world = nullptr;
+        Physics::SystemRequestBus::BroadcastResult(world, &Physics::SystemRequests::GetDefaultWorld);
+
+        for (int timeStep = 0; timeStep < 500; timeStep++)
+        {
+            world->Update(1.0f / 60.0f);
+        }
+
+        AZStd::vector<AZ::EntityId> testBoxesIds;
+        AZStd::for_each(testBoxes.begin(), testBoxes.end(), [&testBoxesIds](AZ::Entity* testBox) { testBoxesIds.push_back(testBox->GetId()); });
+
+        for (const auto triggerListener : {&testTriggerBoxNotificationListener, &testTriggerSphereNotificationListener})
+        {
+            const auto& enteredEntities = triggerListener->getEnteredEntities();
+            EXPECT_EQ(enteredEntities, testBoxesIds);
+
+            const auto& exitedEntities = triggerListener->getExitedEntities();
+            EXPECT_EQ(exitedEntities, testBoxesIds);
+        }
+
+        AZStd::for_each(testBoxes.begin(), testBoxes.end(), [](AZ::Entity* testBox) { delete testBox; });
+
+        delete triggerBox;
+        delete triggerSphere;
     }
 } // namespace PhysX
 

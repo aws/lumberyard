@@ -57,14 +57,26 @@ namespace GraphCanvas
         //! # Parameters
         //! 1. The scene that is receiving the event.
         //! 2. The QMimeData associated with the drag.
-        virtual bool IsInterestedInMimeData(const AZ::EntityId& sceneId, const QMimeData* mimeData) const = 0;
+        virtual bool IsInterestedInMimeData(const AZ::EntityId& sceneId, const QMimeData* mimeData) = 0;
+
+        //! When a dragged element is moved, all interested delegates will be notified.
+        //! # Parameters
+        //! 1. The scene that is receiving the event.
+        //! 2. The QMimeData associated with the drag.
+        virtual void HandleMove(const AZ::EntityId& sceneId, const QPointF& dropPoint, const QMimeData* mimeData) = 0;
 
         //! When a drop takes place, the first capable handler will receive the data to process.
         //! # Parameters        
         //! 1. The scene the view is displaying.
         //! 2. The QPoint where the drop occured.
         //! 3. The Mime data of the drop
-        virtual void HandleDrop(const AZ::EntityId& sceneId, const QPointF& dropPoint, const QMimeData* mimeData) = 0;
+        virtual void HandleDrop(const AZ::EntityId& sceneId, const QPointF& dropPoint, const QMimeData* mimeData) = 0;        
+
+        //! When a leave occurs, all interested handlers will receive the data to process
+        //! # Parameters
+        //! 1. The scene the view is displaying.        
+        //! 3. The Mime data of the drop
+        virtual void HandleLeave(const AZ::EntityId& sceneId, const QMimeData* mimeData) = 0;
     };
 
     using SceneMimeDelegateHandlerRequestBus = AZ::EBus<SceneMimeDelegateHandlerRequests>;

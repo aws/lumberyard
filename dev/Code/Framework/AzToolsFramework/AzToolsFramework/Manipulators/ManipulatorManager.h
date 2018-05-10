@@ -40,6 +40,14 @@ namespace AzToolsFramework
     class LinearManipulator;
 
     /**
+     * State of overall manipulator manager.
+     */
+    struct ManipulatorManagerState
+    {
+        bool m_interacting;
+    };
+
+    /**
      * This class serves to manage all relevant mouse events and coordinate all registered manipulators to function properly.
      * ManipulatorManager does not manage the life cycle of specific manipulators. The users of manipulators are responsible
      * for creating and deleting them at right time, as well as registering and unregistering accordingly.
@@ -98,6 +106,8 @@ namespace AzToolsFramework
 
         // EditorEntityInfoNotifications
         void OnEntityInfoUpdatedVisibility(AZ::EntityId entityId, bool visible) override;
+
+        bool Interacting() const { return m_activeManipulator != nullptr; }
 
         ManipulatorManagerId m_manipulatorManagerId; ///< This manipulator manager's id.
         ManipulatorId m_nextManipulatorIdToGenerate; ///< Id to use for the next manipulator that is registered with this manager.

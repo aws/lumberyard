@@ -11,8 +11,8 @@
 */
 #pragma once
 
-#include <Components/NodePropertyDisplay/BooleanDataInterface.h>
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/BooleanDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 
 #include <Widgets/GraphCanvasCheckBox.h>
 

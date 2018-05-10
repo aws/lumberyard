@@ -30,19 +30,19 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(MorphTargetSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
-        MorphTargetSelectionWindow(QWidget* parent);
+        MorphTargetSelectionWindow(QWidget* parent, bool multiSelect);
         virtual ~MorphTargetSelectionWindow();
 
         void Update(EMotionFX::MorphSetup* morphSetup, const AZStd::vector<uint32>& selection);
-        const AZStd::vector<uint32>& GetMorphTargetIDs() const                                               { return mSelection; }
+        const AZStd::vector<uint32>& GetMorphTargetIDs() const;
 
     public slots:
         void OnSelectionChanged();
 
     private:
+        AZStd::vector<uint32>   mSelection;
         QListWidget*            mListWidget;
         QPushButton*            mOKButton;
         QPushButton*            mCancelButton;
-        AZStd::vector<uint32>   mSelection;
     };
 } // namespace EMStudio

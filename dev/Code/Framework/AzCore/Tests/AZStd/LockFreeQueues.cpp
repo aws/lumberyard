@@ -26,6 +26,9 @@ namespace UnitTest
     class LockFreeQueue
         : public AllocatorsFixture
     {
+    public:
+        LockFreeQueue() : AllocatorsFixture(30) {}
+
     protected:
 #ifdef _DEBUG
         static const int NUM_ITERATIONS = 5000;
@@ -220,6 +223,7 @@ namespace UnitTest
             AZStd::thread thread1(AZStd::bind(&LockFreeQueue::Pop<decltype(queue)>, this, &queue));
             thread0.join();
             thread1.join();
+
             AZ_TEST_ASSERT(m_counter == NUM_ITERATIONS);
             AZ_TEST_ASSERT(queue.empty());
         }

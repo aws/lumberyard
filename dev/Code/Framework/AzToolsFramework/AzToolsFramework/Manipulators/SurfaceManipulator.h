@@ -76,6 +76,7 @@ namespace AzToolsFramework
         void SetBoundsDirtyImpl() override;
 
         void Draw(
+            const ManipulatorManagerState& managerState,
             AzFramework::EntityDebugDisplayRequests& display,
             const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction) override;

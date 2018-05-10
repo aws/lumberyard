@@ -21,13 +21,16 @@ namespace ScriptCanvas
         {
             void Log::OnInputSignal(const SlotId& slotId)
             {
-                static const int textSlotIndex = 0;
-                const Datum* input = GetInput(textSlotIndex);
+                auto valueDatum = GetInput(GetSlotId("Value"));
+                if (!valueDatum)
+                {
+                    return;
+                }
 
                 AZStd::string text;
-                if (input && !input->Empty())
+                if (!valueDatum->Empty())
                 {
-                    input->ToString(text);
+                    valueDatum->ToString(text);
                 }
 
                 if (!text.empty())

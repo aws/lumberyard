@@ -43,8 +43,8 @@ namespace AzToolsFramework
         void Invalidate(ManipulatorManagerId managerId);
 
         virtual void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) = 0;
 
@@ -61,8 +61,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -71,6 +71,10 @@ namespace AzToolsFramework
         AZ::Color m_axis1Color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
         AZ::Color m_axis2Color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
         float m_size = 0.06f; ///< size to render and do mouse ray intersection tests against.
+
+    private:
+        AZ::Vector3 m_cameraCorrectedAxis1;
+        AZ::Vector3 m_cameraCorrectedAxis2;
     };
 
     class ManipulatorViewQuadBillboard
@@ -78,8 +82,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -92,8 +96,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -101,6 +105,9 @@ namespace AzToolsFramework
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
         float m_length;
         float m_width;
+
+    private:
+        AZ::Vector3 m_cameraCorrectedAxis;
     };
 
     class ManipulatorViewLineSelect
@@ -108,8 +115,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -124,8 +131,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -134,6 +141,10 @@ namespace AzToolsFramework
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
         float m_length;
         float m_radius;
+
+    private:
+        AZ::Vector3 m_cameraCorrectedAxis;
+        AZ::Vector3 m_cameraCorrectedOffset;
     };
 
     class ManipulatorViewBox
@@ -141,8 +152,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -150,6 +161,9 @@ namespace AzToolsFramework
         AZ::Quaternion m_orientation;
         AZ::Vector3 m_halfExtents;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
+
+    private:
+        AZ::Vector3 m_cameraCorrectedOffset;
     };
 
     class ManipulatorViewCylinder
@@ -157,8 +171,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -166,6 +180,9 @@ namespace AzToolsFramework
         float m_length;
         float m_radius;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
+
+    private:
+        AZ::Vector3 m_cameraCorrectedAxis;
     };
 
     class ManipulatorViewSphere
@@ -173,8 +190,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -188,8 +205,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -204,8 +221,8 @@ namespace AzToolsFramework
     {
     public:
         void Draw(
-            ManipulatorManagerId managerId, ManipulatorId manipulatorId,
-            bool mouseOver, const AZ::Vector3& localPosition, const AZ::Transform& worldFromLocal,
+            ManipulatorManagerId managerId, const ManipulatorManagerState& managerState,
+            ManipulatorId manipulatorId, const ManipulatorState& manipulatorState,
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
@@ -217,7 +234,7 @@ namespace AzToolsFramework
     /**
      * Calculate scale factor based on distance from camera
      */
-    AZ_FORCE_INLINE AZ::VectorFloat CalculateScreenToWorldMultiplier(
+    inline AZ::VectorFloat CalculateScreenToWorldMultiplier(
         bool screenSizeFixed, const AZ::Vector3& worldPosition, const ViewportInteraction::CameraState& cameraState)
     {
         // author sizes of manipulators as they would appear in perspective 10 meters from the camera.
@@ -228,6 +245,16 @@ namespace AzToolsFramework
                 AZ::VectorFloat(cameraState.m_nearClip)) * tenRecip
             : AZ::VectorFloat::CreateOne();
     }
+
+    /**
+     * @brief Return the world transform of the entity with uniform scale - choose
+     * the largest element.
+     */
+    AZ::Transform WorldFromLocalWithUniformScale(const AZ::EntityId entityId);
+    /**
+     * @brief Take a transform and return it with uniform scale - choose the largest element.
+     */
+    AZ::Transform TransformUniformScale(const AZ::Transform& transform);
 
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewQuad(
         const PlanarManipulator& planarManipulator, const AZ::Color& axis1Color,

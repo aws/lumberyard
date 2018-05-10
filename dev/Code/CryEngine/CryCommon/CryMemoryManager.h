@@ -16,8 +16,6 @@
 //               CryMemoryManager_impl h is included by platform_impl h
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_CRYMEMORYMANAGER_H
-#define CRYINCLUDE_CRYCOMMON_CRYMEMORYMANAGER_H
 #pragma once
 
 #if !defined(_RELEASE)
@@ -36,7 +34,7 @@
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(CryMemoryManager_h)
+#include AZ_RESTRICTED_FILE(CryMemoryManager_h, AZ_RESTRICTED_PLATFORM)
 #else
 #if !defined(APPLE)
 #define CRYMEMORYMANAGER_H_TRAIT_INCLUDE_MALLOC_H 1
@@ -55,7 +53,7 @@
 // Throw
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_THROW
-#include AZ_RESTRICTED_FILE(CryMemoryManager_h)
+#include AZ_RESTRICTED_FILE(CryMemoryManager_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -210,7 +208,7 @@ struct IMemoryManager
         eapCustomAlignment,
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_ALLOCPOLICY
-#include AZ_RESTRICTED_FILE(CryMemoryManager_h)
+#include AZ_RESTRICTED_FILE(CryMemoryManager_h, AZ_RESTRICTED_PLATFORM)
 #endif
     };
 
@@ -636,5 +634,3 @@ inline void CryAlignedDeleteArray(T* pObject, size_t count)
         CryModuleMemalignFree(pObject);
     }
 }
-
-#endif // CRYINCLUDE_CRYCOMMON_CRYMEMORYMANAGER_H

@@ -51,6 +51,7 @@ namespace ResourceParsing
 
         QVariantMap resourceMap = ParseResourceMap(contentString);
         auto keyList = resourceMap.keys();
+        keyList.sort();
         for (auto thisKey : keyList)
         {
             returnList.push_back(thisKey);

@@ -10,8 +10,7 @@
 *
 */
 
-#include <AZCore/Casting/numeric_cast.h>
-
+#include <AzCore/Casting/numeric_cast.h>
 #include "EMotionFXConfig.h"
 #include "AnimGraphAttributeTypes.h"
 #include "AnimGraphNodeGroup.h"
@@ -286,7 +285,7 @@ namespace EMotionFX
         {
             totalSizeInBytes += sizeof(float); // the weight value
             totalSizeInBytes += sizeof(uint32); // the number of characters/bytes for the string
-            totalSizeInBytes += mNodes[i].mName.GetLength(); // the name string
+            totalSizeInBytes += static_cast<uint32>(mNodes[i].mName.size()); // the name string
         }
 
         // return the total size in bytes
@@ -329,17 +328,17 @@ namespace EMotionFX
 
             if (numStringBytes > 0)
             {
-                mNodes[i].mName.Resize(numStringBytes);
+                mNodes[i].mName.resize(numStringBytes);
 
                 // read the string data
-                if (stream->Read(mNodes[i].mName.GetPtr(), numStringBytes) == 0)
+                if (stream->Read(mNodes[i].mName.data(), numStringBytes) == 0)
                 {
                     return false;
                 }
             }
             else
             {
-                mNodes[i].mName.Clear();
+                mNodes[i].mName.clear();
             }
 
             // add the entry to the mask
@@ -374,8 +373,8 @@ namespace EMotionFX
             }
 
             // write the name string
-            const MCore::String& name = mNodes[i].mName;
-            uint32 numNameBytes = name.GetLength();
+            const AZStd::string& name = mNodes[i].mName;
+            uint32 numNameBytes = static_cast<uint32>(name.size());
             MCore::Endian::ConvertUnsignedInt32To(&numNameBytes, targetEndianType);
             if (stream->Write(&numNameBytes, sizeof(uint32)) == 0)
             {
@@ -383,9 +382,9 @@ namespace EMotionFX
             }
 
             // write the character data
-            if (name.GetLength() > 0)
+            if (name.size() > 0)
             {
-                if (stream->Write(name.AsChar(), name.GetLength()) == 0)
+                if (stream->Write(name.c_str(), name.size()) == 0)
                 {
                     return false;
                 }
@@ -396,12 +395,14 @@ namespace EMotionFX
     }
 
 
-    bool AttributeNodeMask::InitFromString(const MCore::String& valueString)
+    bool AttributeNodeMask::InitFromString(const AZStd::string& valueString)
     {
         // decompose the string, which is structured as:
         // <nodename>;<weight>;<nodename>;<weight>;<nodename>;<weight>... etc
-        MCore::Array<MCore::String> parts = valueString.Split(MCore::UnicodeCharacter::semiColon);
-        const uint32 numParts = parts.GetLength();
+        AZStd::vector<AZStd::string> parts;
+        AzFramework::StringFunc::Tokenize(valueString.c_str(), parts, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
+
+        const uint32 numParts = static_cast<uint32>(parts.size());
         bool evenNumParts = (numParts % 2 == 0);
         if (evenNumParts == false) // make sure it is an even amount of data
         {
@@ -415,18 +416,22 @@ namespace EMotionFX
         for (uint32 i = 0; i < numItems; ++i)
         {
             mNodes[i].mName     = parts[offset++];
-            mNodes[i].mWeight   = parts[offset++].ToFloat();// convert the string into a float
+            // convert the string into a float
+            if (!AzFramework::StringFunc::LooksLikeFloat(parts[offset++].c_str(), &mNodes[i].mWeight))
+            {
+                return false;
+            }
         }
 
         return true;
     }
 
 
-    bool AttributeNodeMask::ConvertToString(MCore::String& outString) const
+    bool AttributeNodeMask::ConvertToString(AZStd::string& outString) const
     {
         if (mNodes.GetLength() == 0)
         {
-            outString.Clear();
+            outString.clear();
             return true;
         }
 
@@ -436,23 +441,23 @@ namespace EMotionFX
         const uint32 numEntries = mNodes.GetLength();
 
         // reserve space for the string
-        outString.Clear();
+        outString.clear();
         uint32 reserveDataSize = 13 * numEntries;
         for (i = 0; i < numEntries; ++i) // add the size of all mask entries
         {
-            reserveDataSize += mNodes[i].mName.GetLength() + 11; // some extra characters for the value and semicolon
+            reserveDataSize += static_cast<uint32>(mNodes[i].mName.size()) + 11; // some extra characters for the value and semicolon
         }
-        outString.Reserve(reserveDataSize);
+        outString.reserve(reserveDataSize);
 
         for (i = 0; i < numEntries; ++i) // add the size of all mask entries
         {
             if (i < numEntries - 1)
             {
-                outString.FormatAdd("%s;%.8f;", mNodes[i].mName.AsChar(), mNodes[i].mWeight);
+                outString += AZStd::string::format("%s;%.8f;", mNodes[i].mName.c_str(), mNodes[i].mWeight);
             }
             else
             {
-                outString.FormatAdd("%s;%.8f", mNodes[i].mName.AsChar(), mNodes[i].mWeight);
+                outString += AZStd::string::format("%s;%.8f", mNodes[i].mName.c_str(), mNodes[i].mWeight);
             }
         }
 
@@ -478,25 +483,27 @@ namespace EMotionFX
     }
 
 
-    bool AttributeParameterMask::InitFromString(const MCore::String& valueString)
+    bool AttributeParameterMask::InitFromString(const AZStd::string& valueString)
     {
         // decompose the string, which is structured as:
         // <parametername>;<parametername>;<parametername>;... etc
-        MCore::Array<MCore::String> parts = valueString.Split(MCore::UnicodeCharacter::semiColon);
-        const uint32 numParts = parts.GetLength();
+        AZStd::vector<AZStd::string> parts;
+        AzFramework::StringFunc::Tokenize(valueString.c_str(), parts, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
+
+        const uint32 numParts = static_cast<uint32>(parts.size());
 
         // now rebuild the items
         mParameterNameIDs.Resize(numParts);
         for (uint32 i = 0; i < numParts; ++i)
         {
-            SetParameterName(i, parts[i].AsChar());
+            SetParameterName(i, parts[i].c_str());
         }
 
         return true;
     }
 
 
-    bool AttributeParameterMask::ConvertToString(MCore::String& outString) const
+    bool AttributeParameterMask::ConvertToString(AZStd::string& outString) const
     {
         if (mParameterNameIDs.GetIsEmpty())
         {
@@ -511,11 +518,11 @@ namespace EMotionFX
         {
             if (i < numEntries - 1)
             {
-                outString.FormatAdd("%s;", GetParameterName(i));
+                outString += AZStd::string::format("%s;", GetParameterName(i));
             }
             else
             {
-                outString.FormatAdd("%s", GetParameterName(i));
+                outString += AZStd::string::format("%s", GetParameterName(i));
             }
         }
 
@@ -535,7 +542,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numEntries; ++i) // add the size of all mask entries
         {
             totalSizeInBytes += sizeof(uint32); // the number of characters/bytes for the string
-            totalSizeInBytes += GetParameterNameString(i).GetLength(); // name string
+            totalSizeInBytes += static_cast<uint32>(GetParameterNameString(i).size()); // name string
         }
 
         // return the total size in bytes
@@ -557,8 +564,8 @@ namespace EMotionFX
         MCore::Endian::ConvertUnsignedInt32(&numEntries, streamEndianType);
 
         // read the entries
-        MCore::String name;
-        name.Reserve(64);
+        AZStd::string name;
+        name.reserve(64);
         mParameterNameIDs.Resize(numEntries);
         for (uint32 i = 0; i < numEntries; ++i)
         {
@@ -572,21 +579,21 @@ namespace EMotionFX
 
             if (numStringBytes > 0)
             {
-                name.Resize(numStringBytes);
+                name.resize(numStringBytes);
 
                 // read the string data
-                if (stream->Read(name.GetPtr(), numStringBytes) == 0)
+                if (stream->Read(name.data(), numStringBytes) == 0)
                 {
                     return false;
                 }
             }
             else
             {
-                name.Clear();
+                name.clear();
             }
 
             // add the entry to the mask
-            SetParameterName(i, name.AsChar());
+            SetParameterName(i, name.c_str());
         }
 
         return true;
@@ -609,7 +616,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numEntries; ++i)
         {
             // write the name string
-            uint32 numNameBytes = GetParameterNameString(i).GetLength();
+            uint32 numNameBytes = static_cast<uint32>(GetParameterNameString(i).size());
             MCore::Endian::ConvertUnsignedInt32To(&numNameBytes, targetEndianType);
             if (stream->Write(&numNameBytes, sizeof(uint32)) == 0)
             {
@@ -617,9 +624,9 @@ namespace EMotionFX
             }
 
             // write the character data
-            if (GetParameterNameString(i).GetLength() > 0)
+            if (GetParameterNameString(i).size() > 0)
             {
-                if (stream->Write(GetParameterNameString(i).AsChar(), GetParameterNameString(i).GetLength()) == 0)
+                if (stream->Write(GetParameterNameString(i).c_str(), GetParameterNameString(i).size()) == 0)
                 {
                     return false;
                 }
@@ -641,16 +648,16 @@ namespace EMotionFX
     }
 
 
-    void AttributeParameterMask::SetParameters(MCore::Array<MCore::String>& parameterNames)
+    void AttributeParameterMask::SetParameters(AZStd::vector<AZStd::string>& parameterNames)
     {
         // get the number of parameters and resize the parameter name id array
-        const uint32 numParameters = parameterNames.GetLength();
+        const uint32 numParameters = static_cast<uint32>(parameterNames.size());
         mParameterNameIDs.Resize(numParameters);
 
         // iterate through all parameters, generate and set the name ids for them
         for (uint32 i = 0; i < numParameters; ++i)
         {
-            SetParameterName(i, parameterNames[i].AsChar());
+            SetParameterName(i, parameterNames[i].c_str());
         }
     }
 
@@ -662,7 +669,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numParameters; ++i)
         {
             // compare the names and return in case they are equal
-            if (GetParameterNameString(i).CheckIfIsEqual(parameterName))
+            if (GetParameterNameString(i) == parameterName)
             {
                 return i;
             }
@@ -692,7 +699,7 @@ namespace EMotionFX
             const uint32    currentParameterIndex = FindParameterNameIndex(currentParameterName);
 
             // compare the names and return the current parameter index
-            if (animGraph->GetParameter(i)->GetNameString().CheckIfIsEqual(parameterName) && currentParameterIndex != MCORE_INVALIDINDEX32)
+            if (animGraph->GetParameter(i)->GetNameString() == parameterName && currentParameterIndex != MCORE_INVALIDINDEX32)
             {
                 return parameterIndex;
             }
@@ -751,20 +758,21 @@ namespace EMotionFX
     }
 
 
-    bool AttributeGoalNode::InitFromString(const MCore::String& valueString)
+    bool AttributeGoalNode::InitFromString(const AZStd::string& valueString)
     {
-        MCore::Array<MCore::String> parts = valueString.Split(MCore::UnicodeCharacter::semiColon);
-        if (parts.GetLength() != 2)
+        AZStd::vector<AZStd::string> parts;
+        AzFramework::StringFunc::Tokenize(valueString.c_str(), parts, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
+
+        if (parts.size() != 2)
         {
             return false;
         }
 
-        if (parts[1].CheckIfIsValidInt() == false)
+        int32 depth;
+        if (!AzFramework::StringFunc::LooksLikeInt(parts[1].c_str(), &depth))
         {
             return false;
         }
-
-        int32 depth = parts[1].ToInt();
         if (depth < 0)
         {
             return false;
@@ -776,16 +784,16 @@ namespace EMotionFX
     }
 
 
-    bool AttributeGoalNode::ConvertToString(MCore::String& outString) const
+    bool AttributeGoalNode::ConvertToString(AZStd::string& outString) const
     {
-        outString.Format("%s;%d", mNodeName.AsChar(), mParentDepth);
+        outString = AZStd::string::format("%s;%d", mNodeName.c_str(), mParentDepth);
         return true;
     }
 
 
     uint32 AttributeGoalNode::GetDataSize() const
     {
-        return sizeof(uint32) + (mNodeName.GetLength() + sizeof(uint32));
+        return sizeof(uint32) + static_cast<uint32>(mNodeName.size() + sizeof(uint32));
     }
 
 
@@ -807,15 +815,15 @@ namespace EMotionFX
         // read the character data
         if (numCharacters > 0)
         {
-            mNodeName.Resize(numCharacters);
-            if (stream->Read(mNodeName.GetPtr(), sizeof(char) * numCharacters) == 0)
+            mNodeName.resize(numCharacters);
+            if (stream->Read(mNodeName.data(), sizeof(char) * numCharacters) == 0)
             {
                 return false;
             }
         }
         else
         {
-            mNodeName.Clear();
+            mNodeName.clear();
         }
 
         // read the parent depth
@@ -836,7 +844,7 @@ namespace EMotionFX
     bool AttributeGoalNode::WriteData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType) const
     {
         // write the number of characters
-        uint32 numCharacters = mNodeName.GetLength();
+        uint32 numCharacters = static_cast<uint32>(mNodeName.size());
         MCore::Endian::ConvertUnsignedInt32To(&numCharacters, targetEndianType);
         if (stream->Write(&numCharacters, sizeof(uint32)) == 0)
         {
@@ -844,9 +852,9 @@ namespace EMotionFX
         }
 
         // write the character data
-        if (mNodeName.GetLength() > 0)
+        if (mNodeName.size() > 0)
         {
-            if (stream->Write(mNodeName.AsChar(), mNodeName.GetLength()) == 0)
+            if (stream->Write(mNodeName.c_str(), mNodeName.size()) == 0)
             {
                 return false;
             }
@@ -892,7 +900,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numGroupEntries; ++i)
         {
             totalSizeInBytes += sizeof(uint32);                     // the number of characters/bytes for the string
-            totalSizeInBytes += GetNodeGroupNameString(i).GetLength(); // the name string
+            totalSizeInBytes += static_cast<uint32>(GetNodeGroupNameString(i).size()); // the name string
         }
 
         // nodes
@@ -900,7 +908,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numNodeEntries; ++i)
         {
             totalSizeInBytes += sizeof(uint32);                     // the number of characters/bytes for the string
-            totalSizeInBytes += GetNodeNameString(i).GetLength();   // the name string
+            totalSizeInBytes += static_cast<uint32>(GetNodeNameString(i).size());   // the name string
         }
 
         // return the total size in bytes
@@ -930,7 +938,7 @@ namespace EMotionFX
         MCore::Endian::ConvertUnsignedInt32(&numNodeEntries, streamEndianType);
 
         // read the group entries
-        MCore::String convTemp;
+        AZStd::string convTemp;
         mGroupNameIDs.Resize(numGroupEntries);
         for (uint32 i = 0; i < numGroupEntries; ++i)
         {
@@ -945,19 +953,19 @@ namespace EMotionFX
             // read the string data
             if (numStringBytes > 0)
             {
-                convTemp.Resize(numStringBytes);
-                if (stream->Read(convTemp.GetPtr(), numStringBytes) == 0)
+                convTemp.resize(numStringBytes);
+                if (stream->Read(convTemp.data(), numStringBytes) == 0)
                 {
                     return false;
                 }
             }
             else
             {
-                convTemp.Clear();
+                convTemp.clear();
             }
 
             // add the entry to the mask
-            SetNodeGroupName(i, convTemp.AsChar());
+            SetNodeGroupName(i, convTemp.c_str());
         }
 
         // read the node entries
@@ -975,19 +983,19 @@ namespace EMotionFX
             // read the string data
             if (numStringBytes > 0)
             {
-                convTemp.Resize(numStringBytes);
-                if (stream->Read(convTemp.GetPtr(), numStringBytes) == 0)
+                convTemp.resize(numStringBytes);
+                if (stream->Read(convTemp.data(), numStringBytes) == 0)
                 {
                     return false;
                 }
             }
             else
             {
-                convTemp.Clear();
+                convTemp.clear();
             }
 
             // add the entry to the mask
-            SetNodeName(i, convTemp.AsChar());
+            SetNodeName(i, convTemp.c_str());
         }
 
         return true;
@@ -1018,8 +1026,8 @@ namespace EMotionFX
         for (uint32 i = 0; i < numGroupEntries; ++i)
         {
             // write the name string
-            const MCore::String& name = GetNodeGroupNameString(i);
-            uint32 numNameBytes = name.GetLength();
+            const AZStd::string& name = GetNodeGroupNameString(i);
+            uint32 numNameBytes = static_cast<uint32>(name.size());
             MCore::Endian::ConvertUnsignedInt32To(&numNameBytes, targetEndianType);
             if (stream->Write(&numNameBytes, sizeof(uint32)) == 0)
             {
@@ -1027,9 +1035,9 @@ namespace EMotionFX
             }
 
             // write the character data
-            if (name.GetLength() > 0)
+            if (name.size() > 0)
             {
-                if (stream->Write(name.AsChar(), name.GetLength()) == 0)
+                if (stream->Write(name.c_str(), name.size()) == 0)
                 {
                     return false;
                 }
@@ -1041,8 +1049,8 @@ namespace EMotionFX
         for (uint32 i = 0; i < numNodeEntries; ++i)
         {
             // write the name string
-            const MCore::String& name = GetNodeNameString(i);
-            uint32 numNameBytes = name.GetLength();
+            const AZStd::string& name = GetNodeNameString(i);
+            uint32 numNameBytes = static_cast<uint32>(name.size());
             MCore::Endian::ConvertUnsignedInt32To(&numNameBytes, targetEndianType);
             if (stream->Write(&numNameBytes, sizeof(uint32)) == 0)
             {
@@ -1050,9 +1058,9 @@ namespace EMotionFX
             }
 
             // write the character data
-            if (name.GetLength() > 0)
+            if (name.size() > 0)
             {
-                if (stream->Write(name.AsChar(), name.GetLength()) == 0)
+                if (stream->Write(name.c_str(), name.size()) == 0)
                 {
                     return false;
                 }
@@ -1063,7 +1071,7 @@ namespace EMotionFX
     }
 
 
-    bool AttributeStateFilterLocal::InitFromString(const MCore::String& valueString)
+    bool AttributeStateFilterLocal::InitFromString(const AZStd::string& valueString)
     {
         // clear the arrays
         mGroupNameIDs.Clear();
@@ -1071,16 +1079,26 @@ namespace EMotionFX
 
         // decompose the string, which is structured as:
         // <#numGroups>;<#numNodes>;<group1>;<group2>;...;<node1>;<node2>;... etc
-        MCore::Array<MCore::String> parts = valueString.Split(MCore::UnicodeCharacter::semiColon);
-        const uint32 numParts = parts.GetLength();
+        AZStd::vector<AZStd::string> parts;
+        AzFramework::StringFunc::Tokenize(valueString.c_str(), parts, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
+
+        const uint32 numParts = static_cast<uint32>(parts.size());
         if (numParts < 2)
         {
             return false;
         }
 
         // get the number of groups and the number of nodes
-        const uint32 numGroups  = parts[0].ToInt();
-        const uint32 numNodes   = parts[1].ToInt();
+        int numGroups;
+        if (!AzFramework::StringFunc::LooksLikeInt(parts[0].c_str(), &numGroups))
+        {
+            return false;
+        }
+        int numNodes;
+        if (!AzFramework::StringFunc::LooksLikeInt(parts[1].c_str(), &numNodes))
+        {
+            return false;
+        }
         const uint32 numEntries = numGroups + numNodes;
         if (numParts != numEntries + 2)
         {
@@ -1091,17 +1109,17 @@ namespace EMotionFX
         // resize the node group array and set the names
         uint32 partIndex = 2;
         mGroupNameIDs.Resize(numGroups);
-        for (uint32 i = 0; i < numGroups; ++i)
+        for (int i = 0; i < numGroups; ++i)
         {
-            SetNodeGroupName(i, parts[partIndex].AsChar());
+            SetNodeGroupName(i, parts[partIndex].c_str());
             partIndex++;
         }
 
         // resize the node array and set the names
         mNodeNameIDs.Resize(numNodes);
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (int i = 0; i < numNodes; ++i)
         {
-            SetNodeName(i, parts[partIndex].AsChar());
+            SetNodeName(i, parts[partIndex].c_str());
             partIndex++;
         }
 
@@ -1109,13 +1127,13 @@ namespace EMotionFX
     }
 
 
-    bool AttributeStateFilterLocal::ConvertToString(MCore::String& outString) const
+    bool AttributeStateFilterLocal::ConvertToString(AZStd::string& outString) const
     {
         // <#numGroups>;<#numNodes>;<group1>;<group2>;...;<node1>;<node2>;... etc
 
         const uint32 numGroups  = mGroupNameIDs.GetLength();
         const uint32 numNodes   = mNodeNameIDs.GetLength();
-        outString.Format("%i;%i;", numGroups, numNodes);
+        outString = AZStd::string::format("%i;%i;", numGroups, numNodes);
 
         // add all groups to the string
         for (uint32 i = 0; i < numGroups; ++i)
@@ -1131,14 +1149,14 @@ namespace EMotionFX
             outString += ";";
         }
 
-        outString.TrimRight(MCore::UnicodeCharacter::semiColon);
+        AzFramework::StringFunc::Strip(outString, MCore::CharacterConstants::semiColon, true /* case sensitive */, false /* beginning */, true /* ending */);
 
         return true;
     }
 
 
     // set the node groups by their names
-    void AttributeStateFilterLocal::SetNodeGroupNames(const MCore::Array<MCore::String>& groupNames)
+    void AttributeStateFilterLocal::SetNodeGroupNames(const MCore::Array<AZStd::string>& groupNames)
     {
         // get the new number of node groups and resize the array accordingly
         const uint32 newNumGroups = groupNames.GetLength();
@@ -1147,13 +1165,13 @@ namespace EMotionFX
         // set all node groups
         for (uint32 i = 0; i < newNumGroups; ++i)
         {
-            SetNodeGroupName(i, groupNames[i].AsChar());
+            SetNodeGroupName(i, groupNames[i].c_str());
         }
     }
 
 
     // set the nodes by their names
-    void AttributeStateFilterLocal::SetNodeNames(const MCore::Array<MCore::String>& nodeNames)
+    void AttributeStateFilterLocal::SetNodeNames(const MCore::Array<AZStd::string>& nodeNames)
     {
         // get the new number of nodes and resize the array accordingly
         const uint32 newNumNodes = nodeNames.GetLength();
@@ -1162,7 +1180,7 @@ namespace EMotionFX
         // set all node groups
         for (uint32 i = 0; i < newNumNodes; ++i)
         {
-            SetNodeName(i, nodeNames[i].AsChar());
+            SetNodeName(i, nodeNames[i].c_str());
         }
     }
 
@@ -1175,7 +1193,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numNodeGroups; ++i)
         {
             // compare the names and return in case they are equal
-            if (GetNodeGroupNameString(i).CheckIfIsEqual(groupName))
+            if (GetNodeGroupNameString(i) == groupName)
             {
                 return i;
             }
@@ -1194,7 +1212,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < numNodes; ++i)
         {
             // compare the names and return in case they are equal
-            if (GetNodeNameString(i).CheckIfIsEqual(nodeName))
+            if (GetNodeNameString(i) == nodeName)
             {
                 return i;
             }
@@ -1352,34 +1370,40 @@ namespace EMotionFX
         return true;
     }
 
-    bool AttributeBlendSpaceMotion::InitFromString(const MCore::String& valueString)
+    bool AttributeBlendSpaceMotion::InitFromString(const AZStd::string& valueString)
     {
-        MCore::Array<MCore::String> values = valueString.Split(MCore::UnicodeCharacter::comma);
-        if (values.GetLength() != 4)
+        AZStd::vector<AZStd::string> values;
+        AzFramework::StringFunc::Tokenize(valueString.c_str(), values, MCore::CharacterConstants::comma, true /* keep empty strings */, true /* keep space strings */);
+
+        if (values.size() != 4)
         {
             return false;
         }
 
-        if (!values[1].CheckIfIsValidFloat() ||
-            !values[2].CheckIfIsValidFloat() ||
-            !values[3].CheckIfIsValidInt())
+        float x;
+        float y;
+        int type;
+        if (!AzFramework::StringFunc::LooksLikeFloat(values[1].c_str(), &x) ||
+            !AzFramework::StringFunc::LooksLikeFloat(values[2].c_str(), &y) ||
+            !AzFramework::StringFunc::LooksLikeInt(values[3].c_str(), &type))
         {
             return false;
         }
 
-        m_motionId = AZStd::string(values[0].AsChar());
-
-        m_coordinates.SetElement(0, values[1].ToFloat());
-        m_coordinates.SetElement(1, values[2].ToFloat());
-
-        m_TypeFlags = aznumeric_cast<TypeFlags>(values[3].ToInt());
+        m_motionId = values[0];
+        m_coordinates.SetElement(0, x);
+        m_coordinates.SetElement(1, y);
+        m_TypeFlags = aznumeric_cast<TypeFlags>(type);
 
         return true;
     }
 
-    bool AttributeBlendSpaceMotion::ConvertToString(MCore::String& outString) const
+    bool AttributeBlendSpaceMotion::ConvertToString(AZStd::string& outString) const
     {
-        outString.Format("%s,%.8f,%.8f,%d", m_motionId.c_str(), m_coordinates.GetX(), m_coordinates.GetY(), m_TypeFlags);
+        outString = AZStd::string::format("%s,%.8f,%.8f,%d", m_motionId.c_str(), 
+            static_cast<float>(m_coordinates.GetX()), 
+            static_cast<float>(m_coordinates.GetY()), 
+            m_TypeFlags);
         return true;
     }
 

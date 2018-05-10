@@ -141,7 +141,7 @@ void CVehicleHelper::UpdateObjectFromVar()
 //////////////////////////////////////////////////////////////////////////
 void CVehicleHelper::Done()
 {
-    VeedLog("[CVehicleHelper:Done] <%s>", GetName());
+    VeedLog("[CVehicleHelper:Done] <%s>", GetName().toUtf8().constData());
     CBaseObject::Done();
 }
 

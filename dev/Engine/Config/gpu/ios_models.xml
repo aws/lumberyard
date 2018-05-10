@@ -29,13 +29,15 @@
         <Device model="iPad6,4"/> <!-- iPad Pro, Apple A9 GPU -->
         <Device model="iPad6,7"/> <!-- iPad Pro, Apple A9 GPU -->
         <Device model="iPad6,8"/> <!-- iPad Pro, Apple A9 GPU -->
-    </Config>
-    <Config file="ios_veryhigh.cfg">
+        
         <Device model="iPhone9,1"/> <!-- iPhone 7, Apple A10 GPU -->
         <Device model="iPhone9,3"/> <!-- iPhone 7, Apple A10 GPU -->
         <Device model="iPhone9,2"/> <!-- iPhone 7 Plus, Apple A10 GPU -->
         <Device model="iPhone9,4"/> <!-- iPhone 7 Plus, Apple A10 GPU -->
         <Device model="iPad7,1"/> <!-- iPad Pro, Apple A10 GPU -->
         <Device model="iPad7,2"/> <!-- iPad Pro, Apple A10 GPU -->
+    </Config>
+    <Config file="ios_veryhigh.cfg">
+        
     </Config>
 </DeviceList>

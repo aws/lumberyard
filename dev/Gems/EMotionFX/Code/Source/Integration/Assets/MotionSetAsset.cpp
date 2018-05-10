@@ -109,17 +109,18 @@ namespace EMotionFX
         bool MotionSetAssetHandler::OnInitAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
         {
             MotionSetAsset* assetData = asset.GetAs<MotionSetAsset>();
+            EMotionFX::Importer::MotionSetSettings motionSettings;
+            motionSettings.m_isOwnedByRuntime = true;
             assetData->m_emfxMotionSet = EMotionFXPtr<EMotionFX::MotionSet>::MakeFromNew(EMotionFX::GetImporter().LoadMotionSet(
                 assetData->m_emfxNativeData.data(),
-                assetData->m_emfxNativeData.size()));
+                assetData->m_emfxNativeData.size(),
+                &motionSettings));
 
             if (!assetData->m_emfxMotionSet)
             {
-                AZ_Error("EMotionFX", false, "Failed to initialize motion set asset %s", asset.GetId().ToString<AZStd::string>().c_str());
+                AZ_Error("EMotionFX", false, "Failed to initialize motion set asset %s", asset.ToString<AZStd::string>().c_str());
                 return false;
             }
-
-            assetData->m_emfxMotionSet->SetIsOwnedByRuntime(true);
 
             // Get the motions in the motion set.
             const EMotionFX::MotionSet::EntryMap& motionEntries = assetData->m_emfxMotionSet->GetMotionEntries();

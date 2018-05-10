@@ -20,8 +20,8 @@
 
 #include "DetailWidget/NoResourceWidget.moc"
 
-NoResourceWidget::NoResourceWidget(ResourceManagementView* view, const QSharedPointer<IResourceGroupStatusModel>& resourceGroupStatusModel)
-    : ActionWidget{}
+NoResourceWidget::NoResourceWidget(ResourceManagementView* view, const QSharedPointer<IResourceGroupStatusModel>& resourceGroupStatusModel, QWidget* parent)
+    : ActionWidget{parent}
     , m_view{view}
     , m_resourceGroupStatusModel{resourceGroupStatusModel}
 {

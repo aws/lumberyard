@@ -18,10 +18,22 @@
 #include <AZCore/Base.h>
 #include <AZCore/std/typetraits/alignment_of.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define STANDALONEUNITTEST_H_SECTION_1 1
+#define STANDALONEUNITTEST_H_SECTION_2 2
+#define STANDALONEUNITTEST_H_SECTION_3 3
+#define STANDALONEUNITTEST_H_SECTION_4 4
+#endif
+
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
 #   include <malloc.h>
 #elif defined(AZ_PLATFORM_APPLE)
 #    include <malloc/malloc.h>
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STANDALONEUNITTEST_H_SECTION_1
+#include AZ_RESTRICTED_FILE(StandaloneUnitTest_h, AZ_RESTRICTED_PLATFORM)
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -107,6 +119,10 @@ namespace UnitTest
 
 namespace UnitTest
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STANDALONEUNITTEST_H_SECTION_2
+#include AZ_RESTRICTED_FILE(StandaloneUnitTest_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
     class TestRunner
@@ -427,6 +443,13 @@ namespace UnitTest
     {
 #if defined(AZ_PLATFORM_WINDOWS)
         return _aligned_offset_malloc(byteSize, alignment, 0);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STANDALONEUNITTEST_H_SECTION_3
+#include AZ_RESTRICTED_FILE(StandaloneUnitTest_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
         return memalign(alignment, byteSize);
 #endif
@@ -436,6 +459,13 @@ namespace UnitTest
     {
 #if defined(AZ_PLATFORM_WINDOWS)
         _aligned_free(ptr);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STANDALONEUNITTEST_H_SECTION_4
+#include AZ_RESTRICTED_FILE(StandaloneUnitTest_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
         free(ptr);
 #endif

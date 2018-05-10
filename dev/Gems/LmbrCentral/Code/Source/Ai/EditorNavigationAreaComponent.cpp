@@ -12,15 +12,14 @@
 
 #include "LmbrCentral_precompiled.h"
 #include "EditorNavigationAreaComponent.h"
-#include "EditorNavigationUtil.h"
 
+#include "EditorNavigationUtil.h"
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/VectorConversions.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-
 #include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
-
+#include <Shape/PolygonPrismShape.h>
 #include <IAISystem.h>
 #include <MathConversion.h>
 
@@ -45,9 +44,10 @@ namespace LmbrCentral
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<EditorNavigationAreaComponent>()
+            serializeContext->Class<EditorNavigationAreaComponent, AzToolsFramework::Components::EditorComponentBase>()
                 ->Field("AgentTypes", &EditorNavigationAreaComponent::m_agentTypes)
-                ->Field("Exclusion", &EditorNavigationAreaComponent::m_exclusion);
+                ->Field("Exclusion", &EditorNavigationAreaComponent::m_exclusion)
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -67,7 +67,8 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::AddNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged)
                         ->Attribute(AZ::Edit::Attributes::RemoveNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged);
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorNavigationAreaComponent::OnNavigationAreaChanged)
+                        ;
             }
         }
     }
@@ -99,7 +100,12 @@ namespace LmbrCentral
         {
             if (INavigationSystem* aiNavigation = aiSystem->GetNavigationSystem())
             {
-                aiNavigation->RegisterArea(m_name.c_str());
+                // we only wish to register new areas (this area may have been
+                // registered when the navmesh was loaded at level load)
+                if (!aiNavigation->IsAreaPresent(m_name.c_str()))
+                {
+                    aiNavigation->RegisterArea(m_name.c_str());
+                }
             }
         }
         
@@ -161,7 +167,7 @@ namespace LmbrCentral
 
     void EditorNavigationAreaComponent::UpdateGameArea()
     {
-        using namespace AZ::PolygonPrismUtil;
+        using namespace PolygonPrismUtil;
 
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
@@ -246,7 +252,7 @@ namespace LmbrCentral
                         PolygonPrismShapeComponentRequestBus::EventResult(polygonPrismPtr, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
 
                         const AZ::PolygonPrism& polygonPrism = *polygonPrismPtr;
-                        aiSystem->GetNavigationSystem()->QueueMeshUpdate(meshId, AZAabbToLyAABB(AZ::PolygonPrismUtil::CalculateAabb(polygonPrism, transform)));
+                        aiSystem->GetNavigationSystem()->QueueMeshUpdate(meshId, AZAabbToLyAABB(PolygonPrismUtil::CalculateAabb(polygonPrism, transform)));
 
                         m_meshes[i] = meshId;
                     }
@@ -384,16 +390,18 @@ namespace LmbrCentral
 
     void EditorNavigationAreaComponent::DestroyArea()
     {
-        if (IAISystem* aiSystem = gEnv->pAISystem)
+        if (gEnv)
         {
-            if (INavigationSystem* aiNavigation = aiSystem->GetNavigationSystem())
+            if (IAISystem* aiSystem = gEnv->pAISystem)
             {
-                aiNavigation->UnRegisterArea(m_name.c_str());
+                if (INavigationSystem* aiNavigation = aiSystem->GetNavigationSystem())
+                {
+                    aiNavigation->UnRegisterArea(m_name.c_str());
+                }
             }
+            DestroyMeshes();
+            DestroyVolume();
         }
-
-        DestroyMeshes();
-        DestroyVolume();
     }
 
     void EditorNavigationAreaComponent::OnStartPlayInEditorBegin()

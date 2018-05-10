@@ -377,7 +377,6 @@ public:
         //////////////////////////////////////////////////////////////////////////
 
         enumWaveType = new CVarEnumList<int>();
-        enumWaveType->AddItem("None", eWF_None);
         enumWaveType->AddItem("Sin", eWF_Sin);
         //  enumWaveType->AddItem("Half Sin",eWF_HalfSin);
         //  enumWaveType->AddItem("Square",eWF_Square);
@@ -536,7 +535,6 @@ public:
         //  AddVariable( tableVertexMod,vertexMod.fDividerY,"Wave Length Y" );
         //  AddVariable( tableVertexMod,vertexMod.fDividerZ,"Wave Length Z" );
         //  AddVariable( tableVertexMod,vertexMod.fDividerW,"Wave Length W" );
-        AddVariable(tableVertexMod, vertexMod.vNoiseScale, "Noise Scale", "");
 
         AddVariable(tableVertexMod, vertexMod.wave[0].table, "Parameters", "Fine tunes how the vertices deform");
         //  AddVariable( tableVertexMod,vertexMod.wave[0].table,"Wave X" );
@@ -1886,6 +1884,8 @@ void CMaterialDialog::SelectItem(CBaseLibraryItem* item, bool bForceReload)
     m_propsCtrl->EnableUpdateCallback(false);
     m_pMaterialUI->SetFromMaterial(mtl);
     m_propsCtrl->EnableUpdateCallback(true);
+
+    mtl->SetShaderParamPublicScript();
 
     //////////////////////////////////////////////////////////////////////////
 

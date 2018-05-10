@@ -102,10 +102,10 @@ namespace
         : public QObject
     {
     public:
-        GlobalEventFilter(QObject* watch)
+        explicit GlobalEventFilter(QObject* watch)
             : QObject(watch) {}
 
-        bool eventFilter(QObject* obj, QEvent* e)
+        bool eventFilter(QObject* obj, QEvent* e) override
         {
             static bool recursionChecker = false;
             RecursionGuard guard(recursionChecker);
@@ -339,9 +339,15 @@ namespace Editor
 #ifdef _DEBUG
     bool EditorQtApplication::notify(QObject* receiver, QEvent* ev)
     {
-        if (ev->type() == QEvent::MouseButtonPress || ev->type() == QEvent::KeyPress)
+        QEvent::Type evType = ev->type();
+        if (evType == QEvent::MouseButtonPress ||
+            evType == QEvent::KeyPress ||
+            evType == QEvent::Shortcut ||
+            evType == QEvent::ShortcutOverride ||
+            evType == QEvent::KeyPress ||
+            evType == QEvent::KeyRelease)
         {
-            qCDebug(InputDebugging) << "Event" << ev->type() << "delivered to" << receiver << "preaccepted=" << ev->isAccepted();
+            qCDebug(InputDebugging) << "Attempting to deliver" << evType << "to" << receiver << "; pre-accepted=" << ev->isAccepted();
             bool processed = QApplication::notify(receiver, ev);
             qCDebug(InputDebugging) << "processed=" << processed << "; accepted=" << ev->isAccepted()
                 << "focusWidget=" << focusWidget();
@@ -535,6 +541,11 @@ namespace Editor
         }
 
         m_isMovingOrResizing = isMovingOrResizing;
+    }
+
+    bool EditorQtApplication::isMovingOrResizing() const
+    {
+        return m_isMovingOrResizing;
     }
 
     void EditorQtApplication::EnableUI2(bool enable)

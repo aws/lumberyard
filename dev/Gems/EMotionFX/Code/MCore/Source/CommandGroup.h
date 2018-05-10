@@ -14,8 +14,6 @@
 
 // include the required headers
 #include "StandardHeaders.h"
-#include <AzCore/std/string/string.h>
-#include "UnicodeString.h"
 #include "CommandLine.h"
 #include "Command.h"
 #include "Array.h"
@@ -63,7 +61,6 @@ namespace MCore
          * This will be added to the back of the list of commands to be executed when executing this group.
          * @param commandString The full command string, like you would execute using CommandManager::ExecuteCommand(...).
          */
-        void AddCommandString(const MCore::String& commandString);
         void AddCommandString(const AZStd::string& commandString);
 
         /**
@@ -78,7 +75,7 @@ namespace MCore
          * @param index The command number to get the string for. This must be in range of [0..GetNumCommands()-1].
          * @result The command string for the specified command.
          */
-        const MCore::String& GetCommandStringAsString(uint32 index) const;
+        const AZStd::string& GetCommandStringAsString(uint32 index) const;
 
         /**
          * Get a given command.
@@ -224,7 +221,7 @@ namespace MCore
         {
             MCore::Command*     mCommand;           /**< The command object, which gets set when you execute the group inside the command manager. */
             MCore::CommandLine  mCommandLine;       /**< The command line that was used when executing this command. */
-            MCore::String       mCommandString;     /**< The command string that we will execute. */
+            AZStd::string       mCommandString;     /**< The command string that we will execute. */
 
             CommandEntry()
                 : mCommand(nullptr) {}

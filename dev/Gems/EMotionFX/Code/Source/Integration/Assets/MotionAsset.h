@@ -15,9 +15,11 @@
 
 #include <Integration/Assets/AssetCommon.h>
 
+
 namespace EMotionFX
 {
     class SkeletalMotion;
+    class MotionInstance;
 
     namespace Integration
     {

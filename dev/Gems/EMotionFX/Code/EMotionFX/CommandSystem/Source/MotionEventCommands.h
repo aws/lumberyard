@@ -34,7 +34,7 @@ namespace CommandSystem
     MCORE_DEFINECOMMAND_END
 
         MCORE_DEFINECOMMAND_START(CommandAdjustMotionEventTrack, "Adjust motion event track", true)
-    MCore::String   mOldName;
+    AZStd::string   mOldName;
     bool            mOldEnabled;
     MCORE_DEFINECOMMAND_END
 
@@ -50,8 +50,8 @@ namespace CommandSystem
         MCORE_DEFINECOMMAND_START(CommandRemoveMotionEvent, "Remove motion event", true)
     float           mOldStartTime;
     float           mOldEndTime;
-    MCore::String   mOldEventType;
-    MCore::String   mOldParameters;
+    AZStd::string   mOldEventType;
+    AZStd::string   mOldParameters;
     MCORE_DEFINECOMMAND_END
 
         MCORE_DEFINECOMMAND_START(CommandAdjustMotionEvent, "Adjust motion event", true)
@@ -59,8 +59,8 @@ namespace CommandSystem
     float           mOldEndTime;
     uint32          mOldEventTypeID;
     uint32          mOldMirrorTypeID;
-    MCore::String   mOldEventType;
-    MCore::String   mOldMirrorType;
+    AZStd::string   mOldEventType;
+    AZStd::string   mOldMirrorType;
     uint32          mOldParamIndex;
     MCORE_DEFINECOMMAND_END
 

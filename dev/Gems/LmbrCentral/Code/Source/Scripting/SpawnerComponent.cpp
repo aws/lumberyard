@@ -133,9 +133,12 @@ namespace LmbrCentral
                 ->Event("DestroySpawnedSlice", &SpawnerComponentRequestBus::Events::DestroySpawnedSlice)
                 ->Event("DestroyAllSpawnedSlices", &SpawnerComponentRequestBus::Events::DestroyAllSpawnedSlices)
                 ->Event("GetCurrentlySpawnedSlices", &SpawnerComponentRequestBus::Events::GetCurrentlySpawnedSlices)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All) // Excluded until array support is available.
                 ->Event("HasAnyCurrentlySpawnedSlices", &SpawnerComponentRequestBus::Events::HasAnyCurrentlySpawnedSlices)
                 ->Event("GetCurrentEntitiesFromSpawnedSlice", &SpawnerComponentRequestBus::Events::GetCurrentEntitiesFromSpawnedSlice)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All) // Excluded until array support is available.
                 ->Event("GetAllCurrentlySpawnedEntities", &SpawnerComponentRequestBus::Events::GetAllCurrentlySpawnedEntities)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All) // Excluded until array support is available.
                 ;
 
             behaviorContext->EBus<SpawnerComponentNotificationBus>("SpawnerComponentNotificationBus")
@@ -477,7 +480,7 @@ namespace LmbrCentral
         // error msg
         if (sliceAssetId == m_sliceAsset.GetId())
         {
-            AZ_Error("SpawnerComponent", false, "Slice [id:'%s' hint:'%s'] failed to instantiate", sliceAssetId.ToString<AZStd::string>().c_str(), m_sliceAsset.GetHint().c_str());
+            AZ_Error("SpawnerComponent", false, "Slice %s failed to instantiate", m_sliceAsset.ToString<AZStd::string>().c_str());
         }
         else
         {

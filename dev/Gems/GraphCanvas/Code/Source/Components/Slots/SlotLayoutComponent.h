@@ -66,8 +66,8 @@ namespace GraphCanvas
         QGraphicsLayoutItem* AsGraphicsLayoutItem() override;
 
         bool Contains(const AZ::Vector2& position) const;
-        void SetVisibility(bool visible) override;
-        bool GetVisibility() const override;
+        void SetVisible(bool visible) override;
+        bool IsVisible() const override;
         ////
     
     protected:

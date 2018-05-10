@@ -15,7 +15,6 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/MultiThreadManager.h>
 #include "MemoryCategories.h"
@@ -204,7 +203,7 @@ namespace EMotionFX
          * @param eventIndex The event number, which must be in range of [0..GetNumRegisteredEventTypes()-1].
          * @result The string of the event type.
          */
-        const MCore::String& GetEventTypeStringAsString(uint32 eventIndex) const;
+        const AZStd::string& GetEventTypeStringAsString(uint32 eventIndex) const;
 
         /**
          * Find the event type number for an event with the given type ID.
@@ -390,7 +389,6 @@ namespace EMotionFX
 
         void OnScaleActorData(Actor* actor, float scaleFactor);
         void OnScaleMotionData(Motion* motion, float scaleFactor);
-        void OnScaleAnimGraphData(AnimGraph* animGraph, float scaleFactor);
 
         /**
          * Perform a ray intersection test and return the intersection info.
@@ -413,7 +411,7 @@ namespace EMotionFX
         void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode);
         void OnConditionTriggered(AnimGraphInstance* animGraphInstance, AnimGraphTransitionCondition* condition);
 
-        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName);
+        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName);
         void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node);
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove);
         void OnRemovedChildNode(AnimGraph* animGraph, AnimGraphNode* parentNode);
@@ -450,7 +448,7 @@ namespace EMotionFX
          */
         struct EMFX_API RegisteredEventType
         {
-            MCore::String   mEventType;                             /**< The string that describes the event, this is what artists type in 3DSMax/Maya. */
+            AZStd::string   mEventType;                             /**< The string that describes the event, this is what artists type in 3DSMax/Maya. */
             uint32          mEventID;                               /**< The unique ID for this event. */
         };
 

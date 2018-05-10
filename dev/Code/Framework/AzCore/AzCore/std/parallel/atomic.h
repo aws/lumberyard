@@ -18,7 +18,9 @@
 // Pre-VS2015.2 std::atomics have broken alignment and are not binary compatible
 // so we've kept our implementation until we can ensure that there are no libs or
 // users on pre VS2015.2. See <atomic> for more info.
-#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
+// In VS2107, this errors out with error C2280: 'std::atomic<Tp>::atomic(void) noexcept': attempting to reference a deleted function,
+// so it is being disabled until that is dealt with.
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1913
 #define AZ_USE_STD_ATOMIC
 #include <atomic>
 #endif

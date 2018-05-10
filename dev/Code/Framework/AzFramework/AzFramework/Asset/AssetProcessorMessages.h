@@ -45,7 +45,10 @@ namespace AzFramework
         bool UnpackMessage(const Buffer& buffer, Message& message)
         {
             AZ::IO::ByteContainerStream<const Buffer> byteStream(&buffer);
-            return AZ::Utils::LoadObjectFromStreamInPlace<Message>(byteStream, message);
+            
+            // load object from stream but note here that we do not allow any errors to occur since this is a message that is supposed
+            // to be sent between matching server/client versions.
+            return AZ::Utils::LoadObjectFromStreamInPlace<Message>(byteStream, message, nullptr, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_STRICT));
         }
 
         class BaseAssetProcessorMessage

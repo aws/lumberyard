@@ -23,6 +23,11 @@ struct pe_params;
 struct pe_action;
 struct pe_status;
 
+namespace Physics
+{
+    class RigidBody;
+}
+
 namespace AzFramework
 {
     /*!
@@ -99,6 +104,9 @@ namespace AzFramework
 
         //! Get the AABB of the entity in world space
         virtual AZ::Aabb GetAabb() { return AZ::Aabb::CreateNull(); }
+
+        //! Get the RigidBody object from the component
+        virtual Physics::RigidBody* GetRigidBody() { return nullptr; }
 
         // Deprecated functions
 

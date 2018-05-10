@@ -46,6 +46,7 @@
 
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <AzQtComponents/Utilities/DesktopUtilities.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
@@ -302,14 +303,7 @@ bool CFileUtil::EditMayaFile(const char* filepath, const bool bExtractFromPak, c
 
     if (gSettings.animEditor.isEmpty())
     {
-#ifdef AZ_PLATFORM_WINDOWS
-        QProcess::startDetached(QStringLiteral("explorer"), { QStringLiteral("/select,%1").arg(fullPath) });
-#else
-        QProcess::startDetached("/usr/bin/osascript", {"-e",
-            QStringLiteral("tell application \"Finder\" to reveal POSIX file \"%1\"").arg(QDir::toNativeSeparators(fullPath))});
-        QProcess::startDetached("/usr/bin/osascript", {"-e",
-            QStringLiteral("tell application \"Finder\" to activate")});
-#endif
+        AzQtComponents::ShowFileOnDesktop(fullPath);
     }
     else
     {
@@ -740,18 +734,7 @@ bool CFileUtil::ScanDirectory(const QString& path, const QString& file, IFileUti
 void CFileUtil::ShowInExplorer(const QString& path)
 {
     QString fullpath(Path::GetExecutableParentDirectory() + "\\" + Path::GamePathToFullPath(path));
-#if defined(AZ_PLATFORM_WINDOWS)
-    QString filename = PathUtil::GetFile(fullpath.toUtf8().data());
-    if (!QProcess::startDetached(QStringLiteral("explorer"), { QStringLiteral("/select,%1").arg(filename) }, Path::GetPath(fullpath)))
-    {
-        QProcess::startDetached(QStringLiteral("explorer"), { Path::GetPath(fullpath) });
-    }
-#else
-    QProcess::startDetached("/usr/bin/osascript", {"-e",
-        QStringLiteral("tell application \"Finder\" to reveal POSIX file \"%1\"").arg(QDir::toNativeSeparators(fullpath))});
-    QProcess::startDetached("/usr/bin/osascript", {"-e",
-        QStringLiteral("tell application \"Finder\" to activate")});
-#endif
+    AzQtComponents::ShowFileOnDesktop(fullpath);
 }
 
 /*
@@ -964,7 +947,7 @@ bool CFileUtil::GetFileInfoFromSourceControl(const char* filename, AzToolsFramew
 static bool CheckAndCreateDirectory(const QString& path)
 {
     // QFileInfo does not handle mixed separators (/ and \) gracefully, so cleaning up path
-    const QString cleanPath = QDir::cleanPath(path);
+    const QString cleanPath = QDir::cleanPath(path).replace('\\', '/');
     QFileInfo fileInfo(cleanPath);
     if (fileInfo.isDir())
     {
@@ -1990,15 +1973,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
         }
         else
         {
-#if defined(AZ_PLATFORM_WINDOWS)
-            // If the exact file is available use a platform specific approach so the file is also selected.
-            QProcess::startDetached(QString("explorer.exe /select, \"%1\"").arg(QDir::toNativeSeparators(fullPath)));
-#else
-            QProcess::startDetached("/usr/bin/osascript", {"-e",
-                QStringLiteral("tell application \"Finder\" to reveal POSIX file \"%1\"").arg(QDir::toNativeSeparators(fullPath))});
-            QProcess::startDetached("/usr/bin/osascript", {"-e",
-                QStringLiteral("tell application \"Finder\" to activate")});
-#endif
+            AzQtComponents::ShowFileOnDesktop(fullPath);
         }
     });
     action->setDisabled(nFileAttr & SCC_FILE_ATTRIBUTE_INPAK);

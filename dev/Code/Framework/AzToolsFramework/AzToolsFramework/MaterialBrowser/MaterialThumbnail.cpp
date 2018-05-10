@@ -27,7 +27,7 @@ namespace AzToolsFramework
         MaterialThumbnail::MaterialThumbnail(Thumbnailer::SharedThumbnailKey key, int thumbnailSize)
             : Thumbnail(key, thumbnailSize)
         {
-            auto productKey = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(m_key);
+            auto productKey = azrtti_cast<const Thumbnailer::ProductThumbnailKey*>(m_key.data());
             AZ_Assert(productKey, "Incorrect key type, excpected ProductThumbnailKey");
 
             bool multiMat = false;
@@ -47,7 +47,7 @@ namespace AzToolsFramework
 
         bool MaterialThumbnailCache::IsSupportedThumbnail(Thumbnailer::SharedThumbnailKey key) const
         {
-            return qobject_cast<const Thumbnailer::ProductThumbnailKey*>(key.data());
+            return azrtti_istypeof<const Thumbnailer::ProductThumbnailKey*>(key.data());
         }
     } // namespace MaterialBrowser
 } // namespace AzToolsFramework

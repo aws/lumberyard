@@ -188,7 +188,7 @@
         },
         "/admin/bot": {
             "put": {
-                "description": "Creates an Amazon Lex conversational bot or replaces an existing bot",
+                "description": "Create an Amazon Lex conversational bot or replace an existing bot",
                 "parameters": [
                     {
                         "name": "bot_section",
@@ -233,7 +233,7 @@
         },
         "/admin/bot/versions/{name}/{next_token}": {
             "get": {
-                "description": "Gets information about all of the versions of a bot",
+                "description": "Get information about all of the versions of a bot",
                 "parameters": [
                     {
                         "in": "path",
@@ -291,7 +291,7 @@
         },
         "/admin/bot/version/{name}": {
             "put": {
-                "description": "Creates a new version of the bot based on the $LATEST version",
+                "description": "Create a new version of the bot based on the $LATEST version",
                 "parameters": [
                     {
                         "in": "path",
@@ -305,6 +305,35 @@
                     "200": {
                         "description": "Confirms new bot version creation",
                         "schema": {
+                            "$ref": "#/definitions/StatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/bot/version/{name}/{version}": {
+            "delete": {
+                "description": "Delete the specific version of a bot",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "name",
+                        "description": "The name of the bot that you want to delete. The name is case sensitive.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "version",
+                        "description": "The version of the bot that you want to delete. The name is case sensitive.",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Confirms the bot deletion",
+                        "schema": {
                             "$ref" : "#/definitions/StatusResponse"
                         }
                     }
@@ -313,7 +342,7 @@
         },
         "/admin/listbotaliases/{name}/{next_token}": {
             "get": {
-                "description": "Returns a list of aliases for a specified Amazon Lex bot",
+                "description": "Return a list of aliases for a specified Amazon Lex bot",
                 "parameters" : [
                     {
                         "in": "path",
@@ -356,7 +385,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Confirms alias post",
+                        "description": "Confirm alias post",
                         "schema": {
                             "$ref" : "#/definitions/StatusResponse"
                         }
@@ -393,7 +422,7 @@
                 }
             },
             "get": {
-                "description": "Returns information about an Amazon Lex bot alias",
+                "description": "Return information about an Amazon Lex bot alias",
                 "parameters": [
                     {
                         "in": "path",
@@ -422,7 +451,7 @@
         },
         "/admin/buildbot/{name}": {
             "put": {
-                "description": "Publishes the bot for use by the client and assigns a version name",
+                "description": "Build the bot for use by the client",
                 "parameters": [
                     {
                         "in": "path",
@@ -434,7 +463,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "'READY' if successfully published or an contains an error message",
+                        "description": "'READY' if successfully published or an error message",
                         "schema": {
                             "$ref" : "#/definitions/StatusResponse"
                         }
@@ -444,7 +473,7 @@
         },
         "/admin/publishbot/{name}/{version}": {
             "put": {
-                "description": "Publishes the bot for use by the client and assigns a version name",
+                "description": "Publish the bot for use by the client and assign a version name",
                 "parameters": [
                     {
                         "in": "path",
@@ -463,7 +492,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "'READY' if successfully published or an contains an error message",
+                        "description": "'READY' if successfully published or an error message",
                         "schema": {
                             "$ref" : "#/definitions/StatusResponse"
                         }
@@ -473,7 +502,7 @@
         },
         "/admin/listbuiltinintents/{next_token}": {
             "get": {
-                "description": "Gets a list of built-in intents",
+                "description": "Retrieve a list of built-in intents",
                 "parameters" : [
                     {
                         "in": "path",
@@ -517,12 +546,12 @@
         },
         "/admin/builtinintent/{name}": {
             "get": {
-                "description": "Returns information about a built-in intent",
+                "description": "Return information about a built-in intent",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "name",
-                        "description": "the name  for a built-in intent",
+                        "description": "the name of the built-in intent to get",
                         "required": true,
                         "type": "string"
                     }
@@ -539,7 +568,7 @@
         },
         "/admin/intent": {
             "put": {
-                "description": "Creates an intent or replaces an existing intent",
+                "description": "Create an intent or replace an existing intent",
                 "parameters": [
                     {
                         "name": "intent_section",
@@ -552,7 +581,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Confirms intent creation or update",
+                        "description": "Confirm intent creation or update",
                         "schema": {
                             "$ref" : "#/definitions/StatusResponse"
                         }
@@ -584,7 +613,7 @@
         },
         "/admin/intent/versions/{name}/{next_token}": {
             "get": {
-                "description": "Gets information about all of the versions of an intent",
+                "description": "Get information about all the versions of an intent",
                 "parameters": [
                     {
                         "in": "path",
@@ -613,7 +642,7 @@
         },
         "/admin/intent/{name}/{version}": {
             "get": {
-                "description": "Returns information about a custom intent",
+                "description": "Get information about a custom intent",
                 "parameters": [
                     {
                         "in": "path",
@@ -642,7 +671,7 @@
         },
         "/admin/intent/version/{name}": {
             "put": {
-                "description": "Creates a new version of an intent based on the $LATEST version of the intent.",
+                "description": "Create a new version of an intent based on the $LATEST version of the intent.",
                 "parameters": [
                     {
                         "in": "path",
@@ -656,6 +685,35 @@
                     "200": {
                         "description": "Confirms new intent version creation",
                         "schema": {
+                            "$ref": "#/definitions/StatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/intent/version/{name}/{version}": {
+            "delete": {
+                "description": "Delete the specific version of an intent",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "name",
+                        "description": "The name of the intent that you want to delete. The name is case sensitive.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "version",
+                        "description": "The version of the intent that you want to delete. The name is case sensitive.",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Confirms the intent deletion",
+                        "schema": {
                             "$ref" : "#/definitions/StatusResponse"
                         }
                     }
@@ -664,7 +722,7 @@
         },
         "/admin/listbuiltinslottypes/{next_token}": {
             "get": {
-                "description": "Gets a list of built-in slot types",
+                "description": "Get a list of built-in slot types",
                 "parameters" : [
                     {
                         "in": "path",
@@ -686,7 +744,7 @@
         },
         "/admin/listcustomslottypes/{next_token}": {
             "get": {
-                "description": "Returns a list of custom slot types",
+                "description": "Get a list of custom slot types",
                 "parameters" : [
                     {
                         "in": "path",
@@ -708,7 +766,7 @@
         },
         "/admin/slottype": {
             "put": {
-                "description": "Creates a custom slot type or replaces an existing custom slot type",
+                "description": "Create a custom slot type or replace an existing custom slot type",
                 "parameters": [
                     {
                         "name": "slot_type_section",
@@ -731,7 +789,7 @@
         },
         "/admin/slottype/{name}": {
             "delete": {
-                "description": "Deletes all versions of the slot type, including the $LATEST version",
+                "description": "Delete all versions of the slot type, including the $LATEST version",
                 "parameters": [
                     {
                         "in": "path",
@@ -753,7 +811,7 @@
         },
         "/admin/slottype/versions/{name}/{next_token}": {
             "get": {
-                "description": "Gets information about all of the versions of a slot type",
+                "description": "Get information about all of the versions of a slot type",
                 "parameters": [
                     {
                         "in": "path",
@@ -782,7 +840,7 @@
         },
         "/admin/slottype/{name}/{version}": {
             "get": {
-                "description": "Returns information about a specific version of a slot type",
+                "description": "Get information about a specific version of a slot type",
                 "parameters": [
                     {
                         "in": "path",
@@ -811,7 +869,7 @@
         },
         "/admin/slottype/version/{name}": {
             "put": {
-                "description": "Use the slot type info to create or update a Lex slot type",
+                "description": "Creates a new version of the slot type based on the $LATEST version",
                 "parameters": [
                     {
                         "in": "path",
@@ -825,6 +883,35 @@
                     "200": {
                         "description": "Confirms slot type post",
                         "schema": {
+                            "$ref": "#/definitions/StatusResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/slottype/version/{name}/{version}": {
+            "delete": {
+                "description": "Delete the specific version of a slot type",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "name",
+                        "description": "The name of the slot type that you want to delete. The name is case sensitive.",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "name": "version",
+                        "description": "The version of the slot type that you want to delete. The name is case sensitive.",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Confirms the slot type deletion",
+                        "schema": {
                             "$ref" : "#/definitions/StatusResponse"
                         }
                     }
@@ -833,7 +920,7 @@
         },
         "/admin/intentdependency": {
             "get": {
-                "description": "Gets the depedency of each intent",
+                "description": "Get the depedency of each intent",
                 "responses": {
                     "200": {
                         "description": "The depedency of each intent",
@@ -1144,7 +1231,7 @@
         "GetListBuiltinIntentsResponse" : {
             "type": "object",
             "properties": {
-                "bots" : {
+                "intents" : {
                     "description": "Array of builtin intent information, see BuildinIntentEntry for details on items",
                     "type": "array",
                     "items": {

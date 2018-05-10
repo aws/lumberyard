@@ -335,7 +335,7 @@ namespace ScriptCanvasDeveloperEditor
 
         void AddResultElements(const XMLDocPtr& doc, const AZStd::string& baseID, const AZ::Uuid& typeId, const AZStd::string& name, const AZStd::string& toolTip)
         {
-            ScriptCanvas::Data::Type outputType(ScriptCanvas::Data::FromBehaviorContextType(typeId));
+            ScriptCanvas::Data::Type outputType(ScriptCanvas::Data::FromAZType(typeId));
 
             doc->AddToContext(baseID + "_OUTPUT0_NAME", ScriptCanvas::Data::GetName(outputType), "C++ Type: " + name);
             doc->AddToContext(baseID + "_OUTPUT0_TOOLTIP", toolTip);
@@ -345,7 +345,7 @@ namespace ScriptCanvasDeveloperEditor
         {
             AZStd::string paramID(AZStd::string::format("%s_PARAM%llu_", baseID.c_str(), index));
 
-            ScriptCanvas::Data::Type outputType(ScriptCanvas::Data::FromBehaviorContextType(typeId));
+            ScriptCanvas::Data::Type outputType(ScriptCanvas::Data::FromAZType(typeId));
 
             doc->AddToContext(paramID + "NAME", argName, AZStd::string::format("Simple Type: %s C++ Type: %s", ScriptCanvas::Data::GetName(outputType), cppType.c_str()));
             doc->AddToContext(paramID + "TOOLTIP", argToolTip);
@@ -355,7 +355,7 @@ namespace ScriptCanvasDeveloperEditor
         {
             AZStd::string paramID(AZStd::string::format("%s_OUTPUT%llu_", baseID.c_str(), index));
 
-            ScriptCanvas::Data::Type outputType(ScriptCanvas::Data::FromBehaviorContextType(typeId));
+            ScriptCanvas::Data::Type outputType(ScriptCanvas::Data::FromAZType(typeId));
 
             doc->AddToContext(paramID + "NAME", argName, AZStd::string::format("Simple Type: %s C++ Type: %s", ScriptCanvas::Data::GetName(outputType), cppType.c_str()));
             doc->AddToContext(paramID + "TOOLTIP", argToolTip);

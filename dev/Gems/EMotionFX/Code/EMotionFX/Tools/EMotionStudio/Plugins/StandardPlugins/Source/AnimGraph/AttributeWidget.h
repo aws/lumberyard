@@ -22,7 +22,6 @@
 
 #include <MysticQt/Source/DoubleSpinbox.h>
 #include <MysticQt/Source/IntSpinbox.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/AnimGraphObject.h>
 #include "../../../../EMStudioSDK/Source/NodeSelectionWindow.h"
 #include <MysticQt/Source/LinkWidget.h>
@@ -35,6 +34,7 @@
 #include <EMotionFX/Rendering/Common/TransformationManipulator.h>
 #include <EMotionFX/Rendering/Common/TranslateManipulator.h>
 #include <EMotionFX/Rendering/Common/RotateManipulator.h>
+
 
 
 namespace EMStudio
@@ -181,10 +181,10 @@ namespace EMStudio
         void OnResetSelection();
 
     private:
-        AnimGraphPlugin*                       mPlugin;
+        AnimGraphPlugin*                        mPlugin;
         NodeSelectionWindow*                    mNodeSelectionWindow;
-        CommandSystem::SelectionList*               mSelectionList;
-        MCore::Array<MCore::String>             mNodeSelection;
+        CommandSystem::SelectionList*           mSelectionList;
+        MCore::Array<AZStd::string>             mNodeSelection;
         MysticQt::LinkWidget*                   mNodeLink;
         QPushButton*                            mResetSelectionButton;
     };
@@ -211,7 +211,7 @@ namespace EMStudio
         AnimGraphPlugin*                       mPlugin;
         NodeSelectionWindow*                    mNodeSelectionWindow;
         CommandSystem::SelectionList*               mSelectionList;
-        MCore::String                           mSelectedNodeName;
+        AZStd::string                           mSelectedNodeName;
         MysticQt::LinkWidget*                   mNodeLink;
         QPushButton*                            mResetSelectionButton;
     };
@@ -249,7 +249,7 @@ namespace EMStudio
         AnimGraphPlugin*                       mPlugin;
         NodeSelectionWindow*                    mNodeSelectionWindow;
         CommandSystem::SelectionList*               mSelectionList;
-        MCore::Array<MCore::String>             mNodeSelection;
+        MCore::Array<AZStd::string>             mNodeSelection;
         MysticQt::LinkWidget*                   mLink;
         QPushButton*                            mResetSelectionButton;
     };
@@ -276,7 +276,7 @@ namespace EMStudio
         AnimGraphPlugin*                       mPlugin;
         NodeSelectionWindow*                    mNodeSelectionWindow;
         CommandSystem::SelectionList*               mSelectionList;
-        MCore::String                           mSelectedNodeName;
+        AZStd::string                           mSelectedNodeName;
         uint32                                  mSelectedNodeActorInstanceID;
         MysticQt::LinkWidget*                   mGoalLink;
         QPushButton*                            mResetSelectionButton;
@@ -444,7 +444,30 @@ namespace EMStudio
 
     private:
         AnimGraphPlugin*   mPlugin;
-        QLineEdit*          mLineEdit;
+        QLineEdit*         mLineEdit;
+    };
+
+
+    // Morph target picker.
+    class MorphTargetPickerAttributeWidget
+        : public MysticQt::AttributeWidget
+    {
+        Q_OBJECT
+    public:
+        MorphTargetPickerAttributeWidget(const MCore::Array<MCore::Attribute*> attributes, MCore::AttributeSettings* attributeSettings, void* customData, bool readOnly, bool creationMode, const MysticQt::AttributeChangedFunction& func);
+        ~MorphTargetPickerAttributeWidget() = default;
+        MysticQt::LinkWidget* CreateLink(const char* name);
+
+    protected slots:
+        void OnLinkWidgetClicked();
+        void OnResetSelection();
+
+    private:
+        void UpdateLinkWidget(MCore::AttributeArray* morphTargets);
+
+        AnimGraphPlugin*                mPlugin;
+        MysticQt::LinkWidget*           mLinkWidget;
+        QPushButton*                    mResetSelectionButton;
     };
 
 
@@ -576,8 +599,8 @@ namespace EMStudio
     private:
         AnimGraphPlugin*                       mPlugin;
         StateFilterSelectionWindow*             mSelectionWindow;
-        MCore::Array<MCore::String>             mSelectedGroupNames;
-        MCore::Array<MCore::String>             mSelectedNodeNames;
+        MCore::Array<AZStd::string>             mSelectedGroupNames;
+        MCore::Array<AZStd::string>             mSelectedNodeNames;
         MysticQt::LinkWidget*                   mNodeLink;
         QPushButton*                            mResetSelectionButton;
     };

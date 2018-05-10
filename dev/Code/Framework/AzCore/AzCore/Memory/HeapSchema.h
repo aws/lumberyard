@@ -41,7 +41,7 @@ namespace AZ
                 , m_isMultithreadAlloc(true)
             {}
 
-            static const int        m_memoryBlockAlignment = 64 * 1024;
+            static const int        m_memoryBlockAlignment = AZ_TRAIT_OS_DEFAULT_PAGE_SIZE;
             static const int        m_maxNumBlocks = 5;
             int                     m_numMemoryBlocks;                          ///< Number of memory blocks to use.
             void*                   m_memoryBlocks[m_maxNumBlocks];             ///< Pointers to provided memory blocks or NULL if you want the system to allocate them for you with the System Allocator.

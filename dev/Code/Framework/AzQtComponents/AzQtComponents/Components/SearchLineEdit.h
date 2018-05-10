@@ -28,6 +28,11 @@ public:
     void setMenu(QMenu* menu);
     void setIconToolTip(const QString& tooltip);
 
+    // Returns the text that the user input in the case of a QCompleter being present.
+    // There are some weird edge cases with using QCompleter::completionPrefix that this will handle
+    // And give reasonable results for.
+    QString userInputText() const;
+
 public slots:
     void setErrorState(bool errorState = true);
 

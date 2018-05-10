@@ -40,8 +40,9 @@
 
 #include <DetailWidget/StackResourcesWidget.moc>
 
-StackResourcesWidget::StackResourcesWidget(QSharedPointer<IStackResourcesModel> stackResourcesModel, ResourceManagementView* mainView)
-    : m_stackResourcesModel{stackResourcesModel}
+StackResourcesWidget::StackResourcesWidget(QSharedPointer<IStackResourcesModel> stackResourcesModel, ResourceManagementView* mainView, QWidget* parent)
+    : QFrame(parent)
+    , m_stackResourcesModel{stackResourcesModel}
     , m_view{mainView}
 {
     // root
@@ -91,7 +92,7 @@ StackResourcesWidget::StackResourcesWidget(QSharedPointer<IStackResourcesModel> 
 
     // resources table
 
-    m_resourcesTable = new MaximumSizedTableView {};
+    m_resourcesTable = new MaximumSizedTableView {this};
     m_resourcesTable->setObjectName("Table");
     m_resourcesTable->TableView()->setModel(m_stackResourcesModel.data());
     m_resourcesTable->TableView()->verticalHeader()->hide();

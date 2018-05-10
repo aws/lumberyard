@@ -111,6 +111,22 @@ namespace AZ
 
             }
         }
+
+        void AssetData::Acquire()
+        {
+            AZ_Assert(m_useCount >= 0, "AssetData has been deleted")
+            ++m_useCount;
+        }
+
+        void AssetData::Release()
+        {
+            AZ_Assert(m_useCount > 0, "Usecount is already 0!");
+            if (m_useCount.fetch_sub(1) == 1)
+            {
+                RemoveFromDB();
+            }
+        }
+
         //=========================================================================
         // RemoveFromDB
         // [6/19/2012]

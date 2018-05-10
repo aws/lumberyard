@@ -12,60 +12,98 @@
 #pragma once
 
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
-#include <GraphCanvas/Components/NodePropertyDisplay/VariableDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/ItemModelDataInterface.h>
 #include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 
-#include "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h"
+#include <Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+#include <Editor/Include/ScriptCanvas/Bus/EditorSceneVariableManagerBus.h>
+#include <Editor/Include/ScriptCanvas/Components/EditorGraphVariableManagerComponent.h>
 
 #include "ScriptCanvasDataInterface.h"
+
+#include <ScriptCanvas/Libraries/Core/GetVariable.h>
+#include <ScriptCanvas/Libraries/Core/SetVariable.h>
 
 namespace ScriptCanvasEditor
 {
     class ScriptCanvasVariableDataInterface
-        : public ScriptCanvasDataInterface<GraphCanvas::VariableReferenceDataInterface>
-        , public GraphCanvas::DataSlotNotificationBus::Handler
+        : public ScriptCanvasDataInterface<GraphCanvas::ItemModelDataInterface>
+        , public ScriptCanvas::VariableNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ScriptCanvasVariableDataInterface, AZ::SystemAllocator, 0);
         
-        ScriptCanvasVariableDataInterface(const AZ::Uuid& dataType, const AZ::EntityId& graphCanvasNodeId, const AZ::EntityId& graphCanvasSlotId, const AZ::EntityId& scriptCanvasNodeId, const ScriptCanvas::SlotId& scriptCanvasSlotId)
+        ScriptCanvasVariableDataInterface(const AZ::EntityId& scriptCanvasGraphId, const AZ::EntityId& scriptCanvasNodeId, const ScriptCanvas::SlotId& scriptCanvasSlotId)
             : ScriptCanvasDataInterface(scriptCanvasNodeId, scriptCanvasSlotId)
-            , m_dataType(dataType)
-            , m_graphCanvasNodeId(graphCanvasNodeId)
-            , m_graphCanvasSlotId(graphCanvasSlotId)
+            , m_scriptCanvasGraphId(scriptCanvasGraphId)
         {
-            GraphCanvas::DataSlotNotificationBus::Handler::BusConnect(m_graphCanvasSlotId);
+            ScriptCanvas::VariableNotificationBus::Handler::BusConnect(GetVariableId());
         }
         
         ~ScriptCanvasVariableDataInterface()
         {
-            GraphCanvas::DataSlotNotificationBus::Handler::BusDisconnect();
         }
 
         // GraphCanvas::VariableReferenceDataInterface
-        AZ::Uuid GetVariableDataType() const override
+        QAbstractItemModel* GetItemModel() const override
         {
-            return m_dataType;
-        }
-        
-        AZ::EntityId GetVariableReference() const override
-        {
-            AZ::EntityId variableId;
-            GraphCanvas::DataSlotRequestBus::EventResult(variableId, m_graphCanvasSlotId, &GraphCanvas::DataSlotRequests::GetVariableId);
-            return variableId;
+            QAbstractItemModel* retVal = nullptr;
+            ScriptCanvasEditor::EditorSceneVariableManagerRequestBus::EventResult(retVal, m_scriptCanvasGraphId, &ScriptCanvasEditor::EditorSceneVariableManagerRequests::GetVariableItemModel);
+            return retVal;
         }
 
-        void AssignVariableReference(const AZ::EntityId& variableId) override
+        void AssignIndex(const QModelIndex& index) override
         {
-            GraphCanvas::DataSlotRequestBus::Event(m_graphCanvasSlotId, &GraphCanvas::DataSlotRequests::AssignVariable, variableId);
-            
-            PostUndoPoint();
+            EditorGraphVariableItemModel* itemModel = static_cast<EditorGraphVariableItemModel*>(GetItemModel());
+
+            if (itemModel)
+            {
+                ScriptCanvas::VariableId variableId = itemModel->FindVariableIdForIndex(index);
+
+                ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
+                ScriptCanvas::VariableNotificationBus::Handler::BusConnect(variableId);
+
+                ScriptCanvas::VariableNodeRequestBus::Event(GetNodeId(), &ScriptCanvas::VariableNodeRequests::SetId, variableId);
+                PostUndoPoint();
+            }
+        }
+
+        AZStd::string GetPlaceholderString() const override
+        {
+            return "Select Variable";
+        }
+
+        AZStd::string GetDisplayString() const override
+        {
+            ScriptCanvas::VariableId variableId = GetVariableId();
+
+            AZStd::string_view variableName;
+            ScriptCanvas::VariableRequestBus::EventResult(variableName, variableId, &ScriptCanvas::VariableRequests::GetName);
+
+            return variableName;
+        }
+
+        bool IsItemValid() const override
+        {
+            ScriptCanvas::VariableId variableId = GetVariableId();
+            return variableId.IsValid();
+        }
+
+        QString GetModelName() const override
+        {
+            return "Graph Variable Model";
         }
         ////
 
-        // GraphCanvas::DataSlotNotificationBus
-        void OnVariableAssigned(const AZ::EntityId& variableAssigned)
+        // VariableNotificationBus::Handler
+        void OnVariableRemoved() override
+        {
+            ScriptCanvas::VariableNotificationBus::Handler::BusDisconnect();
+            SignalValueChanged();
+        }
+
+        void OnVariableRenamed(AZStd::string_view /*newVariableName*/) override
         {
             SignalValueChanged();
         }
@@ -73,8 +111,13 @@ namespace ScriptCanvasEditor
         
     private:
 
-        AZ::Uuid     m_dataType;
-        AZ::EntityId m_graphCanvasNodeId;
-        AZ::EntityId m_graphCanvasSlotId;
+        ScriptCanvas::VariableId GetVariableId() const
+        {
+            ScriptCanvas::VariableId variableId;
+            ScriptCanvas::VariableNodeRequestBus::EventResult(variableId, GetNodeId(), &ScriptCanvas::VariableNodeRequests::GetId);
+            return variableId;
+        }
+
+        AZ::EntityId m_scriptCanvasGraphId;
     };
 }

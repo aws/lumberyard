@@ -1,0 +1,33 @@
+{
+    "name": "amd_shared",
+    "source": "@3P:AMD_AGS@",
+    "description": "AMD AGS Library (Shared)",
+    "includes": [
+        "inc"
+    ],
+    "defines": [
+        "_AMD_AGS_USE_DLL"
+    ],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "importlibpath": [
+                "lib/x64/dll"
+            ],
+            "import": [
+                "amd_ags64.lib"
+            ],
+            "shared": [
+                "amd_ags64.dll"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
+    }
+}
+
+
+
+
+
+

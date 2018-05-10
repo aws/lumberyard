@@ -254,10 +254,23 @@ void CTerrainPainterPanel::ReloadLayers()
     br.m_dwMaskLayerId = 0xffffffff;
     m_tool.SetBrush(br);
 
+    // Restore the previously selected layer, or select the default if this is
+    // the first time opening the terrain layer painter
     int rows = m_ui->layerListView->model()->rowCount();
     if (rows > 0)
     {
-        auto index = m_ui->layerListView->model()->index(rows - 1, 0, {});
+        int layerIndex = 0;
+        for (int i = 0; i < GetIEditor()->GetTerrainManager()->GetLayerCount(); ++i)
+        {
+            CLayer* layer = GetIEditor()->GetTerrainManager()->GetLayer(i);
+            if (layer->IsSelected())
+            {
+                layerIndex = i;
+                break;
+            }
+        }
+
+        QModelIndex index = m_ui->layerListView->model()->index(layerIndex, 0, {});
         m_ui->layerListView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
     }
 

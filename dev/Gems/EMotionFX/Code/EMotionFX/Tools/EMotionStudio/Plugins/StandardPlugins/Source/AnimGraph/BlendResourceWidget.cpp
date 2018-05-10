@@ -11,7 +11,6 @@
 */
 
 #include "BlendResourceWidget.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "AnimGraphPlugin.h"
 #include "BlendGraphWidget.h"
 #include "NodeGroupWindow.h"
@@ -188,7 +187,6 @@ namespace EMStudio
         mSaveMotionSetCallback                 = new CommandSaveMotionSetCallback(false);
         mLoadMotionSetCallback                 = new CommandLoadMotionSetCallback(false);
         mActivateAnimGraphCallback             = new CommandActivateAnimGraphCallback(false);
-        mScaleAnimGraphDataCallback            = new CommandScaleAnimGraphDataCallback(false);
         mAnimGraphAddConditionCallback         = new CommandAnimGraphAddConditionCallback(false);
         mAnimGraphRemoveConditionCallback      = new CommandAnimGraphRemoveConditionCallback(false);
         mAnimGraphCreateConnectionCallback     = new CommandAnimGraphCreateConnectionCallback(false);
@@ -223,7 +221,6 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback("SaveMotionSet", mSaveMotionSetCallback);
         GetCommandManager()->RegisterCommandCallback("LoadMotionSet", mLoadMotionSetCallback);
         GetCommandManager()->RegisterCommandCallback("ActivateAnimGraph", mActivateAnimGraphCallback);
-        GetCommandManager()->RegisterCommandCallback("ScaleAnimGraphData", mScaleAnimGraphDataCallback);
         GetCommandManager()->RegisterCommandCallback("AnimGraphAddCondition", mAnimGraphAddConditionCallback);
         GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveCondition", mAnimGraphRemoveConditionCallback);
         GetCommandManager()->RegisterCommandCallback("AnimGraphCreateConnection", mAnimGraphCreateConnectionCallback);
@@ -265,7 +262,6 @@ namespace EMStudio
         GetCommandManager()->RemoveCommandCallback(mSaveMotionSetCallback, false);
         GetCommandManager()->RemoveCommandCallback(mLoadMotionSetCallback, false);
         GetCommandManager()->RemoveCommandCallback(mActivateAnimGraphCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mScaleAnimGraphDataCallback, false);
         GetCommandManager()->RemoveCommandCallback(mAnimGraphAddConditionCallback, false);
         GetCommandManager()->RemoveCommandCallback(mAnimGraphRemoveConditionCallback, false);
         GetCommandManager()->RemoveCommandCallback(mAnimGraphCreateConnectionCallback, false);
@@ -302,7 +298,6 @@ namespace EMStudio
         delete mSaveMotionSetCallback;
         delete mLoadMotionSetCallback;
         delete mActivateAnimGraphCallback;
-        delete mScaleAnimGraphDataCallback;
         delete mAnimGraphAddConditionCallback;
         delete mAnimGraphRemoveConditionCallback;
         delete mAnimGraphCreateConnectionCallback;
@@ -947,11 +942,13 @@ namespace EMStudio
             if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
             {
                 AZ_Error("EMotionFX", false, result.c_str());
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "AnimGraph <font color=red>failed</font> to save");
+                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, 
+                    AZStd::string::format("AnimGraph <font color=red>failed</font> to save<br/><br/>%s", result.c_str()).c_str());
             }
             else
             {
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, "AnimGraph <font color=green>successfully</font> saved");
+                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, 
+                    "AnimGraph <font color=green>successfully</font> saved");
             }
         }
     }
@@ -1086,7 +1083,7 @@ namespace EMStudio
 
         if (newRetargeting != animGraph->GetRetargetingEnabled())
         {
-            command += AZStd::string::format("-retargetingEnabled %i ", newRetargeting);
+            command += AZStd::string::format("-retargetingEnabled %s ", AZStd::to_string(newRetargeting).c_str());
             needToCall = true;
         }
 
@@ -1309,8 +1306,19 @@ namespace EMStudio
                     EMotionFX::AnimGraph* animGraph = animGraphInstance->GetAnimGraph();
 
                     // add the command in the command group
-                    const uint32 motionSetID = (motionSet) ? motionSet->GetID() : MCORE_INVALIDINDEX32;
-                    m_tempString = AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %d -motionSetID %d", actorInstance->GetID(), animGraph->GetID(), motionSetID);
+                    if (motionSet)
+                    {
+                        m_tempString = AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %d -motionSetID %d", 
+                            actorInstance->GetID(),
+                            animGraph->GetID(), 
+                            motionSet->GetID());
+                    }
+                    else
+                    {
+                        m_tempString = AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %d",
+                            actorInstance->GetID(),
+                            animGraph->GetID());
+                    }
                     commandGroup.AddCommandString(m_tempString);
                 }
             }
@@ -1374,10 +1382,15 @@ namespace EMStudio
         // only one selected
         if (rowIndices.size() == 1)
         {
-            QAction* activateAction = menu.addAction("Activate");
-            activateAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/AnimGraphPlugin/ShowProcessed.png"));
-            connect(activateAction, SIGNAL(triggered()), this, SLOT(OnActivateAnimGraph()));
-
+            const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+            const uint32 numActorInstances = selectionList.GetNumSelectedActorInstances();
+            if (numActorInstances)
+            {
+                QAction* activateAction = menu.addAction("Activate");
+                activateAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/AnimGraphPlugin/ShowProcessed.png"));
+                connect(activateAction, SIGNAL(triggered()), this, SLOT(OnActivateAnimGraph()));
+            }
+            
             QAction* editAction = menu.addAction("Properties");
             editAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Edit.png"));
             connect(editAction, SIGNAL(triggered()), this, SLOT(OnProperties()));
@@ -1404,12 +1417,6 @@ namespace EMStudio
 
             menu.addSeparator();
         }
-
-        // data scaling
-        QAction* scaleAction = menu.addAction("Scale Anim Graph Data");
-        scaleAction->setToolTip("<b>Scale Anim Graph Data:</b><br>This will scale all internal data of the selected anim graphs. This adjusts all positional data, such as IK handle positions, etc.");
-        scaleAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Rendering/Scale.png"));
-        connect(scaleAction, SIGNAL(triggered()), GetMainWindow(), SLOT(OnScaleSelectedAnimGraphs()));
 
         // show the menu at the given position
         menu.exec(event->globalPos());
@@ -1500,28 +1507,6 @@ namespace EMStudio
     }
 
 
-    bool UpdateAnimGraphPluginAfterScaleData()
-    {
-        EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
-        if (!plugin)
-        {
-            return false;
-        }
-
-        AnimGraphPlugin*                animGraphPlugin     = static_cast<AnimGraphPlugin*>(plugin);
-        BlendResourceWidget*            resourceWidget      = animGraphPlugin->GetResourceWidget();
-        EMStudio::ParameterWindow*      parameterWindow     = animGraphPlugin->GetParameterWindow();
-        EMStudio::AttributesWindow*     attributesWindow    = animGraphPlugin->GetAttributesWindow();
-
-        animGraphPlugin->RemoveAllUnusedGraphInfos();
-        resourceWidget->UpdateTable();
-
-        parameterWindow->Init();
-        attributesWindow->Reinit();
-        return true;
-    }
-
-
     bool UpdateMotionSetComboBoxResourceWidget()
     {
         EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
@@ -1600,11 +1585,6 @@ namespace EMStudio
 
     bool BlendResourceWidget::CommandActivateAnimGraphCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)            { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphPluginAfterActivate(); }
     bool BlendResourceWidget::CommandActivateAnimGraphCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)               { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphPluginAfterActivate(); }
-
-
-    bool BlendResourceWidget::CommandScaleAnimGraphDataCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)           { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphPluginAfterScaleData(); }
-    bool BlendResourceWidget::CommandScaleAnimGraphDataCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)              { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphPluginAfterScaleData(); }
-
 
     bool BlendResourceWidget::CommandCreateAnimGraphCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {

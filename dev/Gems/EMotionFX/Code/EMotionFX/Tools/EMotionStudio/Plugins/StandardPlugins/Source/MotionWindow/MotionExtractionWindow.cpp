@@ -323,7 +323,7 @@ namespace EMStudio
         commandGroup.AddCommandString("StopAllMotionInstances");
 
         // Iterate through all selected motions.
-        MCore::String command;
+        AZStd::string command;
         for (uint32 i = 0; i < numSelectedMotions; ++i)
         {
             // Get the current selected motion, check if it is a skeletal motion, skip directly elsewise.
@@ -334,19 +334,19 @@ namespace EMStudio
             }
 
             // Prepare the command and add it to the command group.
-            command.Format("AdjustMotion -motionID %i -motionExtractionFlags %i", motion->GetID(), extractionFlags);
-            commandGroup.AddCommandString(command.AsChar());
+            command = AZStd::string::format("AdjustMotion -motionID %i -motionExtractionFlags %i", motion->GetID(), extractionFlags);
+            commandGroup.AddCommandString(command.c_str());
         }
 
         // In case the command group is not empty, execute it.
         if (commandGroup.GetNumCommands() > 0)
         {
-            MCore::String outResult;
+            AZStd::string outResult;
             if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
             {
-                if (outResult.GetIsEmpty() == false)
+                if (outResult.empty() == false)
                 {
-                    MCore::LogError(outResult.AsChar());
+                    MCore::LogError(outResult.c_str());
                 }
             }
         }
@@ -379,13 +379,13 @@ namespace EMStudio
         MCore::CommandGroup commandGroup("Adjust motion extraction node");
 
         // adjust the actor
-        commandGroup.AddCommandString(MCore::String().Format("AdjustActor -actorID %i -motionExtractionNodeName \"%s\"", actorID, nodeName.c_str()).AsChar());
+        commandGroup.AddCommandString(AZStd::string::format("AdjustActor -actorID %i -motionExtractionNodeName \"%s\"", actorID, nodeName.c_str()).c_str());
 
         // execute the command group
-        MCore::String outResult;
+        AZStd::string outResult;
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
     }
 

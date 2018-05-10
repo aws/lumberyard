@@ -36,9 +36,7 @@ def build(bld):
                                    'EXPAT',
                                    'ZLIB',
                                    'MD5'],
-        includes                = [ bld.Path('Code/SDKs'),
-                                    bld.Path('Code/Tools/GemRegistry/include') ],
-        libpath                 = [ bld.Path('Code/SDKs') ],
+        includes                = [bld.Path('Code/Tools/GemRegistry/include') ],
         features                = ['link_running_program'],
 
         # Platform Specific

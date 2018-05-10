@@ -16,7 +16,6 @@
 // include required files
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 #include "MysticQtConfig.h"
 #include "AttributeWidgetFactory.h"
 #include <QWidget>
@@ -46,22 +45,22 @@ namespace MysticQt
         MCORE_INLINE void SetAppDir(const char* appDir)
         {
             mAppDir = appDir;
-            if (mDataDir.GetLength() == 0)
+            if (mDataDir.size() == 0)
             {
                 mDataDir = appDir;
             }
         }
-        MCORE_INLINE const MCore::String& GetAppDir() const                 { return mAppDir; }
+        MCORE_INLINE const AZStd::string& GetAppDir() const                 { return mAppDir; }
 
         MCORE_INLINE void SetDataDir(const char* dataDir)
         {
             mDataDir = dataDir;
-            if (mAppDir.GetLength() == 0)
+            if (mAppDir.size() == 0)
             {
                 mAppDir = dataDir;
             }
         }
-        MCORE_INLINE const MCore::String& GetDataDir() const                { return mDataDir; }
+        MCORE_INLINE const AZStd::string& GetDataDir() const                { return mDataDir; }
 
         const QIcon& FindIcon(const char* filename);
 
@@ -76,14 +75,14 @@ namespace MysticQt
             ~IconData();
 
             QIcon*          mIcon;
-            MCore::String   mFileName;
+            AZStd::string   mFileName;
         };
 
         QWidget*                            mMainWindow;
         AttributeWidgetFactory*             mAttributeWidgetFactory;
         MCore::Array<IconData*>             mIcons;
-        MCore::String                       mAppDir;
-        MCore::String                       mDataDir;
+        AZStd::string                       mAppDir;
+        AZStd::string                       mDataDir;
 
         MysticQtManager();
         ~MysticQtManager();
@@ -95,8 +94,8 @@ namespace MysticQt
 
     // shortcuts
     MCORE_INLINE MysticQtManager*           GetMysticQt()                   { return MysticQt::gMysticQtManager; }
-    MCORE_INLINE const MCore::String&       GetAppDir()                     { return gMysticQtManager->GetAppDir(); }
-    MCORE_INLINE const MCore::String&       GetDataDir()                    { return gMysticQtManager->GetDataDir(); }
+    MCORE_INLINE const AZStd::string&       GetAppDir()                     { return gMysticQtManager->GetAppDir(); }
+    MCORE_INLINE const AZStd::string&       GetDataDir()                    { return gMysticQtManager->GetDataDir(); }
 }   // namespace MysticQt
 
 #endif

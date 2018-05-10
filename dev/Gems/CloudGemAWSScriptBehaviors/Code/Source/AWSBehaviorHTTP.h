@@ -13,6 +13,7 @@
 #pragma once
 
 #include "AWSBehaviorBase.h"
+#include "AWSBehaviorMap.h"
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/containers/unordered_map.h>
@@ -27,7 +28,7 @@ namespace CloudGemAWSScriptBehaviors
 
         virtual void OnSuccess(const AZStd::string& resultBody) = 0;
         virtual void OnError(const AZStd::string& errorBody) = 0;
-        virtual void GetResponse(const int& responseCode, const AZStd::unordered_map<AZStd::string, AZStd::string>& headerMap, const AZStd::string& contentType, const AZStd::string& responseBody) = 0;
+        virtual void GetResponse(const int& responseCode, const StringMap& headerMap, const AZStd::string& contentType, const AZStd::string& responseBody) = 0;
     };
 
     using AWSBehaviorHTTPNotificationsBus = AZ::EBus<AWSBehaviorHTTPNotifications>;
@@ -55,7 +56,7 @@ namespace CloudGemAWSScriptBehaviors
             Call(FN_OnError, errorBody);
         }
 
-        void GetResponse(const int& responseCode, const AZStd::unordered_map<AZStd::string, AZStd::string>& headerMap, const AZStd::string& contentType, const AZStd::string& responseBody) override
+        void GetResponse(const int& responseCode, const StringMap& headerMap, const AZStd::string& contentType, const AZStd::string& responseBody) override
         {
             Call(FN_GetResponse, responseCode, headerMap, contentType, responseBody);
         }

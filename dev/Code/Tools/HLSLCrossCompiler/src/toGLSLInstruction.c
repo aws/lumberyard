@@ -1318,10 +1318,11 @@ static void TranslateTextureSample(HLSLCrossCompilerContext* psContext, Instruct
     bcatcstr(glsl, ";\n");
 }
 
-static ShaderVarType* LookupStructuredVar(HLSLCrossCompilerContext* psContext,
+static ShaderVarType* LookupStructuredVarExtended(HLSLCrossCompilerContext* psContext,
     Operand* psResource,
     Operand* psByteOffset,
-    uint32_t ui32Component)
+    uint32_t ui32Component,
+    uint32_t* swizzle)
 {
     ConstantBuffer* psCBuf = NULL;
     ShaderVarType* psVarType = NULL;
@@ -1363,6 +1364,7 @@ static ShaderVarType* LookupStructuredVar(HLSLCrossCompilerContext* psContext,
     {
         //dcl_tgsm_structured defines the amount of memory and a stride.
         ASSERT(psResource->ui32RegisterNumber < MAX_GROUPSHARED);
+        ASSERT(swizzle == NULL);
         return &psContext->psShader->sGroupSharedVarType[psResource->ui32RegisterNumber];
     }
     default:
@@ -1373,7 +1375,25 @@ static ShaderVarType* LookupStructuredVar(HLSLCrossCompilerContext* psContext,
     found = GetShaderVarFromOffset(vec4Offset, aui32Swizzle, psCBuf, &psVarType, &index, &rebase);
     ASSERT(found);
 
+    if (swizzle)
+    {
+        // Assuming the components are 4 bytes in length
+        const int bytesPerComponent = 4; 
+        // Calculate the variable swizzling based on the byteOffset and the position of the variable in the structure
+        ASSERT((byteOffset - psVarType->Offset) % 4 == 0);
+        *swizzle = (byteOffset - psVarType->Offset) / bytesPerComponent;
+        ASSERT(*swizzle < 4);
+    }
+
     return psVarType;
+}
+
+static ShaderVarType* LookupStructuredVar(HLSLCrossCompilerContext* psContext,
+    Operand* psResource,
+    Operand* psByteOffset,
+    uint32_t ui32Component)
+{
+    return LookupStructuredVarExtended(psContext, psResource, psByteOffset, ui32Component, NULL);
 }
 
 static void TranslateShaderStorageVarName(bstring output, Shader* psShader, const Operand* operand, int structured)
@@ -1409,7 +1429,6 @@ static void TranslateShaderStorageStore(HLSLCrossCompilerContext* psContext, Ins
     uint32_t ui32DataTypeFlag = TO_FLAG_INTEGER;
     int component;
     int srcComponent = 0;
-    int dstComponent = 0;
 
     Operand* psDest = 0;
     Operand* psDestAddr = 0;
@@ -1441,15 +1460,10 @@ static void TranslateShaderStorageStore(HLSLCrossCompilerContext* psContext, Ins
         if (psInst->asOperands[0].ui32CompMask & (1 << component))
         {
             SHADER_VARIABLE_TYPE eSrcDataType = GetOperandDataType(psContext, psSrc);
-
+            uint32_t swizzle = 0;
             if (structured && psDest->eType != OPERAND_TYPE_THREAD_GROUP_SHARED_MEMORY)
             {
-                ShaderVarType* newVarType = LookupStructuredVar(psContext, psDest, psDestByteOff, component);
-                if (newVarType != psVarType)
-                {
-                    dstComponent = 0;
-                }
-                psVarType = newVarType;
+                psVarType = LookupStructuredVarExtended(psContext, psDest, psDestByteOff, component, &swizzle);
             }
 
             AddIndentation(psContext);
@@ -1492,7 +1506,7 @@ static void TranslateShaderStorageStore(HLSLCrossCompilerContext* psContext, Ins
 
                 if (psVarType->Columns > 1)
                 {
-                    bformata(glsl, swizzleString[dstComponent++]);
+                    bformata(glsl, swizzleString[swizzle]);
                 }
             }
 
@@ -1663,7 +1677,6 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
     uint32_t ui32DataTypeFlag = TO_FLAG_INTEGER;
     int component;
     int destComponent = 0;
-    int srcComponent = 0;
 
     Operand* psDest = 0;
     Operand* psSrcAddr = 0;
@@ -1823,7 +1836,8 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
                 else
                 {
                     ConstantBuffer* psCBuf = NULL;
-                    psVarType = LookupStructuredVar(psContext, psSrc, psSrcByteOff, psSrc->eSelMode == OPERAND_4_COMPONENT_SWIZZLE_MODE ? psSrc->aui32Swizzle[component] : component);
+                    uint32_t swizzle = 0;
+                    psVarType = LookupStructuredVarExtended(psContext, psSrc, psSrcByteOff, psSrc->eSelMode == OPERAND_4_COMPONENT_SWIZZLE_MODE ? psSrc->aui32Swizzle[component] : component, &swizzle);
                     GetConstantBufferFromBindingPoint(RGROUP_UAV, psSrc->ui32RegisterNumber, &psContext->psShader->sInfo, &psCBuf);
 
                     if (psVarType->Type == SVT_UINT)
@@ -1856,7 +1870,7 @@ static void TranslateShaderStorageLoad(HLSLCrossCompilerContext* psContext, Inst
 
                         if (psVarType->Columns > 1)
                         {
-                            bformata(glsl, ".%s", swizzleString[srcComponent++]);
+                            bformata(glsl, ".%s", swizzleString[swizzle]);
                         }
                     }
                     else if (psSrc->eType == OPERAND_TYPE_RESOURCE)
@@ -2559,6 +2573,19 @@ void UpdateCommonTempVecType(SHADER_VARIABLE_TYPE* peCommonTempVecType, SHADER_V
     }
 }
 
+bool IsFloatType(SHADER_VARIABLE_TYPE type)
+{
+    switch (type)
+    {
+    case SVT_FLOAT:
+    case SVT_FLOAT10:
+    case SVT_FLOAT16:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, const int32_t i32InstCount, SHADER_VARIABLE_TYPE* aeCommonTempVecType)
 {
     int32_t i;
@@ -2893,14 +2920,14 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
         }
         case OPCODE_FTOI:
         {
-            ASSERT(GetOperandDataType(psContext, &psInst->asOperands[1]) == SVT_FLOAT ||
+            ASSERT(IsFloatType(GetOperandDataType(psContext, &psInst->asOperands[1])) ||
                 GetOperandDataType(psContext, &psInst->asOperands[1]) == SVT_VOID);
             eNewType = SVT_INT;
             break;
         }
         case OPCODE_FTOU:
         {
-            ASSERT(GetOperandDataType(psContext, &psInst->asOperands[1]) == SVT_FLOAT ||
+            ASSERT(IsFloatType(GetOperandDataType(psContext, &psInst->asOperands[1])) ||
                 GetOperandDataType(psContext, &psInst->asOperands[1]) == SVT_VOID);
             eNewType = SVT_UINT;
             break;
@@ -3090,7 +3117,7 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #endif
             ui32DstFlags |= TO_FLAG_UNSIGNED_INTEGER;
 
-            ASSERT(GetOperandDataType(psContext, &psInst->asOperands[1]) == SVT_FLOAT);
+            ASSERT(IsFloatType(GetOperandDataType(psContext, &psInst->asOperands[1])));
         }
         else if (psInst->eOpcode == OPCODE_FTOI)
         {
@@ -3100,7 +3127,7 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #endif
             ui32DstFlags |= TO_FLAG_INTEGER;
 
-            ASSERT(GetOperandDataType(psContext, &psInst->asOperands[1]) == SVT_FLOAT);
+            ASSERT(IsFloatType(GetOperandDataType(psContext, &psInst->asOperands[1])));
         }
         else
         {
@@ -4520,7 +4547,7 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
             AddIndentation(psContext);
             BeginAssignment(psContext, &psInst->asOperands[0], ui32FetchTypeToFlags, psInst->bSaturate);
 
-            if (psInst->asOperands[2].ui32RegisterNumber >= GMEM_FLOAT_START_SLOT)         // FRAMEBUFFER FETCH
+            if (IsGmemReservedSlot(FBF_ANY, psInst->asOperands[2].ui32RegisterNumber))         // FRAMEBUFFER FETCH
             {
                 TranslateOperand(psContext, &psInst->asOperands[2], TO_FLAG_NONE);
             }
@@ -5367,10 +5394,25 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
 #endif
         AddIndentation(psContext);
         BeginAssignment(psContext, &psInst->asOperands[0], TO_FLAG_INTEGER, psInst->bSaturate);
+        
+        uint32_t uDestElemCount = GetNumSwizzleElements(&psInst->asOperands[0]);
+        uint32_t uSrcElemCount = GetNumSwizzleElements(&psInst->asOperands[1]);
 
-        bcatcstr(glsl, "~(");
-        TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
-        bcatcstr(glsl, ")");
+        if (uDestElemCount == uSrcElemCount)
+        {
+            bcatcstr(glsl, "~(");
+            TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
+            bcatcstr(glsl, ")");            
+        }
+        else
+        {   
+            ASSERT(uSrcElemCount > uDestElemCount);
+            bformata(glsl, "ivec%d(~(", uSrcElemCount);            
+            TranslateOperand(psContext, &psInst->asOperands[1], TO_FLAG_INTEGER);
+            bcatcstr(glsl, "))");
+            TranslateOperandSwizzle(psContext, &psInst->asOperands[0]);            
+        }
+         
         EndAssignment(psContext, &psInst->asOperands[0], TO_FLAG_INTEGER, psInst->bSaturate);
         bcatcstr(glsl, ";\n");
         break;

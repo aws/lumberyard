@@ -128,3 +128,16 @@ const char* GetBitcastOp(SHADER_VARIABLE_TYPE from, SHADER_VARIABLE_TYPE to)
     ASSERT(0);
     return "";
 }
+
+bool IsGmemReservedSlot(FRAMEBUFFER_FETCH_TYPE typeMask, const uint32_t regNumber)
+{
+    if (((typeMask & FBF_ARM_COLOR) && regNumber == GMEM_ARM_COLOR_SLOT) ||
+        ((typeMask & FBF_ARM_DEPTH) && regNumber == GMEM_ARM_DEPTH_SLOT) ||
+        ((typeMask & FBF_ARM_STENCIL) && regNumber == GMEM_ARM_STENCIL_SLOT) || 
+        ((typeMask & FBF_EXT_COLOR) && regNumber >= GMEM_FLOAT_START_SLOT))
+    {
+        return true;
+    }
+
+    return false;
+}

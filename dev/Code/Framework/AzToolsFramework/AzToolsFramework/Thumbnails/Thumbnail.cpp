@@ -17,6 +17,24 @@ namespace AzToolsFramework
 {
     namespace Thumbnailer
     {
+        //////////////////////////////////////////////////////////////////////////
+        // ThumbnailKey
+        //////////////////////////////////////////////////////////////////////////
+        bool ThumbnailKey::IsReady() const { return m_ready; }
+
+        bool ThumbnailKey::UpdateThumbnail()
+        {
+            if (!IsReady())
+            {
+                return false;
+            }
+            emit UpdateThumbnailSignal();
+            return true;
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        // Thumbnail
+        //////////////////////////////////////////////////////////////////////////
         Thumbnail::Thumbnail(SharedThumbnailKey key, int thumbnailSize)
             : QObject()
             , m_state(State::Unloaded)

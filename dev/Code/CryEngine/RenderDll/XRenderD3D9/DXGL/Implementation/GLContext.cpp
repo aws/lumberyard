@@ -2013,37 +2013,23 @@ namespace NCryOpenGL
                         CRY_ASSERT(tex);
 
                         GLenum eAttachmentID(SFrameBufferConfiguration::AttachmentIndexToID(uAttachment));
-                        CRY_ASSERT(eAttachmentID != GL_NONE);
+                        AZ_Assert(eAttachmentID != GL_NONE, "Invalid attachment point %d", uAttachment);
 
-                        if (bOnBind ? tex->m_bColorLoadDontCare : tex->m_bColorStoreDontCareWhenUnbound)
+                        if (eAttachmentID == GL_DEPTH_ATTACHMENT || eAttachmentID == GL_STENCIL_ATTACHMENT || eAttachmentID == GL_DEPTH_STENCIL_ATTACHMENT)
                         {
-                            drawBuffers.push_back(eAttachmentID);
-                        }
-                        else
-                        {
-#if !DXGL_SUPPORT_STENCIL_ONLY_FORMAT
-                            if (!m_pDevice->IsFeatureSupported(eF_StencilOnlyFormat))
-                            {
-                                if (eAttachmentID == GL_DEPTH_ATTACHMENT || eAttachmentID == GL_STENCIL_ATTACHMENT)
-                                {
-                                    GLenum eOtherID(eAttachmentID == GL_DEPTH_ATTACHMENT ? GL_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT);
-                                    if (m_spFrameBuffer->m_kConfiguration.m_akAttachments[SFrameBufferConfiguration::AttachmentIDToIndex(eOtherID)] == pAttachedView)
-                                    {
-                                        eAttachmentID = GL_DEPTH_STENCIL_ATTACHMENT;
-                                    }
-                                }
-                            }
-#endif //!DXGL_SUPPORT_STENCIL_ONLY_FORMAT
-
                             if (bOnBind ? tex->m_bDepthLoadDontCare : tex->m_bDepthStoreDontCareWhenUnbound)
                             {
-                                drawBuffers.push_back(eAttachmentID);
+                                drawBuffers.push_back(GL_DEPTH_ATTACHMENT);
                             }
 
                             if (bOnBind ? tex->m_bStencilLoadDontCare : tex->m_bStencilStoreDontCareWhenUnbound)
                             {
-                                drawBuffers.push_back(eAttachmentID);
+                                drawBuffers.push_back(GL_STENCIL_ATTACHMENT);
                             }
+                        }
+                        else if (bOnBind ? tex->m_bColorLoadDontCare : tex->m_bColorStoreDontCareWhenUnbound)
+                        {
+                            drawBuffers.push_back(eAttachmentID);
                         }
 
                         if (bOnBind)
@@ -2075,47 +2061,48 @@ namespace NCryOpenGL
                 }
 
                 // Make sure that scissor test is disabled as glClearBufferfv is affected as well
-                if (m_kStateCache.m_kRasterizer.m_bScissorEnabled)
+                bool scissorTestState = m_kStateCache.m_kRasterizer.m_bScissorEnabled;
+                if (scissorTestState)
                 {
                     SetEnabledState(GL_SCISSOR_TEST, false);
+                    m_kStateCache.m_kRasterizer.m_bScissorEnabled = false;
                 }
 
+                AZStd::vector<ClearColorArg> colorBufferArgs;
+                bool clearDepth = false;
+                bool clearStencil = false;
                 for (const GLenum buffer : drawBuffers)
                 {
-                    if (buffer == GL_DEPTH_ATTACHMENT)
+                    switch (buffer)
                     {
-                        GLfloat depthValue = 0.f;
-                        glClearBufferfv(GL_DEPTH, 0, &depthValue);
-                    }
-                    else if (buffer == GL_STENCIL_ATTACHMENT)
-                    {
-                        GLint stencialValue = 0;
-                        glClearBufferiv(GL_STENCIL, 0, &stencialValue);
-                    }
-                    else if(buffer == GL_DEPTH_STENCIL_ATTACHMENT)
-                    {
-                        glClearBufferfi(GL_DEPTH_STENCIL, 0, 0.f, 0);
-                    }
-                    else
-                    {
-                        GLfloat colorValue[4] = { 0 };
-                        glClearBufferfv(GL_COLOR, buffer - GL_COLOR_ATTACHMENT0, colorValue);
+                    case GL_DEPTH_STENCIL_ATTACHMENT:
+                        clearDepth = true;
+                        clearStencil = true;
+                        break;
+                    case GL_DEPTH_ATTACHMENT:
+                        clearDepth = true;
+                        break;
+                    case GL_STENCIL_ATTACHMENT:
+                        clearStencil = true;
+                        break;
+                    default:
+                        colorBufferArgs.push_back(AZStd::make_pair(buffer - GL_COLOR_ATTACHMENT0, ColorF(0.f)));
+                        break;
                     }
                 }
 
+                ClearRenderTargetInternal(colorBufferArgs);
+                ClearDepthStencilInternal(clearDepth, clearStencil, 0.f, 0);
+
                 // Restore that scissor test switch as specified by the rasterizer state
-                if (m_kStateCache.m_kRasterizer.m_bScissorEnabled)
+                if (scissorTestState)
                 {
                     SetEnabledState(GL_SCISSOR_TEST, true);
+                    m_kStateCache.m_kRasterizer.m_bScissorEnabled = true;
                 }
             }
             else
             {
-                if (gRenDev->GetFeatures() & RFT_HW_ARM_MALI) // Mali has driver issues with glInvalidateFramebuffer
-                {
-                    return;
-                }
-
                 // Tell the driver that it doesn't need to resolve certain framebuffer attachments into memory.
                 glInvalidateFramebuffer(GL_FRAMEBUFFER, drawBuffers.size(), drawBuffers.data());
             }
@@ -2860,21 +2847,28 @@ namespace NCryOpenGL
         }
 
         uint32 uDrawBufferIndex((uint32)(SFrameBufferConfiguration::AttachmentIndexToID(uAttachment) - GL_COLOR_ATTACHMENT0));
+        AZStd::vector<ClearColorArg> clearArgs;
+        clearArgs.push_back(AZStd::make_pair(uDrawBufferIndex, ColorF(afColor[0], afColor[1], afColor[2], afColor[3])));
+        ClearRenderTargetInternal(clearArgs);
+    }
+
+    void CContext::ClearRenderTargetInternal(const AZStd::vector<ClearColorArg>& args)
+    {
+        if (args.empty())
+        {
+            return;
+        }
 
         // Make sure the color mask includes all channels as glClearBufferfv is masked as well
-        //  Confetti BEGIN: Igor Lobanchikov :END
-        SColorMask kRequiredColorMask = {
+        SColorMask requiredColorMask = {
             { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE }
         };
-        SColorMask kOriginalColorMask(m_kStateCache.m_kBlend.m_kTargets[uDrawBufferIndex].m_kWriteMask);
-        if (kRequiredColorMask != kOriginalColorMask)
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
+        
+#if !DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
+        SColorMask originalColorMask(m_kStateCache.m_kBlend.m_kTargets[0].m_kWriteMask);
+        if (requiredColorMask != originalColorMask)
         {
-            SSetTargetDependentBlendState::SetWriteMask(kRequiredColorMask.m_abRGBA, uDrawBufferIndex);
-        }
-#else
-        {
-            SSetTargetIndependentBlendState::SetWriteMask(kRequiredColorMask.m_abRGBA, 0);
+            SSetTargetIndependentBlendState::SetWriteMask(requiredColorMask.m_abRGBA, 0);
         }
 #endif
 
@@ -2884,17 +2878,33 @@ namespace NCryOpenGL
             SetEnabledState(GL_SCISSOR_TEST, false);
         }
 
-        glClearBufferfv(GL_COLOR, (GLint)uDrawBufferIndex, afColor);
-
-        // Restore the color mask as specified by the blend state
-        if (kRequiredColorMask != kOriginalColorMask)
+        for (AZStd::vector<ClearColorArg>::const_iterator it = args.begin(); it != args.end(); ++it)
+        {
+            uint32 drawBufferIndex = (*it).first;
 #if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
-        {
-            SSetTargetDependentBlendState::SetWriteMask(kOriginalColorMask.m_abRGBA, uDrawBufferIndex);
+            SColorMask originalColorMask(m_kStateCache.m_kBlend.m_kTargets[drawBufferIndex].m_kWriteMask);
+            if (requiredColorMask != originalColorMask)
+            {
+                SSetTargetDependentBlendState::SetWriteMask(requiredColorMask.m_abRGBA, drawBufferIndex);
+            }
+#endif
+            const ColorF color = (*it).second;
+            const float clearColor[] = { color.r, color.g, color.b, color.a };
+            glClearBufferfv(GL_COLOR, drawBufferIndex, clearColor);
+
+#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
+            if (requiredColorMask != originalColorMask)
+            {
+                SSetTargetDependentBlendState::SetWriteMask(originalColorMask.m_abRGBA, drawBufferIndex);
+            }
+#endif
         }
-#else
+
+#if !DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
+        // Restore the color mask as specified by the blend state
+        if (requiredColorMask != originalColorMask)
         {
-            SSetTargetIndependentBlendState::SetWriteMask(kOriginalColorMask.m_abRGBA, 0);
+            SSetTargetIndependentBlendState::SetWriteMask(originalColorMask.m_abRGBA, 0);
         }
 #endif
 
@@ -3029,7 +3039,17 @@ namespace NCryOpenGL
             BindDrawFrameBuffer(spClearFrameBuffer->m_kObject.m_kName);
         }
 
-        if (bClearDepth)
+        ClearDepthStencilInternal(bClearDepth, bClearStencil, fDepthValue, uStencilValue);
+    }
+
+    void CContext::ClearDepthStencilInternal(bool clearDepth, bool clearStencil, float depthValue, uint8 stencilValue)
+    {
+        if (!clearDepth && !clearStencil)
+        {
+            return;
+        }
+
+        if (clearDepth)
         {
             // Make sure the depth mask includes depth writing as glClearBufferf[i|v] are masked as well
             if (m_kStateCache.m_kDepthStencil.m_bDepthWriteMask != GL_TRUE)
@@ -3045,7 +3065,7 @@ namespace NCryOpenGL
         }
 
         // Make sure the stencil mask includes depth writing as glClearBufferf[i|v] are masked as well
-        if (bClearStencil)
+        if (clearStencil)
         {
             //  Confetti BEGIN: Igor Lobanchikov
             if (m_kStateCache.m_kDepthStencil.m_kStencilFrontFaces.m_uStencilWriteMask != 0xFF)
@@ -3066,21 +3086,21 @@ namespace NCryOpenGL
         }
 
         GLenum eBuffer(0);
-        if (bClearDepth && bClearStencil)
+        if (clearDepth && clearStencil)
         {
-            glClearBufferfi(GL_DEPTH_STENCIL, 0, fDepthValue, static_cast<GLint>(uStencilValue));
+            glClearBufferfi(GL_DEPTH_STENCIL, 0, depthValue, static_cast<GLint>(stencilValue));
         }
-        else if (bClearDepth)
+        else if (clearDepth)
         {
-            glClearBufferfv(GL_DEPTH, 0, &fDepthValue);
+            glClearBufferfv(GL_DEPTH, 0, &depthValue);
         }
-        else if (bClearStencil)
+        else if (clearStencil)
         {
-            GLint iStencilValue(uStencilValue);
+            GLint iStencilValue(stencilValue);
             glClearBufferiv(GL_STENCIL, 0, &iStencilValue);
         }
 
-        if (bClearDepth)
+        if (clearDepth)
         {
             // Restore the depth mask as specified by the depth stencil state
             if (m_kStateCache.m_kDepthStencil.m_bDepthWriteMask != GL_TRUE)
@@ -3102,7 +3122,7 @@ namespace NCryOpenGL
         }
 
         // Restore the stencil mask as specified by the depth stencil state
-        if (bClearStencil)
+        if (clearStencil)
         {
             //  Confetti BEGIN: Igor Lobanchikov :END
             if (m_kStateCache.m_kDepthStencil.m_kStencilFrontFaces.m_uStencilWriteMask != 0xFF)

@@ -13,6 +13,12 @@
 // include required headers
 #include "Quaternion.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define QUATERNION_CPP_SECTION_1 1
+#define QUATERNION_CPP_SECTION_2 2
+#endif
+
 namespace MCore
 {
     // spherical quadratic interpolation
@@ -69,6 +75,10 @@ namespace MCore
         num1 = _mm_mul_ps(num2, num4);
         return Quaternion(num1.m128_f32[0], num1.m128_f32[1], num1.m128_f32[2], num1.m128_f32[3]);
     #else
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION QUATERNION_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Quaternion_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         const float omt = 1.0f - t;
         const float dot = x * to.x + y * to.y + z * to.z + w * to.w;
         if (dot < 0.0f)
@@ -100,6 +110,10 @@ namespace MCore
     // returns the linear interpolated result [t must be between 0..1]
     Quaternion Quaternion::Lerp(const Quaternion& to, float t) const
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION QUATERNION_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Quaternion_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         const float omt = 1.0f - t;
         const float cosom = x * to.x + y * to.y + z * to.z + w * to.w;
         if (cosom < 0.0f)

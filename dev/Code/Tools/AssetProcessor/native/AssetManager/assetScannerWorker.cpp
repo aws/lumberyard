@@ -33,6 +33,8 @@ void AssetScannerWorker::StartScan()
     m_fileList.clear();
     m_doScan = true;
 
+    AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Scanning file system for changes...\n");
+
     Q_EMIT ScanningStateChanged(AssetProcessor::AssetScanningStatus::Started);
     Q_EMIT ScanningStateChanged(AssetProcessor::AssetScanningStatus::InProgress);
 
@@ -55,6 +57,8 @@ void AssetScannerWorker::StartScan()
     {
         EmitFiles();
     }
+
+    AZ_TracePrintf(AssetProcessor::ConsoleChannel, "File system scan done.\n");
 
     Q_EMIT ScanningStateChanged(AssetProcessor::AssetScanningStatus::Completed);
 }

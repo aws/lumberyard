@@ -215,8 +215,11 @@ namespace AzToolsFramework
             selectionManipulator->Register(managerId);
         }
 
-        // create our hover manipulators so new points can be inserted
-        m_hoverSelection->Create(entityId, managerId);
+        if (m_hoverSelection)
+        {
+            // create our hover manipulators so new points can be inserted
+            m_hoverSelection->Create(entityId, managerId);
+        }
 
         OnCreated(entityId);
     }
@@ -269,7 +272,10 @@ namespace AzToolsFramework
             m_translationManipulator.reset();
         }
 
-        m_hoverSelection->Register(managerId);
+        if (m_hoverSelection)
+        {
+            m_hoverSelection->Register(managerId);
+        }
     }
 
     template<typename Vertex>
@@ -293,7 +299,10 @@ namespace AzToolsFramework
             translationManipulator.reset();
         }
 
-        EditorVertexSelectionBase<Vertex>::m_hoverSelection->Register(managerId);
+        if (EditorVertexSelectionBase<Vertex>::m_hoverSelection)
+        {
+            EditorVertexSelectionBase<Vertex>::m_hoverSelection->Register(managerId);
+        }
     }
 
     template<typename Vertex>
@@ -544,4 +553,15 @@ namespace AzToolsFramework
     template class EditorVertexSelectionVariable<AZ::Vector3>;
     template class EditorVertexSelectionFixed<AZ::Vector2>;
     template class EditorVertexSelectionFixed<AZ::Vector3>;
+
+    void EditorVertexSelectionUtil::DisplayVertexContainerIndex(
+        AzFramework::EntityDebugDisplayRequests& displayContext
+        , const AZ::Vector3& position
+        , size_t index
+        , float textSize
+    )
+    {
+        AZStd::string indexFormat = AZStd::string::format("[%d]", index);
+        displayContext.DrawTextLabel(position, textSize, indexFormat.c_str(), true);
+    }
 }

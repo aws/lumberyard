@@ -14,12 +14,14 @@
 
 #include "Core.h"
 
+#include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/EBus/EBus.h>
 #include <ScriptCanvas/Data/Data.h>
 
 namespace ScriptCanvas
 {
+    struct VariableId;
     class Datum;
     class Slot;
 
@@ -49,16 +51,29 @@ namespace ScriptCanvas
 
         //! Retrieves all slot ids for slots with the specific name
         virtual AZStd::vector<SlotId> GetSlotIds(AZStd::string_view slotName) const = 0;
-        
+
         virtual const AZ::EntityId& GetGraphId() const = 0;
 
         //! Determines whether the slot on this node with the specified slot id can accept values of the specified type
         virtual bool SlotAcceptsType(const SlotId&, const Data::Type&) const = 0;
 
         //! Gets the input for the given SlotId
-        virtual Data::Type GetSlotDataType(const SlotId& slotId) const = 0; 
-        
-        virtual bool IsSlotValidStorage(const SlotId& slotId) const = 0;
+        virtual Data::Type GetSlotDataType(const SlotId& slotId) const = 0;
+
+        // Retrieves the variable id which is represents the current variable associated with the specified slot
+        virtual VariableId GetSlotVariableId(const SlotId& slotId) const = 0;
+        // Sets the variable id parameter as the current variable for the specified slot
+        virtual void SetSlotVariableId(const SlotId& slotId, const VariableId& variableId) = 0;
+        // Reset the variable id value to the original variable id that was associated with the slot
+        // when the slot was created by a call to AddInputDatumSlot().
+        // The reset variable Id is not associated Variable Manager and is owned by this node
+        virtual void ResetSlotVariableId(const SlotId& slotId) = 0;
+
+        // Updates the slotIndex parameter with offset in the SlotList if the slotId is found within the node
+        // returns true if the slot id was found in the SlotList otherwise the slotIndex parameter is not changed
+        virtual AZ::Outcome<AZ::s64, AZStd::string> FindSlotIndex(const SlotId& slotId) const = 0;
+
+        virtual bool IsOnPureDataThread(const SlotId& slotId) const = 0;
     };
 
     using NodeRequestBus = AZ::EBus<NodeRequests>;
@@ -70,7 +85,7 @@ namespace ScriptCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-//        virtual void OnGraphActivate(const AZ::Uuid& editGraphId, const AZ::Uuid& runtimeGraphId) {}
+        //        virtual void OnGraphActivate(const AZ::Uuid& editGraphId, const AZ::Uuid& runtimeGraphId) {}
         virtual void OnNodeInputChanged(const AZStd::string& sourceNodeName, const AZStd::string& objectName, const AZStd::string& slotName) {}
         virtual void OnNodeSignalOutput(const AZStd::string& sourceNodeName, const AZStd::string& targetNodeName, const AZStd::string& slotName) {}
         virtual void OnNodeSignalInput(const AZ::Uuid& nodeId, const AZStd::string& name, const AZStd::string& slotName) {}
@@ -87,7 +102,13 @@ namespace ScriptCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual void OnInputChanged(const SlotId& slotId) = 0;
+        virtual void OnInputChanged(const SlotId& /*slotId*/) {}
+
+        //! Events signaled when a slot is added or removed from a node
+        virtual void OnSlotAdded(const SlotId& /*slotId*/) {}
+        virtual void OnSlotRemoved(const SlotId& /*slotId*/) {}
+
+        virtual void OnSlotActiveVariableChanged(const SlotId& /*slotId*/, const VariableId& oldVariableId, const VariableId& newVariableId) {}
     };
 
     using NodeNotificationsBus = AZ::EBus<NodeNotifications>;
@@ -102,6 +123,8 @@ namespace ScriptCanvas
         virtual const Datum* GetInput(const SlotId& slotId) const = 0;
         virtual Datum* ModInput(const SlotId& slotId) = 0;
         virtual AZ::EntityId GetGraphEntityId() const = 0;
+
+
     };
 
     using EditorNodeRequestBus = AZ::EBus<EditorNodeRequests>;

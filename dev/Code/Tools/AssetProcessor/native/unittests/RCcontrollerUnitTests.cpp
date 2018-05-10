@@ -192,7 +192,6 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     tempJobNames << "c:/somerandomfolder/mmmnnnoo/123.567";
 
     QList<RCJob*> createdJobs;
-    AssetBuilderSDK::AssetBuilderDesc builderDesc;
 
     AZ::Uuid uuidOfSource = AZ::Uuid("{D013122E-CF2C-4534-A87D-F82570FBC2CD}");
 
@@ -483,6 +482,23 @@ void RCcontrollerUnitTests::RunRCControllerTests()
     // make sure the source UUID made its way all the way from create jobs to process jobs.
     UNIT_TEST_EXPECT_TRUE(rcJob.m_capturedParams.m_processJobRequest.m_sourceFileUUID == uuidOfSource);
 
+    // Test case when source file is deleted before it started processing
+    {
+        int prevJobCount = rcJobListModel->itemCount();
+        MockRCJob rcJob;
+        AssetProcessor::JobDetails jobDetailsToInitWith;
+        jobDetailsToInitWith.m_jobEntry.m_relativePathToFile = "someFile0.txt";
+        jobDetailsToInitWith.m_jobEntry.m_platformInfo = { "pc",{ "tools", "editor" } };
+        jobDetailsToInitWith.m_jobEntry.m_jobKey = "Text files";
+        jobDetailsToInitWith.m_jobEntry.m_sourceFileUUID = uuidOfSource;
+        rcJob.Init(jobDetailsToInitWith);
+        rcJobListModel->addNewJob(&rcJob);
+        // verify that job was added
+        UNIT_TEST_EXPECT_TRUE(rcJobListModel->itemCount() == prevJobCount + 1);
+        m_rcController.RemoveJobsBySource("someFile0.txt");
+        // verify that job was removed
+        UNIT_TEST_EXPECT_TRUE(rcJobListModel->itemCount() == prevJobCount);
+    }
     Q_EMIT UnitTestPassed();
 }
 

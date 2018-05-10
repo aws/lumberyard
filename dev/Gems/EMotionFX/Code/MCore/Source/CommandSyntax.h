@@ -15,7 +15,6 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Array.h"
-#include "UnicodeString.h"
 #include "CommandLine.h"
 
 
@@ -106,7 +105,7 @@ namespace MCore
          * @param index The parameter number to get the default value from.
          * @result The string containing the default value.
          */
-        const MCore::String& GetDefaultValue(uint32 index) const;
+        const AZStd::string& GetDefaultValue(uint32 index) const;
 
         /**
          * Get the default value for a parameter with a given name.
@@ -114,7 +113,6 @@ namespace MCore
          * @param outDefaultValue The string that will receive the default value.
          * @result Returns true when the parameter default value has been looked up successfully, otherwise false is returned (no parameter with such name found).
          */
-        bool GetDefaultValue(const char* paramName, MCore::String& outDefaultValue) const;
         bool GetDefaultValue(const char* paramName, AZStd::string& outDefaultValue) const;
 
         /**
@@ -145,7 +143,7 @@ namespace MCore
          * @param outResult The string that will receive the result of the validation. This will contain the errors in case it's invalid.
          * @result Returns false when the parameter list is invalid, otherwise true is returned.
          */
-        bool CheckIfIsValid(const char* parameterList, String& outResult) const;
+        bool CheckIfIsValid(const char* parameterList, AZStd::string& outResult) const;
 
         /**
          * Check if a given command line is valid in combination with this syntax.
@@ -153,7 +151,7 @@ namespace MCore
          * @param outResult The string that will receive the result of the validation. This will contain the errors in case it's invalid.
          * @result Returns false when the command line is invalid, otherwise true is returned.
          */
-        bool CheckIfIsValid(const CommandLine& commandLine, String& outResult) const;
+        bool CheckIfIsValid(const CommandLine& commandLine, AZStd::string& outResult) const;
 
         /**
          * Check if we already registered a parameter with a given name.
@@ -181,11 +179,11 @@ namespace MCore
          */
         struct MCORE_API Parameter
         {
-            String      mName;          /**< The name of the parameter. */
-            String      mDescription;   /**< The description of the parameter. */
-            String      mDefaultValue;  /**< The default value. */
-            EParamType  mParamType;     /**< The parameter type. */
-            bool        mRequired;      /**< Is this parameter required or optional? */
+            AZStd::string      mName;          /**< The name of the parameter. */
+            AZStd::string      mDescription;   /**< The description of the parameter. */
+            AZStd::string      mDefaultValue;  /**< The default value. */
+            EParamType         mParamType;     /**< The parameter type. */
+            bool               mRequired;      /**< Is this parameter required or optional? */
         };
 
         Array<Parameter>    mParameters;    /**< The array of registered parameters. */

@@ -11,6 +11,17 @@
 */
 #pragma once
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MULTIPLAYERUTILS_H_SECTION_1 1
+#define MULTIPLAYERUTILS_H_SECTION_2 2
+#define MULTIPLAYERUTILS_H_SECTION_3 3
+#define MULTIPLAYERUTILS_H_SECTION_4 4
+#define MULTIPLAYERUTILS_H_SECTION_5 5
+#define MULTIPLAYERUTILS_H_SECTION_6 6
+#endif
+
 #ifndef GEM_MULTIPLAYER_MULTIPLAYERUTILS_H
 #define GEM_MULTIPLAYER_MULTIPLAYERUTILS_H
 
@@ -28,6 +39,10 @@
 #   include <GridMate/Carrier/SecureSocketDriver.h>
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_1
+#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #pragma pop_macro("max")	// restore previous disabling of max
 
@@ -75,6 +90,10 @@ namespace Multiplayer
 
             ApplyDisconnectDetectionSettings(carrierDesc);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_2
+#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         static void ApplyDisconnectDetectionSettings(GridMate::CarrierDesc& carrierDesc)
@@ -135,10 +154,18 @@ namespace Multiplayer
     {
         static void StartSessionService(GridMate::IGridMate* gridMate)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_3
+#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         static void StopSessionService(GridMate::IGridMate* gridMate)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_4
+#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+#endif
         }
     };
 
@@ -146,10 +173,18 @@ namespace Multiplayer
     {
         static void StartSessionService(GridMate::IGridMate* gridMate)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_5
+#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         static void StopSessionService(GridMate::IGridMate* gridMate)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_6
+#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+#endif
         }
     };
 

@@ -14,13 +14,14 @@
 #include <AzCore/Math/IntersectSegment.h>
 
 using namespace AZ;
-using namespace AZ::Intersect;
+using namespace Intersect;
 
 //=========================================================================
 // IntersectSegmentTriangleCCW
 // [10/21/2009]
 //=========================================================================
-int IntersectSegmentTriangleCCW(const Vector3& p, const Vector3& q, const Vector3& a, const Vector3& b, const Vector3& c,
+int Intersect::IntersectSegmentTriangleCCW(
+    const Vector3& p, const Vector3& q, const Vector3& a, const Vector3& b, const Vector3& c,
     /*float &u, float &v, float &w,*/ Vector3& normal, VectorFloat& t)
 {
     VectorFloat v, w; // comment this and enable input params if we need the barycentric coordinates
@@ -85,7 +86,8 @@ int IntersectSegmentTriangleCCW(const Vector3& p, const Vector3& q, const Vector
 // [10/21/2009]
 //=========================================================================
 int
-AZ::Intersect::IntersectSegmentTriangle(const Vector3& p, const Vector3& q, const Vector3& a, const Vector3& b, const Vector3& c,
+Intersect::IntersectSegmentTriangle(
+    const Vector3& p, const Vector3& q, const Vector3& a, const Vector3& b, const Vector3& c,
     /*float &u, float &v, float &w,*/ Vector3& normal, VectorFloat& t)
 {
     VectorFloat v, w; // comment this and enable input params if we need the barycentric coordinates
@@ -206,7 +208,9 @@ AZ::Intersect::TestSegmentAABBOrigin(const Vector3& midPoint, const Vector3& hal
 // [10/21/2009]
 //=========================================================================
 int
-AZ::Intersect::IntersectRayAABB(const Vector3& rayStart, const Vector3& dir, const Vector3& dirRCP, const Aabb& aabb, VectorFloat& tStart, VectorFloat& tEnd, Vector3& startNormal /*, Vector3& inter*/)
+AZ::Intersect::IntersectRayAABB(
+    const Vector3& rayStart, const Vector3& dir, const Vector3& dirRCP, const Aabb& aabb,
+    VectorFloat& tStart, VectorFloat& tEnd, Vector3& startNormal /*, Vector3& inter*/)
 {
     // we don't need to test with all 6 normals (just 3)
     VectorFloat one = VectorFloat::CreateOne();
@@ -420,9 +424,10 @@ AZ::Intersect::IntersectRayAABB2(const Vector3& rayStart, const Vector3& dirRCP,
 }
 
 // Reference: Real-Time Collision Detection - 5.3.7 Intersecting Ray or Segment Against Cylinder, and the book's errata.
-int AZ::Intersect::IntersectRayCappedCylinder(const Vector3& rayOrigin, const Vector3& rayDir,
-                                              const Vector3& cylinderEnd1, const Vector3& cylinderDir, float cylinderHeight, float cylinderRadius,
-                                              float &t1, float &t2)
+int AZ::Intersect::IntersectRayCappedCylinder(
+    const Vector3& rayOrigin, const Vector3& rayDir,
+    const Vector3& cylinderEnd1, const Vector3& cylinderDir,
+    float cylinderHeight, float cylinderRadius, float &t1, float &t2)
 {
     // dr = rayDir
     // dc = cylinderDir
@@ -616,9 +621,10 @@ int AZ::Intersect::IntersectRayCappedCylinder(const Vector3& rayOrigin, const Ve
     }
 }
 
-int AZ::Intersect::IntersectRayCone(const Vector3& rayOrigin, const Vector3& rayDir,
-                                    const Vector3& coneApex, const Vector3& coneDir, float coneHeight, float coneBaseRaidus,
-                                    float& t1, float& t2)
+int AZ::Intersect::IntersectRayCone(
+    const Vector3& rayOrigin, const Vector3& rayDir,
+    const Vector3& coneApex, const Vector3& coneDir, float coneHeight,
+    float coneBaseRaidus, float& t1, float& t2)
 {
     // Q = rayOrgin, A = coneApex
     Vector3 AQ = rayOrigin - coneApex;
@@ -935,7 +941,8 @@ int AZ::Intersect::IntersectRayPlane(const Vector3& rayOrigin, const Vector3& ra
     }
 }
 
-int AZ::Intersect::IntersectRayQuad(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& vertexA,
+int AZ::Intersect::IntersectRayQuad(
+    const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& vertexA,
     const Vector3& vertexB, const Vector3& vertexC, const Vector3& vertexD, float& t)
 {
     const float EPSILON = 0.0001f;
@@ -1000,7 +1007,8 @@ int AZ::Intersect::IntersectRayQuad(const Vector3& rayOrigin, const Vector3& ray
 }
 
 // reference: Real-Time Collision Detection, 5.3.3 Intersecting Ray or Segment Against Box
-int AZ::Intersect::IntersectRayBox(const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& boxCenter, const Vector3& boxAxis1,
+int AZ::Intersect::IntersectRayBox(
+    const Vector3& rayOrigin, const Vector3& rayDir, const Vector3& boxCenter, const Vector3& boxAxis1,
     const Vector3& boxAxis2, const Vector3& boxAxis3, float boxHalfExtent1, float boxHalfExtent2, float boxHalfExtent3, float& t)
 {
     const float EPSILON = 0.00001f;
@@ -1147,7 +1155,8 @@ int AZ::Intersect::IntersectRayBox(const Vector3& rayOrigin, const Vector3& rayD
 // [10/21/2009]
 //=========================================================================
 int
-AZ::Intersect::IntersectSegmentCylinder(const Vector3& sa, const Vector3& dir, const Vector3& p, const Vector3& q, const VectorFloat& r, VectorFloat& t)
+AZ::Intersect::IntersectSegmentCylinder(
+    const Vector3& sa, const Vector3& dir, const Vector3& p, const Vector3& q, const VectorFloat& r, VectorFloat& t)
 {
     //const float EPSILON = 0.001f;
     const VectorFloat EPSILON(0.001f); // \todo move a const this loading is slow
@@ -1344,7 +1353,8 @@ AZ::Intersect::IntersectSegmentCapsule(const Vector3& sa, const Vector3& dir, co
 // [10/21/2009]
 //=========================================================================
 int
-AZ::Intersect::IntersectSegmentPolyhedron(const Vector3& sa, const Vector3& sBA, const Plane p[], int numPlanes,
+AZ::Intersect::IntersectSegmentPolyhedron(
+    const Vector3& sa, const Vector3& sBA, const Plane p[], int numPlanes,
     VectorFloat& tfirst, VectorFloat& tlast, int& iFirstPlane, int& iLastPlane)
 {
     // Compute direction vector for the segment
@@ -1419,11 +1429,12 @@ AZ::Intersect::IntersectSegmentPolyhedron(const Vector3& sa, const Vector3& sBA,
 // [10/21/2009]
 //=========================================================================
 void
-AZ::Intersect::ClosestSegmentSegment(const Vector3& segment1Start, const Vector3& segment1End,
-                                     const Vector3& segment2Start, const Vector3& segment2End,
-                                     VectorFloat& segment1Proportion, VectorFloat& segment2Proportion, 
-                                     Vector3& closestPointSegment1, Vector3& closestPointSegment2,
-                                     VectorFloat epsilon /*= VectorFloat(1e-4f)*/)
+AZ::Intersect::ClosestSegmentSegment(
+    const Vector3& segment1Start, const Vector3& segment1End,
+    const Vector3& segment2Start, const Vector3& segment2End,
+    VectorFloat& segment1Proportion, VectorFloat& segment2Proportion, 
+    Vector3& closestPointSegment1, Vector3& closestPointSegment2,
+    VectorFloat epsilon /*= VectorFloat(1e-4f)*/)
 {
     const VectorFloat zero = VectorFloat::CreateZero();
     const VectorFloat one = VectorFloat::CreateOne();
@@ -1500,16 +1511,23 @@ AZ::Intersect::ClosestSegmentSegment(const Vector3& segment1Start, const Vector3
     closestPointSegment2 = segment2Start + segment2 * segment2Proportion;
 }
 
-void AZ::Intersect::ClosestSegmentSegment(const Vector3& segment1Start, const Vector3& segment1End,
-                           const Vector3& segment2Start, const Vector3& segment2End,
-                           Vector3& closestPointSegment1, Vector3& closestPointSegment2,
-                           VectorFloat epsilon)
+void AZ::Intersect::ClosestSegmentSegment(
+    const Vector3& segment1Start, const Vector3& segment1End,
+    const Vector3& segment2Start, const Vector3& segment2End,
+    Vector3& closestPointSegment1, Vector3& closestPointSegment2,
+    VectorFloat epsilon)
 {
     VectorFloat proportion1, proportion2;
-    AZ::Intersect::ClosestSegmentSegment(segment1Start, segment1End, segment2Start, segment2End, proportion1, proportion2, closestPointSegment1, closestPointSegment2, epsilon);
+    AZ::Intersect::ClosestSegmentSegment(
+        segment1Start, segment1End,
+        segment2Start, segment2End,
+        proportion1, proportion2,
+        closestPointSegment1, closestPointSegment2, epsilon);
 }
 
-void AZ::Intersect::ClosestPointSegment(const Vector3& point, const Vector3& segmentStart, const Vector3& segmentEnd, VectorFloat& proportion, Vector3& closestPointOnSegment)
+void AZ::Intersect::ClosestPointSegment(
+    const Vector3& point, const Vector3& segmentStart, const Vector3& segmentEnd,
+    VectorFloat& proportion, Vector3& closestPointOnSegment)
 {
     Vector3 segment = segmentEnd - segmentStart;
     // Project point onto segment, but deferring divide by segment.Dot(segment)

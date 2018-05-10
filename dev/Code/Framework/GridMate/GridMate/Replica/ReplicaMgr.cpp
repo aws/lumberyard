@@ -165,7 +165,7 @@ namespace GridMate
 #endif
             if (m_unreliableOutBuffer.Size() > carrier->GetMessageMTU())
             {
-                AZ_TracePrintf("GridMate", "Unreliable replica update exceeds MTU (size=%u, MTU=%u), this will cause fragmentation!\n", static_cast<unsigned int>(m_unreliableOutBuffer.Size()), carrier->GetMessageMTU());
+                AZ_TracePrintf("GridMate", "SendBuffer [%s]: Unreliable replica update exceeds MTU (size=%u, MTU=%u), this will cause fragmentation!\n", carrier->ConnectionToAddress(GetConnectionId()).c_str(), static_cast<unsigned int>(m_unreliableOutBuffer.Size()), carrier->GetMessageMTU());
             }
 
             auto callback = AZStd::make_unique<PeerAckCallbacks>((m_unreliableCallbacks));
@@ -328,18 +328,23 @@ namespace GridMate
         m_sessionInfo.reset();
 
         // remove all peers
-        ReplicaPtr pObj;
-        for (ReplicaPeerList::iterator it = m_remotePeers.begin(); it != m_remotePeers.end(); ++it)
         {
-            ReplicaPeer* peer = *it;
-            for (auto& replicaObject : peer->m_objectsTimeSort)
-            {
-                UnregisterReplica(replicaObject.m_replica, rc);
-            }
-            delete peer;
-        }
-        m_remotePeers.clear();
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+            ReplicaPtr pObj;
 
+            for (ReplicaPeerList::iterator it = m_remotePeers.begin(); it != m_remotePeers.end(); ++it)
+            {
+                ReplicaPeer* peer = *it;
+                for (auto& replicaObject : peer->m_objectsTimeSort)
+                {
+                    UnregisterReplica(replicaObject.m_replica, rc);
+                }
+                delete peer;
+            }
+
+            m_remotePeers.clear();
+        }
+        
         // remove self
         for (auto& replicaObject : m_self.m_objectsTimeSort)
         {
@@ -406,27 +411,34 @@ namespace GridMate
         // initialize accepted peer list to currently known peers
         vector<PeerId> acceptedPeers;
         acceptedPeers.push_back(m_self.GetId());
-        for (ReplicaPeerList::iterator it = m_remotePeers.begin(); it != m_remotePeers.end(); ++it)
         {
-            ReplicaPeer* peer = *it;
-            if (peer->GetId() && !peer->IsOrphan())
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+            for (ReplicaPeerList::iterator it = m_remotePeers.begin(); it != m_remotePeers.end(); ++it)
             {
-                acceptedPeers.push_back(peer->GetId());
+                ReplicaPeer* peer = *it;
+                if (peer->GetId() && !peer->IsOrphan())
+                {
+                    acceptedPeers.push_back(peer->GetId());
+                }
             }
         }
+
         m_sessionInfo->m_acceptedPeers.Set(acceptedPeers);
 
         // reconcile peers
-        for (ReplicaPeerList::iterator it = m_remotePeers.begin(); it != m_remotePeers.end(); ++it)
         {
-            ReplicaPeer* peer = *it;
-
-            // Queue request to start migration process on orphan peers.
-            // At the very least we need to know their peer id, otherwise there
-            // is no way to synchonize migration state
-            if (peer->IsOrphan() && peer->GetId())
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+            for (ReplicaPeerList::iterator it = m_remotePeers.begin(); it != m_remotePeers.end(); ++it)
             {
-                m_sessionInfo->RequestPeerMigration(peer->GetId());
+                ReplicaPeer* peer = *it;
+
+                // Queue request to start migration process on orphan peers.
+                // At the very least we need to know their peer id, otherwise there
+                // is no way to synchonize migration state
+                if (peer->IsOrphan() && peer->GetId())
+                {
+                    m_sessionInfo->RequestPeerMigration(peer->GetId());
+                }
             }
         }
     }
@@ -474,7 +486,9 @@ namespace GridMate
         AZ_Assert(IsSyncHost() || peerMode == Mode_Peer, "Mode_Client can only be added to hosts!");
         ReplicaPeer* pPeer = aznew ReplicaPeer(this, connId, peerMode);
 
+        m_mutexRemotePeers.lock();
         m_remotePeers.push_back(pPeer);
+        m_mutexRemotePeers.unlock();
 
         // immediate introduce ourselves to this peer (only if we are not the host)
         if (!IsSyncHost())
@@ -489,20 +503,24 @@ namespace GridMate
         {
             return;
         }
-
-        for (ReplicaPeerList::iterator iPeer = m_remotePeers.begin(); iPeer != m_remotePeers.end(); ++iPeer)
+        
         {
-            ReplicaPeer* peer = *iPeer;
-            if (peer->GetId() == orphanId)
-            {
-                ReplicaContext rc(this, GetTime(), peer);
-                for (auto iObj = peer->m_objectsTimeSort.begin(); iObj != peer->m_objectsTimeSort.end(); ++iObj)
-                {
-                    RemoveReplicaFromDownstream(iObj->m_replica, rc);
-                }
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
 
-                OnPeerReadyToRemove(peer);
-                break;
+            for (ReplicaPeerList::iterator iPeer = m_remotePeers.begin(); iPeer != m_remotePeers.end(); ++iPeer)
+            {
+                ReplicaPeer* peer = *iPeer;
+                if (peer->GetId() == orphanId)
+                {
+                    ReplicaContext rc(this, GetTime(), peer);
+                    for (auto iObj = peer->m_objectsTimeSort.begin(); iObj != peer->m_objectsTimeSort.end(); ++iObj)
+                    {
+                        RemoveReplicaFromDownstream(iObj->m_replica, rc);
+                    }
+
+                    OnPeerReadyToRemove(peer);
+                    break;
+                }
             }
         }
     }
@@ -514,6 +532,8 @@ namespace GridMate
         {
             return;
         }
+        
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
 
         for (ReplicaPeerList::iterator iPeer = m_remotePeers.begin(); iPeer != m_remotePeers.end(); ++iPeer)
         {
@@ -605,6 +625,8 @@ namespace GridMate
         }
 
         // TODO: make peer list hash map
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+
         for (ReplicaPeer* peer : m_remotePeers)
         {
             if (peer->GetId() == peerId)
@@ -927,14 +949,17 @@ namespace GridMate
         m_marshalingTasks.Run(this);
 
         // send collected updates to peers
-        for (ReplicaPeerList::iterator iPeer = m_remotePeers.begin(); iPeer != m_remotePeers.end(); ++iPeer)
         {
-            ReplicaPeer* pRemote = *iPeer;
-            if (!pRemote->IsOrphan())
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+            for (ReplicaPeerList::iterator iPeer = m_remotePeers.begin(); iPeer != m_remotePeers.end(); ++iPeer)
             {
-                pRemote->SendBuffer(m_cfg.m_carrier, m_cfg.m_commChannel);
+                ReplicaPeer* pRemote = *iPeer;
+                if (!pRemote->IsOrphan())
+                {
+                    pRemote->SendBuffer(m_cfg.m_carrier, m_cfg.m_commChannel);
+                }
+                pRemote->SetNew(false);
             }
-            pRemote->SetNew(false);
         }
 
         m_flags &= ~Rm_Processing;
@@ -1002,14 +1027,19 @@ namespace GridMate
                 {
                     return;
                 }
-                for (ReplicaPeer* peer : m_remotePeers)
+
                 {
-                    if (peer->GetId() == newPeerId)
+                    AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+                    for (ReplicaPeer* peer : m_remotePeers)
                     {
-                        AZ_Assert(false, "Peer Id 0x%x is already claimed by another peer!", newPeerId);
-                        return;
+                        if (peer->GetId() == newPeerId)
+                        {
+                            AZ_Assert(false, "Peer Id 0x%x is already claimed by another peer!", newPeerId);
+                            return;
+                        }
                     }
                 }
+
                 pFrom->m_peerId = newPeerId;
 
                 bool peerIsHost;
@@ -1249,51 +1279,55 @@ namespace GridMate
         AZ_Assert(m_cfg.m_carrier, "No available net layer!");
         m_flags |= Rm_Processing;
 
-        for (ReplicaPeerList::const_iterator iPeer = m_remotePeers.begin(); iPeer != m_remotePeers.end(); ++iPeer)
         {
-            ReplicaPeer* peer = *iPeer;
-            AZ_Assert(peer, "Invalid peer pointer!");
-
-            ConnectionID conn = peer->GetConnectionId();
-            if (conn == InvalidConnectionID)
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+            for (ReplicaPeerList::const_iterator iPeer = m_remotePeers.begin(); iPeer != m_remotePeers.end(); ++iPeer)
             {
-                continue;
-            }
+                ReplicaPeer* peer = *iPeer;
+                AZ_Assert(peer, "Invalid peer pointer!");
 
-            // we are only allowed to receive anything else if this peer has been approved by the host
-            for (bool keepReceiving = !peer->GetId() || AcceptPeer(peer); keepReceiving; keepReceiving = AcceptPeer(peer))
-            {
-                Carrier::ReceiveResult result = m_cfg.m_carrier->Receive(m_receiveBuffer.data(), static_cast<unsigned int>(m_receiveBuffer.size()), conn, m_cfg.m_commChannel);
-                if (result.m_state == Carrier::ReceiveResult::UNSUFFICIENT_BUFFER_SIZE)
+                ConnectionID conn = peer->GetConnectionId();
+                if (conn == InvalidConnectionID)
                 {
-                    m_receiveBuffer.resize(result.m_numBytes);
-                    result = m_cfg.m_carrier->Receive(m_receiveBuffer.data(), static_cast<unsigned int>(m_receiveBuffer.size()), conn, m_cfg.m_commChannel);
-
-                    AZ_Assert(result.m_state != Carrier::ReceiveResult::UNSUFFICIENT_BUFFER_SIZE, "Carrier::ReceiveResult::UNSUFFICIENT_BUFFER_SIZE detected!, result.m_numBytes = %u, buffer size = %u", result.m_numBytes, static_cast<unsigned int>(m_receiveBuffer.size()));
+                    continue;
                 }
 
-                if (result.m_state == Carrier::ReceiveResult::NO_MESSAGE_TO_RECEIVE)
+                // we are only allowed to receive anything else if this peer has been approved by the host
+                for (bool keepReceiving = !peer->GetId() || AcceptPeer(peer); keepReceiving; keepReceiving = AcceptPeer(peer))
                 {
-                    break;
+                    Carrier::ReceiveResult result = m_cfg.m_carrier->Receive(m_receiveBuffer.data(), static_cast<unsigned int>(m_receiveBuffer.size()), conn, m_cfg.m_commChannel);
+                    if (result.m_state == Carrier::ReceiveResult::UNSUFFICIENT_BUFFER_SIZE)
+                    {
+                        m_receiveBuffer.resize(result.m_numBytes);
+                        result = m_cfg.m_carrier->Receive(m_receiveBuffer.data(), static_cast<unsigned int>(m_receiveBuffer.size()), conn, m_cfg.m_commChannel);
+
+                        AZ_Assert(result.m_state != Carrier::ReceiveResult::UNSUFFICIENT_BUFFER_SIZE, "Carrier::ReceiveResult::UNSUFFICIENT_BUFFER_SIZE detected!, result.m_numBytes = %u, buffer size = %u", result.m_numBytes, static_cast<unsigned int>(m_receiveBuffer.size()));
+                    }
+
+                    if (result.m_state == Carrier::ReceiveResult::NO_MESSAGE_TO_RECEIVE)
+                    {
+                        break;
+                    }
+
+                    ReadBuffer rb(GetGridMate()->GetDefaultEndianType(), m_receiveBuffer.data(), result.m_numBytes);
+                    EBUS_EVENT(Debug::ReplicaDrillerBus, OnReceive, peer->GetId(), rb.Get(), rb.Size().GetSizeInBytesRoundUp());
+                    _Unmarshal(rb, peer);
+                    AZ_Assert(rb.IsEmptyIgnoreTrailingBits(), "We did not process the whole message!");
                 }
 
-                ReadBuffer rb(GetGridMate()->GetDefaultEndianType(), m_receiveBuffer.data(), result.m_numBytes);
-                EBUS_EVENT(Debug::ReplicaDrillerBus, OnReceive, peer->GetId(), rb.Get(), rb.Size().GetSizeInBytesRoundUp());
-                _Unmarshal(rb, peer);
-                AZ_Assert(rb.IsEmptyIgnoreTrailingBits(), "We did not process the whole message!");
-            }
-
-            if (ReplicaDebug::g_TrackDbgHeartbeat)
-            {
-                ++peer->m_lastReceiveTicks;
-                if (peer->m_lastReceiveTicks > ReplicaDebug::g_MaxTicksPerHeartbeat)
+                if (ReplicaDebug::g_TrackDbgHeartbeat)
                 {
-                    m_cfg.m_carrier->DebugStatusReport(conn, m_cfg.m_commChannel);
-                    AZ_Assert(0, "No updates for %d ticks!", ReplicaDebug::g_MaxTicksPerHeartbeat);
-                    peer->m_lastReceiveTicks = 0;
+                    ++peer->m_lastReceiveTicks;
+                    if (peer->m_lastReceiveTicks > ReplicaDebug::g_MaxTicksPerHeartbeat)
+                    {
+                        m_cfg.m_carrier->DebugStatusReport(conn, m_cfg.m_commChannel);
+                        AZ_Assert(0, "No updates for %d ticks!", ReplicaDebug::g_MaxTicksPerHeartbeat);
+                        peer->m_lastReceiveTicks = 0;
+                    }
                 }
             }
         }
+
         m_flags &= ~Rm_Processing;
     }
     //-----------------------------------------------------------------------------
@@ -1389,19 +1423,22 @@ namespace GridMate
         if (ShouldBroadcastReplica(replica.get()))
         {
             replica->m_targets.clear();
-            for (auto target : m_remotePeers)
             {
-                if (target->IsOrphan() || !(target->m_flags & PeerFlags::Peer_Accepted))
+                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers); 
+                for (auto target : m_remotePeers)
                 {
-                    continue;
-                }
+                    if (target->IsOrphan() || !(target->m_flags & PeerFlags::Peer_Accepted))
+                    {
+                        continue;
+                    }
 
-                ReplicaPeer* source = replica->IsMaster() ? &m_self : replica->m_upstreamHop;
+                    ReplicaPeer* source = replica->IsMaster() ? &m_self : replica->m_upstreamHop;
 
-                if (replica->IsMaster()
-                    || (IsSyncHost() && source->GetId() != target->GetId() && !(source->GetMode() == Mode_Peer && target->GetMode() == Mode_Peer)))
-                {
-                    ReplicaTarget::AddReplicaTarget(target, replica.get());
+                    if (replica->IsMaster()
+                        || (IsSyncHost() && source->GetId() != target->GetId() && !(source->GetMode() == Mode_Peer && target->GetMode() == Mode_Peer)))
+                    {
+                        ReplicaTarget::AddReplicaTarget(target, replica.get());
+                    }
                 }
             }
         }
@@ -1415,7 +1452,7 @@ namespace GridMate
                 auto& target = *(it++);
 
                 if (replica->IsProxy()
-                    && (!IsSyncHost()
+                    && (!IsSyncHost()  
                         || source->GetId() == target.GetPeer()->GetId()  // target points to the owner (no need to send replica to its owner)
                         || (source->GetMode() == Mode_Peer && target.GetPeer()->GetMode() == Mode_Peer))) // Clients should never forward proxies
                 {
@@ -1438,21 +1475,24 @@ namespace GridMate
             }
         }
 
-        for (auto source : m_remotePeers)
         {
-            if (!IsSyncHost() ||
-                source->GetId() == peer->GetId()
-                || (source->GetMode() == Mode_Peer && peer->GetMode() == Mode_Peer))
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+            for (auto source : m_remotePeers)
             {
-                continue;
-            }
-
-            for (auto& pObj : source->m_objectsTimeSort)
-            {
-                OnReplicaChanged(pObj.m_replica);
-                if (ShouldBroadcastReplica(pObj.m_replica.get()))
+                if (!IsSyncHost() ||
+                    source->GetId() == peer->GetId()
+                    || (source->GetMode() == Mode_Peer && peer->GetMode() == Mode_Peer))
                 {
-                    ReplicaTarget::AddReplicaTarget(peer, pObj.m_replica.get());
+                    continue;
+                }
+
+                for (auto& pObj : source->m_objectsTimeSort)
+                {
+                    OnReplicaChanged(pObj.m_replica);
+                    if (ShouldBroadcastReplica(pObj.m_replica.get()))
+                    {
+                        ReplicaTarget::AddReplicaTarget(peer, pObj.m_replica.get());
+                    }
                 }
             }
         }
@@ -1466,12 +1506,16 @@ namespace GridMate
         peer->m_objectsMap.clear();
         peer->m_targets.clear();
 
-        for (auto i = m_remotePeers.begin(); i != m_remotePeers.end(); ++i)
         {
-            if (*i == peer)
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+
+            for (auto i = m_remotePeers.begin(); i != m_remotePeers.end(); ++i)
             {
-                m_remotePeers.erase(i);
-                break;
+                if (*i == peer)
+                {
+                    m_remotePeers.erase(i);
+                    break;
+                }
             }
         }
 
@@ -1546,6 +1590,8 @@ namespace GridMate
     {
         // Got all pending reports for given peer
         // Should either remove it or start migration
+        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutexRemotePeers);
+        
         for (auto& p : m_remotePeers)
         {
             if (p->GetId() == peerId)
@@ -1633,9 +1679,9 @@ namespace GridMate
         //If rate changed
         if (connIt->m_rate != bytesPerSecond)
         {
-            //Note this could invalidate the heap ordering, but since we only need a weak guarantee that
-            //the top is the lowest we can delay re-running make-heap until 1) a different connection
-            //takes the top/min spot or 2) a connection is removed/added (very rare)
+            //Note this could invalidate the heap ordering, but since we only need a weak guarantee that 
+            //the top is the lowest we can delay re-running make-heap until 1) a different connection 
+            //takes the top/min spot or 2) a connection is removed/added (very rare) 
             connIt->m_rate = bytesPerSecond;
 
             //If new min or old min increased, rebuild the heap and send an update

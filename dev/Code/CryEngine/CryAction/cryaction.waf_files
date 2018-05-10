@@ -789,6 +789,7 @@
             "CryActionPhysicQueues.h",
             "DevMode.h",
             "GameXmlParamReader.h",
+            "GameWarning.h",
             "resource.h",
             "ScriptBind_Action.h",
             "StdAfx.h",
@@ -877,8 +878,8 @@
         ],
         "Player Profiles/jsmn":
         [
-            "../../SDKs/jsmn/jsmn.h",
-            "../../SDKs/jsmn/jsmn.c"
+            "@3P:jsmn@/jsmn.h",
+            "@3P:jsmn@/jsmn.c"
         ],
         "Range Signaling":
         [

@@ -211,6 +211,7 @@ namespace AzToolsFramework
         m_readOnly = false;
         m_defaultValueString.clear();
         m_changeNotifiers.clear();
+        m_changeValidators.clear();
 
         delete m_containerClearButton;
         delete m_containerAddButton;
@@ -266,6 +267,7 @@ namespace AzToolsFramework
         m_isSelected = false;
         m_selectionEnabled = false;
         m_changeNotifiers.clear();
+        m_changeValidators.clear();
         m_containerSize = 0;
         m_defaultValueString.clear();
         m_leftAreaContainer->show();
@@ -644,7 +646,7 @@ namespace AzToolsFramework
                         if (auto notifyAttribute = editorData->FindAttribute(AZ::Edit::Attributes::ChangeNotify))
                         {
                             PropertyAttributeReader reader(currentParent->FirstInstance(), notifyAttribute);
-                            HandleChangeNotifyAttribute(reader, currentParent);
+                            HandleChangeNotifyAttribute(reader, currentParent, m_changeNotifiers);
                         }
                     }
                     currentParent = currentParent->GetParent();
@@ -927,11 +929,72 @@ namespace AzToolsFramework
         }
         else if ((initial) && (attributeName == AZ::Edit::Attributes::ChangeNotify))
         {
-            HandleChangeNotifyAttribute(reader, m_sourceNode ? m_sourceNode->GetParent() : nullptr);
+            HandleChangeNotifyAttribute(reader, m_sourceNode ? m_sourceNode->GetParent() : nullptr, m_changeNotifiers);
+        }
+        else if ((initial) && (attributeName == AZ::Edit::Attributes::ChangeValidate))
+        {
+            HandleChangeValidateAttribute(reader, m_sourceNode ? m_sourceNode->GetParent() : nullptr);
+        }
+        else if ((initial) && (attributeName == AZ::Edit::Attributes::StringLineEditingCompleteNotify))
+        {
+            HandleChangeNotifyAttribute(reader, m_sourceNode ? m_sourceNode->GetParent() : nullptr, m_editingCompleteNotifiers);
         }
     }
 
-    void PropertyRowWidget::HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node)
+    InstanceDataNode* PropertyRowWidget::ResolveToNodeByType(InstanceDataNode* startNode, const AZ::Uuid& typeId) const
+    {
+        InstanceDataNode* targetNode = startNode;
+
+        if (!typeId.IsNull())
+        {
+            // Walk up the chain looking for the first correct class type to handle the callback
+            while (targetNode)
+            {
+                if (targetNode->GetClassMetadata()->m_azRtti)
+                {
+                    if (targetNode->GetClassMetadata()->m_azRtti->IsTypeOf(typeId))
+                    {
+                        // Instance has RTTI, and derives from type expected by the handler.
+                        break;
+                    }
+                }
+                else
+                {
+                    if (typeId == targetNode->GetClassMetadata()->m_typeId)
+                    {
+                        // Instance does not have RTTI, and is the type expected by the handler.
+                        break;
+                    }
+                }
+                targetNode = targetNode->GetParent();
+            }
+        }
+
+        return targetNode;
+    }
+
+    void PropertyRowWidget::HandleChangeValidateAttribute(PropertyAttributeReader& reader, InstanceDataNode* node)
+    {
+        // Verify type safety for member function handlers.
+        // ChangeValidate handlers are invoked on the instance associated with the node owning
+        // the field, but attributes are generically propagated to parents as well, which is not
+        // safe for ChangeValidate events bound to member functions.
+        // Here we'll avoid inheriting child ChangeValidate attributes unless it's actually
+        // type-safe to do so.
+        AZ::Edit::AttributeFunction<bool(void*, const AZ::Uuid&)>* funcBool = azdynamic_cast<AZ::Edit::AttributeFunction<bool(void*, const AZ::Uuid&)>*>(reader.GetAttribute());
+
+        const AZ::Uuid handlerTypeId = funcBool ? funcBool->GetInstanceType() : AZ::Uuid::CreateNull();
+        InstanceDataNode* targetNode = ResolveToNodeByType(node, handlerTypeId);
+
+        if (targetNode)
+        {
+            m_changeValidators.emplace_back(targetNode, reader.GetAttribute());
+        }
+
+    }
+
+
+    void PropertyRowWidget::HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node, AZStd::vector<ChangeNotification>& notifiers)
     {
         // Verify type safety for member function handlers.
         // ChangeNotify handlers are invoked on the instance associated with the node owning
@@ -973,7 +1036,7 @@ namespace AzToolsFramework
 
         if (targetNode)
         {
-            m_changeNotifiers.emplace_back(targetNode, reader.GetAttribute());
+            notifiers.emplace_back(targetNode, reader.GetAttribute());
         }
     }
 
@@ -1145,9 +1208,94 @@ namespace AzToolsFramework
         return level;
     }
 
+    void PropertyRowWidget::DoEditingCompleteNotify()
+    {
+        if ((m_editingCompleteNotifiers.size() > 0) && (m_sourceNode))
+        {
+            for (size_t changeIndex = 0; changeIndex < m_editingCompleteNotifiers.size(); changeIndex++)
+            {
+                // execute the function or read the value.
+                InstanceDataNode* nodeToNotify = m_editingCompleteNotifiers[changeIndex].m_node;
+                if ((nodeToNotify) && (nodeToNotify->GetClassMetadata()->m_container))
+                {
+                    nodeToNotify = nodeToNotify->GetParent();
+                }
+
+                if (nodeToNotify)
+                {
+                    for (size_t idx = 0; idx < nodeToNotify->GetNumInstances(); ++idx)
+                    {
+                        PropertyAttributeReader reader(nodeToNotify->GetInstance(idx), m_editingCompleteNotifiers[changeIndex].m_attribute);
+                        
+                        // Support invoking a void handler
+                        AZ::Edit::AttributeFunction<void()>* func = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(reader.GetAttribute());
+                        if (func)
+                        {
+                            func->Invoke(nodeToNotify->GetInstance(idx));
+                        }
+                        else
+                        {
+                            AZ_WarningOnce("Property Editor", false,
+                                "Unable to invoke editing complete notification handler for %s. "
+                                "Handler must return void",
+                                nodeToNotify->GetElementEditMetadata() ? nodeToNotify->GetElementEditMetadata()->m_name : nodeToNotify->GetClassMetadata()->m_name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     bool PropertyRowWidget::HasChildRows() const
     {
         return !m_childrenRows.empty(); 
+    }
+
+    bool PropertyRowWidget::ShouldPreValidatePropertyChange() const
+    {
+        return (m_changeValidators.size() > 0);
+    }
+
+    bool PropertyRowWidget::ValidatePropertyChange(void* valueToValidate, const AZ::Uuid& valueType) const
+    {
+        if (m_sourceNode)
+        {
+            for (auto& changeValidator : m_changeValidators)
+            {
+                // execute the function or read the value.
+                InstanceDataNode* nodeToNotify = changeValidator.m_node;
+                if ((nodeToNotify) && (nodeToNotify->GetClassMetadata()->m_container))
+                {
+                    nodeToNotify = nodeToNotify->GetParent();
+                }
+
+                if (nodeToNotify)
+                {
+                    for (size_t idx = 0; idx < nodeToNotify->GetNumInstances(); ++idx)
+                    {
+                        PropertyAttributeReader reader(nodeToNotify->GetInstance(idx), changeValidator.m_attribute);
+                        bool valid = true;
+                        if (reader.Read<bool>(valid, valueToValidate, valueType))
+                        {
+                            if (!valid)
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (m_parentRow)
+        {
+            if (!m_parentRow->ValidatePropertyChange(valueToValidate, valueType))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     QWidget* PropertyRowWidget::GetFirstTabWidget()

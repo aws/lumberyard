@@ -39,7 +39,7 @@
 
 #include <AzCore/PlatformDef.h>
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Platform_h)
+#include AZ_RESTRICTED_FILE(Platform_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

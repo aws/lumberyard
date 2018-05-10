@@ -20,6 +20,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <Maestro/Bus/EditorSequenceComponentBus.h>
 
 #include "ViewPane.h"
 #include "StringDlg.h"
@@ -310,7 +311,7 @@ void CTrackViewDialog::FillAddSelectedEntityMenu()
     {
         CAnimParamType paramType = pMovieSystem->GetEntityNodeParamType(i);
 
-        QString paramName = QtUtil::ToQString(pMovieSystem->GetEntityNodeParamName(i));
+        QString paramName = pMovieSystem->GetEntityNodeParamName(i);
         IAnimNode::ESupportedParamFlags paramFlags = pMovieSystem->GetEntityNodeParamFlags(i);
         bool checked = false;
 
@@ -901,6 +902,8 @@ void CTrackViewDialog::UpdateActions()
         }    
     }
     m_actions[ID_TOOLS_BATCH_RENDER]->setEnabled((GetIEditor()->GetMovieSystem()->GetNumSequences() > 0) ? true : false);
+    m_actions[ID_TV_ADD_SEQUENCE]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());
+    m_actions[ID_TV_SEQUENCE_NEW]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady());    
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1191,9 +1194,8 @@ void CTrackViewDialog::ReloadSequencesComboBox()
         for (int k = 0; k < numSequences; ++k)
         {
             CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByIndex(k);
-            QString fullname = QtUtil::ToQString(pSequence->GetName());
             QString entityIdString = GetEntityIdAsString(pSequence->GetSequenceComponentEntityId());
-            m_sequencesComboBox->addItem(fullname, entityIdString);
+            m_sequencesComboBox->addItem(pSequence->GetName(), entityIdString);
         }
     }
 
@@ -1319,7 +1321,8 @@ void CTrackViewDialog::OnSequenceComboBox()
 
     // Display current sequence.
     QString entityIdString = m_sequencesComboBox->currentData().toString();
-    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.set_current_sequence '%1'").arg(entityIdString));}
+    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.set_current_sequence '%1'").arg(entityIdString));
+}
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::OnSequenceChanged(CTrackViewSequence* sequence)
@@ -2051,14 +2054,58 @@ void CTrackViewDialog::UpdateTracksToolBar()
             CTrackViewAnimNode* pAnimNode = selectedNodes.GetNode(0);
             SetNodeForTracksToolBar(pAnimNode);
 
-            int paramCount = pAnimNode->GetParamCount();
+            const AnimNodeType nodeType = pAnimNode->GetType();
+            int paramCount = 0;
+            IAnimNode::AnimParamInfos animatableProperties;
+            CTrackViewNode* parentNode = pAnimNode->GetParentNode();
+
+            // all AZ::Entity entities are animated through components. Component nodes always have a parent - the containing AZ::Entity
+            if (nodeType == AnimNodeType::Component && parentNode)
+            {
+                // component node - query all the animatable tracks via an EBus request
+
+                // all AnimNodeType::Component are parented to AnimNodeType::AzEntityNodes - get the parent to get it's AZ::EntityId to use for the EBus request
+                if (parentNode->GetNodeType() == eTVNT_AnimNode)
+                {
+                    // this cast is safe because we check that the type is eTVNT_AnimNode
+                    const AZ::EntityId azEntityId = static_cast<CTrackViewAnimNode*>(parentNode)->GetAzEntityId();
+
+                    // query the animatable component properties from the Sequence Component
+                    Maestro::EditorSequenceComponentRequestBus::Event(const_cast<CTrackViewAnimNode*>(pAnimNode)->GetSequence()->GetSequenceComponentEntityId(),
+                        &Maestro::EditorSequenceComponentRequestBus::Events::GetAllAnimatablePropertiesForComponent,
+                        animatableProperties, azEntityId, pAnimNode->GetComponentId());
+
+                    // also add any properties handled in CryMovie
+                    pAnimNode->AppendNonBehaviorAnimatableProperties(animatableProperties);
+
+                    paramCount = animatableProperties.size();
+                }
+            }
+            else
+            {
+                // legacy Entity
+                paramCount = pAnimNode->GetParamCount();
+            }
+
             for (int i = 0; i < paramCount; ++i)
             {
-                CAnimParamType paramType = pAnimNode->GetParamType(i);
+                CAnimParamType paramType;
+                QString name;
 
-                if (paramType.GetType() == AnimParamType::Invalid)
+                // get the animatable param name
+                if (nodeType == AnimNodeType::Component)
                 {
-                    continue;
+                    paramType = animatableProperties[i].paramType;
+                }
+                else
+                {
+
+                    paramType = pAnimNode->GetParamType(i);
+
+                    if (paramType.GetType() == AnimParamType::Invalid)
+                    {
+                        continue;
+                    }
                 }
 
                 CTrackViewTrack* pTrack = pAnimNode->GetTrackForParameter(paramType);
@@ -2067,7 +2114,8 @@ void CTrackViewDialog::UpdateTracksToolBar()
                     continue;
                 }
 
-                QString name = pAnimNode->GetParamName(paramType);
+                name = pAnimNode->GetParamName(paramType);
+
                 QString sToolTipText("Add " + name + " Track");
                 QIcon hIcon = m_wndNodesCtrl->GetIconForTrack(pTrack);
                 AddButtonToTracksToolBar(paramType, hIcon, sToolTipText);
@@ -2227,7 +2275,7 @@ void CTrackViewDialog::OnCreateLightAnimationSet()
 
     CUndo undo("Add Sequence");
     // LightAnimationSequences are for animating legacy lights, so it's implied that the sequence type is  SequenceType::Legacy
-    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.new_sequence '%1' %2").arg(LIGHT_ANIMATION_SET_NAME).arg((qlonglong)SequenceType::Legacy));
+    GetIEditor()->ExecuteCommand(QStringLiteral("trackview.new_sequence '%1' %2").arg(LIGHT_ANIMATION_SET_NAME).arg(static_cast<int>(SequenceType::Legacy)));
 
     CTrackViewSequence* pSequence = pSequenceManager->GetLegacySequenceByName(LIGHT_ANIMATION_SET_NAME);
     assert(pSequence);

@@ -84,19 +84,33 @@ namespace AzToolsFramework
         setAcceptDrops(true);
 
         connect(m_entityIdLabel, &EntityIdQLabel::RequestPickObject, this, [this]()
+        {
+            if (!m_pickButton->isChecked())
             {
-            InitObjectPickMode();
-            });
+                InitObjectPickMode();
+            }
+            else
+            {
+                CancelObjectPickMode();
+            }
+        });
 
         connect(m_pickButton, &QPushButton::clicked, this, [this]()
+        {
+            if (m_pickButton->isChecked())
             {
-            InitObjectPickMode();
-            });
+                InitObjectPickMode();
+            }
+            else
+            {
+                CancelObjectPickMode();
+            }
+        });
 
         connect(m_clearButton, &QPushButton::clicked, this, [this]()
-            {
-                SetCurrentEntityId(AZ::EntityId(), true, "");
-            });
+        {
+            SetCurrentEntityId(AZ::EntityId(), true, "");
+        });
     }
 
     void PropertyEntityIdCtrl::InitObjectPickMode()
@@ -104,16 +118,30 @@ namespace AzToolsFramework
         EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
         if (!EditorPickModeRequests::Bus::Handler::BusIsConnected())
         {
+            emit OnPickStart();
+            m_pickButton->setChecked(true);
             EditorPickModeRequests::Bus::Handler::BusConnect();
+            AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         }
         EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+    }
+
+    void PropertyEntityIdCtrl::CancelObjectPickMode()
+    {
+        if (EditorPickModeRequests::Bus::Handler::BusIsConnected())
+        {
+            EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+        }
     }
 
     void PropertyEntityIdCtrl::StopObjectPickMode()
     {
         if (EditorPickModeRequests::Bus::Handler::BusIsConnected())
         {
+            m_pickButton->setChecked(false);
             EditorPickModeRequests::Bus::Handler::BusDisconnect();
+            AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+            emit OnPickComplete();
         }
     }
 
@@ -123,6 +151,11 @@ namespace AzToolsFramework
         {
             SetCurrentEntityId(id, true, "");
         }
+    }
+
+    void PropertyEntityIdCtrl::OnEscape()
+    {
+        CancelObjectPickMode();
     }
 
     void PropertyEntityIdCtrl::dragLeaveEvent(QDragLeaveEvent* event)
@@ -232,6 +265,7 @@ namespace AzToolsFramework
 
     PropertyEntityIdCtrl::~PropertyEntityIdCtrl()
     {
+        CancelObjectPickMode();
     }
 
     QWidget* PropertyEntityIdCtrl::GetFirstInTabOrder()
@@ -246,6 +280,15 @@ namespace AzToolsFramework
     void PropertyEntityIdCtrl::UpdateTabOrder()
     {
         // There's only one QT widget on this property.
+    }
+
+    bool PropertyEntityIdCtrl::SetChildWidgetsProperty(const char* name, const QVariant& variant)
+    {
+        bool success = m_entityIdLabel->setProperty(name, variant);
+        success = m_pickButton->setProperty(name, variant) && success;
+        success = m_clearButton->setProperty(name, variant) && success;
+
+        return success;
     }
 
     void PropertyEntityIdCtrl::SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride)

@@ -43,6 +43,13 @@
 #include "physicalworld.h"
 #include "waterman.h"
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define PHYSICALWORLD_CPP_SECTION_1 1
+#define PHYSICALWORLD_CPP_SECTION_2 2
+#endif
+
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -3190,6 +3197,10 @@ void CPhysicalWorld::ThreadProc(int ithread, SPhysTask* pTask)
     {
         GetISystem()->GetIThreadTaskManager()->MarkThisThreadForDebugging(tname[ithread - FIRST_WORKER_THREAD], true);
     }
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PHYSICALWORLD_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(physicalworld_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     while (true)
     {
         m_threadStart[ithread - FIRST_WORKER_THREAD].Wait();
@@ -3258,6 +3269,10 @@ void CPhysicalWorld::TimeStep(float time_interval, int flags)
         ttp.nFlags = THREAD_TASK_BLOCKING;
         for (i = 0; i < m_vars.numThreads - FIRST_WORKER_THREAD; i++)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PHYSICALWORLD_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(physicalworld_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             GetISystem()->GetIThreadTaskManager()->RegisterTask(m_threads[i] = new SPhysTask(this, i + FIRST_WORKER_THREAD), ttp);
         }
         for (; m_nWorkerThreads != m_vars.numThreads - FIRST_WORKER_THREAD; )

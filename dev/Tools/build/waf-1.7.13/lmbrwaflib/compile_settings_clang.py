@@ -88,7 +88,7 @@ def load_clang_common_settings(v):
         '-Wno-unused-value',
         '-Wno-unused-variable',
         '-Wno-non-pod-varargs',
-        
+        '-Wno-unused-lambda-capture',
         # Other
         '-ffast-math',
         '-fvisibility=hidden',

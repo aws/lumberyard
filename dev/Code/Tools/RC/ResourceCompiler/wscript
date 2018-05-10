@@ -38,7 +38,7 @@ def build(bld):
                            bld.Path('Code/Tools/CryXML'),
                            bld.Path('Code/CryEngine/CrySystem/XML')],
         libpath         = [bld.Path('Code/Tools/CryCommonTools')],
-        win_lib         = ['psapi', 'dbghelp'],
+        win_lib         = ['psapi'],
 
         # Dependent files/folders from Bin64 to copy to any other target folder
         win_copy_dependent_files =[ 'Bin64/opengl32sw.dll',
@@ -47,16 +47,15 @@ def build(bld):
                                 'Bin64/rc/RCJob_*.xml',
                                 'Bin64/rc/xg.dll',
                                 'Bin64/rc/xmlfilter.txt',
-                                'Bin64/rc/dbghelp.dll',
                                 'Bin64/rc/PVRTexLib.dll',
                                 'Bin64/rc/PVRTexLib_License.txt'],
 
-        darwin_copy_dependent_files =[ 
+        darwin_copy_dependent_files =[
                                 'Bin64/rc/rc.ini',
                                 'Bin64/rc/RCJob_*.xml',
                                 'Bin64/rc/xmlfilter.txt',
                                 'Bin64/rc/PVRTexLib_License.txt',
-                                'BinMac64/rc/libfbxsdk.dylib', 
+                                'BinMac64/rc/libfbxsdk.dylib',
                                 'BinMac64/rc/libPVRTexLib.dylib'
                                 ],
 

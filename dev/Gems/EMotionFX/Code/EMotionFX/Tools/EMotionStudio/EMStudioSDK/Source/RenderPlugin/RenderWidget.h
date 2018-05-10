@@ -15,7 +15,6 @@
 
 //
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "../EMStudioConfig.h"
 #include <EMotionFX/Rendering/Common/Camera.h>
 #include <EMotionFX/Rendering/Common/TransformationManipulator.h>

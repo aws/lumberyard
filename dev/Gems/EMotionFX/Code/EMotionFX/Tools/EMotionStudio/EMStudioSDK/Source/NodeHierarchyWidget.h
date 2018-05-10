@@ -15,7 +15,6 @@
 
 // include MCore
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include "EMStudioConfig.h"
 #include <MysticQt/Source/SearchButton.h>
@@ -34,12 +33,19 @@ QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
 struct EMSTUDIO_API SelectionItem
 {
     uint32          mActorInstanceID;
-    //MCore::String mNodeName;
     uint32          mNodeNameID;
+    uint32          mMorphTargetID;
 
-    MCORE_INLINE void SetNodeName(const char* nodeName)     { mNodeNameID = MCore::GetStringIDGenerator().GenerateIDForString(nodeName); }
-    MCORE_INLINE const char* GetNodeName() const                { return MCore::GetStringIDGenerator().GetName(mNodeNameID).AsChar(); }
-    MCORE_INLINE const MCore::String& GetNodeNameString() const { return MCore::GetStringIDGenerator().GetName(mNodeNameID); }
+    SelectionItem()
+    {
+        mActorInstanceID    = MCORE_INVALIDINDEX32;
+        mNodeNameID         = MCORE_INVALIDINDEX32;
+        mMorphTargetID      = MCORE_INVALIDINDEX32;
+    }
+
+    MCORE_INLINE void SetNodeName(const char* nodeName)             { mNodeNameID = MCore::GetStringIdPool().GenerateIdForString(nodeName); }
+    MCORE_INLINE const char* GetNodeName() const                    { return MCore::GetStringIdPool().GetName(mNodeNameID).c_str(); }
+    MCORE_INLINE const AZStd::string& GetNodeNameString() const     { return MCore::GetStringIdPool().GetName(mNodeNameID); }
 };
 
 namespace EMStudio
@@ -48,7 +54,7 @@ namespace EMStudio
         : public QWidget
     {
         Q_OBJECT
-                       MCORE_MEMORYOBJECTCATEGORY(NodeHierarchyWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
+        MCORE_MEMORYOBJECTCATEGORY(NodeHierarchyWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
         NodeHierarchyWidget(QWidget* parent, bool useSingleSelection);
@@ -63,12 +69,12 @@ namespace EMStudio
 
         // is node shown in the hierarchy widget?
         bool CheckIfNodeVisible(EMotionFX::ActorInstance* actorInstance, EMotionFX::Node* node);
-        bool CheckIfNodeVisible(const MCore::String& nodeName, bool isMeshNode, bool isBone, bool isNode);
+        bool CheckIfNodeVisible(const AZStd::string& nodeName, bool isMeshNode, bool isBone, bool isNode);
 
         // this calls UpdateSelection() and then returns the member array containing the selected items
         MCore::Array<SelectionItem>& GetSelectedItems();
 
-        MCore::String GetFilterString()                                                                         { return FromQtString(mFindWidget->GetSearchEdit()->text()); }
+        AZStd::string GetFilterString()                                                                         { return FromQtString(mFindWidget->GetSearchEdit()->text()); }
         bool GetDisplayNodes() const                                                                            { return mDisplayNodesButton->isChecked(); }
         bool GetDisplayBones() const                                                                            { return mDisplayBonesButton->isChecked(); }
         bool GetDisplayMeshes() const                                                                           { return mDisplayMeshesButton->isChecked(); }
@@ -115,11 +121,11 @@ namespace EMStudio
         QIcon*                              mMeshIcon;
         QIcon*                              mCharacterIcon;
         MCore::Array<uint32>                mBoneList;
-        MCore::String                       mFindString;
+        AZStd::string                       mFindString;
         MCore::Array<uint32>                mActorInstanceIDs;
-        MCore::String                       mTempString;
-        MCore::String                       mItemName;
-        MCore::String                       mActorInstanceIDString;
+        AZStd::string                       mTempString;
+        AZStd::string                       mItemName;
+        AZStd::string                       mActorInstanceIDString;
 
         void ConvertFromSelectionList(CommandSystem::SelectionList* selectionList);
         void RemoveNodeFromSelectedNodes(const char* nodeName, uint32 actorInstanceID);

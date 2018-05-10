@@ -15,8 +15,6 @@
 //               This file included only by platform_impl.h, do not include it directly in code!
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_CRYMEMORYMANAGER_IMPL_H
-#define CRYINCLUDE_CRYCOMMON_CRYMEMORYMANAGER_IMPL_H
 #pragma once
 
 #ifdef AZ_MONOLITHIC_BUILD
@@ -33,6 +31,13 @@
 #define DLL_ENTRY_CRYCRTFREE "CrySystemCrtFree"
 #define DLL_ENTRY_CRYCRTSIZE "CrySystemCrtSize"
 #define DLL_ENTRY_GETMEMMANAGER "CryGetIMemoryManagerInterface"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYMEMORYMANAGER_IMPL_H_SECTION_1 1
+#define CRYMEMORYMANAGER_IMPL_H_SECTION_2 2
+#define CRYMEMORYMANAGER_IMPL_H_SECTION_3 3
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // _PoolHelper definition.
@@ -88,9 +93,16 @@ struct _CryMemoryManagerPoolHelper
         int iter;
 #if defined(LINUX) || defined(APPLE)
         for (iter = 0, hMod = ::dlopen(NULL, RTLD_LAZY); hMod; iter++)
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_IMPL_H_SECTION_1
+#include AZ_RESTRICTED_FILE(CryMemoryManager_impl_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else //LINUX MAC
         for (iter = 0, hMod = GetModuleHandle(0); hMod; iter++)
-#endif //LINUX MAC
+#endif
         {
             _CryMalloc = (FNC_CryMalloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYMALLOC);
             _CryRealloc = (FNC_CryRealloc)CryGetProcAddress(hMod, DLL_ENTRY_CRYREALLOC);
@@ -119,11 +131,27 @@ struct _CryMemoryManagerPoolHelper
 #else
             if (!hMod)
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_IMPL_H_SECTION_2
+#include AZ_RESTRICTED_FILE(CryMemoryManager_impl_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 OutputDebugString("Could not access " CryLibraryDefName("CrySystem") " (check working directory)");
+#endif
             }
             else
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_IMPL_H_SECTION_3
+#include AZ_RESTRICTED_FILE(CryMemoryManager_impl_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 OutputDebugString("Could not get Memory Functions in " CryLibraryDefName("CrySystem"));
+#endif
             }
 #endif
             exit(1);
@@ -460,5 +488,3 @@ IMemoryManager* CryGetIMemoryManager()
 #endif //!defined(AZ_MONOLITHIC_BUILD)
 
 // ~memReplay
-
-#endif // CRYINCLUDE_CRYCOMMON_CRYMEMORYMANAGER_IMPL_H

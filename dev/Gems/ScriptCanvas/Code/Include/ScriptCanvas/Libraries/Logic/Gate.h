@@ -44,8 +44,8 @@ namespace ScriptCanvas
                   ScriptCanvas_In(ScriptCanvas_In::Name("In", "Input signal"));
   
                   // Outputs
-                  ScriptCanvas_Out(ScriptCanvas_Out::Name("True", "Signalled if the condition provided evaluates to true."));
-                  ScriptCanvas_Out(ScriptCanvas_Out::Name("False", "Signalled if the condition provided evaluates to false."));
+                  ScriptCanvas_Out(ScriptCanvas_Out::Name("True", "Signaled if the condition provided evaluates to true."));
+                  ScriptCanvas_Out(ScriptCanvas_Out::Name("False", "Signaled if the condition provided evaluates to false."));
 
              private:
   

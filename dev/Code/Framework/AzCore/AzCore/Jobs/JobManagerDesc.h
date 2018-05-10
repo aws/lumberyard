@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_JOBS_JOBMANAGERDESC_H
-#define AZCORE_JOBS_JOBMANAGERDESC_H 1
+#pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/std/containers/fixed_vector.h>
@@ -38,6 +37,9 @@ namespace AZ
          *      THREAD_PRIORITY_ABOVE_NORMAL
          *      THREAD_PRIORITY_TIME_CRITICAL
          */
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(JobManagerDesc_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
         int     m_priority;
 
@@ -66,6 +68,3 @@ namespace AZ
         DescList m_workerThreads; ///< List of worker threads to create
     };
 }
-
-#endif
-#pragma once

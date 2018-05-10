@@ -44,7 +44,6 @@ private slots:
 private:
     Ui::QCollapseWidget* ui;
     CAttributeItem* m_attributeItem;
-    QMenu* menu;
 };
 
 #endif // QCOLLAPSEWIDGET_H

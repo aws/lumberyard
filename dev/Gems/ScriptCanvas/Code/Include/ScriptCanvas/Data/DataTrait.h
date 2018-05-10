@@ -28,6 +28,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Invalid;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<t_Type>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::FromAZType(GetAZType()); }
             static const char* GetName(const Data::Type& = {}) { return Data::GetName(Data::FromAZType(GetAZType())); }
             // The static_assert needs to rely on the template parameter in order to avoid the clang frontend from asserting when parsing the template declaration
             static Type GetDefault(const Data::Type& = {}) { AZ_STATIC_ASSERT((!AZStd::is_same<t_Type, t_Type>::value), "implement in the typed function"); return {}; }
@@ -53,6 +54,7 @@ namespace ScriptCanvas
                 m_isNative = t_Traits::s_isNative;
                 m_type = t_Traits::s_type;
                 m_getAZTypeCB = &t_Traits::GetAZType;
+                m_getSCTypeCB = &t_Traits::GetSCType;
                 m_getNameCB = &t_Traits::GetName;
                 m_getDefaultCB = [](const Data::Type& scType) -> AZStd::any
                 {
@@ -65,6 +67,7 @@ namespace ScriptCanvas
             }
 
             AZ::Uuid GetAZType(const Data::Type& scType = {}) const { return m_getAZTypeCB ? m_getAZTypeCB(scType) : AZ::Uuid::CreateNull(); }
+            Data::Type GetSCType(const AZ::TypeId& typeId = AZ::TypeId::CreateNull()) const { return m_getSCTypeCB ? m_getSCTypeCB(typeId) : Data::Type::Invalid(); }
             const char* GetName(const Data::Type& scType = {}) const { return m_getNameCB ? m_getNameCB(scType) : ""; }
             AZStd::any GetDefault(const Data::Type& scType= {}) const { return m_getDefaultCB ? m_getDefaultCB(scType) : AZStd::any{}; }
             bool IsDefault(const AZStd::any& value, const Data::Type& scType = {}) const { return m_isDefaultCB ? m_isDefaultCB(value, scType) : false; }
@@ -74,10 +77,12 @@ namespace ScriptCanvas
             eType m_type = eType::Invalid;
 
             using GetAZTypeCB = AZ::Uuid(*)(const Data::Type&);
+            using GetSCTypeCB = Data::Type(*)(const AZ::TypeId&);
             using GetNameCB = const char*(*)(const Data::Type&);
             using GetDefaultCB = AZStd::any(*)(const Data::Type&);
             using IsDefaultCB = bool(*)(const AZStd::any&, const Data::Type&);
             GetAZTypeCB m_getAZTypeCB{};
+            GetSCTypeCB m_getSCTypeCB{};
             GetNameCB m_getNameCB{};
             GetDefaultCB m_getDefaultCB{};
             IsDefaultCB m_isDefaultCB{};
@@ -104,6 +109,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::AABB;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<AABBType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::AABB(); }
             static const char* GetName(const Data::Type& = {}) { return "AABB"; }
             static Type GetDefault(const Data::Type& = {}) { return Data::AABBType::CreateFromMinMax(Data::Vector3Type(-.5f, -.5f, -.5f), Data::Vector3Type(.5f, .5f, .5f)); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -118,6 +124,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Boolean;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<BooleanType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Boolean(); }
             static const char* GetName(const Data::Type& = {}) { return "Boolean"; }
             static Type GetDefault(const Data::Type& = {}) { return false; }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -132,6 +139,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Color;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<ColorType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Color(); }
             static const char* GetName(const Data::Type& = {}) { return "Color"; }
             static Type GetDefault(const Data::Type& = {}) { return ColorType::CreateZero(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -146,6 +154,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::CRC;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<CRCType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::CRC(); }
             static const char* GetName(const Data::Type& = {}) { return "CRC"; }
             static Type GetDefault(const Data::Type& = {}) { return CRCType(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -160,6 +169,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::EntityID;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<EntityIDType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::EntityID(); }
             static const char* GetName(const Data::Type& = {}) { return "EntityID"; }
             static Type GetDefault(const Data::Type& = {}) { return SelfReferenceId; }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -174,6 +184,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Matrix3x3;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<Matrix3x3Type>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Matrix3x3(); }
             static const char* GetName(const Data::Type& = {}) { return "Matrix3x3"; }
             static Type GetDefault(const Data::Type& = {}) { return Matrix3x3Type::CreateIdentity(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -188,6 +199,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Matrix4x4;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<Matrix4x4Type>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Matrix4x4(); }
             static const char* GetName(const Data::Type& = {}) { return "Matrix4x4"; }
             static Type GetDefault(const Data::Type& = {}) { return Matrix4x4Type::CreateIdentity(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -202,6 +214,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Number;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<NumberType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Number(); }
             static const char* GetName(const Data::Type& = {}) { return "Number"; }
             static Type GetDefault(const Data::Type& = {}) { return 0.0; }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -216,6 +229,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::OBB;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<OBBType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::OBB(); }
             static const char* GetName(const Data::Type& = {}) { return "OBB"; }
             static Type GetDefault(const Data::Type& = {}) {
                 return OBBType::CreateFromPositionAndAxes
@@ -237,22 +251,24 @@ namespace ScriptCanvas
             static const eType s_type = eType::Plane;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<PlaneType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Plane(); }
             static const char* GetName(const Data::Type& = {}) { return "Plane"; }
             static Type GetDefault(const Data::Type& = {}) { return PlaneType::CreateFromNormalAndPoint(Vector3Type(0.f, 0.f, 1.f), Vector3Type::CreateZero()); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
         };
 
         template<>
-        struct Traits<RotationType>
+        struct Traits<QuaternionType>
         {
-            using Type = RotationType;
+            using Type = QuaternionType;
             static const bool s_isAutoBoxed = true;
             static const bool s_isNative = true;
-            static const eType s_type = eType::Rotation;
+            static const eType s_type = eType::Quaternion;
 
-            static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<RotationType>(); }
-            static const char* GetName(const Data::Type& = {}) { return "Rotation"; }
-            static Type GetDefault(const Data::Type& = {}) { return RotationType::CreateIdentity(); }
+            static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<QuaternionType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Quaternion(); }
+            static const char* GetName(const Data::Type& = {}) { return "Quaternion"; }
+            static Type GetDefault(const Data::Type& = {}) { return QuaternionType::CreateIdentity(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
         };
 
@@ -265,6 +281,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::String;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<StringType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::String(); }
             static const char* GetName(const Data::Type& = {}) { return "String"; }
             static Type GetDefault(const Data::Type& = {}) { return StringType(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -279,6 +296,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Transform;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<TransformType>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Transform(); }
             static const char* GetName(const Data::Type& = {}) { return "Transform"; }
             static Type GetDefault(const Data::Type& = {}) { return TransformType::CreateIdentity(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -293,6 +311,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Vector2;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<Vector2Type>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Vector2(); }
             static const char* GetName(const Data::Type& = {}) { return "Vector2"; }
             static Type GetDefault(const Data::Type& = {}) { return Vector2Type::CreateZero(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -307,6 +326,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Vector3;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<Vector3Type>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Vector3(); }
             static const char* GetName(const Data::Type& = {}) { return "Vector3"; }
             static Type GetDefault(const Data::Type& = {}) { return Vector3Type::CreateZero(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -321,6 +341,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::Vector4;
 
             static AZ::Uuid GetAZType(const Data::Type& = {}) { return azrtti_typeid<Vector4Type>(); }
+            static Data::Type GetSCType(const AZ::TypeId& = AZ::TypeId::CreateNull()) { return Data::Type::Vector4(); }
             static const char* GetName(const Data::Type& = {}) { return "Vector4"; }
             static Type GetDefault(const Data::Type& = {}) { return Vector4Type::CreateZero(); }
             static bool IsDefault(const Type& value, const Data::Type& = {}) { return value != GetDefault(); }
@@ -361,6 +382,7 @@ namespace ScriptCanvas
             static const eType s_type = eType::BehaviorContextObject;
 
             static AZ::Uuid GetAZType(const Data::Type& scType) { return scType.GetAZType(); }
+            static Data::Type GetSCType(const AZ::TypeId& typeId = AZ::TypeId::CreateNull()) { return Data::Type::BehaviorContextObject(typeId); }
             static const char* GetName(const Data::Type& scType)
             {
                 const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(scType.GetAZType());
@@ -396,7 +418,7 @@ namespace ScriptCanvas
         struct eTraits<eType::Plane> : Traits<PlaneType> {};
 
         template<>
-        struct eTraits<eType::Rotation> : Traits<RotationType> {};
+        struct eTraits<eType::Quaternion> : Traits<QuaternionType> {};
 
         template<>
         struct eTraits<eType::String> : Traits<StringType> {};

@@ -14,7 +14,7 @@
 #include "ProjectDefines.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-    #include AZ_RESTRICTED_FILE(CryActionTraits_h)
+    #include AZ_RESTRICTED_FILE(CryActionTraits_h, AZ_RESTRICTED_PLATFORM)
 #else
     #define AZ_LEGACY_CRYACTION_TRAIT_SCREENSHOT_EXTENSION "tif"
     #define AZ_LEGACY_CRYACTION_TRAIT_SET_COMPRESSOR_THREAD_PRIORITY 0

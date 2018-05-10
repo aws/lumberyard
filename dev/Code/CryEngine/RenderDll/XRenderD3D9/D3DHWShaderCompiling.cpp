@@ -16,10 +16,28 @@
 #include "I3DEngine.h"
 #include "CryCrc32.h"
 #include "UnalignedBlit.h"
-    #if !defined(OPENGL)
-            #include <D3D11Shader.h>
-            #include <D3DCompiler.h>
-    #endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DHWSHADERCOMPILING_CPP_SECTION_1 1
+#define D3DHWSHADERCOMPILING_CPP_SECTION_2 2
+#define D3DHWSHADERCOMPILING_CPP_SECTION_3 3
+#define D3DHWSHADERCOMPILING_CPP_SECTION_4 4
+#define D3DHWSHADERCOMPILING_CPP_SECTION_5 5
+#define D3DHWSHADERCOMPILING_CPP_SECTION_6 6
+#define D3DHWSHADERCOMPILING_CPP_SECTION_7 7
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADERCOMPILING_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DHWShaderCompiling_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif !defined(OPENGL)
+    #include <D3D11Shader.h>
+    #include <D3DCompiler.h>
+#endif
 
 //  Confetti BEGIN: Igor Lobanchikov
 #ifdef CRY_USE_METAL
@@ -86,6 +104,13 @@ const char* GetShaderListName()
 {
 #if defined(CRY_USE_METAL)
     return "ShaderList_METAL.txt";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADERCOMPILING_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DHWShaderCompiling_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(OPENGL_ES) && DXGL_INPUT_GLSL
     uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
     if (glVersion == DXGLES_VERSION_30)
@@ -899,7 +924,15 @@ AZ::Vertex::Format CHWShader_D3D::mfVertexFormat(SHWSInstance* pInst, CHWShader_
         }
         int nIndex;
         if (!_strnicmp(IDesc.SemanticName, "POSITION", 8)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADERCOMPILING_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DHWShaderCompiling_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             || !_strnicmp(IDesc.SemanticName, "SV_POSITION", 11)
+#endif
             )
         {
             nIndex = IDesc.SemanticIndex;
@@ -1029,7 +1062,15 @@ AZ::Vertex::Format CHWShader_D3D::mfVertexFormat(SHWSInstance* pInst, CHWShader_
             }
         }
         else
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADERCOMPILING_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(D3DHWShaderCompiling_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         if (!_strnicmp(IDesc.SemanticName, "SV_", 3))
+#endif
         {
             // SV_ are valid semantics
         }
@@ -1969,7 +2010,13 @@ bool CHWShader_D3D::ConvertBinScriptToASCII(CParserBin& Parser, SHWSInstance* pI
         }
         else
         {
-#if   defined (_DEBUG)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADERCOMPILING_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(D3DHWShaderCompiling_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined (_DEBUG)
             int n = 0;
             while (szStr[n])
             {
@@ -2282,7 +2329,7 @@ SShaderDevCache* CHWShader::mfInitDevCache(const char* name, CHWShader* pSH)
     return new SShaderDevCache(cryShaderName);
 }
 
-#include <lzss/LZSS.H>
+#include <LZSS.H>
 
 SShaderCacheHeaderItem* CHWShader_D3D::mfGetCompressedItem(uint32 nFlags, int32& nSize)
 {
@@ -3188,6 +3235,10 @@ bool CHWShader_D3D::mfUploadHW(SHWSInstance* pInst, byte* pBuf, uint32 nSize, CS
         assert(0);
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADERCOMPILING_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(D3DHWShaderCompiling_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     // Assign name to Shader for enhanced debugging
 #if !defined(RELEASE) && defined(WIN64)
@@ -4910,6 +4961,10 @@ void CAsyncShaderTask::CShaderThread::Run()
 {
     CryThreadSetName(-1, SHADER_THREAD_NAME);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADERCOMPILING_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(D3DHWShaderCompiling_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     while (!m_quit)
     {

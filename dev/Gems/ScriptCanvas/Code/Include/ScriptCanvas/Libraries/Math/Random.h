@@ -32,17 +32,19 @@ namespace ScriptCanvas
             public:
 
                 ScriptCanvas_Node(Random,
+                    ScriptCanvas_Node::Deprecated("This node has been deprecated, please use the RandomNumber node instead")
+                    ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                     ScriptCanvas_Node::Name("Random")
                     ScriptCanvas_Node::Uuid("{7884F790-EA26-49AE-9168-D4C415C0D9C3}")
                     ScriptCanvas_Node::Description("Provides a random number in the range specified")
                 );
 
                 // Inputs
-                ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signalled, execution is delayed at this node according to the specified properties.")
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signaled, execution is delayed at this node according to the specified properties.")
                     ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled when the delay reaches zero."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled when the delay reaches zero."));
 
                 // Data
                 ScriptCanvas_PropertyWithDefaults(float, 0.f,

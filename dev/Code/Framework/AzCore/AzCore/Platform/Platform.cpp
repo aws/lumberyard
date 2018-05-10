@@ -36,6 +36,12 @@ namespace AZ
             ProcessId result = 0;
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX) 
             result = ::getpid();
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Platform_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif AZ_TRAIT_USE_WINDOWS_PROCESSID
             result = ::GetCurrentProcessId();
 #else

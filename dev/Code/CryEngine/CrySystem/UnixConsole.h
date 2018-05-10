@@ -14,8 +14,6 @@
 // Description : Console implementation for UNIX systems, based on curses ncurses.
 
 
-#ifndef CRYINCLUDE_CRYSYSTEM_UNIXCONSOLE_H
-#define CRYINCLUDE_CRYSYSTEM_UNIXCONSOLE_H
 #pragma once
 
 
@@ -485,6 +483,12 @@ public:
 
 #endif // USE_UNIXCONSOLE
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(UnixConsole_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 // simple light-weight console
 class CNULLConsole
     : public IOutputPrintSink
@@ -565,10 +569,6 @@ private:
     CSyslogStats m_syslogStats;
 };
 
+#endif
 
 #endif // defined(USE_DEDICATED_SERVER_CONSOLE)
-
-#endif // CRYINCLUDE_CRYSYSTEM_UNIXCONSOLE_H
-
-// vim:ts=2
-

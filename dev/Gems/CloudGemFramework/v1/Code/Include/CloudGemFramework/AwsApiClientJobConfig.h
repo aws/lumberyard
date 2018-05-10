@@ -88,6 +88,8 @@ namespace CloudGemFramework
             }
         }
 
+        virtual ~AwsApiClientJobConfig() = default;
+
         /// Gets a client initialized used currently applied settings. If
         /// you change any settings after first use, you must call 
         /// ApplySettings before those changes will take effect.

@@ -12,7 +12,10 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #pragma once
-#if   defined(WIN32)
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(WindowsUtils_h, AZ_RESTRICTED_PLATFORM)
+#elif defined(WIN32)
 #include "CryWindows.h"
 #include "IRenderer.h"
 #include "IImage.h"

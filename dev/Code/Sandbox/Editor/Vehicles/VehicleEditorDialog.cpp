@@ -760,7 +760,7 @@ bool CVehicleEditorDialog::OpenVehicle(bool silent /*=false*/)
     {
         if (!silent)
         {
-            Log("Selected object %s is no vehicle entity.", obj->GetName());
+            Log("Selected object %s is no vehicle entity.", obj->GetName().toUtf8().constData());
         }
 
         return false;
@@ -785,7 +785,7 @@ bool CVehicleEditorDialog::OpenVehicle(bool silent /*=false*/)
     {
         if (!silent)
         {
-            Warning("%s doesn't seem to be a valid vehicle (got script: %s)", pEnt->GetName(), sFile);
+            Warning("%s doesn't seem to be a valid vehicle (got script: %s)", pEnt->GetName().toUtf8().constData(), sFile.toUtf8().constData());
         }
 
         return false;

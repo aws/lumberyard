@@ -27,10 +27,8 @@
 #include <QPaintEvent>
 #include <QPushButton>
 #include <QMouseEvent>
-#
+
 #include <MCore/Source/LogManager.h>
-//#include <EMotionFX/Source/EMotionFXManager.h>
-//#include <EMotionFX/Source/AnimGraphNodeFactory.h"
 
 #include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
 #include <EMotionFX/Source/ActorManager.h>
@@ -288,11 +286,11 @@ namespace EMStudio
                 fpsNumFrames    = 0;
             }
 
-            static MCore::String perfTempString;
+            static AZStd::string perfTempString;
             float theoreticalFPS = 1000.0f / renderTime;
-            perfTempString.Format("%i FPS - %.0fms (%i FPS)", lastFPS, renderTime, (int)theoreticalFPS);
+            perfTempString = AZStd::string::format("%i FPS - %.0fms (%i FPS)", lastFPS, renderTime, (int)theoreticalFPS);
 
-            GraphNode::RenderText(painter, perfTempString.AsChar(), QColor(150, 150, 150), mFont, *mFontMetrics, Qt::AlignRight, QRect(width - 55, height - 20, 50, 20));
+            GraphNode::RenderText(painter, perfTempString.c_str(), QColor(150, 150, 150), mFont, *mFontMetrics, Qt::AlignRight, QRect(width - 55, height - 20, 50, 20));
         }
 
         // show the info to which actor the currently rendered graph belongs to
@@ -304,13 +302,13 @@ namespace EMStudio
             EMotionFX::ActorInstance* firstActorInstance = selectionList.GetFirstActorInstance();
 
             // update the stored short filename without path
-            if (mFullActorName.CheckIfIsEqual(firstActorInstance->GetActor()->GetFileName()) == false)
+            if (mFullActorName != firstActorInstance->GetActor()->GetFileName())
             {
-                mActorName = firstActorInstance->GetActor()->GetFileNameString().ExtractFileName();
+                AzFramework::StringFunc::Path::GetFileName(firstActorInstance->GetActor()->GetFileNameString().c_str(), mActorName);
             }
 
-            mTempString.Format("Showing graph for ActorInstance with ID %d and Actor file \"%s\"", firstActorInstance->GetID(), mActorName.AsChar());
-            GraphNode::RenderText(painter, mTempString.AsChar(), QColor(150, 150, 150), mFont, *mFontMetrics, Qt::AlignLeft, QRect(8, 0, 50, 20));
+            mTempString = AZStd::string::format("Showing graph for ActorInstance with ID %d and Actor file \"%s\"", firstActorInstance->GetID(), mActorName.c_str());
+            GraphNode::RenderText(painter, mTempString.c_str(), QColor(150, 150, 150), mFont, *mFontMetrics, Qt::AlignLeft, QRect(8, 0, 50, 20));
         }
     }
 
@@ -1030,10 +1028,10 @@ namespace EMStudio
                 {
                     // get the information from the old connection which we want to relink
                     GraphNode*      sourceNode          = relinkedConnection->GetSourceNode();
-                    MCore::String   sourceNodeName      = sourceNode->GetName();
+                    AZStd::string   sourceNodeName      = sourceNode->GetName();
                     uint32          sourcePortNr        = relinkedConnection->GetOutputPortNr();
                     GraphNode*      oldTargetNode       = relinkedConnection->GetTargetNode();
-                    MCore::String   oldTargetNodeName   = oldTargetNode->GetName();
+                    AZStd::string   oldTargetNodeName   = oldTargetNode->GetName();
                     uint32          oldTargetPortNr     = relinkedConnection->GetInputPortNr();
 
                     if (BlendGraphWidget::CheckIfIsRelinkConnectionValid(relinkedConnection, newTargetNode, newTargetPortNr, newTargetIsInputPort))
@@ -1049,8 +1047,8 @@ namespace EMStudio
                         if (connection)
                         {
                             // construct the command
-                            MCore::String commandString;
-                            commandString.Format("AnimGraphRemoveConnection -animGraphID %i -sourceNode \"%s\" -sourcePort %d -targetNode \"%s\" -targetPort %d",
+                            AZStd::string commandString;
+                            commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -sourceNode \"%s\" -sourcePort %d -targetNode \"%s\" -targetPort %d",
                                 animGraph->GetID(),
                                 connection->GetSourceNode()->GetName(),
                                 connection->GetOutputPortNr(),
@@ -1058,23 +1056,23 @@ namespace EMStudio
                                 connection->GetInputPortNr());
 
                             // add it to the command group
-                            commandGroup.AddCommandString(commandString.AsChar());
+                            commandGroup.AddCommandString(commandString.c_str());
                         }
 
                         MCORE_ASSERT(newTargetIsInputPort);
-                        MCore::String newTargetNodeName = newTargetNode->GetName();
-                        CommandSystem::RelinkConnectionTarget(&commandGroup, animGraph->GetID(), sourceNodeName.AsChar(), sourcePortNr, oldTargetNodeName.AsChar(), oldTargetPortNr, newTargetNodeName.AsChar(), newTargetPortNr);
+                        AZStd::string newTargetNodeName = newTargetNode->GetName();
+                        CommandSystem::RelinkConnectionTarget(&commandGroup, animGraph->GetID(), sourceNodeName.c_str(), sourcePortNr, oldTargetNodeName.c_str(), oldTargetPortNr, newTargetNodeName.c_str(), newTargetPortNr);
 
                         // call this before calling the commands as the commands will trigger a graph update
                         mActiveGraph->StopRelinkConnection();
 
                         // execute the command group
-                        MCore::String commandResult;
+                        AZStd::string commandResult;
                         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult) == false)
                         {
-                            if (commandResult.GetIsEmpty() == false)
+                            if (commandResult.empty() == false)
                             {
-                                MCore::LogError(commandResult.AsChar());
+                                MCore::LogError(commandResult.c_str());
                             }
                         }
                     }

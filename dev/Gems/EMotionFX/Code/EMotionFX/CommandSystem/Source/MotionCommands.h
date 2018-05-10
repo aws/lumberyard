@@ -14,7 +14,6 @@
 
 #include "CommandSystemConfig.h"
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/Command.h>
 #include <MCore/Source/CommandGroup.h>
 #include <MCore/Source/Endian.h>
@@ -30,8 +29,8 @@ namespace CommandSystem
     private:
         bool                                mOldDirtyFlag;
         EMotionFX::EMotionExtractionFlags   mOldExtractionFlags;
-        MCore::String                       mOldName;
-        MCore::String                       mOldMotionExtractionNodeName;
+        AZStd::string                       mOldName;
+        AZStd::string                       mOldMotionExtractionNodeName;
     MCORE_DEFINECOMMAND_END
 
 
@@ -39,7 +38,7 @@ namespace CommandSystem
     MCORE_DEFINECOMMAND_START(CommandRemoveMotion, "Remove motion", true)
     public:
         uint32          mOldMotionID;
-        MCore::String   mOldFileName;
+        AZStd::string   mOldFileName;
         uint32          mOldIndex;
         bool            mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
@@ -48,7 +47,7 @@ namespace CommandSystem
     // Scale motion data.
     MCORE_DEFINECOMMAND_START(CommandScaleMotionData, "Scale motion data", true)
     public:
-        MCore::String   mOldUnitType;
+        AZStd::string   mOldUnitType;
         uint32          mMotionID;
         float           mScaleFactor;
         bool            mOldDirtyFlag;

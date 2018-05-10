@@ -41,6 +41,12 @@ namespace AZ
 
 namespace AssetBuilderSDK
 {
+    namespace ComponentTags
+    {
+        //! Components with the AssetBuilder tag in their reflect data's attributes as AZ::Edit::Attributes::SystemComponetTags will automatically be created on AssetBuilder startup
+        const static AZ::Crc32 AssetBuilder = AZ_CRC("AssetBuilder", 0xc739c7d7);
+    }
+
     extern const char* const ErrorWindow; //Use this window name to log error messages.
     extern const char* const WarningWindow; //Use this window name to log warning messages.
     extern const char* const InfoWindow; //Use this window name to log info messages.
@@ -160,6 +166,12 @@ namespace AssetBuilderSDK
     //!Information that builders will send to the assetprocessor
     struct AssetBuilderDesc
     {
+        enum class AssetBuilderType
+        {
+            Internal,   //! Internal Recognizer builders for example.  Internal Builders are created and run inside the AP.
+            External    //! External builders are those located within gems that run inside an AssetBuilder application.
+        };
+
         //! The name of the Builder
         AZStd::string m_name;
 
@@ -177,6 +189,11 @@ namespace AssetBuilderSDK
         CreateJobFunction m_createJobFunction;
         //! The required process job function callback that the asset processor will call during the job processing phase
         ProcessJobFunction m_processJobFunction;
+
+        //! The builder type.  We set this to External by default, as that is the typical set up for custom builders (builders in gems and legacy dll builders).
+        AssetBuilderType m_builderType = AssetBuilderType::External;
+
+        bool IsExternalBuilder() const;
     };
 
     //! Source file dependency information that the builder will send to the assetprocessor

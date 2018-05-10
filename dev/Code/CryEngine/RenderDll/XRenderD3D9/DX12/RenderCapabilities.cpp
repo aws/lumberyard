@@ -29,9 +29,9 @@ namespace RenderCapabilities
         return false;
     }
 
-    bool SupportsFrameBufferFetches()
+    FrameBufferFetchMask GetFrameBufferFetchCapabilities()
     {
-        return false;
+        return FrameBufferFetchMask();
     }
 
     bool SupportsDualSourceBlending()

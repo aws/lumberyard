@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_REGEX_H
-#define AZSTD_REGEX_H
+#pragma once
 
 #include <AzCore/std/base.h>
 #include <AzCore/std/algorithm.h>
@@ -22,7 +21,9 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-#if    defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(regex_h, AZ_RESTRICTED_PLATFORM)
+#elif  defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include <limits.h>
 #   include <limits>
 #endif
@@ -4775,6 +4776,3 @@ namespace AZStd
 /*
  * Copyright (c) 1992-2012 by P.J. Plauger.  ALL RIGHTS RESERVED.
  * Consult your license regarding permissions and restrictions. V6.00:0009 */
-
-#endif // #ifndef AZSTD_REGEX_H
-#pragma once

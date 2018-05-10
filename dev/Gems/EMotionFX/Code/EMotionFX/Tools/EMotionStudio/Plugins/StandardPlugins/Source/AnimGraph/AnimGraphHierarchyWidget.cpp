@@ -111,13 +111,13 @@ namespace EMStudio
             EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mAnimGraphID);
             if (animGraph)
             {
-                if (mFindString.GetIsEmpty())
+                if (mFindString.empty())
                 {
                     NavigateWidget::UpdateTreeWidget(mHierarchy, animGraph, mFilterNodeID, mShowStatesOnly);
                 }
                 else
                 {
-                    NavigateWidget::UpdateTreeWidget(mHierarchy, animGraph, mFilterNodeID, mShowStatesOnly, mFindString.AsChar());
+                    NavigateWidget::UpdateTreeWidget(mHierarchy, animGraph, mFilterNodeID, mShowStatesOnly, mFindString.c_str());
                 }
             }
         }
@@ -196,7 +196,7 @@ namespace EMStudio
     void AnimGraphHierarchyWidget::TextChanged(const QString& text)
     {
         FromQtString(text, &mFindString);
-        mFindString.ToLower();
+        AZStd::to_lower(mFindString.begin(), mFindString.end());
         Update();
     }
 

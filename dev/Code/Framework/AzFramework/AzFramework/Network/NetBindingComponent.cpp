@@ -220,7 +220,7 @@ namespace AzFramework
                 }
                 else if (!IsLevelSliceEntity())
                 {
-                    EBUS_EVENT(GameEntityContextRequestBus, DestroyGameEntity, GetEntityId());
+                    EBUS_EVENT(NetBindingSystemBus, UnbindGameEntity, GetEntityId(), m_sliceInstanceId);
                 }
             }
         }
@@ -230,6 +230,11 @@ namespace AzFramework
     {
         AZ_Assert(!IsEntityBoundToNetwork(), "MarkAsLevelSliceEntity() has to be called before the entity is bound to the network!");
         m_isLevelSliceEntity = true;
+    }
+
+    void NetBindingComponent::SetSliceInstanceId(const AZ::SliceComponent::SliceInstanceId& sliceInstanceId)
+    {
+        m_sliceInstanceId = sliceInstanceId;
     }
 
     void NetBindingComponent::RequestEntityChangeOwnership(GridMate::PeerId peerId)

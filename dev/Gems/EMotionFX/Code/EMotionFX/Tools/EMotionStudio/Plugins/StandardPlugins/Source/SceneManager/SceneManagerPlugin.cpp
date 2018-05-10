@@ -13,7 +13,9 @@
 // include required headers
 #include "SceneManagerPlugin.h"
 #include <EMotionFX/Source/ActorManager.h>
+#include <EMotionFX/Source/MorphSetup.h>
 #include <EMotionFX/CommandSystem/Source/ActorCommands.h>
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
 #include "../../../../EMStudioSDK/Source/FileManager.h"
@@ -77,12 +79,15 @@ namespace EMStudio
         QString BuildToolTipItem(OutlinerCategoryItem* item) const override
         {
             EMotionFX::Actor* actor = static_cast<EMotionFX::Actor*>(item->mUserData);
-            const MCore::String relativeFileName = actor->GetFileNameString().ExtractPathRelativeTo(EMotionFX::GetEMotionFX().GetMediaRootFolder());
+
+            AZStd::string relativeFileName = actor->GetFileNameString();
+            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&relativeFileName);
+            
             QString toolTip = "<table border=\"0\">";
             toolTip += "<tr><td><p style='white-space:pre'><b>Name: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(actor->GetNameString().GetIsEmpty() ? "&#60;no name&#62;" : actor->GetName());
+            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(actor->GetNameString().empty() ? "&#60;no name&#62;" : actor->GetName());
             toolTip += "<tr><td><p style='white-space:pre'><b>FileName: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.GetIsEmpty() ? "&#60;not saved yet&#62;" : relativeFileName.AsChar());
+            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.empty() ? "&#60;not saved yet&#62;" : relativeFileName.c_str());
             toolTip += "<tr><td><p style='white-space:pre'><b>Num Nodes: </b></p></td>";
             toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(actor->GetNumNodes());
             toolTip += "</table>";
@@ -116,12 +121,12 @@ namespace EMStudio
                     EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(j);
                     if (actorInstance->GetActor() == actor)
                     {
-                        commandGroup->AddCommandString(MCore::String().Format("RemoveActorInstance -actorInstanceID %i", actorInstance->GetID()));
+                        commandGroup->AddCommandString(AZStd::string::format("RemoveActorInstance -actorInstanceID %i", actorInstance->GetID()));
                     }
                 }
 
                 // remove the actor
-                commandGroup->AddCommandString(MCore::String().Format("RemoveActor -actorID %i", actor->GetID()));
+                commandGroup->AddCommandString(AZStd::string::format("RemoveActor -actorID %i", actor->GetID()));
             }
         }
 
@@ -247,24 +252,25 @@ namespace EMStudio
             EMStudio::GetApp()->setOverrideCursor(QCursor(Qt::ArrowCursor));
 
             QMessageBox msgBox(GetMainWindow());
-            MCore::String text;
-            MCore::String filename = actor->GetFileNameString();
-            MCore::String extension = filename.ExtractFileExtension();
+            AZStd::string text;
+            AZStd::string filename = actor->GetFileNameString();
+            AZStd::string extension;
+            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
-            if (filename.GetIsEmpty() == false && extension.GetIsEmpty() == false)
+            if (filename.empty() == false && extension.empty() == false)
             {
-                text.Format("Save changes to '%s'?", actor->GetFileName());
+                text = AZStd::string::format("Save changes to '%s'?", actor->GetFileName());
             }
-            else if (actor->GetNameString().GetIsEmpty() == false)
+            else if (actor->GetNameString().empty() == false)
             {
-                text.Format("Save changes to the actor named '%s'?", actor->GetName());
+                text = AZStd::string::format("Save changes to the actor named '%s'?", actor->GetName());
             }
             else
             {
                 text = "Save changes to untitled actor?";
             }
 
-            msgBox.setText(text.AsChar());
+            msgBox.setText(text.c_str());
             msgBox.setWindowTitle("Save Changes");
 
             if (showCancelButton)
@@ -521,6 +527,13 @@ namespace EMStudio
         if (actor)
         {
             GetOutlinerManager()->AddItemToCategory("Actors", actor->GetID(), actor);
+
+            // Generate metrics
+            {
+                // Morph Target use for LOD 0 only
+                EMotionFX::MorphSetup * morphSetup = actor->GetMorphSetup(0);
+                MetricsEventSender::SendActorMorphTargetSizesEvent(morphSetup);
+            }
         }
         return ReInitSceneManagerPlugin();
     }

@@ -13,8 +13,6 @@
 
 // Description : Misc mathematical functions
 
-#ifndef CRYINCLUDE_CRYCOMMON_MEMORYACCESS_H
-#define CRYINCLUDE_CRYCOMMON_MEMORYACCESS_H
 #pragma once
 
 
@@ -22,6 +20,7 @@
 
 // Section dictionary
 #if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
 #define MEMORYACCESS_H_SECTION_TRAITS 1
 #define MEMORYACCESS_H_SECTION_CRYPREFETCH 2
 #endif
@@ -29,7 +28,7 @@
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MEMORYACCESS_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(MemoryAccess_h)
+#include AZ_RESTRICTED_FILE(MemoryAccess_h, AZ_RESTRICTED_PLATFORM)
 #else
 #define MEMORYACCESS_H_TRAIT_USE_LEGACY_PREFETCHLINE 1
 #endif
@@ -561,7 +560,7 @@ ILINE void cryMemcpy(void* Dst, const void* Src, int n, int nFlags)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MEMORYACCESS_H_SECTION_CRYPREFETCH
-#include AZ_RESTRICTED_FILE(MemoryAccess_h)
+#include AZ_RESTRICTED_FILE(MemoryAccess_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -574,7 +573,3 @@ ILINE void CryPrefetch(const void* const cpSrc)
 #endif
 
 #define CryPrefetchInl CryPrefetch
-
-
-#endif // CRYINCLUDE_CRYCOMMON_MEMORYACCESS_H
-

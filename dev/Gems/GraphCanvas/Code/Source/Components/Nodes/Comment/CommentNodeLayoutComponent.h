@@ -15,11 +15,11 @@
 
 #include <AzCore/Component/Component.h>
 
-#include <Components/Nodes/NodeLayoutBus.h>
 #include <Components/Nodes/NodeLayoutComponent.h>
-#include <Components/Nodes/NodeTitleBus.h>
-#include <Components/StyleBus.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
+#include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
+#include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 class QGraphicsGridLayout;
 
@@ -31,7 +31,6 @@ namespace GraphCanvas
         , public NodeNotificationBus::Handler
         , public StyleNotificationBus::Handler
         , public AZ::EntityBus::Handler
-
     {
     public:
         AZ_COMPONENT(CommentNodeLayoutComponent, "{6926658C-372A-43D5-8758-FB67DDE3D857}", NodeLayoutComponent);
@@ -63,7 +62,6 @@ namespace GraphCanvas
         // EntityBus
         void OnEntityExists(const AZ::EntityId& entityId) override;
         ////
-
 
         // StyleNotificationBus
         void OnStyleChanged() override;

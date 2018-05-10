@@ -37,7 +37,9 @@
     #endif
 #endif
 
-
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(AZ_PLATFORM_APPLE_OSX)
 ///////////////////////////////////////////////////////////////////////////////////////////////////

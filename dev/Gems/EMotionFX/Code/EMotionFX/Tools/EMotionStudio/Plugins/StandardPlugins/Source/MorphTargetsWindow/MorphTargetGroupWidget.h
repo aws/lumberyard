@@ -14,7 +14,6 @@
 
 #include "../StandardPluginsConfig.h"
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <EMotionFX/Source/MorphTarget.h>
 #include <EMotionFX/Source/MorphSetupInstance.h>
 #include <EMotionFX/Source/ActorInstance.h>

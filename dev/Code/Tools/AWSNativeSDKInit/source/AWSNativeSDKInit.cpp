@@ -14,11 +14,26 @@
 
 #include <AzCore/Module/Environment.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define AWSNATIVESDKINIT_CPP_SECTION_1 1
+#define AWSNATIVESDKINIT_CPP_SECTION_2 2
+#define AWSNATIVESDKINIT_CPP_SECTION_3 3
+#endif
+
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
 #include <AWSNativeSDKInit/AWSLogSystemInterface.h>
 #include <aws/core/Aws.h>
+#include <aws/core/utils/logging/AWSLogging.h>
+#include <aws/core/utils/logging/DefaultLogSystem.h>
+#include <aws/core/utils/logging/ConsoleLogSystem.h>
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AWSNATIVESDKINIT_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(AWSNativeSDKInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace AWSNativeSDKInit
 {
@@ -66,6 +81,10 @@ namespace AWSNativeSDKInit
 
         m_awsSDKOptions.memoryManagementOptions.memoryManager = &m_memoryManager;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AWSNATIVESDKINIT_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(AWSNativeSDKInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         Aws::InitAPI(m_awsSDKOptions);
 
@@ -76,6 +95,10 @@ namespace AWSNativeSDKInit
     {
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
         Aws::ShutdownAPI(m_awsSDKOptions);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AWSNATIVESDKINIT_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(AWSNativeSDKInit_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #endif // #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
     }

@@ -12,7 +12,26 @@
 
 #include <AzCore/Socket/AzSocket.h>
 
-#if   defined(AZ_PLATFORM_ANDROID) 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define AZSOCKET_CPP_SECTION_1 1
+#define AZSOCKET_CPP_SECTION_2 2
+#define AZSOCKET_CPP_SECTION_3 3
+#define AZSOCKET_CPP_SECTION_4 4
+#define AZSOCKET_CPP_SECTION_5 5
+#define AZSOCKET_CPP_SECTION_6 6
+#define AZSOCKET_CPP_SECTION_7 7
+#define AZSOCKET_CPP_SECTION_8 8
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_ANDROID) 
 #   define INVALID_SOCKET (-1)
 #   define closesocket(_s)                          close(_s)
 #   define GetInternalSocketError                   errno
@@ -53,7 +72,13 @@ namespace AZ
             {
                 TRANSLATE(0, AzSockError::eASE_NO_ERROR);
 
-#if   defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
                 TRANSLATE(EACCES, AzSockError::eASE_EACCES);
                 TRANSLATE(EADDRINUSE, AzSockError::eASE_EADDRINUSE);
                 TRANSLATE(EADDRNOTAVAIL, AzSockError::eASE_EADDRNOTAVAIL);
@@ -150,7 +175,15 @@ namespace AZ
         AZSOCKET HandleInvalidSocket(SOCKET sock)
         {
             AZSOCKET azsock = static_cast<AZSOCKET>(sock);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             if (sock == INVALID_SOCKET)
+#endif
             {
                 azsock = TranslateOSError(GetInternalSocketError);
             }
@@ -161,7 +194,15 @@ namespace AZ
         AZ::s32 HandleSocketError(AZ::s32 socketError)
         {
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             if (socketError == SOCKET_ERROR)
+#endif
             {
                 socketError = TranslateOSError(GetInternalSocketError);
             }
@@ -240,12 +281,20 @@ namespace AZ
             AZ::s32 result = 0;
             hostname.clear();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             char name[256];
             result = HandleSocketError(gethostname(name, AZ_ARRAY_SIZE(name)));
             if (result == static_cast<AZ::s32>(AzSockError::eASE_NO_ERROR))
             {
                 hostname = name;
             }
+#endif
             return result;
         }
 
@@ -279,7 +328,13 @@ namespace AZ
 
         AZ::s32 SetSocketBlockingMode(AZSOCKET sock, bool blocking)
         {
-#if   defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
             AZ::s32 flags = ::fcntl(sock, F_GETFL);
             flags &= ~O_NONBLOCK;
             flags |= (blocking ? 0 : O_NONBLOCK);
@@ -344,7 +399,13 @@ namespace AZ
 
         AZ::s32 Send(AZSOCKET sock, const char* buf, AZ::s32 len, AZ::s32 flags)
         {
-#if   defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
             AZ::s32 msgNoSignal = MSG_NOSIGNAL;
 #elif defined(AZ_PLATFORM_APPLE) || AZ_TRAIT_USE_WINSOCK_API
             AZ::s32 msgNoSignal = 0;
@@ -477,6 +538,13 @@ namespace AZ
             AZ_Assert(!ip.empty(), "Invalid address string!");
             bool foundAddr = false;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION AZSOCKET_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(AzSocket_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             // resolve address
             {
                 addrinfo hints;
@@ -510,6 +578,7 @@ namespace AZ
                     AZ_Assert(false, "AzSocketAddress could not resolve address %s with port %d. (reason - %s)", ip.c_str(), port, GetStringForError(err));
                 }
             }
+#endif
             return foundAddr;
         }
 

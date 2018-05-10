@@ -26,12 +26,12 @@
     "DownloadRules" :
     [
         {
-            "identifier" : "vc120",
-            "requiredTags" : ["vc120", "windows"]
-        },
-        {
             "identifier" : "vc140",
             "requiredTags" : ["vc140", "windows"]
+        },
+        {
+            "identifier" : "vc141",
+            "requiredTags" : ["vc141", "windows"]
         },
         {
             "identifier" : "winlinux",
@@ -113,15 +113,6 @@
             "default" : false
         },
         {
-            "identifier" : "vc120",
-            "description" : "vc120Description",
-            "tooltip" : "vc120ToolTip",
-            "tags" : ["vc120"],
-            "categories" : ["compiler"],
-            "hosts" : [ "windows" ],
-            "default" : false
-        },
-        {
             "identifier" : "vc140",
             "description" : "vc140Description",
             "tooltip" : "vc140ToolTip",
@@ -129,6 +120,15 @@
             "categories" : ["compiler"],
             "hosts" : [ "windows" ],
             "default" : true
+        },
+        {
+            "identifier" : "vc141",
+            "description" : "vc141Description",
+            "tooltip" : "vc141ToolTip",
+            "tags" : ["vc141"],
+            "categories" : ["compiler"],
+            "hosts" : [ "windows" ],
+            "default" : false
         },
         {
             "identifier" : "windows",
@@ -164,7 +164,7 @@
             "identifier" : "boost",
             "name" : "boostName",
             "version" : "v1.61.0 modified",
-            "source": "boost/1.61.0.1",
+            "source": "boost/1.61.0-az.2",
             "optional" : 0,
             "description" : "boostDescriptionSummary",
             "detailedInstructions" : "boostDetailedInstructions",
@@ -172,25 +172,19 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "boost/1.61.0.1/lib",
-                    "destination" : "$CODEFOLDERNAME$/Sandbox/SDKs/boost/lib",
-                    "exampleFile" : "windows/x64/boost_python-vc120-mt-1_61.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
-                    "source" : "boost/1.61.0.1/lib",
+                    "compilers" : ["vc140", "vc141"],
+                    "source" : "boost/1.61.0-az.2/lib",
                     "destination" : "$CODEFOLDERNAME$/Sandbox/SDKs/boost/lib",
                     "exampleFile" : "windows/x64/boost_python-vc140-mt-1_61.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "boost/1.61.0.1/lib",
+                    "source" : "boost/1.61.0-az.2/lib",
                     "destination" : "$CODEFOLDERNAME$/Sandbox/SDKs/boost/lib",
                     "exampleFile" : "macos/libboost_python.a"
                 },
                 {
-                    "source" : "boost/1.61.0.1/boost",
+                    "source" : "boost/1.61.0-az.2/boost",
                     "destination" : "$CODEFOLDERNAME$/SDKs/boost/boost",
                     "exampleFile" : "foreach.hpp"
                 }
@@ -362,13 +356,7 @@
                     "exampleFile" : "sqlite3.c"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "SQLite/v3.8.8.2",
-                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/SQLite",
-                    "exampleFile" : "build/win_x64/vc120/release/sqlite.lib"
-                },
-                {
-                  "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "SQLite/v3.8.8.2",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/SQLite",
                     "exampleFile" : "build/win_x64/vc140/release/sqlite.lib"
@@ -448,13 +436,7 @@
                     "exampleFile" : "include/p4/p4tags.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "p4api/2015.2",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
-                    "exampleFile" : "vs12/debug/libclient.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "p4api/2015.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
                     "exampleFile" : "vs14/debug/libclient.lib"
@@ -484,13 +466,7 @@
                     "exampleFile" : "panel.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "pdcurses/2.8-az.1",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/pdcurses",
-                    "exampleFile" : "lib/amd64_vs2013/pdcurses.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "pdcurses/2.8-az.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/pdcurses",
                     "exampleFile" : "lib/amd64_vs2015/pdcurses.lib"
@@ -509,13 +485,7 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "tiff/3.9.5",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/tiff",
-                    "exampleFile" : "libtiff/libtiff64rtdlld.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "tiff/3.9.5",
                     "destination" : "$CODEFOLDERNAME$/SDKs/tiff",
                     "exampleFile" : "libtiff/libtiff64rtdlld_vc140.lib"
@@ -540,26 +510,20 @@
             "installers" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx20161_2_fbxsdk_vs2013_win.exe",
+                    "compilers" : ["vc140", "vc141"],
+                    "source" : "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx20161_2_fbxsdk_vs2015_win.exe",
                     "params" : "/D=$THIRDPARTYFOLDERPATH$\\FbxSdk\\2016.1.2"
                 },
                 {
-                    "compilers" : ["vc140"],
-                    "source" : "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx20161_2_fbxsdk_vs2015_win.exe",
-                    "params" : "/D=$THIRDPARTYFOLDERPATH$\\FbxSdk\\2016.1.2"
+                    "hostOS": ["macOS"],
+                    "source": "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx_install_mac.py",
+                    "params": "$THIRDPARTYFOLDERPATH$/FbxSdk/2016.1.2"
                 }
             ],
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "FbxSdk/2016.1.2",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/FbxSdk",
-                    "exampleFile" : "lib/vs2013/x64/release/libfbxsdk.dll"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "FbxSdk/2016.1.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/FbxSdk",
                     "exampleFile" : "lib/vs2015/x64/release/libfbxsdk.dll"
@@ -588,7 +552,7 @@
                     "exampleFile" : "squish.cpp"
                 },
                 {
-                    "compilers" : ["vc120"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "squish-ccr/20150601_lmbr_v1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/squish-ccr",
                     "exampleFile" : "vs12/squishgen/squishgen.vcxproj"
@@ -599,7 +563,7 @@
                     "exampleFile" : "squish.cpp"
                 },
                 {
-                    "compilers" : ["vc120"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "squish-ccr/20150601_lmbr_v1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/squish-ccr",
                     "exampleFile" : "vs12/squishgen/squishgen.vcxproj"
@@ -618,13 +582,7 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "LibTomCrypt/1.17-az.1",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/LibTomCrypt",
-                    "exampleFile" : "lib/x64/libtomcrypt.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "LibTomCrypt/1.17-az.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/LibTomCrypt",
                     "exampleFile" : "lib/x64_vc14/libtomcrypt.lib"
@@ -654,13 +612,7 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "LibTomMath/0.42.0-az.1",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/LibTomMath",
-                    "exampleFile" : "lib/x64_vc12/libtommath.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "LibTomMath/0.42.0-az.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/LibTomMath",
                     "exampleFile" : "lib/x64_vc14/libtommath.lib"
@@ -713,13 +665,7 @@
                     "exampleFile" : "dist/include/ft2build.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "FreeType2/2.5.0.1-pkg.2",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/FreeType2",
-                    "exampleFile" : "vc120_x64/freetype250.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "FreeType2/2.5.0.1-pkg.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/FreeType2",
                     "exampleFile" : "vc140_x64/freetype250.lib"
@@ -742,13 +688,7 @@
             "symlinks":
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source": "hdf5/1.8.13",
-                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/hdf5",
-                    "exampleFile": "lib/x64/hdf5-vc120-mt-s.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source": "hdf5/1.8.13",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/hdf5",
                     "exampleFile": "lib/x64/hdf5-vc140-md-s.lib"
@@ -775,13 +715,7 @@
                     "exampleFile": "include/OpenEXR/IlmBaseConfig.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source": "ilmbase/2.2.0",
-                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/ilmbase",
-                    "exampleFile": "lib/x64/Imath-vc120-mt-s.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source": "ilmbase/2.2.0",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/ilmbase",
                     "exampleFile": "lib/x64/Imath-vc140-md-s.lib"
@@ -803,13 +737,7 @@
                     "exampleFile": "include/szlib.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source": "szip/2.1",
-                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/szip",
-                    "exampleFile": "lib/x64/libszip-vc120-mt-s.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source": "szip/2.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/szip",
                     "exampleFile": "lib/x64/libszip-vc140-mt-s.lib"
@@ -836,13 +764,7 @@
             "symlinks":
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source": "alembic/1.5.5",
-                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/alembic",
-                    "exampleFile": "lib/x64/AlembicUtil-vc120-mt-s.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source": "alembic/1.5.5",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/alembic",
                     "exampleFile": "lib/x64/AlembicUtil-vc140-md-s.lib"
@@ -872,13 +794,7 @@
                     "exampleFile" : "include/AK/AkWwiseSDKVersion.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "Wwise/LTX_2016.1.1.5823/SDK",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
-                    "exampleFile" : "x64_vc120/Release/lib/AkSoundEngine.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "Wwise/LTX_2016.1.1.5823/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
@@ -888,8 +804,8 @@
         {
             "identifier": "qt",
             "name": "qtName",
-            "version": "5.6.2.3-az",
-            "source": "Qt/5.6.2.3-az",
+            "version": "5.6.2.4-az",
+            "source": "Qt/5.6.2.4-az",
             "optional": 0,
             "description": "qtDescriptionSummary",
             "detailedInstructions": "qtDetailedInstructions",
@@ -898,31 +814,25 @@
             "symlinks":
             [
                 {
-                    "source": "Qt/5.6.2.3-az",
+                    "source": "Qt/5.6.2.4-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "QT-NOTICE.TXT"
                 },
                 {
-                    "compilers": [ "vc120" ],
-                    "source": "Qt/5.6.2.3-az",
-                    "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
-                    "exampleFile": "msvc2013_64/bin/moc.exe"
-                },
-                {
-                    "compilers": [ "vc140" ],
-                    "source": "Qt/5.6.2.3-az",
+                    "compilers": [ "vc140", "vc141" ],
+                    "source": "Qt/5.6.2.4-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "msvc2015_64/bin/moc.exe"
                 },
                 {
                     "hostOS": [ "macOS" ],
-                    "source": "Qt/5.6.2.3-az",
+                    "source": "Qt/5.6.2.4-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "clang_64/bin/moc"
                 },
                 {
                     "hostOS": [ "setuplinux" ],
-                    "source": "Qt/5.6.2.3-az",
+                    "source": "Qt/5.6.2.4-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "gcc_64/bin/moc"
                 }
@@ -946,7 +856,7 @@
                     "exampleFile": "Include/PVRTexture.h"
                 },
                 {
-                    "compilers": [ "vc120", "vc140" ],
+                    "compilers": [ "vc140", "vc141" ],
                     "source": "PVRTexTool/2016_r1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/PowerVRTexTool",
                     "exampleFile": "Windows_x86_64/PVRTexLib.lib"
@@ -981,79 +891,61 @@
         {
             "identifier": "AWSNativeSDK",
             "name": "AWSNativeSDKName",
-            "version": "1.1.13-pkg.1",
-            "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+            "version": "1.1.13-pkg.2",
+            "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
             "optional": 0,
             "description": "AWSNativeSDKDescriptionSummary",
             "detailedInstructions": "AWSNativeSDKDetailedInstructions",
             "roles": [ "compilegame", "compileengine", "compileeditor", "compileios", "compileandroid", "setuplinux" ],
             "symlinks": [
                 {
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
-                    "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
-                    "exampleFile": "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-core.lib"
-                },
-                {
-                    "compilers" : ["vc120"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
-                    "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
-                    "exampleFile": "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-core.lib"
-                },
-                {
-                    "compilers" : ["vc120"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
-                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
-                    "exampleFile": "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-core.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "compilers" : ["vc140", "vc141"],
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
-                    "compilers" : ["vc140"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "compilers" : ["vc140", "vc141"],
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
-                    "compilers" : ["vc140"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "compilers" : ["vc140", "vc141"],
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.1",
+                    "source": "AWS/AWSNativeSDK/1.1.13-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 }
@@ -1071,13 +963,7 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "AWS/GameLift/3.1.5-az.1/",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
-                    "exampleFile" : "bin/windows/intel64/vs2013/Release/aws-cpp-sdk-gamelift-server.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "AWS/GameLift/3.1.5-az.1/",
                     "destination" : "$CODEFOLDERNAME$/SDKs/GameLiftServerSDK",
                     "exampleFile" : "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-gamelift-server.lib"
@@ -1112,13 +998,7 @@
                     "exampleFile" : "zlib.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source": "zlib/1.2.8-pkg.2",
-                    "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/zlib-common",
-                    "exampleFile": "build/win_x64/vc120/release/zlib.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source": "zlib/1.2.8-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/zlib-common",
                     "exampleFile": "build/win_x64/vc140/release/zlib.lib"
@@ -1153,13 +1033,7 @@
                     "exampleFile" : "gtest.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source": "GoogleMock/gmock-az-1.3/lib",
-                    "destination": "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
-                    "exampleFile": "x64/vc120-md/LIB/Debug/gmock.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source": "GoogleMock/gmock-az-1.3/lib",
                     "destination": "$CODEFOLDERNAME$/SDKs/GoogleMock/lib",
                     "exampleFile": "x64/vc140-md/LIB/Debug/gmock.lib"
@@ -1201,13 +1075,7 @@
                     "exampleFile" : "lz4.c"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "lz4/r128-pkg.2/build",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/lz4/build",
-                    "exampleFile" : "win_x64/vc120/release/lz4.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "lz4/r128-pkg.2/build",
                     "destination" : "$CODEFOLDERNAME$/SDKs/lz4/build",
                     "exampleFile" : "win_x64/vc140/release/lz4.lib"
@@ -1249,13 +1117,7 @@
                     "exampleFile" : "Lua/lua.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "Lua/5.1.1.8-az",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/Lua",
-                    "exampleFile" : "build/win_x64/vc120/release/lua.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "Lua/5.1.1.8-az",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Lua",
                     "exampleFile" : "build/win_x64/vc140/release/lua.lib"
@@ -1285,13 +1147,7 @@
                     "exampleFile" : "lib/expat.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "expat/2.1.0-pkg.2",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/expat",
-                    "exampleFile" : "build/win_x64/vc120/release/expat.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "expat/2.1.0-pkg.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/expat",
                     "exampleFile" : "build/win_x64/vc140/release/expat.lib"
@@ -1321,13 +1177,7 @@
                     "exampleFile" : "md5.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "md5/2.0-pkg.2",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/md5",
-                    "exampleFile" : "build/win_x64/vc120/release/md5.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "md5/2.0-pkg.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/md5",
                     "exampleFile" : "build/win_x64/vc140/release/md5.lib"
@@ -1357,13 +1207,7 @@
                     "exampleFile" : "LZSS.H"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "LZSS/unknown-pkg.2",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/LZSS",
-                    "exampleFile" : "build/win_x64/vc120/release/lzss.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "LZSS/unknown-pkg.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/LZSS",
                     "exampleFile" : "build/win_x64/vc140/release/lzss.lib"
@@ -1393,13 +1237,7 @@
                     "exampleFile" : "Lzma86.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "Lzma/unknown-pkg.2",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/Lzma",
-                    "exampleFile" : "build/win_x64/vc120/release/lzma.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "Lzma/unknown-pkg.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Lzma",
                     "exampleFile" : "build/win_x64/vc140/release/lzma.lib"
@@ -1429,7 +1267,7 @@
                     "exampleFile" : "inc/amd_ags.h"
                 },
                 {
-                    "compilers" : ["vc120", "vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "AMD/AGS Lib/2.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/AMD/AGS Lib",
                     "exampleFile" : "lib/x64/static/amd_ags64.lib"
@@ -1453,13 +1291,7 @@
                     "exampleFile" : "LibOVR/Include/OVR_CAPI.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "OculusSDK/1.9.0",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/OculusSDK",
-                    "exampleFile" : "LibOVR/Lib/Windows/x64/Release/VS2013/LibOVR.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "OculusSDK/1.9.0",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OculusSDK",
                     "exampleFile" : "LibOVR/Lib/Windows/x64/Release/VS2015/LibOVR.lib"
@@ -1483,7 +1315,7 @@
                     "exampleFile" : "include/osvr/ClientKit/ClientKit.h"
                 },
                 {
-                    "compilers" : ["vc120", "vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "OSVR/0.6.1363",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OSVR",
                     "exampleFile" : "lib/osvrCommon.lib"
@@ -1502,13 +1334,7 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source": "dyad/0.2.0-17-amazon",
-                    "destination": "$CODEFOLDERNAME$/SDKs/dyad",
-                    "exampleFile": "lib/x64_v120_Release/libdyad.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source": "dyad/0.2.0-17-amazon",
                     "destination": "$CODEFOLDERNAME$/SDKs/dyad",
                     "exampleFile": "lib/x64_v140_Release/libdyad.lib"
@@ -1538,13 +1364,7 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "Clang/3.7",
-                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang",
-                    "exampleFile" : "vs2013/release/bin/clang.exe"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "Clang/3.7",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang",
                     "exampleFile" : "vs2015/release/bin/clang.exe"
@@ -1590,8 +1410,8 @@
         {
             "identifier" : "rapidxml",
             "name" : "rapidxml",
-            "version" : "1.13-modified",
-            "source" : "rapidxml/1.13-modified",
+            "version" : "1.13-modified.1",
+            "source" : "rapidxml/1.13-modified.1",
             "optional" : 0,
             "description" : "rapidxmlDescriptionSummary",
             "detailedInstructions" : "rapidxmlDetailedInstructions",
@@ -1599,9 +1419,9 @@
             "symlinks" :
             [
                 {
-                    "source" : "rapidxml/1.13-modified",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/rapidxml/rapidxml",
-                    "exampleFile" : "rapidxml.h"
+                    "source" : "rapidxml/1.13-modified.1",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/rapidxml",
+                    "exampleFile" : "include/rapidxml/rapidxml.h"
                 }
             ]
         },
@@ -1675,13 +1495,7 @@
                     "exampleFile" : "include/openssl/ssl.h"
                 },
                 {
-                    "compilers" : ["vc120"],
-                    "source" : "OpenSSL/1.0.2k-noasm",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
-                    "exampleFile" : "lib/vc120_x64_release/libeay32.lib"
-                },
-                {
-                    "compilers" : ["vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "OpenSSL/1.0.2k-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/vc140_x64_release/libeay32.lib"
@@ -1761,7 +1575,7 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120", "vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "FFmpeg/3.2",
                     "destination" : "$CODEFOLDERNAME$/SDKs/FFmpeg",
                     "exampleFile" : "include/libavcodec/avcodec.h"
@@ -1781,41 +1595,10 @@
             "symlinks" :
             [
                 {
-                    "compilers" : ["vc120", "vc140"],
+                    "compilers" : ["vc140", "vc141"],
                     "source" : "libav/11.7/usr",
                     "destination" : "$CODEFOLDERNAME$/SDKs/libav",
                     "exampleFile" : "include/libavcodec/avcodec.h"
-                }
-            ]
-        },
-        {
-            "identifier" : "glew",
-            "name" : "glewName",
-            "version": "1.10.0",
-            "source": "GLEW/1.10.0",
-            "optional" : 0,
-            "description" : "glewDescriptionSummary",
-            "detailedInstructions" : "glewDetailedInstructions",
-            "roles": [ "compileeditor" ],
-            "hostOS": [ "windows", "macOS" ],
-            "symlinks" :
-            [
-                {
-                    "source" : "GLEW/1.10.0",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/GLEW",
-                    "exampleFile" : "include/GL/glew.h"
-                },
-                {
-                    "compilers" : ["vc120", "vc140"],
-                    "source" : "GLEW/1.10.0",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/GLEW",
-                    "exampleFile" : "lib/win64/glew32.lib"
-                },
-                {
-                    "hostOS" : ["macOS"],
-                    "source" : "GLEW/1.10.0",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/GLEW",
-                    "exampleFile" : "lib/mac/libGLEW.a"
                 }
             ]
         },
@@ -1835,6 +1618,42 @@
                     "source" : "benchmark/1.2.0",
                     "destination" : "$CODEFOLDERNAME$/SDKs/benchmark",
                     "exampleFile" : "include/benchmark/benchmark.h"
+                }
+            ]
+        },
+        {
+            "identifier" : "unwind",
+            "name" : "unwindName",
+            "version" : "1.2.1",
+            "source" : "unwind/1.2.1",
+            "description" : "unwindDescriptionSummary",
+            "detailedInstructions" : "unwindDetailedInstructions",
+            "roles" : [ "setuplinux" ],
+            "hostOS" : [ "windows" ],
+            "symlinks" :
+            [
+                {
+                    "source": "unwind/1.2.1",
+                    "destination": "$CODEFOLDERNAME$/SDKs/unwind",
+                    "exampleFile": "include/libunwind.h"
+                }
+            ]
+        },
+        {
+            "identifier" : "unwind_build",
+            "name" : "unwindName",
+            "version" : "1.2.1",
+            "source" : "unwind/1.2.1",
+            "description" : "unwindDescriptionSummary",
+            "detailedInstructions" : "unwindDetailedInstructions",
+            "roles" : [ "compilegame", "compileengine" ],
+            "hostOS" : [ "linux" ],
+            "symlinks" :
+            [
+                {
+                    "source": "unwind/1.2.1",
+                    "destination": "$CODEFOLDERNAME$/SDKs/unwind",
+                    "exampleFile": "include/libunwind.h"
                 }
             ]
         }

@@ -430,6 +430,7 @@ namespace AssetProcessor
         AssetBuilderSDK::AssetBuilderDesc   builderDesc;
         builderDesc.m_name = builder.GetName().toUtf8().data();
         builderDesc.m_patterns = builderPatterns;
+        builderDesc.m_builderType = AssetBuilderSDK::AssetBuilderDesc::AssetBuilderType::Internal;
 
         // Only set a bus id on the descriptor if the builder is a registered builder
         AZ::Uuid busId;
@@ -451,11 +452,22 @@ namespace AssetProcessor
 
     bool InternalRecognizerBasedBuilder::FindRC(QString& systemRootOut, QString& rcAbsolutePathOut)
     {
-        QDir currentExePath(QCoreApplication::applicationDirPath());
-        systemRootOut = QCoreApplication::applicationDirPath();
-        rcAbsolutePathOut = systemRootOut + QString(LEGACY_RC_RELATIVE_PATH);
+        QString appRoot;
+        QString filename;
+        QString binFolder;
+        QString appDirStr;
 
-        return AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data());
+        AssetUtilities::ComputeApplicationInformation(appDirStr, filename);
+        rcAbsolutePathOut = QString("%1/%2").arg(appDirStr).arg(QString(LEGACY_RC_RELATIVE_PATH));
+        if (!AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data()))
+        {
+            AssetUtilities::ComputeAppRootAndBinFolderFromApplication(appRoot, filename, binFolder);
+            rcAbsolutePathOut = QString("%1/%2/%3").arg(appRoot).arg(binFolder).arg(QString(LEGACY_RC_RELATIVE_PATH));
+
+            return AZ::IO::SystemFile::Exists(rcAbsolutePathOut.toUtf8().data());
+        }
+
+        return true;
     }
 
     bool InternalRecognizerBasedBuilder::Initialize(const RecognizerConfiguration& recognizerConfig)
@@ -563,7 +575,7 @@ namespace AssetProcessor
             if (builderInfo.GetType() == BuilderIdAndName::Type::REGISTERED_BUILDER)
             {
                 AssetBuilderSDK::AssetBuilderDesc builderDesc = CreateBuilderDesc(builderId, builderPatterns);
-                EBUS_EVENT(AssetBuilderSDK::AssetBuilderBus, RegisterBuilderInformation, builderDesc);
+                AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation, builderDesc);
             }
         }
     }

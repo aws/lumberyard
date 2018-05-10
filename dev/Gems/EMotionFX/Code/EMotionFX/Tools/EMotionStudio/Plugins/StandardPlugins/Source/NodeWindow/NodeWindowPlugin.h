@@ -85,8 +85,8 @@ namespace EMStudio
         NodeHierarchyWidget*                mHierarchyWidget;
         MysticQt::PropertyWidget*           mPropertyWidget;
 
-        MCore::String                       mString;
-        MCore::String                       mTempGroupName;
+        AZStd::string                       mString;
+        AZStd::string                       mTempGroupName;
         MCore::Array<uint32>                mVisibleNodeIndices;
         MCore::Array<uint32>                mSelectedNodeIndices;
     };

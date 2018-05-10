@@ -28,6 +28,11 @@ def load_win_x64_win_x64_vs2015_common_settings(conf):
     # Add defines to indicate a win64 build
     v['DEFINES'] += ['_WIN32', '_WIN64', 'NOMINMAX']
 
+    restricted_tool_list_macro_header = 'AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS='
+    restricted_tool_list_macro = restricted_tool_list_macro_header
+    if len(restricted_tool_list_macro) > len(restricted_tool_list_macro_header):
+        v['DEFINES'] += [ restricted_tool_list_macro ]
+
     # Make sure this is a supported platform
     if PLATFORM not in conf.get_supported_platforms():
         return
@@ -41,8 +46,10 @@ def load_win_x64_win_x64_vs2015_common_settings(conf):
         conf.mark_supported_platform_for_removal(PLATFORM)
         return
 
-    # Detect the QT binaries
-    conf.find_qt5_binaries(PLATFORM)
+    # Detect the QT binaries, if the current capabilities selected requires it.
+    _, enabled, _, _ = conf.tp.get_third_party_path(PLATFORM, 'qt')
+    if enabled:
+        conf.find_qt5_binaries(PLATFORM)
 
     # Introduce the linker to generate 64 bit code
     v['LINKFLAGS'] += ['/MACHINE:X64']

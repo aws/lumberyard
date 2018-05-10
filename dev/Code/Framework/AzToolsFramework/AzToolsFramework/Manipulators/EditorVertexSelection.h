@@ -15,6 +15,7 @@
 #include <AzCore/Math/VertexContainer.h>
 #include <AzCore/Math/VertexContainerInterface.h>
 #include <AzCore/Math/VectorConversions.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Manipulators/ManipulatorBus.h>
 #include <AzToolsFramework/Manipulators/HoverSelection.h>
 #include <AzToolsFramework/Manipulators/SelectionManipulator.h>
@@ -260,4 +261,58 @@ namespace AzToolsFramework
 
     template<>
     AZ_FORCE_INLINE AZ::Vector3 AdaptVertexOut<AZ::Vector2>(const AZ::Vector2& vector) { return Vector2ToVector3(vector); }
+
+    /**
+     * Utility functions for rendering vertex container text indices
+     */
+    namespace EditorVertexSelectionUtil
+    {
+        static const float DefaultVertexTextSize = 1.5f;
+
+        static const AZ::Color DefaultVertexTextColor = AZ::Color(1.f, 1.f, 1.f, 1.f);
+
+        static const AZ::Vector3 DefaultVertexTextOffset = AZ::Vector3(0.f, 0.f, -0.1f);
+
+        /**
+         * Displays a single vertex container index as text at the given position
+         */
+        void DisplayVertexContainerIndex(AzFramework::EntityDebugDisplayRequests& displayContext
+            , const AZ::Vector3& position
+            , size_t index
+            , float textSize
+        );
+
+        /**
+         * Displays all vertex container indices as text at the position of each vertex when selected
+         */
+        template<typename Vertex>
+        void DisplayVertexContainerIndices(AzFramework::EntityDebugDisplayRequests& displayContext
+            , const AzToolsFramework::EditorVertexSelectionBase<Vertex>& vertexContainer
+            , const AZ::Transform& transform
+            , bool isSelected
+            , float textSize = DefaultVertexTextSize
+            , const AZ::Color& textColor = DefaultVertexTextColor
+            , const AZ::Vector3& textOffset = DefaultVertexTextOffset
+        )
+        {
+            if (!isSelected)
+            {
+                return;
+            }
+
+            displayContext.SetColor(textColor);
+            if (auto vertices = vertexContainer.GetVertices())
+            {
+                for (auto i = 0; i < vertices->Size(); ++i)
+                {
+                    Vertex vertex;
+                    if (vertices->GetVertex(i, vertex))
+                    {
+                        AZ::Vector3 position = AdaptVertexOut(vertex) + textOffset;
+                        DisplayVertexContainerIndex(displayContext, transform * position, i, textSize);
+                    }
+                }
+            }
+        }
+    }
 }

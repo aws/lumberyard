@@ -40,7 +40,7 @@ def build(bld):
         platforms        = ['win', 'darwin'],
         configurations   = ['debug_all', 'profile_all'],
         win_file_list    = ['assetprocessor_win.waf_files'],
-        darwin_file_list = ['assetprocessor_macos.waf_files'],
+        darwin_file_list = ['assetprocessor_gui_macos.waf_files'],
         disable_pch      = True,
         features         = ['qt5', 'link_running_program'],
         includes         = [bld.Path('Code/Tools/GemRegistry/include')],
@@ -75,9 +75,10 @@ def build(bld):
         win_includes    = ['native'],  # for the resource.h file
         win_lib         = ['shell32'],
 
-        darwin_rpath    = ['@executable_path', '@executable_path/qtlibs/lib'],
+        darwin_rpath      = ['@executable_path', '@executable_path/qtlibs/lib'],
         darwin_frameworks = ['CoreServices'],
-        darwin_cxxflags = [ '-x', 'objective-c++' ],
+        darwin_cxxflags   = [ '-x', 'objective-c++' ],
+        darwin_xcassets   = 'Code/Tools/AssetProcessor/qml/Images.xcassets',
     )
 
     ###########################################################################################################################################
@@ -119,5 +120,4 @@ def build(bld):
         darwin_test_profile_file_list = ['assetprocessor_test.waf_files']
 
     )
-
 

@@ -80,6 +80,31 @@ namespace ScriptCanvas
         return true;
     }
 
+    GraphData::GraphData(GraphData&& other)
+        : m_nodes(AZStd::move(other.m_nodes))
+        , m_connections(AZStd::move(other.m_connections))
+        , m_endpointMap(AZStd::move(other.m_endpointMap))
+    {
+        other.m_nodes.clear();
+        other.m_connections.clear();
+        other.m_endpointMap.clear();
+    }
+
+    GraphData& GraphData::operator=(GraphData&& other)
+    {
+        if (this != &other)
+        {
+            m_nodes = AZStd::move(other.m_nodes);
+            m_connections = AZStd::move(other.m_connections);
+            m_endpointMap = AZStd::move(other.m_endpointMap);
+            other.m_nodes.clear();
+            other.m_connections.clear();
+            other.m_endpointMap.clear();
+        }
+
+        return *this;
+    }
+
     void GraphData::BuildEndpointMap()
     {
         m_endpointMap.clear();
@@ -94,8 +119,20 @@ namespace ScriptCanvas
         }
     }
 
-    void GraphData::Clear()
+    void GraphData::Clear(bool deleteData)
     {
+        if (deleteData)
+        {
+            for (auto& nodeRef : m_nodes)
+            {
+                delete nodeRef;
+            }
+
+            for (auto& connectionRef : m_connections)
+            {
+                delete connectionRef;
+            }
+        }
         m_endpointMap.clear();
         m_nodes.clear();
         m_connections.clear();

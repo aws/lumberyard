@@ -21,7 +21,6 @@
 #include <MysticQt/Source/DockWidget.h>
 #include <MysticQt/Source/PropertyWidget.h>
 
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Random.h>
 #include <MCore/Source/Array.h>
 
@@ -165,7 +164,7 @@ namespace EMStudio
         {
             MCORE_MEMORYOBJECTCATEGORY(AnimGraphPlugin::HistoryItem, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
-            MCore::String                   mNodeName;
+            AZStd::string                   mNodeName;
             EMotionFX::AnimGraph*          mAnimGraph;
 
             HistoryItem()
@@ -180,7 +179,7 @@ namespace EMStudio
                     return nullptr;
                 }
 
-                return mAnimGraph->RecursiveFindNode(mNodeName.AsChar());
+                return mAnimGraph->RecursiveFindNode(mNodeName.c_str());
             }
 
             HistoryItem(const char* nodeName, EMotionFX::AnimGraph* animGraph)
@@ -460,7 +459,6 @@ namespace EMStudio
         AttributeWidgetCallback*                    mAttributeWidgetCallback;
 
         Options                                     mOptions;
-        MysticQt::PropertyWidget::Property*         mVizScaleProperty;
         MysticQt::PropertyWidget::Property*         mGraphAnimationProperty;
         MysticQt::PropertyWidget::Property*         mShowFPSProperty;
 

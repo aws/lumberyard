@@ -212,6 +212,13 @@ private:
     void InitStatusBar();
     void OnUpdateSnapToGrid(QAction* action);
     void OnViewPaneCreated(const QtViewPane* pane);
+    void LoadConfig();
+
+    template <class TValue>
+    void ReadConfigValue(const QString& key, TValue& value)
+    {
+        value = m_settings.value(key, value).template value<TValue>();
+    }
 
     // AzToolsFramework::SourceControlNotificationBus::Handler:
     void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override;

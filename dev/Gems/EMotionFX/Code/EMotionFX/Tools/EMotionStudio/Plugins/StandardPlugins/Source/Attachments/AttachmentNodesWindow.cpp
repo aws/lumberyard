@@ -164,7 +164,7 @@ namespace EMStudio
         mNodeTable->setRowCount(numAttachmentNodes);
 
         // set header items for the table
-        QTableWidgetItem* nameHeaderItem = new QTableWidgetItem(MCore::String().Format("Attachment Nodes (%i / %i)", numAttachmentNodes, mActor->GetNumNodes()).AsChar());
+        QTableWidgetItem* nameHeaderItem = new QTableWidgetItem(AZStd::string::format("Attachment Nodes (%i / %i)", numAttachmentNodes, mActor->GetNumNodes()).c_str());
         nameHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignCenter);
         mNodeTable->setHorizontalHeaderItem(0, nameHeaderItem);
 
@@ -273,7 +273,7 @@ namespace EMStudio
     void AttachmentNodesWindow::RemoveNodesButtonPressed()
     {
         // generate node list string
-        MCore::String nodeList;
+        AZStd::string nodeList;
         uint32 lowestSelectedRow = MCORE_INVALIDINDEX32;
         const uint32 numTableRows = mNodeTable->rowCount();
         for (uint32 i = 0; i < numTableRows; ++i)
@@ -288,7 +288,7 @@ namespace EMStudio
             // add the item to remove list, if it's selected
             if (item->isSelected())
             {
-                nodeList.FormatAdd("%s;", FromQtString(item->text()).AsChar());
+                nodeList += AZStd::string::format("%s;", FromQtString(item->text()).c_str());
                 if ((uint32)item->row() < lowestSelectedRow)
                 {
                     lowestSelectedRow = (uint32)item->row();
@@ -297,18 +297,18 @@ namespace EMStudio
         }
 
         // stop here if nothing selected
-        if (nodeList.GetIsEmpty())
+        if (nodeList.empty())
         {
             return;
         }
 
         // call command for adjusting disable on default flag
-        MCore::String outResult;
-        MCore::String command;
-        command.Format("AdjustActor -actorID %i -nodeAction \"remove\" -attachmentNodes \"%s\"", mActor->GetID(), nodeList.AsChar());
-        if (EMStudio::GetCommandManager()->ExecuteCommand(command.AsChar(), outResult) == false)
+        AZStd::string outResult;
+        AZStd::string command;
+        command = AZStd::string::format("AdjustActor -actorID %i -nodeAction \"remove\" -attachmentNodes \"%s\"", mActor->GetID(), nodeList.c_str());
+        if (EMStudio::GetCommandManager()->ExecuteCommand(command.c_str(), outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
 
         // selected the next row
@@ -333,22 +333,22 @@ namespace EMStudio
         }
 
         // generate node list string
-        MCore::String nodeList;
-        nodeList.Reserve(16384);
+        AZStd::string nodeList;
+        nodeList.reserve(16384);
         const uint32 numSelectedNodes = selectionList.GetLength();
         for (uint32 i = 0; i < numSelectedNodes; ++i)
         {
-            nodeList.FormatAdd("%s;", selectionList[i].GetNodeName());
+            nodeList += AZStd::string::format("%s;", selectionList[i].GetNodeName());
         }
-        nodeList.TrimRight(MCore::UnicodeCharacter::semiColon);
+        AzFramework::StringFunc::Strip(nodeList, MCore::CharacterConstants::semiColon, true /* case sensitive */, false /* beginning */, true /* ending */);
 
         // call command for adjusting disable on default flag
-        MCore::String outResult;
-        MCore::String command;
-        command.Format("AdjustActor -actorID %i -nodeAction \"%s\" -attachmentNodes \"%s\"", mActor->GetID(), mNodeAction.AsChar(), nodeList.AsChar());
-        if (EMStudio::GetCommandManager()->ExecuteCommand(command.AsChar(), outResult) == false)
+        AZStd::string outResult;
+        AZStd::string command;
+        command = AZStd::string::format("AdjustActor -actorID %i -nodeAction \"%s\" -attachmentNodes \"%s\"", mActor->GetID(), mNodeAction.c_str(), nodeList.c_str());
+        if (EMStudio::GetCommandManager()->ExecuteCommand(command.c_str(), outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
     }
 

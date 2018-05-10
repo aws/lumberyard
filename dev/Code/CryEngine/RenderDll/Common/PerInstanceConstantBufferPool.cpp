@@ -138,7 +138,23 @@ void PerInstanceConstantBufferPool::Update(CRenderView& renderView, float realTi
 
     AZ::u32 nextBufferIdx = 0;
     AZ::u32 nextInstanceIdx = 0;
+    AZ::u32 constantBufferIdxLimit = SPI_NUM_STATIC_INST_CB;
     void* mappedData = nullptr;
+        
+    // Assign half of the constant buffer budget per eye when in VR mode
+    if (gcpRendD3D->GetIStereoRenderer()->IsRenderingToHMD())
+    {
+        // For the right eye (rendered second), begin indexing half way into the array
+        if (gRenDev->m_CurRenderEye == STEREO_EYE_RIGHT)
+        {
+            nextBufferIdx = constantBufferIdxLimit / 2;
+        }
+        else
+        {
+            // For the left eye, just reduce the limit by half
+            constantBufferIdxLimit /= 2;
+        }
+    }
 
     float realTimePrev = realTime - CRenderer::GetElapsedTime();
 
@@ -158,7 +174,7 @@ void PerInstanceConstantBufferPool::Update(CRenderView& renderView, float realTi
                     continue;
                 }
 
-                if (nextBufferIdx >= SPI_NUM_STATIC_INST_CB)
+                if (nextBufferIdx >= constantBufferIdxLimit)
                 {
                     auto* renderer = gEnv->pRenderer;
 

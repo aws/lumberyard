@@ -1,0 +1,460 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#include "LmbrCentral_precompiled.h"
+#include "ShapeGeometryUtil.h"
+
+#include <AzCore/Math/IntersectPoint.h>
+#include <AzCore/Math/IntersectSegment.h>
+#include <AzCore/Math/VectorConversions.h>
+#include <Cry_Math.h>
+#include <MathConversion.h>
+#include <ISystem.h>
+#include <IRenderAuxGeom.h>
+#include <Shape/ShapeDisplay.h>
+
+namespace LmbrCentral
+{
+    vtx_idx* WriteTriangle(AZ::u32 a, AZ::u32 b, AZ::u32 c, vtx_idx* indices)
+    {
+        indices[0] = a;
+        indices[1] = b;
+        indices[2] = c;
+        return indices + 3;
+    }
+
+    Vec3* WriteVertex(const AZ::Vector3& vertex, Vec3* vertices)
+    {
+        *vertices = AZVec3ToLYVec3(vertex);
+        return vertices + 1;
+    }
+
+    void DrawShape(
+        const ShapeDrawParams& shapeDrawParams, const ShapeMesh& shapeMesh)
+    {
+        auto geomRenderer = gEnv->pRenderer->GetIRenderAuxGeom();
+
+        if (shapeDrawParams.m_filled)
+        {
+            geomRenderer->DrawTriangles(
+                shapeMesh.m_vertexBuffer.data(),
+                shapeMesh.m_vertexBuffer.size(),
+                shapeMesh.m_indexBuffer.data(),
+                shapeMesh.m_indexBuffer.size(),
+                AZColorToLYColorF(shapeDrawParams.m_shapeColor)
+            );
+        }
+
+        geomRenderer->DrawLines(
+            shapeMesh.m_lineBuffer.data(),
+            shapeMesh.m_lineBuffer.size(),
+            AZColorToLYColorF(shapeDrawParams.m_wireColor));
+    }
+
+    /**
+     * Determine if a list of vertices constitute a simple polygon
+     * (none of the edges are self intersecting).
+     * https://en.wikipedia.org/wiki/Simple_polygon
+     */
+    static bool SimplePolygon(const AZStd::vector<AZ::Vector2>& vertices)
+    {
+        const size_t vertexCount = vertices.size();
+
+        if (vertexCount < 3)
+        {
+            return false;
+        }
+
+        if (vertexCount == 3)
+        {
+            return true;
+        }
+
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            // make it easy to nicely wrap indices
+            const size_t safeIndex = i + vertexCount;
+
+            const size_t endIndex = (safeIndex - 1) % vertexCount;
+            const size_t beginIndex = (safeIndex + 2) % vertexCount;
+
+            for (size_t j = beginIndex; j != endIndex; j = (j + 1) % vertexCount)
+            {
+                AZ::VectorFloat aa, bb;
+                AZ::Vector3 a, b;
+                AZ::Intersect::ClosestSegmentSegment(
+                    AZ::Vector2ToVector3(vertices[i]),
+                    AZ::Vector2ToVector3(vertices[(i + 1) % vertexCount]),
+                    AZ::Vector2ToVector3(vertices[j]),
+                    AZ::Vector2ToVector3(vertices[(j + 1) % vertexCount]),
+                    aa, bb, a, b);
+
+                if ((a - b).GetLength() < AZ::VectorFloat(0.001f))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool ClockwiseOrder(const AZStd::vector<AZ::Vector2>& vertices)
+    {
+        const size_t vertexCount = vertices.size();
+
+        float total = 0.0f;
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            const AZ::Vector2 a = vertices[i];
+            const AZ::Vector2 b = vertices[(i + 1) % vertexCount];
+
+            total += (b.GetX() - a.GetX()) * (b.GetY() + a.GetY());
+        }
+
+        return total > 0.0f;
+    }
+
+    /**
+     * Calculate the Wedge Product of two vectors (the area of the parallelogram formed by them)
+     */
+    static AZ::VectorFloat Wedge(const AZ::Vector2& v1, const AZ::Vector2& v2)
+    {
+        return v1.GetX() * v2.GetY() - v1.GetY() * v2.GetX();
+    }
+
+    template<typename V3>
+    AZStd::vector<V3> GenerateTriangles(AZStd::vector<AZ::Vector2> vertices)
+    {
+        AZStd::vector<V3> triangles;
+
+        // we only support simple polygons (ones with no self intersections)
+        if (!SimplePolygon(vertices))
+        {
+            return triangles;
+        }
+
+        // vertices must be in anti-clockwise winding order
+        if (ClockwiseOrder(vertices))
+        {
+            AZStd::reverse(vertices.begin(), vertices.end());
+        }
+
+        // while we still have vertices remaining
+        for (;;)
+        {
+            for (size_t i = 0; i < vertices.size(); ++i)
+            {
+                // make it easy to nicely wrap indices
+                const size_t safeIndex = i + vertices.size();
+
+                const size_t prevIndex = (safeIndex - 1) % vertices.size();
+                const size_t currIndex = safeIndex % vertices.size();
+                const size_t nextIndex = (safeIndex + 1) % vertices.size();
+
+                // vertices making up the triangle
+                const AZ::Vector2 prev = vertices[prevIndex];
+                const AZ::Vector2 curr = vertices[currIndex];
+                const AZ::Vector2 next = vertices[nextIndex];
+
+                const AZ::Vector2 edgeBefore = prev - curr;
+                const AZ::Vector2 edgeAfter = next - curr;
+
+                const float triangleArea = Wedge(edgeBefore, edgeAfter);
+                const bool interiorVertex = triangleArea <= 0.0f;
+
+                // if triangle is not an 'ear', continue.
+                if (!interiorVertex)
+                {
+                    continue;
+                }
+
+                // check no other vertices are inside the triangle formed
+                // by these three vertices, if so, continue to next vertex.
+                if (vertices.size() > 3)
+                {
+                    bool pointInside = false;
+                    for (size_t j = (nextIndex + 1) % vertices.size(); j != prevIndex; j = (j + 1) % vertices.size())
+                    {
+                        if (AZ::Intersect::TestPointTriangle(
+                            AZ::Vector2ToVector3(vertices[j]),
+                            AZ::Vector2ToVector3(prev),
+                            AZ::Vector2ToVector3(curr),
+                            AZ::Vector2ToVector3(next)))
+                        {
+                            pointInside = true;
+                            break;
+                        }
+                    }
+
+                    if (pointInside)
+                    {
+                        continue;
+                    }
+                }
+
+                // form new triangle from 'ear'
+                triangles.push_back(V3(prev.GetX(), prev.GetY(), 0.0f));
+                triangles.push_back(V3(curr.GetX(), curr.GetY(), 0.0f));
+                triangles.push_back(V3(next.GetX(), next.GetY(), 0.0f));
+
+                // if work is still do be done, remove vertex from list and iterate again
+                if (vertices.size() > 3)
+                {
+                    for (size_t k = i; k < vertices.size() - 1; ++k)
+                    {
+                        vertices[k] = vertices[k + 1];
+                    }
+
+                    vertices.pop_back();
+                }
+                else
+                {
+                    return triangles;
+                }
+            }
+        }
+    }
+
+    // concrete instantiations of GenerateTriangles
+    template AZStd::vector<Vec3> GenerateTriangles(AZStd::vector<AZ::Vector2> vertices);
+    template AZStd::vector<AZ::Vector3> GenerateTriangles(AZStd::vector<AZ::Vector2> vertices);
+
+    namespace CapsuleTubeUtil
+    {
+        AZ::Vector3 CalculatePositionOnSphere(
+            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition,
+            float radius, const AZ::Vector3& forwardAxis, const AZ::Vector3& sideAxis,
+            float angle)
+        {
+            return worldFromLocal * (localPosition +
+                forwardAxis * sinf(angle) * radius + sideAxis * cosf(angle) * radius);
+        }
+
+        Vec3* GenerateWireCap(
+            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition,
+            float radius, const AZ::Vector3& direction, const AZ::Vector3& side,
+            AZ::u32 capSegments, Vec3* vertices)
+        {
+            const AZ::Vector3 up = side.Cross(direction);
+            // number of cap segments is tesselation of end - total is double, as we need lines for first
+            // 90 degrees, then the same tesselation completing the semi-cicle for the next 90 degrees
+            const AZ::u32 totalCapSegments = capSegments * 2;
+            const float deltaAngle = AZ::Constants::Pi / static_cast<float>(totalCapSegments);
+
+            float angle = 0.0f;
+            for (int i = 0; i < totalCapSegments; ++i)
+            {
+                const float nextAngle = angle + deltaAngle;
+
+                // horizontal semi-circle arc
+                vertices = WriteVertex(
+                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, side, angle),
+                    vertices);
+                vertices = WriteVertex(
+                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, side, nextAngle),
+                    vertices);
+
+                // vertical semi-circle arc
+                vertices = WriteVertex(
+                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, up, angle),
+                    vertices);
+                vertices = WriteVertex(
+                    CalculatePositionOnSphere(worldFromLocal, localPosition, radius, direction, up, nextAngle),
+                    vertices);
+
+                angle += deltaAngle;
+            }
+
+            return vertices;
+        }
+
+        
+        Vec3* GenerateWireLoop(
+            const AZ::Transform& worldFromLocal, const AZ::Vector3& position, const AZ::Vector3& direction,
+            const AZ::Vector3& side, AZ::u32 sides, float radius, Vec3* vertices)
+        {
+            const auto deltaRot = AZ::Quaternion::CreateFromAxisAngle(
+                direction, AZ::Constants::TwoPi / static_cast<float>(sides));
+
+            auto currentNormal = side;
+            for (size_t i = 0; i < sides; ++i)
+            {
+                const auto nextNormal = deltaRot * currentNormal;
+                const auto localPosition = position + currentNormal * radius;
+                const auto nextlocalPosition = position + nextNormal * radius;
+                
+                vertices = WriteVertex(worldFromLocal * localPosition, vertices);
+                vertices = WriteVertex(worldFromLocal * nextlocalPosition, vertices);
+
+                currentNormal = deltaRot * currentNormal;
+            }
+
+            return vertices;
+        }
+
+        /**
+         * Generate verts to be used when drawing triangles for cap (top vertex is ommitted and is
+         * added in concrete Start/End cap because of ordering - StartCap must at top vertex first,
+         * EndCap must add bottom vertex last.
+         */
+        static Vec3* GenerateSolidCap(
+            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition, float radius,
+            const AZ::Vector3& direction, const AZ::Vector3& side, AZ::u32 sides, AZ::u32 capSegments,
+            Vec3* vertices, float angleOffset, float sign)
+        {
+            const float angleDelta = AZ::Constants::HalfPi / static_cast<float>(capSegments);
+            float angle = 0.0f;
+            for (int i = 1; i <= capSegments; ++i)
+            {
+                const AZ::Vector3 capSegmentPosition = localPosition + direction * sign * cosf(angle - angleOffset) * radius;
+                vertices = GenerateSegmentVertices(
+                    capSegmentPosition, direction, side, sinf(angle + angleOffset) * radius, sides, worldFromLocal, vertices);
+
+                angle += angleDelta;
+            }
+
+            return vertices;
+        }
+
+        Vec3* GenerateSolidStartCap(
+            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition, float radius,
+            const AZ::Vector3& direction, const AZ::Vector3& side, AZ::u32 sides, AZ::u32 capSegments,
+            Vec3* vertices)
+        {
+            vertices = WriteVertex( // cap end vertex
+                worldFromLocal * (localPosition - direction * radius), vertices);
+            return GenerateSolidCap(  // circular segments of cap vertices
+                worldFromLocal, localPosition, radius, direction,
+                side, sides, capSegments, vertices, 0.0f, -1.0f);
+        }
+
+        Vec3* GenerateSolidEndCap(
+            const AZ::Transform& worldFromLocal, const AZ::Vector3& localPosition, float radius,
+            const AZ::Vector3& direction, const AZ::Vector3& side, AZ::u32 sides, AZ::u32 capSegments,
+            Vec3* vertices)
+        {
+            vertices = GenerateSolidCap(  // circular segments of cap vertices
+                worldFromLocal, localPosition, radius, direction,
+                side, sides, capSegments, vertices, AZ::Constants::HalfPi, 1.0f);
+            return WriteVertex( // cap end vertex
+                worldFromLocal * (localPosition + direction * radius), vertices);
+        }
+
+        /**
+         * Generates a single segment of vertices - Extrudes the point using the normal * radius,
+         * then rotates it around the axis 'sides' times.
+         */
+        Vec3* GenerateSegmentVertices(
+            const AZ::Vector3& point,
+            const AZ::Vector3& axis,
+            const AZ::Vector3& normal,
+            float radius,
+            AZ::u32 sides,
+            const AZ::Transform& transform,
+            Vec3* vertices)
+        {
+            const auto deltaRot = AZ::Quaternion::CreateFromAxisAngle(
+                axis, AZ::Constants::TwoPi / static_cast<float>(sides));
+
+            auto currentNormal = normal;
+            for (size_t i = 0; i < sides; ++i)
+            {
+                const auto localPosition = point + currentNormal * radius;
+                vertices = WriteVertex(transform * localPosition, vertices);
+                currentNormal = deltaRot * currentNormal;
+            }
+
+            return vertices;
+        }
+
+        void GenerateSolidMeshIndices(AZ::u32 sides, AZ::u32 segments, AZ::u32 capSegments, vtx_idx* indices)
+        {
+            const auto capSegmentTipVerts = capSegments > 0 ? 1 : 0;
+            const auto totalSegments = segments + capSegments * 2;
+            const auto numVerts = sides * (totalSegments + 1) + 2 * capSegmentTipVerts;
+            const auto hasEnds = capSegments > 0;
+
+            // Start Faces (start point of tube)
+            // Each starting face shares the same vertex at the beginning of the vertex buffer
+            // like a triangle fan
+            // 1 triangle per face
+            // 1 face per side
+            if (hasEnds)
+            {
+
+                for (auto i = 0; i < sides; ++i)
+                {
+                    AZ::u32 a = i + 1;
+                    AZ::u32 b = a + 1;
+                    AZ::u32 start = 0; // First vertex
+                    if (i == sides - 1)
+                    {
+                        b -= sides;
+                    }
+
+                    indices = WriteTriangle(start, b, a, indices);
+                }
+            }
+
+            // Middle Faces
+            // 2 triangles per face.
+            // 1 face per side.
+            for (auto i = 0; i < totalSegments; ++i)
+            {
+                for (auto j = 0; j < sides; ++j)
+                {
+                    // 4 corners for each face
+                    // a ------ d
+                    // |        |
+                    // |        |
+                    // b ------ c
+                    AZ::u32 a = (i + 0) * sides + (j + 0) + capSegmentTipVerts;
+                    AZ::u32 b = (i + 0) * sides + (j + 1) + capSegmentTipVerts;
+                    AZ::u32 c = (i + 1) * sides + (j + 1) + capSegmentTipVerts;
+                    AZ::u32 d = (i + 1) * sides + (j + 0) + capSegmentTipVerts;
+
+                    // Wraps back to beginning vertices
+                    if (j == sides - 1)
+                    {
+                        b -= sides;
+                        c -= sides;
+                    }
+
+                    indices = WriteTriangle(a, b, d, indices);
+                    indices = WriteTriangle(b, c, d, indices);
+                }
+            }
+
+            // End Faces (end point of tube)
+            // Each face shares the same vertex at the end of the vertex buffer
+            // like a triangle fan
+            // 1 triangle per face
+            // 1 face per side
+            if (hasEnds)
+            {
+                for (auto i = 0; i < sides; ++i)
+                {
+                    AZ::u32 a = totalSegments * sides + i + 1;
+                    AZ::u32 b = a + 1;
+                    AZ::u32 end = numVerts - 1; // Last vertex
+
+                    if (i == sides - 1)
+                    {
+                        b -= sides;
+                    }
+                    indices = WriteTriangle(a, b, end, indices);
+                }
+            }
+        }
+    }
+}

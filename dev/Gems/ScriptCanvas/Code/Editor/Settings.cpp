@@ -11,7 +11,10 @@
 */
 
 #include "precompiled.h"
+
 #include "Settings.h"
+
+#include <ScriptCanvas/Data/Data.h>
 
 namespace ScriptCanvasEditor
 {
@@ -53,6 +56,36 @@ namespace ScriptCanvasEditor
             m_windowState.clear();
             m_windowState.assign(m_storedWindowState.begin(), m_storedWindowState.end());
             return m_windowState;
+        }
+
+        ////////////////////
+        // PreviewSettings
+        ////////////////////
+
+        ScriptCanvasEditorSettings::ScriptCanvasEditorSettings()
+            : m_snapDistance(10.0)
+            , m_showPreviewMessage(true)
+            , m_showExcludedNodes(false)
+            , m_allowBookmarkViewpointControl(true)
+            , m_enableNodeDragCoupling(false)
+            , m_dragNodeCouplingTimeMS(1000)
+            , m_enableNodeDragConnectionSplicing(true)
+            , m_dragNodeConnectionSplicingTimeMS(1000)
+            , m_enableNodeDropConnectionSplicing(true)
+            , m_dropNodeConnectionSplicingTimeMS(1000)
+            , m_pinnedDataTypes({
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Number()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Boolean()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::String()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Color()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::EntityID()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Transform()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Vector2()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Vector3()),
+                ScriptCanvas::Data::ToAZType(ScriptCanvas::Data::Type::Vector4())
+            })
+        {
+
         }
 
     }

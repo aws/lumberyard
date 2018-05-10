@@ -521,10 +521,10 @@ namespace EMotionFX
         // interpolate the duration
         mDuration = MCore::LinearInterpolate<float>(sourceDuration, destDuration, weight);
 
-        //MCore::String finalString;
+        //AZStd::string finalString;
         //for (uint32 i=0; i<mSyncPoints.GetLength(); ++i)
-    //      finalString.FormatAdd("%.3f ", mSyncPoints[i]);
-    //  finalString.FormatAdd(" [duration=%f, weight=%f]", mDuration, weight);
+    //      finalString += AZStd::string::format("%.3f ", mSyncPoints[i]);
+    //  finalString += AZStd::string::format(" [duration=%f, weight=%f]", mDuration, weight);
     //  MCore::LogInfo( finalString );
 
     }

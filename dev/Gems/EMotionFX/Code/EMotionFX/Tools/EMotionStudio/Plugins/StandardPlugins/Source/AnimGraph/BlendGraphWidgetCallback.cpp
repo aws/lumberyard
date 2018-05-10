@@ -11,12 +11,10 @@
 */
 
 // include the required headers
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "BlendGraphWidgetCallback.h"
 //#include "GraphNode.h"
 #include "AnimGraphPlugin.h"
 #include "NodeGraph.h"
-#include "NodeGraphWidget.h"
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/AttributeBool.h>
 #include <MCore/Source/AttributeFloat.h>
@@ -306,7 +304,7 @@ namespace EMStudio
                 case MCore::AttributeBool::TYPE_ID:
                 {
                     MCore::AttributeBool* boolAttribute = static_cast<MCore::AttributeBool*>(attribute);
-                    m_tempStringA = AZStd::string::format("%s", boolAttribute->GetValue() ? "true" : "false");
+                    m_tempStringA = AZStd::string::format("%s", AZStd::to_string(boolAttribute->GetValue()).c_str());
                     break;
                 }
 
@@ -330,7 +328,7 @@ namespace EMStudio
                         EMotionFX::MotionInstance* motionInstance = motionNode->FindMotionInstance(animGraphInstance);
 
                         color = QColor( 0, 255, 0 );
-                        mTempString.Format("%.2f", motionInstance->GetWeight());
+                        mTempString = AZStd::string::format("%.2f", motionInstance->GetWeight());
                     }*/
 
                     // handle blend 2 nodes
@@ -384,7 +382,7 @@ namespace EMStudio
                 default:
                 {
                     attribute->ConvertToString(m_mcoreTempString);
-                    m_tempStringA = m_mcoreTempString.AsChar();
+                    m_tempStringA = m_mcoreTempString.c_str();
                 }
                 }
 
@@ -413,7 +411,7 @@ namespace EMStudio
                     painter.setPen(color);
                     painter.setFont(mFont);
                     // OLD:
-                    //painter.drawText( textPosition, mTempString.AsChar() );
+                    //painter.drawText( textPosition, mTempString.c_str() );
                     // NEW:
                     GraphNode::RenderText(painter, m_tempStringA.c_str(), color, mFont, *mFontMetrics, Qt::AlignCenter, textRect);
                 }

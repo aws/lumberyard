@@ -16,6 +16,7 @@
 #include "StandardHeaders.h"
 #include "Attribute.h"
 #include "Vector.h"
+#include "StringConversions.h"
 
 
 namespace MCore
@@ -59,17 +60,17 @@ namespace MCore
             mValue = static_cast<const AttributeQuaternion*>(other)->GetValue();
             return true;
         }
-        bool InitFromString(const String& valueString) override
+        bool InitFromString(const AZStd::string& valueString) override
         {
-            if (valueString.CheckIfIsValidVector4() == false)
+            AZ::Vector4 vec4;
+            if (!AzFramework::StringFunc::LooksLikeVector4(valueString.c_str(), &vec4))
             {
                 return false;
             }
-            const AZ::Vector4 vec = valueString.ToVector4();
-            mValue.Set(vec.GetX(), vec.GetY(), vec.GetZ(), vec.GetW());
+            mValue.Set(vec4.GetX(), vec4.GetY(), vec4.GetZ(), vec4.GetW());
             return true;
         }
-        bool ConvertToString(String& outString) const override      { outString.FromVector4(AZ::Vector4(mValue.x, mValue.y, mValue.z, mValue.w)); return true; }
+        bool ConvertToString(AZStd::string& outString) const override      { AZStd::to_string(outString, AZ::Vector4(mValue.x, mValue.y, mValue.z, mValue.w)); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeQuaternion); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_DEFAULT; }
 

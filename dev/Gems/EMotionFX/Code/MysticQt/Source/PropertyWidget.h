@@ -20,7 +20,6 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Color.h>
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Quaternion.h>
@@ -65,7 +64,7 @@ namespace MysticQt
             bool AsBool() const;
             int32 AsInt() const;
             float AsFloat() const;
-            MCore::String AsString() const;
+            AZStd::string AsString() const;
             AZ::Vector2 AsVector2() const;
             AZ::Vector3 AsVector3() const;
             AZ::Vector4 AsVector4() const;
@@ -153,8 +152,8 @@ namespace MysticQt
         void contextMenuEvent(QContextMenuEvent* event);
         QTreeWidgetItem* AddTreeWidgetItem(const QString& name, QTreeWidgetItem* parentItem = nullptr, const QString& valueText = "");
         QTreeWidgetItem* AddTreeWidgetItem(const QString& name, QTreeWidgetItem* parentItem, QWidget* widget);
-        QTreeWidgetItem* GetGroupWidgetItem(const MCore::String& groupName);
-        QTreeWidgetItem* GetGroupWidgetItem(MCore::Array<MCore::String>& groupNames, QTreeWidgetItem* parentItem);
+        QTreeWidgetItem* GetGroupWidgetItem(const AZStd::string& groupName);
+        QTreeWidgetItem* GetGroupWidgetItem(AZStd::vector<AZStd::string>& groupNames, QTreeWidgetItem* parentItem);
     };
 } // namespace MysticQt
 

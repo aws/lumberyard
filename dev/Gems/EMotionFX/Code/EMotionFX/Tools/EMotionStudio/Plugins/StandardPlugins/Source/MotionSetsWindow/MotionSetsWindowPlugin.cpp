@@ -35,8 +35,9 @@
 #include "../MotionWindow/MotionListWindow.h"
 
 #include <AzCore/Debug/Trace.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/ApplicationAPI.h>
+
+#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 
 
 namespace EMStudio
@@ -170,12 +171,15 @@ namespace EMStudio
         QString BuildToolTipItem(OutlinerCategoryItem* item) const override
         {
             EMotionFX::MotionSet* motionSet = static_cast<EMotionFX::MotionSet*>(item->mUserData);
-            const MCore::String relativeFileName = MCore::String(motionSet->GetFilename()).ExtractPathRelativeTo(EMotionFX::GetEMotionFX().GetMediaRootFolder());
+
+            AZStd::string relativeFileName = motionSet->GetFilename();
+            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&relativeFileName);
+            
             QString toolTip = "<table border=\"0\">";
             toolTip += "<tr><td><p style='white-space:pre'><b>Name: </b></p></td>";
             toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(motionSet->GetNameString().empty() ? "&#60;no name&#62;" : motionSet->GetName());
             toolTip += "<tr><td><p style='white-space:pre'><b>FileName: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.GetIsEmpty() ? "&#60;not saved yet&#62;" : relativeFileName.AsChar());
+            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.empty() ? "&#60;not saved yet&#62;" : relativeFileName.c_str());
             toolTip += "<tr><td><p style='white-space:pre'><b>Num Motions: </b></p></td>";
             toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(motionSet->GetNumMotionEntries());
             toolTip += "<tr><td><p style='white-space:pre'><b>Num Child Sets: </b></p></td>";
@@ -468,7 +472,7 @@ namespace EMStudio
             AZStd::string text;
             const AZStd::string& filename = motionSet->GetFilenameString();
             AZStd::string extension;
-            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false);
+            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
             if (!filename.empty() && !extension.empty())
             {
@@ -904,6 +908,18 @@ namespace EMStudio
 
                 motionSetsPlugin->SetSelectedSet(motionSet);
                 break;
+            }
+        }
+
+        //Generate metrics
+        if (motionSetsPlugin->GetSelectedSet())
+        {
+            //for Morph Target use
+            const EMotionFX::MotionSet* motionSet = motionSetsPlugin->GetSelectedSet();
+            if (motionSet)
+            {
+                MetricsEventSender::SendMorphTargetUseEvent(static_cast<AZ::u32>(motionSet->GetNumMotionEntries()), static_cast<AZ::u32>(motionSet->GetNumMorphMotions()));
+                MetricsEventSender::SendMorphTargetConcurrentPlayEvent(motionSet);
             }
         }
 

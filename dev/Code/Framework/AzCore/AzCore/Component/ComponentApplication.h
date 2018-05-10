@@ -142,8 +142,8 @@ namespace AZ
             /// Whether or not to load dynamic modules described by \ref Descriptor::m_modules
             bool m_loadDynamicModules = true;
 
-            /// Specifies which system components to create & activate. If no tags specified, all system components are used.
-            AZStd::vector<AZ::Crc32, OSStdAllocator> m_systemComponentTags;
+            /// Specifies which system components to create & activate. If no tags specified, all system components are used. Specify as comma separated list.
+            const char* m_systemComponentTags = nullptr;
         };
 
         ComponentApplication();
@@ -203,7 +203,7 @@ namespace AZ
 
         /**
         * Ticks all using the \ref AZ::SystemTickBus at all times. Should always tick even if the application is not active.
-        */        
+        */
         virtual void TickSystem();
 
         /**

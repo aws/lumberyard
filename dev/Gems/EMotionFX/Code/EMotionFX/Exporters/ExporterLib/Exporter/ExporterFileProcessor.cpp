@@ -14,6 +14,7 @@
 #include "ExporterFileProcessor.h"
 #include "Exporter.h"
 #include <AzCore/Debug/Timer.h>
+#include <MCore/Source/StringConversions.h>
 
 
 namespace ExporterLib
@@ -21,23 +22,30 @@ namespace ExporterLib
 #define PREPARE_DISKFILE_SAVE(EXTENSION)                      \
     AZ::Debug::Timer saveTimer;                               \
     saveTimer.Stamp();                                        \
-    if (filenameWithoutExtension.GetIsEmpty())                \
+    if (filenameWithoutExtension.empty())                     \
     {                                                         \
         MCore::LogError("Cannot save file. Empty FileName."); \
         return false;                                         \
     }                                                         \
-                                                              \
-    filenameWithoutExtension.RemoveFileExtension();           \
-    filenameWithoutExtension += EXTENSION();                  \
+    AZStd::string extension;                                  \
+    AzFramework::StringFunc::Path::GetExtension(filenameWithoutExtension.c_str(), extension); \
+    if (!extension.empty())                                   \
+    {                                                         \
+        AzFramework::StringFunc::Replace(filenameWithoutExtension, extension.c_str(), EXTENSION(), true, false, true); \
+    }                                                         \
+    else                                                      \
+    {                                                         \
+        filenameWithoutExtension += EXTENSION();              \
+    }                                                         \
                                                               \
     MCore::MemoryFile memoryFile;                             \
     memoryFile.Open();                                        \
 
 
 #define FINISH_DISKFILE_SAVE                                                                                                    \
-    bool result = memoryFile.SaveToDiskFile(filenameWithoutExtension.AsChar());                                                 \
+    bool result = memoryFile.SaveToDiskFile(filenameWithoutExtension.c_str());                                                  \
     const float saveTime = saveTimer.GetDeltaTimeInSeconds() * 1000.0f;                                                         \
-    MCore::LogInfo("Saved file '%s' in %.2f ms.", filenameWithoutExtension.AsChar(), saveTime);                                 \
+    MCore::LogInfo("Saved file '%s' in %.2f ms.", filenameWithoutExtension.c_str(), saveTime);                                  \
     return result;
 
 
@@ -89,7 +97,7 @@ namespace ExporterLib
     }
 
 
-    bool Exporter::SaveActor(MCore::String filenameWithoutExtension, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
+    bool Exporter::SaveActor(AZStd::string filenameWithoutExtension, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
     {
         PREPARE_DISKFILE_SAVE(GetActorExtension);
         if (SaveActor(&memoryFile, actor, targetEndianType) == false)
@@ -109,7 +117,7 @@ namespace ExporterLib
     }
 
 
-    bool Exporter::SaveAnimGraph(MCore::String filenameWithoutExtension, EMotionFX::AnimGraph* animGraph, MCore::Endian::EEndianType targetEndianType, const char* companyName)
+    bool Exporter::SaveAnimGraph(AZStd::string filenameWithoutExtension, EMotionFX::AnimGraph* animGraph, MCore::Endian::EEndianType targetEndianType, const char* companyName)
     {
         PREPARE_DISKFILE_SAVE(GetAnimGraphFileExtension);
         if (SaveAnimGraph(&memoryFile, animGraph, targetEndianType, companyName) == false)
@@ -129,7 +137,7 @@ namespace ExporterLib
     }
 
 
-    bool Exporter::SaveSkeletalMotion(MCore::String filenameWithoutExtension, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType, bool onlyAnimatedMorphs)
+    bool Exporter::SaveSkeletalMotion(AZStd::string filenameWithoutExtension, EMotionFX::SkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType, bool onlyAnimatedMorphs)
     {
         PREPARE_DISKFILE_SAVE(GetSkeletalMotionExtension);
         if (SaveSkeletalMotion(&memoryFile, motion, targetEndianType, onlyAnimatedMorphs) == false)
@@ -149,7 +157,7 @@ namespace ExporterLib
     }
 
 
-    bool Exporter::SaveWaveletSkeletalMotion(MCore::String filenameWithoutExtension, EMotionFX::WaveletSkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType)
+    bool Exporter::SaveWaveletSkeletalMotion(AZStd::string filenameWithoutExtension, EMotionFX::WaveletSkeletalMotion* motion, MCore::Endian::EEndianType targetEndianType)
     {
         PREPARE_DISKFILE_SAVE(GetSkeletalMotionExtension);
         if (SaveWaveletSkeletalMotion(&memoryFile, motion, targetEndianType) == false)
@@ -169,7 +177,7 @@ namespace ExporterLib
     }
 
 
-    bool Exporter::SaveMotionSet(MCore::String filenameWithoutExtension, const AZStd::vector<EMotionFX::MotionSet*>& motionSets, MCore::Endian::EEndianType targetEndianType)
+    bool Exporter::SaveMotionSet(AZStd::string filenameWithoutExtension, const AZStd::vector<EMotionFX::MotionSet*>& motionSets, MCore::Endian::EEndianType targetEndianType)
     {
         PREPARE_DISKFILE_SAVE(GetMotionSetFileExtension);
         if (SaveMotionSet(&memoryFile, motionSets, targetEndianType) == false)

@@ -14,7 +14,6 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzFramework/API/ApplicationAPI.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <MCore/Source/AttributeSet.h>
@@ -52,14 +51,14 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveActorAssetInfo::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveActorAssetInfo::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const uint32 actorID = parameters.GetValueAsInt("actorID", this);
 
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
         if (actor == nullptr)
         {
-            outResult.Format("Actor cannot be saved. Actor with id '%i' does not exist.", actorID);
+            outResult = AZStd::string::format("Actor cannot be saved. Actor with id '%i' does not exist.", actorID);
             return false;
         }
 
@@ -69,7 +68,7 @@ namespace EMStudio
         AZStd::string groupName;
         if (!AzFramework::StringFunc::Path::GetFileName(productFilename.c_str(), groupName))
         {
-            outResult.Format("Cannot get product name from asset cache file '%s'.", productFilename.c_str());
+            outResult = AZStd::string::format("Cannot get product name from asset cache file '%s'.", productFilename.c_str());
             return false;
         }
 
@@ -92,7 +91,7 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveActorAssetInfo::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveActorAssetInfo::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -127,15 +126,15 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveMotionAssetInfo::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveMotionAssetInfo::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionId = parameters.GetValueAsInt("motionID", this);
-        outResult.Clear();
+        outResult.clear();
 
         EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionId);
         if (motion == nullptr)
         {
-            outResult.Format("Motion .assetinfo cannot be saved. Motion with id '%i' does not exist.", motionId);
+            outResult = AZStd::string::format("Motion .assetinfo cannot be saved. Motion with id '%i' does not exist.", motionId);
             return false;
         }
 
@@ -145,7 +144,7 @@ namespace EMStudio
         AZStd::string groupName;
         if (!AzFramework::StringFunc::Path::GetFileName(productFilename.c_str(), groupName))
         {
-            outResult.Format("Motion .assetinfo cannot be saved. Cannot get product name from asset cache file '%s'.", productFilename.c_str());
+            outResult = AZStd::string::format("Motion .assetinfo cannot be saved. Cannot get product name from asset cache file '%s'.", productFilename.c_str());
             return false;
         }
 
@@ -168,7 +167,7 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveMotionAssetInfo::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveMotionAssetInfo::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -230,17 +229,16 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveMotionSet::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveMotionSet::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
         if (motionSet == nullptr)
         {
-            outResult.Format("Motion set cannot be saved. Motion set with id '%i' does not exist.", motionSetID);
+            outResult = AZStd::string::format("Motion set cannot be saved. Motion set with id '%i' does not exist.", motionSetID);
             return false;
         }
-
 
         AZStd::string filename;
         parameters.GetValue("filename", this, filename);
@@ -249,15 +247,10 @@ namespace EMStudio
         const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
         if (sourceControl && !GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
-            outResult.Format("Motion set cannot be saved. Unable to find source asset path for (%s)", filename);
+            outResult = AZStd::string::format("Motion set cannot be saved. Unable to find source asset path for (%s)", filename);
             return false;
         }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
-
-
-        // Recursively collect motion sets and store them in a flat array.
-        AZStd::vector<EMotionFX::MotionSet*> motionSets;
-        RecursiveAddMotionSets(motionSet, motionSets);
 
         const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
 
@@ -266,10 +259,23 @@ namespace EMStudio
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, filename.c_str(), "Checking out motion set from source control.", [](int& current, int& max) {});
-            AZ_Error("EMotionFX", checkoutResult, "Cannot checkout file '%s' from source control.", filename.c_str());
+            ApplicationBus::BroadcastResult(checkoutResult, 
+                &ApplicationBus::Events::RequestEditForFileBlocking, 
+                filename.c_str(), 
+                "Checking out motion set from source control.", 
+                ApplicationBus::Events::RequestEditProgressCallback());
+            
+            if (!checkoutResult)
+            {
+                outResult = AZStd::string::format("Cannot checkout file '%s' from source control.", filename.c_str());
+                AZ_Error("EMotionFX", false, outResult.c_str());
+                return false;
+            }
         }
 
+        // Recursively collect motion sets and store them in a flat array.
+        AZStd::vector<EMotionFX::MotionSet*> motionSets;
+        RecursiveAddMotionSets(motionSet, motionSets);
 
         // Disable logging and save the motion set.
         MCore::LogCallback::ELogLevel oldLogLevels = MCore::GetLogManager().GetLogLevels();
@@ -291,8 +297,18 @@ namespace EMStudio
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, filename.c_str(), "Adding motion set to source control.", [](int& current, int& max) {});
-            AZ_Error("EMotionFX", checkoutResult, "Cannot add file '%s' to source control.", filename.c_str());
+            ApplicationBus::BroadcastResult(checkoutResult, 
+                &ApplicationBus::Events::RequestEditForFileBlocking, 
+                filename.c_str(), 
+                "Adding motion set to source control.", 
+                ApplicationBus::Events::RequestEditProgressCallback());
+
+            if (!checkoutResult)
+            {
+                outResult = AZStd::string::format("Cannot add file '%s' to source control.", filename.c_str());
+                AZ_Error("EMotionFX", false, outResult.c_str());
+                return false;
+            }
         }
 
         // Set the new filename.
@@ -310,7 +326,7 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveMotionSet::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveMotionSet::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -349,7 +365,7 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveAnimGraph::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveAnimGraph::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the anim graph index inside the anim graph manager and check if it is in range.
         const int32 animGraphIndex = parameters.GetValueAsInt("index", -1);
@@ -366,18 +382,16 @@ namespace EMStudio
         const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
         if (sourceControl && !GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
-            outResult.Format("Animation graph cannot be saved. Unable to find source asset path for (%s)", filename);
+            outResult = AZStd::string::format("Animation graph cannot be saved. Unable to find source asset path for (%s)", filename);
             return false;
         }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
-
 
         AZStd::string companyName;
         parameters.GetValue("companyName", this, companyName);
 
         // get the anim graph from the manager
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(animGraphIndex);
-
 
         const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
 
@@ -386,10 +400,19 @@ namespace EMStudio
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, filename.c_str(), "Checking out anim graph from source control.", [](int& current, int& max) {});
-            AZ_Error("EMotionFX", checkoutResult, "Cannot checkout file '%s' from source control.", filename.c_str());
-        }
+            ApplicationBus::BroadcastResult(checkoutResult, 
+                &ApplicationBus::Events::RequestEditForFileBlocking, 
+                filename.c_str(), 
+                "Checking out anim graph from source control.", 
+                ApplicationBus::Events::RequestEditProgressCallback());
 
+            if (!checkoutResult)
+            {
+                outResult = AZStd::string::format("Cannot checkout file '%s' from source control.", filename.c_str());
+                AZ_Error("EMotionFX", false, outResult.c_str());
+                return false;
+            }
+        }
 
         const MCore::LogCallback::ELogLevel oldLogLevels = MCore::GetLogManager().GetLogLevels();
         MCore::GetLogManager().SetLogLevels((MCore::LogCallback::ELogLevel)(MCore::LogCallback::LOGLEVEL_ERROR | MCore::LogCallback::LOGLEVEL_WARNING));
@@ -412,21 +435,30 @@ namespace EMStudio
         MCore::GetLogManager().SetLogLevels(oldLogLevels);
         exporter->Destroy();
 
-
         // Source Control: Add file in case it did not exist before (when saving it the first time).
         if (saveResult && !fileExisted && sourceControl)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, filename.c_str(), "Adding anim graph to source control.", [](int& current, int& max) {});
-            AZ_Error("EMotionFX", checkoutResult, "Cannot add file '%s' to source control.", filename.c_str());
+            ApplicationBus::BroadcastResult(checkoutResult, 
+                &ApplicationBus::Events::RequestEditForFileBlocking, 
+                filename.c_str(), 
+                "Adding anim graph to source control.", 
+                ApplicationBus::Events::RequestEditProgressCallback());
+
+            if (!checkoutResult)
+            {
+                outResult = AZStd::string::format("Cannot add file '%s' to source control.", filename.c_str());
+                AZ_Error("EMotionFX", false, outResult.c_str());
+                return false;
+            }
         }
 
         return saveResult;
     }
 
 
-    bool CommandSaveAnimGraph::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveAnimGraph::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -466,7 +498,7 @@ namespace EMStudio
     }
 
 
-    bool CommandSaveWorkspace::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveWorkspace::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(outResult);
 
@@ -476,11 +508,10 @@ namespace EMStudio
         // Avoid saving to asset cache folder.
         if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
-            outResult.Format("Workspace cannot be saved. Unable to find source asset path for (%s)", filename);
+            outResult = AZStd::string::format("Workspace cannot be saved. Unable to find source asset path for (%s)", filename);
             return false;
         }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
-
 
         const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
 
@@ -489,10 +520,19 @@ namespace EMStudio
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, filename.c_str(), "Checking out workspace from source control.", [](int& current, int& max) {});
-            AZ_Error("EMotionFX", checkoutResult, "Cannot checkout file '%s' from source control.", filename.c_str());
-        }
+            ApplicationBus::BroadcastResult(checkoutResult, 
+                &ApplicationBus::Events::RequestEditForFileBlocking, 
+                filename.c_str(), 
+                "Checking out workspace from source control.", 
+                ApplicationBus::Events::RequestEditProgressCallback());
 
+            if (!checkoutResult)
+            {
+                outResult = AZStd::string::format("Cannot checkout file '%s' from source control.", filename.c_str());
+                AZ_Error("EMotionFX", false, outResult.c_str());
+                return false;
+            }
+        }
 
         EMStudio::Workspace* workspace = GetManager()->GetWorkspace();
         const bool saveResult = workspace->Save(filename.c_str());
@@ -501,21 +541,30 @@ namespace EMStudio
             workspace->SetDirtyFlag(false);
         }
 
-
         // Source Control: Add file in case it did not exist before (when saving it the first time).
         if (saveResult && !fileExisted)
         {
             using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
             bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, filename.c_str(), "Adding workspace to source control.", [](int& current, int& max) {});
-            AZ_Error("EMotionFX", checkoutResult, "Cannot add file '%s' to source control.", filename.c_str());
+            ApplicationBus::BroadcastResult(checkoutResult, 
+                &ApplicationBus::Events::RequestEditForFileBlocking, 
+                filename.c_str(), 
+                "Adding workspace to source control.", 
+                ApplicationBus::Events::RequestEditProgressCallback());
+
+            if (!checkoutResult)
+            {
+                outResult = AZStd::string::format("Cannot add file '%s' to source control.", filename.c_str());
+                AZ_Error("EMotionFX", false, outResult.c_str());
+                return false;
+            }
         }
 
         return saveResult;
     }
 
 
-    bool CommandSaveWorkspace::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandSaveWorkspace::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);

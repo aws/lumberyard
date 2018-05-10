@@ -14,7 +14,6 @@
 
 // include the Core headers
 #include "StandardHeaders.h"
-#include "UnicodeString.h"
 #include "File.h"
 
 

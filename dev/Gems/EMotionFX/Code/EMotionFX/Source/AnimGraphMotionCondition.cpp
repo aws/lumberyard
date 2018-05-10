@@ -12,7 +12,6 @@
 
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/AttributeSettings.h>
 #include "AnimGraphMotionCondition.h"
 #include "AnimGraph.h"
@@ -373,13 +372,13 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphMotionCondition::GetSummary(MCore::String* outResult) const
+    void AnimGraphMotionCondition::GetSummary(AZStd::string* outResult) const
     {
-        outResult->Format("%s: Motion Node Name='%s', Test Function='%s'", GetTypeString(), GetAttributeString(ATTRIB_MOTIONNODE)->AsChar(), GetTestFunctionString());
+        *outResult += AZStd::string::format("%s: Motion Node Name='%s', Test Function='%s'", GetTypeString(), GetAttributeString(ATTRIB_MOTIONNODE)->AsChar(), GetTestFunctionString());
     }
 
 
-    void AnimGraphMotionCondition::GetTooltip(MCore::String* outResult) const
+    void AnimGraphMotionCondition::GetTooltip(AZStd::string* outResult) const
     {
         AZStd::string columnName;
         AZStd::string columnValue;
@@ -387,17 +386,17 @@ namespace EMotionFX
         // Add the condition type.
         columnName = "Condition Type: ";
         columnValue = GetTypeString();
-        outResult->Format("<table border=\"0\"><tr><td width=\"130\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
+        *outResult += AZStd::string::format("<table border=\"0\"><tr><td width=\"130\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // Add the motion node name.
         columnName = "Motion Node Name: ";
         columnValue = GetAttributeString(ATTRIB_MOTIONNODE)->AsChar();
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
 
         // Add the test function.
         columnName = "Test Function: ";
         columnValue = GetTestFunctionString();
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td><nobr>%s</nobr></td></tr></table>", columnName.c_str(), columnValue.c_str());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td><nobr>%s</nobr></td></tr></table>", columnName.c_str(), columnValue.c_str());
     }
 
     //--------------------------------------------------------------------------------
@@ -454,8 +453,8 @@ namespace EMotionFX
         }
 
         // Check if the triggered motion event is of the given type and parameter from the motion condition.
-        if ((mCondition->GetAttributeString(ATTRIB_EVENTPARAMETER)->GetValue().GetIsEmpty() || mCondition->GetAttributeString(ATTRIB_EVENTPARAMETER)->GetValue().CheckIfIsEqual(eventInfo.mParameters->AsChar())) &&
-            (mCondition->GetAttributeString(ATTRIB_EVENTTYPE)->GetValue().GetIsEmpty() || mCondition->GetAttributeString(ATTRIB_EVENTTYPE)->GetValue().CheckIfIsEqual(GetEventManager().GetEventTypeString(eventInfo.mTypeID))))
+        if ((mCondition->GetAttributeString(ATTRIB_EVENTPARAMETER)->GetValue().empty() || mCondition->GetAttributeString(ATTRIB_EVENTPARAMETER)->GetValue() == *eventInfo.mParameters) &&
+            (mCondition->GetAttributeString(ATTRIB_EVENTTYPE)->GetValue().empty() || AzFramework::StringFunc::Equal(mCondition->GetAttributeString(ATTRIB_EVENTTYPE)->GetValue().c_str(), GetEventManager().GetEventTypeString(eventInfo.mTypeID), true /* case sensitive */)))
         {
             if (eventInfo.mIsEventStart)
             {
@@ -491,10 +490,10 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphMotionCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)
+    void AnimGraphMotionCondition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_MOTIONNODE)->GetValue().CheckIfIsEqual(oldName))
+        if (GetAttributeString(ATTRIB_MOTIONNODE)->GetValue() == oldName)
         {
             GetAttributeString(ATTRIB_MOTIONNODE)->SetValue(node->GetName());
         }
@@ -505,7 +504,7 @@ namespace EMotionFX
     void AnimGraphMotionCondition::OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove)
     {
         MCORE_UNUSED(animGraph);
-        if (GetAttributeString(ATTRIB_MOTIONNODE)->GetValue().CheckIfIsEqual(nodeToRemove->GetName()))
+        if (GetAttributeString(ATTRIB_MOTIONNODE)->GetValue() == nodeToRemove->GetName())
         {
             GetAttributeString(ATTRIB_MOTIONNODE)->SetValue("");
         }

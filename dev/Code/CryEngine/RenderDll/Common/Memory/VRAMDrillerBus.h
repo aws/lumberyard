@@ -74,7 +74,7 @@ namespace Render
             virtual void UnregisterAllCategories() = 0;
 
             // Functions for registering and unregistering individual VRAM allocations
-            virtual void RegisterAllocation(void* address, size_t byteSize, string allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories) = 0;
+            virtual void RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories) = 0;
             virtual void UnregisterAllocation(void* address) = 0;
         };
 

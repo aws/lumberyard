@@ -227,7 +227,7 @@ bool CSOLibrary::Load()
         if (!LoadFromFile(smartObjectsXmlPath.toUtf8().data()))
         {
             m_bLoadNeeded = true;
-            Warning("CSOLibrary::Load() failed to load from %s", smartObjectsXmlPath);
+            Warning("CSOLibrary::Load() failed to load from %s", smartObjectsXmlPath.toUtf8().constData());
             return false;
         }
         m_bSaveNeeded = false;

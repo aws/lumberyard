@@ -1,6 +1,6 @@
 {
     "name": "TWITCHFSDK",
-    "source": "@ROOT@/Code/SDKs/Twitch/FUEL",
+    "source": "@3P:fuelsdk@",
     "description": "Twitch Fuel SDK",
     "aliases": {
         "lib_names": [],
@@ -109,6 +109,7 @@
                 "${shared_names}"
             ]
         },
-        "win_x64_vs2015": "@win_x64_vs2013"
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
     }
 }

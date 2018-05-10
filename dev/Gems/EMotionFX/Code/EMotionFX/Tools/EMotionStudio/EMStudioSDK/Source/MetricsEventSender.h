@@ -21,6 +21,11 @@
 #include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/Workspace.h>
 
+namespace EMotionFX
+{
+    class MorphSetup;
+    class MotionSet;
+}
 
 namespace EMStudio
 {
@@ -37,6 +42,10 @@ namespace EMStudio
 
         static void SendPasteConditionsEvent(AZ::u32 numConditions);
         static void SendPasteNodesAndConnectionsEvent(AZ::u32 numNodes, AZ::u32 numConnections);
+
+        static void SendMorphTargetUseEvent(AZ::u32 numMotions, AZ::u32 numSkeletalMotionsWithMorph);
+        static void SendMorphTargetConcurrentPlayEvent(const EMotionFX::MotionSet* motionSet);
+        static void SendActorMorphTargetSizesEvent(const EMotionFX::MorphSetup * morphSetup);
 
     private:
         // Not used yet.

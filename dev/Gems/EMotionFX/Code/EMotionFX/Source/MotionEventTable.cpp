@@ -136,7 +136,7 @@ namespace EMotionFX
         const uint32 numTracks = mTracks.GetLength();
         for (uint32 i = 0; i < numTracks; ++i)
         {
-            if (mTracks[i]->GetNameString().CheckIfIsEqual(trackName))
+            if (mTracks[i]->GetNameString() == trackName)
             {
                 return i;
             }

@@ -16,7 +16,7 @@ def build(bld):
 
     bld.CryStandAlonePlugin(
 
-        platforms = ['win'],
+        platforms = ['win', 'darwin'],
         configurations = ['debug', 'debug_test', 'profile', 'profile_test'],
 
         #==============================

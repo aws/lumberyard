@@ -81,11 +81,6 @@ namespace AzFramework
         NetBindingSystemEventsBus::Handler::BusDisconnect();
         InterestManagerRequestsBus::Handler::BusDisconnect();
 
-        if (m_im)
-        {
-            EBUS_EVENT(InterestManagerEventsBus, OnInterestManagerDeactivate, m_im.get());
-        }
-
         ShutdownInterestManager();
     }
 
@@ -116,7 +111,7 @@ namespace AzFramework
     {
         AZ_Assert(m_session == nullptr, "Already bound to the session");
 
-        AZ_TracePrintf("AzFramework", "Interest manager hooked up to the session '%s'", session->GetId().c_str());
+        AZ_TracePrintf("AzFramework", "Interest manager hooked up to the session '%s'\n", session->GetId().c_str());
 
         m_session = session;
         m_session->GetReplicaMgr()->SetAutoBroadcast(false);
@@ -126,23 +121,22 @@ namespace AzFramework
 
     void InterestManagerComponent::OnNetworkSessionDeactivated(GridSession* session)
     {
-        AZ_UNUSED(session);
-
-        AZ_Assert(m_session == session, "Invalid session. Received Desctivated event for session we never Activated?");
-        AZ_TracePrintf("AzFramework", "Interest manager disconnected from the session '%s'", session ? session->GetId().c_str() : "nullptr");
-
-        if (m_session && m_session->GetReplicaMgr())
+        if (m_session && m_session == session)
         {
-            m_session->GetReplicaMgr()->SetAutoBroadcast(true);
-        }
+            AZ_TracePrintf("AzFramework", "Interest manager disconnected from the session '%s'\n", session ? session->GetId().c_str() : "nullptr");
 
-        if (m_im)
+            if (m_session->GetReplicaMgr())
+            {
+                m_session->GetReplicaMgr()->SetAutoBroadcast(true);
+            }
+
+            m_session = nullptr;
+            ShutdownInterestManager();
+        }
+        else
         {
-            EBUS_EVENT(InterestManagerEventsBus, OnInterestManagerDeactivate, m_im.get());
+            AZ_Warning("AzFramework", false, "Interest manager was never active for session '%s'\n", session ? session->GetId().c_str() : "nullptr");
         }
-
-        m_session = nullptr;
-        ShutdownInterestManager();
     }
 
     void InterestManagerComponent::InitInterestManager()
@@ -160,13 +154,17 @@ namespace AzFramework
         m_proximityHandler = AZStd::make_unique<ProximityInterestHandler>();
         m_im->RegisterHandler(m_proximityHandler.get());
 
-        EBUS_EVENT(InterestManagerEventsBus, OnInterestManagerActivate, m_im.get());
+        InterestManagerEventsBus::Broadcast(
+            &InterestManagerEventsBus::Events::OnInterestManagerActivate, m_im.get());
     }
 
     void InterestManagerComponent::ShutdownInterestManager()
     {
         if (m_im)
         {
+            InterestManagerEventsBus::Broadcast(
+                &InterestManagerEventsBus::Events::OnInterestManagerDeactivate, m_im.get());
+
             m_im->UnregisterHandler(m_bitmaskHandler.get());
             m_im->UnregisterHandler(m_proximityHandler.get());
 

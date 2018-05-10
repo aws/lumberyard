@@ -15,19 +15,11 @@ namespace AssetProcessor
 {
     //! Sends the job over to the builder and blocks until the response is received or the builder crashes/times out
     template<typename TNetRequest, typename TNetResponse, typename TRequest, typename TResponse>
-    void Builder::RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener /*= nullptr*/) const
+    void Builder::RunJob(const TRequest& request, TResponse& response, AZ::u32 processTimeoutLimitInSeconds, const AZStd::string& task, const AZStd::string& modulePath, AssetBuilderSDK::JobCancelListener* jobCancelListener /*= nullptr*/, AZStd::string tempFolderPath /*= AZStd::string()*/) const
     {
         TNetRequest netRequest;
         TNetResponse netResponse;
         netRequest.m_request = request;
-
-        QString tempFolderPath;
-
-        // For debugging purposes, we write the request out to disk
-        if (!DebugWriteRequestFile(tempFolderPath, request, task, modulePath))
-        {
-            return;
-        }
 
         AZ::u32 type;
         QByteArray data;
@@ -60,23 +52,29 @@ namespace AssetProcessor
 
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Job request completed\n");
 
-        if (netResponse.m_response.Succeeded() && s_DeleteSuccessfulJobRequestFiles)
+        if (!netResponse.m_response.Succeeded() || s_createRequestFileForSuccessfulJob)
         {
-            AZ::IO::FileIOBase::GetInstance()->DestroyPath(tempFolderPath.toStdString().c_str());
+            // we write the request out to disk for failure or debugging 
+            if (!DebugWriteRequestFile(tempFolderPath.c_str(), request, task, modulePath))
+            {
+                return;
+            }
         }
 
         response = AZStd::move(netResponse.m_response);
     }
 
     template<typename TRequest>
-    bool Builder::DebugWriteRequestFile(QString& tempFolderPath, const TRequest& request, const AZStd::string& task, const AZStd::string& modulePath) const
+    bool Builder::DebugWriteRequestFile(QString tempFolderPath, const TRequest& request, const AZStd::string& task, const AZStd::string& modulePath) const
     {
-        if (!AssetUtilities::CreateTempWorkspace(tempFolderPath))
+        if (tempFolderPath.isEmpty())
         {
-            AZ_Error("Builder", false, "Failed to create temporary workspace to execute builder task");
-            return false;
+            if (!AssetUtilities::CreateTempWorkspace(tempFolderPath))
+            {
+                AZ_Error("Builder", false, "Failed to create temporary workspace to execute builder task");
+                return false;
+            }
         }
-
         const QDir tempFolder = QDir(tempFolderPath);
         const AZStd::string jobRequestFile = tempFolder.filePath("request.xml").toStdString().c_str();
         const AZStd::string jobResponseFile = tempFolder.filePath("response.xml").toStdString().c_str();

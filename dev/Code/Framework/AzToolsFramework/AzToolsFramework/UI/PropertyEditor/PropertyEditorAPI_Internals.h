@@ -250,6 +250,7 @@ namespace AzToolsFramework
         // --------------------- Internal Implementation ------------------------------
         virtual void ConsumeAttributes_Internal(QWidget* widget, InstanceDataNode* attrValue) = 0;
         virtual void WriteGUIValuesIntoProperty_Internal(QWidget* widget, InstanceDataNode* t) = 0;
+        virtual void WriteGUIValuesIntoTempProperty_Internal(QWidget* widget, void* tempValue, const AZ::Uuid& propertyType, AZ::SerializeContext* serializeContext) = 0;
         virtual void ReadValuesIntoGUI_Internal(QWidget* widget, InstanceDataNode* t) = 0;
         // we define this automatically for you, you don't have to override it.
         virtual const AZ::Uuid& GetHandledType() const = 0;
@@ -331,6 +332,17 @@ namespace AzToolsFramework
                 AZ_Assert(actualCast, "Could not cast from the existing type ID to the actual typeid required by the editor.");
                 WriteGUIValuesIntoProperty(idx, wid, *actualCast, node);
             }
+        }
+
+        virtual void WriteGUIValuesIntoTempProperty_Internal(QWidget* widget, void* tempValue, const AZ::Uuid& propertyType, AZ::SerializeContext* serializeContext) override
+        {
+            WidgetType* wid = static_cast<WidgetType*>(widget);
+
+            const AZ::Uuid& desiredUUID = GetHandledType();
+
+            PropertyType* actualCast = static_cast<PropertyType*>(serializeContext->DownCast(tempValue, propertyType, desiredUUID));
+            AZ_Assert(actualCast, "Could not cast from the existing type ID to the actual typeid required by the editor.");
+            WriteGUIValuesIntoProperty(0, wid, *actualCast, nullptr);
         }
 
         virtual void ReadValuesIntoGUI_Internal(QWidget* widget, InstanceDataNode* node) override

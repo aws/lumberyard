@@ -507,7 +507,11 @@ void CAsyncIOFileRequest::JobStart_Decompress(CAsyncIOFileRequest_TransferPtr& p
 #endif
 
     CAsyncIOFileRequest* request = pSelf.Relinquish();
-    request->m_decompJobExecutor.StartJob([request, engineState, nJob]()
+    if (!request->m_decompJobExecutor)
+    {
+        request->m_decompJobExecutor = AZStd::make_unique<AZ::LegacyJobExecutor>();
+    }
+    request->m_decompJobExecutor->StartJob([request, engineState, nJob]()
     {
         request->DecompressBlockEntry(engineState, nJob);
     }); // Legacy JobManager priority: eStreamPriority
@@ -563,7 +567,11 @@ void CAsyncIOFileRequest::JobStart_Decrypt(CAsyncIOFileRequest_TransferPtr& pSel
 #endif
 
     CAsyncIOFileRequest* request = pSelf.Relinquish();
-    request->m_decryptJobExecutor.StartJob([request, engineState, nJob]()
+    if (!request->m_decryptJobExecutor)
+    {
+        request->m_decryptJobExecutor = AZStd::make_unique<AZ::LegacyJobExecutor>();
+    }
+    request->m_decryptJobExecutor->StartJob([request, engineState, nJob]()
     {
         request->DecryptBlockEntry(engineState, nJob);
     }); // Legacy JobManager priority: eStreamPriority

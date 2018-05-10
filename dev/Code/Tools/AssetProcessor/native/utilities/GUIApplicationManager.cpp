@@ -49,6 +49,7 @@
 #include <AppKit/NSRunningApplication.h>
 #include <CoreServices/CoreServices.h>
 #endif
+#include <AzCore/std/chrono/clocks.h>
 
 #define STYLE_SHEET_VARIABLES_PATH_DARK "Editor/Styles/AssetProcessorGlobalStyleSheetVariables.json"
 #define GLOBAL_STYLE_SHEET_PATH "Editor/Styles/AssetProcessorGlobalStyleSheet.qss"
@@ -58,6 +59,8 @@ using namespace AssetProcessor;
 
 namespace
 {
+    static const int s_errorMessageBoxDelay = 5000;
+
     void RemoveTemporaries()
     {
         // get currently running app
@@ -287,6 +290,8 @@ bool GUIApplicationManager::Run()
                 }
             });
 
+        QObject::connect(m_trayIcon, &QSystemTrayIcon::messageClicked, m_mainWindow, &MainWindow::showNormal);
+
         if (startHidden)
         {
             m_trayIcon->showMessage(
@@ -375,6 +380,12 @@ void GUIApplicationManager::NegotiationFailed()
 {
     QString message = QCoreApplication::translate("error", "An attempt to connect to the game or editor has failed. The game or editor appears to be running from a different folder. Please restart the asset processor from the correct branch.");
     QMetaObject::invokeMethod(this, "ShowMessageBox", Qt::QueuedConnection, Q_ARG(QString, QString("Negotiation Failed")), Q_ARG(QString, message), Q_ARG(bool, false));
+}
+
+void GUIApplicationManager::OnAssetFailed(const AZStd::string& sourceFileName)
+{
+    QString message = tr("Error : %1 failed to compile\nPlease check the Asset Processor for more information.").arg(QString::fromUtf8(sourceFileName.c_str()));
+    QMetaObject::invokeMethod(this, "ShowTrayIconErrorMessage", Qt::QueuedConnection, Q_ARG(QString, message));
 }
 
 void GUIApplicationManager::ShowMessageBox(QString title,  QString msg, bool isCritical)
@@ -486,8 +497,6 @@ bool GUIApplicationManager::PostActivate()
     {
         return false;
     }
-
-    GetAssetScanner()->StartScan();
     return true;
 }
 
@@ -536,27 +545,14 @@ void GUIApplicationManager::FileChanged(QString path)
     QString assetDbPath = projectCacheRoot.filePath("assetdb.sqlite");
     if (QString::compare(AssetUtilities::NormalizeFilePath(path), bootstrapPath, Qt::CaseInsensitive) == 0)
     {
-        //Check and update the game token if the bootstrap file get modified
-        if (!AssetUtilities::UpdateBranchToken())
-        {
-            QMetaObject::invokeMethod(this, "FileChanged", Qt::QueuedConnection, Q_ARG(QString, path));
-            return; // try again later
-        }
-        //if the bootstrap file changed,checked whether the game name changed
-        QString gameName = AssetUtilities::ReadGameNameFromBootstrap();
-        if (!gameName.isEmpty())
-        {
-            if (QString::compare(gameName, ApplicationManager::GetGameName(), Qt::CaseInsensitive) != 0)
-            {
-                //The gamename have changed ,should restart the assetProcessor
-                QMetaObject::invokeMethod(this, "Restart", Qt::QueuedConnection);
-            }
+        AssetUtilities::UpdateBranchToken();
 
-            if (m_connectionManager)
-            {
-                m_connectionManager->UpdateWhiteListFromBootStrap();
-            }
+        if (m_connectionManager)
+        {
+            m_connectionManager->UpdateWhiteListFromBootStrap();
         }
+
+        QMetaObject::invokeMethod(this, "QuitRequested", Qt::QueuedConnection);
     }
     else if (QString::compare(AssetUtilities::NormalizeFilePath(path), assetDbPath, Qt::CaseInsensitive) == 0)
     {
@@ -779,6 +775,23 @@ ShaderCompilerManager* GUIApplicationManager::GetShaderCompilerManager() const
 ShaderCompilerModel* GUIApplicationManager::GetShaderCompilerModel() const
 {
     return m_shaderCompilerModel;
+}
+
+void GUIApplicationManager::ShowTrayIconErrorMessage(QString msg)
+{
+    AZStd::chrono::system_clock::time_point currentTime = AZStd::chrono::system_clock::now();
+
+    if (m_trayIcon && m_mainWindow)
+    {
+        if((currentTime - m_timeWhenLastWarningWasShown) >= AZStd::chrono::milliseconds(s_errorMessageBoxDelay))
+        {
+            m_timeWhenLastWarningWasShown = currentTime;
+            m_trayIcon->showMessage(
+                QCoreApplication::translate("Tray Icon", "Lumberyard Asset Processor"),
+                QCoreApplication::translate("Tray Icon", msg.toUtf8().data()),
+                QSystemTrayIcon::Critical, 3000);
+        }
+    }
 }
 
 void GUIApplicationManager::ShowTrayIconMessage(QString msg)

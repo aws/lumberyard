@@ -71,10 +71,11 @@ namespace AzToolsFramework
             virtual void Redo();
 
             /**
-            Usage:  override with class specific change comparison between undo/redo state
-            default to false
+            Usage: override with class specific change comparison between undo/redo state.
+            This allows the undo system to remove commands that have no actual effect
+            (Eg: a command that changes a value from 5 to 5 has no effect and can be removed)
             */
-            virtual bool Changed() const { return false; }
+            virtual bool Changed() const = 0;
 
             /**
             Usage: return the first command in the parent/child tree with a matching id
@@ -84,10 +85,10 @@ namespace AzToolsFramework
 
             void SetName(const AZStd::string& friendlyName);
             AZStd::string& GetName();
-            
+
             void SetParent(URSequencePoint* parent);
             URSequencePoint* GetParent() const { return m_parent; }
-            
+
             const ChildVec& GetChildren() const { return m_children; }
             bool HasRealChildren() const;
 
@@ -117,6 +118,26 @@ namespace AzToolsFramework
             ChildVec m_children;
             URSequencePoint* m_parent;
             bool m_isPosted;
+        };
+
+        /**
+         * Used by batch undo commands for dummy/batch/parent nodes where we 
+         * know nothing will have changed.
+         */
+        class BatchCommand
+            : public URSequencePoint
+        {
+        public:
+            AZ_RTTI(BatchCommand, "{3CA8855C-C6A5-4395-9B47-D3F5A13EFB2D}", URSequencePoint)
+            AZ_CLASS_ALLOCATOR(BatchCommand, AZ::SystemAllocator, 0)
+
+            explicit BatchCommand(const AZStd::string& friendlyName, URCommandID id = 0)
+                : URSequencePoint(friendlyName, id) {}
+
+            explicit BatchCommand(URCommandID id)
+                : URSequencePoint(id) {}
+
+            bool Changed() const override { return false; }
         };
 
         //--------------------------------------------------------------------

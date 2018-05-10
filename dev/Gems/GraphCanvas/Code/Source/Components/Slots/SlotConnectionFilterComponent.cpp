@@ -51,7 +51,7 @@ namespace GraphCanvas
             ->Field("Types", &ConnectionTypeFilter::m_connectionTypes)
             ;
 
-        serializeContext->Class<SlotConnectionFilterComponent>()
+        serializeContext->Class<SlotConnectionFilterComponent, AZ::Component>()
             ->Version(2)
             ->Field("m_filterSlotGroups", &SlotConnectionFilterComponent::m_filters)
             ;

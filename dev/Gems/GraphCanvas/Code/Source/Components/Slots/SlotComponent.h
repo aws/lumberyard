@@ -17,6 +17,7 @@
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Utils/StateControllers/StateController.h>
 
 namespace GraphCanvas
 {
@@ -101,9 +102,10 @@ namespace GraphCanvas
         SlotGroup GetSlotGroup() const override { return m_slotConfiguration.m_slotGroup; }
         SlotType GetSlotType() const override { return m_slotType; }
 
-        bool CanAcceptConnection(const Endpoint& endpoint);
+        bool CanAcceptConnection(const Endpoint& endpoint) override;
         AZ::EntityId CreateConnection() const override;
-        AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) const;
+        AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) const override;
+        AZ::EntityId DisplayConnectionWithEndpoint(const Endpoint& endpoint) const override;
 
         AZStd::any* GetUserData() override;
 
@@ -112,13 +114,21 @@ namespace GraphCanvas
         AZ::EntityId GetLastConnection() const override;
         AZStd::vector<AZ::EntityId> GetConnections() const override;
 
-        void SetConnectionDisplayState(ConnectionDisplayState displayState) override;
+        void SetConnectionDisplayState(RootGraphicsItemDisplayState displayState) override;
+        void ReleaseConnectionDisplayState() override;
         void ClearConnections() override;
         ////
 
     protected:
 
-        virtual AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const;
+        AZ::EntityId CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection) const;
+
+        // VS2013 Fixes
+        SlotComponent(const SlotComponent&) = delete;
+        const SlotComponent& operator=(const SlotComponent&) = delete;
+        ////
+
+        virtual AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const;
 
         void FinalizeDisplay();
         virtual void OnFinalizeDisplay();
@@ -131,6 +141,8 @@ namespace GraphCanvas
 
         //! Keeps track of connections to this slot
         AZStd::vector<AZ::EntityId> m_connections;
+
+        StateSetter<RootGraphicsItemDisplayState> m_connectionDisplayStateStateSetter;
 
         //! Stores custom user data for this slot
         AZStd::any m_userData;

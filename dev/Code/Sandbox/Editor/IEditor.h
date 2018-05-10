@@ -523,6 +523,8 @@ struct IEditor
     virtual bool IsModified() = 0;
     //! Save current document.
     virtual bool SaveDocument() = 0;
+    //! Legacy version of WriteToConsole; don't use.
+    virtual void WriteToConsole(const char* string) = 0;
     //! Write the passed string to the editors console
     virtual void WriteToConsole(const QString& string) = 0;
     //! Set value of console variable.

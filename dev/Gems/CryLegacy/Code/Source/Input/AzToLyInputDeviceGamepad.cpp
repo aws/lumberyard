@@ -83,3 +83,13 @@ void AzToLyInputDeviceGamepad::OnInputChannelEvent(const InputChannel& inputChan
     }
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif

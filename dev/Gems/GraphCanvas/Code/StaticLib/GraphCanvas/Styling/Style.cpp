@@ -10,29 +10,22 @@
 *
 */
 
-#include <precompiled.h>
-#include <Styling/Style.h>
-
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/EntityUtils.h>
 
 #include <algorithm>
 
-#pragma warning(push)
-#pragma warning(disable : 4244 4251 4996) // _CRT_SECURE_NO_WARNINGS equivalent
-
+#include <QVariant>
 #include <QFont>
 #include <QFontInfo>
 #include <QPen>
-
-#pragma warning(pop)
-
-#include <Components/StyleBus.h>
-#include <Styling/definitions.h>
-#include <Styling/StyleHelper.h>
-
 #include <QDebug>
+
+#include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Styling/definitions.h>
+#include <GraphCanvas/Styling/Style.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace AZ
 {
@@ -55,32 +48,6 @@ namespace
     }
 
     namespace Styling = GraphCanvas::Styling;
-
-    struct StyleMatch
-    {
-        Styling::Style* style;
-        int complexity;
-
-        bool operator<(const StyleMatch& o) const
-        {
-            if (complexity > 0 && o.complexity > 0)
-            {
-                return complexity > o.complexity;
-            }
-            else if (complexity < 0 && o.complexity < 0)
-            {
-                return complexity < o.complexity;
-            }
-            else if (complexity < 0)
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
-        }
-    };
 
     QString AttributeName(Styling::Attribute attribute)
     {
@@ -341,7 +308,7 @@ namespace GraphCanvas
                 ->Field("SelectorsAsString", &Style::m_selectorsAsString)
                 ->Field("Attributes", &Style::m_values)
                 ;
-    
+
             reflected = true;
         }
 
@@ -354,6 +321,10 @@ namespace GraphCanvas
         Style::Style(std::initializer_list<Selector> selectors)
             : m_selectors(selectors)
             , m_selectorsAsString(SelectorsToString(m_selectors))
+        {
+        }
+
+        Style::~Style()
         {
         }
 
@@ -384,14 +355,6 @@ namespace GraphCanvas
             m_values[attribute] = value;
         }
 
-        void Style::MakeSelectorsDefault()
-        {
-            for (auto& selector : m_selectors)
-            {
-                selector.MakeDefault();
-            }
-        }
-
         void Style::Dump() const
         {
             qDebug() << SelectorsToString(m_selectors).c_str();
@@ -418,7 +381,7 @@ namespace GraphCanvas
 
             Style::Reflect(context);
 
-            serializeContext->Class<ComputedStyle>()
+            serializeContext->Class<ComputedStyle, AZ::Component>()
                 ->Version(2)
                 ->Field("ObjectSelectors", &ComputedStyle::m_objectSelectors)
                 ->Field("ObjectSelectorsAsString", &ComputedStyle::m_objectSelectorsAsString)
@@ -426,17 +389,16 @@ namespace GraphCanvas
                 ;
         }
 
-        ComputedStyle::ComputedStyle(const SelectorVector& objectSelectors, StyleVector&& styles)
+        ComputedStyle::ComputedStyle(const EditorId& editorId, const SelectorVector& objectSelectors, StyleVector&& styles)
             : m_objectSelectors(objectSelectors)
             , m_objectSelectorsAsString(SelectorsToString(m_objectSelectors))
             , m_styles(std::move(styles))
         {
+            StyleManagerNotificationBus::Handler::BusConnect(editorId);
         }
 
-        void ComputedStyle::SetStyleSheetId(const AZ::EntityId& sheetId)
+        ComputedStyle::~ComputedStyle()
         {
-            StyleSheetNotificationBus::Handler::BusDisconnect();
-            StyleSheetNotificationBus::Handler::BusConnect(sheetId);
         }
 
         void ComputedStyle::Activate()
@@ -485,7 +447,7 @@ namespace GraphCanvas
             return QVariant();
         }
 
-        void ComputedStyle::OnStyleSheetUnloaded()
+        void ComputedStyle::OnStylesUnloaded()
         {
             m_styles.clear();
         }
@@ -499,121 +461,5 @@ namespace GraphCanvas
             }
         }
 #endif
-
-        ///////////////
-        // StyleSheet
-        ///////////////
-
-        void StyleSheet::Reflect(AZ::ReflectContext* context)
-        {
-            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-            if (!serializeContext)
-            {
-                return;
-            }
-
-            Style::Reflect(context);
-
-            serializeContext->Class<StyleSheet>()
-                ->Version(2)
-                ->Field("Styles", &StyleSheet::m_styles)
-                ;
-        }
-
-        StyleSheet::StyleSheet()
-        {
-        }
-
-        StyleSheet::~StyleSheet()
-        {
-            ClearStyles();
-        }
-
-        void StyleSheet::Activate()
-        {
-            StyleSheetRequestBus::Handler::BusConnect(GetEntityId());
-        }
-
-        void StyleSheet::Deactivate()
-        {
-            StyleSheetRequestBus::Handler::BusDisconnect();
-        }
-
-        void StyleSheet::ClearStyles()
-        {
-            StyleSheetNotificationBus::Event(GetEntityId(), &StyleSheetNotifications::OnStyleSheetUnloaded);
-            for (auto style : m_styles)
-            {
-                delete style;
-            }
-            m_styles.clear();
-        }
-        
-        StyleSheet& GraphCanvas::Styling::StyleSheet::operator=(const StyleSheet& other)
-        {
-            ClearStyles();
-
-            m_styles.reserve(other.m_styles.size());
-            for (Style* style : other.m_styles)
-            {
-                m_styles.push_back(aznew Style(*style));
-            }
-            StyleSheetNotificationBus::Event(GetEntityId(), &StyleSheetNotifications::OnStyleSheetLoaded);
-
-            return *this;
-        }
-
-        StyleSheet& GraphCanvas::Styling::StyleSheet::operator=(StyleSheet&& other)
-        {
-            ClearStyles();
-
-            m_styles = std::move(other.m_styles);
-            return *this;
-        }
-
-        void StyleSheet::MakeStylesDefault()
-        {
-            for (auto& style : m_styles)
-            {
-                style->MakeSelectorsDefault();
-                SelectorVector updated = style->GetSelectors();
-            }
-        }
-
-        AZ::EntityId StyleSheet::ResolveStyles(const AZ::EntityId& object) const
-        {
-            SelectorVector selectors;
-            StyledEntityRequestBus::EventResult(selectors, object, &StyledEntityRequests::GetStyleSelectors);
-
-            QVector<StyleMatch> matches;
-            for (const auto& style : m_styles)
-            {
-                int complexity = style->Matches(object);
-                if (complexity != 0)
-                {
-                    matches.push_back({ style, complexity });
-                }
-            }
-
-            std::stable_sort(matches.begin(), matches.end());
-            StyleVector result;
-            result.reserve(matches.size());
-            const auto& constMatches = matches;
-            for (auto& match : constMatches)
-            {
-                result.push_back(match.style);
-            }
-
-            auto computed = new ComputedStyle(selectors, std::move(result));
-
-            computed->SetStyleSheetId(GetEntityId());
-
-            AZ::Entity* entity = new AZ::Entity;
-            entity->AddComponent(computed);
-            entity->Init();
-            entity->Activate();
-
-            return entity->GetId();
-        }
     }
 }

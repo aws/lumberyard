@@ -15,7 +15,6 @@
 #include "MysticQtConfig.h"
 #include <MCore/Source/StandardHeaders.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <QMenu>
 #include <QObject>
 

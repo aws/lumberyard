@@ -18,8 +18,9 @@
 
 #include <Components/Slots/Property/PropertySlotLayoutComponent.h>
 
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/Slots/Property/PropertySlotBus.h>
+#include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/tools.h>
 #include <Widgets/GraphCanvasLabel.h>
 
@@ -148,7 +149,7 @@ namespace GraphCanvas
             PropertySlotBus::EventResult(propertyId, m_owner.GetEntityId(), &PropertySlotRequests::GetPropertyId);
 
             NodePropertyDisplay* nodePropertyDisplay = nullptr;
-            NodePropertySourceRequestBus::EventResult(nodePropertyDisplay, sceneId, &NodePropertySourceRequests::CreatePropertySlotPropertyDisplay, propertyId, nodeId, m_owner.GetEntityId());
+            GraphModelRequestBus::EventResult(nodePropertyDisplay, sceneId, &GraphModelRequests::CreatePropertySlotPropertyDisplay, propertyId, nodeId, m_owner.GetEntityId());
 
             if (nodePropertyDisplay)
             {

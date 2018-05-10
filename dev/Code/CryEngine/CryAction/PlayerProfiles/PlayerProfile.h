@@ -88,7 +88,7 @@ public:
     void GetMemoryStatistics(ICrySizer* s);
 
 protected:
-    CHEAT_PROTECTION_EXPORT bool LoadAttributes(const XmlNodeRef& root, int requiredVersion);
+    bool LoadAttributes(const XmlNodeRef& root, int requiredVersion);
     bool SaveAttributes(const XmlNodeRef& root);
 
     friend class CAttributeEnumerator;

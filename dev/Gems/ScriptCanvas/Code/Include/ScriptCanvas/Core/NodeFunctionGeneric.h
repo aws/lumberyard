@@ -135,7 +135,7 @@ namespace ScriptCanvas
         AZ_COMPONENT_INTRUSIVE_DESCRIPTOR_TYPE(NodeFunctionGeneric);
         AZ_COMPONENT_BASE(NodeFunctionGeneric, Node);
 
-    }; // class NodeFunctionGeneric
+    };
 
     template<typename t_Func, typename t_Traits, t_Func function, typename t_DefaultFunc, t_DefaultFunc defaultsFunction>
     class NodeFunctionGenericMultiReturn
@@ -158,8 +158,8 @@ namespace ScriptCanvas
                 {
                     editContext->Class<NodeFunctionGenericMultiReturn>(t_Traits::GetNodeName(), t_Traits::GetDescription())
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ->Attribute(AZ::Edit::Attributes::Category, t_Traits::GetCategory())
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
 
@@ -177,7 +177,7 @@ namespace ScriptCanvas
             SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(AddInputDatumSlot(AZStd::string::format("%s: %s", Data::Traits<t_Args>::GetName(), t_Traits::GetArgName(Is)).c_str(), "", Data::FromAZType(Data::Traits<t_Args>::GetAZType()), Datum::eOriginality::Copy));
         } 
 
-        void OnInit() override
+        void ConfigureSlots() override
         {
             AddSlot("In", "", SlotType::ExecutionIn);
             AddSlot("Out", "", SlotType::ExecutionOut);
@@ -220,11 +220,11 @@ namespace ScriptCanvas
         int nodeElementIndex = rootElement.FindElement(AZ_CRC("BaseClass1", 0xd4925735));
         if (nodeElementIndex == -1)
         {
-            AZ_Error("Script Canvas", false, "Unable to find base class node element on deprecated class %s", false, rootElement.GetNameString());
+            AZ_Error("Script Canvas", false, "Unable to find base class node element on deprecated class %s", rootElement.GetNameString());
             return false;
         }
 
-        // Not a DataElementNode reference has this is being explicitly copied.
+        // The DataElementNode is being copied purposefully in this statement to clone the data
         AZ::SerializeContext::DataElementNode baseNodeElement = rootElement.GetSubElement(nodeElementIndex);
         if (!rootElement.Convert(serializeContext, azrtti_typeid<NodeFunctionGenericMultiReturn>()))
         {
@@ -234,11 +234,11 @@ namespace ScriptCanvas
 
         if (rootElement.AddElement(baseNodeElement) == -1)
         {
-            AZ_Error("ScriptCanvas", false, "Unable to add base class node element to %s", false, RTTI_TypeName());
+            AZ_Error("Script Canvas", false, "Unable to add base class node element to %s", RTTI_TypeName());
             return false;
         }
 
         return true;
     }
 
-} // namespace ScriptCanvas
+}

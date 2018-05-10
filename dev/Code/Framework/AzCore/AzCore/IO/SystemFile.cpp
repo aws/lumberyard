@@ -17,8 +17,32 @@
 
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/std/functional.h>
+#include <AzCore/Utils/Utils.h>
 
 #include <stdio.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SYSTEMFILE_CPP_SECTION_1 1
+#define SYSTEMFILE_CPP_SECTION_2 2
+#define SYSTEMFILE_CPP_SECTION_3 3
+#define SYSTEMFILE_CPP_SECTION_4 4
+#define SYSTEMFILE_CPP_SECTION_5 5
+#define SYSTEMFILE_CPP_SECTION_6 6
+#define SYSTEMFILE_CPP_SECTION_7 7
+#define SYSTEMFILE_CPP_SECTION_8 8
+#define SYSTEMFILE_CPP_SECTION_9 9
+#define SYSTEMFILE_CPP_SECTION_10 10
+#define SYSTEMFILE_CPP_SECTION_11 11
+#define SYSTEMFILE_CPP_SECTION_12 12
+#define SYSTEMFILE_CPP_SECTION_13 13
+#define SYSTEMFILE_CPP_SECTION_14 14
+#define SYSTEMFILE_CPP_SECTION_15 15
+#define SYSTEMFILE_CPP_SECTION_16 16
+#define SYSTEMFILE_CPP_SECTION_17 17
+#define SYSTEMFILE_CPP_SECTION_18 18
+#define SYSTEMFILE_CPP_SECTION_19 19
+#endif
 
 #if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     #include <fcntl.h>
@@ -373,6 +397,13 @@ SystemFile::Open(const char* fileName, int mode, int platformFlags)
             SetFilePointer(m_handle, 0, NULL, FILE_END);
         }
     }
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     int desiredAccess = 0;
     int permissions = S_IRWXU | S_IRGRP | S_IROTH;
@@ -574,6 +605,9 @@ SystemFile::Close()
         }
         m_handle = INVALID_HANDLE_VALUE;
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -618,6 +652,9 @@ SystemFile::Seek(SizeType offset, SeekMode mode)
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
         }
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -659,6 +696,9 @@ SystemFile::SizeType SystemFile::Tell()
 
         return aznumeric_cast<SizeType>(newFilePtr.QuadPart);
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -712,6 +752,9 @@ bool SystemFile::Eof()
 
         return currentFilePtr.QuadPart == fileInfo.EndOfFile.QuadPart;
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -761,6 +804,9 @@ AZ::u64 SystemFile::ModificationTime()
 
         return aznumeric_cast<AZ::u64>(fileInfo.ChangeTime.QuadPart);
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -816,6 +862,9 @@ SystemFile::Read(SizeType byteSize, void* buffer)
         }
         return static_cast<SizeType>(dwNumBytesRead);
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -877,6 +926,9 @@ SystemFile::Write(const void* buffer, SizeType byteSize)
         }
         return static_cast<SizeType>(dwNumBytesWritten);
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -920,6 +972,9 @@ void SystemFile::Flush()
             EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
         }
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -958,6 +1013,9 @@ SystemFile::Length() const
 
         return static_cast<SizeType>(size.QuadPart);
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -1025,6 +1083,13 @@ SystemFile::Exists(const char* fileName)
 {
 #if AZ_TRAIT_USE_WINDOWS_FILE_API
     return GetAttributes(fileName) != INVALID_FILE_ATTRIBUTES;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     return access(fileName, F_OK) == 0;
 #elif defined(AZ_PLATFORM_ANDROID)
@@ -1041,6 +1106,10 @@ SystemFile::Exists(const char* fileName)
 #endif
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
 //=========================================================================
@@ -1115,6 +1184,9 @@ SystemFile::FindFiles(const char* filter, FindFileCB cb)
             EBUS_EVENT(FileIOEventBus, OnError, nullptr, filter, lastError);
         }
     }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     //TODO: Linux implementation does not correctly handle filters
     DIR* dir = opendir(filter);
@@ -1185,6 +1257,13 @@ AZ::u64 SystemFile::ModificationTime(const char* fileName)
     CloseHandle(handle);
 
     return aznumeric_cast<AZ::u64>(fileInfo.ChangeTime.QuadPart);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_14
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     struct stat statResult;
     if (stat(fileName, &statResult) != 0)
@@ -1239,6 +1318,13 @@ SystemFile::Length(const char* fileName)
     {
         EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
     }
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_15
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     // generic solution
     SystemFile f;
@@ -1315,6 +1401,13 @@ SystemFile::Delete(const char* fileName)
     }
 #   endif // !_UNICODE
 
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_16
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     int result = remove(fileName);
     if (result != 0)
@@ -1367,6 +1460,13 @@ SystemFile::Rename(const char* sourceFileName, const char* targetFileName, bool 
     }
 #   endif // !_UNICODE
 
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_17
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     int result = rename(sourceFileName, targetFileName);
     if (result)
@@ -1390,6 +1490,13 @@ SystemFile::IsWritable(const char* sourceFileName)
 #if AZ_TRAIT_USE_WINDOWS_FILE_API
     auto fileAttr = GetAttributes(sourceFileName);
     return !((fileAttr == INVALID_FILE_ATTRIBUTES) || (fileAttr & FILE_ATTRIBUTE_DIRECTORY) || (fileAttr & FILE_ATTRIBUTE_READONLY));
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_18
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     return (access (sourceFileName, W_OK) == 0);
 #else
@@ -1421,6 +1528,13 @@ SystemFile::SetWritable(const char* sourceFileName, bool writable)
     }
     auto success = SetAttributes(sourceFileName, fileAttr);
     return success != FALSE;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_19
+#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif  defined(AZ_PLATFORM_APPLE)
     struct stat s;
     if (stat(sourceFileName, &s) == 0)

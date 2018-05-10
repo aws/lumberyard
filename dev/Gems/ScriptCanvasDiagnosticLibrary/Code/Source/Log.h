@@ -33,10 +33,11 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Log.png")
                     ScriptCanvas_Node::Category("Utilities/Debug")
                     ScriptCanvas_Node::Version(0)
+                    ScriptCanvas_Node::Deprecated("This node has been deprecated, use the Print node instead.")
+                    ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                 );
 
                 void OnInputSignal(const SlotId& slotId) override;
-                //void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
 
                 // Inputs
                 ScriptCanvas_In(ScriptCanvas_In::Name("In", "Input signal"));

@@ -14,7 +14,7 @@
 #include "stdafx.h"
 #include "SQLiteStatement.h"
 #include "SQLiteConnection.h"
-#include <SQLite/sqlite3.h>
+#include <sqlite3.h>
 #include "SQLiteResultSet.h"
 
 CSQLiteStatement::CSQLiteStatement(CSQLiteConnection* Connection)

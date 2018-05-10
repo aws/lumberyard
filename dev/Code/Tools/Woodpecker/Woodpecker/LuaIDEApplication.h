@@ -13,18 +13,23 @@
 #define WOODPECKER_PROFILER_APPLICATION_H
 
 #include <Woodpecker/WoodpeckerApplication.h>
+#include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
 namespace LUAEditor
 {
     class Application
         : public Woodpecker::BaseApplication
+        , protected AzToolsFramework::SourceControlNotificationBus::Handler
     {
     public:
-        Application(int &argc, char **argv) : BaseApplication(argc, argv) {}
+        Application(int &argc, char **argv);
+        ~Application() override;
 
     protected:
         void RegisterCoreComponents() override;
         void CreateApplicationComponents() override;
+
+        void ConnectivityStateChanged(const AzToolsFramework::SourceControlState /*connected*/) override;
     };
 }
 

@@ -16,8 +16,7 @@
 #include "AttributePool.h"
 #include "AttributeString.h"
 #include "AttributeSettings.h"
-#include "UnicodeStringIterator.h"
-#include "UnicodeCharacter.h"
+#include "StringConversions.h"
 
 namespace MCore
 {
@@ -274,7 +273,7 @@ namespace MCore
         const uint32 numChildren = GetNumChildAttributes();
         for (uint32 i = 0; i < numChildren; ++i)
         {
-            if (GetChildAttributeSettings(i)->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(GetChildAttributeSettings(i)->GetNameString().c_str(), name, false /* no case */))
             {
                 return i;
             }
@@ -290,7 +289,7 @@ namespace MCore
         const uint32 numChildren = GetNumChildAttributes();
         for (uint32 i = 0; i < numChildren; ++i)
         {
-            if (GetChildAttributeSettings(i)->GetInternalNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(GetChildAttributeSettings(i)->GetInternalNameString().c_str(), name, false /* no case */))
             {
                 return i;
             }
@@ -355,7 +354,7 @@ namespace MCore
             {
                 // try to extract it from the attribute name it stores
                 AttributeSettings* refSettings = nullptr;
-                Attribute* refResult = FindAttributeHierarchical(static_cast<AttributeString*>(result)->GetValue().AsChar(), &refSettings, lookUpRef);
+                Attribute* refResult = FindAttributeHierarchical(static_cast<AttributeString*>(result)->GetValue().c_str(), &refSettings, lookUpRef);
                 if (refResult && refSettings)
                 {
                     if (outSettings)
@@ -410,43 +409,46 @@ namespace MCore
         Attribute* currentAttribute = const_cast<Attribute*>(this);
 
         // process the whole string
-        UnicodeStringIterator iterator((const char*)namePath);
-        while (iterator.GetHasReachedEnd() == false)
+        const AZStd::string namePathStr(namePath);
+        uint32 currentIndex = 0;
+        const uint32 stringLength = static_cast<uint32>(namePathStr.size());
+        while (currentIndex < stringLength)
         {
-            UnicodeCharacter c = iterator.GetNextCharacter();
+            const char c = namePathStr[currentIndex];
+            ++currentIndex;
             if (lastIsDot)
             {
-                startIndex = c.GetIndex();
+                startIndex = currentIndex - 1;
             }
 
             bool readyToLookup = false;
 
-            const bool isOpenBracket = (c == UnicodeCharacter('['));
-            const bool isCloseBracket = (c == UnicodeCharacter(']'));
+            const bool isOpenBracket = (c == '[');
+            const bool isCloseBracket = (c == ']');
 
-            const bool isDot = (c == UnicodeCharacter::dot);
+            const bool isDot = (c == MCore::CharacterConstants::dot);
             if (isDot)
             {
-                endIndex = c.GetIndex();
+                endIndex = currentIndex - 1;
             }
 
-            if (c == UnicodeCharacter('['))
+            if (c == '[')
             {
-                indexStringStart = iterator.GetIndex();
-                endIndex = c.GetIndex();
+                indexStringStart = currentIndex;
+                endIndex = currentIndex - 1;
                 readingIndex = true;
             }
 
-            if (iterator.GetHasReachedEnd() && readingIndex == false)
+            if (currentIndex == stringLength && readingIndex == false)
             {
-                endIndex = iterator.GetIndex();
+                endIndex = currentIndex;
             }
 
             // if we finished reading the array index value
             if (isCloseBracket && readingIndex)
             {
                 readingIndex = false;
-                indexStringEnd = c.GetIndex();
+                indexStringEnd = currentIndex - 1;
                 const uint32 numChars = indexStringEnd - indexStringStart;
 
                 if (numChars >= 16)
@@ -467,7 +469,7 @@ namespace MCore
             }
 
             // if we can build the name of the attribute
-            if ((c == UnicodeCharacter::dot || (iterator.GetHasReachedEnd() && readingIndex == false) || (isOpenBracket && readingIndex)) && currentInternalName[0] == '\0')
+            if ((c == MCore::CharacterConstants::dot || (currentIndex == stringLength && readingIndex == false) || (isOpenBracket && readingIndex)) && currentInternalName[0] == '\0')
             {
                 const uint32 numCharacters = endIndex - startIndex;
                 if (numCharacters >= 256)
@@ -485,7 +487,7 @@ namespace MCore
 
                     currentInternalName[numCharacters] = '\0';
 
-                    if (iterator.GetHasReachedEnd() || isOpenBracket == false)
+                    if (currentIndex == stringLength || isOpenBracket == false)
                     {
                         readyToLookup = true;
                     }
@@ -501,7 +503,7 @@ namespace MCore
             {
                 //LogInfo("INTERNAL NAME = %s  (index=%d)", currentInternalName, childIndex);
 
-                startIndex = iterator.GetIndex();
+                startIndex = currentIndex;
 
                 // if we have a name
                 if (currentInternalName[0] != '\0')
@@ -510,7 +512,7 @@ namespace MCore
                     uint32 attributeIndex = currentAttribute->FindAttributeIndexByInternalName(currentInternalName);
                     if (attributeIndex != MCORE_INVALIDINDEX32)
                     {
-                        if (iterator.GetHasReachedEnd() == false)
+                        if (currentIndex != stringLength)
                         {
                             currentAttribute = currentAttribute->GetChildAttribute(attributeIndex);
                             if (childIndex != MCORE_INVALIDINDEX32)
@@ -572,7 +574,7 @@ namespace MCore
                         return MCORE_INVALIDINDEX32;
                     }
 
-                    if (iterator.GetHasReachedEnd() == false)
+                    if (currentIndex != stringLength)
                     {
                         currentAttribute = currentAttribute->GetChildAttribute(childIndex);
                     }
@@ -645,9 +647,9 @@ namespace MCore
 
 
     // return a string with the hierarchical name
-    String Attribute::BuildHierarchicalName() const
+    AZStd::string Attribute::BuildHierarchicalName() const
     {
-        String result;
+        AZStd::string result;
         BuildHierarchicalName(result);
         return result;
     }
@@ -655,12 +657,12 @@ namespace MCore
 
     // build a hierarchical string like "materialList.myMaterial.specularColor.rgb"
     // arrays or nameless attributes look like this: "materialList.myMaterial.parameters[10]" where 10 would be the zero-based index into the child array of parameters
-    void Attribute::BuildHierarchicalName(String& outString) const
+    void Attribute::BuildHierarchicalName(AZStd::string& outString) const
     {
-        outString.Clear();
-        outString.Reserve(64);
+        outString.clear();
+        outString.reserve(64);
 
-        String temp;
+        AZStd::string temp;
 
         // work our way up towards the root
         const Attribute* curAttribute = this;
@@ -672,20 +674,20 @@ namespace MCore
             bool hasName = false;
             if (curSettings)
             {
-                hasName = (curSettings->GetInternalNameString().GetLength() > 0);
+                hasName = (curSettings->GetInternalNameString().size() > 0);
                 if (hasName == false && parentAttribute)
                 {
                     const uint32 attributeIndex = parentAttribute->FindAttributeIndexByValuePointer(curAttribute);
-                    temp.Format("[%d]", attributeIndex);
-                    outString.Insert(0, temp.AsChar());
+                    temp= AZStd::string::format("[%d]", attributeIndex);
+                    outString.insert(0, temp.c_str());
                 }
 
-                outString.Insert(0, curSettings->GetInternalName());
+                outString.insert(0, curSettings->GetInternalName());
             }
 
             if (parentAttribute && parentAttribute->GetParent() && hasName)
             {
-                outString.Insert(0, ".");
+                outString.insert(0, ".");
             }
 
             curAttribute = parentAttribute;

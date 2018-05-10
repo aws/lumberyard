@@ -15,9 +15,9 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "MemoryManager.h"
-#include "UnicodeString.h"
 #include "Endian.h"
 #include "Stream.h"
+#include <AZCore/std/string/string.h>
 
 namespace MCore
 {
@@ -64,8 +64,8 @@ namespace MCore
         virtual Attribute* CreateInstance(void* destMemory) = 0;
         virtual const char* GetTypeString() const = 0;
         MCORE_INLINE uint32 GetType() const                                         { return mTypeID; }
-        virtual bool InitFromString(const MCore::String& valueString) = 0;
-        virtual bool ConvertToString(MCore::String& outString) const = 0;
+        virtual bool InitFromString(const AZStd::string& valueString) = 0;
+        virtual bool ConvertToString(AZStd::string& outString) const = 0;
         virtual bool InitFrom(const Attribute* other) = 0;
         virtual uint32 GetClassSize() const = 0;
         virtual uint8 GetStreamWriteVersion() const;
@@ -106,8 +106,8 @@ namespace MCore
             return nullptr;
         }
 
-        void BuildHierarchicalName(String& outString) const;
-        String BuildHierarchicalName() const;
+        void BuildHierarchicalName(AZStd::string& outString) const;
+        AZStd::string BuildHierarchicalName() const;
 
         MCORE_INLINE virtual uint8* GetRawDataPointer()             { return nullptr; }
         MCORE_INLINE virtual uint32 GetRawDataSize() const          { return 0; }

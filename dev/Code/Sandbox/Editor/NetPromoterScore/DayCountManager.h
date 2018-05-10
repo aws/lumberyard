@@ -21,7 +21,7 @@ class DayCountManager
     Q_OBJECT
 
 public:
-    DayCountManager(QObject* parent);
+    explicit DayCountManager(QObject* parent);
 
     bool ShouldShowNetPromoterScoreDialog();
     int GetRatingInterval();

@@ -232,7 +232,8 @@ namespace AzToolsFramework
     {
         NotVisible,
         Visible,
-        ShowChildrenOnly
+        ShowChildrenOnly,
+        HideChildren
     };
 
     /**
@@ -241,6 +242,15 @@ namespace AzToolsFramework
      * \return ref AZ::Edit::PropertyVisibility value
      */
     AZ::Crc32 ResolveVisibilityAttribute(const InstanceDataNode& node);
+
+    /**
+     * Used by in-editor tools to determine if a given field has any visible children.
+     * Calls CalculateNodeDisplayVisibility() on all child nodes of the input node.
+     * \param node instance data hierarchy node for which visibility should be calculated.
+     * \param isSlicePushUI (optional - false by default) if enabled, additional push-only visibility options are applied.
+     * \return bool
+     */
+    bool HasAnyVisibleChildren(const InstanceDataNode& node, bool isSlicePushUI = false);
 
     /**
      * Used by in-editor tools to determine if a given field should be visible.

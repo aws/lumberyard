@@ -39,8 +39,8 @@ namespace ZipEncrypt
     void FinishStreamCipher(symmetric_CTR* pCTR);
     bool DecryptBufferWithStreamCipher(unsigned char* inBuffer, unsigned char* outBuffer, size_t bufferSize, symmetric_CTR* pCTR);
     bool DecryptBufferWithStreamCipher(unsigned char* inBuffer, size_t bufferSize, unsigned char key[16], unsigned char IV[16]);
-    CHEAT_PROTECTION_EXPORT int  GetEncryptionKeyIndex(const ZipDir::FileEntry* pFileEntry);
-    CHEAT_PROTECTION_EXPORT void GetEncryptionInitialVector(const ZipDir::FileEntry * pFileEntry, unsigned char IV[16]);
+    int  GetEncryptionKeyIndex(const ZipDir::FileEntry* pFileEntry);
+    void GetEncryptionInitialVector(const ZipDir::FileEntry * pFileEntry, unsigned char IV[16]);
 
     bool RSA_VerifyData(void* inBuffer, int sizeIn, unsigned char* signedHash, int signedHashSize, rsa_key& publicKey);
     bool RSA_VerifyData(const unsigned char** inBuffers, unsigned int* sizesIn, const int numBuffers, unsigned char* signedHash, int signedHashSize, rsa_key& publicKey);

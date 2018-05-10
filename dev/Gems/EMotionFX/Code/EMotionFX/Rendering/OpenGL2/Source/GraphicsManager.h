@@ -54,7 +54,7 @@ namespace RenderGL
         MCORE_INLINE const char* GetDeviceName()                                                { return (const char*)glGetString(GL_VENDOR); }
         MCORE_INLINE const char* GetDeviceVendor()                                              { return (const char*)glGetString(GL_RENDERER); }
         MCORE_INLINE RenderTexture* GetRenderTexture()                                          { return mRenderTexture; }
-        MCORE_INLINE const char* GetShaderPath() const                                          { return mShaderPath.AsChar(); }
+        MCORE_INLINE const char* GetShaderPath() const                                          { return mShaderPath.c_str(); }
         MCORE_INLINE TextureCache* GetTextureCache()                                            { return &mTextureCache; }
 
         bool Init(const char* shaderPath = "Shaders/");
@@ -62,7 +62,7 @@ namespace RenderGL
         bool GetIsPostProcessingEnabled() const                                                 { return mPostProcessing; }
         PostProcessShader* LoadPostProcessShader(const char* filename);
         GLSLShader* LoadShader(const char* vertexFileName, const char* pixelFileName);
-        GLSLShader* LoadShader(const char* vertexFileName, const char* pixelFileName, MCore::Array<MCore::String>& defines);
+        GLSLShader* LoadShader(const char* vertexFileName, const char* pixelFileName, MCore::Array<AZStd::string>& defines);
 
         MCORE_INLINE void SetGBuffer(GBuffer* gBuffer)                                          { mGBuffer = gBuffer; }
         MCORE_INLINE GBuffer* GetGBuffer()                                                      { return mGBuffer; }
@@ -153,7 +153,7 @@ namespace RenderGL
         MCommon::Camera*    mCamera;        /**< The camera used for rendering. */
 
         ShaderCache         mShaderCache;   /**< The shader manager used to load and manage vertex and pixel shaders. */
-        MCore::String       mShaderPath;    /**< The absolute path to the directory where the shaders are located. This string will be added as prefix to each shader file the user tries to load. */
+        AZStd::string       mShaderPath;    /**< The absolute path to the directory where the shaders are located. This string will be added as prefix to each shader file the user tries to load. */
         MCore::RGBAColor    mClearColor;    /**< The scene background color. */
         MCore::RGBAColor    mGradientSourceColor;   /**< The background gradient source color. */
         MCore::RGBAColor    mGradientTargetColor;   /**< The background gradient target color. */

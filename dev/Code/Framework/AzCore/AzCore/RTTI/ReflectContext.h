@@ -223,6 +223,7 @@ namespace AZ
             : AttributeData<T>(T())
             , m_dataPtr(p) {}
         const T& Get(void* instance) const override { return (reinterpret_cast<C*>(instance)->*m_dataPtr); }
+        DataPtr GetMemberDataPtr() const { return m_dataPtr; }
     private:
         DataPtr m_dataPtr;
     };
@@ -245,10 +246,10 @@ namespace AZ
                 : m_function(f)
         {}
 
-        virtual R Invoke(void* instance, Args&&... args)
+        virtual R Invoke(void* instance, const Args&... args)
         {
             (void)instance;
-            return m_function(AZStd::forward<Args>(args) ...);
+            return m_function(args...);
         }
 
         virtual AZ::Uuid GetInstanceType() const
@@ -281,9 +282,9 @@ namespace AZ
                 , m_memFunction(f)
         {}
 
-        R Invoke(void* instance, Args&&... args) override
+        R Invoke(void* instance, const Args&... args) override
         {
-            return (reinterpret_cast<C*>(instance)->*m_memFunction)(AZStd::forward<Args>(args) ...);
+            return (reinterpret_cast<C*>(instance)->*m_memFunction)(args...);
         }
 
         AZ::Uuid GetInstanceType() const override
@@ -291,6 +292,10 @@ namespace AZ
             return AzTypeInfo<C>::Uuid();
         }
 
+        FunctionPtr GetMemberFunctionPtr() const
+        {
+            return m_memFunction;
+        }
     private:
         FunctionPtr m_memFunction;
     };
@@ -310,9 +315,9 @@ namespace AZ
             , m_memFunction(f)
         {}
 
-        R Invoke(void* instance, Args&&... args) override
+        R Invoke(void* instance, const Args&... args) override
         {
-            return (reinterpret_cast<const C*>(instance)->*m_memFunction)(AZStd::forward<Args>(args) ...);
+            return (reinterpret_cast<const C*>(instance)->*m_memFunction)(args...);
         }
 
         AZ::Uuid GetInstanceType() const override
@@ -320,6 +325,10 @@ namespace AZ
             return AzTypeInfo<C>::Uuid();
         }
 
+        FunctionPtr GetMemberFunctionPtr() const
+        {
+            return m_memFunction;
+        }
     private:
         FunctionPtr m_memFunction;
     };

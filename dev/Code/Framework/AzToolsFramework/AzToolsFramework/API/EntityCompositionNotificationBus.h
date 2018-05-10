@@ -18,6 +18,8 @@
 
 namespace AzToolsFramework
 {
+    using EntityIdList = AZStd::vector<AZ::EntityId>;
+
     class EntityCompositionNotifications
         : public AZ::EBusTraits
     {

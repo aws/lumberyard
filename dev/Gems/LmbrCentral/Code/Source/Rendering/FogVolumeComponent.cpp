@@ -82,6 +82,7 @@ namespace LmbrCentral
     void FogVolumeComponent::RefreshFog()
     {
         m_fogVolume.UpdateFogVolumeProperties(m_configuration);
+        m_fogVolume.UpdateRenderingFlags(m_configuration);
         m_fogVolume.UpdateFogVolumeTransform();
     }
 

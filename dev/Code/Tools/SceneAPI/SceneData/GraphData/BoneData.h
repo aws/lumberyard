@@ -23,7 +23,7 @@ namespace AZ
     {
         namespace GraphData
         {
-            class BoneData
+            class SCENE_DATA_CLASS BoneData
                 : public AZ::SceneAPI::DataTypes::IBoneData
             {
             public:

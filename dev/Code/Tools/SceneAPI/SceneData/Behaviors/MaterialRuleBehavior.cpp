@@ -56,7 +56,12 @@ namespace AZ
                     Containers::RuleContainer& rules = sceneNodeGroup->GetRuleContainer();
                     if (Utilities::DoesSceneGraphContainDataLike<DataTypes::IMaterialData>(scene, true) && !rules.ContainsRuleOfType<DataTypes::IMaterialRule>())
                     {
-                        rules.AddRule(AZStd::make_shared<SceneData::MaterialRule>());
+                        Events::ManifestMetaInfo::ModifiersList modifiers;
+                        Events::ManifestMetaInfoBus::Broadcast(&Events::ManifestMetaInfo::GetAvailableModifiers, modifiers, scene, target);
+                        if (AZStd::find(modifiers.begin(), modifiers.end(), azrtti_typeid<SceneData::MaterialRule>()) != modifiers.end())
+                        {
+                            rules.AddRule(AZStd::make_shared<SceneData::MaterialRule>());
+                        }
                     }
                 }
             }

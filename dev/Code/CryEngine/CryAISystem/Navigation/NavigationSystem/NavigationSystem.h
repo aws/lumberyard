@@ -460,6 +460,7 @@ public:
 
     virtual void RegisterArea(const char* shapeName);
     virtual void UnRegisterArea(const char* shapeName);
+    virtual bool IsAreaPresent(const char* shapeName);
     virtual NavigationVolumeID GetAreaId(const char* shapeName) const;
     virtual void SetAreaId(const char* shapeName, NavigationVolumeID id);
     virtual void UpdateAreaNameForId(const NavigationVolumeID id, const char* newShapeName);
@@ -488,6 +489,7 @@ public:
     bool AgentTypeSupportSmartObjectUserClass(NavigationAgentTypeID agentTypeID, const char* smartObjectUserClass) const;
     uint16 GetAgentRadiusInVoxelUnits(NavigationAgentTypeID agentTypeID) const;
     uint16 GetAgentHeightInVoxelUnits(NavigationAgentTypeID agentTypeID) const;
+    bool TryGetAgentRadiusData(const char* agentType, Vec3& voxelSize, uint16& radiusInVoxels) const override;
 
     inline const WorldMonitor* GetWorldMonitor() const
     {
@@ -573,6 +575,24 @@ public:
         {
         };
 
+        TileTaskResult(TileTaskResult&& other)
+            : tile(std::move(other.tile))
+            , hashValue(other.hashValue)
+            , meshID(std::move(other.meshID))
+            , x(other.x)
+            , y(other.y)
+            , z(other.z)
+            , volumeCopy(other.volumeCopy)
+            , state(other.state)
+            , next(other.next)
+        {
+            other.jobExecutor.WaitForCompletion();
+        }
+
+        TileTaskResult(const TileTaskResult&) = delete;
+        TileTaskResult& operator=(const TileTaskResult&) = delete;
+        TileTaskResult& operator=(TileTaskResult&&) = delete;
+
         enum State
         {
             Running = 0,
@@ -623,6 +643,7 @@ private:
     void StopAllTasks();
 
     void UpdateAllListener(const ENavigationEvent event);
+    bool TryGetAgentSettings(const char* agentType, const AgentType::Settings*& agentSettings) const;
 
 #if MNM_USE_EXPORT_INFORMATION
     void ClearAllAccessibility(uint8 resetValue);
@@ -638,7 +659,7 @@ private:
     float m_cacheHitRate;
     float m_throughput;
 
-    typedef stl::aligned_vector<TileTaskResult, alignof(TileTaskResult)> TileTaskResults;
+    using TileTaskResults = AZStd::vector<TileTaskResult>;
     TileTaskResults m_results;
     uint16 m_free;
     WorkingState m_state;

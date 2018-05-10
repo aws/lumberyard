@@ -54,6 +54,9 @@ namespace Maestro
 
         void GetAnimatedPropertyValue(AnimatedValue& returnValue, const AnimatablePropertyAddress& animatableAddress) override;
         bool SetAnimatedPropertyValue(const AnimatablePropertyAddress& animatableAddress, const AnimatedValue& value) override;
+
+        void GetAssetDuration(AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId) override;
+
         //~SequenceAgentComponentRequestBus::Handler Interface //////////////////
 
     protected:

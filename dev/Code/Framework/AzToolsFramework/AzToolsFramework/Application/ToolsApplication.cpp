@@ -12,6 +12,7 @@
 
 #include "StdAfx.h"
 
+#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Debug/Profiler.h>
@@ -167,7 +168,7 @@ namespace AzToolsFramework
     // Private Implementation class to manage the engine root and version
     // Note: We are not using any AzCore classes because the ToolsApplication
     // initialization happens early on, before the Allocators get instantiated,
-    // so we are using Qt privately instead 
+    // so we are using Qt privately instead
     class ToolsApplication::EngineConfigImpl
     {
     private:
@@ -228,18 +229,18 @@ namespace AzToolsFramework
             return true;
         }
 
-        // Initialize the engine config object based on the current 
+        // Initialize the engine config object based on the current
         bool Initialize(const char* currentAppRoot)
         {
             // Start with the app root as the engine root (legacy), but check to see if the engine root
             // is external to the app root
             azstrncpy(m_engineRoot, AZ_ARRAY_SIZE(m_engineRoot), currentAppRoot, strlen(currentAppRoot) + 1);
 
-            // From the appRoot, check and see if we can read any external engine reference in engine.json 
+            // From the appRoot, check and see if we can read any external engine reference in engine.json
             QString engineJsonFileName = QString(m_fileName);
             QString engineJsonFilePath = QDir(currentAppRoot).absoluteFilePath(engineJsonFileName);
 
-            // From the appRoot, check and see if we can read any external engine reference in engine.json 
+            // From the appRoot, check and see if we can read any external engine reference in engine.json
             if (!QFile::exists(engineJsonFilePath))
             {
                 AZ_Warning(m_logWindow, false, "Unable to find '%s' in the current root directory.", m_fileName);
@@ -262,7 +263,7 @@ namespace AzToolsFramework
             {
                 // If the local engine.json does not have a 'ExternalEnginePath';
                 // This current root is the engine root, no further action needed
-                return false;
+                return true;    // not an error, do not print a warning in the caller
             }
 
             if (localEngineVersionValue == m_engineConfigMap.end())
@@ -345,7 +346,7 @@ namespace AzToolsFramework
         , m_isInIsolationMode(false)
     {
         ToolsApplicationRequests::Bus::Handler::BusConnect();
-        m_engineConfigImpl.reset(new ToolsApplication::EngineConfigImpl(AzToolsFramework::Internal::s_startupLogWindow, 
+        m_engineConfigImpl.reset(new ToolsApplication::EngineConfigImpl(AzToolsFramework::Internal::s_startupLogWindow,
                                                                         AzToolsFramework::Internal::s_engineConfigFileName));
     }
 
@@ -541,7 +542,7 @@ namespace AzToolsFramework
                 if (target.GetComponents().size() > oldComponentCount)
                 {
                     AZ::Component* newComponent = target.GetComponents().back();
-                    AZ_Error("Export", asEditorComponent->GetId() != AZ::InvalidComponentId, "For entity \"%s\", component \"%s\" doesn't have a valid component id", 
+                    AZ_Error("Export", asEditorComponent->GetId() != AZ::InvalidComponentId, "For entity \"%s\", component \"%s\" doesn't have a valid component id",
                              source.GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
                     newComponent->SetId(asEditorComponent->GetId());
                 }
@@ -1052,7 +1053,7 @@ namespace AzToolsFramework
     {
         if (!m_currentBatchUndo)
         {
-            m_currentBatchUndo = aznew UndoSystem::URSequencePoint(label, 0);
+            m_currentBatchUndo = aznew UndoSystem::BatchCommand(label, 0);
 
             // notify Cry undo has started (SandboxIntegrationManager)
             // Only do this at the root level. OnEndUndo will be called at the root
@@ -1063,7 +1064,7 @@ namespace AzToolsFramework
         {
             UndoSystem::URSequencePoint* current = m_currentBatchUndo;
 
-            m_currentBatchUndo = aznew UndoSystem::URSequencePoint(label, 0);
+            m_currentBatchUndo = aznew UndoSystem::BatchCommand(label, 0);
             m_currentBatchUndo->SetParent(current);
         }
 
@@ -1131,8 +1132,8 @@ namespace AzToolsFramework
         else
         {
             // we're at the root
-            
-            // only undo at bottom of scope (first invoked ScopedUndoBatch in 
+
+            // only undo at bottom of scope (first invoked ScopedUndoBatch in
             // chain/hierarchy must go out of scope)
             CreateUndosForDirtyEntities();
             m_dirtyEntities.clear();
@@ -1143,7 +1144,7 @@ namespace AzToolsFramework
             // notify Cry undo has ended (SandboxIntegrationManager)
             ToolsApplicationEvents::Bus::Broadcast(
                 &ToolsApplicationEvents::Bus::Events::OnEndUndo, m_currentBatchUndo->GetName().c_str(), changed);
-            
+
             // record each undo batch
             if (m_undoStack && changed)
             {
@@ -1179,7 +1180,7 @@ namespace AzToolsFramework
                 // see if it needs updating in the list:
                 EntityStateCommand* state = azdynamic_cast<EntityStateCommand*>(m_currentBatchUndo->Find(
                     static_cast<AZ::u64>(entityId), AZ::AzTypeInfo<EntityStateCommand>::Uuid()));
-                
+
                 if (!state)
                 {
                     state = aznew EntityStateCommand(static_cast<AZ::u64>(entityId));
@@ -1249,7 +1250,7 @@ namespace AzToolsFramework
             {
                 bool addInbetweenEntityIds = false;
                 inbetweenEntityIds.clear();
-                
+
                 AZ::EntityId parentEntityId;
                 AZ::TransformBus::EventResult(parentEntityId, entityId, &AZ::TransformBus::Events::GetParentId);
 
@@ -1321,7 +1322,27 @@ namespace AzToolsFramework
         return m_engineConfigImpl->IsEngineExternal();
     }
 
+    void ToolsApplication::CreateAndAddEntityFromComponentTags(const AZStd::vector<AZ::Crc32>& requiredTags, const char* entityName)
+    {
+        if (!entityName || !entityName[0])
+        {
+            entityName = "ToolsApplication Entity";
+        }
 
+        AZ::SerializeContext* context = GetSerializeContext();
+        AZ_Assert(context, "Unable to retrieve serialize context. Ensure the application is initialized before attempting to add components by tag.");
+
+        AZ::Entity* entity = aznew AZ::Entity(entityName);
+        AZStd::unordered_set<AZ::Uuid> componentsToAddToEntity;
+        AZ::Edit::GetComponentUuidsWithSystemComponentTag(context, requiredTags, componentsToAddToEntity);
+
+        for (const AZ::Uuid& typeId : componentsToAddToEntity)
+        {
+            entity->CreateComponent(typeId);
+        }
+        entity->Init();
+        entity->Activate();
+    }
 
     AZ::Outcome<AZStd::string, AZStd::string> ToolsApplication::ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const
     {
@@ -1334,7 +1355,7 @@ namespace AzToolsFramework
 #endif
         AZStd::string engineToolsSubfolderBase(toolSubFolder);
 
-        // There are two (or four) possible places where the project configurator can exist.  
+        // There are two (or four) possible places where the project configurator can exist.
         // We will search through the possibilities in order to find a match
         AZStd::vector<AZStd::string> toolTargetSearchPaths;
 
@@ -1383,6 +1404,7 @@ namespace AzToolsFramework
                 toolTargetSearchPaths.push_back(engineToolsAppPath);
             }
         }
+
         // Next priority is to look at the engine's local build subfolder, but only if a current subfolder was determined
         if (curSubFolder.length() > 0)
         {
@@ -1403,8 +1425,4 @@ namespace AzToolsFramework
 
         return AZ::Failure(AZStd::string::format("Unable to resolve tool application path for '%s'", toolApplicationName));
     }
-
-    
-
-
 } // namespace AzToolsFramework

@@ -89,7 +89,7 @@ struct SAIObjectMapIter
     IAIObject*  m_ai;
     Iter    m_it;
     Iter    m_end;
-    static std::vector<SAIObjectMapIter*> pool;
+    static AZStd::vector<SAIObjectMapIter*> pool;
 };
 
 
@@ -104,10 +104,6 @@ struct SAIObjectMapIterOfType
     : public SAIObjectMapIter <T>
 {
     typedef typename SAIObjectMapIter<T>::Iter Iter;
-
-    using SAIObjectMapIter<T>::m_ai;
-    using SAIObjectMapIter<T>::m_it;
-    using SAIObjectMapIter<T>::m_end;
 
     SAIObjectMapIterOfType(short n, Iter first, Iter end)
         : m_n(n)
@@ -136,23 +132,23 @@ struct SAIObjectMapIterOfType
 
     virtual void    Next()
     {
-        for (m_ai = NULL; !m_ai && m_it != m_end; ++m_it)
+        for (this->m_ai = NULL; !this->m_ai && this->m_it != this->m_end; ++this->m_it)
         {
             // Constraint to type
-            if (m_it->first != m_n)
+            if (this->m_it->first != this->m_n)
             {
-                m_it = m_end;
+                this->m_it = this->m_end;
                 break;
             }
             else
             {
-                m_ai = m_it->second.GetAIObject();
+                this->m_ai = this->m_it->second.GetAIObject();
             }
         }
     }
 
     short   m_n;
-    static std::vector<SAIObjectMapIterOfType*> pool;
+    static AZStd::vector<SAIObjectMapIterOfType*> pool;
 };
 
 
@@ -240,7 +236,7 @@ struct SAIObjectMapIterOfTypeInRange
     Vec3    m_center;
     float   m_rad;
     bool    m_check2D;
-    static std::vector<SAIObjectMapIterOfTypeInRange*> pool;
+    static AZStd::vector<SAIObjectMapIterOfTypeInRange*> pool;
 };
 
 
@@ -320,7 +316,7 @@ struct SAIObjectMapIterInRange
     Vec3    m_center;
     float   m_rad;
     bool    m_check2D;
-    static std::vector<SAIObjectMapIterInRange*> pool;
+    static AZStd::vector<SAIObjectMapIterInRange*> pool;
 };
 
 
@@ -385,7 +381,7 @@ struct SAIObjectMapIterInShape
 
     const SShape& m_shape;
     bool    m_checkHeight;
-    static std::vector<SAIObjectMapIterInShape*> pool;
+    static AZStd::vector<SAIObjectMapIterInShape*> pool;
 };
 
 //====================================================================
@@ -459,7 +455,7 @@ struct SAIObjectMapIterOfTypeInShape
     short   m_n;
     const SShape& m_shape;
     bool    m_checkHeight;
-    static std::vector<SAIObjectMapIterOfTypeInShape*> pool;
+    static AZStd::vector<SAIObjectMapIterOfTypeInShape*> pool;
 };
 
 

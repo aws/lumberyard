@@ -53,6 +53,7 @@ def build(bld):
         # Platform Specific
         win_x64_vs2013_output_file_name = 'CrySCompileServer_vc120x64',
         win_x64_vs2015_output_file_name = 'CrySCompileServer_vc140x64',
+        win_x64_vs2017_output_file_name = 'CrySCompileServer_vc141x64',
         win_x64_lib                     = ['wsock32'],
         win_defines                     = ['_CRT_SECURE_NO_WARNINGS', '_CONSOLE'],
         win_cxxflags                    = ['/EHsc'],

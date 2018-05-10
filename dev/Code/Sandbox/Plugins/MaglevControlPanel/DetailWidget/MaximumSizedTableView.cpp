@@ -20,7 +20,8 @@
 
 #include <DetailWidget/MaximumSizedTableView.moc>
 
-MaximumSizeTableViewObject::MaximumSizeTableViewObject()
+MaximumSizeTableViewObject::MaximumSizeTableViewObject(QWidget* parent)
+    : QTableView(parent)
 {
 }
 
@@ -35,9 +36,10 @@ void MaximumSizeTableViewObject::mouseReleaseEvent(QMouseEvent* event)
 }
 
 
-MaximumSizedTableView::MaximumSizedTableView()
+MaximumSizedTableView::MaximumSizedTableView(QWidget* parent)
+    : QFrame(parent)
 {
-    m_tableView = new MaximumSizeTableViewObject {};
+    m_tableView = new MaximumSizeTableViewObject {this};
     m_tableView->setObjectName("Table");
     m_tableView->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::ResizeToContents);
     m_tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::ResizeToContents);
@@ -57,13 +59,11 @@ MaximumSizedTableView::MaximumSizedTableView()
     hlayout->addWidget(m_tableView, 1);
     hlayout->addStretch();
 
-    auto vlayout = new QVBoxLayout {};
+    auto vlayout = new QVBoxLayout {this};
     vlayout->setSpacing(0);
     vlayout->setMargin(0);
     vlayout->addLayout(hlayout, 1);
     vlayout->addStretch();
-
-    setLayout(vlayout);
 
     setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
 }

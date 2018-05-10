@@ -13,6 +13,7 @@
 
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Asset/LegacyAssetHandler.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 
@@ -25,12 +26,11 @@ namespace LmbrCentral
     /**
      * Base class for mesh asset handlers. Contains shared utilities and functionality.
      */
-    class MeshAssetHandlerBase
-        : public AZ::Data::AssetHandler
+    class MeshAssetHandlerHelper
     {
     public:
 
-        MeshAssetHandlerBase();
+        MeshAssetHandlerHelper();
 
     protected:
 
@@ -57,8 +57,9 @@ namespace LmbrCentral
      * Handler for static mesh assets (cgf).
      */
     class MeshAssetHandler
-        : public MeshAssetHandlerBase
+        : public AZ::Data::LegacyAssetHandler
         , public AZ::AssetTypeInfoBus::Handler
+        , private MeshAssetHandlerHelper
     {
     public:
 
@@ -73,6 +74,7 @@ namespace LmbrCentral
         bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
         void DestroyAsset(AZ::Data::AssetPtr ptr) override;
         void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
+        void ProcessQueuedAssetRequests() override;
         //////////////////////////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,8 +95,9 @@ namespace LmbrCentral
      * Handler for character mesh assets (cdf).
      */
     class CharacterDefinitionAssetHandler
-        : public MeshAssetHandlerBase
+        : public AZ::Data::LegacyAssetHandler
         , public AZ::AssetTypeInfoBus::Handler
+        , private MeshAssetHandlerHelper
     {
     public:
 
@@ -109,6 +112,7 @@ namespace LmbrCentral
         bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
         void DestroyAsset(AZ::Data::AssetPtr ptr) override;
         void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
+        void ProcessQueuedAssetRequests() override;
         //////////////////////////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,8 +133,9 @@ namespace LmbrCentral
      * Handler for Alembic Geometry Caches (cax)
      */
     class GeomCacheAssetHandler
-        : public MeshAssetHandlerBase
+        : public AZ::Data::AssetHandler
         , public AZ::AssetTypeInfoBus::Handler
+        , private MeshAssetHandlerHelper
     {
     public:
 

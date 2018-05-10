@@ -97,6 +97,11 @@ namespace LmbrCentral
 
         //! Get the linear acceleration of the entity
         virtual AZ::Vector3 GetAcceleration() { return AZ::Vector3::CreateZero(); }
+
+        //! Whether the IPhysicalEntity is completely set up.
+        //! We don't consider things "fully enabled" until the IPhysicalEntity
+        //! has collision geometry.
+        virtual bool IsPhysicsFullyEnabled() { return false; }
     };
     using CryPhysicsComponentRequestBus = AZ::EBus<CryPhysicsComponentRequests>;
 

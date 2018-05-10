@@ -16,7 +16,7 @@
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include "KeyTrackLinear.h"
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 
 namespace EMotionFX
@@ -83,7 +83,7 @@ namespace EMotionFX
          * Returns the name, in form of a String object.
          * @result A pointer to the null terminated character buffer, containing the  name of this submotion.
          */
-        MCORE_INLINE const MCore::String& GetNameString() const;
+        MCORE_INLINE const AZStd::string& GetNameString() const;
 
         /**
          * Get the position at the first frame of the motion, in local space (relative to the parent).

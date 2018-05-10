@@ -7,12 +7,15 @@
             "Tests/BoxShapeTest.cpp",
             "Tests/SphereShapeTest.cpp",
             "Tests/CylinderShapeTest.cpp",
+            "Tests/CapsuleShapeTest.cpp",
+            "Tests/PolygonPrismShapeTest.cpp",
+            "Tests/TubeShapeTest.cpp",
             "Tests/LmbrCentralReflectionTest.h",
             "Tests/LmbrCentralReflectionTest.cpp",
             "Tests/LmbrCentralTest.cpp",
             "Tests/RigidPhysicsComponentTest.cpp",
             "Tests/StaticPhysicsComponentTest.cpp",
-            "Tests/PolygonPrismShapeComponentTests.cpp",
+            "Tests/ShapeGeometryUtilTest.cpp",
             "Tests/SpawnerComponentTest.cpp",
             "Tests/SplineComponentTests.cpp"
         ]

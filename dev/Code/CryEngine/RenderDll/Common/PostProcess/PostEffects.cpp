@@ -821,7 +821,7 @@ bool ScreenFader::Preprocess()
             }
             else
             {
-                AZ_Warning("Rendering", "Error - Attempting to fade out a ScreenFader that is not currently active: %s", group->GetName() );
+                AZ_Warning("Rendering", false, "Attempting to fade out a ScreenFader that is not currently active: %s", group->GetName() );
             }
         }
     }

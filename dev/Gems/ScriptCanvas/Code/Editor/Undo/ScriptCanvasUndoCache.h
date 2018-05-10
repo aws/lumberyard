@@ -27,13 +27,13 @@ namespace ScriptCanvasEditor
         ~UndoCache();
 
         // Update the graph item within the cache
-        void UpdateCache(AZ::EntityId entityId);
+        void UpdateCache(AZ::EntityId scriptCanvasEntityId);
 
         // remove the graph item from the cache
-        void PurgeCache(AZ::EntityId entityId);
+        void PurgeCache(AZ::EntityId scriptCanvasEntityId);
 
         // retrieve the last known state for the graph item
-        const AZStd::vector<AZ::u8>& Retrieve(AZ::EntityId entityId);
+        const AZStd::vector<AZ::u8>& Retrieve(AZ::EntityId scriptCanvasEntityId);
 
         // Populate the cache from a ScriptCanvas Entity graph entity
         void PopulateCache(AZ::Entity* scriptCanvasEntity);

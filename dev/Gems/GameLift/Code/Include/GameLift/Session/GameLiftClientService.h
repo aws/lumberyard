@@ -43,6 +43,10 @@ namespace GridMate
     struct GameLiftClientServiceDesc
         : public SessionServiceDesc
     {
+        GameLiftClientServiceDesc()
+            : m_useGameLiftLocalServer(false)
+        {}
+
         string m_region; //< AWS Region
         string m_endpoint; //< GameLift endpoint host
 
@@ -56,6 +60,9 @@ namespace GridMate
 
         // Needs to be filled in when using GameLift as a player with aliasId.
         string m_aliasId; //< GameLift aliasId
+
+        // Allow client to use a local GameLift server for development.
+        bool m_useGameLiftLocalServer; // Default (false) is use SSL validation and HTTPS. A value of true enables the use of the GameLift local server, turns off SSL validation and uses HTTP.
     };
 
     /*!
@@ -90,7 +97,7 @@ namespace GridMate
         GameLiftSessionRequest* RequestSession(const GameLiftSessionRequestParams& params) override;
         GameLiftSearch* StartSearch(const GameLiftSearchParams& params) override;
         GameLiftClientSession* QueryGameLiftSession(const GridSession* session) override;
-        GameLiftSearch* QueryGameLiftSearch(const GridSearch* search) override;        
+        GameLiftSearch* QueryGameLiftSearch(const GridSearch* search) override;
 
     protected:
         bool StartGameLiftClient();
@@ -112,9 +119,7 @@ namespace GridMate
         Aws::String m_aliasId;
         Aws::String m_fleetId;
         Aws::GameLift::GameLiftClient* m_client;
-        Aws::GameLift::Model::UpdateFleetAttributesOutcomeCallable m_updateFleetAttributesOutcomeCallable;
-        Aws::GameLift::Model::UpdateAliasOutcomeCallable m_updateAliasOutcomeCallable;
-
+        Aws::GameLift::Model::DescribeGameSessionsOutcomeCallable m_describeGameSessionsOutcomeCallable;
         Aws::SDKOptions m_optionsSdk;
 
         template<typename Callable>

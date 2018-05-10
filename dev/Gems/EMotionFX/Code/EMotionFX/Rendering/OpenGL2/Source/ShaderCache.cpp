@@ -11,6 +11,7 @@
 */
 
 #include "shadercache.h"
+#include <MCore/Source/StringConversions.h>
 
 
 namespace RenderGL
@@ -37,7 +38,7 @@ namespace RenderGL
         const uint32 numEntries = mEntries.GetLength();
         for (uint32 i = 0; i < numEntries; ++i)
         {
-            mEntries[i].mName.Clear(false);
+            mEntries[i].mName.clear();
             delete mEntries[i].mShader;
         }
 
@@ -61,7 +62,7 @@ namespace RenderGL
         const uint32 numEntries = mEntries.GetLength();
         for (uint32 i = 0; i < numEntries; ++i)
         {
-            if (mEntries[i].mName.CheckIfIsEqualNoCase(filename)) // non-case-sensitive name compare
+            if (AzFramework::StringFunc::Equal(mEntries[i].mName.c_str(), filename, false /* no case */)) // non-case-sensitive name compare
             {
                 return mEntries[i].mShader;
             }

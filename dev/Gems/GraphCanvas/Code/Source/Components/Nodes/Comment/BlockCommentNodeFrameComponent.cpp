@@ -19,22 +19,18 @@
 
 #include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
 
+#include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/GridBus.h>
 #include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/tools.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
+#include <GraphCanvas/Utils/QtVectorMath.h>
+#include <Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
-    QColor AZToQColor(const AZ::Color& color)
-    {
-        return QColor(static_cast<float>(color.GetR()) * 255,
-            static_cast<float>(color.GetG()) * 255,
-            static_cast<float>(color.GetB()) * 255,
-            static_cast<float>(color.GetA()) * 255);
-    }
-
     ///////////////////////////////////////////
     // BlockCommentNodeFrameComponentSaveData
     ///////////////////////////////////////////
@@ -43,6 +39,8 @@ namespace GraphCanvas
         : m_color(1.0f, 1.0f, 1.0f, 1.0f)
         , m_displayHeight(-1)
         , m_displayWidth(-1)
+        , m_enableAsBookmark(false)
+        , m_shortcut(k_findShortcut)
         , m_callback(nullptr)
     {
     }
@@ -59,6 +57,9 @@ namespace GraphCanvas
         m_color = other.m_color;
         m_displayHeight = other.m_displayHeight;
         m_displayWidth = other.m_displayWidth;
+
+        m_enableAsBookmark = other.m_enableAsBookmark;
+        m_shortcut = other.m_shortcut;
     }
 
     void BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData::OnColorChanged()
@@ -66,6 +67,16 @@ namespace GraphCanvas
         if (m_callback)
         {
             m_callback->OnColorChanged();
+            SignalDirty();
+        }
+    }
+
+    void BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData::OnBookmarkStatusChanged()
+    {
+        if (m_callback)
+        {
+            m_callback->OnBookmarkStatusChanged();
+            SignalDirty();
         }
     }
 
@@ -122,13 +133,15 @@ namespace GraphCanvas
         if (serializeContext)
         {
             serializeContext->Class<BlockCommentNodeFrameComponentSaveData, ComponentSaveData>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Color", &BlockCommentNodeFrameComponentSaveData::m_color)
                 ->Field("DisplayHeight", &BlockCommentNodeFrameComponentSaveData::m_displayHeight)
                 ->Field("DisplayWidth", &BlockCommentNodeFrameComponentSaveData::m_displayWidth)
+                ->Field("EnableAsBookmark", &BlockCommentNodeFrameComponentSaveData::m_enableAsBookmark)
+                ->Field("QuickIndex", &BlockCommentNodeFrameComponentSaveData::m_shortcut)
             ;
 
-            serializeContext->Class<BlockCommentNodeFrameComponent>()
+            serializeContext->Class<BlockCommentNodeFrameComponent, GraphCanvasPropertyComponent>()
                 ->Version(2, &BlockCommentNodeFrameComponentVersionConverter)
                 ->Field("SaveData", &BlockCommentNodeFrameComponent::m_saveData)
             ;
@@ -142,6 +155,8 @@ namespace GraphCanvas
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &BlockCommentNodeFrameComponentSaveData::m_color, "Block Color", "The color that the block comment should be rendered using.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlockCommentNodeFrameComponentSaveData::OnColorChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &BlockCommentNodeFrameComponentSaveData::m_enableAsBookmark, "Enable as Bookmark", "Toggles whether or not the block comment is registered as a bookmark.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlockCommentNodeFrameComponentSaveData::OnBookmarkStatusChanged)
                 ;
 
                 editContext->Class<BlockCommentNodeFrameComponent>("Block Comment Frame", "A comment that applies to the visible area.")
@@ -170,7 +185,7 @@ namespace GraphCanvas
 
         m_displayLayout = new QGraphicsLinearLayout(Qt::Vertical);
         m_displayLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        
+
         m_titleWidget = aznew BlockCommentNodeFrameTitleWidget();
         m_blockWidget = aznew BlockCommentNodeFrameBlockAreaWidget();
 
@@ -186,6 +201,8 @@ namespace GraphCanvas
 
         m_blockWidget->RegisterFrame(m_frameWidget.get());
         m_titleWidget->RegisterFrame(m_frameWidget.get());
+
+        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void BlockCommentNodeFrameComponent::Activate()
@@ -195,12 +212,11 @@ namespace GraphCanvas
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
         StyleNotificationBus::Handler::BusConnect(GetEntityId());
         BlockCommentRequestBus::Handler::BusConnect(GetEntityId());
-        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
+        BookmarkRequestBus::Handler::BusConnect(GetEntityId());
+        BookmarkNotificationBus::Handler::BusConnect(GetEntityId());
+        SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
 
         m_frameWidget->Activate();
-        m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
-
-        OnColorChanged();
     }
 
     void BlockCommentNodeFrameComponent::Deactivate()
@@ -209,7 +225,9 @@ namespace GraphCanvas
 
         m_frameWidget->Deactivate();
 
-        EntitySaveDataRequestBus::Handler::BusDisconnect();
+        SceneMemberNotificationBus::Handler::BusDisconnect();
+        BookmarkNotificationBus::Handler::BusDisconnect();
+        BookmarkRequestBus::Handler::BusDisconnect();
         BlockCommentRequestBus::Handler::BusDisconnect();
         StyleNotificationBus::Handler::BusDisconnect();
         NodeNotificationBus::Handler::BusDisconnect();
@@ -224,10 +242,12 @@ namespace GraphCanvas
 
         m_saveData.m_displayHeight = blockRectangle.height() + titleSize.height();
         m_saveData.m_displayWidth = AZ::GetMax(m_frameWidget->m_minimumSize.width(), blockRectangle.width());
+        m_saveData.SignalDirty();
 
         m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
 
         QPointF position = blockRectangle.topLeft();
+
         position.setY(m_frameWidget->RoundToClosestStep(position.y() - titleSize.height(), m_frameWidget->GetGridYStep()));
 
         GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SetPosition, AZ::Vector2(position.x(), position.y()));
@@ -257,13 +277,54 @@ namespace GraphCanvas
 
     void BlockCommentNodeFrameComponent::OnAddedToScene(const AZ::EntityId& sceneId)
     {
+        OnBookmarkStatusChanged();
+
         SceneNotificationBus::Handler::BusDisconnect();
         SceneNotificationBus::Handler::BusConnect(sceneId);
 
+        CommentNotificationBus::Handler::BusConnect(GetEntityId());
         GeometryNotificationBus::Handler::BusConnect(GetEntityId());
-        VisualNotificationBus::Handler::BusConnect(GetEntityId());
 
         GeometryRequestBus::EventResult(m_previousPosition, GetEntityId(), &GeometryRequests::GetPosition);
+
+        m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
+
+        OnColorChanged();
+
+        if (m_saveData.m_enableAsBookmark)
+        {
+            BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::RegisterBookmark, GetEntityId());
+            SceneBookmarkRequestBus::Handler::BusConnect(sceneId);
+        }
+
+        m_saveData.RegisterIds(GetEntityId(), sceneId);
+    }
+
+    void BlockCommentNodeFrameComponent::OnRemovedFromScene(const AZ::EntityId& sceneId)
+    {
+        bool isRegistered = false;
+        BookmarkManagerRequestBus::EventResult(isRegistered, sceneId, &BookmarkManagerRequests::IsBookmarkRegistered, GetEntityId());
+
+        if (isRegistered)
+        {
+            BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::UnregisterBookmark, GetEntityId());
+
+            SceneBookmarkRequestBus::Handler::BusDisconnect(sceneId);
+        }
+    }
+
+    void BlockCommentNodeFrameComponent::OnSceneMemberDeserializedForGraph(const AZ::EntityId& graphId)
+    {
+        if (m_saveData.m_enableAsBookmark)
+        {
+            AZ::EntityId conflictedId;
+            BookmarkManagerRequestBus::EventResult(conflictedId, graphId, &BookmarkManagerRequests::FindBookmarkForShortcut, m_saveData.m_shortcut);
+
+            if (conflictedId.IsValid() && m_saveData.m_shortcut > 0)
+            {
+                m_saveData.m_shortcut = k_findShortcut;
+            }
+        }
     }
 
     void BlockCommentNodeFrameComponent::OnStyleChanged()
@@ -310,7 +371,7 @@ namespace GraphCanvas
 
     void BlockCommentNodeFrameComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
     {
-        BlockCommentNodeFrameComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<BlockCommentNodeFrameComponent, BlockCommentNodeFrameComponentSaveData>();
+        BlockCommentNodeFrameComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<BlockCommentNodeFrameComponentSaveData>();
 
         if (saveData)
         {
@@ -320,7 +381,7 @@ namespace GraphCanvas
 
     void BlockCommentNodeFrameComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
     {
-        BlockCommentNodeFrameComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<BlockCommentNodeFrameComponent, BlockCommentNodeFrameComponentSaveData>();
+        BlockCommentNodeFrameComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<BlockCommentNodeFrameComponentSaveData>();
 
         if (saveData)
         {
@@ -328,7 +389,94 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameComponent::OnSceneMemberDragBegin(const AZ::EntityId&)
+    AZ::EntityId BlockCommentNodeFrameComponent::GetBookmarkId() const
+    {
+        return GetEntityId();
+    }
+
+    void BlockCommentNodeFrameComponent::RemoveBookmark()
+    {
+        m_saveData.m_enableAsBookmark = false;
+
+        OnBookmarkStatusChanged();
+
+        m_saveData.SignalDirty();
+    }
+
+    int BlockCommentNodeFrameComponent::GetShortcut() const
+    {
+        return m_saveData.m_shortcut;
+    }
+
+    void BlockCommentNodeFrameComponent::SetShortcut(int shortcut)
+    {
+        m_saveData.m_shortcut = shortcut;
+        m_saveData.SignalDirty();
+    }
+
+    AZStd::string BlockCommentNodeFrameComponent::GetBookmarkName() const
+    {
+        AZStd::string comment;
+        CommentRequestBus::EventResult(comment, GetEntityId(), &CommentRequests::GetComment);
+
+        return comment;
+    }
+
+    void BlockCommentNodeFrameComponent::SetBookmarkName(const AZStd::string& bookmarkName)
+    {
+        CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetComment, bookmarkName);
+    }
+
+    QRectF BlockCommentNodeFrameComponent::GetBookmarkTarget() const
+    {
+        return m_frameWidget->sceneBoundingRect();
+    }
+
+    QColor BlockCommentNodeFrameComponent::GetBookmarkColor() const
+    {
+        return GraphCanvas::ConversionUtils::AZToQColor(m_saveData.m_color);
+    }
+
+    void BlockCommentNodeFrameComponent::OnBookmarkTriggered()
+    {
+        static const float k_gridSteps = 5.0f;
+        AZ::EntityId graphId;
+        SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+        AZ::EntityId gridId;
+        SceneRequestBus::EventResult(gridId, graphId, &SceneRequests::GetGrid);
+
+        AZ::Vector2 minorPitch(0,0);
+        GridRequestBus::EventResult(minorPitch, gridId, &GridRequests::GetMinorPitch);
+
+        QRectF target = GetBookmarkTarget();
+
+        AnimatedPulseConfiguration pulseConfiguration;
+        pulseConfiguration.m_enableGradient = true;
+        pulseConfiguration.m_drawColor = GetBookmarkColor();
+        pulseConfiguration.m_durationSec = 1.0f;
+        pulseConfiguration.m_zValue = m_frameWidget->zValue() - 1;
+
+        for (QPointF currentPoint : { target.topLeft(), target.topRight(), target.bottomRight(), target.bottomLeft()} )
+        {
+            QPointF directionVector = currentPoint - target.center();
+
+            directionVector = QtVectorMath::Normalize(directionVector);
+
+            QPointF finalPoint(currentPoint.x() + directionVector.x() * minorPitch.GetX() * k_gridSteps, currentPoint.y() + directionVector.y() * minorPitch.GetY() * k_gridSteps);
+
+            pulseConfiguration.m_controlPoints.emplace_back(currentPoint, finalPoint);
+        }
+
+        SceneRequestBus::Event(graphId, &SceneRequests::CreatePulse, pulseConfiguration);
+    }
+
+    void BlockCommentNodeFrameComponent::OnCommentChanged(const AZStd::string&)
+    {
+        BookmarkNotificationBus::Event(GetEntityId(), &BookmarkNotifications::OnBookmarkNameChanged);
+    }
+
+    void BlockCommentNodeFrameComponent::OnSceneMemberDragBegin()
     {
         if (m_frameWidget->IsSelected())
         {
@@ -336,7 +484,7 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameComponent::OnSceneMemberDragComplete(const AZ::EntityId&)
+    void BlockCommentNodeFrameComponent::OnSceneMemberDragComplete()
     {
         m_needsElements = true;
 
@@ -371,45 +519,33 @@ namespace GraphCanvas
     void BlockCommentNodeFrameComponent::SetDisplayHeight(float height)
     {
         m_saveData.m_displayHeight = height;
+        m_saveData.SignalDirty();
     }
 
     void BlockCommentNodeFrameComponent::SetDisplayWidth(float width)
     {
         m_saveData.m_displayWidth = width;
+        m_saveData.SignalDirty();
     }
 
     void BlockCommentNodeFrameComponent::EnableInteriorHighlight(bool highlight)
     {
-        if (highlight && !m_highlightEntities.empty())
-        {
-            EnableInteriorHighlight(false);
-        }
+        m_highlightDisplayStateStateSetter.ResetStateSetter();
 
         if (highlight)
         {
-            if (!m_highlightEntities.empty())
+            AZStd::vector< AZ::EntityId > highlightEntities;
+            FindInteriorElements(highlightEntities);
+
+            for (const AZ::EntityId& entityId : highlightEntities)
             {
-                EnableInteriorHighlight(false);
+                StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
+                RootGraphicsItemRequestBus::EventResult(stateController, entityId, &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+                m_highlightDisplayStateStateSetter.AddStateController(stateController);
             }
 
-            FindInteriorElements(m_highlightEntities);
-        }
-
-        for (AZ::EntityId elementId : m_highlightEntities)
-        {
-            if (highlight)
-            {
-                StyledEntityRequestBus::Event(elementId, &StyledEntityRequests::AddSelectorState, Styling::States::Hovered);
-            }
-            else
-            {
-                StyledEntityRequestBus::Event(elementId, &StyledEntityRequests::RemoveSelectorState, Styling::States::Hovered);
-            }
-        }
-
-        if (!highlight)
-        {
-            m_highlightEntities.clear();
+            m_highlightDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::Inspection);
         }
     }
 
@@ -458,6 +594,34 @@ namespace GraphCanvas
     {
         m_titleWidget->SetColor(m_saveData.m_color);
         m_blockWidget->SetColor(m_saveData.m_color);
+
+        BookmarkNotificationBus::Event(GetEntityId(), &BookmarkNotifications::OnBookmarkColorChanged);
+    }
+
+    void BlockCommentNodeFrameComponent::OnBookmarkStatusChanged()
+    {
+        AZ::EntityId sceneId;
+        SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+        if (m_saveData.m_enableAsBookmark)
+        {
+            BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::RegisterBookmark, GetEntityId());
+            SceneBookmarkRequestBus::Handler::BusConnect(sceneId);
+        }
+        else
+        {
+            bool isRegistered = false;
+            BookmarkManagerRequestBus::EventResult(isRegistered, sceneId, &BookmarkManagerRequests::IsBookmarkRegistered, GetEntityId());
+
+            if (isRegistered)
+            {
+                BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::UnregisterBookmark, GetEntityId());
+            }
+
+            m_saveData.m_shortcut = k_findShortcut;
+
+            SceneBookmarkRequestBus::Handler::BusDisconnect();
+        }
     }
 
     void BlockCommentNodeFrameComponent::FindElementsForDrag()
@@ -529,7 +693,7 @@ namespace GraphCanvas
 
     void BlockCommentNodeFrameTitleWidget::SetColor(const AZ::Color& color)
     {
-        m_color = AZToQColor(color);
+        m_color = ConversionUtils::AZToQColor(color);
         update();
     }
 
@@ -555,6 +719,8 @@ namespace GraphCanvas
 
     void BlockCommentNodeFrameTitleWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
+
         QPen border = m_styleHelper.GetBorder();
         border.setColor(m_color);
 
@@ -637,7 +803,7 @@ namespace GraphCanvas
 
     void BlockCommentNodeFrameBlockAreaWidget::SetColor(const AZ::Color& color)
     {
-        m_color = AZToQColor(color);
+        m_color = ConversionUtils::AZToQColor(color);
         update();
     }
 
@@ -734,10 +900,12 @@ namespace GraphCanvas
         , m_allowCommentReaction(false)
         , m_allowMovement(false)
         , m_resizeComment(false)
+        , m_allowDraw(true)
         , m_adjustVertical(0)
         , m_adjustHorizontal(0)
     {
         setAcceptHoverEvents(true);
+        setCacheMode(QGraphicsItem::CacheMode::NoCache);
     }
 
     void BlockCommentNodeFrameGraphicsWidget::RefreshStyle(const AZ::EntityId& styleEntity)
@@ -781,7 +949,9 @@ namespace GraphCanvas
         NodeFrameGraphicsWidget::hoverEnterEvent(hoverEvent);
 
         QPointF point = hoverEvent->scenePos();
+
         UpdateCursor(point);
+        m_allowDraw = m_nodeFrameComponent.m_titleWidget->sceneBoundingRect().contains(point);
 
         m_nodeFrameComponent.EnableInteriorHighlight(true);
     }
@@ -791,7 +961,16 @@ namespace GraphCanvas
         NodeFrameGraphicsWidget::hoverMoveEvent(hoverEvent);
 
         QPointF point = hoverEvent->scenePos();
+
         UpdateCursor(point);
+
+        bool allowDraw = m_nodeFrameComponent.m_titleWidget->sceneBoundingRect().contains(point);
+
+        if (allowDraw != m_allowDraw)
+        {
+            m_allowDraw = allowDraw;
+            update();
+        }
     }
 
     void BlockCommentNodeFrameGraphicsWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
@@ -801,6 +980,8 @@ namespace GraphCanvas
 
         m_adjustHorizontal = 0;
         m_adjustVertical = 0;
+
+        m_allowDraw = true;
 
         m_nodeFrameComponent.EnableInteriorHighlight(false);
     }
@@ -813,8 +994,8 @@ namespace GraphCanvas
 
             m_allowCommentReaction = true;
             m_resizeComment = true;
-			
-			AZ::EntityId sceneId;
+
+            AZ::EntityId sceneId;
             SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
 
             SceneRequestBus::Event(sceneId, &SceneRequests::ClearSelection);
@@ -1137,6 +1318,45 @@ namespace GraphCanvas
         }
     }
 
+    void BlockCommentNodeFrameGraphicsWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+    {   
+        if (isSelected())
+        {
+            QPen border;
+            border.setWidth(3);
+            border.setColor("#f3811d");
+            border.setStyle(Qt::PenStyle::DashLine);
+            painter->setPen(border);
+
+            painter->drawRect(boundingRect());
+        }
+        else if (m_allowDraw)
+        {            
+            if (GetDisplayState() == RootGraphicsItemDisplayState::Deletion)
+            {
+                QPen border;
+                border.setWidth(3);
+                border.setColor("#EF1713");
+                border.setStyle(Qt::PenStyle::DashLine);
+                painter->setPen(border);
+
+                painter->drawRect(boundingRect());
+            }
+            else if (GetDisplayState() == RootGraphicsItemDisplayState::Inspection)
+            {
+                QPen border;
+                border.setWidth(3);
+                border.setColor("#4285f4");
+                border.setStyle(Qt::PenStyle::DashLine);
+                painter->setPen(border);
+
+                painter->drawRect(boundingRect());
+            }
+        }
+
+        QGraphicsWidget::paint(painter, option, widget);
+    }
+
     QPainterPath BlockCommentNodeFrameGraphicsWidget::shape() const
     {
         // We want to use the title shape for determinig things like selection range with a drag select.
@@ -1177,7 +1397,6 @@ namespace GraphCanvas
             setMaximumWidth(width);
         }
 
-        adjustSize();
         updateGeometry();
     }
 
@@ -1207,7 +1426,14 @@ namespace GraphCanvas
             setPreferredHeight(m_minimumSize.height());
             setMaximumHeight(m_minimumSize.height());
             
-            m_nodeFrameComponent.SetDisplayHeight(m_minimumSize.height());
+            // Fix for a timing hole in the start-up process.
+            //
+            // Save size is set, but not used. But then the style refreshed, which causes 
+            // this to be recalculated which stomps on the save data.
+            if (m_nodeFrameComponent.m_saveData.m_displayHeight < m_minimumSize.height())
+            {
+                m_nodeFrameComponent.SetDisplayHeight(m_minimumSize.height());
+            }
         }
 
         if (minimumWidth() < m_minimumSize.width())
@@ -1216,11 +1442,19 @@ namespace GraphCanvas
             setPreferredWidth(m_minimumSize.width());
             setMaximumWidth(m_minimumSize.width());
 
-            m_nodeFrameComponent.SetDisplayWidth(m_minimumSize.width());
+            // Fix for a timing hole in the start-up process.
+            //
+            // Save size is set, but not used. But then the style refreshed, which causes 
+            // this to be recalculated which stomps on the save data.
+            if (m_nodeFrameComponent.m_saveData.m_displayWidth < m_minimumSize.width())
+            {
+                m_nodeFrameComponent.SetDisplayWidth(m_minimumSize.width());
+            }
         }
 
+        prepareGeometryChange();
         updateGeometry();
-        adjustSize();
+
         update();
     }
 

@@ -30,6 +30,30 @@
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Casting/lossy_cast.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define RENDERERDEFS_H_SECTION_1 1
+#define RENDERERDEFS_H_SECTION_2 2
+#define RENDERERDEFS_H_SECTION_3 3
+#define RENDERERDEFS_H_SECTION_4 4
+#define RENDERERDEFS_H_SECTION_5 5
+#define RENDERERDEFS_H_SECTION_6 6
+#define RENDERERDEFS_H_SECTION_7 7
+#define RENDERERDEFS_H_SECTION_8 8
+#define RENDERERDEFS_H_SECTION_9 9
+#define RENDERERDEFS_H_SECTION_10 10
+#define RENDERERDEFS_H_SECTION_11 11
+#define RENDERERDEFS_H_SECTION_12 12
+#define RENDERERDEFS_H_SECTION_13 13
+#define RENDERERDEFS_H_SECTION_14 14
+#define RENDERERDEFS_H_SECTION_15 15
+#define RENDERERDEFS_H_SECTION_16 16
+#define RENDERERDEFS_H_SECTION_17 17
+#define RENDERERDEFS_H_SECTION_18 18
+#define RENDERERDEFS_H_SECTION_19 19
+#define RENDERERDEFS_H_SECTION_20 20
+#endif
+
 #define SUPPORTS_WINDOWS_10_SDK false
 #if _MSC_VER
 #include <ntverp.h>
@@ -38,7 +62,8 @@
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(RendererDefs_h)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_1
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
 #else
 #if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
 #define RENDERERDEFS_H_TRAIT_SUPPORT_BAKED_MESHES_AND_DECALS 1
@@ -194,6 +219,10 @@ namespace detail
 # define CHECK_HRESULT(x) (!FAILED(x))
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_6
+    #include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(OPENGL) && (defined(DEBUG) || defined(_DEBUG))
 #define LY_ENABLE_OPENGL_ERROR_CHECKING
@@ -213,11 +242,15 @@ namespace Lumberyard
 }
 
 // enable support for D3D11.1 features if the platform supports it
-#if   defined(CRY_USE_DX12)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#   define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_2
+#   include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(CRY_USE_DX12)
 #   define DEVICE_SUPPORTS_D3D11_1
 #endif
-
-
 
 #ifdef _DEBUG
 #define CRTDBG_MAP_ALLOC
@@ -239,6 +272,10 @@ namespace Lumberyard
 #   define PROFILE 1
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+# define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_7
+# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #ifdef ENABLE_SCUE_VALIDATION
 enum EVerifyType
@@ -301,6 +338,9 @@ enum EVerifyType
     #define EXCLUDE_SQUISH_SDK
 #elif defined(LINUX)
     #define EXCLUDE_SQUISH_SDK
+#elif defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_8
+    #include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(IOS)
     #define EXCLUDE_SQUISH_SDK
 #elif defined(APPLETV)
@@ -326,6 +366,10 @@ enum EVerifyType
 #define LEGACY_D3D9_INCLUDE
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_3
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if !defined(NULL_RENDERER)
 
@@ -334,7 +378,13 @@ enum EVerifyType
 #define D3D10CreateBlob                                      D3DCreateBlob
 
 // Direct3D11 includes
-#if   defined(OPENGL)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_9
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(OPENGL)
 #include "CryLibrary.h"
 //  Confetti BEGIN: Igor Lobanchikov
 //  Igor: enable metal for ios device only. Emulator is not supported for now.
@@ -355,7 +405,10 @@ enum EVerifyType
 typedef uintptr_t SOCKET;
 #else
 
-#if   defined(WIN32) || defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_4
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#elif defined(WIN32) || defined(WIN64)
 #include "d3d11.h"
 #endif
 
@@ -378,6 +431,10 @@ typedef uintptr_t SOCKET;
 #   undef _DID_SKIP_WINSOCK_
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_5
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if !defined(_RELEASE) || defined(ENABLE_STATOSCOPE_RELEASE)
 #define ENABLE_TEXTURE_STREAM_LISTENER
@@ -393,7 +450,13 @@ typedef uintptr_t SOCKET;
 // stores pointers to actual backing storage of vertex buffers. Can only be used on architectures
 // that have a unified memory architecture and further guarantee that buffer storage does not change
 // on repeated accesses.
-#if   defined(CRY_USE_DX12)
+#if defined(AZ_RESTRICTED_PLATFORM)
+# define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_10
+# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(CRY_USE_DX12)
 # define BUFFER_ENABLE_DIRECT_ACCESS 1
 #endif
 
@@ -403,8 +466,14 @@ typedef uintptr_t SOCKET;
 
 // Confetti Igor: when staged updates are disabled CPU will have direct access to the pool's buffers' content
 //  and update data directly. This cuts memory consumption and reduces the number of copies.
-//  GPU won't be used to update buffer content but it will be used to performa defragmentation.
-#if   defined(CRY_USE_METAL)
+//  GPU won't be used to update buffer content but it will be used to perform defragmentation.
+#if defined(AZ_RESTRICTED_PLATFORM)
+# define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_11
+# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+# undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(CRY_USE_METAL)
 # define BUFFER_USE_STAGED_UPDATES 0
 #else
 # define BUFFER_USE_STAGED_UPDATES 1
@@ -443,18 +512,32 @@ typedef uintptr_t SOCKET;
 # define FEATURE_SILHOUETTE_POM
 #elif defined(WIN64)
 # define FEATURE_SILHOUETTE_POM
+#elif defined(AZ_RESTRICTED_PLATFORM)
+# define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_12
+# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(LINUX)
 # define FEATURE_SILHOUETTE_POM
 #elif defined(APPLE)
 # define FEATURE_SILHOUETTE_POM
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_13
+    #include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if !defined(_RELEASE) && !defined(NULL_RENDERER) && RENDERERDEFS_H_TRAIT_SUPPORT_D3D_DEBUG_RUNTIME && !defined(OPENGL)
 #   define SUPPORT_D3D_DEBUG_RUNTIME
 #endif
 
-#if defined(NULL_RENDERER) // Scubber friendly negated define condition
+#if defined(NULL_RENDERER)
+#   define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#   define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_14
+#   include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 #   define SUPPORT_DEVICE_INFO
 #   if defined(WIN32) || defined(WIN64)
@@ -468,26 +551,33 @@ typedef uintptr_t SOCKET;
 
 #if !defined(NULL_RENDERER)
 #   if defined(CRY_USE_DX12)
-#include "XRenderD3D9/DX12/CryDX12.hpp"
+#       include "XRenderD3D9/DX12/CryDX12.hpp"
 #   elif defined(DEVICE_SUPPORTS_D3D11_1)
-typedef IDXGIFactory1           DXGIFactory;
-typedef IDXGIDevice1            DXGIDevice;
-typedef IDXGIAdapter1           DXGIAdapter;
-typedef IDXGIOutput             DXGIOutput;
-typedef IDXGISwapChain          DXGISwapChain;
-typedef ID3D11DeviceContextX    D3DDeviceContext;
-typedef ID3D11DeviceX           D3DDevice;
+#       if defined(AZ_RESTRICTED_PLATFORM)
+#           define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_15
+#           include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#       endif
+#       if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#           undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#       else
+            typedef IDXGIFactory1           DXGIFactory;
+            typedef IDXGIDevice1            DXGIDevice;
+            typedef IDXGIAdapter1           DXGIAdapter;
+            typedef IDXGIOutput             DXGIOutput;
+            typedef IDXGISwapChain          DXGISwapChain;
+            typedef ID3D11DeviceContextX    D3DDeviceContext;
+            typedef ID3D11DeviceX           D3DDevice;
+#       endif
 #   else
-
-typedef IDXGIFactory1           DXGIFactory;
-#if !defined(ANDROID) && !defined(APPLE)
-typedef IDXGIDevice1            DXGIDevice;
-#endif
-typedef IDXGIAdapter1           DXGIAdapter;
-typedef IDXGIOutput             DXGIOutput;
-typedef IDXGISwapChain          DXGISwapChain;
-typedef ID3D11DeviceContext     D3DDeviceContext;
-typedef ID3D11Device            D3DDevice;
+        typedef IDXGIFactory1           DXGIFactory;
+#       if !defined(ANDROID) && !defined(APPLE)
+            typedef IDXGIDevice1        DXGIDevice;
+#       endif
+        typedef IDXGIAdapter1           DXGIAdapter;
+        typedef IDXGIOutput             DXGIOutput;
+        typedef IDXGISwapChain          DXGISwapChain;
+        typedef ID3D11DeviceContext     D3DDeviceContext;
+        typedef ID3D11Device            D3DDevice;
 #   endif
 
 typedef ID3D11InputLayout       D3DVertexDeclaration;
@@ -495,7 +585,15 @@ typedef ID3D11VertexShader      D3DVertexShader;
 typedef ID3D11PixelShader       D3DPixelShader;
 typedef ID3D11Resource          D3DResource;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_16
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 typedef ID3D11Resource          D3DBaseTexture;
+#endif
 
 typedef ID3D11Texture2D         D3DTexture;
 typedef ID3D11Texture3D         D3DVolumeTexture;
@@ -531,6 +629,13 @@ typedef interface ID3DXConstTable*  LPD3DXCONSTANTTABLE;
 
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_19
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 
 #if RENDERERDEFS_H_TRAIT_DEFINE_D3DPOOL || defined(CRY_USE_DX12)
 // D3DPOOL define still used as function parameters, so defined to backwards compatible with D3D9
@@ -544,6 +649,7 @@ typedef enum _D3DPOOL
 } D3DPOOL;
 #endif
 
+#endif
 
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                                                \
@@ -657,13 +763,16 @@ inline eRenderPrimitiveType GetInternalPrimitiveType(PublicRenderPrimitiveType t
 }
 
 #if !defined(NULL_RENDERER)
-#   if defined(WIN32) // Scubber friendly breaks out cases
+#   if defined(WIN32)
 #       define SUPPORT_FLEXIBLE_INDEXBUFFER // supports 16 as well as 32 bit indices AND index buffer bind offset
-#   elif defined(WIN64) // Scubber friendly breaks out cases
+#   elif defined(WIN64)
 #       define SUPPORT_FLEXIBLE_INDEXBUFFER // supports 16 as well as 32 bit indices AND index buffer bind offset
-#   elif defined(LINUX) // Scubber friendly breaks out cases
+#   elif defined(AZ_RESTRICTED_PLATFORM)
+#       define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_17
+#       include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#   elif defined(LINUX)
 #       define SUPPORT_FLEXIBLE_INDEXBUFFER // supports 16 as well as 32 bit indices AND index buffer bind offset
-#   elif defined(APPLE) // Scubber friendly breaks out cases
+#   elif defined(APPLE)
 #       define SUPPORT_FLEXIBLE_INDEXBUFFER // supports 16 as well as 32 bit indices AND index buffer bind offset
 #   endif
 #endif
@@ -698,6 +807,10 @@ extern ISystem* iSystem;
 #endif
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_18
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
 // Enable to eliminate DevTextureDataSize calls during stream updates - costs 4 bytes per mip header
@@ -715,7 +828,10 @@ extern ISystem* iSystem;
 #define TEXSTRM_COMMIT_COOLDOWN
 #endif
 
-
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_20
+#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(_RELEASE)
 #   define EXCLUDE_RARELY_USED_R_STATS

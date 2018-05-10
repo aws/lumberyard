@@ -587,7 +587,7 @@ int CScriptBind_System::GetLocalOSTime(IFunctionHandler* pH)
     SCRIPT_CHECK_PARAMETERS(0);
     //! Get time.
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ScriptBind_System_cpp)
+#include AZ_RESTRICTED_FILE(ScriptBind_System_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(LINUX) || defined(APPLE)
 #define SCRIPTBIND_SYSTEM_CPP_TRAIT_USE_UNIX_LOCALTIME 1
 #endif

@@ -10,7 +10,7 @@
 *
 */
 
-#include <SceneBuilder/Source/TraceMessageHook.h>
+#include <SceneBuilder/TraceMessageHook.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>

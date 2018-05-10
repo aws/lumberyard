@@ -86,13 +86,13 @@ namespace EMotionFX
         bool GetSupportsVisualization() const override      { return true; }
         uint32 GetVisualColor() const override              { return MCore::RGBA(159, 81, 255); }
 
-        void FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outBlendNodeA, AnimGraphNode** outBlendNodeB, float* outWeight, bool isAdditive);
+        void FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outBlendNodeA, AnimGraphNode** outBlendNodeB, float* outWeight, bool isAdditive, bool optimizeByWeight = true);
         void Init(AnimGraphInstance* animGraphInstance) override;
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
 
         void RegisterPorts() override;
         void RegisterAttributes() override;
-        bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName) override;
+        bool ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName) override;
 
         void UpdateMotionExtractionDeltaNoFeathering(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeA, AnimGraphNode* nodeB, float weight, UniqueData* uniqueData);
         void UpdateMotionExtractionDeltaFeathering(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeA, AnimGraphNode* nodeB, float weight, UniqueData* uniqueData);

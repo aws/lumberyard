@@ -128,6 +128,7 @@
 #include "Shape/BoxShapeComponent.h"
 #include "Shape/CylinderShapeComponent.h"
 #include "Shape/CapsuleShapeComponent.h"
+#include "Shape/TubeShapeComponent.h"
 #include "Shape/CompoundShapeComponent.h"
 #include "Shape/SplineComponent.h"
 #include "Shape/PolygonPrismShapeComponent.h"
@@ -194,6 +195,7 @@ namespace LmbrCentral
             BoxShapeComponent::CreateDescriptor(),
             CylinderShapeComponent::CreateDescriptor(),
             CapsuleShapeComponent::CreateDescriptor(),
+            TubeShapeComponent::CreateDescriptor(),
             PrimitiveColliderComponent::CreateDescriptor(),
             CompoundShapeComponent::CreateDescriptor(),
             SplineComponent::CreateDescriptor(),
@@ -203,8 +205,14 @@ namespace LmbrCentral
             FogVolumeComponent::CreateDescriptor(),
             RandomTimedSpawnerComponent::CreateDescriptor(),
             GeometryCacheComponent::CreateDescriptor(),
+            SphereShapeDebugDisplayComponent::CreateDescriptor(),
+            BoxShapeDebugDisplayComponent::CreateDescriptor(),
+            CapsuleShapeDebugDisplayComponent::CreateDescriptor(),
+            CylinderShapeDebugDisplayComponent::CreateDescriptor(),
+            PolygonPrismShapeDebugDisplayComponent::CreateDescriptor(),
+            TubeShapeDebugDisplayComponent::CreateDescriptor(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
-                LoadScreenComponent::CreateDescriptor(),
+            LoadScreenComponent::CreateDescriptor(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED
             });
 
@@ -267,9 +275,10 @@ namespace LmbrCentral
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            ReflectScriptableEvents::Reflect(behaviorContext);
             MaterialHandle::Reflect(behaviorContext);
         }
+
+        ReflectScriptableEvents::Reflect(context);
     }
 
     void LmbrCentralSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -461,6 +470,8 @@ namespace LmbrCentral
 
     void LmbrCentralSystemComponent::OnAssetEventsDispatched()
     {
+        AZ_Assert((!gEnv) || (gEnv->mMainThreadId == CryGetCurrentThreadId()), "OnAssetEventsDispatched from a non-main thread - the AssetBus should only be called from the main thread!");
+        
         // Pump deferred engine loading events.
         if (gEnv && gEnv->mMainThreadId == CryGetCurrentThreadId())
         {

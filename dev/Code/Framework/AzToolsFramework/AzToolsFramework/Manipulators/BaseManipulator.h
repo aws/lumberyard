@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
@@ -33,6 +34,18 @@ namespace AzToolsFramework
         struct MousePick;
         struct InteractionId;
     }
+
+    struct ManipulatorManagerState;
+
+    /**
+     * State of individual manipulator.
+     */
+    struct ManipulatorState
+    {
+        AZ::Transform m_worldFromLocal;
+        AZ::Vector3 m_localPosition;
+        bool m_mouseOver;
+    };
 
     /**
      * The base class for manipulators, providing interfaces for users of manipulators to talk to.
@@ -96,6 +109,7 @@ namespace AzToolsFramework
          * Rendering for the manipulator - it is recommended drawing be delegated to a ManipulatorView.
          */
         virtual void Draw(
+            const ManipulatorManagerState& managerState,
             AzFramework::EntityDebugDisplayRequests& display,
             const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction) = 0;

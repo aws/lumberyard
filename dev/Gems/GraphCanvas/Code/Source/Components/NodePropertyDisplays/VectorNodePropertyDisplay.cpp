@@ -94,7 +94,7 @@ namespace GraphCanvas
     {
         double value = m_dataInterface.GetValue(m_index);
 
-        AZStd::string displayValue = AZStd::string::format("%.*f%s", m_dataInterface.GetDisplayDecimalPlaces(m_index), value, m_dataInterface.GetSuffix(m_index));
+        AZStd::string displayValue = AZStd::string::format("%.*g%s", m_dataInterface.GetDisplayDecimalPlaces(m_index), value, m_dataInterface.GetSuffix(m_index));
 
         m_valueLabel->SetLabel(displayValue);
     }
@@ -150,9 +150,20 @@ namespace GraphCanvas
         
         m_propertyVectorCtrl = aznew AzToolsFramework::PropertyVectorCtrl(nullptr, elementCount);
         m_propertyVectorCtrl->setProperty("HasNoWindowDecorations", true);
-        m_propertyVectorCtrl->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        m_propertyVectorCtrl->setProperty("DisableFocusWindowFix", true);
 
         AzToolsFramework::VectorElement** elements = m_propertyVectorCtrl->getElements();
+
+        for (int i=0; i < m_propertyVectorCtrl->getSize(); ++i)
+        {
+            AzToolsFramework::VectorElement* element = elements[i];
+
+            element->setProperty("DisableFocusWindowFix", true);
+            element->GetSpinBox()->setProperty("DisableFocusWindowFix", true);
+        }
+
+        m_propertyVectorCtrl->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);        
         
         for (int i=0; i < elementCount; ++i)
         {
@@ -175,8 +186,6 @@ namespace GraphCanvas
     
     VectorNodePropertyDisplay::~VectorNodePropertyDisplay()
     {
-        NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
-
         delete m_dataInterface;
         m_dataInterface = nullptr;
         

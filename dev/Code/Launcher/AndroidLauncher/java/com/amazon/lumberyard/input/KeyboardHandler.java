@@ -28,7 +28,6 @@ public class KeyboardHandler
     // KeyboardHandler (public)
     // ----
 
-    public static native void SendKeyCode(int keyCode, int action);
     public static native void SendUnicodeText(String unicodeText);
 
 
@@ -106,8 +105,6 @@ public class KeyboardHandler
         @Override
         public boolean onKeyDown(int keyCode, KeyEvent event)
         {
-            SendKeyCode(keyCode, event.getAction());
-
             if (event.isPrintingKey())
             {
                 int unicode = event.getUnicodeChar();
@@ -116,33 +113,23 @@ public class KeyboardHandler
                 Log.d(s_tag, String.format("OnKeyDown - Unicode: %s - Printed character: %s", unicode, character));
                 SendUnicodeText(character);
             }
-            return false;
-        }
-
-        ////////////////////////////////////////////////////////////////
-        @Override
-        public boolean onKeyUp(int keyCode, KeyEvent event)
-        {
-            SendKeyCode(keyCode, event.getAction());
-            return false;
+            return super.onKeyDown(keyCode, event);
         }
 
         ////////////////////////////////////////////////////////////////
         @Override
         public boolean onKeyMultiple(int keyCode, int count, KeyEvent event)
         {
-            SendKeyCode(keyCode, event.getAction());
-
             if(event.getAction() == KeyEvent.ACTION_MULTIPLE && keyCode == KeyEvent.KEYCODE_UNKNOWN)
             {
                 String text = event.getCharacters();
                 Log.d(s_tag, String.format("onKeyMultiple - Text: %s", text));
-                if(text != null)
+                if (text != null)
                 {
                     SendUnicodeText(text);
                 }
             }
-            return true;
+            return super.onKeyMultiple(keyCode, count, event);
         }
 
         ////////////////////////////////////////////////////////////////

@@ -11,12 +11,15 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_CRYTHREAD_WINDOWS_H
-#define CRYINCLUDE_CRYCOMMON_CRYTHREAD_WINDOWS_H
 #pragma once
 
-
 #include <process.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYTHREAD_WINDOWS_H_SECTION_1 1
+#define CRYTHREAD_WINDOWS_H_SECTION_2 2
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // CryEvent represent a synchronization event
@@ -278,6 +281,10 @@ protected:
 private:
     static unsigned __stdcall RunRunnable(void* thisPtr)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYTHREAD_WINDOWS_H_SECTION_1
+#include AZ_RESTRICTED_FILE(CryThread_windows_h, AZ_RESTRICTED_PLATFORM)
+#endif
         CrySimpleThread<Runnable>* const self = (CrySimpleThread<Runnable>*)thisPtr;
         self->m_bIsStarted = true;
         self->m_bIsRunning = true;
@@ -296,6 +303,10 @@ private:
 
     static unsigned __stdcall RunThis(void* thisPtr)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYTHREAD_WINDOWS_H_SECTION_2
+#include AZ_RESTRICTED_FILE(CryThread_windows_h, AZ_RESTRICTED_PLATFORM)
+#endif
         CrySimpleThread<Runnable>* const self = (CrySimpleThread<Runnable>*)thisPtr;
         self->m_bIsStarted = true;
         self->m_bIsRunning = true;
@@ -470,5 +481,3 @@ namespace CryMT {
         };
     } // namespace detail
 } // namespace CryMT
-
-#endif // CRYINCLUDE_CRYCOMMON_CRYTHREAD_WINDOWS_H

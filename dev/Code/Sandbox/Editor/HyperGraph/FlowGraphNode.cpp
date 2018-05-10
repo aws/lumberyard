@@ -472,7 +472,7 @@ void CFlowNode::Serialize(XmlNodeRef& node, bool bLoading, CObjectArchive* ar)
                                 "Variable %s -> %s successfully resolved.",
                                 name.data(),
                                 sVarName,
-                                pVar->GetName());
+                                pVar->GetName().toUtf8().constData());
                             CryLogAlways(" --> To get rid of this warning re-save flowgraph!");
                         }
                         else

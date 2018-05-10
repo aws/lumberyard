@@ -51,7 +51,7 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("In7", "Input 7"));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled when the node is triggered."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled when the node is triggered."));
 
                 // Data
                 ScriptCanvas_Property(int, 
@@ -60,13 +60,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Property::OutputStorageSpec
                 );
 
-                // temps
-                int m_out;
-
             protected:
-
-                static const int k_outputIndex = 9;
-
                 void OnInputSignal(const SlotId& slot) override;
             };
         }

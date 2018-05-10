@@ -437,10 +437,15 @@ namespace AZ
                     return false;
                 }
 
-                size_t count = m_targetList->GetSelectedNodeCount();
+                // Use a temp list to get a valid state of the UI here based on selected/unselected nodes
+                // We use the temp list so that the real list actually keeps track of the user's selection
+                // Since UpdateNodeSelection will modify selected/unselected node lists for us.
+                AZStd::unique_ptr<DataTypes::ISceneNodeSelectionList> tempList(m_targetList->Copy());
+                Utilities::SceneGraphSelector::UpdateNodeSelection(m_scene.GetGraph(), *tempList);
+                size_t count = tempList->GetSelectedNodeCount();
                 for (size_t i = 0; i < count; ++i)
                 {
-                    if (m_targetList->GetSelectedNode(i) == name.GetPath())
+                    if (tempList->GetSelectedNode(i) == name.GetPath())
                     {
                         return true;
                     }

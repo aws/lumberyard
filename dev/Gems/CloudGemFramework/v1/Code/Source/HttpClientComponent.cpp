@@ -46,7 +46,7 @@ namespace CloudGemFramework
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<HttpClientComponent>()
+            serializeContext->Class<HttpClientComponent, AZ::Component>()
                 ->Version(1);
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();

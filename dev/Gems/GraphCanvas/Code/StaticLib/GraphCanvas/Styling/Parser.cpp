@@ -10,12 +10,12 @@
 *
 */
 
-#include <precompiled.h>
-#include <Styling/Parser.h>
-#include <Styling/Style.h>
-#include <Styling/SelectorImplementations.h>
-#include <Styling/StyleHelper.h>
-#include <Styling/definitions.h>
+#include <GraphCanvas/Styling/Parser.h>
+#include <GraphCanvas/Styling/Style.h>
+#include <GraphCanvas/Styling/SelectorImplementations.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleManager.h>
+#include <GraphCanvas/Styling/definitions.h>
 
 #include <AzCore/JSON/error/en.h>
 #include <AzCore/JSON/error/error.h>
@@ -235,6 +235,10 @@ namespace
         else if (attribute == Styling::Attributes::ZValue)
         {
             return Styling::Attribute::ZValue;
+        }
+        else if (attribute == Styling::Attributes::Opacity)
+        {
+            return Styling::Attribute::Opacity;
         }
 
         return Styling::Attribute::Invalid;
@@ -592,8 +596,7 @@ namespace GraphCanvas
 {
     namespace Styling
     {
-
-        StyleSheet* Parser::Parse(const AZStd::string& json)
+        void Parser::Parse(StyleManager& styleManager, const AZStd::string& json)
         {
             rapidjson::Document document;
 
@@ -614,60 +617,22 @@ namespace GraphCanvas
                 document.Parse("[]");
             }
 
-            return Parse(document);
+            return Parse(styleManager, document);
         }
 
-        StyleSheet* Parser::Parse(const rapidjson::Document& json)
+        void Parser::Parse(StyleManager& styleManager, const rapidjson::Document& json)
         {
             Q_ASSERT(json.IsArray());
 
-
-            StyleSheet* styleSheet = aznew StyleSheet;
-            LoadDefaults(*styleSheet);
+            styleManager.ClearStyles();
 
             for (rapidjson::SizeType i = 0; i < json.Size(); ++i)
             {
-                ParseStyle(json[i], *styleSheet);
+                ParseStyle(styleManager, json[i]);
             }
-
-            return styleSheet;
         }
 
-        StyleSheet* Parser::DefaultStyleSheet()
-        {
-            Parser parser;
-            return parser.Parse("[]");
-        }
-
-        void Parser::LoadDefaults(StyleSheet& styleSheet)
-        {
-            // Load default style
-            QFile resource(":/GraphCanvas/Styling/default_style.json");
-            Q_ASSERT(resource.exists());
-
-            if (resource.exists())
-            {
-                resource.open(QIODevice::ReadOnly);
-
-                rapidjson::Document defaults;
-                defaults.Parse(resource.readAll().data());
-
-                if (defaults.HasParseError())
-                {
-                    rapidjson::ParseErrorCode errCode = defaults.GetParseError();
-                    QString errMessage = QString("Parse Error: %1 at offset: %2").arg(errCode).arg(defaults.GetErrorOffset());
-                }
-
-                for (rapidjson::SizeType i = 0; i < defaults.Size(); ++i)
-                {
-                    ParseStyle(defaults[i], styleSheet);
-                }
-                styleSheet.MakeStylesDefault();
-            }
-
-        }
-
-        void Parser::ParseStyle(const rapidjson::Value& value, StyleSheet& styleSheet)
+        void Parser::ParseStyle(StyleManager& styleManager, const rapidjson::Value& value)
         {
             QFont defaultFont;
             QFontInfo defaultFontInfo(defaultFont);
@@ -739,7 +704,7 @@ namespace GraphCanvas
                 case Attribute::ConnectionDragPercent:
                 case Attribute::ConnectionDragMoveBuffer:
                 case Attribute::ConnectionDefaultMarquee:
-                case Attribute::ZValue:
+                case Attribute::ZValue:                
                 {
                     if (member->value.IsInt())
                     {
@@ -782,6 +747,23 @@ namespace GraphCanvas
                         {
                             qWarning() << "Invalid number:" << member->value.GetString();
                         }
+                    }
+                    break;
+                }
+                case Attribute::Opacity:
+                {
+                    // Handler percent case
+                    QString theValue(member->value.GetString());
+
+                    QRegularExpressionMatch match = percentage.match(theValue);
+                    if (match.isValid())
+                    {
+                        double extracted = match.captured(1).toDouble() / 100.0;
+                        style->SetAttribute(attribute, extracted);
+                    }
+                    else
+                    {
+                        qWarning() << "Invalid number:" << member->value.GetString();
                     }
                     break;
                 }
@@ -921,7 +903,7 @@ namespace GraphCanvas
             }
             else
             {
-                styleSheet.m_styles.push_back(style.take());
+                styleManager.m_styles.push_back(style.take());
             }
         }
 

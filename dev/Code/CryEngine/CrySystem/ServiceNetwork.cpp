@@ -1640,6 +1640,9 @@ void CServiceNetwork::Run()
 {
     CryThreadSetName(THREADID_NULL, "ServiceNetworkThread");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(ServiceNetwork_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     TListenerArray updatingListeners;
     TConnectionArray updatingConnections;

@@ -19,6 +19,7 @@
 #include <GridMate/Serialize/ContainerMarshal.h>
 #include <GridMate/Serialize/DataMarshal.h>
 #include <GridMate/Serialize/CompressionMarshal.h>
+#include <AzFramework/Network/NetBindingSystemImpl.h>
 
 namespace AzFramework
 {
@@ -82,11 +83,23 @@ namespace AzFramework
 
             bool ContainsSerializedState() const;
 
+            /**
+             * \brief Same as m_staticEntityId on authoritative entity with master replica
+             */
             AZ::u64 m_runtimeEntityId;
             NetBindingContextSequence m_owningContextId;
             AZStd::vector<AZ::u8> m_serializedState;
+
+            /**
+             * \brief EntityId of authoritative entity with master replica
+             */
             AZ::u64 m_staticEntityId;
+
             AZStd::pair<AZ::Uuid, AZ::u32> m_sliceAssetId;
+            /**
+            * \brief uniquely identifies the slice instance that this entity is being replicated from
+            */
+            AZ::SliceComponent::SliceInstanceId m_sliceInstanceId;
         };
 
         GridMate::DataSet<SpawnInfo, SpawnInfo::Marshaler, SpawnInfo::Throttle> m_spawnInfo;

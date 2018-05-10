@@ -183,7 +183,7 @@ namespace AZStd
 
             void init_buckets()
             {
-                m_vector.assign(Traits::fixed_num_buckets, list_type(&m_elementAllocator));
+                m_vector.assign(Traits::fixed_num_buckets, list_type(allocator_ref<element_allocator_type>(m_elementAllocator)));
             }
 
             AZ_FORCE_INLINE void pre_copy(const this_type&)

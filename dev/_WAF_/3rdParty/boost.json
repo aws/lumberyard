@@ -1,6 +1,6 @@
 {
 	"name": "boost",
-	"source": "@ROOT@/Code/SDKs/boost",
+	"source": "@3P:boost@",
 	"description": "Boost header only library",
 	"header_only": "True",
 	"includes": [

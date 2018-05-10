@@ -47,7 +47,7 @@ namespace AzQtComponents
         Q_OBJECT
 
     public:
-        StyleManager(QObject* parent);
+        explicit StyleManager(QObject* parent);
         ~StyleManager() override;
 
         /*!

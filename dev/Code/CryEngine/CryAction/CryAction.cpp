@@ -19,8 +19,21 @@
 #include <AzCore/Asset/AssetCommon.h>
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYACTION_CPP_SECTION_1 1
+#define CRYACTION_CPP_SECTION_2 2
+#define CRYACTION_CPP_SECTION_3 3
+#define CRYACTION_CPP_SECTION_4 4
+#endif
 
-#if defined(MOBILE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(MOBILE)
 #include "PlayerProfiles/PlayerProfileImplConsole.h"
 #endif
 
@@ -32,7 +45,10 @@
 
 //#define CRYACTION_DEBUG_MEM   // debug memory usage
 
-#if   defined(WIN32) || defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(WIN32) || defined(WIN64)
 #include <CryWindows.h>
 #include <ShellApi.h>
 #endif
@@ -1085,7 +1101,15 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     // Used for demos
     m_pPlayerProfileManager = new CPlayerProfileManager(new CPlayerProfileImplNoSave());
  #else
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #else
     m_pPlayerProfileManager = new CPlayerProfileManager(new CPlayerProfileImplConsole());
+    #endif
  #endif
 #else
     m_pPlayerProfileManager = new CPlayerProfileManager(new CPlayerProfileImplFSDir());
@@ -4294,10 +4318,18 @@ void CCryAction::SetupLocalView()
 // TypeInfo implementations for CryAction
 #ifndef AZ_MONOLITHIC_BUILD
     #include "Common_TypeInfo.h"
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #if !defined(LINUX) && !defined(APPLE)
 STRUCT_INFO_T_INSTANTIATE(Color_tpl, <float>)
 #endif
 STRUCT_INFO_T_INSTANTIATE(Quat_tpl, <float>)
+#endif
 #endif // AZ_MONOLITHIC_BUILD
 #include "TypeInfo_impl.h"
 #include "PlayerProfiles/RichSaveGameTypes_info.h"

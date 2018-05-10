@@ -410,10 +410,10 @@ void CSceneSnow::DrawClusters()
             CRenderMesh* pSnowFlakeMesh = static_cast<CRenderMesh*>(m_pSnowFlakeMesh.get());
             //CRenderMesh* pSnowFlakeMesh((CRenderMesh*) m_pSnowFlakeMesh);
             pSnowFlakeMesh->CheckUpdate(0);
-            D3DBuffer* pVB = gcpRendD3D->m_DevBufMan.GetD3D(pSnowFlakeMesh->_GetVBStream(VSF_GENERAL), &offset);
+            D3DBuffer* pVB = gcpRendD3D->m_DevBufMan.GetD3D(pSnowFlakeMesh->GetVBStream(VSF_GENERAL), &offset);
             gcpRendD3D->FX_SetVStream(0, pVB, offset, pSnowFlakeMesh->GetStreamStride(VSF_GENERAL));
             gcpRendD3D->FX_SetIStream(0, 0, Index16);
-            //STtryfix  D3DIndexBuffer *pIB = gcpRendD3D->m_DevBufMan.GetD3DIB(pSnowFlakeMesh->_GetIBStream(), &offset);
+            //STtryfix  D3DIndexBuffer *pIB = gcpRendD3D->m_DevBufMan.GetD3DIB(pSnowFlakeMesh->GetIBStream(), &offset);
 
             gcpRendD3D->FX_DrawPrimitive(eptTriangleList, 0, m_nSnowFlakeVertCount);
         }

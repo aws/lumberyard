@@ -23,7 +23,7 @@ class NoActiveDeploymentWidget
 
 public:
 
-    NoActiveDeploymentWidget(ResourceManagementView* view);
+    NoActiveDeploymentWidget(ResourceManagementView* view, QWidget* parent);
 
 protected:
 

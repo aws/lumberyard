@@ -380,6 +380,46 @@ void AddVersionDependentCode(HLSLCrossCompilerContext* psContext)
     }
 }
 
+FRAMEBUFFER_FETCH_TYPE CollectGmemInfo(HLSLCrossCompilerContext* psContext)
+{
+    FRAMEBUFFER_FETCH_TYPE fetchType = FBF_NONE;
+    Shader* psShader = psContext->psShader;
+    ZeroMemory(psContext->rendertargetUse, sizeof(psContext->rendertargetUse));
+    for (uint32_t i = 0; i < psShader->ui32DeclCount; ++i)
+    {
+        Declaration* decl = psShader->psDecl + i;
+        if (decl->eOpcode == OPCODE_DCL_RESOURCE)
+        {
+            if (IsGmemReservedSlot(FBF_EXT_COLOR, decl->asOperands[0].ui32RegisterNumber))
+            {
+                int regNum = GetGmemInputResourceSlot(decl->asOperands[0].ui32RegisterNumber);
+                ASSERT(regNum < MAX_COLOR_MRT);
+                psContext->rendertargetUse[regNum] |= INPUT_RENDERTARGET;
+                fetchType |= FBF_EXT_COLOR;
+            }
+            else if (IsGmemReservedSlot(FBF_ARM_COLOR, decl->asOperands[0].ui32RegisterNumber))
+            {
+                fetchType |= FBF_ARM_COLOR;
+            }
+            else if (IsGmemReservedSlot(FBF_ARM_DEPTH, decl->asOperands[0].ui32RegisterNumber))
+            {
+                fetchType |= FBF_ARM_DEPTH;
+            }
+            else if (IsGmemReservedSlot(FBF_ARM_STENCIL, decl->asOperands[0].ui32RegisterNumber))
+            {
+                fetchType |= FBF_ARM_STENCIL;
+            }
+        }
+        else if (decl->eOpcode == OPCODE_DCL_OUTPUT && psShader->eShaderType == PIXEL_SHADER && decl->asOperands[0].eType != OPERAND_TYPE_OUTPUT_DEPTH)
+        {
+            ASSERT(decl->asOperands[0].ui32RegisterNumber < MAX_COLOR_MRT);
+            psContext->rendertargetUse[decl->asOperands[0].ui32RegisterNumber] |= OUTPUT_RENDERTARGET;
+        }
+    }
+
+    return fetchType;
+}
+
 uint16_t GetOpcodeWriteMask(OPCODE_TYPE eOpcode)
 {
     switch (eOpcode)
@@ -1214,11 +1254,6 @@ void TranslateToGLSL(HLSLCrossCompilerContext* psContext, GLLang* planguage, con
         psContext->postShaderCode[i] = bfromcstralloc (1024, "");
     }
 
-    for (i = 0; i < MAX_COLOR_MRT; i++)
-    {
-        psContext->gmemOutputNumElements[i] = 0;
-    }
-
     psContext->currentGLSLString = &glsl;
     psShader->eTargetLanguage = language;
     psShader->extensions = (const struct GlExtensions*)extensions;
@@ -1241,6 +1276,20 @@ void TranslateToGLSL(HLSLCrossCompilerContext* psContext, GLLang* planguage, con
     }
 
     psContext->psShader->sInfo.ui32SymbolsOffset = blength(glsl);
+
+    FRAMEBUFFER_FETCH_TYPE fetchType = CollectGmemInfo(psContext);
+    if (fetchType & FBF_EXT_COLOR)
+    {
+        bcatcstr(glsl, "#extension GL_EXT_shader_framebuffer_fetch : require\n");
+    }
+    if (fetchType & FBF_ARM_COLOR)
+    {
+        bcatcstr(glsl, "#extension GL_ARM_shader_framebuffer_fetch : require\n");
+    }
+    if (fetchType & (FBF_ARM_DEPTH | FBF_ARM_STENCIL))
+    {
+        bcatcstr(glsl, "#extension GL_ARM_shader_framebuffer_fetch_depth_stencil : require\n");
+    }
 
     AddVersionDependentCode(psContext);
 

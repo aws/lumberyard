@@ -50,7 +50,7 @@
 CAnimSequence::CAnimSequence(IMovieSystem* pMovieSystem, uint32 id, SequenceType sequenceType)
     : m_refCount(0)
 {
-    m_lastGenId = 1;
+    m_nextGenId = 1;
     m_pMovieSystem = pMovieSystem;
     m_flags = 0;
     m_pParentSequence = NULL;
@@ -226,9 +226,9 @@ bool CAnimSequence::AddNode(IAnimNode* pAnimNode)
     }
 
     const int nodeId = static_cast<CAnimNode*>(pAnimNode)->GetId();
-    if (nodeId >= (int)m_lastGenId)
+    if (nodeId >= (int)m_nextGenId)
     {
-        m_lastGenId = nodeId + 1;
+        m_nextGenId = nodeId + 1;
     }
 
     if (pAnimNode->NeedToRender())
@@ -257,7 +257,7 @@ IAnimNode* CAnimSequence::CreateNodeInternal(AnimNodeType nodeType, uint32 nNode
 
     if (nNodeId == -1)
     {
-        nNodeId = m_lastGenId;
+        nNodeId = m_nextGenId;
     }
 
     switch (nodeType)
@@ -346,7 +346,15 @@ IAnimNode* CAnimSequence::CreateNodeInternal(AnimNodeType nodeType, uint32 nNode
             break;
 #if defined(USE_GEOM_CACHES)
         case AnimNodeType::GeomCache:
-            pAnimNode = aznew CAnimGeomCacheNode(nNodeId);
+            // legacy geom cache objects are only allowed to be added to legacy sequences
+            if (m_sequenceType == SequenceType::Legacy)
+            {
+                pAnimNode = aznew CAnimGeomCacheNode(nNodeId);
+            }
+            else
+            {
+                m_pMovieSystem->LogUserNotificationMsg("Object Entities (Legacy) are not supported in Component Entity Sequences. Skipping...");
+            }
             break;
 #endif
         case AnimNodeType::Environment:
@@ -397,6 +405,20 @@ IAnimNode* CAnimSequence::CreateNode(XmlNodeRef node)
     pNewNode->SetName(name);
     pNewNode->Serialize(node, true, true);
 
+    CAnimNode* newAnimNode = static_cast<CAnimNode*>(pNewNode);
+
+    // Make sure de-serializing this node didn't just create an id conflict. This can happen sometimes
+    // when copy/pasting nodes from a different sequence to this one. 
+    for (auto curNode : m_nodes)
+    {
+        CAnimNode* animNode = static_cast<CAnimNode*>(curNode.get());
+        if (animNode->GetId() == newAnimNode->GetId() && animNode != newAnimNode)
+        {
+            // Conflict detected, resolve it by assigning a new id to the new node.
+            newAnimNode->SetId(m_nextGenId++);
+        }
+    }
+
     return pNewNode;
 }
 
@@ -427,16 +449,6 @@ void CAnimSequence::RemoveNode(IAnimNode* node, bool removeChildRelationships)
         }
 
         i++;
-    }
-
-    // Request the node removal from the SequenceComponent if it's an AZ::Entity
-    if (m_sequenceType == SequenceType::SequenceComponent)
-    {
-        AZ::EntityId removedNodeId = node->GetAzEntityId();
-        if (removedNodeId.IsValid() && m_sequenceEntityId.IsValid())
-        {
-            Maestro::EditorSequenceComponentRequestBus::Event(m_sequenceEntityId, &Maestro::EditorSequenceComponentRequestBus::Events::RemoveEntityToAnimate, removedNodeId);
-        }
     }
 
     // The removed one was the active director node.
@@ -1007,10 +1019,10 @@ void CAnimSequence::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmpt
                 CAnimNode* pAnimNode = static_cast<CAnimNode*>((*it).get());
                 pAnimNode->PostLoad();
 
-                // And properly adjust the 'm_lastGenId' to prevent the id clash.
-                if (pAnimNode->GetId() >= (int)m_lastGenId)
+                // And properly adjust the 'm_nextGenId' to prevent the id clash.
+                if (pAnimNode->GetId() >= (int)m_nextGenId)
                 {
-                    m_lastGenId = pAnimNode->GetId() + 1;
+                    m_nextGenId = pAnimNode->GetId() + 1;
                 }
             }
         }

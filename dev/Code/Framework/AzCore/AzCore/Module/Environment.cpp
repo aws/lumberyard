@@ -409,7 +409,6 @@ namespace AZ
             }
         }
 
-
         EnvironmentVariableResult AddAndAllocateVariable(u32 guid, size_t byteSize, size_t alignment, AZStd::recursive_mutex** addedVariableLock)
         {
             return EnvironmentImpl::Get()->AddAndAllocateVariable(guid, byteSize, alignment, addedVariableLock);
@@ -433,6 +432,11 @@ namespace AZ
 
     namespace Environment
     {
+        bool IsReady()
+        {
+            return Internal::EnvironmentInterface::s_environment != nullptr;
+        }
+
         EnvironmentInstance GetInstance()
         {
             return Internal::EnvironmentImpl::Get();

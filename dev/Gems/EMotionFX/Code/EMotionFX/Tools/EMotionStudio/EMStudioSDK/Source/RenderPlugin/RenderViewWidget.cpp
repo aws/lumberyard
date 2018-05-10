@@ -196,9 +196,9 @@ namespace EMStudio
             // toolbar button
             QPushButton* toolbarButton = new QPushButton();
             mToolbarButtons[actionIndex] = toolbarButton;
-            MCore::String iconFileName = "Images/Rendering/";
+            AZStd::string iconFileName = "Images/Rendering/";
             iconFileName += toolbarIconFileName;
-            toolbarButton->setIcon(MysticQt::GetMysticQt()->FindIcon(iconFileName.AsChar()));
+            toolbarButton->setIcon(MysticQt::GetMysticQt()->FindIcon(iconFileName.c_str()));
             toolbarButton->setCheckable(true);
             toolbarButton->setToolTip(menuEntryName);
 

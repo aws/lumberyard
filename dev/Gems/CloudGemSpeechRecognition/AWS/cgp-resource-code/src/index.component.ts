@@ -1331,6 +1331,9 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
         bot.delete().then(function () {
             let index = this.bots.indexOf(bot, 0);
             if (index > -1) {
+                if (bot.version == "$LATEST") {
+                    this.hideAllVersions(index);
+                }
                 this.bots.splice(index, 1);
             }
             if (bot.isSelected) {
@@ -1425,6 +1428,9 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
         intent.delete().then(function () {
             let index = this.customIntents.indexOf(intent, 0);
             if (index > -1) {
+                if (intent.version == "$LATEST") {
+                    this.hideAllVersions(index);
+                }
                 this.customIntents.splice(index, 1);
             }
             if (intent.isSelected) {
@@ -1490,6 +1496,9 @@ export class SpeechToTextIndexComponent extends AbstractCloudGemIndexComponent {
         slotType.delete().then(function () {
             let index = this.customSlotTypes.indexOf(slotType, 0);
             if (index > -1) {
+                if (slotType.version == "$LATEST") {
+                    this.hideAllVersions(index);
+                }
                 this.customSlotTypes.splice(index, 1);
             }
             if (slotType.isSelected) {

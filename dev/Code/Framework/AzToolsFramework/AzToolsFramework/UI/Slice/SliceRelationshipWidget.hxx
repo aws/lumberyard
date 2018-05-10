@@ -97,6 +97,8 @@ namespace AzToolsFramework
         */
         void ResetTrees(const AZStd::string& assetRelativePath);
 
+        bool CheckForCycle(QTreeWidgetItem* parentItem, QString searchFor);
+
         QTreeWidget*                                                m_sliceDependentsTree;            ///< Tree widget for fields (left side)
         QTreeWidget*                                                m_sliceDependencyTree;            ///< Tree widget for slice targets (right side)
         QLabel*                                                     m_infoLabel;            ///< Label above slice tree describing selection

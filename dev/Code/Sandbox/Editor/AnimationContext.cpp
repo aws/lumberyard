@@ -284,6 +284,10 @@ void CAnimationContext::UpdateTimeRange()
     if (m_pSequence)
     {
         m_timeRange = m_pSequence->GetTimeRange();
+
+        // reset the current time to make sure it is clamped
+        // to the new range.
+        SetTime(m_currTime);
     }
 }
 
@@ -764,6 +768,7 @@ void CAnimationContext::OnEditorNotifyEvent(EEditorNotifyEvent event)
         SetRecordingInternal(m_bSavedRecordingState);
         break;
 
+    case eNotify_OnQuit:
     case eNotify_OnCloseScene:
         SetSequence(nullptr, true, false);
         break;

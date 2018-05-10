@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #3 $
 
 import os
 import json
@@ -48,7 +48,7 @@ class ConfigContext(object):
         self.__configuration_bucket_name = None
         self.__project_resources = None
         self.__framework_version = None
-
+        self.__aggregate_settings = None
 
     @property
     def context(self):
@@ -188,7 +188,15 @@ class ConfigContext(object):
     @property
     def no_prompt(self):
         return self.__no_prompt
-      
+
+    @property
+    def aggregate_settings(self):
+        return self.__aggregate_settings
+
+    @aggregate_settings.setter
+    def aggregate_settings(self, value):
+        self.__aggregate_settings = value
+
     @property
     def project_stack_id(self):
         id = self.local_project_settings.get(constant.PROJECT_STACK_ID, None)         
@@ -273,6 +281,9 @@ class ConfigContext(object):
     def user_default_deployment(self, deployment):
         self.user_settings['DefaultDeployment'] = deployment
 
+    @property
+    def project_region(self):
+        return util.get_region_from_arn(self.project_stack_id)
 
     @property
     def default_deployment(self):
@@ -437,6 +448,8 @@ class ConfigContext(object):
     def clear_project_stack_id(self):
         if constant.PROJECT_STACK_ID in self.local_project_settings:
             del self.local_project_settings[constant.PROJECT_STACK_ID]                      
+        if constant.PENDING_PROJECT_STACK_ID in self.local_project_settings:
+            del self.local_project_settings[constant.PENDING_PROJECT_STACK_ID] 
         self.local_project_settings.save()
 
     def save_project_settings(self):
@@ -737,8 +750,11 @@ class LocalProjectSettings():
             self.create_default_section()
             self.__framework_version = self.__context.gem.framework_gem.version
         elif self.default_set() is not None:
-            self.default(self.default_set()[constant.SET])            
+            self.default(self.default_set()[constant.SET])
         
+        if self.default_set() and self.default_set().get(constant.DISABLED_RESOURCE_GROUPS_KEY, []) and self[constant.DISABLED_RESOURCE_GROUPS_KEY] is None:
+            self[constant.DISABLED_RESOURCE_GROUPS_KEY] = self.default_set()[constant.DISABLED_RESOURCE_GROUPS_KEY]
+
         self.__context.view.loading_file(region)
         if region is not None and constant.DEFAULT.lower() in self.__dict:            
             is_lazy_migration = self.__dict[self.default_set()[constant.SET]].get(constant.LAZY_MIGRATION, False) if self.default_set() is not None and self.default_set()[constant.SET] in self.__dict else False            
@@ -809,8 +825,6 @@ class LocalProjectSettings():
         return self.__dict[constant.DEFAULT] != self.__default
 
     def set(self, key, value):
-        if self.__dict[constant.DEFAULT] == self.__default:
-            raise HandledError("You are attempting to post '{}' with value '{}' to the default local project setting schema.  It should be posted to the region section of the local project settings.".format(key,value))
         self.__default[key] = value
 
     def pop(self, key, default=None):
@@ -1341,6 +1355,7 @@ class DeploymentTemplateAggregator(TemplateAggregator):
         enabled_resource_group_names = [r.name for r in self.context.resource_groups.values() if r.is_enabled]
         inter_gem_deps_map = {}
         resolver_dependencies = set()
+        number_of_resources = len(self.context.resource_groups.values())
         for resource_group in self.context.resource_groups.values():
 
             if not resource_group.is_enabled:
@@ -1374,7 +1389,8 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                         "DeploymentStackArn": { "Ref": "AWS::StackId" },
                         "DeploymentName": { "Ref": "DeploymentName" },
                         "ResourceGroupName": resource_group.name
-                    }
+                    },
+                    "TimeoutInMinutes": 10+(5*number_of_resources)
                 }
             }
 
@@ -1388,7 +1404,7 @@ class DeploymentTemplateAggregator(TemplateAggregator):
             resources["CrossGemCommunicationInterfaceResolver"] = {
                 "Type": "Custom::InterfaceDependencyResolver",
                 "Properties": {
-                    "UpdateTime": time.gmtime() * 1000, # We need this to force an update
+                    "UpdateTime": int(round(time.time() * 1000)), # We need this to force an update
                     "ServiceToken": { "Ref": "ProjectResourceHandler" },
                     "InterfaceDependencies": inter_gem_deps_map
                 },

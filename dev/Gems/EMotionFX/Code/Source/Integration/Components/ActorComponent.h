@@ -64,6 +64,7 @@ namespace EMotionFX
                 AZ::u32                         m_attachmentJointIndex;     ///< Index of joint on target skeleton for actor attachments.
                 AttachmentType                  m_attachmentType;           ///< Type of attachment.
                 bool                            m_renderSkeleton;           ///< Toggles debug rendering of the skeleton.
+                bool                            m_renderCharacter;          ///< Toggles rendering of the character.
                 SkinningMethod                  m_skinningMethod;           ///< The skinning method for this actor
 
                 static void Reflect(AZ::ReflectContext* context);

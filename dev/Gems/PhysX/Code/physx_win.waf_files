@@ -14,7 +14,10 @@
             "Source/PhysXColliderComponent.cpp",
             "Source/PhysXColliderComponent.h",
             "Source/PhysXMeshShapeComponent.cpp",
-            "Source/PhysXMeshShapeComponent.h"
+            "Source/PhysXMeshShapeComponent.h",
+            "Source/PhysXTriggerAreaComponent.cpp",
+            "Source/PhysXTriggerAreaComponent.h",
+            "Source/PhysXTriggerAreaEventBus.h"
         ],
         "Source/Pipeline": [
             "Source/Pipeline/PhysXMeshAsset.cpp",

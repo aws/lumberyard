@@ -52,6 +52,8 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // AndroidLifecycleEvents
+        void OnLostFocus() override;
+        void OnGainedFocus() override;
         void OnPause() override;
         void OnResume() override;
         void OnDestroy() override;
@@ -102,11 +104,25 @@ namespace AzFramework
         }
     }
 
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationAndroid::OnPause()
+    void ApplicationAndroid::OnLostFocus()
     {
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
         m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnGainedFocus()
+    {
+        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
+        m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnPause()
+    {
+
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
         m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
     }
@@ -116,8 +132,6 @@ namespace AzFramework
     {
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
         m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
-        EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
-        m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -181,6 +195,12 @@ namespace AzFramework
                 if (source != NULL)
                 {
                     source->process(m_appState, source);
+                }
+
+                if (m_appState->destroyRequested != 0)
+                {
+                    ApplicationRequests::Bus::Broadcast(&ApplicationRequests::ExitMainLoop);
+                    break;
                 }
             }
         }

@@ -32,8 +32,6 @@
 #include <map>
 #include <vector>
 
-#include "ObjManCullQueue.h"
-
 #define ENTITY_MAX_DIST_FACTOR 100
 #define MAX_VALID_OBJECT_VOLUME (10000000000.f)
 #define DEFAULT_CGF_NAME ("engineassets/objects/default.cgf")
@@ -233,8 +231,6 @@ struct IObjManager
     virtual void PrecacheStatObjMaterial(_smart_ptr<IMaterial> pMaterial, const float fEntDistance, IStatObj* pStatObj, bool bFullUpdate, bool bDrawNear) = 0;
     virtual void PrecacheCharacter(IRenderNode* pObj, const float fImportance, ICharacterInstance* pCharacter, _smart_ptr<IMaterial> pSlotMat, const Matrix34& matParent, const float fEntDistance, const float fScale, int nMaxDepth, bool bFullUpdate, bool bDrawNear, int nLod) = 0;
     virtual void PrecacheStatObj(IStatObj* pStatObj, int nLod, const Matrix34A& statObjMatrix, _smart_ptr<IMaterial> pMaterial, float fImportance, float fEntDistance, bool bFullUpdate, bool bHighPriority) = 0;
-
-    virtual NCullQueue::SCullQueue& CullQueue() = 0;
 
     virtual int GetLoadedObjectCount() = 0;
 
@@ -489,8 +485,6 @@ public:
 
     virtual PodArray<SStreamAbleObject>& GetArrStreamableObjects() override { return m_arrStreamableObjects; }
     virtual PodArray<SObjManPrecacheCamera>& GetStreamPreCacheCameras() override { return m_vStreamPreCacheCameras; }
-
-    NCullQueue::SCullQueue& CullQueue() { return m_cullQueue; }
 
     virtual Vec3 GetSunColor() override { return m_vSunColor; }
     virtual void SetSunColor(const Vec3& color) override { m_vSunColor = color; }
@@ -767,7 +761,6 @@ public:
     bool m_bGarbageCollectionEnabled;
 
     PodArray<SStreamAbleObject> m_arrStreamableObjects;
-    NCullQueue::SCullQueue m_cullQueue;
     PodArray<COctreeNode*> m_arrStreamingNodeStack;
     PodArray<SObjManPrecachePoint> m_vStreamPreCachePointDefs;
     PodArray<SObjManPrecacheCamera> m_vStreamPreCacheCameras;

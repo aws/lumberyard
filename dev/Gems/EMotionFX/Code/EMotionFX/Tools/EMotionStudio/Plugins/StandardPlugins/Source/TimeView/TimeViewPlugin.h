@@ -20,10 +20,7 @@
 #include <EMotionFX/Source/Recorder.h>
 #include "TimeTrack.h"
 
-#include <QScrollBar>
-#include <QBasicTimer>
-
-
+#include <QScrollArea>
 
 //#define TIMEVIEW_PIXELSPERSECOND 200.0
 //#define TIMEVIEW_SECONDSPERPIXEL (1.0 / 200.0) // every 200 pixels represents a second inside the timeline (with mTimeScale = 1)
@@ -31,7 +28,8 @@
 namespace EMStudio
 {
     // forward declarations
-    //class TimeViewWidget;
+    class TrackDataHeaderWidget;
+    class TrackDataHeaderWidget;
     class TrackDataWidget;
     class TrackHeaderWidget;
     class TimeInfoWidget;
@@ -61,7 +59,8 @@ namespace EMStudio
     {
         Q_OBJECT
         MCORE_MEMORYOBJECTCATEGORY(TimeViewPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
-
+        
+        friend class TrackDataHeaderWidget;
         friend class TrackDataWidget;
         friend class TimeViewWidget;
         friend class TimeInfoWidget;
@@ -95,13 +94,10 @@ namespace EMStudio
         void ProcessFrame(float timePassedInSeconds) override;
 
         double GetScrollX() const       { return mScrollX; }
-        double GetScrollY() const       { return mScrollY; }
 
         void DeltaScrollX(double deltaX, bool animate = true);
-        void DeltaScrollY(double deltaY, bool animate = true);
 
         void SetScrollX(double scrollX, bool animate = true);
-        void SetScrollY(double scrollY, bool animate = true);
 
         void CalcTime(double xPixel, double* outPixelTime, uint32* outMinutes, uint32* outSeconds, uint32* outMilSecs, uint32* outFrameNr, bool scaleXPixel = true) const;
         void DecomposeTime(double timeValue, uint32* outMinutes, uint32* outSeconds, uint32* outMilSecs, uint32* outFrameNr) const;
@@ -120,7 +116,6 @@ namespace EMStudio
         float GetTimeScale() const                  { return mTimeScale; }
 
         void RenderElementTimeHandles(QPainter& painter, uint32 dataWindowHeight, const QPen& pen);
-        void RenderElementToolTips(QPainter& painter, uint32 dataWindowHeight, const QPen& pen);
         void DisableAllToolTips();
 
         void AddTrack(TimeTrack* track);
@@ -145,6 +140,7 @@ namespace EMStudio
         QCursor* GetZoomOutCursor() const           { return mZoomOutCursor; }
 
         // some getters
+        TrackDataHeaderWidget* GetTrackDataHeaderWidget() { return mTrackDataHeaderWidget; }
         TrackDataWidget*    GetTrackDataWidget()    { return mTrackDataWidget; }
         TrackHeaderWidget*  GetTrackHeaderWidget()  { return mTrackHeaderWidget; }
         TimeInfoWidget*     GetTimeInfoWidget()     { return mTimeInfoWidget; }
@@ -177,7 +173,6 @@ namespace EMStudio
         void VisibilityChanged(bool visible);
         void OnSelectionChanged()                   { emit SelectionChanged(); }
         void MotionSelectionChanged();
-        void OnVerticalScrollBar(int value);
 
         void AddMotionEvent(int32 x, int32 y);
         void RemoveMotionEvent(int32 x, int32 y);
@@ -211,14 +206,11 @@ namespace EMStudio
         CommandUnselectCallback*        mUnselectCallback;
         CommandClearSelectionCallback*  mClearSelectionCallback;
 
-        //void timerEvent(QTimerEvent* event);
-
+        TrackDataHeaderWidget* mTrackDataHeaderWidget;
         TrackDataWidget*    mTrackDataWidget;
         TrackHeaderWidget*  mTrackHeaderWidget;
         TimeInfoWidget*     mTimeInfoWidget;
-        QScrollBar*         mVerticalScrollBar;
         QWidget*            mMainWidget;
-        QBasicTimer         mTimer;
 
         EMotionFX::Motion*                  mMotion;
         MotionWindowPlugin*                 mMotionWindowPlugin;
@@ -247,7 +239,6 @@ namespace EMStudio
 
         double              mPixelsPerSecond;   // pixels per second
         double              mScrollX;           // horizontal scroll offset
-        double              mScrollY;           // vertical scroll offset
         double              mCurTime;           // current time
         double              mFPS;               // the frame rate, used to snap time values to and to calculate frame numbers
         double              mCurMouseX;
@@ -262,7 +253,6 @@ namespace EMStudio
 
         double              mTargetTimeScale;
         double              mTargetScrollX;
-        double              mTargetScrollY;
 
         bool                mIsAnimating;
         bool                mDirty;

@@ -18,6 +18,13 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define REMOTECONSOLE_CPP_SECTION_1 1
+#define REMOTECONSOLE_CPP_SECTION_2 2
+#endif
+
 #ifdef USE_REMOTE_CONSOLE
 #include "CryThread.h"
 #include <IGame.h>
@@ -300,90 +307,6 @@ void CRemoteConsole::UnregisterListener(IRemoteConsoleListener* pListener)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
-#if 0 // currently no stroboscope support
-void CRemoteConsole::SendThreadData()
-{
-#if defined(USE_REMOTE_CONSOLE) && defined(ENABLE_PROFILING_CODE)
-    SThreadInfo::TThreadInfo info;
-    SThreadInfo::GetCurrentThreads(info);
-    for (SThreadInfo::TThreadInfo::iterator it = info.begin(), end = info.end(); it != end; ++it)
-    {
-        char tmp[256];
-        sprintf_s(tmp, 256, "%u:%s", it->first, it->second.c_str());
-        m_pServer->AddEvent(new SStringEvent<eCET_Strobo_ThreadAdd>(tmp));
-    }
-    m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_ThreadDone>());
-#endif
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////
-#if defined(USE_REMOTE_CONSOLE) && defined(ENABLE_PROFILING_CODE)
-template <EConsoleEventType T>
-void SendStroboscopeEvent(SRemoteServer* pServer, const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    char tmp[2048];
-    vsnprintf_s(tmp, 2048, 2047, format, args);
-    va_end(args);
-    pServer->AddEvent(new SStringEvent<T>(tmp));
-}
-#endif
-
-void CRemoteConsole::SendStroboscopeResult()
-{
-#if defined(USE_REMOTE_CONSOLE) && defined(ENABLE_PROFILING_CODE)
-    SStrobosopeResult res = CStroboscope::GetInst()->GetResult();
-    if (res.Valid)
-    {
-        m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_ResultStart>());
-
-        m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_StatStart>());
-        SendStroboscopeEvent<eCET_Strobo_StatAdd>(m_pServer, "Filename: %s", res.File.c_str());
-        SendStroboscopeEvent<eCET_Strobo_StatAdd>(m_pServer, "Duration: %.6f", res.Duration);
-        SendStroboscopeEvent<eCET_Strobo_StatAdd>(m_pServer, "Date: %s", res.Date.c_str());
-        SendStroboscopeEvent<eCET_Strobo_StatAdd>(m_pServer, "Samples: %i", res.Samples);
-
-        m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_ThreadInfoStart>());
-        for (SStrobosopeResult::TThreadInfo::const_iterator it = res.ThreadInfo.begin(), end = res.ThreadInfo.end(); it != end; ++it)
-        {
-            SendStroboscopeEvent<eCET_Strobo_ThreadInfoAdd>(m_pServer, "%u %.6f %i %s", it->Id, it->Counts, it->Samples, it->Name.c_str());
-        }
-
-        m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_SymStart>());
-        for (SStrobosopeResult::TSymbolInfo::const_iterator it = res.SymbolInfo.begin(), end = res.SymbolInfo.end(); it != end; ++it)
-        {
-            SendStroboscopeEvent<eCET_Strobo_SymAdd>(m_pServer, "sym%i \"%s\" \"%s\" \"%s\" %i 0x%016llX", it->first, it->second.Module.c_str(), it->second.Procname.c_str(), it->second.File.c_str(), it->second.Line, it->second.BaseAddr);
-        }
-
-        m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_CallstackStart>());
-        char tmp[256];
-        for (SStrobosopeResult::TCallstackInfo::const_iterator it = res.CallstackInfo.begin(), end = res.CallstackInfo.end(); it != end; ++it)
-        {
-            string out;
-            sprintf_s(tmp, "%u %i %.6f", it->ThreadId, it->FrameId, it->Spend);
-            out = tmp;
-            for (SStrobosopeResult::SCallstackInfo::TSymbols::const_iterator sit = it->Symbols.begin(), send = it->Symbols.end(); sit != send; ++sit)
-            {
-                sprintf_s(tmp, " sym%i", *sit);
-                out += tmp;
-            }
-            m_pServer->AddEvent(new SStringEvent<eCET_Strobo_CallstackAdd>(out.c_str()));
-        }
-
-        m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_FrameInfoStart>());
-        SendStroboscopeEvent<eCET_Strobo_FrameInfoAdd>(m_pServer, "%i %i", res.StartFrame, res.EndFrame);
-        for (SStrobosopeResult::TFrameTime::const_iterator it = res.FrameTime.begin(), end = res.FrameTime.end(); it != end; ++it)
-        {
-            SendStroboscopeEvent<eCET_Strobo_FrameInfoAdd>(m_pServer, "%i %.6f", it->first, it->second);
-        }
-    }
-    m_pServer->AddEvent(new SNoDataEvent<eCET_Strobo_ResultDone>());
-#endif
-}
-#endif //#if 0 // currently no stroboscope support
-
-/////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef USE_REMOTE_CONSOLE
@@ -444,6 +367,10 @@ void SRemoteServer::Terminate()
 void SRemoteServer::Run()
 {
     SetName(SERVER_THREAD_NAME);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION REMOTECONSOLE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(RemoteConsole_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     AZSOCKET sClient;
     AZ::AzSock::AzSocketAddress local;
@@ -626,6 +553,10 @@ void SRemoteClient::Terminate()
 void SRemoteClient::Run()
 {
     SetName(CLIENT_THREAD_NAME);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION REMOTECONSOLE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(RemoteConsole_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     char szBuff[DEFAULT_BUFFER];
     int size;

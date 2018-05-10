@@ -16,6 +16,11 @@
 
 struct IPreferencesPage;
 
+namespace AzToolsFramework
+{
+    class ReflectedPropertyEditor;
+}
+
 class EditorPreferencesTreeWidgetItem
     : public QTreeWidgetItem
 {
@@ -30,6 +35,8 @@ public:
     ~EditorPreferencesTreeWidgetItem();
 
     void SetActivePage(bool active);
+    void Filter(const QString& filter);
+    void UpdateEditorFilter(AzToolsFramework::ReflectedPropertyEditor* editor, const QString& filter);
 
     IPreferencesPage* GetPreferencesPage() const;
 
@@ -37,5 +44,7 @@ private:
     IPreferencesPage* m_preferencesPage;
     QPixmap m_selectedImage;
     QPixmap m_unselectedImage;
+    QStringList m_propertyNames;
+    bool m_entirePageMatchesFilter;
 };
 

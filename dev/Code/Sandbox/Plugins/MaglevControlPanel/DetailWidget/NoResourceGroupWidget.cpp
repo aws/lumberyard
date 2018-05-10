@@ -18,8 +18,8 @@
 
 #include "DetailWidget/NoResourceGroupWidget.moc"
 
-NoResourceGroupWidget::NoResourceGroupWidget(ResourceManagementView* view)
-    : ActionWidget{}
+NoResourceGroupWidget::NoResourceGroupWidget(ResourceManagementView* view, QWidget* parent)
+    : ActionWidget{parent}
     , m_view{view}
 {
     SetTitleText(tr(

@@ -14,7 +14,6 @@
 
 #include <MCore/Source/StandardHeaders.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include "../StandardPluginsConfig.h"
 #include <MysticQt/Source/SearchButton.h>

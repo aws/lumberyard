@@ -32,7 +32,6 @@ using namespace AZ::Debug;
 unsigned int    StackRecorder::Record(StackFrame*, unsigned int, unsigned int, void*) { return false; }
 
 void            SymbolStorage::LoadModuleData(const void*, unsigned int)       {}
-unsigned int    SymbolStorage::GetModuleInfoDataSize()  { return 0; }
 void            SymbolStorage::StoreModuleInfoData(void*, unsigned int) {}
 unsigned int    SymbolStorage::GetNumLoadedModules() { return 0; }
 const           SymbolStorage::ModuleInfo*  SymbolStorage::GetModuleInfo(unsigned int) { return 0; }

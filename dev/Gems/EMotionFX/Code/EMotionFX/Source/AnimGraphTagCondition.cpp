@@ -12,7 +12,6 @@
 
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Random.h>
 #include <MCore/Source/AttributeSettings.h>
 #include <EMotionFX/Source/AnimGraphAttributeTypes.h>
@@ -77,10 +76,10 @@ namespace EMotionFX
         for (size_t i = 0; i < attributeCount; ++i)
         {
             const MCore::Attribute* attribute = arrayAttrib->GetAttribute(static_cast<uint32>(i));
-            const MCore::String& tag = static_cast<const MCore::AttributeString*>(attribute)->GetValue();
+            const AZStd::string& tag = static_cast<const MCore::AttributeString*>(attribute)->GetValue();
 
             // Search for the parameter with the name of the tag and save the index.
-            const AZ::u32 parameterIndex = mAnimGraph->FindParameterIndex(tag.AsChar());
+            const AZ::u32 parameterIndex = mAnimGraph->FindParameterIndex(tag.c_str());
 
             // Cache the parameter index to avoid string lookups at runtime.
             mTagParameterIndices[i] = parameterIndex;
@@ -214,7 +213,7 @@ namespace EMotionFX
         for (size_t i = 0; i < attributeCount; ++i)
         {
             const MCore::Attribute* attribute = arrayAttrib->GetAttribute(static_cast<uint32>(i));
-            const MCore::String& tag = static_cast<const MCore::AttributeString*>(attribute)->GetValue();
+            const AZStd::string& tag = static_cast<const MCore::AttributeString*>(attribute)->GetValue();
 
             if (i > 0)
             {
@@ -228,10 +227,10 @@ namespace EMotionFX
     }
 
     
-    void AnimGraphTagCondition::GetSummary(MCore::String* outResult) const
+    void AnimGraphTagCondition::GetSummary(AZStd::string* outResult) const
     {
         const EFunction testFunction = static_cast<EFunction>(GetAttributeFloatAsInt32(ATTRIB_FUNCTION));
-        outResult->Format("%s: Test Function='%s', Tags=", GetTypeString(), GetTestFunctionString());
+        *outResult = AZStd::string::format("%s: Test Function='%s', Tags=", GetTypeString(), GetTestFunctionString());
 
         // Add the tags.
         AZStd::string tagString;
@@ -240,23 +239,23 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphTagCondition::GetTooltip(MCore::String* outResult) const
+    void AnimGraphTagCondition::GetTooltip(AZStd::string* outResult) const
     {
         AZStd::string columnName, columnValue;
 
         // Add the condition type.
         columnName = "Condition Type: ";
         columnValue = GetTypeString();
-        outResult->Format("<table border=\"0\"><tr><td width=\"165\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
+        *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"165\"><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // Add the tag test function.
         columnName = "Test Function: ";
         columnValue = GetTestFunctionString();
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
 
         // Add the tags.
         columnName = "Tags: ";
         CreateTagString(columnValue);
-        outResult->FormatAdd("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
+        *outResult += AZStd::string::format("</tr><tr><td><b>%s</b></td><td>%s</td>", columnName.c_str(), columnValue.c_str());
     }
 } // namespace EMotionFX

@@ -3,7 +3,7 @@
         "aws_gamelift_server_shared",
         "aws_gamelift_server_static"
     ],
-    "source": "@ROOT@/Code/SDKs/GameLiftServerSDK",
+    "source": "@3P:GameLiftServerSDK@",
     "description": "Shared libraries for GameLift Server SDK",
     "includes": [
         "include"
@@ -106,6 +106,7 @@
                 "libprotobuf.lib"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "linux_x64": {
             "aws_gamelift_server_static/defines": [
                 "AWS_CUSTOM_MEMORY_MANAGEMENT",

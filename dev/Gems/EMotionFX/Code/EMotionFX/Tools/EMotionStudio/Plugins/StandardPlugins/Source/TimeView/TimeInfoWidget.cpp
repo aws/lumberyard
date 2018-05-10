@@ -144,7 +144,7 @@ namespace EMStudio
         // use the duration of the motion or recording
         if (minutesStart == minutesEnd && secondsStart == secondsEnd && milSecsStart == milSecsEnd)
         {
-            //mOverwriteTimeString.Format("%.2d:%.2d:%.2d", minutesStart, secondsStart, milSecsStart);
+            //mOverwriteTimeString = AZStd::string::format("%.2d:%.2d:%.2d", minutesStart, secondsStart, milSecsStart);
             uint32 dummyFrame;
             double duration;
             mPlugin->GetDataTimes(&duration, nullptr, nullptr);

@@ -249,6 +249,12 @@ namespace NCryMetal
                     Desc.storageMode = MTLStorageModePrivate;
                     //Depth stencil buffer gets written into and sampled from.
                     Desc.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+
+#if defined AZ_PLATFORM_APPLE_OSX
+                    //On osx the depth/stencil texture is merged. You need to create a different
+                    //texture view to access stencil data. Hence we need this flag.
+                    Desc.usage |= MTLTextureUsagePixelFormatView;
+#endif
                 }
                 else if(CTexture::IsDeviceFormatTypeless(pFormat->m_eDXGIFormat))
                 {
@@ -1116,10 +1122,13 @@ bytesPerImage: kMappedSubTex.m_uImagePitch];
             case eGIFC_DEPTH_TO_RED:
                 break;
             case eGIFC_STENCIL_TO_RED:
-                //  Confetti BEGIN: Igor Lobanchikov
+#if defined AZ_PLATFORM_APPLE_OSX
+                //Need a new texture view to access the stencil data. x32_stencil8 or x24_stencil8
+                bFormatRequiresUniqueView = true;
+#else
                 m_TextureView = m_pTexture->m_StencilTexture;
                 [m_TextureView retain];
-                //  Confetti End: Igor Lobanchikov
+#endif
                 break;
             case eGIFC_TEXTURE_VIEW:
                 bFormatRequiresUniqueView = true;

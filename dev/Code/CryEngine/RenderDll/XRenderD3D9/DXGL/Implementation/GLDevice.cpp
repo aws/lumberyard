@@ -1957,12 +1957,41 @@ namespace NCryOpenGL
 
         glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &kCapabilities.m_maxRenderTargets);
         kCapabilities.m_plsSizeInBytes = 0;
-#if defined(OPENGL_ES)
-        if (RenderCapabilities::SupportsPLSExtension())
+#if defined(GL_EXT_shader_pixel_local_storage)
+        if (DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage))
         {
             glGetIntegerv(GL_MAX_SHADER_PIXEL_LOCAL_STORAGE_FAST_SIZE_EXT, &kCapabilities.m_plsSizeInBytes);
         }
-#endif
+#endif // GL_EXT_shader_pixel_local_storage
+
+#if defined(GL_EXT_shader_framebuffer_fetch)
+        if (DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_framebuffer_fetch))
+        {
+            kCapabilities.m_frameBufferFetchSupport.set(RenderCapabilities::FBF_ALL_COLORS);
+            kCapabilities.m_frameBufferFetchSupport.set(RenderCapabilities::FBF_COLOR0);
+        }
+#endif // GL_EXT_shader_framebuffer_fetch
+
+#if defined(GL_ARM_shader_framebuffer_fetch)
+        if (DXGL_GL_EXTENSION_SUPPORTED(ARM_shader_framebuffer_fetch))
+        {
+            // Check that we can fetch COLOR0 when using multiple render targets.
+            GLboolean mrtSupport = GL_FALSE;
+            glGetBooleanv(GL_FRAGMENT_SHADER_FRAMEBUFFER_FETCH_MRT_ARM, &mrtSupport);
+            if (mrtSupport)
+            {
+                kCapabilities.m_frameBufferFetchSupport.set(RenderCapabilities::FBF_COLOR0);
+            }
+        }
+#endif // GL_ARM_shader_framebuffer_fetch
+
+#if defined(GL_ARM_shader_framebuffer_fetch_depth_stencil)
+        if (DXGL_GL_EXTENSION_SUPPORTED(ARM_shader_framebuffer_fetch_depth_stencil))
+        {
+            kCapabilities.m_frameBufferFetchSupport.set(RenderCapabilities::FBF_DEPTH);
+            kCapabilities.m_frameBufferFetchSupport.set(RenderCapabilities::FBF_STENCIL);
+        }
+#endif // GL_ARM_shader_framebuffer_fetch_depth_stencil
 
         return true;
     }

@@ -14,17 +14,17 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/ReflectContext.h>
 
-#include <GraphCanvas/Widgets/GraphCanvasMimeEvent.h>
+#include <GraphCanvas/Widgets/MimeEvents/CreateSplicingNodeMimeEvent.h>
 
 #include "ScriptCanvas/Bus/NodeIdPair.h"
 
 namespace ScriptCanvasEditor
 {
     class CreateNodeMimeEvent
-        : public GraphCanvas::GraphCanvasMimeEvent
+        : public GraphCanvas::CreateSplicingNodeMimeEvent
     {
     public:
-        AZ_RTTI(CreateNodeMimeEvent, "{95C84213-1FF8-42FF-96F3-37B80B7E2C20}", GraphCanvas::GraphCanvasMimeEvent);
+        AZ_RTTI(CreateNodeMimeEvent, "{95C84213-1FF8-42FF-96F3-37B80B7E2C20}", GraphCanvas::CreateSplicingNodeMimeEvent);
         AZ_CLASS_ALLOCATOR(CreateNodeMimeEvent, AZ::SystemAllocator, 0);
             
         static void Reflect(AZ::ReflectContext* reflectContext);
@@ -34,10 +34,11 @@ namespace ScriptCanvasEditor
 
         const ScriptCanvasEditor::NodeIdPair& GetCreatedPair() const;
 
-        bool ExecuteEvent(const AZ::Vector2& mouseDropPosition, AZ::Vector2& dropPosition, const AZ::EntityId& sceneId) override final;
+        bool ExecuteEvent(const AZ::Vector2& mouseDropPosition, AZ::Vector2& dropPosition, const AZ::EntityId& graphCanvasGraphId) override final;
+        AZ::EntityId CreateSplicingNode(const AZ::EntityId& graphCanvasGraphId) override;
 
     protected:
-        virtual ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const = 0;
+        virtual ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& scriptCanvasGraphId) const = 0;
 
         NodeIdPair m_nodeIdPair;
     };
@@ -54,6 +55,6 @@ namespace ScriptCanvasEditor
 
         static void Reflect(AZ::ReflectContext* reflectContext);
 
-        virtual NodeIdPair ConstructNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition) = 0;
+        virtual NodeIdPair ConstructNode(const AZ::EntityId& scriptCanvasGraphId, const AZ::Vector2& scenePosition) = 0;
     };
 }

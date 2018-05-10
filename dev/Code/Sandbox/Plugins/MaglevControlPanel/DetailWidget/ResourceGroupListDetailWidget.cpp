@@ -28,8 +28,8 @@
 
 #include "DetailWidget/ResourceGroupListDetailWidget.moc"
 
-ResourceGroupListDetailWidget::ResourceGroupListDetailWidget(ResourceManagementView* view, QSharedPointer<IResourceGroupListStatusModel> resourceGroupListStatusModel)
-    : DetailWidget{view}
+ResourceGroupListDetailWidget::ResourceGroupListDetailWidget(ResourceManagementView* view, QSharedPointer<IResourceGroupListStatusModel> resourceGroupListStatusModel, QWidget* parent)
+    : DetailWidget{view, parent}
     , m_resourceGroupListStatusModel{resourceGroupListStatusModel}
 {
 }
@@ -61,11 +61,11 @@ void ResourceGroupListDetailWidget::UpdateUI()
     switch (m_view->m_resourceManager->GetInitializationState())
     {
     case IAWSResourceManager::InitializationState::UnknownState:
-        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view}; });
+        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::NoProfileState:
-        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view}; });
+        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::UninitializedState:
@@ -73,24 +73,24 @@ void ResourceGroupListDetailWidget::UpdateUI()
     case IAWSResourceManager::InitializationState::InitializedState:
         if (!m_resourceGroupListStatusModel->IsReady())
         {
-            m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view}; });
+            m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view, this}; });
         }
         else if (m_resourceGroupListStatusModel->rowCount() == 0)
         {
-            m_layout.SetWidget(State::NoResourceGroup, [this](){ return new NoResourceGroupWidget {m_view}; });
+            m_layout.SetWidget(State::NoResourceGroup, [this](){ return new NoResourceGroupWidget {m_view, this}; });
         }
         else if (m_view->m_deploymentModel->rowCount() == 0 || m_view->m_deploymentModel->IsActiveDeploymentSet())
         {
-            m_layout.SetWidget(State::Status, [this](){ return new ResourceGroupListStatusWidget {m_view, m_resourceGroupListStatusModel}; });
+            m_layout.SetWidget(State::Status, [this](){ return new ResourceGroupListStatusWidget {m_view, m_resourceGroupListStatusModel, this}; });
         }
         else
         {
-            m_layout.SetWidget(State::NoActiveDeployment, [this](){ return new NoActiveDeploymentWidget {m_view}; });
+            m_layout.SetWidget(State::NoActiveDeployment, [this](){ return new NoActiveDeploymentWidget {m_view, this}; });
         }
         break;
 
     case IAWSResourceManager::InitializationState::ErrorLoadingState:
-        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget {m_view}; });
+        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget {m_view, this}; });
         break;
 
     default:

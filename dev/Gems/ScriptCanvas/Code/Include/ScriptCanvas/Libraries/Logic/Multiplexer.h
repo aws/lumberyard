@@ -51,21 +51,17 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("In7", "Input 7"));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signalled when the node receives a signal from the selected index"));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled when the node receives a signal from the selected index"));
 
                 // Data
                 ScriptCanvas_Property(int, 
                     ScriptCanvas_Property::Name("Index", "Select which [In#] to send to [Out].  0 <= [Index] <= 7.")
                     ScriptCanvas_Property::Input);
 
-                int m_selectedIndex;
-
             protected:
 
                 void OnInputSignal(const SlotId& slot) override;
 
-            private:
-                int m_inputIndex;
             };
         }
     }

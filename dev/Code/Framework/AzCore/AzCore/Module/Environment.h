@@ -144,6 +144,9 @@ namespace AZ
 
         /// Detaches the active environment (if one is attached)
         void Detach();
+
+        /// Returns true if an environment is attached to this module
+        bool IsReady();
     };
 
     namespace Internal
@@ -203,10 +206,10 @@ namespace AZ
         {
             friend class EnvironmentImpl;
         public:
-            EnvironmentVariableHolderBase(u32 guid, Internal::EnvironmentInterface* environmentOwner, bool isOwnershipTransfer, Environment::AllocatorInterface* allocator)
+            EnvironmentVariableHolderBase(u32 guid, Internal::EnvironmentInterface* environmentOwner, bool canOwnershipTransfer, Environment::AllocatorInterface* allocator)
                 : m_environmentOwner(environmentOwner)
                 , m_moduleOwner(nullptr)
-                , m_isOwershipTransfer(isOwnershipTransfer)
+                , m_canTransferOwnership(canOwnershipTransfer)
                 , m_isConstructed(false)
                 , m_guid(guid)
                 , m_allocator(allocator)
@@ -227,7 +230,7 @@ namespace AZ
         protected:
             Internal::EnvironmentInterface* m_environmentOwner; ///< Used to know which environment we should use to free the variable if we can't transfer ownership
             void* m_moduleOwner; ///< Used when the variable can't transfered across module and we need to destruct the variable when the module is going away
-            bool m_isOwershipTransfer; ///< True if variable can be allocated in one module and freed in other. Usually true for POD types when they share allocator.
+            bool m_canTransferOwnership; ///< True if variable can be allocated in one module and freed in other. Usually true for POD types when they share allocator.
             bool m_isConstructed; ///< When we can't transfer the ownership, and the owning module is destroyed we have to "destroy" the variable.
             u32 m_guid;
             Environment::AllocatorInterface* m_allocator;
@@ -261,6 +264,24 @@ namespace AZ
                 reinterpret_cast<T*>(&m_value)->~T();
             }
 
+            // Assumes the lock is already held
+            void UnregisterAndDestruct()
+            {
+                // if the environment that created us is gone the owner can be null
+                // which means (assuming intermodule allocator) that the variable is still alive
+                // but can't be found as it's not part of any environment.
+                if (m_environmentOwner)
+                {
+                    m_environmentOwner->RemoveVariable(m_guid);
+                    m_environmentOwner = nullptr;
+                }
+
+                if (m_isConstructed)
+                {
+                    DestructNoLock();
+                }
+            }
+
         public:
             EnvironmentVariableHolder(u32 guid, bool isOwnershipTransfer, Environment::AllocatorInterface* allocator)
                 : EnvironmentVariableHolderBase(guid, Environment::GetInstance(), isOwnershipTransfer, allocator)
@@ -291,39 +312,27 @@ namespace AZ
 
                 if (--s_moduleUseCount == 0)
                 {
-                    // This was the last reference from the module and this module owns the variable construction
-                    if (!m_isOwershipTransfer && m_moduleOwner == Environment::GetModuleId())
+                    if (!m_canTransferOwnership && m_moduleOwner == AZ::Environment::GetModuleId())
                     {
-                        DestructNoLock();
+                        UnregisterAndDestruct();
                     }
                 }
 
                 if (--m_useCount == 0)
                 {
-                    // if the environment that created us is gone the owner can be null
-                    // which means (assuming intermodule allocator) that the variable is still alive
-                    // but can't be found as it's not part of any environment.
-                    if (m_environmentOwner)
-                    {
-                        m_environmentOwner->RemoveVariable(m_guid);
-                    }
+                    UnregisterAndDestruct();
 
-                    if (m_isConstructed)
-                    {
-                        DestructNoLock();
-                    }
-
+                    // unlock before this is deleted
                     m_mutex.unlock();
 
                     Environment::AllocatorInterface* allocator = m_allocator;
                     // Call dtor and clear the memory
                     this->~EnvironmentVariableHolder();
                     allocator->DeAllocate(this);
+                    return;
                 }
-                else
-                {
-                    m_mutex.unlock();
-                }
+                
+                m_mutex.unlock();
             }
 
             void Construct()

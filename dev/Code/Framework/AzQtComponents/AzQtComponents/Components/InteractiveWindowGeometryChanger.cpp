@@ -34,6 +34,7 @@ namespace AzQtComponents
         {
             qApp->setOverrideCursor(Qt::SizeAllCursor);
             qApp->installEventFilter(this);
+            m_targetWindow->setMouseGrabEnabled(true);
 
             // Dismiss the changer if someone does intrusive stuff programatically, like maximizing the window
             connect(target, &QWindow::visibilityChanged, this, &QObject::deleteLater);
@@ -50,6 +51,7 @@ namespace AzQtComponents
 
     InteractiveWindowGeometryChanger::~InteractiveWindowGeometryChanger()
     {
+        m_targetWindow->setMouseGrabEnabled(false);
         qApp->restoreOverrideCursor();
         // Restore original cursor position
         restoreCursorPosition();
@@ -244,11 +246,42 @@ namespace AzQtComponents
         }
     }
 
-    void InteractiveWindowResizer::handleMouseMove(QMouseEvent*)
+    void InteractiveWindowResizer::handleMouseMove(QMouseEvent* ev)
     {
-        // Do nothing, is it really needed ?
-        // User can use keyboard to resize, or can use mouse already without clicking on "Size"
-    }
+        if (m_sideToResize == NoneSide)
+        {
+            // First arrow press just determines which side we're going to resize, so nothing will happen here
+            return;
+        }
+
+        // Now we do the actual resizing:
+        QRect geometry = m_targetWindow->geometry();
+        if (m_sideToResize & LeftSide)
+        {
+            geometry.setLeft(ev->globalX() - 1);
+        }
+        if (m_sideToResize & RightSide)
+        {
+            geometry.setRight(ev->globalX());
+        }
+        if (m_sideToResize & TopSide)
+        {
+            geometry.setTop(ev->globalY() - 1);
+        }
+        if (m_sideToResize & BottomSide)
+        {
+            geometry.setBottom(ev->globalY());
+        }
+
+        if (geometry.height() >= m_targetWindow->minimumHeight() &&
+            geometry.width() >= m_targetWindow->minimumWidth() &&
+            geometry.height() <= m_targetWindow->maximumHeight() &&
+            geometry.width() <= m_targetWindow->maximumWidth())
+        {
+            m_targetWindow->setGeometry(geometry);
+            updateCursor(); // Position changed, move cursor to border again
+        }
+     }
 
     void InteractiveWindowResizer::updateCursor()
     {

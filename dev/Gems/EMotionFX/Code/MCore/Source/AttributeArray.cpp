@@ -16,6 +16,8 @@
 #include "AttributeFactory.h"
 #include "AttributeSettings.h"
 #include "CommandLine.h"
+#include "StringConversions.h"
+
 
 namespace MCore
 {
@@ -181,13 +183,13 @@ namespace MCore
 
 
     // init from a string
-    bool AttributeArray::InitFromString(const String& valueString)
+    bool AttributeArray::InitFromString(const AZStd::string& valueString)
     {
         // FORMAT: -settings { settingsString } -type typeIntegerID -numElements numberInt -0 { value } -1 { value }...
         Clear();
 
-        MCore::String tempString;
-        tempString.Reserve(256);
+        AZStd::string tempString;
+        tempString.reserve(256);
         CommandLine commandLine(valueString);
 
         if (mSettings == nullptr)
@@ -203,7 +205,7 @@ namespace MCore
 
         // init the settings
         commandLine.GetValue("settings", "", &tempString);
-        if (tempString.GetLength() > 0)
+        if (tempString.size() > 0)
         {
             if (mSettings->InitFromString(tempString) == false)
             {
@@ -220,11 +222,11 @@ namespace MCore
         const uint32 numAttributes = static_cast<uint32>(commandLine.GetValueAsInt("numElements", 0));
 
         // read the attribute values
-        MCore::String indexString;
+        AZStd::string indexString;
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            indexString.FromInt(i);
-            commandLine.GetValue(indexString, "", &tempString);
+            AZStd::to_string(indexString, i);
+            commandLine.GetValue(indexString.c_str(), "", tempString);
 
             // add the attribute and try to init it
             MCore::Attribute* attribute = AddAttribute();
@@ -241,14 +243,14 @@ namespace MCore
 
 
     // convert into a string
-    bool AttributeArray::ConvertToString(String& outString) const//     { outString.FromVector4( Vector4(mValue.r, mValue.g, mValue.b, mValue.a) ); return true; }
+    bool AttributeArray::ConvertToString(AZStd::string& outString) const//     { outString.FromVector4( Vector4(mValue.r, mValue.g, mValue.b, mValue.a) ); return true; }
     {
         // FORMAT: -settings { settingsString } -type typeIntegerID -numElements numberInt -0 { value } -1 { value }...
 
-        String tempString;
-        tempString.Reserve(256);
-        outString.Clear(true);
-        outString.Reserve(1024);
+        AZStd::string tempString;
+        tempString.reserve(256);
+        outString.clear();
+        outString.reserve(1024);
 
         // add the settings
         outString += "-settings ";
@@ -256,7 +258,7 @@ namespace MCore
         if (mSettings->ConvertToString(tempString) == false)
         {
             LogError("MCore::AttributeArray::InitFromString() - Failed to convert the settings for to a string.");
-            outString.Clear();
+            outString.clear();
             return false;
         }
         outString += tempString;
@@ -264,11 +266,11 @@ namespace MCore
 
         // add the attribute type
         outString += "-type ";
-        outString += MCore::String((uint32)mElementTypeID);
+        outString += AZStd::to_string((uint32)mElementTypeID);
         outString += " ";
 
         outString += "-numElements ";
-        outString += MCore::String((uint32)mValues.GetLength());
+        outString += AZStd::to_string((uint32)mValues.GetLength());
         outString += " ";
 
         // for all attributes
@@ -279,16 +281,16 @@ namespace MCore
             if (mValues[a]->ConvertToString(tempString) == false)
             {
                 LogError("MCore::AttributeArray::InitFromString() - Failed to convert the value for attribute with index %d (type=%s) into a string (probably dont know how to handle the data type).", a, mValues[a]->GetTypeString());
-                outString.Clear();
+                outString.clear();
                 return false;
             }
             else
             {
                 outString += (a == 0) ? "" : " ";
                 outString += "-";
-                outString += String((uint32)a);
+                outString += AZStd::to_string((uint32)a);
                 outString += " {";
-                outString += tempString.AsChar();
+                outString += tempString.c_str();
                 outString += "}";
             }
         }

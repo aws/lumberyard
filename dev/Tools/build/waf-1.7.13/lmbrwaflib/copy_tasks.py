@@ -834,9 +834,6 @@ def copy_3rd_party_binaries(self):
             source_node = self.bld.root.make_node(source_file_file_norm_path)
             self.env['COPY_3RD_PARTY_ARTIFACTS'] += [source_node]
 
-    # Get the project root path information in order to convert the paths to nodes
-    project_root_norm_path = os.path.normpath(self.bld.srcnode.abspath())
-
     uselib_keys = []
     uselib_keys += getattr(self, 'uselib', [])
     uselib_keys += getattr(self, 'use', [])
@@ -887,7 +884,6 @@ def copy_3rd_party_extras(self):
     if self.bld.cmd in ('msvs', 'android_studio'):
         return
 
-    project_root_norm_path = os.path.normpath(self.bld.srcnode.abspath())
     current_platform = self.bld.env['PLATFORM']
     current_configuration = self.bld.env['CONFIGURATION']
 
@@ -939,12 +935,6 @@ def copy_3rd_party_extras(self):
             Logs.warn("[WARN] Copy Extra rule is invalid ({})", copy_extra_command)
             return False
 
-        source_norm_path = os.path.normpath(source)
-        if not source_norm_path.startswith(project_root_norm_path):
-            # If the path is not within the root folder, we cannot use the copy task
-            Logs.warn("Cannot copy source '{}' outside of the project root.  Skipping.".format(source_norm_path))
-            return False
-
         skip_pdbs = not self.bld.is_option_true('copy_3rd_party_pdbs')
 
         if os.path.isdir(source):
@@ -972,15 +962,12 @@ def copy_3rd_party_extras(self):
 
         for target_node in self.bld.get_output_folders(current_platform, current_configuration, self):
             for source_file, target_file in raw_src_and_tgt:
-                source_file_relative_path = source_file[len(project_root_norm_path)+1:]
-                source = self.bld.srcnode.make_node(source_file_relative_path)
+                source = self.bld.root.make_node(source_file)
                 target = target_node.make_node(target_file)
                 self.create_copy_task(source, target)
 
         return True
 
-    # Get the project root path information in order to convert the paths to nodes
-    project_root_norm_path = os.path.normpath(self.bld.srcnode.abspath())
     uselib_keys = getattr(self, 'uselib', None)
     if uselib_keys:
         for uselib_key in uselib_keys:

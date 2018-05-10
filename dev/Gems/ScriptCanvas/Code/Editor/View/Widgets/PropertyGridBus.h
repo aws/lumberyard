@@ -23,6 +23,10 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         
         virtual void RefreshPropertyGrid() = 0;
+        virtual void RebuildPropertyGrid() = 0;
+
+        virtual void SetSelection(const AZStd::vector<AZ::EntityId>& selectedEntityIds) = 0;
+        virtual void ClearSelection() = 0;
     };
     
     using PropertyGridRequestBus = AZ::EBus<PropertyGridRequests>;

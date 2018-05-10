@@ -29,7 +29,7 @@
 namespace Water
 {
     AZ::Color EditorWaterVolumeCommon::s_waterAreaColor = AZ::Color(0.3f, 0.5f, 9.0f, 1.0f);
-    
+
     void EditorWaterVolumeCommon::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -56,7 +56,7 @@ namespace Water
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_materialAsset, "Material", "The water material to use. Given material must have a water shader.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnMaterialAssetChange)
-                    
+
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &WaterVolumeCommon::m_minSpec, "Minimum spec", "The minimum engine spec for this volume to render.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnMinSpecChange)
                     ->EnumAttribute(EngineSpec::Never, "Never")
@@ -306,7 +306,7 @@ namespace Water
 
         m_common.Activate();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
-        
+
     }
 
     void EditorWaterVolumeComponent::Deactivate()
@@ -330,7 +330,7 @@ namespace Water
             handled = false;
             return;
         }
-        
+
         m_common.DrawWaterVolume(dc);
 
         handled = true;

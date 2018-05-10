@@ -10,5 +10,10 @@
 *
 */
 
-#include <precompiled.h>
-#include <Styling/definitions.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <GraphCanvas/Styling/definitions.h>
+
+int LinkerWarningWorkaround()
+{
+    return 0;
+}

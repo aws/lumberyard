@@ -129,6 +129,12 @@ namespace Maestro
         return GetVirtualPropertyTypeId(animatableAddress);
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    void SequenceAgentComponent::GetAssetDuration(AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId)
+    {
+        SequenceAgent::GetAssetDuration(returnValue, componentId, assetId);
+    }
+
     //=========================================================================
     namespace ClassConverters
     {

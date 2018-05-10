@@ -17,18 +17,9 @@
 #include <AzCore/std/string/string_view.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 
-#include <GraphCanvas/Types/SceneData.h>
-#include <ScriptCanvas/Core/Graph.h>
-
-namespace ScriptCanvas
-{
-    struct GraphData;
-}
-
-namespace GraphCanvas
-{
-    struct SceneData;
-}
+#include <GraphCanvas/Types/GraphCanvasGraphData.h>
+#include <ScriptCanvas/Core/GraphData.h>
+#include <ScriptCanvas/Variable/VariableData.h>
 
 namespace ScriptCanvasEditor
 {
@@ -50,14 +41,17 @@ namespace ScriptCanvasEditor
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
             {
                 serializeContext->Class<UndoData>()
+                    ->Version(1)
                     ->Field("m_graphData", &UndoData::m_graphData)
-                    ->Field("m_sceneData", &UndoData::m_sceneData)
+                    ->Field("m_sceneData", &UndoData::m_graphCanvasGraphData)
+                    ->Field("m_variableData", &UndoData::m_variableData)
                     ;
             }
         }
 
-        ScriptCanvas::GraphData m_graphData;
-        GraphCanvas::SceneData m_sceneData;
+        ScriptCanvas::GraphData             m_graphData;
+        GraphCanvas::GraphData        m_graphCanvasGraphData;
+        ScriptCanvas::VariableData          m_variableData;
     };
 
     class UndoCache;

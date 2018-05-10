@@ -174,7 +174,7 @@ namespace EMotionFX
 
     // convert attributes for backward compatibility
     // this handles attributes that got renamed or who's types have changed during the development progress
-    bool AnimGraphMotionNode::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName)
+    bool AnimGraphMotionNode::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
     {
         // convert things by the base class
         const bool result = AnimGraphObject::ConvertAttribute(attributeIndex, attributeToConvert, attributeName);
@@ -304,6 +304,15 @@ namespace EMotionFX
             }
         }
 
+        // rewind when the weight reaches 0 when we want to
+        if (!GetAttributeFloatAsBool(ATTRIB_LOOP))
+        {
+            if (uniqueData->GetLocalWeight() < MCore::Math::epsilon && GetAttributeFloatAsBool(ATTRIB_REWINDONZEROWEIGHT))
+            {
+                uniqueData->mMotionInstance->SetCurrentTime(0.0f);
+            }
+        }
+
         // sync all input nodes
         HierarchicalSyncAllInputNodes(animGraphInstance, uniqueData);
 
@@ -354,15 +363,6 @@ namespace EMotionFX
 
         // if there is a node connected to the speed input port, read that value and use it as internal speed if not get the playspeed attribute
         float customSpeed = ExtractCustomPlaySpeed(animGraphInstance);
-
-        // rewind when the weight reaches 0 when we want to
-        if (GetAttributeFloatAsBool(ATTRIB_LOOP) == false)
-        {
-            if (uniqueData->GetLocalWeight() < 0.0001f && GetAttributeFloatAsBool(ATTRIB_REWINDONZEROWEIGHT))
-            {
-                motionInstance->SetCurrentTime(0.0f);
-            }
-        }
 
         // set the internal speed and play speeds etc
         motionInstance->SetPlaySpeed(uniqueData->GetPlaySpeed());
@@ -727,7 +727,7 @@ namespace EMotionFX
             {
                 PickNewActiveMotion(uniqueData);
 
-                if (convertSuccess && mLastMotionArrayString.CheckIfIsEqual(mCurMotionArrayString) == false)
+                if (convertSuccess && mLastMotionArrayString != mCurMotionArrayString)
                 {
                     uniqueData->mReload = true;
                 }
@@ -736,7 +736,7 @@ namespace EMotionFX
             OnUpdateUniqueData(animGraphInstance);
         }
 
-        if (convertSuccess && mLastMotionArrayString.CheckIfIsEqual(mCurMotionArrayString) == false)
+        if (convertSuccess && mLastMotionArrayString != mCurMotionArrayString)
         {
             // update the node info
             const uint32 numMotions = GetAttributeArray(ATTRIB_MOTION)->GetNumAttributes();
@@ -809,7 +809,7 @@ namespace EMotionFX
         }
 
         // check if some settings have changed that will need a reload of the motion
-        if ((mLastMotionArrayString.CheckIfIsEqual(mCurMotionArrayString) == false) ||
+        if ((mLastMotionArrayString != mCurMotionArrayString) ||
             (uniqueData->mMotionSetID   != motionSetID) ||
             //(MCore::Math::IsFloatEqual(mLastClipStart, GetAttributeFloat(ATTRIB_CLIPSTART)->GetValue()) == false) ||
             //(MCore::Math::IsFloatEqual(mLastClipEnd, GetAttributeFloat(ATTRIB_CLIPEND)->GetValue()) == false)  ||
@@ -1036,7 +1036,7 @@ namespace EMotionFX
             return nullptr;
         }
 
-        return static_cast<const MCore::AttributeString*>(attrib)->GetValue().AsChar();
+        return static_cast<const MCore::AttributeString*>(attrib)->GetValue().c_str();
     }
 
 

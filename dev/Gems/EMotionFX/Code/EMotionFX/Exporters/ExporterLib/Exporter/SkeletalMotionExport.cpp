@@ -10,7 +10,6 @@
 *
 */
 
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "Exporter.h"
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/SkeletalSubMotion.h>
@@ -19,6 +18,7 @@
 #include <EMotionFX/Source/Node.h>
 #include <MCore/Source/AttributeSet.h>
 #include <EMotionFX/Source/Actor.h>
+#include <MCore/Source/StringConversions.h>
 
 // file format structures
 #include <EMotionFX/Source/Importer/SharedFileFormatStructs.h>
@@ -113,7 +113,7 @@ namespace ExporterLib
         }
         if (scaleAnimated)
         {
-            MCore::LogDetailedInfo("   + Num Scale Keys:        %d (UniformScaling=%s)", subMotionChunk.mNumScaleKeys, MCore::String(isUniformScaled).AsChar());
+            MCore::LogDetailedInfo("   + Num Scale Keys:        %d (UniformScaling=%s)", subMotionChunk.mNumScaleKeys, AZStd::to_string(isUniformScaled).c_str());
         }
 
         // convert endian
@@ -582,7 +582,7 @@ namespace ExporterLib
 
     const char* GetMorphSubMotionName(EMotionFX::MorphSubMotion* subMotion)
     {
-        return MCore::GetStringIDGenerator().GetName(subMotion->GetID()).AsChar();
+        return MCore::GetStringIdPool().GetName(subMotion->GetID()).c_str();
     }
 
 
@@ -602,11 +602,11 @@ namespace ExporterLib
         FindMorphSubMotionMinMaxWeights(subMotion, &minWeight, &maxWeight);
 
         const uint32                numKeyframes    = keytrack->GetNumKeys();
-        const MCore::String         subMotionName   = GetMorphSubMotionName(subMotion);
+        const AZStd::string         subMotionName   = GetMorphSubMotionName(subMotion);
         EMotionFX::MorphTarget::EPhonemeSet phonemeSet      = subMotion->GetPhonemeSet();
 
         // check if the name is valid
-        if (subMotionName.GetIsEmpty() && phonemeSet == 0)
+        if (subMotionName.empty() && phonemeSet == 0)
         {
             MCore::LogError("Cannot save  morph submotion with empty name and no phoneme set applied.");
             return;
@@ -621,14 +621,14 @@ namespace ExporterLib
         subMotionChunk.mPhonemeSet  = (uint32)phonemeSet;
 
         // log info
-        MCore::LogDetailedInfo("    - Morph Submotion: '%s'", subMotionName.AsChar());
+        MCore::LogDetailedInfo("    - Morph Submotion: '%s'", subMotionName.c_str());
         MCore::LogDetailedInfo("       + NrKeys             = %d", subMotionChunk.mNumKeys);
         MCore::LogDetailedInfo("       + Pose Weight        = %f", subMotionChunk.mPoseWeight);
         MCore::LogDetailedInfo("       + Minumum Weight     = %f", subMotionChunk.mMinWeight);
         MCore::LogDetailedInfo("       + Maximum Weight     = %f", subMotionChunk.mMaxWeight);
         if (phonemeSet != EMotionFX::MorphTarget::PHONEMESET_NONE)
         {
-            MCore::LogDetailedInfo("       + PhonemeSet         = %s", EMotionFX::MorphTarget::GetPhonemeSetString((EMotionFX::MorphTarget::EPhonemeSet)subMotionChunk.mPhonemeSet).AsChar());
+            MCore::LogDetailedInfo("       + PhonemeSet         = %s", EMotionFX::MorphTarget::GetPhonemeSetString((EMotionFX::MorphTarget::EPhonemeSet)subMotionChunk.mPhonemeSet).c_str());
         }
 
         // convert endian
@@ -778,14 +778,14 @@ namespace ExporterLib
             uint32 numKeys      = subMotion->GetKeyTrack()->GetNumKeys();
             uint32 numRemoved   = subMotion->GetKeyTrack()->Optimize(maxError);
 
-            MCore::String subMotionName = GetMorphSubMotionName(subMotion);
-            if (subMotionName.GetIsEmpty())
+            AZStd::string subMotionName = GetMorphSubMotionName(subMotion);
+            if (subMotionName.empty())
             {
                 subMotionName = EMotionFX::MorphTarget::GetPhonemeSetString(subMotion->GetPhonemeSet());
             }
             if (numRemoved > 0)
             {
-                MCore::LogInfo(" - Keyframe Reduction Statistics for morph submotion '%s': keys removed = %d out of %d, which is a reduction of %.2f%%", subMotionName.AsChar(), numRemoved, numKeys, (numRemoved / (float)numKeys) * 100.0f);
+                MCore::LogInfo(" - Keyframe Reduction Statistics for morph submotion '%s': keys removed = %d out of %d, which is a reduction of %.2f%%", subMotionName.c_str(), numRemoved, numKeys, (numRemoved / (float)numKeys) * 100.0f);
             }
         }
     }
@@ -809,9 +809,9 @@ namespace ExporterLib
     }
 
 
-    EMotionFX::MorphSubMotion* GetMorphSubMotionByName(EMotionFX::SkeletalMotion* motion, const MCore::String& name)
+    EMotionFX::MorphSubMotion* GetMorphSubMotionByName(EMotionFX::SkeletalMotion* motion, const AZStd::string& name)
     {
-        if (name.GetIsEmpty())
+        if (name.empty())
         {
             return nullptr;
         }
@@ -821,7 +821,7 @@ namespace ExporterLib
         for (uint32 i = 0; i < numMorphSubMotions; i++)
         {
             EMotionFX::MorphSubMotion* subMotion = motion->GetMorphSubMotion(i);
-            if (name.CheckIfIsEqual(GetMorphSubMotionName(subMotion)))
+            if (name == GetMorphSubMotionName(subMotion))
             {
                 return subMotion;
             }
@@ -831,10 +831,10 @@ namespace ExporterLib
     }
 
 
-    EMotionFX::MorphSubMotion* CreateAddMorphSubMotion(EMotionFX::SkeletalMotion* motion, const MCore::String& subMotionName)
+    EMotionFX::MorphSubMotion* CreateAddMorphSubMotion(EMotionFX::SkeletalMotion* motion, const AZStd::string& subMotionName)
     {
         // calculate the ID
-        const uint32 nameID = MCore::GetStringIDGenerator().GenerateIDForString(subMotionName.AsChar());
+        const uint32 nameID = MCore::GetStringIdPool().GenerateIdForString(subMotionName);
 
         EMotionFX::MorphSubMotion* subMotion = EMotionFX::MorphSubMotion::Create(nameID);
         motion->AddMorphSubMotion(subMotion);

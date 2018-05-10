@@ -14,6 +14,11 @@
             "Uuid" : "869a0d0ec11a45c299917d45c81555e6",
             "VersionConstraints" : [">=0.1.0"],
             "_comment" : "ScriptCanvas"
+        },
+        {
+            "Uuid" : "875b6fcbdeea44deaae7984ad9bb6cdc",
+            "VersionConstraints" : [">=0.1.0"],
+            "_comment" : "GraphCanvas"
         }
     ]
 }

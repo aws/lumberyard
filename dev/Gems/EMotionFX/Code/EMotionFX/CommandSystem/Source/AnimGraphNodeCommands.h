@@ -15,7 +15,6 @@
 // include the required headers
 #include "CommandSystemConfig.h"
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/Command.h>
 #include "CommandManager.h"
 
@@ -39,16 +38,16 @@ public:
     uint32              mNodeID;
     int32               mOldPosX;
     int32               mOldPosY;
-    MCore::String       mOldName;
+    AZStd::string       mOldName;
     bool                mOldDirtyFlag;
     bool                mOldEnabled;
     bool                mOldVisualized;
-    MCore::String       mNodeGroupName;
-    MCore::String       mOldParameterMask;
+    AZStd::string       mNodeGroupName;
+    AZStd::string       mOldParameterMask;
 
 public:
     uint32 GetNodeID() const                        { return mNodeID; }
-    const MCore::String& GetOldName() const         { return mOldName; }
+    const AZStd::string& GetOldName() const         { return mOldName; }
     uint32              mAnimGraphID;
     MCORE_DEFINECOMMAND_END
 
@@ -58,13 +57,13 @@ public:
     uint32          mNodeID;
     uint32          mAnimGraphID;
     uint32          mParentID;
-    MCore::String   mType;
-    MCore::String   mParentName;
-    MCore::String   mName;
-    MCore::String   mNodeGroupName;
+    AZStd::string   mType;
+    AZStd::string   mParentName;
+    AZStd::string   mName;
+    AZStd::string   mNodeGroupName;
     int32           mPosX;
     int32           mPosY;
-    MCore::String   mOldAttributesString;
+    AZStd::string   mOldAttributesString;
     bool            mCollapsed;
     bool            mOldDirtyFlag;
     bool            mIsEntryNode;
@@ -89,9 +88,9 @@ public:
     // Helper functions
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    COMMANDSYSTEM_API void CreateAnimGraphNode(EMotionFX::AnimGraph* animGraph, const MCore::String& typeString, const MCore::String& namePrefix, EMotionFX::AnimGraphNode* parentNode, int32 offsetX, int32 offsetY, const MCore::String& attributesString);
+    COMMANDSYSTEM_API void CreateAnimGraphNode(EMotionFX::AnimGraph* animGraph, const AZStd::string& typeString, const AZStd::string& namePrefix, EMotionFX::AnimGraphNode* parentNode, int32 offsetX, int32 offsetY, const AZStd::string& attributesString);
 
-    COMMANDSYSTEM_API MCore::String FindNodeNameInReservationList(EMotionFX::AnimGraphNode* node, const MCore::Array<EMotionFX::AnimGraphNode*>& copiedNodes, const MCore::Array<MCore::String>& nameReserveList);
+    COMMANDSYSTEM_API AZStd::string FindNodeNameInReservationList(EMotionFX::AnimGraphNode* node, const MCore::Array<EMotionFX::AnimGraphNode*>& copiedNodes, const MCore::Array<AZStd::string>& nameReserveList);
 
     COMMANDSYSTEM_API void DeleteNodes(EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& nodeNames);
     COMMANDSYSTEM_API void DeleteNodes(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& nodeNames, AZStd::vector<EMotionFX::AnimGraphNode*>& nodeList, AZStd::vector<EMotionFX::BlendTreeConnection*>& connectionList, AZStd::vector<EMotionFX::AnimGraphStateTransition*>& transitionList, bool autoChangeEntryStates = true);

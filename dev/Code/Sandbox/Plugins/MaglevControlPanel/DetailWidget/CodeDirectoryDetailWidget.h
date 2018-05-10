@@ -29,8 +29,8 @@ class CodeDirectoryDetailWidget
 {
 public:
 
-    CodeDirectoryDetailWidget(ResourceManagementView* view, QSharedPointer<ICodeDirectoryModel> codeDirectoryModel)
-        : DetailWidget{view}
+    CodeDirectoryDetailWidget(ResourceManagementView* view, QSharedPointer<ICodeDirectoryModel> codeDirectoryModel, QWidget* parent = nullptr)
+        : DetailWidget{view, parent}
         , m_codeDirectoryModel{codeDirectoryModel}
     {
     }

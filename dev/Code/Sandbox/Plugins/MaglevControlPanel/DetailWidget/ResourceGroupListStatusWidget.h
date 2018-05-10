@@ -27,7 +27,7 @@ public:
 
     ResourceGroupListStatusWidget(
         ResourceManagementView* view,
-        QSharedPointer<IResourceGroupListStatusModel> resoruceGroupListStatusModel);
+        QSharedPointer<IResourceGroupListStatusModel> resoruceGroupListStatusModel, QWidget* parent);
 
 private:
 

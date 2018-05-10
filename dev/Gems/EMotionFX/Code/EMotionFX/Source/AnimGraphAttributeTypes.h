@@ -19,7 +19,7 @@
 #include "Pose.h"
 #include "AnimGraphPose.h"
 
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/AttributeFloat.h>
 #include <MCore/Source/AttributeInt32.h>
@@ -31,6 +31,7 @@
 #include <MCore/Source/AttributeVector4.h>
 #include <MCore/Source/AttributeQuaternion.h>
 #include <MCore/Source/AttributeColor.h>
+#include <MCore/Source/StringConversions.h>
 
 
 namespace EMotionFX
@@ -55,6 +56,7 @@ namespace EMotionFX
         ATTRIBUTE_INTERFACETYPE_TAGPICKER                   = 27,// AttributeArray (of AttributeString attributes)
         ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS           = 28,// AttributeArray (of AttributeBlendSpaceMotion attributes)
         ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONPICKER      = 29,// String
+        ATTRIBUTE_INTERFACETYPE_MORPHTARGETPICKER           = 30 // AttributeArray (of AttributeString attributes)
     };
 
     // forward declaration
@@ -138,54 +140,66 @@ namespace EMotionFX
             mOrder = rot->mOrder;
             return true;
         }
-        bool InitFromString(const MCore::String& valueString) override
+        bool InitFromString(const AZStd::string& valueString) override
         {
             // split the array into parts
-            MCore::Array<MCore::String> values = valueString.Split(MCore::UnicodeCharacter::comma);
-            if (values.GetLength() != 8)
+            AZStd::vector<AZStd::string> values;
+            AzFramework::StringFunc::Tokenize(valueString.c_str(), values, MCore::CharacterConstants::comma, true /* keep empty strings */, true /* keep space strings */);
+
+            if (values.size() != 8)
             {
                 return false;
             }
 
             // verify if they are valid floats
+            float floatValues[7];
             for (uint32 i = 0; i < 7; ++i)
             {
-                if (values[i].CheckIfIsValidFloat() == false)
+                if (!AzFramework::StringFunc::LooksLikeFloat(values[i].c_str(), &floatValues[i]))
                 {
                     return false;
                 }
             }
 
             // make sure the last value is an integer
-            if (values[7].CheckIfIsValidInt() == false)
+            int order;
+            if (!AzFramework::StringFunc::LooksLikeInt(values[7].c_str(), &order))
             {
                 return false;
             }
-
-            // convert the string parts into floats
-            mDegrees.SetX(values[0].ToFloat());
-            mDegrees.SetY(values[1].ToFloat());
-            mDegrees.SetZ(values[2].ToFloat());
-            mRotation.x = values[3].ToFloat();
-            mRotation.y = values[4].ToFloat();
-            mRotation.z = values[5].ToFloat();
-            mRotation.w = values[6].ToFloat();
-            const int32 order = values[7].ToInt();
-            ;
-            mOrder      = (ERotationOrder)order;
-
             // check the validity of the order
             if (order < 0 || order > 5)
             {
                 return false;
             }
 
+            // convert the string parts into floats
+            mDegrees.Set(floatValues[0], floatValues[1], floatValues[2]);
+            mRotation.x = floatValues[3];
+            mRotation.y = floatValues[4];
+            mRotation.z = floatValues[5];
+            mRotation.w = floatValues[6];
+
+            mOrder = static_cast<ERotationOrder>(order);
+
             // renormalize the quaternion for safety
             mRotation.Normalize();
             return true;
         }
 
-        bool ConvertToString(MCore::String& outString) const override       { outString.Format("%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d", static_cast<float>(mDegrees.GetX()), static_cast<float>(mDegrees.GetY()), static_cast<float>(mDegrees.GetZ()), mRotation.x, mRotation.y, mRotation.z, mRotation.w, mOrder); return true; }
+        bool ConvertToString(AZStd::string& outString) const override
+        {
+            outString = AZStd::string::format("%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%.8f,%d",
+                    static_cast<float>(mDegrees.GetX()),
+                    static_cast<float>(mDegrees.GetY()),
+                    static_cast<float>(mDegrees.GetZ()),
+                    mRotation.x,
+                    mRotation.y,
+                    mRotation.z,
+                    mRotation.w,
+                    mOrder);
+            return true;
+        }
         uint32 GetClassSize() const override                                { return sizeof(AttributeRotation); }
 
     private:
@@ -194,11 +208,11 @@ namespace EMotionFX
         ERotationOrder      mOrder;         /**< The rotation order, which defaults to ZYX. */
 
         AttributeRotation()
-            : MCore::Attribute(TYPE_ID)     { mDegrees = AZ::Vector3::CreateZero(); mOrder = ROTATIONORDER_ZYX; }
+            : MCore::Attribute(TYPE_ID)                         { mDegrees = AZ::Vector3::CreateZero(); mOrder = ROTATIONORDER_ZYX; }
         AttributeRotation(const AZ::Vector3& angles, const MCore::Quaternion& quat)
-            : MCore::Attribute(TYPE_ID)     { mDegrees = angles; mRotation = quat; mOrder = ROTATIONORDER_ZYX; }
+            : MCore::Attribute(TYPE_ID)      { mDegrees = angles; mRotation = quat; mOrder = ROTATIONORDER_ZYX; }
         AttributeRotation(float xDeg, float yDeg, float zDeg)
-            : MCore::Attribute(TYPE_ID)     { mOrder = ROTATIONORDER_ZYX; mDegrees.Set(xDeg, yDeg, zDeg); UpdateRotationQuaternion(); }
+            : MCore::Attribute(TYPE_ID)                         { mOrder = ROTATIONORDER_ZYX; mDegrees.Set(xDeg, yDeg, zDeg); UpdateRotationQuaternion(); }
         ~AttributeRotation()    {}
 
         uint32 GetDataSize() const override;
@@ -238,8 +252,8 @@ namespace EMotionFX
             mValue = pose->GetValue();
             return true;
         }
-        bool InitFromString(const MCore::String& valueString) override      { MCORE_UNUSED(valueString); return false; }    // unsupported
-        bool ConvertToString(MCore::String& outString) const override       { MCORE_UNUSED(outString); return false; }  // unsupported
+        bool InitFromString(const AZStd::string& valueString) override      { MCORE_UNUSED(valueString); return false; }    // unsupported
+        bool ConvertToString(AZStd::string& outString) const override       { MCORE_UNUSED(outString); return false; }  // unsupported
         uint32 GetClassSize() const override                                { return sizeof(AttributePose); }
         uint32 GetDefaultInterfaceType() const override                     { return MCore::ATTRIBUTE_INTERFACETYPE_DEFAULT; }
 
@@ -289,8 +303,8 @@ namespace EMotionFX
             mValue = pose->GetValue();
             return true;
         }
-        bool InitFromString(const MCore::String& valueString) override      { MCORE_UNUSED(valueString); return false; }    // unsupported
-        bool ConvertToString(MCore::String& outString) const override       { MCORE_UNUSED(outString); return false; }  // unsupported
+        bool InitFromString(const AZStd::string& valueString) override      { MCORE_UNUSED(valueString); return false; }    // unsupported
+        bool ConvertToString(AZStd::string& outString) const override       { MCORE_UNUSED(outString); return false; }  // unsupported
         uint32 GetClassSize() const override                                { return sizeof(AttributeMotionInstance); }
         uint32 GetDefaultInterfaceType() const override                     { return MCore::ATTRIBUTE_INTERFACETYPE_DEFAULT; }
 
@@ -321,7 +335,7 @@ namespace EMotionFX
 
         struct MaskEntry
         {
-            MCore::String   mName;
+            AZStd::string   mName;
             float           mWeight;
         };
 
@@ -350,8 +364,8 @@ namespace EMotionFX
             return true;
         }
 
-        bool InitFromString(const MCore::String& valueString) override;
-        bool ConvertToString(MCore::String& outString) const override;
+        bool InitFromString(const AZStd::string& valueString) override;
+        bool ConvertToString(AZStd::string& outString) const override;
         uint32 GetClassSize() const override                                { return sizeof(AttributeNodeMask); }
         uint32 GetDefaultInterfaceType() const override                     { return ATTRIBUTE_INTERFACETYPE_NODENAMES; }
 
@@ -384,22 +398,22 @@ namespace EMotionFX
         static AttributeParameterMask* Create();
         static AttributeParameterMask* Create(const MCore::Array<uint32>& parameterIDs);
 
-        void SetParameters(MCore::Array<MCore::String>& parameterNames);
+        void SetParameters(AZStd::vector<AZStd::string>& parameterNames);
         const char* GetParameterName(uint32 localIndex) const
         {
             if (localIndex != MCORE_INVALIDINDEX32)
             {
-                return MCore::GetStringIDGenerator().GetName(mParameterNameIDs[localIndex]).AsChar();
+                return MCore::GetStringIdPool().GetName(mParameterNameIDs[localIndex]).c_str();
             }
             else
             {
                 return "";
             }
         }
-        const MCore::String& GetParameterNameString(uint32 localIndex) const        { return MCore::GetStringIDGenerator().GetName(mParameterNameIDs[localIndex]); }
-        void SetParameterName(uint32 localIndex, const char* parameterName)         { mParameterNameIDs[localIndex] = MCore::GetStringIDGenerator().GenerateIDForString(parameterName); }
+        const AZStd::string& GetParameterNameString(uint32 localIndex) const        { return MCore::GetStringIdPool().GetName(mParameterNameIDs[localIndex]); }
+        void SetParameterName(uint32 localIndex, const char* parameterName)         { mParameterNameIDs[localIndex] = MCore::GetStringIdPool().GenerateIdForString(parameterName); }
         uint32 GetNumParameterNames() const                                         { return mParameterNameIDs.GetLength(); }
-        void AddParameterName(const char* parameterName)                            { mParameterNameIDs.Add(MCore::GetStringIDGenerator().GenerateIDForString(parameterName)); }
+        void AddParameterName(const char* parameterName)                            { mParameterNameIDs.Add(MCore::GetStringIdPool().GenerateIdForString(parameterName)); }
         void RemoveParameterName(uint32 localIndex)                                 { mParameterNameIDs.Remove(localIndex); }
         void SetParameters(const MCore::Array<uint32>& parameterIDs)                { mParameterNameIDs = parameterIDs; }
         void Sort(AnimGraph* animGraph);
@@ -427,8 +441,8 @@ namespace EMotionFX
             return true;
         }
 
-        bool InitFromString(const MCore::String& valueString) override;
-        bool ConvertToString(MCore::String& outString) const override;
+        bool InitFromString(const AZStd::string& valueString) override;
+        bool ConvertToString(AZStd::string& outString) const override;
         uint32 GetClassSize() const override                                        { return sizeof(AttributeParameterMask); }
         uint32 GetDefaultInterfaceType() const override                             { return ATTRIBUTE_INTERFACETYPE_PARAMETERNAMES; }
 
@@ -463,12 +477,12 @@ namespace EMotionFX
 
         void SetNodeName(const char* nodeName)                                  { mNodeName = nodeName; }
         void SetParentDepth(uint32 depth)                                       { mParentDepth = depth; }
-        const char* GetNodeName() const                                         { return mNodeName.AsChar(); }
-        const MCore::String& GetNodeNameString() const                          { return mNodeName; }
+        const char* GetNodeName() const                                         { return mNodeName.c_str(); }
+        const AZStd::string& GetNodeNameString() const                          { return mNodeName; }
         uint32 GetParentDepth() const                                           { return mParentDepth; }
 
         // overloaded from the attribute base class
-        MCore::Attribute* Clone() const override                                { return Create(mNodeName.AsChar(), mParentDepth); }
+        MCore::Attribute* Clone() const override                                { return Create(mNodeName.c_str(), mParentDepth); }
         MCore::Attribute* CreateInstance(void* destMemory) override             { return new(destMemory) AttributeGoalNode(); }
         const char* GetTypeString() const override                              { return "GoalNode"; }
         bool InitFrom(const MCore::Attribute* other) override
@@ -482,13 +496,13 @@ namespace EMotionFX
             mParentDepth = cast->mParentDepth;
             return true;
         }
-        bool InitFromString(const MCore::String& valueString) override;
-        bool ConvertToString(MCore::String& outString) const override;
+        bool InitFromString(const AZStd::string& valueString) override;
+        bool ConvertToString(AZStd::string& outString) const override;
         uint32 GetClassSize() const override                                    { return sizeof(AttributeGoalNode); }
         uint32 GetDefaultInterfaceType() const override                         { return ATTRIBUTE_INTERFACETYPE_GOALNODESELECTION; }
 
     private:
-        MCore::String       mNodeName;
+        AZStd::string       mNodeName;
         uint32              mParentDepth;   // 0=current, 1=parent, 2=parent of parent, 3=parent of parent of parent, etc
 
         AttributeGoalNode()
@@ -517,8 +531,8 @@ namespace EMotionFX
         static AttributeStateFilterLocal* Create(const MCore::Array<uint32>& groupNameIDs, const MCore::Array<uint32>& nodeNameIDs);
 
         // set the node groups and nodes by name
-        void SetNodeGroupNames(const MCore::Array<MCore::String>& groupNames);
-        void SetNodeNames(const MCore::Array<MCore::String>& nodeNames);
+        void SetNodeGroupNames(const MCore::Array<AZStd::string>& groupNames);
+        void SetNodeNames(const MCore::Array<AZStd::string>& nodeNames);
         void Set(const MCore::Array<uint32>& groupNameIDs, const MCore::Array<uint32>& nodeNameIDs)     { mGroupNameIDs = groupNameIDs; mNodeNameIDs = nodeNameIDs; }
 
         // get the number of node groups and nodes
@@ -532,7 +546,7 @@ namespace EMotionFX
         {
             if (localIndex != MCORE_INVALIDINDEX32)
             {
-                return MCore::GetStringIDGenerator().GetName(mGroupNameIDs[localIndex]).AsChar();
+                return MCore::GetStringIdPool().GetName(mGroupNameIDs[localIndex]).c_str();
             }
             else
             {
@@ -550,9 +564,9 @@ namespace EMotionFX
                 return MCORE_INVALIDINDEX32;
             }
         }
-        const MCore::String& GetNodeGroupNameString(uint32 localIndex) const        { return MCore::GetStringIDGenerator().GetName(mGroupNameIDs[localIndex]); }
-        void SetNodeGroupName(uint32 localIndex, const char* groupName)             { mGroupNameIDs[localIndex] = MCore::GetStringIDGenerator().GenerateIDForString(groupName); }
-        void AddNodeGroupName(const char* groupName)                                { mGroupNameIDs.Add(MCore::GetStringIDGenerator().GenerateIDForString(groupName)); }
+        const AZStd::string& GetNodeGroupNameString(uint32 localIndex) const        { return MCore::GetStringIdPool().GetName(mGroupNameIDs[localIndex]); }
+        void SetNodeGroupName(uint32 localIndex, const char* groupName)             { mGroupNameIDs[localIndex] = MCore::GetStringIdPool().GenerateIdForString(groupName); }
+        void AddNodeGroupName(const char* groupName)                                { mGroupNameIDs.Add(MCore::GetStringIdPool().GenerateIdForString(groupName)); }
         void RemoveNodeGroupName(uint32 localIndex)                                 { mGroupNameIDs.Remove(localIndex); }
         uint32 FindNodeGroupNameIndex(const char* groupName) const;
 
@@ -561,7 +575,7 @@ namespace EMotionFX
         {
             if (localIndex != MCORE_INVALIDINDEX32)
             {
-                return MCore::GetStringIDGenerator().GetName(mNodeNameIDs[localIndex]).AsChar();
+                return MCore::GetStringIdPool().GetName(mNodeNameIDs[localIndex]).c_str();
             }
             else
             {
@@ -579,9 +593,9 @@ namespace EMotionFX
                 return MCORE_INVALIDINDEX32;
             }
         }
-        const MCore::String& GetNodeNameString(uint32 localIndex) const             { return MCore::GetStringIDGenerator().GetName(mNodeNameIDs[localIndex]); }
-        void SetNodeName(uint32 localIndex, const char* nodeName)                   { mNodeNameIDs[localIndex] = MCore::GetStringIDGenerator().GenerateIDForString(nodeName); }
-        void AddNodeName(const char* nodeName)                                      { mNodeNameIDs.Add(MCore::GetStringIDGenerator().GenerateIDForString(nodeName)); }
+        const AZStd::string& GetNodeNameString(uint32 localIndex) const             { return MCore::GetStringIdPool().GetName(mNodeNameIDs[localIndex]); }
+        void SetNodeName(uint32 localIndex, const char* nodeName)                   { mNodeNameIDs[localIndex] = MCore::GetStringIdPool().GenerateIdForString(nodeName); }
+        void AddNodeName(const char* nodeName)                                      { mNodeNameIDs.Add(MCore::GetStringIdPool().GenerateIdForString(nodeName)); }
         void RemoveNodeName(uint32 localIndex)                                      { mNodeNameIDs.Remove(localIndex); }
         uint32 FindNodeNameIndex(const char* nodeName) const;
 
@@ -601,8 +615,8 @@ namespace EMotionFX
             return true;
         }
 
-        bool InitFromString(const MCore::String& valueString) override;
-        bool ConvertToString(MCore::String& outString) const override;
+        bool InitFromString(const AZStd::string& valueString) override;
+        bool ConvertToString(AZStd::string& outString) const override;
         uint32 GetClassSize() const override                                        { return sizeof(AttributeStateFilterLocal); }
         uint32 GetDefaultInterfaceType() const override                             { return ATTRIBUTE_INTERFACETYPE_STATEFILTERLOCAL; }
 
@@ -675,8 +689,8 @@ namespace EMotionFX
         uint32              GetDefaultInterfaceType() const override { return ATTRIBUTE_INTERFACETYPE_BLENDSPACEMOTIONS; }
         bool                InitFrom(const MCore::Attribute* other) override;
 
-        bool                InitFromString(const MCore::String& valueString) override;
-        bool                ConvertToString(MCore::String& outString) const override;
+        bool                InitFromString(const AZStd::string& valueString) override;
+        bool                ConvertToString(AZStd::string& outString) const override;
         uint32              GetClassSize() const override { return sizeof(AttributeBlendSpaceMotion); }
         uint32              GetDataSize() const override;
 
@@ -712,5 +726,4 @@ namespace EMotionFX
     void AttributeBlendSpaceMotion::SetFlag(TypeFlags flag) { m_TypeFlags |= flag; }
     void AttributeBlendSpaceMotion::UnsetFlag(TypeFlags flag) { m_TypeFlags &= ~flag; }
     bool AttributeBlendSpaceMotion::TestFlag(TypeFlags flag) const { return (m_TypeFlags & flag) == flag; }
-
 } // namespace EMotionFX

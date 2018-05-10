@@ -89,11 +89,11 @@ namespace EMStudio
         }
 
         // get the absolute directory path where all the shaders will be located
-        const MCore::String shaderPath = MysticQt::GetDataDir() + "Shaders/";
+        const AZStd::string shaderPath = MysticQt::GetDataDir() + "Shaders/";
 
         // create graphics manager and initialize it
         mGraphicsManager = new RenderGL::GraphicsManager();
-        if (mGraphicsManager->Init(shaderPath.AsChar()) == false)
+        if (mGraphicsManager->Init(shaderPath.c_str()) == false)
         {
             MCore::LogError("Could not initialize OpenGL graphics manager.");
             //      delete mGraphicsManager;
@@ -121,8 +121,8 @@ namespace EMStudio
             return false;
         }
 
-        MCore::String texturePath;
-        if (mRenderOptions.mTexturePath.GetIsEmpty() == false)
+        AZStd::string texturePath;
+        if (mRenderOptions.mTexturePath.empty() == false)
         {
             // use the texture path specified in the render options
             texturePath = mRenderOptions.mTexturePath;
@@ -130,7 +130,7 @@ namespace EMStudio
         else
         {
             // extract the file path from the actor name, assuming the actor name is its full filename
-            texturePath = actor->GetFileNameString().ExtractPath();
+            AzFramework::StringFunc::Path::GetFolderPath(actor->GetFileNameString().c_str(), texturePath);
         }
 
         // set the automatic mip mapping creation and the skip loading textures flag
@@ -140,7 +140,7 @@ namespace EMStudio
         // create a new OpenGL actor and try to initialize it
         //GetMainWindow()->GetOpenGLShareWidget()->makeCurrent();
         RenderGL::GLActor* glActor = RenderGL::GLActor::Create();
-        if (glActor->Init(actor, texturePath.AsChar(), true, false) == false)
+        if (glActor->Init(actor, texturePath.c_str(), true, false) == false)
         {
             MCore::LogError("Initializing the OpenGL actor for '%s' failed.", actor->GetFileName());
             glActor->Destroy();

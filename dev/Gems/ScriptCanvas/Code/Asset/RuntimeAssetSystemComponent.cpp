@@ -12,74 +12,63 @@
 
 #include "precompiled.h"
 
-#include "CoreBuilderSystemComponent.h"
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include <ScriptCanvas/Core/GraphAsset.h>
-#include <ScriptCanvas/Core/GraphAssetHandler.h>
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
+#include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
+#include <Asset/RuntimeAssetSystemComponent.h>
 
-namespace ScriptCanvasBuilder
+namespace ScriptCanvas
 {
-    CoreBuilderSystemComponent::CoreBuilderSystemComponent()
-    {
-        m_graphAssetHandler = AZStd::make_unique<ScriptCanvas::GraphAssetHandler>();
-    }
-
-    CoreBuilderSystemComponent::~CoreBuilderSystemComponent()
+    RuntimeAssetSystemComponent::~RuntimeAssetSystemComponent()
     {
     }
 
-    void CoreBuilderSystemComponent::Reflect(AZ::ReflectContext* context)
+    void RuntimeAssetSystemComponent::Reflect(AZ::ReflectContext* context)
     {
+        ScriptCanvas::RuntimeData::Reflect(context);
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<CoreBuilderSystemComponent, AZ::Component>()
+            serializeContext->Class<RuntimeAssetSystemComponent, AZ::Component>()
                 ->Version(0)
                 ;
         }
     }
 
-    void CoreBuilderSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    void RuntimeAssetSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("ScriptCanvasCoreBuilderService", 0x42195ec0));
+        provided.push_back(AZ_CRC("ScriptCanvasRuntimeAssetService", 0x1a85bf2b));
     }
 
-    void CoreBuilderSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    void RuntimeAssetSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
         required.push_back(AZ_CRC("AssetDatabaseService", 0x3abf5601));
         required.push_back(AZ_CRC("ScriptCanvasService", 0x41fd58f3));
     }
 
-    void CoreBuilderSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+    void RuntimeAssetSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
     {
         dependent.push_back(AZ_CRC("AssetCatalogService", 0xc68ffc57));
     }
 
-    void CoreBuilderSystemComponent::Init()
+    void RuntimeAssetSystemComponent::Init()
     {
     }
 
-    void CoreBuilderSystemComponent::Activate()
+    void RuntimeAssetSystemComponent::Activate()
     {
-        AZ::Data::AssetType assetType(azrtti_typeid<ScriptCanvas::GraphAsset>());
-        if (AZ::Data::AssetManager::Instance().GetHandler(assetType))
-        {
-            return; // Asset Type already handled
-        }
-
-        AZ::Data::AssetManager::Instance().RegisterHandler(m_graphAssetHandler.get(), assetType);
-
-        // Use AssetCatalog service to register ScriptCanvas asset type and extension
-        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddAssetType, assetType);
-        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, assetType);
-        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddExtension, ScriptCanvas::GraphAsset::GetFileExtension());
+        m_runtimeAssetRegistry.Register();
     }
 
-    void CoreBuilderSystemComponent::Deactivate()
+    void RuntimeAssetSystemComponent::Deactivate()
     {
-        // Finish all queued work
-        AZ::Data::AssetBus::ExecuteQueuedEvents();
-        AZ::Data::AssetManager::Instance().UnregisterHandler(m_graphAssetHandler.get());
+        m_runtimeAssetRegistry.Unregister();
     }
+
+    RuntimeAssetRegistry& RuntimeAssetSystemComponent::GetAssetRegistry()
+    {
+        return m_runtimeAssetRegistry;
+    }
+
 }

@@ -15,7 +15,7 @@
 
 namespace LmbrCentral
 {
-    /** 
+    /**
      * Type ID for CapsuleShapeComponent
      */
     static const AZ::Uuid CapsuleShapeComponentTypeId = "{967EC13D-364D-4696-AB5C-C00CC05A2305}";
@@ -32,61 +32,70 @@ namespace LmbrCentral
         : public AZ::ComponentConfig
     {
     public:
-
         AZ_CLASS_ALLOCATOR(CapsuleShapeConfig, AZ::SystemAllocator, 0);
         AZ_RTTI(CapsuleShapeConfig, "{00931AEB-2AD8-42CE-B1DC-FA4332F51501}", ComponentConfig);
         static void Reflect(AZ::ReflectContext* context);
 
-        AZ_INLINE void SetHeight(float newHeight)
+        void SetHeight(float height)
         {
-            m_height = newHeight;
+            AZ_WarningOnce("LmbrCentral", false, "SetHeight Deprecated - Please use m_height");
+            m_height = height;
         }
 
-        AZ_INLINE float GetHeight() const
+        float GetHeight() const
         {
+            AZ_WarningOnce("LmbrCentral", false, "GetHeight Deprecated - Please use m_height");
             return m_height;
         }
 
-        AZ_INLINE void SetRadius(float newRadius)
+        void SetRadius(float radius)
         {
-            m_radius = newRadius;
+            AZ_WarningOnce("LmbrCentral", false, "SetRadius Deprecated - Please use m_radius");
+            m_radius = radius;
         }
 
-        AZ_INLINE float GetRadius() const
+        float GetRadius() const
         {
+            AZ_WarningOnce("LmbrCentral", false, "GetRadius Deprecated - Please use m_radius");
             return m_radius;
         }
 
-        //! The end to end height of capsule, this includes the cylinder and both caps
-        float m_height = 1.f;
-
-        //! The radius of this capsule
-        float m_radius = 0.25f;
+        float m_height = 1.0f; ///< The end to end height of capsule, this includes the cylinder and both caps.
+        float m_radius = 0.25f; ///< The radius of this capsule.
     };
 
     using CapsuleShapeConfiguration = CapsuleShapeConfig; ///< @deprecated Use CapsuleShapeConfig
-   
 
-    /*!
-    * Services provided by the Capsule Shape Component
-    */
-    class CapsuleShapeComponentRequests : public AZ::ComponentBus
+    /**
+     * Services provided by the Capsule Shape Component
+     */
+    class CapsuleShapeComponentRequests 
+        : public AZ::ComponentBus
     {
     public:
         virtual CapsuleShapeConfig GetCapsuleConfiguration() = 0;
 
         /**
-        * \brief Sets the end to end height of capsule, this includes the cylinder and both caps
-        * \param newHeight new height of the capsule
-        */
-        virtual void SetHeight(float newHeight) = 0;
+         * @brief Returns the end to end height of the capsule, this includes the cylinder and both caps.
+         */
+        virtual float GetHeight() = 0;
 
         /**
-        * \brief Sets radius of the capsule
-        * \param newRadius new radius of the capsule
-        */
-        virtual void SetRadius(float newRadius) = 0;
+         * @brief Returns the radius of the capsule.
+         */
+        virtual float GetRadius() = 0;
 
+        /**
+         * @brief Sets the end to end height of capsule, this includes the cylinder and both caps.
+         * @param height new height of the capsule.
+         */
+        virtual void SetHeight(float height) = 0;
+
+        /**
+         * @brief Sets radius of the capsule.
+         * @param radius new radius of the capsule.
+         */
+        virtual void SetRadius(float radius) = 0;
     };
 
     // Bus to service the Capsule Shape component event group

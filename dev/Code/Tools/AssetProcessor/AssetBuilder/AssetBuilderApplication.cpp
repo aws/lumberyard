@@ -111,6 +111,9 @@ void AssetBuilderApplication::StartCommon(AZ::Entity* systemEntity)
     AzFramework::StringFunc::Path::Join(gameRoot.c_str(), "config/editor.xml", configFilePath);
     ReflectModulesFromAppDescriptor(configFilePath.c_str());
 
+    // once we load all the modules from the app descriptor, create an entity with the builders inside gems
+    CreateAndAddEntityFromComponentTags(AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }), "AssetBuilders Entity");
+
     // the asset builder app never writes source files, only assets, so there is no need to do any kind of asset upgrading
     AZ::Data::AssetManager::Instance().SetAssetInfoUpgradingEnabled(false);
 }

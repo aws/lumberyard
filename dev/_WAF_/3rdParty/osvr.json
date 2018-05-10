@@ -1,6 +1,6 @@
 {
     "name": "osvr_static",
-    "source": "@ROOT@/Code/SDKs/OSVR",
+    "source": "@3P:OSVRSDK@",
     "description": "Open Source VR SDK that supports a variety of VR headsets from Razer, Sensics and Vuzix",
     "aliases": {
         "lib_names": [
@@ -36,6 +36,7 @@
                 "msvcr120.dll"
             ]
         },
-        "win_x64_vs2015": "@win_x64_vs2013"
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
     }
 }

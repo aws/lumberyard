@@ -29,6 +29,8 @@ class SANDBOX_API CRiverObject
     : public CRoadObject
 {
     Q_OBJECT
+    friend class RoadsAndRivers::RoadsAndRiversConverter;
+
 public:
     CRiverObject();
 

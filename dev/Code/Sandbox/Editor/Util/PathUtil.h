@@ -381,6 +381,13 @@ namespace Path
     EDITOR_CORE_API void ConvertSlashToBackSlash(QString& str);
     EDITOR_CORE_API void ConvertBackSlashToSlash(QString& str);
     EDITOR_CORE_API QString RemoveBackslash(QString path);
+
+    /*
+     * Returns the complete path of the subdirectories in parts inside of path. If
+     * one of the parts already exists but in different upper and lower case, the resulting
+     * path will contain that one. Note that the directory is not created!
+     */
+    EDITOR_CORE_API QString SubDirectoryCaseInsensitive(const QString& path, const QStringList& parts);
 };
 
 inline QString operator /(const QString& first, const QString& second)

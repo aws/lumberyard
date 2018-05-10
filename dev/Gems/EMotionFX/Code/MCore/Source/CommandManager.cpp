@@ -11,9 +11,9 @@
 */
 
 #include "CommandManager.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "LogManager.h"
 #include "CommandManagerCallback.h"
+#include "StringConversions.h"
 
 
 //#define MCORE_COMMANDMANAGER_PERFORMANCE
@@ -223,15 +223,15 @@ namespace MCore
 
     bool CommandManager::ExecuteCommand(const AZStd::string& command, AZStd::string& outCommandResult, bool addToHistory, Command** outExecutedCommand, CommandLine* outExecutedParameters, bool callFromCommandGroup, bool clearErrors, bool handleErrors)
     {
-        String commandResult;
+        AZStd::string commandResult;
         bool result = ExecuteCommand(command.c_str(), commandResult, addToHistory, outExecutedCommand, outExecutedParameters, callFromCommandGroup, clearErrors, handleErrors);
-        outCommandResult = commandResult.AsChar();
+        outCommandResult = commandResult.c_str();
         return result;
     }
 
 
     // parse and execute command
-    bool CommandManager::ExecuteCommand(const char* command, String& outCommandResult, bool addToHistory, Command** outExecutedCommand, CommandLine* outExecutedParameters, bool callFromCommandGroup, bool clearErrors, bool handleErrors)
+    bool CommandManager::ExecuteCommand(const char* command, AZStd::string& outCommandResult, bool addToHistory, Command** outExecutedCommand, CommandLine* outExecutedParameters, bool callFromCommandGroup, bool clearErrors, bool handleErrors)
     {
         // store the executed command
         if (outExecutedCommand)
@@ -245,13 +245,13 @@ namespace MCore
         }
 
         // build a local string object from the command
-        MCore::String commandString(command);
+        AZStd::string commandString(command);
 
         // remove all spaces on the left and right
-        commandString.Trim(UnicodeCharacter::space);
+        AzFramework::StringFunc::TrimWhiteSpace(commandString, true, true);
 
         // check if the string actually contains text
-        if (commandString.GetIsEmpty())
+        if (commandString.empty())
         {
             outCommandResult = "Command string is empty.";
             if (outExecutedCommand)
@@ -262,16 +262,10 @@ namespace MCore
         }
 
         // find the first space after the command
-        uint32 spaceIndex = commandString.Find(" ");
-
-        // if there is no space the string only contains the command's name
-        if (spaceIndex == MCORE_INVALIDINDEX32)
-        {
-            spaceIndex = commandString.GetLength() - 1;
-        }
+        const size_t wordSeparatorIndex = commandString.find_first_of(MCore::CharacterConstants::wordSeparators);
 
         // get the command name
-        const AZStd::string commandName = commandString.ExtractWord(0).AsChar();
+        const AZStd::string commandName = commandString.substr(0, wordSeparatorIndex);
 
         // find the corresponding command and execute it
         Command* commandObject = FindCommand(commandName);
@@ -286,12 +280,15 @@ namespace MCore
         }
 
         // get the parameters
-        String commandParameters = commandString;
-        commandParameters.RemoveAllParts(commandName.c_str());
-        commandParameters.Trim(UnicodeCharacter::space);
+        AZStd::string commandParameters;
+        if (wordSeparatorIndex != AZStd::string::npos)
+        {
+            commandParameters = commandString.substr(wordSeparatorIndex + 1);
+        }
+        AzFramework::StringFunc::TrimWhiteSpace(commandParameters, true, true);
 
         // show help when wanted
-        if (commandParameters.CheckIfIsEqualNoCase("-help"))
+        if (AzFramework::StringFunc::Equal(commandParameters.c_str(), "-help", false /* no case */))
         {
             if (outExecutedCommand)
             {
@@ -305,7 +302,7 @@ namespace MCore
         CommandLine commandLine(commandParameters);
 
         // check on syntax errors first
-        outCommandResult.Clear(true);
+        outCommandResult.clear();
         if (commandObject->GetSyntax().CheckIfIsValid(commandLine, outCommandResult) == false)
         {
             if (outExecutedCommand)
@@ -348,29 +345,19 @@ namespace MCore
 
 
     // use this version when calling a command from inside a command execute or undo function
-    bool CommandManager::ExecuteCommandInsideCommand(const char* command, String& outCommandResult)
+    bool CommandManager::ExecuteCommandInsideCommand(const char* command, AZStd::string& outCommandResult)
     {
         return ExecuteCommand(command, outCommandResult, false, nullptr, nullptr, false, false, false);
     }
 
 
-    bool CommandManager::ExecuteCommandInsideCommand(const AZStd::string& command, String& outCommandResult)
+    bool CommandManager::ExecuteCommandInsideCommand(const AZStd::string& command, AZStd::string& outCommandResult)
     {
         return ExecuteCommand(command.c_str(), outCommandResult, false, nullptr, nullptr, false, false, false);
     }
 
-
-    bool CommandManager::ExecuteCommandGroup(CommandGroup& commandGroup, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
-    {
-        String commandResult;
-        bool result = ExecuteCommandGroup(commandGroup, commandResult, addToHistory, clearErrors, handleErrors);
-        outCommandResult = commandResult.AsChar();
-        return result;
-    }
-
-
     // execute a group of commands
-    bool CommandManager::ExecuteCommandGroup(CommandGroup& commandGroup, String& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
+    bool CommandManager::ExecuteCommandGroup(CommandGroup& commandGroup, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
     {
         // if there is nothing to do
         const uint32 numCommands = commandGroup.GetNumCommands();
@@ -387,13 +374,15 @@ namespace MCore
         }
 
         // clear the output result
-        outCommandResult.Clear(true);
+        AZStd::vector<AZStd::string> intermediateCommandResults;
+        intermediateCommandResults.resize(numCommands);
 
         // execute all commands inside the group
         bool hadError = false;
         CommandGroup* newGroup = commandGroup.Clone();
-        MCore::String commandString;
-        MCore::String commandResult2;
+        AZStd::string commandString;
+        AZStd::string tmpStr;
+
         for (uint32 i = 0; i < numCommands; ++i)
         {
             Command*        executedCommand = nullptr;
@@ -401,18 +390,70 @@ namespace MCore
 
             // feed the last result into the next command
             commandString = commandGroup.GetCommandString(i);
-            commandString.Replace("%LASTRESULT%", outCommandResult); // previous command result
-            commandString.Replace("%LASTRESULT2%", commandResult2); // previous previous command result
-            commandGroup.SetCommandString(i, commandString.AsChar());
 
+            size_t lastResultIndex = commandString.find("%LASTRESULT");
+            bool replaceHappen = false;
+            while (lastResultIndex != AZStd::string::npos)
+            {
+                // Find what index the string is referring to
+                // 11 is the amount of characters in "%LASTRESULT"
+                const size_t rightPercentagePos = commandString.find("%", lastResultIndex + 11);
+                if (rightPercentagePos == AZStd::string::npos)
+                {
+                    // if the right pound is not found, stop replacing, the command is ill-formed
+                    MCore::LogError("Execution of command '%s' failed, right '%' delimiter was not found", commandString);
+                    hadError = true;
+                    break;
+                }
+
+                // Get the relative index of the command execution we want the result from
+                // For example, %LASTRESULT2% means we want the result of two commands ago
+                // %LASTRESULT% == %LASTRESULT1% which is the result of the last command
+                int32 relativeIndex = 1;
+                
+                // 11 is the amount of characters in "%LASTRESULT"
+                tmpStr = commandString.substr(lastResultIndex + 11, rightPercentagePos - 11 - lastResultIndex);
+                if (!tmpStr.empty())
+                {
+                    // check if it can be safely converted to number
+                    if (!AzFramework::StringFunc::LooksLikeInt(tmpStr.c_str(), &relativeIndex))
+                    {
+                        MCore::LogError("Execution of command '%s' failed, characters between '%LASTRESULT' and '%' cannot be converted to integer", commandString);
+                        hadError = true;
+                        break;
+                    }
+                    if (relativeIndex == 0)
+                    {
+                        MCore::LogError("Execution of command '%s' failed, command trying to access its own result", commandString);
+                        hadError = true;
+                        break;
+                    }
+                }
+                if (static_cast<int32>(i) < relativeIndex)
+                {
+                    MCore::LogError("Execution of command '%s' failed, command trying to access results from %d commands back, but there are only %d", commandString, relativeIndex, i-1);
+                    hadError = true;
+                    break;
+                }
+
+                tmpStr = commandString.substr(lastResultIndex, rightPercentagePos - lastResultIndex + 1);
+                AzFramework::StringFunc::Replace(commandString, tmpStr.c_str(), intermediateCommandResults[i - relativeIndex].c_str());
+                replaceHappen = true;
+                
+                // Search again in case the command group is referring to other results
+                lastResultIndex = commandString.find("%LASTRESULT");
+            }
+            if (replaceHappen)
+            {
+                commandGroup.SetCommandString(i, commandString.c_str());
+            }
+            
             // try to execute the command
-            commandResult2 = outCommandResult;
-            bool result = ExecuteCommand(commandGroup.GetCommandString(i), outCommandResult, false, &executedCommand, &executedParameters, true, false, false);
+            const bool result = ExecuteCommand(commandString, intermediateCommandResults[i], false, &executedCommand, &executedParameters, true, false, false);
             if (result == false)
             {
-                const char* commandResultChar = outCommandResult.AsChar();
-                MCore::LogError("Execution of command '%s' failed (result='%s')", commandGroup.GetCommandString(i), commandResultChar);
-                AddError(commandResultChar);
+                MCore::LogError("Execution of command '%s' failed (result='%s')", commandString.c_str(), intermediateCommandResults[i].c_str());
+                AddError(intermediateCommandResults[i]);
                 hadError = true;
                 if (commandGroup.GetContinueAfterError() == false)
                 {
@@ -501,6 +542,10 @@ namespace MCore
                 mCallbacks[i]->OnShowErrorReport(mErrors);
             }
         }
+        
+        // Return the result of the last command
+        // TODO: once we convert to AZStd::string we can do a swap here
+        outCommandResult = intermediateCommandResults.back();
 
         // Clear errors after reporting if specified.
         if (clearErrors)
@@ -519,7 +564,7 @@ namespace MCore
 
 
     // use this version when calling a command group from inside another command
-    bool CommandManager::ExecuteCommandGroupInsideCommand(CommandGroup& commandGroup, String& outCommandResult)
+    bool CommandManager::ExecuteCommandGroupInsideCommand(CommandGroup& commandGroup, AZStd::string& outCommandResult)
     {
         return ExecuteCommandGroup(commandGroup, outCommandResult, false, false, false);
     }
@@ -586,7 +631,7 @@ namespace MCore
 
 
     // undo the last called command
-    bool CommandManager::Undo(String& outCommandResult)
+    bool CommandManager::Undo(AZStd::string& outCommandResult)
     {
         // check if we can undo
         if (mCommandHistory.GetLength() <= 0 && mHistoryIndex >= 0)
@@ -680,7 +725,7 @@ namespace MCore
 
 
     // redo the last undoed command
-    bool CommandManager::Redo(String& outCommandResult)
+    bool CommandManager::Redo(AZStd::string& outCommandResult)
     {
         /*  // check if there are still commands to undo in the history
             if (mHistoryIndex >= mCommandHistory.GetLength())
@@ -808,7 +853,7 @@ namespace MCore
 
 
     // execute command object and store the history entry if the command is undoable
-    bool CommandManager::ExecuteCommand(Command* command, const CommandLine& commandLine, String& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
+    bool CommandManager::ExecuteCommand(Command* command, const CommandLine& commandLine, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
     {
 #ifdef MCORE_COMMANDMANAGER_PERFORMANCE
         Timer commandTimer;
@@ -839,7 +884,7 @@ namespace MCore
 #endif
 
         // execute the command object, get the result and reset it
-        outCommandResult.Clear(true);
+        outCommandResult.clear();
         const bool result = command->Execute(commandLine, outCommandResult);
 
 #ifdef MCORE_COMMANDMANAGER_PERFORMANCE
@@ -902,15 +947,14 @@ namespace MCore
         // print the command history entries
         for (uint32 i = 0; i < numHistoryEntries; ++i)
         {
-            String text;
-            text.Format("%.3i: name='%s', num parameters=%i", i, mCommandHistory[i].mExecutedCommand->GetName(), mCommandHistory[i].mParameters.GetNumParameters());
+            AZStd::string text = AZStd::string::format("%.3i: name='%s', num parameters=%i", i, mCommandHistory[i].mExecutedCommand->GetName(), mCommandHistory[i].mParameters.GetNumParameters());
             if (i == (uint32)mHistoryIndex)
             {
-                LogDetailedInfo("-> %s", text.AsChar());
+                LogDetailedInfo("-> %s", text.c_str());
             }
             else
             {
-                LogDetailedInfo(text);
+                LogDetailedInfo(text.c_str());
             }
         }
 

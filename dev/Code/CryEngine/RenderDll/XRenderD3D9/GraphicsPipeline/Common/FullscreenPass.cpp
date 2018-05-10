@@ -89,7 +89,14 @@ void CFullscreenPass::Execute()
         D3DBuffer* pVB = rd->m_DevBufMan.GetD3D(m_vertexBuffer, &bufferOffset);
 
         // fullscreen viewport
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(FullscreenPass_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+        #else
         D3DViewPort viewPort = { 0.0f, 0.0f, static_cast<float>(m_pRenderTargets[0]->GetWidth()), static_cast<float>(m_pRenderTargets[0]->GetHeight()), 0.f, 1.f };
+        #endif
         D3D11_RECT viewPortRect = { (LONG)viewPort.TopLeftX, (LONG)viewPort.TopLeftY, LONG(viewPort.TopLeftX + viewPort.Width), LONG(viewPort.TopLeftY + viewPort.Height) };
 
         uint32 bindSlot = 0;

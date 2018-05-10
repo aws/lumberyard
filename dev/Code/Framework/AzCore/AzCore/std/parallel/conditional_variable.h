@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_CONDITIONAL_VARIABLE_H
-#define AZSTD_CONDITIONAL_VARIABLE_H 1
+#pragma once
 
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
@@ -95,11 +94,14 @@ namespace AZStd
 
 #if AZ_TRAIT_USE_WINDOWS_CONDITIONAL_VARIABLE
     #include <AzCore/std/parallel/internal/conditional_variable_win.h>
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(conditional_variable_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     #include <AzCore/std/parallel/internal/conditional_variable_linux.h>
 #else
     #error Platform not supported
 #endif
-
-#endif // AZSTD_CONDITIONAL_VARIABLE_H
-#pragma once

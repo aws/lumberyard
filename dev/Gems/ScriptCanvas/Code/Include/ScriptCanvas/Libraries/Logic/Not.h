@@ -51,7 +51,7 @@ namespace ScriptCanvas
                 Datum Evaluate(const Datum& value) override
                 {
                     const bool* boolValue = value.GetAs<bool>();
-                    return Datum::CreateInitializedCopy(boolValue && (!(*boolValue)));
+                    return Datum(boolValue && (!(*boolValue)));
                 }
 
                 void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }

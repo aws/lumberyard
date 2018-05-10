@@ -146,4 +146,22 @@ namespace TestNodes
     private:
         ScriptCanvas::SlotId m_resultSlotId;
     };
+
+    //////////////////////////////////////////////////////////////////////////////
+    class InsertSlotConcatNode
+        : public ScriptCanvas::Node
+    {
+    public:
+        AZ_COMPONENT(InsertSlotConcatNode, "{445313E7-D0A5-4D73-B674-6FA37EFFF5C8}", ScriptCanvas::Node);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+        ScriptCanvas::SlotId InsertSlot(AZ::s64 index, AZStd::string_view slotName);
+
+    protected:
+        void OnInputSignal(const ScriptCanvas::SlotId& slotId) override;
+
+        void OnInit() override;
+
+        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
+    };
 }

@@ -154,6 +154,8 @@ public:
     // Check for credentials - if found call OpenAWSConsoleFederated using the provided link, otherwise open the signup page
     void OnAWSLaunchConsolePage(const QString& str);
 
+    bool IsProjectConfiguratorRunning() const;
+
     bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location);
 
     bool ToExternalToolPrompt(const QString& msg, const QString& caption);
@@ -416,6 +418,8 @@ private:
 
     void OpenAWSConsoleFederated(const QString& str);
 
+    bool FixDanglingSharedMemory(const QString& sharedMemName) const;
+
 #if AZ_TESTS_ENABLED
     //! Runs tests in the plugin specified as the file argument to the command line,
     //! passing in all extra parameters after the bootstrap test flag.
@@ -425,6 +429,7 @@ private:
 #endif
 
     class CEditorImpl* m_pEditor;
+    static CCryEditApp* s_currentInstance;
     //! True if editor is in test mode.
     //! Test mode is a special mode enabled when Editor ran with /test command line.
     //! In this mode editor starts up, but exit immediately after all initialization.
@@ -655,7 +660,7 @@ class CCrySingleDocTemplate
     : public QObject
 {
 private:
-    CCrySingleDocTemplate(UINT nIDResource, const QMetaObject* pDocClass, CRuntimeClass* pFrameClass)
+    explicit CCrySingleDocTemplate(UINT nIDResource, const QMetaObject* pDocClass, CRuntimeClass* pFrameClass)
         : QObject()
         , m_documentClass(pDocClass)
         , m_frameClass(pFrameClass)

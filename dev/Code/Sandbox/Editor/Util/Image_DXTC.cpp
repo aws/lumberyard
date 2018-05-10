@@ -56,8 +56,8 @@ static float LinearToGamma(float x)
 #ifndef __RECODE__
 #pragma warning(push)
 #pragma warning(disable:4819)   // Invalid character not in default code page
-#include "../../Tools/SDKs/squish-ccr/squish.h"
-#include "../../Tools/SDKs/squish-ccr/squish.inl"
+#include <squish.h>
+#include <squish.inl>
 #pragma warning(pop)
 #endif
 

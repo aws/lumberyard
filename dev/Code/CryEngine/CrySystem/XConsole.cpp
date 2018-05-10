@@ -314,12 +314,18 @@ int CXConsole::con_showonload = 0;
 int CXConsole::con_debug = 0;
 int CXConsole::con_restricted = 0;
 
+namespace
+{
+    const AzFramework::InputChannelId s_nullRepeatEventId("xconsole_null_repeat_event_id");
+}
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 CXConsole::CXConsole()
     : AzFramework::InputChannelEventListener(AzFramework::InputChannelEventListener::GetPriorityDebug())
     , AzFramework::InputTextEventListener(AzFramework::InputTextEventListener::GetPriorityDebug())
+    , m_nRepeatEventId(s_nullRepeatEventId)
 {
     m_fRepeatTimer = 0;
     m_pSysDeactivateConsole = 0;
@@ -1223,11 +1229,11 @@ void CXConsole::Update()
 
     if (!m_bConsoleActive)
     {
-        m_nRepeatEventId = AzFramework::InputChannelId();
+        m_nRepeatEventId = s_nullRepeatEventId;
     }
 
     // Process Key press repeat (backspace and cursor on PC)
-    if (m_nRepeatEventId != AzFramework::InputChannelId())
+    if (m_nRepeatEventId != s_nullRepeatEventId)
     {
         const float fRepeatDelay = 1.0f / 40.0f;          // in sec (similar to Windows default but might differ from actual setting)
         const float fHitchDelay = 1.0f / 10.0f;               // in sec. Very low, but still reasonable frame-rate (debug builds)
@@ -1240,7 +1246,7 @@ void CXConsole::Update()
             if (m_fRepeatTimer < -fHitchDelay)
             {
                 // bad framerate or hitch
-                m_nRepeatEventId = AzFramework::InputChannelId();
+                m_nRepeatEventId = s_nullRepeatEventId;
             }
             else
             {
@@ -1274,7 +1280,7 @@ bool CXConsole::OnInputChannelEventFiltered(const AzFramework::InputChannel& inp
 
     if (inputChannel.IsStateEnded() && m_bConsoleActive)
     {
-        m_nRepeatEventId = AzFramework::InputChannelId();
+        m_nRepeatEventId = s_nullRepeatEventId;
     }
 
     if (!inputChannel.IsStateBegan())
@@ -1367,7 +1373,7 @@ bool CXConsole::OnInputChannelEventFiltered(const AzFramework::InputChannel& inp
         if (m_bActivationKeyEnable)
         {
             ShowConsole(!GetStatus());
-            m_nRepeatEventId = AzFramework::InputChannelId();
+            m_nRepeatEventId = s_nullRepeatEventId;
             m_bIsConsoleKeyPressed = true;
             return true;
         }
@@ -1406,8 +1412,8 @@ bool CXConsole::OnInputChannelEventFiltered(const AzFramework::InputChannel& inp
 bool CXConsole::OnInputTextEventFiltered(const AZStd::string& textUTF8)
 {
 #ifdef PROCESS_XCONSOLE_INPUT
-    // Ignore tilde/accent character since it is reserved for toggling the console
-    const bool isTilde = (textUTF8 == "~" || textUTF8 == "`");
+    // Ignore tilde/accent/power of two character since it is reserved for toggling the console
+    const bool isTilde = (textUTF8 == "~" || textUTF8 == "`" || textUTF8 == "\xC2\xB2");
     if (m_bConsoleActive && !isTilde)
     {
         AddInputUTF8(textUTF8);

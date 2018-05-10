@@ -14,7 +14,7 @@
 
 #include <ScriptCanvas/Bus/UndoBus.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
-#include <Editor/View/Windows/MainWindowBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -51,7 +51,7 @@ namespace ScriptCanvasEditor
     class UndoManager
         : public UndoRequestBus::Handler
         , public AzToolsFramework::UndoSystem::IUndoNotify
-        , public MainWindowNotificationBus::Handler
+        , public GraphCanvas::AssetEditorNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(UndoManager, AZ::SystemAllocator, 0);
@@ -60,10 +60,10 @@ namespace ScriptCanvasEditor
         ~UndoManager();
 
         UndoCache* GetActiveSceneUndoCache() override;
-        UndoCache* GetSceneUndoCache(AZ::EntityId sceneId);
+        UndoCache* GetSceneUndoCache(AZ::EntityId scriptCanvasGraphId);
 
-        AZStd::unique_ptr<SceneUndoState> ExtractSceneUndoState(AZ::EntityId sceneId);
-        void InsertUndoState(AZ::EntityId sceneId, AZStd::unique_ptr<SceneUndoState> sceneUndoState);
+        AZStd::unique_ptr<SceneUndoState> ExtractSceneUndoState(AZ::EntityId scriptCanvasGraphId);
+        void InsertUndoState(AZ::EntityId scriptCanvasGraphId, AZStd::unique_ptr<SceneUndoState> sceneUndoState);
 
         void BeginUndoBatch(AZStd::string_view label) override;
         void EndUndoBatch() override;
@@ -78,31 +78,30 @@ namespace ScriptCanvasEditor
         void Redo() override;
         void Reset() override;
 
-        UndoData CreateUndoData(AZ::EntityId entityId) override;
+        UndoData CreateUndoData(AZ::EntityId scriptCanvasEntityId) override;
 
         bool IsInUndoRedo() const { return m_isInUndo; }
 
         //! IUndoNotify
         void OnUndoStackChanged() override;
         ////
+        
+        // GraphCanvas::GraphCanvasEditorNotificationBus
+        void OnGraphLoaded(const GraphCanvas::GraphId& graphCanvasGraphId) override;
+        void OnGraphUnloaded(const GraphCanvas::GraphId& graphCanvasGraphId) override;
+        void OnGraphRefreshed(const GraphCanvas::GraphId& oldGraphCanvasGraphId, const GraphCanvas::GraphId& newGraphCanvasGraphId) override;
 
-        // MainWindowNotificationBus
-        void OnActiveSceneChanged(const AZ::EntityId& activeScene) override;
-
-        void OnSceneLoaded(const AZ::EntityId& sceneId) override;
-        void OnSceneUnloaded(const AZ::EntityId& sceneId) override;
-
-        void OnSceneRefreshed(const AZ::EntityId& oldSceneId, const AZ::EntityId& newSceneId) override;
+        void OnActiveGraphChanged(const GraphCanvas::GraphId& activeGraphCanvasGraph) override;
         ////
 
     protected:
 
         SceneUndoState* FindActiveUndoState() const;
-        SceneUndoState* FindUndoState(const AZ::EntityId& sceneId) const;
+        SceneUndoState* FindUndoState(const GraphCanvas::GraphId& sceneId) const;
 
-        AZ::EntityId m_activeScene;
+        GraphCanvas::GraphId m_activeGraphCanvasGraphId;
 
-        AZStd::unordered_map< AZ::EntityId, SceneUndoState* > m_undoMapping;
+        AZStd::unordered_map< GraphCanvas::GraphId, SceneUndoState* > m_undoMapping;
 
         bool m_isInUndo = false;
         bool m_canUndo = false;

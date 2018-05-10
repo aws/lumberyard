@@ -207,6 +207,29 @@ void QFileSelectResourceWidget::onOpenSelectDialog()
         break;
     }
     case ePropertyModel:
+    {
+        AssetSelectionModel selection = AssetSelectionModel::AssetGroupSelection("Geometry");
+        AzToolsFramework::EditorRequests::Bus::Broadcast(&AzToolsFramework::EditorRequests::BrowseForAssets, selection);
+        if (selection.IsValid())
+        {
+            newPath = selection.GetResult()->GetFullPath().c_str();
+
+            // If an .fbx file has been selected, check for a .cgf and return that instead.
+            if (newPath.endsWith(QStringLiteral(".fbx")) && selection.GetResults().size() > 1)
+            {
+                for (auto itr : selection.GetResults())
+                {
+                    const QString tempPath(itr->GetRelativePath().c_str());
+                    if (tempPath.endsWith(QStringLiteral(".cgf")))
+                    {
+                        newPath = tempPath;
+                        break;
+                    }
+                }
+            }
+        }
+        break;
+    }
     case ePropertyAudioTrigger:
         newPath = GetIEditor()->GetResourceSelectorHost()->SelectResource(x, currPath);
         break;

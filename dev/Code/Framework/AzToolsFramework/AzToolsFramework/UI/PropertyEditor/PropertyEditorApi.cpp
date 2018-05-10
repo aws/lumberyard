@@ -59,6 +59,29 @@ namespace AzToolsFramework
     }
 
     //-----------------------------------------------------------------------------
+
+    bool HasAnyVisibleChildren(const InstanceDataNode& node, bool isSlicePushUI)
+    {
+        // Seed the list.
+        AZStd::list<InstanceDataNode> nodeList(node.GetChildren().begin(), node.GetChildren().end());
+
+        for (auto& node : nodeList)
+        {
+            NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(node, isSlicePushUI);
+            if (visibility == NodeDisplayVisibility::Visible)
+            {
+                return true;
+            }
+
+            // Queue the rest of the list.
+            // This is creates breadth-first traversal.
+            nodeList.insert(nodeList.end(), node.GetChildren().begin(), node.GetChildren().end());
+        }
+
+        return false;
+    }
+
+    //-----------------------------------------------------------------------------
     NodeDisplayVisibility CalculateNodeDisplayVisibility(const InstanceDataNode& node, bool isSlicePushUI)
     {
         NodeDisplayVisibility visibility = NodeDisplayVisibility::NotVisible;
@@ -83,8 +106,8 @@ namespace AzToolsFramework
 
         // Use class meta data as opposed to parent's reflection data if this is a base class element,
         // which isn't explicitly reflected by the containing class.
-        if (   (visibility == NodeDisplayVisibility::NotVisible && node.GetElementMetadata())
-            && (node.GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_BASE_CLASS))
+        if ((visibility == NodeDisplayVisibility::NotVisible && node.GetElementMetadata()) &&
+            (node.GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_BASE_CLASS))
         {
             if (node.GetClassMetadata() && node.GetClassMetadata()->m_editData)
             {
@@ -114,6 +137,10 @@ namespace AzToolsFramework
             else if (visibilityAttribute == AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             {
                 visibility = NodeDisplayVisibility::ShowChildrenOnly;
+            }
+            else if (visibilityAttribute == AZ::Edit::PropertyVisibility::HideChildren)
+            {
+                visibility = NodeDisplayVisibility::HideChildren;
             }
         }
 

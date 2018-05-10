@@ -39,6 +39,7 @@ enum class AnimValueType
     DiscreteFloat = 16,
     RGB = 20,
     CharacterAnim = 21,
+    AssetBlend = 22,
 
     Unknown = static_cast<int>(0xFFFFFFFF)
 };

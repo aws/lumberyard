@@ -53,6 +53,9 @@ public:
         memcpy(mapped.pData, &m_hostBuffer, sizeof(T));
 
         gcpRendD3D.GetDeviceContext().Unmap(m_constantBuffer, 0);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(GraphicsHelpers_h, AZ_RESTRICTED_PLATFORM)
+#endif
     }
     void Bind()
     {

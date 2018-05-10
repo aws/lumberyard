@@ -21,6 +21,14 @@
 #include "LevelHeap.h"
 #include "DefragAllocator.h"
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MEMORYMANAGER_CPP_SECTION_1 1
+#define MEMORYMANAGER_CPP_SECTION_2 2
+#define MEMORYMANAGER_CPP_SECTION_3 3
+#endif
+
 #if defined(WIN32)
     #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
@@ -105,6 +113,13 @@ bool CCryMemoryManager::GetProcessMemInfo(SProcessMemInfo& minfo)
     return false;
 
 
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMORYMANAGER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(MemoryManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(LINUX)
 
     MEMORYSTATUS MemoryStatus;
@@ -235,7 +250,13 @@ void* CCryMemoryManager::AllocPages(size_t size)
     void* ret = NULL;
     MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
 
-#if   defined(APPLE) || defined(LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMORYMANAGER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(MemoryManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(APPLE) || defined(LINUX)
     ret = mmap(0, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 #else
 
@@ -256,7 +277,13 @@ void CCryMemoryManager::FreePages(void* p, size_t size)
     UINT_PTR id = (UINT_PTR)p;
     MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc);
 
-#if   defined(APPLE) || defined(LINUX)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMORYMANAGER_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(MemoryManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(APPLE) || defined(LINUX)
 #if defined(_DEBUG)
     int ret = munmap(p, size);
     CRY_ASSERT_MESSAGE(ret == 0, "munmap returned error.");

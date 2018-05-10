@@ -57,6 +57,12 @@ namespace Audio
         m_nMonitorMemoryPoolSize            = 256;      // 256 KiB
         m_nMonitorQueueMemoryPoolSize       = 64;       // 64 KiB
         #endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AudioSystemImplCVars_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif defined(AZ_PLATFORM_APPLE_OSX)
         m_nPrimaryMemoryPoolSize            = 128 << 10;// 128 MiB
         m_nSecondaryMemoryPoolSize          = 0;

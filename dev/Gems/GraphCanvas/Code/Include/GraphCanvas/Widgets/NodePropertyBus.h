@@ -32,23 +32,6 @@ namespace GraphCanvas
     struct NodePropertyConfiguration
     {
     };
-
-    class NodePropertySourceRequests
-        : public AZ::EBusTraits
-    {
-    public:
-        // BusId here is the scene that is requesting the information.
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
-
-        //! Request to create a NodePropertyDisplay class for a particular DataSlot.
-        virtual NodePropertyDisplay* CreateDataSlotPropertyDisplay(const AZ::Uuid& dataType, const AZ::EntityId& nodeId, const AZ::EntityId& slotId) const { return nullptr; }
-        virtual NodePropertyDisplay* CreateDataSlotVariablePropertyDisplay(const AZ::Uuid& dataType, const AZ::EntityId& nodeId, const AZ::EntityId& slotId) const { return nullptr; }
-        virtual NodePropertyDisplay* CreatePropertySlotPropertyDisplay(const AZ::Crc32& propertyId, const AZ::EntityId& nodeId, const AZ::EntityId& slotId) const { return nullptr; }
-    };
-
-    using NodePropertySourceRequestBus = AZ::EBus<NodePropertySourceRequests>;
     
 	//! NodePropertiesRequestBus
 	//!

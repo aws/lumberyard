@@ -35,6 +35,7 @@
 #include "UiLayoutColumnComponent.h"
 #include "UiLayoutRowComponent.h"
 #include "UiLayoutGridComponent.h"
+#include "UiParticleEmitterComponent.h"
 #include "UiRadioButtonComponent.h"
 #include "UiRadioButtonGroupComponent.h"
 #include "UiTooltipComponent.h"
@@ -187,6 +188,7 @@ CLyShine::CLyShine(ISystem* system)
         azrtti_typeid<UiDropdownComponent>(),
         azrtti_typeid<UiDropdownOptionComponent>(),
         azrtti_typeid<UiLayoutFitterComponent>(),
+        azrtti_typeid<UiParticleEmitterComponent>(),
     };
     EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, componentUuidsForMetricsCollection);
 

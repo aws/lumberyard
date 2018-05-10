@@ -12,45 +12,18 @@
 
 #pragma once
 
-#include "InAppPurchases/InAppPurchasesBus.h"
 #include <AzCore/Module/Module.h>
 #include <IGem.h>
 
 namespace InAppPurchases
 {
     class InAppPurchasesModule
-        : public CryHooksModule
-        , public InAppPurchasesRequestBus::Handler
+        : public AZ::Module
     {
     public:
         AZ_RTTI(InAppPurchasesModule, "{19EC24B6-87E8-44AE-AC33-C280F67FD3F7}", AZ::Module);
-
-        void Initialize() override;
         
         InAppPurchasesModule();
-        ~InAppPurchasesModule() override;
-
-        void QueryProductInfoById(const AZStd::string& productId) const override;
-        void QueryProductInfoByIds(AZStd::vector<AZStd::string>& productIds) const override;
-        void QueryProductInfo() const override;
-
-        const AZStd::vector<AZStd::unique_ptr<ProductDetails const> >* GetCachedProductInfo() const override;
-        const AZStd::vector<AZStd::unique_ptr<PurchasedProductDetails const> >* GetCachedPurchasedProductInfo() const override;
-
-        void PurchaseProductWithDeveloperPayload(const AZStd::string& productId, const AZStd::string& developerPayload) const override;
-        void PurchaseProduct(const AZStd::string& productId) const override;
-        
-        void QueryPurchasedProducts() const override;
-        
-        void RestorePurchasedProducts() const override;
-        
-        void ConsumePurchase(const AZStd::string& purchaseToken) const override;
-        
-        void FinishTransaction(const AZStd::string& transactionId, bool downloadHostedContent) const override;
-
-        void ClearCachedProductDetails() override;
-        void ClearCachedPurchasedProductDetails() override;
-
-        void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override;
     };
 }

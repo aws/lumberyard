@@ -237,7 +237,6 @@
             "typetraits/same_traits.h",
             "typetraits/size_t_trait_def.h",
             "typetraits/transform_traits.h",
-            "typetraits/tuple_traits.h",
             "typetraits/typetraits.h",
             "typetraits/type_id.h",
             "typetraits/type_trait_def.h",

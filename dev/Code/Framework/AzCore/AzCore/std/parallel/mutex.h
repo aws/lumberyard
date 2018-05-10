@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_MUTEX_H
-#define AZSTD_MUTEX_H 1
+#pragma once
 
 #include <AzCore/std/parallel/config.h>
 
@@ -138,11 +137,14 @@ namespace AZStd
 
 #if defined(AZ_PLATFORM_WINDOWS)
     #include <AzCore/std/parallel/internal/mutex_win.h>
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(mutex_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     #include <AzCore/std/parallel/internal/mutex_linux.h>
 #else
     #error Platform not supported
 #endif
-
-#endif // AZSTD_MUTEX_H
-#pragma once

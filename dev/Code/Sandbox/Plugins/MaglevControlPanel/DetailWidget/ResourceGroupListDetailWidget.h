@@ -25,7 +25,7 @@ class ResourceGroupListDetailWidget
 
 public:
 
-    ResourceGroupListDetailWidget(ResourceManagementView* view, QSharedPointer<IResourceGroupListStatusModel> resourceGroupListStatusModel);
+    ResourceGroupListDetailWidget(ResourceManagementView* view, QSharedPointer<IResourceGroupListStatusModel> resourceGroupListStatusModel, QWidget* parent);
 
     void show() override;
 

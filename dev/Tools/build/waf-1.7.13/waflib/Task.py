@@ -652,7 +652,7 @@ class Task(TaskBase):
 				if Logs.sig_delta:
 					exp_output += '{} {} {}\n'.format(x.name, x.abspath(), hexlify(bld_sig))
 				bld_sigs.append(bld_sig)
-			except (AttributeError, TypeError):
+			except (AttributeError, TypeError, IOError):
 				Logs.warn('Missing signature for node %r (required by %r)' % (x, self))
 				continue	# skip adding the signature to the calculation, but continue adding other dependencies
 

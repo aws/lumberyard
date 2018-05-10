@@ -12,7 +12,6 @@
 
 #include "PlanarManipulator.h"
 
-#include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
@@ -43,8 +42,8 @@ namespace AzToolsFramework
 
         const AZ::Vector3 scaleRecip = scale.GetReciprocal();
         const AZ::Vector3 snapOffset = snapping
-            ? CalculateSnappedOffset(localStartPosition, axis1, gridSize * MaxElement(scaleRecip)) +
-              CalculateSnappedOffset(localStartPosition, axis2, gridSize * MaxElement(scaleRecip))
+            ? CalculateSnappedOffset(localStartPosition, axis1, gridSize * scaleRecip.GetMaxElement()) +
+              CalculateSnappedOffset(localStartPosition, axis2, gridSize * scaleRecip.GetMaxElement())
             : AZ::Vector3::CreateZero();
 
         startInternal.m_snapOffset = snapOffset;
@@ -86,8 +85,8 @@ namespace AzToolsFramework
         action.m_start.m_snapOffset = startInternal.m_snapOffset;
         action.m_current.m_localOffset = snapping
             ? unsnappedOffset +
-                CalculateSnappedOffset(unsnappedOffset, axis1, gridSize * MaxElement(scaleRecip)) +
-                CalculateSnappedOffset(unsnappedOffset, axis2, gridSize * MaxElement(scaleRecip))
+                CalculateSnappedOffset(unsnappedOffset, axis1, gridSize * scaleRecip.GetMaxElement()) +
+                CalculateSnappedOffset(unsnappedOffset, axis2, gridSize * scaleRecip.GetMaxElement())
             : unsnappedOffset;
 
         return action;
@@ -119,8 +118,7 @@ namespace AzToolsFramework
     void PlanarManipulator::OnLeftMouseDownImpl(
         const ViewportInteraction::MouseInteraction& interaction, float /*rayIntersectionDistance*/)
     {
-        AZ::Transform worldFromLocal;
-        AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+        const AZ::Transform worldFromLocalUniformScale = WorldFromLocalWithUniformScale(GetEntityId());
 
         const bool snapping =
             GridSnapping(interaction.m_interactionId.m_viewportId);
@@ -130,14 +128,14 @@ namespace AzToolsFramework
             GetManipulatorSpace(GetManipulatorManagerId());
 
         m_startInternal = CalculateManipulationDataStart(
-            m_fixed, worldFromLocal, snapping, gridSize, m_position,
+            m_fixed, worldFromLocalUniformScale, snapping, gridSize, m_position,
             interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
             manipulatorSpace);
 
         if (m_onLeftMouseDownCallback)
         {
             m_onLeftMouseDownCallback(CalculateManipulationDataAction(
-                m_fixed, m_startInternal, worldFromLocal, snapping, gridSize,
+                m_fixed, m_startInternal, worldFromLocalUniformScale, snapping, gridSize,
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
                 manipulatorSpace));
         }
@@ -147,12 +145,9 @@ namespace AzToolsFramework
     {
         if (m_onMouseMoveCallback)
         {
-            AZ::Transform worldFromLocal;
-            AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(),
-                &AZ::TransformBus::Events::GetWorldTM);
-
             m_onMouseMoveCallback(CalculateManipulationDataAction(
-                m_fixed, m_startInternal, worldFromLocal, GridSnapping(interaction.m_interactionId.m_viewportId),
+                m_fixed, m_startInternal, WorldFromLocalWithUniformScale(GetEntityId()),
+                GridSnapping(interaction.m_interactionId.m_viewportId),
                 GridSize(interaction.m_interactionId.m_viewportId), interaction.m_mousePick.m_rayOrigin,
                 interaction.m_mousePick.m_rayDirection, GetManipulatorSpace(GetManipulatorManagerId())));
         }
@@ -162,29 +157,22 @@ namespace AzToolsFramework
     {
         if (m_onLeftMouseUpCallback)
         {
-            AZ::Transform worldFromLocal;
-            AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(),
-                &AZ::TransformBus::Events::GetWorldTM);
-
             m_onLeftMouseUpCallback(CalculateManipulationDataAction(
-                m_fixed, m_startInternal, worldFromLocal, GridSnapping(interaction.m_interactionId.m_viewportId),
+                m_fixed, m_startInternal, WorldFromLocalWithUniformScale(GetEntityId()), GridSnapping(interaction.m_interactionId.m_viewportId),
                 GridSize(interaction.m_interactionId.m_viewportId), interaction.m_mousePick.m_rayOrigin,
                 interaction.m_mousePick.m_rayDirection, GetManipulatorSpace(GetManipulatorManagerId())));
         }
     }
 
     void PlanarManipulator::Draw(
+        const ManipulatorManagerState& managerState,
         AzFramework::EntityDebugDisplayRequests& display,
         const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        AZ::Transform worldFromLocal;
-        AZ::TransformBus::EventResult(
-            worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
         m_manipulatorView->Draw(
-            GetManipulatorManagerId(), GetManipulatorId(),
-            MouseOver(), m_position, worldFromLocal,
+            GetManipulatorManagerId(), managerState,
+            GetManipulatorId(), { WorldFromLocalWithUniformScale(GetEntityId()), m_position, MouseOver() },
             display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
     }
 

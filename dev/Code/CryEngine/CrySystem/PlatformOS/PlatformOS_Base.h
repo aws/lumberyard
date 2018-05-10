@@ -9,12 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef PLATFORMOS_BASE_H
-#define PLATFORMOS_BASE_H
+#pragma once
 
 #include "IPlatformOS.h"
 #include <CryListenerSet.h>
 #include <IGameFramework.h>
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlatformOS_Base_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 class PlatformOS_Base
     : public IPlatformOS
@@ -48,5 +50,3 @@ protected:
 
     unsigned int m_pendingUserSignIn;
 };
-
-#endif // PLATFORMOS_BASE_H

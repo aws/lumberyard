@@ -69,6 +69,17 @@ extern bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_
 extern int CryMemoryGetAllocatedSize();
 
 /////////////////////////////////////////////////////////////////////////////////
+static void VerifySizeRenderVar(ICVar* pVar)
+{
+    const int size = pVar->GetIVal();
+    if (size <= 0)
+    {
+        AZ_Error("Console Variable", false, "'%s' set to invalid value: %i. Setting to nearest safe value: 1.", pVar->GetName(), size);
+        pVar->Set(1);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////
 bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels)
 {
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -106,12 +117,12 @@ void CSystem::CreateRendererVars(const SSystemInitParams& startupParams)
     }
 
     // load renderer settings from engine.ini
-    m_rWidth = REGISTER_INT("r_Width", iWidthDefault, VF_DUMPTODISK,
+    m_rWidth = REGISTER_INT_CB("r_Width", iWidthDefault, VF_DUMPTODISK,
             "Sets the display width, in pixels. Default is 1280.\n"
-            "Usage: r_Width [800/1024/..]");
-    m_rHeight = REGISTER_INT("r_Height", iHeightDefault, VF_DUMPTODISK,
+            "Usage: r_Width [800/1024/..]", VerifySizeRenderVar);
+    m_rHeight = REGISTER_INT_CB("r_Height", iHeightDefault, VF_DUMPTODISK,
             "Sets the display height, in pixels. Default is 720.\n"
-            "Usage: r_Height [600/768/..]");
+            "Usage: r_Height [600/768/..]", VerifySizeRenderVar);
     m_rWidthAndHeightAsFractionOfScreenSize = REGISTER_FLOAT("r_WidthAndHeightAsFractionOfScreenSize", 1.0f, VF_DUMPTODISK,
             "(iOS/Android only) Sets the display width and height as a fraction of the physical screen size. Default is 1.0.\n"
             "Usage: rWidthAndHeightAsFractionOfScreenSize [0.1 - 1.0]");
@@ -582,6 +593,9 @@ void CSystem::UpdateLoadingScreen()
     }
 
 #if defined(CHECK_UPDATE_TIMES)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(SystemRender_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #endif // CHECK_UPDATE_TIMES
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED

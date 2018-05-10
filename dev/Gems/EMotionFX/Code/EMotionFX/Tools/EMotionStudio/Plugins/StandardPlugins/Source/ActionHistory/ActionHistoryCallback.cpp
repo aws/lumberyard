@@ -57,9 +57,9 @@ namespace EMStudio
                 for (uint32 i = 0; i < numParameters; ++i)
                 {
                     mTempString += " -";
-                    mTempString += commandLine.GetParameterName(i).AsChar();
+                    mTempString += commandLine.GetParameterName(i);
                     mTempString += " ";
-                    mTempString += commandLine.GetParameterValue(i).AsChar();
+                    mTempString += commandLine.GetParameterValue(i);
                 }
 
                 if (mTempString.size() < 4096)
@@ -78,7 +78,7 @@ namespace EMStudio
 
 
     // After executing a command.
-    void ActionHistoryCallback::OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const MCore::String& outResult)
+    void ActionHistoryCallback::OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult)
     {
         MCORE_UNUSED(group);
         MCORE_UNUSED(commandLine);
@@ -231,52 +231,52 @@ namespace EMStudio
         const uint32 historyIndex = GetCommandManager()->GetHistoryIndex();
         if (historyIndex == MCORE_INVALIDINDEX32)
         {
-            MCore::String outResult;
+            AZStd::string outResult;
             const uint32 numRedos = index + 1;
             for (uint32 i = 0; i < numRedos; ++i)
             {
-                outResult.Clear();
+                outResult.clear();
                 const bool result = GetCommandManager()->Redo(outResult);
-                if (outResult.GetLength() > 0)
+                if (outResult.size() > 0)
                 {
                     if (!result)
                     {
-                        MCore::LogError(outResult.AsChar());
+                        MCore::LogError(outResult.c_str());
                     }
                 }
             }
         }
         else if (historyIndex > index) // if we need to perform undo's
         {
-            MCore::String outResult;
+            AZStd::string outResult;
             const int32 numUndos = historyIndex - index;
             for (int32 i = 0; i < numUndos; ++i)
             {
                 // try to undo
-                outResult.Clear();
+                outResult.clear();
                 const bool result = GetCommandManager()->Undo(outResult);
-                if (outResult.GetLength() > 0)
+                if (outResult.size() > 0)
                 {
                     if (!result)
                     {
-                        MCore::LogError(outResult.AsChar());
+                        MCore::LogError(outResult.c_str());
                     }
                 }
             }
         }
         else if (historyIndex < index) // if we need to redo commands
         {
-            MCore::String outResult;
+            AZStd::string outResult;
             const int32 numRedos = index - historyIndex;
             for (int32 i = 0; i < numRedos; ++i)
             {
-                outResult.Clear();
+                outResult.clear();
                 const bool result = GetCommandManager()->Redo(outResult);
-                if (outResult.GetLength() > 0)
+                if (outResult.size() > 0)
                 {
                     if (!result)
                     {
-                        MCore::LogError(outResult.AsChar());
+                        MCore::LogError(outResult.c_str());
                     }
                 }
             }

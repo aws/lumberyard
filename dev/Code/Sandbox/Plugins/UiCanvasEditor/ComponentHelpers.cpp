@@ -386,6 +386,7 @@ namespace ComponentHelpers
                 action->setEnabled(isEnabled);
                 QObject::connect(action,
                     &QAction::triggered,
+                    hierarchy,
                     [ serializeContext, hierarchy, componentClass, items ](bool checked)
                     {
                         hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);
@@ -481,6 +482,7 @@ namespace ComponentHelpers
         QAction* action = new QAction(title, hierarchy);
         QObject::connect(action,
             &QAction::triggered,
+            hierarchy,
             [hierarchy, componentTypeId, entitiesSelected, componentIndex](bool checked)
         {
             hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);

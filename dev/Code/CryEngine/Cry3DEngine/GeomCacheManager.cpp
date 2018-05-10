@@ -321,7 +321,6 @@ void CGeomCacheManager::StreamingUpdate()
     {
         SGeomCacheStreamInfo& streamInfo = *m_streamInfos[i];
 
-        if (streamInfo.m_fillRenderNodeJobExecutor.IsRunning())
         {
             FRAME_PROFILER("CGeomCacheManager::StreamingUpdate_WaitForLastFillJob", GetSystem(), PROFILE_3DENGINE);
             streamInfo.m_fillRenderNodeJobExecutor.WaitForCompletion();

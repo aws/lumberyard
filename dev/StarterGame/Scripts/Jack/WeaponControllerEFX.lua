@@ -426,27 +426,17 @@ function weaponcontroller:OnActivate()
 	self.debugFireMessage = false;
 	self.debugFireMessageEventId = GameplayNotificationId(self.entityId, "DebugFireMessage", "float");
 	self.debugFireMessageHandler = GameplayNotificationBus.Connect(self, self.debugFireMessageEventId);
-    self.aimingParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "Aiming");
-    self.targetPosParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "TargetPos");
-    self.animWeightSpine1Param = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AnimWeightSpine1");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightSpine1Param, self.Properties.Weapons.AimWeightSpine1);
-    self.animWeightSpine2Param = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AnimWeightSpine2");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightSpine2Param, self.Properties.Weapons.AimWeightSpine2);
-    self.animWeightSpine3Param = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AnimWeightSpine3");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightSpine3Param, self.Properties.Weapons.AimWeightSpine3);
-    self.animWeightShoulderParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AimWeightShoulder");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightShoulderParam, self.Properties.Weapons.AimWeightShoulder);
-    self.animWeightUpperArmParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AimWeightUpperArm");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightUpperArmParam, self.Properties.Weapons.AimWeightUpperArm);
-    self.animWeightLowerArmParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AimWeightLowerArm");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightLowerArmParam, self.Properties.Weapons.AimWeightLowerArm);
-    self.animWeightHandParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AimWeightHand");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightHandParam, self.Properties.Weapons.AimWeightHand);
-    self.animWeightNeckParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AimWeightNeck");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightNeckParam, self.Properties.Weapons.AimWeightNeck);
-    self.animWeightHeadParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "AimWeightHead");
-    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.animWeightHeadParam, self.Properties.Weapons.AimWeightHead);
-    self.shotParam = AnimGraphComponentRequestBus.Event.FindParameterIndex(self.entityId, "Shot");
+
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AnimWeightSpine1", self.Properties.Weapons.AimWeightSpine1);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AnimWeightSpine2", self.Properties.Weapons.AimWeightSpine2);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AnimWeightSpine3", self.Properties.Weapons.AimWeightSpine3);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightShoulder", self.Properties.Weapons.AimWeightShoulder);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightUpperArm", self.Properties.Weapons.AimWeightUpperArm);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightLowerArm", self.Properties.Weapons.AimWeightLowerArm);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightHand", self.Properties.Weapons.AimWeightHand);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightNeck", self.Properties.Weapons.AimWeightNeck);
+    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "AimWeightHead", self.Properties.Weapons.AimWeightHead);
+    
 	self.previousShot = false;
 	self.shot = false;
 end
@@ -551,7 +541,7 @@ function weaponcontroller:UpdateAim()
 			GameplayNotificationBus.Event.OnEventBegin(self.SetWeaponStatusEventId, value);
 		--end
 		if(self.animParamUpdateFlags.TargetPos.update == true) then
-    		AnimGraphComponentRequestBus.Event.SetParameterVector3(self.entityId, self.targetPosParam, target);
+    		AnimGraphComponentRequestBus.Event.SetNamedParameterVector3(self.entityId, "TargetPos", target);
 		end
 	
 		-- player always fires directly at reticule, even if AimIK cannot point the weapon that way
@@ -609,7 +599,7 @@ function weaponcontroller:UpdateAiming(deltaTime)
 		self:UpdateAim();
 	end
 	if(self.animParamUpdateFlags.Aiming.update == true) then
-	    AnimGraphComponentRequestBus.Event.SetParameterFloat(self.entityId, self.aimingParam, self.shootingParamValue);
+	    AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "Aiming", self.shootingParamValue);
 	end
 end
 
@@ -632,7 +622,7 @@ function weaponcontroller:OnTick(deltaTime, timePoint)
 		self.shot = false;
 	end
 	if(self.animParamUpdateFlags.Shot.update == true) then
-   		AnimGraphComponentRequestBus.Event.SetParameterBool(self.entityId, self.shotParam, self.shot);
+   		AnimGraphComponentRequestBus.Event.SetNamedParameterBool(self.entityId, "Shot", self.shot);
 	end
 	self.previousShot = self.shot;
 end

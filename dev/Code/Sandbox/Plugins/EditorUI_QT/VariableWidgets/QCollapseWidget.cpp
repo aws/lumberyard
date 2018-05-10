@@ -28,7 +28,6 @@ QCollapseWidget::QCollapseWidget(QWidget* parent, CAttributeItem* attributeItem)
     , ui(new Ui::QCollapseWidget)
     , m_attributeItem(attributeItem)
 {
-    menu = new ContextMenu(this);
     ui->setupUi(this);
 
     #ifdef EDITOR_QT_UI_EXPORTS

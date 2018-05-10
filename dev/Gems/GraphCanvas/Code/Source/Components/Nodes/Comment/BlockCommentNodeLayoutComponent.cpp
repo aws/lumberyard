@@ -23,7 +23,7 @@
 #include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/tools.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 #include <Components/Nodes/NodeComponent.h>
 #include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
@@ -40,7 +40,7 @@ namespace GraphCanvas
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<BlockCommentNodeLayoutComponent>()
+            serializeContext->Class<BlockCommentNodeLayoutComponent, NodeLayoutComponent>()
                 ->Version(1)
                 ;
         }
@@ -50,10 +50,10 @@ namespace GraphCanvas
     {
         // Create this Node's entity.
         NodeConfiguration config;
-        config.SetName("Comment");
         config.SetShowInOutliner(false);
 
         AZ::Entity* entity = NodeComponent::CreateCoreNodeEntity(config);
+        entity->SetName("BlockComment");
 
         entity->CreateComponent<StylingComponent>(Styling::Elements::BlockComment::BlockComment, AZ::EntityId());
         entity->CreateComponent<BlockCommentNodeFrameComponent>();
@@ -77,10 +77,6 @@ namespace GraphCanvas
         UpdateLayoutParameters();
     }
 
-    void BlockCommentNodeLayoutComponent::OnSceneSet(const AZ::EntityId& entityId)
-    {
-    }
-
     void BlockCommentNodeLayoutComponent::Init()
     {
         NodeLayoutComponent::Init();
@@ -93,15 +89,13 @@ namespace GraphCanvas
         NodeLayoutComponent::Activate();
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
 
-        StyleNotificationBus::Handler::BusConnect(GetEntityId());
-        SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
+        StyleNotificationBus::Handler::BusConnect(GetEntityId());        
     }
 
     void BlockCommentNodeLayoutComponent::Deactivate()
     {
         NodeLayoutComponent::Deactivate();
-
-        SceneMemberNotificationBus::Handler::BusDisconnect();
+        
         StyleNotificationBus::Handler::BusDisconnect();
         NodeNotificationBus::Handler::BusDisconnect();
     }

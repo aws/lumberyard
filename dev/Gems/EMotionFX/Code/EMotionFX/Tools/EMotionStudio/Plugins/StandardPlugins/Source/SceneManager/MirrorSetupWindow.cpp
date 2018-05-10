@@ -52,7 +52,7 @@ namespace EMStudio
         setMinimumHeight(600);
 
         // load some icons
-        const AZStd::string dataDir = MysticQt::GetDataDir().AsChar();
+        const AZStd::string dataDir = MysticQt::GetDataDir().c_str();
         mBoneIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Bone.png").c_str());
         mNodeIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Node.png").c_str());
         mMeshIcon   = new QIcon(AZStd::string(dataDir + "Images/Icons/Mesh.png").c_str());
@@ -1114,7 +1114,7 @@ namespace EMStudio
                 continue;
             }
 
-            const uint16 matchIndex = currentActor->FindBestMatchForNode(currentActor->GetSkeleton()->GetNode(i)->GetName(), FromQtString(mLeftEdit->text()).AsChar(), FromQtString(mRightEdit->text()).AsChar());
+            const uint16 matchIndex = currentActor->FindBestMatchForNode(currentActor->GetSkeleton()->GetNode(i)->GetName(), FromQtString(mLeftEdit->text()).c_str(), FromQtString(mRightEdit->text()).c_str());
             if (matchIndex != MCORE_INVALIDINDEX16)
             {
                 mMap[i] = matchIndex;

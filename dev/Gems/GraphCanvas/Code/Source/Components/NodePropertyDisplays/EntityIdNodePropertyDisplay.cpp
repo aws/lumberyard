@@ -11,8 +11,8 @@
 */
 #include "precompiled.h"
 
-#include <QGraphicsSceneDragDropEvent>
-#include <QGraphicsProxyWidget>
+#include <qgraphicsscenedragdropevent>
+#include <qgraphicsproxywidget.h>
 #include <QGraphicsView>
 #include <QMenu>
 #include <QMimeData>
@@ -80,6 +80,8 @@ namespace GraphCanvas
 
         m_propertyEntityIdCtrl = aznew AzToolsFramework::PropertyEntityIdCtrl();
         m_propertyEntityIdCtrl->setProperty("HasNoWindowDecorations", true);
+        m_propertyEntityIdCtrl->setProperty("DisableFocusWindowFix", true);
+        m_propertyEntityIdCtrl->SetChildWidgetsProperty("DisableFocusWindowFix", true);
 
         m_propertyEntityIdCtrl->setContextMenuPolicy(Qt::CustomContextMenu);
         QObject::connect(m_propertyEntityIdCtrl, &AzToolsFramework::PropertyEntityIdCtrl::customContextMenuRequested, [this](const QPoint& pos) { this->ShowContextMenu(pos); });
@@ -100,12 +102,11 @@ namespace GraphCanvas
     
     EntityIdNodePropertyDisplay::~EntityIdNodePropertyDisplay()
     {
-        NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
+        delete m_proxyWidget;
+        delete m_disabledLabel;        
+        delete m_displayLabel;
 
         delete m_dataInterface;
-        delete m_disabledLabel;
-        delete m_proxyWidget;
-        delete m_displayLabel;
     }
     
     void EntityIdNodePropertyDisplay::RefreshStyle()
@@ -253,7 +254,7 @@ namespace GraphCanvas
     void EntityIdNodePropertyDisplay::OnIdSet()
     {
         QGraphicsItem* ownerItem = nullptr;
-        SceneMemberUIRequestBus::EventResult(ownerItem, GetId(), &SceneMemberUIRequests::GetRootGraphicsItem);
+        VisualRequestBus::EventResult(ownerItem, GetId(), &VisualRequests::AsGraphicsItem);
 
         if (ownerItem)
         {

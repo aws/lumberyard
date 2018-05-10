@@ -14,7 +14,7 @@ def build(bld):
     bld.DefineGem(
         file_list         = ['physx.waf_files'],
         win_file_list     = ['physx_win.waf_files'],
-        disable_tests     = (not 'win' in bld.env['PLATFORM']) or ('darwin' in bld.env['PLATFORM']),
+        disable_tests     = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         platforms         = ['all'],
         test_all_includes = [bld.Path('Code/Framework/Tests')],
         pch               = "Source/PhysX_precompiled.cpp",
@@ -27,7 +27,7 @@ def build(bld):
         editor = dict(
             file_list         = ['physx.waf_files'],
             win_file_list     = ['physx_editor_win.waf_files', 'physx_win.waf_files'],
-            disable_tests     = (not 'win' in bld.env['PLATFORM']) or ('darwin' in bld.env['PLATFORM']),
+            disable_tests     = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
             defines           = ['PHYSX_EDITOR'],
             win_defines       = ['PHYSX_EDITOR_WIN', 'PHYSX_WIN'],
             includes          = [bld.Path('Code/Framework/AzToolsFramework'),

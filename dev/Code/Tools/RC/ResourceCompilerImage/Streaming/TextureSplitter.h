@@ -35,6 +35,20 @@
 
 struct D3DBaseTexture;
 
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define TEXTURESPLITTER_H_SECTION_DEFINES 1
+#define TEXTURESPLITTER_H_SECTION_CTEXTURE 2
+#define TEXTURESPLITTER_H_SECTION_SMARTPOINTER 3
+
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PS4)
+#endif
+#endif
 
 namespace TextureHelper
 {
@@ -142,7 +156,16 @@ protected:
         eStreamableResourceFlags_NoSplit                             = 1 << 2       // indicates that the texture is to be unsplitted
     };
 
-
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PS4)
+#endif
+#endif
 
     // structure to store mapping information about interleaved resource
     struct STexture
@@ -202,6 +225,16 @@ protected:
         SideVec                                     m_surfaces;
         std::list<SChunkDesc>           m_chunks;                   // all file chunks
 
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
+#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PS4)
+#endif
+#endif
 
         SSurface* TryGetSurface(int nSide, int nMip);
         void AddSurface(const SSurface& surf);

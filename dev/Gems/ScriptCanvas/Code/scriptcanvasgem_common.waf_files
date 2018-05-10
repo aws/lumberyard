@@ -12,6 +12,12 @@
         "Include": [
             "Include/ScriptCanvas/ScriptCanvasGem.h"
         ],
+        "Include/ScriptCanvas/Asset" : [
+            "Include/ScriptCanvas/Asset/RuntimeAsset.cpp",
+            "Include/ScriptCanvas/Asset/RuntimeAsset.h",
+            "Include/ScriptCanvas/Asset/RuntimeAssetHandler.cpp",
+            "Include/ScriptCanvas/Asset/RuntimeAssetHandler.h"
+        ],
         "Include/ScriptCanvas/AST" : [
             "Include/ScriptCanvas/AST/AddOperation.cpp",
             "Include/ScriptCanvas/AST/AddOperation.h",
@@ -62,6 +68,7 @@
             "Include/ScriptCanvas/Core/ConnectionBus.h",
             "Include/ScriptCanvas/Core/Contract.cpp",
             "Include/ScriptCanvas/Core/Contract.h",
+            "Include/ScriptCanvas/Core/Contracts.h",
             "Include/ScriptCanvas/Core/Core.cpp",
             "Include/ScriptCanvas/Core/Core.h",
             "Include/ScriptCanvas/Core/Datum.cpp",
@@ -71,10 +78,6 @@
             "Include/ScriptCanvas/Core/Endpoint.h",
             "Include/ScriptCanvas/Core/Graph.cpp",
             "Include/ScriptCanvas/Core/Graph.h",
-            "Include/ScriptCanvas/Core/GraphAsset.cpp",
-            "Include/ScriptCanvas/Core/GraphAsset.h",
-            "Include/ScriptCanvas/Core/GraphAssetHandler.cpp",
-            "Include/ScriptCanvas/Core/GraphAssetHandler.h",
             "Include/ScriptCanvas/Core/GraphData.h",
             "Include/ScriptCanvas/Core/GraphData.cpp",
             "Include/ScriptCanvas/Core/NodeFunctionGeneric.h",
@@ -107,12 +110,12 @@
             "Include/ScriptCanvas/Core/Contracts/DisallowReentrantExecutionContract.h",
             "Include/ScriptCanvas/Core/Contracts/DynamicTypeContract.cpp",
             "Include/ScriptCanvas/Core/Contracts/DynamicTypeContract.h",
+            "Include/ScriptCanvas/Core/Contracts/ExclusivePureDataContract.cpp",
+            "Include/ScriptCanvas/Core/Contracts/ExclusivePureDataContract.h",
             "Include/ScriptCanvas/Core/Contracts/IsReferenceTypeContract.cpp",
             "Include/ScriptCanvas/Core/Contracts/IsReferenceTypeContract.h",
             "Include/ScriptCanvas/Core/Contracts/SlotTypeContract.cpp",
             "Include/ScriptCanvas/Core/Contracts/SlotTypeContract.h",
-            "Include/ScriptCanvas/Core/Contracts/StorageRequiredContract.cpp",
-            "Include/ScriptCanvas/Core/Contracts/StorageRequiredContract.h",
             "Include/ScriptCanvas/Core/Contracts/TypeContract.cpp",
             "Include/ScriptCanvas/Core/Contracts/TypeContract.h"
         ],
@@ -139,8 +142,17 @@
             "Include/ScriptCanvas/Debugger/Messages/Acknowledge.h"
         ],
         "Include/ScriptCanvas/Execution": [
-            "Include/ScriptCanvas/Execution/ASTInterpreter.cpp",
-            "Include/ScriptCanvas/Execution/ASTInterpreter.h"
+            "Include/ScriptCanvas/Execution/ErrorBus.h",
+            "Include/ScriptCanvas/Execution/ExecutionContext.cpp",
+            "Include/ScriptCanvas/Execution/ExecutionContext.h",
+            "Include/ScriptCanvas/Execution/ExecutionBus.h",
+            "Include/ScriptCanvas/Execution/RuntimeBus.h",
+            "Include/ScriptCanvas/Execution/RuntimeComponent.cpp",
+            "Include/ScriptCanvas/Execution/RuntimeComponent.h"
+        ],
+        "Include/ScriptCanvas/Internal": [
+          "Include/ScriptCanvas/Internal/Nodes/StringFormatted.cpp",
+          "Include/ScriptCanvas/Internal/Nodes/StringFormatted.h"
         ],
         "Include/ScriptCanvas/Grammar": [
             "Include/ScriptCanvas/Grammar/ExecutionIterator.cpp",
@@ -152,6 +164,7 @@
             "Include/ScriptCanvas/Grammar/NodeVisitor.h",
             "Include/ScriptCanvas/Grammar/Parser.cpp",
             "Include/ScriptCanvas/Grammar/Parser.h",
+            "Include/ScriptCanvas/Grammar/ParseError.h",
             "Include/ScriptCanvas/Grammar/ParserVisitor.cpp",
             "Include/ScriptCanvas/Grammar/ParserVisitor.h",
             "Include/ScriptCanvas/Grammar/TraitsVisitor.cpp",
@@ -172,13 +185,19 @@
             "Include/ScriptCanvas/Libraries/Core/Core.h",
             "Include/ScriptCanvas/Libraries/Core/EBusEventHandler.cpp",
             "Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h",
+            "Include/ScriptCanvas/Libraries/Core/ExtractProperty.cpp",
+            "Include/ScriptCanvas/Libraries/Core/ExtractProperty.h",
             "Include/ScriptCanvas/Libraries/Core/Error.cpp",
             "Include/ScriptCanvas/Libraries/Core/Error.h",
             "Include/ScriptCanvas/Libraries/Core/ErrorHandler.cpp",
             "Include/ScriptCanvas/Libraries/Core/ErrorHandler.h",
+            "Include/ScriptCanvas/Libraries/Core/GetVariable.cpp",
+            "Include/ScriptCanvas/Libraries/Core/GetVariable.h",
             "Include/ScriptCanvas/Libraries/Core/Method.cpp",
             "Include/ScriptCanvas/Libraries/Core/Method.h",
             "Include/ScriptCanvas/Libraries/Core/MethodUtility.h",
+            "Include/ScriptCanvas/Libraries/Core/SetVariable.cpp",
+            "Include/ScriptCanvas/Libraries/Core/SetVariable.h",
             "Include/ScriptCanvas/Libraries/Core/Start.cpp",
             "Include/ScriptCanvas/Libraries/Core/Start.h",
             "Include/ScriptCanvas/Libraries/Core/String.h",
@@ -188,7 +207,9 @@
         "Include/ScriptCanvas/Libraries/Entity": [
             "Include/ScriptCanvas/Libraries/Entity/Entity.cpp",
             "Include/ScriptCanvas/Libraries/Entity/Entity.h",
+            "Include/ScriptCanvas/Libraries/Entity/EntityNodes.h",
             "Include/ScriptCanvas/Libraries/Entity/EntityIDNode.h",
+            "Include/ScriptCanvas/Libraries/Entity/EntityIDNodes.h",
             "Include/ScriptCanvas/Libraries/Entity/EntityRef.h",
             "Include/ScriptCanvas/Libraries/Entity/Rotate.cpp",
             "Include/ScriptCanvas/Libraries/Entity/Rotate.h"
@@ -222,12 +243,11 @@
             "Include/ScriptCanvas/Libraries/Math/CRCNode.h",
             "Include/ScriptCanvas/Libraries/Math/CRCNodes.h",
             "Include/ScriptCanvas/Libraries/Math/Divide.h",
-            "Include/ScriptCanvas/Libraries/Math/LinearInterpolation.cpp",
-            "Include/ScriptCanvas/Libraries/Math/LinearInterpolation.h",
             "Include/ScriptCanvas/Libraries/Math/Math.cpp",
             "Include/ScriptCanvas/Libraries/Math/Math.h",
             "Include/ScriptCanvas/Libraries/Math/MathNodeUtilities.h",
             "Include/ScriptCanvas/Libraries/Math/MathGenerics.h",
+            "Include/ScriptCanvas/Libraries/Math/MathRandom.h",
             "Include/ScriptCanvas/Libraries/Math/Matrix3x3Node.h",
             "Include/ScriptCanvas/Libraries/Math/Matrix3x3Nodes.h",
             "Include/ScriptCanvas/Libraries/Math/Matrix4x4Node.h",
@@ -273,6 +293,14 @@
             "Include/ScriptCanvas/Libraries/Time/Timer.h",
             "Include/ScriptCanvas/Libraries/Time/Timer.cpp"
         ],
+        "Include/ScriptCanvas/Libraries/String": [
+          "Include/ScriptCanvas/Libraries/String/String.h",
+          "Include/ScriptCanvas/Libraries/String/String.cpp",
+          "Include/ScriptCanvas/Libraries/String/Print.h",
+          "Include/ScriptCanvas/Libraries/String/Print.cpp",
+          "Include/ScriptCanvas/Libraries/String/Format.h",
+          "Include/ScriptCanvas/Libraries/String/Format.cpp"
+        ],
         "Include/ScriptCanvas/Profiler": [
             "Include/ScriptCanvas/Profiler/Driller.h",
             "Include/ScriptCanvas/Profiler/Aggregator.h",
@@ -287,9 +315,25 @@
             "Include/ScriptCanvas/Data/PropertyTraits.h",
             "Include/ScriptCanvas/Data/Traits.h"
         ],
+        "Include/ScriptCanvas/Variable": [
+            "Include/ScriptCanvas/Variable/VariableBus.h",
+            "Include/ScriptCanvas/Variable/GraphVariableManagerComponent.h",
+            "Include/ScriptCanvas/Variable/GraphVariableManagerComponent.cpp",
+            "Include/ScriptCanvas/Variable/VariableCore.h",
+            "Include/ScriptCanvas/Variable/VariableCore.cpp",
+            "Include/ScriptCanvas/Variable/VariableData.h",
+            "Include/ScriptCanvas/Variable/VariableData.cpp",
+            "Include/ScriptCanvas/Variable/VariableDatumBase.h",
+            "Include/ScriptCanvas/Variable/VariableDatumBase.cpp",
+            "Include/ScriptCanvas/Variable/VariableDatum.h",
+            "Include/ScriptCanvas/Variable/VariableDatum.cpp"
+        ],
         "Include/ScriptCanvas/Translation": [
             "Include/ScriptCanvas/Translation/Translation.cpp",
             "Include/ScriptCanvas/Translation/Translation.h"
+        ],
+        "Include/ScriptCanvas/Developer": [
+            "Include/ScriptCanvas/Developer/StatusBus.h"
         ]
     }
 }

@@ -14,7 +14,6 @@
 
 #include <MCore/Source/MemoryCategoriesCore.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include "../StandardPluginsConfig.h"
 #include "MotionWindowPlugin.h"
 #include <EMotionFX/Source/Motion.h>

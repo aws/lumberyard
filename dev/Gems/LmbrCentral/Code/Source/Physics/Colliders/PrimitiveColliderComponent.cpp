@@ -134,21 +134,23 @@ namespace LmbrCentral
     int PrimitiveColliderComponent::AddEntityShapeToPhysicalEntity(IPhysicalEntity& physicalEntity, int nextPartId, const AZ::EntityId& entityId)
     {
         AZ::Crc32 shapeType;
-        EBUS_EVENT_ID_RESULT(shapeType, entityId, ShapeComponentRequestsBus, GetShapeType);
+        ShapeComponentRequestsBus::EventResult(shapeType, entityId, &ShapeComponentRequests::GetShapeType);
 
-        if (shapeType == AZ::Crc32("Sphere"))
+        if (shapeType == AZ_CRC("Sphere", 0x55f96687))
         {
             SphereShapeConfig config;
-            EBUS_EVENT_ID_RESULT(config, entityId, SphereShapeComponentRequestsBus, GetSphereConfiguration);
+            SphereShapeComponentRequestsBus::EventResult(
+                config, entityId, &SphereShapeComponentRequests::GetSphereConfiguration);
             primitives::sphere sphere;
             sphere.center.Set(0.f, 0.f, 0.f);
-            sphere.r = config.GetRadius();
+            sphere.r = config.m_radius;
             return AddPrimitiveFromEntityToPhysicalEntity(entityId, physicalEntity, nextPartId, primitives::sphere::type, sphere);
         }
-        else if (shapeType == AZ::Crc32("Box"))
+        
+        if (shapeType == AZ_CRC("Box", 0x08a9483a))
         {
             BoxShapeConfig config;
-            EBUS_EVENT_ID_RESULT(config, entityId, BoxShapeComponentRequestsBus, GetBoxConfiguration);
+            BoxShapeComponentRequestsBus::EventResult(config, entityId, &BoxShapeComponentRequests::GetBoxConfiguration);
             primitives::box box;
             box.Basis.SetIdentity();
             box.bOriented = 0;
@@ -156,40 +158,46 @@ namespace LmbrCentral
 
             // box.m_size[i] is "half length" of side
             // config.m_dimensions[i] is "total length" of side
-            box.size = AZVec3ToLYVec3(config.GetDimensions() * 0.5f);
+            box.size = AZVec3ToLYVec3(config.m_dimensions * 0.5f);
             return AddPrimitiveFromEntityToPhysicalEntity(entityId, physicalEntity, nextPartId, primitives::box::type, box);
         }
-        else if (shapeType == AZ::Crc32("Cylinder"))
+        
+        if (shapeType == AZ_CRC("Cylinder", 0x9b045bea))
         {
             CylinderShapeConfig config;
-            EBUS_EVENT_ID_RESULT(config, entityId, CylinderShapeComponentRequestsBus, GetCylinderConfiguration);
+            CylinderShapeComponentRequestsBus::EventResult(
+                config, entityId, &CylinderShapeComponentRequests::GetCylinderConfiguration);
             primitives::cylinder cylinder;
-            cylinder.center.Set(0.f, 0.f, 0.f);
-            cylinder.axis.Set(0.f, 0.f, 1.f);
-            cylinder.r = config.GetRadius();
+            cylinder.center.Set(0.0f, 0.0f, 0.0f);
+            cylinder.axis.Set(0.0f, 0.0f, 1.0f);
+            cylinder.r = config.m_radius;
             // cylinder.hh is "half height"
             // config.m_height is "total height"
-            cylinder.hh = 0.5f * config.GetHeight();
+            cylinder.hh = 0.5f * config.m_height;
             return AddPrimitiveFromEntityToPhysicalEntity(entityId, physicalEntity, nextPartId, primitives::cylinder::type, cylinder);
         }
-        else if (shapeType == AZ::Crc32("Capsule"))
+        
+        if (shapeType == AZ_CRC("Capsule", 0xc268a183))
         {
             CapsuleShapeConfig config;
-            EBUS_EVENT_ID_RESULT(config, entityId, CapsuleShapeComponentRequestsBus, GetCapsuleConfiguration);
+            CapsuleShapeComponentRequestsBus::EventResult(
+                config, entityId, &CapsuleShapeComponentRequests::GetCapsuleConfiguration);
             primitives::capsule capsule;
             capsule.center.Set(0.f, 0.f, 0.f);
             capsule.axis.Set(0.f, 0.f, 1.f);
-            capsule.r = config.GetRadius();
+            capsule.r = config.m_radius;
             // config.m_height specifies "total height" of capsule.
             // capsule.hh is the "half height of the straight section of a capsule".
             // config.hh == (2 * capsule.hh) + (2 * capsule.r)
-            capsule.hh = AZStd::max(0.f, (0.5f * config.GetHeight()) - config.GetRadius());
+            capsule.hh = AZStd::max(0.f, (0.5f * config.m_height) - config.m_radius);
             return AddPrimitiveFromEntityToPhysicalEntity(entityId, physicalEntity, nextPartId, primitives::capsule::type, capsule);
         }
-        else if (shapeType == AZ::Crc32("Compound"))
+        
+        if (shapeType == AZ_CRC("Compound", 0x8bde16f0))
         {
             CompoundShapeConfiguration config;
-            EBUS_EVENT_ID_RESULT(config, entityId, CompoundShapeComponentRequestsBus, GetCompoundShapeConfiguration);
+            CompoundShapeComponentRequestsBus::EventResult(
+                config, entityId, &CompoundShapeComponentRequests::GetCompoundShapeConfiguration);
 
             // Connect to EntityBus of child shapes.
             // If the child is active, OnEntityActivated will fire immediately
@@ -228,12 +236,14 @@ namespace LmbrCentral
         {
             // Check that child does in fact have shape on it before announcing shape change.
             AZ::Crc32 shapeType;
-            EBUS_EVENT_ID_RESULT(shapeType, entityId, ShapeComponentRequestsBus, GetShapeType);
+            ShapeComponentRequestsBus::EventResult(shapeType, entityId, &ShapeComponentRequests::GetShapeType);
+
             if (shapeType != AZ::Crc32())
             {
-                EBUS_EVENT_ID(GetEntityId(), ColliderComponentEventBus, OnColliderChanged);
+                ColliderComponentEventBus::Event(GetEntityId(), &AzFramework::ColliderComponentEvents::OnColliderChanged);
             }
         }
+
         AZ::EntityBus::MultiHandler::BusDisconnect(entityId);
     }
 
@@ -349,7 +359,7 @@ namespace AzFramework
             {
                 editContext->Class<PrimitiveColliderConfig>("Primitive Collider Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &PrimitiveColliderConfig::m_surfaceTypeName,
                         "Surface Type", "The collider will use this surface type in the physics simulation.")
                     ->Attribute(AZ::Edit::Attributes::StringList, &LmbrCentral::GetSurfaceTypeNames)

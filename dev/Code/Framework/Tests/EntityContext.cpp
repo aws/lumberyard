@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Component/ComponentApplication.h>
@@ -36,6 +36,12 @@ namespace UnitTest
         EntityContextBasicTest()
             : AllocatorsFixture(15, false)
         {
+        }
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
             AllocatorInstance<PoolAllocator>::Create();
             AllocatorInstance<ThreadPoolAllocator>::Create();
 
@@ -43,12 +49,18 @@ namespace UnitTest
             Data::AssetManager::Create(desc);
         }
 
-        ~EntityContextBasicTest()
+        virtual ~EntityContextBasicTest()
+        {
+        }
+
+        void TearDown() override
         {
             Data::AssetManager::Destroy();
 
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
         }
 
         void run()

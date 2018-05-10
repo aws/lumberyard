@@ -25,7 +25,7 @@ namespace GraphCanvas
         DataSlotConnectionPin(const AZ::EntityId& slotId);
         ~DataSlotConnectionPin();
         
-        void RefreshStyle() override;
+        void OnRefreshStyle() override;
         
         void DrawConnectionPin(QPainter* painter, QRectF drawRect, bool isConnected) override; 
         

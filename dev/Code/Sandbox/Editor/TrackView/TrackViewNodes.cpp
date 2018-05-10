@@ -530,7 +530,7 @@ int CTrackViewNodesCtrl::GetIconIndexForTrack(const CTrackViewTrack* pTrack) con
     {
         nImage = 9;
     }
-    else if (type == AnimParamType::Animation || type == AnimParamType::TimeRanges || valueType == AnimValueType::CharacterAnim)
+    else if (type == AnimParamType::Animation || type == AnimParamType::TimeRanges || valueType == AnimValueType::CharacterAnim || valueType == AnimValueType::AssetBlend)
     {
         nImage = 10;
     }
@@ -636,7 +636,7 @@ CTrackViewNodesCtrl::CRecord* CTrackViewNodesCtrl::AddAnimNodeRecord(CRecord* pP
 {
     CRecord* pNewRecord = new CRecord(pAnimNode);
 
-    pNewRecord->setText(0, QtUtil::ToQString(pAnimNode->GetName()));
+    pNewRecord->setText(0, pAnimNode->GetName());
     UpdateAnimNodeRecord(pNewRecord, pAnimNode);
     pParentRecord->insertChild(GetInsertPosition(pParentRecord, pAnimNode), pNewRecord);
     FillNodesRec(pNewRecord, pAnimNode);
@@ -651,7 +651,7 @@ CTrackViewNodesCtrl::CRecord* CTrackViewNodesCtrl::AddTrackRecord(CRecord* pPare
 
     CRecord* pNewTrackRecord = new CRecord(pTrack);
     pNewTrackRecord->setSizeHint(0, QSize(30, 18));
-    pNewTrackRecord->setText(0, QtUtil::ToQString(pTrack->GetName()));
+    pNewTrackRecord->setText(0, pTrack->GetName());
     UpdateTrackRecord(pNewTrackRecord, pTrack);
     pParentRecord->insertChild(GetInsertPosition(pParentRecord, pTrack), pNewTrackRecord);
     FillNodesRec(pNewTrackRecord, pTrack);
@@ -904,7 +904,7 @@ void CTrackViewNodesCtrl::OnFillItems()
         m_nodeToRecordMap.clear();
 
         CRecord* pRootGroupRec = new CRecord(pSequence);
-        pRootGroupRec->setText(0, QtUtil::ToQString(pSequence->GetName()));
+        pRootGroupRec->setText(0, pSequence->GetName());
         QFont f = font();
         f.setBold(true);
         pRootGroupRec->setData(0, Qt::FontRole, f);
@@ -1147,7 +1147,35 @@ void CTrackViewNodesCtrl::OnNMRclick(QPoint point)
                 {
                     IMovieSystem* movieSystem = GetIEditor()->GetMovieSystem();
 
-                    QMessageBox::information(CTrackViewDialog::GetCurrentInstance(), tr("Track View Warning"), tr(movieSystem->GetUserNotificationMsgs().c_str()));
+                    AZStd::string messages = movieSystem->GetUserNotificationMsgs();
+
+                    // Create a list of all lines
+                    AZStd::vector<AZStd::string> lines;
+                    AzFramework::StringFunc::Tokenize(messages.c_str(), lines, "\n");
+
+                    // Truncate very long messages. No information is lost because
+                    // all of these errors will have been logged to the console already.
+                    const int maxLines = 30;
+                    AZStd::string shortMessages;
+                    if (lines.size() > maxLines)
+                    {
+                        int numLines = 0;
+                        for (AZStd::string line : lines)
+                        {
+                            shortMessages += line + "\n";
+                            if (++numLines >= maxLines)
+                            {
+                                break;
+                            }
+                        }
+                        shortMessages += "Message truncated, please see console for a full list of warnings.\n";
+                    }
+                    else
+                    {
+                        shortMessages = messages;
+                    }
+
+                    QMessageBox::information(this, tr("Track View Warning"), tr(shortMessages.c_str()));
 
                     // clear the notification log now that we've consumed and presented them.
                     movieSystem->ClearUserNotificationMsgs();
@@ -2290,7 +2318,7 @@ int CTrackViewNodesCtrl::ShowPopupMenuSingleSelection(SContextMenu& contextMenu,
                     continue;
                 }
 
-                QAction* a = contextMenu.main.addAction(QString("  %1").arg(QtUtil::ToQString(pTrack->GetName())));
+                QAction* a = contextMenu.main.addAction(QString("  %1").arg(pTrack->GetName()));
                 a->setData(eMI_ShowHideBase + childIndex);
                 a->setCheckable(true);
                 a->setChecked(!pTrack->IsHidden());
@@ -2559,7 +2587,7 @@ void CTrackViewNodesCtrl::FillAutoCompletionListForFilter()
 
         for (unsigned int i = 0; i < animNodeCount; ++i)
         {
-            strings << QtUtil::ToQString(animNodes.GetNode(i)->GetName());
+            strings << animNodes.GetNode(i)->GetName();
         }
     }
     else
@@ -2924,7 +2952,7 @@ void CTrackViewNodesCtrl::OnNodeRenamed(CTrackViewNode* pNode, const char* pOldN
     if (!m_bIgnoreNotifications)
     {
         CRecord* pNodeRecord = GetNodeRecord(pNode);
-        pNodeRecord->setText(0, QtUtil::ToQString(pNode->GetName()));
+        pNodeRecord->setText(0, pNode->GetName());
 
         update();
     }

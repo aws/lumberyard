@@ -158,7 +158,7 @@ bool CDialogEditorDialog::DoSourceControlOp(CEditorDialogScript* script, ESource
     QString gamePath = m_dialogManager->ScriptToFilename(scriptId);
     QString path = gamePath;
 
-    CryLogAlways("[DialogEditor] Doing SC-Op: %s for %s", SCToName(scOp), path);
+    CryLogAlways("[DialogEditor] Doing SC-Op: %s for %s", SCToName(scOp), path.toUtf8().constData());
 
 #ifdef  DE_USE_SOURCE_CONTROL
     switch (scOp)
@@ -527,7 +527,7 @@ void CDialogEditorDialog::RenameScript()
                 QString newPath = m_dialogManager->ScriptToFilename(newId);
                 CryLogAlways("[DialogEditor] Renaming file in SourceControl:"
                     "\nOld: %s"
-                    "\nNew: %s", oldPath, newPath);
+                    "\nNew: %s", oldPath.toUtf8().constData(), newPath.toUtf8().constData());
 
                 if (!CFileUtil::RenameFile(oldPath.toUtf8().data(), newPath.toUtf8().data()))
                 {

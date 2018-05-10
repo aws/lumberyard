@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include "EMStudioConfig.h"
 #include <QDialog>
 #include <QTableWidget>

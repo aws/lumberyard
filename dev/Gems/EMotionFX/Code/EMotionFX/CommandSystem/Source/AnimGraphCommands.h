@@ -20,16 +20,6 @@
 
 namespace CommandSystem
 {
-    // scale anim graph data
-        MCORE_DEFINECOMMAND_START(CommandScaleAnimGraphData, "Scale anim graph data", true)
-public:
-    MCore::String       mOldUnitType;
-    uint32              mID;
-    float               mScaleFactor;
-    bool                mOldDirtyFlag;
-    bool                mUseUnitType;
-    MCORE_DEFINECOMMAND_END
-
 
     // load the given anim graph
         MCORE_DEFINECOMMAND_START(CommandLoadAnimGraph, "Load a anim graph", true)
@@ -41,8 +31,8 @@ public:
 
     // adjust a anim graph
         MCORE_DEFINECOMMAND_START(CommandAdjustAnimGraph, "Adjust anim graph", true)
-    MCore::String       mOldName;
-    MCore::String       mOldDescription;
+    AZStd::string       mOldName;
+    AZStd::string       mOldDescription;
     bool                mOldRetargetingEnabled;
     bool                mOldDirtyFlag;
     MCORE_DEFINECOMMAND_END
@@ -52,7 +42,7 @@ public:
         MCORE_DEFINECOMMAND_START(CommandCreateAnimGraph, "Create a anim graph", true)
 public:
     uint32              mPreviouslyUsedID;
-    MCore::String       mOldName;
+    AZStd::string       mOldName;
     bool                mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
@@ -60,8 +50,8 @@ public:
     // delete the given anim graph
         MCORE_DEFINECOMMAND_START(CommandRemoveAnimGraph, "Remove a anim graph", true)
 public:
-    MCore::String       mOldName;
-    MCore::String       mOldFileName;
+    AZStd::string       mOldName;
+    AZStd::string       mOldFileName;
     uint32              mOldID;
     uint32              mOldIndex;
     bool                mOldWorkspaceDirtyFlag;

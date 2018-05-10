@@ -39,7 +39,7 @@ namespace GraphCanvas
             return;
         }
 
-        serializeContext->Class<NodeComponent>()
+        serializeContext->Class<NodeComponent, GraphCanvasPropertyComponent>()
             ->Version(3)
             ->Field("Configuration", &NodeComponent::m_configuration)
             ->Field("Slots", &NodeComponent::m_slots)
@@ -63,7 +63,7 @@ namespace GraphCanvas
     AZ::Entity* NodeComponent::CreateCoreNodeEntity(const NodeConfiguration& config)
     {
         // Create this Node's entity.
-        AZ::Entity* entity = aznew AZ::Entity(config.GetName().c_str());
+        AZ::Entity* entity = aznew AZ::Entity();
 
         entity->CreateComponent<NodeComponent>(config);
         entity->CreateComponent<GeometryComponent>();
@@ -172,7 +172,7 @@ namespace GraphCanvas
 
             SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneSet, m_sceneId);
 
-            OnStyleSheetChanged();
+            OnStylesChanged();
 
             AZ::EntityId grid;
             SceneRequestBus::EventResult(grid, m_sceneId, &SceneRequests::GetGrid);
@@ -234,24 +234,12 @@ namespace GraphCanvas
         SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneReady);
     }
 
-    void NodeComponent::OnStyleSheetChanged()
+    void NodeComponent::OnStylesChanged()
     {
         for (auto& slotRef : m_slots)
         {
             StyleNotificationBus::Event(slotRef->GetId(), &StyleNotifications::OnStyleChanged);
         }
-    }
-
-    void NodeComponent::SetName(const AZStd::string& name)
-    {
-        m_configuration.SetName(name);
-        NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnNameChanged, m_configuration.GetName());
-    }
-
-    void NodeComponent::SetDescription(const AZStd::string& description)
-    {
-        m_configuration.SetDescription(description);
-        NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnDescriptionChanged, m_configuration.GetDescription());
     }
 
     void NodeComponent::SetTooltip(const AZStd::string& tooltip)
@@ -302,6 +290,11 @@ namespace GraphCanvas
             SlotRequestBus::Event(slotId, &SlotRequests::ClearConnections);
             SlotRequestBus::Event(slotId, &SlotRequests::SetNode, AZ::EntityId());
 
+            QGraphicsItem* item = nullptr;
+            VisualRequestBus::EventResult(item, slotId, &VisualRequests::AsGraphicsItem);
+
+            delete item;
+
             AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::DeleteEntity, slotId);
         }
     }
@@ -319,5 +312,40 @@ namespace GraphCanvas
     AZStd::any* NodeComponent::GetUserData() 
     {
         return &m_userData;
+    }
+
+    bool NodeComponent::IsWrapped() const
+    {
+        return m_wrappingNode.IsValid();
+    }
+
+    void NodeComponent::SetWrappingNode(const AZ::EntityId& wrappingNode)
+    {
+        if (!wrappingNode.IsValid())
+        {
+            AZ::EntityId wrappedNodeCache = m_wrappingNode;
+
+            m_wrappingNode = wrappingNode;
+
+            if (wrappedNodeCache.IsValid())
+            {
+                NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnNodeUnwrapped, wrappedNodeCache);
+            }
+        }
+        else if (!m_wrappingNode.IsValid())
+        {
+            m_wrappingNode = wrappingNode;
+
+            NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnNodeWrapped, wrappingNode);
+        }
+        else
+        {
+            AZ_Warning("Graph Canvas", false, "The same node is trying to be wrapped by two objects at once.");
+        }
+    }
+
+    AZ::EntityId NodeComponent::GetWrappingNode() const
+    {
+        return m_wrappingNode;
     }
 }

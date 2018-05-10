@@ -308,6 +308,9 @@ void ReflectedPropertyItem::SetVariable(IVariable *var)
     case ePropertyColorCurve:
         m_reflectedVarAdapter = new ReflectedVarSplineAdapter(this, m_type);
         break;
+    case ePropertyMotion:
+        m_reflectedVarAdapter = new ReflectedVarMotionAdapter;
+        break;
     default:
         break;
     }

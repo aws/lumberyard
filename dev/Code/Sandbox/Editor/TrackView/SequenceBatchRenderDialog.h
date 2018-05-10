@@ -23,6 +23,7 @@ class CMFCButton;
 
 #include <QDialog>
 #include <QTimer>
+#include <QFutureWatcher>
 
 class QStringListModel;
 
@@ -55,6 +56,8 @@ protected:
     void OnSequenceSelected();
     void OnRenderItemSelChange();
     void OnFPSEditChange();
+    void OnFPSChange();
+    void OnImageFormatChange();
     void OnResolutionSelected();
     void OnStartFrameChange();
     void OnEndFrameChange();
@@ -115,13 +118,17 @@ protected:
     };
     std::vector<SRenderItem> m_renderItems;
 
-    // The Possible states a capture can be in.
+    // Capture States
     enum class CaptureState
     {
         Idle,
-        Starting,
+        WarmingUpAfterResChange,
+        EnteringGameMode,
+        BeginPlayingSequence,
         Capturing,
-        Ending
+        End,
+        FFMPEGProcessing,
+        Finalize
     };
 
     struct SRenderContext
@@ -133,11 +140,12 @@ protected:
         Range rangeBU;
         int cvarCustomResWidthBU, cvarCustomResHeightBU;
         int cvarDisplayInfoBU;
-        bool bWarmingUpAfterResChange;
-        DWORD timeWarmingUpStarted;
+        int  framesSpentInCurrentPhase;
         IAnimNode* pActiveDirectorBU;
         ICaptureKey captureOptions;
-        bool bFFMPEGProcessing;
+        bool processingFFMPEG;
+        // Signals when an mpeg is finished being processed.
+        QFutureWatcher<void> processingFFMPEGWatcher;
         // True if the user canceled a render.
         bool canceled;
         // The sequence that triggered the CaptureState::Ending.
@@ -157,9 +165,8 @@ protected:
             , cvarCustomResWidthBU(0)
             , cvarCustomResHeightBU(0)
             , cvarDisplayInfoBU(0)
-            , bWarmingUpAfterResChange(false)
-            , timeWarmingUpStarted(0)
-            , bFFMPEGProcessing(false)
+            , framesSpentInCurrentPhase(0)
+            , processingFFMPEG(false)
             , canceled(false)
             , endingSequence(nullptr)
             , captureState(CaptureState::Idle) {}
@@ -172,11 +179,16 @@ protected:
     void InitializeContext();
     virtual void OnMovieEvent(IMovieListener::EMovieEvent event, IAnimSequence* pSequence);
 
-    // Capture State Transitions
-    void OnCaptureItemStarting();
-    void OnCaptureItemStart();
-    void OnCaptureItemEnding(IAnimSequence* pSequence);
-    void OnCaptureItemEnd(IAnimSequence* pSequence);
+    void CaptureItemStart();
+
+    // Capture State Updates
+    void OnUpdateWarmingUpAfterResChange();
+    void OnUpdateEnteringGameMode();
+    void OnUpdateBeginPlayingSequence();
+    void OnUpdateCapturing();
+    void OnUpdateEnd(IAnimSequence* pSequence);
+    void OnUpdateFFMPEGProcessing();
+    void OnUpdateFinalize();
 
     bool SetUpNewRenderItem(SRenderItem& item);
     void AddItem(const SRenderItem& item);
@@ -188,11 +200,17 @@ protected slots:
     bool GetResolutionFromCustomResText(const char* customResText, int& retCustomWidth, int& retCustomHeight) const;
 
 private:
+
+    void CheckForEnableUpdateButton();
     void stashActiveViewportResolution();
+    void UpdateSpinnerProgressMessage(const char* description);
+    void EnterCaptureState(CaptureState captureState);
+    void SetEnableEditorIdleProcessing(bool enabled);
 
     QScopedPointer<Ui::SequenceBatchRenderDialog> m_ui;
     QStringListModel* m_renderListModel;
     QTimer m_renderTimer;
+    bool m_editorIdleProcessingEnabled;
 };
 
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_SEQUENCEBATCHRENDERDIALOG_H

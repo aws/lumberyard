@@ -244,6 +244,7 @@ void UiFlipbookAnimationComponent::Update(float deltaTime)
 
         if (m_elapsedTime >= m_frameDelay)
         {
+            const bool lastFrame = m_currentFrame == m_endFrame;
             // Show current frame
             EBUS_EVENT_ID(GetEntityId(), UiImageBus, SetSpriteSheetCellIndex, m_currentFrame);
 
@@ -263,6 +264,13 @@ void UiFlipbookAnimationComponent::Update(float deltaTime)
             case LoopType::None:
                 if (m_currentFrame > m_endFrame)
                 {
+                    // Need to set the end frame once the animation ends if it wasn't set before. 
+                    // This handles the case where the frame delay is so low that causes it to end
+                    // up missing the last frame due to how fast it's going.
+                    if (!lastFrame) 
+                    {
+                        EBUS_EVENT_ID(GetEntityId(), UiImageBus, SetSpriteSheetCellIndex, m_endFrame);
+                    }
                     Stop();
                 }
                 break;

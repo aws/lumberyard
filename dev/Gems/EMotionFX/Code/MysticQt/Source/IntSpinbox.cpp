@@ -390,9 +390,9 @@ namespace MysticQt
     void IntSpinboxLineEdit::focusOutEvent(QFocusEvent* event)
     {
         FromQtString(text(), &mTemp);
-        mTemp.Trim();
+        AzFramework::StringFunc::TrimWhiteSpace(mTemp, true, true);
 
-        if (mTemp.GetIsEmpty())
+        if (mTemp.empty())
         {
             mSpinbox->Update();
         }
@@ -510,14 +510,12 @@ namespace MysticQt
     {
         // get the value string from the line edit
         FromQtString(newText, &mTemp);
-        mTemp.Trim();
+        AzFramework::StringFunc::TrimWhiteSpace(mTemp, true, true);
 
         // check if the text is a valid value
-        if (mTemp.CheckIfIsValidInt())
+        int newValue;
+        if (AzFramework::StringFunc::LooksLikeInt(mTemp.c_str(), &newValue))
         {
-            // interpret the text and convert it to a value
-            const int newValue = mTemp.ToInt();
-
             // check if the value is in range
             if (newValue >= mMinimum && newValue <= mMaximum)
             {
@@ -540,19 +538,17 @@ namespace MysticQt
     {
         // get the value string from the line edit
         FromQtString(mLineEdit->text(), &mTemp);
-        mTemp.Trim();
+        AzFramework::StringFunc::TrimWhiteSpace(mTemp, true, true);
 
         // check if the text is an invalid value
-        if (mTemp.CheckIfIsValidInt() == false)
+        int newValue;
+        if (!AzFramework::StringFunc::LooksLikeInt(mTemp.c_str(), &newValue))
         {
             // reset the value to the last valid and used one
             setValue(mValue);
             emit valueChanged(mValue);
             return;
         }
-
-        // interpret the text and convert it to a new value
-        int newValue = mTemp.ToInt();
 
         // in case the new value is out of range, use the last valid value
         if (newValue > mMaximum || newValue < mMinimum)

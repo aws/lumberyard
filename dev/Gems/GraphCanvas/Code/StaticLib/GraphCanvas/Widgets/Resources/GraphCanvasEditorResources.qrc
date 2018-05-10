@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/GraphCanvasEditorResources">
+      <file>default_style.json</file>
+      <file>lineedit_clear.png</file>
+      <file>settings_icon.png</file>
+      <file>search_icon.png</file>
+    </qresource>
+</RCC>

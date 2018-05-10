@@ -10,7 +10,8 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
+
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/std/parallel/thread.h>

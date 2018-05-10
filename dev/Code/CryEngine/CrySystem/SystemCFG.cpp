@@ -23,6 +23,14 @@
 
 #include <IScriptSystem.h>
 #include "SystemCFG.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SYSTEMCFG_CPP_SECTION_1 1
+#define SYSTEMCFG_CPP_SECTION_2 2
+#define SYSTEMCFG_CPP_SECTION_3 3
+#endif
+
 #if defined(LINUX) || defined(APPLE)
 #include <Version.h>
 #include "ILog.h"
@@ -45,6 +53,10 @@
 #define EXE_VERSION_INFO_3 1
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMCFG_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(SystemCFG_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 const SFileVersion& CSystem::GetFileVersion()
@@ -172,7 +184,10 @@ void CSystem::LogVersion()
 
     CryLogAlways("Built on " __DATE__ " " __TIME__);
 
-#if   defined(ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMCFG_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(SystemCFG_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(ANDROID)
     CryLogAlways("Running 32 bit Android version API VER:%d", __ANDROID_API__);
 #elif defined(IOS)
     CryLogAlways("Running 64 bit iOS version");
@@ -203,7 +218,13 @@ void CSystem::LogVersion()
 
 
 
-#if   defined(_MSC_VER)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMCFG_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(SystemCFG_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(_MSC_VER)
     CryLogAlways("Using Microsoft (tm) C++ Standard Library implementation\n");
 #elif defined(__clang__)
     CryLogAlways("Using CLANG C++ Standard Library implementation\n");
@@ -431,12 +452,18 @@ void CSystemConfiguration::AddCVarToMap(const string& filename, const string& st
 
                 if (sscanf(strGroup, "%d", &group) == 1)
                 {
+                    auto sysSpecFull = (*m_editorMap).find("sys_spec_full");
+                    if (sysSpecFull == (*m_editorMap).end())
+                    {
+                        return;
+                    }
+
                     CVarFileStatus indexAssignment(val, val, val);
                     for (int specLevel = 0; specLevel < NUM_SPEC_LEVELS; ++specLevel)
                     {
                         // Only apply cvar change to configurations with sys_spec_Full matching the index
                         int overwrittenValue;
-                        if (AZStd::any_numeric_cast<int>(&(*m_editorMap)["sys_spec_full"].fileVals[specLevel].overwrittenValue, overwrittenValue) && group == overwrittenValue)
+                        if (AZStd::any_numeric_cast<int>(&sysSpecFull->second.fileVals[specLevel].overwrittenValue, overwrittenValue) && group == overwrittenValue)
                         {
                             (*m_editorMap)[key].fileVals[specLevel] = indexAssignment;
                         }

@@ -271,7 +271,17 @@ namespace ScriptCanvasEditor
 
     void DocumentContext::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        AZ_Error("Script Canvas", asset.IsReady(), "Failed to load graph asset with id \"%s\".", asset.GetId().ToString<AZStd::string>().data());
+        auto assetFileInfoIt = m_scriptCanvasAssetFileInfo.find(asset.GetId());
+        if (assetFileInfoIt != m_scriptCanvasAssetFileInfo.end())
+        {
+            AZ_Error("Script Canvas", asset.IsReady(), "Failed to load graph asset %s with AssetId: %s", assetFileInfoIt->second.m_absolutePath.c_str(), asset.ToString<AZStd::string>().c_str());
+        }
+        else
+        {
+            // backup strategy - we dont know what the actual absolute path is, so at least provide the asset info alone.
+            AZ_Error("Script Canvas", asset.IsReady(), "Failed to load graph asset %s", asset.ToString<AZStd::string>().c_str());
+        }
+        
         const AZ::Data::AssetId* busId = AZ::Data::AssetBus::GetCurrentBusId();
         const AZ::Data::AssetId assetId = busId ? *busId : asset.GetId();
         AZ::Data::AssetBus::MultiHandler::BusDisconnect(assetId);

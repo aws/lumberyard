@@ -24,6 +24,7 @@
 #include <AzCore/Script/ScriptSystemBus.h>
 #include <AzCore/Script/ScriptContext.h>
 
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
 namespace
@@ -37,41 +38,7 @@ namespace AZ
     {
         const SerializeContext::ClassData* classData = serialize.FindClassData(descriptor.GetUuid());
         AZ_Warning(s_moduleLoggingScope, classData, "Component type %s not reflected to SerializeContext!", descriptor.GetName());
-        if (classData)
-        {
-            if (Attribute* attribute = FindAttribute(Edit::Attributes::SystemComponentTags, classData->m_attributes))
-            {
-                // If the required tags are empty, it is assumed all components with the attribute are required
-                if (requiredTags.empty())
-                {
-                    return true;
-                }
-
-                // Read the tags
-                AZStd::vector<AZ::Crc32> tags;
-                AZ::AttributeReader reader(nullptr, attribute);
-                AZ::Crc32 tag;
-                if (reader.Read<AZ::Crc32>(tag))
-                {
-                    tags.emplace_back(tag);
-                }
-                else
-                {
-                    AZ_Verify(reader.Read<AZStd::vector<AZ::Crc32>>(tags), "Attribute \"AZ::Edit::Attributes::SystemComponentTags\" must be of type AZ::Crc32 or AZStd::vector<AZ::Crc32>");
-                }
-
-                // Match tags to required tags
-                for (const AZ::Crc32& requiredTag : requiredTags)
-                {
-                    if (AZStd::find(tags.begin(), tags.end(), requiredTag) != tags.end())
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        return Edit::SystemComponentTagsMatchesAtLeastOneTag(classData, requiredTags, false);
     }
 
     //=========================================================================
@@ -303,6 +270,22 @@ namespace AZ
     }
 
     //=========================================================================
+    // SetSystemComponentTags
+    //=========================================================================
+    void ModuleManager::SetSystemComponentTags(AZStd::string_view tags)
+    {
+        // Split the tag list
+        AZStd::vector<AZStd::string_view> tagList;
+        AZStd::tokenize<AZStd::string_view>(tags, ",", tagList);
+
+        m_systemComponentTags.resize(tagList.size());
+        AZStd::transform(tagList.begin(), tagList.end(), m_systemComponentTags.begin(), [](const AZStd::string_view& tag)
+        {
+            return AZ::Crc32(tag.data(), tag.length(), true);
+        });
+    }
+
+    //=========================================================================
     // EnumerateModules
     //=========================================================================
     void ModuleManager::EnumerateModules(EnumerateModulesCallback perModuleCallback)
@@ -324,10 +307,10 @@ namespace AZ
     AZ::OSString ModuleManager::PreProcessModule(const AZ::OSString& moduleName)
     {
         // This is the list of modules that have been deprecated as of version 1.10
-        // Update this list accordingly.  
+        // Update this list accordingly.
         static const char* legacyModules[] = { "LmbrCentral",
                                                "LmbrCentralEditor" };
-        // List of modules (Gems) that represents the upgrade from the legacyModules 
+        // List of modules (Gems) that represents the upgrade from the legacyModules
         static const char* legacyUpgradeModules[] = { "Gem.LmbrCentral.ff06785f7145416b9d46fde39098cb0c.v0.1.0",
                                                       "Gem.LmbrCentral.Editor.ff06785f7145416b9d46fde39098cb0c.v0.1.0" };
 

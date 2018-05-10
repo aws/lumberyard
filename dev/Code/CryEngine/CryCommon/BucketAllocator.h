@@ -11,12 +11,13 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_BUCKETALLOCATOR_H
-#define CRYINCLUDE_CRYCOMMON_BUCKETALLOCATOR_H
 #pragma once
 
 #ifdef USE_GLOBAL_BUCKET_ALLOCATOR
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(BucketAllocator_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #ifndef _RELEASE
 #define BUCKET_ALLOCATOR_TRAP_DOUBLE_DELETES
@@ -672,6 +673,3 @@ private:
 // if node allocator is used instead of global bucket allocator, windows.h is required
 #   include "CryWindows.h"
 #endif
-
-#endif // CRYINCLUDE_CRYCOMMON_BUCKETALLOCATOR_H
-

@@ -40,7 +40,6 @@ void QtDownloadManager::Download(const QString& url,
         m_busy.append(pDownloader);
     }
 
-    pDownloader->SetUseCertPinning(m_useCertPinning);
     pDownloader->Download(url,
         downloadSuccessCallback,
         downloadFailCallback);
@@ -52,11 +51,6 @@ void QtDownloadManager::Abort()
     {
         downloader->Abort();
     }
-}
-
-void QtDownloadManager::SetUseCertPinning(bool value)
-{
-    m_useCertPinning = value;
 }
 
 void QtDownloadManager::downloadFinishedSlot(QtDownloader* pDownloader)

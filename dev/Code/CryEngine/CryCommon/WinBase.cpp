@@ -17,7 +17,26 @@
 #include "platform.h" // Note: This should be first to get consistent debugging definitions
 
 #include <CryAssert.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define WINBASE_CPP_SECTION_1 1
+#define WINBASE_CPP_SECTION_2 2
+#define WINBASE_CPP_SECTION_3 3
+#define WINBASE_CPP_SECTION_4 4
+#define WINBASE_CPP_SECTION_5 5
+#define WINBASE_CPP_SECTION_6 6
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WINBASE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(WinBase_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     #include <signal.h>
+#endif
 
 #include <pthread.h>
 #include <sys/types.h>
@@ -413,6 +432,13 @@ long long _atoi64(const char* str)
     return bMinus ? ((long long)-RunningTotal) : (long long)RunningTotal;
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WINBASE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(WinBase_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 bool QueryPerformanceCounter(LARGE_INTEGER* counter)
 {
 #if defined(LINUX)
@@ -451,6 +477,7 @@ bool QueryPerformanceFrequency(LARGE_INTEGER* frequency)
     return false;
 #endif
 }
+#endif
 
 void _splitpath(const char* inpath, char* drv, char* dir, char* fname, char* ext)
 {
@@ -563,7 +590,13 @@ int strcmpi(const char* str1, const char* str2)
 void GlobalMemoryStatus(LPMEMORYSTATUS lpmem)
 {
     //not complete implementation
-#if   defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WINBASE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(WinBase_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(APPLE)
 
     // Retrieve dwTotalPhys
     int kMIB[] = {CTL_HW, HW_MEMSIZE};
@@ -892,10 +925,18 @@ static bool FixOnePathElement(char* path)
 #define Int32x32To64(a, b) ((uint64)((uint64)(a)) * (uint64)((uint64)(b)))
 
 //////////////////////////////////////////////////////////////////////////
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WINBASE_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(WinBase_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 threadID GetCurrentThreadId()
 {
     return threadID(pthread_self());
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 HANDLE CreateEvent
@@ -931,6 +972,13 @@ DWORD Sleep(DWORD dwMilliseconds)
     }
 
     return 0;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WINBASE_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(WinBase_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     timeval tv, start, now;
     uint64 tStart;
@@ -1097,7 +1145,15 @@ void CrySleep(unsigned int dwMilliseconds)
 //////////////////////////////////////////////////////////////////////////
 void CryLowLatencySleep(unsigned int dwMilliseconds)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WINBASE_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(WinBase_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     CrySleep(dwMilliseconds);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1126,8 +1182,14 @@ int CryMessageBox(const char* lpText, const char* lpCaption, unsigned int uType)
         &kResult //response flags
         );
 
-    CFRelease(strCaption);
-    CFRelease(strText);
+    if (strCaption)
+    {
+        CFRelease(strCaption);
+    }
+    if (strText)
+    {
+        CFRelease(strText);
+    }
 
     if (kResult == kCFUserNotificationDefaultResponse)
     {

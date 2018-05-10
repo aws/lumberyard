@@ -13,7 +13,6 @@
 */
 
 #include <AzCore/Memory/Memory.h>
-#include <AzCore/std/string/string.h>
 #include <SceneAPI/SceneCore/Events/ManifestMetaInfoBus.h>
 #include <SceneAPI/SceneCore/Components/BehaviorComponent.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>

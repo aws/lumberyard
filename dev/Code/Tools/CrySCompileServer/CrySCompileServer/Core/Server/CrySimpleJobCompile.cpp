@@ -98,8 +98,10 @@ bool ValidateExecutableString(const AZStd::string& executableString)
         commandString.find("HLSLcc.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_vc120x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_vc140x64.exe") == AZStd::string::npos &&
+        commandString.find("HLSLcc_vc141x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_dedicated_vc120x64.exe") == AZStd::string::npos &&
         commandString.find("HLSLcc_dedicated_vc140x64.exe") == AZStd::string::npos &&
+        commandString.find("HLSLcc_dedicated_vc141x64.exe") == AZStd::string::npos &&
         commandString.find("DXOrbisShaderCompiler.exe") == AZStd::string::npos) // ACCEPTED_USE
     {
         return false;

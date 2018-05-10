@@ -65,7 +65,7 @@ namespace StarterGameGem
 		AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
 		if (serializeContext)
 		{
-			serializeContext->Class<VisualiseRangeComponent>()
+			serializeContext->Class<VisualiseRangeComponent, AZ::Component>()
 				->Version(1)
 				// For suspicion.
 				->Field("SuspicionRange", &VisualiseRangeComponent::m_suspicionRange)

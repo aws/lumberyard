@@ -120,7 +120,7 @@ namespace GraphCanvas
         SlotGroupConfigurationComparator()
             : m_slotConfigurationMap(nullptr)
         {
-            AZ_Assert("GraphCanvas", "Invalid Slot Group Configuration Comparator");
+            AZ_Assert(false, "GraphCanvas: Invalid Slot Group Configuration Comparator");
         }
 
         explicit SlotGroupConfigurationComparator(const SlotGroupConfigurationMap* slotConfigurationMap)
@@ -198,7 +198,12 @@ namespace GraphCanvas
         virtual AZ::EntityId CreateConnection() const = 0;
 
         //! Returns the connection to be used when trying to create a connection from this object.
+        //! Will create a connection with the underlying data model.
         virtual AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) const = 0;
+
+        //! Returns the connection to be used when trying to create a connection from this object.
+        //! Will not create a connection with the underlying data model.
+        virtual AZ::EntityId DisplayConnectionWithEndpoint(const Endpoint& endpoint) const = 0;
 
         //! Displays the proposed connection on the slot
         virtual void DisplayProposedConnection(const AZ::EntityId& connectionId, const Endpoint& endpoint) = 0;
@@ -226,7 +231,10 @@ namespace GraphCanvas
         virtual AZStd::vector<AZ::EntityId> GetConnections() const = 0;
 
         //! Sets the specified display state onto all of the connected connections.
-        virtual void SetConnectionDisplayState(ConnectionDisplayState displayState) = 0;
+        virtual void SetConnectionDisplayState(RootGraphicsItemDisplayState displayState) = 0;
+
+        //! Sets the specified display state onto all of the connected connections.
+        virtual void ReleaseConnectionDisplayState() = 0;
 
         //! Clears all of the connections currently attached to this slot.
         virtual void ClearConnections() = 0;
@@ -256,14 +264,14 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        //! When the name of the slot changes, the new name is signalled.
+        //! When the name of the slot changes, the new name is signaled.
         virtual void OnNameChanged(const TranslationKeyedString&) {}
         //! When the tooltip of the slot changes, the new tooltip value is emitted.
         virtual void OnTooltipChanged(const TranslationKeyedString&) {}
 
         virtual void OnRegisteredToNode(const AZ::EntityId&) {}
         
-        //! When the slot configuration changes, then this event is signalled.
+        //! When the slot configuration changes, then this event is signaled.
         virtual void OnSlotConfigChanged() {}
 
         //! When the slot becomes an end of a new connection, it provides a notification of the connection and the
@@ -288,8 +296,8 @@ namespace GraphCanvas
         virtual void SetDividersEnabled(bool enabled) = 0;
         virtual void ConfigureSlotGroup(SlotGroup group, SlotGroupConfiguration configuration) = 0;
 
+        virtual bool IsSlotGroupVisible(SlotGroup group) const = 0;
         virtual void SetSlotGroupVisible(SlotGroup group, bool visible) = 0;
-
         virtual void ClearSlotGroup(SlotGroup group) = 0;
     };
 

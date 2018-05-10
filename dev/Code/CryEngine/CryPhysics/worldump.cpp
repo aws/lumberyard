@@ -1617,6 +1617,9 @@ struct CPhysicalEntitySerializer
                     delete[] pparts;
                 }
             }
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(worldump_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             if (pent->m_nPartsAlloc != 1)
             {
                 size_t sz = sizeof(geom) * pent->m_nParts;

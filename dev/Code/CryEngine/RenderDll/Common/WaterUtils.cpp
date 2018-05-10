@@ -14,6 +14,17 @@
 #include "StdAfx.h"
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define WATERUTILS_CPP_SECTION_1 1
+#define WATERUTILS_CPP_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WATERUTILS_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(WaterUtils_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+
 #include <complex>
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 
@@ -441,6 +452,10 @@ public:
                 float fAngularFreq = pK.w * fTime; //GetTermAngularFreq(fKLen)
 
                 float fAngularFreqSin = 0, fAngularFreqCos = 0;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WATERUTILS_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(WaterUtils_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
                 sincos_tpl((f32)fAngularFreq, (f32*) &fAngularFreqSin, (f32*)&fAngularFreqCos);
 
                 complexF ep(fAngularFreqCos, fAngularFreqSin);

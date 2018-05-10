@@ -3,6 +3,7 @@
     {
         "Root":
         [
+            "EditorCommon.h",
             "EditorCommon.cpp",
             "EditorCommon.rc",
             "EditorCommon.qrc",
@@ -21,7 +22,9 @@
             "DisplayViewportAdapter.h",
             "ActionOutput.h",
             "ActionOutput.cpp",
-            "UiEditorDLLBus.h"
+            "UiEditorDLLBus.h",
+            "DockTitleBarWidget.cpp",
+            "DockTitleBarWidget.h"
         ],
         "SaveUtilities": 
         [
@@ -53,8 +56,6 @@
             "BatchFileDialog.h",
             "DeepFilterProxyModel.cpp",
             "DeepFilterProxyModel.h",
-            "DockTitleBarWidget.cpp",
-            "DockTitleBarWidget.h",
             "QAbstractQVariantTreeDataModel.h",
             "QAbstractQVariantTreeDataModel.cpp",
             "UnsavedChangesDialog.h",
@@ -161,7 +162,8 @@
             "QPropertyTree/SpriteBorderEditor.cpp",
             "QPropertyTree/SpriteBorderEditor.h",
             "QPropertyTree/SpriteBorderEditorCommon.cpp",
-            "QPropertyTree/SpriteBorderEditorCommon.h"
+            "QPropertyTree/SpriteBorderEditorCommon.h",
+            "QPropertyTree/ValidatorBlock.h"
         ]
     },
     "Uber_MFCDependent.cpp": {

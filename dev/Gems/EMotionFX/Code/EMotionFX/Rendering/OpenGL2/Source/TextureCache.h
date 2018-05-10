@@ -13,7 +13,7 @@
 #ifndef __RENDERGL_TEXTURECACHE_H
 #define __RENDERGL_TEXTURECACHE_H
 
-#include <MCore/Source/UnicodeString.h>
+#include <AzCore/std/string/string.h>
 #include <MCore/Source/Array.h>
 #include "RenderGLConfig.h"
 
@@ -71,7 +71,7 @@ namespace RenderGL
 
         struct Entry
         {
-            MCore::String   mName;      // the search key (unique for each texture)
+            AZStd::string   mName;      // the search key (unique for each texture)
             Texture*        mTexture;
         };
 

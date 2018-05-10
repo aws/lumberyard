@@ -68,6 +68,7 @@ namespace AzToolsFramework
         void InstallMouseMoveCallback(MouseActionCallback onMouseMoveCallback);
 
         void Draw(
+            const ManipulatorManagerState& managerState,
             AzFramework::EntityDebugDisplayRequests& display,
             const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction) override;

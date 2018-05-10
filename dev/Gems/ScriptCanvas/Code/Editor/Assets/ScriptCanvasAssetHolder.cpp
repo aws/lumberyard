@@ -13,6 +13,7 @@
 
 #include <LyViewPaneNames.h>
 
+#include <Asset/EditorAssetRegistry.h>
 #include <Editor/Assets/ScriptCanvasAssetHolder.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
@@ -27,7 +28,6 @@
 #include <AzCore/Asset/AssetManager.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <LyViewPaneNames.h>
 
 namespace ScriptCanvasEditor
 {
@@ -45,7 +45,7 @@ namespace ScriptCanvasEditor
             {
                 editContext->Class<ScriptCanvasAssetHolder>("Script Canvas", "Script Canvas Asset Holder")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->DataElement("AssetRef", &ScriptCanvasAssetHolder::m_scriptCanvasAsset, "Script Canvas Asset", "Script Canvas asset associated with this component")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasAssetHolder::m_scriptCanvasAsset, "Script Canvas Asset", "Script Canvas asset associated with this component")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &ScriptCanvasAssetHolder::OnScriptChanged)
                     ->Attribute("EditButton", "Editor/Icons/PropertyEditor/open_in.png")
                     ->Attribute("EditDescription", "Open in Script Canvas Editor")
@@ -74,9 +74,8 @@ namespace ScriptCanvasEditor
     void ScriptCanvasAssetHolder::Init(AZ::EntityId ownerId)
     {
         m_ownerId = ownerId;
-        Load(true);
 
-        if (m_scriptCanvasAsset.IsReady())
+        if (m_scriptCanvasAsset.GetId().IsValid())
         {
             AZ::Data::AssetBus::Handler::BusDisconnect();
             AZ::Data::AssetBus::Handler::BusConnect(m_scriptCanvasAsset.GetId());
@@ -123,7 +122,9 @@ namespace ScriptCanvasEditor
             AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, m_scriptCanvasAsset.GetId());
             if (assetInfo.m_assetId.IsValid())
             {
-                m_scriptCanvasAsset = AZ::Data::AssetManager::Instance().GetAsset(m_scriptCanvasAsset.GetId(), ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
+                const AZ::Data::AssetType assetTypeId = azrtti_typeid<ScriptCanvasAsset>();
+                auto& assetManager = AZ::Data::AssetManager::Instance();
+                m_scriptCanvasAsset = assetManager.GetAsset(m_scriptCanvasAsset.GetId(), azrtti_typeid<ScriptCanvasAsset>(), true, &AZ::ObjectStream::AssetFilterDefault, loadBlocking);
             }
         }
     }
@@ -137,7 +138,7 @@ namespace ScriptCanvasEditor
         {
             m_scriptNotifyCallback(m_scriptCanvasAsset);
         }
-        return AZ::Edit::PropertyRefreshLevels::None;
+        return AZ::Edit::PropertyRefreshLevels::EntireTree;
     }
 
     void ScriptCanvasAssetHolder::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)

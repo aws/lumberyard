@@ -9,33 +9,30 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/Component.h>
+
+#include "Rendering/EntityDebugDisplayComponent.h"
 #include "CapsuleShape.h"
+#include "ShapeGeometryUtil.h"
 
 namespace LmbrCentral
 {
     class CapsuleShapeComponent
         : public AZ::Component
-        , public CapsuleShape
     {
     public:
-
         AZ_COMPONENT(CapsuleShapeComponent, CapsuleShapeComponentTypeId);
 
-        //////////////////////////////////////////////////////////////////////////
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
-        //////////////////////////////////////////////////////////////////////////        
-
-        CapsuleShapeConfig& GetConfiguration() override { return m_configuration; }
 
     protected:
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
@@ -56,9 +53,39 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        //////////////////////////////////////////////////////////////////////////
-        // Serialized data
-        //! Stores configuration of a cylinder for this component
-        CapsuleShapeConfig m_configuration;
+        CapsuleShape m_capsuleShape; ///< Stores underlying capsule type for this component.
+    };
+
+    /**
+     * Concrete EntityDebugDisplay implementation for CapsuleShape.
+     */
+    class CapsuleShapeDebugDisplayComponent
+        : public EntityDebugDisplayComponent
+    {
+    public:
+        AZ_COMPONENT(CapsuleShapeDebugDisplayComponent, "{21A6A8CD-C0AC-477D-8574-556DB46CDD3B}", EntityDebugDisplayComponent)
+
+        CapsuleShapeDebugDisplayComponent() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component
+        void Activate() override;
+        bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
+        bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
+
+        // EntityDebugDisplayComponent
+        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
+
+    private:
+        AZ_DISABLE_COPY_MOVE(CapsuleShapeDebugDisplayComponent)
+
+        // AZ::TransformNotificationBus::Handler
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        void GenerateVertices();
+        
+        ShapeMesh m_capsuleShapeMesh; ///< Buffer to hold index and vertex data for CapsuleShape when drawing.
+        CapsuleShapeConfig m_capsuleShapeConfig; ///< Stores configuration data for capsule shape.
     };
 } // namespace LmbrCentral

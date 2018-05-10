@@ -64,6 +64,27 @@ static const int s_GPUParticles_ThreadGroupMaximalX = MAX(MAX(MAX(MAX(s_GPUParti
 
 static const float nearPlane = 0.2f;
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_1 1
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_2 2
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_3 3
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_4 4
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_5 5
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_6 6
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_7 7
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_8 8
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_9 9
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_10 10
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_11 11
+#define D3DGPUPARTICLEENGINE_CPP_SECTION_12 12
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 static const Vec3 s_GPUParticles_RotationOffset = Vec3(90, 0, 0);
 
 struct GPUEmitterResources
@@ -76,6 +97,10 @@ struct GPUEmitterResources
 
     ~GPUEmitterResources()
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 
 
@@ -88,6 +113,10 @@ struct GPUEmitterResources
     WrappedDX11Buffer bufDeadParticleLocationsStaging;
     WrappedDX11Buffer bufWindAreas;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     unsigned int texSampledCurves;                      // bind as t9
     CTexture* depthCubemap;
@@ -1247,6 +1276,10 @@ void CImpl_GPUParticles::InitializeBuffers(GPUEmitterResources& resources, int n
 
     resources.bufParticleDistance.Create(resources.numMaxParticlesInBuffer, sizeof(float), DXGI_FORMAT_UNKNOWN, DX11BUF_STRUCTURED | DX11BUF_BIND_UAV | DX11BUF_BIND_SRV, nullptr);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     resources.bufParticleIndices.Create(resources.numMaxParticlesInBuffer, sizeof(int) * 2, DXGI_FORMAT_UNKNOWN, DX11BUF_STRUCTURED | DX11BUF_BIND_UAV | DX11BUF_BIND_SRV, cpuSortIndices);
     if (numWindAreas > 0)
@@ -2388,7 +2421,15 @@ void CImpl_GPUParticles::GatherSortScore(GPUEmitterResources& emitter)
     m_impl->dxRenderer->FX_Commit(false);
 
     // bind UAVs (rwStructuredBuffers) & SRVs (textures/structuredBuffers/curve data)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     ID3D11UnorderedAccessView* pUAV[] = { emitter.bufParticleIndices.GetUnorderedAccessView() };
+#endif
     uint32 pUAVCounters[] = { 0 }; // initial UAV counter values
     m_impl->dxRenderer->m_DevMan.BindUAV(eHWSC_Compute, pUAV, pUAVCounters, 0, sizeof(pUAV) / sizeof(pUAV[0]));
 
@@ -2432,7 +2473,15 @@ void CImpl_GPUParticles::SortParticlesBitonicLocal(GPUEmitterResources& emitter,
     shader->FXBeginPass(0);
 
     // bind UAVs (rwStructuredBuffers)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     ID3D11UnorderedAccessView* pUAV[] = { emitter.bufParticleIndices.GetUnorderedAccessView() };
+#endif
     uint32 pUAVCounters[] = { 0 }; // initial UAV counter values
     dxRenderer->m_DevMan.BindUAV(eHWSC_Compute, pUAV, pUAVCounters, 0, sizeof(pUAV) / sizeof(pUAV[0]));
 
@@ -2497,7 +2546,15 @@ void CImpl_GPUParticles::SortParticlesBitonic(GPUEmitterResources& emitter, GPUE
         globalShader->FXBeginPass(0);
 
         // bind UAVs (rwStructuredBuffers)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         ID3D11UnorderedAccessView* pUAV[] = { emitter.bufParticleIndices.GetUnorderedAccessView() };
+#endif
         uint32 pUAVCounters[] = { 0 }; // initial UAV counter values
         dxRenderer->m_DevMan.BindUAV(eHWSC_Compute, pUAV, pUAVCounters, 0, sizeof(pUAV) / sizeof(pUAV[0]));
 
@@ -2806,6 +2863,10 @@ CD3DGPUParticleEngine::CD3DGPUParticleEngine()
     m_impl = new CImpl_GPUParticles();
     m_impl->initialized = false;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 CD3DGPUParticleEngine::~CD3DGPUParticleEngine()
@@ -2970,6 +3031,10 @@ void CD3DGPUParticleEngine::UpdateFrame()
     PROFILE_LABEL_SCOPE("UPDATE_GPU_PARTICLES");
 
     // sort particles that need sorting
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     //render cubemaps for collision, if necesary
     for (int i = 0; i < m_impl->emittersQueuedForUpdate.size(); ++i)
@@ -3016,6 +3081,10 @@ void CD3DGPUParticleEngine::UpdateFrame()
         {
             if (emitter->resourceParameters->eSortMethod != ParticleParams::ESortMethod::None)
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
                 m_impl->GatherSortScore(emitter->resources);
             }
 
@@ -3036,6 +3105,10 @@ void CD3DGPUParticleEngine::UpdateFrame()
                 }
             }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         }
     }
 
@@ -3047,6 +3120,10 @@ void CD3DGPUParticleEngine::UpdateFrame()
 
         m_impl->EndUpdate(emitter->baseData);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 
     // clear queue

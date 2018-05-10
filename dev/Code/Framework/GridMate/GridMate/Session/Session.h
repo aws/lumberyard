@@ -24,6 +24,9 @@
 
 #include <GridMate/Serialize/UtilityMarshal.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Session_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace GridMate
 {

@@ -18,7 +18,7 @@ local elicitInfoTxt = nil
 
 function CloudGemSpeechRecognitionSample:OnActivate()
     self.tickBusHandler = TickBus.Connect(self)
-    self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("Levels/CloudGemSpeechRecogintionSample/UI/CloudGemSpeechRecognitionSample.uicanvas")
+    self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("Levels/CloudGemSpeechRecognitionSample/UI/CloudGemSpeechRecognitionSample.uicanvas")
     self.uiEventHandler = UiCanvasNotificationBus.Connect(self, self.canvasEntityId)
     self.lexNotificationHandler = CloudGemSpeechRecognitionNotificationBus.Connect(self, self.entityId)
 

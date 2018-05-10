@@ -17,7 +17,7 @@
 #include "Material.h"
 #include "BaseObject.h"
 #include <MCore/Source/Color.h>
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 
 namespace EMotionFX
@@ -107,7 +107,7 @@ namespace EMotionFX
          * Get the filename of the layer.
          * @result The filename of the texture of the layer, without path or extension.
          */
-        const MCore::String& GetFileNameString() const;
+        const AZStd::string& GetFileNameString() const;
 
         /**
          * Set the filename of the texture of the layer.

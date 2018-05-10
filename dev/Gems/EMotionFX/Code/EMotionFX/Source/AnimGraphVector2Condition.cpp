@@ -13,7 +13,6 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Compare.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/AttributeSettings.h>
 #include "AnimGraphVector2Condition.h"
 #include "AnimGraph.h"
@@ -275,7 +274,7 @@ namespace EMotionFX
             const uint32 numParams = mAnimGraph->GetNumParameters();
             for (uint32 i = 0; i < numParams; ++i)
             {
-                if (mAnimGraph->GetParameter(i)->GetNameString().CheckIfIsEqual(name))
+                if (mAnimGraph->GetParameter(i)->GetNameString() == name)
                 {
                 #ifdef EMFX_EMSTUDIOBUILD
                     parameterInfo = mAnimGraph->GetParameter(i);
@@ -333,54 +332,54 @@ namespace EMotionFX
 
 
     // construct and output the information summary string for this object
-    void AnimGraphVector2Condition::GetSummary(MCore::String* outResult) const
+    void AnimGraphVector2Condition::GetSummary(AZStd::string* outResult) const
     {
-        outResult->Format("%s: Parameter Name='%s', Test Function='%s', Test Value=%.2f", GetTypeString(), GetAttributeString(ATTRIB_PARAMETER)->AsChar(), GetTestFunctionString(), GetAttributeFloat(ATTRIB_TESTVALUE)->GetValue());
+        *outResult = AZStd::string::format("%s: Parameter Name='%s', Test Function='%s', Test Value=%.2f", GetTypeString(), GetAttributeString(ATTRIB_PARAMETER)->AsChar(), GetTestFunctionString(), GetAttributeFloat(ATTRIB_TESTVALUE)->GetValue());
     }
 
 
     // construct and output the tooltip for this object
-    void AnimGraphVector2Condition::GetTooltip(MCore::String* outResult) const
+    void AnimGraphVector2Condition::GetTooltip(AZStd::string* outResult) const
     {
-        MCore::String columnName, columnValue;
+        AZStd::string columnName, columnValue;
 
         // add the condition type
         columnName = "Condition Type: ";
         columnValue = GetTypeString();
-        outResult->Format("<table border=\"0\"><tr><td width=\"120\"><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult = AZStd::string::format("<table border=\"0\"><tr><td width=\"120\"><b>%s</b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
 
         // add the parameter
         columnName = "Parameter Name: ";
         //columnName.ConvertToNonBreakingHTMLSpaces();
         columnValue = GetAttributeString(ATTRIB_PARAMETER)->AsChar();
         //columnValue.ConvertToNonBreakingHTMLSpaces();
-        outResult->FormatAdd("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
 
         // add the operation
         columnName = "Operation: ";
         columnValue = GetOperationString();
-        outResult->FormatAdd("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td></tr>", columnName.AsChar(), columnValue.AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td></tr>", columnName.c_str(), columnValue.c_str());
 
         // add the test function
         columnName = "Test Function: ";
         //columnName.ConvertToNonBreakingHTMLSpaces();
         columnValue = GetTestFunctionString();
         //columnValue.ConvertToNonBreakingHTMLSpaces();
-        outResult->FormatAdd("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td></tr>", columnName.AsChar(), columnValue.AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td></tr>", columnName.c_str(), columnValue.c_str());
 
         // add the test value
         columnName = "Test Value: ";
         //columnName.ConvertToNonBreakingHTMLSpaces();
-        columnValue.Format("%.3f", GetAttributeFloat(ATTRIB_TESTVALUE)->GetValue());
+        columnValue = AZStd::string::format("%.3f", GetAttributeFloat(ATTRIB_TESTVALUE)->GetValue());
         //columnValue.ConvertToNonBreakingHTMLSpaces();
-        outResult->FormatAdd("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
 
         // add the range value
         columnName = "Range Value: ";
         //columnName.ConvertToNonBreakingHTMLSpaces();
-        columnValue.Format("%.3f", GetAttributeFloat(ATTRIB_RANGEVALUE)->GetValue());
+        columnValue = AZStd::string::format("%.3f", GetAttributeFloat(ATTRIB_RANGEVALUE)->GetValue());
         //columnValue.ConvertToNonBreakingHTMLSpaces();
-        outResult->FormatAdd("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.AsChar(), columnValue.AsChar());
+        *outResult += AZStd::string::format("</tr><tr><td><b><nobr>%s</nobr></b></td><td><nobr>%s</nobr></td>", columnName.c_str(), columnValue.c_str());
     }
 
 

@@ -35,6 +35,7 @@
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Casting/lossy_cast.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/Commands/LegacyCommand.h>
 
 #include "QtUtil.h"
 
@@ -3290,6 +3291,23 @@ void CHeightmap::RecordUndo(int x1, int y1, int width, int height, bool bInfo)
             GetIEditor()->RecordUndo(new CUndoHeightmapModify(x1, y1, width, height, this));
         }
     }
+}
+
+void CHeightmap::RecordAzUndoBatchTerrainModify(AZ::u32 x, AZ::u32 y, AZ::u32 width, AZ::u32 height)
+{
+    using AzToolsFramework::ToolsApplicationRequests;
+    using AzToolsFramework::LegacyCommand;
+
+    AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+    ToolsApplicationRequests::Bus::BroadcastResult(undoOperation, &ToolsApplicationRequests::BeginUndoBatch, "Modify Terrain");
+    if (undoOperation != nullptr)
+    {
+        auto undoCommand = new LegacyCommand<IUndoObject>("Modify Terrain Command", AZStd::make_unique<CUndoHeightmapModify>(x, y, width, height, this));
+        // ToolsApplication takes care of memory deallocation for undoCommand
+        undoCommand->SetParent(undoOperation);
+    }
+
+    ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::EndUndoBatch);
 }
 
 void CHeightmap::UpdateLayerTexture(const QRect& rect)

@@ -10,7 +10,12 @@
 *
 */
 #include "Multiplayer_precompiled.h"
+
 #include "Multiplayer/MultiplayerEventsComponent.h"
+
+#include "Multiplayer/BehaviorContext/GridSystemContext.h"
+
+#include <AzCore/Serialization/SerializeContext.h>
 
 #include <GridMate/NetworkGridMate.h>
 #include <GridMate/NetworkGridMateSessionEvents.h>
@@ -145,15 +150,24 @@ namespace Multiplayer
 
     void MultiplayerEventsComponent::Reflect(AZ::ReflectContext* reflectContext)
     {
+        GridMateSystemContext::Reflect(reflectContext);
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
+        {
+            serializeContext->Class<MultiplayerEventsComponent, AZ::Component>()
+                ->Version(1);
+        }
+
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflectContext);
         if (behaviorContext)
         {
             behaviorContext->EBus<GridMate::SessionEventBus>("MultiplayerEvents")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                 ->Handler<InternalMultiplayerEvents>()
                 ;
 
             behaviorContext->Class<GridMate::IGridMate>()
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                 ->Method("IsLeaderboardServiceStarted", &GridMate::IGridMate::IsLeaderboardServiceStarted)
                 ->Method("IsAchievementServiceStarted", &GridMate::IGridMate::IsAchievementServiceStarted)
                 ->Method("IsStorageServiceStarted", &GridMate::IGridMate::IsStorageServiceStarted)
@@ -161,6 +175,7 @@ namespace Multiplayer
 
             behaviorContext->Class<GridMate::GridSession>()
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                 ->Method("IsHost", &GridMate::GridSession::IsHost)
                 ->Method("IsReady", &GridMate::GridSession::IsReady)
                 ->Method("GetNumberOfMembers", &GridMate::GridSession::GetNumberOfMembers)
@@ -169,6 +184,7 @@ namespace Multiplayer
 
             behaviorContext->Class<GridMate::GridMember>()
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::RuntimeOwn)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                 ->Method("GetName", &GridMate::GridMember::GetName)
                 ->Method("IsHost", &GridMate::GridMember::IsHost)
                 ->Method("IsLocal", &GridMate::GridMember::IsLocal)
@@ -179,6 +195,7 @@ namespace Multiplayer
                 ;
 
             behaviorContext->Class<GridMate::PlayerId>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                 ->Property("playerId", &GridMatePlayerId::ToString, nullptr)
                 ->Property("type", &GridMatePlayerId::GetType, nullptr)
                 ;
@@ -186,6 +203,14 @@ namespace Multiplayer
             // GridMate::ServiceType
             behaviorContext
                 ->Enum<GridMate::ST_LAN>("ST_LAN")
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(MultiplayerEventsComponent_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(MultiplayerEventsComponent_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
                 ->Enum<GridMate::ST_STEAM>("ST_STEAM")
                 ;
 

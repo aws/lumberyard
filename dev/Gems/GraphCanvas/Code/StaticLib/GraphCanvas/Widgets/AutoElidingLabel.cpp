@@ -9,93 +9,87 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <GraphCanvas/Widgets/AutoElidingLabel.h>
 
-#include "precompiled.h"
-
-#include <Editor/View/Widgets/AutoElidingLabel.h>
-
-namespace ScriptCanvasEditor
+namespace GraphCanvas
 {
-    namespace Widget
+    //////////////////////
+    // AutoEllidingLabel
+    //////////////////////
+
+    AutoElidingLabel::AutoElidingLabel(QWidget* parent, Qt::WindowFlags flags)
+        : QLabel(parent, flags)
+        , m_elideMode(Qt::ElideRight)
     {
-        //////////////////////
-        // AutoEllidingLabel
-        //////////////////////
-
-        AutoElidingLabel::AutoElidingLabel(QWidget* parent, Qt::WindowFlags flags)
-            : QLabel(parent, flags)
-            , m_elideMode(Qt::ElideRight)
-        {
-            setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-        }
-
-        AutoElidingLabel::~AutoElidingLabel()
-        {
-        }
-
-        void AutoElidingLabel::SetElideMode(Qt::TextElideMode elideMode)
-        {
-            m_elideMode = elideMode;
-
-            RefreshLabel();
-        }
-
-        Qt::TextElideMode AutoElidingLabel::GetElideMode() const
-        {
-            return m_elideMode;
-        }
-
-        QString AutoElidingLabel::fullText() const
-        {
-            return m_fullText;
-        }
-
-        void AutoElidingLabel::setFullText(const QString& text)
-        {
-            m_fullText = text;
-            RefreshLabel();
-        }
-
-        void AutoElidingLabel::resizeEvent(QResizeEvent* resizeEvent)
-        {
-            RefreshLabel();
-            QLabel::resizeEvent(resizeEvent);
-        }
-
-        QSize AutoElidingLabel::minimumSizeHint() const
-        {
-            QSize retVal = QLabel::minimumSizeHint();
-            retVal.setWidth(0);
-
-            return retVal;
-        }
-
-        QSize AutoElidingLabel::sizeHint() const
-        {
-            QSize retVal = QLabel::sizeHint();
-            retVal.setWidth(0);
-
-            return retVal;
-        }
-
-        void AutoElidingLabel::RefreshLabel()
-        {
-            QFontMetrics metrics(font());
-
-            int left = 0;
-            int top = 0;
-            int right = 0;
-            int bottom = 0;
-
-            getContentsMargins(&left, &top, &right, &bottom);
-
-            int labelWidth = width();
-
-            QString elidedText = metrics.elidedText(m_fullText, m_elideMode, (width() - (left + right)));
-
-            setText(elidedText);
-        }
-
-#include <Editor/View/Widgets/AutoElidingLabel.moc>
+        setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
     }
+
+    AutoElidingLabel::~AutoElidingLabel()
+    {
+    }
+
+    void AutoElidingLabel::SetElideMode(Qt::TextElideMode elideMode)
+    {
+        m_elideMode = elideMode;
+
+        RefreshLabel();
+    }
+
+    Qt::TextElideMode AutoElidingLabel::GetElideMode() const
+    {
+        return m_elideMode;
+    }
+
+    QString AutoElidingLabel::fullText() const
+    {
+        return m_fullText;
+    }
+
+    void AutoElidingLabel::setFullText(const QString& text)
+    {
+        m_fullText = text;
+        RefreshLabel();
+    }
+
+    void AutoElidingLabel::resizeEvent(QResizeEvent* resizeEvent)
+    {
+        RefreshLabel();
+        QLabel::resizeEvent(resizeEvent);
+    }
+
+    QSize AutoElidingLabel::minimumSizeHint() const
+    {
+        QSize retVal = QLabel::minimumSizeHint();
+        retVal.setWidth(0);
+
+        return retVal;
+    }
+
+    QSize AutoElidingLabel::sizeHint() const
+    {
+        QSize retVal = QLabel::sizeHint();
+        retVal.setWidth(0);
+
+        return retVal;
+    }
+
+    void AutoElidingLabel::RefreshLabel()
+    {
+        QFontMetrics metrics(font());
+
+        int left = 0;
+        int top = 0;
+        int right = 0;
+        int bottom = 0;
+
+        getContentsMargins(&left, &top, &right, &bottom);
+
+        int labelWidth = width();
+
+        QString elidedText = metrics.elidedText(m_fullText, m_elideMode, (width() - (left + right)));
+
+        setText(elidedText);
+    }
+
+#include <StaticLib/GraphCanvas/Widgets/AutoElidingLabel.moc>
 }

@@ -26,4 +26,7 @@ bool CanDoDirectCast(SHADER_VARIABLE_TYPE src, SHADER_VARIABLE_TYPE dest);
 // Returns the bitcast operation needed to assign the "src" type to the "dest" type
 const char* GetBitcastOp(SHADER_VARIABLE_TYPE src, SHADER_VARIABLE_TYPE dest);
 
+// Check if the register number is part of the ones we used for signaling GMEM input
+bool IsGmemReservedSlot(FRAMEBUFFER_FETCH_TYPE type, const uint32_t regNumber);
+
 #endif

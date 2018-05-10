@@ -14,8 +14,6 @@
 // Description : Public include file for the multi-threading API.
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_CRYTHREAD_H
-#define CRYINCLUDE_CRYCOMMON_CRYTHREAD_H
 #pragma once
 
 
@@ -260,7 +258,7 @@ class CryThread;
 #include <CryThread_windows.h>
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CryThread_h)
+#include AZ_RESTRICTED_FILE(CryThread_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -820,5 +818,3 @@ namespace CryMT
 
 // Include all multithreading containers.
 #include "MultiThread_Containers.h"
-
-#endif // CRYINCLUDE_CRYCOMMON_CRYTHREAD_H

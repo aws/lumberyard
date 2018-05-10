@@ -114,6 +114,17 @@ void CStreamingIOThread::Run()
         if (m_nStreamingCPU != g_cvars.sys_streaming_cpu)
         {
             m_nStreamingCPU = g_cvars.sys_streaming_cpu;
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define STREAMIOTHREAD_CPP_SECTION_1 1
+#define STREAMIOTHREAD_CPP_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STREAMIOTHREAD_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(StreamIOThread_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         if (m_bNewRequests || !m_newFileRequests.empty())
@@ -736,6 +747,10 @@ void CStreamingWorkerThread::Run()
 {
     SetName(m_name);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STREAMIOTHREAD_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(StreamIOThread_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     // Main thread loop
     while (!m_bCancelThreadRequest)

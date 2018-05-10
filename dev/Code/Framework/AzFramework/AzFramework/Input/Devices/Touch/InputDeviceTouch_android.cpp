@@ -56,6 +56,15 @@ namespace AzFramework
         void OnRawInputEvent(const AInputEvent* rawInputEvent) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Convenience function to process raw touch events
+        //! \param[in] rawInputEvent The raw input event data
+        //! \param[in] pointerIndex The index of the touch event
+        //! \param[in] rawTouchState The state of the touch event
+        void OnRawTouchEvent(const AInputEvent* rawInputEvent,
+                             int pointerIndex,
+                             RawTouchEvent::State rawTouchState);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Raw input events on android can (and likely will) be dispatched from a thread other than
         //! main, so we can't immediately call InputDeviceTouch::Implementation::QueueRawTouchEvent.
         //! Instead, we'll store them in m_threadAwareRawTouchEvents then process in TickInputDevice
@@ -136,29 +145,31 @@ namespace AzFramework
         const int action = AMotionEvent_getAction(rawInputEvent);
         const int actionCode = (action & AMOTION_EVENT_ACTION_MASK);
         const int pointerIndex = (action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
-        float pressure = AMotionEvent_getPressure(rawInputEvent, pointerIndex);
 
-        // Get the touch event state
-        RawTouchEvent::State rawTouchState = RawTouchEvent::State::Began;
         switch (actionCode)
         {
             case AMOTION_EVENT_ACTION_DOWN:
             case AMOTION_EVENT_ACTION_POINTER_DOWN:
             {
-                rawTouchState = RawTouchEvent::State::Began;
+                OnRawTouchEvent(rawInputEvent, pointerIndex, RawTouchEvent::State::Began);
             }
             break;
             case AMOTION_EVENT_ACTION_MOVE:
             {
-                rawTouchState = RawTouchEvent::State::Moved;
+                // Android doesn't send individual move events for each separate touch like it does
+                // for down and up events, instead sending them all as part of the same input event.
+                const size_t pointerCount = AMotionEvent_getPointerCount(rawInputEvent);
+                for (int i = 0; i < pointerCount; ++i)
+                {
+                    OnRawTouchEvent(rawInputEvent, i, RawTouchEvent::State::Moved);
+                }
             }
             break;
             case AMOTION_EVENT_ACTION_UP:
             case AMOTION_EVENT_ACTION_POINTER_UP:
             case AMOTION_EVENT_ACTION_CANCEL:
             {
-                rawTouchState = RawTouchEvent::State::Ended;
-                pressure = 0.0f;
+                OnRawTouchEvent(rawInputEvent, pointerIndex, RawTouchEvent::State::Ended);
             }
             break;
             default:
@@ -167,10 +178,24 @@ namespace AzFramework
             }
             break;
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceTouchAndroid::OnRawTouchEvent(const AInputEvent* rawInputEvent,
+                                                  int pointerIndex,
+                                                  RawTouchEvent::State rawTouchState)
+    {
+        // Ensure we are only dispatching pure touch events and not simulated ones
+        const int toolType = AMotionEvent_getToolType(rawInputEvent, pointerIndex);
+        if (toolType != AMOTION_EVENT_TOOL_TYPE_FINGER)
+        {
+            return;
+        }
 
         // Get the rest of the touch event data
         const float x = AMotionEvent_getX(rawInputEvent, pointerIndex);
         const float y = AMotionEvent_getY(rawInputEvent, pointerIndex);
+        const float pressure = AMotionEvent_getPressure(rawInputEvent, pointerIndex);
         const int pointerId = AMotionEvent_getPointerId(rawInputEvent, pointerIndex);
 
         // normalize the touch location
@@ -178,7 +203,7 @@ namespace AzFramework
         int windowHeight = 0;
         if (!AZ::Android::Utils::GetWindowSize(windowWidth, windowHeight))
         {
-            AZ_ErrorOnce("AndroidTouch", false, "Unable to get the window size, touch input may not behave correctly.");
+            AZ_ErrorOnce("InputDeviceTouchAndroid", false, "Unable to get the window size, touch input may not behave correctly.");
             windowWidth = 1;
             windowHeight = 1;
         }
@@ -186,7 +211,7 @@ namespace AzFramework
         // Push the raw touch event onto the thread safe queue for processing in TickInputDevice
         const RawTouchEvent rawTouchEvent(x / static_cast<float>(windowWidth),
                                           y / static_cast<float>(windowHeight),
-                                          pressure,
+                                          rawTouchState == RawTouchEvent::State::Ended ? 0.0f : pressure,
                                           pointerId,
                                           rawTouchState);
         AZStd::lock_guard<AZStd::mutex> lock(m_threadAwareRawTouchEventsMutex);

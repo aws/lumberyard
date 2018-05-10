@@ -12,7 +12,6 @@
 
 #include "EMStudioManager.h"
 #include <AzCore/IO/FileIO.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "RecoverFilesWindow.h"
 #include "MotionEventPresetManager.h"
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/Commands.h>
@@ -25,8 +24,6 @@
 
 // include MCore related
 #include <MCore/Source/LogManager.h>
-#include <MCore/Source/UnicodeStringIterator.h>
-#include <MCore/Source/UnicodeCharacter.h>
 #include <MCore/Source/CommandManager.h>
 #include <MCore/Source/FileSystem.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
@@ -63,7 +60,7 @@ namespace EMStudio
     // constructor
     EMStudioManager::EMStudioManager(QApplication* app, int& argc, char* argv[])
     {
-        mHTMLLinkString.Reserve(32768);
+        mHTMLLinkString.reserve(32768);
         mEventProcessingCallback = nullptr;
         mAutoLoadLastWorkspace = false;
         mAvoidRendering = false;
@@ -71,7 +68,7 @@ namespace EMStudio
         mApp = app;
 
         // create and setup a log file
-        MCore::GetLogManager().CreateLogFile(MCore::String(GetAppDataFolder() + "EMStudioLog.txt").AsChar());
+        MCore::GetLogManager().CreateLogFile(AZStd::string(GetAppDataFolder() + "EMStudioLog.txt").c_str());
         //#ifdef MCORE_DEBUG
         MCore::GetLogManager().SetLogLevels(MCore::LogCallback::LOGLEVEL_ALL);
         //#endif
@@ -89,7 +86,7 @@ namespace EMStudio
         mLayoutManager              = new LayoutManager();
         mOutlinerManager            = new OutlinerManager();
         mNotificationWindowManager  = new NotificationWindowManager();
-        mCompileDate.Format("%s", MCORE_DATE);
+        mCompileDate = AZStd::string::format("%s", MCORE_DATE);
 
         // log some information
         LogInfo();
@@ -158,9 +155,9 @@ namespace EMStudio
 
 #if !defined(EMFX_EMSTUDIOLYEMBEDDED)
         // try to load all plugins
-        MCore::String pluginDir = MysticQt::GetAppDir() + "Plugins/";
+        AZStd::string pluginDir = MysticQt::GetAppDir() + "Plugins/";
 
-        mPluginManager->LoadPluginsFromDirectory(pluginDir.AsChar());
+        mPluginManager->LoadPluginsFromDirectory(pluginDir.c_str());
 #endif // EMFX_EMSTUDIOLYEMBEDDED
 
         // Register dirty workspace files callback.
@@ -174,7 +171,7 @@ namespace EMStudio
         mMainWindow->UpdateCreateWindowMenu();
 
         // Set the recover save path.
-        MCore::FileSystem::mSecureSavePath = GetManager()->GetRecoverFolder().AsChar();
+        MCore::FileSystem::mSecureSavePath = GetManager()->GetRecoverFolder().c_str();
 
         // Show the main dialog and wait until it closes.
         MCore::LogInfo("EMotion Studio initialized...");
@@ -237,8 +234,8 @@ namespace EMStudio
         int32 g = color.g * 256;
         int32 b = color.b * 256;
 
-        mHTMLLinkString.Format("<qt><style>a { color: rgb(%i, %i, %i); } a:hover { color: rgb(40, 40, 40); }</style><a href='%s'>%s</a></qt>", r, g, b, text, text);
-        return mHTMLLinkString.AsChar();
+        mHTMLLinkString = AZStd::string::format("<qt><style>a { color: rgb(%i, %i, %i); } a:hover { color: rgb(40, 40, 40); }</style><a href='%s'>%s</a></qt>", r, g, b, text, text);
+        return mHTMLLinkString.c_str();
     }
 
 
@@ -309,7 +306,7 @@ namespace EMStudio
 
 
     // after executing a command
-    void EMStudioManager::EventProcessingCallback::OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const MCore::String& outResult)
+    void EMStudioManager::EventProcessingCallback::OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult)
     {
         MCORE_UNUSED(group);
         MCORE_UNUSED(command);
@@ -322,7 +319,7 @@ namespace EMStudio
     }
 
 
-    MCore::String EMStudioManager::GetAppDataFolder() const
+    AZStd::string EMStudioManager::GetAppDataFolder() const
     {
         AZStd::string appDataFolder = QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0).toUtf8().data();
         appDataFolder += "/EMotionStudio/";
@@ -335,28 +332,28 @@ namespace EMStudio
     }
 
 
-    MCore::String EMStudioManager::GetRecoverFolder() const
+    AZStd::string EMStudioManager::GetRecoverFolder() const
     {
         // Set the recover path
-        const MCore::String recoverPath = GetAppDataFolder() + "Recover" + MCore::FileSystem::mFolderSeparatorChar;
+        const AZStd::string recoverPath = GetAppDataFolder() + "Recover" + MCore::FileSystem::mFolderSeparatorChar;
 
         // create all folders needed
         QDir dir;
-        dir.mkpath(recoverPath.AsChar());
+        dir.mkpath(recoverPath.c_str());
 
         // return the recover path
         return recoverPath;
     }
 
 
-    MCore::String EMStudioManager::GetAutosavesFolder() const
+    AZStd::string EMStudioManager::GetAutosavesFolder() const
     {
         // Set the autosaves path
-        const MCore::String autosavesPath = GetAppDataFolder() + "Autosaves" + MCore::FileSystem::mFolderSeparatorChar;
+        const AZStd::string autosavesPath = GetAppDataFolder() + "Autosaves" + MCore::FileSystem::mFolderSeparatorChar;
 
         // create all folders needed
         QDir dir;
-        dir.mkpath(autosavesPath.AsChar());
+        dir.mkpath(autosavesPath.c_str());
 
         // return the autosaves path
         return autosavesPath;

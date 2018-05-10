@@ -238,13 +238,14 @@ namespace CloudGemPlayerAccount
 
     void CloudGemPlayerAccountSystemComponent::Init()
     {
-        m_anonymousCredentialsProvider = std::make_shared<Aws::Auth::AnonymousAWSCredentialsProvider>();
     }
 
     void CloudGemPlayerAccountSystemComponent::Activate()
     {
         CloudGemPlayerAccountRequestBus::Handler::BusConnect();
         CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusConnect();
+        m_anonymousCredentialsProvider = std::make_shared<Aws::Auth::AnonymousAWSCredentialsProvider>();
+        m_clientConfig = AZStd::make_shared <CloudGemFramework::AwsApiClientJobConfig<Aws::CognitoIdentityProvider::CognitoIdentityProviderClient>>();
     }
 
     void CloudGemPlayerAccountSystemComponent::Deactivate()
@@ -975,9 +976,7 @@ namespace CloudGemPlayerAccount
         refreshRequest.SetAuthFlow(Model::AuthFlowType::REFRESH_TOKEN_AUTH);
         refreshRequest.AddAuthParameters("REFRESH_TOKEN", tokens.longTermToken);
 
-        CloudGemFramework::AwsApiClientJobConfig<Aws::CognitoIdentityProvider::CognitoIdentityProviderClient> clientConfig;
-        auto identityClient = clientConfig.GetClient();
-
+        auto identityClient = m_clientConfig->GetClient();
         Model::InitiateAuthOutcome refreshOutcome = identityClient->InitiateAuth(refreshRequest);
 
         Aws::Auth::LoginAccessTokens tokenGroup;
@@ -1084,7 +1083,7 @@ namespace CloudGemPlayerAccount
 
         time(&rawtime);
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CloudGemPlayerAccountSystemComponent_cpp)
+#include AZ_RESTRICTED_FILE(CloudGemPlayerAccountSystemComponent_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1347,7 +1346,7 @@ namespace CloudGemPlayerAccount
         }
         else
         {
-            AZ_Warning("CloudGemPlayerAccount", false, "No mapping found user pool %s client app %s", m_userPoolLogicalName, m_clientAppName);
+            AZ_Warning("CloudGemPlayerAccount", false, "No mapping found user pool %s client app %s", m_userPoolLogicalName.c_str(), m_clientAppName.c_str());
         }
         return "";
     }

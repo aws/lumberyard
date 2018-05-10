@@ -18,11 +18,15 @@
 
 namespace GraphCanvas
 {
-    enum class ConnectionDisplayState
+    enum RootGraphicsItemDisplayState
     {
-        None,
-        Deletion,
-        Inspection
+        // Order of this enum, also determines the priority, and which states
+        // are stacked over each other.
+        Neutral     = 0,
+        Preview,
+        Inspection,
+        InspectionTransparent,
+        Deletion
     };
 
     class FontConfiguration

@@ -309,7 +309,61 @@ namespace AZ
         }
     };
 
-    // specialize for member function pointers?
+    // specialize for member function pointers
+    template<class R, class C, class... Args>
+    struct AzTypeInfo<R(C::*)(Args...), false>
+    {
+        static const char* Name()
+        {
+            static char typeName[128] = { 0 };
+            if (typeName[0] == 0)
+            {
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), "{");
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), AZ::AzTypeInfo<R>::Name());
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), "(");
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), AZ::AzTypeInfo<C>::Name());
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), "::*)");
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), "(");
+                AZ::Internal::AggregateTypes<Args...>::TypeName(typeName, AZ_ARRAY_SIZE(typeName));
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), ")}");
+            }
+            return typeName;
+        }
+        static const AZ::TypeId& Uuid()
+        {
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, C, Args...>::Uuid());
+            return s_uuid;
+        }
+    };
+
+    // specialize for const member function pointers
+    template<class R, class C, class... Args>
+    struct AzTypeInfo<R(C::*)(Args...) const, false>
+        : AzTypeInfo<R(C::*)(Args...), false> {};
+
+    // specialize for member data pointers
+    template<class R, class C>
+    struct AzTypeInfo<R C::*, false>
+    {
+        static const char* Name()
+        {
+            static char typeName[64] = { 0 };
+            if (typeName[0] == 0)
+            {
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), "{");
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), AZ::AzTypeInfo<R>::Name());
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), " ");
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), AZ::AzTypeInfo<C>::Name());
+                AZ::Internal::AzTypeInfoSafeCat(typeName, AZ_ARRAY_SIZE(typeName), "::*}");
+            }
+            return typeName;
+        }
+        static const AZ::TypeId& Uuid()
+        {
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, C>::Uuid());
+            return s_uuid;
+        }
+    };
 
     // Helper macro to generically specialize const, volatile, pointers, etc
 #define AZ_TYPE_INFO_SPECIALIZE_CV(_T1, _Specialization, _NamePrefix, _NameSuffix)                               \

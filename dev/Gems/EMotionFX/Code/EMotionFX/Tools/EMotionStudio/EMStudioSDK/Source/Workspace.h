@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Endian.h>
 #include <MCore/Source/CommandGroup.h>

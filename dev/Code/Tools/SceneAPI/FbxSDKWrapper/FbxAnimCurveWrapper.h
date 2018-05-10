@@ -24,8 +24,8 @@ namespace AZ
         public:
             FbxAnimCurveWrapper(FbxAnimCurve* fbxAnimCurve);
             ~FbxAnimCurveWrapper() = default;
-
-            float Evaluate(FbxTimeWrapper& time);
+            const char* GetName() const;
+            float Evaluate(FbxTimeWrapper& time) const; 
 
         protected:
             FbxAnimCurve* m_fbxAnimCurve;

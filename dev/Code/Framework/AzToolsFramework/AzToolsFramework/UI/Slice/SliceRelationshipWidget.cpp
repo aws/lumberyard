@@ -26,6 +26,14 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 
+namespace SliceRelationshipWidgetInternal
+{
+    //! The icon to use when a cycle is detected.
+    static const char* s_cycleDetectedIcon = ":/Cards/img/UI20/Cards/warning.png";
+    //! the formatting string used a cycle is detected.  %1 is the name of the child item.
+    static const char* s_cycleDetectedFormatter = " CYCLE DETECTED: %1";
+}
+
 namespace AzToolsFramework
 {
     void SliceRelationshipWidget::closeEvent(QCloseEvent* event)
@@ -174,13 +182,38 @@ namespace AzToolsFramework
         return item;
     }
 
+    bool SliceRelationshipWidget::CheckForCycle(QTreeWidgetItem* parentItem, QString searchFor)
+    {
+        while (parentItem)
+        {
+            if (parentItem->text(0) == searchFor)
+            {
+                return true;
+            }
+            parentItem = parentItem->parent();
+        }
+        return false;
+    }
+
     void SliceRelationshipWidget::GenerateDependentsTree(const AZStd::shared_ptr<SliceRelationshipNode>& node, QTreeWidgetItem* parentItem)
     {
         const SliceRelationshipNode::SliceRelationshipNodeSet& dependentNodes = node->GetDependents();
         for (const auto& dependentNode : dependentNodes)
         {
-            QTreeWidgetItem* childItem = AddChildItem(parentItem, QString((dependentNode->GetSliceRelativePath()).c_str()));
-            GenerateDependentsTree(dependentNode, childItem);
+            // before we add this item, we need to make sure that there is no PARENT item (including 'parentItem') that already
+            // includes the child node, to detect cycles.
+            QString childItemName = QString((dependentNode->GetSliceRelativePath()).c_str());
+            if (CheckForCycle(parentItem, childItemName))
+            {
+                childItemName = QString(SliceRelationshipWidgetInternal::s_cycleDetectedFormatter).arg(childItemName);
+                QTreeWidgetItem* childItem = AddChildItem(parentItem, childItemName);
+                childItem->setIcon(0, QIcon(SliceRelationshipWidgetInternal::s_cycleDetectedIcon));
+            }
+            else
+            {
+                QTreeWidgetItem* childItem = AddChildItem(parentItem, childItemName);
+                GenerateDependentsTree(dependentNode, childItem);
+            }
         }
     }
 
@@ -189,8 +222,18 @@ namespace AzToolsFramework
         const SliceRelationshipNode::SliceRelationshipNodeSet& dependencyNodes = node->GetDependencies();
         for (const auto& dependencyNode : dependencyNodes)
         {
-            QTreeWidgetItem* childItem = AddChildItem(parentItem, QString((dependencyNode->GetSliceRelativePath()).c_str()));
-            GenerateDependenciesTree(dependencyNode, childItem);
+            QString childItemName = QString((dependencyNode->GetSliceRelativePath()).c_str());
+            if (CheckForCycle(parentItem, childItemName))
+            {
+                childItemName = QString(SliceRelationshipWidgetInternal::s_cycleDetectedFormatter).arg(childItemName);
+                QTreeWidgetItem* childItem = AddChildItem(parentItem, childItemName);
+                childItem->setIcon(0, QIcon(SliceRelationshipWidgetInternal::s_cycleDetectedIcon));
+            }
+            else
+            {
+                QTreeWidgetItem* childItem = AddChildItem(parentItem, childItemName);
+                GenerateDependenciesTree(dependencyNode, childItem);
+            }
         }
     }
 
@@ -220,7 +263,10 @@ namespace AzToolsFramework
 
     void SliceRelationshipWidget::OnSliceAssetDrilledDown(QTreeWidgetItem* item, int column)
     {
-        ResetTrees(AZStd::string(item->text(column).toUtf8().constData()));
+        if (item && column >= 0)
+        {
+            ResetTrees(AZStd::string(item->text(column).toUtf8().constData()));
+        }
     }
 
     void SliceRelationshipWidget::ResetTrees(const AZ::EntityId& entityId)

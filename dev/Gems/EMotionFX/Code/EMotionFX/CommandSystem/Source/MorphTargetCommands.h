@@ -31,7 +31,7 @@ namespace CommandSystem
     EMotionFX::MorphTarget::EPhonemeSet mOldPhonemeSets;
     bool                                mOldDirtyFlag;
 
-    bool GetMorphTarget(EMotionFX::Actor* actor, EMotionFX::ActorInstance* actorInstance, uint32 lodLevel, const char* morphTargetName, EMotionFX::MorphTarget** outMorphTarget, EMotionFX::MorphSetupInstance::MorphTarget** outMorphTargetInstance, MCore::String& outResult);
+    bool GetMorphTarget(EMotionFX::Actor* actor, EMotionFX::ActorInstance* actorInstance, uint32 lodLevel, const char* morphTargetName, EMotionFX::MorphTarget** outMorphTarget, EMotionFX::MorphSetupInstance::MorphTarget** outMorphTargetInstance, AZStd::string& outResult);
     MCORE_DEFINECOMMAND_END
 } // namespace CommandSystem
 

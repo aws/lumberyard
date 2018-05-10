@@ -25,7 +25,7 @@ class MaximumSizeTableViewObject
 {
     Q_OBJECT
 public:
-    MaximumSizeTableViewObject();
+    MaximumSizeTableViewObject(QWidget* parent);
 
     void mouseReleaseEvent(QMouseEvent* event);
 
@@ -38,7 +38,7 @@ class MaximumSizedTableView
 {
 public:
 
-    MaximumSizedTableView();
+    MaximumSizedTableView(QWidget* parent);
 
     void showEvent(QShowEvent* event) override;
 

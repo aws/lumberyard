@@ -30,8 +30,6 @@ namespace Ui
     class CommandLine;
 }
 
-Q_DECLARE_METATYPE(AZ::Uuid);
-
 namespace ScriptCanvasEditor
 {
     namespace Widget

@@ -14,7 +14,6 @@
 
 #include "../StandardPluginsConfig.h"
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/string/string.h>
 #include "../../../../EMStudioSDK/Source/DockWidgetPlugin.h"
 #include <MysticQt/Source/DialogStack.h>
 #include <MysticQt/Source/SearchButton.h>

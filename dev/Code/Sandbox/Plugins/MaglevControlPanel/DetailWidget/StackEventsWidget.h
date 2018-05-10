@@ -27,7 +27,7 @@ class StackEventsWidget
 
 public:
 
-    StackEventsWidget(QSharedPointer<IStackEventsModel> stackEventsModel, QWidget* parent = nullptr);
+    StackEventsWidget(QSharedPointer<IStackEventsModel> stackEventsModel, QWidget* parent);
 
     void SetStackEventsModel(QSharedPointer<IStackEventsModel> stackEventsModel);
 

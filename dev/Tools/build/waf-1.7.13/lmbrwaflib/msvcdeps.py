@@ -75,6 +75,7 @@ def _find_or_make_node_case_correct(base_node, path):
             if insensitive:
                 node = insensitive
                 continue
+
             # fallthrough, create a new node
 
         # create a node, using the case on disk for the node name
@@ -145,6 +146,7 @@ def wrap_compiled_task(classname):
                 for path in self.bld_deps_paths:
                     node = _find_or_make_node_case_correct(bld.bldnode, path)
                     resolved_nodes.append(node)
+
 
         bld.node_deps[self.uid()] = resolved_nodes
         bld.raw_deps[self.uid()] = unresolved_names

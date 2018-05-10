@@ -41,6 +41,7 @@ namespace GraphCanvas
 
     class DataConnectionGraphicsItem
         : public ConnectionGraphicsItem
+        , public RootGraphicsItemNotificationBus::Handler
     {
     public:	
         AZ_CLASS_ALLOCATOR(DataConnectionGraphicsItem, AZ::SystemAllocator, 0);
@@ -57,10 +58,13 @@ namespace GraphCanvas
 
         void UpdateDataColors();
 
+        // RootGraphicsItemNotifications
+        void OnDisplayStateChanged(RootGraphicsItemDisplayState oldState, RootGraphicsItemDisplayState newState) override;
+        ////
+
     protected:
         void UpdatePen() override;
         void OnPathChanged() override;
-        void OnDisplayStateChanged() override;
         
     private:
     

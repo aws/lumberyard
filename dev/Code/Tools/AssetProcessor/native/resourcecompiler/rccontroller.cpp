@@ -329,10 +329,19 @@ namespace AssetProcessor
             }
         }
     }
-
+    
     void RCController::RemoveJobsBySource(QString relSourceFile)
     {
-        m_RCJobListModel.EraseJobs(relSourceFile);
+        // some jobs may have not been started yet, these need to be removed manually
+        QVector<RCJob*> pendingJobs;
+
+        m_RCJobListModel.EraseJobs(relSourceFile, pendingJobs);
+
+        // force finish all pending jobs
+        for (auto* rcJob : pendingJobs)
+        {
+            FinishJob(rcJob);
+        }
     }
 
 } // Namespace AssetProcessor

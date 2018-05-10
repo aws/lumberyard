@@ -612,7 +612,7 @@ namespace AzToolsFramework
                 componentsOnEntity.end(),
                 [this](const AZ::Component* component)
         {
-            return !ShouldDisplayComponent(component);
+            return !ShouldInspectorShowComponent(component);
         }
             ),
             componentsOnEntity.end()
@@ -674,36 +674,6 @@ namespace AzToolsFramework
             }
         }
         EditorInspectorComponentRequestBus::Event(entityId, &EditorInspectorComponentRequests::SetComponentOrderArray, componentOrder);
-    }
-
-    bool EntityPropertyEditor::ShouldDisplayComponent(const AZ::Component* component) const
-    {
-        auto classData = GetComponentClassData(component);
-
-        // Skip components without edit data
-        if (!classData || !classData->m_editData)
-        {
-            return false;
-        }
-
-        // Skip components that are set to invisible.
-        if (auto editorDataElement = classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
-        {
-            if (auto visibilityAttribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::Visibility))
-            {
-                PropertyAttributeReader reader(const_cast<AZ::Component*>(component), visibilityAttribute);
-                AZ::u32 visibilityValue;
-                if (reader.Read<AZ::u32>(visibilityValue))
-                {
-                    if (visibilityValue == AZ_CRC("PropertyVisibility_Hide", 0x32ab90f7))
-                    {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        return true;
     }
 
     bool EntityPropertyEditor::IsComponentRemovable(const AZ::Component* component) const
@@ -827,7 +797,7 @@ namespace AzToolsFramework
         {
             // Skip components that we should not display
             // Only need to do this for the initial set, components without edit data on other entities should not match these
-            if (!ShouldDisplayComponent(component))
+            if (!ShouldInspectorShowComponent(component))
             {
                 continue;
             }

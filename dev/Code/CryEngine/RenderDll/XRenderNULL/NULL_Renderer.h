@@ -65,6 +65,7 @@ public:
     virtual bool FX_PopRenderTarget(int nTarget) override;
     virtual SDepthTexture* FX_CreateDepthSurface(int nWidth, int nHeight, bool bAA) override;
     virtual void EF_Scissor(bool bEnable, int sX, int sY, int sWdt, int sHgt) override {};
+    virtual void FX_ResetPipe() override {};
 
     ////---------------------------------------------------------------------------------------------------------------------
 
@@ -411,6 +412,7 @@ public:
     virtual IOpticsElementBase* CreateOptics(EFlareType type) const { return NULL;        }
 
     virtual bool BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBakingOutput* pReturnValues) { return false; }
+    virtual PerInstanceConstantBufferPool* GetPerInstanceConstantBufferPoolPointer() override { return nullptr; }
 
 #ifdef SUPPORT_HW_MOUSE_CURSOR
     virtual IHWMouseCursor* GetIHWMouseCursor() { return NULL; }

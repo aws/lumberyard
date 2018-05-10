@@ -111,6 +111,8 @@ namespace AzToolsFramework
         const char* GetEngineVersion() const override;
         bool IsEngineRootExternal() const override;
 
+        void CreateAndAddEntityFromComponentTags(const AZStd::vector<AZ::Crc32>& requiredTags, const char* entityName) override;
+
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

@@ -17,13 +17,13 @@
             "Input/Devices/Gamepad/InputDeviceGamepad_android.cpp"
         ],
         "Input/Devices/Keyboard": [
-            "Input/Devices/Keyboard/InputDeviceKeyboard_none.cpp"
+            "Input/Devices/Keyboard/InputDeviceKeyboard_android.cpp"
         ],
         "Input/Devices/Motion": [
             "Input/Devices/Motion/InputDeviceMotion_android.cpp"
         ],
         "Input/Devices/Mouse": [
-            "Input/Devices/Mouse/InputDeviceMouse_none.cpp"
+            "Input/Devices/Mouse/InputDeviceMouse_android.cpp"
         ],
         "Input/Devices/Touch": [
             "Input/Devices/Touch/InputDeviceTouch_android.cpp"

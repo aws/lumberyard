@@ -73,7 +73,7 @@ namespace EMStudio
         // the node selection window and node group
         NodeSelectionWindow*        mNodeSelectionWindow;
         CommandSystem::SelectionList    mNodeSelectionList;
-        MCore::String               mNodeAction;
+        AZStd::string               mNodeAction;
 
         // widgets
         QTableWidget*               mNodeTable;

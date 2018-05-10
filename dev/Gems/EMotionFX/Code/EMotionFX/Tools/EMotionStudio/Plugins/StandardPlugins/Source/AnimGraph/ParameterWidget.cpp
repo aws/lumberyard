@@ -11,7 +11,6 @@
 */
 
 #include "ParameterWidget.h"
-#include <AzCore/std/string/conversions.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/AnimGraphParameterGroup.h>
@@ -103,7 +102,9 @@ namespace EMStudio
         MCore::AttributeSettings* parameter = animGraph->GetParameter(parameterIndex);
 
         // make sure we only show the parameters that are wanted after the name are filtering
-        if (mFilterString.empty() || parameter->GetNameString().Lowered().Contains(mFilterString.c_str()))
+        AZStd::string loweredParameter = parameter->GetNameString();
+        AZStd::to_lower(loweredParameter.begin(), loweredParameter.end());
+        if (mFilterString.empty() || loweredParameter.find(mFilterString) != AZStd::string::npos)
         {
             // add the parameter to the tree widget
             QTreeWidgetItem* item = new QTreeWidgetItem(parameterGroupItem);
@@ -145,7 +146,7 @@ namespace EMStudio
         }
 
         // get the number of parameter groups and iterate through them
-        MCore::String tempString;
+        AZStd::string tempString;
         const uint32 numGroups = mAnimGraph->GetNumParameterGroups();
         for (uint32 g = 0; g < numGroups; ++g)
         {
@@ -154,12 +155,12 @@ namespace EMStudio
             // add the group item to the tree widget
             QTreeWidgetItem* groupItem = new QTreeWidgetItem(mTreeWidget);
             groupItem->setText(0, group->GetName());
-            //tempString.Format("%d", group->GetNumParameters());
-            //groupItem->setText( 2, tempString.AsChar() );
+            //tempString = AZStd::string::format("%d", group->GetNumParameters());
+            //groupItem->setText( 2, tempString.c_str() );
 
             groupItem->setExpanded(true);
-            tempString.Format("%d Parameters", group->GetNumParameters());
-            groupItem->setToolTip(1, tempString.AsChar());
+            tempString = AZStd::string::format("%d Parameters", group->GetNumParameters());
+            groupItem->setToolTip(1, tempString.c_str());
             mTreeWidget->addTopLevelItem(groupItem);
 
             // add all parameters that belong to the given group
@@ -204,21 +205,21 @@ namespace EMStudio
         mSelectedParameters.reserve(numSelectedItems);
 
         // iterate through all selected items
-        MCore::String itemName;
+        AZStd::string itemName;
         for (uint32 i = 0; i < numSelectedItems; ++i)
         {
             QTreeWidgetItem* item = selectedItems[i];
 
             // get the item name
             FromQtString(item->text(0), &itemName);
-            EMotionFX::AnimGraphParameterGroup* parameterGroup = mAnimGraph->FindParameterGroupByName(itemName.AsChar());
+            EMotionFX::AnimGraphParameterGroup* parameterGroup = mAnimGraph->FindParameterGroupByName(itemName.c_str());
 
             // check if the selected item is a parameter
-            if (mAnimGraph->FindParameter(itemName.AsChar()))
+            if (mAnimGraph->FindParameter(itemName.c_str()))
             {
-                if (AZStd::find(mSelectedParameters.begin(), mSelectedParameters.end(), itemName.AsChar()) == mSelectedParameters.end())
+                if (AZStd::find(mSelectedParameters.begin(), mSelectedParameters.end(), itemName.c_str()) == mSelectedParameters.end())
                 {
-                    mSelectedParameters.push_back(itemName.AsChar());
+                    mSelectedParameters.push_back(itemName.c_str());
                 }
             }
             // check if the selected item is a group

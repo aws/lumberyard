@@ -45,6 +45,7 @@ TEST_F(RCBuilderTest, CreateBuilderDesc_CreateBuilder_Valid)
 
     ASSERT_EQ(this->GetBuilderName(), result.m_name);
     ASSERT_EQ(this->GetBuilderUUID(), result.m_busId);
+    ASSERT_EQ(false, result.IsExternalBuilder());
     ASSERT_TRUE(result.m_patterns.size() == 1);
     ASSERT_EQ(result.m_patterns[0].m_pattern, pattern.m_pattern);
 }

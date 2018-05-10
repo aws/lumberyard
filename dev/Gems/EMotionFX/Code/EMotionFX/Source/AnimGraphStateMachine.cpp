@@ -1068,7 +1068,7 @@ namespace EMotionFX
 
 
     // callback for when we renamed a node
-    void AnimGraphStateMachine::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)
+    void AnimGraphStateMachine::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
         // get the number of transitions, iterate through them and call the callback
         const uint32 numTransitions = mTransitions.GetLength();

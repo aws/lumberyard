@@ -115,6 +115,8 @@ namespace AZ
                         m_avgSecondsPerFrame = m_totalDuration / stream->nb_frames;
                     }
 
+                    m_totalFrameCount = stream->nb_frames;
+
                     //Try to read stereo mode from side data; not 100% accurate as not all videos report stereo layout
                     for (int i = 0; i < stream->nb_side_data; i++)
                     {
@@ -269,6 +271,11 @@ namespace AZ
                         pts = finalFrame->pts;
                     }
 
+                    /* Advance frame counter
+                    Following the same example, we've displayed 27 frames
+                    */
+                    m_framePresentIndex += frameAheadIndex;
+
                     //Calculate the current time in seconds as a float. 
                     m_currentTime = static_cast<float>(pts) / static_cast<float>(m_streamTimeBase);
 
@@ -279,16 +286,7 @@ namespace AZ
                     m_frameClearStartIndex = m_framePresentIndex;
                     m_frameClearCount = frameAheadIndex;
 
-                    /* Advance frame counter
-                    Following the same example, we've displayed 27 frames
-                    */
-                    m_framePresentIndex += frameAheadIndex;
-
-                    //Only signal the decoder thread if we haven't hit the end of the file
-                    if (!m_endOfFile)
-                    {
-                        SignalDecoderThread(frameAheadIndex);
-                    }
+                    SignalDecoderThread(frameAheadIndex);
 
                     return true;
                 }
@@ -477,12 +475,23 @@ namespace AZ
         {
             bool finishedPlayback = false;
 
-            //If the current time is within 80ms of the total duration
-            //This is a bit hack but there's no good way to determine if we've read the last frame
-            //Durations in FFmpeg/LibAV are not exact; often they're estimated from other data provided by the codec
-            if (m_currentTime + 0.08f >= m_totalDuration)
+            //If the container provided us with the number of frames, use that to determine if playback was completed
+            if (m_totalFrameCount > 0)
             {
-                finishedPlayback = true;
+                if (m_framePresentIndex >= m_totalFrameCount)
+                {
+                    finishedPlayback = true;
+                }
+            }
+            else
+            {
+                //If the current time is within 80ms of the total duration
+                //This is a bit hack but there's no good, universal way to determine if we've read the last frame
+                //Durations in FFmpeg/LibAV are not exact; often they're estimated from other data provided by the codec
+                if (m_currentTime + 0.08f >= m_totalDuration)
+                {
+                    finishedPlayback = true;
+                }
             }
 
             return m_endOfFile && finishedPlayback;

@@ -12,7 +12,6 @@
 
 #include "SplineSelectionManipulator.h"
 
-#include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
@@ -26,14 +25,7 @@ namespace AzToolsFramework
         SplineSelectionManipulator::Action action;
         if (const AZStd::shared_ptr<const AZ::Spline> splinePtr = spline.lock())
         {
-            AZ::Transform worldFromLocalNormalized = worldFromLocal;
-            const AZ::Vector3 scale = worldFromLocalNormalized.ExtractScale();
-            const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
-
-            const AZ::Vector3 localRayOrigin = localFromWorldNormalized * rayOrigin * scale.GetReciprocal();
-            const AZ::Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(rayDirection);
-            const AZ::RaySplineQueryResult splineQueryResult = splinePtr->GetNearestAddressRay(localRayOrigin, localRayDirection);
-
+            const auto splineQueryResult = IntersectSpline(worldFromLocal, rayOrigin, rayDirection, *splinePtr);
             action.m_localSplineHitPosition = splinePtr->GetPosition(splineQueryResult.m_splineAddress);
             action.m_splineAddress = splineQueryResult.m_splineAddress;
         }
@@ -69,12 +61,9 @@ namespace AzToolsFramework
 
         if (m_onLeftMouseDownCallback)
         {
-            AZ::Transform worldFromLocal;
-            AZ::TransformBus::EventResult(
-                worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
             m_onLeftMouseDownCallback(CalculateManipulationDataAction(
-                worldFromLocal, interaction.m_mousePick.m_rayOrigin,
+                WorldFromLocalWithUniformScale(GetEntityId()), 
+                interaction.m_mousePick.m_rayOrigin,
                 interaction.m_mousePick.m_rayDirection, m_spline));
         }
     }
@@ -83,17 +72,15 @@ namespace AzToolsFramework
     {
         if (MouseOver() && m_onLeftMouseUpCallback)
         {
-            AZ::Transform worldFromLocal;
-            AZ::TransformBus::EventResult(
-                worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
             m_onLeftMouseUpCallback(CalculateManipulationDataAction(
-                worldFromLocal, interaction.m_mousePick.m_rayOrigin,
+                WorldFromLocalWithUniformScale(GetEntityId()), 
+                interaction.m_mousePick.m_rayOrigin,
                 interaction.m_mousePick.m_rayDirection, m_spline));
         }
     }
 
     void SplineSelectionManipulator::Draw(
+        const ManipulatorManagerState& managerState,
         AzFramework::EntityDebugDisplayRequests &display,
         const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
@@ -108,14 +95,10 @@ namespace AzToolsFramework
 
         if (mouseInteraction.m_keyboardModifiers.Ctrl() && !mouseInteraction.m_keyboardModifiers.Shift())
         {
-            AZ::Transform worldFromLocal;
-            AZ::TransformBus::EventResult(
-                worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
             m_manipulatorView->Draw(
-                GetManipulatorManagerId(), GetManipulatorId(), MouseOver(),
-                AZ::Vector3::CreateZero(), worldFromLocal, display, cameraState,
-                mouseInteraction, ManipulatorSpace::Local);
+                GetManipulatorManagerId(), managerState,
+                GetManipulatorId(), { WorldFromLocalWithUniformScale(GetEntityId()), AZ::Vector3::CreateZero(), MouseOver() },
+                display, cameraState, mouseInteraction, ManipulatorSpace::Local);
         }
     }
 

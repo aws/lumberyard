@@ -97,46 +97,6 @@
         </property>
         <item>
          <widget class="QComboBox" name="PlatformEntry">
-          <item>
-           <property name="text">
-            <string>OSX GL</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>OSX Metal</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Android</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>iOS</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Xbox One</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>PS4</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Apple TV</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Custom</string>
-           </property>
-          </item>
          </widget>
         </item>
        </layout>

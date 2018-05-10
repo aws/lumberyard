@@ -430,6 +430,8 @@ namespace Visibility
             dc->DrawLine(portalUpperLeftBack, floorLeftBack);
         }
 
+        AzToolsFramework::EditorVertexSelectionUtil::DisplayVertexContainerIndices(*dc, m_vertexSelection, GetWorldTM(), IsSelected());
+
         dc->PopMatrix();
 
         handled = true;

@@ -27,6 +27,7 @@
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <ScriptCanvas/SystemComponent.h>
+#include <Asset/RuntimeAssetSystemComponent.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
 // disable test bodies to see if there's anything wrong with the system or test framework not related to ScriptCanvas testing
@@ -98,6 +99,7 @@ namespace ScriptCanvasTests
             systemEntity->CreateComponent<AZ::MemoryComponent>();
             systemEntity->CreateComponent<AZ::AssetManagerComponent>();
             systemEntity->CreateComponent<ScriptCanvas::SystemComponent>();
+            systemEntity->CreateComponent<ScriptCanvas::RuntimeAssetSystemComponent>();
             systemEntity->CreateComponent<TraceMessageComponent>();
 
             systemEntity->Init();
@@ -159,7 +161,7 @@ namespace ScriptCanvasTests
         AZStd::unique_ptr<AZ::IO::FileIOBase> m_fileIO;
         AZ::SerializeContext* m_serializeContext;
         AZ::BehaviorContext* m_behaviorContext;
-
+        UnitTestEntityContext m_entityContext;
     };
 
     class AsyncScriptCanvasTestFixture

@@ -1196,7 +1196,7 @@ namespace ServiceAPI {
             if (serializeContext)
             {
                 // we must include any fields we want to expose to the editor or lua in the serialize context
-                serializeContext->Class<CloudGemLeaderboardClientComponent>()
+                serializeContext->Class<CloudGemLeaderboardClientComponent, AZ::Component>()
                     ->Version(1);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();

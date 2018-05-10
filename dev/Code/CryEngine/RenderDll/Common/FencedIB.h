@@ -11,8 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef _FencedIB_H_
-#define _FencedIB_H_
+#pragma once
 
 ///////////////////////////////////////////////////////////////////////////////
 // Vertex Data container optmized for direct VideoMemory access on Consoles
@@ -101,8 +100,15 @@ void FencedIB<IndexType>::UnlockIB()
     if (m_pLockedData && m_pIB)
     {
         gRenDev->m_DevMan.UnlockDirectAccessBuffer((D3DBuffer*)m_pIB, CDeviceManager::BIND_INDEX_BUFFER);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(FencedIB_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#   else
         CDeviceManager::InvalidateCpuCache(m_pLockedData, 0, m_nIndexCount * m_nIndexStride);
         CDeviceManager::InvalidateGpuCache((D3DBuffer*)m_pIB, m_pLockedData, 0, m_nIndexCount * m_nIndexStride);
+#   endif
         m_pLockedData = NULL;
     }
 }
@@ -139,5 +145,3 @@ void FencedIB<IndexType>::WaitForFence()
     gRenDev->m_DevMan.SyncFence(m_Fence, true, false);
 #endif
 }
-
-#endif  // _FencedIB_H_

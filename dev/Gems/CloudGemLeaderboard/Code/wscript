@@ -15,8 +15,6 @@ def build(bld):
 
     bld.DefineGem(
         # Add custom build options here
-        includes = [bld.Path('Code/SDKs/AWSNativeSDK/include')],
-
         file_list = file_list,
 
         platforms = ['all'],

@@ -28,7 +28,13 @@ namespace UnitTest
 {
     class EBus
         : public AllocatorsFixture
-    {};
+    {
+    public:
+        EBus()
+            : AllocatorsFixture(128, false)
+        {
+        }
+    };
     /**
     * Test for Single Event group on a single Event bus.
     * This is the simplest and most memory efficient way to
@@ -1275,8 +1281,6 @@ namespace UnitTest
         m_jobContext = aznew JobContext(*m_jobManager);
         JobContext::SetGlobalContext(m_jobContext);
 
-        m_singleHandler.m_callCount = 0;
-        m_multiHandler.m_callCount = 0;
         const int NumCalls = 5000;
         QueueTestMultiBus::Bind(m_multiPtr, 0);
         m_multiHandler.BusConnect(0);
@@ -1986,6 +1990,8 @@ namespace UnitTest
 
         virtual ~LocklessEvents() = default;
         virtual void RemoveMe() = 0;
+        virtual void DeleteMe() = 0;
+        virtual void Calculate(int x, int y, int z) = 0;
     };
 
     using LocklessBus = AZ::EBus<LocklessEvents>;
@@ -1993,7 +1999,11 @@ namespace UnitTest
     struct LocklessImpl
         : public LocklessBus::Handler
     {
-        LocklessImpl()
+        uint32_t m_val;
+        uint32_t m_maxSleep;
+        LocklessImpl(uint32_t maxSleep = 0)
+            : m_val(0)
+            , m_maxSleep(maxSleep)
         {
             BusConnect();
         }
@@ -2001,13 +2011,81 @@ namespace UnitTest
         {
             BusDisconnect();
         }
+        void DeleteMe() override
+        {
+            delete this;
+        }
+        void Calculate(int x, int y, int z)
+        {
+            m_val = x + (y * z);
+            if (m_maxSleep)
+            {
+                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(m_val % m_maxSleep));
+            }
+        }
     };
+
+    void ThrashLocklessDispatch(uint32_t maxSleep = 0)
+    {
+        const size_t threadCount = 8;
+        const size_t cycleCount = 1000;
+        AZStd::thread threads[threadCount];
+        AZStd::vector<int> results[threadCount];
+
+        LocklessImpl handler(maxSleep);
+
+        auto work = [maxSleep, cycleCount]()
+        {
+            char sentinel[64] = { 0 };
+            char* end = sentinel + AZ_ARRAY_SIZE(sentinel);
+            for (int i = 1; i < cycleCount; ++i)
+            {
+                uint32_t ms = maxSleep ? rand() % maxSleep : 0;
+                if (ms % 3)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(ms));
+                }
+                LocklessBus::Broadcast(&LocklessBus::Events::Calculate, i, i * 2, i << 4);
+                bool failed = (AZStd::find_if(&sentinel[0], end, [](char s) { return s != 0; }) != end);
+                EXPECT_FALSE(failed);
+            }
+        };
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread = AZStd::thread(work);
+        }
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread.join();
+        }
+    }
+
+    TEST_F(EBus, ThrashLocklessDispatchYOLO)
+    {
+        ThrashLocklessDispatch();
+    }
+
+    TEST_F(EBus, ThrashLocklessDispatchSimulateWork)
+    {
+        ThrashLocklessDispatch(4);
+    }
 
     TEST_F(EBus, DisconnectInLocklessDispatch)
     {
         LocklessImpl handler;
         AZ_TEST_START_ASSERTTEST;
         LocklessBus::Broadcast(&LocklessBus::Events::RemoveMe);
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    TEST_F(EBus, DeleteInLocklessDispatch)
+    {
+        LocklessImpl* handler = new LocklessImpl();
+        AZ_UNUSED(handler);
+        AZ_TEST_START_ASSERTTEST;
+        LocklessBus::Broadcast(&LocklessBus::Events::DeleteMe);
         AZ_TEST_STOP_ASSERTTEST(1);
     }
 

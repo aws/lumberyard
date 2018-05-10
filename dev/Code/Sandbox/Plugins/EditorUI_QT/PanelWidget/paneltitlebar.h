@@ -98,7 +98,7 @@ signals:
     void SignalPanelExportPanel(QDockWidget* panel, QString path);
     void SignalRemoveAllParams(QDockWidget* panel);
 protected:
-    void BuildCustomMenu();
+    void BuildCustomMenu(QMenu *);
     CAttributeItem* item;
     IVariable* m_variable;
     virtual bool onEventFilter(QObject* obj, QEvent* ev);

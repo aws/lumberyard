@@ -1,6 +1,6 @@
 {
     "name": "fbxsdk",
-    "source": "@ROOT@/Code/SDKs/FbxSDK",
+    "source": "@3P:fbxsdk@",
     "description": "FBX SDK Library",
     "includes": [
         "include"
@@ -31,6 +31,7 @@
                 "libfbxsdk-md.lib"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "darwin_x64": {
             "sharedlib_required": "True",
             "ccflags": [

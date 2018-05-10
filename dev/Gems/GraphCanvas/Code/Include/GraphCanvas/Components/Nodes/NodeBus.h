@@ -16,7 +16,7 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/std/containers/vector.h>
 
-#include <GraphCanvas/Types/SceneSerialization.h>
+#include <GraphCanvas/Types/GraphCanvasGraphSerialization.h>
 #include <GraphCanvas/Types/TranslationTypes.h>
 
 namespace AZ
@@ -36,16 +36,6 @@ namespace GraphCanvas
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
-
-        //! Set the name of the node. This often acts as a kind of visual title for the node.
-        virtual void SetName(const AZStd::string&) = 0;
-        //! Get the name of the node.
-        virtual const AZStd::string& GetName() const = 0;
-
-        //! Set the description of the node. This may include usage instructions or pointers to documentation.
-        virtual void SetDescription(const AZStd::string&) = 0;
-        //! Get the description of the node.
-        virtual const AZStd::string& GetDescription() const = 0;
 
         //! Set the tooltip for the node, which will display when the mouse is over the node but not a child item.
         virtual void SetTooltip(const AZStd::string&) = 0;
@@ -74,6 +64,13 @@ namespace GraphCanvas
 
         //! Get user data from this node
         virtual AZStd::any* GetUserData() = 0;
+
+        //! Returns whether or not the Node is currently wrapped.
+        virtual bool IsWrapped() const = 0;
+
+        virtual void SetWrappingNode(const AZ::EntityId& wrappingNode) = 0;
+
+        virtual AZ::EntityId GetWrappingNode() const = 0;
     };
 
     using NodeRequestBus = AZ::EBus<NodeRequests>;
@@ -112,8 +109,8 @@ namespace GraphCanvas
 
         virtual void OnNodeActivated() {};
 
-        virtual void OnNodeAboutToSerialize(SceneSerialization&) {}
-        virtual void OnNodeDeserialized(const SceneSerialization&) {}
+        virtual void OnNodeAboutToSerialize(GraphSerialization&) {}
+        virtual void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphSerialization&) {}
 
         virtual void OnNodeWrapped(const AZ::EntityId& wrappingNode) {}
         virtual void OnNodeUnwrapped(const AZ::EntityId& wrappingNode) {}

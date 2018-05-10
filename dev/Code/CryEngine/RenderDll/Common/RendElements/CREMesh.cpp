@@ -236,7 +236,7 @@ bool CREMeshImpl::GetGeometryInfo(SGeometryInfo &geomInfo)
     geomInfo.nNumIndices = m_nNumIndices;
 
     geomInfo.vertexFormat = pVContainer->_GetVertexFormat();
-    geomInfo.primitiveType = pVContainer->_GetPrimitiveType();
+    geomInfo.primitiveType = pVContainer->GetPrimitiveType();
 
     geomInfo.streamMask = 0;
 
@@ -342,7 +342,7 @@ bool CREMeshImpl::mfDraw(CShader *ef, SShaderPass *sl)
     CRenderMesh *pRM = m_pRenderMesh;
     if (ef->m_HWTechniques.Num() && pRM->CanRender())
     {
-        r->FX_DrawIndexedMesh(r->m_RP.m_RendNumGroup >= 0 ? eptHWSkinGroups : pRM->_GetPrimitiveType());
+        r->FX_DrawIndexedMesh(r->m_RP.m_RendNumGroup >= 0 ? eptHWSkinGroups : pRM->GetPrimitiveType());
     }
     return true;
 }

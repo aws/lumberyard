@@ -85,7 +85,7 @@ function motdmainmenu:OnAction(entityId, actionName)
             return
         end
         
-        local timeVal = os.date("%b %d %Y %H:%M")
+        local timeVal = os.date("!%b %d %Y %H:%M")
         local lang = "Eng"
         Debug.Log(timeVal);
         CloudGemMessageOfTheDayRequestBus.Event.GetPlayerMessages(self.entityId, timeVal, lang, nil)

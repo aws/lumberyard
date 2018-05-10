@@ -27,6 +27,7 @@
 
 #include "ScriptCanvas/Bus/RequestBus.h"
 #include "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h"
+#include "Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h"
 
 #include <Core/Attributes.h>
 #include <Editor/Metrics.h>
@@ -58,30 +59,18 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateClassMethodMimeEvent::CreateNode(const AZ::EntityId& graphId) const
+    ScriptCanvasEditor::NodeIdPair CreateClassMethodMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropObject, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), graphId);
-        return Nodes::CreateObjectOrObjectMethodNode(m_className, m_methodName, graphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropObject, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), scriptCanvasGraphId);
+        return Nodes::CreateObjectMethodNode(m_className, m_methodName, scriptCanvasGraphId);
     }
 
     ////////////////////////////////////
     // ClassMethodEventPaletteTreeItem
     ////////////////////////////////////
 
-    const QString& ClassMethodEventPaletteTreeItem::GetDefaultIcon()
-    {
-        static QString defaultIcon;
-
-        if (defaultIcon.isEmpty())
-        {
-            defaultIcon = IconComponent::LookupClassIcon(ScriptCanvas::Nodes::Core::Method::RTTI_Type()).c_str();
-        }
-
-        return defaultIcon;
-    }
-
     ClassMethodEventPaletteTreeItem::ClassMethodEventPaletteTreeItem(const QString& className, const QString& methodName)
-        : DraggableNodePaletteTreeItem(methodName, GetDefaultIcon())
+        : DraggableNodePaletteTreeItem(methodName, ScriptCanvasEditor::AssetEditorId)
         , m_className(className)
         , m_methodName(methodName)
     {
@@ -102,6 +91,8 @@ namespace ScriptCanvasEditor
         {
             SetToolTip(displayEventTooltip.c_str());
         }
+
+        SetTitlePalette("MethodNodeTitlePalette");
     }
 
     GraphCanvas::GraphCanvasMimeEvent* ClassMethodEventPaletteTreeItem::CreateMimeEvent() const
@@ -120,9 +111,10 @@ namespace ScriptCanvasEditor
         if (serializeContext)
         {
             serializeContext->Class<CreateCustomNodeMimeEvent, GraphCanvas::GraphCanvasMimeEvent>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("TypeId", &CreateCustomNodeMimeEvent::m_typeId)
                 ->Field("StyleOverride", &CreateCustomNodeMimeEvent::m_styleOverride)
+                ->Field("TitlePalette", &CreateCustomNodeMimeEvent::m_titlePalette)
                 ;
         }
     }
@@ -132,16 +124,22 @@ namespace ScriptCanvasEditor
     {
     }
 
-    CreateCustomNodeMimeEvent::CreateCustomNodeMimeEvent(const AZ::Uuid& typeId, const AZStd::string& styleOverride)
+    CreateCustomNodeMimeEvent::CreateCustomNodeMimeEvent(const AZ::Uuid& typeId, const AZStd::string& styleOverride, const AZStd::string& titlePalette)
         : m_typeId(typeId)
         , m_styleOverride(styleOverride)
+        , m_titlePalette(titlePalette)
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateCustomNodeMimeEvent::CreateNode(const AZ::EntityId& graphId) const
+    ScriptCanvasEditor::NodeIdPair CreateCustomNodeMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropNode, m_typeId, graphId);
-        return Nodes::CreateNode(m_typeId, graphId, m_styleOverride);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropNode, m_typeId, scriptCanvasGraphId);
+
+        Nodes::StyleConfiguration styleConfiguration;
+        styleConfiguration.m_nodeSubStyle = m_styleOverride;
+        styleConfiguration.m_titlePalette = m_titlePalette;
+
+        return Nodes::CreateNode(m_typeId, scriptCanvasGraphId, styleConfiguration);
     }
 
     //////////////////////////////
@@ -149,13 +147,13 @@ namespace ScriptCanvasEditor
     //////////////////////////////
 
     CustomNodePaletteTreeItem::CustomNodePaletteTreeItem(const AZ::Uuid& typeId, const QString& nodeName, const QString& iconPath)
-        : DraggableNodePaletteTreeItem(nodeName, iconPath)
+        : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
         , m_typeId(typeId)
     {
     }
 
     GraphCanvas::GraphCanvasMimeEvent* CustomNodePaletteTreeItem::CreateMimeEvent() const
     {
-        return aznew CreateCustomNodeMimeEvent(m_typeId, GetStyleOverride());
+        return aznew CreateCustomNodeMimeEvent(m_typeId, GetStyleOverride(), GetTitlePalette());
     }
 }

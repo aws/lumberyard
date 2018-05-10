@@ -34,7 +34,7 @@ namespace AZ
                 SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
                 if (serializeContext)
                 {
-                    serializeContext->Class<ExportingComponent, Events::CallProcessorBinder>()->Version(1);
+                    serializeContext->Class<ExportingComponent, AZ::Component, Events::CallProcessorBinder>()->Version(1);
                 }
             }
         } // namespace SceneCore

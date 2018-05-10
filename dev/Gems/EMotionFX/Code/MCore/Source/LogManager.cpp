@@ -163,7 +163,7 @@ namespace MCore
                 }
 
                 // compare the file names
-                if (logFileCallback->GetLogFile()->GetFileName().CheckIfIsEqual(fileName))
+                if (logFileCallback->GetLogFile()->GetFileName() == fileName)
                 {
                     // get rid of the callback instance
                     delete callback;
@@ -510,6 +510,12 @@ namespace MCore
     #if (defined(MCORE_PLATFORM_WINDOWS))
         OutputDebugStringA(message);
         OutputDebugStringA("\n");
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(LogManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
     #elif (defined(MCORE_PLATFORM_ANDROID))
         __android_log_print(ANDROID_LOG_INFO, "MCore", message);
     #else

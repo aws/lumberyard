@@ -51,7 +51,7 @@ namespace ScriptCanvas
             Number,
             BehaviorContextObject,
             String,
-            Rotation,
+            Quaternion,
             Transform,
             Vector3,
             Vector2,
@@ -77,7 +77,7 @@ namespace ScriptCanvas
         using NumberType = double;
         using OBBType = AZ::Obb;
         using PlaneType = AZ::Plane;
-        using RotationType = AZ::Quaternion;
+        using QuaternionType = AZ::Quaternion;
         using StringType = AZStd::string;
         using TransformType = AZ::Transform;
         using Vector2Type = AZ::Vector2;
@@ -103,7 +103,7 @@ namespace ScriptCanvas
             static Type Number();
             static Type OBB();
             static Type Plane();
-            static Type Rotation();
+            static Type Quaternion();
             static Type String();
             static Type Transform();
             static Type Vector2();
@@ -119,9 +119,8 @@ namespace ScriptCanvas
             explicit operator bool() const;
             bool operator!() const;
 
-            // raw equality checks are never desired, use IS_A and IS_EXACTLY_A
-            bool operator==(const Type& other) const = delete;
-            bool operator!=(const Type& other) const = delete;
+            bool operator==(const Type& other) const;
+            bool operator!=(const Type& other) const;
 
             // returns true if this type is, or is derived from the other type
             // \todo support polymorphism
@@ -153,16 +152,7 @@ namespace ScriptCanvas
 
         // if azType is not a valid script canvas type of some kind, returns invalid, NOT for use at run-time
         Type FromAZTypeChecked(const AZ::Uuid& aztype);
-
-        /**
-        * assumes that azType is a valid script canvas type of some kind, asserts if not
-        * favors BehaviorContext class types with the corresponding AZ type id over native ScriptCanvas types
-        */
-        Type FromBehaviorContextType(const AZ::Uuid& aztype);
-
-        // if azType is not a valid script canvas type of some kind, returns invalid, NOT for use at run-time
-        Type FromBehaviorContextTypeChecked(const AZ::Uuid& aztype);
-
+        
         template<typename T>
         Type FromAZType();
 
@@ -215,8 +205,8 @@ namespace ScriptCanvas
         bool IsOBB(const Type& type);
         bool IsPlane(const AZ::Uuid& type);
         bool IsPlane(const Type& type);
-        bool IsRotation(const AZ::Uuid& type);
-        bool IsRotation(const Type& type);
+        bool IsQuaternion(const AZ::Uuid& type);
+        bool IsQuaternion(const Type& type);
         bool IsString(const AZ::Uuid& type);
         bool IsString(const Type& type);
         bool IsTransform(const AZ::Uuid& type);
@@ -350,14 +340,14 @@ namespace ScriptCanvas
             return type.GetType() == eType::Plane;
         }
 
-        AZ_INLINE bool IsRotation(const AZ::Uuid& type)
+        AZ_INLINE bool IsQuaternion(const AZ::Uuid& type)
         {
-            return type == azrtti_typeid<RotationType>();
+            return type == azrtti_typeid<QuaternionType>();
         }
 
-        AZ_INLINE bool IsRotation(const Type& type)
+        AZ_INLINE bool IsQuaternion(const Type& type)
         {
-            return type.GetType() == eType::Rotation;
+            return type.GetType() == eType::Quaternion;
         }
 
         AZ_INLINE bool IsString(const AZ::Uuid& type)
@@ -450,8 +440,8 @@ namespace ScriptCanvas
             case eType::Plane:
                 return azrtti_typeid<PlaneType>();
 
-            case eType::Rotation:
-                return azrtti_typeid<RotationType>();
+            case eType::Quaternion:
+                return azrtti_typeid<QuaternionType>();
 
             case eType::String:
                 return azrtti_typeid<StringType>();
@@ -504,7 +494,7 @@ namespace ScriptCanvas
                 | 1 << static_cast<AZ::u32>(eType::Matrix3x3)
                 | 1 << static_cast<AZ::u32>(eType::Matrix4x4)
                 | 1 << static_cast<AZ::u32>(eType::OBB)
-                | 1 << static_cast<AZ::u32>(eType::Rotation)
+                | 1 << static_cast<AZ::u32>(eType::Quaternion)
                 | 1 << static_cast<AZ::u32>(eType::Transform)
                 | 1 << static_cast<AZ::u32>(eType::Vector3)
                 | 1 << static_cast<AZ::u32>(eType::Vector2)
@@ -527,7 +517,7 @@ namespace ScriptCanvas
                 | 1 << static_cast<AZ::u32>(eType::Matrix4x4)
                 | 1 << static_cast<AZ::u32>(eType::Number)
                 | 1 << static_cast<AZ::u32>(eType::OBB)
-                | 1 << static_cast<AZ::u32>(eType::Rotation)
+                | 1 << static_cast<AZ::u32>(eType::Quaternion)
                 | 1 << static_cast<AZ::u32>(eType::String)
                 | 1 << static_cast<AZ::u32>(eType::Transform)
                 | 1 << static_cast<AZ::u32>(eType::Vector3)
@@ -712,9 +702,9 @@ namespace ScriptCanvas
             return Type(eType::Plane);
         }
 
-        AZ_FORCE_INLINE Type Type::Rotation()
+        AZ_FORCE_INLINE Type Type::Quaternion()
         {
-            return Type(eType::Rotation);
+            return Type(eType::Quaternion);
         }
 
         AZ_FORCE_INLINE Type Type::String()
@@ -745,3 +735,18 @@ namespace ScriptCanvas
     } // namespace Data
 
 } // namespace ScriptCanvas
+
+namespace AZStd
+{
+    template<>
+    struct hash<ScriptCanvas::Data::Type>
+    {
+        size_t operator()(const ScriptCanvas::Data::Type& ref) const
+        {
+            size_t seed = 0U;
+            hash_combine(seed, ref.GetType());
+            hash_combine(seed, ScriptCanvas::Data::ToAZType(ref));
+            return seed;
+        }
+    };
+}

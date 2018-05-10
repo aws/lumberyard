@@ -106,6 +106,7 @@ namespace EMotionFX
             {
                 // find if the pose node also exists in the actor where we apply this to
                 Node* targetNode  = targetSkeleton->GetNode(i);
+                //this code is assuming no duplicate node names.
                 Node* neutralNode = neutralSkeleton->FindNodeByID(targetNode->GetID());
 
                 // skip this node if it doesn't exist in the actor we apply this to
@@ -210,15 +211,8 @@ namespace EMotionFX
                 // make sure the values won't be too small
                 if (maxValue - minValue < 1.0f)
                 {
-                    if (minValue < 0.0f && minValue > -1.0f)
-                    {
-                        minValue = -1.0f;
-                    }
-
-                    if (maxValue > 0.0f && maxValue < 1.0f)
-                    {
-                        maxValue = 1.0f;
-                    }
+                    minValue -= 0.5f;
+                    maxValue += 0.5f;
                 }
 
                 // check if we have tangents
@@ -266,7 +260,7 @@ namespace EMotionFX
                         // setup the deform data for this vertex
                         deformData->mDeltas[curVertex].mVertexNr = v;
                         deformData->mDeltas[curVertex].mPosition.FromVector3(deltaVec, minValue, maxValue);
-                        deformData->mDeltas[curVertex].mNormal.FromVector3(deltaNormal, -1.0f, 1.0f);
+                        deformData->mDeltas[curVertex].mNormal.FromVector3(deltaNormal, -2.0f, 2.0f);
                         deformData->mDeltas[curVertex].mTangent.FromVector3(deltaTangent, -1.0f, 1.0f);
                         curVertex++;
                     } // deltaVec.Length() > 0.0001f

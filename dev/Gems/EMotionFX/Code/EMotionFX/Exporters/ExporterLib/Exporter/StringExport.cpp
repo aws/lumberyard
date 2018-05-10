@@ -15,27 +15,27 @@
 
 namespace ExporterLib
 {
-    void SaveString(const MCore::String& textToSave, MCore::Stream* file, MCore::Endian::EEndianType targetEndianType)
+    void SaveString(const AZStd::string& textToSave, MCore::Stream* file, MCore::Endian::EEndianType targetEndianType)
     {
         MCORE_ASSERT(file);
 
         // convert endian and write the number of characters that follow
-        uint32 numCharacters = textToSave.GetLength();
+        uint32 numCharacters = static_cast<uint32>(textToSave.size());
         ConvertUnsignedInt(&numCharacters, targetEndianType);
         file->Write(&numCharacters, sizeof(uint32));
-        if (textToSave.GetLength() == 0)
+        if (textToSave.size() == 0)
         {
             return;
         }
 
         // write the string in UTF8 format
-        file->Write(textToSave.GetPtr(), textToSave.GetLength() * sizeof(char));
+        file->Write(textToSave.data(), textToSave.size() * sizeof(char));
     }
 
 
-    uint32 GetStringChunkSize(const MCore::String& text)
+    uint32 GetStringChunkSize(const AZStd::string& text)
     {
-        return (sizeof(uint32) + text.GetLength() * sizeof(char));
+        return static_cast<uint32>(sizeof(uint32) + text.size() * sizeof(char));
     }
 
 

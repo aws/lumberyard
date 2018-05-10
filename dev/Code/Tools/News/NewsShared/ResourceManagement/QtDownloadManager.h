@@ -44,10 +44,7 @@ namespace News
             std::function<void()> downloadFailCallback);
         void Abort();
 
-        void SetUseCertPinning(bool value);
-
     private:
-        bool m_useCertPinning = true;
         QStack<QtDownloader*> m_free;
         QList<QtDownloader*> m_busy;
 

@@ -130,22 +130,22 @@ namespace ScriptCanvas
 
     const ID& Connection::GetTargetNode() const
     {
-        return m_sourceEndpoint.GetNodeId();
+        return m_targetEndpoint.GetNodeId();
     }
 
     const ID& Connection::GetSourceNode() const
     {
-        return m_targetEndpoint.GetNodeId();
+        return m_sourceEndpoint.GetNodeId();
     }
 
     const Endpoint& Connection::GetTargetEndpoint() const
     {
-        return m_sourceEndpoint;
+        return m_targetEndpoint;
     }
 
     const Endpoint& Connection::GetSourceEndpoint() const
     {
-        return m_targetEndpoint;
+        return m_sourceEndpoint;
     }
 
     void Connection::OnNodeRemoved(const ID& nodeId)

@@ -9,11 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_STRING_CONVERSIONS_WINRT_H
-#define AZSTD_STRING_CONVERSIONS_WINRT_H
+#pragma once
 
 #include <AzCore/std/string/conversions.h>
 
-
-#endif  // AZSTD_STRING_CONVERSION_WINRT_H
-#pragma once
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(conversions_winrt_h, AZ_RESTRICTED_PLATFORM)
+#endif

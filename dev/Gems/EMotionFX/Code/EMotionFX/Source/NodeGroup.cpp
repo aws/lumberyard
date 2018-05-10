@@ -93,12 +93,12 @@ namespace EMotionFX
     // get the name of the group as character buffer
     const char* NodeGroup::GetName() const
     {
-        return mName.AsChar();
+        return mName.c_str();
     }
 
 
     // get the name of the string as mcore string object
-    const MCore::String& NodeGroup::GetNameString() const
+    const AZStd::string& NodeGroup::GetNameString() const
     {
         return mName;
     }

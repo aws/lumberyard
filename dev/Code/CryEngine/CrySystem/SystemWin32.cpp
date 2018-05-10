@@ -30,7 +30,16 @@
 #include <IGameFramework.h>
 #include <IPlatformOS.h>
 #include <StringUtils.h>
+#include <AzCore/Debug/StackTracer.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
+#include <AzCore/std/allocator_stack.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SYSTEMWIN32_CPP_SECTION_1 1
+#define SYSTEMWIN32_CPP_SECTION_2 2
+#define SYSTEMWIN32_CPP_SECTION_3 3
+#endif
 
 #if defined(LINUX) || defined(APPLE)
 #include <unistd.h>
@@ -1276,6 +1285,9 @@ void CSystem::FatalError(const char* format, ...)
 #if defined (WIN32)
     //Triggers a fatal error, so the DebugCallstack can create the error.log and terminate the application
     IDebugCallStack::instance()->FatalError(szBuffer);
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMWIN32_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(SystemWin32_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
     CryDebugBreak();
@@ -1295,7 +1307,15 @@ void CSystem::FatalError(const char* format, ...)
     TerminateProcess(GetCurrentProcess(), 1);
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMWIN32_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(SystemWin32_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     _exit(1);
+#endif
 #endif
 }
 
@@ -1318,27 +1338,25 @@ void CSystem::ReportBug(const char* format, ...)
 void CSystem::debug_GetCallStack(const char** pFunctions, int& nCount)
 {
 #if defined(WIN32)
+    using namespace AZ::Debug;
+
     int nMaxCount = nCount;
-    nCount = 0;
-    IDebugCallStack::instance()->CollectCurrentCallStack();
-    static std::vector<string> funcs;
-    funcs.clear();
-    IDebugCallStack::instance()->getCallStack(funcs);
-
-    nCount = ((int)funcs.size()) - 1; // Remove this function from the call stack.
-    if (nCount < 0)
+    StackFrame* frames = (StackFrame*)AZ_ALLOCA(sizeof(StackFrame)*nMaxCount);
+    unsigned int numFrames = StackRecorder::Record(frames, nMaxCount, 1);
+    SymbolStorage::StackLine* textLines = (SymbolStorage::StackLine*)AZ_ALLOCA(sizeof(SymbolStorage::StackLine)*nMaxCount);
+    SymbolStorage::DecodeFrames(frames, numFrames, textLines);
+    for (int i = 0; i < numFrames; i++)
     {
-        nCount = 0;
+        pFunctions[i] = textLines[i];
     }
-    else if (nCount > nMaxCount)
-    {
-        nCount = nMaxCount;
-    }
-
-    for (int i = 0; i < nMaxCount && i < nCount; i++)
-    {
-        pFunctions[i] = funcs[i + 1].c_str();
-    }
+    nCount = numFrames;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMWIN32_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(SystemWin32_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     nCount = 0;
 #endif

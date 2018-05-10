@@ -282,10 +282,10 @@ namespace AzToolsFramework
         {
             if (m_thumbnailKey)
             {
-                disconnect(m_thumbnailKey.data(), &ThumbnailKey::Updated, this, &AssetBrowserEntry::ThumbnailUpdated);
+                disconnect(m_thumbnailKey.data(), &ThumbnailKey::ThumbnailUpdatedSignal, this, &AssetBrowserEntry::ThumbnailUpdated);
             }
             m_thumbnailKey = thumbnailKey;
-            connect(m_thumbnailKey.data(), &ThumbnailKey::Updated, this, &AssetBrowserEntry::ThumbnailUpdated);
+            connect(m_thumbnailKey.data(), &ThumbnailKey::ThumbnailUpdatedSignal, this, &AssetBrowserEntry::ThumbnailUpdated);
         }
 
         SharedThumbnailKey AssetBrowserEntry::GetThumbnailKey() const
@@ -806,10 +806,10 @@ namespace AzToolsFramework
         {
             if (m_sourceControlThumbnailKey)
             {
-                disconnect(m_sourceControlThumbnailKey.data(), &ThumbnailKey::Updated, this, &AssetBrowserEntry::ThumbnailUpdated);
+                disconnect(m_sourceControlThumbnailKey.data(), &ThumbnailKey::ThumbnailUpdatedSignal, this, &AssetBrowserEntry::ThumbnailUpdated);
             }
             m_sourceControlThumbnailKey = MAKE_TKEY(SourceControlThumbnailKey, m_fullPath.c_str());
-            connect(m_sourceControlThumbnailKey.data(), &ThumbnailKey::Updated, this, &AssetBrowserEntry::ThumbnailUpdated);
+            connect(m_sourceControlThumbnailKey.data(), &ThumbnailKey::ThumbnailUpdatedSignal, this, &AssetBrowserEntry::ThumbnailUpdated);
         }
 
         SharedThumbnailKey SourceAssetBrowserEntry::GetThumbnailKey() const

@@ -38,6 +38,12 @@
             "_comment": "ScriptCanvasGem"
         },
         {
+            "Path": "Gems/ScriptCanvasPhysics",
+            "Uuid": "1c27519a4dda4ffaaeebf91514e5b1e8",
+            "Version": "0.1.0",
+            "_comment": "ScriptCanvasPhysics"
+        },
+        {
             "Path": "Gems/GraphCanvas",
             "Uuid": "875b6fcbdeea44deaae7984ad9bb6cdc",
             "Version": "0.1.0",

@@ -21,11 +21,12 @@
 
 #include <Components/Connections/ConnectionVisualComponent.h>
 
-#include <Components/GeometryBus.h>
-#include <Components/Slots/SlotBus.h>
-#include <Components/VisualBus.h>
-#include <Styling/definitions.h>
+#include <GraphCanvas/Components/GeometryBus.h>
+#include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/tools.h>
+#include <GraphCanvas/Styling/definitions.h>
 
 namespace GraphCanvas
 {
@@ -37,7 +38,7 @@ namespace GraphCanvas
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<ConnectionVisualComponent>()
+            serializeContext->Class<ConnectionVisualComponent, AZ::Component>()
                 ->Version(1)
                 ;
         }
@@ -78,11 +79,21 @@ namespace GraphCanvas
     {
         return m_connectionGraphicsItem.get();
     }
-	
-	bool ConnectionVisualComponent::Contains(const AZ::Vector2&) const
-	{
-		return false;
-	}
+    
+    bool ConnectionVisualComponent::Contains(const AZ::Vector2&) const
+    {
+        return false;
+    }
+
+    void ConnectionVisualComponent::SetVisible(bool visible)
+    {
+        m_connectionGraphicsItem->setVisible(visible);
+    }
+
+    bool ConnectionVisualComponent::IsVisible() const
+    {
+        return m_connectionGraphicsItem->isVisible();
+    }
 
     QGraphicsItem* ConnectionVisualComponent::GetRootGraphicsItem()
     {
@@ -119,9 +130,7 @@ namespace GraphCanvas
     }
 
     ConnectionGraphicsItem::ConnectionGraphicsItem(const AZ::EntityId& connectionEntityId)
-        : RootVisualNotificationsHelper(connectionEntityId)
-        , m_displayState(ConnectionDisplayState::None)
-        , m_hovered(false)
+        : RootGraphicsItem(connectionEntityId)
         , m_trackMove(false)
         , m_moveSource(false)
         , m_offset(0.0)
@@ -168,7 +177,6 @@ namespace GraphCanvas
     void ConnectionGraphicsItem::RefreshStyle()
     {
         m_style.SetStyle(GetEntityId());
-
         UpdatePen();
     }
 
@@ -193,6 +201,11 @@ namespace GraphCanvas
         QPen currentPen = pen();
         currentPen.setDashOffset(-m_offset);
         setPen(currentPen);
+    }
+
+    QRectF ConnectionGraphicsItem::GetBoundingRect() const
+    {
+        return boundingRect();
     }
 
     void ConnectionGraphicsItem::OnSourceSlotIdChanged(const AZ::EntityId& oldSlotId, const AZ::EntityId& newSlotId)
@@ -249,6 +262,8 @@ namespace GraphCanvas
         }
 
         setZValue(m_style.GetAttribute(Styling::Attribute::ZValue, 0));
+        setOpacity(m_style.GetAttribute(Styling::Attribute::Opacity, 1.0f));
+
         UpdateConnectionPath();
     }
 
@@ -378,47 +393,6 @@ namespace GraphCanvas
         OnPathChanged();
     }
 
-    void ConnectionGraphicsItem::SetDisplayState(ConnectionDisplayState displayState)
-    {
-        if (m_displayState != displayState)
-        {
-            const bool addStyle = true;
-            const bool removeStyle = false;
-            UpdateDisplayState(m_displayState, removeStyle);
-
-            m_displayState = displayState;
-
-            UpdateDisplayState(m_displayState, addStyle);
-
-            OnDisplayStateChanged();
-        }
-    }
-
-    void ConnectionGraphicsItem::SetSelected(bool selected)
-    {
-        setSelected(selected);
-    }
-
-    bool ConnectionGraphicsItem::IsSelected() const
-    {
-        return isSelected();
-    }
-
-    void ConnectionGraphicsItem::OnAltModifier(bool enabled)
-    {
-        if (m_hovered)
-        {
-            if (enabled)
-            {
-                SetDisplayState(ConnectionDisplayState::Deletion);
-            }
-            else
-            {
-                SetDisplayState(ConnectionDisplayState::Inspection);
-            }
-        }
-    }
-
     const AZ::EntityId& ConnectionGraphicsItem::GetConnectionEntityId() const
     {
         return m_connectionEntityId;
@@ -458,15 +432,6 @@ namespace GraphCanvas
     {
     }
 
-    void ConnectionGraphicsItem::OnDisplayStateChanged()
-    {
-    }
-
-    ConnectionDisplayState ConnectionGraphicsItem::GetDisplayState() const
-    {
-        return m_displayState;
-    }
-
     QPainterPath ConnectionGraphicsItem::shape() const
     {
         // Creates a "selectable area" around the connection
@@ -483,7 +448,7 @@ namespace GraphCanvas
         AZ::EntityId sceneId;
         SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
 
-        bool isCurrentIdAlreadySelected = IsSelected();
+        bool isCurrentIdAlreadySelected = isSelected();
         bool shouldAppendSelection = contextMenuEvent->modifiers().testFlag(Qt::ControlModifier);
 
         // clear the current selection if you are not multi selecting and clicking on an unselected node
@@ -494,60 +459,19 @@ namespace GraphCanvas
 
         if (!isCurrentIdAlreadySelected)
         {
-            SetSelected(true);
+            setSelected(true);
         }
 
         SceneUIRequestBus::Event(sceneId, &SceneUIRequests::OnConnectionContextMenuEvent, GetEntityId(), contextMenuEvent);
     }
-
-    void ConnectionGraphicsItem::hoverEnterEvent(QGraphicsSceneHoverEvent* hoverEvent)
-    {
-        m_hovered = true;
-
-        AZ::EntityId sceneId;
-        SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
-
-        ViewSceneNotificationBus::Handler::BusConnect(sceneId);
-
-        if (hoverEvent->modifiers() & Qt::KeyboardModifier::AltModifier)
-        {
-            SetDisplayState(ConnectionDisplayState::Deletion);
-        }
-        else
-        {
-            SetDisplayState(ConnectionDisplayState::Inspection);
-        }
-        
-        QGraphicsPathItem::hoverEnterEvent(hoverEvent);
-    }
-
-    void ConnectionGraphicsItem::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
-    {
-        m_hovered = false;
-        ViewSceneNotificationBus::Handler::BusDisconnect();
-
-        SetDisplayState(ConnectionDisplayState::None);
-
-        QGraphicsPathItem::hoverLeaveEvent(hoverEvent);
-    }
-
+ 
     void ConnectionGraphicsItem::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
     {
         if (mouseEvent->button() == Qt::MouseButton::LeftButton)
         {
             m_trackMove = false;
 
-            if ((mouseEvent->modifiers() & Qt::KeyboardModifier::AltModifier))
-            {
-                AZStd::unordered_set<AZ::EntityId> deleteIds;
-                deleteIds.insert(GetEntityId());
-
-                AZ::EntityId sceneId;
-                SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
-
-                SceneRequestBus::Event(sceneId, &SceneRequests::Delete, deleteIds);
-            }
-            else
+            if (GetDisplayState() == RootGraphicsItemDisplayState::Inspection)
             {
                 const QPainterPath painterPath = path();
 
@@ -576,10 +500,14 @@ namespace GraphCanvas
                     m_initialPoint = mouseEvent->scenePos();
                 }
             }
+            else
+            {
+                RootGraphicsItem<QGraphicsPathItem>::mousePressEvent(mouseEvent);
+            }
         }
         else
         {
-            QGraphicsPathItem::mousePressEvent(mouseEvent);
+            RootGraphicsItem<QGraphicsPathItem>::mousePressEvent(mouseEvent);
         }
     }
 
@@ -606,7 +534,7 @@ namespace GraphCanvas
         }
         else
         {
-            QGraphicsPathItem::mouseMoveEvent(mouseEvent);
+            RootGraphicsItem<QGraphicsPathItem>::mouseMoveEvent(mouseEvent);
         }
     }
 
@@ -628,13 +556,14 @@ namespace GraphCanvas
         }
         else
         {
-            QGraphicsPathItem::mouseReleaseEvent(mouseEvent);
+            RootGraphicsItem<QGraphicsPathItem>::mouseReleaseEvent(mouseEvent);
         }
     }
 
 
     void ConnectionGraphicsItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget /*= nullptr*/)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         bool showDefaultSelector = m_style.GetAttribute(Styling::Attribute::ConnectionDefaultMarquee, false);
         if (!showDefaultSelector)
         {
@@ -647,36 +576,6 @@ namespace GraphCanvas
         {
             QGraphicsPathItem::paint(painter, option, widget);
         }
-    }
-     
-    void ConnectionGraphicsItem::UpdateDisplayState(ConnectionDisplayState displayState, bool enabled)
-    {
-        switch (displayState)
-        {
-        case ConnectionDisplayState::Deletion:
-            if (enabled)
-            {
-                StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::AddSelectorState, Styling::States::Deletion);
-            }
-            else
-            {
-                StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::Deletion);
-            }
-            break;
-        case ConnectionDisplayState::Inspection:
-            if (enabled)
-            {
-                StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::AddSelectorState, Styling::States::Hovered);
-            }
-            else
-            {
-                StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::Hovered);
-            }
-            break;
-        case ConnectionDisplayState::None:
-            break;
-        default:
-            break;
-        }        
-    }
+    }    
+
 }

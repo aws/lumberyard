@@ -38,6 +38,26 @@
 
 #include "ScopeGuard.h"
 #include "IImageHandler.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DRIVERD3D_CPP_SECTION_1 1
+#define DRIVERD3D_CPP_SECTION_3 3
+#define DRIVERD3D_CPP_SECTION_4 4
+#define DRIVERD3D_CPP_SECTION_5 5
+#define DRIVERD3D_CPP_SECTION_6 6
+#define DRIVERD3D_CPP_SECTION_7 7
+#define DRIVERD3D_CPP_SECTION_8 8
+#define DRIVERD3D_CPP_SECTION_9 9
+#define DRIVERD3D_CPP_SECTION_10 10
+#define DRIVERD3D_CPP_SECTION_11 11
+#define DRIVERD3D_CPP_SECTION_12 12
+#define DRIVERD3D_CPP_SECTION_13 13
+#define DRIVERD3D_CPP_SECTION_14 14
+#define DRIVERD3D_CPP_SECTION_15 15
+#define DRIVERD3D_CPP_SECTION_16 16
+#endif
+
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
@@ -49,7 +69,7 @@
 #if defined(WIN32) && !defined(OPENGL)
     #pragma warning(push)
     #pragma warning(disable:4819)   // Invalid character not in default code page
-    #include <NVAPI/nvapi.h>                // NVAPI
+    #include <nvapi.h>                // NVAPI
     #pragma warning(pop)
 #endif
 
@@ -66,6 +86,13 @@ namespace detail
 {
     const char* ToString(long const hr)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+# else
         switch (hr)
         {
         case D3DOK_NOAUTOGEN:
@@ -144,6 +171,7 @@ namespace detail
         default:
             break;
         }
+#endif
         return "Unknown HRESULT CODE!";
     }
     bool CheckHResult(long const hr
@@ -295,6 +323,10 @@ void CD3D9Renderer::InitRenderer()
     m_pTiledShading = new CTiledShading();
 
     m_pPipelineProfiler = NULL;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(ENABLE_SIMPLE_GPU_TIMERS)
     m_pPipelineProfiler = new CRenderPipelineProfiler();
@@ -578,13 +610,28 @@ void CD3D9Renderer::ChangeViewport(unsigned int x, unsigned int y, unsigned int 
 
         scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT;
         scDesc.BufferCount = 1;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         scDesc.OutputWindow = m_CurrContext->m_hWnd;
+#endif
         scDesc.Windowed = TRUE;
         scDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
         scDesc.Flags = 0;
 
 #if defined(SUPPORT_DEVICE_INFO)
         HRESULT hr = m_devInfo.Factory()->CreateSwapChain(&GetDevice(), &scDesc, &m_CurrContext->m_pSwapChain);
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
     #error UNKNOWN PLATFORM TRYING TO CREATE SWAP CHAIN
 #endif
@@ -1038,6 +1085,10 @@ void CD3D9Renderer::DrawTexelsPerMeterInfo()
 #endif
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 void CD3D9Renderer::RT_ForceSwapBuffers()
 {
@@ -1045,6 +1096,10 @@ void CD3D9Renderer::RT_ForceSwapBuffers()
 
 void CD3D9Renderer::SwitchToNativeResolutionBackbuffer()
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     m_pRT->RC_SwitchToNativeResolutionBackbuffer();
 }
@@ -1246,10 +1301,6 @@ void CD3D9Renderer::BeginFrame()
     g_SelectedTechs.resize(0);
     m_RP.m_SysVertexPool[m_RP.m_nFillThreadID].SetUse(0);
     m_RP.m_SysIndexPool[m_RP.m_nFillThreadID].SetUse(0);
-    if (gEnv->p3DEngine)
-    {
-        gEnv->p3DEngine->ResetCoverageBufferSignalVariables();
-    }
 
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log)
@@ -1873,7 +1924,15 @@ bool CD3D9Renderer::CaptureFrameBufferToFile(const char* pFilePath, CTexture* pR
         byte* pDest = new byte[texsize + sizeof(uint32)];  // Extra space required since we always copy 32 bits
         assert(pDest);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         bool formatBGRA = false;
+#endif
         bool needRBSwap = captureFormats[fmtIdx].fmt == EFF_FILE_TGA ? !formatBGRA : formatBGRA;
 
         // copy, flip red with blue if needed
@@ -3304,6 +3363,13 @@ void CD3D9Renderer::VidMemLog()
 
 void CD3D9Renderer::DebugPrintShader(CHWShader_D3D* pSH, void* pI, int nX, int nY, ColorF colSH)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     if (!pSH)
     {
         return;
@@ -3363,6 +3429,7 @@ void CD3D9Renderer::DebugPrintShader(CHWShader_D3D* pSH, void* pI, int nX, int n
 
     SAFE_RELEASE(pAsm);
     SAFE_DELETE_ARRAY(pData);
+#endif
 }
 
 void CD3D9Renderer::DebugDrawStats8()
@@ -4468,7 +4535,7 @@ void CD3D9Renderer::RT_EndFrame()
     m_SceneRecurseCount--;
 
 #if !defined(RELEASE)
-    if (m_DevMan.GetNumInvalidDrawcalls() > 0 && m_cEF.m_ShaderCacheStats.m_nNumShaderAsyncCompiles == 0)
+    if (m_DevMan.GetNumInvalidDrawcalls() > 0)
     {
         // If drawcalls are skipped although there are no pending shaders, something is going wrong
         iLog->LogError("Renderer: Skipped %i drawcalls", m_DevMan.GetNumInvalidDrawcalls());
@@ -4530,7 +4597,13 @@ void CD3D9Renderer::RT_EndFrame()
                 }
             }
 #endif
-#if   defined(SUPPORT_DEVICE_INFO)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(SUPPORT_DEVICE_INFO)
 #if defined(WIN32) || defined(WIN64)
             m_devInfo.EnforceFullscreenPreemption();
     #ifdef CRY_INTEGRATE_DX12
@@ -4714,6 +4787,13 @@ void CD3D9Renderer::RT_EndFrame()
 
     m_fTimeWaitForGPU[m_RP.m_nProcessThreadID] += iTimer->GetAsyncTime().GetDifferenceInSeconds(Time);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     m_fTimeGPUIdlePercent[m_RP.m_nProcessThreadID] = 0;
 
   #if !defined(ENABLE_SIMPLE_GPU_TIMERS)
@@ -4724,6 +4804,7 @@ void CD3D9Renderer::RT_EndFrame()
     RPProfilerStats profileStats = m_pPipelineProfiler->GetBasicStats(eRPPSTATS_OverallFrame, m_RP.m_nProcessThreadID);
     m_fTimeProcessedGPU[m_RP.m_nProcessThreadID] = profileStats.gpuTime / 1000.0f;
   #endif
+#endif
 
 #if defined(USE_GEOM_CACHES)
     if (m_SceneRecurseCount == 1)
@@ -4746,7 +4827,13 @@ void CD3D9Renderer::RT_EndFrame()
 void CD3D9Renderer::RT_PresentFast()
 {
     HRESULT hReturn = S_OK;
-#if   defined(SUPPORT_DEVICE_INFO)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(SUPPORT_DEVICE_INFO)
 
     GetS3DRend().DisplayStereo();
 #if defined(WIN32) || defined(WIN64)
@@ -4801,12 +4888,28 @@ bool CD3D9Renderer::ScreenShotInternal(const char* filename, int iPreWidth)
         int i = 0;
         for (; i < 10000; i++)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             snprintf(&path[pathLen], sizeof(path) - 1 - pathLen, "%sScreenShot%04d.jpg", pSlash, i);
+#endif
             // HACK
             // CaptureFrameBufferToFile must be fixed for 64-bit stereo screenshots
             if (GetS3DRend().IsStereoEnabled())
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_14
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 snprintf(&path[pathLen], sizeof(path) - 1 - pathLen, "%sScreenShot%04d_L.jpg", pSlash, i);
+#endif
             }
 
             AZ::IO::HandleType fileHandle = fxopen(path, "rb");
@@ -4819,7 +4922,15 @@ bool CD3D9Renderer::ScreenShotInternal(const char* filename, int iPreWidth)
         }
 
         // HACK: DONT REMOVE Stereo3D will add _L and _R suffix later
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_15
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         snprintf(&path[pathLen], sizeof(path) - 1 - pathLen, "%sScreenShot%04d.jpg", pSlash, i);
+#endif
 
         if (i == 10000)
         {
@@ -7407,6 +7518,14 @@ void CD3D9Renderer::PostLevelUnload()
 
         m_pRT->FlushAndWait();
 
+        //In the level unload event shaders may get deleted. If that's the case any PSOs
+        //that point to those deleted shaders will be invalid and will cause a crash if used.
+        //Most shaders will be unloaded so invalidate the entire PSO cache and reset the pipeline.
+        
+        CDeviceObjectFactory::GetInstance().InvalidatePSOCache();
+        //Tell the graphics pipeline to reset and throw out existing PSOs since they're now invalid
+        gcpRendD3D->GetGraphicsPipeline().Reset();
+
         StaticCleanup();
         if (m_pColorGradingControllerD3D)
         {
@@ -7823,7 +7942,15 @@ void CD3D9Renderer::InsertParticleVideoMemoryFence(int nThreadId)
 #ifdef SUPPORT_HW_MOUSE_CURSOR
 IHWMouseCursor* CD3D9Renderer::GetIHWMouseCursor()
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DRIVERD3D_CPP_SECTION_16
+#include AZ_RESTRICTED_FILE(DriverD3D_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     #error Need implementation of IHWMouseCursor
+#endif
 }
 
 #endif

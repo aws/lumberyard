@@ -11,7 +11,8 @@
 */
 #pragma once
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
+
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/aligned_storage.h>
 #include <AzFramework/Application/Application.h>

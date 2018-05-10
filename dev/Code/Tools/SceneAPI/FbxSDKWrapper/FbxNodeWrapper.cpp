@@ -69,6 +69,11 @@ namespace AZ
             return (m_fbxNode->GetSkeleton() != nullptr);
         }
 
+        bool FbxNodeWrapper::IsMesh() const
+        {
+            return (m_fbxNode->GetMesh() != nullptr);
+        }
+
         const char* FbxNodeWrapper::GetName() const
         {
             return m_fbxNode->GetName();

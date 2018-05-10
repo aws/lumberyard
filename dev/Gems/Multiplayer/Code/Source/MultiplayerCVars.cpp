@@ -12,6 +12,7 @@
 #include "Multiplayer_precompiled.h"
 
 #include <INetwork.h>
+#include <SFunctor.h>
 #include "MultiplayerCVars.h"
 #include "MultiplayerGem.h"
 #include "Multiplayer/MultiplayerUtils.h"
@@ -21,12 +22,19 @@
 #include <CertificateManager/ICertificateManagerGem.h>
 #include <CertificateManager/DataSource/FileDataSourceBus.h>
 
-
 #include <GridMate/Carrier/DefaultSimulator.h>
 #include <GridMate/Session/LANSession.h>
 
 namespace Multiplayer
 {
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MULTIPLAYERCVARS_CPP_SECTION_1 1
+#define MULTIPLAYERCVARS_CPP_SECTION_2 2
+#define MULTIPLAYERCVARS_CPP_SECTION_3 3
+#endif
+
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
     static void StopGameLiftClient(IConsoleCmdArgs *args)
     {
@@ -290,7 +298,7 @@ namespace Multiplayer
         }
         else
         {
-            AZ_Warning("CertificateManager", "Failed to load Private Key '%s'.", filename->GetString());
+            AZ_Warning("CertificateManager", false, "Failed to load Private Key '%s'.", filename->GetString());
         }
     }
 
@@ -303,7 +311,7 @@ namespace Multiplayer
         }
         else
         {
-            AZ_Warning("CertificateManager", "Failed to load Certificate '%s'.", filename->GetString());
+            AZ_Warning("CertificateManager", false, "Failed to load Certificate '%s'.", filename->GetString());
         }
     }
 
@@ -316,7 +324,7 @@ namespace Multiplayer
             }
         else
         {
-            AZ_Warning("CertificateManager", "Failed to load CA '%s'.", filename->GetString());
+            AZ_Warning("CertificateManager", false, "Failed to load CA '%s'.", filename->GetString());
         }
     }
 
@@ -444,12 +452,25 @@ namespace Multiplayer
             REGISTER_FLOAT("gm_disconnectDetectionPacketLossThreshold", 0.3f, VF_NULL, "Packet loss percentage threshold (0.0..1.0, 1.0 is 100%), connection will be dropped once actual packet loss exceeds this value");
             REGISTER_INT("gm_recvPacketsLimit", 0, VF_NULL, "Maximum packets per second allowed to be received from an existing connection");
 
+            REGISTER_INT("gm_maxSearchResults", GridMate::SearchParams::s_defaultMaxSessions, VF_NULL, "Maximum number of search results to be returned from a session search.");
             REGISTER_STRING("gm_ipversion", "IPv4", 0, "IP protocol version. (Can be 'IPv4' or 'IPv6')");
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(MultiplayerCVars_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             REGISTER_STRING("gm_securityData", "", 0, "Security data for session.");
+#endif
             REGISTER_INT_CB("gm_replicasSendTime", 0, VF_NULL, "Time interval between replicas sends (in milliseconds), 0 will bound sends to GridMate tick rate", OnReplicasSendTimeChanged);
             REGISTER_INT_CB("gm_replicasSendLimit", 0, VF_DEV_ONLY, "Replica data send limit in bytes per second. 0 - limiter turned off. (Dev build only)", OnReplicasSendLimitChanged);
             REGISTER_FLOAT_CB("gm_burstTimeLimit", 10.f, VF_DEV_ONLY, "Burst in bandwidth will be allowed for the given amount of time(in seconds). Burst will only be allowed if bandwidth is not capped at the time of burst. (Dev build only)", OnReplicasBurstRangeChanged);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(MultiplayerCVars_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
             REGISTER_STRING("gamelift_fleet_id", "", VF_DUMPTODISK, "Id of GameLift Fleet to use with this client.");
@@ -458,18 +479,19 @@ namespace Multiplayer
             REGISTER_STRING("gamelift_aws_region", "us-west-2", VF_DUMPTODISK, "AWS Region to use for GameLift.");
             REGISTER_STRING("gamelift_endpoint", "gamelift.us-west-2.amazonaws.com", VF_DUMPTODISK, "GameLift service endpoint.");
             REGISTER_STRING("gamelift_alias_id", "", VF_DUMPTODISK, "Id of GameLift alias to use with the client.");
+            REGISTER_INT("gamelift_uselocalserver", 0, VF_DEV_ONLY, "Set to non zero to use the local GameLift Server.");
 
             // player IDs must be unique and anonymous
             bool includeBrackets = false;
             bool includeDashes = true;
             AZStd::string defaultPlayerId = AZ::Uuid::CreateRandom().ToString<AZStd::string>(includeBrackets, includeDashes);
             REGISTER_STRING("gamelift_player_id", defaultPlayerId.c_str(), VF_DUMPTODISK, "Player Id.");
-            REGISTER_COMMAND("gamelift_stop_client", StopGameLiftClient, VF_NULL, "Stops gamelift session service and terminates the session if it had one.");
+            REGISTER_COMMAND("gamelift_stop_client", StopGameLiftClient, VF_NULL, "Stops GameLift session service and terminates the session if it had one.");
 #endif
 
 #if BUILD_GAMELIFT_SERVER
-            REGISTER_COMMAND("gamelift_start_server", StartGameLiftServer, VF_NULL, "Start up the gamelift server. This will initialize gameLift server API.\nThe session will start after GameLift intialization");
-            REGISTER_COMMAND("gamelift_stop_server", StopGameLiftServer, VF_NULL, "Stops gamelift session service and terminates the session if it had one.");
+            REGISTER_COMMAND("gamelift_start_server", StartGameLiftServer, VF_NULL, "Start up the GameLift server. This will initialize gameLift server API.\nThe session will start after GameLift initialization");
+            REGISTER_COMMAND("gamelift_stop_server", StopGameLiftServer, VF_NULL, "Stops GameLift session service and terminates the session if it had one.");
 #endif
         }
     }
@@ -485,6 +507,7 @@ namespace Multiplayer
             }
             UNREGISTER_CVAR("gamelift_player_id");
             UNREGISTER_CVAR("gamelift_alias_id");
+            UNREGISTER_CVAR("gamelift_uselocalserver");
             UNREGISTER_CVAR("gamelift_endpoint");
             UNREGISTER_CVAR("gamelift_aws_region");
             UNREGISTER_CVAR("gamelift_aws_secret_key");
@@ -500,6 +523,10 @@ namespace Multiplayer
             }
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(MultiplayerCVars_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
             UNREGISTER_CVAR("gm_burstTimeLimit");
@@ -507,6 +534,7 @@ namespace Multiplayer
             UNREGISTER_CVAR("gm_replicasSendTime");
             UNREGISTER_CVAR("gm_securityData");
             UNREGISTER_CVAR("gm_ipversion");
+            UNREGISTER_CVAR("gm_maxSearchResults");
             UNREGISTER_CVAR("gm_disconnectDetectionPacketLossThreshold");
             UNREGISTER_CVAR("gm_disconnectDetectionRttThreshold");
             UNREGISTER_CVAR("gm_disconnectDetection");
@@ -530,6 +558,46 @@ namespace Multiplayer
                 gEnv->pConsole->RemoveCommand("mpsearch");
                 gEnv->pConsole->RemoveCommand("mpjoin");
                 gEnv->pConsole->RemoveCommand("mphost");
+            }
+        }
+    }
+
+    //------------------------------------------------------------------------
+    static void UpdateServerName(ICVar* serverNameCVar)
+    {
+        GridMate::GridSession* gridSession = nullptr;
+        EBUS_EVENT_RESULT(gridSession,Multiplayer::MultiplayerRequestBus,GetSession);
+
+        if (!(gridSession && gridSession->IsHost()))
+        {
+            return;
+        }
+
+        AZ_TracePrintf("MultiplayerModule", "Updating session server name to: %s", serverNameCVar->GetString());
+
+        GridMate::GridSessionParam serverNameParam;
+        serverNameParam.m_id = "sv_name";
+        serverNameParam.SetValue(serverNameCVar->GetString());
+        gridSession->SetParam(serverNameParam);
+    }
+
+    //------------------------------------------------------------------------
+    // It would be more convenient to setup this CVar change event listener in RegisterCVars, however,
+    // it is currently not possible to do so. This is due to Gem CVars being registered in response to
+    // CryHooksModule::OnCrySystemInitialized, while CryAction CVars (such as sv_servername) are not registered
+    // until after that event completes. Instead, this method is called during the system event
+    // ESYSTEM_EVENT_GAME_POST_INIT, which does occur after CryAction's CVars have been registered.
+    void MultiplayerCVars::PostInitRegistration()
+    {
+        ISystem* system = nullptr;
+        CrySystemRequestBus::BroadcastResult(system, &CrySystemRequestBus::Events::GetCrySystem);
+        if (system && system->GetIConsole())
+        {
+            if (ICVar* serverNameCVar = system->GetIConsole()->GetCVar("sv_servername"))
+            {
+                SFunctor onServerNameChange;
+                onServerNameChange.Set(UpdateServerName, serverNameCVar);
+                serverNameCVar->AddOnChangeFunctor(onServerNameChange);
             }
         }
     }

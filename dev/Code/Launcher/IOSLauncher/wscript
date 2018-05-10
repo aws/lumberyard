@@ -13,9 +13,7 @@
 def build(bld):
 
     bld.CryLauncher(
-        #==============================
         # Settings
-        #==============================
         target           = 'IOSLauncher',
         file_list        = 'ioslauncher.waf_files',
         platforms        = ['ios'],
@@ -23,19 +21,10 @@ def build(bld):
         ios_launcher     = True,
         use              = ['AzGameFramework'],
 
-        #==============================
         # Common
-        #==============================
         includes        = [ bld.Path('Code/CryEngine/CrySystem'),
                             bld.Path('Code/Launcher') ],
-
-        lib     = [ 'tommath',
-                    'tomcrypt',
-                    'freetype' ],
-
-        libpath = [ bld.Path('Code/SDKs/LibTomCrypt/lib/ios'),
-                    bld.Path('Code/SDKs/LibTomMath/lib/ios'),
-                    bld.Path('Code/SDKs/FreeType2/ios/lib') ],
+        uselib          = [ 'TOMMATH', 'TOMCRYPT', 'FREETYPE2'],
 
         cxxflags        = [ '-x', 'objective-c++' ],
     )

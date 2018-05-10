@@ -18,6 +18,7 @@
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorCameraBus.h>
+#include <AzFramework/Viewport/ViewportColors.h>
 #include <AzFramework/Components/CameraBus.h>
 
 #include <AzFramework/Components/EditorEntityEvents.h>
@@ -128,6 +129,6 @@ namespace Camera
         float m_frustumHeight = s_defaultFrustumDimension;
         bool m_viewButton = false;
         float m_frustumViewPercentLength = 1.f;
-        AZ::Color m_frustumDrawColor = AZ::Color{1.0f, 0.f, 0.f, 1.f};
+        AZ::Color m_frustumDrawColor = AzFramework::ViewportColors::HoverColor;
     };
 } // Camera

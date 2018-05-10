@@ -11,15 +11,20 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_DEFS_H
-#define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_DEFS_H
 #pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(Defs_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(DEFS_H_NO_SIGNAL_H)
+#undef DEFS_H_NO_SIGNAL_H
+#else
 #include <signal.h>
+#endif
 #include <errno.h>
 #include <string.h>
 
@@ -158,5 +163,3 @@ inline long QuickInt16 (float inval)
 #define LONGFROM2SHORT(s1, s2) (((short)s1) << 16 | (((short)s2) & 0xffff))
 #define SHORT1FROMLONG(l)     (short)(((int)l) >> 16)
 #define SHORT2FROMLONG(l)     (short)(((int)l) & 0xffff)
-
-#endif /*CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_DEFS_H*/

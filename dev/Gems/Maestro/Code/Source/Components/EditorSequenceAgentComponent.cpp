@@ -242,4 +242,11 @@ namespace Maestro
     {
         return SequenceAgent::SetAnimatedPropertyValue(GetEntityId(), animatableAddress, value);
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    void EditorSequenceAgentComponent::GetAssetDuration(AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId)
+    {
+        SequenceAgent::GetAssetDuration(returnValue, componentId, assetId);
+    }
+
 } // namespace Maestro

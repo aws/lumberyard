@@ -11,13 +11,19 @@
 */
 #pragma once
 
+#include <QPoint>
+#include <QRect>
+
 #include <AzCore/EBus/EBus.h>
 
-#include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeLayoutBus.h>
+#include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 #include <GraphCanvas/Types/Endpoint.h>
+#include <GraphCanvas/Editor/EditorTypes.h>
 
 #include <Editor/Include/ScriptCanvas/Bus/NodeIdPair.h>
 #include <ScriptCanvas/Core/Endpoint.h>
+
+#include <ScriptCanvas/Variable/VariableCore.h>
 
 namespace GraphCanvas
 {
@@ -67,7 +73,7 @@ namespace ScriptCanvasEditor
 
     using NodeDescriptorRequestBus = AZ::EBus<NodeDescriptorRequests>;
 
-    class EBusNodeDescriptorRequests : public AZ::EBusTraits
+    class EBusHandlerNodeDescriptorRequests : public AZ::EBusTraits
     {
     public:
         //! The id here is the id of the node.
@@ -82,25 +88,23 @@ namespace ScriptCanvasEditor
         virtual AZStd::vector< AZStd::string > GetEventNames() const = 0;
 
         virtual AZ::EntityId FindEventNodeId(const AZStd::string& eventName) const = 0;
+        virtual GraphCanvas::Endpoint FindEventNodeEndpoint(const ScriptCanvas::SlotId& slotId) const = 0;
     };
 
-    using EBusNodeDescriptorRequestBus = AZ::EBus<EBusNodeDescriptorRequests>;
+    using EBusHandlerNodeDescriptorRequestBus = AZ::EBus<EBusHandlerNodeDescriptorRequests>;
 
-    class EBusEventNodeDescriptorRequests : public AZ::EBusTraits
+    class EBusHandlerEventNodeDescriptorRequests : public AZ::EBusTraits
     {
     public:
         //! The id here is the id of the node.
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual bool IsWrapped() const = 0;
-        virtual NodeIdPair GetEbusWrapperNodeId() const =0;
-
         virtual AZStd::string GetBusName() const = 0;
         virtual AZStd::string GetEventName() const = 0;
     };
 
-    using EBusEventNodeDescriptorRequestBus = AZ::EBus<EBusEventNodeDescriptorRequests>;
+    using EBusHandlerEventNodeDescriptorRequestBus = AZ::EBus<EBusHandlerEventNodeDescriptorRequests>;
 
     class VariableNodeDescriptorRequests : public AZ::EBusTraits
     {
@@ -109,31 +113,25 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual GraphCanvas::StringDataInterface* CreateNameInterface() = 0;
-
-        virtual ScriptCanvas::Endpoint GetReadEndpoint() const = 0;
-        virtual ScriptCanvas::Endpoint GetWriteEndpoint() const = 0;
-
-        virtual void AddConnection(const GraphCanvas::Endpoint& endpoint, const AZ::EntityId& scConnectionId) = 0;
-        virtual void RemoveConnection(const GraphCanvas::Endpoint& endpoint) = 0;
-
-        virtual AZ::EntityId FindConnection(const GraphCanvas::Endpoint& endpoint) = 0;
+        virtual ScriptCanvas::VariableId GetVariableId() const = 0;
     };
 
     using VariableNodeDescriptorRequestBus = AZ::EBus<VariableNodeDescriptorRequests>;
 
-    class VariableNodeDescriptorNotifications : public AZ::EBusTraits
+    // Bus used when trying to remove variables to help signal to the user how many
+    // Nodes will be erased by their action.
+    class VariableGraphMemberRefCountRequests : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ScriptCanvas::VariableId;
 
-        virtual void OnNameChanged() {}
+        virtual AZ::EntityId GetGraphMemberId() const = 0;
     };
 
-    using VariableNodeDescriptorNotificationBus = AZ::EBus<VariableNodeDescriptorNotifications>;
+    using VariableGraphMemberRefCountRequestBus = AZ::EBus<VariableGraphMemberRefCountRequests>;
 
-    class VariableNodeSceneRequests : public AZ::EBusTraits
+    class SceneCounterRequests : public AZ::EBusTraits
     {
     public:
         //! The id here is the id of the scene.
@@ -143,58 +141,65 @@ namespace ScriptCanvasEditor
         virtual AZ::u32 GetNewVariableCounter() = 0;
     };
 
-    using VariableNodeSceneRequestBus = AZ::EBus<VariableNodeSceneRequests>;
+    using SceneCounterRequestBus = AZ::EBus<SceneCounterRequests>;
 
-    class GetVariableNodeDescriptorRequests : public AZ::EBusTraits
+    class ScriptCanvasWrapperNodeDescriptorRequests : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = GraphCanvas::NodeId;
 
-        virtual GraphCanvas::VariableReferenceDataInterface* CreateVariableDataInterface() = 0;
-        virtual ScriptCanvas::Endpoint GetSourceEndpoint(ScriptCanvas::SlotId slotId) const = 0;
-        
-        virtual AZ::EntityId GetVariableId() const = 0;
-        virtual void SetVariableId(const AZ::EntityId& variableId) = 0;
+        virtual void OnWrapperAction(const QRect& actionWidgetBoundingRect, const QPointF& scenePoint, const QPoint& screenPoint) = 0;
     };
 
-    using GetVariableNodeDescriptorRequestBus = AZ::EBus<GetVariableNodeDescriptorRequests>;
+    using ScriptCanvasWrapperNodeDescriptorRequestBus = AZ::EBus<ScriptCanvasWrapperNodeDescriptorRequests>;
 
-    class GetVariableNodeDescriptorNotifications : public AZ::EBusTraits
+    namespace Deprecated
     {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        class VariableNodeDescriptorRequests : public AZ::EBusTraits
+        {
+        public:
+            //! The id here is the id of the node.
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+            using BusIdType = AZ::EntityId;
 
-        virtual void OnVariableActivated() {};
-        virtual void OnAssignVariableChanged() {};
-    };
+            virtual ScriptCanvas::Endpoint GetReadEndpoint() const = 0;
+            virtual ScriptCanvas::Endpoint GetWriteEndpoint() const = 0;
+        };
 
-    using GetVariableNodeDescriptorNotificationBus = AZ::EBus<GetVariableNodeDescriptorNotifications>;
+        using VariableNodeDescriptorRequestBus = AZ::EBus<VariableNodeDescriptorRequests>;
 
-    class SetVariableNodeDescriptorRequests : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        class VariableNodeDescriptorNotifications : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+            using BusIdType = AZ::EntityId;
 
-        virtual GraphCanvas::VariableReferenceDataInterface* CreateVariableDataInterface() = 0;
-        
-        virtual AZ::EntityId GetVariableId() const = 0;
-        virtual void SetVariableId(const AZ::EntityId& variableId) = 0;
-    };
+            virtual void OnNameChanged() {}
+        };
 
-    using SetVariableNodeDescriptorRequestBus = AZ::EBus<SetVariableNodeDescriptorRequests>;
+        using VariableNodeDescriptorNotificationBus = AZ::EBus<VariableNodeDescriptorNotifications>;
 
-    class SetVariableNodeDescriptorNotifications : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        class GetVariableNodeDescriptorRequests : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+            using BusIdType = AZ::EntityId;
 
-        virtual void OnVariableActivated() {};
-        virtual void OnAssignVariableChanged() {};
-    };
+            virtual AZ::EntityId GetVariableId() const = 0;
+        };
 
-    using SetVariableNodeDescriptorNotificationBus = AZ::EBus<SetVariableNodeDescriptorNotifications>;
+        using GetVariableNodeDescriptorRequestBus = AZ::EBus<GetVariableNodeDescriptorRequests>;
+
+        class SetVariableNodeDescriptorRequests : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+            using BusIdType = AZ::EntityId;
+
+            virtual AZ::EntityId GetVariableId() const = 0;
+        };
+
+        using SetVariableNodeDescriptorRequestBus = AZ::EBus<SetVariableNodeDescriptorRequests>;
+    }
 }

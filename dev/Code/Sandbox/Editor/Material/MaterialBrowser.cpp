@@ -37,7 +37,6 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPainter>
-#include <QProcess>
 #include <QSortFilterProxyModel>
 #include <QTreeView>
 #if defined(Q_OS_WIN)
@@ -48,6 +47,7 @@
 #include <QtUtil.h>
 #include <Util/AbstractGroupProxyModel.h>
 
+#include <AzQtComponents/Utilities/DesktopUtilities.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
@@ -113,6 +113,13 @@ MaterialBrowserWidget::MaterialBrowserWidget(QWidget* parent)
     m_ui->m_searchWidget->Setup(true, false);
     m_filterModel->SetSearchFilter(m_ui->m_searchWidget);
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &MaterialBrowserFilterModel::SearchFilterUpdated);
+
+    connect(m_filterModel.data(), &QAbstractItemModel::rowsInserted, this, [this](const QModelIndex &parent, int start, int end)
+    {
+        if (start == end) {
+            m_ui->treeView->setCurrentIndex(parent.child(start, 0));
+        }
+    });
 
     // Call LoadState to initialize the AssetBrowserTreeView's QTreeViewStateSaver
     // This must be done BEFORE StartRecordUpdateJobs(). A race condition from the update jobs was causing a 5-10% crash/hang when opening the Material Editor.
@@ -1385,18 +1392,7 @@ void MaterialBrowserWidget::OnContextMenuAction(int command, _smart_ptr<CMateria
         if (material)
         {
             QString fullPath = material->GetFilename();
-            QString filename = PathUtil::GetFile(fullPath.toUtf8().data());
-#if defined(AZ_PLATFORM_WINDOWS)
-            if (!QProcess::startDetached(QStringLiteral("explorer"), { QStringLiteral("/select,%1").arg(filename) }, Path::GetPath(fullPath)))
-            {
-                QProcess::startDetached(QStringLiteral("explorer"), { Path::GetPath(fullPath) });
-            }
-#else
-            QProcess::startDetached("/usr/bin/osascript", {"-e",
-                QStringLiteral("tell application \"Finder\" to reveal POSIX file \"%1\"").arg(fullPath)});
-            QProcess::startDetached("/usr/bin/osascript", {"-e",
-                QStringLiteral("tell application \"Finder\" to activate")});
-#endif
+            AzQtComponents::ShowFileOnDesktop(fullPath);
         }
     }
     break;
@@ -1410,21 +1406,9 @@ void MaterialBrowserWidget::OnContextMenuAction(int command, _smart_ptr<CMateria
         if (material)
         {
             QString fullPath = material->GetFilename();
-            QString filename = PathUtil::GetFile(fullPath.toUtf8().data());
-
             if (CFileUtil::ExtractFile(fullPath, true, fullPath.toUtf8().data()))
             {
-#if defined(AZ_PLATFORM_WINDOWS)
-                if (!QProcess::startDetached(QStringLiteral("explorer"), { QStringLiteral("/select,%1").arg(filename) }, Path::GetPath(fullPath)))
-                {
-                    QProcess::startDetached(QStringLiteral("explorer"), { Path::GetPath(fullPath) });
-                }
-#else
-                QProcess::startDetached("/usr/bin/osascript", {"-e",
-                    QStringLiteral("tell application \"Finder\" to reveal POSIX file \"%1\"").arg(fullPath)});
-                QProcess::startDetached("/usr/bin/osascript", {"-e",
-                    QStringLiteral("tell application \"Finder\" to activate")});
-#endif
+                AzQtComponents::ShowFileOnDesktop(fullPath);
             }
         }
     }

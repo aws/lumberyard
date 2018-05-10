@@ -24,39 +24,45 @@ namespace MCore
     // ray-boundingsphere
     bool Ray::Intersects(const BoundingSphere& s, AZ::Vector3* intersectA, AZ::Vector3* intersectB) const
     {
-        AZ::Vector3 rayOrg = mOrigin - s.GetCenter(); // ray in space of the sphere
+        const AZ::Vector3 rayOrg = mOrigin - s.GetCenter(); // ray in space of the sphere
 
-        float b, c, t1, t2, delta;
-
-        b = rayOrg.Dot(mDirection);
-        c = rayOrg.GetLengthSq() - s.GetRadiusSquared();
-
-        delta = ((b * b) - c);
+        // The Intersection can be solved by finding the solutions of the quadratic equation:
+        // (mOrigin + t * mDirection)^2 - s.GetRadiusSquared() = 0
+        // Where t is a value that makes (mOrigin + t * mDirection) intersect the sphere
+        // Expanding the above equation we have to find t1 and t2:
+        // t1 = (-2 * mOrigin * mDirection + sqrt(delta)) / (2 * mDirection^2)
+        // t2 = (-2 * mOrigin * mDirection - sqrt(delta)) / (2 * mDirection^2)
+        // where delta = (2 * mOrigin * mDirection) ^ 2 - 4 * mDirection^2 * (mOrigin^2 - s.GetRadiusSquared())
+        // The two intersection points will be:
+        // mOrigin + mDirection * t1
+        // mOrigin + mDirection * t2
+        // If delta < 0, then there is no intersection
+        // If delta == 0, it intersects int he same point
+        //
+        const float a = mDirection.GetLengthSq();
+        const float b = 2.0f * mDirection.Dot(rayOrg);
+        const float c = rayOrg.GetLengthSq() - s.GetRadiusSquared();
+        const float delta = ((b * b) - 4.0f * a * c);
 
         if (delta < 0.0f)
         {
             return false; // no intersection
         }
+
         if (intersectA == nullptr && intersectB == nullptr)
         {
+            // Early out if we are not interested in getting the intersection but to know if there was or not
+            // intersection. If delta is positive, then we have solutions
             return true;
         }
 
         if (delta < Math::epsilon)
         {
-            delta = Math::Sqrt(delta);
-
-            t1 = (-b + delta);
-            if (t1 < 0.0f)
-            {
-                return false;
-            }
-            t2 = (-b - delta);
-            if (t2 < 0.0f)
-            {
-                return false;
-            }
-
+            const float q = (b > 0)
+                ? (-0.5f * (b + Math::Sqrt(delta)))
+                : (-0.5f * (b - Math::Sqrt(delta)));
+            const float t1 = q / a;
+            const float t2 = c / q;
             if (t1 < t2)
             {
                 if (intersectA)
@@ -83,14 +89,14 @@ namespace MCore
         else
         {
             // if we are here it means that delta equals zero and we have only one solution
-            t1 = (-b);
+            const float t = -0.5f * b / a;
             if (intersectA)
             {
-                (*intersectA) = mOrigin + mDirection * t1;
+                (*intersectA) = mOrigin + mDirection * t;
             }
             if (intersectB)
             {
-                (*intersectB) = (*intersectA);
+                (*intersectB) = mOrigin + mDirection * t;
             }
         }
 

@@ -40,7 +40,7 @@ namespace AzToolsFramework
         ProductThumbnail::ProductThumbnail(SharedThumbnailKey key, int thumbnailSize)
             : Thumbnail(key, thumbnailSize)
         {
-            auto assetIdThumbnailKey = qobject_cast<const ProductThumbnailKey*>(m_key);
+            auto assetIdThumbnailKey = azrtti_cast<const ProductThumbnailKey*>(m_key.data());
             AZ_Assert(assetIdThumbnailKey, "Incorrect key type, excpected ProductThumbnailKey");
             m_assetId = assetIdThumbnailKey->GetAssetId();
             m_assetType = assetIdThumbnailKey->GetAssetType();
@@ -93,12 +93,7 @@ namespace AzToolsFramework
         bool ProductThumbnailCache::IsSupportedThumbnail(SharedThumbnailKey key) const
         {
             // thumbnail key is managed by this provider if its both a ProductThumbnailKey type and its asset type is texture asset
-            auto productThumbnailKey = qobject_cast<const ProductThumbnailKey*>(key.data());
-            if (!productThumbnailKey)
-            {
-                return false;
-            }
-            return true;
+            return azrtti_istypeof<const ProductThumbnailKey*>(key.data());
         }
     } // namespace Thumbnailer
 } // namespace AzToolsFramework

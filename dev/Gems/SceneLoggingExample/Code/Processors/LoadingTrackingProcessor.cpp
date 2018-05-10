@@ -10,8 +10,6 @@
 *
 */
 
-#pragma once
-
 #include <AzCore/Serialization/SerializeContext.h>
 #include <Processors/LoadingTrackingProcessor.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>

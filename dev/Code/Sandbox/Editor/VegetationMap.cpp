@@ -30,6 +30,7 @@
 #include "GameEngine.h"
 
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/Commands/LegacyCommand.h>
 
 #include "../Plugins/EditorCommon/QtViewPane.h"
 
@@ -966,6 +967,11 @@ void CVegetationMap::DeleteObjInstance(CVegetationInstance* obj, SectorInfo* sec
         CUndo::Record(new CUndoVegInstanceCreate(obj, true));
     }
 
+    DeleteObjInstanceNoUndo(obj, sector);
+}
+
+void CVegetationMap::DeleteObjInstanceNoUndo(CVegetationInstance* obj, SectorInfo* sector)
+{
     if (obj->pRenderNode)
     {
         GetIEditor()->GetGameEngine()->OnAreaModified(obj->pRenderNode->GetBBox());
@@ -2561,8 +2567,8 @@ void CVegetationMap::GenerateShadowMap(CByteImage& shadowmap, float shadowAmmoun
                                   (255 - sectorImage2[pos + sectorSize2 * 3]) +
                                   (255 - sectorImage2[pos + sectorSize2 * 3 + 3])
                                  )) >> 10;
-                        //                      color = color*shadowValue >> 8;
-                        // swap x/y
+                        //color = color*shadowValue >> 8;
+                        //swap x/y
                         //color = (255-sectorImage2[(i+j*sectorSize)*3]);
                         shadowmap.ValueAt(sx1, y1 + i) = color;
                     }
@@ -3304,5 +3310,24 @@ AZStd::vector<CVegetationInstance*> CVegetationMap::GetObjectInstances(const AZ:
 
 void CVegetationMap::DeleteObjectInstance(CVegetationInstance* instance)
 {
-    DeleteObjInstance(instance);
+    if (instance == nullptr)
+    {
+        return;
+    }
+
+    SectorInfo* sector = GetVegSector(instance->pos);
+    if (sector)
+    {
+        AzToolsFramework::UndoSystem::URSequencePoint* currentBatch = nullptr;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(currentBatch, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::GetCurrentUndoBatch);
+
+        if (currentBatch != nullptr)
+        {
+            using AzToolsFramework::LegacyCommand;
+            auto undoCommand = new LegacyCommand<IUndoObject>("Delete vegetation", AZStd::make_unique<CUndoVegInstanceCreate>(instance, true));
+            undoCommand->SetParent(currentBatch);
+        }
+
+        DeleteObjInstanceNoUndo(instance, sector);
+    }
 }

@@ -25,38 +25,40 @@
 
 #include "System.h"
 
+#include <AzCore/Debug/StackTracer.h>
 #include <AzCore/Socket/AzSocket.h>
 
 //#pragma optimize("",off)
 
-#if   defined(WIN32)
-#include "DebugCallStack.h"
-#include "Psapi.h"
 
-#pragma warning(push)
-#pragma warning(disable : 4091) // Needed to bypass the "'typedef ': ignored on left of '' when no variable is declared" brought in by DbgHelp.h
-#include <DbgHelp.h>
-#pragma warning(pop)
-
-namespace
-{
-    struct CVDebugInfo
-    {
-        DWORD cvSig;
-        GUID pdbSig;
-        DWORD age;
-        char pdbName[256];
-    };
-}
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MEMREPLAY_CPP_SECTION_1 1
+#define MEMREPLAY_CPP_SECTION_2 2
+#define MEMREPLAY_CPP_SECTION_3 3
+#define MEMREPLAY_CPP_SECTION_4 4
+#define MEMREPLAY_CPP_SECTION_5 5
+#define MEMREPLAY_CPP_SECTION_6 6
+#define MEMREPLAY_CPP_SECTION_7 7
+#define MEMREPLAY_CPP_SECTION_8 8
+#define MEMREPLAY_CPP_SECTION_9 9
+#define MEMREPLAY_CPP_SECTION_10 10
+#define MEMREPLAY_CPP_SECTION_11 11
+#define MEMREPLAY_CPP_SECTION_12 12
+#define MEMREPLAY_CPP_SECTION_13 13
+#define MEMREPLAY_CPP_SECTION_14 14
+#define MEMREPLAY_CPP_SECTION_15 15
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
 
-#if defined(LINUX)
-#include <sys/mman.h>
-#if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE
 #endif
-#include <link.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
 #if defined(APPLE) || defined(LINUX)
@@ -89,10 +91,18 @@ bool ReplayDiskWriter::Open()
 #undef fopen
 #endif
     char fn[MAX_PATH] = "";
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     cry_strcat(fn, m_filename);
     m_fp = ::fopen(fn, "wb");
     return m_fp != NULL;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 void ReplayDiskWriter::Close()
@@ -108,6 +118,10 @@ void ReplayDiskWriter::Close()
         m_fp = NULL;
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 int ReplayDiskWriter::Write(const void* data, size_t sz, size_t n)
@@ -116,6 +130,10 @@ int ReplayDiskWriter::Write(const void* data, size_t sz, size_t n)
 #undef fwrite
 #endif
     int res = ::fwrite(data, sz, n, m_fp);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     m_written += res * sz;
 
@@ -130,6 +148,10 @@ void ReplayDiskWriter::Flush()
 
     ::fflush(m_fp);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 ReplaySocketWriter::ReplaySocketWriter(const char* address)
@@ -271,6 +293,9 @@ void* ReplayAllocatorBase::MapAddressSpace(void* addr, size_t sz)
     return VirtualAlloc(addr, sz, MEM_COMMIT, PAGE_READWRITE);
 }
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(APPLE) || defined(LINUX)
 void* ReplayAllocatorBase::ReserveAddressSpace(size_t sz)
 {
@@ -576,6 +601,10 @@ void ReplayRecordThread::Run()
 {
     CryMemStatIgnoreThread(CryGetCurrentThreadId());
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     while (true)
     {
@@ -753,7 +782,10 @@ bool ReplayLogStream::Open(const char* openString)
         uint8 version = 2;
         uint32 platform = MemReplayPlatformIds::PI_Unknown;
 
-#if   defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#elif defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
         platform = MemReplayPlatformIds::PI_PC;
 #endif
 
@@ -854,6 +886,10 @@ static bool g_memReplayPaused = false;
 
 //////////////////////////////////////////////////////////////////////////
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 static int GetCurrentSysAlloced()
 {
@@ -863,10 +899,18 @@ static int GetCurrentSysAlloced()
     return (uint32)(mi.PagefileUsage - trackingUsage);
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 static int GetCurrentExecutableSize()
 {
     return GetCurrentSysAlloced();
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 static UINT_PTR GetCurrentSysFree()
@@ -876,136 +920,29 @@ static UINT_PTR GetCurrentSysFree()
     return (UINT_PTR)-(INT_PTR)mi.PagefileUsage;
 }
 
-void CReplayModules::RefreshModules(FModuleLoad onLoad, FModuleUnload onUnload, void* pUser)
+void CReplayModules::RefreshModules()
 {
 #if defined(WIN32)
-    HMODULE hMods[1024];
-    HANDLE hProcess;
-    DWORD cbNeeded;
-    unsigned int i;
-
-    // Get a list of all the modules in this process.
-    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, GetCurrentProcessId());
-    if (NULL != hProcess)
+    for (unsigned int i = 0; i < AZ::Debug::SymbolStorage::GetNumLoadedModules(); ++i)
     {
-        if (SymInitialize(hProcess, NULL, TRUE))
-        {
-            if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded))
-            {
-                for (i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
-                {
-                    TCHAR szModName[MAX_PATH];
-                    // Get the full path to the module's file.
-                    if (GetModuleFileNameEx(hProcess, hMods[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
-                    {
-                        char pdbPath[1024];
-                        cry_strcpy(pdbPath, szModName);
-                        char* pPdbPathExt = strrchr(pdbPath, '.');
-                        if (pPdbPathExt)
-                        {
-                            strcpy(pPdbPathExt, ".pdb");
-                        }
-                        else
-                        {
-                            cry_strcat(pdbPath, ".pdb");
-                        }
+        const AZ::Debug::SymbolStorage::ModuleInfo* info = AZ::Debug::SymbolStorage::GetModuleInfo(i);
 
-                        MODULEINFO modInfo;
-                        GetModuleInformation(hProcess, hMods[i], &modInfo, sizeof(modInfo));
+        ModuleLoadDesc mld;
 
-                        IMAGEHLP_MODULE64 ihModInfo;
-                        memset(&ihModInfo, 0, sizeof(ihModInfo));
-                        ihModInfo.SizeOfStruct = sizeof(ihModInfo);
-                        if (SymGetModuleInfo64(hProcess, (DWORD64)modInfo.lpBaseOfDll, &ihModInfo))
-                        {
-                            cry_strcpy(pdbPath, ihModInfo.CVData);
+        // This function was updated to use AZ::Debug instead of dbghelp.dll, preventing collision
+        // with the usage of this dll in multiple threaded contexts.  The AZ version does not provide
+        // Pdb signature or age; this info was informational only, and is stubbed out with this assignment.
+        mld.sig[0] = '\0';
 
-                            if (ihModInfo.PdbSig70.Data1 == 0)
-                            {
-                                DWORD debugEntrySize;
-                                IMAGE_DEBUG_DIRECTORY* pDebugDirectory = (IMAGE_DEBUG_DIRECTORY*)ImageDirectoryEntryToDataEx(modInfo.lpBaseOfDll, TRUE, IMAGE_DIRECTORY_ENTRY_DEBUG, &debugEntrySize, NULL);
-                                if (pDebugDirectory)
-                                {
-                                    size_t numDirectories = debugEntrySize / sizeof(IMAGE_DEBUG_DIRECTORY);
-                                    for (size_t dirIdx = 0; dirIdx != numDirectories; ++dirIdx)
-                                    {
-                                        IMAGE_DEBUG_DIRECTORY& dir = pDebugDirectory[dirIdx];
-                                        if (dir.Type == 2)
-                                        {
-                                            CVDebugInfo* pCVInfo = (CVDebugInfo*)((char*)modInfo.lpBaseOfDll + dir.AddressOfRawData);
-                                            ihModInfo.PdbSig70 = pCVInfo->pdbSig;
-                                            ihModInfo.PdbAge = pCVInfo->age;
-                                            cry_strcpy(pdbPath, pCVInfo->pdbName);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            ModuleLoadDesc mld;
-                            sprintf_s(mld.sig, "%p, %08X, %08X, {%08X-%04X-%04X-%02X %02X-%02X %02X %02X %02X %02X %02X}, %d\n",
-                                modInfo.lpBaseOfDll, modInfo.SizeOfImage, ihModInfo.TimeDateStamp,
-                                ihModInfo.PdbSig70.Data1, ihModInfo.PdbSig70.Data2, ihModInfo.PdbSig70.Data3,
-                                ihModInfo.PdbSig70.Data4[0], ihModInfo.PdbSig70.Data4[1],
-                                ihModInfo.PdbSig70.Data4[2], ihModInfo.PdbSig70.Data4[3],
-                                ihModInfo.PdbSig70.Data4[4], ihModInfo.PdbSig70.Data4[5],
-                                ihModInfo.PdbSig70.Data4[6], ihModInfo.PdbSig70.Data4[7],
-                                ihModInfo.PdbAge);
-
-                            strcpy(mld.name, szModName);
-                            strcpy(mld.path, pdbPath);
-                            mld.address = (UINT_PTR)modInfo.lpBaseOfDll;
-                            mld.size = modInfo.SizeOfImage;
-                            onLoad(pUser, mld);
-                        }
-                    }
-                }
-            }
-
-            SymCleanup(hProcess);
-        }
-        CloseHandle(hProcess);
+        azstrcpy(mld.name, AZ_ARRAY_SIZE(mld.name), info->m_modName);
+        azstrcpy(mld.path, AZ_ARRAY_SIZE(mld.path), info->m_fileName);
+        mld.address = (UINT_PTR)info->m_baseAddress;
+        mld.size = info->m_size;
+        CMemReplay::GetInstance()->RecordModuleLoad(mld);
     }
-#elif defined(LINUX)
-    EnumModuleState ems;
-    ems.hProcess = 0;
-    ems.pSelf = this;
-    ems.onLoad = onLoad;
-    ems.pOnLoadUser = pUser;
-    dl_iterate_phdr(EnumModules_Linux, &ems);
 #endif
 }
 
-
-
-#if defined(LINUX)
-int CReplayModules::EnumModules_Linux(struct dl_phdr_info* info, size_t size, void* userContext)
-{
-    EnumModuleState& ems = *reinterpret_cast<EnumModuleState*>(userContext);
-
-    ModuleLoadDesc mld;
-    mld.address = info->dlpi_addr;
-    strcpy(mld.name, info->dlpi_name);
-    strcpy(mld.path, info->dlpi_name);
-
-    Module& module = ems.pSelf->m_knownModules[ems.pSelf->m_numKnownModules];
-    ems.pSelf->m_numKnownModules++;
-    module.baseAddress = info->dlpi_addr;
-    module.timestamp = 0;
-
-    uint64 memSize = 0;
-    for (int j = 0; j < info->dlpi_phnum; j++)
-    {
-        memSize += info->dlpi_phdr[j].p_memsz;
-    }
-    mld.size = (UINT_PTR)memSize;
-    module.size = (UINT_PTR)memSize;
-
-    ems.onLoad(ems.pOnLoadUser, mld);
-
-    return 0;
-}
-#endif
 
 // Ensure IMemReplay is not destroyed during atExit() procedure which has no defined destruction order.
 // In some cases it was destroyed while still being used.
@@ -1113,12 +1050,24 @@ void CMemReplay::Start(bool bPaused, const char* openString)
             int initialGlobal = GetCurrentSysAlloced();
             int exeSize = GetCurrentExecutableSize();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             m_stream.WriteEvent(MemReplayAddressProfileEvent(0xffffffff, 0));
             m_stream.WriteEvent(MemReplayInfoEvent(exeSize, initialGlobal, s_replayStartingFree));
             m_stream.WriteEvent(MemReplayFrameStartEvent(g_memReplayFrameCount++));
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_14
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_CPP_SECTION_15
+#include AZ_RESTRICTED_FILE(MemReplay_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             uint32 id = 0;
             //#define MEMREPLAY_DEFINE_CONTEXT(name) RecordContextDefinition(id ++, #name);
@@ -1706,9 +1655,8 @@ void CMemReplay::SwapContainers(const void* keyA, const void* keyB)
 #endif
 }
 
-void CMemReplay::RecordModuleLoad(void* pSelf, const CReplayModules::ModuleLoadDesc& mld)
+void CMemReplay::RecordModuleLoad(const CReplayModules::ModuleLoadDesc& mld)
 {
-    CMemReplay* pMR = reinterpret_cast<CMemReplay*>(pSelf);
 
     const char* baseName = strrchr(mld.name, '\\');
     if (!baseName)
@@ -1717,14 +1665,14 @@ void CMemReplay::RecordModuleLoad(void* pSelf, const CReplayModules::ModuleLoadD
     }
     size_t baseNameLen = strlen(baseName);
 
-    pMR->m_stream.WriteEvent(MemReplayModuleRefEvent(mld.name, mld.path, mld.sig));
+    m_stream.WriteEvent(MemReplayModuleRefEvent(mld.name, mld.path, mld.sig));
 
     DWORD threadId = CryGetCurrentThreadId();
 
-    MemReplayPushContextEvent* pEv = new (pMR->m_stream.BeginAllocateRawEvent<MemReplayPushContextEvent>(baseNameLen))MemReplayPushContextEvent(threadId, baseName, EMemStatContextTypes::MSC_Other, 0);
-    pMR->m_stream.EndAllocateRawEvent<MemReplayPushContextEvent>(baseNameLen);
+    MemReplayPushContextEvent* pEv = new (m_stream.BeginAllocateRawEvent<MemReplayPushContextEvent>(baseNameLen))MemReplayPushContextEvent(threadId, baseName, EMemStatContextTypes::MSC_Other, 0);
+    m_stream.EndAllocateRawEvent<MemReplayPushContextEvent>(baseNameLen);
 
-    pMR->RecordAlloc(
+    RecordAlloc(
         EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc, 0,
         (UINT_PTR)mld.address,
         4096,
@@ -1732,16 +1680,7 @@ void CMemReplay::RecordModuleLoad(void* pSelf, const CReplayModules::ModuleLoadD
         mld.size,
         0);
 
-    pMR->m_stream.WriteEvent(MemReplayPopContextEvent(threadId));
-}
-
-void CMemReplay::RecordModuleUnload(void* pSelf, const CReplayModules::ModuleUnloadDesc& mld)
-{
-    CMemReplay* pMR = reinterpret_cast<CMemReplay*>(pSelf);
-
-    PREFAST_SUPPRESS_WARNING(6326)
-    pMR->RecordFree(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_CryMalloc, 0, mld.address, 0, REPLAY_RECORD_FREECS != 0);
-    pMR->m_stream.WriteEvent(MemReplayModuleUnRefEvent(mld.address));
+    m_stream.WriteEvent(MemReplayPopContextEvent(threadId));
 }
 
 void CMemReplay::RecordAlloc(EMemReplayAllocClass::Class cls, uint16 subCls, int moduleId, UINT_PTR p, UINT_PTR alignment, UINT_PTR sizeRequested, UINT_PTR sizeConsumed, INT_PTR sizeGlobal)
@@ -1815,7 +1754,7 @@ void CMemReplay::RecordFree(EMemReplayAllocClass::Class cls, uint16 subCls, int 
 
 void CMemReplay::RecordModules()
 {
-    m_modules.RefreshModules(RecordModuleLoad, RecordModuleUnload, this);
+    m_modules.RefreshModules();
 }
 
 MemReplayCrySizer::MemReplayCrySizer(ReplayLogStream& stream, const char* name)

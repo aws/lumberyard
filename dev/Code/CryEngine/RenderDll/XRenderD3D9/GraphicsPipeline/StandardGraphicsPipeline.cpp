@@ -153,7 +153,7 @@ void CStandardGraphicsPipeline::UpdatePerFrameConstantBuffer(const PerFrameParam
 #endif
 
     const float time = CRenderer::GetRealTime();
-    cb->PerFrame_Time = Vec4(time, CRenderer::GetElapsedTime(), time - CRenderer::GetElapsedTime(), 0.0f);
+    cb->PerFrame_Time = Vec4(time, CRenderer::GetElapsedTime(), time - CRenderer::GetElapsedTime(), perFrameParams.m_MidDayIndicator);
 
     const SRenderLight* sunLight = FindSunLight(renderer->m_RP);
     if (sunLight)

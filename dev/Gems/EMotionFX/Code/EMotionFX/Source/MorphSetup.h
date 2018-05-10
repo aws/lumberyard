@@ -99,18 +99,32 @@ namespace EMotionFX
         uint32 FindMorphTargetNumberByID(uint32 id) const;
 
         /**
+         * Find a morph target index by its name.
+         * Please remember that this is case sensitive.
+         * @result The index of the morph target that you can pass to GetMorphTarget(index).
+         */
+        uint32 FindMorphTargetIndexByName(const char* name) const;
+
+        /**
+         * Find a morph target index by its name.
+         * Please remember that this is case insensitive.
+         * @result The index of the morph target that you can pass to GetMorphTarget(index).
+         */
+        uint32 FindMorphTargetIndexByNameNoCase(const char* name) const;
+
+        /**
          * Find a morph target by its name.
          * Please remember that this is case sensitive.
          * @result A pointer to the morph target, or nullptr when not found.
          */
-        MorphTarget* FindMorphTargetByName(const char* name);
+        MorphTarget* FindMorphTargetByName(const char* name) const;
 
         /**
          * Find a morph target by its name.
          * Please remember that this is NOT case sensitive.
          * @result A pointer to the morph target, or nullptr when not found.
          */
-        MorphTarget* FindMorphTargetByNameNoCase(const char* name);
+        MorphTarget* FindMorphTargetByNameNoCase(const char* name) const;
 
         /**
          * Clone the morph setup, and return the clone.

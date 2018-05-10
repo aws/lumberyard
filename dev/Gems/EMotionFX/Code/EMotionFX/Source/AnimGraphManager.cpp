@@ -268,8 +268,8 @@ namespace EMotionFX
         const uint32 numAttributes = set->mAttributes->GetNumAttributes();
         MCore::LogInfo("AnimGraph Object '%s' (type=%d) has %d registered attributes:", object->GetTypeString(), object->GetType(), numAttributes);
 
-        MCore::String valueString;
-        valueString.Reserve(64);
+        AZStd::string valueString;
+        valueString.reserve(64);
 
         // show info for each attribute
         for (uint32 i = 0; i < numAttributes; ++i)
@@ -283,21 +283,21 @@ namespace EMotionFX
             MCore::LogInfo("  + Data Type      : %s", attrib->GetDefaultValue()->GetTypeString());
 
             object->GetAttribute(i)->ConvertToString(valueString);
-            MCore::LogInfo("  + Current Value  : %s", valueString.AsChar());
+            MCore::LogInfo("  + Current Value  : %s", valueString.c_str());
 
             attrib->GetDefaultValue()->ConvertToString(valueString);
-            MCore::LogInfo("  + Default Value  : %s", valueString.AsChar());
+            MCore::LogInfo("  + Default Value  : %s", valueString.c_str());
 
             if (attrib->GetMinValue())
             {
                 attrib->GetMinValue()->ConvertToString(valueString);
-                MCore::LogInfo("  + Minimum Value  : %s", valueString.AsChar());
+                MCore::LogInfo("  + Minimum Value  : %s", valueString.c_str());
             }
 
             if (attrib->GetMaxValue())
             {
                 attrib->GetMaxValue()->ConvertToString(valueString);
-                MCore::LogInfo("  + Maximum Value  : %s", valueString.AsChar());
+                MCore::LogInfo("  + Maximum Value  : %s", valueString.c_str());
             }
         } // for all attributes
     }
@@ -462,7 +462,7 @@ namespace EMotionFX
                 continue;
             }
 
-            if (animGraph->GetFileNameString().CheckIfIsEqualNoCase(filename))
+            if (AzFramework::StringFunc::Equal(animGraph->GetFileNameString().c_str(), filename, false /* no case */))
             {
                 return animGraph;
             }
@@ -501,7 +501,7 @@ namespace EMotionFX
                 continue;
             }
 
-            if (animGraph->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(animGraph->GetNameString().c_str(), name, false /* no case */))
             {
                 return animGraph;
             }

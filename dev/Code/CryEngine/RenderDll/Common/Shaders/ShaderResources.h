@@ -149,7 +149,7 @@ public:
     virtual void SetInputLM(const CInputLightMaterial& lm) final;
     virtual void ToInputLM(CInputLightMaterial& lm) final;
 
-    virtual ColorF GetColorValue(EEfResTextures slot) const final;
+    ENGINE_API virtual ColorF GetColorValue(EEfResTextures slot) const final;
     ENGINE_API virtual float GetStrengthValue(EEfResTextures slot) const final;
 
     virtual void SetColorValue(EEfResTextures slot, const ColorF& color) final;

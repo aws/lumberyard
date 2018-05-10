@@ -30,6 +30,13 @@ CInputCVars::CInputCVars()
         "Usage: 0 (off), 1(on)"
         "Default is 0. Value must be >=0");
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define INPUTCVARS_CPP_SECTION_1 1
+#define INPUTCVARS_CPP_SECTION_2 2
+#endif
+
 #if defined(WIN32) || defined(WIN64)
     REGISTER_CVAR(i_kinectXboxConnect, 1, 0, // ACCEPTED_USE
         "Allow connection to Xbox for Kinect input.\n" // ACCEPTED_USE
@@ -54,6 +61,10 @@ CInputCVars::CInputCVars()
     REGISTER_CVAR(i_kinSkeletonMovedDistance, 0.125f, 0,
         "Distance used to determine if kinect skeleton has moved in the play space.");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION INPUTCVARS_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(InputCVars_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     //Exponential Smoothing Factors
     REGISTER_CVAR(i_kinGlobalExpSmoothFactor, 0.5f, 0, "Smoothing factor for double exponential smoothing.");
@@ -91,4 +102,8 @@ CInputCVars::~CInputCVars()
     gEnv->pConsole->UnregisterVariable("i_kinGlobalExpJitterRadius");
     gEnv->pConsole->UnregisterVariable("i_kinGlobalExpDeviationRadius");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION INPUTCVARS_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(InputCVars_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }

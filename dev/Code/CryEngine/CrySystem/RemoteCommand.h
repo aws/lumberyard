@@ -14,8 +14,6 @@
 // Description : Remote command system implementation
 
 
-#ifndef CRYINCLUDE_CRYSYSTEM_REMOTECOMMAND_H
-#define CRYINCLUDE_CRYSYSTEM_REMOTECOMMAND_H
 #pragma once
 
 
@@ -209,6 +207,9 @@ class CRemoteCommandServer
     : public IRemoteCommandServer
     , public CryRunnable
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(RemoteCommand_h, AZ_RESTRICTED_PLATFORM)
+	#endif
 
 protected:
     // Wrapped commands
@@ -456,5 +457,3 @@ private:
     // Verbose level
     ICVar* m_pVerboseLevel;
 };
-
-#endif // CRYINCLUDE_CRYSYSTEM_REMOTECOMMAND_H

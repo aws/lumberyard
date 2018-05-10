@@ -197,6 +197,9 @@ public:
     void GetScissors(const Vec3& vCenter, float fRadius, short& sX, short& sY, short& sWidth, short& sHeight) const;
     void SetupScissors(bool bEnable, uint16 x, uint16 y, uint16 w, uint16 h) const;
 
+    // Calculate the individual screen-space scissor bounds for all of our bound lights
+    void CalculateLightScissorBounds();
+
     const Matrix44A& GetCameraProjMatrix() const { return m_mViewProj; }
 
 private:

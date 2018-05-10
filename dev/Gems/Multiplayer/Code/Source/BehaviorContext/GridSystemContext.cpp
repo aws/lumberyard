@@ -16,6 +16,23 @@
 #include <GridMate/NetworkGridMate.h>
 
 #include "Multiplayer/GridMateServiceWrapper/GridMateLANServiceWrapper.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#undef AZ_RESTRICTED_SECTION
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_1 1
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_2 2
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_3 3
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_4 4
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_5 5
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_6 6
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_7 7
+#define GRIDSYSTEMCONTEXT_CPP_SECTION_8 8
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #include "Multiplayer/MultiplayerUtils.h"
 
 namespace Multiplayer
@@ -167,6 +184,10 @@ namespace Multiplayer
             carrierDesc.m_disconnectDetectionRttThreshold = gridMateServiceParams.FetchValueOrDefault<float>("gm_disconnectDetectionRttThreshold", 500.0f);
             carrierDesc.m_disconnectDetectionPacketLossThreshold = gridMateServiceParams.FetchValueOrDefault<float>("gm_disconnectDetectionPacketLossThreshold", 0.3f);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         bool CreateServerForWrappedService(const SessionDesc& sessionDesc)
@@ -206,7 +227,15 @@ namespace Multiplayer
                     }
                     else if (!strcmp(param, "gm_ipversion"))
                     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                         p.SetValue(GridMate::Driver::BSD_AF_INET);
+#endif
                     }
                     return p;
                 };
@@ -255,11 +284,37 @@ namespace Multiplayer
     {
         void Reflect(AZ::ReflectContext* reflectContext)
         {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext);
+            if (serializeContext)
+            {
+                serializeContext->Class<SessionDesc>()
+                    ->Version(1)
+                    ->Field("Port", &SessionDesc::m_gamePort)
+                    ->Field("MaxPlayerSlots", &SessionDesc::m_maxPlayerSlots)
+                    ->Field("EnableDisconnectDetection", &SessionDesc::m_enableDisconnectDetection)
+                    ->Field("ConnectionTimeoutMS", &SessionDesc::m_connectionTimeoutMS)
+                    ->Field("ThreadUpdateTimeMS", &SessionDesc::m_threadUpdateTimeMS)
+                    ->Field("MapName", &SessionDesc::m_mapName)
+                    ->Field("ServerName", &SessionDesc::m_serverName)
+                    ->Field("ServiceType", &SessionDesc::m_serviceType)
+                ;
+            }
+
             AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflectContext);
             if (behaviorContext)
             {
                 behaviorContext->Class<GridMate::ServiceType>("GridServiceType")
                     ->Enum<(int)GridMate::ST_LAN>("LAN")
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
                     ;
 
                 // expose the parameters for a GridSession
@@ -303,7 +358,15 @@ namespace Multiplayer
             }
             else if (!strcmp(key, "gm_ipversion"))
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 p.SetValue(GridMate::Driver::BSD_AF_INET);
+#endif
             }
             else if (!strcmp(key, "gm_disconnectDetection"))
             {
@@ -323,6 +386,10 @@ namespace Multiplayer
                     p.SetValue(gEnv->pConsole->GetCVar("gm_disconnectDetectionPacketLossThreshold")->GetFVal());
                 }
             }
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             return !p.m_value.empty();
         }
 
@@ -349,6 +416,10 @@ namespace Multiplayer
                 carrierDesc.m_disconnectDetectionPacketLossThreshold = gridMateServiceParams.FetchValueOrDefault<float>("gm_disconnectDetectionPacketLossThreshold", 0.3f);
             }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         /**
@@ -360,6 +431,10 @@ namespace Multiplayer
             {
             case GridMate::ST_LAN:
                 return aznew GridMateLANServiceWrapper();
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             default:
                 AZ_Assert(false, "Unsupported GridMate::ServiceType of %d", gridServiceType);
             }

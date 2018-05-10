@@ -994,7 +994,7 @@ namespace LegacyConversionInternal
         auto shapeComponentId = isSphereShape
             ? "{2EA56CBF-63C8-41D9-84D5-0EC2BECE748E}" //EditorSphereShapeComponent
             : "{2ADD9043-48E8-4263-859A-72E0024372BF}"; //EditorBoxShapeComponent
-        auto windComponentId = "{61E5864D-F553-4A37-9A03-B9F836F1D3DC}"; // WindVolumeComponent
+        auto windComponentId = "{61E5864D-F553-4A37-9A03-B9F836F1D3DC}"; // EditorWindVolumeComponent
         auto conversionResult = CreateEntityForConversion(entityToConvert, {
             shapeComponentId,
             windComponentId
@@ -1015,7 +1015,7 @@ namespace LegacyConversionInternal
         success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("Air Density", 0xadc8eb2f) }, "AirDensity", varBlock);
         success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("Air Resistance", 0xec64bb06) }, "AirResistance", varBlock);
         success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("Speed", 0x0f26fef6) }, "Speed", varBlock);
-        success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("FalloffInner", 0xc87f0b6a) }, "FalloffInner", varBlock);
+        success &= ConvertVarHierarchy<float>(newEntity, windComponentId, { AZ_CRC("Falloff", 0x4f6d2cf8) }, "FalloffInner", varBlock);
         success &= ConvertVarHierarchy<Vec3, AZ::Vector3>(newEntity, windComponentId, { AZ_CRC("Direction", 0x3e4ad1b3) }, "Dir", varBlock, LYVec3ToAZVec3);
         success &= GetVec3("Size", varBlock, size);
         if (isSphereShape)
@@ -1101,6 +1101,7 @@ namespace LegacyConversionInternal
 
         // refresh/update then nav mesh after the areas have been created
         LmbrCentral::NavigationAreaRequestBus::Event(newEntityId, &LmbrCentral::NavigationAreaRequests::RefreshArea);
+        LmbrCentral::EditorPolygonPrismShapeComponentRequestsBus::Event(newEntityId, &LmbrCentral::EditorPolygonPrismShapeComponentRequests::GenerateVertices);
 
         if (!conversionSuccess)
         {
@@ -1550,7 +1551,7 @@ namespace AZ
                 ConvertAreaBoxEntity,
                 ConvertAreaSphereEntity,
                 ConvertNavigationSeed,
-                //ConvertWindVolumeEntity, Disabled for v1.12
+                ConvertWindVolumeEntity,
                 ConvertNavigationAreaEntity,
                 ConvertTagPointEntity,
                 ConvertDecalEntity,

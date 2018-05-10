@@ -207,7 +207,7 @@
     "gulp-typescript": "3.0.2",
     "gulp-uglify": "^2.1.0",
     "gulp4": "^4.0.1",
-    "http-server": "^0.9.0",
+    "http-server": "^0.10.0",
     "jasmine-expect": "^3.7.1",
     "jspm": "^0.16.53",
     "lite-server": "2.2.2",

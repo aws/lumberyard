@@ -50,10 +50,17 @@ namespace LegacyTimeDemoRecorder
 
 #ifndef AZ_MONOLITHIC_BUILD
 #include "Common_TypeInfo.h"
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(LegacyTimeDemoRecorderModule_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #if !defined(LINUX) && !defined(APPLE)
 STRUCT_INFO_T_INSTANTIATE(Color_tpl, <float>)
 #endif
 STRUCT_INFO_T_INSTANTIATE(Quat_tpl, <float>)
+#endif
 #endif // AZ_MONOLITHIC_BUILD
 
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM

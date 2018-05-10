@@ -2422,6 +2422,12 @@ void CUNIXConsoleSignalHandler::Handler(int signum)
 // simple light-weight console implementation
 //
 ///////////////////////////////////////////////////////////////////////////////////////
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(UnixConsole_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 CNULLConsole::CNULLConsole(bool isDaemonMode)
     : m_isDaemon(isDaemonMode)
 {
@@ -2469,6 +2475,7 @@ void CNULLConsole::OnUpdate()
 void CNULLConsole::PutText(int x, int y, const char* msg)
 {
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //

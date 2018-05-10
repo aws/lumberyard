@@ -27,6 +27,18 @@
 #include <AzFramework/API/ApplicationAPI_win.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SYSTEM_CPP_SECTION_1 1
+#define SYSTEM_CPP_SECTION_2 2
+#define SYSTEM_CPP_SECTION_3 3
+#define SYSTEM_CPP_SECTION_4 4
+#define SYSTEM_CPP_SECTION_5 5
+#define SYSTEM_CPP_SECTION_6 6
+#define SYSTEM_CPP_SECTION_7 7
+#endif
+
 #if defined(_RELEASE) && AZ_LEGACY_CRYSYSTEM_TRAIT_USE_EXCLUDEUPDATE_ON_CONSOLE
 //exclude some not needed functionality for release console builds
 #define EXCLUDE_UPDATE_ON_CONSOLE
@@ -46,6 +58,10 @@
 #include <unwind.h>  // for _Unwind_Backtrace and _Unwind_GetIP
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 
 #include <INetwork.h>
@@ -363,6 +379,10 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_crypto = nullptr;
     m_sys_physics_CPU = 0;
     m_sys_skip_input = nullptr;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     m_sys_min_step = 0;
     m_sys_max_step = 0;
 
@@ -808,6 +828,10 @@ void CSystem::ShutDown()
     SAFE_RELEASE(m_sys_enable_budgetmonitoring);
     SAFE_RELEASE(m_sys_physics_CPU);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     SAFE_RELEASE(m_sys_min_step);
     SAFE_RELEASE(m_sys_max_step);
@@ -926,7 +950,13 @@ void CSystem::Quit()
     * applications crash differently too. Bugs will be logged about those 
     * issues.
     */
-#if   defined(WIN32) || defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32) || defined(WIN64)
     TerminateProcess(GetCurrentProcess(), 0);
 #else
     _exit(0);
@@ -1010,6 +1040,10 @@ public:
         uint64 yieldBegin = 0U;
         MarkThisThreadForDebugging("Physics");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         while (true)
         {
             QueryPerformanceCounter(&waitStart);
@@ -1179,6 +1213,10 @@ void CSystem::CreatePhysicsThread()
         threadParams.name = "Physics";
         threadParams.nFlags = THREAD_TASK_BLOCKING;
         threadParams.nStackSizeKB = PHYSICS_STACK_SIZE >> 10;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         {
             ScopedSwitchToGlobalHeap globalHeap;
@@ -2518,36 +2556,16 @@ void CSystem::debug_GetCallStackRaw(void** callstack, uint32& callstackLength)
     callstackLength = 0;
 #endif
 
-#if   AZ_LEGACY_CRYSYSTEM_TRAIT_CAPTURESTACK
+#if AZ_LEGACY_CRYSYSTEM_TRAIT_CAPTURESTACK
     if (callstackCapacity > 0x40)
     {
         callstackCapacity = 0x40;
     }
     callstackLength = RtlCaptureStackBackTrace(nNumStackFramesToSkip, callstackCapacity, callstack, NULL);
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
-    /*
-    static int aaa = 0;
-    aaa++;
-
-    if ((aaa & 0xF)  == 0)
-    {
-    CryLogAlways( "RtlCaptureStackBackTrace = (%d)",callstackLength );
-    for (int i=0; i<callstackLength; i++)
-    {
-    CryLogAlways( "   [%d] = (%X)",i,callstack[i] );
-    }
-    }
-
-    callstackLength = IDebugCallStack::instance()->CollectCallStackFrames( callstack,callstackCapacity );
-    if ((aaa & 0xF)  == 0)
-    {
-    CryLogAlways( "StackWalk64 = (%d)",callstackLength );
-    for (int i=0; i<callstackLength; i++)
-    {
-    CryLogAlways( "   [%d] = (%X)",i,callstack[i] );
-    }
-    }
-    */
 
     if (callstackLength > 0)
     {

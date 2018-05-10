@@ -16,6 +16,8 @@
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/IDGenerator.h>
 #include <QtCore/QStringList>
+#include <QtCore/QSettings>
+#include <QtGui/QKeyEvent>
 
 
 namespace MysticQt
@@ -26,7 +28,7 @@ namespace MysticQt
         const uint32 numActions = mActions.GetLength();
         for (uint32 i = 0; i < numActions; ++i)
         {
-            if (mActions[i]->mLocal == local && mActions[i]->mName.CheckIfIsEqual(actionName))
+            if (mActions[i]->mLocal == local && mActions[i]->mName == actionName)
             {
                 return mActions[i];
             }
@@ -98,7 +100,7 @@ namespace MysticQt
         // first search global shortcuts
         for (uint32 i = 0; i < numGroups; ++i)
         {
-            if (mGroups[i]->GetNameString().CheckIfIsEqual(groupName))
+            if (mGroups[i]->GetNameString() == groupName)
             {
                 Action* action = mGroups[i]->FindActionByName(actionName, false);
                 if (action)
@@ -111,7 +113,7 @@ namespace MysticQt
         // then local shortcuts
         for (uint32 i = 0; i < numGroups; ++i)
         {
-            if (mGroups[i]->GetNameString().CheckIfIsEqual(groupName))
+            if (mGroups[i]->GetNameString() == groupName)
             {
                 Action* action = mGroups[i]->FindActionByName(actionName, true);
                 if (action)
@@ -133,7 +135,7 @@ namespace MysticQt
         const uint32 numGroups = mGroups.GetLength();
         for (uint32 i = 0; i < numGroups; ++i)
         {
-            if (mGroups[i]->GetNameString().CheckIfIsEqual(groupName))
+            if (mGroups[i]->GetNameString() == groupName)
             {
                 return mGroups[i];
             }
@@ -275,7 +277,7 @@ namespace MysticQt
                 // get the shortcut action
                 KeyboardShortcutManager::Action* action = group->GetAction(j);
 
-                settings->beginGroup(action->mName.AsChar());
+                settings->beginGroup(action->mName.c_str());
                 settings->setValue("Key",   action->mKey);
                 settings->setValue("Ctrl",  action->mCtrl);
                 settings->setValue("Alt",   action->mAlt);
@@ -312,7 +314,7 @@ namespace MysticQt
                 bool    ctrlPressed =  settings->value("Ctrl", false).toBool();
                 bool    altPressed  =  settings->value("Alt", false).toBool();
                 bool    local       =  settings->value("Local", false).toBool();
-                RegisterKeyboardShortcut(FromQtString(actionName).AsChar(), FromQtString(groupName).AsChar(), key, ctrlPressed, altPressed, local);
+                RegisterKeyboardShortcut(FromQtString(actionName).c_str(), FromQtString(groupName).c_str(), key, ctrlPressed, altPressed, local);
                 settings->endGroup();
             }
 

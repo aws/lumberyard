@@ -1362,7 +1362,7 @@ namespace UiCanvasEditor
             if (sliceAssetPath.empty())
             {
                 QMessageBox::warning(this, QStringLiteral("Cannot Push to Slice"),
-                                     QString(tr("Failed to resolve path for slice asset %1. Aborting slice push. No assets have been affected.")).arg(asset.GetId().ToString<AZStd::string>().c_str()),
+                                     QString(tr("Failed to resolve path for slice asset %1. Aborting slice push. No assets have been affected.")).arg(asset.ToString<AZStd::string>().c_str()),
                                      QMessageBox::Ok);
                 return false;
             }
@@ -1434,7 +1434,7 @@ namespace UiCanvasEditor
                 if (sliceAssetPath.empty())
                 {
                     QMessageBox::warning(this, QStringLiteral("Cannot Push to Slice"), 
-                        QString("Failed to resolve path for asset \"%1\".").arg(asset.GetId().ToString<AZStd::string>().c_str()), 
+                        QString("Failed to resolve path for asset %1").arg(asset.ToString<AZStd::string>().c_str()), 
                         QMessageBox::Ok);
 
                     return false;

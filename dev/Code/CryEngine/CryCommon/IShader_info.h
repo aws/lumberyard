@@ -11,15 +11,13 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_ISHADER_INFO_H
-#define CRYINCLUDE_CRYCOMMON_ISHADER_INFO_H
 #pragma once
 
 #include <IShader.h> // <> required for Interfuscator
 
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(IShader_info_h)
+#include AZ_RESTRICTED_FILE(IShader_info_h, AZ_RESTRICTED_PLATFORM)
 #elif !defined(LINUX) && !defined(APPLE)
 #define ISHADER_INFO_H_TRAIT_DEFINE_ETEX_INFO 1
 #endif
@@ -78,5 +76,3 @@ ENUM_ELEM_INFO(, eTF_B8G8R8X8)
 ENUM_ELEM_INFO(, eTF_B8G8R8A8)
 ENUM_INFO_END(ETEX_Format)
 #endif
-
-#endif // CRYINCLUDE_CRYCOMMON_ISHADER_INFO_H

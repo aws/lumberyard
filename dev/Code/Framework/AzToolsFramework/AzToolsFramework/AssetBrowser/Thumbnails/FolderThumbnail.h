@@ -26,6 +26,8 @@ namespace AzToolsFramework
         {
             Q_OBJECT
         public:
+            AZ_RTTI(FolderThumbnailKey, "{47B5423B-1324-46AD-BBA9-791D5C4116B5}", ThumbnailKey);
+
             FolderThumbnailKey(const char* folderPath, bool isGem);
             const AZStd::string& GetFolderPath() const;
             bool IsGem() const;
@@ -62,8 +64,8 @@ namespace AzToolsFramework
             public:
                 bool operator()(const SharedThumbnailKey& val1, const SharedThumbnailKey& val2) const
                 {
-                    auto folderThumbnailKey1 = qobject_cast<const FolderThumbnailKey*>(val1.data());
-                    auto folderThumbnailKey2 = qobject_cast<const FolderThumbnailKey*>(val2.data());
+                    auto folderThumbnailKey1 = azrtti_cast<const FolderThumbnailKey*>(val1.data());
+                    auto folderThumbnailKey2 = azrtti_cast<const FolderThumbnailKey*>(val2.data());
                     if (!folderThumbnailKey1 || !folderThumbnailKey2)
                     {
                         return false;

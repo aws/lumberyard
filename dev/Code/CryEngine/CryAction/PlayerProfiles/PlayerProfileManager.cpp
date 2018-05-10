@@ -418,6 +418,12 @@ bool CPlayerProfileManager::LogoutUser(const char* userId)
         return false;
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(PlayerProfileManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     // auto-save profile
     if (pEntry->pCurrentProfile && (gEnv && gEnv->pSystem && (!gEnv->pSystem->IsQuitting())))
     {
@@ -428,6 +434,7 @@ bool CPlayerProfileManager::LogoutUser(const char* userId)
             GameWarning("[PlayerProfiles] Logout of user '%s': Couldn't save profile '%s'", userId, pEntry->pCurrentProfile->GetName());
         }
     }
+#endif
 
     m_pImpl->LogoutUser(pEntry);
 

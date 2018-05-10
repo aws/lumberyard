@@ -28,6 +28,7 @@ EnterPreviewToolbar::EnterPreviewToolbar(EditorWindow* parent)
     m_previewButton = new QPushButton("Preview", parent);
     QObject::connect(m_previewButton,
         &QPushButton::clicked,
+        parent,
         [parent](bool checked)
         {
             parent->ToggleEditorMode();

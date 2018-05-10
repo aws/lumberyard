@@ -62,8 +62,6 @@
     #include "WinBase.cpp"
 #endif
 
-
-
 #ifdef __GNUC__
 // GCC+STLPORT bug workaround, see comment in ISerialize.h.
 #include <ISerialize.h>

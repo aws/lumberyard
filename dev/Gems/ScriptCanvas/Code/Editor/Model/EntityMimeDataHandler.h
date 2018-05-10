@@ -31,8 +31,12 @@ namespace ScriptCanvasEditor
         EntityMimeDataHandler();
 
         // SceneMimeDelegateHandlerRequestBus
-        bool IsInterestedInMimeData(const AZ::EntityId& sceneId, const QMimeData* mimeData) const override;
+        bool IsInterestedInMimeData(const AZ::EntityId& sceneId, const QMimeData* mimeData) override;
+        void HandleMove(const AZ::EntityId& sceneId, const QPointF& movePoint, const QMimeData* mimeData) override;
         void HandleDrop(const AZ::EntityId& sceneId, const QPointF& dropPoint, const QMimeData* mimeData) override;
+        void HandleLeave(const AZ::EntityId& sceneId, const QMimeData* mimeData) override;
+        ////
+        
 
         //AZ::Component
         void Activate() override;

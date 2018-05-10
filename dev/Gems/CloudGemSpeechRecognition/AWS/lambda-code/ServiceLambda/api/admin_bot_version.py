@@ -18,3 +18,10 @@ def put(request, name):
         'status' : lex.create_bot_version(name)
     }
 
+@service.api
+def delete(request, name, version):
+    return {
+        'status' : lex.delete_bot(name, version)
+    }
+
+

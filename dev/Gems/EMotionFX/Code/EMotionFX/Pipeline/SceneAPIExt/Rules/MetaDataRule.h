@@ -13,7 +13,6 @@
 #pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/std/string/string.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <SceneAPI/SceneData/SceneDataConfiguration.h>
 

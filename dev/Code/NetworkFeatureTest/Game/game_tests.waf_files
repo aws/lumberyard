@@ -1,9 +1,0 @@
-{
-    "none":
-    {
-        "Tests":
-        [
-            "Tests/NetworkFeatureTestTestsMain.cpp"
-        ]
-    }
-}

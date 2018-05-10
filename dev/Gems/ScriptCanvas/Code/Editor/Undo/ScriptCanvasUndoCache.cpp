@@ -31,9 +31,9 @@ namespace ScriptCanvasEditor
         m_dataMap.clear();
     }
 
-    void UndoCache::PurgeCache(AZ::EntityId entityId)
+    void UndoCache::PurgeCache(AZ::EntityId scriptCanvasEntityId)
     {
-        m_dataMap.erase(entityId);
+        m_dataMap.erase(scriptCanvasEntityId);
     }
 
     void UndoCache::PopulateCache(AZ::Entity* scriptCanvasEntity)
@@ -44,16 +44,16 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void UndoCache::UpdateCache(AZ::EntityId entityId)
+    void UndoCache::UpdateCache(AZ::EntityId scriptCanvasEntityId)
     {
         // Lookup the graph item and perform a snapshot of all it's serializable elements
         UndoData undoData;
-        UndoRequestBus::BroadcastResult(undoData, &UndoRequests::CreateUndoData, entityId);
+        UndoRequestBus::BroadcastResult(undoData, &UndoRequests::CreateUndoData, scriptCanvasEntityId);
       
         AZ::SerializeContext* serializeContext{};
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
-        AZStd::vector<AZ::u8>& newData = m_dataMap[entityId];
+        AZStd::vector<AZ::u8>& newData = m_dataMap[scriptCanvasEntityId];
         newData.clear();
         AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> byteStream(&newData);
         AZ::ObjectStream* objStream = AZ::ObjectStream::Create(&byteStream, *serializeContext, AZ::DataStream::ST_BINARY);
@@ -66,9 +66,9 @@ namespace ScriptCanvasEditor
         objStream->Finalize();
     }
 
-    const AZStd::vector<AZ::u8>& UndoCache::Retrieve(AZ::EntityId entityId)
+    const AZStd::vector<AZ::u8>& UndoCache::Retrieve(AZ::EntityId scriptCanvasEntityId)
     {
-        auto it = m_dataMap.find(entityId);
+        auto it = m_dataMap.find(scriptCanvasEntityId);
 
         if (it == m_dataMap.end())
         {

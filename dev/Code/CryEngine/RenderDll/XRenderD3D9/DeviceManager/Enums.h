@@ -33,9 +33,10 @@ enum EConstantBufferShaderSlot : AZ::u8
     eConstantBufferShaderSlot_PerBatch = 0,
     eConstantBufferShaderSlot_PerInstanceLegacy = 1,
     eConstantBufferShaderSlot_PerMaterial = 2,
-    eConstantBufferShaderSlot_ReflectedCount = 3,
+    eConstantBufferShaderSlot_ReflectedCount = eConstantBufferShaderSlot_PerMaterial + 1, // This slot is used only for counting. It's not a real binding value.
     // !Reflected constant buffers
 
+    eConstantBufferShaderSlot_SPIIndex = 3,
     eConstantBufferShaderSlot_PerInstance = 4,
     eConstantBufferShaderSlot_SPI = 5,
     eConstantBufferShaderSlot_SkinQuat = 6,
@@ -45,7 +46,6 @@ enum EConstantBufferShaderSlot : AZ::u8
     eConstantBufferShaderSlot_PerView = 10,
     eConstantBufferShaderSlot_PerFrame = 11,
     // OpenGLES 3.X guarantees only 12 uniform slots for VS and PS.
-    eConstantBufferShaderSlot_SPIIndex = 12,
     eConstantBufferShaderSlot_Count
 };
 

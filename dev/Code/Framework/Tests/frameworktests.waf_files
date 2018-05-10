@@ -21,10 +21,13 @@
             "Slices.cpp",
             "Script.cpp",
             "StringFunc.cpp",
-            "TestTypes.h",
-            "TransformComponent.cpp",
             "AssetCatalog.cpp",
-            "AssetProcessorConnection.cpp"
+            "AssetProcessorConnection.cpp",
+            "NetBindingSystemImplTest.cpp",
+            "NetBindingMocks.h",
+            "TransformComponent.cpp",
+            "GridMocks.h",
+            "InterestManagerComponentTests.cpp"
         ]
     }
 }

@@ -1,6 +1,6 @@
 {
     "name": "benchmark",
-    "source": "@ROOT@/Code/SDKs/benchmark",
+    "source": "@3P:benchmark@",
     "description": "Google benchmark library",
     "includes": [
         "include"

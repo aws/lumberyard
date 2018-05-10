@@ -34,6 +34,21 @@
 
 #include "Multiplayer/IMultiplayerGem.h"
 #include "Multiplayer/MultiplayerLobbyServiceWrapper/MultiplayerLobbyLANServiceWrapper.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_1 1
+#define MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_2 2
+#define MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_3 3
+#define MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_4 4
+#define MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_5 5
+#define MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_6 6
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(MultiplayerLobbyComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #include "Multiplayer/MultiplayerUtils.h"
 
 
@@ -271,9 +286,25 @@ namespace Multiplayer
         SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionGameliftButton, false);
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(MultiplayerLobbyComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 		SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionXboxButton, false); // ACCEPTED_USE
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(MultiplayerLobbyComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 		SetElementInputEnabled(m_selectionLobbyID, k_lobbySelectionPSNButton, false); // ACCEPTED_USE
+#endif
 
         ShowSelectionLobby();
 
@@ -288,6 +319,10 @@ namespace Multiplayer
                 GridMate::SessionEventBus::Handler::BusConnect(gridMate);
             }
         }
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(MultiplayerLobbyComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 
     void MultiplayerLobbyComponent::Deactivate()
@@ -400,11 +435,27 @@ namespace Multiplayer
         }
         else if (actionName == "OnListXboxServers") // ACCEPTED_USE
         {
-            AZ_Assert(false,"Trying to use XBox Session Services without compiling for Durango."); // ACCEPTED_USE
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(MultiplayerLobbyComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
+            AZ_Assert(false,"Trying to use XBox Session Services without compiling for Xbone."); // ACCEPTED_USE
+#endif
         }
         else if (actionName == "OnListPSNServers") // ACCEPTED_USE
         {
-            AZ_Assert(false,"Trying to use PSN Session services without compiling for Orbis"); // ACCEPTED_USE
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MULTIPLAYERLOBBYCOMPONENT_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(MultiplayerLobbyComponent_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
+            AZ_Assert(false,"Trying to use PSN Session services without compiling for PS4"); // ACCEPTED_USE
+#endif
         }
         else if (actionName == "OnDismissErrorMessage")
         {
@@ -1280,6 +1331,22 @@ namespace Multiplayer
         return "";
     }
 
+    bool MultiplayerLobbyComponent::GetGameLiftBoolParam(const char* param)
+    {
+        bool value = false;
+        ICVar* cvar = gEnv->pConsole->GetCVar(param);
+
+        if (cvar)
+        {
+            if( cvar->GetI64Val() )
+            {
+                value = true;
+            }
+        }
+
+        return value;
+    }
+
     void MultiplayerLobbyComponent::SetGameLiftParam(const char* param, const char* value)
     {
         ICVar* cvar = gEnv->pConsole->GetCVar(param);
@@ -1386,6 +1453,8 @@ namespace Multiplayer
             serviceDesc.m_region = GetGameLiftParam("gamelift_aws_region");
             serviceDesc.m_aliasId = GetGameLiftParam("gamelift_alias_id");
             serviceDesc.m_playerId = GetGameLiftParam("gamelift_player_id");
+            serviceDesc.m_useGameLiftLocalServer = GetGameLiftBoolParam("gamelift_uselocalserver");
+
             EBUS_EVENT(GameLift::GameLiftRequestBus, StartClientService, serviceDesc);
         }
 

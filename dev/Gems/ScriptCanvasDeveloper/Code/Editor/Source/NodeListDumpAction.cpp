@@ -39,7 +39,7 @@ namespace ScriptCanvasDeveloperEditor
             QAction* nodeDumpAction{};
             if (mainWindow)
             {
-                QAction* nodeDumpAction = new QAction(QAction::tr("Dump EBus Nodes"), mainWindow);
+                nodeDumpAction = new QAction(QAction::tr("Dump EBus Nodes"), mainWindow);
                 nodeDumpAction->setAutoRepeat(false);
                 nodeDumpAction->setToolTip("Dumps a list of all EBus nodes(their inputs and outputs) to the clipboard");
                 nodeDumpAction->setShortcut(QKeySequence(QAction::tr("Ctrl+Alt+N", "Debug|Dump EBus Nodes")));

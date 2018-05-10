@@ -40,6 +40,7 @@ namespace LmbrCentral
         FogVolumeComponentRequestBus::Handler::BusConnect(entityId);
         ShapeComponentNotificationsBus::Handler::BusConnect(entityId);
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
+        AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
     }
 
     void EditorFogVolumeComponent::Deactivate()
@@ -50,10 +51,11 @@ namespace LmbrCentral
         m_fogVolume.SetEntityId(AZ::EntityId());
         m_configuration.SetEntityId(AZ::EntityId());
 
-        RenderNodeRequestBus::Handler::BusDisconnect();
-        FogVolumeComponentRequestBus::Handler::BusDisconnect();
-        ShapeComponentNotificationsBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        ShapeComponentNotificationsBus::Handler::BusDisconnect();
+        FogVolumeComponentRequestBus::Handler::BusDisconnect();
+        RenderNodeRequestBus::Handler::BusDisconnect();
     }
 
     void EditorFogVolumeComponent::Reflect(AZ::ReflectContext* context)
@@ -105,8 +107,8 @@ namespace LmbrCentral
 
     void EditorFogVolumeComponent::RefreshFog()
     {
-        m_configuration.UpdateSizeFromEntityShape();
         m_fogVolume.UpdateFogVolumeProperties(m_configuration);
+        m_fogVolume.UpdateRenderingFlags(m_configuration);
         m_fogVolume.UpdateFogVolumeTransform();
     }
 
@@ -119,8 +121,14 @@ namespace LmbrCentral
     {
         if (changeReason == ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged)
         {
+            m_configuration.UpdateSizeFromEntityShape();
             RefreshFog();
         }
+    }
+
+    void EditorFogVolumeComponent::OnEditorSpecChange()
+    {
+        RefreshFog();
     }
 
     void EditorFogVolumeComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -169,7 +177,7 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &FogVolumeConfiguration::m_globalDensity,
                         "Fog Density", "Controls the density of the fog. The higher the value the more dense the fog and the less you'll be able to see objects behind or inside the fog volume")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
                         ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
 
@@ -219,7 +227,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
 
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &FogVolumeConfiguration::m_minSpec,
-                        "Minimum spec", "Min spec for light to be active.")
+                        "Minimum spec", "Min spec for the fog to be active.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &FogVolumeConfiguration::PropertyChanged)
                         ->EnumAttribute(EngineSpec::Never, "Never")
                         ->EnumAttribute(EngineSpec::VeryHigh, "Very high")

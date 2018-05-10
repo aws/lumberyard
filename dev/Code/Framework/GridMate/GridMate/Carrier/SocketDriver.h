@@ -9,6 +9,13 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SOCKETDRIVER_H_SECTION_1 1
+#define SOCKETDRIVER_H_SECTION_2 2
+#endif
+
 #ifndef GM_SOCKET_DRIVER_H
 #define GM_SOCKET_DRIVER_H
 
@@ -19,6 +26,13 @@
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <WinSock2.h>
 #   include <ws2tcpip.h>
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_H_SECTION_1
+#include AZ_RESTRICTED_FILE(SocketDriver_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_ANDROID)
 #   include <netinet/in.h>
 #   include <android/api-level.h>
@@ -31,8 +45,16 @@
 #error Platform not supported.
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SOCKETDRIVER_H_SECTION_2
+#include AZ_RESTRICTED_FILE(SocketDriver_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 struct sockaddr_in;
 struct sockaddr;
+#endif
 
 #if !defined(AZ_SOCKET_IPV6_SUPPORT) && !defined(AZ_PLATFORM_APPLE)
 

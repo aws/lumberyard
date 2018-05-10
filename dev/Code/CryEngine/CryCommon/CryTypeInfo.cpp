@@ -22,7 +22,7 @@
 
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CryTypeInfo_cpp)
+#include AZ_RESTRICTED_FILE(CryTypeInfo_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(LINUX) || defined(APPLE)
 #define CRYTYPEINFO_CPP_TRAIT_DEFINE_LTOA_S 1
 #endif

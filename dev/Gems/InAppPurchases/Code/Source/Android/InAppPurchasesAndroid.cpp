@@ -27,52 +27,49 @@
 
 namespace InAppPurchases
 {
-    static PurchasedProductDetailsAndroid* ParseReceiptDetails(JNIEnv* env, jobjectArray jpurchasedProductDetails, jobjectArray jpurchaseSignatures, int index)
+    static bool IsFieldIdValid(jfieldID fid)
     {
-        jstring jpurchasedProduct = static_cast<jstring>(env->GetObjectArrayElement(jpurchasedProductDetails, index));
-        jstring jsignature = static_cast<jstring>(env->GetObjectArrayElement(jpurchaseSignatures, index));
-        const char* purchasedProduct = env->GetStringUTFChars(jpurchasedProduct, nullptr);
-        const char* signature = env->GetStringUTFChars(jsignature, nullptr);
+        if (fid == NULL)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    static PurchasedProductDetailsAndroid* ParseReceiptDetails(JNIEnv* env, jobjectArray jpurchasedProductDetails, int index)
+    {
+        jobject jpurchasedProduct = env->GetObjectArrayElement(jpurchasedProductDetails, index);
+
+        const int NUM_FIELDS_PURCHASED_PRODUCTS = 7;
+        jfieldID fid[NUM_FIELDS_PURCHASED_PRODUCTS];
+        jclass cls = env->GetObjectClass(jpurchasedProduct);
+        fid[0] = env->GetFieldID(cls, "m_productId", "Ljava/lang/String;");
+        fid[1] = env->GetFieldID(cls, "m_orderId", "Ljava/lang/String;");
+        fid[2] = env->GetFieldID(cls, "m_packageName", "Ljava/lang/String;");
+        fid[3] = env->GetFieldID(cls, "m_purchaseToken", "Ljava/lang/String;");
+        fid[4] = env->GetFieldID(cls, "m_signature", "Ljava/lang/String;");
+        fid[5] = env->GetFieldID(cls, "m_purchaseTime", "J");
+        fid[6] = env->GetFieldID(cls, "m_isAutoRenewing", "Z");
+
+        for (int i = 0; i < NUM_FIELDS_PURCHASED_PRODUCTS; i++)
+        {
+            if (!IsFieldIdValid(fid[i]))
+            {
+                AZ_TracePrintf("LumberyardInAppBilling", "Invaild FieldId in PurchasedProductDetails\n");
+                return nullptr;
+            }
+        }
 
         PurchasedProductDetailsAndroid* purchasedProductDetails = new PurchasedProductDetailsAndroid();
-
-        rapidjson::Document parsePurchasedProduct;
-        parsePurchasedProduct.Parse<rapidjson::kParseNoFlags>(purchasedProduct);
-        purchasedProductDetails->SetProductId(parsePurchasedProduct["productId"].GetString());
-        if (parsePurchasedProduct.HasMember("orderId"))
-        {
-            purchasedProductDetails->SetOrderId(parsePurchasedProduct["orderId"].GetString());
-        }
-        purchasedProductDetails->SetPackageName(parsePurchasedProduct["packageName"].GetString());
-        purchasedProductDetails->SetPurchaseToken(parsePurchasedProduct["purchaseToken"].GetString());
-        if (parsePurchasedProduct.HasMember("developerPayload"))
-        {
-            purchasedProductDetails->SetDeveloperPayload(parsePurchasedProduct["developerPayload"].GetString());
-        }
-        purchasedProductDetails->SetPurchaseTime(parsePurchasedProduct["purchaseTime"].GetUint64());
-
-        int purchaseState = parsePurchasedProduct["purchaseState"].GetInt();
-        if (purchaseState == 0)
-        {
-            purchasedProductDetails->SetPurchaseState(PurchaseState::PURCHASED);
-        }
-        else if (purchaseState == 1)
-        {
-            purchasedProductDetails->SetPurchaseState(PurchaseState::CANCELLED);
-        }
-        else if (purchaseState == 2)
-        {
-            purchasedProductDetails->SetPurchaseState(PurchaseState::REFUNDED);
-        }
-
-        if (parsePurchasedProduct.HasMember("autoRenewing"))
-        {
-            purchasedProductDetails->SetIsAutoRenewing(parsePurchasedProduct["autoRenewing"].GetBool());
-        }
-        purchasedProductDetails->SetPurchaseSignature(AZStd::string(signature, env->GetStringUTFLength(jsignature)));
-
-        env->ReleaseStringUTFChars(jpurchasedProduct, purchasedProduct);
-        env->ReleaseStringUTFChars(jsignature, signature);
+        
+        purchasedProductDetails->SetProductId(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jpurchasedProduct, fid[0]))));
+        purchasedProductDetails->SetOrderId(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jpurchasedProduct, fid[1]))));
+        purchasedProductDetails->SetPackageName(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jpurchasedProduct, fid[2]))));
+        purchasedProductDetails->SetPurchaseToken(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jpurchasedProduct, fid[3]))));
+        purchasedProductDetails->SetPurchaseSignature(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jpurchasedProduct, fid[4]))));
+        purchasedProductDetails->SetPurchaseTime(env->GetLongField(jpurchasedProduct, fid[5]));
+        purchasedProductDetails->SetIsAutoRenewing(env->GetBooleanField(jpurchasedProduct, fid[6]));
 
         return purchasedProductDetails;
     }
@@ -82,67 +79,87 @@ namespace InAppPurchases
         int numProducts = env->GetArrayLength(jproductDetails);
 
         InAppPurchasesInterface::GetInstance()->GetCache()->ClearCachedProductDetails();
+        
+        const int NUM_FIELDS_PRODUCTS = 7;
+        jfieldID fid[NUM_FIELDS_PRODUCTS];
+        jclass cls;
+        if (numProducts > 0)
+        {
+            cls = env->GetObjectClass(env->GetObjectArrayElement(jproductDetails, 0));
+            fid[0] = env->GetFieldID(cls, "m_productId", "Ljava/lang/String;");
+            fid[1] = env->GetFieldID(cls, "m_type", "Ljava/lang/String;");
+            fid[2] = env->GetFieldID(cls, "m_price", "Ljava/lang/String;");
+            fid[3] = env->GetFieldID(cls, "m_currencyCode", "Ljava/lang/String;");
+            fid[4] = env->GetFieldID(cls, "m_title", "Ljava/lang/String;");
+            fid[5] = env->GetFieldID(cls, "m_description", "Ljava/lang/String;");
+            fid[6] = env->GetFieldID(cls, "m_priceMicro", "J");
+        }
+
+        for (int i = 0; i < NUM_FIELDS_PRODUCTS; i++)
+        {
+            if (!IsFieldIdValid(fid[i]))
+            {
+                AZ_TracePrintf("LumberyardInAppBilling", "Invaild FieldId in ProductDetails\n");
+                return;
+            }
+        }
 
         for (int i = 0; i < numProducts; i++)
         {
-            jstring jproduct = static_cast<jstring>(env->GetObjectArrayElement(jproductDetails, i));
-            const char* product = env->GetStringUTFChars(jproduct, nullptr);
+            jobject jproduct = env->GetObjectArrayElement(jproductDetails, i);
 
             ProductDetailsAndroid* productDetails = new ProductDetailsAndroid();
 
-            rapidjson::Document parseProduct;
-            parseProduct.Parse<rapidjson::kParseNoFlags>(product);
-            productDetails->SetProductId(parseProduct["productId"].GetString());
-            productDetails->SetProductType(parseProduct["type"].GetString());
-            productDetails->SetProductPrice(parseProduct["price"].GetString());
-            productDetails->SetProductCurrencyCode(parseProduct["price_currency_code"].GetString());
-            productDetails->SetProductTitle(parseProduct["title"].GetString());
-            productDetails->SetProductDescription(parseProduct["description"].GetString());
-            productDetails->SetProductPriceMicro(parseProduct["price_amount_micros"].GetUint64());
+            productDetails->SetProductId(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jproduct, fid[0]))));
+            productDetails->SetProductType(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jproduct, fid[1]))));
+            productDetails->SetProductPrice(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jproduct, fid[2]))));
+            productDetails->SetProductCurrencyCode(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jproduct, fid[3]))));
+            productDetails->SetProductTitle(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jproduct, fid[4]))));
+            productDetails->SetProductDescription(AZ::Android::JNI::ConvertJstringToString(static_cast<jstring>(env->GetObjectField(jproduct, fid[5]))));
+            productDetails->SetProductPriceMicro(env->GetLongField(jproduct, fid[6]));
             InAppPurchasesInterface::GetInstance()->GetCache()->AddProductDetailsToCache(productDetails);
-
-            env->ReleaseStringUTFChars(jproduct, product);
         }
         EBUS_EVENT(InAppPurchasesResponseBus, ProductInfoRetrieved, InAppPurchasesInterface::GetInstance()->GetCache()->GetCachedProductDetails());
     }
 
-    void PurchasedProductsRetrieved(JNIEnv* env, jobject object, jobjectArray jpurchasedProductDetails, jobjectArray jpurchaseSignatures)
+    void PurchasedProductsRetrieved(JNIEnv* env, jobject object, jobjectArray jpurchasedProductDetails)
     {
         InAppPurchasesInterface::GetInstance()->GetCache()->ClearCachedPurchasedProductDetails();
         int numPurchasedProducts = env->GetArrayLength(jpurchasedProductDetails);
         for (int i = 0; i < numPurchasedProducts; i++)
         {
-            PurchasedProductDetailsAndroid* purchasedProduct = ParseReceiptDetails(env, jpurchasedProductDetails, jpurchaseSignatures, i);
-            InAppPurchasesInterface::GetInstance()->GetCache()->AddPurchasedProductDetailsToCache(purchasedProduct);
+            PurchasedProductDetailsAndroid* purchasedProduct = ParseReceiptDetails(env, jpurchasedProductDetails, i);
+            if (purchasedProduct != nullptr)
+            {
+                InAppPurchasesInterface::GetInstance()->GetCache()->AddPurchasedProductDetailsToCache(purchasedProduct);
+            }
         }
         EBUS_EVENT(InAppPurchasesResponseBus, PurchasedProductsRetrieved, InAppPurchasesInterface::GetInstance()->GetCache()->GetCachedPurchasedProductDetails());
     }
 
-    void NewProductPurchased(JNIEnv* env, jobject object, jobjectArray jpurchaseReceipt, jobjectArray jpurchaseSignature)
+    void NewProductPurchased(JNIEnv* env, jobject object, jobjectArray jpurchaseReceipt)
     {
-        PurchasedProductDetailsAndroid* purchasedProduct = ParseReceiptDetails(env, jpurchaseReceipt, jpurchaseSignature, 0);
+        PurchasedProductDetailsAndroid* purchasedProduct = ParseReceiptDetails(env, jpurchaseReceipt, 0);
 
-        if (purchasedProduct->GetPurchaseState() == PurchaseState::PURCHASED)
+        if (purchasedProduct != nullptr)
         {
             InAppPurchasesInterface::GetInstance()->GetCache()->AddPurchasedProductDetailsToCache(purchasedProduct);
             EBUS_EVENT(InAppPurchasesResponseBus, NewProductPurchased, purchasedProduct);
         }
-        else if (purchasedProduct->GetPurchaseState() == PurchaseState::CANCELLED)
-        {
-            EBUS_EVENT(InAppPurchasesResponseBus, PurchaseCancelled, purchasedProduct);
-            delete purchasedProduct;
-        }
-        else if (purchasedProduct->GetPurchaseState() == PurchaseState::REFUNDED)
-        {
-            EBUS_EVENT(InAppPurchasesResponseBus, PurchaseRefunded, purchasedProduct);
-            delete purchasedProduct;
-        }
+    }
+
+    void PurchaseConsumed(JNIEnv* env, jobject object, jstring jpurchaseToken)
+    {
+        const char* purchaseToken = env->GetStringUTFChars(jpurchaseToken, nullptr);
+        EBUS_EVENT(InAppPurchasesResponseBus, PurchaseConsumed, AZStd::string(purchaseToken, env->GetStringUTFLength(jpurchaseToken)));
+        env->ReleaseStringUTFChars(jpurchaseToken, purchaseToken);
     }
 
     static JNINativeMethod methods[] = {
-        { "nativeProductInfoRetrieved", "([Ljava/lang/String;)V", (void*)ProductInfoRetrieved },
-        { "nativePurchasedProductsRetrieved", "([Ljava/lang/String;[Ljava/lang/String;)V", (void*)PurchasedProductsRetrieved },
-        { "nativeNewProductPurchased", "([Ljava/lang/String;[Ljava/lang/String;)V", (void*)NewProductPurchased },
+        { "nativeProductInfoRetrieved", "([Ljava/lang/Object;)V", (void*)ProductInfoRetrieved },
+        { "nativePurchasedProductsRetrieved", "([Ljava/lang/Object;)V", (void*)PurchasedProductsRetrieved },
+        { "nativeNewProductPurchased", "([Ljava/lang/Object;)V", (void*)NewProductPurchased },
+        { "nativePurchaseConsumed", "(Ljava/lang/String;)V", (void*)PurchaseConsumed }
     };
 
 
@@ -159,14 +176,9 @@ namespace InAppPurchases
 
         env->RegisterNatives(billingClass, methods, sizeof(methods) / sizeof(methods[0]));
 
-        mid = env->GetMethodID(billingClass, "IsKindleDevice","()Z");
+        mid = env->GetMethodID(billingClass, "IsKindleDevice", "()Z");
         jboolean result = env->CallBooleanMethod(m_billingInstance, mid);
-        if (!result)
-        {
-        mid = env->GetMethodID(billingClass, "Initialize", "()V");
-        env->CallVoidMethod(m_billingInstance, mid);
-        }
-        else
+        if (result)
         {
             EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, "Kindle Device Detected", "IAP currently unsupported on Kindle devices", false);
         }
@@ -281,11 +293,10 @@ namespace InAppPurchases
         jstring jproductId = env->NewStringUTF(productId.c_str());
         jstring jdeveloperPayload = env->NewStringUTF(developerPayload.c_str());
         jstring jproductType = env->NewStringUTF(productType.c_str());
-        jint jrequestCode = 0;
 
         jclass billingClass = env->GetObjectClass(m_billingInstance);
-        jmethodID mid = env->GetMethodID(billingClass, "PurchaseProduct", "(ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
-        env->CallVoidMethod(m_billingInstance, mid, jrequestCode, jproductId, jdeveloperPayload, jproductType);
+        jmethodID mid = env->GetMethodID(billingClass, "PurchaseProduct", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+        env->CallVoidMethod(m_billingInstance, mid, jproductId, jdeveloperPayload, jproductType);
 
         env->DeleteLocalRef(jproductId);
         env->DeleteLocalRef(jdeveloperPayload);

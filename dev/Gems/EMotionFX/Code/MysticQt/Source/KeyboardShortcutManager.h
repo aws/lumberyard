@@ -13,15 +13,13 @@
 #ifndef __MYSTICQT_KEYBOARDSHORTCUTMANAGER_H
 #define __MYSTICQT_KEYBOARDSHORTCUTMANAGER_H
 
+#include <AzCore/std/string/string.h>
+#include <MCore/Source/Array.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "MysticQtConfig.h"
-#include <QtCore/QString>
-#include <QtCore/QSettings>
-#include <QtGui/QKeyEvent>
 
-
-
+class QKeyEvent;
+class QSettings;
 
 namespace MysticQt
 {
@@ -37,7 +35,7 @@ namespace MysticQt
         {
             MCORE_MEMORYOBJECTCATEGORY(KeyboardShortcutManager::Action, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_MYSTICQT);
 
-            MCore::String       mName;
+            AZStd::string       mName;
             int                 mKey;
             bool                mCtrl;
             bool                mAlt;
@@ -79,12 +77,12 @@ namespace MysticQt
             void AddAction(Action* action)                          { mActions.Add(action); }
             uint32 GetNumActions() const                            { return mActions.GetLength(); }
             Action* GetAction(uint32 index)                         { return mActions[index]; }
-            const char* GetName() const                             { return mName.AsChar(); }
-            const MCore::String& GetNameString() const              { return mName; }
+            const char* GetName() const                             { return mName.c_str(); }
+            const AZStd::string& GetNameString() const              { return mName; }
             Action* FindActionByName(const char* actionName, bool local) const;
 
         private:
-            MCore::String           mName;
+            AZStd::string           mName;
             MCore::Array<Action*>   mActions;
         };
 

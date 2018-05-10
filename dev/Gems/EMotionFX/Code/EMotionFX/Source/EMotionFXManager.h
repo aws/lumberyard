@@ -15,11 +15,9 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Distance.h>
 #include "ThreadData.h"
 #include "BaseObject.h"
-#include <AzCore/std/string/string.h>
 
 #include <AzCore/Module/Environment.h>
 
@@ -116,7 +114,7 @@ namespace EMotionFX
          * In case of EMotion FX v3.05 this would make it equal to "05".
          * @param outLowVersionString The output string to store the low version number in.
          */
-        void BuildLowVersionString(MCore::String& outLowVersionString);
+        void BuildLowVersionString(AZStd::string& outLowVersionString);
 
         /**
          * Update EMotion FX with a given time delta.
@@ -229,14 +227,14 @@ namespace EMotionFX
          * Convert the passed absolute filename to one relative to the media root folder.
          * @param inOutFileName Absolute filename to be changed to a relative one using the current media root folder.
          */
-        void GetFilenameRelativeToMediaRoot(MCore::String* inOutFilename) const;
+        void GetFilenameRelativeToMediaRoot(AZStd::string* inOutFilename) const;
 
         /**
          * Convert the given absolute filename to one relative to the given folder path.
          * @param folderPath Base folder path to remove.
          * @param inOutFileName Absolute filename to be changed to a relative one.
          */
-        static void GetFilenameRelativeTo(MCore::String* inOutFilename, const char* folderPath);
+        static void GetFilenameRelativeTo(AZStd::string* inOutFilename, const char* folderPath);
 
         /**
          * Get the path of the media root folder.
@@ -315,8 +313,8 @@ namespace EMotionFX
         void SetUnitType(MCore::Distance::EUnitType unitType);
 
     private:
-        MCore::String               mVersionString;         /**< The version string. */
-        MCore::String               mCompilationDate;       /**< The compilation date string. */
+        AZStd::string               mVersionString;         /**< The version string. */
+        AZStd::string               mCompilationDate;       /**< The compilation date string. */
         AZStd::string               mMediaRootFolder;       /**< The path of the media root directory. */
         AZStd::string               mAssetSourceFolder;     /**< The absolute path of the asset source folder. */
         AZStd::string               mAssetCacheFolder;      /**< The absolute path of the asset cache folder. */

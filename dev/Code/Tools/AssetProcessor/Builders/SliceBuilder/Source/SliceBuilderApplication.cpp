@@ -43,15 +43,6 @@ void BuilderAddComponents(AZ::Entity* entity)
         entity->CreateComponent(LyShine::lyShineSystemComponentUuid);
     }
 
-    // Add the ScriptCanvas Builder System Component to an entity so that the AssetHandler is registered with the AssetManager
-    // Furthermore this also registers the ScriptCanvas asset type as a source asset type so that it is opened in the source asset folder
-    AZ::Component* scriptCanvasBuilderComponent{};
-    AZ::ComponentDescriptorBus::EventResult(scriptCanvasBuilderComponent, AZ::Uuid("{2FB1C848-B863-4562-9C4B-01E18BD61583}"), &AZ::ComponentDescriptorBus::Events::CreateComponent); // {2FB1C848-B863-4562-9C4B-01E18BD61583} is the ScriptCanvas BuilderSystemComponent
-    if (scriptCanvasBuilderComponent)
-    {
-        entity->AddComponent(scriptCanvasBuilderComponent); 
-    }
-
     // Add the GenericComponentUnwrapper for slice processing
     entity->CreateComponent(azrtti_typeid<AzToolsFramework::Components::GenericComponentUnwrapper>());
 }

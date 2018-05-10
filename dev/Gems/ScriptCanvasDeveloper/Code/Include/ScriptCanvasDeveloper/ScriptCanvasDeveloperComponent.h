@@ -13,11 +13,13 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <ScriptCanvas/Developer/StatusBus.h>
 
 namespace ScriptCanvasDeveloper
 {
     class SystemComponent
         : public AZ::Component
+        , public ScriptCanvas::StatusRequestBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{46BDD372-8E86-4C0F-B12C-DC271C5DCED1}");
@@ -33,5 +35,9 @@ namespace ScriptCanvasDeveloper
         void Init() override;
         void Activate() override;
         void Deactivate() override;
+
+        //// StatusRequestBus
+        AZ::Outcome<void, ScriptCanvas::StatusErrors> ValidateGraph(const ScriptCanvas::Graph&) override;
+        ////
     };
 }

@@ -256,6 +256,9 @@ void CD3D9Renderer::RT_Draw2dImageInternal(C2dImage* images, uint32 numImages, b
 
             FX_SetFPMode();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(D3DRenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
         }
 
         FX_DrawPrimitive(eptTriangleStrip, i * 4, 4);

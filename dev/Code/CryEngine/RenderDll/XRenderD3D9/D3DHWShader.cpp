@@ -25,6 +25,13 @@
 #include "../Common/TypedConstantBuffer.h"
 #include "GraphicsPipeline/FurBendData.h"
 #include "GraphicsPipeline/FurPasses.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DHWSHADER_CPP_SECTION_1 1
+#define D3DHWSHADER_CPP_SECTION_2 2
+#endif
+
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
@@ -2290,6 +2297,11 @@ void CD3D9Renderer::UpdatePerFrameParameters()
         PF.m_SunSpecularMultiplier = multiplier.x;
     }
 
+    // Set energy indicator representing the sun intensity compared to noon.
+    Vec3    dayNightIndicators;
+    p3DEngine->GetGlobalParameter(E3DPARAM_DAY_NIGHT_INDICATOR, dayNightIndicators);
+    PF.m_MidDayIndicator = dayNightIndicators.y;
+
     p3DEngine->GetGlobalParameter(E3DPARAM_CLOUDSHADING_SUNCOLOR, PF.m_CloudShadingColorSun);
     p3DEngine->GetGlobalParameter(E3DPARAM_CLOUDSHADING_SKYCOLOR, PF.m_CloudShadingColorSky);
 
@@ -3033,8 +3045,15 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 tx->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
             }
-            else
+            else 
             {
+                // Allow render elements to set their own samplers
+                CRendElementBase* pRE = rd->m_RP.m_pRE;
+                if (pRE && pRE->mfSetSampler(nCustomID, nTUnit, nTState, nTexMaterialSlot, nSUnit))
+                {
+                    continue;
+                }
+
                 switch (nCustomID)
                 {
                 case TO_FROMRE0:
@@ -3062,10 +3081,10 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_FROMRE1_FROM_CONTAINER:
                 {
                     // take render element from vertex container render mesh if available
-                    CRendElementBase* pRE = sGetContainerRE0(rd->m_RP.m_pRE);
-                    if (pRE)
+                    CRendElementBase* _pRE = sGetContainerRE0(rd->m_RP.m_pRE);
+                    if (_pRE)
                     {
-                        nCustomID = pRE->m_CustomTexBind[nCustomID - TO_FROMRE0_FROM_CONTAINER];
+                        nCustomID = _pRE->m_CustomTexBind[nCustomID - TO_FROMRE0_FROM_CONTAINER];
                     }
                     else
                     {
@@ -3423,10 +3442,10 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_VOLOBJ_SHADOW:
                 {
                     bool texBound(false);
-                    CRendElementBase* pRE(rd->m_RP.m_pRE);
-                    if (pRE && pRE->mfGetType() == eDATA_VolumeObject)
+                    CRendElementBase* _pRE(rd->m_RP.m_pRE);
+                    if (_pRE && _pRE->mfGetType() == eDATA_VolumeObject)
                     {
-                        CREVolumeObject* pVolObj((CREVolumeObject*)pRE);
+                        CREVolumeObject* pVolObj((CREVolumeObject*)_pRE);
                         int texId(0);
                         if (pVolObj)
                         {
@@ -3484,10 +3503,10 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
                 case TO_SKYDOME_MIE:
                 case TO_SKYDOME_RAYLEIGH:
                 {
-                    CRendElementBase* pRE = rd->m_RP.m_pRE;
-                    if (pRE && pRE->mfGetType() == eDATA_HDRSky)
+                    CRendElementBase* _pRE = rd->m_RP.m_pRE;
+                    if (_pRE && _pRE->mfGetType() == eDATA_HDRSky)
                     {
-                        CTexture* pTex = nCustomID == TO_SKYDOME_MIE ? ((CREHDRSky*)pRE)->m_pSkyDomeTextureMie : ((CREHDRSky*)pRE)->m_pSkyDomeTextureRayleigh;
+                        CTexture* pTex = nCustomID == TO_SKYDOME_MIE ? ((CREHDRSky*)_pRE)->m_pSkyDomeTextureMie : ((CREHDRSky*)_pRE)->m_pSkyDomeTextureRayleigh;
                         if (pTex)
                         {
                             pTex->Apply(nTUnit, -1, nTexMaterialSlot, nSUnit);
@@ -3500,10 +3519,10 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_SKYDOME_MOON:
                 {
-                    CRendElementBase* pRE = rd->m_RP.m_pRE;
-                    if (pRE && pRE->mfGetType() == eDATA_HDRSky)
+                    CRendElementBase* _pRE = rd->m_RP.m_pRE;
+                    if (_pRE && _pRE->mfGetType() == eDATA_HDRSky)
                     {
-                        CREHDRSky* pHDRSky = (CREHDRSky*)pRE;
+                        CREHDRSky* pHDRSky = (CREHDRSky*)_pRE;
                         CTexture* pMoonTex(pHDRSky->m_moonTexId > 0 ? CTexture::GetByID(pHDRSky->m_moonTexId) : 0);
                         if (pMoonTex)
                         {
@@ -5210,6 +5229,10 @@ bool CHWShader_D3D::mfSetHS(int nFlags)
     s_pCurInstHS = pInst;
     if (!(nFlags & HWSF_PRECACHE))
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DHWShader_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         mfBindHS(pInst->m_Handle.m_pShader, pInst->m_Handle.m_pShader->m_pHandle);
 
@@ -5266,6 +5289,10 @@ bool CHWShader_D3D::mfSetDS(int nFlags)
     s_pCurInstDS = pInst;
     if (!(nFlags & HWSF_PRECACHE))
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DHWSHADER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DHWShader_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         mfBindDS(pInst->m_Handle.m_pShader, pInst->m_Handle.m_pShader->m_pHandle);
 

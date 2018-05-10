@@ -10,7 +10,6 @@
 *
 */
 
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "PhonemeSelectionWindow.h"
 #include "MorphTargetsWindowPlugin.h"
 #include <EMotionFX/Source/MorphSetup.h>
@@ -356,7 +355,7 @@ namespace EMStudio
 
             // get the phoneme set name
             EMotionFX::MorphTarget::EPhonemeSet phonemeSet = (EMotionFX::MorphTarget::EPhonemeSet)(1 << i);
-            const AZStd::string phonemeSetName = mMorphTarget->GetPhonemeSetString(phonemeSet).AsChar();
+            const AZStd::string phonemeSetName = mMorphTarget->GetPhonemeSetString(phonemeSet).c_str();
 
             // set the row count for the possible phoneme sets table
             mPossiblePhonemeSetsTable->setRowCount(insertPosition + 1);
@@ -367,7 +366,7 @@ namespace EMStudio
             mPossiblePhonemeSetsTable->setItem(insertPosition, 0, item);
 
             // create the visime widget and add it to the table
-            const AZStd::string filename = AZStd::string::format("%s/Images/Visimes/%s.png", MysticQt::GetDataDir().AsChar(), phonemeSetName.c_str());
+            const AZStd::string filename = AZStd::string::format("%s/Images/Visimes/%s.png", MysticQt::GetDataDir().c_str(), phonemeSetName.c_str());
             VisimeWidget* visimeWidget = new VisimeWidget(filename);
             mPossiblePhonemeSetsTable->setCellWidget(insertPosition, 0, visimeWidget);
 
@@ -379,21 +378,24 @@ namespace EMStudio
         }
 
         // fill the table with the selected phoneme sets
-        const MCore::String selectedPhonemeSets = mMorphTarget->GetPhonemeSetString(mMorphTarget->GetPhonemeSets());
-        const MCore::Array<MCore::String> splittedPhonemeSets = selectedPhonemeSets.Split(MCore::UnicodeCharacter::comma);
+        const AZStd::string selectedPhonemeSets = mMorphTarget->GetPhonemeSetString(mMorphTarget->GetPhonemeSets());
 
-        const uint32 numSelectedPhonemeSets = splittedPhonemeSets.GetLength();
+        AZStd::vector<AZStd::string> splittedPhonemeSets;
+        AzFramework::StringFunc::Tokenize(selectedPhonemeSets.c_str(), splittedPhonemeSets, MCore::CharacterConstants::comma, true /* keep empty strings */, true /* keep space strings */);
+
+
+        const uint32 numSelectedPhonemeSets = static_cast<uint32>(splittedPhonemeSets.size());
         mSelectedPhonemeSetsTable->setRowCount(numSelectedPhonemeSets);
         for (uint32 i = 0; i < numSelectedPhonemeSets; ++i)
         {
             // create dummy table widget item.
-            const EMotionFX::MorphTarget::EPhonemeSet phonemeSet = mMorphTarget->FindPhonemeSet(splittedPhonemeSets[i].AsChar());
-            QTableWidgetItem* item = new QTableWidgetItem(splittedPhonemeSets[i].AsChar());
+            const EMotionFX::MorphTarget::EPhonemeSet phonemeSet = mMorphTarget->FindPhonemeSet(splittedPhonemeSets[i].c_str());
+            QTableWidgetItem* item = new QTableWidgetItem(splittedPhonemeSets[i].c_str());
             item->setToolTip(GetPhonemeSetExample(phonemeSet));
             mSelectedPhonemeSetsTable->setItem(i, 0, item);
 
             // create the visime widget and add it to the table
-            const AZStd::string filename = AZStd::string::format("%s/Images/Visimes/%s.png", MysticQt::GetDataDir().AsChar(), splittedPhonemeSets[i].AsChar());
+            const AZStd::string filename = AZStd::string::format("%s/Images/Visimes/%s.png", MysticQt::GetDataDir().c_str(), splittedPhonemeSets[i].c_str());
             VisimeWidget* visimeWidget = new VisimeWidget(filename);
             mSelectedPhonemeSetsTable->setCellWidget(i, 0, visimeWidget);
 

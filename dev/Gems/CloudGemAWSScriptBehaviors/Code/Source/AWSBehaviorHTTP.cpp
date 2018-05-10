@@ -14,6 +14,8 @@
 
 #include "AWSBehaviorHTTP.h"
 
+#include "AWSBehaviorMap.h"
+
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/http/HttpClientFactory.h>
 
@@ -104,10 +106,10 @@ namespace CloudGemAWSScriptBehaviors
             int responseCode = static_cast<int>(httpResponse->GetResponseCode());
 
             auto headerMap = httpResponse->GetHeaders();
-            AZStd::unordered_map<AZStd::string, AZStd::string> stdHeaderMap;
+            StringMap stringMap;
             for (auto headerContent : headerMap)
             {
-                stdHeaderMap.emplace(headerContent.first.c_str(), headerContent.second.c_str());
+                stringMap.SetValue(headerContent.first.c_str(), headerContent.second.c_str());
             }
 
             AZStd::string contentType = httpResponse->GetContentType().c_str();
@@ -119,7 +121,7 @@ namespace CloudGemAWSScriptBehaviors
             returnString = readableOut.str().c_str();
             
             EBUS_EVENT(AWSBehaviorHTTPNotificationsBus, OnSuccess, AZStd::string("Success!"));
-            EBUS_EVENT(AWSBehaviorHTTPNotificationsBus, GetResponse, responseCode, stdHeaderMap, contentType, returnString);
+            EBUS_EVENT(AWSBehaviorHTTPNotificationsBus, GetResponse, responseCode, stringMap, contentType, returnString);
         }, true, jobContext);
         return job;
     }

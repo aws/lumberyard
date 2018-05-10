@@ -513,12 +513,6 @@ namespace LmbrCentral
         // Let subclass configure the physical entity.
         ConfigurePhysicalEntity();
 
-        if (CanInteractWithProximityTriggers())
-        {
-            // Create Proximity trigger proxy
-            EBUS_EVENT_RESULT(m_proximityTriggerProxy, ProximityTriggerSystemRequestBus, CreateEntity, GetEntityId());
-            UpdateProximityTriggerProxyAABB();
-        }
 
         // Listen to the physics system for events concerning this entity.
         EntityPhysicsEventBus::Handler::BusConnect(GetEntityId());
@@ -529,6 +523,14 @@ namespace LmbrCentral
         // For example, a MeshColliderComponent might have to wait several frames
         // for a MeshAsset to finish loading.
         AddCollidersFromEntityAndDescendants(GetEntityId());
+
+
+        if (CanInteractWithProximityTriggers())
+        {
+            // Create Proximity trigger proxy
+            EBUS_EVENT_RESULT(m_proximityTriggerProxy, ProximityTriggerSystemRequestBus, CreateEntity, GetEntityId());
+            UpdateProximityTriggerProxyAABB();
+        }
     }
 
     void PhysicsComponent::DisablePhysics()
@@ -602,6 +604,11 @@ namespace LmbrCentral
         {
             m_physicalEntity->Action(&action, threadSafe ? 1 : 0);
         }
+    }
+
+    bool PhysicsComponent::IsPhysicsFullyEnabled()
+    {
+        return m_isPhysicsFullyEnabled;
     }
 
     void PhysicsComponent::AddCollidersFromEntityAndDescendants(const AZ::EntityId& rootEntityId)

@@ -1,9 +1,9 @@
 {
     "name": "sqlite",
-    "source": "@ROOT@/Code/Tools/SDKs/SQLite",
+    "source": "@3P:sqlite@",
     "description": "SQLite Library",
     "includes": [
-        ".."
+        "."
     ],
     "defines": [],
     "lib_required": "True",
@@ -30,6 +30,7 @@
                 "sqlite.lib"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "darwin_x64": {
             "libpath_debug": [
                 "build/osx/darwin-clang-703.0.31/debug"

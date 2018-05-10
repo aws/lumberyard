@@ -26,6 +26,18 @@
 
 void CTexture::InitStreamingDev()
 {
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DTEXTURESSTREAMING_CPP_SECTION_1 1
+#define D3DTEXTURESSTREAMING_CPP_SECTION_2 2
+#define D3DTEXTURESSTREAMING_CPP_SECTION_3 3
+#define D3DTEXTURESSTREAMING_CPP_SECTION_4 4
+#define D3DTEXTURESSTREAMING_CPP_SECTION_5 5
+#define D3DTEXTURESSTREAMING_CPP_SECTION_6 6
+#define D3DTEXTURESSTREAMING_CPP_SECTION_7 7
+#endif
+
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
     if (CRenderer::CV_r_texturesstreamingDeferred)
     {
@@ -48,14 +60,26 @@ bool CTexture::IsStillUsedByGPU()
     return false;
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 
 bool CTexture::StreamPrepare_Platform()
 {
     return true;
 }
 
+#endif
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 void CTexture::StreamExpandMip(const void* vpRawData, int nMip, int nBaseMipOffset, int nSideDelta)
 {
@@ -100,7 +124,15 @@ void STexStreamOutState::CopyMips()
     {
         const int nOldMipOffset = m_nStartMip - tp->m_nMinMipVidUploaded;
         const int nNumMips = tp->GetNumMipsNonVirtual() - m_nStartMip;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         CTexture::StreamCopyMipsTexToTex(tp->m_pFileTexMips->m_pPoolItem, 0 + nOldMipOffset, m_pNewPoolItem, 0, nNumMips);
+#endif
     }
     else
     {
@@ -184,6 +216,10 @@ int CTexture::StreamTrim(int nToMip)
         if (!bCopying)
 #endif
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             // it is a sync operation anyway, so we do it in the render thread
             CTexture::StreamCopyMipsTexToTex(m_pFileTexMips->m_pPoolItem, 0 + nOldMipOffset, pNewPoolItem, 0, nNumMips);
             StreamAssignPoolItem(pNewPoolItem, nToMip);
@@ -518,6 +554,10 @@ void CTexture::StreamApplyDeferred(ID3D11CommandList* pCmdList)
 
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 // Just remove item from the texture object and keep Item in Pool list for future use
 // This function doesn't release API texture
@@ -588,6 +628,10 @@ void CTexture::StreamAssignPoolItem(STexPoolItem* pItem, int nMinMip)
         pItem->m_pTex = this;
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     SAFE_RELEASE(m_pDevTexture);
     m_pDevTexture = pItem->m_pDevTexture;
@@ -770,6 +814,10 @@ void CTexture::StreamCopyMipsTexToTex(STexPoolItem* pSrcItem, int nMipSrc, STexP
     }
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 // Debug routines /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifndef _RELEASE

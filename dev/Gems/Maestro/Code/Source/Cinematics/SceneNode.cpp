@@ -300,6 +300,7 @@ CAnimSceneNode::CAnimSceneNode(const int id)
     m_nLastGotoKey = -1;
     m_lastCaptureKey = -1;
     m_bLastCapturingEnded = true;
+    m_captureFrameCount = 0;
     m_legacyCurrentCameraEntityId = INVALID_ENTITYID;
     m_cvar_t_FixedStep = NULL;
     m_pCamNodeOnHoldForInterp = 0;
@@ -688,7 +689,8 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
                     gEnv->pMovieSystem->EndCapture();
                     m_bLastCapturingEnded = true;
                 }
-                gEnv->pMovieSystem->StartCapture(key);
+                gEnv->pMovieSystem->EnableFixedStepForCapture(key.timeStep);
+                gEnv->pMovieSystem->StartCapture(key, m_captureFrameCount);
                 if (key.once == false)
                 {
                     m_bLastCapturingEnded = false;
@@ -697,10 +699,13 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
             }
             else if (justEnded)
             {
+                gEnv->pMovieSystem->DisableFixedStepForCapture();
                 gEnv->pMovieSystem->EndCapture();
                 m_bLastCapturingEnded = true;
             }
         }
+
+        m_captureFrameCount++;
     }
 
     m_time = ec.time;
@@ -772,6 +777,7 @@ void CAnimSceneNode::OnReset()
     m_nLastGotoKey = -1;
     m_lastCaptureKey = -1;
     m_bLastCapturingEnded = true;
+    m_captureFrameCount = 0;
     m_legacyCurrentCameraEntityId = INVALID_ENTITYID;
 
     if (GetTrackForParameter(AnimParamType::TimeWarp))

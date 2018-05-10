@@ -11,8 +11,8 @@
 */
 #pragma once
 
-#include <Components/NodePropertyDisplay/NodePropertyDisplay.h>
-#include <Components/NodePropertyDisplay/ReadOnlyDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/ReadOnlyDataInterface.h>
 
 namespace GraphCanvas
 {

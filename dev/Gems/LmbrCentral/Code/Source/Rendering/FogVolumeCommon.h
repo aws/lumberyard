@@ -114,6 +114,7 @@ namespace LmbrCentral
         }
 
         void UpdateFogVolumeProperties(const FogVolumeConfiguration& fogVolumeConfig);
+        void UpdateRenderingFlags(const FogVolumeConfiguration& fogVolumeConfig);
         void UpdateFogVolumeTransform();
 
     private:

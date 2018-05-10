@@ -1000,6 +1000,10 @@ namespace AZ
                 ->Version(1, &EntityIdConverter)
                 ->Field("id", &EntityId::m_id);
 
+            serializeContext->Class<ComponentConfig>()
+                ->Version(1)
+            ;
+
             EditContext* ec = serializeContext->GetEditContext();
             if (ec)
             {
@@ -1026,8 +1030,10 @@ namespace AZ
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                 ->Method("IsValid", &EntityId::IsValid)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("ToString", &EntityId::ToString)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("Equal", &EntityId::operator==)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
                 ;
@@ -1038,7 +1044,9 @@ namespace AZ
                 ->Handler<BehaviorEntityBusHandler>()
                 ;
 
-            behaviorContext->Class<ComponentConfig>();
+            behaviorContext->Class<ComponentConfig>()
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
+            ;
         }
     }
 

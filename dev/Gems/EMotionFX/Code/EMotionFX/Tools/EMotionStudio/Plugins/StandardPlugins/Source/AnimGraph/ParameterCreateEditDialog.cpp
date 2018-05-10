@@ -368,23 +368,6 @@ namespace EMStudio
             MysticQt::GetMysticQt()->GetAttributeWidgetFactory()->InitAttributes(maxAttribute, mAttributeSettings, false,  MysticQt::AttributeWidgetFactory::ATTRIBUTE_MAX);
         }
 
-        // scalable checkbox
-        QLabel*         checkLabel          = new QLabel("Scalable:");
-        QHBoxLayout*    checkBoxLayout      = new QHBoxLayout();
-        mScaleBox = new QCheckBox();
-        checkBoxLayout->addWidget(checkLabel);
-        checkBoxLayout->addWidget(mScaleBox);
-        mScaleBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        checkLabel->setMinimumWidth(ATTRIBUTEWIDGET_LABEL_WIDTH);
-        checkBoxLayout->setMargin(0);
-        if (mEditMode)
-        {
-            mScaleBox->setChecked(mAttributeSettings->GetCanScale());
-        }
-        checkLabel->setToolTip("If checked, the default, min and max values are scalable. If marked as scalable the values will be scaled when applying a Scale AnimGraph Data command.");
-        mScaleBox->setToolTip("If checked, the default, min and max values are scalable. If marked as scalable the values will be scaled when applying a Scale AnimGraph Data command.");
-        mDynamicLayout->addLayout(checkBoxLayout);
-
         // clear the existing attributes
         if (mEditMode == false)
         {

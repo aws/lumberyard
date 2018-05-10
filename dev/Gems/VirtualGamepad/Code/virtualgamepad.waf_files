@@ -1,0 +1,26 @@
+{
+    "none": {
+        "Source": [
+            "Source/VirtualGamepad_precompiled.cpp",
+            "Source/VirtualGamepad_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/VirtualGamepad/VirtualGamepadBus.h"
+        ],
+        "Source": [
+            "Source/InputDeviceVirtualGamepad.cpp",
+            "Source/InputDeviceVirtualGamepad.h",
+            "Source/VirtualGamepadButtonComponent.cpp",
+            "Source/VirtualGamepadButtonComponent.h",
+            "Source/VirtualGamepadButtonRequestBus.h",
+            "Source/VirtualGamepadModule.cpp",
+            "Source/VirtualGamepadSystemComponent.cpp",
+            "Source/VirtualGamepadSystemComponent.h",
+            "Source/VirtualGamepadThumbStickComponent.cpp",
+            "Source/VirtualGamepadThumbStickComponent.h",
+            "Source/VirtualGamepadThumbStickRequestBus.h"
+        ]
+    }
+}

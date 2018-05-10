@@ -12,6 +12,7 @@
 
 // include required headers
 #include "Distance.h"
+#include "StringConversions.h"
 
 
 namespace MCore
@@ -115,49 +116,49 @@ namespace MCore
 
 
     // convert a string into a unit type
-    bool Distance::StringToUnitType(const MCore::String& str, EUnitType* outUnitType)
+    bool Distance::StringToUnitType(const AZStd::string& str, EUnitType* outUnitType)
     {
-        if (str.CheckIfIsEqualNoCase("millimeters") || str.CheckIfIsEqualNoCase("millimeter")   || str.CheckIfIsEqualNoCase("mm")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "millimeters", false /* no case */) || AzFramework::StringFunc::Equal(str.c_str(), "millimeter", false /* no case */)   || AzFramework::StringFunc::Equal(str.c_str(), "mm", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_MILLIMETERS;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("centimeters") || str.CheckIfIsEqualNoCase("centimeter")   || str.CheckIfIsEqualNoCase("cm")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "centimeters", false /* no case */) || AzFramework::StringFunc::Equal(str.c_str(), "centimeter", false /* no case */)   || AzFramework::StringFunc::Equal(str.c_str(), "cm", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_CENTIMETERS;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("meters")      || str.CheckIfIsEqualNoCase("meter")        || str.CheckIfIsEqualNoCase("m")   )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "meters", false /* no case */)      || AzFramework::StringFunc::Equal(str.c_str(), "meter", false /* no case */)        || AzFramework::StringFunc::Equal(str.c_str(), "m", false /* no case */)   )
         {
             *outUnitType = UNITTYPE_METERS;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("decimeters")  || str.CheckIfIsEqualNoCase("decimeter")    || str.CheckIfIsEqualNoCase("dm")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "decimeters", false /* no case */)  || AzFramework::StringFunc::Equal(str.c_str(), "decimeter", false /* no case */)    || AzFramework::StringFunc::Equal(str.c_str(), "dm", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_DECIMETERS;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("kilometers")  || str.CheckIfIsEqualNoCase("kilometer")    || str.CheckIfIsEqualNoCase("km")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "kilometers", false /* no case */)  || AzFramework::StringFunc::Equal(str.c_str(), "kilometer", false /* no case */)    || AzFramework::StringFunc::Equal(str.c_str(), "km", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_KILOMETERS;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("inches")      || str.CheckIfIsEqualNoCase("inch")         || str.CheckIfIsEqualNoCase("in")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "inches", false /* no case */)      || AzFramework::StringFunc::Equal(str.c_str(), "inch", false /* no case */)         || AzFramework::StringFunc::Equal(str.c_str(), "in", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_INCHES;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("feet")        || str.CheckIfIsEqualNoCase("foot")         || str.CheckIfIsEqualNoCase("ft")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "feet", false /* no case */)        || AzFramework::StringFunc::Equal(str.c_str(), "foot", false /* no case */)         || AzFramework::StringFunc::Equal(str.c_str(), "ft", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_FEET;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("yards")       || str.CheckIfIsEqualNoCase("yard")         || str.CheckIfIsEqualNoCase("yd")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "yards", false /* no case */)       || AzFramework::StringFunc::Equal(str.c_str(), "yard", false /* no case */)         || AzFramework::StringFunc::Equal(str.c_str(), "yd", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_YARDS;
             return true;
         }
-        if (str.CheckIfIsEqualNoCase("miles")       || str.CheckIfIsEqualNoCase("mile")         || str.CheckIfIsEqualNoCase("mi")  )
+        if (AzFramework::StringFunc::Equal(str.c_str(), "miles", false /* no case */)       || AzFramework::StringFunc::Equal(str.c_str(), "mile", false /* no case */)         || AzFramework::StringFunc::Equal(str.c_str(), "mi", false /* no case */)  )
         {
             *outUnitType = UNITTYPE_MILES;
             return true;

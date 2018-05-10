@@ -14,38 +14,36 @@ package com.amazon.lumberyard.iap;
 
 import android.app.Activity;
 import android.app.PendingIntent;
-import android.content.Context;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentSender.SendIntentException;
 import android.content.res.Resources;
-import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
+import android.os.Looper;
 import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Arrays;
+import java.util.List;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.android.billingclient.api.BillingClient;
+import com.android.billingclient.api.BillingClientStateListener;
+import com.android.billingclient.api.BillingFlowParams;
+import com.android.billingclient.api.ConsumeResponseListener;
+import com.android.billingclient.api.Purchase;
+import com.android.billingclient.api.PurchasesUpdatedListener;
+import com.android.billingclient.api.SkuDetails;
+import com.android.billingclient.api.SkuDetailsParams;
+import com.android.billingclient.api.SkuDetailsResponseListener;
 
-import com.amazon.lumberyard.ActivityResultsListener;
 
-import com.android.vending.billing.IInAppBillingService;
-
-
-public class LumberyardInAppBilling extends ActivityResultsListener
+public class LumberyardInAppBilling implements PurchasesUpdatedListener
 {
     public LumberyardInAppBilling(Activity activity)
     {
-        super(activity);
-
         m_activity = activity;
-        m_context = (Context)activity;
 
         m_packageName = m_activity.getPackageName();
 
@@ -55,79 +53,63 @@ public class LumberyardInAppBilling extends ActivityResultsListener
 
         m_setupDone = false;
 
+        final LumberyardInAppBilling iapInstance = this;
+
+        if (!IsKindleDevice())
+        {
+            (new Thread(new Runnable()
+            {
+                public void run()
+                {
+                    Looper.prepare();
+                    m_billingClient = BillingClient.newBuilder(m_activity).setListener(iapInstance).build();
+                    m_billingClient.startConnection(new BillingClientStateListener()
+                    {
+                        @Override
+                        public void onBillingSetupFinished(int responseCode)
+                        {
+                            Log.d(s_tag, "Service connected");
+                    
+                            if (!m_billingClient.isReady())
+                            {
+                                Log.d(s_tag, m_packageName + " IN_APP items not supported!");
+                                return;
+                            }
+                    
+                            int subscriptionsResponseCode = m_billingClient.isFeatureSupported(BillingClient.FeatureType.SUBSCRIPTIONS);
+                            if (!VerifyResponseCode(subscriptionsResponseCode))
+                            {
+                                return;
+                            }
+                    
+                            subscriptionsResponseCode = m_billingClient.isFeatureSupported(BillingClient.FeatureType.SUBSCRIPTIONS_UPDATE);
+                            if (!VerifyResponseCode(subscriptionsResponseCode))
+                            {
+                                return;
+                            }
+                    
+                            m_setupDone = true;
+                        }
+                    
+                        @Override
+                        public void onBillingServiceDisconnected()
+                        {
+                            Log.d(s_tag, "Service disconnected");
+                        }
+                    });
+                    Looper.loop();
+                }
+            })).start();
+        }
+
         Log.d(s_tag, "Instance created");
     }
 
 
-    public static native void nativeProductInfoRetrieved(String[] productDetails);
-    public static native void nativePurchasedProductsRetrieved(String[] purchasedProductDetails, String[] signatures);
-    public static native void nativeNewProductPurchased(String[] purchaseReceipt, String[] signature);
-
-
-    public void Initialize()
-    {
-        if (m_setupDone)
-        {
-            Log.d(s_tag, "Already initialized!");
-            return;
-        }
-
-        m_serviceConnection = new ServiceConnection()
-        {
-            @Override
-            public void onServiceDisconnected(ComponentName name)
-            {
-                Log.d(s_tag, "Service disconnected");
-                m_service = null;
-            }
-
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service)
-            {
-                Log.d(s_tag, "Service connected");
-                m_service = IInAppBillingService.Stub.asInterface(service);
-                try
-                {
-                    for (int i = 0; i < productTypes.length; i++)
-                    {
-                        int isBillingSupported = m_service.isBillingSupported(BILLING_API_VERSION, m_packageName, productTypes[i]);
-                        if (isBillingSupported != BILLING_RESPONSE_RESULT_OK)
-                        {
-                            Log.d(s_tag, m_packageName + " returned error code " + BILLING_RESPONSE_RESULT_STRINGS[isBillingSupported]);
-                            return;
-                        }
-                    }
-
-                    Log.d(s_tag, m_packageName + " supported");
-                    m_setupDone = true;
-                    m_asyncOperationInProgress = new AtomicBoolean();
-                    m_asyncOperationInProgress.set(false);
-                }
-                catch (RemoteException e)
-                {
-                    Log.e(s_tag, "RemoteException encountered! " + e.getMessage());
-                    e.printStackTrace();
-                    return;
-                }
-            }
-        };
-
-        Intent serviceIntent = new Intent("com.android.vending.billing.InAppBillingService.BIND");
-        serviceIntent.setPackage("com.android.vending");
-        if (!m_context.getPackageManager().queryIntentServices(serviceIntent, 0).isEmpty())
-        {
-            m_context.bindService(serviceIntent, m_serviceConnection, Context.BIND_AUTO_CREATE);
-            Log.d(s_tag, "Service bound to context");
-        }
-        else
-        {
-            Log.e(s_tag, "Unable to bind service to context");
-            return;
-        }
-
-        m_requestQueue = new ArrayList<Request>();
-    }
-
+    public static native void nativeProductInfoRetrieved(Object[] productDetails);
+    public static native void nativePurchasedProductsRetrieved(Object[] purchasedProductDetails);
+    public static native void nativeNewProductPurchased(Object[] purchaseReceipt);
+    public static native void nativePurchaseConsumed(String purchaseToken);
 
     public void UnbindService()
     {
@@ -138,17 +120,9 @@ public class LumberyardInAppBilling extends ActivityResultsListener
         }
 
         m_setupDone = false;
-        m_asyncOperationInProgress.set(false);
-        m_requestQueue.clear();
 
-        if (m_context != null)
-        {
-            m_context.unbindService(m_serviceConnection);
-            Log.d(s_tag, "Unbinding service from context");
-        }
-        m_context = null;
-        m_serviceConnection = null;
-        m_service = null;
+        m_billingClient.endConnection();
+        m_billingClient = null;
     }
 
 
@@ -160,73 +134,52 @@ public class LumberyardInAppBilling extends ActivityResultsListener
             return;
         }
 
-        if (m_asyncOperationInProgress.compareAndSet(false, true))
+        m_numResponses = 0;
+        final ArrayList<ProductDetails> responseList = new ArrayList<>();
+
+        List<String> skuList = Arrays.asList(skuListArray);
+
+        SkuDetailsResponseListener responseListener = new SkuDetailsResponseListener()
         {
-            (new Thread(new Runnable()
+            @Override
+            public void onSkuDetailsResponse(int responseCode, List<SkuDetails> skuDetailsList)
             {
-                public void run()
+                m_numResponses++;
+                if (!VerifyResponseCode(responseCode))
                 {
-                    try
-                    {
-                        ArrayList<String> skuList = new ArrayList<String> ();
-                        for (int i = 0; i < skuListArray.length; i++)
-                        {
-                            skuList.add(skuListArray[i]);
-                        }
-
-                        Bundle queryProductDetails = new Bundle();
-                        queryProductDetails.putStringArrayList("ITEM_ID_LIST", skuList);
-
-                        ArrayList<String> responseList = new ArrayList<String>();
-
-                        for (int i = 0; i < productTypes.length; i++)
-                        {
-                            Bundle productDetails = m_service.getSkuDetails(BILLING_API_VERSION, m_packageName, productTypes[i], queryProductDetails);
-
-                            int response = productDetails.getInt("RESPONSE_CODE");
-                            if (response != BILLING_RESPONSE_RESULT_OK)
-                            {
-                                Log.d(s_tag, "Unable to retrieve product details. Error code: " + BILLING_RESPONSE_RESULT_STRINGS[response]);
-                                return;
-                            }
-
-                            responseList.addAll(productDetails.getStringArrayList("DETAILS_LIST"));
-                        }
-
-                        String productDetailsArray[] = responseList.toArray(new String[responseList.size()]);
-                        nativeProductInfoRetrieved(productDetailsArray);
-                    }
-                    catch (RemoteException e)
-                    {
-                        Log.e(s_tag, "RemoteException encountered! " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                    finally
-                    {
-                        m_asyncOperationInProgress.set(false);
-                        ProcessQueuedRequests();
-                    }
+                    return;
                 }
-            })).start();
-        }
-        else
-        {
-            Request newRequest = new Request();
-            newRequest.m_operation = "QueryProductInfo";
-            newRequest.m_numParameters = skuListArray.length;
-            newRequest.m_parameters = new ArrayList<String>();
-            for (int i = 0; i < skuListArray.length; i++)
-            {
-                newRequest.m_parameters.add(skuListArray[i]);
-            }
-            m_requestQueue.add(newRequest);
 
-            Log.d(s_tag, "Another async operation is in progress. This request has been queued.");
-        }
+                for (SkuDetails skuDetails : skuDetailsList)
+                {
+                    ProductDetails productDetails = new ProductDetails();
+                    productDetails.m_productId = skuDetails.getSku();
+                    productDetails.m_title = skuDetails.getTitle();
+                    productDetails.m_description = skuDetails.getDescription();
+                    productDetails.m_price = skuDetails.getPrice();
+                    productDetails.m_currencyCode = skuDetails.getPriceCurrencyCode();
+                    productDetails.m_type = skuDetails.getType();
+                    productDetails.m_priceMicro = skuDetails.getPriceAmountMicros();
+                    responseList.add(productDetails);
+                }
+
+                // Wait for responses for both subscriptions and regular products
+                if (m_numResponses == 2)
+                {
+                    nativeProductInfoRetrieved(responseList.toArray());
+                }
+            }
+        };
+
+        SkuDetailsParams.Builder params = SkuDetailsParams.newBuilder();
+        params.setSkusList(skuList).setType(BillingClient.SkuType.INAPP);
+        m_billingClient.querySkuDetailsAsync(params.build(), responseListener);
+        params.setSkusList(skuList).setType(BillingClient.SkuType.SUBS);
+        m_billingClient.querySkuDetailsAsync(params.build(), responseListener);
     }
 
 
-    public void PurchaseProduct(int requestCode, String productSku, String developerPayload, String productType)
+    public void PurchaseProduct(String productSku, String developerPayload, String productType)
     {
         if (!m_setupDone)
         {
@@ -234,77 +187,31 @@ public class LumberyardInAppBilling extends ActivityResultsListener
             return;
         }
 
-        try
-        {
-            Bundle buyIntentBundle = m_service.getBuyIntent(BILLING_API_VERSION, m_packageName, productSku, productType, developerPayload);
-            int buyIntentResponse = buyIntentBundle.getInt("RESPONSE_CODE");
-            if (buyIntentResponse != BILLING_RESPONSE_RESULT_OK)
-            {
-                Log.d(s_tag, "Unable to purchase product with id " + productSku + ". Error Code: " + BILLING_RESPONSE_RESULT_STRINGS[buyIntentResponse]);
-                return;
-            }
+        BillingFlowParams flowParams = BillingFlowParams.newBuilder().setSku(productSku).setType(productType).build();
+        int responseCode = m_billingClient.launchBillingFlow(m_activity, flowParams);
 
-            PendingIntent pendingIntent = buyIntentBundle.getParcelable("BUY_INTENT");
-            m_activity.startIntentSenderForResult(pendingIntent.getIntentSender(), requestCode, new Intent(), Integer.valueOf(0), Integer.valueOf(0), Integer.valueOf(0));
-        }
-        catch (SendIntentException e)
+        if (!VerifyResponseCode(responseCode))
         {
-            Log.e(s_tag, "SendIntentException encountered! " + e.getMessage());
-            e.printStackTrace();
-            return;
-        }
-        catch (RemoteException e)
-        {
-            Log.e(s_tag, "RemoteException encountered! " + e.getMessage());
-            e.printStackTrace();
             return;
         }
 
-        Log.d(s_tag, "Purchase intent sent successfully");
+        Log.d(s_tag, "Purchase flow initiated.");
     }
 
 
-    public boolean ProcessActivityResult(int requestCode, int resultCode, Intent purchaseData)
+    @Override
+    public void onPurchasesUpdated(int responseCode, List<Purchase> purchases)
     {
-        if (purchaseData == null)
+        if (!VerifyResponseCode(responseCode))
         {
-            Log.d(s_tag, "Got null intent!");
-            return true;
+            return;
         }
 
-        int response = purchaseData.getIntExtra("RESPONSE_CODE", 0);
-        if (resultCode == Activity.RESULT_OK && response == BILLING_RESPONSE_RESULT_OK)
-        {
-            String purchaseReceipt = purchaseData.getStringExtra("INAPP_PURCHASE_DATA");
-            String dataSignature = purchaseData.getStringExtra("INAPP_DATA_SIGNATURE");
-            if (purchaseReceipt == null || dataSignature == null)
-            {
-                Log.d(s_tag, "purchaseData or signature is null! " + purchaseData.getExtras().toString());
-                return true;
-            }
+        ArrayList<PurchasedProductDetails> purchasedProducts = new ArrayList<>();
 
-            String[] purchaseReceiptArray = new String[1];
-            String[] purchaseSignatureArray = new String[1];
-            purchaseReceiptArray[0] = purchaseReceipt;
-            purchaseSignatureArray[0] = dataSignature;
-            nativeNewProductPurchased(purchaseReceiptArray, purchaseSignatureArray);
-        }
-        else if (resultCode == Activity.RESULT_OK)
-        {
-            Log.d(s_tag, "Returned error code " + BILLING_RESPONSE_RESULT_STRINGS[response]);
-            return true;
-        }
-        else if (resultCode == Activity.RESULT_CANCELED)
-        {
-            Log.d(s_tag, "Purchase was cancelled. Response: " + BILLING_RESPONSE_RESULT_STRINGS[response]);
-            return true;
-        }
-        else
-        {
-            Log.d(s_tag, "Purchase failed! Response: " + BILLING_RESPONSE_RESULT_STRINGS[response] + " Result Code: " + Integer.toString(resultCode));
-            return true;
-        }
-        return true;
+        ParsePurchasedProducts(purchases, purchasedProducts);
+
+        nativeNewProductPurchased(purchasedProducts.toArray());
     }
 
 
@@ -316,70 +223,14 @@ public class LumberyardInAppBilling extends ActivityResultsListener
             return;
         }
 
-        if (m_asyncOperationInProgress.compareAndSet(false, true))
+        ArrayList<PurchasedProductDetails> purchasedProducts = new ArrayList<>();
+
+        if (!QueryPurchasedProductsBySkuType(BillingClient.SkuType.INAPP, purchasedProducts) || !QueryPurchasedProductsBySkuType(BillingClient.SkuType.SUBS, purchasedProducts))
         {
-            (new Thread(new Runnable()
-            {
-                public void run()
-                {
-                    try
-                    {
-                        ArrayList<String> purchaseDetails = new ArrayList<String>();
-                        ArrayList<String> signatureList = new ArrayList<String>();
-                        String continuationToken = null;
-
-                        for (int i = 0; i < productTypes.length; i++)
-                        {
-                            do
-                            {
-                                Bundle purchasedItems = m_service.getPurchases(BILLING_API_VERSION, m_packageName, productTypes[i], continuationToken);
-                                int response = purchasedItems.getInt("RESPONSE_CODE");
-                                if (response != BILLING_RESPONSE_RESULT_OK)
-                                {
-                                    Log.d(s_tag, "Returned error code " + BILLING_RESPONSE_RESULT_STRINGS[response]);
-                                    break;
-                                }
-                                ArrayList<String> detailsList = purchasedItems.getStringArrayList("INAPP_PURCHASE_DATA_LIST");
-                                ArrayList<String> signatures = purchasedItems.getStringArrayList("INAPP_DATA_SIGNATURE_LIST");
-                                purchaseDetails.addAll(detailsList);
-                                signatureList.addAll(signatures);
-
-                                continuationToken = purchasedItems.getString("INAPP_CONTINUATION_TOKEN");
-                            } while(!TextUtils.isEmpty(continuationToken));
-
-                            if (continuationToken != null)
-                            {
-                                Log.d(s_tag, "Unable to retrieve purchased products!");
-                                return;
-                            }
-                        }
-
-                        String productPurchaseDetailsArray[] = purchaseDetails.toArray(new String[purchaseDetails.size()]);
-                        String signatureListArray[] = signatureList.toArray(new String[signatureList.size()]);
-                        nativePurchasedProductsRetrieved(productPurchaseDetailsArray, signatureListArray);
-                    }
-                    catch (RemoteException e)
-                    {
-                        Log.e(s_tag, "RemoteException encountered! " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                    finally
-                    {
-                        m_asyncOperationInProgress.set(false);
-                        ProcessQueuedRequests();
-                    }
-                }
-            })).start();
+            return;
         }
-        else
-        {
-            Request newRequest = new Request();
-            newRequest.m_operation = "QueryPurchasedProducts";
-            newRequest.m_numParameters = 0;
-            m_requestQueue.add(newRequest);
 
-            Log.d(s_tag, "Another async operation is in progress. This request has been queued.");
-        }
+        nativePurchasedProductsRetrieved(purchasedProducts.toArray());
     }
 
 
@@ -391,67 +242,21 @@ public class LumberyardInAppBilling extends ActivityResultsListener
             return;
         }
 
-        if (m_asyncOperationInProgress.compareAndSet(false, true))
+        ConsumeResponseListener listener = new ConsumeResponseListener()
         {
-            (new Thread(new Runnable()
+            @Override
+            public void onConsumeResponse(int responseCode, String purchaseToken)
             {
-                public void run()
+                if (!VerifyResponseCode(responseCode))
                 {
-                    try
-                    {
-                        int response = m_service.consumePurchase(BILLING_API_VERSION, m_packageName, purchaseToken);
-                        if (response != BILLING_RESPONSE_RESULT_OK)
-                        {
-                            Log.d(s_tag, "Returned error code " + BILLING_RESPONSE_RESULT_STRINGS[response]);
-                        }
-                    }
-                    catch (RemoteException e)
-                    {
-                        Log.e(s_tag, "RemoteException encountered! " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                    finally
-                    {
-                        m_asyncOperationInProgress.set(false);
-                        ProcessQueuedRequests();
-                    }
+                    return;
                 }
-            })).start();
-        }
-        else
-        {
-            Request newRequest = new Request();
-            newRequest.m_operation = "ConsumePurchase";
-            newRequest.m_numParameters = 1;
-            newRequest.m_parameters = new ArrayList<String>();
-            newRequest.m_parameters.add(purchaseToken);
-            m_requestQueue.add(newRequest);
 
-            Log.d(s_tag, "Another async operation is in progress. This request has been queued.");
-        }
-    }
+                nativePurchaseConsumed(purchaseToken);
+            }
+        };
 
-    private void ProcessQueuedRequests()
-    {
-        if (m_requestQueue.size() > 0)
-        {
-            Request request = m_requestQueue.get(0);
-            if (request.m_operation.equals("QueryProductInfo"))
-            {
-                String skuList[] = request.m_parameters.toArray(new String[request.m_numParameters]);
-                QueryProductInfo(skuList);
-            }
-            else if (request.m_operation.equals("QueryPurchasedProducts"))
-            {
-                QueryPurchasedProducts();
-            }
-            else if (request.m_operation.equals("ConsumePurchase"))
-            {
-                String purchaseToken = request.m_parameters.get(0);
-                ConsumePurchase(purchaseToken);
-            }
-            m_requestQueue.remove(0);
-        }
+        m_billingClient.consumeAsync(purchaseToken, listener);
     }
 
 
@@ -464,23 +269,73 @@ public class LumberyardInAppBilling extends ActivityResultsListener
         }
         return false;
     }
-    private class Request
+
+
+    private boolean QueryPurchasedProductsBySkuType(String skuType, ArrayList<PurchasedProductDetails> purchasedProducts)
     {
-        public String m_operation;
-        public int m_numParameters;
-        public ArrayList<String> m_parameters;
+        Purchase.PurchasesResult purchasesResult = m_billingClient.queryPurchases(skuType);
+
+        if (!VerifyResponseCode(purchasesResult.getResponseCode()))
+        {
+            return false;
+        }
+
+        ParsePurchasedProducts(purchasesResult.getPurchasesList(), purchasedProducts);
+
+        return true;
+    }
+
+
+    private void ParsePurchasedProducts(List<Purchase> purchases, ArrayList<PurchasedProductDetails> purchasedProducts)
+    {
+        for (Purchase purchase : purchases)
+        {
+            PurchasedProductDetails purchasedProductDetails = new PurchasedProductDetails();
+            purchasedProductDetails.m_productId = purchase.getSku();
+            purchasedProductDetails.m_orderId = purchase.getOrderId();
+            purchasedProductDetails.m_packageName = purchase.getPackageName();
+            purchasedProductDetails.m_purchaseToken = purchase.getPurchaseToken();
+            purchasedProductDetails.m_signature = purchase.getSignature();
+            purchasedProductDetails.m_purchaseTime = purchase.getPurchaseTime();
+            purchasedProductDetails.m_isAutoRenewing = purchase.isAutoRenewing();
+            purchasedProducts.add(purchasedProductDetails);
+        }
+    }
+
+
+    private boolean VerifyResponseCode(int responseCode)
+    {
+        if (responseCode != BillingClient.BillingResponse.OK)
+        {
+            Log.d(s_tag, m_packageName + " returned error code " + BILLING_RESPONSE_RESULT_STRINGS[responseCode]);
+            return false;
+        }
+
+        return true;
+    }
+
+
+    public class ProductDetails
+    {
+        public String m_title;
+        public String m_description;
+        public String m_productId;
+        public String m_price;
+        public String m_currencyCode;
+        public String m_type;
+        public long m_priceMicro;
     };
 
-    private static final int BILLING_RESPONSE_RESULT_OK = 0;
-    private static final int BILLING_RESPONSE_RESULT_USER_CANCELED = 1;
-    private static final int BILLING_RESPONSE_RESULT_BILLING_UNAVAILABLE = 3;
-    private static final int BILLING_RESPONSE_RESULT_ITEM_UNAVAILABLE = 4;
-    private static final int BILLING_RESPONSE_RESULT_DEVELOPER_ERROR = 5;
-    private static final int BILLING_RESPONSE_RESULT_ERROR = 6;
-    private static final int BILLING_RESPONSE_RESULT_ITEM_ALREADY_OWNED = 7;
-    private static final int BILLING_RESPONSE_RESULT_ITEM_NOT_OWNED = 8;
-
-    private static final int BILLING_API_VERSION = 3;
+    public class PurchasedProductDetails
+    {
+        public String m_productId;
+        public String m_orderId;
+        public String m_packageName;
+        public String m_purchaseToken;
+        public String m_signature;
+        public long m_purchaseTime;
+        public boolean m_isAutoRenewing;
+    };
 
     private static final String[] BILLING_RESPONSE_RESULT_STRINGS = {
         "Billing response result is ok",
@@ -496,15 +351,9 @@ public class LumberyardInAppBilling extends ActivityResultsListener
 
     private static final String s_tag = "LumberyardInAppBilling";
 
-    private static final String[] productTypes = { "inapp", "subs" };
-
-    private Context m_context;
-
     private Activity m_activity;
 
-    private IInAppBillingService m_service;
-
-    private ServiceConnection m_serviceConnection;
+    private BillingClient m_billingClient;
 
     private String m_appPublicKey;
 
@@ -512,7 +361,5 @@ public class LumberyardInAppBilling extends ActivityResultsListener
 
     private boolean m_setupDone;
 
-    private AtomicBoolean m_asyncOperationInProgress;
-
-    private ArrayList<Request> m_requestQueue;
+    private int m_numResponses;
 }

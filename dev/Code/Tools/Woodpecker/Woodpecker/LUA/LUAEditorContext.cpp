@@ -138,6 +138,10 @@ namespace LUAEditor
         HighlightedWords::Handler::BusConnect();
         AzFramework::AssetSystemInfoBus::Handler::BusConnect();
 
+        // Connect to source control
+        using SCConnectionBus = AzToolsFramework::SourceControlConnectionRequestBus;
+        SCConnectionBus::Broadcast(&SCConnectionBus::Events::EnableSourceControl, true);
+
         //AzToolsFramework::RegisterAssetType(AzToolsFramework::RegisteredAssetType(ContextID, AZ::ScriptAsset::StaticAssetType(), "Script", ".lua", true, 0));
 
         m_pBreakpointSavedState = AZ::UserSettings::CreateFind<BreakpointSavedState>(AZ_CRC("BreakpointSavedState", 0xbb65be3a), AZ::UserSettings::CT_LOCAL);
@@ -197,8 +201,6 @@ namespace LUAEditor
         {
             return;
         }
-
-        AZ_TracePrintf(LUAEditorInfoName, "LUAEditorContext ApplicationActivated()\n");
 
         RefreshAllDocumentPerforceStat();
 
@@ -456,7 +458,7 @@ namespace LUAEditor
 
     void Context::DesiredTargetConnected(bool connected)
     {
-        AZ_TracePrintf(LUAEditorInfoName, "Context::DesiredTargetConnected( %d )\n", connected);
+        AZ_TracePrintf(LUAEditorDebugName, "Context::DesiredTargetConnected( %d )\n", connected);
 
         if (connected)
         {
@@ -484,7 +486,7 @@ namespace LUAEditor
         (void)oldTargetID;
         (void)newTargetID;
 
-        AZ_TracePrintf(LUAEditorInfoName, "Context::RemoteTargetChanged()\n");
+        AZ_TracePrintf(LUAEditorDebugName, "Context::RemoteTargetChanged()\n");
 
         RequestDetachDebugger();
     }
@@ -910,7 +912,7 @@ namespace LUAEditor
 
             if (catalogAssetId.IsValid() || m_fileIO->Exists(newAssetName.c_str()))
             {
-                QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "You Cannot SaveAs Over An Existing Asset\nPlease Check And Try A New Filename");
+                QMessageBox::warning(m_pLUAEditorMainWindow, "Warning", "You Cannot SaveAs Over An Existing Asset\nPlease Check And Try A New Filename");
                 continue;
             }
 
@@ -1014,8 +1016,8 @@ namespace LUAEditor
 
         if (!fileFound)
         {
-            // This assert can be tripped if the LuaIDE loses connection with the asset processor.
-            //AZ_Assert(false, "%s : Source file not found.", assetId.c_str());
+            // This warning can be tripped if the LuaIDE loses connection with the asset processor.
+            AZ_Warning(LUAEditorInfoName, false, "The Lua IDE source control integration requires an active connection to the Asset Processor. Make sure Asset Processor is running.");
 
             // Reset BusyRequestingEdit or we'll be stuck with the "checking out" loading bar for forever
             docInfo.m_bSourceControl_BusyRequestingEdit = false;
@@ -1034,11 +1036,6 @@ namespace LUAEditor
                         AZStd::placeholders::_2,
                         assetId)
             );
-
-        if (m_pLUAEditorMainWindow)
-        {
-            m_pLUAEditorMainWindow->OnDocumentInfoUpdated(docInfo);
-    }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1250,39 +1247,39 @@ namespace LUAEditor
 
         if (!doc.m_bSourceControl_Ready)
         {
-            QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "Perforce shows that it's not ready.");
+            QMessageBox::warning(m_pLUAEditorMainWindow, "Warning", "Perforce shows that it's not ready.");
         }
         if (!doc.m_bSourceControl_CanWrite)
         {
             if (!doc.m_sourceControlInfo.HasFlag(AzToolsFramework::SCF_OpenByUser))
             {
-                QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "This file is ReadOnly you cannot write to this file.");
+                QMessageBox::warning(m_pLUAEditorMainWindow, "Warning", "This file is ReadOnly you cannot write to this file.");
             }
         }
         else if (!doc.m_bSourceControl_CanCheckOut)
         {
             if (doc.m_sourceControlInfo.m_status == AzToolsFramework::SCS_ProviderIsDown)
             {
-                QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "Perforce Is Down.\nFile will be saved.\nYou must reconcile with Perforce later!");
+                QMessageBox::warning(m_pLUAEditorMainWindow, "Warning", "Perforce Is Down.\nFile will be saved.\nYou must reconcile with Perforce later!");
             }
             else if (doc.m_sourceControlInfo.m_status == AzToolsFramework::SCS_ProviderError)
             {
-                QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "Perforce encountered an error.\nFile will be saved.\nYou must reconcile with Perforce later!");
+                QMessageBox::warning(m_pLUAEditorMainWindow, "Warning", "Perforce encountered an error.\nFile will be saved.\nYou must reconcile with Perforce later!");
             }
             else if (doc.m_sourceControlInfo.m_status == AzToolsFramework::SCS_CertificateInvalid)
             {
-                QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "Perforce Connection is not trusted.\nFile will be saved.\nYou must reconcile with Perforce later!");
+                QMessageBox::warning(m_pLUAEditorMainWindow, "Warning", "Perforce Connection is not trusted.\nFile will be saved.\nYou must reconcile with Perforce later!");
             }
             else if (!doc.m_sourceControlInfo.HasFlag(AzToolsFramework::SCF_OpenByUser))
             {
-                QMessageBox::warning(m_pLUAEditorMainWindow, "Note!", "Perforce says that you cannot write to this file.");
+                QMessageBox::warning(m_pLUAEditorMainWindow, "Warning", "Perforce says that you cannot write to this file.");
             }
         }
 
         if (m_pLUAEditorMainWindow)
         {
             m_pLUAEditorMainWindow->OnDocumentInfoUpdated(doc);
-    }
+        }
     }
 
 
@@ -1596,7 +1593,7 @@ namespace LUAEditor
 
     void Context::SynchronizeBreakpoints()
     {
-		//AZ_TracePrintf(LUAEditorInfoName, "Context::SynchronizeBreakpoints()\n");
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::SynchronizeBreakpoints()\n");
 
         for (BreakpointMap::iterator it = m_pBreakpointSavedState->m_Breakpoints.begin(); it != m_pBreakpointSavedState->m_Breakpoints.end(); ++it)
         {
@@ -1643,7 +1640,7 @@ namespace LUAEditor
 
     void Context::DeleteBreakpoint(const AZ::Uuid& breakpointUID)
     {
-        //AZ_TracePrintf(LUAEditorInfoName, "Context::DeleteBreakpoint()\n");
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::DeleteBreakpoint()\n");
 
         BreakpointMap::iterator finder = m_pBreakpointSavedState->m_Breakpoints.find(breakpointUID);
 
@@ -1722,7 +1719,7 @@ namespace LUAEditor
 
     void Context::OnDebuggerAttached()
     {
-        //AZ_TracePrintf(LUAEditorInfoName, "Context::OnDebuggerAttached()\n");
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::OnDebuggerAttached()\n");
 
         EBUS_EVENT(Context_ControlManagement::Bus, OnDebuggerAttached);
         EBUS_EVENT(LUAEditorDebuggerMessages::Bus, EnumRegisteredClasses, m_currentTargetContext.c_str());
@@ -1739,7 +1736,7 @@ namespace LUAEditor
 
     void Context::OnDebuggerRefused()
     {
-        //AZ_TracePrintf(LUAEditorInfoName, "Context::OnDebuggerRefused()\n");
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::OnDebuggerRefused()\n");
 
         EBUS_EVENT(LUAEditorMainWindowMessages::Bus, OnDisconnectedFromDebugger);
         EBUS_EVENT(Context_ControlManagement::Bus, OnDebuggerDetached);
@@ -1750,7 +1747,7 @@ namespace LUAEditor
 
     void Context::OnDebuggerDetached()
     {
-        //AZ_TracePrintf(LUAEditorInfoName, "Context::OnDebuggerDetached()\n");
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::OnDebuggerDetached()\n");
 
         EBUS_EVENT(LUAEditorMainWindowMessages::Bus, OnDisconnectedFromDebugger);
         EBUS_EVENT(Context_ControlManagement::Bus, OnDebuggerDetached);
@@ -1766,7 +1763,7 @@ namespace LUAEditor
         AZStd::string absolutePath = relativePath.substr(1);
         EBUS_EVENT(AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, absolutePath, absolutePath);
 
-        //AZ_TracePrintf(LUAEditorInfoName, "Breakpoint '%s' was hit on line %i\n", assetIdString.c_str(), lineNumber);
+        //AZ_TracePrintf(LUAEditorDebugName, "Breakpoint '%s' was hit on line %i\n", assetIdString.c_str(), lineNumber);
         EBUS_EVENT(LUAEditorDebuggerMessages::Bus, GetCallstack);
         EBUS_EVENT(LUAEditorDebuggerMessages::Bus, EnumLocals);
         EBUS_EVENT(LUAEditor::LUABreakpointRequestMessages::Bus, RequestEditorFocus, absolutePath, lineNumber);
@@ -1833,7 +1830,7 @@ namespace LUAEditor
             LyMetrics_SendEvent(LuaIDEMetrics::Category::EventName, { { LuaIDEMetrics::Operation, LuaIDEMetrics::Events::BreakpointHit } });
         }
 
-        //AZ_TracePrintf(LUAEditorInfoName, "That translates to line number %i in document '%s'\n", actualDocumentLineNumber, doc.m_displayName.c_str());
+        //AZ_TracePrintf(LUAEditorDebugName, "That translates to line number %i in document '%s'\n", actualDocumentLineNumber, doc.m_displayName.c_str());
 
         // what do we actually do?
         // we need to
@@ -2217,7 +2214,7 @@ namespace LUAEditor
 
     void Context::OnExecutionResumed()
     {
-        //AZ_TracePrintf(LUAEditorInfoName, "Context::OnExecutionResumed()\n");
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::OnExecutionResumed()\n");
 
         if (m_pLUAEditorMainWindow)
         {
@@ -2230,7 +2227,7 @@ namespace LUAEditor
 
     void Context::OnExecuteScriptResult(bool success)
     {
-        //AZ_TracePrintf(LUAEditorInfoName, "Context::OnExecutionScriptResult( %d )\n", success);
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::OnExecutionScriptResult( %d )\n", success);
 
         EBUS_EVENT(LUAEditorMainWindowMessages::Bus, OnExecuteScriptResult, success);
     }
@@ -2245,7 +2242,7 @@ namespace LUAEditor
 
     void Context::SetCurrentTargetContext(AZStd::string& contextName)
     {
-        //AZ_TracePrintf(LUAEditorInfoName, "Context::SetCurrentTargetContext()\n");
+        //AZ_TracePrintf(LUAEditorDebugName, "Context::SetCurrentTargetContext()\n");
 
         RequestDetachDebugger();
 

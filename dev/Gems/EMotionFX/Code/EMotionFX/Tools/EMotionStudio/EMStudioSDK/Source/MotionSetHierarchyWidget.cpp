@@ -12,7 +12,6 @@
 
 // include the required headers
 #include "MotionSetHierarchyWidget.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/Mesh.h>

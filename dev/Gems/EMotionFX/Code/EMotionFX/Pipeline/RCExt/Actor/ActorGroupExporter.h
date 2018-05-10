@@ -11,7 +11,6 @@
 */
 #pragma once
 
-#include <AzCore/std/string/string.h>
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
 
 

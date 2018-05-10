@@ -26,6 +26,11 @@ static AZ::SceneAPI::SceneData::Registry::ComponentDescriptorList g_componentDes
 
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 {
+    if (AZ::Environment::IsReady())
+    {
+        return;
+    }
+
     AZ::Environment::Attach(static_cast<AZ::EnvironmentInstance>(env));
     
     if (!g_manifestMetaInfoHandler)
@@ -59,6 +64,11 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
 
 extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
 {
+    if (!AZ::Environment::IsReady())
+    {
+        return;
+    }
+
     AZ::SerializeContext* context = nullptr;
     EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
     if (context)
@@ -80,6 +90,17 @@ extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
 
     delete g_manifestMetaInfoHandler;
     g_manifestMetaInfoHandler = nullptr;
+
+    // This module does not own these allocators, but must clear its cached EnvironmentVariables
+    // because it is linked into other modules, and thus does not get unloaded from memory always
+    if (AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+    {
+        AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+    }
+    if (AZ::AllocatorInstance<AZ::OSAllocator>::IsReady())
+    {
+        AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
+    }
 
     AZ::Environment::Detach();
 }

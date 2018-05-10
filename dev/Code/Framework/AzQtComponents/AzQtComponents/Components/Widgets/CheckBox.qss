@@ -11,19 +11,15 @@
 *
 */
 
-
-
-
-
 QCheckBox
 {
     font-size: 12px;
     line-height: 18px;
     color: rgb(204, 204, 204);
+    outline: 0;
 }
 
-QCheckBox::indicator
-{
+QCheckBox::indicator:!focus {
     width: 14px;
     height: 14px;
     border: 1px solid white;
@@ -31,51 +27,36 @@ QCheckBox::indicator
     margin: 2px;
 }
 
-QCheckBox::indicator:PartiallyChecked
-{
+QCheckBox::indicator:focus {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgb(201, 170, 254);
+    border-radius: 4px;
+    margin: 0px;
+}
+
+QCheckBox::indicator:disabled {
+    border-color: rgb(128, 128, 128);
+}
+
+QCheckBox::indicator:indeterminate:!focus {
     image: url(:/stylesheet/img/UI20/combo-tristate.png);
 }
 
-QCheckBox::indicator:Unchecked
-{
-    image: none;
+QCheckBox::indicator:indeterminate:focus {
+    image: url(:/stylesheet/img/UI20/combo-tristate-focus.png);
 }
 
-QCheckBox::indicator:Unchecked:disabled
-{
-    border-color: rgb(128, 128, 128);
-}
-
-QCheckBox::indicator:Unchecked:focus
-{
-    width: 16px;
-    height: 16px;
-    border-width: 2px;
-    border-color: rgb(201, 170, 254);
-    border-radius: 4px;
-    margin: 0px;
-}
-
-QCheckBox::indicator:Checked
-{
+QCheckBox::indicator:checked:!focus {
     image: url(:/stylesheet/img/UI20/combo-checked.png);
 }
 
-QCheckBox::indicator:Checked:disabled
-{
-    border-color: rgb(128, 128, 128);
-    image: url(:/stylesheet/img/UI20/combo-checked-disabled.png);
+QCheckBox::indicator:checked:focus {
+    image: url(:/stylesheet/img/UI20/combo-checked-focus.png);
 }
 
-QCheckBox::indicator:Checked:focus
-{
-    width: 16px;
-    height: 16px;
-    border-width: 2px;
-    border-color: rgb(201, 170, 254);
-    border-radius: 4px;
-    image: url(:/stylesheet/img/UI20/combo-checked-focus.png);
-    margin: 0px;
+QCheckBox::indicator:checked:disabled {
+    image: url(:/stylesheet/img/UI20/combo-checked-disabled.png);
 }
 
 QCheckBox[class="ToggleSwitch"]::indicator

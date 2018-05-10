@@ -8,6 +8,10 @@
             "Gallery/ButtonPage.cpp",
             "Gallery/ButtonPage.h",
 
+            "Gallery/CardPage.ui",
+            "Gallery/CardPage.cpp",
+            "Gallery/CardPage.h",
+
             "Gallery/CheckBoxPage.ui",
             "Gallery/CheckBoxPage.cpp",
             "Gallery/CheckBoxPage.h",

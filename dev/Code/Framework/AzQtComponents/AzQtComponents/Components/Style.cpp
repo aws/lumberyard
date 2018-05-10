@@ -17,6 +17,7 @@
 #include <AzQtComponents/Components/Widgets/RadioButton.h>
 #include <AzQtComponents/Components/Widgets/ProgressBar.h>
 #include <AzQtComponents/Components/Widgets/Slider.h>
+#include <AzQtComponents/Components/Widgets/Card.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 
 #include <QObject>
@@ -31,8 +32,8 @@
 #include <QStyleOptionToolButton>
 #include <QPainter>
 #include <QProgressBar>
-
-
+#include <QScopedValueRollback>
+#include <QSet>
 
 namespace AzQtComponents
 {
@@ -46,7 +47,10 @@ struct Style::Data
     CheckBox::Config checkBoxConfig;
     ProgressBar::Config progressBarConfig;
     Slider::Config sliderConfig;
+    Card::Config cardConfig;
     QFileSystemWatcher watcher;
+
+    QSet<QObject*> widgetsToRepolishOnReload;
 };
 
 // Local template function to load config data from .ini files
@@ -89,6 +93,7 @@ Style::Style(QStyle* style)
     loadConfig<CheckBox::Config, CheckBox>(this, &m_data->watcher, &m_data->checkBoxConfig, "CheckBoxConfig.ini");
     loadConfig<ProgressBar::Config, ProgressBar>(this, &m_data->watcher, &m_data->progressBarConfig, "ProgressBarConfig.ini");
     loadConfig<Slider::Config, Slider>(this, &m_data->watcher, &m_data->sliderConfig, "SliderConfig.ini");
+    loadConfig<Card::Config, Card>(this, &m_data->watcher, &m_data->cardConfig, "CardConfig.ini");
 }
 
 Style::~Style()
@@ -323,12 +328,23 @@ int Style::pixelMetric(QStyle::PixelMetric metric, const QStyleOption* option,
 
 void Style::polish(QWidget* widget)
 {
+    static QWidget* alreadyStyling = nullptr;
+    if (alreadyStyling == widget)
+    {
+        return;
+    }
+
+    QScopedValueRollback<QWidget*> recursionGuard(alreadyStyling, widget);
+
     TitleBarOverdrawHandler::getInstance()->polish(widget);
 
-    PushButton::polish(this, widget, m_data->pushButtonConfig);
-    CheckBox::polish(this, widget, m_data->checkBoxConfig);
-    RadioButton::polish(this, widget, m_data->radioButtonConfig);
-    Slider::polish(this, widget, m_data->sliderConfig);
+    bool polishedAlready = false;
+
+    polishedAlready = polishedAlready || PushButton::polish(this, widget, m_data->pushButtonConfig);
+    polishedAlready = polishedAlready || CheckBox::polish(this, widget, m_data->checkBoxConfig);
+    polishedAlready = polishedAlready || RadioButton::polish(this, widget, m_data->radioButtonConfig);
+    polishedAlready = polishedAlready || Slider::polish(this, widget, m_data->sliderConfig);
+    polishedAlready = polishedAlready || Card::polish(this, widget, m_data->cardConfig);
 
     QProxyStyle::polish(widget);
 }
@@ -336,6 +352,25 @@ void Style::polish(QWidget* widget)
 QPalette Style::standardPalette() const
 {
     return m_data->palette;
+}
+
+void Style::repolishOnSettingsChange(QWidget* widget)
+{
+    // don't listen twice for the settingsReloaded signal on the same widget
+    if (m_data->widgetsToRepolishOnReload.contains(widget))
+    {
+        return;
+    }
+
+    m_data->widgetsToRepolishOnReload.insert(widget);
+
+    // Qt::UniqueConnection doesn't work with lambdas, so we have to track this ourselves
+
+    QObject::connect(widget, &QObject::destroyed, this, &Style::repolishWidgetDestroyed);
+    QObject::connect(this, &Style::settingsReloaded, widget, [widget]() {
+        widget->style()->unpolish(widget);
+        widget->style()->polish(widget);
+    });
 }
 
 bool Style::hasClass(const QWidget* button, const QString& className) const
@@ -382,6 +417,10 @@ void Style::polish(QApplication* application)
     QProxyStyle::polish(application);
 }
 
+void Style::repolishWidgetDestroyed(QObject* obj)
+{
+    m_data->widgetsToRepolishOnReload.remove(obj);
+}
 
 #include <Components/Style.moc>
 } // namespace AzQtComponents

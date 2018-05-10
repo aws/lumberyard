@@ -739,6 +739,11 @@ namespace NCryOpenGL
         void OnApplicationWindowCreated() override;
         void OnApplicationWindowDestroy() override;
 
+    protected:
+        typedef AZStd::pair<uint32, ColorF> ClearColorArg;
+        void ClearDepthStencilInternal(bool clearDepth, bool clearStencil, float depthValue, uint8 stencilValue);
+        void ClearRenderTargetInternal(const AZStd::vector<ClearColorArg>& args);
+
     private:
         uint32 m_uIndex;
         CContext* m_pReservedContext;

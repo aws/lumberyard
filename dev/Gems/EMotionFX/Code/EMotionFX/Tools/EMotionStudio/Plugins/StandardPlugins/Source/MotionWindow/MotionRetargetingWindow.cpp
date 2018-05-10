@@ -152,7 +152,7 @@ namespace EMStudio
     /*
     void MotionRetargetingWindow::OnCancelNodeSelection()
     {
-        //Node* oldRetargetNode = mActor->FindNodeByName( mNodeBeforeSelectionWindow.AsChar() );
+        //Node* oldRetargetNode = mActor->FindNodeByName( mNodeBeforeSelectionWindow.c_str() );
         //mActor->SetRepositioningNode( oldMotionExtractionNode );
     }
     */
@@ -178,30 +178,30 @@ namespace EMStudio
             EMotionFX::Motion*          motion              = entry->mMotion;
             EMotionFX::PlayBackInfo*    playbackInfo        = motion->GetDefaultPlayBackInfo();
 
-            MCore::String commandParameters;
+            AZStd::string commandParameters;
 
-            //if (Compare<float>::CheckIfIsClose(playbackInfo->mRetargetRootOffset, GetRetargetRootOffset(), 0.001f) == false)      commandParameters += MCore::String().Format("-retargetRootOffset %f ", GetRetargetRootOffset());
-            //if (playbackInfo->mRetargetRootIndex != compareTo->mRetargetRootIndex)                                                commandParameters += MCore::String().Format("-retargetRootIndex %i ", playbackInfo->mRetargetRootIndex);
+            //if (Compare<float>::CheckIfIsClose(playbackInfo->mRetargetRootOffset, GetRetargetRootOffset(), 0.001f) == false)      commandParameters += AZStd::string::format("-retargetRootOffset %f ", GetRetargetRootOffset());
+            //if (playbackInfo->mRetargetRootIndex != compareTo->mRetargetRootIndex)                                                commandParameters += AZStd::string::format("-retargetRootIndex %i ", playbackInfo->mRetargetRootIndex);
             if (playbackInfo->mRetarget != mMotionRetargetingButton->isChecked())
             {
-                commandParameters += MCore::String().Format("-retarget %s ", mMotionRetargetingButton->isChecked() ? "true" : "false");
+                commandParameters += AZStd::string::format("-retarget %s ", AZStd::to_string(mMotionRetargetingButton->isChecked()).c_str());
             }
 
             // debug output, remove me later on!
-            //LogDebug("commandParameters: %s", commandParameters.AsChar());
+            //LogDebug("commandParameters: %s", commandParameters.c_str());
 
             // in case the command parameters are empty it means nothing changed, so we can skip this command
-            if (commandParameters.GetIsEmpty() == false)
+            if (commandParameters.empty() == false)
             {
-                commandGroup.AddCommandString(MCore::String().Format("AdjustDefaultPlayBackInfo -filename \"%s\" %s", motion->GetFileName(), commandParameters.AsChar()).AsChar());
+                commandGroup.AddCommandString(AZStd::string::format("AdjustDefaultPlayBackInfo -filename \"%s\" %s", motion->GetFileName(), commandParameters.c_str()).c_str());
             }
         }
 
         // execute the group command
-        MCore::String outResult;
+        AZStd::string outResult;
         if (CommandSystem::GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
         {
-            MCore::LogError(outResult.AsChar());
+            MCore::LogError(outResult.c_str());
         }
     }
 
@@ -320,7 +320,7 @@ namespace EMStudio
             MCore::LogInfo("MotionRetargetingWindow::RetargetRootOffsetSliderChanged() - Remove this function, move it to the Actor or ActorInstance settings");
         }
 
-        mOffsetValueEdit->setText( QString::fromWCharArray(MCore::String().Format("%.2f", offset).AsChar()) );
+        mOffsetValueEdit->setText( QString::fromWCharArray(AZStd::string::format("%.2f", offset).c_str()) );
     }
 
 
@@ -421,13 +421,13 @@ namespace EMStudio
             Motion*         motion              = entry->mMotion;
             PlayBackInfo*   playbackInfo        = motion->GetDefaultPlayBackInfo();
 
-            commandGroup.AddCommandString( String().Format("AdjustDefaultPlayBackInfo -filename \"%s\" -retargetRootIndex %i", motion->GetFileName(), rootNodeIndex).AsChar() );
+            commandGroup.AddCommandString( String() = AZStd::string::format("AdjustDefaultPlayBackInfo -filename \"%s\" -retargetRootIndex %i", motion->GetFileName(), rootNodeIndex).c_str() );
         }
 
         // execute the group command
         String outResult;
         if (GetCommandManager()->ExecuteCommandGroup( commandGroup, outResult ) == false)
-            LogError(outResult.AsChar());
+            LogError(outResult.c_str());
     }*/
 
     //-----------------------------------------------------------------------------------------

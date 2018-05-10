@@ -111,6 +111,8 @@ namespace AssetProcessor
         virtual ~MessageInfoBusTraits() {}
         //Show a message window to the user
         virtual void NegotiationFailed() {}
+        // Notifies listeners of a given Asset failing to process
+        virtual void OnAssetFailed(const AZStd::string& /*sourceFileName*/) {}
     };
 
     using MessageInfoBus = AZ::EBus<MessageInfoBusTraits>;

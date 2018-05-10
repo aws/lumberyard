@@ -159,6 +159,22 @@ void CAnimMaterialNode::UpdateDynamicParamsInternal()
 
         m_dynamicShaderParamInfos.push_back(paramInfo);
     }
+
+    // Make sure any color tracks that are animated "ByString"
+    // have the track multiplier set.
+    int trackCount = NumTracks();
+    for (int trackIndex = 0; trackIndex < trackCount; trackIndex++)
+    {
+        IAnimTrack* track = m_tracks[trackIndex].get();
+        if (!(track->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled))
+        {
+            CAnimParamType param = track->GetParameterType();
+            if (param.GetType() == AnimParamType::ByString && track->GetValueType() == AnimValueType::RGB)
+            {
+                track->SetMultiplier(255.0f);
+            }
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -363,7 +379,7 @@ void CAnimMaterialNode::AnimateNamedParameter(SAnimContext& ec, IRenderShaderRes
             param.m_Value.m_Vector[2] = vecValue[2];
             break;
         case AnimValueType::RGB:
-            pTrack->GetValue(ec.time, colorValue);
+            pTrack->GetValue(ec.time, colorValue, true);
             param.m_Value.m_Color[0] = colorValue[0];
             param.m_Value.m_Color[1] = colorValue[1];
             param.m_Value.m_Color[2] = colorValue[2];
@@ -406,6 +422,13 @@ _smart_ptr<IMaterial> CAnimMaterialNode::GetMaterialByName(const char* pName)
     {
         return gEnv->p3DEngine->GetMaterialManager()->FindMaterial(GetName());
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAnimMaterialNode::AddTrack(IAnimTrack* track)
+{
+    CAnimNode::AddTrack(track);
+    UpdateDynamicParams();
 }
 
 //////////////////////////////////////////////////////////////////////////

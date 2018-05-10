@@ -427,9 +427,31 @@ void CTrackViewSequence::OnNodeChanged(CTrackViewNode* pNode, ITrackViewSequence
     if (pNode && pNode->GetNodeType() == eTVNT_AnimNode)
     {
         // Deselect the node before deleting to give listeners a chance to update things like UI state.
-        if (pNode->IsSelected() && type == ITrackViewSequenceListener::eNodeChangeType_Removed)
+        if (type == ITrackViewSequenceListener::eNodeChangeType_Removed)
         {
-            pNode->SetSelected(false);
+            // Make sure to deselect any keys
+            CTrackViewKeyBundle keys = pNode->GetAllKeys();
+            for (int key = 0; key < keys.GetKeyCount(); key++)
+            {
+                CTrackViewKeyHandle keyHandle = keys.GetKey(key);
+                if (keyHandle.IsSelected())
+                {
+                    keyHandle.Select(false);
+                    m_bKeySelectionChanged = true;
+                }
+            }
+
+            // Flush the key selection notifications.
+            if (m_bKeySelectionChanged)
+            {
+                SubmitPendingNotifcations(true);
+            }
+            
+            // deselect the node
+            if (pNode->IsSelected())
+            {
+                pNode->SetSelected(false);
+            }
         }
 
         CTrackViewAnimNode* pAnimNode = static_cast<CTrackViewAnimNode*>(pNode);
@@ -573,8 +595,13 @@ void CTrackViewSequence::QueueNotifications()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewSequence::SubmitPendingNotifcations()
+void CTrackViewSequence::SubmitPendingNotifcations(bool force)
 {
+    if (force)
+    {
+        m_selectionRecursionLevel = 1;
+    }
+
     assert(m_selectionRecursionLevel > 0);
     if (m_selectionRecursionLevel > 0)
     {
@@ -620,8 +647,7 @@ void CTrackViewSequence::OnSequenceRemoved(CTrackViewSequence* removedSequence)
         // submit any queued notifications before removing
         if (m_bQueueNotifications)
         {
-            m_selectionRecursionLevel = 1;  // this forces the next SubmitPendingNotifcations() to submit the notifications
-            SubmitPendingNotifcations();
+            SubmitPendingNotifcations(true);
         }
 
         // remove ourselves as listeners from the undo manager
@@ -685,6 +711,25 @@ void CTrackViewSequence::DeleteSelectedNodes()
         }
     }
 
+    // Call RemoveEntityToAnimate on any nodes that are able to be removed right here. If we wait to do it inside
+    // of RemoveSubNode() it will fail because the EditorSequenceComponentRequestBus will be disconnected
+    // by the Deactivate / Activate of the sequence entity.
+    if (nullptr != m_pAnimSequence)
+    {
+        AZ::EntityId sequenceEntityId = m_pAnimSequence->GetSequenceEntityId();
+        if (m_pAnimSequence->GetSequenceType() == SequenceType::SequenceComponent && sequenceEntityId.IsValid())
+        {
+            for (unsigned int i = 0; i < numSelectedNodes; ++i)
+            {
+                AZ::EntityId removedNodeId = selectedNodes.GetNode(i)->GetAzEntityId();
+                if (removedNodeId.IsValid())
+                {
+                    Maestro::EditorSequenceComponentRequestBus::Event(m_pAnimSequence->GetSequenceEntityId(), &Maestro::EditorSequenceComponentRequestBus::Events::RemoveEntityToAnimate, removedNodeId);
+                }
+            }
+        }
+    }
+
     // Deactivate the sequence entity while we are potentially removing things from it. 
     // We need to allow the full removal operation (node and children) to complete before 
     // OnActivate happens on the Sequence again. If we don't deactivate the sequence entity
@@ -709,7 +754,7 @@ void CTrackViewSequence::DeleteSelectedNodes()
     CTrackViewTrackBundle selectedTracks = GetSelectedTracks();
     const unsigned int numSelectedTracks = selectedTracks.GetCount();
 
-    for (unsigned int i = 0; i < numSelectedTracks; ++i)
+    for (int i = numSelectedTracks - 1; i >= 0; i--)
     {
         CTrackViewTrack* pTrack = selectedTracks.GetTrack(i);
 
@@ -720,7 +765,11 @@ void CTrackViewSequence::DeleteSelectedNodes()
         }
     }
 
-    for (unsigned int i = 0; i < numSelectedNodes; ++i)
+    // GetSelectedAnimNodes() will add parent nodes first and then children to the selected
+    // node bundle list. So iterating backwards here causes child nodes to be deleted first,
+    // and then parents. If parent nodes get deleted first, pNode->GetParentNode() will return
+    // a bad pointer if it happens to be one of the nodes that was deleted.
+    for (int i = numSelectedNodes - 1; i >= 0; i--)
     {
         CTrackViewAnimNode* pNode = selectedNodes.GetNode(i);
         CTrackViewAnimNode* pParentNode = static_cast<CTrackViewAnimNode*>(pNode->GetParentNode());
@@ -1266,10 +1315,13 @@ void CTrackViewSequence::GetMatchedPasteLocationsRec(std::vector<TMatchedTrackLo
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::AdjustKeysToTimeRange(Range newTimeRange)
 {
-    assert (CUndo::IsRecording());
+    if (GetSequenceType() == SequenceType::Legacy)
+    {
+        AZ_Assert(CUndo::IsRecording(), "Expected CUndo to be recording for legacy sequences.");
 
-    // Store one key selection undo before...
-    CUndo::Record(new CUndoAnimKeySelection(this));
+        // Store one key selection undo before...
+        CUndo::Record(new CUndoAnimKeySelection(this));
+    }
 
     // Store key undo for each track
     CTrackViewTrackBundle tracks = GetAllTracks();
@@ -1277,11 +1329,17 @@ void CTrackViewSequence::AdjustKeysToTimeRange(Range newTimeRange)
     for (unsigned int i = 0; i < numTracks; ++i)
     {
         CTrackViewTrack* pTrack = tracks.GetTrack(i);
-        CUndo::Record(new CUndoTrackObject(pTrack, false));
+        if (GetSequenceType() == SequenceType::Legacy)
+        {
+            CUndo::Record(new CUndoTrackObject(pTrack, false));
+        }
     }
 
-    // ... and one after key changes
-    CUndo::Record(new CUndoAnimKeySelection(this));
+    if (GetSequenceType() == SequenceType::Legacy)
+    {
+        // ... and one after key changes
+        CUndo::Record(new CUndoAnimKeySelection(this));
+    }
 
     // Set new time range
     Range oldTimeRange = GetTimeRange();
@@ -1293,11 +1351,21 @@ void CTrackViewSequence::AdjustKeysToTimeRange(Range newTimeRange)
     CTrackViewKeyBundle keyBundle = GetAllKeys();
     const unsigned int numKeys = keyBundle.GetKeyCount();
 
+    // Do not notify listeners until all the times are set, otherwise the
+    // keys will be sorted and the indices inside the CTrackViewKeyHandle
+    // will become invalid.
+    bool notifyListeners = false;
+
     for (unsigned int i = 0; i < numKeys; ++i)
     {
         CTrackViewKeyHandle keyHandle = keyBundle.GetKey(i);
-        keyHandle.SetTime(offset + keyHandle.GetTime() * scale);
+        float scaled = (keyHandle.GetTime() - oldTimeRange.start) * scale;
+        keyHandle.SetTime(offset + scaled + oldTimeRange.start, notifyListeners);
     }
+
+    // notifyListeners was disabled in the above SetTime() calls so
+    // notify all the keys changes now.
+    OnKeysChanged();
 
     MarkAsModified();
 }
@@ -1305,10 +1373,13 @@ void CTrackViewSequence::AdjustKeysToTimeRange(Range newTimeRange)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::SetTimeRange(Range timeRange)
 {
-    if (CUndo::IsRecording())
+    if (GetSequenceType() == SequenceType::Legacy)
     {
-        // Store old sequence settings
-        CUndo::Record(new CUndoSequenceSettings(this));
+        if (CUndo::IsRecording())
+        {
+            // Store old sequence settings
+            CUndo::Record(new CUndoSequenceSettings(this));
+        }
     }
 
     m_pAnimSequence->SetTimeRange(timeRange);

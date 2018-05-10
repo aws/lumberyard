@@ -21,8 +21,9 @@
 
 #include <Widgets/GraphCanvasLabel.h>
 
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/tools.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {
@@ -162,6 +163,7 @@ namespace GraphCanvas
 
     void GraphCanvasLabel::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget /*= nullptr*/)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         AZ_Warning("GraphCanvasLabel", !(m_elide && m_wrap), "GraphCanvasLabel doesn't support eliding text and word wrapping at the same time.");
 
         painter->save();
@@ -230,6 +232,8 @@ namespace GraphCanvas
         }
 
         painter->restore();
+
+        QGraphicsWidget::paint(painter, option, widget);
     }
 
     QSizeF GraphCanvasLabel::sizeHint(Qt::SizeHint which, const QSizeF& constraint /*= QSizeF()*/) const
@@ -284,6 +288,7 @@ namespace GraphCanvas
 
     void GraphCanvasLabel::UpdateDesiredBounds()
     {
+        prepareGeometryChange();
         qreal padding = m_styleHelper.GetAttribute(Styling::Attribute::Padding, 2.0f);
 
         QFontMetricsF metrics = QFontMetricsF(m_styleHelper.GetFont());
@@ -320,8 +325,9 @@ namespace GraphCanvas
         // Seem so be an off by 1 error here. So adding one in each direction to my desired size to stop text from being clipped.
         m_desiredBounds.adjust(-1.0, -1.0, 1.0, 1.0);
 
-        m_minimumSize = m_styleHelper.GetMinimumSize(m_desiredBounds.size());        
+        m_minimumSize = m_styleHelper.GetMinimumSize(m_desiredBounds.size());
 
-        adjustSize();
+        updateGeometry();
+        setCacheMode(QGraphicsItem::CacheMode::DeviceCoordinateCache);
     }
 }

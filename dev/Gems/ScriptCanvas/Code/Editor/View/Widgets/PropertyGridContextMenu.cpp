@@ -36,14 +36,14 @@ namespace
 
     bool IsGraphCanvasActive()
     {
-        AZ::EntityId sceneId;
-        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(sceneId, &ScriptCanvasEditor::GeneralRequests::GetActiveSceneId);
+        AZ::EntityId scriptCanvasGraphId;
+        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &ScriptCanvasEditor::GeneralRequests::GetActiveScriptCanvasGraphId);
 
-        AZ::EntityId graphId;
-        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(graphId, &ScriptCanvasEditor::GeneralRequests::GetActiveGraphId);
+        AZ::EntityId graphCanvasGraphId;
+        ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(graphCanvasGraphId, &ScriptCanvasEditor::GeneralRequests::GetActiveGraphCanvasGraphId);
 
-        return (sceneId.IsValid() &&
-                graphId.IsValid());
+        return (scriptCanvasGraphId.IsValid() &&
+                graphCanvasGraphId.IsValid());
     }
 
     AZ::EntityId GetEntityId(AzToolsFramework::InstanceDataNode* node)
@@ -89,7 +89,7 @@ namespace
             GraphCanvas::SlotRequestBus::EventResult(name, slotId, &GraphCanvas::SlotRequests::GetName);
 
             bool isVisible = false;
-            GraphCanvas::VisualRequestBus::EventResult(isVisible, slotId, &GraphCanvas::VisualRequests::GetVisibility);
+            GraphCanvas::VisualRequestBus::EventResult(isVisible, slotId, &GraphCanvas::VisualRequests::IsVisible);
 
             slotsList.push_back({slotId,
                                  name.c_str(),
@@ -119,7 +119,7 @@ namespace
                     // slot.m_isVisible is the current state, and "checked" is the new state.
                     AZ_Assert(checked != slot.m_isVisible, "Visibility out of synch");
 
-                    GraphCanvas::VisualRequestBus::Event(slot.m_id, &GraphCanvas::VisualRequests::SetVisibility, !slot.m_isVisible);
+                    GraphCanvas::VisualRequestBus::Event(slot.m_id, &GraphCanvas::VisualRequests::SetVisible, !slot.m_isVisible);
                 });
             rootMenu->addAction(action);
         }

@@ -31,13 +31,13 @@ MCORE_INLINE KeyTrackLinear<AZ::PackedVector3f, AZ::PackedVector3f>* SkeletalSub
 
 MCORE_INLINE const char* SkeletalSubMotion::GetName() const
 {
-    return MCore::GetStringIDGenerator().GetName(mNameID).AsChar();
+    return MCore::GetStringIdPool().GetName(mNameID).c_str();
 }
 
 
-MCORE_INLINE const MCore::String& SkeletalSubMotion::GetNameString() const
+MCORE_INLINE const AZStd::string& SkeletalSubMotion::GetNameString() const
 {
-    return MCore::GetStringIDGenerator().GetName(mNameID);
+    return MCore::GetStringIdPool().GetName(mNameID);
 }
 
 

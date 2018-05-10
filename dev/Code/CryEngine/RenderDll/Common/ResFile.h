@@ -24,8 +24,8 @@
 // defines the current compression for any files written
 #define RES_COMPRESSION RESVERSION_LZSS
 
-#include <LZSS/LZSS.H>
-#include <Lzma/Lzma86.h>
+#include <LZSS.H>
+#include <Lzma86.h>
 
 // Resource files flags
 #define RF_NOTSAVED 1

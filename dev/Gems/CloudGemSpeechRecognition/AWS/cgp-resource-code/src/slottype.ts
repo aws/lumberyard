@@ -127,21 +127,40 @@ export class SlotTypeEntry {
 	**/
     public delete(): any {
         var promise = new Promise(function (resolve, reject) {
-            this._apiHandler.deleteSlotType(this.name).subscribe(response => {
-                let obj = JSON.parse(response.body.text());
-                if (obj.result.status == "INUSE") {
-                    this.toastr.error("The slot type '" + this.name + "' is in use.");
-                    reject();
-                }
-                else if (obj.result.status == "DELETED") {
-                    this.toastr.success("The slot type '" + this.name + "' was deleted.");
-                    resolve();
-                }
-                else {
-                    this.toastr.error("The slot type '" + this.name + "' could not be deleted. " + obj.result.status);
-                    reject();
-                }
-            })
+            if (this.version == "$LATEST") {
+                this._apiHandler.deleteSlotType(this.name).subscribe(response => {
+                    let obj = JSON.parse(response.body.text());
+                    if (obj.result.status == "INUSE") {
+                        this.toastr.error("The slot type '" + this.name + "' is in use.");
+                        reject();
+                    }
+                    else if (obj.result.status == "DELETED") {
+                        this.toastr.success("The slot type '" + this.name + "' was deleted.");
+                        resolve();
+                    }
+                    else {
+                        this.toastr.error("The slot type '" + this.name + "' could not be deleted. " + obj.result.status);
+                        reject();
+                    }
+                })
+            }
+            else {
+                this._apiHandler.deleteSlotTypeVersion(this.name, this.version).subscribe(response => {
+                    let obj = JSON.parse(response.body.text());
+                    if (obj.result.status == "INUSE") {
+                        this.toastr.error("The selected version of the slot type '" + this.name + "' is in use.");
+                        reject();
+                    }
+                    else if (obj.result.status == "DELETED") {
+                        this.toastr.success("The selected version of the slot type '" + this.name + "' was deleted.");
+                        resolve();
+                    }
+                    else {
+                        this.toastr.error("The selected version of the slot type '" + this.name + "' could not be deleted. " + obj.result.status);
+                        reject();
+                    }
+                })
+            }
         }.bind(this))
         return promise;
     }

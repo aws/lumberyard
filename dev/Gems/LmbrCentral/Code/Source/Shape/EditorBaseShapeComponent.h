@@ -9,48 +9,59 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
-#include <AzCore/Math/Vector4.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Component/TransformBus.h>
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <LmbrCentral/Shape/EditorShapeComponentBus.h>
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
+#include <Shape/ShapeDisplay.h>
 
 namespace LmbrCentral
 {
     class EditorBaseShapeComponent
         : public AzToolsFramework::Components::EditorComponentBase
-        , public LmbrCentral::EditorShapeComponentRequestsBus::Handler
-        , private AzFramework::EntityDebugDisplayEventBus::Handler
+        , public EditorShapeComponentRequestsBus::Handler
+        , public AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
+        , public AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
         , private AZ::TransformNotificationBus::Handler
     {
     public:
-
         AZ_RTTI(EditorBaseShapeComponent, "{32B9D7E9-6743-427B-BAFD-1C42CFBE4879}", AzToolsFramework::Components::EditorComponentBase);
 
-        EditorBaseShapeComponent();
-        ~EditorBaseShapeComponent() override = default;
+        EditorBaseShapeComponent() = default;
+
         static void Reflect(AZ::SerializeContext& context);
 
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
-        // EditorBaseShapeComponent
-        void DisplayEntity(bool& handled) override;
-
-        // Transform notification bus handler
-        void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;
+        // AZ::TransformNotificationBus::Handler
+        void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override {}
 
         // LmbrCentral::EditorShapeComponentRequestsBus
-        void SetShapeColor(const AZ::Vector4& solidColor) override;
-        void SetShapeWireframeColor(const AZ::Vector4& wireColor) override;
+        void SetShapeColor(const AZ::Color& solidColor) override;
+        void SetShapeWireframeColor(const AZ::Color& wireColor) override;
         void SetVisibleInEditor(bool visible) override;
 
-    protected:
+        /**
+         * Should shape be rendered all the time, even when not selected.
+         */
+        bool CanDraw() const;
 
+    protected:
+        // EditorComponentSelectionRequestsBus::Handler
+        AZ::Aabb GetEditorSelectionBounds() override;
+        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        bool SupportsEditorRayIntersect() override { return true; }
+        AZ::u32 GetBoundingBoxDisplayType() override { return AzToolsFramework::EditorComponentSelectionRequests::NoBoundingBox; }
+
+        // EditorComponentSelectionNotificationsBus::Handler
+        void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override;
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
@@ -66,13 +77,11 @@ namespace LmbrCentral
             required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
-        virtual void DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const {}
+        AZ::Color m_shapeColor = AzFramework::ViewportColors::DeselectedColor; ///< Shaded color used for debug visualizations.
+        AZ::Color m_shapeWireColor = AzFramework::ViewportColors::WireColor; ///< Wireframe color used for debug visualizations.
 
-        AZ::Transform m_currentEntityTransform; ///< Stores the transform of the entity
-        AZ::Vector4 m_shapeColor; ///< Shaded color used for debug visualizations
-        AZ::Vector4 m_shapeWireColor; ///< Wireframe color used for debug visualizations
-        static const AZ::Vector4 s_shapeColor; ///< Shaded color used for debug visualizations
-        static const AZ::Vector4 s_shapeWireColor; ///< Wireframe color used for debug visualizations
-        bool m_visibleInEditor = true; ///< Visible in the editor viewport
+        bool m_visibleInEditor = true; ///< Visible in the editor viewport.
+        bool m_visibleInGameView = false; ///< Visible in Game View.
+        bool m_displayFilled = true; ///< Should shape be displayed filled.
     };
 } // namespace LmbrCentral

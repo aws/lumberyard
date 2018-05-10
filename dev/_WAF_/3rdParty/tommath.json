@@ -1,80 +1,101 @@
 {
-    "name": "TomMath", 
-    "source": "@ROOT@/Code/SDKs/LibTomMath", 
-    "description": "LibTomMath open source library (http://www.libtom.org/)", 
+    "name": "TomMath",
+    "source": "@3P:libtommath@",
+    "description": "LibTomMath open source library (http://www.libtom.org/)",
     "includes": [
         "."
-    ], 
-    "defines": [], 
-    "lib_required": "True", 
+    ],
+    "defines": [],
+    "lib_required": "True",
     "platform": {
         "win_x64_vs2013": {
             "libpath": [
                 "lib/x64_vc12"
-            ], 
+            ],
             "lib_release": [
                 "libtommath.lib"
-            ], 
+            ],
             "lib_debug": [
                 "libtommath_debug.lib"
             ]
-        }, 
+        },
         "win_x64_vs2015": {
             "libpath": [
                 "lib/x64_vc14"
-            ], 
+            ],
             "lib_release": [
                 "libtommath.lib"
-            ], 
+            ],
             "lib_debug": [
                 "libtommath_debug.lib"
             ]
-        }, 
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "durango_vs2015": {
+            "libpath": [
+                "lib/x64_vc14"
+            ],
+            "lib_release": [
+                "libtommath.lib"
+            ],
+            "lib_debug": [
+                "libtommath_debug.lib"
+            ]
+        },
+        "durango_vs2017": "@durango_vs2015",
+        "orbis_vs2015": {
+            "libpath": [
+                "lib/orbis"
+            ],
+            "lib": [
+                "libtommath.a"
+            ]
+        },
         "darwin_x64": {
             "libpath": [
                 "lib/mac"
-            ], 
+            ],
             "lib": [
                 "libtommath.a"
             ]
-        }, 
+        },
         "ios": {
             "libpath": [
                 "lib/ios"
-            ], 
+            ],
             "lib": [
                 "libtommath.a"
             ]
-        }, 
+        },
         "appletv": {
             "libpath": [
                 "lib/appletv"
-            ], 
+            ],
             "lib": [
                 "libtommath.a"
             ]
-        }, 
+        },
         "android_armv7_gcc": {
             "libpath": [
                 "lib/android-armeabi-v7a"
-            ], 
+            ],
             "lib": [
                 "libtommath.a"
             ]
-        }, 
-        "android_armv7_clang": "@android_armv7_gcc", 
+        },
+        "android_armv7_clang": "@android_armv7_gcc",
         "android_armv8_clang": {
             "libpath": [
                 "lib/android-arm64-v8a"
-            ], 
+            ],
             "lib": [
                 "libtommath.a"
             ]
-        }, 
+        },
         "linux_x64": {
             "libpath": [
                 "lib/linux"
-            ], 
+            ],
             "lib": [
                 "libtommath.a"
             ]

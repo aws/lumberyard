@@ -13,6 +13,7 @@
 */
 
 #include <AzCore/Math/Transform.h>
+#include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/vector.h>
 #include <SceneAPI/SceneData/SceneDataConfiguration.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
@@ -23,7 +24,7 @@ namespace AZ
     {
         namespace GraphData
         {
-            class AnimationData
+            class SCENE_DATA_CLASS AnimationData
                 : public SceneAPI::DataTypes::IAnimationData
             {
             public:
@@ -43,6 +44,31 @@ namespace AZ
             protected:
                 AZStd::vector<Transform>    m_keyFrames;
                 double                      m_timeStepBetweenFrames;
+            };
+
+            class BlendShapeAnimationData
+                : public SceneAPI::DataTypes::IBlendShapeAnimationData
+            {
+            public:
+                AZ_RTTI(BlendShapeAnimationData, "{02766CCF-BDA7-46B6-9BB1-58A90C1AD6AA}", SceneAPI::DataTypes::IBlendShapeAnimationData);
+
+                SCENE_DATA_API BlendShapeAnimationData();
+                SCENE_DATA_API ~BlendShapeAnimationData() override = default;
+                SCENE_DATA_API virtual void SetBlendShapeName(const char* name);
+                SCENE_DATA_API virtual void AddKeyFrame(double keyFrameValue);
+                SCENE_DATA_API virtual void ReserveKeyFrames(size_t count);
+                SCENE_DATA_API virtual void SetTimeStepBetweenFrames(double timeStep);
+
+                SCENE_DATA_API const char* GetBlendShapeName() const override;
+                SCENE_DATA_API size_t GetKeyFrameCount() const override;
+                SCENE_DATA_API double GetKeyFrame(size_t index) const override;
+
+                SCENE_DATA_API double GetTimeStepBetweenFrames() const override;
+
+            protected:
+                AZStd::string            m_blendShapeName;
+                AZStd::vector<double>    m_keyFrames;
+                double                   m_timeStepBetweenFrames;
             };
         }
     }

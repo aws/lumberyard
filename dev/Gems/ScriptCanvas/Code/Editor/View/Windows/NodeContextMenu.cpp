@@ -51,7 +51,9 @@ namespace
             AZ::EntityId graphId;
             ScriptCanvas::SystemRequestBus::BroadcastResult(graphId, &ScriptCanvas::SystemRequests::FindGraphId, sceneEntity);
 
-            auto nodeIdPair = ScriptCanvasEditor::Nodes::CreateNode(azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAssetNode>(), graphId, "");
+            ScriptCanvasEditor::Nodes::StyleConfiguration styleConfiguration;
+
+            auto nodeIdPair = ScriptCanvasEditor::Nodes::CreateNode(azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAssetNode>(), graphId, styleConfiguration);
             AZ::Entity* entity{};
             AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, nodeIdPair.m_scriptCanvasId);
             auto scriptCanvasAssetNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvasEditor::ScriptCanvasAssetNode>(entity);

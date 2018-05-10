@@ -1,0 +1,40 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/CloudsGem.cpp",
+            "Source/CloudsGem.h",
+            "Source/CloudComponent.cpp",
+            "Source/CloudComponent.h",
+            "Source/CloudComponentBus.h",
+            "Source/CloudImposterRenderElement.cpp",
+            "Source/CloudImposterRenderElement.h",
+            "Source/CloudParticle.cpp",
+            "Source/CloudParticle.h",
+            "Source/CloudRenderElement.cpp",
+            "Source/CloudRenderElement.h",
+            "Source/CloudComponentRenderNode.h",
+            "Source/CloudComponentRenderNode.cpp",
+            "Source/CloudsComponentStub.cpp",
+            "Source/CloudsSystemComponent.cpp",
+            "Source/CloudsSystemComponent.h",
+            "Source/CloudVolumeSprite.cpp",
+            "Source/CloudVolumeSprite.h",
+            "Source/CloudVolumeVoxel.cpp",
+            "Source/CloudVolumeVoxel.h",
+            "Source/CloudVolumeRenderElement.cpp",
+            "Source/CloudVolumeRenderElement.h",
+            "Source/CloudVolumeTexture.cpp",
+            "Source/CloudVolumeTexture.h",
+            "Source/CloudVolumePerlinNoise.cpp",
+            "Source/CloudVolumePerlinNoise.h",
+            "Source/DynamicTexture.cpp",
+            "Source/DynamicTexture.h"
+        ]
+    }
+}

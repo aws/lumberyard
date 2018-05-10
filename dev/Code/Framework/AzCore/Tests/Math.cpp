@@ -2744,13 +2744,11 @@ namespace UnitTest
                     EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
                 }
 
-                // note: current error case - unexpected result
-                // internally GetNearestAddress treats ray as line segment - direction not respected - should update?
-                //{
-                //    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(-2.5f, 2.5f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
-                //    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 3);
-                //    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
-                //}
+                {
+                    RaySplineQueryResult raySplineQueryResult = linearSpline.GetNearestAddressRay(Vector3(-2.5f, 2.5f, 0.0f), Vector3(1.0f, 0.0f, 0.0f));
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentIndex == 3);
+                    EXPECT_TRUE(raySplineQueryResult.m_splineAddress.m_segmentFraction == 0.5f);
+                }
             }
         }
 

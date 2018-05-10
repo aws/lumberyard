@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <QString>
+#include <qstring.h>
 
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Serialization/ObjectStream.h>
@@ -29,43 +29,11 @@ namespace GraphCanvas
         static void Reflect(AZ::ReflectContext* serializeContext);
         
         GraphCanvasMimeContainer() = default;
-        virtual ~GraphCanvasMimeContainer()
-        {
-            for (GraphCanvasMimeEvent* mimeEvent : m_mimeEvents)
-            {
-                delete mimeEvent;
-            }
-        }
+        virtual ~GraphCanvasMimeContainer();
         
-        bool ToBuffer(AZStd::vector<char>& buffer)
-        {
-            buffer.clear();
-            AZ::IO::ByteContainerStream<AZStd::vector<char> > ms(&buffer);
-            return AZ::Utils::SaveObjectToStream(ms, AZ::DataStream::ST_BINARY, this);
-        }
-        
-        bool FromBuffer(const char* data, AZStd::size_t size)
-        {
-            AZ::IO::MemoryStream ms(data, size);
-
-            GraphCanvasMimeContainer* pContainer = AZ::Utils::LoadObjectFromStream<GraphCanvasMimeContainer>(ms, nullptr);
-            if (pContainer)
-            {
-                m_mimeEvents = AZStd::move(pContainer->m_mimeEvents);
-
-                pContainer->m_mimeEvents.clear();
-                delete pContainer;
-
-                return true;
-            }
-
-            return false;
-        }
-
-        bool FromBuffer(const AZStd::vector<char>& buffer)
-        {
-            return FromBuffer(buffer.data(), buffer.size());
-        }
+        bool ToBuffer(AZStd::vector<char>& buffer);        
+        bool FromBuffer(const char* data, AZStd::size_t size);
+        bool FromBuffer(const AZStd::vector<char>& buffer);
 
         AZStd::vector< GraphCanvasMimeEvent* > m_mimeEvents;
     };

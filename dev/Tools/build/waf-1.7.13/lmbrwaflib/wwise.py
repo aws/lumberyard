@@ -34,7 +34,7 @@ def apply_wwise_settings(self):
         platform = 'android-9_armeabi-v7a'
     elif platform.startswith('android_armv8'):
         platform = 'android-21_arm64-v8a'
-    elif platform in ('win_x64_vs2015'):
+    elif platform in ('win_x64_vs2017', 'win_x64_vs2015'):
         platform = 'x64_vc140'
     else:
         platform = 'x64_vc120'
@@ -44,8 +44,8 @@ def apply_wwise_settings(self):
     if hasattr(self.env['CONFIG_OVERWRITES'], self.target):
         configuration = self.env['CONFIG_OVERWRITES'][self.target]
 
-    includes = [ self.bld.CreateRootRelativePath('Code/SDKs/Wwise/include') ]
-    libpath = [ self.bld.CreateRootRelativePath('Code/SDKs/Wwise/lib/' + platform + '/' + configuration) ]
+    includes = [ self.bld.ThirdPartyPath('wwiseLtx', 'include') ]
+    libpath = [ self.bld.ThirdPartyPath('wwiseLtx', 'lib/' + platform + '/' + configuration) ]
 
     libs = [ 'AkAudioInputSource',
             'AkCompressorFX',

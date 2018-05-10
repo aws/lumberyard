@@ -63,18 +63,17 @@ namespace GraphCanvas
         }
     }
 
-    void NodePropertyDisplayWidget::OnHoverEnter(QGraphicsItem* graphicsItem)
+    void NodePropertyDisplayWidget::OnDisplayStateChanged(RootGraphicsItemDisplayState oldState, RootGraphicsItemDisplayState newState)
     {
-        if (!m_editing)
+        if (newState == RootGraphicsItemDisplayState::Inspection)
         {
-            m_editing = true;
-            UpdateLayout();
+            if (!m_editing)
+            {
+                m_editing = true;
+                UpdateLayout();
+            }
         }
-    }
-
-    void NodePropertyDisplayWidget::OnHoverLeave(QGraphicsItem* graphicsItem)
-    {
-        if (m_editing)
+        else if (m_editing)
         {
             m_editing = false;
             UpdateLayout();
@@ -108,7 +107,7 @@ namespace GraphCanvas
             ClearDisplay();
         }
         
-        VisualNotificationBus::Handler::BusDisconnect();
+        RootGraphicsItemNotificationBus::Handler::BusDisconnect();
         NodePropertiesRequestBus::Handler::BusDisconnect();
         NodePropertyRequestBus::Handler::BusDisconnect();
         
@@ -119,7 +118,7 @@ namespace GraphCanvas
             m_nodePropertyDisplay->UpdateDisplay();
             m_nodePropertyDisplay->RefreshStyle();
         
-            VisualNotificationBus::Handler::BusConnect(m_nodePropertyDisplay->GetNodeId());
+            RootGraphicsItemNotificationBus::Handler::BusConnect(m_nodePropertyDisplay->GetNodeId());
             NodePropertiesRequestBus::Handler::BusConnect(m_nodePropertyDisplay->GetNodeId());
             NodePropertyRequestBus::Handler::BusConnect(m_nodePropertyDisplay->GetId());
         }

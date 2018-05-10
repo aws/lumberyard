@@ -1,6 +1,6 @@
 {
     "name": "ASN1",
-    "source": "@ROOT@/Code/SDKs/asn1",
+    "source": "@3P:ASN1@",
     "description": "Abstract Syntax Notation 1",
     "defines": [],
     "lib_required": "True",

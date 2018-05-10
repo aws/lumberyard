@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYSYSTEM_MEMREPLAY_H
-#define CRYINCLUDE_CRYSYSTEM_MEMREPLAY_H
 #pragma once
 
 
@@ -20,6 +18,12 @@
 #define REPLAY_RECORD_USAGE_CHANGES 0
 #define REPLAY_RECORD_THREADED 1
 #define REPLAY_RECORD_CONTAINERS 0
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MEMREPLAY_H_SECTION_1 1
+#define MEMREPLAY_H_SECTION_2 2
+#endif
 
 #if CAPTURE_REPLAY_LOG || ENABLE_STATOSCOPE
 
@@ -755,6 +759,9 @@ public:
     void* MapAddressSpace(void* addr, size_t sz);
 };
 
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_H_SECTION_1
+#include AZ_RESTRICTED_FILE(MemReplay_h, AZ_RESTRICTED_PLATFORM)
 #endif
 
 class ReplayAllocator
@@ -1026,21 +1033,13 @@ public:
         char sig[512];
     };
 
-    struct ModuleUnloadDesc
-    {
-        UINT_PTR address;
-    };
-
-    typedef void (* FModuleLoad)(void*, const ModuleLoadDesc& desc);
-    typedef void (* FModuleUnload)(void*, const ModuleUnloadDesc& desc);
-
 public:
     CReplayModules()
         : m_numKnownModules(0)
     {
     }
 
-    void RefreshModules(FModuleLoad onLoad, FModuleUnload onUnload, void* pUser);
+    void RefreshModules();
 
 private:
     struct Module
@@ -1068,20 +1067,11 @@ private:
             return a.timestamp < b.timestamp;
         }
     };
-#if AZ_LEGACY_CRYSYSTEM_TRAIT_MEMREPLAY_MODULE_STATE
-    struct EnumModuleState
-    {
-        CReplayModules* pSelf;
-        HANDLE hProcess;
-        FModuleLoad onLoad;
-        void* pOnLoadUser;
-    };
-#endif
 
 private:
-
-#if defined(LINUX)
-    static int EnumModules_Linux(struct dl_phdr_info* info, size_t size, void* userContext);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MEMREPLAY_H_SECTION_2
+#include AZ_RESTRICTED_FILE(MemReplay_h, AZ_RESTRICTED_PLATFORM)
 #endif
 
 private:
@@ -1160,11 +1150,8 @@ public:
     void BindToContainer(const void* key, const void* alloc);
     void UnbindFromContainer(const void* key, const void* alloc);
     void SwapContainers(const void* keyA, const void* keyB);
-    //////////////////////////////////////////////////////////////////////////
 
-private:
-    static void RecordModuleLoad(void* pSelf, const CReplayModules::ModuleLoadDesc& mld);
-    static void RecordModuleUnload(void* pSelf, const CReplayModules::ModuleUnloadDesc& mld);
+    void RecordModuleLoad(const CReplayModules::ModuleLoadDesc& mld);
 
 private:
     CMemReplay(const CMemReplay&);
@@ -1191,5 +1178,3 @@ private:
 //////////////////////////////////////////////////////////////////////////
 
 #endif
-
-#endif // CRYINCLUDE_CRYSYSTEM_MEMREPLAY_H

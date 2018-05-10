@@ -207,14 +207,14 @@ namespace AssetProcessor
 #if defined(DEBUG_RCJOB_MODEL)
         AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace markAsProcessing(%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
 #endif
-        
+
         rcJob->SetState(RCJob::processing);
         rcJob->SetTimeLaunched(QDateTime::currentDateTime());
 
         m_jobsInFlight.insert(rcJob);
 
         int jobIndex = m_jobs.lastIndexOf(rcJob);
-        if(jobIndex == -1)
+        if (jobIndex == -1)
         {
             AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace jobIndex == -1!!! (%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
             AZ_Assert(false, "Job not found!!!");
@@ -251,7 +251,7 @@ namespace AssetProcessor
         }
 
         int jobIndex = m_jobs.lastIndexOf(rcJob);
-        if(jobIndex == -1)
+        if (jobIndex == -1)
         {
             AZ_TracePrintf(AssetProcessor::DebugChannel, "JobTrace jobIndex == -1!!! (%i %s,%s,%s)\n", rcJob, rcJob->GetInputFileAbsolutePath().toUtf8().constData(), rcJob->GetPlatformInfo().m_identifier.c_str(), rcJob->GetJobKey().toUtf8().constData());
             AZ_Assert(false, "Job not found!!!");
@@ -299,7 +299,7 @@ namespace AssetProcessor
         return -1; // invalid index
     }
 
-    void RCJobListModel::EraseJobs(QString relSourceFile)
+    void RCJobListModel::EraseJobs(QString relSourceFile, QVector<RCJob*>& pendingJobs)
     {
         for (int jobIdx = 0; jobIdx < rowCount(); ++jobIdx)
         {
@@ -307,16 +307,25 @@ namespace AssetProcessor
             if (QString::compare(job->GetInputFileRelativePath(), relSourceFile, Qt::CaseInsensitive) == 0)
             {
                 const QueueElementID& target = job->GetElementID();
-                if ((isInQueue(target))|| (isInFlight(target)))
+                if ((isInQueue(target)) || (isInFlight(target)))
                 {
-                    // Its important that this still follows the 'cancelled' flow, so that other parts of the code can update their "in progress" and other maps. 
+                    // Its important that this still follows the 'cancelled' flow, so that other parts of the code can update their "in progress" and other maps.
                     AZ_TracePrintf(AssetProcessor::DebugChannel, "Cancelling Job [%s, %s, %s] because the source file no longer exists.\n", target.GetInputAssetName().toUtf8().data(), target.GetPlatform().toUtf8().data(), target.GetJobDescriptor().toUtf8().data());
+
+                    // if a job is pending, it was never started and thus will never enter Finished state, 
+                    // so simply changing its state to cancelled is not enough, collect them and return to rccontroller to process manually
+                    if (job->GetState() == RCJob::JobState::pending)
+                    {
+                        pendingJobs.push_back(job);
+                    }
+
                     job->SetState(RCJob::JobState::cancelled);
                     AssetBuilderSDK::JobCommandBus::Event(job->GetJobEntry().m_jobRunKey, &AssetBuilderSDK::JobCommandBus::Events::Cancel);
                     UpdateRow(jobIdx);
                 }
             }
         }
+
     }
 
     bool RCJobListModel::isInQueue(const AssetProcessor::QueueElementID& check) const

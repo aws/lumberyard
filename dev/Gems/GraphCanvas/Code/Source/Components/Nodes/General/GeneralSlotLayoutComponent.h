@@ -21,7 +21,7 @@
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Components/StyleBus.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 namespace GraphCanvas
 {
@@ -160,6 +160,7 @@ namespace GraphCanvas
         void SetDividersEnabled(bool enabled) override;
         void ConfigureSlotGroup(SlotGroup group, SlotGroupConfiguration configuration) override;
 
+        bool IsSlotGroupVisible(SlotGroup group) const override;
         void SetSlotGroupVisible(SlotGroup group, bool visible) override;
         void ClearSlotGroup(SlotGroup group);
         ////
@@ -169,10 +170,7 @@ namespace GraphCanvas
         ////
 
     protected:
-
-        // QGraphicsItem
-        void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
-
+        
         const AZ::EntityId& GetEntityId() const { return m_entityId; }
 
     private:

@@ -16,7 +16,6 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/std/containers/array.h>
-#include <AzCore/std/string/string.h>
 
 namespace EMotionFX
 {

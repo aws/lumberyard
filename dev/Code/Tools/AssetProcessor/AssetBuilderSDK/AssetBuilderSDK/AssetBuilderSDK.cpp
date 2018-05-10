@@ -232,6 +232,11 @@ namespace AssetBuilderSDK
         return absorber.m_assertMessage.empty();
     }
 
+    bool AssetBuilderDesc::IsExternalBuilder() const
+    {
+        return m_builderType == AssetBuilderType::External;
+    }
+
     /**
     * New constructor - uses the platform Identifier from the PlatformInfo passed into Create Jobs.
     */

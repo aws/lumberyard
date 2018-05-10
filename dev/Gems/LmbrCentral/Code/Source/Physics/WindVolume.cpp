@@ -224,7 +224,7 @@ namespace LmbrCentral
         }
         else if (auto sphereShape = SphereShapeComponentRequestsBus::FindFirstHandler(m_entityId))
         {
-            float radius = sphereShape->GetSphereConfiguration().GetRadius();
+            const float radius = sphereShape->GetSphereConfiguration().m_radius;
             m_size = AZ::Vector3(radius, radius, radius);
             m_isSphere = true;
         }

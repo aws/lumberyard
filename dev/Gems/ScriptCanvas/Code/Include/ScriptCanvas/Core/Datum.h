@@ -29,6 +29,9 @@ namespace AZ
 
 namespace ScriptCanvas
 {
+    struct BehaviorContextResultTag { explicit BehaviorContextResultTag() = default; };
+    const BehaviorContextResultTag s_behaviorContextResultTag{};
+
     using ComparisonOutcome = AZ::Outcome<bool, AZStd::string>;
 
     /// A Datum is used to provide generic storage for all data types in ScriptCanvas, and provide a common interface to accessing, modifying, and displaying them 
@@ -49,18 +52,6 @@ namespace ScriptCanvas
         // calls a function and converts the result to a ScriptCanvas type, if necessary
         AZ_INLINE static AZ::Outcome<Datum, AZStd::string> CallBehaviorContextMethodResult(AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs);
 
-        template<typename t_Value>
-        static Datum CreateInitializedCopy(t_Value&& value);
-
-        template<typename t_Value>
-        static Datum CreateInitializedCopyFromBehaviorContext(const t_Value& value);
-
-        static Datum CreateBehaviorContextMethodResult(const AZ::BehaviorParameter& resultType);
-
-        static Datum CreateFromBehaviorContextValue(const AZ::BehaviorValueParameter& value);
-
-        static Datum CreateUntypedStorage();
-
         static void Reflect(AZ::ReflectContext* reflectContext);
 
         Datum();
@@ -69,23 +60,28 @@ namespace ScriptCanvas
         Datum(const Data::Type& type, eOriginality originality);
         Datum(const Data::Type& type, eOriginality originality, const void* source, const AZ::Uuid& sourceTypeID);
         Datum(const AZ::BehaviorParameter& parameterDesc, eOriginality originality, const void* source);
+        Datum(BehaviorContextResultTag, const AZ::BehaviorParameter& resultType);
         Datum(const AZStd::string& behaviorClassName, eOriginality originality);
+        Datum(const AZ::BehaviorValueParameter& value);
 
-        // after used as the destination for a Behavior Context function call, the result must be converted
-        void ConvertBehaviorContextMethodResult(const AZ::BehaviorParameter& resultType);
-
-        // use RARELY
-        void CreateOriginal(const AZStd::string& behaviorClassName);
+        /// If t_Value is a ScriptCanvas value type, regardless of pointer/reference, this will create datum with a copy of that
+        /// value. That is, Datum<AZ::Vector3>(source), Datum<AZ::Vector3&>(source), Datum<AZ::Vector3*>(&source), will all produce
+        /// a copy of source. If t_Value is a ScriptCanvas reference type, passing in a pointer or reference will created a datum
+        /// that REFERS to the source, and passing in a value will create a datum with a new, Script-owned, copy from the source.
+        template<typename t_Value>
+        explicit Datum(t_Value&& value);
 
         AZ_INLINE bool Empty() const;
 
         //! use RARELY, this is dangerous. Use ONLY to read the value contained by this Datum, never to modify
         template<typename t_Value>
-        AZ_INLINE const t_Value* GetAs() const;
+        const t_Value* GetAs() const;
 
-        //! use RARELY, this is dangerous as it circumvents ScriptCanvas execution. Use to initialize values more simply in unit testing, or assist debugging.
-        template<typename t_Value>
-        AZ_INLINE t_Value* ModAs();
+        /// \note Directly modifying the data circumvents all of the runtime (and even the edit time) handling of script canvas data.
+        /// This is dangerous in that one may not be properly handling values, like converting numeric types to the supported numeric type, 
+        /// or modifying objects without notifying systems whose correctness depends on changes in those values.
+        /// Use with extreme caution. This will made clearer and easier in a future API change.
+        AZ_INLINE const void* GetAsDanger() const;
 
         const Data::Type& GetType() const { return m_type; }
 
@@ -100,15 +96,19 @@ namespace ScriptCanvas
 
         bool IsDefaultValue() const;
 
-        bool IsStorage() const;
-
         // todo support polymorphism
         // returns true if this type IS_A t_Value type
         template<typename t_Value>
-        AZ_INLINE bool IS_A() const;
+        bool IS_A() const;
 
         // todo support polymorphism
         AZ_INLINE bool IS_A(const Data::Type& type) const;
+
+        //! use RARELY, this is dangerous as it circumvents ScriptCanvas execution. Use to initialize values more simply in unit testing, or assist debugging.
+        template<typename t_Value>
+        t_Value* ModAs();
+
+        AZ_INLINE void* ModAsDanger();
 
         // can cause de-allocation of original datum, to which other data can point!
         Datum& operator=(const Datum& other);
@@ -128,9 +128,6 @@ namespace ScriptCanvas
 
         void SetDefaultValue();
 
-        template<typename t_Value>
-        AZ_INLINE bool SetFromBehaviorContext(const t_Value& value);
-
         void SetNotificationsTarget(AZ::EntityId notificationId);
 
         // pushes this datum to the void* address in destination
@@ -141,36 +138,113 @@ namespace ScriptCanvas
         // so it is appropriate for the value output to be nullptr
         AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> ToBehaviorValueParameter(const AZ::BehaviorParameter& description) const;
 
-        // creates an AZ::BehaviorValueParameter with a void* that points to this datum, depending on what the parameter needs
-        // this is called when the AZ::BehaviorValueParameter needs this value as output from another function
-        // so it is NOT appropriate for the value output to be nullptr, if the description is for a pointer to an object
-        // there needs to be valid memory to write that pointer
-        AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> ToBehaviorValueParameterResult(const AZ::BehaviorParameter& description);
-
         AZ_INLINE AZStd::string ToString() const;
 
         bool ToString(Data::StringType& result) const;
 
         void SetLabel(AZStd::string_view name);
-        void SetVisibility(AZ::Crc32 visibility);
-        const AZ::Edit::ElementData* GetEditElementData() const;
+        AZStd::string GetLabel() const;
 
-        /// \note Directly modifying the data circumvents all of the runtime (and even the edit time) handling of script canvas data.
-        /// This is dangerous in that one may not be properly handling values, like converting numeric types to the supported numeric type, 
-        /// or modifying objects without notifying systems whose correctness depends on changes in those values.
-        /// Use with extreme caution. This will made clearer and easier in a future API change.
-        AZ_INLINE const void* GetAsDanger() const;
-        AZ_INLINE void* ModAsDanger();
+        void SetVisibility(AZ::Crc32 visibility);
+        AZ::Crc32 GetVisibility() const;
 
         // Remaps references to the SelfReference Entity Id to the Entity Id of the ScriptCanvas Graph component owner
         // This should be called at ScriptCanvas compile time when the runtime entity is available
         void ResolveSelfEntityReferences(const AZ::EntityId& graphOwnerId);
 
-    protected:
+    private:
+
+        AZ::Crc32 GetDatumVisibility() const;
+
+        template<typename t_Value, bool isReference>
+        struct InitializerHelper
+        {
+            static void Help(const t_Value& value, Datum& datum)
+            {
+                const bool isValue = Data::Traits<t_Value>::s_isNative || !isReference;
+                datum.Initialize(Data::FromAZType(Data::Traits<t_Value>::GetAZType()), isValue ? Datum::eOriginality::Original : Datum::eOriginality::Copy, reinterpret_cast<const void*>(&value), azrtti_typeid<t_Value>());
+            }
+        };
+
+        template<typename t_Value, bool isReference>
+        struct InitializerHelper<t_Value*, isReference>
+        {
+            static void Help(const t_Value* value, Datum& datum)
+            {
+                datum.Initialize(Data::FromAZType(Data::Traits<t_Value>::GetAZType()), Datum::eOriginality::Copy, reinterpret_cast<const void*>(value), azrtti_typeid<t_Value>());
+            }
+        };
+
+        template<typename t_Value>
+        struct GetAsHelper
+        {
+            static const t_Value* Help(Datum& datum)
+            {
+                AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::GetAsHelper<t_Value, false>");
+                if (datum.m_type.GetType() == Data::eType::BehaviorContextObject)
+                {
+                    return (*AZStd::any_cast<BehaviorContextObjectPtr>(&datum.m_storage))->CastConst<t_Value>();
+                }
+                else
+                {
+                    return datum.m_type.IS_A(Data::FromAZType(azrtti_typeid<t_Value>()))
+                        ? AZStd::any_cast<const t_Value>(&datum.m_storage)
+                        : nullptr;
+                }
+            }
+        };
+
+        template<typename t_Value>
+        struct GetAsHelper<t_Value*>
+        {
+            static const t_Value** Help(Datum& datum)
+            {
+                datum.m_pointer = const_cast<void*>(static_cast<const void*>(GetAsHelper<AZStd::decay_t<t_Value>>::Help(datum)));
+                return (const t_Value**)(&datum.m_pointer);
+            }
+        };
+
+        class SerializeContextEventHandler : public AZ::SerializeContext::IEventHandler
+        {
+        public:
+            /// Called after we are done writing to the instance pointed by classPtr.
+            void OnWriteEnd(void* classPtr) override
+            {
+                Datum* datum = reinterpret_cast<Datum*>(classPtr);
+                datum->OnWriteEnd();
+            }
+        };
+
+        friend class SerializeContextEventHandler;
+
         static ComparisonOutcome CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass& behaviorClass, const Datum& lhs, const Datum& rhs);
+
+        // is this storage for nodes that are overloaded, e.g. Log, which takes in any data type
+        const bool m_isOverloadedStorage = false;
+        // eOriginality records the graph source of the object
+        eOriginality m_originality = eOriginality::Copy;
+        // storage for the datum, regardless of ScriptCanvas::Data::Type
+        AZStd::any m_storage;
+        // This contains the editor label for m_storage.
+        AZStd::string m_datumLabel;
+        // This contains the editor visibility for m_storage.
+        AZ::Crc32 m_visibility{ AZ::Edit::PropertyVisibility::ShowChildrenOnly };
+        // storage for implicit conversions, when needed
+        AZStd::any m_conversionStorage;
+        // the least derived class this datum can accept
+        const AZ::BehaviorClass* m_class = nullptr;
+        // storage for pointer, if necessary
+        mutable void* m_pointer = nullptr;
+        // the ScriptCanvas type of the object
+        Data::Type m_type;
+        // The notificationId to send change notifications to.
+        AZ::EntityId m_notificationId;
 
         // Destroys the datum, and the type information
         void Clear();
+
+        // This is used as the destination for a Behavior Context function call; after the call the result must be converted.
+        void ConvertBehaviorContextMethodResult(const AZ::BehaviorParameter& resultType);
 
         bool FromBehaviorContext(const void* source);
 
@@ -179,8 +253,6 @@ namespace ScriptCanvas
         bool FromBehaviorContextNumber(const void* source, const AZ::Uuid& typeID);
 
         bool FromBehaviorContextObject(const AZ::BehaviorClass* behaviorClass, const void* source);
-
-        bool FromBehaviorContextVector(const AZ::Uuid& typeId, const void* source);
 
         const void* GetValueAddress() const;
 
@@ -202,8 +274,6 @@ namespace ScriptCanvas
 
         bool InitializeEntityID(const void* source);
 
-        void InitializeLabel();
-
         bool InitializeMatrix3x3(const void* source);
 
         bool InitializeMatrix4x4(const void* source);
@@ -214,13 +284,13 @@ namespace ScriptCanvas
 
         bool InitializePlane(const void* source);
 
-        bool InitializeRotation(const void* source);
+        bool InitializeQuaternion(const void* source);
 
         bool InitializeString(const void* source, const AZ::Uuid& sourceTypeID);
 
         bool InitializeTransform(const void* source);
 
-        AZ_INLINE bool InitializeUntypedStorage(const Data::Type& type);
+        AZ_INLINE bool InitializeOverloadedStorage(const Data::Type& type, eOriginality originality);
 
         bool InitializeVector2(const void* source, const AZ::Uuid& sourceTypeID);
 
@@ -244,9 +314,13 @@ namespace ScriptCanvas
 
         AZ::BehaviorValueParameter ToBehaviorValueParameterNumber(const AZ::BehaviorParameter& description);
 
-        AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> ToBehaviorValueParameterVector(const AZ::BehaviorParameter& description);
-
         AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> ToBehaviorValueParameterString(const AZ::BehaviorParameter& description);
+
+        // creates an AZ::BehaviorValueParameter with a void* that points to this datum, depending on what the parameter needs
+        // this is called when the AZ::BehaviorValueParameter needs this value as output from another function
+        // so it is NOT appropriate for the value output to be nullptr, if the description is for a pointer to an object
+        // there needs to be valid memory to write that pointer
+        AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> ToBehaviorValueParameterResult(const AZ::BehaviorParameter& description);
 
         AZStd::string ToStringAABB(const Data::AABBType& source) const;
 
@@ -264,7 +338,7 @@ namespace ScriptCanvas
 
         AZStd::string ToStringPlane(const Data::PlaneType& source) const;
 
-        AZStd::string ToStringRotation(const Data::RotationType& source) const;
+        AZStd::string ToStringQuaternion(const Data::QuaternionType& source) const;
 
         AZStd::string ToStringTransform(const Data::TransformType& source) const;
 
@@ -273,107 +347,20 @@ namespace ScriptCanvas
         AZStd::string ToStringVector3(const AZ::Vector3& source) const;
 
         AZStd::string ToStringVector4(const AZ::Vector4& source) const;
-
-    private:
-        class SerializeContextEventHandler : public AZ::SerializeContext::IEventHandler
-        {
-        public:
-            /// Called right before we start reading from the instance pointed by classPtr.
-            void OnReadBegin(void* classPtr) override
-            {
-                Datum* datum = reinterpret_cast<Datum*>(classPtr);
-                datum->OnReadBegin();
-            }
-
-            /// Called after we are done writing to the instance pointed by classPtr.
-            void OnWriteEnd(void* classPtr) override
-            {
-                Datum* datum = reinterpret_cast<Datum*>(classPtr);
-                datum->OnWriteEnd();
-            }
-        };
-
-        friend class SerializeContextEventHandler;
-
-        // if is script canvas value type...use value
-        // else if passed by value...use value
-        // else...pass by reference, translate the value to a void*
-        template<typename t_Value, bool isReference>
-        struct CreateInitializedCopyHelper
-        {
-            AZ_FORCE_INLINE static Datum Help(const t_Value& value)
-            {
-                const bool isValue = Data::Traits<t_Value>::s_isNative || !isReference;
-                return Datum(Data::FromAZType(Data::Traits<t_Value>::GetAZType()), isValue ? Datum::eOriginality::Original : Datum::eOriginality::Copy, reinterpret_cast<const void*>(&value), azrtti_typeid<t_Value>());
-            }
-        };
-
-        template<typename t_Value, bool isReference>
-        struct CreateInitializedCopyHelper<t_Value*, isReference>
-        {
-            AZ_FORCE_INLINE static Datum Help(const t_Value* value)
-            {
-                return Datum(Data::FromAZType(Data::Traits<t_Value>::GetAZType()), Datum::eOriginality::Copy, reinterpret_cast<const void*>(value), azrtti_typeid<t_Value>());
-            }
-        };
-
-        template<typename t_Value>
-        struct GetAsHelper
-        {
-            AZ_FORCE_INLINE static const t_Value* Help(Datum& datum)
-            {
-                AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::GetAsHelper<t_Value, false>");
-                return (datum.m_type.GetType() == Data::eType::BehaviorContextObject)
-                    ? datum.m_type.IS_A(Data::FromBehaviorContextType(azrtti_typeid<t_Value>()))
-                    ? (*AZStd::any_cast<BehaviorContextObjectPtr>(&datum.m_storage))->CastConst<t_Value>()
-                    : nullptr
-                    : datum.m_type.IS_A(Data::FromAZType(azrtti_typeid<t_Value>()))
-                    ? AZStd::any_cast<const t_Value>(&datum.m_storage)
-                    : nullptr;
-            }
-        };
-
-        template<typename t_Value>
-        struct GetAsHelper<t_Value*>
-        {
-            AZ_FORCE_INLINE static const t_Value** Help(Datum& datum)
-            {
-                datum.m_pointer = const_cast<void*>(static_cast<const void*>(GetAsHelper<AZStd::decay_t<t_Value>>::Help(datum)));
-                return (const t_Value**)(&datum.m_pointer);
-            }
-        };
-
-        // is this storage for nodes that are overloaded, e.g. Log, which takes in any data type
-        const bool m_isOverloadedStorage = false;
-        // eOriginality records the graph source of the object
-        eOriginality m_originality = eOriginality::Copy;
-        // storage for the datum, regardless of ScriptCanvas::Data::Type
-        AZStd::any m_storage;
-        // This contains the editor label for m_storage.
-        AZ::Edit::AttributeData<AZStd::string> m_elementDataAttributeLabel;
-        // This contains the editor visibility for m_storage.
-        AZ::Edit::AttributeData<AZ::Crc32> m_elementDataAttributeVisibility;
-        AZ::Edit::ElementData m_elementData;
-        // storage for implicit conversions, when needed
-        AZStd::any m_conversionStorage;
-        // the least derived class this datum can accept
-        const AZ::BehaviorClass* m_class = nullptr;
-        // storage for pointer, if necessary
-        mutable void* m_pointer = nullptr;
-        // the ScriptCanvas type of the object
-        Data::Type m_type;
-        // The notificationId to send change notifications to.
-        AZ::EntityId m_notificationId;
-
-        explicit Datum(const bool isUntyped);
     }; // class Datum
+
+    template<typename t_Value>
+    Datum::Datum(t_Value&& value)
+    {
+        InitializerHelper<AZStd::remove_reference_t<t_Value>, AZStd::is_reference<t_Value>::value>::Help(value, *this);
+    }
 
     AZ::Outcome<Datum, AZStd::string> Datum::CallBehaviorContextMethodResult(AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
     {
         AZ_Assert(resultType, "const AZ::BehaviorParameter* resultType == nullptr in Datum");
         AZ_Assert(method, "AZ::BehaviorMethod* method == nullptr in Datum");
         // create storage for the destination of the results in the function call...
-        Datum resultDatum = CreateBehaviorContextMethodResult(*resultType);
+        Datum resultDatum(s_behaviorContextResultTag, *resultType);
         //...and initialize a AZ::BehaviorValueParameter to wrap the storage...
         AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> parameter = resultDatum.ToBehaviorValueParameterResult(*resultType);
         if (parameter.IsSuccess())
@@ -395,19 +382,6 @@ namespace ScriptCanvas
             // parameter conversion failed
             return AZ::Failure(parameter.GetError());
         }
-    }
-
-    template<typename t_Value>
-    Datum Datum::CreateInitializedCopy(t_Value&& value)
-    {
-        return CreateInitializedCopyHelper<AZStd::remove_reference_t<t_Value>, AZStd::is_reference<t_Value>::value>::Help(value);
-    }
-
-    template<typename t_Value>
-    Datum Datum::CreateInitializedCopyFromBehaviorContext(const t_Value& value)
-    {
-        // delete this by the end of memory model II, it is only used for unit testing
-        return Datum(Data::FromBehaviorContextType(azrtti_typeid<t_Value>()), Datum::eOriginality::Copy, reinterpret_cast<const void*>(&value), azrtti_typeid<t_Value>());
     }
 
     bool Datum::Empty() const
@@ -457,23 +431,10 @@ namespace ScriptCanvas
     }
 
     template<typename t_Value>
-    t_Value* Datum::ModAs()
-    {
-        return const_cast<t_Value*>(GetAs<t_Value>());
-    }
-
-    void* Datum::ModAsDanger()
-    {
-        return ModValueAddress();
-    }
-
-    template<typename t_Value>
     bool Datum::IS_A() const
     {
         AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::Is, please");
-        return m_type.GetType() == Data::eType::BehaviorContextObject
-            ? m_type.IS_A(Data::FromBehaviorContextType(azrtti_typeid<t_Value>()))
-            : m_type.IS_A(Data::FromAZType(azrtti_typeid<t_Value>()));
+        return m_type.IS_A(Data::FromAZType(azrtti_typeid<t_Value>()));
     }
 
     bool Datum::IS_A(const Data::Type& type) const
@@ -501,9 +462,20 @@ namespace ScriptCanvas
         return m_type.IsConvertibleTo(type);
     }
 
-    bool Datum::InitializeUntypedStorage(const Data::Type& type)
+    bool Datum::InitializeOverloadedStorage(const Data::Type& type, eOriginality originality)
     {
-        return m_isOverloadedStorage && type.IsValid() && (m_type.IS_EXACTLY_A(type) || Initialize(type, eOriginality::Copy, nullptr, AZ::Uuid::CreateNull()));
+        return m_isOverloadedStorage && type.IsValid() && (m_type.IS_EXACTLY_A(type) || Initialize(type, originality, nullptr, AZ::Uuid::CreateNull()));
+    }
+
+    template<typename t_Value>
+    t_Value* Datum::ModAs()
+    {
+        return const_cast<t_Value*>(GetAs<t_Value>());
+    }
+
+    void* Datum::ModAsDanger()
+    {
+        return ModValueAddress();
     }
 
     bool Datum::SatisfiesTraits(AZ::u8 behaviorValueTraits) const
@@ -516,7 +488,7 @@ namespace ScriptCanvas
     bool Datum::Set(const t_Value& value)
     {
         AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::Set, please");
-        InitializeUntypedStorage(Data::FromAZType(azrtti_typeid<t_Value>()));
+        InitializeOverloadedStorage(Data::FromAZType(azrtti_typeid<t_Value>()), eOriginality::Copy);
         AZ_Error("Script Canvas", !IS_A(Data::Type::Number()) || azrtti_typeid<t_Value>() == azrtti_typeid<Data::NumberType>(), "Set on number types must be specialized!");
 
         if (IS_A<t_Value>())
@@ -536,31 +508,6 @@ namespace ScriptCanvas
         return false;
     }
 
-    template<typename t_Value>
-    bool Datum::SetFromBehaviorContext(const t_Value& value)
-    {
-        AZ_STATIC_ASSERT(!AZStd::is_pointer<t_Value>::value, "no pointer types in the Datum::Set, please");
-        const Data::Type valueType = Data::FromBehaviorContextType(azrtti_typeid<t_Value>());
-        InitializeUntypedStorage(valueType);
-        AZ_Error("Script Canvas", !IS_A(Data::Type::Number()) || azrtti_typeid<t_Value>() == azrtti_typeid<Data::NumberType>(), "SetFromBehaviorContext on number types must be specialized!");
-
-        if (IS_A(valueType))
-        {
-            if (Data::IsValueType(m_type))
-            {
-                m_storage = value;
-                OnDatumChanged();
-                return true;
-            }
-            else
-            {
-                return FromBehaviorContext(static_cast<const void*>(&value), azrtti_typeid<t_Value>());
-            }
-        }
-
-        return false;
-    }
-
 #define DATUM_SET_NUMBER_SPECIALIZE(NUMERIC_TYPE)\
     template<>\
     AZ_INLINE bool Datum::Set(const NUMERIC_TYPE& value)\
@@ -571,11 +518,6 @@ namespace ScriptCanvas
             return true;\
         }\
         return false;\
-    }\
-    template<>\
-    AZ_INLINE bool Datum::SetFromBehaviorContext(const NUMERIC_TYPE& value)\
-    {\
-        return Set<NUMERIC_TYPE>(value);\
     }
 
     DATUM_SET_NUMBER_SPECIALIZE(char);
@@ -605,11 +547,6 @@ namespace ScriptCanvas
             return true;\
         }\
         return false;\
-    }\
-    template<>\
-    AZ_INLINE bool Datum::SetFromBehaviorContext(const VECTOR_TYPE& value)\
-    {\
-        return Set<VECTOR_TYPE>(value);\
     }
 
     DATUM_SET_VECTOR_SPECIALIZE(AZ::Vector2);

@@ -1098,7 +1098,7 @@ namespace AzToolsFramework
             {
                 delete m_databaseConnection;
                 m_databaseConnection = nullptr;
-                AZ_Warning("Connection", "Unable to open the asset database at %s\n", assetDatabaseLocation.c_str());
+                AZ_Warning("Connection", false, "Unable to open the asset database at %s\n", assetDatabaseLocation.c_str());
                 return false;
             }
 

@@ -99,7 +99,9 @@ void CLightningRenderNode::CTriStrip::Draw(const SRendParams& renderParams, cons
     pRenderObject->m_nSort = fastround_positive(distanceToCamera * 2.0f);
     pRenderObject->m_fDistance = renderParams.fDistance;
     pRenderObject->m_pCurrMaterial = pMaterial;
-    pRenderObject->m_pRenderNode = (IRenderNode*)this; // Incompatible type! from Cry5. TODO: Fix it.
+
+    // For this specific object the render node is not used and should not be set.
+    pRenderObject->m_pRenderNode = nullptr;
 
     pRenderer->EF_AddPolygonToScene(pMaterial->GetShaderItem(), m_vertices.size(), &m_vertices[0], 0, pRenderObject,
         passInfo, &m_indices[0], m_indices.size(), nAfterWater,

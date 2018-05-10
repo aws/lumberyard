@@ -1,6 +1,6 @@
 {
     "name": "alembic",
-    "source": "@ROOT@/Code/Tools/SDKs/Alembic",
+    "source": "@3P:alembic@",
     "description": "Alembic Library",
     "aliases": {
         "alembic_libs" : [
@@ -33,17 +33,17 @@
         ]
     },
     "includes": [
-        "alembic/include",
-        "ilmbase/include/OpenEXR"
+        "include",
+        "@3P:ilmbase@/include/OpenEXR"
     ],
     "defines": [],
     "lib_required": "True",
     "platform": {
         "win_x64_vs2013": {
             "libpath": [
-                "alembic/lib/x64",
-                "hdf5/lib/x64",
-                "ilmbase/lib/x64"
+                "lib/x64",
+                "@3P:hdf5@/lib/x64",
+                "@3P:ilmbase@/lib/x64"
             ],
             "lib_debug": [
                 "${lib_names}-vc120-mt-sd.lib"
@@ -57,9 +57,9 @@
         },
         "win_x64_vs2015": {
             "libpath": [
-                "alembic/lib/x64",
-                "hdf5/lib/x64",
-                "ilmbase/lib/x64"
+                "lib/x64",
+                "@3P:hdf5@/lib/x64",
+                "@3P:ilmbase@/lib/x64"
             ],
             "lib_debug": [
                 "${lib_names}-vc140-md-sd.lib"
@@ -71,11 +71,12 @@
                 "/ignore:4099"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "darwin_x64": {
             "libpath": [
-                "alembic/lib/macos",
-                "hdf5/lib/macos",
-                "ilmbase/lib/macos"
+                "lib/macos",
+                "@3P:hdf5@/lib/macos",
+                "@3P:ilmbase@/lib/macos"
             ],
             "lib_debug": [
                 "lib${lib_names}.a"

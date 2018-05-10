@@ -13,13 +13,9 @@
 
 // Description : Mission class definition.
 
-
-#ifndef CRYINCLUDE_EDITOR_MISSION_H
-#define CRYINCLUDE_EDITOR_MISSION_H
-
 #pragma once
 
-// forward declaratsion.
+// forward declaration.
 struct LightingSettings;
 class CMissionScript;
 
@@ -164,7 +160,7 @@ private:
     int m_numCGFObjects;
 
     SMinimapInfo m_minimap;
+
+    bool m_reentrancyProtector;
 };
 
-
-#endif // CRYINCLUDE_EDITOR_MISSION_H

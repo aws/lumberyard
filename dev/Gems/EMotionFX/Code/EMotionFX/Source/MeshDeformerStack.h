@@ -62,6 +62,17 @@ namespace EMotionFX
         void Update(ActorInstance* actor, Node* node, float timeDelta, bool forceUpdateDisabledDeformers=false);
 
         /**
+        * Update the stack calling the mesh morph deformers.
+        * @param actor The actor instance to use for the update. So the actor instance where the stack belongs to during this update.
+        * @param node The node to use for the update, so the node where the mesh belongs to during this update.
+        * @param timeDelta The time (in seconds) passed since the last call.
+        * @param typeID The type of the deformer you wish to apply.
+        * @param resetMesh Should the mesh be reset before this deformer or not.
+        * @param forceUpdateDisabledDeformers When set to true this will force updating disabled deformers.
+        */
+        void UpdateByModifierType(ActorInstance* actorInstance, Node* node, float timeDelta, uint32 typeID, bool resetMesh, bool forceUpdateDisabledDeformers);
+
+        /**
          * Iterates through all mesh deformers in the stack and reinitializes them.
          * @param actor The actor that will use the mesh deformers.
          * @param node The node to use for the reinitialize, so the node where the mesh belongs to during this initialization.

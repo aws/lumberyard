@@ -19,6 +19,7 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
+#include <AzCore/Math/Color.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Component/ComponentBus.h>
 
@@ -45,6 +46,7 @@ namespace AzFramework
         //////////////////////////////////////////////////////////////////////////
 
         virtual void SetColor(float r, float g, float b, float a = 1.f) { (void)r; (void)g; (void)b; (void)a; }
+        virtual void SetColor(const AZ::Color& color) { (void)color; }
         virtual void SetColor(const AZ::Vector4& color) { (void)color; }
         virtual void SetAlpha(float a) { (void)a; }
         virtual void DrawQuad(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3, const AZ::Vector3& p4) { (void)p1; (void)p2; (void)p3; (void)p4; }

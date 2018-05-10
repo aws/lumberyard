@@ -10,10 +10,13 @@
         "Editor": [
             "Editor/Settings.h",
             "Editor/Settings.cpp",
+            "Editor/ReflectComponent.h",
+            "Editor/ReflectComponent.cpp",
             "Editor/SystemComponent.h",
             "Editor/SystemComponent.cpp",
             "Editor/Metrics.h",
-            "Editor/Metrics.cpp"
+            "Editor/Metrics.cpp",
+            "Editor/QtMetaTypes.h"
         ],
         "Editor/Gem": [
         ],
@@ -32,7 +35,7 @@
             "Editor/Include/ScriptCanvas/Assets/ScriptCanvasDocumentContext.h",
             "Editor/Assets/ScriptCanvasDocumentContext.cpp"
         ],
-        "Editor/Bus": [
+        "Editor/Bus": [            
             "Editor/Include/ScriptCanvas/Bus/RequestBus.h",
             "Editor/Include/ScriptCanvas/Bus/NodeIdPair.h",
             "Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h",
@@ -40,12 +43,14 @@
             "Editor/Include/ScriptCanvas/Bus/IconBus.h",
             "Editor/Include/ScriptCanvas/Bus/DocumentContextBus.h",
             "Editor/Include/ScriptCanvas/Bus/GraphBus.h",
-            "Editor/Include/ScriptCanvas/Bus/ScriptCanvasAssetNodeBus.h",
-            "Editor/Include/ScriptCanvas/Bus/UndoBus.h"
+            "Editor/Include/ScriptCanvas/Bus/UndoBus.h",
+            "Editor/Include/ScriptCanvas/Bus/EditorSceneVariableManagerBus.h"
         ],
         "Editor/Components": [
             "Editor/Include/ScriptCanvas/Components/EditorGraph.h",
             "Editor/Components/EditorGraph.cpp",
+            "Editor/Include/ScriptCanvas/Components/EditorGraphVariableManagerComponent.h",
+            "Editor/Components/EditorGraphVariableManagerComponent.cpp",
             "Editor/Include/ScriptCanvas/Components/EditorScriptCanvasComponent.h",
             "Editor/Components/EditorScriptCanvasComponent.cpp",
             "Editor/Components/IconComponent.h",
@@ -53,48 +58,54 @@
         ],
         "Editor/GraphCanvas": [
             "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h",
+            "Editor/Include/ScriptCanvas/GraphCanvas/SlotMappingBus.h",
+            "Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h",
             "Editor/GraphCanvas/PropertySlotIds.h"
         ],
         "Editor/GraphCanvas/Components": [
-            "Editor/GraphCanvas/Components/ClassMethodNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/ClassMethodNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/EBusHandlerEventNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/EBusHandlerEventNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/EBusHandlerNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/EBusHandlerNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/EBusSenderNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/EBusSenderNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/EntityRefNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/EntityRefNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/GetVariableNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/GetVariableNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/NodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/SetVariableNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/SetVariableNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/UserDefinedNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/UserDefinedNodeDescriptorComponent.h",
-            "Editor/GraphCanvas/Components/VariableNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/VariableNodeDescriptorComponent.h"
+            "Editor/GraphCanvas/Components/DynamicSlotComponent.cpp",
+            "Editor/GraphCanvas/Components/DynamicSlotComponent.h",
+            "Editor/GraphCanvas/Components/SlotMappingComponent.cpp",
+            "Editor/GraphCanvas/Components/SlotMappingComponent.h"
+        ],
+        "Editor/GraphCanvas/Components/NodeDescriptors": [
+            "Editor/GraphCanvas/Components/NodeDescriptors/ClassMethodNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/ClassMethodNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/DeprecatedVariableNodeDescriptorComponents.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/DeprecatedVariableNodeDescriptorComponents.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerEventNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerEventNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EBusHandlerNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EBusSenderNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EBusSenderNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EntityRefNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/EntityRefNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/GetVariableNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/SetVariableNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/SetVariableNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/UserDefinedNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/UserDefinedNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.h"
         ],
         "Editor/GraphCanvas/DataInterfaces": [
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasBoolDataInterface.h",            
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasBoolDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasEntityIdDataInterface.h",
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasDataInterface.h",
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasDoubleDataInterface.h",
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasDataInterface.h",            
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasColorDataInterface.h",
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasReadOnlyDataInterface.h",            
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasNumericDataInterface.h",
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasReadOnlyDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasStringDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasVectorDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasVariableDataInterface.h",
-            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasQuaternionDataInterface.h"            
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasQuaternionDataInterface.h"
         ],
         "Editor/Model/MimeHandlers": [
             "Editor/Model/EntityMimeDataHandler.h",
             "Editor/Model/EntityMimeDataHandler.cpp"
-        ],
-        "Editor/Model/NodePalette": [
-            "Editor/Model/NodePalette/NodePaletteSortFilterProxyModel.h",
-            "Editor/Model/NodePalette/NodePaletteSortFilterProxyModel.cpp"
         ],
         "Editor/Model/DataModels": [
             "Editor/Model/LibraryDataModel.h",
@@ -107,6 +118,9 @@
             "Editor/Nodes/NodeUtils.cpp",
             "Editor/Nodes/ScriptCanvasAssetNode.h",
             "Editor/Nodes/ScriptCanvasAssetNode.cpp"
+        ],
+        "Editor/Translation": [
+            "Editor/Translation/TranslationHelper.h"
         ],
         "Editor/Undo": [
             "Editor/Undo/ScriptCanvasGraphCommand.cpp",
@@ -140,8 +154,6 @@
             "Editor/View/Dialogs/UnsavedChangesDialog.ui"
         ],
         "Editor/View/Widgets": [
-            "Editor/View/Widgets/AutoElidingLabel.cpp",
-            "Editor/View/Widgets/AutoElidingLabel.h",
             "Editor/View/Widgets/CanvasWidget.ui",
             "Editor/View/Widgets/CanvasWidget.h",
             "Editor/View/Widgets/CanvasWidget.cpp",
@@ -154,7 +166,7 @@
             "Editor/View/Widgets/PropertyGrid.cpp",
             "Editor/View/Widgets/PropertyGridBus.h",
             "Editor/View/Widgets/PropertyGridContextMenu.h",
-            "Editor/View/Widgets/PropertyGridContextMenu.cpp",            
+            "Editor/View/Widgets/PropertyGridContextMenu.cpp",
             "Editor/View/Widgets/CommandLine.h",
             "Editor/View/Widgets/CommandLine.cpp",
             "Editor/View/Widgets/CommandLine.ui",
@@ -164,30 +176,35 @@
             "Editor/View/Widgets/NodeFavorites.h",
             "Editor/View/Widgets/NodeFavorites.cpp",
             "Editor/View/Widgets/NodeOutliner.h",
-            "Editor/View/Widgets/NodeOutliner.cpp",
+            "Editor/View/Widgets/NodeOutliner.cpp",            
             "Editor/View/Widgets/NodeTableView.ui",
             "Editor/View/Widgets/NodeTableView.h",
             "Editor/View/Widgets/NodeTableView.cpp",
-            "Editor/View/Widgets/NodePalette.cpp",
-            "Editor/View/Widgets/NodePalette.h",
-            "Editor/View/Widgets/NodePalette.ui",            
-            "Editor/View/Widgets/NodeTreeView.cpp",
-            "Editor/View/Widgets/NodeTreeView.h",
+            "Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.h",
+            "Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.cpp",
             "Editor/View/Widgets/WidgetBus.h"
         ],
-        "Editor/View/Widgets/NodePalette": [        
+        "Editor/View/Widgets/NodePalette": [
             "Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.cpp",
             "Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.h",
             "Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h",
-            "Editor/View/Widgets/NodePalette/NodePaletteTreeItem.cpp",
-            "Editor/View/Widgets/NodePalette/NodePaletteTreeItem.h",
             "Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h"
+        ],
+        "Editor/View/Widgets/VariablePanel": [
+            "Editor/View/Widgets/VariablePanel/GraphVariablesTableView.cpp",
+            "Editor/View/Widgets/VariablePanel/GraphVariablesTableView.h",
+            "Editor/View/Widgets/VariablePanel/VariableDockWidget.cpp",
+            "Editor/View/Widgets/VariablePanel/VariableDockWidget.h",
+            "Editor/View/Widgets/VariablePanel/VariableDockWidget.ui",
+            "Editor/View/Widgets/VariablePanel/VariablePaletteTableView.cpp",
+            "Editor/View/Widgets/VariablePanel/VariablePaletteTableView.h"
+            
         ],
         "Editor/View/Windows": [
             "Editor/View/Windows/CreateNodeContextMenu.cpp",
@@ -200,7 +217,7 @@
             "Editor/View/Windows/GraphCanvas_style.json",
             "Editor/View/Windows/MainWindow.cpp",
             "Editor/View/Windows/MainWindow.h",
-            "Editor/View/Windows/mainwindow.ui",
+            "Editor/View/Windows/MainWindow.ui",
             "Editor/View/Windows/MainWindowBus.h",
             "Editor/View/Windows/NodeContextMenu.cpp",
             "Editor/View/Windows/NodeContextMenu.h",

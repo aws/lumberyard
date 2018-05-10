@@ -10,11 +10,10 @@
 *
 */
 
-#include "precompiled.h"
-#include <Styling/PseudoElement.h>
-
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
+
+#include <GraphCanvas/Styling/PseudoElement.h>
 
 namespace GraphCanvas
 {
@@ -28,7 +27,7 @@ namespace GraphCanvas
                 return;
             }
 
-            serializeContext->Class<VirtualChildElement>()
+            serializeContext->Class<VirtualChildElement, AZ::Component>()
                 ->Version(1)
                 ;
         }
@@ -69,7 +68,7 @@ namespace GraphCanvas
         {
             SelectorVector selectors;
             StyledEntityRequestBus::EventResult(selectors, m_real, &StyledEntityRequests::GetStyleSelectors);
-            std::replace(selectors.begin(), selectors.end(), m_parentSelector, m_virtualChildSelector);
+            AZStd::replace(selectors.begin(), selectors.end(), m_parentSelector, m_virtualChildSelector);
 
             for (const auto& mapPair : m_dynamicSelectors)
             {
@@ -109,11 +108,6 @@ namespace GraphCanvas
         }
 
         AZStd::string VirtualChildElement::GetClass() const
-        {
-            return AZStd::string();
-        }
-
-        AZStd::string VirtualChildElement::GetId() const
         {
             return AZStd::string();
         }

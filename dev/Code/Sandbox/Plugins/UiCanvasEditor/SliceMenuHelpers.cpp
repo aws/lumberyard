@@ -37,6 +37,7 @@ namespace SliceMenuHelpers
             // Connect the action to a lamba that instantiates the slice
             QObject::connect(action,
                 &QAction::triggered,
+                hierarchy,
                 [assetId, hierarchy, addAtRoot, viewportPosition](bool checked)
                 {
                     if (addAtRoot)

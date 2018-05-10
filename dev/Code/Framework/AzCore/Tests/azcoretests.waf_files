@@ -4,6 +4,7 @@
             "Main.cpp"
         ],
         "AzCore" : [
+            "AssetCommon.cpp",
             "AssetManager.cpp",
             "BehaviorContext.cpp",
             "Components.cpp",

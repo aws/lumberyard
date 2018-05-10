@@ -56,6 +56,9 @@ CryReadModifyLock CVoxelSegment::m_cgfTimeStatsLock;
 PodArray<CVoxelSegment*> CVoxelSegment::m_arrLoadedSegments;
 SRenderingPassInfo* CVoxelSegment::m_pCurrPassInfo = 0;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(VoxelSegment_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Streaming engine

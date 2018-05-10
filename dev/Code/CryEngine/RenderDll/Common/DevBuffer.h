@@ -11,8 +11,7 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef _DevBuffer_H_
-#define _DevBuffer_H_
+#pragma once
 
 #include <XRenderD3D9/DeviceManager/Base.h>
 #include <XRenderD3D9/DeviceManager/Enums.h>
@@ -112,7 +111,14 @@ namespace AzRHI
 
         inline AZ::u64 GetCode() const
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(DevBuffer_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             return reinterpret_cast<AZ::u64>(m_buffer) | ((AZ::u64)m_offset << 40);
+#endif
         }
 
         void AddRef();
@@ -495,5 +501,3 @@ struct WrappedDX11Buffer
     uint32_t m_currentBuffer;
 };
 #endif
-
-#endif // _D3DBuffer_H

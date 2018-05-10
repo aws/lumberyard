@@ -48,9 +48,10 @@ CAnimEnvironmentNode::CAnimEnvironmentNode(const int id)
     : CAnimNode(id, AnimNodeType::Environment)
     , m_oldSunLongitude(0.0f)
     , m_oldSunLatitude(0.0f)
+    , m_oldMoonLongitude(0.0f)
+    , m_oldMoonLatitude(0.0f)
 {
     CAnimEnvironmentNode::Initialize();
-    StoreCelestialPositions();
 }
 
 void CAnimEnvironmentNode::Initialize()

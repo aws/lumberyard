@@ -191,6 +191,7 @@ namespace AzToolsFramework
                 {
                     QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
                     QDoubleSpinBox::wheelEvent(wheelEvent);
+                    return true;
                 }
                 else
                 {

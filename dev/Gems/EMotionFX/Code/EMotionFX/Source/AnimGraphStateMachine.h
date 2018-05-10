@@ -83,7 +83,7 @@ namespace EMotionFX
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         void OnUpdateAttributes() override;
-        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName) override;
+        void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName) override;
         void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node) override;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
         AnimGraphObject* Clone(AnimGraph* animGraph) override;

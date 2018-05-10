@@ -19,7 +19,7 @@ def build(bld):
         target                      = 'MetricsPlugin',
         vs_filter                   = 'Sandbox/Plugins',
         file_list                   = 'metricsplugin.waf_files',
-        platforms                   = ['win'],
+        platforms                   = ['win', 'darwin'],
         configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
         use                         = 'EditorCommon',
 

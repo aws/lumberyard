@@ -576,7 +576,7 @@ namespace AZ
                 {
                     AZStd::unique_lock<AZStd::recursive_mutex> lock(m_lock);
                     //Events are only added to queue using this mutex, so no issues with the queue being modified
-                    if (DeviceRequestBus::GetOrCreateContext().m_queue.m_messages.empty() && m_pending.empty())
+                    if (DeviceRequestBus::QueuedEventCount() == 0 && m_pending.empty())
                     {
                         m_addReqCond.wait(lock); // Wait for commands
                     }

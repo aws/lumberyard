@@ -17,7 +17,7 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
 #include <AzCore/Debug/Timer.h>
-#include <MCore/Source/UnicodeString.h>
+#include <AzCore/std/string/string.h>
 #include "../StandardPluginsConfig.h"
 #include <QOpenGLWidget>
 #include <QPoint>
@@ -128,9 +128,9 @@ namespace EMStudio
         QFont                       mFont;
         QFontMetrics*               mFontMetrics;
         AZ::Debug::Timer            mRenderTimer;
-        MCore::String               mTempString;
-        MCore::String               mFullActorName;
-        MCore::String               mActorName;
+        AZStd::string               mTempString;
+        AZStd::string               mFullActorName;
+        AZStd::string               mActorName;
         bool                        mAllowContextMenu;
         bool                        mLeftMousePressed;
         bool                        mMiddleMousePressed;

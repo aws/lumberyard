@@ -492,12 +492,12 @@ namespace
                     {
                         for (int j = 0; j < currVar->GetNumVariables(); j++)
                         {
-                            outItems.push_back(SItem(string().Format("Properties:%s:%s", currVar->GetName(), currVar->GetVariable(j)->GetName()).c_str()));
+                            outItems.push_back(SItem(string().Format("Properties:%s:%s", currVar->GetName().toUtf8().constData(), currVar->GetVariable(j)->GetName().toUtf8().constData()).c_str()));
                         }
                     }
                     else
                     {
-                        outItems.push_back(SItem(string().Format("Properties:%s", pEntityProperties->GetVariable(i)->GetName()).c_str()));
+                        outItems.push_back(SItem(string().Format("Properties:%s", pEntityProperties->GetVariable(i)->GetName().toUtf8().constData()).c_str()));
                     }
                 }
 
@@ -507,7 +507,7 @@ namespace
 
                     for (int i = 0; i < pEntityProperties2->GetNumVariables(); i++)
                     {
-                        outItems.push_back(SItem(string().Format("Properties2:%s", pEntityProperties->GetVariable(i)->GetName()).c_str()));
+                        outItems.push_back(SItem(string().Format("Properties2:%s", pEntityProperties->GetVariable(i)->GetName().toUtf8().constData()).c_str()));
                     }
                 }
             }

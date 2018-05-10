@@ -996,7 +996,9 @@ bool CCryEditDoc::BeforeOpenDocument(const QString& lpszPathName, TOpenDocContex
 bool CCryEditDoc::DoOpenDocument(const QString& lpszPathName, TOpenDocContext& context)
 {
     CTimeValue& loading_start_time = context.loading_start_time;
-    QByteArray absoluteLevelCryFilePath = context.absoluteLevelPath.toUtf8().data();
+    QByteArray absoluteLevelCryFilePath;
+    absoluteLevelCryFilePath.reserve(AZ_MAX_PATH_LEN);
+    absoluteLevelCryFilePath = context.absoluteLevelPath.toUtf8();
     AZ::IO::FileIOBase::GetDirectInstance()->ConvertToAlias(absoluteLevelCryFilePath.data(), absoluteLevelCryFilePath.capacity());
 
     // write the full filename and path to the log
@@ -1408,19 +1410,19 @@ bool CCryEditDoc::LoadEntities(const QString& levelPakFile)
                 }
                 else
                 {
-                    AZ_Error("Editor", "Failed to load level entities because the file \"%s\" could not be read.", entityFilename.toUtf8().data());
+                    AZ_Error("Editor", false, "Failed to load level entities because the file \"%s\" could not be read.", entityFilename.toUtf8().data());
                 }
             }
             else
             {
-                AZ_Error("Editor", "Failed to load level entities because the file \"%s\" is empty.", entityFilename.toUtf8().data());
+                AZ_Error("Editor", false, "Failed to load level entities because the file \"%s\" is empty.", entityFilename.toUtf8().data());
             }
 
             entitiesFile.Close();
         }
         else
         {
-            AZ_Error("Editor", "Failed to load level entities because the file \"%s\" was not found.", entityFilename.toUtf8().data());
+            AZ_Error("Editor", false, "Failed to load level entities because the file \"%s\" was not found.", entityFilename.toUtf8().data());
         }
 
         pakSystem->ClosePack(levelPakFile.toUtf8().data());

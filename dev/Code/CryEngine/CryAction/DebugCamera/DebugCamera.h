@@ -62,6 +62,9 @@ protected:
     float m_oldMoveScale;
     Vec3 m_position;
     Matrix33 m_view;
+
+private:
+    ICVar* m_displayInfoCVar;
 };
 
 

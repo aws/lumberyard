@@ -16,6 +16,8 @@
 #include "AnimNode.h"
 #include "AnimTrack.h"
 #include "AnimSequence.h"
+#include <Maestro/Types/AssetBlendKey.h>
+#include "AssetBlendTrack.h"
 #include "CharacterTrack.h"
 #include "AnimSplineTrack.h"
 #include "BoolTrack.h"
@@ -37,6 +39,7 @@
 
 #include <AzCore/std/sort.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/Component/TickBus.h>
 #include <I3DEngine.h>
 #include <ctime>
 #include "Maestro/Types/AnimValueType.h"
@@ -285,6 +288,7 @@ void CAnimNode::Reflect(AZ::SerializeContext* serializeContext)
 //////////////////////////////////////////////////////////////////////////
 IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAnimCurveType trackType, AnimValueType valueType)
 {
+
     if (valueType == AnimValueType::Unknown)
     {
         SParamInfo info;
@@ -371,6 +375,9 @@ IAnimTrack* CAnimNode::CreateTrackInternal(const CAnimParamType& paramType, EAni
             break;
         case AnimValueType::CharacterAnim:
             pTrack = aznew CCharacterTrack;
+            break;
+        case AnimValueType::AssetBlend:
+            pTrack = aznew CAssetBlendTrack;
             break;
         }
     }
@@ -1145,7 +1152,18 @@ void CAnimNode::UpdateDynamicParams()
         // which could happen from multiple threads. Lock to avoid a crash iterating over the lua stack
         AZStd::lock_guard<AZStd::mutex> lock(m_updateDynamicParamsLock);
 
-        UpdateDynamicParamsInternal();
+        // run this on the main thread to prevent further threading issues downstream in 
+        // AnimNodes that may use EBuses that are not thread safe
+        if (gEnv && gEnv->mMainThreadId == CryGetCurrentThreadId())
+        {
+            UpdateDynamicParamsInternal();
+        }
+        else
+        {
+            AZ::TickBus::QueueFunction([this] {
+                UpdateDynamicParamsInternal();
+            });
+        }
     }
     else
     {

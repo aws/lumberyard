@@ -1,0 +1,112 @@
+########################################################################################
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
+# a third party where indicated.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+
+    use_list = ['CryRenderD3D11'] 
+    if 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
+        if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
+            Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
+        else:
+            use_list = ['CryRenderD3D12'] 
+        
+    use_list.extend(['CryRenderGL', 'CryRenderMetal', 'CryRenderNULL', 'CryCommon', 'Cry3DEngine'])
+
+    bld.DefineGem(
+        ## Runtime build configuration
+        includes =  [
+            bld.Path('Code/CryEngine'),
+            bld.Path('Code/CryEngine/Cry3DEngine'),
+            bld.Path('Code/CryEngine/RenderDll'),
+            bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
+            bld.Path('Gems/LmbrCentral/Code/Include'),
+            bld.Path('Code/Framework/AzToolsFramework'),
+        ],
+        disable_tests   = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
+
+        win_features    = ['crcfix'],
+        use             = use_list,
+
+        uselib          = [ 'NVAPI', 'LZSS', 'LZMA' ],
+
+        ## Ensure that Apple platforms use Metal, since GL isn't supported.
+        ios_cxxflags        = [ '-x', 'objective-c++', '-Wno-c++11-narrowing' ],
+        ios_libpath         = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/ios') ],
+        ios_framework       = [ 'Metal', 'CoreGraphics', 'OpenGLES' ],
+        ios_defines         = ['CRY_USE_METAL'],
+
+        appletv_cxxflags    = [ '-x', 'objective-c++', '-Wno-c++11-narrowing' ],
+        appletv_libpath     = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/ios') ],
+        appletv_framework   = [ 'Metal', 'CoreGraphics', 'OpenGLES' ],
+        appletv_defines     = ['CRY_USE_METAL'],
+
+        darwin_cxxflags        = [ '-x', 'objective-c++', '-Wno-c++11-narrowing'  ],
+        darwin_libpath         = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
+        darwin_framework       = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
+        darwin_defines         = ['CRY_USE_METAL'],
+
+
+        ## Editor build configuration
+        editor = dict(
+            platforms   = ['win', 'darwin'],
+            features    = ['qt5'],
+            use         = ['CryRenderD3D11', 'CryRenderD3D12', 'CryRenderGL', 'CryRenderMetal', 'CryCommon', 'Cry3DEngine', 'EditorCore', 'EditorCommon'],
+            includes    = [
+                'Source',
+                bld.Path('Code/CryEngine'),
+                bld.Path('Code/CryEngine/Cry3DEngine'),
+                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
+                bld.Path('Code/CryEngine/RenderDll'),
+                bld.Path('Code/CryEngine/RenderDll/Common'),
+                bld.Path('Code/Framework/AzToolsFramework'),
+                bld.Path('Gems/LmbrCentral/Code/Include'),
+                bld.Path('Gems/LmbrCentral/Code/Source'),
+                bld.Path('Code/Sandbox'),
+                bld.Path('Code/Sandbox/Editor'),
+                bld.Path('Code/Sandbox/Editor/Include'),
+                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+            ],
+            
+            uselib  = [
+                'NVAPI',
+                'LZSS',
+                'LZMA',
+                'QT5CORE',
+                'QT5QUICK',
+                'QT5QML',
+                'QT5GUI', 
+                'QT5WIDGETS',
+                'LZMA',
+                'LZSS',
+                'LZ4' 
+            ],
+            
+            defines = [
+                'CLOUDS_GEM_EDITOR'
+            ],
+        
+            darwin_defines   = ['CRY_USE_METAL'],
+            darwin_uselib    = ['AWS_CPP_SDK_ALL'],   
+            darwin_lib       = ['curl'],
+            darwin_cxxflags  = [ '-x', 'objective-c++', '-Wno-c++11-narrowing'  ],
+            darwin_libpath   = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
+            darwin_framework = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
+
+
+            win_uselib      = ['AWS_CPP_SDK_ALL'],
+            win_features    = ['crcfix', 'ExternalLyIdentity', 'ExternalLyMetrics'],
+            win_use         = bld.make_aws_library_task_list(['LyMetricsProducer', 'LyIdentity']),
+            win_defines     = ['METRICS_SYSTEM_COMPONENT_ENABLED']
+        ),
+    )
+        

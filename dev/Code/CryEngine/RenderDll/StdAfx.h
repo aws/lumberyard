@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_STDAFX_H
-#define CRYINCLUDE_STDAFX_H
 #pragma once
 
 //on mac the precompiled header is auto included in every .c and .cpp file, no include line necessary.
@@ -66,6 +64,14 @@
 #if !defined(NULL_RENDERER)
 #include "../XRenderD3D9/DeviceManager/ConstantBufferCache.h"
 #include "../XRenderD3D9/DeviceManager/DeviceWrapper12.h"
+#endif
+
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define STDAFX_H_SECTION_1 1
+#define STDAFX_H_SECTION_2 2
+#define STDAFX_H_SECTION_3 3
 #endif
 
 /*-----------------------------------------------------------------------------
@@ -191,8 +197,14 @@ inline Plane TransformPlane2Transposed(const Matrix44A& m, const Plane& src)
 
 #define MAX_PATH_LENGTH 512
 
-#if defined(LINUX) // Scubber friendly negated conditions
-#elif defined(APPLE) // Scubber friendly negated conditions
+#if defined(LINUX) ||  defined(APPLE)
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_1
+#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else   //than it does already exist
 inline int vsnprintf(char* buf, int size, const char* format, va_list& args)
 {
@@ -203,8 +215,14 @@ inline int vsnprintf(char* buf, int size, const char* format, va_list& args)
 }
 #endif
 
-#if defined(LINUX) // Scubber friendly negated conditions
-#elif defined(APPLE) // Scubber friendly negated conditions
+#if defined(LINUX) || defined(APPLE)
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_2
+#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else   //than it does already exist
 inline int snprintf(char* buf, int size, const char* format, ...)
 {
@@ -384,6 +402,10 @@ void fpUsePath (const char* name, const char* path, char (&dst)[bytes]) { fpUseP
 
 #define RAIN_OCC_MAP_SIZE           256
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_3
+#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(WIN32)
 
@@ -417,5 +439,3 @@ struct ScopedSetFloatExceptionMask
 /*-----------------------------------------------------------------------------
     The End.
 -----------------------------------------------------------------------------*/
-#endif
-

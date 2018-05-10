@@ -258,6 +258,9 @@ namespace AZ
         AZ_MATH_FORCE_INLINE const Vector3 GetClamp(const Vector3& min, const Vector3& max) const   { return GetMin(max).GetMax(min); }
         /*@}*/
 
+        VectorFloat GetMaxElement() const { return GetX().GetMax(GetY().GetMax(GetZ())); }
+        VectorFloat GetMinElement() const { return GetX().GetMin(GetY().GetMin(GetZ())); }
+
         //===============================================================
         // Standard operators
         //===============================================================

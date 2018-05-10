@@ -34,7 +34,7 @@ namespace AZ
             SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<HMDLuaComponent>()
+                serializeContext->Class<HMDLuaComponent, AZ::Component>()
                     ->Version(1);
             }
 

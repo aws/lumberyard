@@ -16,6 +16,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
@@ -44,6 +45,7 @@ namespace LmbrCentral
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private SkinnedMeshComponentRequestBus::Handler
         , private SkeletalHierarchyRequestBus::Handler
+        , public AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
     {
     public:
 
@@ -53,18 +55,13 @@ namespace LmbrCentral
 
         const float s_renderNodeRequestBusOrder = 100.f;
 
-        //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // SkinnedMeshComponentRequestBus interface implementation
         ICharacterInstance* GetCharacterInstance() override;
-        ///////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // MeshComponentRequestBus interface implementation
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
@@ -72,53 +69,39 @@ namespace LmbrCentral
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;
         bool GetVisibility() override;
-        ///////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // SkeletalHierarchyRequestBus::Handler
         AZ::u32 GetJointCount() override;
         const char* GetJointNameByIndex(AZ::u32 jointIndex) override;
         AZ::s32 GetJointIndexByName(const char* jointName) override;
         AZ::Transform GetJointTransformCharacterRelative(AZ::u32 jointIndex) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // MaterialOwnerRequestBus interface implementation
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
-        ///////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // MeshComponentNotificationBus interface implementation
         void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
         void OnMeshDestroyed() override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // RenderNodeRequestBus::Handler
         IRenderNode* GetRenderNode() override;
         float GetRenderNodeRequestBusOrder() const override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // TransformBus::Handler
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // EditorVisibilityNotificationBus::Handler
         void OnEntityVisibilityChanged(bool visibility) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // AzFramework::EntityDebugDisplayEventBus interface implementation
         void DisplayEntity(bool& handled) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-        ///////////////////////////////////
+
+        // EditorComponentSelectionRequestsBus::Handler
+        AZ::Aabb GetEditorSelectionBounds() override;
 
         //! Called when you want to change the game asset through code (like when creating components based on assets).
         void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;

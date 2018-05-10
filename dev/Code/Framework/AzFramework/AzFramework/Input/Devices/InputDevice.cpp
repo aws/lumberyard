@@ -39,13 +39,13 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         void OnInputDeviceConnectedEvent(const InputDevice& inputDevice) override
         {
-            Call(FN_OnInputDeviceConnectedEvent, inputDevice);
+            Call(FN_OnInputDeviceConnectedEvent, &inputDevice);
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         void OnInputDeviceDisonnectedEvent(const InputDevice& inputDevice)
         {
-            Call(FN_OnInputDeviceDisonnectedEvent, inputDevice);
+            Call(FN_OnInputDeviceDisonnectedEvent, &inputDevice);
         }
     };
 

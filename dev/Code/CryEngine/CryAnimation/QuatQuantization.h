@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYANIMATION_QUATQUANTIZATION_H
-#define CRYINCLUDE_CRYANIMATION_QUATQUANTIZATION_H
 #pragma once
 
 
@@ -531,7 +529,7 @@ struct SmallTree48BitQuat
 
         float* m_Res = &q.v.x;
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(QuatQuantization_h)
+#include AZ_RESTRICTED_FILE(QuatQuantization_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(APPLE) || defined(LINUX)
 #define QUATQUANTIZATION_H_TRAIT_USE_FL_M128_UNION 1
 #endif
@@ -1189,5 +1187,3 @@ struct PolarCoordinates
         z = (float) cos_theta;
     }
 };
-
-#endif // CRYINCLUDE_CRYANIMATION_QUATQUANTIZATION_H

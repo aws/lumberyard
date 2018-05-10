@@ -77,7 +77,7 @@ namespace ScriptCanvasEditor
 
     void PreviewMessageDialog::closeEvent(QCloseEvent* evt)
     {
-        AZStd::intrusive_ptr<EditorSettings::PreviewSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::PreviewSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
+        AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
         if (settings)
         {
             settings->m_showPreviewMessage = (m_dontShowAgainCheckbox->checkState() != Qt::CheckState::Checked);

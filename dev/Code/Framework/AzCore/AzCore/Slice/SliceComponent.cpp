@@ -67,6 +67,11 @@ namespace AZ
 
     } // namespace Converters
 
+    // storage for the static member for cyclic instantiation checking.
+    // note that this vector is only used during slice instantiation and is set to capacity 0 when it empties.
+    SliceComponent::AssetIdVector SliceComponent::m_instantiateCycleChecker; // dependency checker.
+    // this is cleared and set to 0 capacity after each use.
+
     //=========================================================================
     void SliceComponent::DataFlagsPerEntity::Reflect(ReflectContext* context)
     {
@@ -649,11 +654,11 @@ namespace AZ
             #if defined(AZ_ENABLE_TRACING)
             Data::Asset<SliceAsset> owningAsset = Data::AssetManager::Instance().FindAsset(m_component->m_myAsset->GetId());
             AZ_Error("Slice", false, 
-                "Instantiation of %d slice instance(s) of asset '%s' (AssetID: %s) failed - asset not ready or not found during instantiation of owning slice '%s' (AssetID: %s)! " 
+                "Instantiation of %d slice instance(s) of asset %s failed - asset not ready or not found during instantiation of owning slice %s!" 
                 "Saving owning slice will lose data for these instances.",
                 m_instances.size(),
-                !m_asset.GetHint().empty() ? m_asset.GetHint().c_str() : "<no asset hint>", m_asset.GetId().ToString<AZStd::string>().c_str(),
-                !owningAsset.GetHint().empty() ? owningAsset.GetHint().c_str() : "<no asset hint>", owningAsset.GetId().ToString<AZStd::string>().c_str());
+                m_asset.ToString<AZStd::string>().c_str(),
+                owningAsset.ToString<AZStd::string>().c_str());
             #endif // AZ_ENABLE_TRACING
             return false;
         }
@@ -663,11 +668,11 @@ namespace AZ
         {
             #if defined(AZ_ENABLE_TRACING)
             Data::Asset<SliceAsset> owningAsset = Data::AssetManager::Instance().FindAsset(m_component->m_myAsset->GetId());
-            AZ_Error("Slice", false, "Instantiation of %d slice instance(s) of asset '%s' (AssetID: %s) failed - asset ready and available, but unable to instantiate "
-                "for owning slice '%s' (AssetID: %s)! Saving owning slice will lose data for these instances.",
+            AZ_Error("Slice", false, "Instantiation of %d slice instance(s) of asset %s failed - asset ready and available, but unable to instantiate "
+                "for owning slice %s! Saving owning slice will lose data for these instances.",
                 m_instances.size(),
-                !m_asset.GetHint().empty() ? m_asset.GetHint().c_str() : "<no asset hint>", m_asset.GetId().ToString<AZStd::string>().c_str(),
-                !owningAsset.GetHint().empty() ? owningAsset.GetHint().c_str() : "<no asset hint>", owningAsset.GetId().ToString<AZStd::string>().c_str());
+                m_asset.ToString<AZStd::string>().c_str(),
+                owningAsset.ToString<AZStd::string>().c_str());
             #endif // AZ_ENABLE_TRACING
             return false;
         }
@@ -997,7 +1002,10 @@ namespace AZ
         {
             for (const SliceInstance& instance : slice.m_instances)
             {
-                entities.insert(entities.end(), instance.m_instantiated->m_entities.begin(), instance.m_instantiated->m_entities.end());
+                if (instance.m_instantiated)
+                {
+                    entities.insert(entities.end(), instance.m_instantiated->m_entities.begin(), instance.m_instantiated->m_entities.end());
+                }
             }
         }
 
@@ -1027,9 +1035,12 @@ namespace AZ
         {
             for (const SliceInstance& instance : slice.m_instances)
             {
-                for (const AZ::Entity* entity : instance.m_instantiated->m_entities)
+                if (instance.m_instantiated)
                 {
-                    entities.insert(entity->GetId());
+                    for (const AZ::Entity* entity : instance.m_instantiated->m_entities)
+                    {
+                        entities.insert(entity->GetId());
+                    }
                 }
             }
         }
@@ -1063,9 +1074,12 @@ namespace AZ
         {
             for (const SliceInstance& instance : slice.m_instances)
             {
-                for (const AZ::Entity* entity : instance.m_instantiated->m_metadataEntities)
+                if (instance.m_instantiated)
                 {
-                    metadataEntities.insert(entity->GetId());
+                    for (const AZ::Entity* entity : instance.m_instantiated->m_metadataEntities)
+                    {
+                        metadataEntities.insert(entity->GetId());
+                    }
                 }
             }
         }
@@ -1120,14 +1134,34 @@ namespace AZ
             return true;
         }
 
-        // check if assets are loaded
         bool result = true;
+
+        if (m_myAsset)
+        {
+            PushInstantiateCycle(m_myAsset->GetId());
+        }
+        
         for (SliceReference& slice : m_slices)
         {
-            if (!slice.Instantiate(m_assetLoadFilterCB))
+            slice.m_component = this;
+            AZ::Data::AssetId sliceAssetId = slice.m_asset.GetId();
+            
+            if (CheckContainsInstantiateCycle(sliceAssetId))
             {
                 result = false;
             }
+            else
+            {
+                if (!slice.Instantiate(AZ::ObjectStream::FilterDescriptor(m_assetLoadFilterCB, m_filterFlags)))
+                {
+                    result = false;
+                }
+            }
+        }
+
+        if (m_myAsset)
+        {
+            PopInstantiateCycle(m_myAsset->GetId());
         }
 
         m_slicesAreInstantiated = result;
@@ -1143,11 +1177,11 @@ namespace AZ
                     {
                         #if defined(AZ_ENABLE_TRACING)
                         Data::Asset<SliceAsset> thisAsset = Data::AssetManager::Instance().FindAsset(GetMyAsset()->GetId());
-                        AZ_Warning("Slice", false, "Removing %d instances of slice asset '%s' (AssetID: %s) from parent asset '%s' (AssetID: %s) due to failed instantiation. " 
+                        AZ_Warning("Slice", false, "Removing %d instances of slice asset %s from parent asset %s due to failed instantiation. " 
                             "Saving parent asset will result in loss of slice data.", 
                             iter->GetInstances().size(),
-                            !iter->GetSliceAsset().GetHint().empty() ? iter->GetSliceAsset().GetHint().c_str() : "<no asset hint>", iter->GetSliceAsset().GetId().ToString<AZStd::string>().c_str(),
-                            !thisAsset.GetHint().empty() ? thisAsset.GetHint().c_str() : "<no asset hint>", thisAsset.GetId().ToString<AZStd::string>().c_str());
+                            iter->GetSliceAsset().ToString<AZStd::string>().c_str(),
+                            thisAsset.ToString<AZStd::string>().c_str());
                         #endif // AZ_ENABLE_TRACING
                         Data::AssetBus::MultiHandler::BusDisconnect(iter->GetSliceAsset().GetId());
                         iter = m_slices.erase(iter);
@@ -1270,7 +1304,7 @@ namespace AZ
         // if the reference is and we are not, delete it
         if (m_slicesAreInstantiated)
         {
-            slice->Instantiate(m_assetLoadFilterCB);
+            slice->Instantiate(AZ::ObjectStream::FilterDescriptor(m_assetLoadFilterCB, m_filterFlags));
         }
 
         // Refresh entity map for newly-created instances.
@@ -1295,7 +1329,7 @@ namespace AZ
             {
                 SliceInstance* instance = entityInfoIter->second.m_sliceAddress.second;
                 AZ_Assert(instance, "Entity %llu was found to belong to reference %s, but instance is invalid.", 
-                          entityId, reference->GetSliceAsset().GetId().ToString<AZStd::string>().c_str());
+                          entityId, reference->GetSliceAsset().ToString<AZStd::string>().c_str());
 
                 EntityAncestorList ancestors;
                 reference->GetInstanceEntityAncestry(entityId, ancestors, 1);
@@ -1339,7 +1373,7 @@ namespace AZ
         if (sourceEntityMap.find(restoreInfo.m_ancestorId) == sourceEntityMap.end())
         {
             AZ_Error("Slice", false, "Ancestor Id of %llu is invalid. It must match an entity in source asset %s.", 
-                     restoreInfo.m_ancestorId, asset.GetId().ToString<AZStd::string>().c_str());
+                     restoreInfo.m_ancestorId, asset.ToString<AZStd::string>().c_str());
             return SliceComponent::SliceInstanceAddress(nullptr, nullptr);
         }
 
@@ -1467,7 +1501,7 @@ namespace AZ
             if (newReference->m_isInstantiated && !sliceReference->m_isInstantiated)
             {
                 // the source instance is not instantiated, make sure we instantiate it.
-                newReference->InstantiateInstance(newInstance, m_assetLoadFilterCB);
+                newReference->InstantiateInstance(newInstance, AZ::ObjectStream::FilterDescriptor(m_assetLoadFilterCB, m_filterFlags));
             }
 
             return SliceInstanceAddress(newReference, &newInstance);
@@ -1710,7 +1744,7 @@ namespace AZ
     //=========================================================================
     // SliceComponent::Deactivate
     //=========================================================================
-    void SliceComponent::OnAssetReloaded(Data::Asset<Data::AssetData> /*asset*/)
+    void SliceComponent::OnAssetReloaded(Data::Asset<Data::AssetData> asset)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
 
@@ -1719,6 +1753,8 @@ namespace AZ
             AZ_Assert(false, "Cannot reload a slice component that is not owned by an asset.");
             return;
         }
+
+        AZ::Data::AssetId myAssetId = m_myAsset->GetId();
 
         // One of our dependent assets has changed.
         // We need to identify any dependent assets that have changed, since there may be multiple
@@ -1752,45 +1788,64 @@ namespace AZ
         Data::Asset<SliceAsset> updatedAsset(m_myAsset->Clone());
         updatedAsset.Get()->SetData(updatedAssetEntity, updatedAssetComponent);
         updatedAssetComponent->SetMyAsset(updatedAsset.Get());
-        updatedAssetComponent->ListenForAssetChanges();
-
+       
         // Update data patches against the old version of the asset.
         updatedAssetComponent->PrepareSave();
 
+        PushInstantiateCycle(myAssetId);
+
         // Update asset reference for any modified dependencies, and re-instantiate nested instances.
-        for (SliceReference& slice : updatedAssetComponent->m_slices)
+        for (auto listIterator = updatedAssetComponent->m_slices.begin(); listIterator != updatedAssetComponent->m_slices.end();)
         {
+            SliceReference& slice = *listIterator;
             Data::Asset<SliceAsset> dependentAsset = Data::AssetManager::Instance().FindAsset(slice.m_asset.GetId());
 
-            if (dependentAsset.Get() == slice.m_asset.Get())
+            bool recursionDetected = CheckContainsInstantiateCycle(dependentAsset.GetId());
+            bool wasModified = (dependentAsset.Get() != slice.m_asset.Get());
+            
+            if (wasModified || recursionDetected)
             {
-                continue;
-            }
-
-            // Asset data differs. Acquire new version and re-instantiate.
-            slice.m_asset = dependentAsset;
-
-            if (slice.m_isInstantiated && !slice.m_instances.empty())
-            {
-                for (SliceInstance& instance : slice.m_instances)
+                // uninstantiate if its been instantiated:
+                if (slice.m_isInstantiated && !slice.m_instances.empty())
                 {
-                    delete instance.m_instantiated;
-                    instance.m_instantiated = nullptr;
+                    for (SliceInstance& instance : slice.m_instances)
+                    {
+                        delete instance.m_instantiated;
+                        instance.m_instantiated = nullptr;
+                    }
+                    slice.m_isInstantiated = false;
                 }
-                slice.m_isInstantiated = false;
-
-                slice.Instantiate(m_assetLoadFilterCB);
+            }
+            
+            if (!recursionDetected)
+            {
+                if (wasModified) // no need to do anything here if it wasn't actually changed.
+                {
+                    // Asset data differs. Acquire new version and re-instantiate.
+                    slice.m_asset = dependentAsset;
+                    slice.Instantiate(AZ::ObjectStream::FilterDescriptor(m_assetLoadFilterCB, m_filterFlags));
+                }
+                ++listIterator;
+            }
+            else
+            {
+                // whenever recursion was detected we remove this element.
+                listIterator = updatedAssetComponent->m_slices.erase(listIterator);
             }
         }
+
+        PopInstantiateCycle(myAssetId);
 
         // Rebuild entity info map based on new instantiations.
         if (updatedAssetComponent->m_slicesAreInstantiated)
         {
             updatedAssetComponent->BuildEntityInfoMap();
         }
-
-        // We did not really reload our assets, but we have changed in-memory, so update our data in the DB and notify listeners.
-        AZ_Assert(m_myAsset, "My asset is not set. It should be set by the SliceAssetHandler. Make sure you asset is always created and managed though the AssetDatabase and handlers!");
+       
+        // note that this call will destroy the "this" pointer, because the main editor context will respond to this by deleting and recreating all slices
+        // (this call will cascade up the tree of inheritence all the way to the root.)
+        // for this reason, we disconnect from the busses to prevent recursion.
+        Data::AssetBus::MultiHandler::BusDisconnect();
         Data::AssetManager::Instance().ReloadAssetFromData(updatedAsset);
     }
 
@@ -1985,6 +2040,81 @@ namespace AZ
     }
 
     //=========================================================================
+    // PushInstantiateCycle
+    //=========================================================================
+    void SliceComponent::PushInstantiateCycle(const AZ::Data::AssetId& assetId)
+    {
+        AZStd::unique_lock<AZStd::recursive_mutex> lock(m_instantiateMutex);
+        m_instantiateCycleChecker.push_back(assetId);
+    }
+
+    //=========================================================================
+    // ContainsInstantiateCycle
+    //=========================================================================
+    bool SliceComponent::CheckContainsInstantiateCycle(const AZ::Data::AssetId& assetId)
+    {
+        /* this function is called during recursive slice instantiation to check for cycles.
+        /  It is assumed that before recursing, PushInstantiateCycle is called, 
+        /  and when recursion returns, PopInstantiateCycle is called.
+        /  we want to make sure we are never in the following situation:
+        /     SliceA
+        /        + SliceB
+        /           + SliceA (again - cyclic!)
+        /  note that its safe for the same asset to pop up a few times in different branches of the instantiation
+        /  hierarchy, just not within the same direct line as its parents
+        */
+
+        AZStd::unique_lock<AZStd::recursive_mutex> lock(m_instantiateMutex);
+        if (AZStd::find(m_instantiateCycleChecker.begin(), m_instantiateCycleChecker.end(), assetId) != m_instantiateCycleChecker.end())
+        {
+   
+#if defined(AZ_ENABLE_TRACING)
+            AZ::Data::Asset<SliceAsset> fullAsset = AZ::Data::AssetManager::Instance().FindAsset(assetId);
+            AZStd::string messageString = "Cyclic Slice references detected!  Please see the hierarchy below:";
+            for (const AZ::Data::AssetId& assetListElement : m_instantiateCycleChecker)
+            {
+                Data::Asset<SliceAsset> callerAsset = Data::AssetManager::Instance().FindAsset(assetListElement);
+                if (callerAsset.GetId() == assetId)
+                {
+                    messageString.append("\n --> "); // highlight the ones that are the problem!
+                }
+                else
+                {
+                    messageString.append("\n     ");
+                }
+                messageString.append(callerAsset.ToString<AZStd::string>().c_str());
+            }
+            // put the one that we are currently checking for at the end of the list for easy readability:
+            messageString.append("\n --> ");
+            messageString.append(fullAsset.ToString<AZStd::string>().c_str());
+            AZ_Error("Slice", false, "%s", messageString.c_str());
+#endif // AZ_ENABLE_TRACING
+
+            return true;
+        }
+
+        return false;
+    }
+
+    //=========================================================================
+    // PopInstantiateCycle
+    //=========================================================================
+    void SliceComponent::PopInstantiateCycle(const AZ::Data::AssetId& assetId)
+    {
+#if defined(AZ_ENABLE_TRACING)
+        AZ_Assert(m_instantiateCycleChecker.back() == assetId, "Programmer error - Cycle-Checking vector should be symmetrically pushing and popping elements.");
+#else
+        AZ_UNUSED(assetId);
+#endif
+        m_instantiateCycleChecker.pop_back();
+        if (m_instantiateCycleChecker.empty())
+        {
+            // reclaim memory so that there is no leak of this static object.
+            m_instantiateCycleChecker.set_capacity(0);
+        }
+    }
+
+    //=========================================================================
     // SliceComponent::AddOrGetSliceReference
     //=========================================================================
     SliceComponent::SliceReference* SliceComponent::AddOrGetSliceReference(const Data::Asset<SliceAsset>& sliceAsset)
@@ -2045,7 +2175,10 @@ namespace AZ
         {
             for (const SliceInstance& instance : slice.m_instances)
             {
-                outMetadataEntities.insert(outMetadataEntities.end(), instance.m_instantiated->m_metadataEntities.begin(), instance.m_instantiated->m_metadataEntities.end());
+                if (instance.m_instantiated)
+                {
+                    outMetadataEntities.insert(outMetadataEntities.end(), instance.m_instantiated->m_metadataEntities.begin(), instance.m_instantiated->m_metadataEntities.end());
+                }
             }
         }
 
@@ -2084,6 +2217,8 @@ namespace AZ
             AZ_Error("SliceAsset", false, "Failed to clone asset.");
             return nullptr;
         }
+
+        clonedComponent->SetSerializeContext(&serializeContext);
 
         AZ_Assert(clonedComponent, "Cloned asset doesn't contain a slice component.");
         AZ_Assert(clonedComponent->GetSlices().size() == GetSlices().size(),
@@ -2125,7 +2260,7 @@ namespace AZ
                 clonedRefInstance.m_entityIdToBaseCache = myRefInstance.m_entityIdToBaseCache;
                 clonedRefInstance.m_dataPatch = myRefInstance.m_dataPatch;
                 clonedRefInstance.m_dataFlags.CopyDataFlagsFrom(myRefInstance.m_dataFlags);
-                clonedRefInstance.m_instantiated = serializeContext.CloneObject(myRefInstance.m_instantiated);
+                clonedRefInstance.m_instantiated = myRefInstance.m_instantiated ? serializeContext.CloneObject(myRefInstance.m_instantiated) : nullptr;
             }
 
             clonedReferencesIt->m_isInstantiated = myReferencesIt->m_isInstantiated;

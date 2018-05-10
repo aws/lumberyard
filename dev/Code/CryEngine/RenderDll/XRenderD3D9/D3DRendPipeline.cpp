@@ -34,6 +34,17 @@
 #include "MultiLayerAlphaBlendPass.h"
 #include "../Common/Textures/TextureManager.h"
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DRENDPIPELINE_CPP_SECTION_1 1
+#define D3DRENDPIPELINE_CPP_SECTION_2 2
+#define D3DRENDPIPELINE_CPP_SECTION_3 3
+#define D3DRENDPIPELINE_CPP_SECTION_4 4
+#define D3DRENDPIPELINE_CPP_SECTION_5 5
+#define D3DRENDPIPELINE_CPP_SECTION_9 9
+#endif
+
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
@@ -942,6 +953,13 @@ void CD3D9Renderer::EF_SetSrgbWrite(bool sRGBWrite)
     }
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DRENDPIPELINE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DRendPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 // <DEPRECATED>
 void CD3D9Renderer::CopyFramebufferDX11(CTexture* pDst, ID3D11Resource* pSrcResource, D3DFormat srcFormat)
 {
@@ -998,6 +1016,7 @@ void CD3D9Renderer::CopyFramebufferDX11(CTexture* pDst, ID3D11Resource* pSrcReso
     SAFE_RELEASE(shaderResView);
     CTexture::ResetTMUs(); // Due to PSSetSamplers call state caching will be broken
 }
+#endif
 
 // <DEPRECATED> This function must be refactored post C3
 void CD3D9Renderer::FX_ScreenStretchRect(CTexture* pDst, CTexture* pHDRSrc)
@@ -1085,6 +1104,13 @@ void CD3D9Renderer::FX_ScreenStretchRect(CTexture* pDst, CTexture* pHDRSrc)
                 }
                 else
                 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DRENDPIPELINE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DRendPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                     // Check if the format match (or the copysubregionresource call would fail)
                     const D3DFormat dstFmt = CTexture::DeviceFormatFromTexFormat(pDst->GetDstFormat());
                     const D3DFormat srcFmt = backbufferDesc.Format;
@@ -1116,8 +1142,17 @@ void CD3D9Renderer::FX_ScreenStretchRect(CTexture* pDst, CTexture* pHDRSrc)
                         CopyFramebufferDX11(pDst, pSrcResource, backbufferDesc.Format);
                         EF_Scissor(true, sX, sY, sWdt, sHgt);
                     }
+#endif
                 }
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DRENDPIPELINE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DRendPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 SAFE_RELEASE(pSrcResource);
+#endif
             }
         }
 
@@ -1423,6 +1458,10 @@ bool CD3D9Renderer::FX_ZScene(bool bEnable, bool bClearZBuffer, bool bRenderNorm
             FX_PushRenderTarget(nDiffuseTargetID, CTexture::s_ptexSceneDiffuse, NULL);
 
             CTexture* pSceneSpecular = CTexture::s_ptexSceneSpecular;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DRENDPIPELINE_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(D3DRendPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
             FX_PushRenderTarget(nDiffuseTargetID + 1, pSceneSpecular, NULL);
 
             
@@ -2887,8 +2926,8 @@ void CD3D9Renderer::FX_WaterVolumesCaustics()
                 size_t ioffset(0);
                 CRenderMesh* pCausticQuadMesh = static_cast<CRenderMesh*>(causticInfo.m_pCausticQuadMesh.get());
                 pCausticQuadMesh->CheckUpdate(0);
-                D3DBuffer* pVB = gcpRendD3D->m_DevBufMan.GetD3D(pCausticQuadMesh->_GetVBStream(VSF_GENERAL), &voffset);
-                D3DBuffer* pIB = gcpRendD3D->m_DevBufMan.GetD3D(pCausticQuadMesh->_GetIBStream(), &ioffset);
+                D3DBuffer* pVB = gcpRendD3D->m_DevBufMan.GetD3D(pCausticQuadMesh->GetVBStream(VSF_GENERAL), &voffset);
+                D3DBuffer* pIB = gcpRendD3D->m_DevBufMan.GetD3D(pCausticQuadMesh->GetIBStream(), &ioffset);
                 FX_SetVStream(0, pVB, voffset, pCausticQuadMesh->GetStreamStride(VSF_GENERAL));
                 FX_SetIStream(pIB, ioffset, (sizeof(vtx_idx) == 2 ? Index16 : Index32));
 
@@ -3039,6 +3078,30 @@ void CD3D9Renderer::FX_RenderWater(void(* RenderFunc)())
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void CD3D9Renderer::SetupLinearizeDepthParams(CShader* shader)
+{
+    static CCryNameR pParamName0("NearProjection");
+    AZ_Assert(shader, "Null shader when setting Linearize Depth params");
+
+    I3DEngine* pEng = gEnv->p3DEngine;
+
+    float zn = DRAW_NEAREST_MIN;
+    float zf = CV_r_DrawNearFarPlane;
+
+    float fNearZRange = CV_r_DrawNearZRange;
+    float fCamScale = (zf / pEng->GetMaxViewDistance());
+
+    const bool bReverseDepth = (m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) != 0;
+
+    Vec4 NearProjectionParams;
+    NearProjectionParams.x = bReverseDepth ? 1.0f - zf / (zf - zn) * fNearZRange : zf / (zf - zn) * fNearZRange;
+    NearProjectionParams.y = bReverseDepth ? zn / (zf - zn) * fNearZRange * fCamScale : zn / (zn - zf) * fNearZRange * fCamScale;
+    NearProjectionParams.z = bReverseDepth ? 1.0 - (fNearZRange - 0.001f) : fNearZRange - 0.001f;
+    NearProjectionParams.w = 1.0f;
+
+    shader->FXSetPSFloat(pParamName0, &NearProjectionParams, 1);
+}
+
 void CD3D9Renderer::FX_LinearizeDepth(CTexture* ptexZ)
 {
     {
@@ -3064,24 +3127,7 @@ void CD3D9Renderer::FX_LinearizeDepth(CTexture* ptexZ)
 
         m_DevMan.BindSRV(eHWSC_Pixel, &m_pZBufferDepthReadOnlySRV, 15, 1);
 
-        static CCryNameR pParamName0("NearProjection");
-
-        I3DEngine* pEng = gEnv->p3DEngine;
-
-        float zn = DRAW_NEAREST_MIN;
-        float zf = CV_r_DrawNearFarPlane;
-
-        float fNearZRange = CV_r_DrawNearZRange;
-        float fCamScale = (zf / pEng->GetMaxViewDistance());
-
-        const bool bReverseDepth = (m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) != 0;
-
-        Vec4 NearProjectionParams;
-        NearProjectionParams.x = bReverseDepth ? 1.0f - zf / (zf - zn) * fNearZRange : zf / (zf - zn) * fNearZRange;
-        NearProjectionParams.y = bReverseDepth ? zn / (zf - zn) * fNearZRange * fCamScale : zn / (zn - zf) * fNearZRange * fCamScale;
-        NearProjectionParams.z = bReverseDepth ? 1.0 - (fNearZRange - 0.001f) : fNearZRange - 0.001f;
-        NearProjectionParams.w = 1.0f;
-        CShaderMan::s_shPostEffects->FXSetPSFloat(pParamName0, &NearProjectionParams, 1);
+        SetupLinearizeDepthParams(CShaderMan::s_shPostEffects);
 
         //  Confetti BEGIN: Igor Lobanchikov
         RECT rect;
@@ -4961,7 +5007,15 @@ void CD3D9Renderer::FX_ProcessZPassRenderLists()
 
             if (!CRenderer::CV_r_EnableComputeDownSampling)
             {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DRENDPIPELINE_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(D3DRendPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
                 GetUtils().DownsampleDepth(CTexture::s_ptexZTarget, CTexture::s_ptexZTargetScaled, true);
+#endif
                 GetUtils().DownsampleDepth(CTexture::s_ptexZTargetScaled, CTexture::s_ptexZTargetScaled2, false);
             }
             else
@@ -5185,15 +5239,23 @@ void CD3D9Renderer::OcclusionReadbackData::Reset(bool reverseDepth)
 
 void CD3D9Renderer::InvalidateCoverageBufferData()
 {
+    static const char* occlusionDataTextureName[s_numOcclusionReadbackTextures] = {
+        "$ZTargetReadBack0",
+        "$ZTargetReadBack1",
+        "$ZTargetReadBack2"
+    };
+
+    AZ_STATIC_ASSERT(s_numOcclusionReadbackTextures == 3, "Change the initialization of occlusionDataTextureName if you change s_numOcclusionReadbackTextures!");
+
     for (size_t i = 0; i < s_numOcclusionReadbackTextures; i++)
     {
-        m_occlusionData[i].SetupOcclusionData();
+        m_occlusionData[i].SetupOcclusionData(occlusionDataTextureName[i]);
     }
     m_cpuOcclusionReadIndex = 0;
     m_occlusionBufferIndex = 0;
 }
 
-void CD3D9Renderer::CPUOcclusionData::SetupOcclusionData()
+void CD3D9Renderer::CPUOcclusionData::SetupOcclusionData(const char* textureName)
 {
     m_occlusionDataState = CPUOcclusionData::OcclusionDataState::OcclusionDataInvalid;
     m_occlusionViewProj.SetIdentity();
@@ -5203,7 +5265,7 @@ void CD3D9Renderer::CPUOcclusionData::SetupOcclusionData()
     if (!m_zTargetReadback)
     {
         unsigned int flags = FT_DONT_STREAM | FT_DONT_RELEASE | FT_STAGE_READBACK;
-        m_zTargetReadback = CTexture::CreateTextureObject("$ZTargetReadBack", s_occlusionBufferWidth, s_occlusionBufferHeight, 1, eTT_2D, flags, eTF_Unknown);
+        m_zTargetReadback = CTexture::CreateTextureObject(textureName, s_occlusionBufferWidth, s_occlusionBufferHeight, 1, eTT_2D, flags, eTF_Unknown);
         m_zTargetReadback->CreateRenderTarget(CTexture::s_eTFZ, Clr_FarPlane_R);
     }
 
@@ -5218,7 +5280,7 @@ void CD3D9Renderer::CPUOcclusionData::Destroy()
 
 int CD3D9Renderer::GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffer)
 {
-    //AZ_Assert(m_cpuOcclusionReadIndex < s_numOcclusionReadbackTextures, "m_cpuOcclusionReadIndex (%u) out of range (%u)", m_cpuOcclusionReadIndex, s_numOcclusionReadbackTextures);
+    AZ_Assert(m_cpuOcclusionReadIndex < s_numOcclusionReadbackTextures, "m_cpuOcclusionReadIndex (%u) out of range (%u)", m_cpuOcclusionReadIndex.load(), s_numOcclusionReadbackTextures);
     const CPUOcclusionData& occlusionData = m_occlusionData[m_cpuOcclusionReadIndex];
 
     // Do not perform occlusion checks if our data is not ready or has been invalidated
@@ -6536,9 +6598,10 @@ void CD3D9Renderer::RT_UpdateTrackingStates()
 {
     if (m_pStereoRenderer->IsRenderingToHMD())
     {
-        //Only allow tracking info to update once per frame
+        // Only allow tracking info to update once per frame
+        // Do not allow recursion "frame" ID otherwise we will update tracking for both the water reflection pass as well as the main scene pass
         static int lastFrameId = 0;
-        int frameId = GetFrameID();
+        int frameId = GetFrameID(false); 
         if (lastFrameId != frameId)
         {
             EBUS_EVENT(AZ::VR::HMDDeviceRequestBus, UpdateTrackingStates);
@@ -6576,6 +6639,13 @@ void CD3D9Renderer::LogShaderImportMiss(const CShader* pShader)
 
 #if defined(CRY_USE_METAL)
     shaderList = "ShaderList_METAL.txt";
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DRENDPIPELINE_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(D3DRendPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(OPENGL_ES) && DXGL_INPUT_GLSL
     //  Confetti BEGIN: Igor Lobanchikov
     uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();

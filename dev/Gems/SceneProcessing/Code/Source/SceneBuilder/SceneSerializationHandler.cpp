@@ -10,7 +10,12 @@
 *
 */
 
+#include <SceneBuilder/SceneSerializationHandler.h>
+
+#include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -18,7 +23,6 @@
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
-#include <SceneBuilder/Source/SceneSerializationHandler.h>
 
 namespace SceneBuilder
 {
@@ -37,7 +41,9 @@ namespace SceneBuilder
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<SceneSerializationHandler, AZ::SceneAPI::SceneCore::SceneSystemComponent>()->Version(1);
+            serializeContext->Class<SceneSerializationHandler, AZ::Component>()->Version(1)
+                ->Attribute(AZ::Edit::Attributes::SystemComponentTags, AZStd::vector<AZ::Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }))
+            ;
         }
     }
 

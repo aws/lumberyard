@@ -21,6 +21,15 @@
 // . AzTest only works in on the Windows platform
 // . The GoogleTest framework requires making memory allocations between tests; thus turned off OVERLOAD_GLOBAL_ALLOCATIONS testing
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define MAIN_CPP_SECTION_1 1
+#define MAIN_CPP_SECTION_2 2
+#define MAIN_CPP_SECTION_3 3
+#define MAIN_CPP_SECTION_4 4
+#endif
+
 #if defined(AZ_TESTS_ENABLED)
 
 #if !defined(AZ_PLATFORM_WINDOWS)
@@ -72,6 +81,10 @@ int main(int argc, char** argv)
 
 using namespace GridMate;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 /**
  * Default AZStd memory allocations implementations. Just so we can assert if we use them
@@ -237,6 +250,10 @@ namespace Render {
 //=========================================================================
 void Setup()
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     Render::Init();
 }
 
@@ -248,6 +265,10 @@ void Destroy()
 {
     Render::Destroy();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 #if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
@@ -260,6 +281,13 @@ void RunTests()
     Destroy();
 }
 }
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 int main(int argc, char* argv[])
 {

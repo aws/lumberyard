@@ -19,11 +19,38 @@
 #include <Common/Memory/VRAMDrillerBus.h>
 #include "Base.h"
 
-#if   defined(CRY_USE_DX12)
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define DEVICEMANAGER_CPP_SECTION_1 1
+#define DEVICEMANAGER_CPP_SECTION_3 3
+#define DEVICEMANAGER_CPP_SECTION_4 4
+#define DEVICEMANAGER_CPP_SECTION_5 5
+#define DEVICEMANAGER_CPP_SECTION_6 6
+#define DEVICEMANAGER_CPP_SECTION_7 7
+#define DEVICEMANAGER_CPP_SECTION_8 8
+#define DEVICEMANAGER_CPP_SECTION_9 9
+#define DEVICEMANAGER_CPP_SECTION_10 10
+#define DEVICEMANAGER_CPP_SECTION_11 11
+#define DEVICEMANAGER_CPP_SECTION_12 12
+#define DEVICEMANAGER_CPP_SECTION_13 13
+#define DEVICEMANAGER_CPP_SECTION_14 14
+#define DEVICEMANAGER_CPP_SECTION_15 15
+#define DEVICEMANAGER_CPP_SECTION_16 16
+#define DEVICEMANAGER_CPP_SECTION_17 17
+#define DEVICEMANAGER_CPP_SECTION_18 18
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(CRY_USE_DX12)
     #include "DeviceManager_D3D12.inl"
 #else
     #include "DeviceManager_D3D11.inl"
-
 
     #if defined(USE_NV_API)
         #include "DeviceManager_D3D11_NVAPI.h"
@@ -47,6 +74,10 @@ CDeviceManager::~CDeviceManager()
 
 void CDeviceManager::Init()
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #if !DEVICE_MANAGER_IMMEDIATE_STATE_WRITE
     memset(m_CB, 0x0, sizeof(m_CB));
     memset(m_SRV, 0x0, sizeof(m_SRV));
@@ -67,6 +98,10 @@ void CDeviceManager::RT_Tick()
 {
     m_numInvalidDrawcalls = 0;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 HRESULT CDeviceManager::CreateD3D11Texture2D(const D3D11_TEXTURE2D_DESC* desc, const FLOAT clearValue[4], const D3D11_SUBRESOURCE_DATA* initialData, ID3D11Texture2D** texture2D, const char* textureName)
@@ -151,11 +186,19 @@ void CDeviceManager::ReleaseD3D11Buffer(D3DBuffer* buffer)
 
 void* CDeviceManager::GetBackingStorage(D3DBuffer* buffer)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
     return NULL;
 }
 void CDeviceManager::FreebackingStorage(void* base_ptr)
 {
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
 }
 
 HRESULT CDeviceManager::CreateFence(DeviceFenceHandle& query)
@@ -164,6 +207,13 @@ HRESULT CDeviceManager::CreateFence(DeviceFenceHandle& query)
 # if CRY_USE_DX12
     query = reinterpret_cast<DeviceFenceHandle>(new UINT64);
     hr = query ? S_OK : S_FALSE;
+#   define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
+# if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 # else
     D3D11_QUERY_DESC QDesc;
     QDesc.Query = D3D11_QUERY_EVENT;
@@ -187,6 +237,13 @@ HRESULT CDeviceManager::ReleaseFence(DeviceFenceHandle query)
 # if CRY_USE_DX12
     delete reinterpret_cast<UINT64*>(query);
     hr = S_OK;
+#   define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
+# if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 # else
     D3DQuery* d3d_query = reinterpret_cast<D3DQuery*>(query);
     SAFE_RELEASE(d3d_query);
@@ -204,6 +261,13 @@ HRESULT CDeviceManager::IssueFence(DeviceFenceHandle query)
         *handle = gcpRendD3D->GetDeviceContext().InsertFence();
         //  gcpRendD3D->GetDeviceContext().Flush();
     }
+#   define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
+# if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 # else
     D3DQuery* d3d_query = reinterpret_cast<D3DQuery*>(query);
     if (d3d_query)
@@ -237,6 +301,13 @@ HRESULT CDeviceManager::SyncFence(DeviceFenceHandle query, bool block, bool flus
             }
         }
     }
+#   define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
+# if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 # else
     D3DQuery* d3d_query = reinterpret_cast<D3DQuery*>(query);
     if (d3d_query)
@@ -259,11 +330,19 @@ HRESULT CDeviceManager::SyncFence(DeviceFenceHandle query, bool block, bool flus
 
 HRESULT CDeviceManager::InvalidateCpuCache(void* buffer_ptr, size_t size, size_t offset)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
     return S_OK;
 }
 
 HRESULT CDeviceManager::InvalidateGpuCache(D3DBuffer* buffer, void* buffer_ptr, size_t size, size_t offset)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
     return S_OK;
 }
 
@@ -284,6 +363,10 @@ HRESULT CDeviceManager::CreateDirectAccessBuffer(uint32 nSize, uint32 elemSize, 
     // if no direct access is available, let the driver handle preventing writing to VMEM while it is in use
 #if BUFFER_ENABLE_DIRECT_ACCESS == 0
     nUsage |= CDeviceManager::USAGE_DYNAMIC;
+#endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
     HRESULT result = CreateBuffer(nSize, elemSize, nUsage, nBindFlags, ppBuff);
@@ -340,13 +423,27 @@ void CDeviceManager::UnlockDirectAccessBuffer(D3DBuffer* pBuff, int32 nBindFlags
 
 void CDeviceManager::InvalidateBuffer(D3DBuffer* buffer, void* base_ptr, size_t offset, size_t size, uint32 id)
 {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_14
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+# endif
 }
 
 ILINE bool CDeviceManager::ValidateDrawcall()
 {
     if (CHWShader_D3D::s_nActivationFailMask != 0)
     {
-        ++m_numInvalidDrawcalls;
+        /*
+            A draw call is allowed to fail if we're currently processing
+            shader compilation asynchronously. If shader jobs are running
+            we don't want to count an "invalid" draw call because this is 
+            expected behavior. A draw call is only invalid if there are no 
+            shader jobs running.
+        */
+        if (gRenDev->m_cEF.m_ShaderCacheStats.m_nNumShaderAsyncCompiles == 0)
+        {
+            ++m_numInvalidDrawcalls;
+        }
         return false;
     }
 
@@ -926,9 +1023,26 @@ int CDeviceTexture::Cleanup()
     int32 nRef = -1;
     if (m_pD3DTexture)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_15
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         // Unregister the VRAM allocation with the VRAM driller
         EBUS_EVENT(Render::Debug::VRAMDrillerBus, UnregisterAllocation, static_cast<void*>(m_pD3DTexture));
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_18
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         nRef = m_pD3DTexture->Release();
+#endif
         m_pD3DTexture = NULL;
     }
 
@@ -946,6 +1060,10 @@ int CDeviceTexture::Cleanup()
     }
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_16
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(USE_NV_API)
     m_handleMGPU = NULL;
@@ -959,10 +1077,18 @@ CDeviceTexture::~CDeviceTexture()
     Cleanup();
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_17
+#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 uint32 CDeviceTexture::TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, uint32 nMips, uint32 nSlices, const ETEX_Format eTF)
 {
     return CTexture::TextureDataSize(nWidth, nHeight, nDepth, nMips, nSlices, eTF);
 }
+#endif
 
 uint32 CDeviceTexture::TextureDataSize(D3DBaseView* pView)
 {

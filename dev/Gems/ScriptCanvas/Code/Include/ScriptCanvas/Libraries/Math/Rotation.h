@@ -20,27 +20,26 @@ namespace ScriptCanvas
     {
         namespace Math
         {
-            class Rotation
-                : public NativeDatumNode<Rotation, Data::RotationType>
+            class Quaternion
+                : public NativeDatumNode<Quaternion, Data::QuaternionType>
             {
             public:
-                using ParentType = NativeDatumNode<Rotation, Data::RotationType>;
-                AZ_COMPONENT(Rotation, "{E17FE11D-69F2-4746-B582-778B48D0BF47}", ParentType);
+                using ParentType = NativeDatumNode<Quaternion, Data::QuaternionType>;
+                AZ_COMPONENT(Quaternion, "{E17FE11D-69F2-4746-B582-778B48D0BF47}", ParentType);
 
                 static void Reflect(AZ::ReflectContext* reflection)
                 {
                     if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
                     {
-                        serializeContext->Class<Rotation, PureData>()
+                        serializeContext->Class<Quaternion, PureData>()
                             ->Version(0)
                             ;
 
                         if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                         {
-                            editContext->Class<Rotation>("Rotation", "Pitch/Roll/Yaw (generally applied in Yaw, Pitch, Roll order)")
+                            editContext->Class<Quaternion>("Quaternion", "imaginary(X, Y, Z), real W")
                                 ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                                ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Rotation.png")
-                                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                                ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Quaternion.png")
                                 ;
                         }
                     }

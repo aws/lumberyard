@@ -17,11 +17,14 @@
 #include <ISystem.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
+#include <AzCore/Serialization/Utils.h>
+
+static bool ScreenFaderNodeVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
+
 #include <Source/ScreenFaderNode.generated.cpp>
 
 namespace GraphicsReflectContext
 {
-
     void ScreenFaderNode::OnActivate()
     {
         m_originalTextureName = ScreenFaderNodeProperty::GetTextureName(this);
@@ -89,7 +92,7 @@ namespace GraphicsReflectContext
         AZ::ScreenFaderRequestBus::EventResult(currentColor, faderId, &AZ::ScreenFaderRequests::GetCurrentColor);
 
         const ScriptCanvas::SlotId currentColorSlot = ScreenFaderNodeProperty::GetCurrentColorSlotId(this);
-        ScriptCanvas::Datum outputDatum = ScriptCanvas::Datum::CreateInitializedCopy(currentColor);
+        ScriptCanvas::Datum outputDatum = ScriptCanvas::Datum(currentColor);
         PushOutput(outputDatum, *GetSlot(currentColorSlot));
     }
 
@@ -171,6 +174,75 @@ namespace GraphicsReflectContext
     }
 }
 
+bool ScreenFaderNodeVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
+{
+    if (rootElement.GetVersion() == 0)
+    {
+        auto slotNameElements = AZ::Utils::FindDescendantElements(serializeContext, rootElement, AZStd::vector<AZ::Crc32>{AZ_CRC("BaseClass1", 0xd4925735), AZ_CRC("Slots", 0xc87435d0), AZ_CRC("element", 0x41405e39), AZ_CRC("slotName", 0x817c3511)});
+
+        for (AZ::SerializeContext::DataElementNode* slotNameElement : slotNameElements)
+        {
+            AZStd::string slotName;
+            if (!slotNameElement->GetData(slotName))
+            {
+                return false;
+            }
+
+            // Rename the slot names from the old values to the new values
+            if (slotName == "TextureName")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Texture Name"));
+            }
+            else if (slotName == "FaderId")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Fader Id"));
+            }
+            else if (slotName == "FadeOut")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Fade Out"));
+            }
+            else if (slotName == "FadeIn")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Fade In"));
+            }
+            else if (slotName == "FadeOutComplete")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Fade Out Complete"));
+            }
+            else if (slotName == "FadeInComplete")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Fade In Complete"));
+            }
+            else if (slotName == "FadeOutTime")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Fade Out Time"));
+            }
+            else if (slotName == "FadeInTime")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Fade In Time"));
+            }
+            else if (slotName == "UseCurrentColor")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Use Current Color"));
+            }
+            else if (slotName == "EvenWhenPaused")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Update Always"));
+            }
+            else if (slotName == "ScreenCoordinates")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Screen Coordinates"));
+            }
+            else if (slotName == "CurrentColor")
+            {
+                slotNameElement->SetData(serializeContext, AZStd::string("Current Color"));
+            }
+
+        }
+    }
+
+    return true;
+}
 
 
 

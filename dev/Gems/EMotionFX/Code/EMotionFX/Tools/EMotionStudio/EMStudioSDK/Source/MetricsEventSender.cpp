@@ -11,15 +11,15 @@
 */
 
 #include "MetricsEventSender.h"
-#include <AzCore/std/string/conversions.h>
-#include <AzCore/std/string/string.h>
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/KeyTrackLinear.h>
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/MorphSetup.h>
+#include <EMotionFX/Source/MorphSubMotion.h>
 #include <EMotionFX/Source/MorphTarget.h>
+#include <EMotionFX/Source/MorphTargetStandard.h>
 #include <EMotionFX/Source/MotionEventTable.h>
 #include <EMotionFX/Source/MotionEventTrack.h>
 #include <EMotionFX/Source/MotionManager.h>
@@ -28,6 +28,7 @@
 #include <EMotionFX/Source/Skeleton.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/SkeletalSubMotion.h>
+
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 
 
@@ -441,7 +442,7 @@ namespace EMStudio
     void MetricsEventSender::SendCreateConnectionEvent(bool isTransition)
     {
         LyMetricIdType eventId = LyMetrics_CreateEvent("CreateConnection");
-        LyMetrics_AddAttribute(eventId, "IsTransition", isTransition ? "true" : "false");
+        LyMetrics_AddAttribute(eventId, "IsTransition", AZStd::to_string(isTransition).c_str());
         LyMetrics_SubmitEvent(eventId);
     }
 
@@ -490,5 +491,125 @@ namespace EMStudio
         LyMetrics_AddAttribute(eventId, "NumSelectedConnections", tempString.c_str());
 
         LyMetrics_SubmitEvent(eventId);
+    }
+
+
+    void MetricsEventSender::SendMorphTargetUseEvent(AZ::u32 numMotions, AZ::u32 numSkeletalMotionsWithMorph)
+    {
+        AZStd::string tempString;
+        LyMetricIdType eventId = LyMetrics_CreateEvent("MorphTargetUse");
+
+        AZStd::to_string(tempString, numMotions);
+        LyMetrics_AddAttribute(eventId, "NumMotions", tempString.c_str());
+
+        AZStd::to_string(tempString, numSkeletalMotionsWithMorph);
+        LyMetrics_AddAttribute(eventId, "NumMorphMotions", tempString.c_str());
+
+        LyMetrics_SubmitEvent(eventId);
+    }
+
+
+    void MetricsEventSender::SendMorphTargetConcurrentPlayEvent( const EMotionFX::MotionSet* motionSet)
+    {
+        if (motionSet)
+        {
+            size_t numMorphMotions = motionSet->GetNumMorphMotions();
+            if (numMorphMotions > 0)
+            {
+                const float timestep = 0.1f;// 10 fps sampling
+                //Max # of morph targets active per animation
+                const EMotionFX::MotionSet::EntryMap& motionEntries = motionSet->GetMotionEntries();
+                AZ::u32 maxNumConcurrentMorphInMotion = 0;
+                for (const auto& item : motionEntries)
+                {
+                    const EMotionFX::MotionSet::MotionEntry* motionEntry = item.second;
+                    if (motionEntry->GetMotion()->GetType() == EMotionFX::SkeletalMotion::TYPE_ID)
+                    {
+                        EMotionFX::SkeletalMotion* skeletalMotion = static_cast<EMotionFX::SkeletalMotion*>(motionEntry->GetMotion());
+                        const uint32 numMorphSubMotion = skeletalMotion->GetNumMorphSubMotions();
+                        if (numMorphSubMotion > 0)
+                        {
+                            const float maxTime = skeletalMotion->GetMaxTime();
+                            for (float time = 0; time < maxTime; time += timestep)
+                            {
+                                uint32 timeValuesAccumulator = 0;
+                                for (uint32 subMotionIndex = 0; subMotionIndex < numMorphSubMotion; ++subMotionIndex)
+                                {
+                                    EMotionFX::MorphSubMotion* subMotion = skeletalMotion->GetMorphSubMotion(subMotionIndex);
+                                    EMotionFX::KeyTrackLinear<float, MCore::Compressed16BitFloat>* keyTrack = subMotion->GetKeyTrack();
+                                    const float value = keyTrack->GetValueAtTime(time);
+                                    if (value > 0)
+                                    {
+                                        timeValuesAccumulator++;
+                                    }
+                                }
+                                if (timeValuesAccumulator > maxNumConcurrentMorphInMotion)
+                                {
+                                    maxNumConcurrentMorphInMotion = timeValuesAccumulator;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                AZStd::string tempString;
+                LyMetricIdType eventId = LyMetrics_CreateEvent("MorphTargetConcurrentPlay");
+
+                AZStd::to_string(tempString, maxNumConcurrentMorphInMotion);
+                LyMetrics_AddAttribute(eventId, "MaxNumConcurrentMorphPlayback", tempString.c_str());
+
+                LyMetrics_SubmitEvent(eventId);
+            }
+        }
+    }
+
+
+    void MetricsEventSender::SendActorMorphTargetSizesEvent(const EMotionFX::MorphSetup * morphSetup)
+    {
+        if (morphSetup)
+        {
+            const AZ::u32 numMorphTargets = morphSetup->GetNumMorphTargets();
+            if (numMorphTargets > 0)
+            {
+                //Number of vertices in each morph target(min / max / average) defined in loaded actor in Animation Editor
+                AZ::u32 min = UINT_MAX;
+                AZ::u32 max = 0;
+                AZ::u32 accumulator = 0;
+                for (size_t morphTargetIndex = 0; morphTargetIndex < numMorphTargets; ++morphTargetIndex)
+                {
+                    AZ::u32 indexCount = 0;
+                    EMotionFX::MorphTarget* morphTarget = morphSetup->GetMorphTarget(static_cast<uint32>(morphTargetIndex));
+                    if (morphTarget->GetType() == EMotionFX::MorphTargetStandard::TYPE_ID)
+                    {
+                        EMotionFX::MorphTargetStandard* morphTargetStandard = static_cast<EMotionFX::MorphTargetStandard*>(morphTarget);
+                        const size_t numDeformData = morphTargetStandard->GetNumDeformDatas();
+
+                        for (size_t deformDataIndex = 0; deformDataIndex < numDeformData; ++deformDataIndex)
+                        {
+                            EMotionFX::MorphTargetStandard::DeformData* deformData = morphTargetStandard->GetDeformData(static_cast<uint32>(deformDataIndex));
+                            indexCount += deformData->mNumVerts;
+                        }
+                    }
+                    min = AZStd::GetMin(min, indexCount);
+                    max = AZStd::GetMax(max, indexCount);
+                    accumulator += indexCount;
+                }
+
+                AZStd::string tempString;
+                LyMetricIdType eventId = LyMetrics_CreateEvent("ActorMorphTargetSizes");
+
+                AZStd::to_string(tempString, min);
+                LyMetrics_AddAttribute(eventId, "MinSize", tempString.c_str());
+
+                AZStd::to_string(tempString, max);
+                LyMetrics_AddAttribute(eventId, "MaxSize", tempString.c_str());
+
+                AZStd::to_string(tempString, accumulator / numMorphTargets);
+                LyMetrics_AddAttribute(eventId, "AverageSize", tempString.c_str());
+
+                LyMetrics_SubmitEvent(eventId);
+            }
+        }
+       
     }
 } // namespace EMStudio

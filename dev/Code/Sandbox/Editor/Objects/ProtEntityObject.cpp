@@ -221,7 +221,7 @@ void CProtEntityObject::Serialize(CObjectArchive& ar)
 
     if (ar.bLoading)
     {
-        // If baseobject loading overided some variables.
+        // If baseobject loading overrided some variables.
         SyncVariablesFromPrototype(true);
     }
 }

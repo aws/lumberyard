@@ -61,7 +61,7 @@ AZStd::vector<ScriptCanvas::Datum> TestMathFunction(std::initializer_list<AZStd:
         auto node = CreateDataNodeByType(graphUniqueId, input[i].GetType(), inputNodeID);
         inputNodeIDs.push_back(inputNodeID);
         inputNodes.push_back(node);
-        node->SetInputDatum_UNIT_TEST(0, input[i]);
+        node->SetInput_UNIT_TEST(PureData::k_setThis, input[i]);
     }
 
     for (int i = 0; i < output.size(); ++i)
@@ -79,7 +79,7 @@ AZStd::vector<ScriptCanvas::Datum> TestMathFunction(std::initializer_list<AZStd:
 
     for (int i = 0; i < output.size(); ++i)
     {
-        EXPECT_TRUE(Connect(*graph, functionID, outputNames[i].data(), outputNodeIDs[i], "Set"));
+        EXPECT_TRUE(Connect(*graph, functionID, outputNames[i].data(), outputNodeIDs[i], PureData::k_setThis));
     }
 
     graph->GetEntity()->Activate();
@@ -87,7 +87,7 @@ AZStd::vector<ScriptCanvas::Datum> TestMathFunction(std::initializer_list<AZStd:
 
     for (int i = 0; i < output.size(); ++i)
     {
-        output[i] = *outputNodes[i]->GetInput_UNIT_TEST(0);
+        output[i] = *outputNodes[i]->GetInput_UNIT_TEST(PureData::k_setThis);
     }
 
     graph->GetEntity()->Deactivate();
@@ -221,7 +221,9 @@ TEST_F(ScriptCanvasTestFixture, MathMixed1)
 
     AZ::EntityId addId;
     CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, addId);
-    AZ::EntityId add3Id = CreateClassFunctionNode(graphUniqueId, "Vector3", "Add");
+    
+    AZ::EntityId add3Id;
+    CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, add3Id);
 
     // data connections
     EXPECT_TRUE(Connect(*graph, vectorAId, "Get", addId, "Vector3: A"));
@@ -233,8 +235,8 @@ TEST_F(ScriptCanvasTestFixture, MathMixed1)
     EXPECT_TRUE(Connect(*graph, vectorBId, "Get", vector3CId, "Set"));
     EXPECT_TRUE(Connect(*graph, vector3CId, "Get", vectorCId, "Set"));
 
-    EXPECT_TRUE(Connect(*graph, vector3BId, "Get", add3Id, "Vector3: 0"));
-    EXPECT_TRUE(Connect(*graph, vector3CId, "Get", add3Id, "Vector3: 1"));
+    EXPECT_TRUE(Connect(*graph, vector3BId, "Get", add3Id, "Vector3: A"));
+    EXPECT_TRUE(Connect(*graph, vector3CId, "Get", add3Id, "Vector3: B"));
 
     EXPECT_TRUE(Connect(*graph, add3Id, "Result: Vector3", vectorDId, "Set"));
     EXPECT_TRUE(Connect(*graph, add3Id, "Result: Vector3", vector3DId, "Set"));
@@ -336,9 +338,12 @@ TEST_F(ScriptCanvasTestFixture, MathMixed2)
     AZ::EntityId addIdC;
     CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, addIdC);
 
-    AZ::EntityId add3IdA = CreateClassFunctionNode(graphUniqueId, "Vector3", "Add");
-    AZ::EntityId add3IdB = CreateClassFunctionNode(graphUniqueId, "Vector3", "Add");
-    AZ::EntityId add3IdC = CreateClassFunctionNode(graphUniqueId, "Vector3", "Add");
+    AZ::EntityId add3IdA;
+    CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, add3IdA);
+    AZ::EntityId add3IdB;
+    CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, add3IdB);
+    AZ::EntityId add3IdC;
+    CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, add3IdC);
 
     AZ::EntityId vectorNormalizeId;
     CreateTestNode<Vector3Nodes::NormalizeNode>(graphUniqueId, vectorNormalizeId);
@@ -351,13 +356,13 @@ TEST_F(ScriptCanvasTestFixture, MathMixed2)
     // data connections
 
     EXPECT_TRUE(Connect(*graph, vectorIdA, "Get", addIdA, "Vector3: A"));
-    EXPECT_TRUE(Connect(*graph, vectorIdA, "Get", add3IdA, "Vector3: 0"));
+    EXPECT_TRUE(Connect(*graph, vectorIdA, "Get", add3IdA, "Vector3: A"));
 
     EXPECT_TRUE(Connect(*graph, addIdA, "Result: Vector3", addIdB, "Vector3: A"));
-    EXPECT_TRUE(Connect(*graph, addIdA, "Result: Vector3", add3IdB, "Vector3: 0"));
+    EXPECT_TRUE(Connect(*graph, addIdA, "Result: Vector3", add3IdB, "Vector3: A"));
 
     EXPECT_TRUE(Connect(*graph, addIdB, "Result: Vector3", addIdC, "Vector3: A"));
-    EXPECT_TRUE(Connect(*graph, addIdB, "Result: Vector3", add3IdC, "Vector3: 0"));
+    EXPECT_TRUE(Connect(*graph, addIdB, "Result: Vector3", add3IdC, "Vector3: A"));
 
     EXPECT_TRUE(Connect(*graph, addIdC, "Result: Vector3", vectorIdB, "Set"));
     EXPECT_TRUE(Connect(*graph, addIdC, "Result: Vector3", vector3IdB, "Set"));
@@ -365,13 +370,13 @@ TEST_F(ScriptCanvasTestFixture, MathMixed2)
     EXPECT_TRUE(Connect(*graph, vector3IdB, "Get", vectorIdC, "Set"));
 
     EXPECT_TRUE(Connect(*graph, vector3IdA, "Get", addIdA, "Vector3: B"));
-    EXPECT_TRUE(Connect(*graph, vector3IdA, "Get", add3IdA, "Vector3: 1"));
+    EXPECT_TRUE(Connect(*graph, vector3IdA, "Get", add3IdA, "Vector3: B"));
 
     EXPECT_TRUE(Connect(*graph, add3IdA, "Result: Vector3", addIdB, "Vector3: B"));
-    EXPECT_TRUE(Connect(*graph, add3IdA, "Result: Vector3", add3IdB, "Vector3: 1"));
+    EXPECT_TRUE(Connect(*graph, add3IdA, "Result: Vector3", add3IdB, "Vector3: B"));
 
     EXPECT_TRUE(Connect(*graph, add3IdB, "Result: Vector3", addIdC, "Vector3: B"));
-    EXPECT_TRUE(Connect(*graph, add3IdB, "Result: Vector3", add3IdC, "Vector3: 1"));
+    EXPECT_TRUE(Connect(*graph, add3IdB, "Result: Vector3", add3IdC, "Vector3: B"));
 
     EXPECT_TRUE(Connect(*graph, add3IdC, "Result: Vector3", vectorIdD, "Set"));
     EXPECT_TRUE(Connect(*graph, add3IdC, "Result: Vector3", vector3IdD, "Set"));
@@ -637,15 +642,15 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
-    auto identity = Data::RotationType::CreateIdentity();
-    auto zero = Data::RotationType::CreateZero();
+    auto identity = Data::QuaternionType::CreateIdentity();
+    auto zero = Data::QuaternionType::CreateZero();
     auto initial = zero;
 
     AZ::EntityId transformIdA, transformIdB, transformIdC, transformIdD;
-    Node* transformNodeA = CreateDataNode<Data::RotationType>(graphUniqueId, identity, transformIdA);
-    Node* transformNodeB = CreateDataNode<Data::RotationType>(graphUniqueId, zero, transformIdB);
-    Node* transformNodeC = CreateDataNode<Data::RotationType>(graphUniqueId, zero, transformIdC);
-    Node* transformNodeD = CreateDataNode<Data::RotationType>(graphUniqueId, zero, transformIdD);
+    Node* transformNodeA = CreateDataNode<Data::QuaternionType>(graphUniqueId, identity, transformIdA);
+    Node* transformNodeB = CreateDataNode<Data::QuaternionType>(graphUniqueId, zero, transformIdB);
+    Node* transformNodeC = CreateDataNode<Data::QuaternionType>(graphUniqueId, zero, transformIdC);
+    Node* transformNodeD = CreateDataNode<Data::QuaternionType>(graphUniqueId, zero, transformIdD);
 
     AZ::EntityId bcRotationIdA, bcRotationIdB, bcRotationIdC, bcRotationIdD;
     Core::BehaviorContextObjectNode* bcRotationNodeA = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, bcRotationIdA);
@@ -681,7 +686,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
     graph->GetEntity()->Activate();
     EXPECT_FALSE(graph->IsInErrorState());
 
-    auto resultA = transformNodeA->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultA = transformNodeA->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultA)
     {
         EXPECT_EQ(identity, *resultA);
@@ -691,7 +696,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
         ADD_FAILURE();
     }
 
-    auto resultB = transformNodeB->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultB = transformNodeB->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultB)
     {
         EXPECT_EQ(identity, *resultB);
@@ -701,7 +706,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
         ADD_FAILURE();
     }
 
-    auto resultC = transformNodeC->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultC = transformNodeC->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultC)
     {
         EXPECT_EQ(identity, *resultC);
@@ -711,7 +716,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
         ADD_FAILURE();
     }
 
-    auto resultD = transformNodeD->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultD = transformNodeD->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultD)
     {
         EXPECT_EQ(identity, *resultD);
@@ -721,7 +726,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
         ADD_FAILURE();
     }
 
-    auto resultAbc = bcRotationNodeA->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultAbc = bcRotationNodeA->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultAbc)
     {
         EXPECT_EQ(identity, *resultAbc);
@@ -731,7 +736,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
         ADD_FAILURE();
     }
 
-    auto resultBbc = bcRotationNodeB->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultBbc = bcRotationNodeB->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultBbc)
     {
         EXPECT_EQ(identity, *resultBbc);
@@ -741,7 +746,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
         ADD_FAILURE();
     }
 
-    auto resultCbc = bcRotationNodeC->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultCbc = bcRotationNodeC->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultCbc)
     {
         EXPECT_EQ(identity, *resultCbc);
@@ -751,7 +756,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
         ADD_FAILURE();
     }
 
-    auto resultDbc = bcRotationNodeD->GetInput_UNIT_TEST<Data::RotationType>("Set");
+    auto resultDbc = bcRotationNodeD->GetInput_UNIT_TEST<Data::QuaternionType>("Set");
     if (resultDbc)
     {
         EXPECT_EQ(identity, *resultDbc);
@@ -830,46 +835,46 @@ TEST_F(ScriptCanvasTestFixture, ColorNodes)
 
     { // Add
         auto result = a + b;
-        auto output = TestMathFunction<AddNode>({ "Color: A", "Color: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<AddNode>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // DivideByColor
         auto result = a / b;
-        auto output = TestMathFunction<DivideByColorNode>({ "Color: A", "Color: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<DivideByColorNode>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 #endif
 
     { // DivideByNumber
         auto result = a / ToVectorFloat(number);
-        auto output = TestMathFunction<DivideByNumberNode>({ "Color: Source", "Number: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(number) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<DivideByNumberNode>({ "Color: Source", "Number: Divisor" }, { Datum(a), Datum(number) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // Dot
         auto result = a.Dot(b);
-        auto output = TestMathFunction<DotNode>({ "Color: A", "Color: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<DotNode>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(NumberType()) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // Dot3
         auto result = a.Dot3(b);
-        auto output = TestMathFunction<Dot3Node>({ "Color: A", "Color: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<Dot3Node>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(NumberType()) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // FromValues
         auto result = ColorType(0.2f, 0.4f, 0.6f, 0.8f);
-        auto output = TestMathFunction<FromValuesNode>({ "Number: R", "Number: G", "Number: B", "Number: A" }, { Datum::CreateInitializedCopy(0.2f), Datum::CreateInitializedCopy(0.4f), Datum::CreateInitializedCopy(0.6f), Datum::CreateInitializedCopy(0.8f) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<FromValuesNode>({ "Number: R", "Number: G", "Number: B", "Number: A" }, { Datum(0.2f), Datum(0.4f), Datum(0.6f), Datum(0.8f) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // FromVector3
         auto source = Vector3Type(0.2f, 0.4f, 0.6f);
         auto result = ColorType::CreateFromVector3(source);
-        auto output = TestMathFunction<FromVector3Node>({ "Vector3: RGB" }, { Datum::CreateInitializedCopy(source) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<FromVector3Node>({ "Vector3: RGB" }, { Datum(source) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
@@ -877,7 +882,7 @@ TEST_F(ScriptCanvasTestFixture, ColorNodes)
         auto vector3 = Vector3Type(0.1, 0.2, 0.3);
         auto number = 0.4f;
         auto result = ColorType::CreateFromVector3AndFloat(vector3, number);
-        auto output = TestMathFunction<FromVector3AndNumberNode>({ "Vector3: RGB", "Number: A" }, { Datum::CreateInitializedCopy(vector3), Datum::CreateInitializedCopy(number) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<FromVector3AndNumberNode>({ "Vector3: RGB", "Number: A" }, { Datum(vector3), Datum(number) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
@@ -885,28 +890,28 @@ TEST_F(ScriptCanvasTestFixture, ColorNodes)
     { // FromVector4
         auto vector4 = Vector4Type(0.1, 0.2, 0.3, 0.4);
         auto result = ColorType(vector4);
-        auto output = TestMathFunction<FromVector4Node>({ "Vector4: RGBA" }, { Datum::CreateInitializedCopy(vector4) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<FromVector4Node>({ "Vector4: RGBA" }, { Datum(vector4) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 #endif
 
     { // GammaToLinear
         auto result = a.GammaToLinear();
-        auto output = TestMathFunction<GammaToLinearNode>({ "Color: Source" }, { Datum::CreateInitializedCopy(a) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<GammaToLinearNode>({ "Color: Source" }, { Datum(a) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // IsClose
         {
             auto result = a.IsClose(a);
-            auto output = TestMathFunction<IsCloseNode>({ "Color: A", "Color: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(0.1f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsCloseNode>({ "Color: A", "Color: B", "Number: Tolerance" }, { Datum(a), Datum(a), Datum(0.1f) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_TRUE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
         }
 
         {
             auto result = b.IsClose(a);
-            auto output = TestMathFunction<IsCloseNode>({ "Color: A", "Color: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(0.1f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            auto output = TestMathFunction<IsCloseNode>({ "Color: A", "Color: B", "Number: Tolerance" }, { Datum(b), Datum(a), Datum(0.1f) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_FALSE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
         }
@@ -916,14 +921,14 @@ TEST_F(ScriptCanvasTestFixture, ColorNodes)
         {
             auto zero = ColorType::CreateZero();
             auto result = zero.IsZero();
-            auto output = TestMathFunction<IsZeroNode>({ "Color: Source",  "Number: Tolerance" }, { Datum::CreateInitializedCopy(zero), Datum::CreateInitializedCopy(0.1f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsZeroNode>({ "Color: Source",  "Number: Tolerance" }, { Datum(zero), Datum(0.1f) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_TRUE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
         }
 
         {
             auto result = a.IsZero();
-            auto output = TestMathFunction<IsZeroNode>({ "Color: Source", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(0.1f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            auto output = TestMathFunction<IsZeroNode>({ "Color: Source", "Number: Tolerance" }, { Datum(a), Datum(0.1f) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_FALSE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
         }
@@ -931,38 +936,38 @@ TEST_F(ScriptCanvasTestFixture, ColorNodes)
 
     { // LinearToGamma
         auto result = a.LinearToGamma();
-        auto output = TestMathFunction<LinearToGammaNode>({ "Color: Source" }, { Datum::CreateInitializedCopy(a) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<LinearToGammaNode>({ "Color: Source" }, { Datum(a) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // MultiplyByColor
         auto result = a * b;
-        auto output = TestMathFunction<MultiplyByColorNode>({ "Color: A", "Color: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<MultiplyByColorNode>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // MultiplyByNumber
         auto result = a * ToVectorFloat(number);
-        auto output = TestMathFunction<MultiplyByNumberNode>({ "Color: Source", "Number: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(number) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<MultiplyByNumberNode>({ "Color: Source", "Number: Multiplier" }, { Datum(a), Datum(number) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // Negate
         auto result = -a;
-        auto output = TestMathFunction<NegateNode>({ "Color: Source" }, { Datum::CreateInitializedCopy(a) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<NegateNode>({ "Color: Source" }, { Datum(a) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // One
         auto source = ColorType();
         auto result = ColorType::CreateOne();
-        auto output = TestMathFunction<OneNode>({}, {}, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<OneNode>({}, {}, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
     { // Subtract
         auto result = a - b;
-        auto output = TestMathFunction<SubtractNode>({ "Color: A", "Color: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Color" }, { Datum::CreateInitializedCopy(ColorType()) });
+        auto output = TestMathFunction<SubtractNode>({ "Color: A", "Color: B" }, { Datum(a), Datum(b) }, { "Result: Color" }, { Datum(ColorType()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<ColorType>()));
     }
 
@@ -982,8 +987,8 @@ TEST_F(ScriptCanvasTestFixture, CrcNodes)
     { // FromString
         Data::StringType value = "Test";
         auto result = Data::CRCType(value.data());
-        auto output = TestMathFunction<FromStringNode>({ "String: Value" }, { Datum::CreateInitializedCopy(value) },
-        { "Result: CRC" }, { Datum::CreateInitializedCopy(Data::CRCType()) });
+        auto output = TestMathFunction<FromStringNode>({ "String: Value" }, { Datum(value) },
+        { "Result: CRC" }, { Datum(Data::CRCType()) });
         EXPECT_EQ(result, *output[0].GetAs<Data::CRCType>());
     }
 
@@ -991,15 +996,15 @@ TEST_F(ScriptCanvasTestFixture, CrcNodes)
     { // FromNumber
         AZ::u32 value = 0x784dd132;
         auto result = Data::CRCType(value);
-        auto output = TestMathFunction<FromNumberNode>({ "Number: Value" }, { Datum::CreateInitializedCopy(static_cast<AZ::u64>(value)) },
-        { "Result: CRC" }, { Datum::CreateInitializedCopy(Data::CRCType()) });
+        auto output = TestMathFunction<FromNumberNode>({ "Number: Value" }, { Datum(static_cast<AZ::u64>(value)) },
+        { "Result: CRC" }, { Datum(Data::CRCType()) });
         EXPECT_EQ(result, *output[0].GetAs<Data::CRCType>());
     }
 
     { // GetNumber
         auto source = Data::CRCType("Test");
         auto result = source.operator AZ::u32();
-        auto output = TestMathFunction<GetNumberNode>({ "CRC: Value", }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(Data::NumberType()) });
+        auto output = TestMathFunction<GetNumberNode>({ "CRC: Value", }, { Datum(source) }, { "Result: Number" }, { Datum(Data::NumberType()) });
         EXPECT_EQ(result, *output[0].GetAs<Data::NumberType>());
     }
 #endif
@@ -1023,14 +1028,14 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
 
     { // AddAabb
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<AddAABBNode>({ "AABB: A", "AABB: B" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(source) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(Data::AABBType()) });
+        auto output = TestMathFunction<AddAABBNode>({ "AABB: A", "AABB: B" }, { Datum(source), Datum(source) }, { "Result: AABB" }, { Datum(Data::AABBType()) });
         source.AddAabb(source);
         EXPECT_TRUE(IsClose(source, *output[0].GetAs<AABBType>()));
     }
 
     { // AddPoint
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<AddPointNode>({ "AABB: Source", "Vector3: Point" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(outsideMax) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(Data::AABBType()) });
+        auto output = TestMathFunction<AddPointNode>({ "AABB: Source", "Vector3: Point" }, { Datum(source), Datum(outsideMax) }, { "Result: AABB" }, { Datum(Data::AABBType()) });
         source.AddPoint(outsideMax);
         EXPECT_TRUE(IsClose(source, *output[0].GetAs<AABBType>()));
     }
@@ -1038,14 +1043,14 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // ApplyTransform
         auto transform = TransformType::CreateFromColumns(Vector3Type(1, 2, 3), Vector3Type(1, 2, 3), Vector3Type(1, 2, 3), Vector3Type(4, 4, 4));
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<ApplyTransformNode>({ "AABB: Source", "Transform: Transform" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(transform) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(Data::AABBType()) });
+        auto output = TestMathFunction<ApplyTransformNode>({ "AABB: Source", "Transform: Transform" }, { Datum(source), Datum(transform) }, { "Result: AABB" }, { Datum(Data::AABBType()) });
         source.ApplyTransform(transform);
         EXPECT_TRUE(IsClose(source, *output[0].GetAs<AABBType>()));
     }
 
     { // Center
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<CenterNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<CenterNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = source.GetCenter();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
@@ -1053,7 +1058,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // Clamp
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto sourceHalf = AABBType::CreateFromMinMax(minHalf3, maxHalf3);
-        auto output = TestMathFunction<ClampNode>({ "AABB: Source", "AABB: Clamp" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(sourceHalf) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<ClampNode>({ "AABB: Source", "AABB: Clamp" }, { Datum(source), Datum(sourceHalf) }, { "Result: AABB" }, { Datum(AABBType()) });
         auto result = source.GetClamped(sourceHalf);
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<AABBType>()));
     }
@@ -1061,7 +1066,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // ContainsAABB
         auto bigger = AABBType::CreateFromMinMax(min3, max3);
         auto smaller = AABBType::CreateFromMinMax(minHalf3, maxHalf3);
-        auto output = TestMathFunction<ContainsAABBNode>({ "AABB: Source", "AABB: Candidate" }, { Datum::CreateInitializedCopy(bigger), Datum::CreateInitializedCopy(smaller) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(BooleanType()) });
+        auto output = TestMathFunction<ContainsAABBNode>({ "AABB: Source", "AABB: Candidate" }, { Datum(bigger), Datum(smaller) }, { "Result: Boolean" }, { Datum(BooleanType()) });
         auto result = bigger.Contains(smaller);
         EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
         EXPECT_TRUE(result);
@@ -1073,13 +1078,13 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         auto NOTcontained = Vector3Type(-10000, -10000, -10000);
 
         {
-            auto output = TestMathFunction<ContainsVector3Node>({ "AABB: Source", "Vector3: Candidate" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(contained) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<ContainsVector3Node>({ "AABB: Source", "Vector3: Candidate" }, { Datum(source), Datum(contained) }, { "Result: Boolean" }, { Datum(false) });
             auto result = source.Contains(contained);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
             EXPECT_TRUE(result);
         }
         {
-            auto output = TestMathFunction<ContainsVector3Node>({ "AABB: Source", "Vector3: Candidate" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(NOTcontained) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            auto output = TestMathFunction<ContainsVector3Node>({ "AABB: Source", "Vector3: Candidate" }, { Datum(source), Datum(NOTcontained) }, { "Result: Boolean" }, { Datum(true) });
             auto result = source.Contains(NOTcontained);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
             EXPECT_FALSE(result);
@@ -1088,7 +1093,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
 
     { // DepthNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<DepthNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<DepthNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetDepth();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
@@ -1096,7 +1101,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // DistanceNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto point = Vector3Type(100, 3000, 15879);
-        auto output = TestMathFunction<DistanceNode>({ "AABB: Source", "Vector3: Point" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(point) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<DistanceNode>({ "AABB: Source", "Vector3: Point" }, { Datum(source), Datum(point) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetDistance(point);
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
@@ -1104,14 +1109,14 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // ExpandNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto delta = Vector3Type(10, 20, 30);
-        auto output = TestMathFunction<ExpandNode>({ "AABB: Source", "Vector3: Delta" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(delta) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<ExpandNode>({ "AABB: Source", "Vector3: Delta" }, { Datum(source), Datum(delta) }, { "Result: AABB" }, { Datum(AABBType()) });
         source.Expand(delta);
         EXPECT_TRUE(IsClose(source, *output[0].GetAs<AABBType>()));
     }
 
     { // ExtentsNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<ExtentsNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<ExtentsNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = source.GetExtents();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
@@ -1119,7 +1124,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // FromCenterHalfExtentsNode
         auto center = Vector3Type(1, 2, 3);
         auto extents = Vector3Type(9, 8, 7);
-        auto output = TestMathFunction<FromCenterHalfExtentsNode>({ "Vector3: Center", "Vector3: HalfExtents" }, { Datum::CreateInitializedCopy(center), Datum::CreateInitializedCopy(extents) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<FromCenterHalfExtentsNode>({ "Vector3: Center", "Vector3: HalfExtents" }, { Datum(center), Datum(extents) }, { "Result: AABB" }, { Datum(AABBType()) });
         auto result = AABBType::CreateCenterHalfExtents(center, extents);
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<AABBType>()));
     }
@@ -1127,7 +1132,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // FromCenterRadiusNode
         auto center = Vector3Type(1, 2, 3);
         auto radius = 33.0f;
-        auto output = TestMathFunction<FromCenterRadiusNode>({ "Vector3: Center", "Number: Radius" }, { Datum::CreateInitializedCopy(center), Datum::CreateInitializedCopy(radius) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<FromCenterRadiusNode>({ "Vector3: Center", "Number: Radius" }, { Datum(center), Datum(radius) }, { "Result: AABB" }, { Datum(AABBType()) });
         auto result = AABBType::CreateCenterRadius(center, radius);
         auto output0 = *output[0].GetAs<AABBType>();
         EXPECT_TRUE(IsClose(result, output0));
@@ -1135,27 +1140,27 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
 
     { // FromMinMaxNode
         auto result = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<FromMinMaxNode>({ "Vector3: Min", "Vector3: Max" }, { Datum::CreateInitializedCopy(min3), Datum::CreateInitializedCopy(max3) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<FromMinMaxNode>({ "Vector3: Min", "Vector3: Max" }, { Datum(min3), Datum(max3) }, { "Result: AABB" }, { Datum(AABBType()) });
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<AABBType>()));
     }
 
     { // FromOBBNode
         auto source = OBBType::CreateFromAabb(AABBType::CreateFromMinMax(min3, max3));
-        auto output = TestMathFunction<FromOBBNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<FromOBBNode>({ "OBB: Source" }, { Datum(source) }, { "Result: AABB" }, { Datum(AABBType()) });
         auto result = AABBType::CreateFromObb(source);
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<AABBType>()));
     }
 
     { // FromPointNode
         auto source = Vector3Type(3, 2, 1);
-        auto output = TestMathFunction<FromPointNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<FromPointNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: AABB" }, { Datum(AABBType()) });
         auto result = AABBType::CreateFromPoint(source);
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<AABBType>()));
     }
 
     { // IsFiniteNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<IsFiniteNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(BooleanType()) });
+        auto output = TestMathFunction<IsFiniteNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Boolean" }, { Datum(BooleanType()) });
         auto result = source.IsFinite();
         EXPECT_TRUE(result);
         EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
@@ -1164,7 +1169,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // IsValidNode
         {
             auto source = AABBType::CreateFromMinMax(min3, max3);
-            auto output = TestMathFunction<IsValidNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(BooleanType()) });
+            auto output = TestMathFunction<IsValidNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Boolean" }, { Datum(BooleanType()) });
             auto result = source.IsValid();
             EXPECT_TRUE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
@@ -1174,7 +1179,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
             auto source = AABBType::CreateFromMinMax(min3, max3);
             source.SetMin(max3);
             source.SetMax(min3);
-            auto output = TestMathFunction<IsValidNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(BooleanType()) });
+            auto output = TestMathFunction<IsValidNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Boolean" }, { Datum(BooleanType()) });
             auto result = source.IsValid();
             EXPECT_FALSE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
@@ -1183,13 +1188,13 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
 
     { // LengthNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<LengthNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<LengthNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHeight();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // NullNode
-        auto output = TestMathFunction<NullNode>({}, {}, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<NullNode>({}, {}, { "Result: AABB" }, { Datum(AABBType()) });
         auto result = AABBType::CreateNull();
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<AABBType>()));
     }
@@ -1198,7 +1203,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         {
             auto a = AABBType::CreateFromMinMax(min3, max3);
             auto b = AABBType::CreateFromMinMax(min3 + Vector3Type(5, 5, 5), max3 + Vector3Type(5, 5, 5));
-            auto output = TestMathFunction<OverlapsNode>({ "AABB: A", "AABB: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<OverlapsNode>({ "AABB: A", "AABB: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(false) });
             auto result = a.Overlaps(b);
             EXPECT_TRUE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
@@ -1207,7 +1212,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
         {
             auto a = AABBType::CreateFromMinMax(min3, max3);
             auto b = AABBType::CreateFromMinMax(min3 + Vector3Type(300, 300, 300), max3 + Vector3Type(300, 300, 300));
-            auto output = TestMathFunction<OverlapsNode>({ "AABB: A", "AABB: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<OverlapsNode>({ "AABB: A", "AABB: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(false) });
             auto result = a.Overlaps(b);
             EXPECT_FALSE(result);
             EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
@@ -1216,21 +1221,21 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
 
     { // SurfaceAreaNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<SurfaceAreaNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<SurfaceAreaNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetSurfaceArea();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // GetMaxNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<GetMaxNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<GetMaxNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = source.GetMax();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     { // GetMinNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<GetMinNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<GetMinNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = source.GetMin();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
@@ -1238,7 +1243,7 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // ToSphereNode
 
         auto source = AABBType::CreateFromMinMax(min3 + Vector3Type(5, 5, 5), max3 + Vector3Type(5, 5, 5));
-        auto output = TestMathFunction<ToSphereNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Center: Vector3", "Radius: Number" }, { Datum::CreateInitializedCopy(Vector3Type()), Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<ToSphereNode>({ "AABB: Source" }, { Datum(source) }, { "Center: Vector3", "Radius: Number" }, { Datum(Vector3Type()), Datum(NumberType()) });
         Vector3Type center;
         AZ::VectorFloat radiusVF;
         source.GetAsSphere(center, radiusVF);
@@ -1250,14 +1255,14 @@ TEST_F(ScriptCanvasTestFixture, AABBNodes)
     { // TranslateNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
         auto translation = Vector3Type(25, 30, -40);
-        auto output = TestMathFunction<TranslateNode>({ "AABB: Source", "Vector3: Translation" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(translation) }, { "Result: AABB" }, { Datum::CreateInitializedCopy(AABBType()) });
+        auto output = TestMathFunction<TranslateNode>({ "AABB: Source", "Vector3: Translation" }, { Datum(source), Datum(translation) }, { "Result: AABB" }, { Datum(AABBType()) });
         auto result = source.GetTranslated(translation);
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<AABBType>()));
     }
 
     { // WidthNode
         auto source = AABBType::CreateFromMinMax(min3, max3);
-        auto output = TestMathFunction<WidthNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<WidthNode>({ "AABB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetWidth();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
@@ -1273,7 +1278,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto a(Data::Matrix3x3Type::CreateFromRows(Data::Vector3Type::CreateOne(), Data::Vector3Type::CreateOne(), Data::Vector3Type::CreateOne()));
         auto b(Data::Matrix3x3Type::CreateFromRows(Data::Vector3Type::CreateOne(), Data::Vector3Type::CreateOne(), Data::Vector3Type::CreateOne()));
         auto c = a + b;
-        auto output = TestMathFunction<AddNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<AddNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum(a), Datum(b) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1281,7 +1286,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto a(Data::Matrix3x3Type::CreateFromRows(Data::Vector3Type(3.0, 3.0, 3.0), Data::Vector3Type(3.0, 3.0, 3.0), Data::Vector3Type(3.0, 3.0, 3.0)));
         Data::NumberType b(3.0);
         auto result = a / Data::ToVectorFloat(b);
-        auto output = TestMathFunction<DivideByNumberNode>({ "Matrix3x3: Source", "Number: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<DivideByNumberNode>({ "Matrix3x3: Source", "Number: Divisor" }, { Datum(a), Datum(b) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1290,22 +1295,22 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto col2 = Data::Vector3Type(4.0, 5.0, 6.0);
         auto col3 = Data::Vector3Type(7.0, 8.0, 9.0);
         auto result(Data::Matrix3x3Type::CreateFromColumns(col1, col2, col3));
-        auto output = TestMathFunction<FromColumnsNode>({ "Vector3: Column1", "Vector3: Column2", "Vector3: Column3" }, { Datum::CreateInitializedCopy(col1), Datum::CreateInitializedCopy(col2), Datum::CreateInitializedCopy(col3) },
-        { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromColumnsNode>({ "Vector3: Column1", "Vector3: Column2", "Vector3: Column3" }, { Datum(col1), Datum(col2), Datum(col3) },
+        { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
     { // FromCrossProduct
         auto source = Data::Vector3Type(1.0, -1.0, 0.0);
         auto result(Data::Matrix3x3Type::CreateCrossProduct(source));
-        auto output = TestMathFunction<FromCrossProductNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromCrossProductNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
     { // FromDiagonal
         auto source = Data::Vector3Type(1.0, 1.0, 1.0);
         auto result(Data::Matrix3x3Type::CreateDiagonal(source));
-        auto output = TestMathFunction<FromDiagonalNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromDiagonalNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1316,14 +1321,14 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto row4 = Data::Vector4Type(-75.454, 2.5419, -102343435.72, 5587981.54);
         auto source = Data::Matrix4x4Type::CreateFromRows(row1, row2, row3, row4);
         auto result(Data::Matrix3x3Type::CreateFromMatrix4x4(source));
-        auto output = TestMathFunction<FromMatrix4x4Node>({ "Matrix4x4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromMatrix4x4Node>({ "Matrix4x4: Source" }, { Datum(source) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
     { // FromQuaternion
-        auto rotation = Data::RotationType(1.0, 2.0, 3.0, 4.0);
+        auto rotation = Data::QuaternionType(1.0, 2.0, 3.0, 4.0);
         auto result(Data::Matrix3x3Type::CreateFromQuaternion(rotation));
-        auto output = TestMathFunction<FromQuaternionNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(rotation) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromQuaternionNode>({ "Quaternion: Source" }, { Datum(rotation) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1331,21 +1336,21 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
       // FromRotationXRadians
         auto degrees = 45.0f;
         auto resultDegrees(Data::Matrix3x3Type::CreateRotationX(AZ::DegToRad(degrees)));
-        auto outputDegrees = TestMathFunction<FromRotationXDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(degrees) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto outputDegrees = TestMathFunction<FromRotationXDegreesNode>({ "Number: Degrees" }, { Datum(degrees) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(resultDegrees.IsClose(*outputDegrees[0].GetAs<Data::Matrix3x3Type>()));
     }
 
     { // FromRotationYDegrees
         auto degrees = 30.0f;
         auto resultDegrees(Data::Matrix3x3Type::CreateRotationY(AZ::DegToRad(degrees)));
-        auto outputDegrees = TestMathFunction<FromRotationYDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(degrees) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto outputDegrees = TestMathFunction<FromRotationYDegreesNode>({ "Number: Degrees" }, { Datum(degrees) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(resultDegrees.IsClose(*outputDegrees[0].GetAs<Data::Matrix3x3Type>()));
     }
 
     { // FromRotationZDegrees
         auto degrees = 60.0f;
         auto resultDegrees(Data::Matrix3x3Type::CreateRotationZ(AZ::DegToRad(degrees)));
-        auto outputDegrees = TestMathFunction<FromRotationZDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(degrees) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto outputDegrees = TestMathFunction<FromRotationZDegreesNode>({ "Number: Degrees" }, { Datum(degrees) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(resultDegrees.IsClose(*outputDegrees[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1354,15 +1359,15 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto row2 = Data::Vector3Type(4.0, 5.0, 6.0);
         auto row3 = Data::Vector3Type(7.0, 8.0, 9.0);
         auto result(Data::Matrix3x3Type::CreateFromRows(row1, row2, row3));
-        auto output = TestMathFunction<FromRowsNode>({ "Vector3: Row1", "Vector3: Row2", "Vector3: Row3" }, { Datum::CreateInitializedCopy(row1), Datum::CreateInitializedCopy(row2), Datum::CreateInitializedCopy(row3) },
-        { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromRowsNode>({ "Vector3: Row1", "Vector3: Row2", "Vector3: Row3" }, { Datum(row1), Datum(row2), Datum(row3) },
+        { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
     { // FromScale
         auto scale = Data::Vector3Type(2.0, 2.0, 2.0);
         auto result(Data::Matrix3x3Type::CreateScale(scale));
-        auto output = TestMathFunction<FromScaleNode>({ "Vector3: Scale" }, { Datum::CreateInitializedCopy(scale) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromScaleNode>({ "Vector3: Scale" }, { Datum(scale) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1372,7 +1377,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector4Type(0.0, 1.0, 0.0, 0.0),
             Data::Vector4Type(0.0, 0.0, 1.0, 0.0));
         auto result(Data::Matrix3x3Type::CreateFromTransform(transform));
-        auto output = TestMathFunction<FromTransformNode>({ "Transform: Transform" }, { Datum::CreateInitializedCopy(transform) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<FromTransformNode>({ "Transform: Transform" }, { Datum(transform) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1382,7 +1387,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 1.0, 26.0),
             Data::Vector3Type(7.0, -8.0, 1.0));
         auto result(source.GetInverseFull());
-        auto output = TestMathFunction<InvertNode>({ "Matrix3x3: Source", }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<InvertNode>({ "Matrix3x3: Source", }, { Datum(source) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1392,19 +1397,19 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto c(Data::Matrix3x3Type::CreateFromRows(Data::Vector3Type(1.001, 1.001, 1.001), Data::Vector3Type(1.001, 1.001, 1.001), Data::Vector3Type(1.001, 1.001, 1.001)));
 
         bool resultFalse = a.IsClose(b);
-        auto output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
 
         bool resultTrue = a.IsClose(b, Data::ToVectorFloat(2.1));
-        output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(2.1) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(2.1) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultTrue = a.IsClose(c);
-        output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(c) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum(a), Datum(c) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultFalse = a.IsClose(b, Data::ToVectorFloat(0.9));
-        output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(0.9) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsCloseNode>({ "Matrix3x3: A", "Matrix3x3: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(0.9) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
     }
 
@@ -1414,14 +1419,14 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, std::numeric_limits<float>::infinity(), 6.0),
             Data::Vector3Type(7.0, 8.0, 9.0)));
         auto result = source.IsFinite();
-        auto output = TestMathFunction<IsFiniteNode>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean", }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Matrix3x3: Source" }, { Datum(source) }, { "Result: Boolean", }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsOrthogonal
         auto source(Data::Matrix3x3Type::CreateDiagonal(Data::Vector3Type(2.0, 2.0, 2.0)));
         auto result = source.IsOrthogonal();
-        auto output = TestMathFunction<IsOrthogonalNode>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsOrthogonalNode>({ "Matrix3x3: Source" }, { Datum(source) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
@@ -1432,8 +1437,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(7.0, 8.0, 9.0)));
         Data::NumberType scalar(3.0);
         auto result = source * Data::ToVectorFloat(scalar);
-        auto output = TestMathFunction<MultiplyByNumberNode>({ "Matrix3x3: Source", "Number: Multiplier" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(scalar) }, { "Result: Matrix3x3" },
-        { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<MultiplyByNumberNode>({ "Matrix3x3: Source", "Number: Multiplier" }, { Datum(source), Datum(scalar) }, { "Result: Matrix3x3" },
+        { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1447,8 +1452,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(14.0, 15.0, -6.0),
             Data::Vector3Type(17.0, -8.0, 19.0)));
         auto result = a * b;
-        auto output = TestMathFunction<MultiplyByMatrixNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) },
-        { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<MultiplyByMatrixNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum(a), Datum(b) },
+        { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1459,8 +1464,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(7.0, 8.0, 9.0)));
         Data::Vector3Type vector3(2.0);
         auto result = source * vector3;
-        auto output = TestMathFunction<MultiplyByVectorNode>({ "Matrix3x3: Source", "Vector3: Vector" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(vector3) },
-        { "Result: Vector3" }, { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        auto output = TestMathFunction<MultiplyByVectorNode>({ "Matrix3x3: Source", "Vector3: Vector" }, { Datum(source), Datum(vector3) },
+        { "Result: Vector3" }, { Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -1470,7 +1475,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 5.0, 6.0),
             Data::Vector3Type(7.0, 8.0, 9.0)));
         auto result = source.GetOrthogonalized();
-        auto output = TestMathFunction<OrthogonalizeNode>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<OrthogonalizeNode>({ "Matrix3x3: Source" }, { Datum(source) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1478,7 +1483,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto a(Data::Matrix3x3Type::CreateFromRows(Data::Vector3Type(2.0, -8.5, -6.12), Data::Vector3Type(0.0, 0.0, 2.3), Data::Vector3Type(17.2, 4.533, 16.33492)));
         auto b(Data::Matrix3x3Type::CreateFromRows(Data::Vector3Type::CreateOne(), Data::Vector3Type::CreateOne(), Data::Vector3Type::CreateOne()));
         auto c = a - b;
-        auto output = TestMathFunction<SubtractNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<SubtractNode>({ "Matrix3x3: A", "Matrix3x3: B" }, { Datum(a), Datum(b) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1488,7 +1493,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(0.0, 1.0, 0.0),
             Data::Vector3Type(0.0, 0.0, 1.0));
         auto result(source.GetAdjugate());
-        auto output = TestMathFunction<ToAdjugateNode>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<ToAdjugateNode>({ "Matrix3x3: Source" }, { Datum(source) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
@@ -1498,8 +1503,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 5.0, 6.0),
             Data::Vector3Type(7.0, 8.0, 9.0));
         auto result(source.GetColumn(1));
-        auto output = TestMathFunction<GetColumnNode>({ "Matrix3x3: Source", "Number: Column" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(1) },
-        { "Result: Vector3" }, { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        auto output = TestMathFunction<GetColumnNode>({ "Matrix3x3: Source", "Number: Column" }, { Datum(source), Datum(1) },
+        { "Result: Vector3" }, { Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -1510,9 +1515,9 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto source = Data::Matrix3x3Type::CreateFromColumns(col1, col2, col3);
         auto output = TestMathFunction<GetColumnsNode>(
         { "Matrix3x3: Source" },
-        { Datum::CreateInitializedCopy(source) },
+        { Datum(source) },
         { "Column1: Vector3", "Column2: Vector3", "Column3: Vector3" },
-        { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        { Datum(Data::Vector3Type::CreateZero()), Datum(Data::Vector3Type::CreateZero()), Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(col1.IsClose(*output[0].GetAs<Data::Vector3Type>()));
         EXPECT_TRUE(col2.IsClose(*output[1].GetAs<Data::Vector3Type>()));
         EXPECT_TRUE(col3.IsClose(*output[2].GetAs<Data::Vector3Type>()));
@@ -1525,7 +1530,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(0.0, 0.0, 1.0));
         auto result(source.GetDeterminant());
         // Test naming single output slots: The GetDeterminant function names it's result slot "Determinant"
-        auto output = TestMathFunction<ToDeterminantNode>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Determinant: Number" }, { Datum::CreateInitializedCopy(Data::NumberType()) });
+        auto output = TestMathFunction<ToDeterminantNode>({ "Matrix3x3: Source" }, { Datum(source) }, { "Determinant: Number" }, { Datum(Data::NumberType()) });
         EXPECT_TRUE(result.IsClose(Data::ToVectorFloat(*output[0].GetAs<Data::NumberType>())));
     }
 
@@ -1535,7 +1540,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 5.0, 6.0),
             Data::Vector3Type(7.0, 8.0, 9.0));
         auto result(source.GetDiagonal());
-        auto output = TestMathFunction<GetDiagonalNode>({ "Matrix3x3: Source", }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        auto output = TestMathFunction<GetDiagonalNode>({ "Matrix3x3: Source", }, { Datum(source) }, { "Result: Vector3" }, { Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -1545,8 +1550,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 5.0, 6.0),
             Data::Vector3Type(7.0, 8.0, 9.0));
         auto result(source.GetElement(2, 1));
-        auto output = TestMathFunction<GetElementNode>({ "Matrix3x3: Source", "Number: Row", "Number: Column" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(2), Datum::CreateInitializedCopy(1) },
-        { "Result: Number" }, { Datum::CreateInitializedCopy(Data::NumberType()) });
+        auto output = TestMathFunction<GetElementNode>({ "Matrix3x3: Source", "Number: Row", "Number: Column" }, { Datum(source), Datum(2), Datum(1) },
+        { "Result: Number" }, { Datum(Data::NumberType()) });
         EXPECT_TRUE(result.IsClose(Data::ToVectorFloat(*output[0].GetAs<Data::NumberType>())));
     }
 
@@ -1556,8 +1561,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 5.0, 6.0),
             Data::Vector3Type(7.0, 8.0, 9.0));
         auto result(source.GetRow(0));
-        auto output = TestMathFunction<GetRowNode>({ "Matrix3x3: Source", "Number: Row" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(0) },
-        { "Result: Vector3" }, { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        auto output = TestMathFunction<GetRowNode>({ "Matrix3x3: Source", "Number: Row" }, { Datum(source), Datum(0) },
+        { "Result: Vector3" }, { Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -1568,9 +1573,9 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
         auto source = Data::Matrix3x3Type::CreateFromRows(row1, row2, row3);
         auto output = TestMathFunction<GetRowsNode>(
         { "Matrix3x3: Source" },
-        { Datum::CreateInitializedCopy(source) },
+        { Datum(source) },
         { "Row1: Vector3", "Row2: Vector3", "Row3: Vector3" },
-        { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        { Datum(Data::Vector3Type::CreateZero()), Datum(Data::Vector3Type::CreateZero()), Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(row1.IsClose(*output[0].GetAs<Data::Vector3Type>()));
         EXPECT_TRUE(row2.IsClose(*output[1].GetAs<Data::Vector3Type>()));
         EXPECT_TRUE(row3.IsClose(*output[2].GetAs<Data::Vector3Type>()));
@@ -1582,7 +1587,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 1.0, -6.0),
             Data::Vector3Type(7.0, -8.0, 1.0));
         auto result(source.RetrieveScale());
-        auto output = TestMathFunction<ToScaleNode>({ "Matrix3x3: Source", }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        auto output = TestMathFunction<ToScaleNode>({ "Matrix3x3: Source", }, { Datum(source) }, { "Result: Vector3" }, { Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -1592,13 +1597,13 @@ TEST_F(ScriptCanvasTestFixture, Matrix3x3Nodes)
             Data::Vector3Type(4.0, 5.0, 6.0),
             Data::Vector3Type(7.0, 8.0, 9.0)));
         auto result = source.GetTranspose();
-        auto output = TestMathFunction<TransposeNode>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<TransposeNode>({ "Matrix3x3: Source" }, { Datum(source) }, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 
     { // Zero
         auto result = Data::Matrix3x3Type::CreateZero();
-        auto output = TestMathFunction<ZeroNode>({}, {}, { "Result: Matrix3x3" }, { Datum::CreateInitializedCopy(Data::Matrix3x3Type::CreateZero()) });
+        auto output = TestMathFunction<ZeroNode>({}, {}, { "Result: Matrix3x3" }, { Datum(Data::Matrix3x3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix3x3Type>()));
     }
 }
@@ -1616,15 +1621,15 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         auto col4 = Data::Vector4Type(13.0, 15.0, 15.0, 16.0);
         auto result(Data::Matrix4x4Type::CreateFromColumns(col1, col2, col3, col4));
         auto output = TestMathFunction<FromColumnsNode>({ "Vector4: Column1", "Vector4: Column2", "Vector4: Column3", "Vector4: Column4" },
-        { Datum::CreateInitializedCopy(col1), Datum::CreateInitializedCopy(col2), Datum::CreateInitializedCopy(col3), Datum::CreateInitializedCopy(col4) },
-        { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        { Datum(col1), Datum(col2), Datum(col3), Datum(col4) },
+        { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // FromDiagonal
         auto source = Data::Vector4Type(1.0, 1.0, 1.0, 1.0);
         auto result(Data::Matrix4x4Type::CreateDiagonal(source));
-        auto output = TestMathFunction<FromDiagonalNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<FromDiagonalNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1637,23 +1642,23 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type::CreateFromVector3(source.GetRow(1)),
             Data::Vector4Type::CreateFromVector3(source.GetRow(2)),
             Data::Vector4Type(0.0, 0.0, 0.0, 1.0)));
-        auto output = TestMathFunction<FromMatrix3x3Node>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<FromMatrix3x3Node>({ "Matrix3x3: Source" }, { Datum(source) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // FromQuaternion
-        auto rotation = Data::RotationType(1.0, 2.0, 3.0, 4.0);
+        auto rotation = Data::QuaternionType(1.0, 2.0, 3.0, 4.0);
         auto result(Data::Matrix4x4Type::CreateFromQuaternion(rotation));
-        auto output = TestMathFunction<FromQuaternionNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(rotation) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<FromQuaternionNode>({ "Quaternion: Source" }, { Datum(rotation) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // FromQuaternionAndTranslation
-        auto rotation = Data::RotationType(1.0, 2.0, 3.0, 4.0);
+        auto rotation = Data::QuaternionType(1.0, 2.0, 3.0, 4.0);
         auto translation = Data::Vector3Type(10.0, -4.5, -16.10);
         auto result = Data::Matrix4x4Type::CreateFromQuaternionAndTranslation(rotation, translation);
-        auto output = TestMathFunction<FromQuaternionAndTranslationNode>({ "Rotation: Rotation", "Vector3: Translation" }, { Datum::CreateInitializedCopy(rotation), Datum::CreateInitializedCopy(translation) },
-        { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<FromQuaternionAndTranslationNode>({ "Quaternion: Rotation", "Vector3: Translation" }, { Datum(rotation), Datum(translation) },
+        { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1665,8 +1670,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         const auto farDist = Data::NumberType(10.0);
         auto result = Data::Matrix4x4Type::CreateProjection(Data::ToVectorFloat(verticalFov), Data::ToVectorFloat(aspectRatio), Data::ToVectorFloat(nearDist), Data::ToVectorFloat(farDist));
         auto output = TestMathFunction<FromProjectionNode>({ "Number: Vertical FOV", "Number: Aspect Ratio", "Number: Near", "Number: Far" },
-        { Datum::CreateInitializedCopy(verticalFov), Datum::CreateInitializedCopy(aspectRatio), Datum::CreateInitializedCopy(nearDist), Datum::CreateInitializedCopy(farDist) },
-        { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        { Datum(verticalFov), Datum(aspectRatio), Datum(nearDist), Datum(farDist) },
+        { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1677,8 +1682,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         const auto farDist = Data::NumberType(10.0);
         auto result = Data::Matrix4x4Type::CreateProjectionFov(Data::ToVectorFloat(verticalFov), Data::ToVectorFloat(horizontalFov), Data::ToVectorFloat(nearDist), Data::ToVectorFloat(farDist));
         auto output = TestMathFunction<FromProjectionFovNode>({ "Number: Vertical FOV", "Number: Horizontal FOV", "Number: Near", "Number: Far" },
-        { Datum::CreateInitializedCopy(verticalFov), Datum::CreateInitializedCopy(horizontalFov), Datum::CreateInitializedCopy(nearDist), Datum::CreateInitializedCopy(farDist) },
-        { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        { Datum(verticalFov), Datum(horizontalFov), Datum(nearDist), Datum(farDist) },
+        { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1691,8 +1696,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         const auto farDist = Data::NumberType(10.0);
         auto result = Data::Matrix4x4Type::CreateProjectionOffset(Data::ToVectorFloat(left), Data::ToVectorFloat(right), Data::ToVectorFloat(bottom), Data::ToVectorFloat(top), Data::ToVectorFloat(nearDist), Data::ToVectorFloat(farDist));
         auto output = TestMathFunction<FromProjectionVolumeNode>({ "Number: Left", "Number: Right", "Number: Bottom", "Number: Top", "Number: Near", "Number: Far" },
-        { Datum::CreateInitializedCopy(left), Datum::CreateInitializedCopy(right), Datum::CreateInitializedCopy(bottom), Datum::CreateInitializedCopy(top),  Datum::CreateInitializedCopy(nearDist), Datum::CreateInitializedCopy(farDist) },
-        { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        { Datum(left), Datum(right), Datum(bottom), Datum(top),  Datum(nearDist), Datum(farDist) },
+        { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 #endif
@@ -1700,21 +1705,21 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
     { // FromRotationXDegrees
         auto degrees = 45.0f;
         auto resultDegrees(Data::Matrix4x4Type::CreateRotationX(AZ::DegToRad(degrees)));
-        auto outputDegrees = TestMathFunction<FromRotationXDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(degrees) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto outputDegrees = TestMathFunction<FromRotationXDegreesNode>({ "Number: Degrees" }, { Datum(degrees) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(resultDegrees.IsClose(*outputDegrees[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // FromRotationYDegrees
         auto degrees = 30.0f;
         auto resultDegrees(Data::Matrix4x4Type::CreateRotationY(AZ::DegToRad(degrees)));
-        auto outputDegrees = TestMathFunction<FromRotationYDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(degrees) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto outputDegrees = TestMathFunction<FromRotationYDegreesNode>({ "Number: Degrees" }, { Datum(degrees) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(resultDegrees.IsClose(*outputDegrees[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // FromRotationZDegrees
         auto degrees = 60.0f;
         auto resultDegrees(Data::Matrix4x4Type::CreateRotationZ(AZ::DegToRad(degrees)));
-        auto outputDegrees = TestMathFunction<FromRotationZDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(degrees) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto outputDegrees = TestMathFunction<FromRotationZDegreesNode>({ "Number: Degrees" }, { Datum(degrees) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(resultDegrees.IsClose(*outputDegrees[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1725,15 +1730,15 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         auto row4 = Data::Vector4Type(13.0, 15.0, 15.0, 16.0);
         auto result(Data::Matrix4x4Type::CreateFromRows(row1, row2, row3, row4));
         auto output = TestMathFunction<FromRowsNode>({ "Vector4: Row1", "Vector4: Row2", "Vector4: Row3", "Vector4: Row4" },
-        { Datum::CreateInitializedCopy(row1), Datum::CreateInitializedCopy(row2), Datum::CreateInitializedCopy(row3), Datum::CreateInitializedCopy(row4) },
-        { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        { Datum(row1), Datum(row2), Datum(row3), Datum(row4) },
+        { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // FromScale
         auto scale = Data::Vector3Type(2.0, 2.0, 2.0);
         auto result(Data::Matrix4x4Type::CreateScale(scale));
-        auto output = TestMathFunction<FromScaleNode>({ "Vector3: Scale" }, { Datum::CreateInitializedCopy(scale) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<FromScaleNode>({ "Vector3: Scale" }, { Datum(scale) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1743,14 +1748,14 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(0.0, 1.0, 0.0, 0.0),
             Data::Vector4Type(0.0, 0.0, 1.0, 0.0));
         auto result = Data::Matrix4x4Type::CreateFromRows(transform.GetRow(0), transform.GetRow(1), transform.GetRow(2), Data::Vector4Type::CreateAxisW());
-        auto output = TestMathFunction<FromTransformNode>({ "Transform: Transform" }, { Datum::CreateInitializedCopy(transform) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<FromTransformNode>({ "Transform: Transform" }, { Datum(transform) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // FromTranslation
         auto source = Data::Vector3Type(1.0, -1.0, 15.0);
         auto result(Data::Matrix4x4Type::CreateTranslation(source));
-        auto output = TestMathFunction<FromTranslationNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<FromTranslationNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1761,7 +1766,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(7.0, -8.0, 1.0, 73.3),
             Data::Vector4Type(27.5, 36.8, 0.8, 14.0));
         auto result(source.GetInverseFull());
-        auto output = TestMathFunction<InvertNode>({ "Matrix4x4: Source", }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<InvertNode>({ "Matrix4x4: Source", }, { Datum(source) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1771,19 +1776,19 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         auto c(Data::Matrix4x4Type::CreateFromRows(Data::Vector4Type(1.001, 1.001, 1.001, 1.001), Data::Vector4Type(1.001, 1.001, 1.001, 1.001), Data::Vector4Type(1.001, 1.001, 1.001, 1.001), Data::Vector4Type(1.001, 1.001, 1.001, 1.001)));
 
         bool resultFalse = a.IsClose(b);
-        auto output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
 
         bool resultTrue = a.IsClose(b, Data::ToVectorFloat(2.1));
-        output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(2.1) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(2.1) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultTrue = a.IsClose(c);
-        output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(c) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B" }, { Datum(a), Datum(c) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultFalse = a.IsClose(b, Data::ToVectorFloat(0.9));
-        output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(0.9) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsCloseNode>({ "Matrix4x4: A", "Matrix4x4: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(0.9) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
     }
 
@@ -1794,7 +1799,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(7.0, -8.0, std::numeric_limits<float>::infinity(), 73.3),
             Data::Vector4Type(27.5, 36.8, 0.8, 14.0));
         auto result = source.IsFinite();
-        auto output = TestMathFunction<IsFiniteNode>({ "Matrix4x4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean", }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Matrix4x4: Source" }, { Datum(source) }, { "Result: Boolean", }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
@@ -1810,8 +1815,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(17.0, -8.0, 19.0, 1.0),
             Data::Vector4Type(4.1, -7.6, -11.3, 1.0)));
         auto result = a * b;
-        auto output = TestMathFunction<MultiplyByMatrixNode>({ "Matrix4x4: A", "Matrix4x4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) },
-        { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<MultiplyByMatrixNode>({ "Matrix4x4: A", "Matrix4x4: B" }, { Datum(a), Datum(b) },
+        { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
@@ -1823,8 +1828,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(3.5, 9.1, 1.0, 17.98)));
         Data::Vector4Type vector4(3.0);
         auto result = source * vector4;
-        auto output = TestMathFunction<MultiplyByVectorNode>({ "Matrix4x4: Source", "Vector4: Vector" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(vector4) },
-        { "Result: Vector4" }, { Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()) });
+        auto output = TestMathFunction<MultiplyByVectorNode>({ "Matrix4x4: Source", "Vector4: Vector" }, { Datum(source), Datum(vector4) },
+        { "Result: Vector4" }, { Datum(Data::Vector4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -1835,8 +1840,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(7.0, 8.0, 9.0, 30.0),
             Data::Vector4Type(3.5, 9.1, 1.0, 40.0));
         auto result(source.GetColumn(3));
-        auto output = TestMathFunction<GetColumnNode>({ "Matrix4x4: Source", "Number: Column" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(3) },
-        { "Result: Vector4" }, { Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()) });
+        auto output = TestMathFunction<GetColumnNode>({ "Matrix4x4: Source", "Number: Column" }, { Datum(source), Datum(3) },
+        { "Result: Vector4" }, { Datum(Data::Vector4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -1848,9 +1853,9 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         auto source = Data::Matrix4x4Type::CreateFromColumns(col1, col2, col3, col4);
         auto output = TestMathFunction<GetColumnsNode>(
         { "Matrix4x4: Source" },
-        { Datum::CreateInitializedCopy(source) },
+        { Datum(source) },
         { "Column1: Vector4", "Column2: Vector4", "Column3: Vector4", "Column4: Vector4" },
-        { Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()) });
+        { Datum(Data::Vector4Type::CreateZero()), Datum(Data::Vector4Type::CreateZero()), Datum(Data::Vector4Type::CreateZero()), Datum(Data::Vector4Type::CreateZero()) });
         EXPECT_TRUE(col1.IsClose(*output[0].GetAs<Data::Vector4Type>()));
         EXPECT_TRUE(col2.IsClose(*output[1].GetAs<Data::Vector4Type>()));
         EXPECT_TRUE(col3.IsClose(*output[2].GetAs<Data::Vector4Type>()));
@@ -1864,7 +1869,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(40.0, 7.0, 8.0, 9.0),
             Data::Vector4Type(30.0, 10.0, 11.0, 12.0));
         auto result(source.GetDiagonal());
-        auto output = TestMathFunction<GetDiagonalNode>({ "Matrix4x4: Source", }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()) });
+        auto output = TestMathFunction<GetDiagonalNode>({ "Matrix4x4: Source", }, { Datum(source) }, { "Result: Vector4" }, { Datum(Data::Vector4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -1875,10 +1880,10 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(7.0, 8.0, 9.0, 30.0),
             Data::Vector4Type(3.5, 9.1, 1.0, 40.0));
         auto result(source.GetElement(1, 3));
-        auto outputSuccess = TestMathFunction<GetElementNode>({ "Matrix4x4: Source", "Number: Row", "Number: Column" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(1), Datum::CreateInitializedCopy(3) },
-        { "Result: Number" }, { Datum::CreateInitializedCopy(Data::NumberType()) });
-        auto outputFailure = TestMathFunction<GetElementNode>({ "Matrix4x4: Source", "Number: Row", "Number: Column" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(2), Datum::CreateInitializedCopy(2) },
-        { "Result: Number" }, { Datum::CreateInitializedCopy(Data::NumberType()) });
+        auto outputSuccess = TestMathFunction<GetElementNode>({ "Matrix4x4: Source", "Number: Row", "Number: Column" }, { Datum(source), Datum(1), Datum(3) },
+        { "Result: Number" }, { Datum(Data::NumberType()) });
+        auto outputFailure = TestMathFunction<GetElementNode>({ "Matrix4x4: Source", "Number: Row", "Number: Column" }, { Datum(source), Datum(2), Datum(2) },
+        { "Result: Number" }, { Datum(Data::NumberType()) });
         EXPECT_TRUE(result.IsClose(Data::ToVectorFloat(*outputSuccess[0].GetAs<Data::NumberType>())));
         EXPECT_FALSE(result.IsClose(Data::ToVectorFloat(*outputFailure[0].GetAs<Data::NumberType>())));
     }
@@ -1890,8 +1895,8 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(7.0, 8.0, 9.0, 30.0),
             Data::Vector4Type(3.5, 9.1, 1.0, 40.0));
         auto result(source.GetRow(0));
-        auto output = TestMathFunction<GetRowNode>({ "Matrix4x4: Source", "Number: Row" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(0) },
-        { "Result: Vector4" }, { Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()) });
+        auto output = TestMathFunction<GetRowNode>({ "Matrix4x4: Source", "Number: Row" }, { Datum(source), Datum(0) },
+        { "Result: Vector4" }, { Datum(Data::Vector4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -1903,9 +1908,9 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
         auto source = Data::Matrix4x4Type::CreateFromRows(row1, row2, row3, row4);
         auto output = TestMathFunction<GetRowsNode>(
         { "Matrix4x4: Source" },
-        { Datum::CreateInitializedCopy(source) },
+        { Datum(source) },
         { "Row1: Vector4", "Row2: Vector4", "Row3: Vector4", "Row4: Vector4" },
-        { Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()), Datum::CreateInitializedCopy(Data::Vector4Type::CreateZero()) });
+        { Datum(Data::Vector4Type::CreateZero()), Datum(Data::Vector4Type::CreateZero()), Datum(Data::Vector4Type::CreateZero()), Datum(Data::Vector4Type::CreateZero()) });
         EXPECT_TRUE(row1.IsClose(*output[0].GetAs<Data::Vector4Type>()));
         EXPECT_TRUE(row2.IsClose(*output[1].GetAs<Data::Vector4Type>()));
         EXPECT_TRUE(row3.IsClose(*output[2].GetAs<Data::Vector4Type>()));
@@ -1919,7 +1924,7 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(7.0, -8.0, 1.0, 1.0),
             Data::Vector4Type(0.0, 0.0, 0.0, 1.0));
         auto result(source.RetrieveScale());
-        auto output = TestMathFunction<ToScaleNode>({ "Matrix4x4: Source", }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Data::Vector3Type::CreateZero()) });
+        auto output = TestMathFunction<ToScaleNode>({ "Matrix4x4: Source", }, { Datum(source) }, { "Result: Vector3" }, { Datum(Data::Vector3Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -1930,13 +1935,13 @@ TEST_F(ScriptCanvasTestFixture, Matrix4x4Nodes)
             Data::Vector4Type(7.0, 8.0, 9.0, -10.0),
             Data::Vector4Type(5.0, 8.0, 3.0, 1.0));
         auto result = source.GetTranspose();
-        auto output = TestMathFunction<TransposeNode>({ "Matrix4x4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<TransposeNode>({ "Matrix4x4: Source" }, { Datum(source) }, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 
     { // Zero
         auto result = Data::Matrix4x4Type::CreateZero();
-        auto output = TestMathFunction<ZeroNode>({}, {}, { "Result: Matrix4x4" }, { Datum::CreateInitializedCopy(Data::Matrix4x4Type::CreateZero()) });
+        auto output = TestMathFunction<ZeroNode>({}, {}, { "Result: Matrix4x4" }, { Datum(Data::Matrix4x4Type::CreateZero()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Matrix4x4Type>()));
     }
 }
@@ -1956,7 +1961,7 @@ TEST_F(ScriptCanvasTestFixture, OBBNodes)
     const Vector3Type maxHalf3(max3 * 0.5f);
 
     auto obbRotated = OBBType::CreateFromPositionAndAxes(Vector3Type(10, 20, 30), Vector3Type(1, 0, 0), 10, Vector3Type(0, 1, 0), 30, Vector3Type(0, 0, 1), 20);
-    auto transform = TransformType::CreateFromQuaternion(RotationType::CreateFromAxisAngle(Vector3Type(1, 1, 1).GetNormalized(), ToVectorFloat(AZ::DegToRad(30))));
+    auto transform = TransformType::CreateFromQuaternion(QuaternionType::CreateFromAxisAngle(Vector3Type(1, 1, 1).GetNormalized(), ToVectorFloat(AZ::DegToRad(30))));
     obbRotated = transform * obbRotated;
 
     auto IsClose = [](const OBBType& lhs, const OBBType& rhs)->bool
@@ -1969,7 +1974,7 @@ TEST_F(ScriptCanvasTestFixture, OBBNodes)
 
     {// FromAabbNode
         auto source = AABBType::CreateFromMinMax(Vector3Type(-1, -2, -3), Vector3Type(1, 2, 3));
-        auto output = TestMathFunction<FromAabbNode>({ "AABB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: OBB" }, { Datum::CreateInitializedCopy(OBBType()) });
+        auto output = TestMathFunction<FromAabbNode>({ "AABB: Source" }, { Datum(source) }, { "Result: OBB" }, { Datum(OBBType()) });
         auto result = OBBType::CreateFromAabb(source);
         EXPECT_TRUE(IsClose(result, (*output[0].GetAs<OBBType>())));
     }
@@ -1977,30 +1982,30 @@ TEST_F(ScriptCanvasTestFixture, OBBNodes)
     {// FromPositionAndAxesNode
         auto output = TestMathFunction<FromPositionAndAxesNode>
             ({ "Vector3: Position", "Vector3: X-Axis", "Number: X Half-Length", "Vector3: Y-Axis", "Number: Y Half-Length", "Vector3: Z-Axis", "Number: Z Half-Length" }
-                , { Datum::CreateInitializedCopy(obbRotated.GetPosition()), Datum::CreateInitializedCopy(obbRotated.GetAxisX()), Datum::CreateInitializedCopy(obbRotated.GetHalfLengthX()), Datum::CreateInitializedCopy(obbRotated.GetAxisY()), Datum::CreateInitializedCopy(obbRotated.GetHalfLengthY()), Datum::CreateInitializedCopy(obbRotated.GetAxisZ()), Datum::CreateInitializedCopy(obbRotated.GetHalfLengthZ()) }
+                , { Datum(obbRotated.GetPosition()), Datum(obbRotated.GetAxisX()), Datum(obbRotated.GetHalfLengthX()), Datum(obbRotated.GetAxisY()), Datum(obbRotated.GetHalfLengthY()), Datum(obbRotated.GetAxisZ()), Datum(obbRotated.GetHalfLengthZ()) }
                 , { "Result: OBB" }
-        , { Datum::CreateInitializedCopy(OBBType()) });
+        , { Datum(OBBType()) });
         auto result = obbRotated;
         EXPECT_TRUE(IsClose(result, (*output[0].GetAs<OBBType>())));
     }
 
     {// GetAxisXNode
         auto source = obbRotated;
-        auto output = TestMathFunction<GetAxisXNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<GetAxisXNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = source.GetAxisX();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     {// GetAxisYNode
         auto source = obbRotated;
-        auto output = TestMathFunction<GetAxisYNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<GetAxisYNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = source.GetAxisY();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     {// GetAxisZNode
         auto source = obbRotated;
-        auto output = TestMathFunction<GetAxisZNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<GetAxisZNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = source.GetAxisZ();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
@@ -2008,21 +2013,21 @@ TEST_F(ScriptCanvasTestFixture, OBBNodes)
 #if ENABLE_EXTENDED_MATH_SUPPORT
     {// GetHalfLengthXNode
         auto source = obbRotated;
-        auto output = TestMathFunction<GetHalfLengthXNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<GetHalfLengthXNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHalfLengthX();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     {// GetHalfLengthYNode
         auto source = obbRotated;
-        auto output = TestMathFunction<GetHalfLengthYNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<GetHalfLengthYNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHalfLengthY();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     {// GetHalfLengthZNode
         auto source = obbRotated;
-        auto output = TestMathFunction<GetHalfLengthZNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(NumberType()) });
+        auto output = TestMathFunction<GetHalfLengthZNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(NumberType()) });
         float result = source.GetHalfLengthZ();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
@@ -2030,14 +2035,14 @@ TEST_F(ScriptCanvasTestFixture, OBBNodes)
 
     {// GetPositionNode
         auto source = obbRotated;
-        auto output = TestMathFunction<GetPositionNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<GetPositionNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         auto result = obbRotated.GetPosition();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     {// IsFiniteNode
         auto source = obbRotated;
-        auto output = TestMathFunction<IsFiniteNode>({ "OBB: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(BooleanType()) });
+        auto output = TestMathFunction<IsFiniteNode>({ "OBB: Source" }, { Datum(source) }, { "Result: Boolean" }, { Datum(BooleanType()) });
         auto result = source.IsFinite();
         EXPECT_TRUE(result);
         EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
@@ -2066,31 +2071,31 @@ TEST_F(ScriptCanvasTestFixture, PlaneNodes)
 
     { // CreateFromCoefficientsNode
         auto result = PlaneType::CreateFromCoefficients(A, B, C, D);
-        auto output = TestMathFunction<FromCoefficientsNode>({ "Number: A", "Number: B", "Number: C", "Number: D" }, { Datum::CreateInitializedCopy(A),Datum::CreateInitializedCopy(B),Datum::CreateInitializedCopy(C),Datum::CreateInitializedCopy(D) }, { "Result: Plane" }, { Datum::CreateInitializedCopy(PlaneType()) });
+        auto output = TestMathFunction<FromCoefficientsNode>({ "Number: A", "Number: B", "Number: C", "Number: D" }, { Datum(A),Datum(B),Datum(C),Datum(D) }, { "Result: Plane" }, { Datum(PlaneType()) });
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<PlaneType>()));
     }
 
     { // CreateFromNormalAndDistanceNode
         auto result = PlaneType::CreateFromNormalAndDistance(normal, D);
-        auto output = TestMathFunction<FromNormalAndDistanceNode>({ "Vector3: Normal", "Number: Distance" }, { Datum::CreateInitializedCopy(normal), Datum::CreateInitializedCopy(D) }, { "Result: Plane" }, { Datum::CreateInitializedCopy(PlaneType()) });
+        auto output = TestMathFunction<FromNormalAndDistanceNode>({ "Vector3: Normal", "Number: Distance" }, { Datum(normal), Datum(D) }, { "Result: Plane" }, { Datum(PlaneType()) });
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<PlaneType>()));
     }
 
     { // CreateFromNormalAndPointNode
         auto result = PlaneType::CreateFromNormalAndPoint(normal, point);
-        auto output = TestMathFunction<FromNormalAndPointNode>({ "Vector3: Normal", "Vector3: Point" }, { Datum::CreateInitializedCopy(normal), Datum::CreateInitializedCopy(point) }, { "Result: Plane" }, { Datum::CreateInitializedCopy(PlaneType()) });
+        auto output = TestMathFunction<FromNormalAndPointNode>({ "Vector3: Normal", "Vector3: Point" }, { Datum(normal), Datum(point) }, { "Result: Plane" }, { Datum(PlaneType()) });
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<PlaneType>()));
     }
 
     { // DistanceToPointNode
         auto result = source.GetPointDist(point);
-        auto output = TestMathFunction<DistanceToPointNode>({ "Plane: Source", "Vector3: Point" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(point) }, { "Result: Number" }, { Datum::CreateInitializedCopy(-1.0) });
+        auto output = TestMathFunction<DistanceToPointNode>({ "Plane: Source", "Vector3: Point" }, { Datum(source), Datum(point) }, { "Result: Number" }, { Datum(-1.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // IsFiniteNode
         auto result = source.IsFinite();
-        auto output = TestMathFunction<IsFiniteNode>({ "Plane: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Plane: Source" }, { Datum(source) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_TRUE(result);
         EXPECT_EQ(result, *output[0].GetAs<BooleanType>());
     }
@@ -2099,33 +2104,33 @@ TEST_F(ScriptCanvasTestFixture, PlaneNodes)
     { // ModDistanceNode
         auto result = source;
         result.SetDistance(D);
-        auto output = TestMathFunction<ModDistanceNode>({ "Plane: Source", "Number: Distance" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(D) }, { "Result: Plane" }, { Datum::CreateInitializedCopy(PlaneType()) });
+        auto output = TestMathFunction<ModDistanceNode>({ "Plane: Source", "Number: Distance" }, { Datum(source), Datum(D) }, { "Result: Plane" }, { Datum(PlaneType()) });
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<PlaneType>()));
     }
 
     { // ModNormalNode
         auto result = source;
         result.SetNormal(normal);
-        auto output = TestMathFunction<ModNormalNode>({ "Plane: Source", "Vector3: Normal" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(normal) }, { "Result: Plane" }, { Datum::CreateInitializedCopy(PlaneType()) });
+        auto output = TestMathFunction<ModNormalNode>({ "Plane: Source", "Vector3: Normal" }, { Datum(source), Datum(normal) }, { "Result: Plane" }, { Datum(PlaneType()) });
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<PlaneType>()));
     }
 #endif
 
     { // GetDistanceNode
         auto result = source.GetDistance();
-        auto output = TestMathFunction<GetDistanceNode>({ "Plane: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(-1) });
+        auto output = TestMathFunction<GetDistanceNode>({ "Plane: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(-1) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
 
     { // GetNormalNode
         auto result = source.GetNormal();
-        auto output = TestMathFunction<GetNormalNode>({ "Plane: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type(0, 0, 0)) });
+        auto output = TestMathFunction<GetNormalNode>({ "Plane: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(Vector3Type(0, 0, 0)) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     { // GetPlaneEquationCoefficientsNode
         auto result = source.GetPlaneEquationCoefficients();
-        auto output = TestMathFunction<GetPlaneEquationCoefficientsNode>({ "Plane: Source" }, { Datum::CreateInitializedCopy(source) }, { "A: Number", "B: Number", "C: Number", "D: Number" }, { Datum::CreateInitializedCopy(0),Datum::CreateInitializedCopy(0),Datum::CreateInitializedCopy(0),Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<GetPlaneEquationCoefficientsNode>({ "Plane: Source" }, { Datum(source) }, { "A: Number", "B: Number", "C: Number", "D: Number" }, { Datum(0),Datum(0),Datum(0),Datum(0) });
 
         for (int i = 0; i < 4; ++i)
         {
@@ -2135,14 +2140,14 @@ TEST_F(ScriptCanvasTestFixture, PlaneNodes)
 
     { // GetProjectedNode
         auto result = source.GetProjected(point);
-        auto output = TestMathFunction<ProjectNode>({ "Plane: Source", "Vector3: Point" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(point) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(Vector3Type()) });
+        auto output = TestMathFunction<ProjectNode>({ "Plane: Source", "Vector3: Point" }, { Datum(source), Datum(point) }, { "Result: Vector3" }, { Datum(Vector3Type()) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     { // TransformNode
-        TransformType transform = TransformType::CreateFromQuaternionAndTranslation(RotationType::CreateFromAxisAngle(Vector3Type(1, 1, 1).GetNormalized(), AZ::DegToRad(30)), Vector3Type(-100, 50, -25));
+        TransformType transform = TransformType::CreateFromQuaternionAndTranslation(QuaternionType::CreateFromAxisAngle(Vector3Type(1, 1, 1).GetNormalized(), AZ::DegToRad(30)), Vector3Type(-100, 50, -25));
         auto result = source.GetTransform(transform);
-        auto output = TestMathFunction<TransformNode>({ "Plane: Source", "Transform: Transform" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(transform) }, { "Result: Plane" }, { Datum::CreateInitializedCopy(PlaneType()) });
+        auto output = TestMathFunction<TransformNode>({ "Plane: Source", "Transform: Transform" }, { Datum(source), Datum(transform) }, { "Result: Plane" }, { Datum(PlaneType()) });
         EXPECT_TRUE(IsClose(result, *output[0].GetAs<PlaneType>()));
     }
 }
@@ -2174,7 +2179,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
 
     const Matrix3x3Type matrix3x3One(Matrix3x3Type::CreateFromValue(1));
 
-    const RotationType rotationOne(RotationType::CreateRotationZ(1));
+    const QuaternionType rotationOne(QuaternionType::CreateRotationZ(1));
 
     const TransformType identity(TransformType::CreateIdentity());
     const TransformType zero(TransformType::CreateZero());
@@ -2186,7 +2191,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
         auto source = TransformType::CreateScale(Vector3Type(-0.5f, .5f, 1.5f));
         auto extracted = source;
         auto scale = extracted.ExtractScale();
-        auto output = TestMathFunction<ExtractScaleNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(source) }, { "Scale: Vector3", "Extracted: Transform" }, { Datum::CreateInitializedCopy(vector3Zero), Datum::CreateInitializedCopy(identity) });
+        auto output = TestMathFunction<ExtractScaleNode>({ "Transform: Source" }, { Datum(source) }, { "Scale: Vector3", "Extracted: Transform" }, { Datum(vector3Zero), Datum(identity) });
 
         auto scaleOutput = *output[0].GetAs<Vector3Type>();
         auto extractedOutput = *output[1].GetAs<TransformType>();
@@ -2198,132 +2203,132 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
     {
       // FromColumnsNode
         auto result = TransformType::CreateFromColumns(xPos, yPos, zPos, position);
-        auto output0 = TestMathFunction<FromColumnsNode>({ "Vector3: Column 0", "Vector3: Column 1", "Vector3: Column 2", "Vector3: Column 3", }, { Datum::CreateInitializedCopy(xPos), Datum::CreateInitializedCopy(yPos), Datum::CreateInitializedCopy(zPos), Datum::CreateInitializedCopy(position) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output0 = TestMathFunction<FromColumnsNode>({ "Vector3: Column 0", "Vector3: Column 1", "Vector3: Column 2", "Vector3: Column 3", }, { Datum(xPos), Datum(yPos), Datum(zPos), Datum(position) }, { "Result: Transform" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output0[0].GetAs<TransformType>()));
     }
 
     { // FromDiagonalNode
-        auto output = TestMathFunction<FromDiagonalNode>({ "Vector3: Diagonal" }, { Datum::CreateInitializedCopy(vector3One) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromDiagonalNode>({ "Vector3: Diagonal" }, { Datum(vector3One) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateDiagonal(vector3One);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromMatrix3x3Node
-        auto output = TestMathFunction<FromMatrix3x3Node>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(matrix3x3One) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromMatrix3x3Node>({ "Matrix3x3: Source" }, { Datum(matrix3x3One) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateFromMatrix3x3(matrix3x3One);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromMatrix3x3AndTranslationNode
-        auto output = TestMathFunction<FromMatrix3x3AndTranslationNode>({ "Matrix3x3: Matrix", "Vector3: Translation" }, { Datum::CreateInitializedCopy(matrix3x3One), Datum::CreateInitializedCopy(position) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromMatrix3x3AndTranslationNode>({ "Matrix3x3: Matrix", "Vector3: Translation" }, { Datum(matrix3x3One), Datum(position) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateFromMatrix3x3AndTranslation(matrix3x3One, position);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromRotationNode
-        auto output = TestMathFunction<FromRotationNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(rotationOne) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromRotationNode>({ "Quaternion: Source" }, { Datum(rotationOne) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateFromQuaternion(rotationOne);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromRotationAndTranslationNode
-        auto output = TestMathFunction<FromRotationAndTranslationNode>({ "Rotation: Rotation", "Vector3: Translation" }, { Datum::CreateInitializedCopy(rotationOne), Datum::CreateInitializedCopy(position) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromRotationAndTranslationNode>({ "Quaternion: Rotation", "Vector3: Translation" }, { Datum(rotationOne), Datum(position) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateFromQuaternionAndTranslation(rotationOne, position);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromRowsNode
-        auto output = TestMathFunction<FromRowsNode>({ "Vector4: Row 0", "Vector4: Row 1", "Vector4: Row 2", }, { Datum::CreateInitializedCopy(r0), Datum::CreateInitializedCopy(r1), Datum::CreateInitializedCopy(r2) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromRowsNode>({ "Vector4: Row 0", "Vector4: Row 1", "Vector4: Row 2", }, { Datum(r0), Datum(r1), Datum(r2) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateFromRows(r0, r1, r2);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromScaleNode
-        auto output = TestMathFunction<FromScaleNode>({ "Vector3: Scale" }, { Datum::CreateInitializedCopy(scale) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromScaleNode>({ "Vector3: Scale" }, { Datum(scale) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateScale(scale);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromTranslationNode
-        auto output = TestMathFunction<FromTranslationNode>({ "Vector3: Translation" }, { Datum::CreateInitializedCopy(position) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromTranslationNode>({ "Vector3: Translation" }, { Datum(position) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateTranslation(position);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // FromValueNode
-        auto output = TestMathFunction<FromValueNode>({ "Number: Source" }, { Datum::CreateInitializedCopy(3) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromValueNode>({ "Number: Source" }, { Datum(3) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType::CreateFromValue(ToVectorFloat(3));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // InvertOrthogonalNode
-        auto output = TestMathFunction<InvertOrthogonalNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(invertable) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<InvertOrthogonalNode>({ "Transform: Source" }, { Datum(invertable) }, { "Result: Transform" }, { Datum(zero) });
         auto result = invertable.GetInverseFast();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 #endif
 
     { // InvertSlowNode
-        auto output = TestMathFunction<InvertSlowNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(invertable) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<InvertSlowNode>({ "Transform: Source" }, { Datum(invertable) }, { "Result: Transform" }, { Datum(zero) });
         auto result = invertable.GetInverseFull();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // IsCloseNode
-        auto outputFalse = TestMathFunction<IsCloseNode>({ "Transform: A", "Transform: B" }, { Datum::CreateInitializedCopy(invertable), Datum::CreateInitializedCopy(identity) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto outputFalse = TestMathFunction<IsCloseNode>({ "Transform: A", "Transform: B" }, { Datum(invertable), Datum(identity) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(invertable.IsClose(identity), *outputFalse[0].GetAs<BooleanType>());
         EXPECT_FALSE(invertable.IsClose(identity));
-        auto outputTrue = TestMathFunction<IsCloseNode>({ "Transform: A", "Transform: B" }, { Datum::CreateInitializedCopy(invertable), Datum::CreateInitializedCopy(invertable) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto outputTrue = TestMathFunction<IsCloseNode>({ "Transform: A", "Transform: B" }, { Datum(invertable), Datum(invertable) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(invertable.IsClose(invertable), *outputTrue[0].GetAs<BooleanType>());
         EXPECT_TRUE(invertable.IsClose(invertable));
     }
 
     { // IsFiniteNode
-        auto output = TestMathFunction<IsFiniteNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(identity) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Transform: Source" }, { Datum(identity) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(identity.IsFinite(), *output[0].GetAs<BooleanType>());
         EXPECT_TRUE(identity.IsFinite());
     }
 
     { // IsOrthogonalNode
-        auto outputTrue = TestMathFunction<IsOrthogonalNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(identity) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto outputTrue = TestMathFunction<IsOrthogonalNode>({ "Transform: Source" }, { Datum(identity) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(identity.IsOrthogonal(), *outputTrue[0].GetAs<BooleanType>());
         EXPECT_TRUE(identity.IsOrthogonal());
-        auto outputFalse = TestMathFunction<IsOrthogonalNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto outputFalse = TestMathFunction<IsOrthogonalNode>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(notOrthogonal.IsOrthogonal(), *outputFalse[0].GetAs<BooleanType>());
         EXPECT_FALSE(notOrthogonal.IsOrthogonal());
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // Multiply3x3ByVector3Node
-        auto output = TestMathFunction<Multiply3x3ByVector3Node>({ "Transform: Source", "Vector3: Multiplier" }, { Datum::CreateInitializedCopy(notOrthogonal), Datum::CreateInitializedCopy(scale) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero3) });
+        auto output = TestMathFunction<Multiply3x3ByVector3Node>({ "Transform: Source", "Vector3: Multiplier" }, { Datum(notOrthogonal), Datum(scale) }, { "Result: Vector3" }, { Datum(zero3) });
         auto result = notOrthogonal.Multiply3x3(scale);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 #endif
 
     { // MultiplyByScaleNode
-        auto output = TestMathFunction<MultiplyByScaleNode>({ "Transform: Source", "Vector3: Scale" }, { Datum::CreateInitializedCopy(notOrthogonal), Datum::CreateInitializedCopy(scale) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MultiplyByScaleNode>({ "Transform: Source", "Vector3: Scale" }, { Datum(notOrthogonal), Datum(scale) }, { "Result: Transform" }, { Datum(zero) });
         auto result = TransformType(notOrthogonal);
         result.MultiplyByScale(scale);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // MultiplyByTransformNode
-        auto output = TestMathFunction<MultiplyByTransformNode>({ "Transform: A", "Transform: B" }, { Datum::CreateInitializedCopy(notOrthogonal), Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MultiplyByTransformNode>({ "Transform: A", "Transform: B" }, { Datum(notOrthogonal), Datum(notOrthogonal) }, { "Result: Transform" }, { Datum(zero) });
         auto result = notOrthogonal * notOrthogonal;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     { // MultiplyByVector3Node
-        auto output = TestMathFunction<MultiplyByVector3Node>({ "Transform: Source", "Vector3: Multiplier" }, { Datum::CreateInitializedCopy(notOrthogonal), Datum::CreateInitializedCopy(scale) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero3) });
+        auto output = TestMathFunction<MultiplyByVector3Node>({ "Transform: Source", "Vector3: Multiplier" }, { Datum(notOrthogonal), Datum(scale) }, { "Result: Vector3" }, { Datum(zero3) });
         auto result = notOrthogonal * scale;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     { // MultiplyByVector4Node
         const Vector4Type multiplier(4, 3, 2, 7);
-        auto output = TestMathFunction<MultiplyByVector4Node>({ "Transform: Source", "Vector4: Multiplier" }, { Datum::CreateInitializedCopy(notOrthogonal), Datum::CreateInitializedCopy(multiplier) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero4) });
+        auto output = TestMathFunction<MultiplyByVector4Node>({ "Transform: Source", "Vector4: Multiplier" }, { Datum(notOrthogonal), Datum(multiplier) }, { "Result: Vector4" }, { Datum(zero4) });
         auto result = notOrthogonal * multiplier;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector4Type>()));
     }
@@ -2333,34 +2338,34 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
         TransformType notOrthogonal = TransformType::CreateFromColumns(xPos, xPos, xPos, position);
 
         auto orthogonalResult = nearlyOrthogonal.GetOrthogonalized();
-        auto orthogonalOutput = *TestMathFunction<OrthogonalizeNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(nearlyOrthogonal) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(notOrthogonal) })[0].GetAs<TransformType>();
+        auto orthogonalOutput = *TestMathFunction<OrthogonalizeNode>({ "Transform: Source" }, { Datum(nearlyOrthogonal) }, { "Result: Transform" }, { Datum(notOrthogonal) })[0].GetAs<TransformType>();
         EXPECT_TRUE(orthogonalResult.IsClose(orthogonalOutput));
         EXPECT_TRUE(orthogonalResult.IsOrthogonal());
         EXPECT_TRUE(orthogonalOutput.IsOrthogonal());
 
         auto notOrthogonalResult = notOrthogonal.GetOrthogonalized();
-        auto notOrthogonalOutput = *TestMathFunction<OrthogonalizeNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(identity) })[0].GetAs<TransformType>();
+        auto notOrthogonalOutput = *TestMathFunction<OrthogonalizeNode>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Result: Transform" }, { Datum(identity) })[0].GetAs<TransformType>();
         EXPECT_TRUE(notOrthogonalResult.IsClose(notOrthogonalOutput));
         EXPECT_FALSE(notOrthogonalResult.IsOrthogonal());
         EXPECT_FALSE(notOrthogonalOutput.IsOrthogonal());
     }
 
     { // RotationXDegreesNode
-        auto output = TestMathFunction<RotationXDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(30) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(identity) });
+        auto output = TestMathFunction<RotationXDegreesNode>({ "Number: Degrees" }, { Datum(30) }, { "Result: Transform" }, { Datum(identity) });
         auto result = TransformType::CreateRotationX(AZ::DegToRad(30));
         auto outputTM = *output[0].GetAs<TransformType>();
         EXPECT_TRUE(result.IsClose(outputTM));
     }
 
     { // RotationYDegreesNode
-        auto output = TestMathFunction<RotationYDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(30) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(identity) });
+        auto output = TestMathFunction<RotationYDegreesNode>({ "Number: Degrees" }, { Datum(30) }, { "Result: Transform" }, { Datum(identity) });
         auto result = TransformType::CreateRotationY(AZ::DegToRad(30));
         auto outputTM = *output[0].GetAs<TransformType>();
         EXPECT_TRUE(result.IsClose(outputTM));
     }
 
     { // RotationZDegreesNode
-        auto output = TestMathFunction<RotationZDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(30) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(identity) });
+        auto output = TestMathFunction<RotationZDegreesNode>({ "Number: Degrees" }, { Datum(30) }, { "Result: Transform" }, { Datum(identity) });
         auto result = TransformType::CreateRotationZ(AZ::DegToRad(30));
         auto outputTM = *output[0].GetAs<TransformType>();
         EXPECT_TRUE(result.IsClose(outputTM));
@@ -2369,14 +2374,14 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
     { // GetColumnNode
         for (int i = 0; i < 4; ++i)
         {
-            auto output = TestMathFunction<GetColumnNode>({ "Transform: Source", "Number: Column" }, { Datum::CreateInitializedCopy(invertable), Datum::CreateInitializedCopy(i) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero3) });
+            auto output = TestMathFunction<GetColumnNode>({ "Transform: Source", "Number: Column" }, { Datum(invertable), Datum(i) }, { "Result: Vector3" }, { Datum(zero3) });
             auto result = invertable.GetColumn(i);
             EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
         }
     }
 
     { // GetColumnsNode
-        auto output = TestMathFunction<GetColumnsNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(invertable) }, { "Column 0: Vector3", "Column 1: Vector3", "Column 2: Vector3", "Column 3: Vector3" }, { Datum::CreateInitializedCopy(zero3), Datum::CreateInitializedCopy(zero3), Datum::CreateInitializedCopy(zero3), Datum::CreateInitializedCopy(zero3) });
+        auto output = TestMathFunction<GetColumnsNode>({ "Transform: Source" }, { Datum(invertable) }, { "Column 0: Vector3", "Column 1: Vector3", "Column 2: Vector3", "Column 3: Vector3" }, { Datum(zero3), Datum(zero3), Datum(zero3), Datum(zero3) });
         Vector3Type x, y, z, position;
         invertable.GetColumns(&x, &y, &z, &position);
         EXPECT_TRUE(x.IsClose(*output[0].GetAs<Vector3Type>()));
@@ -2387,7 +2392,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // ToDeterminant3x3Node
-        auto output = TestMathFunction<ToDeterminant3x3Node>({ "Transform: Source" }, { Datum::CreateInitializedCopy(invertable) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<ToDeterminant3x3Node>({ "Transform: Source" }, { Datum(invertable) }, { "Result: Number" }, { Datum(0) });
         auto result = invertable.GetDeterminant3x3();
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<NumberType>()));
     }
@@ -2398,7 +2403,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
         {
             for (int col(0); col < 4; ++col)
             {
-                auto output = TestMathFunction<GetElementNode>({ "Transform: Source", "Number: Row", "Number: Column" }, { Datum::CreateInitializedCopy(invertable), Datum::CreateInitializedCopy(row), Datum::CreateInitializedCopy(col) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+                auto output = TestMathFunction<GetElementNode>({ "Transform: Source", "Number: Row", "Number: Column" }, { Datum(invertable), Datum(row), Datum(col) }, { "Result: Number" }, { Datum(0) });
                 auto result = invertable.GetElement(row, col);
                 float resultFloat = invertable.GetElement(row, col);
                 float outputFloat = aznumeric_caster(*output[0].GetAs<NumberType>());
@@ -2409,7 +2414,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // ToPolarDecompositionNode
-        auto output = TestMathFunction<ToPolarDecompositionNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Orthogonal: Transform", "Symmetric: Transform" }, { Datum::CreateInitializedCopy(zero), Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ToPolarDecompositionNode>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Orthogonal: Transform", "Symmetric: Transform" }, { Datum(zero), Datum(zero) });
         TransformType orth, symm;
         notOrthogonal.GetPolarDecomposition(&orth, &symm);
         auto output0TM = *output[0].GetAs<TransformType>();
@@ -2419,7 +2424,7 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
     }
 
     { // ToPolarDecompositionOrthogonalOnlyNode
-        auto output = TestMathFunction<ToPolarDecompositionOrthogonalOnlyNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ToPolarDecompositionOrthogonalOnlyNode>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Result: Transform" }, { Datum(zero) });
         auto result = notOrthogonal.GetPolarDecomposition();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
@@ -2428,14 +2433,14 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
     { // GetRowNode
         for (int i = 0; i < 3; ++i)
         {
-            auto output = TestMathFunction<GetRowNode>({ "Transform: Source", "Number: Row" }, { Datum::CreateInitializedCopy(invertable), Datum::CreateInitializedCopy(i) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero4) });
+            auto output = TestMathFunction<GetRowNode>({ "Transform: Source", "Number: Row" }, { Datum(invertable), Datum(i) }, { "Result: Vector4" }, { Datum(zero4) });
             auto result = invertable.GetRow(i);
             EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector4Type>()));
         }
     }
 
     { // GetRowsNode
-        auto output = TestMathFunction<GetRowsNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(invertable) }, { "Row 0: Vector4", "Row 1: Vector4", "Row 2: Vector4" }, { Datum::CreateInitializedCopy(zero4), Datum::CreateInitializedCopy(zero4), Datum::CreateInitializedCopy(zero4) });
+        auto output = TestMathFunction<GetRowsNode>({ "Transform: Source" }, { Datum(invertable) }, { "Row 0: Vector4", "Row 1: Vector4", "Row 2: Vector4" }, { Datum(zero4), Datum(zero4), Datum(zero4) });
         Vector4Type r0, r1, r2;
         invertable.GetRows(&r0, &r1, &r2);
         EXPECT_TRUE(r0.IsClose(*output[0].GetAs<Vector4Type>()));
@@ -2444,39 +2449,39 @@ TEST_F(ScriptCanvasTestFixture, TransformNodes)
     }
 
     { // ToScaleNode
-        auto output = TestMathFunction<ToScaleNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero3) });
+        auto output = TestMathFunction<ToScaleNode>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Result: Vector3" }, { Datum(zero3) });
         auto result = notOrthogonal.RetrieveScale();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     { // GetTranslationNode
-        auto output = TestMathFunction<GetTranslationNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero3) });
+        auto output = TestMathFunction<GetTranslationNode>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Result: Vector3" }, { Datum(zero3) });
         auto result = notOrthogonal.GetTranslation();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }
 
     { // TransposeNode
-        auto output = TestMathFunction<TransposeNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<TransposeNode>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Result: Transform" }, { Datum(zero) });
         auto result = notOrthogonal.GetTranspose();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // Transpose3x3Node
-        auto output = TestMathFunction<Transpose3x3Node>({ "Transform: Source" }, { Datum::CreateInitializedCopy(notOrthogonal) }, { "Result: Transform" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<Transpose3x3Node>({ "Transform: Source" }, { Datum(notOrthogonal) }, { "Result: Transform" }, { Datum(zero) });
         auto result = notOrthogonal.GetTranspose3x3();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
 
     
     { // TransposedMultiply3x3Node
-        auto output = TestMathFunction<TransposedMultiply3x3Node>({ "Transform: Source", "Vector3: Transpose" }, { Datum::CreateInitializedCopy(notOrthogonal), Datum::CreateInitializedCopy(scale) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero3) });
+        auto output = TestMathFunction<TransposedMultiply3x3Node>({ "Transform: Source", "Vector3: Transpose" }, { Datum(notOrthogonal), Datum(scale) }, { "Result: Vector3" }, { Datum(zero3) });
         auto result = notOrthogonal.TransposedMultiply3x3(scale);
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Vector3Type>()));
     }    
 
     { // ZeroNode
-        auto output = TestMathFunction<ZeroNode>({}, {}, { "Result: Transform" }, { Datum::CreateInitializedCopy(identity) });
+        auto output = TestMathFunction<ZeroNode>({}, {}, { "Result: Transform" }, { Datum(identity) });
         auto result = TransformType::CreateZero();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<TransformType>()));
     }
@@ -2500,7 +2505,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
     {   // Absolute
         Data::Vector2Type source(-1, -1);
         Data::Vector2Type absolute = source.GetAbs();
-        auto output = TestMathFunction<AbsoluteNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<AbsoluteNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Vector2" }, { Datum(source) });
         EXPECT_TRUE(absolute.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2508,7 +2513,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 1);
         Data::Vector2Type b(1, 1);
         Data::Vector2Type c = a + b;
-        auto output = TestMathFunction<AddNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<AddNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2517,7 +2522,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type min(1, 1);
         Data::Vector2Type max(1, 1);
         auto result = source.GetClamp(min, max);
-        auto output = TestMathFunction<ClampNode>({ "Vector2: Source", "Vector2: Min", "Vector2: Max" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(min), Datum::CreateInitializedCopy(max), }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ClampNode>({ "Vector2: Source", "Vector2: Min", "Vector2: Max" }, { Datum(source), Datum(min), Datum(max), }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2525,7 +2530,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 2);
         Data::Vector2Type b(-3, -2);
         auto result = a.GetDistance(b);
-        auto output = TestMathFunction<DistanceNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DistanceNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -2533,7 +2538,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 2);
         Data::Vector2Type b(-3, -2);
         auto result = a.GetDistanceSq(b);
-        auto output = TestMathFunction<DistanceSquaredNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DistanceSquaredNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -2541,7 +2546,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 2);
         Data::NumberType b(3.0);
         auto result = a / Data::ToVectorFloat(b);
-        auto output = TestMathFunction<DivideByNumberNode>({ "Vector2: Source", "Number: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<DivideByNumberNode>({ "Vector2: Source", "Number: Divisor" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2549,7 +2554,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 1);
         Data::Vector2Type b(2, 2);
         Data::Vector2Type c = a / b;
-        auto output = TestMathFunction<DivideByVectorNode>({ "Vector2: Numerator", "Vector2: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<DivideByVectorNode>({ "Vector2: Numerator", "Vector2: Divisor" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2557,7 +2562,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 2);
         Data::Vector2Type b(-3, -2);
         auto result = a.Dot(b);
-        auto output = TestMathFunction<DotNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DotNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -2569,7 +2574,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         {
             auto result = source;
             result.SetElement(index, 4.0f);
-            auto output = TestMathFunction<FromElementNode>({ "Vector2: Source", "Number: Index", "Number: Value" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index), Datum::CreateInitializedCopy(4.0) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+            auto output = TestMathFunction<FromElementNode>({ "Vector2: Source", "Number: Index", "Number: Value" }, { Datum(source), Datum(index), Datum(4.0) }, { "Result: Vector2" }, { Datum(zero) });
             EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
         }
     }    
@@ -2579,7 +2584,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::NumberType length(10);
         auto result = source;
         result.SetLength(Data::ToVectorFloat(length));
-        auto output = TestMathFunction<FromLengthNode>({ "Vector2: Source", "Number: Length" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(length) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromLengthNode>({ "Vector2: Source", "Number: Length" }, { Datum(source), Datum(length) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 #endif
@@ -2588,14 +2593,14 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::NumberType x(1);
         Data::NumberType y(2);
         auto result = Data::Vector2Type(Data::ToVectorFloat(x), Data::ToVectorFloat(y));
-        auto output = TestMathFunction<FromValuesNode>({ "Number: X", "Number: Y" }, { Datum::CreateInitializedCopy(x), Datum::CreateInitializedCopy(y) }, { "Result: Vector2", }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromValuesNode>({ "Number: X", "Number: Y" }, { Datum(x), Datum(y) }, { "Result: Vector2", }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // GetElements
         auto source = Vector2Type(1, 2);
-        auto output = TestMathFunction<GetElementsNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "X: Number", "Y: Number" }, { Datum::CreateInitializedCopy(0), Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<GetElementsNode>({ "Vector2: Source" }, { Datum(source) }, { "X: Number", "Y: Number" }, { Datum(0), Datum(0) });
         EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
         EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
     }
@@ -2607,26 +2612,26 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type c(1.09, 1.09);
 
         bool resultFalse = a.IsClose(b);
-        auto output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
 
         bool resultTrue = a.IsClose(b, Data::ToVectorFloat(2.1));
-        output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(2.1) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(2.1) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultTrue = a.IsClose(c);
-        output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(c) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(c) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultFalse = a.IsClose(b, Data::ToVectorFloat(0.9));
-        output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(0.9) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsCloseNode>({ "Vector2: A", "Vector2: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(0.9) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsFinite
         Data::Vector2Type sourceFinite(1, 1);
         auto result = sourceFinite.IsFinite();
-        auto output = TestMathFunction<IsFiniteNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(sourceFinite) }, { "Result: Boolean", }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Vector2: Source" }, { Datum(sourceFinite) }, { "Result: Boolean", }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
@@ -2637,52 +2642,52 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
 
         {
             auto result = normal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(normal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source" }, { Datum(normal) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
 
         {
             auto result = nearlyNormal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(nearlyNormal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source" }, { Datum(nearlyNormal) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
             result = nearlyNormal.IsNormalized(2.0f);
-            output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source", "Number: Tolerance" }, { Datum::CreateInitializedCopy(nearlyNormal), Datum::CreateInitializedCopy(2.0f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source", "Number: Tolerance" }, { Datum(nearlyNormal), Datum(2.0f) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
 
         {
             auto result = notNormal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(notNormal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source" }, { Datum(notNormal) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
             result = notNormal.IsNormalized(12.0f);
-            output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source", "Number: Tolerance" }, { Datum::CreateInitializedCopy(notNormal), Datum::CreateInitializedCopy(12.0f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            output = TestMathFunction<IsNormalizedNode>({ "Vector2: Source", "Number: Tolerance" }, { Datum(notNormal), Datum(12.0f) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
     }
 
     { // IsZero
         auto result = zero.IsZero();
-        auto output = TestMathFunction<IsZeroNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(zero) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsZeroNode>({ "Vector2: Source" }, { Datum(zero) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
         result = one.IsZero();
-        output = TestMathFunction<IsZeroNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(one) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsZeroNode>({ "Vector2: Source" }, { Datum(one) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // Length
         Data::Vector2Type source(1, 2);
         auto result = source.GetLength();
-        auto output = TestMathFunction<LengthNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
         Data::Vector2Type source(1, 2);
         auto result = source.GetLengthSq();
-        auto output = TestMathFunction<LengthSquaredNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthSquaredNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -2692,7 +2697,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::NumberType t(0.5);
 
         auto result = from.Lerp(to, Data::ToVectorFloat(t));
-        auto output = TestMathFunction<LerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<LerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2700,7 +2705,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(-1, -1);
         Data::Vector2Type b(1, 1);
         auto result = a.GetMax(b);
-        auto output = TestMathFunction<MaxNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MaxNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2708,7 +2713,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(-1, -1);
         Data::Vector2Type b(1, 1);
         auto result = a.GetMin(b);
-        auto output = TestMathFunction<MinNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MinNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2716,7 +2721,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
     {   // ModXNode
         Data::Vector2Type a(1, 2);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModXNode>({ "Vector2: Source", "Number: X" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModXNode>({ "Vector2: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         auto result = a;
         result.SetX(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
@@ -2726,7 +2731,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
     {   // ModYNode
         Data::Vector2Type a(1, 2);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModYNode>({ "Vector2: Source", "Number: Y" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModYNode>({ "Vector2: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         auto result = a;
         result.SetY(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
@@ -2738,7 +2743,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type b(3, 3);
         Data::Vector2Type c(4, 4);
         auto result = a.GetMadd(b, c);
-        auto output = TestMathFunction<MultiplyAddNode>({ "Vector2: A", "Vector2: B", "Vector2: C" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(c) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<MultiplyAddNode>({ "Vector2: A", "Vector2: B", "Vector2: C" }, { Datum(a), Datum(b), Datum(c) }, { "Result: Vector2" }, { Datum(a) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 #endif
@@ -2747,7 +2752,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 2);
         Data::NumberType b(3.0);
         auto result = a * Data::ToVectorFloat(b);
-        auto output = TestMathFunction<MultiplyByNumberNode>({ "Vector2: Source", "Number: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MultiplyByNumberNode>({ "Vector2: Source", "Number: Multiplier" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2755,25 +2760,25 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         Data::Vector2Type a(1, 1);
         Data::Vector2Type b(2, 2);
         Data::Vector2Type c = a * b;
-        auto output = TestMathFunction<MultiplyByVectorNode>({ "Vector2: Source", "Vector2: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<MultiplyByVectorNode>({ "Vector2: Source", "Vector2: Multiplier" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
     {   // Negate
         Data::Vector2Type source = one;
-        auto output = TestMathFunction<NegateNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<NegateNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Vector2" }, { Datum(zero) });
         auto result = -source;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
 
         source = negativeOne;
-        output = TestMathFunction<NegateNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        output = TestMathFunction<NegateNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Vector2" }, { Datum(zero) });
         result = -source;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
     { // Normalize
         Data::Vector2Type source = one;
-        auto output = TestMathFunction<NormalizeNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<NormalizeNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Vector2" }, { Datum(zero) });
         auto result = source.GetNormalizedSafe();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
@@ -2781,7 +2786,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // NormalizeWithLength
         Data::Vector2Type source = one;
-        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Normalized: Vector2", "Length: Number" }, { Datum::CreateInitializedCopy(zero), Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector2: Source" }, { Datum(source) }, { "Normalized: Vector2", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeSafeWithLength();
         EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::Vector2Type>()));
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
@@ -2791,33 +2796,50 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
     { // Project
         Data::Vector2Type a(1, 1);
         Data::Vector2Type b(-2, -2);
-        auto output = TestMathFunction<ProjectNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<ProjectNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(a) });
         a.Project(b);
         EXPECT_TRUE(a.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
-    { // Slerp
+    { // Slerp  != lerp at 0.25f
+        Data::Vector2Type from(0.f, 0.f);
+        Data::Vector2Type to(1.f, 1.f);
+        Data::NumberType t(0.25);
+
+        auto slerp = from.Slerp(to, Data::ToVectorFloat(t));
+        auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
+        EXPECT_TRUE(slerp.IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
+
+        auto lerp = from.Lerp(to, Data::ToVectorFloat(t));
+        auto outputLerp = TestMathFunction<LerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
+        EXPECT_TRUE(lerp.IsClose(*outputLerp[0].GetAs<Data::Vector2Type>()));
+
+        EXPECT_FALSE(lerp.IsClose(slerp));
+        EXPECT_FALSE(outputLerp[0].GetAs<Data::Vector2Type>()->IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
+    }
+
+    { // Slerp == lerp for given t of 0.5
         Data::Vector2Type from(0.f, 0.f);
         Data::Vector2Type to(1.f, 1.f);
         Data::NumberType t(0.5);
 
         auto slerp = from.Slerp(to, Data::ToVectorFloat(t));
-        auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(slerp.IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
 
         auto lerp = from.Lerp(to, Data::ToVectorFloat(t));
-        auto outputLerp = TestMathFunction<LerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto outputLerp = TestMathFunction<LerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(lerp.IsClose(*outputLerp[0].GetAs<Data::Vector2Type>()));
 
-        EXPECT_NE(lerp, slerp);
-        EXPECT_NE(*outputLerp[0].GetAs<Data::Vector2Type>(), *outputSlerp[0].GetAs<Data::Vector2Type>());
+        EXPECT_TRUE(lerp.IsClose(slerp));
+        EXPECT_TRUE(outputLerp[0].GetAs<Data::Vector2Type>()->IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
     }
 
     {   // Subtract
         Data::Vector2Type a(1, 1);
         Data::Vector2Type b(2, 2);
         Data::Vector2Type c = a - b;
-        auto output = TestMathFunction<SubtractNode>({ "Vector2: A", "Vector2: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<SubtractNode>({ "Vector2: A", "Vector2: B" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
@@ -2827,7 +2849,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         for (int index = 0; index < 2; ++index)
         {
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
-            auto output = TestMathFunction<GetElementNode>({ "Vector2: Source", "Number: Index" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+            auto output = TestMathFunction<GetElementNode>({ "Vector2: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
             EXPECT_FLOAT_EQ(result, outputNumber);
         }
@@ -2835,7 +2857,7 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
 
     {   // ToPerpendicular
         Data::Vector2Type source(3, -1);
-        auto output = TestMathFunction<ToPerpendicularNode>({ "Vector2: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector2" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ToPerpendicularNode>({ "Vector2: Source" }, { Datum(source) }, { "Result: Vector2" }, { Datum(zero) });
         auto result = source.GetPerpendicular();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
@@ -2854,7 +2876,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // Absolute
         Data::Vector3Type source(-1, -1, -1);
         Data::Vector3Type absolute = source.GetAbs();
-        auto output = TestMathFunction<AbsoluteNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<AbsoluteNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(source) });
         EXPECT_TRUE(absolute.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -2862,7 +2884,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 1, 1);
         Data::Vector3Type b(1, 1, 1);
         Data::Vector3Type c = a + b;
-        auto output = TestMathFunction<AddNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<AddNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -2870,7 +2892,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // AngleMod
         Data::Vector3Type source(1, 1, 1);
         Data::Vector3Type result = source.GetAngleMod();
-        auto output = TestMathFunction<AngleModNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<AngleModNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(source) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 #endif
@@ -2880,7 +2902,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         source = Data::Vector3Type(1, 1, 1);
         source.NormalizeSafe();
         source.BuildTangentBasis(tangent, bitangent);
-        auto output = TestMathFunction<BuildTangentBasisNode>({ "Vector3: Normal" }, { Datum::CreateInitializedCopy(source) }, { "Tangent: Vector3", "Bitangent: Vector3" }, { Datum::CreateInitializedCopy(zero), Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<BuildTangentBasisNode>({ "Vector3: Normal" }, { Datum(source) }, { "Tangent: Vector3", "Bitangent: Vector3" }, { Datum(zero), Datum(zero) });
         EXPECT_TRUE(tangent.IsClose(*output[0].GetAs<Data::Vector3Type>()));
         EXPECT_TRUE(bitangent.IsClose(*output[1].GetAs<Data::Vector3Type>()));
     }
@@ -2890,7 +2912,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type min(1, 1, 1);
         Data::Vector3Type max(1, 1, 1);
         auto result = source.GetClamp(min, max);
-        auto output = TestMathFunction<ClampNode>({ "Vector3: Source", "Vector3: Min", "Vector3: Max" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(min), Datum::CreateInitializedCopy(max), }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ClampNode>({ "Vector3: Source", "Vector3: Min", "Vector3: Max" }, { Datum(source), Datum(min), Datum(max), }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -2898,28 +2920,28 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // Cosine
         Data::Vector3Type source(1.5, 1.5, 1.5);
         auto result = source.GetCos();
-        auto output = TestMathFunction<CosineNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<CosineNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
     {   // CrossXAxis
         Data::Vector3Type source(1, 1, 1);
         auto result = source.CrossXAxis();
-        auto output = TestMathFunction<CrossXAxisNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<CrossXAxisNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
     {   // CrossYAxis
         Data::Vector3Type source(1, 1, 1);
         auto result = source.CrossYAxis();
-        auto output = TestMathFunction<CrossYAxisNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<CrossYAxisNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
     {   // CrossZAxis
         Data::Vector3Type source(1, 1, 1);
         auto result = source.CrossZAxis();
-        auto output = TestMathFunction<CrossZAxisNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<CrossZAxisNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 #endif
@@ -2928,7 +2950,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 2, 3);
         Data::Vector3Type b(-3, -2, -1);
         auto result = a.GetDistance(b);
-        auto output = TestMathFunction<DistanceNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DistanceNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -2936,7 +2958,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 2, 3);
         Data::Vector3Type b(-3, -2, -1);
         auto result = a.GetDistanceSq(b);
-        auto output = TestMathFunction<DistanceSquaredNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DistanceSquaredNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -2944,7 +2966,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(3.0);
         auto result = a / Data::ToVectorFloat(b);
-        auto output = TestMathFunction<DivideByNumberNode>({ "Vector3: Source", "Number: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<DivideByNumberNode>({ "Vector3: Source", "Number: Divisor" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -2952,7 +2974,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 1, 1);
         Data::Vector3Type b(2, 2, 2);
         Data::Vector3Type c = a / b;
-        auto output = TestMathFunction<DivideByVectorNode>({ "Vector3: Numerator", "Vector3: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<DivideByVectorNode>({ "Vector3: Numerator", "Vector3: Divisor" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -2960,7 +2982,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 2, 3);
         Data::Vector3Type b(-3, -2, -1);
         auto result = a.Dot(b);
-        auto output = TestMathFunction<DotNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DotNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -2972,7 +2994,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         {
             auto result = source;
             result.SetElement(index, 4.0f);
-            auto output = TestMathFunction<FromElementNode>({ "Vector3: Source", "Number: Index", "Number: Value" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index), Datum::CreateInitializedCopy(4.0) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+            auto output = TestMathFunction<FromElementNode>({ "Vector3: Source", "Number: Index", "Number: Value" }, { Datum(source), Datum(index), Datum(4.0) }, { "Result: Vector3" }, { Datum(zero) });
             EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
         }
     }
@@ -2982,7 +3004,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::NumberType length(10);
         auto result = source;
         result.SetLength(Data::ToVectorFloat(length));
-        auto output = TestMathFunction<FromLengthNode>({ "Vector3: Source", "Number: Length" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(length) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromLengthNode>({ "Vector3: Source", "Number: Length" }, { Datum(source), Datum(length) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 #endif
@@ -2992,7 +3014,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::NumberType y(2);
         Data::NumberType z(3);
         auto result = Data::Vector3Type(Data::ToVectorFloat(x), Data::ToVectorFloat(y), Data::ToVectorFloat(z));
-        auto output = TestMathFunction<FromValuesNode>({ "Number: X", "Number: Y", "Number: Z" }, { Datum::CreateInitializedCopy(x), Datum::CreateInitializedCopy(y), Datum::CreateInitializedCopy(z) }, { "Result: Vector3", }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromValuesNode>({ "Number: X", "Number: Y", "Number: Z" }, { Datum(x), Datum(y), Datum(z) }, { "Result: Vector3", }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -3002,26 +3024,26 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type c(1.001, 1.001, 1.001);
 
         bool resultFalse = a.IsClose(b);
-        auto output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
 
         bool resultTrue = a.IsClose(b, Data::ToVectorFloat(2.1));
-        output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(2.1) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(2.1) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultTrue = a.IsClose(c);
-        output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(c) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(c) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultFalse = a.IsClose(b, Data::ToVectorFloat(0.9));
-        output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(0.9) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsCloseNode>({ "Vector3: A", "Vector3: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(0.9) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsFinite
         Data::Vector3Type sourceFinite(1, 1, 1);
         auto result = sourceFinite.IsFinite();
-        auto output = TestMathFunction<IsFiniteNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(sourceFinite) }, { "Result: Boolean", }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Vector3: Source" }, { Datum(sourceFinite) }, { "Result: Boolean", }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
@@ -3032,27 +3054,27 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
 
         {
             auto result = normal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(normal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source" }, { Datum(normal) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
 
         {
             auto result = nearlyNormal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(nearlyNormal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source" }, { Datum(nearlyNormal) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
             result = nearlyNormal.IsNormalized(2.0f);
-            output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source", "Number: Tolerance" }, { Datum::CreateInitializedCopy(nearlyNormal), Datum::CreateInitializedCopy(2.0f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source", "Number: Tolerance" }, { Datum(nearlyNormal), Datum(2.0f) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
 
         {
             auto result = notNormal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(notNormal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source" }, { Datum(notNormal) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
             result = notNormal.IsNormalized(12.0f);
-            output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source", "Number: Tolerance" }, { Datum::CreateInitializedCopy(notNormal), Datum::CreateInitializedCopy(12.0f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            output = TestMathFunction<IsNormalizedNode>({ "Vector3: Source", "Number: Tolerance" }, { Datum(notNormal), Datum(12.0f) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
     }
@@ -3062,42 +3084,42 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type y(0.f, 1.f, 0.f);
 
         auto result = x.IsPerpendicular(x);
-        auto output = TestMathFunction<IsPerpendicularNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(x), Datum::CreateInitializedCopy(x) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsPerpendicularNode>({ "Vector3: A", "Vector3: B" }, { Datum(x), Datum(x) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
         result = x.IsPerpendicular(y);
-        output = TestMathFunction<IsPerpendicularNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(x), Datum::CreateInitializedCopy(y) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsPerpendicularNode>({ "Vector3: A", "Vector3: B" }, { Datum(x), Datum(y) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsZero
         auto result = zero.IsZero();
-        auto output = TestMathFunction<IsZeroNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(zero) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsZeroNode>({ "Vector3: Source" }, { Datum(zero) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
         result = one.IsZero();
-        output = TestMathFunction<IsZeroNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(one) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsZeroNode>({ "Vector3: Source" }, { Datum(one) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // Length
         Data::Vector3Type source(1, 2, 3);
         auto result = source.GetLength();
-        auto output = TestMathFunction<LengthNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthReciprocal
         Data::Vector3Type source(1, 2, 3);
         auto result = source.GetLengthReciprocal();
-        auto output = TestMathFunction<LengthReciprocalNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthReciprocalNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
         Data::Vector3Type source(1, 2, 3);
         auto result = source.GetLengthSq();
-        auto output = TestMathFunction<LengthSquaredNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthSquaredNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -3107,7 +3129,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::NumberType t(0.5);
 
         auto result = from.Lerp(to, Data::ToVectorFloat(t));
-        auto output = TestMathFunction<LerpNode>({ "Vector3: From", "Vector3: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<LerpNode>({ "Vector3: From", "Vector3: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -3115,7 +3137,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(-1, -1, -1);
         Data::Vector3Type b(1, 1, 1);
         auto result = a.GetMax(b);
-        auto output = TestMathFunction<MaxNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MaxNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -3123,7 +3145,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(-1, -1, -1);
         Data::Vector3Type b(1, 1, 1);
         auto result = a.GetMin(b);
-        auto output = TestMathFunction<MinNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MinNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -3131,7 +3153,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // ModXNode
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModXNode>({ "Vector3: Source", "Number: X" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModXNode>({ "Vector3: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = a;
         result.SetX(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
@@ -3141,7 +3163,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // ModYNode
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModYNode>({ "Vector3: Source", "Number: Y" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModYNode>({ "Vector3: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = a;
         result.SetY(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
@@ -3151,7 +3173,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // ModZNode
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModZNode>({ "Vector3: Source", "Number: Z" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModZNode>({ "Vector3: Source", "Number: Z" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = a;
         result.SetZ(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
@@ -3163,7 +3185,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type b(3, 3, 3);
         Data::Vector3Type c(4, 4, 4);
         auto result = a.GetMadd(b, c);
-        auto output = TestMathFunction<MultiplyAddNode>({ "Vector3: A", "Vector3: B", "Vector3: C" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(c) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<MultiplyAddNode>({ "Vector3: A", "Vector3: B", "Vector3: C" }, { Datum(a), Datum(b), Datum(c) }, { "Result: Vector3" }, { Datum(a) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 #endif
@@ -3172,7 +3194,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(3.0);
         auto result = a * Data::ToVectorFloat(b);
-        auto output = TestMathFunction<MultiplyByNumberNode>({ "Vector3: Source", "Number: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MultiplyByNumberNode>({ "Vector3: Source", "Number: Multiplier" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -3180,25 +3202,25 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 1, 1);
         Data::Vector3Type b(2, 2, 2);
         Data::Vector3Type c = a * b;
-        auto output = TestMathFunction<MultiplyByVectorNode>({ "Vector3: Source", "Vector3: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<MultiplyByVectorNode>({ "Vector3: Source", "Vector3: Multiplier" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
     {   // Negate
         Data::Vector3Type source = one;
-        auto output = TestMathFunction<NegateNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<NegateNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = -source;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
 
         source = negativeOne;
-        output = TestMathFunction<NegateNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        output = TestMathFunction<NegateNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(zero) });
         result = -source;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
     { // Normalize
         Data::Vector3Type source = one;
-        auto output = TestMathFunction<NormalizeNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<NormalizeNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = source.GetNormalizedSafe();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
@@ -3206,7 +3228,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // NormalizeWithLength
         Data::Vector3Type source = one;
-        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Normalized: Vector3", "Length: Number" }, { Datum::CreateInitializedCopy(zero), Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector3: Source" }, { Datum(source) }, { "Normalized: Vector3", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeSafeWithLength();
         EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::Vector3Type>()));
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
@@ -3216,7 +3238,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     { // Project
         Data::Vector3Type a(1, 1, 1);
         Data::Vector3Type b(-2, -2, -2);
-        auto output = TestMathFunction<ProjectNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<ProjectNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(a) });
         a.Project(b);
         EXPECT_TRUE(a.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
@@ -3224,7 +3246,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     { // Reciprocal
         Data::Vector3Type source(2, 2, 2);
         Data::Vector3Type result = source.GetReciprocal();
-        auto output = TestMathFunction<ReciprocalNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<ReciprocalNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(source) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -3232,7 +3254,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     { // Sine
         Data::Vector3Type source(.75, .75, .75);
         Data::Vector3Type result = source.GetSin();
-        auto output = TestMathFunction<SineNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<SineNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(source) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }    
 
@@ -3240,7 +3262,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type source(.75, .75, .75);
         Data::Vector3Type sine, cosine;
         source.GetSinCos(sine, cosine);
-        auto output = TestMathFunction<SineCosineNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Sine: Vector3", "Cosine: Vector3" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<SineCosineNode>({ "Vector3: Source" }, { Datum(source) }, { "Sine: Vector3", "Cosine: Vector3" }, { Datum(source), Datum(source) });
         EXPECT_TRUE(sine.IsClose(*output[0].GetAs<Data::Vector3Type>()));
         EXPECT_TRUE(cosine.IsClose(*output[1].GetAs<Data::Vector3Type>()));
     }
@@ -3249,14 +3271,14 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     { // Slerp
         Data::Vector3Type from(0.f, 0.f, 0.f);
         Data::Vector3Type to(1.f, 1.f, 1.f);
-        Data::NumberType t(0.5);
+        Data::NumberType t(0.25); // note that slerp and lerp are equal at t=0, t=0.5, and t=1.0 in this case, so 0.25 is used.
 
         auto slerp = from.Slerp(to, Data::ToVectorFloat(t));
-        auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector3: From", "Vector3: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector3: From", "Vector3: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(slerp.IsClose(*outputSlerp[0].GetAs<Data::Vector3Type>()));
 
         auto lerp = from.Lerp(to, Data::ToVectorFloat(t));
-        auto outputLerp = TestMathFunction<LerpNode>({ "Vector3: From", "Vector3: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(zero) });
+        auto outputLerp = TestMathFunction<LerpNode>({ "Vector3: From", "Vector3: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector3" }, { Datum(zero) });
         EXPECT_TRUE(lerp.IsClose(*outputLerp[0].GetAs<Data::Vector3Type>()));
 
         EXPECT_NE(lerp, slerp);
@@ -3267,7 +3289,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         Data::Vector3Type a(1, 1, 1);
         Data::Vector3Type b(2, 2, 2);
         Data::Vector3Type c = a - b;
-        auto output = TestMathFunction<SubtractNode>({ "Vector3: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<SubtractNode>({ "Vector3: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
@@ -3277,7 +3299,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         for (int index = 0; index < 3; ++index)
         {
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
-            auto output = TestMathFunction<GetElementNode>({ "Vector3: Source", "Number: Index" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+            auto output = TestMathFunction<GetElementNode>({ "Vector3: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
             EXPECT_FLOAT_EQ(result, outputNumber);
         }
@@ -3287,21 +3309,21 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     { // XAxisCross
         Data::Vector3Type source(.75, .75, .75);
         auto result = source.XAxisCross();
-        auto output = TestMathFunction<XAxisCrossNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<XAxisCrossNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(source) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
     { // YAxisCross
         Data::Vector3Type source(.75, .75, .75);
         auto result = source.YAxisCross();
-        auto output = TestMathFunction<YAxisCrossNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<YAxisCrossNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(source) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
     { // ZAxisCross
         Data::Vector3Type source(.75, .75, .75);
         auto result = source.ZAxisCross();
-        auto output = TestMathFunction<ZAxisCrossNode>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector3" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<ZAxisCrossNode>({ "Vector3: Source" }, { Datum(source) }, { "Result: Vector3" }, { Datum(source) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 #endif
@@ -3320,7 +3342,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // Absolute
         Data::Vector4Type source(-1, -1, -1., -1.);
         Data::Vector4Type absolute = source.GetAbs();
-        auto output = TestMathFunction<AbsoluteNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<AbsoluteNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Vector4" }, { Datum(source) });
         EXPECT_TRUE(absolute.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -3328,7 +3350,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 1, 1, 1);
         Data::Vector4Type b(1, 1, 1, 1);
         Data::Vector4Type c = a + b;
-        auto output = TestMathFunction<AddNode>({ "Vector4: A", "Vector4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<AddNode>({ "Vector4: A", "Vector4: B" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -3336,7 +3358,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(3.0);
         auto result = a / Data::ToVectorFloat(b);
-        auto output = TestMathFunction<DivideByNumberNode>({ "Vector4: Source", "Number: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<DivideByNumberNode>({ "Vector4: Source", "Number: Divisor" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -3344,7 +3366,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 1, 1, 1);
         Data::Vector4Type b(2, 2, 2, 2);
         Data::Vector4Type c = a / b;
-        auto output = TestMathFunction<DivideByVectorNode>({ "Vector4: Numerator", "Vector4: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<DivideByVectorNode>({ "Vector4: Numerator", "Vector4: Divisor" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -3352,7 +3374,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 2, 3, 4);
         Data::Vector4Type b(-4, -3, -2, -1);
         auto result = a.Dot(b);
-        auto output = TestMathFunction<DotNode>({ "Vector4: A", "Vector4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DotNode>({ "Vector4: A", "Vector4: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -3361,7 +3383,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 2, 3, 4);
         Data::Vector3Type b(-4, -3, -2);
         auto result = a.Dot3(b);
-        auto output = TestMathFunction<Dot3Node>({ "Vector4: A", "Vector3: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<Dot3Node>({ "Vector4: A", "Vector3: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -3372,7 +3394,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         {
             auto result = source;
             result.SetElement(index, 5.0f);
-            auto output = TestMathFunction<FromElementNode>({ "Vector4: Source", "Number: Index", "Number: Value" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index), Datum::CreateInitializedCopy(5.0) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+            auto output = TestMathFunction<FromElementNode>({ "Vector4: Source", "Number: Index", "Number: Value" }, { Datum(source), Datum(index), Datum(5.0) }, { "Result: Vector4" }, { Datum(zero) });
             EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
         }
     }
@@ -3384,14 +3406,14 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::NumberType z(3);
         Data::NumberType w(4);
         auto result = Data::Vector4Type(Data::ToVectorFloat(x), Data::ToVectorFloat(y), Data::ToVectorFloat(z), Data::ToVectorFloat(w));
-        auto output = TestMathFunction<FromValuesNode>({ "Number: X", "Number: Y", "Number: Z", "Number: W" }, { Datum::CreateInitializedCopy(x), Datum::CreateInitializedCopy(y), Datum::CreateInitializedCopy(z), Datum::CreateInitializedCopy(w) }, { "Result: Vector4", }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<FromValuesNode>({ "Number: X", "Number: Y", "Number: Z", "Number: W" }, { Datum(x), Datum(y), Datum(z), Datum(w) }, { "Result: Vector4", }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // GetElements
         auto source = Vector4Type(1, 2, 3, 4);
-        auto output = TestMathFunction<GetElementsNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "X: Number", "Y: Number", "Z: Number", "W: Number" }, { Datum::CreateInitializedCopy(0), Datum::CreateInitializedCopy(0), Datum::CreateInitializedCopy(0), Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<GetElementsNode>({ "Vector4: Source" }, { Datum(source) }, { "X: Number", "Y: Number", "Z: Number", "W: Number" }, { Datum(0), Datum(0), Datum(0), Datum(0) });
         EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
         EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
         EXPECT_FLOAT_EQ(source.GetZ(), aznumeric_caster(*output[2].GetAs<Data::NumberType>()));
@@ -3405,26 +3427,26 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type c(1.001, 1.001, 1.001, 1.001);
 
         bool resultFalse = a.IsClose(b);
-        auto output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
 
         bool resultTrue = a.IsClose(b, Data::ToVectorFloat(2.1));
-        output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(2.1) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(2.1) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultTrue = a.IsClose(c);
-        output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(c) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B" }, { Datum(a), Datum(c) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultFalse = a.IsClose(b, Data::ToVectorFloat(0.9));
-        output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(0.9) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsCloseNode>({ "Vector4: A", "Vector4: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(0.9) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsFinite
         Data::Vector4Type sourceFinite(1, 1, 1, 1);
         auto result = sourceFinite.IsFinite();
-        auto output = TestMathFunction<IsFiniteNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(sourceFinite) }, { "Result: Boolean", }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Vector4: Source" }, { Datum(sourceFinite) }, { "Result: Boolean", }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
@@ -3435,59 +3457,59 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
 
         {
             auto result = normal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(normal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source" }, { Datum(normal) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
 
         {
             auto result = nearlyNormal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(nearlyNormal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source" }, { Datum(nearlyNormal) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
             result = nearlyNormal.IsNormalized(2.0f);
-            output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source", "Number: Tolerance" }, { Datum::CreateInitializedCopy(nearlyNormal), Datum::CreateInitializedCopy(2.0f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+            output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source", "Number: Tolerance" }, { Datum(nearlyNormal), Datum(2.0f) }, { "Result: Boolean" }, { Datum(false) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
 
         {
             auto result = notNormal.IsNormalized();
-            auto output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(notNormal) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            auto output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source" }, { Datum(notNormal) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
             result = notNormal.IsNormalized(12.0f);
-            output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source", "Number: Tolerance" }, { Datum::CreateInitializedCopy(notNormal), Datum::CreateInitializedCopy(12.0f) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+            output = TestMathFunction<IsNormalizedNode>({ "Vector4: Source", "Number: Tolerance" }, { Datum(notNormal), Datum(12.0f) }, { "Result: Boolean" }, { Datum(true) });
             EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
         }
     }
 
     { // IsZero
         auto result = zero.IsZero();
-        auto output = TestMathFunction<IsZeroNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(zero) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsZeroNode>({ "Vector4: Source" }, { Datum(zero) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
         result = one.IsZero();
-        output = TestMathFunction<IsZeroNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(one) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsZeroNode>({ "Vector4: Source" }, { Datum(one) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // Length
         Data::Vector4Type source(1, 2, 3, 4);
         auto result = source.GetLength();
-        auto output = TestMathFunction<LengthNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthReciprocal
         Data::Vector4Type source(1, 2, 3, 4);
         auto result = source.GetLengthReciprocal();
-        auto output = TestMathFunction<LengthReciprocalNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthReciprocalNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
         Data::Vector4Type source(1, 2, 3, 4);
         auto result = source.GetLengthSq();
-        auto output = TestMathFunction<LengthSquaredNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthSquaredNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
@@ -3495,7 +3517,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // ModXNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModXNode>({ "Vector4: Source", "Number: X" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModXNode>({ "Vector4: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetX(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
@@ -3505,7 +3527,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // ModYNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModYNode>({ "Vector4: Source", "Number: Y" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModYNode>({ "Vector4: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetY(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
@@ -3515,7 +3537,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // ModZNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModZNode>({ "Vector4: Source", "Number: Z" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModZNode>({ "Vector4: Source", "Number: Z" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetZ(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
@@ -3525,7 +3547,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // ModWNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModWNode>({ "Vector4: Source", "Number: W" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<ModWNode>({ "Vector4: Source", "Number: W" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetW(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
@@ -3537,7 +3559,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(3.0);
         auto result = a * Data::ToVectorFloat(b);
-        auto output = TestMathFunction<MultiplyByNumberNode>({ "Vector4: Source", "Number: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<MultiplyByNumberNode>({ "Vector4: Source", "Number: Multiplier" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -3545,25 +3567,25 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 1, 1, 1);
         Data::Vector4Type b(2, 2, 2, 2);
         Data::Vector4Type c = a * b;
-        auto output = TestMathFunction<MultiplyByVectorNode>({ "Vector4: Source", "Vector4: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<MultiplyByVectorNode>({ "Vector4: Source", "Vector4: Multiplier" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
     {   // Negate
         Data::Vector4Type source = one;
-        auto output = TestMathFunction<NegateNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<NegateNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = -source;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
 
         source = negativeOne;
-        output = TestMathFunction<NegateNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        output = TestMathFunction<NegateNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Vector4" }, { Datum(zero) });
         result = -source;
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
     { // Normalize
         Data::Vector4Type source = one;
-        auto output = TestMathFunction<NormalizeNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(zero) });
+        auto output = TestMathFunction<NormalizeNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = source.GetNormalizedSafe();
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
@@ -3571,7 +3593,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // NormalizeWithLength
         Data::Vector4Type source = one;
-        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Normalized: Vector4", "Length: Number" }, { Datum::CreateInitializedCopy(zero), Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Vector4: Source" }, { Datum(source) }, { "Normalized: Vector4", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeSafeWithLength();
         EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::Vector4Type>()));
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
@@ -3581,7 +3603,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     { // Reciprocal
         Data::Vector4Type source(2, 2, 2, 2);
         Data::Vector4Type result = source.GetReciprocal();
-        auto output = TestMathFunction<ReciprocalNode>({ "Vector4: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(source) });
+        auto output = TestMathFunction<ReciprocalNode>({ "Vector4: Source" }, { Datum(source) }, { "Result: Vector4" }, { Datum(source) });
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -3589,7 +3611,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         Data::Vector4Type a(1, 1, 1, 1);
         Data::Vector4Type b(2, 2, 2, 2);
         Data::Vector4Type c = a - b;
-        auto output = TestMathFunction<SubtractNode>({ "Vector4: A", "Vector4: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Vector4" }, { Datum::CreateInitializedCopy(a) });
+        auto output = TestMathFunction<SubtractNode>({ "Vector4: A", "Vector4: B" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(a) });
         EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::Vector4Type>()));
     }
 
@@ -3599,7 +3621,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         for (int index = 0; index < 4; ++index)
         {
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
-            auto output = TestMathFunction<GetElementNode>({ "Vector4: Source", "Number: Index" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+            auto output = TestMathFunction<GetElementNode>({ "Vector4: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
             EXPECT_FLOAT_EQ(result, outputNumber);
         }
@@ -3611,97 +3633,97 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
 
 } // Test Vector4Node
 
-TEST_F(ScriptCanvasTestFixture, RotationNodes)
+TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
 {
     using namespace ScriptCanvas;
     using namespace Nodes;
-    using namespace ScriptCanvas::RotationNodes;
-    const Data::RotationType esclates(0.125, 0.25, 0.50, 0.75);
-    const Data::RotationType negativeOne(-1.f, -1.f, -1.f, -1.f);
-    const Data::RotationType one(1.f, 1.f, 1.f, 1.f);
-    const Data::RotationType zero(0, 0, 0, 0);
-    const Data::RotationType identity(Data::RotationType::CreateIdentity());
+    using namespace ScriptCanvas::QuaternionNodes;
+    const Data::QuaternionType esclates(0.125, 0.25, 0.50, 0.75);
+    const Data::QuaternionType negativeOne(-1.f, -1.f, -1.f, -1.f);
+    const Data::QuaternionType one(1.f, 1.f, 1.f, 1.f);
+    const Data::QuaternionType zero(0, 0, 0, 0);
+    const Data::QuaternionType identity(Data::QuaternionType::CreateIdentity());
 
     {   // Add
-        Data::RotationType a(1, 1, 1, 1);
-        Data::RotationType b(1, 1, 1, 1);
-        Data::RotationType c = a + b;
-        auto output = TestMathFunction<AddNode>({ "Rotation: A", "Rotation: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(a) });
-        EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::RotationType>()));
+        Data::QuaternionType a(1, 1, 1, 1);
+        Data::QuaternionType b(1, 1, 1, 1);
+        Data::QuaternionType c = a + b;
+        auto output = TestMathFunction<AddNode>({ "Quaternion: A", "Quaternion: B" }, { Datum(a), Datum(b) }, { "Result: Quaternion" }, { Datum(a) });
+        EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     {   // Conjugate
-        Data::RotationType source = esclates;
-        auto output = TestMathFunction<ConjugateNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(zero) });
+        Data::QuaternionType source = esclates;
+        auto output = TestMathFunction<ConjugateNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Quaternion" }, { Datum(zero) });
         auto result = esclates.GetConjugate();
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     {   // DivideByNumber
-        Data::RotationType a(1, 2, 3, 4);
+        Data::QuaternionType a(1, 2, 3, 4);
         Data::NumberType b(3.0);
         auto result = a / Data::ToVectorFloat(b);
-        auto output = TestMathFunction<DivideByNumberNode>({ "Rotation: Numerator", "Number: Divisor" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(zero) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto output = TestMathFunction<DivideByNumberNode>({ "Quaternion: Numerator", "Number: Divisor" }, { Datum(a), Datum(b) }, { "Result: Quaternion" }, { Datum(zero) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // Dot
-        Data::RotationType a(1, 2, 3, 4);
-        Data::RotationType b(-4, -3, -2, -1);
+        Data::QuaternionType a(1, 2, 3, 4);
+        Data::QuaternionType b(-4, -3, -2, -1);
         auto result = a.Dot(b);
-        auto output = TestMathFunction<DotNode>({ "Rotation: A", "Rotation: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0.0) });
+        auto output = TestMathFunction<DotNode>({ "Quaternion: A", "Quaternion: B" }, { Datum(a), Datum(b) }, { "Result: Number" }, { Datum(0.0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // From AxisAngleDegrees
         const Vector3Type axis = Vector3Type(1, 1, 1).GetNormalized();
         const float angle(2.0);
-        auto result = RotationType::CreateFromAxisAngle(axis, AZ::DegToRad(angle));
-        auto output = TestMathFunction<FromAxisAngleDegreesNode>({ "Vector3: Axis", "Number: Degrees" }, { Datum::CreateInitializedCopy(axis), Datum::CreateInitializedCopy(angle) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto result = QuaternionType::CreateFromAxisAngle(axis, AZ::DegToRad(angle));
+        auto output = TestMathFunction<FromAxisAngleDegreesNode>({ "Vector3: Axis", "Number: Degrees" }, { Datum(axis), Datum(angle) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // From Element
-        const Data::RotationType source(1, 2, 3, 4);
+        const Data::QuaternionType source(1, 2, 3, 4);
 
         for (int index = 0; index < 4; ++index)
         {
             auto result = source;
             result.SetElement(index, 5.0f);
-            auto output = TestMathFunction<FromElementNode>({ "Rotation: Source", "Number: Index", "Number: Value" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index), Datum::CreateInitializedCopy(5.0) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(zero) });
-            EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+            auto output = TestMathFunction<FromElementNode>({ "Quaternion: Source", "Number: Index", "Number: Value" }, { Datum(source), Datum(index), Datum(5.0) }, { "Result: Quaternion" }, { Datum(zero) });
+            EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
         }
     }
 #endif
 
     { // FromMatrix3x3
         const Matrix3x3Type matrix = Matrix3x3Type::CreateFromValue(3.0);
-        auto result = RotationType::CreateFromMatrix3x3(matrix);
-        auto output = TestMathFunction<FromMatrix3x3Node>({ "Matrix3x3: Source" }, { Datum::CreateInitializedCopy(matrix) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto result = QuaternionType::CreateFromMatrix3x3(matrix);
+        auto output = TestMathFunction<FromMatrix3x3Node>({ "Matrix3x3: Source" }, { Datum(matrix) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // FromMatrix4x4
         const Matrix4x4Type matrix = Matrix4x4Type::CreateFromValue(3.0);
-        auto result = RotationType::CreateFromMatrix4x4(matrix);
-        auto output = TestMathFunction<FromMatrix4x4Node>({ "Matrix4x4: Source" }, { Datum::CreateInitializedCopy(matrix) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto result = QuaternionType::CreateFromMatrix4x4(matrix);
+        auto output = TestMathFunction<FromMatrix4x4Node>({ "Matrix4x4: Source" }, { Datum(matrix) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // FromTransform
         const TransformType transform = TransformType::CreateFromValue(3.0);
-        auto result = RotationType::CreateFromTransform(transform);
-        auto output = TestMathFunction<FromTransformNode>({ "Transform: Source" }, { Datum::CreateInitializedCopy(transform) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto result = QuaternionType::CreateFromTransform(transform);
+        auto output = TestMathFunction<FromTransformNode>({ "Transform: Source" }, { Datum(transform) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // FromVector3
         const Vector3Type vector3 = Vector3Type(3, 3, 3);
-        auto result = RotationType::CreateFromVector3(vector3);
-        auto output = TestMathFunction<FromVector3Node>({ "Vector3: Source" }, { Datum::CreateInitializedCopy(vector3) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto result = QuaternionType::CreateFromVector3(vector3);
+        auto output = TestMathFunction<FromVector3Node>({ "Vector3: Source" }, { Datum(vector3) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     // Note: This is just raw setting the elements to the value, it is not creating from axis and angle
@@ -3710,14 +3732,14 @@ TEST_F(ScriptCanvasTestFixture, RotationNodes)
     { // FromVector3AndValueNode
         const Vector3Type axis = Vector3Type(1, 1, 1).GetNormalized();
         const float angle(2.0);
-        auto result = RotationType::CreateFromVector3AndValue(axis, angle);
-        auto output = TestMathFunction<FromVector3AndValueNode>({ "Vector3: Imaginary", "Number: Real" }, { Datum::CreateInitializedCopy(axis), Datum::CreateInitializedCopy(angle) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto result = QuaternionType::CreateFromVector3AndValue(axis, angle);
+        auto output = TestMathFunction<FromVector3AndValueNode>({ "Vector3: Imaginary", "Number: Real" }, { Datum(axis), Datum(angle) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // GetElements
-        auto source = RotationType(1, 2, 3, 4);
-        auto output = TestMathFunction<GetElementsNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "X: Number", "Y: Number", "Z: Number", "W: Number" }, { Datum::CreateInitializedCopy(0), Datum::CreateInitializedCopy(0), Datum::CreateInitializedCopy(0), Datum::CreateInitializedCopy(0) });
+        auto source = QuaternionType(1, 2, 3, 4);
+        auto output = TestMathFunction<GetElementsNode>({ "Quaternion: Source" }, { Datum(source) }, { "X: Number", "Y: Number", "Z: Number", "W: Number" }, { Datum(0), Datum(0), Datum(0), Datum(0) });
         EXPECT_FLOAT_EQ(source.GetX(), aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
         EXPECT_FLOAT_EQ(source.GetY(), aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
         EXPECT_FLOAT_EQ(source.GetZ(), aznumeric_caster(*output[2].GetAs<Data::NumberType>()));
@@ -3726,209 +3748,209 @@ TEST_F(ScriptCanvasTestFixture, RotationNodes)
 #endif
 
     { // InvertFullNode
-        const RotationType source = RotationType::CreateFromVector3AndValue(AZ::Vector3(1, 1, 1), 3);
+        const QuaternionType source = QuaternionType::CreateFromVector3AndValue(AZ::Vector3(1, 1, 1), 3);
         auto result = source.GetInverseFull();
-        auto output = TestMathFunction<InvertFullNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto output = TestMathFunction<InvertFullNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // IsCloseNode
-        Data::RotationType a(1, 1, 1, 1);
-        Data::RotationType b(2, 2, 2, 2);
-        Data::RotationType c(1.001, 1.001, 1.001, 1.001);
+        Data::QuaternionType a(1, 1, 1, 1);
+        Data::QuaternionType b(2, 2, 2, 2);
+        Data::QuaternionType c(1.001, 1.001, 1.001, 1.001);
 
         bool resultFalse = a.IsClose(b);
-        auto output = TestMathFunction<IsCloseNode>({ "Rotation: A", "Rotation: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsCloseNode>({ "Quaternion: A", "Quaternion: B" }, { Datum(a), Datum(b) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
 
         bool resultTrue = a.IsClose(b, Data::ToVectorFloat(2.1));
-        output = TestMathFunction<IsCloseNode>({ "Rotation: A", "Rotation: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(2.1) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Quaternion: A", "Quaternion: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(2.1) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultTrue = a.IsClose(c);
-        output = TestMathFunction<IsCloseNode>({ "Rotation: A", "Rotation: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(c) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        output = TestMathFunction<IsCloseNode>({ "Quaternion: A", "Quaternion: B" }, { Datum(a), Datum(c) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(resultTrue, *output[0].GetAs<Data::BooleanType>());
 
         resultFalse = a.IsClose(b, Data::ToVectorFloat(0.9));
-        output = TestMathFunction<IsCloseNode>({ "Rotation: A", "Rotation: B", "Number: Tolerance" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b), Datum::CreateInitializedCopy(0.9) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsCloseNode>({ "Quaternion: A", "Quaternion: B", "Number: Tolerance" }, { Datum(a), Datum(b), Datum(0.9) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(resultFalse, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsFinite
-        Data::RotationType sourceFinite(1, 1, 1, 1);
+        Data::QuaternionType sourceFinite(1, 1, 1, 1);
         auto result = sourceFinite.IsFinite();
-        auto output = TestMathFunction<IsFiniteNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(sourceFinite) }, { "Result: Boolean", }, { Datum::CreateInitializedCopy(true) });
+        auto output = TestMathFunction<IsFiniteNode>({ "Quaternion: Source" }, { Datum(sourceFinite) }, { "Result: Boolean", }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsIdentityNode
         auto result = identity.IsIdentity();
-        auto output = TestMathFunction<IsIdentityNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(identity) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsIdentityNode>({ "Quaternion: Source" }, { Datum(identity) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
         result = zero.IsIdentity();
-        output = TestMathFunction<IsIdentityNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(zero) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsIdentityNode>({ "Quaternion: Source" }, { Datum(zero) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // IsZero
         auto result = zero.IsZero();
-        auto output = TestMathFunction<IsZeroNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(zero) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(false) });
+        auto output = TestMathFunction<IsZeroNode>({ "Quaternion: Source" }, { Datum(zero) }, { "Result: Boolean" }, { Datum(false) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
 
         result = one.IsZero();
-        output = TestMathFunction<IsZeroNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(one) }, { "Result: Boolean" }, { Datum::CreateInitializedCopy(true) });
+        output = TestMathFunction<IsZeroNode>({ "Quaternion: Source" }, { Datum(one) }, { "Result: Boolean" }, { Datum(true) });
         EXPECT_EQ(result, *output[0].GetAs<Data::BooleanType>());
     }
 
     { // Length
-        Data::RotationType source(1, 2, 3, 4);
+        Data::QuaternionType source(1, 2, 3, 4);
         auto result = source.GetLength();
-        auto output = TestMathFunction<LengthNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthReciprocal
-        Data::RotationType source(1, 2, 3, 4);
+        Data::QuaternionType source(1, 2, 3, 4);
         auto result = source.GetLengthReciprocal();
-        auto output = TestMathFunction<LengthReciprocalNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthReciprocalNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // LengthSquared
-        Data::RotationType source(1, 2, 3, 4);
+        Data::QuaternionType source(1, 2, 3, 4);
         auto result = source.GetLengthSq();
-        auto output = TestMathFunction<LengthSquaredNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        auto output = TestMathFunction<LengthSquaredNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
     { // Lerp
-        Data::RotationType from(zero);
-        Data::RotationType to(Data::RotationType::CreateFromAxisAngle(AZ::Vector3(1, 1, 1).GetNormalized(), 0.75));
+        Data::QuaternionType from(zero);
+        Data::QuaternionType to(Data::QuaternionType::CreateFromAxisAngle(AZ::Vector3(1, 1, 1).GetNormalized(), 0.75));
         Data::NumberType t(0.5);
 
         auto result = from.Lerp(to, Data::ToVectorFloat(t));
-        auto output = TestMathFunction<LerpNode>({ "Rotation: From", "Rotation: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto output = TestMathFunction<LerpNode>({ "Quaternion: From", "Quaternion: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     {   // MultiplyByNumber
-        Data::RotationType a(1, 2, 3, 4);
+        Data::QuaternionType a(1, 2, 3, 4);
         Data::NumberType b(3.0);
         auto result = a * Data::ToVectorFloat(b);
-        auto output = TestMathFunction<MultiplyByNumberNode>({ "Rotation: Source", "Number: Multiplier" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(zero) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto output = TestMathFunction<MultiplyByNumberNode>({ "Quaternion: Source", "Number: Multiplier" }, { Datum(a), Datum(b) }, { "Result: Quaternion" }, { Datum(zero) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     {  // MultiplyByRotation
-        Data::RotationType a(1, 1, 1, 1);
-        Data::RotationType b(2, 2, 2, 2);
-        Data::RotationType c = a * b;
-        auto output = TestMathFunction<MultiplyByRotationNode>({ "Rotation: A", "Rotation: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(a) });
-        EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::RotationType>()));
+        Data::QuaternionType a(1, 1, 1, 1);
+        Data::QuaternionType b(2, 2, 2, 2);
+        Data::QuaternionType c = a * b;
+        auto output = TestMathFunction<MultiplyByRotationNode>({ "Quaternion: A", "Quaternion: B" }, { Datum(a), Datum(b) }, { "Result: Quaternion" }, { Datum(a) });
+        EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     {   // Negate
-        Data::RotationType source = one;
-        auto output = TestMathFunction<NegateNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(zero) });
+        Data::QuaternionType source = one;
+        auto output = TestMathFunction<NegateNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Quaternion" }, { Datum(zero) });
         auto result = -source;
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
 
         source = negativeOne;
-        output = TestMathFunction<NegateNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(zero) });
+        output = TestMathFunction<NegateNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Quaternion" }, { Datum(zero) });
         result = -source;
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // Normalize
-        Data::RotationType source = one;
-        auto output = TestMathFunction<NormalizeNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(zero) });
+        Data::QuaternionType source = one;
+        auto output = TestMathFunction<NormalizeNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Quaternion" }, { Datum(zero) });
         auto result = source.GetNormalized();
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // NormalizeWithLength
-        Data::RotationType source = one;
-        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Normalized: Rotation", "Length: Number" }, { Datum::CreateInitializedCopy(zero), Datum::CreateInitializedCopy(0) });
+        Data::QuaternionType source = one;
+        auto output = TestMathFunction<NormalizeWithLengthNode>({ "Quaternion: Source" }, { Datum(source) }, { "Normalized: Quaternion", "Length: Number" }, { Datum(zero), Datum(0) });
         auto result = source.NormalizeWithLength();
-        EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::RotationType>()));
+        EXPECT_TRUE(source.IsClose(*output[0].GetAs<Data::QuaternionType>()));
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[1].GetAs<Data::NumberType>()));
     }
 #endif
 
     { // RotationXDegreesNode
-        auto output = TestMathFunction<RotationXDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(30) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        auto result = RotationType::CreateRotationX(AZ::DegToRad(30));
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<RotationType>()));
+        auto output = TestMathFunction<RotationXDegreesNode>({ "Number: Degrees" }, { Datum(30) }, { "Result: Quaternion" }, { Datum(identity) });
+        auto result = QuaternionType::CreateRotationX(AZ::DegToRad(30));
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<QuaternionType>()));
     }
 
     { // RotationYDegreesNode
-        auto output = TestMathFunction<RotationYDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(30) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        auto result = RotationType::CreateRotationY(AZ::DegToRad(30));
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<RotationType>()));
+        auto output = TestMathFunction<RotationYDegreesNode>({ "Number: Degrees" }, { Datum(30) }, { "Result: Quaternion" }, { Datum(identity) });
+        auto result = QuaternionType::CreateRotationY(AZ::DegToRad(30));
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<QuaternionType>()));
     }
 
     { // RotationZDegreesNode
-        auto output = TestMathFunction<RotationZDegreesNode>({ "Number: Degrees" }, { Datum::CreateInitializedCopy(30) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        auto result = RotationType::CreateRotationZ(AZ::DegToRad(30));
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<RotationType>()));
+        auto output = TestMathFunction<RotationZDegreesNode>({ "Number: Degrees" }, { Datum(30) }, { "Result: Quaternion" }, { Datum(identity) });
+        auto result = QuaternionType::CreateRotationZ(AZ::DegToRad(30));
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<QuaternionType>()));
     }
 
     { // ShortestArcNode
         Data::Vector3Type from(-1, 0, 0);
         Data::Vector3Type to(1, 1, 1);
 
-        auto result = RotationType::CreateShortestArc(from, to);
-        auto output = TestMathFunction<ShortestArcNode>({ "Vector3: From", "Vector3: To" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto result = QuaternionType::CreateShortestArc(from, to);
+        auto output = TestMathFunction<ShortestArcNode>({ "Vector3: From", "Vector3: To" }, { Datum(from), Datum(to) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // Slerp
-        Data::RotationType from(zero);
-        Data::RotationType to(Data::RotationType::CreateFromAxisAngle(AZ::Vector3(1, 1, 1).GetNormalized(), 0.75));
+        Data::QuaternionType from(zero);
+        Data::QuaternionType to(Data::QuaternionType::CreateFromAxisAngle(AZ::Vector3(1, 1, 1).GetNormalized(), 0.75));
         Data::NumberType t(0.5);
 
         auto result = from.Slerp(to, Data::ToVectorFloat(t));
-        auto output = TestMathFunction<SlerpNode>({ "Rotation: From", "Rotation: To", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(t) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto output = TestMathFunction<SlerpNode>({ "Quaternion: From", "Quaternion: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // SquadNode
-        Data::RotationType from(Data::RotationType::CreateFromAxisAngle(Vector3Type(-1, 0, 0).GetNormalized(), 0.75));
-        Data::RotationType to(Data::RotationType::CreateFromAxisAngle(Vector3Type(1, 1, 1).GetNormalized(), 0.75));
-        Data::RotationType out(Data::RotationType::CreateFromAxisAngle(Vector3Type(1, 0, 1).GetNormalized(), 0.75));
-        Data::RotationType in(Data::RotationType::CreateFromAxisAngle(Vector3Type(1, 1, 0).GetNormalized(), 0.75));
+        Data::QuaternionType from(Data::QuaternionType::CreateFromAxisAngle(Vector3Type(-1, 0, 0).GetNormalized(), 0.75));
+        Data::QuaternionType to(Data::QuaternionType::CreateFromAxisAngle(Vector3Type(1, 1, 1).GetNormalized(), 0.75));
+        Data::QuaternionType out(Data::QuaternionType::CreateFromAxisAngle(Vector3Type(1, 0, 1).GetNormalized(), 0.75));
+        Data::QuaternionType in(Data::QuaternionType::CreateFromAxisAngle(Vector3Type(1, 1, 0).GetNormalized(), 0.75));
         Data::NumberType t(0.5);
 
         auto result = from.Squad(to, in, out, Data::ToVectorFloat(t));
-        auto output = TestMathFunction<SquadNode>({ "Rotation: From", "Rotation: To", "Rotation: In", "Rotation: Out", "Number: T" }, { Datum::CreateInitializedCopy(from), Datum::CreateInitializedCopy(to), Datum::CreateInitializedCopy(in), Datum::CreateInitializedCopy(out), Datum::CreateInitializedCopy(t) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(identity) });
-        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::RotationType>()));
+        auto output = TestMathFunction<SquadNode>({ "Quaternion: From", "Quaternion: To", "Quaternion: In", "Quaternion: Out", "Number: T" }, { Datum(from), Datum(to), Datum(in), Datum(out), Datum(t) }, { "Result: Quaternion" }, { Datum(identity) });
+        EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     {   // Subtract
-        Data::RotationType a(1, 1, 1, 1);
-        Data::RotationType b(2, 2, 2, 2);
-        Data::RotationType c = a - b;
-        auto output = TestMathFunction<SubtractNode>({ "Rotation: A", "Rotation: B" }, { Datum::CreateInitializedCopy(a), Datum::CreateInitializedCopy(b) }, { "Result: Rotation" }, { Datum::CreateInitializedCopy(a) });
-        EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::RotationType>()));
+        Data::QuaternionType a(1, 1, 1, 1);
+        Data::QuaternionType b(2, 2, 2, 2);
+        Data::QuaternionType c = a - b;
+        auto output = TestMathFunction<SubtractNode>({ "Quaternion: A", "Quaternion: B" }, { Datum(a), Datum(b) }, { "Result: Quaternion" }, { Datum(a) });
+        EXPECT_TRUE(c.IsClose(*output[0].GetAs<Data::QuaternionType>()));
     }
 
     { // ToAngleDegreesNode
-        Data::RotationType source(Data::RotationType::CreateFromAxisAngle(Vector3Type(-1, 0, 0).GetNormalized(), 0.75));
-        auto output = TestMathFunction<ToAngleDegreesNode>({ "Rotation: Source" }, { Datum::CreateInitializedCopy(source) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+        Data::QuaternionType source(Data::QuaternionType::CreateFromAxisAngle(Vector3Type(-1, 0, 0).GetNormalized(), 0.75));
+        auto output = TestMathFunction<ToAngleDegreesNode>({ "Quaternion: Source" }, { Datum(source) }, { "Result: Number" }, { Datum(0) });
         float result = AZ::RadToDeg(source.GetAngle());
         EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // GetElement
-        const Data::RotationType source(1, 2, 3, 4);
+        const Data::QuaternionType source(1, 2, 3, 4);
 
         for (int index = 0; index < 4; ++index)
         {
             float result = aznumeric_caster(Data::FromVectorFloat(source.GetElement(index)));
-            auto output = TestMathFunction<GetElementNode>({ "Rotation: Source", "Number: Index" }, { Datum::CreateInitializedCopy(source), Datum::CreateInitializedCopy(index) }, { "Result: Number" }, { Datum::CreateInitializedCopy(0) });
+            auto output = TestMathFunction<GetElementNode>({ "Quaternion: Source", "Number: Index" }, { Datum(source), Datum(index) }, { "Result: Number" }, { Datum(0) });
             float outputNumber = aznumeric_caster(*output[0].GetAs<Data::NumberType>());
             EXPECT_FLOAT_EQ(result, outputNumber);
         }
@@ -3942,4 +3964,229 @@ TEST_F(ScriptCanvasTestFixture, RotationNodes)
     // ModWNode
     // ToImaginary
 
-} // Test RotationNode
+} // Test QuaternionNodes
+
+TEST_F(ScriptCanvasTestFixture, RandomNodes)
+{
+    using namespace ScriptCanvas;
+
+    const int testIterations = 10;
+
+    auto transform = Data::TransformType::CreateFromRows(Data::Vector4Type(1.f, 0.f, 0.f, 0.f),
+                                                        Data::Vector4Type(0.f, 1.f, 0.f, 0.f),
+                                                        Data::Vector4Type(0.f, 0.f, 1.f, 0.f));
+
+    { // RandomColor
+        const Data::ColorType min(0.1f, 0.3f, 0.5f, 0.7f);
+        const Data::ColorType max(0.2f, 0.4f, 0.6f, 0.8f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomColorNode>({ "Color: Min", "Color: Max" }, { Datum(min), Datum(max) }, { "Result: Color" }, { Datum(Data::ColorType()) });
+            auto value = *output[0].GetAs<Data::ColorType>();
+            EXPECT_TRUE(value.GetR() >= 0.1f && value.GetR() <= 0.2f);
+            EXPECT_TRUE(value.GetG() >= 0.3f && value.GetG() <= 0.4f);
+            EXPECT_TRUE(value.GetB() >= 0.5f && value.GetB() <= 0.6f);
+            EXPECT_TRUE(value.GetA() >= 0.7f && value.GetA() <= 0.8f);
+        }
+    }
+
+    { // RandomGrayscale
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomGrayscaleNode>({ "Number: Min", "Number: Max" }, { Datum(0.3f), Datum(0.7f) }, { "Result: Color" }, { Datum(Data::ColorType()) });
+            auto value = *output[0].GetAs<Data::ColorType>();
+            EXPECT_TRUE((value.GetR() == value.GetG()) && value.GetR() == value.GetB());
+            EXPECT_TRUE(value.GetR() >= 0.3f && value.GetR() <= 0.7f);
+        }
+    }
+
+    { // RandomInteger
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomIntegerNode>({ "Number: Min", "Number: Max" }, { Datum(9), Datum(99) }, { "Result: Number" }, { Datum(Data::NumberType()) });
+            auto value = *output[0].GetAs<Data::NumberType>();
+            EXPECT_TRUE(value >= 9);
+            EXPECT_TRUE(value <= 99);
+        }
+    }
+
+    { // RandomNumber
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomNumberNode>({ "Number: Min", "Number: Max" }, { Datum(9.f), Datum(99.f) }, { "Result: Number" }, { Datum(Data::NumberType()) });
+            auto value = *output[0].GetAs<Data::NumberType>();
+            EXPECT_TRUE(value >= 9);
+            EXPECT_TRUE(value <= 99);
+        }
+    }
+
+    { // RandomPointInBox
+        Data::Vector3Type dimensions(10.f, 100.f, 1000.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointInBoxNode>({ "Vector3: Dimensions" }, { Datum(dimensions) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            EXPECT_TRUE((value.GetX() >= -5.f) && (value.GetX() <= 5.f));
+            EXPECT_TRUE((value.GetY() >= -50.f) && (value.GetY() <= 50.f));
+            EXPECT_TRUE((value.GetZ() >= -500.f) && (value.GetZ() <= 500.f));
+        }
+    }
+
+    { // RandomPointOnCircle
+        Data::NumberType radius(10.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointOnCircleNode>({ "Number: Radius" }, { Datum(radius) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float lenSq = value.GetLengthSq();
+            EXPECT_FLOAT_EQ(lenSq, aznumeric_cast<float>(radius * radius));
+        }
+    }
+
+    { // RandomPointInCone
+        Data::NumberType radius(10.f);
+        Data::NumberType angleInDegrees(45.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointInConeNode>({ "Number: Radius", "Number: Angle" }, { Datum(radius), Datum(angleInDegrees) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float dot = value.Dot(Data::Vector3Type(0.f, 0.f, 1.f));
+            EXPECT_TRUE(dot >= 0.f);
+            EXPECT_TRUE(dot <= radius);
+        }
+    }
+
+    { // RandomPointInCylinder
+        Data::NumberType radius(10.f);
+        Data::NumberType height(100.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointInCylinderNode>({ "Number: Radius", "Number: Height" }, { Datum(radius), Datum(height) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float lenXYsq = Data::Vector2Type(value.GetX(), value.GetY()).GetLengthSq();
+            EXPECT_TRUE(lenXYsq <= (radius * radius));
+            float dotZ = value.Dot(Data::Vector3Type(0.f, 0.f, 1.f));
+            EXPECT_TRUE(dotZ >= -(0.5f * height));
+            EXPECT_TRUE(dotZ <= (0.5f * height));
+        }
+    }
+
+    { // RandomPointInCircle
+        Data::NumberType radius(10.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointInCircleNode>({ "Number: Radius" }, { Datum(radius) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float dot = value.Dot(Data::Vector3Type(0.f, 0.f, 1.f));
+            float lenSq = value.GetLengthSq();
+            EXPECT_TRUE(dot == 0.f);
+            EXPECT_TRUE(lenSq <= (radius * radius));
+        }
+    }
+
+    { // RandomPointInSphere
+        Data::NumberType radius(10.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointInSphereNode>({ "Number: Radius" }, { Datum(radius) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float lenSq = value.GetLengthSq();
+            EXPECT_TRUE(lenSq <= (radius * radius));
+        }
+    }
+
+    { // RandomPointInSquare
+        Data::Vector2Type dimensions(10.f, 100.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointInSquareNode>({ "Vector2: Dimensions" }, { Datum(dimensions) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float dot = value.Dot(Data::Vector3Type(0.f, 0.f, 1.f));
+            EXPECT_TRUE(dot == 0.f);
+            EXPECT_TRUE((value.GetX() >= -(0.5f * dimensions.GetX())) && (value.GetX() <= (0.5f * dimensions.GetX())));
+            EXPECT_TRUE((value.GetY() >= -(0.5f * dimensions.GetY())) && (value.GetY() <= (0.5f * dimensions.GetY())));
+        }
+    }
+
+    { // RandomPointOnSphere
+        Data::NumberType radius(10.f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomPointOnSphereNode>({ "Number: Radius" }, { Datum(radius) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float lenSq = value.GetLengthSq();
+            EXPECT_FLOAT_EQ(lenSq, aznumeric_cast<float>(radius * radius));
+        }
+    }
+
+    { // RandomUnitVector2
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomUnitVector2Node>({}, {}, { "Result: Vector2" }, { Datum(Data::Vector2Type()) });
+            auto value = *output[0].GetAs<Data::Vector2Type>();
+            float lenSq = value.GetLengthSq();
+            EXPECT_FLOAT_EQ(lenSq, 1.f);
+        }
+    }
+
+    { // RandomUnitVector3
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomUnitVector3Node>({}, {}, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            float lenSq = value.GetLengthSq();
+            EXPECT_FLOAT_EQ(lenSq, 1.f);
+        }
+    }
+
+    { // RandomVector2
+        const Data::Vector2Type min(0.1f, 0.3f);
+        const Data::Vector2Type max(0.2f, 0.4f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomVector2Node>({ "Vector2: Min", "Vector2: Max" }, { Datum(min), Datum(max) }, { "Result: Vector2" }, { Datum(Data::Vector2Type()) });
+            auto value = *output[0].GetAs<Data::Vector2Type>();
+            EXPECT_TRUE(value.GetX() >= min.GetX() && value.GetX() <= max.GetX());
+            EXPECT_TRUE(value.GetY() >= min.GetY() && value.GetY() <= max.GetY());
+        }
+    }
+
+    { // RandomVector3
+        const Data::Vector3Type min(0.1f, 0.3f, 0.5f);
+        const Data::Vector3Type max(0.2f, 0.4f, 0.6f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomVector3Node>({ "Vector3: Min", "Vector3: Max" }, { Datum(min), Datum(max) }, { "Result: Vector3" }, { Datum(Data::Vector3Type()) });
+            auto value = *output[0].GetAs<Data::Vector3Type>();
+            EXPECT_TRUE(value.GetX() >= min.GetX() && value.GetX() <= max.GetX());
+            EXPECT_TRUE(value.GetY() >= min.GetY() && value.GetY() <= max.GetY());
+            EXPECT_TRUE(value.GetZ() >= min.GetZ() && value.GetZ() <= max.GetZ());
+        }
+    }
+
+    { // RandomVector4
+        const Data::Vector4Type min(0.1f, 0.3f, 0.5f, 0.7f);
+        const Data::Vector4Type max(0.2f, 0.4f, 0.6f, 0.8f);
+
+        for (int i = 0; i < testIterations; ++i)
+        {
+            auto output = TestMathFunction<RandomNodes::RandomVector4Node>({ "Vector4: Min", "Vector4: Max" }, { Datum(min), Datum(max) }, { "Result: Vector4" }, { Datum(Data::Vector4Type()) });
+            auto value = *output[0].GetAs<Data::Vector4Type>();
+            EXPECT_TRUE(value.GetX() >= min.GetX() && value.GetX() <= max.GetX());
+            EXPECT_TRUE(value.GetY() >= min.GetY() && value.GetY() <= max.GetY());
+            EXPECT_TRUE(value.GetZ() >= min.GetZ() && value.GetZ() <= max.GetZ());
+            EXPECT_TRUE(value.GetW() >= min.GetW() && value.GetW() <= max.GetW());
+        }
+    }
+} // Test RandomNodes

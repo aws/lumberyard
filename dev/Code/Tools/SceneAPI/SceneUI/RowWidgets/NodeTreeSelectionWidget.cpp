@@ -17,6 +17,7 @@
 #include <SceneAPI/SceneCore/DataTypes/IGraphObject.h>
 #include <SceneAPI/SceneCore/DataTypes/ManifestBase/ISceneNodeSelectionList.h>
 #include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
+#include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneUI/RowWidgets/NodeTreeSelectionWidget.h>
 #include <SceneAPI/SceneUI/SceneWidgets/ManifestWidget.h>
 #include <SceneAPI/SceneUI/CommonWidgets/OverlayWidget.h>
@@ -33,19 +34,17 @@ namespace AZ
                 : QWidget(parent)
                 , ui(new Ui::NodeTreeSelectionWidget())
                 , m_narrowSelection(false)
+                , m_filterName("nodes")
             {
                 ui->setupUi(this);
 
                 ui->m_selectButton->setIcon(QIcon(":/SceneUI/Manifest/TreeIcon.png"));
                 connect(ui->m_selectButton, &QPushButton::clicked, this, &NodeTreeSelectionWidget::SelectButtonClicked);
-
-                SetFilterName("nodes");
             }
 
             void NodeTreeSelectionWidget::SetList(const DataTypes::ISceneNodeSelectionList& list)
             {
                 m_list = list.Copy();
-                UpdateSelectionLabel();
             }
 
             void NodeTreeSelectionWidget::CopyListTo(DataTypes::ISceneNodeSelectionList& target)
@@ -60,16 +59,12 @@ namespace AZ
             {
                 ui->m_selectButton->setToolTip(QString::asprintf("Select %s", name.c_str()));
                 m_filterName = name;
-                
-                UpdateSelectionLabel();
             }
             
             void NodeTreeSelectionWidget::SetFilterName(AZStd::string&& name)
             {
                 ui->m_selectButton->setToolTip(QString::asprintf("Select %s", name.c_str()));
                 m_filterName = AZStd::move(name);
-                
-                UpdateSelectionLabel();
             }
 
             void NodeTreeSelectionWidget::AddFilterType(const Uuid& idProperty)
@@ -77,7 +72,6 @@ namespace AZ
                 if (m_filterTypes.find(idProperty) == m_filterTypes.end())
                 {
                     m_filterTypes.insert(idProperty);
-                    UpdateSelectionLabel();
                 }
             }
 
@@ -86,7 +80,6 @@ namespace AZ
                 if (m_filterVirtualTypes.find(name) == m_filterVirtualTypes.end())
                 {
                     m_filterVirtualTypes.insert(name);
-                    UpdateSelectionLabel();
                 }
             }
 
@@ -154,7 +147,6 @@ namespace AZ
             void NodeTreeSelectionWidget::ListChangesAccepted()
             {
                 m_list = m_treeWidget->ClaimTargetList();
-                UpdateSelectionLabel();
                 m_treeWidget.reset();
                 
                 emit valueChanged();
@@ -171,6 +163,7 @@ namespace AZ
                 {
                     size_t selected = CalculateSelectedCount();
                     size_t total = CalculateTotalCount();
+                    AZ_Assert(selected <= total, "Selected count of nodes should not be greater than the total count");
                     
                     if (total == 0)
                     {
@@ -199,65 +192,66 @@ namespace AZ
                     return 0;
                 }
 
-                if (m_filterTypes.empty() && m_filterVirtualTypes.empty())
+                const ManifestWidget* root = ManifestWidget::FindRoot(this);
+                AZ_Assert(root, "NodeTreeSelectionWidget is not a child of a ManifestWidget.");
+                if (!m_list || !root)
                 {
-                    return m_list->GetSelectedNodeCount();
+                    return 0;
                 }
-                else
+                const Containers::SceneGraph& graph = root->GetScene()->GetGraph();
+
+                size_t result = 0;
+                AZStd::unique_ptr<DataTypes::ISceneNodeSelectionList> tempList(m_list->Copy());
+                Utilities::SceneGraphSelector::UpdateNodeSelection(graph, *tempList);
+                size_t selectedCount = tempList->GetSelectedNodeCount();
+                for (size_t i = 0; i < selectedCount; ++i)
                 {
-                    const ManifestWidget* root = ManifestWidget::FindRoot(this);
-                    AZ_Assert(root, "NodeTreeSelectionWidget is not a child of a ManifestWidget.");
-                    if (!m_list || !root)
+                    Containers::SceneGraph::NodeIndex index = graph.Find(tempList->GetSelectedNode(i));
+                    if (!index.IsValid())
                     {
-                        return 0;
+                        continue;
                     }
-                    const Containers::SceneGraph& graph = root->GetScene()->GetGraph();
 
-                    size_t result = 0;
-                    size_t selectedCount = m_list->GetSelectedNodeCount();
-                    for (size_t i = 0; i < selectedCount; ++i)
+                    AZStd::shared_ptr<const DataTypes::IGraphObject> object = graph.GetNodeContent(index);
+                    if (!object)
                     {
-                        Containers::SceneGraph::NodeIndex index = graph.Find(m_list->GetSelectedNode(i));
-                        if (!index.IsValid())
-                        {
-                            continue;
-                        }
+                        continue;
+                    }
 
-                        AZStd::shared_ptr<const DataTypes::IGraphObject> object = graph.GetNodeContent(index);
-                        if (!object)
-                        {
-                            continue;
-                        }
+                    if (m_filterTypes.empty() && m_filterVirtualTypes.empty())
+                    {
+                        result++;
+                        continue;
+                    }
 
-                        bool foundType = false;
-                        for (const Uuid& type : m_filterTypes)
+                    bool foundType = false;
+                    for (const Uuid& type : m_filterTypes)
+                    {
+                        if (object->RTTI_IsTypeOf(type))
                         {
-                            if (object->RTTI_IsTypeOf(type))
-                            {
-                                result++;
-                                foundType = true;
-                                break;
-                            }
-                        }
-                        if (foundType)
-                        {
-                            continue;
-                        }
-
-                        // Check if the object is one of the registered virtual types.
-                        AZStd::set<Crc32> virtualTypes;
-                        EBUS_EVENT(Events::GraphMetaInfoBus, GetVirtualTypes, virtualTypes, *root->GetScene(), index);
-                        for (Crc32 name : virtualTypes)
-                        {
-                            if (m_filterVirtualTypes.find(name) != m_filterVirtualTypes.end())
-                            {
-                                result++;
-                                break;
-                            }
+                            result++;
+                            foundType = true;
+                            break;
                         }
                     }
-                    return result;
+                    if (foundType)
+                    {
+                        continue;
+                    }
+
+                    // Check if the object is one of the registered virtual types.
+                    AZStd::set<Crc32> virtualTypes;
+                    Events::GraphMetaInfoBus::Broadcast(&Events::GraphMetaInfo::GetVirtualTypes, virtualTypes, *root->GetScene(), index);
+                    for (Crc32 name : virtualTypes)
+                    {
+                        if (m_filterVirtualTypes.find(name) != m_filterVirtualTypes.end())
+                        {
+                            result++;
+                            break;
+                        }
+                    }
                 }
+                return result;
             }
 
             size_t NodeTreeSelectionWidget::CalculateTotalCount()
@@ -315,7 +309,7 @@ namespace AZ
                         
                         // Check if the object is one of the registered virtual types.
                         AZStd::set<Crc32> virtualTypes;
-                        EBUS_EVENT(Events::GraphMetaInfoBus, GetVirtualTypes, virtualTypes, *root->GetScene(), index);
+                        Events::GraphMetaInfoBus::Broadcast(&Events::GraphMetaInfo::GetVirtualTypes, virtualTypes, *root->GetScene(), index);
                         for (Crc32 name : virtualTypes)
                         {
                             if (m_filterVirtualTypes.find(name) != m_filterVirtualTypes.end())

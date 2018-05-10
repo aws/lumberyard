@@ -12,7 +12,6 @@
 
 #include "AngularManipulator.h"
 
-#include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 #include "ManipulatorSnapping.h"
@@ -123,16 +122,12 @@ namespace AzToolsFramework
     void AngularManipulator::OnLeftMouseDownImpl(
         const ViewportInteraction::MouseInteraction& interaction, float /*rayIntersectionDistance*/)
     {
-        AZ::Transform worldFromLocal;
-        AZ::TransformBus::EventResult(worldFromLocal, GetEntityId(),
-            &AZ::TransformBus::Events::GetWorldTM);
-
         const ManipulatorSpace manipulatorSpace =
             GetManipulatorSpace(GetManipulatorManagerId());
 
         // calculate initial state when mouse first pressed
         m_actionInternal = CalculateManipulationDataStart(
-            m_fixed, worldFromLocal, m_localTransform, interaction.m_mousePick.m_rayOrigin,
+            m_fixed, WorldFromLocalWithUniformScale(GetEntityId()), m_localTransform, interaction.m_mousePick.m_rayOrigin,
             interaction.m_mousePick.m_rayDirection, manipulatorSpace);
 
         if (m_onLeftMouseDownCallback)
@@ -168,20 +163,18 @@ namespace AzToolsFramework
     }
 
     void AngularManipulator::Draw(
+        const ManipulatorManagerState& managerState,
         AzFramework::EntityDebugDisplayRequests& display,
         const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        AZ::Transform worldFromLocal;
-        AZ::TransformBus::EventResult(
-            worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
-        AZ::Transform worldFromLocalWithLocalTransformNormalized = worldFromLocal * m_localTransform;
+        AZ::Transform worldFromLocalWithLocalTransformNormalized = 
+            WorldFromLocalWithUniformScale(GetEntityId()) * m_localTransform;
         worldFromLocalWithLocalTransformNormalized.ExtractScale();
 
         m_manipulatorView->Draw(
-            GetManipulatorManagerId(), GetManipulatorId(),
-            MouseOver(), AZ::Vector3::CreateZero(), worldFromLocalWithLocalTransformNormalized,
+            GetManipulatorManagerId(), managerState,
+            GetManipulatorId(), { worldFromLocalWithLocalTransformNormalized, AZ::Vector3::CreateZero(), MouseOver() },
             display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
     }
 

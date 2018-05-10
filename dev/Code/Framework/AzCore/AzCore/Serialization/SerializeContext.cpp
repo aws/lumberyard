@@ -446,13 +446,16 @@ namespace AZ
             Class<DynamicSerializableField>()->
                 Field("TypeId", &DynamicSerializableField::m_typeId);
                 // Value data is injected into the hierarchy per-instance, since type is dynamic.
-
-            Internal::ReflectAny(this);
         }
 
         if (createEditContext)
         {
             CreateEditContext();
+        }
+
+        if (registerIntegralTypes)
+        {
+            Internal::ReflectAny(this);
         }
     }
 
@@ -630,6 +633,7 @@ namespace AZ
         {
             if (IsRemovingReflection())
             {
+                RemoveClassData(genericClassInfo->GetClassData());
                 m_uuidGenericMap.erase(classId);
                 m_uuidAnyCreationMap.erase(classId);
                 m_classNameToUuid.erase(Crc32(genericClassInfo->GetClassData()->m_name));
@@ -1228,7 +1232,7 @@ namespace AZ
                     }
                     else
                     {
-                        AZ_Error("Serialize", "%s", error.c_str());
+                        AZ_Error("Serialize", false, "%s", error.c_str());
                     }
 
                     success = false;
@@ -1324,6 +1328,7 @@ namespace AZ
                             if (downcastPossible)
                             {
                                 classElement = *childElement;
+                                elementFound = true;
                             }
                         }
                         else
@@ -1331,9 +1336,9 @@ namespace AZ
                             if (m_element.m_id == childElement->m_typeId)
                             {
                                 classElement = *childElement;
+                                elementFound = true;
                             }
                         }
-                        elementFound = true;
                         break;
                     }
                 }
@@ -1353,8 +1358,20 @@ namespace AZ
         DataElementNode* parentDataElement = nodeStack.back().m_dataElement;
         bool success = true;
 
+        if (!m_classData)
+        {
+            AZ_Error("Serialize", false, R"(Cannot enumerate data from data element (%s:%s) from parent data element (%s:%s) with class name "%s" because the ClassData does not exist.)"
+                " This can indicate that the class is not reflected at the point of this call. If this is class is reflected as part of a gem"
+                " check if that gem is loaded", m_element.m_name ? m_element.m_name : "", m_element.m_id.ToString<AZStd::string>().data(),
+                parentDataElement->m_element.m_name ? parentDataElement->m_element.m_name : "", parentDataElement->m_element.m_id.ToString<AZStd::string>().data(), parentDataElement->m_classData->m_name);
+            return false;
+        }
+
         AZ::SerializeContext::ClassElement classElement;
         bool classElementFound = parentDataElement && GetClassElement(classElement, *parentDataElement, errorHandler);
+        AZ_Warning("Serialize", classElementFound, R"(Unable to find class element for data element(%s:%s) with class name "%s" that is a child of parent data element(%s:%s) with class name "%s")",
+            m_element.m_name ? m_element.m_name : "", m_element.m_id.ToString<AZStd::string>().data(), m_classData->m_name,
+            parentDataElement->m_element.m_name ? parentDataElement->m_element.m_name : "", parentDataElement->m_element.m_id.ToString<AZStd::string>().data(), parentDataElement->m_classData->m_name);
 
         if (classElementFound)
         {
@@ -1449,7 +1466,7 @@ namespace AZ
                     }
                     else
                     {
-                        AZ_Error("Serialize", "%s", error.c_str());
+                        AZ_Error("Serialize", false, "%s", error.c_str());
                     }
 
                     success = false;
@@ -1838,6 +1855,14 @@ namespace AZ
 
         ObjectCloneData cloneData;
         ErrorHandler m_errorLogger;
+        
+        AZ_Assert(ptr, "SerializeContext::CloneObject - Attempt to clone a nullptr.");
+        
+        if (!ptr)
+        {
+            return nullptr;
+        }
+
         EnumerateInstance(const_cast<void*>(ptr)
             , classId
             , AZStd::bind(&SerializeContext::BeginCloneElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger)
@@ -1855,15 +1880,21 @@ namespace AZ
         ObjectCloneData cloneData;
         cloneData.m_ptr = dest;
         ErrorHandler m_errorLogger;
-        EnumerateInstanceConst(ptr
-            , classId
-            , AZStd::bind(&SerializeContext::BeginCloneElementInplace, this, dest, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger)
-            , AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData)
-            , SerializeContext::ENUM_ACCESS_FOR_READ
-            , nullptr
-            , nullptr
-            , &m_errorLogger
-        );
+
+        AZ_Assert(ptr, "SerializeContext::CloneObjectInplace - Attempt to clone a nullptr.");
+
+        if (ptr)
+        {
+            EnumerateInstanceConst(ptr
+                , classId
+                , AZStd::bind(&SerializeContext::BeginCloneElementInplace, this, dest, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger)
+                , AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData)
+                , SerializeContext::ENUM_ACCESS_FOR_READ
+                , nullptr
+                , nullptr
+                , &m_errorLogger
+            );
+        }
     }
 
 

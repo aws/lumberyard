@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <SceneBuilder/Source/SceneBuilderWorker.h>
+#include <SceneBuilder/SceneBuilderWorker.h>
 
 namespace AZ
 {
@@ -34,6 +34,5 @@ namespace SceneBuilder
         
     private:
         SceneBuilderWorker m_sceneBuilder;
-        AZ::Entity* m_sceneSystemEntity = nullptr;
     };
 } // namespace SceneBuilder

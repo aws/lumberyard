@@ -223,8 +223,8 @@ namespace EMotionFX
         AttributeParameterMask* parameterMaskAttribute = static_cast<AttributeParameterMask*>(mAttributeValues[ATTRIB_MASK]);
 
         // Get the name of the given parameter.
-        MCore::String parameterName = mAnimGraph->GetParameter(parameterIndex)->GetName();
-        AZ_Assert(AZStd::find(parametersToBeRemoved.begin(), parametersToBeRemoved.end(), parameterName.AsChar()) == parametersToBeRemoved.end(),
+        AZStd::string parameterName = mAnimGraph->GetParameter(parameterIndex)->GetName();
+        AZ_Assert(AZStd::find(parametersToBeRemoved.begin(), parametersToBeRemoved.end(), parameterName.c_str()) == parametersToBeRemoved.end(),
             "Can't calculate the new parameter index for a parameter that is going to be removed.");
 
         const uint32 numParameters = mAnimGraph->GetNumParameters();
@@ -249,7 +249,7 @@ namespace EMotionFX
             }
 
             // Did we reach the parameter we're interested in?
-            if (parameterName.CheckIfIsEqual(currentParameterName))
+            if (parameterName == currentParameterName)
             {
                 return newIndex;
             }

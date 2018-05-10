@@ -18,6 +18,8 @@
 #include <Editor/Assets/ScriptCanvasAssetHolder.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
+#include <ScriptCanvas/Variable/VariableBus.h>
+#include <ScriptCanvas/Variable/VariableData.h>
 
 namespace ScriptCanvasEditor
 {
@@ -30,11 +32,7 @@ namespace ScriptCanvasEditor
     will remove the reference from the EditorScriptCanvasComponent, but not the reference from the MainWindow allowing the
     ScriptCanvas graph to still be modified while open
 
-    Furthermore this component is responsible for invoking the ScriptCanvasEditor Graph Compile call in order to turn the loaded asset data
-    in a runtime ScriptCanvas Graph. In the future this will create a runtime ScriptCanvas GraphAsset that executes in a VM.
-
-    Finally per graph instance properties values are stored on the EditorScriptCanvasComponent and injected into the runtime ScriptCanvas graph
-    as part of the Compile function
+    Finally per graph instance variables values are stored on the EditorScriptCanvasComponent and injected into the runtime ScriptCanvas component in BuildGameEntity
     */
     class EditorScriptCanvasComponent
         : public AzToolsFramework::Components::EditorComponentBase
@@ -115,8 +113,22 @@ namespace ScriptCanvasEditor
         void OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
         //=====================================================================
 
+        void AddVariable(AZStd::string_view varName, const ScriptCanvas::VariableDatum& varDatum);
+        void AddNewVariables(const ScriptCanvas::VariableData& graphVarData);
+        void RemoveVariable(const ScriptCanvas::VariableId& varId);
+        void RemoveOldVariables(const ScriptCanvas::VariableData& graphVarData);
+        bool UpdateVariable(const ScriptCanvas::VariableDatum& graphDatum, ScriptCanvas::VariableDatum& updateDatum, ScriptCanvas::VariableDatum& originalDatum);
+        void LoadVariables(AZ::Entity* scriptCanvasEntity);
+        void ClearVariables();
+
+    private:
         AZStd::string m_name;
         ScriptCanvasAssetHolder m_scriptCanvasAssetHolder;
-    };
+        
+        ScriptCanvas::EditableVariableData m_editableData;
 
+        //< Contains a mapping of the EntityId value from the ScriptCanvasAsset stored as an AZ::u64 so that it does not get remapped
+        //< to itself stored as an EntityId
+        AZStd::unordered_map<AZ::u64, AZ::EntityId> m_variableEntityIdMap; 
+    };
 }

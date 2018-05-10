@@ -4,12 +4,13 @@ def build(bld):
         # Add custom build options here
         includes = [
             bld.Path('Code/CryEngine/CryAction'),
-            bld.Path('Code/SDKs/civetweb/include'),
+            bld.ThirdPartyPath('civetweb', 'include'),
         ],
+        disable_pch = True,
         
         win_file_list = ['metastream_win.waf_files'],
         
         win_defines = ['USE_WEBSOCKET'],
 
-        additional_settings = bld.Settings(files = '../../../Code/SDKs/civetweb/src/CivetServer.cpp', disable_pch = True),
+        additional_settings = bld.Settings(files = bld.ThirdPartyPath('civetweb', 'src/CivetServer.cpp'), disable_pch = True),
     )

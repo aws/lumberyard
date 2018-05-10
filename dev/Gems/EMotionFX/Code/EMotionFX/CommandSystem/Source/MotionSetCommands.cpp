@@ -11,7 +11,6 @@
 */
 
 #include "MotionSetCommands.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "CommandManager.h"
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/FileSystem.h>
@@ -19,6 +18,7 @@
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
 #include <EMotionFX/Source/MotionSet.h>
+#include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/WaveletSkeletalMotion.h>
@@ -40,7 +40,7 @@ namespace CommandSystem
         // Get the full filename and file extension.
         const AZStd::string filename = m_motionSet->ConstructMotionFilename(entry);
         AZStd::string extension;
-        AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false);
+        AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
         // Are we dealing with a valid motion file?
         EMotionFX::Motion* motion = nullptr;
@@ -80,7 +80,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandCreateMotionSet::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandCreateMotionSet::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZStd::string motionSetName;
         parameters.GetValue("name", this, motionSetName);
@@ -88,7 +88,7 @@ namespace CommandSystem
         // Does a motion set with the given name already exist?
         if (EMotionFX::GetMotionManager().FindMotionSetByName(motionSetName.c_str()))
         {
-            outResult.Format("Cannot create motion set. A motion set with name '%s' already exists.", motionSetName.c_str());
+            outResult = AZStd::string::format("Cannot create motion set. A motion set with name '%s' already exists.", motionSetName.c_str());
             return false;
         }
 
@@ -102,7 +102,7 @@ namespace CommandSystem
             parentSet = EMotionFX::GetMotionManager().FindMotionSetByID(parentSetID);
             if (!parentSet)
             {
-                outResult.Format("Cannot create motion set. The parent motion set with id %i does not exist.", parentSetID);
+                outResult = AZStd::string::format("Cannot create motion set. The parent motion set with id %i does not exist.", parentSetID);
                 return false;
             }
         }
@@ -114,7 +114,7 @@ namespace CommandSystem
             motionSetID = parameters.GetValueAsInt("motionSetID", this);
             if (EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID))
             {
-                outResult.Format("Cannot create motion set. A motion set with given ID '%i' already exists.", motionSetID);
+                outResult = AZStd::string::format("Cannot create motion set. A motion set with given ID '%i' already exists.", motionSetID);
                 return false;
             }
         }
@@ -149,7 +149,7 @@ namespace CommandSystem
 
         // Store info for undo.
         mPreviouslyUsedID   = motionSet->GetID();
-        outResult           = MCore::String(mPreviouslyUsedID);
+        AZStd::to_string(outResult, mPreviouslyUsedID);
 
         // Set the motion set callback for custom motion loading.
         motionSet->SetCallback(new CommandSystemMotionSetCallback(motionSet), true);
@@ -159,7 +159,7 @@ namespace CommandSystem
         GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult);
 
         // Seturn the id of the newly created motion set.
-        outResult = MCore::String(motionSet->GetID());
+        AZStd::to_string(outResult, motionSet->GetID());
 
         // Recursively update attributes of all nodes.
         const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
@@ -185,7 +185,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandCreateMotionSet::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandCreateMotionSet::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
 
@@ -230,7 +230,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandRemoveMotionSet::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveMotionSet::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -238,7 +238,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
         if (!motionSet)
         {
-            outResult.Format("Cannot remove motion set. Motion set with id '%i' does not exist.", motionSetID);
+            outResult = AZStd::string::format("Cannot remove motion set. Motion set with id '%i' does not exist.", motionSetID);
             return false;
         }
 
@@ -254,10 +254,14 @@ namespace CommandSystem
         else
         {
             mOldParentSetID = motionSet->GetParentSet()->GetID();
-        }
 
+            // Set the dirty flag on the parent.
+            const AZStd::string commandString = AZStd::string::format("AdjustMotionSet -motionSetID %i -dirtyFlag true", mOldParentSetID);
+            GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult);
+        }
+        
         // Destroy the motion set.
-        motionSet->Destroy();
+        EMotionFX::GetMotionManager().RemoveMotionSet(motionSet, true);
 
         // Recursively update attributes of all nodes.
         const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
@@ -284,7 +288,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandRemoveMotionSet::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveMotionSet::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
 
@@ -335,7 +339,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAdjustMotionSet::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMotionSet::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -343,7 +347,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
         if (!motionSet)
         {
-            outResult.Format("Cannot adjust motion set. Motion set with id '%i' does not exist.", motionSetID);
+            outResult = AZStd::string::format("Cannot adjust motion set. Motion set with id '%i' does not exist.", motionSetID);
             return false;
         }
 
@@ -371,7 +375,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAdjustMotionSet::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMotionSet::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -379,7 +383,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
         if (!motionSet)
         {
-            outResult.Format("Cannot adjust motion set. Motion set with id '%i' does not exist.", motionSetID);
+            outResult = AZStd::string::format("Cannot adjust motion set. Motion set with id '%i' does not exist.", motionSetID);
             return false;
         }
 
@@ -428,7 +432,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandMotionSetAddMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandMotionSetAddMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -436,7 +440,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
         if (!motionSet)
         {
-            outResult.Format("Cannot add motion entry to motion set. Motion set with id '%i' does not exist.", motionSetID);
+            outResult = AZStd::string::format("Cannot add motion entry to motion set. Motion set with id '%i' does not exist.", motionSetID);
             return false;
         }
 
@@ -454,7 +458,7 @@ namespace CommandSystem
         GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult);
 
         // Return the id of the newly created motion set.
-        outResult = MCore::String(motionSet->GetID());
+        AZStd::to_string(outResult, motionSet->GetID());
 
         // Recursively update attributes of all nodes.
         const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
@@ -477,7 +481,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandMotionSetAddMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandMotionSetAddMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -519,7 +523,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandMotionSetRemoveMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandMotionSetRemoveMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -527,7 +531,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
         if (!motionSet)
         {
-            outResult.Format("Cannot remove motion entry from motion set. Motion set with id '%i' does not exist.", motionSetID);
+            outResult = AZStd::string::format("Cannot remove motion entry from motion set. Motion set with id '%i' does not exist.", motionSetID);
             return false;
         }
 
@@ -539,7 +543,7 @@ namespace CommandSystem
         EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryByStringID(valueString.c_str());
         if (!motionEntry)
         {
-            outResult.Format("Cannot remove motion entry from motion set. Motion entry '%s' does not exist.", valueString.c_str());
+            outResult = AZStd::string::format("Cannot remove motion entry from motion set. Motion entry '%s' does not exist.", valueString.c_str());
             return false;
         }
 
@@ -572,7 +576,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandMotionSetRemoveMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandMotionSetRemoveMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -652,7 +656,7 @@ namespace CommandSystem
                     MCore::Attribute* itemAttrib = arrayAttrib->GetAttribute(a);
                     MCORE_ASSERT(itemAttrib->GetType() == MCore::AttributeString::TYPE_ID);
                     MCore::AttributeString* stringItemAttrib = static_cast<MCore::AttributeString*>(itemAttrib);
-                    if (stringItemAttrib->GetValue().CheckIfIsEqual(oldID))
+                    if (stringItemAttrib->GetValue() == oldID)
                     {
                         stringItemAttrib->SetValue(newID);
                     }
@@ -662,7 +666,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandMotionSetAdjustMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandMotionSetAdjustMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -670,7 +674,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(motionSetID);
         if (!motionSet)
         {
-            outResult.Format("Cannot remove motion entry from motion set. Motion set with id '%i' does not exist.", motionSetID);
+            outResult = AZStd::string::format("Cannot remove motion entry from motion set. Motion set with id '%i' does not exist.", motionSetID);
             return false;
         }
 
@@ -681,7 +685,7 @@ namespace CommandSystem
         EMotionFX::MotionSet::MotionEntry* motionEntry = motionSet->FindMotionEntryByStringID(idString.c_str());
         if (!motionEntry)
         {
-            outResult.Format("Cannot adjust motion entry. Motion entry '%s' does not exist.", idString.c_str());
+            outResult = AZStd::string::format("Cannot adjust motion entry. Motion entry '%s' does not exist.", idString.c_str());
             return false;
         }
 
@@ -741,7 +745,7 @@ namespace CommandSystem
             // Check if the id string is already in the list and return false if yes. The ids have to be unique.
             if (AZStd::find(idStrings.begin(), idStrings.end(), newId) != idStrings.end())
             {
-                outResult.Format("Cannot set id '%s' to the motion entry '%s'. The id already exists.", idString.c_str(), motionEntry->GetID().c_str());
+                outResult = AZStd::string::format("Cannot set id '%s' to the motion entry '%s'. The id already exists.", idString.c_str(), motionEntry->GetID().c_str());
                 return false;
             }
 
@@ -777,7 +781,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandMotionSetAdjustMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandMotionSetAdjustMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionSetID = parameters.GetValueAsInt("motionSetID", this);
 
@@ -846,7 +850,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandLoadMotionSet::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandLoadMotionSet::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the filename of the motion set to load.
         AZStd::string filename;
@@ -862,7 +866,7 @@ namespace CommandSystem
         // Is the given motion set already loaded?
         if (EMotionFX::GetMotionManager().FindMotionSetByFileName(filename.c_str()))
         {
-            outResult.Format("Motion set '%s' has already been loaded. Skipping.", filename.c_str());
+            outResult = AZStd::string::format("Motion set '%s' has already been loaded. Skipping.", filename.c_str());
             return true;
         }
 
@@ -870,7 +874,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetImporter().LoadMotionSet(filename.c_str());
         if (!motionSet)
         {
-            outResult.Format("Could not load motion set from file '%s'.", filename.c_str());
+            outResult = AZStd::string::format("Could not load motion set from file '%s'.", filename.c_str());
             return false;
         }
 
@@ -885,6 +889,9 @@ namespace CommandSystem
         motionSet->SetCallback(new CommandSystemMotionSetCallback(motionSet), true);
         motionSet->Preload();
 
+        // return the id of the newly created motionset
+        AZStd::to_string(outResult, motionSet->GetID());
+
         // Mark the workspace as dirty.
         mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
         GetCommandManager()->SetWorkspaceDirtyFlag(true);
@@ -895,7 +902,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandLoadMotionSet::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandLoadMotionSet::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
 
@@ -903,7 +910,7 @@ namespace CommandSystem
         EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByID(mOldMotionSetID);
         if (motionSet == nullptr)
         {
-            outResult.Format("Cannot undo load motion set command. Previously used motion set id '%i' is not valid.", mOldMotionSetID);
+            outResult = AZStd::string::format("Cannot undo load motion set command. Previously used motion set id '%i' is not valid.", mOldMotionSetID);
             return false;
         }
 
@@ -935,7 +942,7 @@ namespace CommandSystem
     void ClearMotionSetMotions(EMotionFX::MotionSet* motionSet, MCore::CommandGroup* commandGroup)
     {
         // Create the command group.
-        MCore::String outResult;
+        AZStd::string outResult;
         MCore::CommandGroup internalCommandGroup("Motion set clear motions");
 
         // Iterate through all motion entries and remove them from the motion set.
@@ -1002,7 +1009,7 @@ namespace CommandSystem
     void ClearMotionSetsCommand(MCore::CommandGroup* commandGroup)
     {
         // Create our command group.
-        MCore::String outResult;
+        AZStd::string outResult;
         MCore::CommandGroup internalCommandGroup("Clear motion sets");
 
         // Iterate through all root motion sets and remove them.
@@ -1069,18 +1076,47 @@ namespace CommandSystem
         for (size_t i = 0; i < numFilenames; ++i)
         {
             // In case we want to reload the same motion set remove the old version first.
-            if (reload && !clearUpfront)
+            EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByFileName(filenames[i].c_str());
+
+            if (reload && !clearUpfront && motionSet)
             {
-                EMotionFX::MotionSet* motionSet = EMotionFX::GetMotionManager().FindMotionSetByFileName(filenames[i].c_str());
-                if (motionSet)
-                {
-                    RecursivelyRemoveMotionSets(motionSet, commandGroup);
-                }
+                RecursivelyRemoveMotionSets(motionSet, commandGroup);
             }
 
             // Construct the load motion set command and add it to the group.
             commandString = AZStd::string::format("LoadMotionSet -filename \"%s\"", filenames[i].c_str());
             commandGroup.AddCommandString(commandString);
+
+            // iterate over each actor instance and re-active the motion set
+            if (motionSet)
+            {
+                int32 commandIndex = 1;
+                const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
+                for (uint32 j = 0; j < numActorInstances; ++j)
+                {
+                    EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(j);
+                    if (!actorInstance)
+                    {
+                        continue;
+                    }
+                    EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
+                    if (!animGraphInstance)
+                    {
+                        continue;
+                    }
+
+                    EMotionFX::MotionSet* currentActiveMotionSet = animGraphInstance->GetMotionSet();
+                    if (currentActiveMotionSet == motionSet)
+                    {
+                        commandString = AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %d -motionSetID %%LASTRESULT%d%%",
+                            actorInstance->GetID(),
+                            animGraphInstance->GetAnimGraph()->GetID(),
+                            commandIndex);
+                        commandGroup.AddCommandString(commandString);
+                        ++commandIndex;
+                    }
+                }
+            }
         }
 
         // Execute the group command.

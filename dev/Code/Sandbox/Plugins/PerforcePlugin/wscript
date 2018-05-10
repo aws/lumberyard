@@ -21,7 +21,7 @@ def build(bld):
         vs_filter	            = 'Sandbox/Plugins',
         copyright_org           = 'Amazon-CryTek',
         file_list	            = 'perforceplugin.waf_files',
-        platforms               = ['win'],
+        platforms               = ['win','darwin'],
         configurations          = ['debug', 'debug_test', 'profile', 'profile_test'],
         pch                     = 'stdafx.cpp',
         use                     = ['EditorCommon', 'AzToolsFramework'],

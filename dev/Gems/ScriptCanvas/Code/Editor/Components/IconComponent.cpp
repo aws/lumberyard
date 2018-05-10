@@ -65,7 +65,7 @@ namespace ScriptCanvasEditor
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<IconComponent>()
+            serializeContext->Class<IconComponent, AZ::Component>()
                 ->Version(1)
                 ->Field("m_iconPath", &IconComponent::m_iconPath)
                 ;

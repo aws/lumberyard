@@ -26,6 +26,10 @@ namespace AzQtComponents
     {
     }
 
+    StylesheetPreprocessor::~StylesheetPreprocessor()
+    {
+    }
+
     void StylesheetPreprocessor::ClearVariables()
     {
         m_namedVariables.clear();

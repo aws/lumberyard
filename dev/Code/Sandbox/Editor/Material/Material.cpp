@@ -371,7 +371,7 @@ bool CMaterial::LoadShader()
     // Shader not found
     if (newShaderItem.m_pShader && (newShaderItem.m_pShader->GetFlags() & EF_NOTFOUND) != 0)
     {
-        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Failed to load shader \"%s\" in material \"%s\"", newShaderItem.m_pShader->GetName(), m_name);
+        CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Failed to load shader \"%s\" in material \"%s\"", newShaderItem.m_pShader->GetName(), m_name.toUtf8().constData());
     }
 
     // Release previously used shader (Must be After new shader is loaded, for speed).
@@ -484,7 +484,7 @@ bool CMaterial::LoadMaterialLayers()
                 // Check if shader loaded
                 if (!pNewShader || (pNewShader->GetFlags() & EF_NOTFOUND) != 0)
                 {
-                    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Failed to load material layer shader \"%s\" in material \"%s\"", pCurrLayer->m_shaderName, m_pMatInfo->GetName());
+                    CryWarning(VALIDATOR_MODULE_EDITOR, VALIDATOR_WARNING, "Failed to load material layer shader \"%s\" in material \"%s\"", pCurrLayer->m_shaderName.toUtf8().constData(), m_pMatInfo->GetName());
                     if (!pNewShader)
                     {
                         continue;
@@ -626,7 +626,8 @@ void CMaterial::UpdateMatInfo()
         // Mark material invalid.
         m_pMatInfo->SetFlags(m_mtlFlags);
         m_pMatInfo->SetShaderItem(m_shaderItem);
-        m_pMatInfo->SetSurfaceType(m_surfaceType.toUtf8().data());
+        m_pMatInfo->SetShaderName(m_shaderName.toUtf8().constData());
+        m_pMatInfo->SetSurfaceType(m_surfaceType.toUtf8().constData());
 
         LoadMaterialLayers();
         UpdateMaterialLayers();
@@ -657,6 +658,36 @@ void CMaterial::UpdateMatInfo()
 CVarBlock* CMaterial::GetPublicVars(SInputShaderResources& pShaderResources)
 {
     return MaterialHelpers::GetPublicVars(pShaderResources);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CMaterial::SetShaderParamPublicScript()
+{
+    IShader* pShader = m_shaderItem.m_pShader;
+
+    if (!pShader)
+    {
+        return;
+    }
+
+    if (m_shaderResources.m_ShaderParams.size() == 0 || pShader->GetPublicParams().size() == 0)
+    {
+        return;
+    }
+
+    // We want to inspect public shader param and paste the m_script into our shader resource param script
+    for (int i = 0; i < m_shaderResources.m_ShaderParams.size(); ++i)
+    {
+        SShaderParam &currentShaderParam = m_shaderResources.m_ShaderParams.at(i);
+        for (int j = 0; j < pShader->GetPublicParams().size(); ++j)
+        {
+            const SShaderParam &publicShaderParam = pShader->GetPublicParams().at(i);
+            if (strcmp(currentShaderParam.m_Name, publicShaderParam.m_Name) == 0 &&  currentShaderParam.m_Type == publicShaderParam.m_Type)
+            {
+                currentShaderParam.m_Script = publicShaderParam.m_Script;
+            }
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1533,13 +1564,13 @@ bool CMaterial::Save(bool bSkipReadOnly)
         // If read only or in pack, do not save.
         if (m_scFileAttributes & (SCC_FILE_ATTRIBUTE_READONLY | SCC_FILE_ATTRIBUTE_INPAK))
         {
-            gEnv->pLog->LogError("Can't save material %s (read-only)", GetName());
+            gEnv->pLog->LogError("Can't save material %s (read-only)", GetName().toUtf8().constData());
         }
 
         // Managed file must be checked out.
         if ((m_scFileAttributes & SCC_FILE_ATTRIBUTE_MANAGED) && !(m_scFileAttributes & SCC_FILE_ATTRIBUTE_CHECKEDOUT))
         {
-            gEnv->pLog->LogError("Can't save material %s (need to check out)", GetName());
+            gEnv->pLog->LogError("Can't save material %s (need to check out)", GetName().toUtf8().constData());
         }
     }
 

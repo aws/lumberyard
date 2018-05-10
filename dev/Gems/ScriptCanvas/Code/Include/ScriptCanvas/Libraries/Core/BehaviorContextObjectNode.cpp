@@ -56,7 +56,7 @@ namespace ScriptCanvas
                     {
                         defaultValue = &ScriptCanvas::SelfReferenceId;
                     }
-                    AddInputAndOutputTypeSlot(Data::FromBehaviorContextType(azType), defaultValue);
+                    AddInputAndOutputTypeSlot(Data::FromAZType(azType), defaultValue);
                 }
             }
 
@@ -76,7 +76,7 @@ namespace ScriptCanvas
                 {
                     defaultValue = &ScriptCanvas::SelfReferenceId;
                 }
-                AddInputAndOutputTypeSlot(Data::FromBehaviorContextType(behaviorClass.m_typeId), defaultValue);
+                AddInputAndOutputTypeSlot(Data::FromAZType(behaviorClass.m_typeId), defaultValue);
                 ConfigureProperties(behaviorClass);
             }
 
@@ -90,7 +90,7 @@ namespace ScriptCanvas
 
             void BehaviorContextObjectNode::ConfigureSetters(const AZ::BehaviorClass& behaviorClass)
             {
-                Data::SetterContainer setterWrappers = Data::ExplodeToSetters(Data::FromBehaviorContextType(behaviorClass.m_typeId));
+                Data::SetterContainer setterWrappers = Data::ExplodeToSetters(Data::FromAZType(behaviorClass.m_typeId));
                 for (const auto& setterWrapperPair : setterWrappers)
                 {
                     SlotId setterSlotId;
@@ -118,7 +118,7 @@ namespace ScriptCanvas
 
             void BehaviorContextObjectNode::ConfigureGetters(const AZ::BehaviorClass& behaviorClass)
             {
-                Data::GetterContainer getterWrappers = Data::ExplodeToGetters(Data::FromBehaviorContextType(behaviorClass.m_typeId));
+                Data::GetterContainer getterWrappers = Data::ExplodeToGetters(Data::FromAZType(behaviorClass.m_typeId));
                 for (const auto& getterWrapperPair : getterWrappers)
                 {
                     SlotId getterSlotId;
@@ -169,7 +169,7 @@ namespace ScriptCanvas
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
 
-                auto bcClass = AZ::BehaviorContextHelper::GetClass(m_className);
+                auto bcClass = !m_className.empty() ? AZ::BehaviorContextHelper::GetClass(m_className) : nullptr;
 
                 if (bcClass)
                 {
@@ -192,7 +192,6 @@ namespace ScriptCanvas
                     {
                         editContext->Class<BehaviorContextObjectNode>("BehaviorContextObjectNode", "BehaviorContextObjectNode")
                             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                             ;
                     }

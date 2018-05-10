@@ -110,6 +110,21 @@ def get_account_for_identity(cognitoIdentityId):
         return items[0]
     return None
 
+def get_account_for_user_name(username):
+    response = get_account_table().query(
+        ConsistentRead=False,
+        IndexName='CognitoUsernameIndex',
+        KeyConditionExpression=Key('CognitoUsername').eq(username),
+        Limit=2
+    )
+    items = response.get('Items', [])
+    if len(items) == 1:
+        return items[0]
+    if len(items) > 1:
+        print 'Warning: More than one account found for {}'.format(username)
+        return items[0]
+    return None
+
 def get_user(username):
     try:
         return get_user_pool_client().admin_get_user(

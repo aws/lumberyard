@@ -111,7 +111,7 @@ namespace RenderCapabilities
     int GetAvailableMRTbpp()
     {
         const NCryOpenGL::SCapabilities& capabilities = GetGLDevice()->GetAdapter()->m_kCapabilities;
-        if (SupportsFrameBufferFetches())
+        if (GetFrameBufferFetchCapabilities().test(FBF_ALL_COLORS))
         {
             // Assuming 32 bits per rendertarget when using all attachments.
             GLint bitsPerRT = 32;
@@ -134,7 +134,7 @@ namespace RenderCapabilities
     {
         // We don't support GMEM on platforms without floating point rendertarget support 
         return SupportsHalfFloatRendering() && 
-            (SupportsFrameBufferFetches() || SupportsPLSExtension()) && 
+            (GetFrameBufferFetchCapabilities().test(FBF_ALL_COLORS) || SupportsPLSExtension()) &&
             GetAvailableMRTbpp() >= 128;
     }
 
@@ -142,7 +142,7 @@ namespace RenderCapabilities
     {
         // We don't support GMEM on platforms without floating point rendertarget support 
         return SupportsHalfFloatRendering() && 
-            (SupportsFrameBufferFetches() || SupportsPLSExtension()) 
+            (GetFrameBufferFetchCapabilities().test(FBF_ALL_COLORS) || SupportsPLSExtension())
             && GetAvailableMRTbpp() >= 256;
     }
 
@@ -151,35 +151,25 @@ namespace RenderCapabilities
         return DXGL_GL_EXTENSION_SUPPORTED(EXT_color_buffer_half_float);
     }
 
+    bool SupportsRenderTargets(int numRTs)
+    {
+        const NCryOpenGL::SCapabilities& capabilities = GetGLDevice()->GetAdapter()->m_kCapabilities;
+        return capabilities.m_maxRenderTargets >= numRTs;
+    }
+#endif
+
     bool SupportsPLSExtension()
     {
         // Favor framebuffer fetch over PLS (for compatibility with Metal)
-        return !SupportsFrameBufferFetches() && DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_pixel_local_storage);
+        const NCryOpenGL::SCapabilities& capabilities = GetGLDevice()->GetAdapter()->m_kCapabilities;
+        return !GetFrameBufferFetchCapabilities().test(FBF_ALL_COLORS) && capabilities.m_plsSizeInBytes > 0;
     }
 
-    bool SupportsFrameBufferFetches()
+    FrameBufferFetchMask GetFrameBufferFetchCapabilities()
     {
-        return DXGL_GL_EXTENSION_SUPPORTED(EXT_shader_framebuffer_fetch);
+        const NCryOpenGL::SCapabilities& capabilities = GetGLDevice()->GetAdapter()->m_kCapabilities;
+        return capabilities.m_frameBufferFetchSupport;
     }
-
-    bool SupportsRenderTargets(int numRTs)
-    {
-        //static GLint val = 0;
-        //glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &val);
-        //return val >= numRTs;
-        return false; //todo: uncomment the above lines after testing on Gmem/PLS device.
-    }
-#else
-    bool SupportsPLSExtension()
-    {
-        return false;
-    }
-
-    bool SupportsFrameBufferFetches()
-    {
-        return false;
-    }
-#endif
 
     uint32 GetDeviceGLVersion()
     {

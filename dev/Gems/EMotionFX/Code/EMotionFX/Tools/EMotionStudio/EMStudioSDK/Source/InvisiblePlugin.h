@@ -15,7 +15,6 @@
 
 // include MCore
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
 
@@ -29,6 +28,7 @@ namespace EMStudio
     class EMSTUDIO_API InvisiblePlugin
         : public EMStudioPlugin
     {
+        Q_OBJECT
         MCORE_MEMORYOBJECTCATEGORY(InvisiblePlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
     public:
         InvisiblePlugin();
@@ -37,7 +37,7 @@ namespace EMStudio
         EMStudioPlugin::EPluginType GetPluginType() const override              { return EMStudioPlugin::PLUGINTYPE_INVISIBLE; }
 
         bool Init() override { return true; }   // for this type of plugin, perform the init inside the constructor
-        virtual bool GetHasWindowWithObjectName(const MCore::String& objectName) override { MCORE_UNUSED(objectName); return false; }
+        virtual bool GetHasWindowWithObjectName(const AZStd::string& objectName) override { MCORE_UNUSED(objectName); return false; }
         virtual QString GetObjectName() const override                          { return objectName(); }
         virtual void SetObjectName(const QString& objectName) override          { setObjectName(objectName); }
         virtual void CreateBaseInterface(const char* objectName) override       { MCORE_UNUSED(objectName); }

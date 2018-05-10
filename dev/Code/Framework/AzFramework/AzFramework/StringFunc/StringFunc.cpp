@@ -20,6 +20,12 @@
 #include "StringFunc.h"
 
 #if !defined(AZ_PLATFORM_WINDOWS)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(StringFunc_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 
 //Have to declare this typedef for Android & Linux to minimise changes elsewhere in this file
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
@@ -148,6 +154,7 @@ errno_t _splitpath_s (const char* path,
 
     return 0;
 }
+#endif
 #endif
 
 // Some platforms define NAME_MAX but Windows doesn't and the AZ headers provide no equivalent

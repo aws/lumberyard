@@ -23,16 +23,11 @@
 #include "Recorder.h"
 #include "MotionInstancePool.h"
 #include "AnimGraphManager.h"
-#include <MCore/Source/UnicodeString.h>
-#include <MCore/Source/UnicodeStringIterator.h>
-#include <MCore/Source/UnicodeCharacter.h>
 #include <MCore/Source/JobManager.h>
 #include <MCore/Source/MCoreSystem.h>
 #include <MCore/Source/MemoryTracker.h>
 #include <AzCore/std/algorithm.h>
-#include <AzCore/std/string/conversions.h>
 #include <AzCore/IO/FileIO.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/ApplicationAPI.h>
 
 
@@ -112,10 +107,10 @@ namespace EMotionFX
     {
         mThreadDatas.SetMemoryCategory(EMFX_MEMCATEGORY_EMOTIONFXMANAGER);
         // build the low version string
-        MCore::String lowVersionString;
+        AZStd::string lowVersionString;
         BuildLowVersionString(lowVersionString);
 
-        mVersionString.Format("EMotion FX v%d.%s RC4", EMFX_HIGHVERSION, lowVersionString.AsChar());
+        mVersionString = AZStd::string::format("EMotion FX v%d.%s RC4", EMFX_HIGHVERSION, lowVersionString.c_str());
         mCompilationDate        = MCORE_DATE;
         mHighVersion            = EMFX_HIGHVERSION;
         mLowVersion             = EMFX_LOWVERSION;
@@ -203,15 +198,15 @@ namespace EMotionFX
     void EMotionFXManager::LogInfo()
     {
         // turn "0.010" into "01" to for example build the string v3.01 later on
-        MCore::String lowVersionString;
+        AZStd::string lowVersionString;
         BuildLowVersionString(lowVersionString);
 
         MCore::LogInfo("-----------------------------------------------");
         MCore::LogInfo("EMotion FX - Information");
         MCore::LogInfo("-----------------------------------------------");
-        MCore::LogInfo("Version:          v%d.%s", mHighVersion, lowVersionString.AsChar());
-        MCore::LogInfo("Version string:   %s", mVersionString.AsChar());
-        MCore::LogInfo("Compilation date: %s", mCompilationDate.AsChar());
+        MCore::LogInfo("Version:          v%d.%s", mHighVersion, lowVersionString.c_str());
+        MCore::LogInfo("Version string:   %s", mVersionString.c_str());
+        MCore::LogInfo("Compilation date: %s", mCompilationDate.c_str());
 
     #ifdef MCORE_OPENMP_ENABLED
         MCore::LogInfo("OpenMP enabled:   Yes");
@@ -232,14 +227,14 @@ namespace EMotionFX
     // get the version string
     const char* EMotionFXManager::GetVersionString() const
     {
-        return mVersionString.AsChar();
+        return mVersionString.c_str();
     }
 
 
     // get the compilation date string
     const char* EMotionFXManager::GetCompilationDate() const
     {
-        return mCompilationDate.AsChar();
+        return mCompilationDate.c_str();
     }
 
 
@@ -416,28 +411,22 @@ namespace EMotionFX
     }
 
 
-    void EMotionFXManager::GetFilenameRelativeTo(MCore::String* inOutFilename, const char* folderPath)
+    void EMotionFXManager::GetFilenameRelativeTo(AZStd::string* inOutFilename, const char* folderPath)
     {
         AZStd::string baseFolderPath = folderPath;
-        AZStd::string filename = inOutFilename->AsChar();
+        AZStd::string filename = inOutFilename->c_str();
 
         // TODO: Add parameter to not lower case the path once it is in and working.
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, baseFolderPath);
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
-        // TODO: Remove the following code as soon as the Systems team has fixed the folder path capitalisation of AZ::IO::FileIOBase::GetInstance()->GetAlias().
-        //       To work around it we'll lower case the media root folder and lower case the same amount of characters for the filename to be actually able to remove the media root from the absolute file path.
-        const size_t baseFolderPathSize = baseFolderPath.size();
-        AZStd::to_lower(baseFolderPath.begin(), baseFolderPath.begin() + baseFolderPathSize);
-        AZStd::to_lower(filename.begin(), filename.begin() + baseFolderPathSize);
-
         // Remove the media root folder from the absolute motion filename so that we get the relative one to the media root folder.
-        *inOutFilename = filename.c_str();
-        inOutFilename->RemoveAllParts(baseFolderPath.c_str());
+        AzFramework::StringFunc::Replace(filename, baseFolderPath.c_str(), "", false /* case sensitive */, true /* replace first */);
+        *inOutFilename = filename;
     }
 
 
-    void EMotionFXManager::GetFilenameRelativeToMediaRoot(MCore::String* inOutFilename) const
+    void EMotionFXManager::GetFilenameRelativeToMediaRoot(AZStd::string* inOutFilename) const
     {
         GetFilenameRelativeTo(inOutFilename, GetMediaRootFolder());
     }
@@ -445,15 +434,13 @@ namespace EMotionFX
 
     // build the low version string
     // this turns 900 into 9, and 50 into 05
-    void EMotionFXManager::BuildLowVersionString(MCore::String& outLowVersionString)
+    void EMotionFXManager::BuildLowVersionString(AZStd::string& outLowVersionString)
     {
-        outLowVersionString.Format("%.2f", EMFX_LOWVERSION / 100.0f);
-        outLowVersionString.TrimLeft(MCore::UnicodeCharacter('0'));
-        outLowVersionString.TrimLeft(MCore::UnicodeCharacter('.'));
-        outLowVersionString.TrimRight(MCore::UnicodeCharacter('0'));
-        outLowVersionString.TrimRight(MCore::UnicodeCharacter('.'));
+        outLowVersionString = AZStd::string::format("%.2f", EMFX_LOWVERSION / 100.0f);
+        AzFramework::StringFunc::Strip(outLowVersionString, '0', true /* case sensitive */, true /* beginning */, true /* ending */);
+        AzFramework::StringFunc::Strip(outLowVersionString, '.', true /* case sensitive */, true /* beginning */, true /* ending */);
 
-        if (outLowVersionString.GetIsEmpty())
+        if (outLowVersionString.empty())
         {
             outLowVersionString = "0";
         }

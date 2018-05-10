@@ -13,7 +13,6 @@
 #include "stdafx.h"
 #include <IConfig.h>
 #include <SceneConfig.h>
-#include <SceneAPI/SceneCore/Import/Utilities/FileFinder.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/FbxSceneBuilder/FbxSceneSystem.h>
 
@@ -46,11 +45,6 @@ namespace AZ
                     (*uninit)();
                 }
             }
-        }
-
-        const char* SceneConfig::GetManifestFileExtension() const
-        {
-            return AZ::SceneAPI::Import::Utilities::FileFinder::GetManifestExtension();
         }
 
         void SceneConfig::LoadSceneLibrary(const char* name)

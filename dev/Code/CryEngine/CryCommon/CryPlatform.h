@@ -14,9 +14,7 @@
 // Description : Interface for the platfrom specific function libraries
 //               Include this file instead of windows h and similar platfrom specific header files
 
-
-#ifndef _CRY_PLATFORM_H_
-#define _CRY_PLATFORM_H_
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////
 // this define allows including the detail headers which are setting platfrom specific settings
@@ -24,14 +22,31 @@
 
 // this file can't include azcore since it is included by tools that use ancient compilers
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include <AzCore/PlatformRestrictedFileDef.h>
+#undef AZ_RESTRICTED_SECTION
+#define CRYPLATFORM_H_SECTION_1 1
+#define CRYPLATFORM_H_SECTION_2 2
+#endif
+
 #if defined(IOS)
 #define CURRENT_PLATFORM_NAME "ios"
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(APPLETV)
 #define CURRENT_PLATFORM_NAME "appletv"
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(DARWIN)
 #define CURRENT_PLATFORM_NAME "osx"
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(LINUX) && !defined(ANDROID)
 #define CURRENT_PLATFORM_NAME "linux"
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYPLATFORM_H_SECTION_1
+#include AZ_RESTRICTED_FILE(CryPlatform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(WIN32)
 #define CURRENT_PLATFORM_NAME "windows"
 #elif defined(ANDROID)
@@ -41,9 +56,16 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////
-// some ifdef selection to include the correct platfrom implementation
+// some ifdef selection to include the correct platform implementation
 #if defined(WIN64)
 #   include "CryPlatform.Win64.h"
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYPLATFORM_H_SECTION_2
+#include AZ_RESTRICTED_FILE(CryPlatform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(WIN32)
 #   include "CryPlatform.Win32.h"
 #elif defined(LINUX)
@@ -153,5 +175,3 @@ inline CryMT::SInterlockedSListElement* CryMT::InterlockedSListPop(CryMT::SInter
 ////////////////////////////////////////////////////////////////////////////
 // disallow including of detail header
 #undef CRYPLATFROM_ALLOW_DETAIL_INCLUDES
-
-#endif // _CRY_PLATFORM_H_

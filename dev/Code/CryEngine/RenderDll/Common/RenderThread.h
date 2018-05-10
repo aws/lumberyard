@@ -14,8 +14,6 @@
 // Description : Render thread commands processing.
 
 
-#ifndef CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERTHREAD_H
-#define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERTHREAD_H
 #pragma once
 
 #include <AzCore/std/parallel/mutex.h>
@@ -24,13 +22,29 @@
 // Remove this include once the restricted platform separation process is complete
 #include "RendererDefs.h"
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define RENDERTHREAD_H_SECTION_1 1
+#define RENDERTHREAD_H_SECTION_2 2
+#define RENDERTHREAD_H_SECTION_3 3
+#endif
+
 #if defined(ANDROID)
 #include <sched.h>
 #include <unistd.h>
 #endif
 
 #define RENDER_THREAD_NAME "RenderThread"
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERTHREAD_H_SECTION_1
+#include AZ_RESTRICTED_FILE(RenderThread_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     #define RENDER_THREAD_PRIORITY THREAD_PRIORITY_NORMAL
+#endif
 
 #define RENDER_LOADING_THREAD_NAME "RenderLoadingThread"
 
@@ -246,6 +260,10 @@ struct SRenderThread
     threadID m_nRenderThread;
     threadID m_nRenderThreadLoading;
     threadID m_nMainThread;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERTHREAD_H_SECTION_2
+#include AZ_RESTRICTED_FILE(RenderThread_h, AZ_RESTRICTED_PLATFORM)
+#endif
     HRESULT m_hResult;
     //  Confetti BEGIN: Igor Lobanchikov
 #if defined(OPENGL) && !DXGL_FULL_EMULATION && !defined(CRY_USE_METAL)
@@ -565,6 +583,10 @@ struct SRenderThread
     void    RC_ShutDown(uint32 nFlags);
     bool    RC_CreateDevice();
     void    RC_ResetDevice();
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERTHREAD_H_SECTION_3
+#include AZ_RESTRICTED_FILE(RenderThread_h, AZ_RESTRICTED_PLATFORM)
+#endif
     void    RC_PreloadTextures();
     void    RC_ReadFrameBuffer(unsigned char* pRGB, int nImageX, int nSizeX, int nSizeY, ERB_Type eRBType, bool bRGBA, int nScaledX, int nScaledY);
     bool    RC_CreateDeviceTexture(CTexture* pTex, const byte* pData[6]);
@@ -758,6 +780,3 @@ _inline void SRenderThread::FlushAndWait()
     return;
 }
 #endif
-
-#endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERTHREAD_H
-

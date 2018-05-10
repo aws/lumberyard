@@ -128,6 +128,18 @@ namespace GridMate
         AttachReplicaChunk(statusChunk);
     }
     //-----------------------------------------------------------------------------
+    PeerId Replica::GetPeerId() const
+    {
+        PeerId peerId(InvalidReplicaPeerId);
+
+        if (m_manager != nullptr)
+        {
+            peerId = m_manager->m_cfg.m_myPeerId;
+        }
+
+        return peerId;
+    }
+    //-----------------------------------------------------------------------------
     bool Replica::AttachReplicaChunk(const ReplicaChunkPtr& chunk)
     {
         AZ_PROFILE_TIMER("GridMate");

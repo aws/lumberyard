@@ -71,9 +71,9 @@ namespace DataCpp
         {
             return { true, Type::Plane() };
         }
-        else if (IsRotation(type))
+        else if (IsQuaternion(type))
         {
-            return { true, Type::Rotation() };
+            return { true, Type::Quaternion() };
         }
         else if (IsString(type))
         {
@@ -160,23 +160,7 @@ namespace ScriptCanvas
                     ? Type::BehaviorContextObject(type)
                     : Type::Invalid();
         }
-
-        Type FromBehaviorContextType(const AZ::Uuid& type)
-        {
-            AZStd::pair<bool, Type> help = DataCpp::FromBehaviorContextTypeHelper(type);
-            return help.first ? help.second : Type::BehaviorContextObject(type);
-        }
-
-        Type FromBehaviorContextTypeChecked(const AZ::Uuid& type)
-        {
-            AZStd::pair<bool, Type> help = DataCpp::FromBehaviorContextTypeHelper(type);
-            return help.first
-                ? help.second
-                : DataCpp::IsSupportedBehaviorContextObject(type)
-                    ? Type::BehaviorContextObject(type)
-                    : Type::Invalid();
-        }
-
+        
         const char* GetName(const Type& type)
         {
             switch (type.GetType())
@@ -217,8 +201,8 @@ namespace ScriptCanvas
             case eType::Plane:
                 return eTraits<eType::Plane>::GetName();
 
-            case eType::Rotation:
-                return eTraits<eType::Rotation>::GetName();
+            case eType::Quaternion:
+                return eTraits<eType::Quaternion>::GetName();
 
             case eType::String:
                 return eTraits<eType::String>::GetName();
@@ -270,7 +254,7 @@ namespace ScriptCanvas
             case eType::Matrix4x4:
             case eType::OBB:
             case eType::Plane:
-            case eType::Rotation:
+            case eType::Quaternion:
             case eType::Transform:
             case eType::Vector3:
             case eType::Vector2:
@@ -291,5 +275,16 @@ namespace ScriptCanvas
                     ;
             }
         }
+
+        bool Type::operator==(const Type& other) const
+        {
+            return IS_EXACTLY_A(other);
+        }
+
+        bool Type::operator!=(const Type& other) const
+        {
+            return !((*this) == other);
+        }
+
     }
 }

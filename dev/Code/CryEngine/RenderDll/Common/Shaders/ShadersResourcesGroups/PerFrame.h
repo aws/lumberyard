@@ -9,6 +9,7 @@ struct PerFrameParameters
     Vec4 m_HDRParams;
 
     float m_SunSpecularMultiplier;
+    float m_MidDayIndicator;      // during day [0..1] where noon is 1.0 and going towards 0 at night
 
     Vec3 m_DecalZFightingRemedy;
 

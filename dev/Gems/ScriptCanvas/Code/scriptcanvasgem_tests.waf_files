@@ -18,7 +18,8 @@
       "Tests/Tests/ScriptCanvas_EventHandlers.cpp",
       "Tests/Tests/ScriptCanvas_Math.cpp",
       "Tests/Tests/ScriptCanvas_NodeGenerics.cpp",
-      "Tests/Tests/ScriptCanvas_Regressions.cpp"
+      "Tests/Tests/ScriptCanvas_Regressions.cpp",
+      "Tests/Tests/ScriptCanvas_Variables.cpp"
       ]
     }
 }

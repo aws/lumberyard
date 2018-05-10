@@ -213,7 +213,7 @@ bool CTerrainUpdateDispatcher::AddJob(CTerrainNode* pNode, bool executeAsJob, co
         executeAsJob &= !gEnv->IsEditor();
         executeAsJob &= !passInfo.IsShadowPass();
 
-        if(executeAsJob)
+        if (executeAsJob)
         {
             ScopedSwitchToGlobalHeap useGlobalHeap;
 

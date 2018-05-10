@@ -20,8 +20,8 @@
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
-#include <Styling/StyleHelper.h>
-#include <Ui/RootVisualNotificationsHelper.h>
+#include <GraphCanvas/Widgets/RootGraphicsItem.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 class QKeyEvent;
 
@@ -76,7 +76,10 @@ namespace GraphCanvas
         // VisualRequestBus
         QGraphicsItem* AsGraphicsItem() override;
 
-        bool Contains(const AZ::Vector2& point) const;
+        bool Contains(const AZ::Vector2& point) const override;
+
+        void SetVisible(bool visible) override;
+        bool IsVisible() const override;
         ////
 
         // SceneMemberUIRequestBus
@@ -101,13 +104,12 @@ namespace GraphCanvas
     //! The NodeVisual is the QGraphicsItem for a given node, any components that are created
     //! on a Node will all be children QGraphicsItem of this one.
     class ConnectionGraphicsItem
-        : public RootVisualNotificationsHelper<QGraphicsPathItem>
+        : public RootGraphicsItem<QGraphicsPathItem>
         , public ConnectionNotificationBus::Handler
         , public ConnectionUIRequestBus::Handler
         , public VisualNotificationBus::MultiHandler
         , public StyleNotificationBus::Handler
         , public AZ::SystemTickBus::Handler
-        , public ViewSceneNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ConnectionGraphicsItem, AZ::SystemAllocator, 0);
@@ -120,12 +122,16 @@ namespace GraphCanvas
         ~ConnectionGraphicsItem() override = default;
 
         void Activate();
-        void Deactivate();        
+        void Deactivate();
 
         void RefreshStyle();
         const Styling::StyleHelper& GetStyle() const;
 
         void UpdateOffset();
+
+        // RootVisualNotificationsHelper
+        QRectF GetBoundingRect() const override;
+        ////
 
         // ConnectionNotificationBus
         void OnSourceSlotIdChanged(const AZ::EntityId& oldSlotId, const AZ::EntityId& newSlotId) override;
@@ -148,13 +154,6 @@ namespace GraphCanvas
 
         // ConnectionUIRequestBus
         void UpdateConnectionPath() override;
-        void SetDisplayState(ConnectionDisplayState displayState) override;
-        void SetSelected(bool selected) override;
-        bool IsSelected() const override;
-        ////
-
-        // ViewNotificationBus
-        void OnAltModifier(bool enabled) override;
         ////
 
     protected:
@@ -168,16 +167,11 @@ namespace GraphCanvas
         virtual void OnActivate();
         virtual void OnDeactivate();
         virtual void OnPathChanged();
-        virtual void OnDisplayStateChanged();
-
-        ConnectionDisplayState GetDisplayState() const;
         
         // QGraphicsItem
         QPainterPath shape() const override;
         void contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent) override;
 
-        void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
-        void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
         void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         void mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         void mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent) override;        
@@ -187,13 +181,7 @@ namespace GraphCanvas
 
     private:
 
-        void UpdateDisplayState(ConnectionDisplayState displayState, bool enabled);
-
         ConnectionGraphicsItem(const ConnectionGraphicsItem&) = delete;
-
-        ConnectionDisplayState m_displayState;
-
-        bool m_hovered;
 
         bool m_trackMove;
         bool m_moveSource;

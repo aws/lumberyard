@@ -14,10 +14,10 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 
-#include <GraphCanvas/Types/EntitySaveData.h>
-
 namespace GraphCanvas
 {
+    class EntitySaveDataContainer;
+
     //! EntitySaveDataRequests
     class EntitySaveDataRequests : public AZ::EBusTraits
     {

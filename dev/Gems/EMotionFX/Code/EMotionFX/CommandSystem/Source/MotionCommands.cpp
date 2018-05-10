@@ -59,16 +59,16 @@ namespace CommandSystem
             playbackInfo->mStartNodeIndex,
             playbackInfo->mBlendMode,
             playbackInfo->mPlayMode,
-            playbackInfo->mMirrorMotion ? "true" : "false",
-            playbackInfo->mMix ? "true" : "false",
-            playbackInfo->mPlayNow ? "true" : "false",
-            playbackInfo->mMotionExtractionEnabled ? "true" : "false",
-            playbackInfo->mRetarget ? "true" : "false",
-            playbackInfo->mFreezeAtLastFrame ? "true" : "false",
-            playbackInfo->mEnableMotionEvents ? "true" : "false",
-            playbackInfo->mBlendOutBeforeEnded ? "true" : "false",
-            playbackInfo->mCanOverwrite ? "true" : "false",
-            playbackInfo->mDeleteOnZeroWeight ? "true" : "false");
+            AZStd::to_string(playbackInfo->mMirrorMotion).c_str(),
+            AZStd::to_string(playbackInfo->mMix).c_str(),
+            AZStd::to_string(playbackInfo->mPlayNow).c_str(),
+            AZStd::to_string(playbackInfo->mMotionExtractionEnabled).c_str(),
+            AZStd::to_string(playbackInfo->mRetarget).c_str(),
+            AZStd::to_string(playbackInfo->mFreezeAtLastFrame).c_str(),
+            AZStd::to_string(playbackInfo->mEnableMotionEvents).c_str(),
+            AZStd::to_string(playbackInfo->mBlendOutBeforeEnded).c_str(),
+            AZStd::to_string(playbackInfo->mCanOverwrite).c_str(),
+            AZStd::to_string(playbackInfo->mDeleteOnZeroWeight).c_str());
     }
 
 
@@ -163,30 +163,33 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandPlayMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandPlayMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // clear our old data so that we start fresh in case of a redo
         mOldData.Clear();
 
         // check if there is any actor instance selected and if not return false so that the command doesn't get called and doesn't get inside the action history
         const uint32 numSelectedActorInstances = GetCommandManager()->GetCurrentSelection().GetNumSelectedActorInstances();
+        
+        // verify if we actually have selected an actor instance
         if (numSelectedActorInstances == 0)
         {
+            outResult = "Cannot play motion. No actor instance selected.";
             return false;
         }
 
         // get the motion
-        MCore::String filename;
+        AZStd::string filename;
         parameters.GetValue("filename", this, &filename);
 
-        AZStd::string azFilename = filename.AsChar();
+        AZStd::string azFilename = filename.c_str();
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, azFilename);
         filename = azFilename.c_str();
 
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.AsChar());
+        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.c_str());
         if (motion == nullptr)
         {
-            outResult.Format("Cannot find motion '%s' in motion library.", filename.AsChar());
+            outResult = AZStd::string::format("Cannot find motion '%s' in motion library.", filename.c_str());
             return false;
         }
 
@@ -242,18 +245,12 @@ namespace CommandSystem
             mOldData.Add(undoObject);
         }
 
-        // verify if we actually have selected an actor instance
-        if (numSelectedActorInstances == 0)
-        {
-            outResult = "Cannot play motions. No actor instance selected.";
-        }
-
         return true;
     }
 
 
     // undo the command
-    bool CommandPlayMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandPlayMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -311,18 +308,18 @@ namespace CommandSystem
     GetSyntax().AddParameter("retargetRootIndex", "The retargeting root node index.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                                                                                      \
     GetSyntax().AddParameter("blendMode", "The motion blend mode. Please read the MotionInstance::SetBlendMode(...) method for more information.", MCore::CommandSyntax::PARAMTYPE_INT, "0");   /* 4294967296 == MCORE_INVALIDINDEX32 */                                                                                              \
     GetSyntax().AddParameter("playMode", "The motion playback mode. This means forward or backward playback.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                                                             \
-    GetSyntax().AddParameter("mirrorMotion", "Is motion mirroring enabled or not? When set to true, the mMirrorPlaneNormal is used as mirroring axis.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "No");                                                                                                                               \
-    GetSyntax().AddParameter("mix", "Set to true if you want this motion to mix or not.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "No");                                                                                                                                                                                             \
-    GetSyntax().AddParameter("playNow", "Set to true if you want to start playing the motion right away. If set to false it will be scheduled for later by inserting it into the motion queue.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes");                                                                                     \
-    GetSyntax().AddParameter("motionExtraction", "Set to true when you want to use motion extraction.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes");                                                                                                                                                                               \
-    GetSyntax().AddParameter("retarget", "Set to true if you want to enable motion retargeting. Read the manual for more information.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "No");                                                                                                                                               \
-    GetSyntax().AddParameter("freezeAtLastFrame", "Set to true if you like the motion to freeze at the last frame, for example in case of a death motion.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "No");                                                                                                                           \
-    GetSyntax().AddParameter("enableMotionEvents", "Set to true to enable motion events, or false to disable processing of motion events for this motion instance.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes");                                                                                                                 \
-    GetSyntax().AddParameter("blendOutBeforeEnded", "Set to true if you want the motion to be stopped so that it exactly faded out when the motion/loop fully finished. If set to false it will fade out after the loop has completed (and starts repeating). The default is true.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes"); \
-    GetSyntax().AddParameter("canOverwrite", "Set to true if you want this motion to be able to delete other underlaying motion instances when this motion instance reaches a weight of 1.0.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes");                                                                                       \
-    GetSyntax().AddParameter("deleteOnZeroWeight", "Set to true if you wish to delete this motion instance once it reaches a weight of 0.0.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "Yes");                                                                                                                                        \
+    GetSyntax().AddParameter("mirrorMotion", "Is motion mirroring enabled or not? When set to true, the mMirrorPlaneNormal is used as mirroring axis.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                               \
+    GetSyntax().AddParameter("mix", "Set to true if you want this motion to mix or not.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                                                                                             \
+    GetSyntax().AddParameter("playNow", "Set to true if you want to start playing the motion right away. If set to false it will be scheduled for later by inserting it into the motion queue.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                     \
+    GetSyntax().AddParameter("motionExtraction", "Set to true when you want to use motion extraction.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                                                                                                               \
+    GetSyntax().AddParameter("retarget", "Set to true if you want to enable motion retargeting. Read the manual for more information.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                                               \
+    GetSyntax().AddParameter("freezeAtLastFrame", "Set to true if you like the motion to freeze at the last frame, for example in case of a death motion.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                           \
+    GetSyntax().AddParameter("enableMotionEvents", "Set to true to enable motion events, or false to disable processing of motion events for this motion instance.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                                                 \
+    GetSyntax().AddParameter("blendOutBeforeEnded", "Set to true if you want the motion to be stopped so that it exactly faded out when the motion/loop fully finished. If set to false it will fade out after the loop has completed (and starts repeating). The default is true.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true"); \
+    GetSyntax().AddParameter("canOverwrite", "Set to true if you want this motion to be able to delete other underlaying motion instances when this motion instance reaches a weight of 1.0.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                       \
+    GetSyntax().AddParameter("deleteOnZeroWeight", "Set to true if you wish to delete this motion instance once it reaches a weight of 0.0.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                                                                        \
     GetSyntax().AddParameter("normalizedMotionOffset", "The normalized motion offset time to be used when the useMotionOffset flag is enabled. 0.0 means motion offset is disabled while 1.0 means the motion starts at the end of the motion.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                       \
-    GetSyntax().AddParameter("useMotionOffset", "Set to true if you wish to use the motion offset. This will start the motion from the given normalized motion offset value instead of from time=0.0. The motion instance will get paused afterwards.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "No");
+    GetSyntax().AddParameter("useMotionOffset", "Set to true if you wish to use the motion offset. This will start the motion from the given normalized motion offset value instead of from time=0.0. The motion instance will get paused afterwards.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
 
     // init the syntax of the command
     void CommandPlayMotion::InitSyntax()
@@ -428,7 +425,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAdjustMotionInstance::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMotionInstance::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(outResult);
 
@@ -446,7 +443,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAdjustMotionInstance::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMotionInstance::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -488,20 +485,20 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAdjustDefaultPlayBackInfo::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustDefaultPlayBackInfo::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the motion
-        MCore::String filename;
+        AZStd::string filename;
         parameters.GetValue("filename", this, &filename);
 
-        AZStd::string azFilename = filename.AsChar();
+        AZStd::string azFilename = filename.c_str();
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, azFilename);
         filename = azFilename.c_str();
 
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.AsChar());
+        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.c_str());
         if (motion == nullptr)
         {
-            outResult.Format("Cannot find motion '%s' in motion library.", filename.AsChar());
+            outResult = AZStd::string::format("Cannot find motion '%s' in motion library.", filename.c_str());
             return false;
         }
 
@@ -509,7 +506,7 @@ namespace CommandSystem
         EMotionFX::PlayBackInfo* defaultPlayBackInfo = motion->GetDefaultPlayBackInfo();
         if (defaultPlayBackInfo == nullptr)
         {
-            outResult.Format("Motion '%s' does not have a default playback info. Cannot adjust default playback info.", filename.AsChar());
+            outResult = AZStd::string::format("Motion '%s' does not have a default playback info. Cannot adjust default playback info.", filename.c_str());
             return false;
         }
 
@@ -526,15 +523,15 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAdjustDefaultPlayBackInfo::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustDefaultPlayBackInfo::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the motion
-        MCore::String filename;
+        AZStd::string filename;
         parameters.GetValue("filename", this, &filename);
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.AsChar());
+        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.c_str());
         if (motion == nullptr)
         {
-            outResult = MCore::String().Format("Cannot find motion '%s' in motion library.", filename.AsChar());
+            outResult = AZStd::string::format("Cannot find motion '%s' in motion library.", filename.c_str());
             return false;
         }
 
@@ -542,7 +539,7 @@ namespace CommandSystem
         EMotionFX::PlayBackInfo* defaultPlayBackInfo = motion->GetDefaultPlayBackInfo();
         if (defaultPlayBackInfo == nullptr)
         {
-            outResult.Format("Motion '%s' does not have a default playback info. Cannot adjust default playback info.", filename.AsChar());
+            outResult = AZStd::string::format("Motion '%s' does not have a default playback info. Cannot adjust default playback info.", filename.c_str());
             return false;
         }
 
@@ -574,7 +571,7 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
 
     // execute
-    bool CommandStopMotionInstances::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandStopMotionInstances::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // clear our old data so that we start fresh in case of a redo
         //mOldData.Clear();
@@ -589,17 +586,17 @@ namespace CommandSystem
         }
 
         // get the motion
-        MCore::String filename;
+        AZStd::string filename;
         parameters.GetValue("filename", this, &filename);
 
-        AZStd::string azFilename = filename.AsChar();
+        AZStd::string azFilename = filename.c_str();
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, azFilename);
         filename = azFilename.c_str();
 
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.AsChar());
+        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByFileName(filename.c_str());
         if (motion == nullptr)
         {
-            outResult.Format("Cannot find motion '%s' in motion library.", filename.AsChar());
+            outResult = AZStd::string::format("Cannot find motion '%s' in motion library.", filename.c_str());
             return false;
         }
 
@@ -642,7 +639,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandStopMotionInstances::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandStopMotionInstances::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -670,7 +667,7 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
 
     // execute
-    bool CommandStopAllMotionInstances::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandStopAllMotionInstances::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -717,7 +714,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandStopAllMotionInstances::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandStopAllMotionInstances::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -756,7 +753,7 @@ namespace CommandSystem
 
     
     // execute
-    bool CommandAdjustMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionID = parameters.GetValueAsInt("motionID", this);
 
@@ -764,7 +761,7 @@ namespace CommandSystem
         EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionID);
         if (motion == nullptr)
         {
-            outResult.Format("Cannot adjust motion. Motion with id='%i' does not exist.", motionID);
+            outResult = AZStd::string::format("Cannot adjust motion. Motion with id='%i' does not exist.", motionID);
             return false;
         }
 
@@ -780,9 +777,9 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("name"))
         {
             mOldName = motion->GetName();
-            MCore::String name;
+            AZStd::string name;
             parameters.GetValue("name", this, &name);
-            motion->SetName(name.AsChar());
+            motion->SetName(name.c_str());
 
             mOldDirtyFlag = motion->GetDirtyFlag();
             motion->SetDirtyFlag(true);
@@ -807,7 +804,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAdjustMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         const int32 motionID = parameters.GetValueAsInt("motionID", this);
 
@@ -815,7 +812,7 @@ namespace CommandSystem
         EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionID);
         if (!motion)
         {
-            outResult.Format("Cannot adjust motion. Motion with id='%i' does not exist.", motionID);
+            outResult = AZStd::string::format("Cannot adjust motion. Motion with id='%i' does not exist.", motionID);
             return false;
         }
 
@@ -828,7 +825,7 @@ namespace CommandSystem
         // adjust the name
         if (parameters.CheckIfHasParameter("name"))
         {
-            motion->SetName(mOldName.AsChar());
+            motion->SetName(mOldName.c_str());
             motion->SetDirtyFlag(mOldDirtyFlag);
         }
 
@@ -878,7 +875,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandRemoveMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZStd::string filename;
         parameters.GetValue("filename", "", filename);
@@ -898,7 +895,7 @@ namespace CommandSystem
 
         if (motion->GetIsOwnedByRuntime())
         {
-            outResult.Format("Cannot remove motion. Motion with filename '%s' is being used by the engine runtime.", filename.c_str());
+            outResult = AZStd::string::format("Cannot remove motion. Motion with filename '%s' is being used by the engine runtime.", filename.c_str());
             return false;
         }
 
@@ -911,7 +908,7 @@ namespace CommandSystem
             EMotionFX::MotionSet::MotionEntry*  motionEntry = motionSet->FindMotionEntry(motion);
             if (motionEntry)
             {
-                outResult.Format("Cannot remove motion '%s'. Motion set named '%s' is using the motion.", motion->GetFileName(), motionSet->GetName());
+                outResult = AZStd::string::format("Cannot remove motion '%s'. Motion set named '%s' is using the motion.", motion->GetFileName(), motionSet->GetName());
                 return false;
             }
         }
@@ -935,14 +932,14 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandRemoveMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRemoveMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
 
         // execute the group command
-        MCore::String commandString;
-        commandString.Format("ImportMotion -filename \"%s\" -motionID %i", mOldFileName.AsChar(), mOldMotionID);
-        bool result = GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult);
+        AZStd::string commandString;
+        commandString = AZStd::string::format("ImportMotion -filename \"%s\" -motionID %i", mOldFileName.c_str(), mOldMotionID);
+        bool result = GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult);
 
         // restore the workspace dirty flag
         GetCommandManager()->SetWorkspaceDirtyFlag(mOldWorkspaceDirtyFlag);
@@ -987,7 +984,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandScaleMotionData::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandScaleMotionData::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         EMotionFX::Motion* motion;
         if (parameters.CheckIfHasParameter("id"))
@@ -997,7 +994,7 @@ namespace CommandSystem
             motion = EMotionFX::GetMotionManager().FindMotionByID(motionID);
             if (motion == nullptr)
             {
-                outResult.Format("Cannot get the motion, with ID %d.", motionID);
+                outResult = AZStd::string::format("Cannot get the motion, with ID %d.", motionID);
                 return false;
             }
         }
@@ -1024,7 +1021,7 @@ namespace CommandSystem
         mMotionID = motion->GetID();
         mScaleFactor = parameters.GetValueAsFloat("scaleFactor", 1.0f);
 
-        MCore::String targetUnitTypeString;
+        AZStd::string targetUnitTypeString;
         parameters.GetValue("unitType", this, &targetUnitTypeString);
         mUseUnitType = parameters.CheckIfHasParameter("unitType");
 
@@ -1032,7 +1029,7 @@ namespace CommandSystem
         bool stringConvertSuccess = MCore::Distance::StringToUnitType(targetUnitTypeString, &targetUnitType);
         if (mUseUnitType && stringConvertSuccess == false)
         {
-            outResult.Format("The passed unitType '%s' is not a valid unit type.", targetUnitTypeString.AsChar());
+            outResult = AZStd::string::format("The passed unitType '%s' is not a valid unit type.", targetUnitTypeString.c_str());
             return false;
         }
         mOldUnitType = MCore::Distance::UnitTypeToString(motion->GetUnitType());
@@ -1055,21 +1052,21 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandScaleMotionData::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandScaleMotionData::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
 
         if (mUseUnitType == false)
         {
-            MCore::String commandString;
-            commandString.Format("ScaleMotionData -id %d -scaleFactor %.8f", mMotionID, 1.0f / mScaleFactor);
-            GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult);
+            AZStd::string commandString;
+            commandString = AZStd::string::format("ScaleMotionData -id %d -scaleFactor %.8f", mMotionID, 1.0f / mScaleFactor);
+            GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult);
         }
         else
         {
-            MCore::String commandString;
-            commandString.Format("ScaleMotionData -id %d -unitType \"%s\"", mMotionID, mOldUnitType.AsChar());
-            GetCommandManager()->ExecuteCommandInsideCommand(commandString.AsChar(), outResult);
+            AZStd::string commandString;
+            commandString = AZStd::string::format("ScaleMotionData -id %d -unitType \"%s\"", mMotionID, mOldUnitType.c_str());
+            GetCommandManager()->ExecuteCommandInsideCommand(commandString.c_str(), outResult);
         }
 
         EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(mMotionID);
@@ -1116,11 +1113,11 @@ namespace CommandSystem
         const size_t numFileNames = filenames.size();
 
         // construct the command name
-        MCore::String valueString;
-        valueString.Format("%s %d motion%s", (reload) ? "Reload" : "Load", numFileNames, (numFileNames > 1) ? "s" : "");
+        AZStd::string valueString;
+        valueString = AZStd::string::format("%s %d motion%s", (reload) ? "Reload" : "Load", numFileNames, (numFileNames > 1) ? "s" : "");
 
         // create our command group
-        MCore::CommandGroup commandGroup(valueString.AsChar(), (uint32)numFileNames * 2);
+        MCore::CommandGroup commandGroup(valueString.c_str(), (uint32)numFileNames * 2);
 
         // iterate over all filenames and load the motions
         AZStd::string command;
@@ -1129,8 +1126,8 @@ namespace CommandSystem
             // in case we want to reload the same motion remove the old one first
             if (reload)
             {
-                valueString.Format("RemoveMotion -filename \"%s\"", filenames[i].c_str());
-                commandGroup.AddCommandString(valueString.AsChar());
+                valueString = AZStd::string::format("RemoveMotion -filename \"%s\"", filenames[i].c_str());
+                commandGroup.AddCommandString(valueString.c_str());
             }
 
             command = AZStd::string::format("ImportMotion -filename \"%s\"", filenames[i].c_str());
@@ -1140,9 +1137,9 @@ namespace CommandSystem
         // execute the group command
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, valueString) == false)
         {
-            if (valueString.GetIsEmpty() == false)
+            if (valueString.empty() == false)
             {
-                MCore::LogError(valueString.AsChar());
+                MCore::LogError(valueString.c_str());
             }
         }
     }

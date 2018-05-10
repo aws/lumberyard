@@ -16,7 +16,7 @@
 // if we need to add compile switches, we would add them here.
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/Math/Uuid.h>
-#include <SQLite/sqlite3.h>
+#include <sqlite3.h>
 
 namespace AzToolsFramework
 {

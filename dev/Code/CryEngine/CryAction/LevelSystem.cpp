@@ -777,6 +777,13 @@ bool CLevelInfo::ReadInfo()
 }
 
 //////////////////////////////////////////////////////////////////////////
+#if defined(AZ_PLATFORM_LINUX) && defined(_LIBCPP_VERSION) && (_LIBCPP_VERSION < 4000)
+// BUG: Workaround for a compiler bug. std::map.clear() causes a crash when optimized.
+// More info here -
+//  http://llvm.org/viewvc/llvm-project?view=revision&revision=276003
+//  https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=224917
+[[clang::optnone]]
+#endif
 void CLevelInfo::ReadMetaData()
 {
     string fullPath(GetPath());
@@ -1066,8 +1073,6 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
                 continue;
             }
 
-            CLevelInfo levelInfo;
-
             string levelFolder = (folder.empty() ? "" : (folder + "/")) + string(fd.name);
             string levelPath = m_levelsFolder + "/" + levelFolder;
             string paks = levelPath + string("/*.pak");
@@ -1084,6 +1089,7 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
             }
 
             //CryLog("[DLC] ScanFolder adding level:'%s'", levelPath.c_str());
+            CLevelInfo levelInfo;
             levelInfo.m_levelPath = levelPath;
             levelInfo.m_levelPaks = paks;
             levelInfo.m_levelName = levelFolder;
@@ -1094,7 +1100,6 @@ void CLevelSystem::ScanFolder(const char* subfolder, bool modFolder, const uint3
 
             SwapEndian(levelInfo.m_scanTag, eBigEndian);
             SwapEndian(levelInfo.m_levelTag, eBigEndian);
-
 
             CLevelInfo* pExistingInfo = GetLevelInfoInternal(levelInfo.m_levelName);
             if (pExistingInfo && pExistingInfo->MetadataLoaded() == false)

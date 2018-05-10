@@ -15,8 +15,6 @@
 
 #include <AzCore/base.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
-#include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/std/functional.h>
 
 #include <QObject>
 #include <QPointer>
@@ -43,7 +41,6 @@ namespace AzToolsFramework
         Q_OBJECT
 
     public:
-        AZ_CLASS_ALLOCATOR(QTreeViewStateSaver, AZ::SystemAllocator, 0);
         explicit QTreeViewStateSaver(AZ::u32 storageID, QObject* pParent = nullptr);
         ~QTreeViewStateSaver() override;
 
@@ -103,10 +100,6 @@ namespace AzToolsFramework
         Q_OBJECT
 
     public:
-        // NOTE: This class in particular is used by classes that don't initialize the AZ Allocators
-        // We can't currently use it with AZ_CLASS_ALLOCATOR.
-        // ie AZ_CLASS_ALLOCATOR(QTreeViewWithStateSaving, AZ::SystemAllocator, 0);
-
         explicit QTreeViewWithStateSaving(QWidget* parent = nullptr);
         ~QTreeViewWithStateSaving() override;
 

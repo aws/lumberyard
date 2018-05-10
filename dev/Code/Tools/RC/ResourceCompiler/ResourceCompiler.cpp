@@ -25,15 +25,6 @@
 #include <stdio.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>   // needed for DbgHelp.h
-
-#pragma warning(push)
-#pragma warning(disable : 4091) // Needed to bypass the "'typedef ': ignored on left of '' when no variable is declared" brought in by DbgHelp.h
-#include <DbgHelp.h>
-#pragma warning(pop)
-
-#include <io.h>
 #include "CpuInfo.h"
 #include "MathHelpers.h"
 #include <psapi.h>       // GetProcessMemoryInfo()
@@ -70,6 +61,7 @@
 #include <ParseEngineConfig.h>
 #include <AzCore/Module/Environment.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/CommandLine/CommandLine.h>
 
 #include <AzCore/debug/TraceMessageBus.h>
 #include <AzCore/debug/TraceMessagesDrillerBus.h>
@@ -101,6 +93,10 @@ const char* const ResourceCompiler::m_filenameCreatedFileList  = "rc_createdfile
 
 const size_t ResourceCompiler::s_internalBufferSize;
 const size_t ResourceCompiler::s_environmentBufferSize;
+
+#if defined(AZ_PLATFORM_WINDOWS)
+static CrashHandler s_crashHandler;
+#endif
 
 namespace
 {
@@ -495,7 +491,7 @@ static void CompileFilesMultiThreaded(
         std::vector<AZStd::thread> threads(threadCount);
         for (int threadIndex = 0; threadIndex < threadCount; ++threadIndex)
         {
-        	threads[threadIndex] = AZStd::thread(AZStd::bind(ThreadFunc, &threadData[threadIndex]));
+            threads[threadIndex] = AZStd::thread(AZStd::bind(ThreadFunc, &threadData[threadIndex]));
         }
         
         //TODO:: Implement an atomic counter to track progress for these threads
@@ -702,7 +698,7 @@ bool ResourceCompiler::CollectFilesToCompile(const string& filespec, std::vector
                 for (size_t t = 0; t < tokens.size(); ++t)
                 {
                     // Scan directory and accumulate matching filenames in the list.
-                    const string path = PathHelpers::Join(sourceRoot, PathHelpers::GetDirectory(tokens[t]));
+                    const string path = PathHelpers::ToPlatformPath(PathHelpers::Join(sourceRoot, PathHelpers::GetDirectory(tokens[t])));
                     const string pattern = PathHelpers::GetFilename(tokens[t]);
                     RCLog("Scanning directory '%s' for '%s'...", path.c_str(), pattern.c_str());
                     std::vector<string> filenames;
@@ -846,7 +842,7 @@ bool ResourceCompiler::CompileFilesBySingleProcess(const std::vector<RcFile>& fi
 
     if (config->GetAsBool("copyonly", false, true) || config->GetAsBool("copyonlynooverwrite", false, true))
     {
-        const string targetroot = PathHelpers::CanonicalizePath(config->GetAsString("targetroot", "", ""));
+        const string targetroot = PathHelpers::ToPlatformPath(PathHelpers::CanonicalizePath(config->GetAsString("targetroot", "", "")));
         if (targetroot.empty() && config->GetAsBool("copyonly", false, true))
         {
             RCLogError("/copyonly: you must specify /targetroot.");
@@ -1685,6 +1681,12 @@ static string GetResourceCompilerGenericInfo(const ResourceCompiler& rc, const s
     s += newline;
 
     s += "Platform support: PC";
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    s += ", " #PublicAuxName3;
+    AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
 #if defined(TOOLS_SUPPORT_POWERVR)
     s += ", PowerVR";
 #endif
@@ -2029,11 +2031,8 @@ static void GetFileSizeAndCrc32(int64& size, uint32& crc32, const char* pFilenam
     crc32 = c.Get();
 }
 
-#if defined(AZ_PLATFORM_WINDOWS)
-static CrashHandler s_crashHandler;
-#endif
 
-std::unique_ptr<QApplication> CreateQApplication(int &argc, char** argv)
+std::unique_ptr<QCoreApplication> CreateQApplication(int &argc, char** argv)
 {
 #if defined(WIN32) || defined(WIN64)
     char modulePath[_MAX_PATH] = { 0 };
@@ -2058,7 +2057,14 @@ std::unique_ptr<QApplication> CreateQApplication(int &argc, char** argv)
 #endif // #if defined(WIN32) || defined(WIN64)
 
     //we are not going to start a mesg loop. so exec will not be called on the qapp
-    auto qApplication = std::make_unique<QApplication>(argc, argv);
+
+    // special circumsance  - if 'userDialog' is present on the command line, we need an interactive app:
+    AzFramework::CommandLine cmdLine;
+    cmdLine.Parse(argc, argv);
+    bool userDialog = cmdLine.HasSwitch("userdialog") &&
+        ((cmdLine.GetNumSwitchValues("userdialog") == 0) || (cmdLine.GetSwitchValue("userdialog", 0) == "1"));
+    
+    std::unique_ptr<QCoreApplication> qApplication = userDialog? std::make_unique<QApplication>(argc, argv) : std::make_unique<QCoreApplication>(argc, argv);
 
     // now that QT is initialized, we can use its path manip to set the rest up:
     QDir appPath(qApp->applicationDirPath());
@@ -2226,11 +2232,9 @@ int __cdecl main_impl(int argc, char** argv, char** envp)
         // initialize rc (also initializes logs)
         rc.Init(mainConfig);
 
+        AZ::Debug::Trace::HandleExceptions(true);
 #if defined(AZ_PLATFORM_WINDOWS)
-        s_crashHandler.SetFiles(
-            rc.GetMainLogFileName(),
-            rc.GetErrorLogFileName(),
-            rc.FormLogFileName(ResourceCompiler::m_filenameCrashDump));
+        s_crashHandler.SetDumpFile(rc.FormLogFileName(ResourceCompiler::m_filenameCrashDump));
 #endif
         
         if (mainConfig.GetAsBool("version", false, true))
@@ -2347,25 +2351,6 @@ int __cdecl main_impl(int argc, char** argv, char** envp)
             {
                 RCLogError("Unknown platform specified: '%s'", platformStr.c_str());
                 return eRcExitCode_FatalError;
-            }
-
-            // Error if the platform specified is not supported by RC
-	    // TODO: this should probably go away, but we need to be sure
-	    // That the platform is not somehow listed as supported
-	    // above, rather than unknown.
-            const char* const unsupportedPlatforms[] =
-            {
-                "XOne", "XboxOne", "Durango",  // ACCEPTED_USE
-                "PS4", "Orbis", // ACCEPTED_USE
-                ""
-            };
-            for (int i = 0; i < sizeof(unsupportedPlatforms) / sizeof(unsupportedPlatforms[0]); ++i)
-            {
-                if (rc.GetPlatformInfo(platform)->HasName(unsupportedPlatforms[i]))
-                {
-                    RCLogError("Platform specified ('%s') is not supported by this RC", platformStr.c_str());
-                    return eRcExitCode_FatalError;
-                }
             }
         }
 
@@ -3520,7 +3505,7 @@ void ResourceCompiler::CopyFiles(const std::vector<RcFile>& files, bool bNoOverw
 
             //////////////////////////////////////////////////////////////////////////
             // Compare source and target files modify timestamps.
-            if (FileUtil::FileTimesAreEqual(srcFilename, trgFilename) && !bRefresh)
+            if (bTargetFileExists && FileUtil::FileTimesAreEqual(srcFilename, trgFilename) && !bRefresh)
             {
                 // Up to date file already exists in target folder
                 ++numFilesUpToDate;
@@ -3655,12 +3640,6 @@ static string FixAssetPath(const char* path)
 void ResourceCompiler::ScanForAssetReferences(std::vector<string>& outReferences, const string& refsRoot)
 {
     const IConfig* const config = &m_multiConfig.getConfig();
-
-    const string targetroot = config->GetAsString("targetroot", "", "");
-    if (targetroot.empty())
-    {
-        return;
-    }
 
     const char* const scanRoot = ".";
 
@@ -3843,7 +3822,7 @@ void ResourceCompiler::CleanTargetFolder(bool bUseOnlyInputFiles)
     const IConfig* const config = &m_multiConfig.getConfig();
 
     {
-        const string targetroot = config->GetAsString("targetroot", "", "");
+        const string targetroot = PathHelpers::ToPlatformPath(PathHelpers::CanonicalizePath(config->GetAsString("targetroot", "", "")));
         if (targetroot.empty())
         {
             return;

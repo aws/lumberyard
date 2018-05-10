@@ -11,7 +11,8 @@
 */
 #pragma once
 
-#include "NodePaletteTreeItem.h"
+#include <GraphCanvas/Widgets/NodePalette/TreeItems/DraggableNodePaletteTreeItem.h>
+
 #include "CreateNodeMimeEvent.h"
 
 namespace ScriptCanvasEditor
@@ -39,7 +40,7 @@ namespace ScriptCanvasEditor
     };
     
     class ClassMethodEventPaletteTreeItem
-        : public DraggableNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
     {
     private:
         static const QString& GetDefaultIcon();
@@ -70,7 +71,7 @@ namespace ScriptCanvasEditor
         
         CreateCustomNodeMimeEvent() = default;
         CreateCustomNodeMimeEvent(const AZ::Uuid& typeId);
-        CreateCustomNodeMimeEvent(const AZ::Uuid& typeId, const AZStd::string& styleOverride);
+        CreateCustomNodeMimeEvent(const AZ::Uuid& typeId, const AZStd::string& styleOverride, const AZStd::string& titlePalette);
         ~CreateCustomNodeMimeEvent() = default;
 
     protected:
@@ -79,10 +80,11 @@ namespace ScriptCanvasEditor
     private:
         AZ::Uuid m_typeId;
         AZStd::string m_styleOverride;
+        AZStd::string m_titlePalette;
     };
     
     class CustomNodePaletteTreeItem
-        : public DraggableNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
     {
     public:
         AZ_CLASS_ALLOCATOR(CustomNodePaletteTreeItem, AZ::SystemAllocator, 0);

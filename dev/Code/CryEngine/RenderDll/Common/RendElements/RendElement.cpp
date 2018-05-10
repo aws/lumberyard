@@ -103,7 +103,7 @@ CRendElement::CRendElement()
 
 CRendElement::~CRendElement()
 {
-    assert(m_Type == eDATA_Unknown || m_Type == eDATA_Particle || m_Type == eDATA_GPUParticle || m_Type == eDATA_Gem);
+    assert(m_Type == eDATA_Unknown || m_Type == eDATA_Particle || m_Type == eDATA_GPUParticle || m_Type == eDATA_Gem || m_Type == eDATA_VolumeObject);
 
     //@TODO: Fix later, prevent crash on exit in single executable
     if (this == &m_RootRelease[0] || this == &m_RootRelease[1] || this == &m_RootRelease[2] || this == &m_RootRelease[3] || this == &m_RootGlobal)

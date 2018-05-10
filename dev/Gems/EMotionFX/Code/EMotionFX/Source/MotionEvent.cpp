@@ -130,7 +130,7 @@ namespace EMotionFX
 
 
     // retrieve the parameter string
-    const MCore::String& MotionEvent::GetParameterString(MotionEventTrack* eventTrack) const
+    const AZStd::string& MotionEvent::GetParameterString(MotionEventTrack* eventTrack) const
     {
         return eventTrack->GetParameterString(mParameterIndex);
     }

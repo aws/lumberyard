@@ -10,15 +10,17 @@
 *
 */
 
+#pragma once
+
 #ifndef AZFRAMEWORK_NET_BINDING_SYSTEM_BUS_H
 #define AZFRAMEWORK_NET_BINDING_SYSTEM_BUS_H
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
-#include <AzCore/Component/Entity.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <GridMate/Replica/ReplicaCommon.h>
 #include <GridMate/Session/Session.h>
+#include <AzCore/Slice/SliceComponent.h>
 
 namespace AZ
 {
@@ -30,6 +32,8 @@ namespace AZ
 
 namespace AzFramework
 {
+    const AZ::SliceComponent::SliceInstanceId UnspecifiedSliceInstanceId = AZ::Uuid::CreateNull();
+
     /**
     */
     typedef AZ::u32 NetBindingContextSequence;
@@ -43,6 +47,10 @@ namespace AzFramework
         AZ::Data::AssetId m_sliceAssetId;
         AZ::EntityId m_staticEntityId;
         AZ::EntityId m_runtimeEntityId;
+        /**
+         * \brief uniquely identifies the slice instance that this entity is being replicated from
+         */
+        AZ::SliceComponent::SliceInstanceId m_sliceInstanceId;
     };
 
     /**
@@ -80,6 +88,12 @@ namespace AzFramework
 
         //! Spawn and bind an entity from stream
         virtual void SpawnEntityFromStream(AZ::IO::GenericStream& spawnData, AZ::EntityId useEntityId, GridMate::ReplicaId bindTo, NetBindingContextSequence addToContext) = 0;
+
+        //! De-spawn an entity: deactivates or removes the entity.
+        /**
+         * /note @sliceInstanceId is the slice instance that the entity belongs to. If it's a level entity, then this should be AZ::Uuid::CreateNull()
+         */
+        virtual void UnbindGameEntity(AZ::EntityId entity, const AZ::SliceComponent::SliceInstanceId& sliceInstanceId) = 0;
     };
     typedef AZ::EBus<NetBindingSystemInterface> NetBindingSystemBus;
 
@@ -103,4 +117,3 @@ namespace AzFramework
 }   // namespace AzFramework
 
 #endif // AZFRAMEWORK_NET_BINDING_SYSTEM_BUS_H
-#pragma once

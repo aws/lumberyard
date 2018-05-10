@@ -18,6 +18,31 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////
     // BehaviorComponentId
 
+    void BehaviorComponentId::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<BehaviorComponentId>()
+                ->Version(1)
+                ->Field("ComponentId", &BehaviorComponentId::m_id)
+                ;
+        }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->Class<BehaviorComponentId>("ComponentId")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Constructor()
+                ->Method("IsValid", &BehaviorComponentId::IsValid)
+                ->Method("Equal", &BehaviorComponentId::operator==)
+                ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                ->Method("ToString", &BehaviorComponentId::ToString)
+                ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
+                ;
+        }
+    }
+
     BehaviorComponentId::BehaviorComponentId(AZ::ComponentId id)
         : m_id(id)
     {
@@ -87,6 +112,8 @@ namespace AzFramework
 
     void BehaviorEntity::Reflect(AZ::ReflectContext* context)
     {
+        BehaviorComponentId::Reflect(context);
+
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<BehaviorEntity>()
@@ -106,17 +133,6 @@ namespace AzFramework
 
         if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->Class<BehaviorComponentId>("ComponentId")
-                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-                ->Constructor()
-                ->Method("IsValid", &BehaviorComponentId::IsValid)
-                ->Method("Equal", &BehaviorComponentId::operator==)
-                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
-                ->Method("ToString", &BehaviorComponentId::ToString)
-                    ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
-                ;
-
             behaviorContext->Class<BehaviorEntity>("Entity")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)

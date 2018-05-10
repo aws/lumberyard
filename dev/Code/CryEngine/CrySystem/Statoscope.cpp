@@ -27,6 +27,13 @@
 
 #include <AzCore/Socket/AzSocket.h>
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define STATOSCOPE_CPP_SECTION_1 1
+#define STATOSCOPE_CPP_SECTION_2 2
+#endif
+
 #if ENABLE_STATOSCOPE
 
 namespace
@@ -2421,7 +2428,13 @@ void CStatoscope::SetLogFilename()
 
     if (m_pStatoscopeFilenameUseBuildInfoCVar->GetIVal() > 0)
     {
-#if   defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STATOSCOPE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Statoscope_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN64)
         m_logFilename += "_WIN64";
 #elif defined(WIN32)    // make sure this stays below the WIN64 test as WIN32 is also defined for 64-bit compiles
         m_logFilename += "_WIN32";
@@ -3524,6 +3537,10 @@ void CStatoscopeIOThread::Run()
     m_threadID = CryGetCurrentThreadId();
     CryThreadSetName(threadID(THREADID_NULL), "StatoscopeDataWriter");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION STATOSCOPE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Statoscope_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     while (IsStarted())
     {

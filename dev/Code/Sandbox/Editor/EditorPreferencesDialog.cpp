@@ -47,6 +47,9 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
 {
     ui->setupUi(this);
 
+    ui->filter->SetTypeFilterVisible(false);
+    connect(ui->filter, &FilteredSearchWidget::TextFilterChanged, this, &EditorPreferencesDialog::SetFilter);
+
     AZ::SerializeContext* serializeContext = nullptr;
     EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
     AZ_Assert(serializeContext, "Serialization context not available");
@@ -60,7 +63,7 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
         if (serializeContext)
         {
             CEditorPreferencesPage_General::Reflect(*serializeContext);
-            CEditorPreferencesPage_Files::Reflect(*serializeContext);
+            CEditorPreferencesPage_Files::Reflect(*serializeContext);       
             CEditorPreferencesPage_ViewportGeneral::Reflect(*serializeContext);
             CEditorPreferencesPage_ViewportGizmo::Reflect(*serializeContext);
             CEditorPreferencesPage_ViewportMovement::Reflect(*serializeContext);
@@ -102,7 +105,6 @@ void EditorPreferencesDialog::showEvent(QShowEvent* event)
     ui->pageTree->setCurrentItem(ui->pageTree->topLevelItem(0));
     QDialog::showEvent(event);
 }
-
 
 void EditorPreferencesDialog::OnTreeCurrentItemChanged()
 {
@@ -203,7 +205,6 @@ void EditorPreferencesDialog::OnManage()
     OnAccept();
 }
 
-
 void EditorPreferencesDialog::SetActivePage(EditorPreferencesTreeWidgetItem* pageItem)
 {
     if (m_currentPageItem)
@@ -218,11 +219,54 @@ void EditorPreferencesDialog::SetActivePage(EditorPreferencesTreeWidgetItem* pag
     IPreferencesPage* instance = m_currentPageItem->GetPreferencesPage();
     const AZ::Uuid& classId = AZ::SerializeTypeInfo<IPreferencesPage>::GetUuid(instance);
     ui->propertyEditor->AddInstance(instance, classId);
-    ui->propertyEditor->InvalidateAll();
+    m_currentPageItem->UpdateEditorFilter(ui->propertyEditor, m_filter);
     ui->propertyEditor->show();
-    ui->propertyEditor->ExpandAll();
 }
 
+void EditorPreferencesDialog::SetFilter(const QString& filter)
+{
+    m_filter = filter;
+
+    QTreeWidgetItem* firstVisiblePage = nullptr;
+
+    std::function<void(QTreeWidgetItem* item)> filterItem = [&](QTreeWidgetItem* item)
+    {
+        // Hide categories that have no pages remaining in them after filtering their pages
+        if (item->childCount() > 0)
+        {
+            bool shouldHide = true;
+            for (int i = item->childCount() - 1; i >= 0; --i)
+            {
+                QTreeWidgetItem* child = item->child(i);
+                filterItem(child);
+                shouldHide = shouldHide && child->isHidden();
+            }
+            item->setHidden(shouldHide);
+        }
+        else
+        {
+            EditorPreferencesTreeWidgetItem* pageItem = static_cast<EditorPreferencesTreeWidgetItem*>(item);
+            pageItem->Filter(filter);
+            if (!firstVisiblePage && !pageItem->isHidden())
+            {
+                firstVisiblePage = pageItem;
+            }
+        }
+    };
+    filterItem(ui->pageTree->invisibleRootItem());
+
+    // If we're searching and we don't have a current selection any more (the old page got filtered)
+    // go ahead and select the first valid page
+    if ((!m_currentPageItem || m_currentPageItem->isHidden())
+        && !filter.isEmpty() && firstVisiblePage)
+    {
+        ui->pageTree->setCurrentItem(firstVisiblePage);
+    }
+    else if (m_currentPageItem)
+    {
+        m_currentPageItem->UpdateEditorFilter(ui->propertyEditor, m_filter);
+    }
+}
 
 void EditorPreferencesDialog::CreateImages()
 {
@@ -270,5 +314,3 @@ void EditorPreferencesDialog::CreatePages()
         }
     }
 }
-
-#include <EditorPreferencesDialog.moc>

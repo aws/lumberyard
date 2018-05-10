@@ -16,9 +16,8 @@
 #include "Attribute.h"
 #include "AttributeSettings.h"
 #include "Stream.h"
-#include "StringIDGenerator.h"
+#include "StringIdPool.h"
 #include "LogManager.h"
-#include "UnicodeString.h"
 #include "AttributeBool.h"
 #include "AttributeFloat.h"
 #include "AttributeString.h"
@@ -138,7 +137,7 @@ namespace MCore
 
 
     // init from a string
-    bool AttributeSet::InitFromString(const MCore::String& valueString)
+    bool AttributeSet::InitFromString(const AZStd::string& valueString)
     {
         // -numAttributes 10 -index { -settings { settingsString } -type typeString -value { valueString } }
 
@@ -148,9 +147,9 @@ namespace MCore
         // parse the valueString
         CommandLine rootCommandLine(valueString);
 
-        MCore::String tempString;
-        MCore::String tempStringB;
-        MCore::String typeString;
+        AZStd::string tempString;
+        AZStd::string tempStringB;
+        AZStd::string typeString;
 
         // get the number of attributes
         const uint32 numAttributes = static_cast<uint32>(rootCommandLine.GetValueAsInt("numAttributes", -1));
@@ -163,10 +162,10 @@ namespace MCore
         // load all attributes
         for (uint32 i = 0; i < numAttributes; ++i)
         {
-            tempStringB.FromInt(i);
-            rootCommandLine.GetValue(tempStringB.AsChar(), "", &tempString);
+            AZStd::to_string(tempStringB, i);
+            rootCommandLine.GetValue(tempStringB.c_str(), "", tempString);
 
-            if (tempString.GetLength() == 0)
+            if (tempString.size() == 0)
             {
                 RemoveAllAttributes();
                 MCore::LogError("AttributeSet::InitFromString() - Failed to get the string data for attribute index %d.", i);
@@ -176,7 +175,7 @@ namespace MCore
             // get the settings string
             CommandLine attribCommandLine(tempString);
             attribCommandLine.GetValue("settings", "", &tempString);
-            if (tempString.GetLength() == 0)
+            if (tempString.size() == 0)
             {
                 RemoveAllAttributes();
                 MCore::LogError("AttributeSet::InitFromString() - Failed to get the settings string data for attribute index %d.", i);
@@ -195,7 +194,7 @@ namespace MCore
 
             // check the type
             attribCommandLine.GetValue("type", "", &typeString);
-            if (typeString.GetLength() == 0)
+            if (typeString.size() == 0)
             {
                 MCore::LogError("AttributeSet::InitFromString() - Failed to get the attribute value type for attribute index %d.", i);
                 RemoveAllAttributes();
@@ -205,7 +204,7 @@ namespace MCore
 
             // get the value
             attribCommandLine.GetValue("value", "", &tempStringB);
-            if (tempStringB.GetLength() == 0 && attribCommandLine.CheckIfHasParameter("value") == false)
+            if (tempStringB.size() == 0 && attribCommandLine.CheckIfHasParameter("value") == false)
             {
                 MCore::LogError("AttributeSet::InitFromString() - Failed to get the attribute value data for index %d.", i);
                 RemoveAllAttributes();
@@ -214,10 +213,10 @@ namespace MCore
             }
 
             // create the attribute
-            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.AsChar());
+            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.c_str());
             if (value == nullptr)
             {
-                MCore::LogError("AttributeSet::InitFromString() - Failed to create attribute of type '%s' for the value of attribute %s (index=%d).", typeString.AsChar(), newSettings->GetInternalName(), i);
+                MCore::LogError("AttributeSet::InitFromString() - Failed to create attribute of type '%s' for the value of attribute %s (index=%d).", typeString.c_str(), newSettings->GetInternalName(), i);
                 RemoveAllAttributes();
                 newSettings->Destroy();
                 return false;
@@ -226,7 +225,7 @@ namespace MCore
             // init the attribute from the given data string
             if (value->InitFromString(tempStringB) == false)
             {
-                MCore::LogError("AttributeSet::InitFromString() - Failed to init the value attribute from its data string, for attribute of type '%s' with name '%s' (index=%d).", typeString.AsChar(), newSettings->GetInternalName(), i);
+                MCore::LogError("AttributeSet::InitFromString() - Failed to init the value attribute from its data string, for attribute of type '%s' with name '%s' (index=%d).", typeString.c_str(), newSettings->GetInternalName(), i);
                 RemoveAllAttributes();
                 newSettings->Destroy();
                 value->Destroy();
@@ -242,17 +241,17 @@ namespace MCore
 
 
     // convert to a string
-    bool AttributeSet::ConvertToString(MCore::String& outString) const
+    bool AttributeSet::ConvertToString(AZStd::string& outString) const
     {
         // -numAttributes 10 -index { -settings { settingsString } -type typeString -value { valueString } }
-        outString.Clear();
-        outString.Reserve(4096);
+        outString.clear();
+        outString.reserve(4096);
 
-        MCore::String tempString;
+        AZStd::string tempString;
         const uint32 numAttributes = mAttributes.GetLength();
-        outString.Reserve(numAttributes * 128);
+        outString.reserve(numAttributes * 128);
 
-        tempString.FromInt(mAttributes.GetLength());
+        AZStd::to_string(tempString, mAttributes.GetLength());
         outString += "-numAttributes";
         outString += " ";
         outString += tempString;
@@ -261,7 +260,7 @@ namespace MCore
         for (uint32 i = 0; i < numAttributes; ++i)
         {
             outString += "-";
-            tempString.FromInt(i);
+            AZStd::to_string(tempString, mAttributes.GetLength());
             outString += tempString;
 
             outString += " {";
@@ -272,7 +271,7 @@ namespace MCore
             if (mAttributes[i].mSettings->ConvertToString(tempString) == false)
             {
                 MCore::LogError("AttributeSet::ConvertToString() - Failed to convert the attribute settings for attribute '%s' (index %d) to a string.", mAttributes[i].mSettings->GetInternalName(), i);
-                outString.Clear();
+                outString.clear();
                 return false;
             }
 
@@ -287,7 +286,7 @@ namespace MCore
             if (mAttributes[i].mValue->ConvertToString(tempString) == false)
             {
                 MCore::LogError("AttributeSet::ConvertToString() - Failed to convert the attribute value for attribute '%s' (index %d) to a string.", mAttributes[i].mSettings->GetInternalName(), i);
-                outString.Clear();
+                outString.clear();
                 return false;
             }
 
@@ -644,7 +643,7 @@ namespace MCore
     // log the data inside the set
     void AttributeSet::Log()
     {
-        String valueString;
+        AZStd::string valueString;
         const uint32 numAttribs = mAttributes.GetLength();
         for (uint32 i = 0; i < numAttribs; ++i)
         {
@@ -654,7 +653,7 @@ namespace MCore
                 valueString = "<Failed to convert attribute to string>";
             }
 
-            LogDetailedInfo("#%d - internalName='%s' - value=%s (type=%s)", i, GetAttributeSettings(i)->GetInternalName(), valueString.AsChar(), mAttributes[i].mValue->GetTypeString());
+            LogDetailedInfo("#%d - internalName='%s' - value=%s (type=%s)", i, GetAttributeSettings(i)->GetInternalName(), valueString.c_str(), mAttributes[i].mValue->GetTypeString());
         }
     }
 
@@ -779,7 +778,7 @@ namespace MCore
         const uint32 numChildren = mAttributes.GetLength();
         for (uint32 i = 0; i < numChildren; ++i)
         {
-            if (mAttributes[i].mSettings->GetNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(mAttributes[i].mSettings->GetNameString().c_str(), name, false /* no case */))
             {
                 return i;
             }
@@ -795,7 +794,7 @@ namespace MCore
         const uint32 numChildren = mAttributes.GetLength();
         for (uint32 i = 0; i < numChildren; ++i)
         {
-            if (mAttributes[i].mSettings->GetInternalNameString().CheckIfIsEqualNoCase(name))
+            if (AzFramework::StringFunc::Equal(mAttributes[i].mSettings->GetInternalNameString().c_str(), name, false /* no case */))
             {
                 return i;
             }
@@ -865,7 +864,7 @@ namespace MCore
     bool AttributeSet::SetStringAttribute(const char* internalName, const char* value, bool createIfNotExists)                  { MCORE_ATTRIBUTESET_DECLARE_SET(AttributeString) }
 
     // get helpers
-    const char* AttributeSet::GetStringAttribute(const char* internalName, const char* defaultValue)                            { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeString) }
+    const AZStd::string AttributeSet::GetStringAttribute(const char* internalName, const AZStd::string& defaultValue)          { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeString) }
     float AttributeSet::GetFloatAttribute(const char* internalName, float defaultValue)                                         { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeFloat) }
     int32 AttributeSet::GetInt32Attribute(const char* internalName, int32 defaultValue)                                         { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeInt32) }
     bool AttributeSet::GetBoolAttribute(const char* internalName, bool defaultValue)                                            { MCORE_ATTRIBUTESET_DECLARE_GET(AttributeBool) }

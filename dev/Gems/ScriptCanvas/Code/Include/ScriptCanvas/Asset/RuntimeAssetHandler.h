@@ -22,19 +22,19 @@ namespace AZ
 
 namespace ScriptCanvas
 {
-
     /**
     * Manages Script Canvas graph assets.
     */
-    class GraphAssetHandler
+    class RuntimeAssetHandler
         : public AZ::Data::AssetHandler
-        , AZ::AssetTypeInfoBus::MultiHandler
+        , protected AZ::AssetTypeInfoBus::MultiHandler
     {
     public:
-        AZ_CLASS_ALLOCATOR(GraphAssetHandler, AZ::SystemAllocator, 0);
-        AZ_RTTI(GraphAssetHandler, "{560A330A-2905-4A43-952D-70E21F8CE16C}", AZ::Data::AssetHandler);
+        AZ_CLASS_ALLOCATOR(RuntimeAssetHandler, AZ::SystemAllocator, 0);
+        AZ_RTTI(RuntimeAssetHandler, "{560A330A-2905-4A43-952D-70E21F8CE16C}", AZ::Data::AssetHandler);
 
-        GraphAssetHandler(AZ::SerializeContext* context = nullptr);
+        RuntimeAssetHandler(AZ::SerializeContext* context = nullptr);
+        ~RuntimeAssetHandler() override;
 
         // Called by the asset database to create a new asset. No loading should during this call
         AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;
@@ -55,15 +55,19 @@ namespace ScriptCanvas
         // Provides editor with information about script canvas graph assets.
         AZ::Data::AssetType GetAssetType() const override;
         void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
+        const char* GetAssetTypeDisplayName() const override;
+
+        const char* GetGroup() const override;
+        const char* GetBrowserIcon() const override;
+        AZ::Uuid GetComponentTypeId() const override;
 
         AZ::SerializeContext* GetSerializeContext() const;
-
         void SetSerializeContext(AZ::SerializeContext* context);
 
     protected:
         // Workaround for VS2013 - Delete the copy constructor and make it private
         // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        GraphAssetHandler(const GraphAssetHandler&) = delete;
+        RuntimeAssetHandler(const RuntimeAssetHandler&) = delete;
 
         AZ::SerializeContext* m_serializeContext;
     };

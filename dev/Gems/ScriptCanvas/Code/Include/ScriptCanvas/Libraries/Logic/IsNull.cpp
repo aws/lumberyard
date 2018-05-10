@@ -34,14 +34,14 @@ namespace ScriptCanvas
                 ContractDescriptor descriptor{ AZStd::move(func) };
                 contracts.emplace_back(descriptor);
 
-                AddInputDatumUntypedSlot("Reference", &contracts);
+                AddInputDatumOverloadedSlot("Reference", "", contracts);
                 AddOutputTypeSlot("Is Null", "", AZStd::move(Data::Type::Boolean()), OutputStorage::Optional);
             }
 
             void IsNull::OnInputSignal(const SlotId&)
             {
                 const bool isNull = GetInput(GetSlotId("Reference"))->Empty();
-                PushOutput(Datum::CreateInitializedCopy(isNull), *GetSlot(GetSlotId("Is Null")));
+                PushOutput(Datum(isNull), *GetSlot(GetSlotId("Is Null")));
                 SignalOutput(isNull ? IsNullProperty::GetTrueSlotId(this) : IsNullProperty::GetFalseSlotId(this));
             }
         }

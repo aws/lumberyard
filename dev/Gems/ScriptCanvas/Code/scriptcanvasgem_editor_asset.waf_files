@@ -1,0 +1,10 @@
+{
+    "auto": {
+        "Asset/Editor": [
+            "Asset/EditorAssetRegistry.cpp",
+            "Asset/EditorAssetRegistry.h",
+            "Asset/EditorAssetSystemComponent.cpp",
+            "Asset/EditorAssetSystemComponent.h"
+        ]
+    }
+}

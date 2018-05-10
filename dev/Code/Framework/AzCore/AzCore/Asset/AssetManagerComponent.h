@@ -23,7 +23,7 @@ namespace AZ
      */
     class AssetManagerComponent
         : public Component
-        , public TickBus::Handler
+        , public SystemTickBus::Handler
     {
     public:
         AZ_COMPONENT(AssetManagerComponent, "{D5A73BCC-0098-4d1e-8FE4-C86101E374AC}", Component)
@@ -38,8 +38,8 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // TickBus
-        void    OnTick(float deltaTime, ScriptTimePoint time) override;
+        // SystemTickBus
+        void    OnSystemTick() override;
         //////////////////////////////////////////////////////////////////////////
 
         /// \ref ComponentDescriptor::GetProvidedServices

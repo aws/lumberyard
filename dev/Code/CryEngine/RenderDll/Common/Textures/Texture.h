@@ -13,8 +13,6 @@
 
 // change file hash again
 
-#ifndef CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_TEXTURES_TEXTURE_H
-#define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_TEXTURES_TEXTURE_H
 #pragma once
 
 
@@ -32,6 +30,18 @@
 #include <CryEngineAPI.h>
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/std/parallel/atomic.h>
+
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define TEXTURE_H_SECTION_1 1
+#define TEXTURE_H_SECTION_2 2
+#define TEXTURE_H_SECTION_3 3
+#define TEXTURE_H_SECTION_4 4
+#define TEXTURE_H_SECTION_5 5
+#define TEXTURE_H_SECTION_6 6
+#define TEXTURE_H_SECTION_7 7
+#endif
 
 class CTexture;
 class CImageFile;
@@ -879,6 +889,10 @@ public:
     ID3D11CommandList*          m_pCmdList;
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_1
+#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     IReadStreamPtr                  m_pStreams[MaxStreams];
     STexStreamInMipState        m_mips[MaxMips];
@@ -930,6 +944,10 @@ public:
     volatile bool                       m_bDone;
     volatile bool                       m_bAborted;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_2
+#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+#endif
 };
 #endif
 
@@ -1319,6 +1337,10 @@ struct RenderTargetData
         uint8 m_nMSAASamples : 4;
         uint8 m_nMSAAQuality : 4;
     };
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_3
+#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+#endif
     TArray<SResourceView> m_ResourceViews;
     CDeviceTexture* m_pDeviceTextureMSAA;
 
@@ -1326,6 +1348,10 @@ struct RenderTargetData
     {
         memset(this, 0, sizeof(*this));
         m_nRTSetFrameID = -1;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_4
+#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+#endif
     }
     ~RenderTargetData();
 };
@@ -1851,6 +1877,10 @@ public:
 #endif
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_5
+#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     bool IsFPFormat() const { return CImageExtensionHelper::IsRangeless(m_eTFDst); };
 
@@ -2037,6 +2067,10 @@ public:
     void StreamCopyMipsTexToMem(int nStartMip, int nEndMip, bool bToDevice, STexPoolItem* pNewPoolItem);
     static void StreamCopyMipsTexToTex(STexPoolItem* pSrcItem, int nMipSrc, STexPoolItem* pDestItem, int nMipDest, int nNumMips);   // GPU-assisted platform-dependent
     static void CopySliceChain(CDeviceTexture* const pDevTexture, int ownerMips, int nDstSlice, int nDstMip, CDeviceTexture* pSrcDevTex, int nSrcSlice, int nSrcMip, int nSrcMips, int nNumMips);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_6
+#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+#endif
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
     ID3D11CommandList* StreamCreateDeferred(int nStartMip, int nEndMip, STexPoolItem* pNewPoolItem, STexPoolItem* pSrcPoolItem);
     void StreamApplyDeferred(ID3D11CommandList* pCmdList);
@@ -2113,6 +2147,9 @@ public:
             pTex->Apply(nTUnit, nState, EFTT_UNKNOWN, nSUnit);
         }
     }
+
+    ENGINE_API static void ApplyForID(int nID, int nTUnit, int nTState, int nTexMaterialSlot, int nSUnit, bool useWhiteDefault);
+
     static const CCryNameTSCRC& mfGetClassName();
     static CTexture* GetByID(int nID);
     static CTexture* GetByName(const char* szName, uint32 flags = 0);
@@ -2155,7 +2192,7 @@ public:
     static bool ReloadFile_Request(const char* szFileName);
     static void ReloadTextures();
     static CTexture* Create2DTexture(const char* szName, int nWidth, int nHeight, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst, bool bAsyncDevTexCreation = false);
-    static CTexture* Create3DTexture(const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
+    ENGINE_API static CTexture* Create3DTexture(const char* szName, int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
     static CTexture* Create2DCompositeTexture(const char* szName, int nWidth, int nHeight, int nMips, int nFlags, ETEX_Format eTFDst, const STexComposition* pCompositions, size_t nCompositions);
     static void Update();
     static void RT_LoadingUpdate();
@@ -2186,7 +2223,7 @@ public:
     void UpdateTexStates();
     bool SetFilterMode(int nFilter);
     bool SetClampingMode(int nAddressU, int nAddressV, int nAddressW);
-    void UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
+    ENGINE_API void UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
     void RT_UpdateTextureRegion(const byte* data, int nX, int nY, int nZ, int USize, int VSize, int ZSize, ETEX_Format eTFSrc);
     bool Create2DTexture(int nWidth, int nHeight, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
     bool Create3DTexture(int nWidth, int nHeight, int nDepth, int nMips, int nFlags, const byte* pData, ETEX_Format eTFSrc, ETEX_Format eTFDst);
@@ -2316,6 +2353,10 @@ public:
     static CTexture* s_ptexAOColorBleed;
     static CTexture* s_ptexSceneDiffuse;
     static CTexture* s_ptexSceneSpecular;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_7
+#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+#endif
     static CTexture* s_ptexAmbientLookup;
 
     static CTexture* s_ptexBackBuffer;              // back buffer copy
@@ -2457,5 +2498,3 @@ bool WriteJPG(const byte* dat, int wdt, int hgt, const char* name, int bpp, int 
 #if defined(WIN32) || defined(WIN64)
 byte* WriteDDS(const byte* dat, int wdt, int hgt, int dpth, const char* name, ETEX_Format eTF, int nMips, ETEX_Type eTT, bool bToMemory = false, int* nSize = NULL);
 #endif
-
-#endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_TEXTURES_TEXTURE_H

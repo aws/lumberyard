@@ -84,7 +84,9 @@ bool CCryDXGLSwapChain::CreateDrawableView()
     {
         NativeViewType* superView = reinterpret_cast<NativeViewType*>(m_kDesc.OutputWindow);
         NCryMetal::CDevice* pDevice(m_spDevice->GetGLDevice());
-        m_currentView = [[MetalView alloc] initWithFrame: [superView frame]
+        // Use the superView bounds because we want the MetalView to appear at the origin of the
+        // superView
+        m_currentView = [[MetalView alloc] initWithFrame: [superView bounds]
                                                    scale: 1.0f
                                                   device: pDevice->GetMetalDevice()];
         [superView addSubview: m_currentView];
@@ -216,7 +218,33 @@ HRESULT CCryDXGLSwapChain::Present(UINT SyncInterval, UINT Flags)
 
         if (m_Drawable)
         {
-            [m_Drawable present];
+            // presentAfterMinimumDuration only available on ios and appltv 10.3+
+        #if (defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)) && defined(__IPHONE_10_3)
+            bool hasPresentAfterMinimumDuration = [m_Drawable respondsToSelector:@selector(presentAfterMinimumDuration:)];
+
+            float syncInterval = 0.0f;
+            static ICVar* vSyncCVar = gEnv && gEnv->pConsole ? gEnv->pConsole->GetCVar("r_Vsync"): nullptr;
+            static ICVar* sysMaxFPSCVar = gEnv && gEnv->pConsole ? gEnv->pConsole->GetCVar("sys_MaxFPS") : nullptr;
+            if (sysMaxFPSCVar && vSyncCVar)
+            {
+                const int32 maxFPS = sysMaxFPSCVar->GetIVal();
+                uint32 vSync = vSyncCVar->GetIVal();
+                if (maxFPS > 0 && vSync != 0)
+                {
+                    syncInterval = 1.0f/maxFPS;
+                }
+            }
+
+            if (hasPresentAfterMinimumDuration && syncInterval > 0.0f)
+            {
+                [m_Drawable presentAfterMinimumDuration:syncInterval];
+            }
+            else
+        #endif
+            {
+                [m_Drawable present];
+            }
+
             [m_Drawable release];
             m_Drawable = nil;
         }

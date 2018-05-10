@@ -56,7 +56,7 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromMatrix4x4, "Math/Matrix3x3", "{C72D9F70-8CAD-4379-97E4-00830F22EB6E}", "returns a matrix from the first 3 rows of a Matrix3x3", "Source");
 
-        AZ_INLINE Data::Matrix3x3Type FromQuaternion(const Data::RotationType& source)
+        AZ_INLINE Data::Matrix3x3Type FromQuaternion(const Data::QuaternionType& source)
         {
             return Data::Matrix3x3Type::CreateFromQuaternion(source);
         }

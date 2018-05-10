@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Random.h>
@@ -40,6 +40,7 @@ namespace UnitTest
     protected:
         void SetUp() override
         {
+            AllocatorsFixture::SetUp();
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
 
@@ -49,6 +50,7 @@ namespace UnitTest
         void TearDown() override
         {
             m_app.Stop();
+            AllocatorsFixture::TearDown();
         }
 
         AzFramework::Application m_app;

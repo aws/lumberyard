@@ -73,6 +73,12 @@ namespace AZ
         AZ_CLASS_ALLOCATOR(DynamicSliceAsset, AZ::SystemAllocator, 0);
         AZ_RTTI(DynamicSliceAsset, "{78802ABF-9595-463A-8D2B-D022F906F9B1}", SliceAsset);
 
+        DynamicSliceAsset(const Data::AssetId& assetId = Data::AssetId())
+            : SliceAsset(assetId)
+        {
+        }
+        ~DynamicSliceAsset() = default;
+
         static const char* GetFileFilter()
         {
             return "*.dynamicslice";

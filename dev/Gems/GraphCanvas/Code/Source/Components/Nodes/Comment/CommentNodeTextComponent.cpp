@@ -24,14 +24,16 @@
 
 #include <Components/Nodes/Comment/CommentNodeTextComponent.h>
 
-#include <Components/GridBus.h>
 #include <Components/Nodes/Comment/CommentTextGraphicsWidget.h>
 #include <Components/Nodes/General/GeneralNodeFrameComponent.h>
-#include <Components/Nodes/NodeBus.h>
-#include <Components/Slots/SlotBus.h>
+#include <GraphCanvas/Components/GridBus.h>
+#include <GraphCanvas/Components/Nodes/NodeBus.h>
+#include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/GraphCanvasBus.h>
 #include <GraphCanvas/tools.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
+#include <Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
@@ -61,6 +63,7 @@ namespace GraphCanvas
         if (m_callback)
         {
             m_callback->OnCommentChanged();
+            SignalDirty();
         }
     }
 
@@ -69,6 +72,7 @@ namespace GraphCanvas
         if (m_callback)
         {
             m_callback->UpdateStyleOverrides();
+            SignalDirty();
         }
     }
 
@@ -119,7 +123,7 @@ namespace GraphCanvas
                 ->Field("FontSettings", &CommentNodeTextComponentSaveData::m_fontConfiguration)
                 ;
 
-            serializeContext->Class<CommentNodeTextComponent>()
+            serializeContext->Class<CommentNodeTextComponent, GraphCanvasPropertyComponent>()
                 ->Version(3, &CommentNodeTextComponentVersionConverter)
                 ->Field("SaveData", &CommentNodeTextComponent::m_saveData)
             ;
@@ -192,8 +196,9 @@ namespace GraphCanvas
     void CommentNodeTextComponent::Init()
     {
         GraphCanvasPropertyComponent::Init();
-
+        
         m_saveData.m_fontConfiguration.InitializePixelSize();
+        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void CommentNodeTextComponent::Activate()
@@ -210,7 +215,6 @@ namespace GraphCanvas
         CommentLayoutRequestBus::Handler::BusConnect(GetEntityId());
 
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
-        EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
         
         m_commentTextWidget->Activate();
 
@@ -221,7 +225,6 @@ namespace GraphCanvas
     {
         GraphCanvasPropertyComponent::Deactivate();
 
-        EntitySaveDataRequestBus::Handler::BusDisconnect();
         NodeNotificationBus::Handler::BusDisconnect();
 
         CommentLayoutRequestBus::Handler::BusDisconnect();
@@ -250,6 +253,8 @@ namespace GraphCanvas
 
         m_commentTextWidget->OnAddedToScene();
         OnCommentChanged();
+
+        m_saveData.RegisterIds(GetEntityId(), sceneId);
     }
 
     void CommentNodeTextComponent::SetComment(const AZStd::string& comment)
@@ -261,7 +266,8 @@ namespace GraphCanvas
 
             AZ::EntityId sceneId;
             SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
-            SceneUIRequestBus::Event(sceneId, &SceneUIRequests::RequestUndoPoint);
+
+            GraphModelRequestBus::Event(sceneId, &GraphModelRequests::RequestUndoPoint);
         }
     }
 
@@ -292,7 +298,7 @@ namespace GraphCanvas
 
     void CommentNodeTextComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
     {
-        CommentNodeTextComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<CommentNodeTextComponent, CommentNodeTextComponentSaveData>();
+        CommentNodeTextComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<CommentNodeTextComponentSaveData>();
 
         if (saveData)
         {
@@ -302,7 +308,7 @@ namespace GraphCanvas
 
     void CommentNodeTextComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
     {
-        CommentNodeTextComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<CommentNodeTextComponent, CommentNodeTextComponentSaveData>();
+        CommentNodeTextComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<CommentNodeTextComponentSaveData>();
 
         if (saveData)
         {
@@ -314,6 +320,8 @@ namespace GraphCanvas
     {
         if (m_commentTextWidget)
         {
+            CommentNotificationBus::Event(GetEntityId(), &CommentNotifications::OnCommentChanged, m_saveData.m_comment);
+
             m_commentTextWidget->SetComment(m_saveData.m_comment);
         }
     }
@@ -322,10 +330,7 @@ namespace GraphCanvas
     {
         CommentNotificationBus::Event(GetEntityId(), &CommentNotifications::OnCommentFontReloadBegin);
 
-        QColor fontColor(m_saveData.m_fontConfiguration.m_fontColor.GetR() * 255.0f,
-                         m_saveData.m_fontConfiguration.m_fontColor.GetG() * 255.0f,
-                         m_saveData.m_fontConfiguration.m_fontColor.GetB() * 255.0f,
-                         m_saveData.m_fontConfiguration.m_fontColor.GetA() * 255.0f);
+        QColor fontColor = ConversionUtils::AZToQColor(m_saveData.m_fontConfiguration.m_fontColor);
 
         Styling::StyleHelper& styleHelper = m_commentTextWidget->GetStyleHelper();
 

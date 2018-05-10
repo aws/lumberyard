@@ -16,51 +16,98 @@
 #include <QtWidgets>
 #include <QValidator>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
+#include <AzCore/IO/SystemFile.h>
 #include <Editor/Controls/QToolTipWidget.h>
+#include <QFileInfo>
 
 static const char* g_assetProcessorLink = "<a href=\"https://docs.aws.amazon.com/console/lumberyard/userguide/asset-processor\">Asset Processor</a>";
 static const char* g_copyFilesMessage = "The original file will remain outside of the project and the %1 will not monitor the file.";
 static const char* g_moveFilesMessage = "The original file will be moved inside of the project and the %1 will monitor the file for changes.";
-static const char* g_toolTip = "<p style='white-space:pre'> <span style=\"color:#cccccc;\">Invalid path. Please put the file(s) in your game project.</span> </p>";
 static const char* g_selectDestinationFilesPath = "AssetImporter/SelectDestinationFilesPath";
+
+static const char* g_toolTipInvalidRoot = "<p style='white-space:pre'> <span style=\"color:#cccccc;\">Invalid directory. Please choose a destination directory within your game project: %1.</span> </p>";
+static const char* g_toolTipPathMustExist = "<p style='white-space:pre'> <span style=\"color:#cccccc;\">Invalid directory. Please choose a destination directory that exists.</span> </p>";
+static const char* g_toolTipPathMustBeDirectory = "<p style='white-space:pre'> <span style=\"color:#cccccc;\">Invalid directory. Please choose a valid destination directory.</span> </p>";
+static const char* g_toolTipInvalidLength = "<p style='white-space:pre'> <span style=\"color:#cccccc;\">Invalid directory name length. Please choose a destination path that has fewer than %1 characters.</span> </p>";
 
 namespace
 {
-    class DestinationValidator
-        : public QValidator
+    static QString GetAbsoluteRootDirectoryPath()
     {
-    public:
-        DestinationValidator(QObject* parent)
-            : QValidator(parent) {}
+        QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
+        return gameRoot.absolutePath();
+    }
+}
 
-        State validate(QString& input, int& pos) const override
+class DestinationDialogValidator
+    : public QValidator
+{
+public:
+    DestinationDialogValidator(QObject* parent)
+        : QValidator(parent)
+        , m_gameRootAbsolutePath(GetAbsoluteRootDirectoryPath())
+    {
+    }
+
+    State validate(QString& input, int& pos) const override
+    {
+        m_toolTip = "";
+
+        if (input.isEmpty())
         {
-            QString normalizedInput = QDir::fromNativeSeparators(input);
-            QByteArray str = normalizedInput.toUtf8();
-            const char* path = str.constData();
+            return QValidator::Acceptable;
+        }
 
-            QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
-            QString gameRootAbsPath = gameRoot.absolutePath();
-
-            if (input.isEmpty())
-            {
-                return QValidator::Acceptable;
-            }
-
-            if (GetIEditor()->GetFileUtil()->PathExists(path) && normalizedInput.startsWith(gameRootAbsPath, Qt::CaseInsensitive))
-            {
-                return QValidator::Acceptable;
-            }
-
+        // The underlying file system code can't cope with long file paths, regardless of platform
+        if (input.length() > (AZ_MAX_PATH_LEN - 1))
+        {
+            m_toolTip = QString(g_toolTipInvalidLength).arg(AZ_MAX_PATH_LEN);
             return QValidator::Intermediate;
         }
-    };
-}
+
+        QString normalizedInput = QDir::fromNativeSeparators(input);
+
+        // Note: the check for the root directory is case insensitive.
+        // We check if the directory actually exists after this, and at that point,
+        // if the file path has to be case sensitive, the directory won't exist anyways
+        // and QFileInfo::exists() will tell us so this should still work even on
+        // case sensitive file systems (such as Mac and Linux)
+        if (!normalizedInput.startsWith(m_gameRootAbsolutePath, Qt::CaseInsensitive))
+        {
+            m_toolTip = QString(g_toolTipInvalidRoot).arg(m_gameRootAbsolutePath);
+            return QValidator::Intermediate;
+        }
+
+        QFileInfo fileInfo(normalizedInput);
+        if (!fileInfo.exists())
+        {
+            m_toolTip = g_toolTipPathMustExist;
+            return QValidator::Intermediate;
+        }
+
+        if (!fileInfo.isDir())
+        {
+            m_toolTip = g_toolTipPathMustBeDirectory;
+            return QValidator::Intermediate;
+        }
+
+        return QValidator::Acceptable;
+    }
+
+    QString infoToolTip() const
+    {
+        return m_toolTip;
+    }
+
+private:
+    QString m_gameRootAbsolutePath;
+    mutable QString m_toolTip;
+};
 
 SelectDestinationDialog::SelectDestinationDialog(QString message, QWidget* parent)
     : QDialog(parent)
     , m_ui(new Ui::SelectDestinationDialog)
-    , m_validator(new DestinationValidator(this))
+    , m_validator(new DestinationDialogValidator(this))
 {
     m_ui->setupUi(this);
 
@@ -117,8 +164,7 @@ void SelectDestinationDialog::InitializeButtons()
 
 void SelectDestinationDialog::SetPreviousDestinationDirectory()
 {
-    QDir gameRoot(Path::GetEditingGameDataFolder().c_str());
-    QString gameRootAbsPath = gameRoot.absolutePath();
+    QString gameRootAbsPath = GetAbsoluteRootDirectoryPath();
     QSettings settings;
     QString previousDestination = settings.value(g_selectDestinationFilesPath).toString();
 
@@ -141,7 +187,7 @@ void SelectDestinationDialog::accept()
     QDialog::accept();
 
     // This prevent users from not editing the destination line edit (manually type the directory or browse for the directory)
-    Q_EMIT SetDestinationDiretory(DestinationDirectory());
+    Q_EMIT SetDestinationDirectory(DestinationDirectory());
 
     if (m_ui->CopyFileRadioButton->isChecked())
     {
@@ -179,7 +225,7 @@ void SelectDestinationDialog::ValidatePath()
 {
     if (!m_ui->DestinationLineEdit->hasAcceptableInput())
     {
-        m_ui->DestinationLineEdit->setToolTip(tr(g_toolTip));
+        m_ui->DestinationLineEdit->setToolTip(m_validator->infoToolTip());
         Q_EMIT UpdateImportButtonState(false);
     }
     else
@@ -190,7 +236,7 @@ void SelectDestinationDialog::ValidatePath()
         // store the updated acceptable destination directory into the registry,
         // so that when users manually modify the directory,
         // the Asset Importer will remember it
-        Q_EMIT SetDestinationDiretory(destinationDirectory);
+        Q_EMIT SetDestinationDirectory(destinationDirectory);
 
         m_ui->DestinationLineEdit->setToolTip("");
         Q_EMIT UpdateImportButtonState(strLength > 0);   

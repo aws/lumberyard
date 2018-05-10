@@ -17,7 +17,7 @@
 
 #include "TIFImageReader.h"
 #define _TIFF_DATA_TYPEDEFS_                    // because we defined uint32,... already
-#include <tiffio.h>     // TIFF library
+#include <libtiff/tiffio.h>     // TIFF library
 
 #include <AzCore/base.h>
 

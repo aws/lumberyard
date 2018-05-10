@@ -16,8 +16,8 @@ from ConfigParser import RawConfigParser
 from waflib.Configure import conf, ConfigurationContext
 from waflib import Logs
 from cry_utils import append_unique_kw_entry, append_to_unique_list
-from waflib.Build import Context
 from waflib.TaskGen import feature, before_method, after_method
+from waflib.Errors import ConfigurationError
 
 
 GEMS_UUID_KEY = "Uuid"
@@ -1029,8 +1029,9 @@ def apply_gems_to_context(ctx, game_name, k, kw):
 def apply_required_gems_to_context(ctx, target, kw):
 
     required_gems = [required_gem for required_gem in ctx.get_required_gems() if required_gem.name != target]
+    if len(required_gems) != 0:
+        Logs.debug('gems: adding required gems to target {} : {}'.format(target, ','.join([gem.name for gem in required_gems])))
 
-    Logs.debug('gems: adding required gems to target {} : {}'.format(target, ','.join([gem.name for gem in required_gems])))
 
     apply_gems_to_kw(ctx, kw, required_gems, target)
 
@@ -1118,25 +1119,26 @@ def load_required_gems(ctx):
     """
 
     global REQUIRED_GEMS_CACHE
-    if REQUIRED_GEMS_CACHE is None:
+    if REQUIRED_GEMS_CACHE is not None:
+        return REQUIRED_GEMS_CACHE
+
+    required_gems = []
+    required_gems_location = ctx.scan_required_gems_paths()
+    for required_gem_location in required_gems_location:
+
+        required_gem_abs_path = required_gems_location[required_gem_location]
+        required_gem_def_file_path = ctx.root.make_node(required_gem_abs_path).make_node(GEMS_DEFINITION_FILE)
+
         try:
-            required_gems = []
-            required_gems_location = ctx.scan_required_gems_paths()
-            for required_gem_location in required_gems_location:
-
-                required_gem_abs_path = required_gems_location[required_gem_location]
-
-                required_gem_def_file_path = ctx.root.make_node(required_gem_abs_path).make_node(GEMS_DEFINITION_FILE)
-
-                gem = Gem(ctx)
-                gem.path = str(required_gem_location)
-                gem.load_from_json(ctx.parse_json_file(required_gem_def_file_path))
-                gem.abspath = required_gem_abs_path
-                if gem.is_required:
-                    required_gems.append(gem)
-            REQUIRED_GEMS_CACHE = required_gems
+            gem = Gem(ctx)
+            gem.path = str(required_gem_location)
+            gem.load_from_json(ctx.parse_json_file(required_gem_def_file_path))
+            gem.abspath = required_gem_abs_path
+            if gem.is_required:
+                required_gems.append(gem)
         except Exception as e:
-            ctx.fatal('[WARN] Unable to determine any required Gems ({})'.format(e.message))
-            REQUIRED_GEMS_CACHE = []
+            ctx.fatal('Error reading gems information for gem at path {}: {}'.format(required_gem_def_file_path.abspath(), str(e)))
+
+    REQUIRED_GEMS_CACHE = required_gems
 
     return REQUIRED_GEMS_CACHE

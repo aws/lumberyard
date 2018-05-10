@@ -1712,6 +1712,25 @@ std::unordered_map<uint32, uint16> AlembicCompiler::GetMeshMaterialMap(const Ale
     return materialIdMap;
 }
 
+uint32_t AlembicCompiler::GetIndex(Alembic::AbcGeom::GeometryScope geomScope, const Alembic::Abc::UInt32ArraySamplePtr& indicies, size_t currentIndexArraysIndex, int32_t positionIndex)
+{
+    uint32_t index = 0;
+    switch (geomScope)
+    {
+        case Alembic::AbcGeom::kFacevaryingScope:
+            index = (*indicies)[currentIndexArraysIndex];
+            break;
+        case Alembic::AbcGeom::kVertexScope:
+            index = positionIndex;
+            break;
+        default:
+            RCLogError("Unsupported geoscope type: %s", geomScope);
+            break;
+    }
+
+    return index;
+}
+
 bool AlembicCompiler::ComputeVertexHashes(std::vector<uint64>& abcVertexHashes, size_t currentFrame, const size_t numAbcIndices, GeomCache::Mesh& mesh,
     Alembic::Abc::TimeSampling& meshTimeSampling, size_t numMeshSamples, Alembic::AbcGeom::IPolyMeshSchema& meshSchema, const bool bHasNormals,
     const bool bHasTexcoords, const bool bHasColors, const size_t numAbcNormalIndices, const size_t numAbcTexcoordsIndices, const size_t numAbcFaces)
@@ -1790,6 +1809,29 @@ bool AlembicCompiler::ComputeVertexHashes(std::vector<uint64>& abcVertexHashes, 
         const Alembic::Abc::UInt32ArraySamplePtr pFrameAbcTexcoordIndices = bHasTexcoords ? frameTexcoordSample.getIndices() : 0;
         const size_t frameNumAbcTexcoordsIndices = bHasTexcoords ? pFrameAbcTexcoordIndices->size() : 0;
 
+        Alembic::AbcGeom::GeometryScope normalGeoScope = Alembic::AbcGeom::kUnknownScope;
+        Alembic::AbcGeom::GeometryScope texcoordGeoScope = Alembic::AbcGeom::kUnknownScope;
+
+        if (bHasNormals)
+        {
+            normalGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getNormalsParam().getMetaData());
+            if (normalGeoScope != Alembic::AbcGeom::kVertexScope && normalGeoScope != Alembic::AbcGeom::kFacevaryingScope)
+            {
+                RCLogWarning("Mesh normal vectors are in an format that's not implemented or illegal. mode:%Iu. Skipped:\n    %s", normalGeoScope, mesh.m_abcMesh.getFullName().c_str());
+                return false;
+            }
+        }
+
+        if (bHasTexcoords)
+        {
+            texcoordGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getUVsParam().getMetaData());
+            if (texcoordGeoScope != Alembic::AbcGeom::kVertexScope && texcoordGeoScope != Alembic::AbcGeom::kFacevaryingScope)
+            {
+                RCLogWarning("Mesh uv texture coordinates are in an format that's not implemented or illegal. mode:%Iu. Skipped:\n    %s", texcoordGeoScope, mesh.m_abcMesh.getFullName().c_str());
+                return false;
+            }
+        }
+
         AlembicColorSampleArray frameColors = bHasColors ? AlembicColorSampleArray(mesh.m_colorParamName, meshSchema, index.first) : AlembicColorSampleArray();
 
         // Just check to make sure. This should not happen.
@@ -1816,13 +1858,15 @@ bool AlembicCompiler::ComputeVertexHashes(std::vector<uint64>& abcVertexHashes, 
                 // Just to make sure check index array position
                 if (currentIndexArraysIndex >= numAbcIndices)
                 {
-                    RCLogWarning("  Mesh contains invalid data. Skipped:\n    %s", mesh.m_abcMesh.getFullName().c_str());
+                    RCLogWarning("Mesh contains invalid data - trying to index outside the valid number of indices. Skipped:\n%s", mesh.m_abcMesh.getFullName().c_str());
                     return false;
                 }
 
                 const int32_t positionIndex = frameAbcIndices[currentIndexArraysIndex];
-                const int32_t normalIndex = bHasNormals ? (*pFrameAbcNormalIndices)[currentIndexArraysIndex] : 0;
-                const int32_t texcoordsIndex = bHasTexcoords ? (*pFrameAbcTexcoordIndices)[currentIndexArraysIndex] : 0;
+
+                uint32_t normalIndex = bHasNormals ? GetIndex(normalGeoScope, pFrameAbcNormalIndices, currentIndexArraysIndex, positionIndex) : 0;
+                uint32_t texcoordsIndex = bHasTexcoords ? GetIndex(texcoordGeoScope, pFrameAbcTexcoordIndices, currentIndexArraysIndex, positionIndex) : 0;
+
                 const int32_t colorsIndex = frameColors.getIndex(currentIndexArraysIndex);
 
                 // Just to make sure check indices
@@ -1919,6 +1963,19 @@ bool AlembicCompiler::CompileFullMesh(GeomCache::Mesh& mesh, const size_t curren
     const Alembic::Abc::UInt32ArraySamplePtr pAbcTexcoordIndices = bHasTexcoords ? texcoordSample.getIndices() : 0;
     const size_t numAbcTexcoordsIndices = bHasTexcoords ? pAbcTexcoordIndices->size() : 0;
 
+    Alembic::AbcGeom::GeometryScope normalGeoScope = Alembic::AbcGeom::kUnknownScope;
+    Alembic::AbcGeom::GeometryScope texcoordGeoScope = Alembic::AbcGeom::kUnknownScope;
+
+    if (bHasNormals)
+    {
+        normalGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getNormalsParam().getMetaData());
+    }
+
+    if (bHasTexcoords)
+    {
+        texcoordGeoScope = Alembic::AbcGeom::GetGeometryScope(meshSchema.getUVsParam().getMetaData());
+    }
+
     if (bHasTexcoords && numAbcIndices != numAbcTexcoordsIndices)
     {
         RCLogWarning("  Mesh number of position indices doesn't equal number of "
@@ -1980,8 +2037,10 @@ bool AlembicCompiler::CompileFullMesh(GeomCache::Mesh& mesh, const size_t curren
         for (size_t faceVertexIndex = 0; faceVertexIndex < numFaceVertices; ++faceVertexIndex)
         {
             const int32_t positionIndex = abcIndices[currentIndexArraysIndex];
-            const int32_t normalIndex = bHasNormals ? (*pAbcNormalIndices)[currentIndexArraysIndex] : 0;
-            const int32_t texcoordsIndex = bHasTexcoords ? (*pAbcTexcoordIndices)[currentIndexArraysIndex] : 0;
+
+            uint32_t normalIndex = bHasNormals ? GetIndex(normalGeoScope, pAbcNormalIndices, currentIndexArraysIndex, positionIndex) : 0;
+            uint32_t texcoordsIndex = bHasTexcoords ? GetIndex(texcoordGeoScope, pAbcTexcoordIndices, currentIndexArraysIndex, positionIndex) : 0;
+
             const int32_t colorsIndex = colors.getIndex(currentIndexArraysIndex);
 
             // Search if vertex is already in vertex buffer by its digest

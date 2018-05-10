@@ -12,17 +12,17 @@
 
 import os
 
+# This builder dll is deprecated, and has moved into the CustomAssetExample gem.
+# We keep it around for a few versions with minimal code in order to replace old dlls with harmless dlls.
 def build(bld):
 
     bld.BuilderPlugin(
         target             = 'ExampleBuilder',
-        vs_filter          = 'Tools/AssetProcessor/Builders',
+        vs_filter          = 'Tools/AssetProcessor/Builders/Deprecated',
         file_list          = ['examplebuilder.waf_files'],
         platforms          = ['win', 'darwin'],
-        configurations     = ['debug_all', 'profile_all'],
+        configurations     = ['debug', 'debug_test', 'profile', 'profile_test'],
         disable_pch        = True,
-        win_features        = ['crcfix'],
-        includes           = ['..'], #so that we can specify the module name of ExampleBuilder in the include statements.
         test_all_file_list = ['examplebuilder_tests.waf_files'],
     )
 

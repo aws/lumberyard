@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "stdafx.h"
-#include <SQLite/sqlite3.h>
+#include <sqlite3.h>
 #include "SQLiteConnection.h"
 #include "SQLiteStatement.h"
 #include <AzCore/base.h>

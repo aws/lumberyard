@@ -31,6 +31,7 @@ def build(bld):
                                    'QT5WIDGETS',
                                    'AWS_CPP_SDK_CORE'],
         includes                = ['.',
+                                   bld.ThirdPartyPath('mikkelsen'),
                                    bld.Path('Code/Tools'),
                                    bld.Path('Code/Tools/RC/ResourceCompiler'),
                                    bld.Path('Code/Tools/CryCommonTools'),

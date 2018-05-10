@@ -25,7 +25,7 @@
 #include "XMLBinaryReader.h"
 
 #include "XMLPatcher.h"
-#include <md5/md5.h>
+#include <md5.h>
 
 //////////////////////////////////////////////////////////////////////////
 CXmlNode_PoolAlloc* g_pCXmlNode_PoolAlloc = 0;

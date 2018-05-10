@@ -71,7 +71,10 @@ namespace Input
         //////////////////////////////////////////////////////////////////////////
         /// AZ::Data::AssetBus::Handler
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+        void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         //////////////////////////////////////////////////////////////////////////
+
+        void ActivateBindingsIfAppropriate();
 
         //////////////////////////////////////////////////////////////////////////
         // Non Reflected Data
@@ -82,5 +85,10 @@ namespace Input
         InputEventBindings m_inputEventBindings;
         AZStd::vector<AZStd::string> m_inputContexts;
         AZ::Data::Asset<InputEventBindingsAsset> m_inputEventBindingsAsset;
+        bool m_isContextActive = false;
+
+        // Unlike the definition of most assets, the input asset requires additional preparation after its loaded
+        // in order to actually be prepared to be used.
+        bool m_isAssetPrepared = false;
     };
 } // namespace Input

@@ -17,8 +17,8 @@
 
 #include "DetailWidget/StackEventsSplitter.moc"
 
-StackEventsSplitter::StackEventsSplitter(QSharedPointer<IStackEventsModel> model)
-    : QSplitter{}
+StackEventsSplitter::StackEventsSplitter(QSharedPointer<IStackEventsModel> model, QWidget* parent)
+    : QSplitter{parent}
     , m_model{model}
 {
     // orientation
@@ -37,7 +37,7 @@ StackEventsSplitter::StackEventsSplitter(QSharedPointer<IStackEventsModel> model
     // add events bottom widget
 
     m_eventsWidget = new StackEventsWidget {
-        model
+        model, this
     };
     addWidget(m_eventsWidget);
     setCollapsible(1, false);

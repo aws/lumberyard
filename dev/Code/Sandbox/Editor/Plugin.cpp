@@ -103,7 +103,7 @@ void CClassFactory::RegisterClass(IClassDesc* pClassDesc)
             "Existing class's UUID is %s\n"
             "You may not have duplicate class names.\n"
             "Check for duplicate plugins or copy and pasted code for plugins.",
-            pClassDesc->ClassName(),
+            pClassDesc->ClassName().toUtf8().constData(),
             newUUIDString,
             existingUUIDString);
 

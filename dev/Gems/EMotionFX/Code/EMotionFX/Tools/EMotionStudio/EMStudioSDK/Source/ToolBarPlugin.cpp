@@ -42,7 +42,7 @@ namespace EMStudio
     }
 
     // check if we have a window that uses this object name
-    bool ToolBarPlugin::GetHasWindowWithObjectName(const MCore::String& objectName)
+    bool ToolBarPlugin::GetHasWindowWithObjectName(const AZStd::string& objectName)
     {
         if (mBar.isNull())
         {
@@ -50,7 +50,7 @@ namespace EMStudio
         }
 
         // check if the object name is equal to the one of the dock widget
-        return (objectName.CheckIfIsEqual(FromQtString(mBar->objectName()).AsChar()));
+        return objectName == FromQtString(mBar->objectName());
     }
 
 

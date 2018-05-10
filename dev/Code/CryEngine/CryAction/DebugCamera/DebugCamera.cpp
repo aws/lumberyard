@@ -94,11 +94,13 @@ DebugCamera::DebugCamera()
     , m_oldMoveScale(1.0f)
     , m_position(ZERO)
     , m_view(IDENTITY)
+    , m_displayInfoCVar(gEnv->pConsole->GetCVar("r_DisplayInfo"))
 {
     if (gEnv->pSystem->GetIInput())
     {
         gEnv->pSystem->GetIInput()->AddEventListener(this);
     }
+
     REGISTER_COMMAND("debugCameraToggle", ToggleDebugCamera, VF_DEV_ONLY, "Toggle the debug camera.\n");
     REGISTER_COMMAND("debugCameraInvertY", ToggleDebugCameraInvertY, VF_DEV_ONLY, "Toggle debug camera Y-axis inversion.\n");
     REGISTER_COMMAND("debugCameraMove", DebugCameraMove, VF_DEV_ONLY, "Move the debug camera the specified distance (x y z).\n");
@@ -113,6 +115,8 @@ DebugCamera::~DebugCamera()
     {
         gEnv->pSystem->GetIInput()->RemoveEventListener(this);
     }
+
+    m_displayInfoCVar = nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -194,14 +198,17 @@ void DebugCamera::PostUpdate()
     CCamera& camera = gEnv->pSystem->GetViewCamera();
     camera.SetMatrix(Matrix34(m_view, m_position));
 
-    const float FONT_COLOR[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
-    gEnv->pRenderer->Draw2dLabel(0.0f, 700.0f, 1.3f, FONT_COLOR, false,
+    if (m_displayInfoCVar && m_displayInfoCVar->GetIVal())
+    {
+        const float FONT_COLOR[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
+        gEnv->pRenderer->Draw2dLabel(0.0f, 700.0f, 1.3f, FONT_COLOR, false,
         "Debug Camera: pos [ %.3f, %.3f, %.3f ] p/y [ %.1f, %.1f ] dir [ %.3f, %.3f, %.3f ] scl %.2f  inv %d",
-        m_position.x, m_position.y, m_position.z,
+            m_position.x, m_position.y, m_position.z,
         m_cameraPitch, m_cameraYaw,
-        m_view.GetColumn1().x, m_view.GetColumn1().y, m_view.GetColumn1().z,
-        m_moveScale,
-        m_isYInverted);
+            m_view.GetColumn1().x, m_view.GetColumn1().y, m_view.GetColumn1().z,
+            m_moveScale,
+            m_isYInverted);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -212,6 +219,9 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
         return false;
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(DebugCamera_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     if (!IsEnabled() || m_cameraMode == DebugCamera::ModeFixed)
     {
@@ -261,12 +271,12 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
         }
         else if (eKI_MouseX == event.keyId)
         {
-            //KC: If both left and right mouse buttons are pressed then use
-            //the mouse movement for horizontal movement.
-            if (2 != m_mouseMoveMode)
+            if (0 == m_mouseMoveMode)
             {
                 UpdateYaw(fsgnf(-event.value) * clamp_tpl(fabs_tpl(event.value) * m_moveScale, 0.0f, g_mouseMaxRotationSpeed) * gEnv->pTimer->GetFrameTime());
             }
+            //KC: If any mouse button is pressed then use the mouse movement
+            //for horizontal movement.
             else
             {
                 UpdatePosition(Vec3(event.value * g_mouseMoveScale, 0.0f, 0.0f));
@@ -274,15 +284,21 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
         }
         else if (eKI_MouseY == event.keyId)
         {
-            //KC: If both left and right mouse buttons are pressed then use
-            //the mouse movement for vertical movement.
-            if (2 != m_mouseMoveMode)
+            if (0 == m_mouseMoveMode)
             {
                 UpdatePitch(fsgnf(-event.value) * clamp_tpl(fabs_tpl(event.value) * m_moveScale, 0.0f, g_mouseMaxRotationSpeed) * gEnv->pTimer->GetFrameTime());
             }
-            else
+            //KC: If both left and right mouse buttons are pressed then use
+            //the mouse movement for vertical movement.
+            else if (2 == m_mouseMoveMode)
             {
                 UpdatePosition(Vec3(0.0f, 0.0f, -event.value * g_mouseMoveScale));
+            }
+            //KC: If one mouse button is pressed then use the mouse movement
+            //for forward movement.
+            else
+            {
+                UpdatePosition(Vec3(0.0f, -event.value * g_mouseMoveScale, 0.0f));
             }
         }
         else if (eKI_Mouse1 == event.keyId)
@@ -291,7 +307,7 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             {
                 m_mouseMoveMode = clamp_tpl(m_mouseMoveMode - 1, 0, 2);
             }
-            else
+            else if (eIS_Pressed == event.state)
             {
                 m_mouseMoveMode = clamp_tpl(m_mouseMoveMode + 1, 0, 2);
             }
@@ -302,7 +318,7 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
             {
                 m_mouseMoveMode = clamp_tpl(m_mouseMoveMode - 1, 0, 2);
             }
-            else
+            else if (eIS_Pressed == event.state)
             {
                 m_mouseMoveMode = clamp_tpl(m_mouseMoveMode + 1, 0, 2);
             }

@@ -19,6 +19,7 @@
 #include <PhysXRigidBodyComponent.h>
 #include <PhysXColliderComponent.h>
 #include <PhysXMeshShapeComponent.h>
+#include <PhysXTriggerAreaComponent.h>
 #endif // defined(PHYSX_WIN)
 
 #if defined(PHYSX_EDITOR_WIN)
@@ -48,6 +49,7 @@ namespace PhysX
                     PhysXRigidBodyComponent::CreateDescriptor(),
                     PhysXColliderComponent::CreateDescriptor(),
                     PhysXMeshShapeComponent::CreateDescriptor(),
+                    PhysXTriggerAreaComponent::CreateDescriptor(),
 #endif // defined(PHYSX_WIN)
 #if defined(PHYSX_EDITOR_WIN)
                     EditorPhysXRigidBodyComponent::CreateDescriptor(),

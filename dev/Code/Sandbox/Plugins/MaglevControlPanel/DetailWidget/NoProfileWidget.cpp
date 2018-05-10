@@ -17,8 +17,9 @@
 
 #include "DetailWidget/NoProfileWidget.moc"
 
-NoProfileWidget::NoProfileWidget(ResourceManagementView* view)
-    : m_view{view}
+NoProfileWidget::NoProfileWidget(ResourceManagementView* view, QWidget* parent)
+    : ActionWidget(parent)
+    , m_view{view}
 {
     SetTitleText(tr(
             "You have not yet provided AWS credentials for Cloud Canvas."

@@ -21,7 +21,7 @@ namespace AZ
     {
         if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
         {
-            serializeContext->Class<SliceSystemComponent>();
+            serializeContext->Class<SliceSystemComponent, AZ::Component>();
 
             if (EditContext* editContext = serializeContext->GetEditContext())
             {

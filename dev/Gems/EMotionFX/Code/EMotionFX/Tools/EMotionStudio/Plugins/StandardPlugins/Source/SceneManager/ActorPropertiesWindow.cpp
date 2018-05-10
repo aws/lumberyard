@@ -331,7 +331,7 @@ namespace EMStudio
     void ActorPropertiesWindow::GetNodeName(const MCore::Array<SelectionItem>& selection, AZStd::string* outNodeName, uint32* outActorID)
     {
         // check if selection is valid
-        if (selection.GetLength() != 1 || selection[0].GetNodeNameString().GetIsEmpty())
+        if (selection.GetLength() != 1 || selection[0].GetNodeNameString().empty())
         {
             AZ_Warning("EMotionFX", false, "Cannot adjust motion extraction node. No valid node selected.");
             return;

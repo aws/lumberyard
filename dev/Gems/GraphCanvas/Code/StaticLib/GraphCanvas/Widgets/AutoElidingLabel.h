@@ -11,44 +11,41 @@
 */
 #pragma once
 
-#include <qlabel.h>
+#include <QLabel>
 
 #include <AzCore/Memory/SystemAllocator.h>
 
-namespace ScriptCanvasEditor
+namespace GraphCanvas
 {
-    namespace Widget
+    // This class will provide a label that auto truncates itself to the size that it is given.
+    class AutoElidingLabel
+        : public QLabel
     {
-        // This class will provide a label that auto truncates itself to the size that it is given.
-        class AutoElidingLabel
-            : public QLabel
-        {
-            Q_OBJECT
-        public:
-            AZ_CLASS_ALLOCATOR(AutoElidingLabel, AZ::SystemAllocator, 0);
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(AutoElidingLabel, AZ::SystemAllocator, 0);
 
-            AutoElidingLabel(QWidget* parent = nullptr, Qt::WindowFlags flags = 0);
-            ~AutoElidingLabel();
+        AutoElidingLabel(QWidget* parent = nullptr, Qt::WindowFlags flags = 0);
+        ~AutoElidingLabel();
             
-            void SetElideMode(Qt::TextElideMode elideMode);
-            Qt::TextElideMode GetElideMode() const;
+        void SetElideMode(Qt::TextElideMode elideMode);
+        Qt::TextElideMode GetElideMode() const;
 
-            QString fullText() const;
-            void setFullText(const QString& text);
+        QString fullText() const;
+        void setFullText(const QString& text);
 
-            // QLabel
-            void resizeEvent(QResizeEvent* resizeEvent) override;
+        // QLabel
+        void resizeEvent(QResizeEvent* resizeEvent) override;
 
-            QSize minimumSizeHint() const override;
-            QSize sizeHint() const override;
-            ////
+        QSize minimumSizeHint() const override;
+        QSize sizeHint() const override;
+        ////
 
-            void RefreshLabel();
+        void RefreshLabel();
 
-        private:
+    private:
 
-            QString m_fullText;
-            Qt::TextElideMode m_elideMode;
-        };
-    }
+        QString m_fullText;
+        Qt::TextElideMode m_elideMode;
+    };
 }

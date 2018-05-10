@@ -56,7 +56,10 @@ namespace AZ
             }
             else
             {
-                ::testing::GTEST_FLAG(filter).insert(0, "INTEG_*:Integ_*:");
+                std::string userFilter = ::testing::GTEST_FLAG(filter);
+                std::stringstream integFilter;
+                integFilter << "INTEG_*" << userFilter << ":Integ_*" << userFilter << ":" << userFilter;
+                ::testing::GTEST_FLAG(filter) = integFilter.str();
             }
         }
 

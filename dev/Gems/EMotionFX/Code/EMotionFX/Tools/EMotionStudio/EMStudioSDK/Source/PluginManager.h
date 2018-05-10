@@ -15,7 +15,6 @@
 
 // include MCore
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
 
@@ -30,6 +29,8 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(PluginManager, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
+        typedef AZStd::vector<EMStudioPlugin*> PluginVector;
+
         PluginManager();
         ~PluginManager();
 
@@ -48,7 +49,7 @@ namespace EMStudio
 
         MCORE_INLINE uint32 GetNumActivePlugins() const                     { return static_cast<uint32>(mActivePlugins.size()); }
         MCORE_INLINE EMStudioPlugin* GetActivePlugin(const uint32 index)    { return mActivePlugins[index]; }
-        MCORE_INLINE const AZStd::vector<EMStudioPlugin*> GetActivePlugins() { return mActivePlugins; }
+        MCORE_INLINE const PluginVector& GetActivePlugins() { return mActivePlugins; }
 
         uint32 GetNumActivePluginsOfType(const char* pluginType) const;
         uint32 GetNumActivePluginsOfType(uint32 classID) const;
@@ -56,11 +57,7 @@ namespace EMStudio
 
         QString GenerateObjectName() const;
 
-        void SortActivePlugins();
-
     private:
-        typedef AZStd::vector<EMStudioPlugin*> PluginVector;
-
         PluginVector mPlugins;
 
         #if defined(MCORE_PLATFORM_WINDOWS)

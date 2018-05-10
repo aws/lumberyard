@@ -21,6 +21,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QFileDialog>
+#include <QtCore/QSettings>
 
 #include "EMStudioManager.h"
 #include <MCore/Source/LogManager.h>
@@ -192,7 +193,7 @@ namespace EMStudio
             MysticQt::KeyboardShortcutManager::Action* action = group->GetAction(i);
 
             // add the item to the table and set the row height
-            QTableWidgetItem* item = new QTableWidgetItem(action->mName.AsChar());
+            QTableWidgetItem* item = new QTableWidgetItem(action->mName.c_str());
             item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
             mTableWidget->setItem(i, 0, item);
 
@@ -263,7 +264,7 @@ namespace EMStudio
             action->mCtrl   = shortcutWindow.mCtrl;
 
             // save the new shortcuts
-            QSettings settings(MCore::String(GetManager()->GetAppDataFolder() + "EMStudioKeyboardShortcuts.cfg").AsChar(), QSettings::IniFormat, this);
+            QSettings settings(AZStd::string(GetManager()->GetAppDataFolder() + "EMStudioKeyboardShortcuts.cfg").c_str(), QSettings::IniFormat, this);
             shortcutManager->Save(&settings);
 
             // reinit the window
@@ -458,22 +459,22 @@ namespace EMStudio
 
             if (mConflictAction)
             {
-                MCore::String tempString;
+                AZStd::string tempString;
 
-                tempString.Format("Assigning new shortcut will unassign '%s' automatically.", mConflictAction->mName.AsChar());
-                mOKButton->setToolTip(tempString.AsChar());
+                tempString = AZStd::string::format("Assigning new shortcut will unassign '%s' automatically.", mConflictAction->mName.c_str());
+                mOKButton->setToolTip(tempString.c_str());
 
                 MysticQt::KeyboardShortcutManager::Group* conflictGroup = shortcutManager->FindGroupForShortcut(mConflictAction);
                 if (conflictGroup)
                 {
-                    tempString.Format("Conflicts with: %s -> %s", conflictGroup->GetName(), mConflictAction->mName.AsChar());
+                    tempString = AZStd::string::format("Conflicts with: %s -> %s", conflictGroup->GetName(), mConflictAction->mName.c_str());
                 }
                 else
                 {
-                    tempString.Format("Conflicts with: %s", mConflictAction->mName.AsChar());
+                    tempString = AZStd::string::format("Conflicts with: %s", mConflictAction->mName.c_str());
                 }
 
-                mConflictKeyLabel->setText(tempString.AsChar());
+                mConflictKeyLabel->setText(tempString.c_str());
             }
         }
 

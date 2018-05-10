@@ -24,7 +24,7 @@ class NoResourceWidget
 
 public:
 
-    NoResourceWidget(ResourceManagementView* view, const QSharedPointer<IResourceGroupStatusModel>& resourceGroupStatusModel);
+    NoResourceWidget(ResourceManagementView* view, const QSharedPointer<IResourceGroupStatusModel>& resourceGroupStatusModel, QWidget* parent);
 
 protected:
 

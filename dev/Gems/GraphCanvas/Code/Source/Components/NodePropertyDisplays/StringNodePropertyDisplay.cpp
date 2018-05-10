@@ -38,6 +38,7 @@ namespace GraphCanvas
         
         m_lineEdit = aznew Internal::FocusableLineEdit();
         m_lineEdit->setProperty("HasNoWindowDecorations", true);
+        m_lineEdit->setProperty("DisableFocusWindowFix", true);
         m_lineEdit->setEnabled(true);
         
         QObject::connect(m_lineEdit, &Internal::FocusableLineEdit::OnFocusIn, [this]() { this->EditStart(); });
@@ -51,7 +52,6 @@ namespace GraphCanvas
     
     StringNodePropertyDisplay::~StringNodePropertyDisplay()
     {
-        NodePropertiesRequestBus::Event(GetNodeId(), &NodePropertiesRequests::UnlockEditState, this);
         delete m_dataInterface;
 
         delete m_proxyWidget;

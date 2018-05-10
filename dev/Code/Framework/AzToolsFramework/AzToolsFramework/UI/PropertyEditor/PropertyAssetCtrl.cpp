@@ -183,6 +183,29 @@ namespace AzToolsFramework
         }
     }
 
+    void PropertyAssetCtrl::SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint, void* editNotifyTarget)
+    {
+        m_editNotifyTarget = editNotifyTarget;
+
+        SetValues(newID, newType, hint);
+    }
+
+    void PropertyAssetCtrl::SetValues(const AZ::Data::AssetId& newID, const AZ::Data::AssetType& newType, const AZStd::string& hint)
+    {
+        m_currentAssetHint = hint;
+
+        // only trigger an update if we actually need to
+        if (m_currentAssetType == newType && m_currentAssetID == newID)
+        {
+            return;
+        }
+
+        m_currentAssetType = newType;
+
+        // ForceSetCurrentAssetID will call UpdateAssetDisplay() for us, regardless of whether or not the asset id itself changed
+        ForceSetCurrentAssetID(newID);
+    }
+
     bool PropertyAssetCtrl::IsCorrectMimeData(const QMimeData* pData, AZ::Data::AssetId* pAssetId, AZ::Data::AssetType* pAssetType) const
     {
         if (pAssetId)
@@ -593,8 +616,17 @@ namespace AzToolsFramework
         EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
     }
 
-
     void PropertyAssetCtrl::SetCurrentAssetID(const AZ::Data::AssetId& newID)
+    {
+        if (m_currentAssetID == newID)
+        {
+            return;
+        }
+
+        ForceSetCurrentAssetID(newID);
+    }
+
+    void PropertyAssetCtrl::ForceSetCurrentAssetID(const AZ::Data::AssetId& newID)
     {
         m_currentAssetID = newID;
 
@@ -615,6 +647,11 @@ namespace AzToolsFramework
 
     void PropertyAssetCtrl::SetCurrentAssetType(const AZ::Data::AssetType& newType)
     {
+        if (m_currentAssetType == newType)
+        {
+            return;
+        }
+
         m_currentAssetType = newType;
         UpdateAssetDisplay();
     }
@@ -700,7 +737,7 @@ namespace AzToolsFramework
             }
 
             // Only change the asset name if the asset not found or there's no last known good name for it
-            if (!assetPath.empty() && (assetStatus != AssetSystem::JobStatus::Completed || m_currentAssetHint.empty()))
+            if (!assetPath.empty() && (assetStatus != AssetSystem::JobStatus::Completed || m_currentAssetHint != assetPath))
             {
                 m_currentAssetHint = assetPath;
             }
@@ -827,12 +864,12 @@ namespace AzToolsFramework
         AZ_Assert(node->GetElementMetadata()->m_genericClassInfo, "Property does not have element data.");
         AZ_Assert(node->GetElementMetadata()->m_genericClassInfo->GetNumTemplatedArguments() == 1, "Asset<> should have only 1 template parameter.");
 
-        const AZ::Uuid& assetTypeId = node->GetElementMetadata()->m_genericClassInfo->GetTemplatedTypeId(0);
+        const AZ::Uuid& assetTypeID = node->GetElementMetadata()->m_genericClassInfo->GetTemplatedTypeId(0);
+        const AZStd::string& hint = instance.GetHint();
+        const AZ::Data::AssetId& assetID = instance.GetId();
+        void* editNotifyTarget = node->GetParent()->GetInstance(0);
 
-        GUI->SetCurrentAssetHint(instance.GetHint());
-        GUI->SetCurrentAssetType(assetTypeId);
-        GUI->SetCurrentAssetID(instance.GetId());
-        GUI->SetEditNotifyTarget(node->GetParent()->GetInstance(0));
+        GUI->SetValues(assetID, assetTypeID, hint, editNotifyTarget);
 
         GUI->blockSignals(false);
         return false;
@@ -876,17 +913,15 @@ namespace AzToolsFramework
 
         GUI->blockSignals(true);
 
-        GUI->SetCurrentAssetType(instance.GetAssetType());
-
-        AZ::Data::AssetId assetId;
+        AZ::Data::AssetId assetID;
         if (!instance.GetAssetPath().empty())
         {
-            EBUS_EVENT_RESULT(assetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, instance.GetAssetPath().c_str(), instance.GetAssetType(), true);
+            EBUS_EVENT_RESULT(assetID, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, instance.GetAssetPath().c_str(), instance.GetAssetType(), true);
         }
 
         // Set the hint in case the asset is not able to be found by assetId
-        GUI->SetCurrentAssetHint(instance.GetAssetPath());
-        GUI->SetCurrentAssetID(assetId);
+        const AZStd::string& hint = instance.GetAssetPath();
+        GUI->SetValues(assetID, instance.GetAssetType(), hint);
 
         GUI->blockSignals(false);
         return false;

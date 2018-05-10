@@ -1,48 +1,57 @@
 {
-    "name": "tiff", 
-    "source": "@ROOT@/Code/SDKs/tiff", 
-    "description": "Tiff Library", 
+    "name": "tiff",
+    "source": "@3P:tiff@",
+    "description": "Tiff Library",
     "includes": [
-        "libtiff"
-    ], 
-    "defines": [], 
-    "lib_required": "True", 
+        "."
+    ],
+    "defines": [],
+    "lib_required": "True",
     "platform": {
         "win_x64_vs2013": {
             "libpath": [
                 "libtiff"
-            ], 
+            ],
             "lib_debug": [
                 "libtiff64rtdlld.lib"
-            ], 
+            ],
             "lib_release": [
                 "libtiff64rtdll.lib"
-            ], 
-            "linkflags": [
+            ],
+            "linkflags" : [
                 "/ignore:4099"
             ]
-        }, 
+        },
         "win_x64_vs2015": {
             "libpath": [
                 "libtiff"
-            ], 
+            ],
             "lib_debug": [
                 "libtiff64rtdlld_vc140.lib"
-            ], 
+            ],
             "lib_release": [
                 "libtiff64rtdll_vc140.lib"
-            ], 
-            "linkflags": [
+            ],
+            "linkflags" : [
                 "/ignore:4099"
             ]
-        }, 
-        "darwin_x64": {
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "orbis_vs2015": {
             "libpath": [
-                "libtiff/macosx_clang"
-            ], 
+                "libtiff/ps4_clang"
+            ],
             "lib": [
                 "libtiff.a"
             ]
+        },
+        "darwin_x64": {
+            "libpath": [
+                "libtiff/macosx_clang"
+            ],
+            "lib": [
+                "libtiff.a"
+            ]     
         }
     }
 }

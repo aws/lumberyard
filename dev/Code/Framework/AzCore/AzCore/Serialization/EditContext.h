@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_EDIT_CONTEXT_H
-#define AZCORE_EDIT_CONTEXT_H
+
+#pragma once
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/typetraits/is_function.h>
@@ -36,6 +36,26 @@ namespace AZ
         using AttributeFunction = AZ::AttributeFunction<F>;
         template<class F>
         using AttributeMemberFunction = AZ::AttributeMemberFunction<F>;
+
+        /**
+         * Enumerates the serialization context and inserts component Uuids which match at least one tag in requiredTags
+         * for the AZ::Edit::SystemComponentsTag attribute on the reflected class data
+         */
+        void GetComponentUuidsWithSystemComponentTag(
+            const SerializeContext* serializeContext,
+            const AZStd::vector<AZ::Crc32>& requiredTags,
+            AZStd::unordered_set<AZ::Uuid>& componentUuids);
+
+        /**
+         * Returns true if the given classData's AZ::Edit::SystemComponentsTag attribute matches at least one tag in requiredTags
+         * If the class data does not have the attribute, returns the value of defaultVal.
+         * Note that a defaultVal of true should generally only be used to maintain legacy behavior with non-tagged AZ::Components
+         */
+        template <typename TagContainer>
+        bool SystemComponentTagsMatchesAtLeastOneTag(
+            const AZ::SerializeContext::ClassData* classData,
+            const TagContainer& requiredTags,
+            bool defaultVal = false);
 
         /**
          * Signature of the dynamic edit data provider function.
@@ -387,8 +407,20 @@ namespace AZ
         {
             // find the class data in the serialize context.
             SerializeContext::UuidToClassMap::iterator classDataIter = m_serializeContext.m_uuidMap.find(AzTypeInfo<T>::Uuid());
-            AZ_Assert(classDataIter != m_serializeContext.m_uuidMap.end(), "Class %s is not reflected in the serializer yet! Edit context can be set after the class is reflected!", AzTypeInfo<T>::Name());
-            SerializeContext::ClassData* serializeClassData = &classDataIter->second;
+            SerializeContext::ClassData* serializeClassData{};
+            if (classDataIter != m_serializeContext.m_uuidMap.end())
+            {
+                serializeClassData = &classDataIter->second;
+            }
+            else
+            {
+                auto genericClassInfo = m_serializeContext.FindGenericClassInfo(AzTypeInfo<T>::Uuid());
+                if (genericClassInfo)
+                {
+                    serializeClassData = genericClassInfo->GetClassData();
+                }
+            }
+            AZ_Assert(serializeClassData, "Class %s is not reflected in the serializer yet! Edit context can be set after the class is reflected!", AzTypeInfo<T>::Name());
 
             m_classData.push_back();
             Edit::ClassData& editClassData = m_classData.back();
@@ -399,7 +431,7 @@ namespace AZ
             serializeClassData->m_editData = &editClassData;
             return EditContext::ClassBuilder(this, serializeClassData, &editClassData);
         }
-        
+
     }
 
     //=========================================================================
@@ -557,17 +589,24 @@ namespace AZ
 
         typedef typename SerializeInternal::ElementInfo<T>  ElementTypeInfo;
         AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", AzTypeInfo<typename ElementTypeInfo::ValueType>::Name());
+        using ElementType = typename AZStd::Utils::if_c<AZStd::is_enum<typename ElementTypeInfo::Type>::value, typename ElementTypeInfo::Type, typename ElementTypeInfo::ElementType>::type;
 
         const SerializeContext::ClassData* classData = m_context->m_serializeContext.FindClassData(AzTypeInfo<typename ElementTypeInfo::ValueType>::Uuid());
         if (classData && classData->m_editData)
         {
             return DataElement<T>(uiIdCrc, memberVariable, classData->m_editData->m_name, classData->m_editData->m_description);
         }
-        else
+        else if (AZStd::is_enum<ElementType>::value && AzTypeInfo<ElementType>::Name() != nullptr)
         {
-            const char* typeName = AzTypeInfo<typename ElementTypeInfo::ValueType>::Name();
-            return DataElement<T>(uiIdCrc, memberVariable, typeName, typeName);
+            auto enumIter = m_context->m_enumData.find(AzTypeInfo<ElementType>::Uuid());
+            if (enumIter != m_context->m_enumData.end())
+            {
+                return DataElement<T>(uiIdCrc, memberVariable, enumIter->second.m_name, enumIter->second.m_description);
+            }
         }
+
+        const char* typeName = AzTypeInfo<typename ElementTypeInfo::ValueType>::Name();
+        return DataElement<T>(uiIdCrc, memberVariable, typeName, typeName);
     }
 
     //=========================================================================
@@ -770,5 +809,4 @@ namespace AZ
 
 }   // namespace AZ
 
-#endif // AZCORE_EDIT_CONTEXT_H
-#pragma once
+#include <AzCore/Serialization/EditContext.inl>

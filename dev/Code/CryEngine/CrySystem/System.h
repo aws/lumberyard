@@ -33,8 +33,6 @@
 
 #include <LoadScreenBus.h>
 
-#include "CheatProtection.h"
-
 struct IConsoleCmdArgs;
 class CServerThrottle;
 struct ICryFactoryRegistryImpl;
@@ -49,6 +47,13 @@ namespace minigui
     struct IMiniGUI;
 }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SYSTEM_H_SECTION_1 1
+#define SYSTEM_H_SECTION_2 2
+#define SYSTEM_H_SECTION_3 3
+#define SYSTEM_H_SECTION_4 4
+#endif
 
 #if defined(ANDROID)
 #define USE_ANDROIDCONSOLE
@@ -63,7 +68,8 @@ namespace minigui
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(System_h)
+#define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_1
+#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
 #else
 #if defined(WIN32) || defined(LINUX) || defined(APPLE)
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE 1
@@ -143,16 +149,8 @@ namespace minigui
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_JOBMANAGER_SIXWORKERTHREADS 0
 #endif
 
-#if defined (LINUX)
-#define AZ_LEGACY_CRYSYSTEM_TRAIT_MEMREPLAY_MODULE_STATE 0
-#endif
-
 #if defined(WIN32)
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_MEMADDRESSRANGE_WINDOWS_STYLE 1
-#endif
-
-#if !defined(LINUX) && !defined(APPLE)
-#define AZ_LEGACY_CRYSYSTEM_TRAIT_STROBOSCOPE_PTHREADS 1
 #endif
 
 #if 1
@@ -319,6 +317,9 @@ struct SSystemCVars
 
 #if defined(WIN32)
     int sys_display_threads;
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_2
+#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
 #endif
 };
 extern SSystemCVars g_cvars;
@@ -762,7 +763,7 @@ private:
     void WaitForAssetProcessorToBeReady();
 #endif
 
-    CHEAT_PROTECTION_EXPORT bool OpenRenderLibrary(const char* t_rend, const SSystemInitParams& initParams);
+    bool OpenRenderLibrary(const char* t_rend, const SSystemInitParams& initParams);
 
     //@}
 
@@ -809,7 +810,10 @@ private:
 
     WIN_HMODULE LoadDynamiclibrary(const char* dllName) const;
 
-#if   defined(WIN32)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_3
+#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+#elif defined(WIN32)
     bool GetWinGameFolder(char* szMyDocumentsPath, int maxPathSize);
 #endif
 
@@ -1053,6 +1057,10 @@ private: // ------------------------------------------------------
 
     ICVar* m_sys_physics_CPU;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_4
+#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     ICVar* m_sys_audio_disable;
 

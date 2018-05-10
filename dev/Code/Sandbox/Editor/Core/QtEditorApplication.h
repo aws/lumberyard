@@ -78,6 +78,8 @@ namespace Editor
 
         static bool IsActive();
 
+        bool isMovingOrResizing() const;
+
         // QAbstractNativeEventFilter:
         bool nativeEventFilter(const QByteArray& eventType, void* message, long* result) override;
 
@@ -96,9 +98,11 @@ namespace Editor
 
         QSet<int> pressedKeys() const { return m_pressedKeys; }
         int pressedMouseButtons() const { return m_pressedButtons; }
+
 #ifdef _DEBUG
         bool notify(QObject* receiver, QEvent* ev) override;
 #endif
+
     public Q_SLOTS:
         void InitializeQML();
         void UninitializeQML();

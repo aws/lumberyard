@@ -24,7 +24,7 @@ class ProjectStatusWidget
 
 public:
 
-    ProjectStatusWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> stackStatusModel);
+    ProjectStatusWidget(ResourceManagementView* view, QSharedPointer<IProjectStatusModel> stackStatusModel, QWidget* parent);
 
 private:
 

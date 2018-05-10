@@ -23,7 +23,7 @@ class NoResourceGroupWidget
 
 public:
 
-    NoResourceGroupWidget(ResourceManagementView* view);
+    NoResourceGroupWidget(ResourceManagementView* view, QWidget* parent);
 
 protected:
 

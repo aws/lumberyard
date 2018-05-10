@@ -15,10 +15,8 @@
 #include <AzFramework/Network/NetBindingSystemBus.h>
 #include <AzFramework/Network/NetBindingEventsBus.h>
 #include <AzFramework/Entity/EntityContextBus.h>
-#include <AzFramework/Entity/GameEntityContextBus.h>
 #include <GridMate/Serialize/Buffer.h>
 #include <GridMate/Serialize/UuidMarshal.h>
-#include <GridMate/Replica/ReplicaFunctions.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Slice/SliceComponent.h>
@@ -28,7 +26,10 @@
 namespace AzFramework
 {
     NetBindingComponentChunk::SpawnInfo::SpawnInfo()
-        : m_owningContextId(UnspecifiedNetBindingContextSequence)
+        : m_runtimeEntityId(AZ::EntityId::InvalidEntityId)
+        , m_owningContextId(UnspecifiedNetBindingContextSequence)
+        , m_staticEntityId(AZ::EntityId::InvalidEntityId)
+        , m_sliceInstanceId(UnspecifiedSliceInstanceId)
     {
     }
 
@@ -61,6 +62,7 @@ namespace AzFramework
         {
             wb.Write(data.m_sliceAssetId);
             wb.Write(data.m_staticEntityId);
+            wb.Write(data.m_sliceInstanceId);
         }
     }
 
@@ -79,6 +81,7 @@ namespace AzFramework
         {
             rb.Read(data.m_sliceAssetId);
             rb.Read(data.m_staticEntityId);
+            rb.Read(data.m_sliceInstanceId);
         }
     }
 
@@ -137,6 +140,10 @@ namespace AzFramework
                             AZ::Data::AssetId sliceAssetId = sliceInfo.first->GetSliceAsset().GetId();
                             spawnInfo.m_sliceAssetId = AZStd::make_pair(sliceAssetId.m_guid, sliceAssetId.m_subId);
                         }
+                        if (sliceInfo.second)
+                        {
+                            spawnInfo.m_sliceInstanceId = sliceInfo.second->GetId();
+                        }
 
                         AZ::EntityId staticEntityId;
                         EBUS_EVENT_RESULT(staticEntityId, NetBindingSystemBus, GetStaticIdFromEntityId, m_bindingComponent->GetEntity()->GetId());
@@ -163,7 +170,12 @@ namespace AzFramework
                 //Check EntityID collision
                 AZ::Entity* entity = nullptr;
                 EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, runtimeEntityId);
-                collision = (entity != nullptr);   //Only false if no machine ID collision and no entity ID collision
+
+                /*
+                 * Only false if no machine ID collision and no entity ID collision
+                 * And the entity is already active, it's possible the entity already exists in deactivated state as a cache mechanism
+                 */
+                collision = (entity != nullptr) && (entity->GetState() == AZ::Entity::ES_ACTIVE);
             }
 
             /**
@@ -195,13 +207,14 @@ namespace AzFramework
                     spawnContext.m_sliceAssetId = AZ::Data::AssetId(m_spawnInfo.Get().m_sliceAssetId.first, m_spawnInfo.Get().m_sliceAssetId.second);
                     spawnContext.m_runtimeEntityId = runtimeEntityId;
                     spawnContext.m_staticEntityId = AZ::EntityId(m_spawnInfo.Get().m_staticEntityId);
+                    spawnContext.m_sliceInstanceId = m_spawnInfo.Get().m_sliceInstanceId;
                     EBUS_EVENT(NetBindingSystemBus, SpawnEntityFromSlice, GetReplicaId(), spawnContext);
                 }
             }
             else    //Fail early to prevent unnecessary spawning of duplicate entity IDs
             {
                 //Misconfiguration or potential cheating/DoS?
-                AZ_Warning("NetBinding", false, "Received duplicate Entity ID. Check FAQs.");
+                AZ_Warning("NetBinding", false, "Received duplicate Entity ID %llu. Ignoring.", runtimeEntityId);
             }
         }
     }

@@ -9,35 +9,34 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "LmbrCentral_precompiled.h"
 #include "EditorCylinderShapeComponent.h"
 
-#include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include "CylinderShapeComponent.h"
-#include "ShapeComponentConverters.h"
+#include "EditorShapeComponentConverters.h"
+#include "ShapeDisplay.h"
 
 namespace LmbrCentral
 {
     void EditorCylinderShapeComponent::Reflect(AZ::ReflectContext* context)
     {
-        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             // Deprecate: EditorCylinderColliderComponent -> EditorCylinderShapeComponent
             serializeContext->ClassDeprecate(
                 "EditorCylinderColliderComponent",
                 "{1C10CEE7-0A5C-4D4A-BBD9-5C3B6C6FE844}",
-                &ClassConverters::DeprecateEditorCylinderColliderComponent
-                );
-
-            serializeContext->Class<EditorCylinderShapeComponent, EditorBaseShapeComponent>()
-                ->Version(2, &ClassConverters::UpgradeEditorCylinderShapeComponent)
-                ->Field("Configuration", &EditorCylinderShapeComponent::m_configuration)
+                &ClassConverters::DeprecateEditorCylinderColliderComponent)
                 ;
 
-            AZ::EditContext* editContext = serializeContext->GetEditContext();
-            if (editContext)
+            serializeContext->Class<EditorCylinderShapeComponent, EditorBaseShapeComponent>()
+                ->Version(3, &ClassConverters::UpgradeEditorCylinderShapeComponent)
+                ->Field("CylinderShape", &EditorCylinderShapeComponent::m_cylinderShape)
+                ;
+
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<EditorCylinderShapeComponent>(
                     "Cylinder Shape", "The Cylinder Shape component creates a cylinder around the associated entity")
@@ -48,7 +47,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
-                    ->DataElement(0, &EditorCylinderShapeComponent::m_configuration, "Configuration", "Cylinder Shape Configuration")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCylinderShapeComponent::m_cylinderShape, "Cylinder Shape", "Cylinder Shape Configuration")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorCylinderShapeComponent::ConfigurationChanged)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
@@ -59,35 +58,51 @@ namespace LmbrCentral
     void EditorCylinderShapeComponent::Activate()
     {
         EditorBaseShapeComponent::Activate();
-        CylinderShape::Activate(GetEntityId());
+        m_cylinderShape.Activate(GetEntityId());
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorCylinderShapeComponent::Deactivate()
     {
-        CylinderShape::Deactivate();
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
+        m_cylinderShape.Deactivate();
         EditorBaseShapeComponent::Deactivate();
     }
 
-    void EditorCylinderShapeComponent::DrawShape(AzFramework::EntityDebugDisplayRequests* displayContext) const
+    void EditorCylinderShapeComponent::DisplayEntity(bool& handled)
     {
-        if (displayContext)
-        {
-            displayContext->SetColor(s_shapeColor);
-            displayContext->DrawSolidCylinder(AZ::Vector3::CreateZero(), AZ::Vector3::CreateAxisZ(1.f), m_configuration.GetRadius(), m_configuration.GetHeight());
+        DisplayShape(handled,
+            [this]() { return CanDraw(); },
+            [this](AzFramework::EntityDebugDisplayRequests* displayContext)
+            {
+                DrawCylinderShape(
+                    { m_shapeColor, m_shapeWireColor, m_displayFilled },
+                    m_cylinderShape.GetCylinderConfiguration(), *displayContext);
+            },
+            m_cylinderShape.GetCurrentTransform());
+    }
 
-            displayContext->SetColor(s_shapeWireColor);
-            displayContext->DrawWireCylinder(AZ::Vector3::CreateZero(), AZ::Vector3::CreateAxisZ(1.f), m_configuration.GetRadius(), m_configuration.GetHeight());
-        }
+    void EditorCylinderShapeComponent::ConfigurationChanged()
+    {
+        m_cylinderShape.InvalidateCache(InvalidateShapeCacheReason::ShapeChange);
+        ShapeComponentNotificationsBus::Event(
+            GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged,
+            ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
 
     void EditorCylinderShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        auto component = gameEntity->CreateComponent<CylinderShapeComponent>()->SetConfiguration(m_configuration);
-    }
+        if (auto component = gameEntity->CreateComponent<CylinderShapeComponent>())
+        {
+            component->SetConfiguration(m_cylinderShape.GetCylinderConfiguration());
+        }
 
-    void EditorCylinderShapeComponent::ConfigurationChanged() 
-    {
-        CylinderShape::InvalidateCache(CylinderIntersectionDataCache::CacheStatus::Obsolete_ShapeChange);
-        ShapeComponentNotificationsBus::Event(GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+        if (m_visibleInGameView)
+        {
+            if (auto component = gameEntity->CreateComponent<CylinderShapeDebugDisplayComponent>())
+            {
+                component->SetConfiguration(m_cylinderShape.GetCylinderConfiguration());
+            }
+        }
     }
 } // namespace LmbrCentral

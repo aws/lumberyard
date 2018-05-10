@@ -106,8 +106,8 @@ namespace EMStudio
         QListWidgetItem* categoryButton = new QListWidgetItem();
 
         // load the category image and pass it to the category buttom
-        MCore::String imageFileName = MysticQt::GetDataDir() + relativeFileName;
-        categoryButton->setIcon(QIcon(imageFileName.AsChar()));
+        AZStd::string imageFileName = MysticQt::GetDataDir() + relativeFileName;
+        categoryButton->setIcon(QIcon(imageFileName.c_str()));
 
         // set the category button name and style it
         categoryButton->setText(categoryName);
@@ -138,9 +138,9 @@ namespace EMStudio
         // create the category button
         QListWidgetItem* categoryButton = new QListWidgetItem();
 
-        // load the category image and pass it to the category buttom
-        MCore::String imageFileName = MysticQt::GetDataDir() + relativeFileName;
-        categoryButton->setIcon(QIcon(imageFileName.AsChar()));
+        // load the category image and pass it to the category button
+        AZStd::string imageFileName = MysticQt::GetDataDir() + relativeFileName;
+        categoryButton->setIcon(QIcon(imageFileName.c_str()));
 
         // set the category button name and style it
         categoryButton->setText(categoryName);
@@ -169,7 +169,7 @@ namespace EMStudio
 
 
     // find category by name
-    PreferencesWindow::Category* PreferencesWindow::FindCategoryByName(const char* categoryName)
+    PreferencesWindow::Category* PreferencesWindow::FindCategoryByName(const char* categoryName) const
     {
         // get the number of categories and iterate through them
         const uint32 numCategories = mCategories.GetLength();
@@ -178,7 +178,7 @@ namespace EMStudio
             Category* category = mCategories[i];
 
             // compare the passed name with the current category and return if they are the same
-            if (category->mName.CheckIfIsEqual(categoryName))
+            if (category->mName == categoryName)
             {
                 return category;
             }

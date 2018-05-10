@@ -1,6 +1,6 @@
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
-* its licensors.	
+* its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
 * distribution (the "License"). All use of this software is governed by the License,
@@ -14,10 +14,27 @@
 // Description : Platform dependend stuff.
 //               Include this file instead of windows h
 
-
-#ifndef CRYINCLUDE_CRYCOMMON_PLATFORM_H
-#define CRYINCLUDE_CRYCOMMON_PLATFORM_H
 #pragma once
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include <AzCore/PlatformRestrictedFileDef.h>
+#undef AZ_RESTRICTED_SECTION
+#define PLATFORM_H_SECTION_1 1
+#define PLATFORM_H_SECTION_2 2
+#define PLATFORM_H_SECTION_3 3
+#define PLATFORM_H_SECTION_4 4
+#define PLATFORM_H_SECTION_5 5
+#define PLATFORM_H_SECTION_6 6
+#define PLATFORM_H_SECTION_7 7
+#define PLATFORM_H_SECTION_8 8
+#define PLATFORM_H_SECTION_9 9
+#define PLATFORM_H_SECTION_10 10
+#define PLATFORM_H_SECTION_11 11
+#define PLATFORM_H_SECTION_12 12
+#define PLATFORM_H_SECTION_13 13
+#define PLATFORM_H_SECTION_14 14
+#define PLATFORM_H_SECTION_15 15
+#endif
 
 #if !defined(_WIN32_WINNT)
 #define _WIN32_WINNT 0x0600
@@ -66,7 +83,13 @@
     #define __FUNC__ __PRETTY_FUNCTION__
 #endif
 
-#if   defined(_DEBUG) && !defined(LINUX) && !defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_1
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(_DEBUG) && !defined(LINUX) && !defined(APPLE)
     #include <crtdbg.h>
 #endif
 
@@ -107,7 +130,15 @@
 //////////////////////////////////////////////////////////////////////////
 // Available predefined compiler macros for Visual C++.
 //      _MSC_VER                                        // Indicates MS Visual C compiler version
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_2
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 //      _WIN32, _WIN64       // Indicates target OS
+#endif
 //      _M_IX86, _M_PPC                         // Indicates target processor
 //      _DEBUG                                          // Building in Debug mode
 //      _DLL                                                // Linking with DLL runtime libs
@@ -124,7 +155,13 @@
     #define NDEBUG
 #endif
 
-#if   defined(MOBILE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_3
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(MOBILE)
 	#define CONSOLE
 #endif
 
@@ -140,11 +177,19 @@
 
 
 // We use WIN macros without _.
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_4
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
 #if defined(_WIN32) && !defined(LINUX32) && !defined(LINUX64) && !defined(APPLE) && !defined(WIN32)
     #define WIN32
 #endif
 #if defined(_WIN64) && !defined(WIN64)
     #define WIN64
+#endif
 #endif
 
 // In Win32 Release we use static linkage
@@ -158,7 +203,13 @@
 
 #endif //WIN32
 
-#if   defined(LINUX) || defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_5
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(LINUX) || defined(APPLE)
 	#define __STDC_FORMAT_MACROS
 	#include <inttypes.h>
 	#if defined(APPLE) || defined(LINUX64)
@@ -179,7 +230,13 @@
 #endif
 
 #if !defined(PRISIZE_T)
-    #if   defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_6
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #elif defined(WIN64)
         #define PRISIZE_T "I64u" //size_t defined as unsigned __int64
     #elif defined(WIN32) || defined(LINUX32)
         #define PRISIZE_T "u"
@@ -190,7 +247,13 @@
     #endif
 #endif
 #if !defined(PRI_THREADID)
-    #if   defined(MAC) || defined(IOS) && defined(__LP64__) || defined(APPLETV) && defined(__LP64__)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_7
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #elif defined(MAC) || defined(IOS) && defined(__LP64__) || defined(APPLETV) && defined(__LP64__)
         #define PRI_THREADID "lld"
     #elif defined(LINUX64) || defined(ANDROID)
         #define PRI_THREADID "ld"
@@ -241,7 +304,7 @@
   #define PRINTF_EMPTY_FORMAT ""
 #endif
 
-#if defined(IOS) || defined(APPLETV) || (defined(ANDROID) && defined(__clang__))
+#if defined(IOS) || defined(APPLETV)
 #define USE_PTHREAD_TLS
 #endif
 
@@ -249,7 +312,7 @@
 // THEADLOCAL should NOT be defined to empty because that creates some
 // really hard to find issues.
 #if !defined(USE_PTHREAD_TLS)
-#if defined(__GNUC__) || defined(MAC)
+#if defined(__GNUC__) || defined(MAC) || defined(ANDROID)
     #define THREADLOCAL __thread
 #else
     #define THREADLOCAL __declspec(thread)
@@ -288,7 +351,13 @@ static inline void  __dmb()
     #define MEMORY_RW_REORDERING_BARRIER do { /*not implemented*/} while (0)
 
 //default stack size for threads, currently only used on pthread platforms
-#if   defined(LINUX) || defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_8
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(LINUX) || defined(APPLE)
 	#if !defined(_DEBUG)
 		#define SIMPLE_THREAD_STACK_SIZE_KB (256)
 	#else
@@ -352,6 +421,13 @@ static inline void  __dmb()
 #endif
 
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_9
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     #if defined(WIN32) && !defined(WIN64)
         #include "Win32specific.h"
     #endif
@@ -359,6 +435,7 @@ static inline void  __dmb()
     #if defined(WIN64)
         #include "Win64specific.h"
     #endif
+#endif
 
 #if defined(LINUX64) && !defined(ANDROID)
 #include "Linux64Specific.h"
@@ -373,7 +450,10 @@ static inline void  __dmb()
 #endif
 
 
-
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_10
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(MAC)
 #include "MacSpecific.h"
@@ -511,7 +591,10 @@ unsigned int CryGetFileAttributes(const char* lpFileName);
 
 inline void CryHeapCheck()
 {
-#if   !defined(LINUX) && !defined(APPLE) // todo: this might be readded with later xdks?
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_11
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#elif !defined(LINUX) && !defined(APPLE) // todo: this might be readded with later xdks?
     int Result = _heapchk();
     assert(Result != _HEAPBADBEGIN);
     assert(Result != _HEAPBADNODE);
@@ -678,8 +761,10 @@ void SetFlags(T& dest, U flags, bool b)
 // Wrapper code for non-windows builds.
 #if defined(LINUX) || defined(APPLE)
     #include "Linux_Win32Wrapper.h"
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_12
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
 #endif
-
 
 // Platform wrappers must be included before CryString.h
 #   include "CryString.h"
@@ -773,7 +858,10 @@ __declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void* 
     #error "There's no support for thread local storage"
 #endif
 
-#if   !defined(LINUX) && !defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_13
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#elif !defined(LINUX) && !defined(APPLE)
 typedef int socklen_t;
 #endif
 
@@ -802,12 +890,22 @@ typedef int socklen_t;
 
 // In RELEASE disable printf and fprintf
 #if defined(_RELEASE) && !defined(RELEASE_LOGGING)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_14
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+	#endif
 #endif
 
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 
-#if   defined(WIN32) || defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_15
+#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32) || defined(WIN64)
 	#define MESSAGE(msg) message(__FILE__ "(" STRINGIFY(__LINE__) "): " msg)
 #else
 	#define MESSAGE(msg)
@@ -816,5 +914,3 @@ typedef int socklen_t;
 #if !defined(BINFOLDER_NAME)
 #error ("BINFOLDER_NAME not defined in the project preprocessor settings")
 #endif
-
-#endif // CRYINCLUDE_CRYCOMMON_PLATFORM_H

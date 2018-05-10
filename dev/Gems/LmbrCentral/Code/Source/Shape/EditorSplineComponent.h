@@ -15,6 +15,7 @@
 #include "SplineComponent.h"
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
@@ -60,7 +61,10 @@ namespace LmbrCentral
      */
     class EditorSplineComponent
         : public AzToolsFramework::Components::EditorComponentBase
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
+        , private AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
         , private SplineComponentRequestBus::Handler
+        , private SplineComponentNotificationBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private AZ::TransformNotificationBus::Handler
@@ -71,12 +75,13 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         EditorSplineComponent() = default;
+        ~EditorSplineComponent();
 
-        // AZ::Component interface implementation
+        // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
-        // EditorComponentBase implementation
+        // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
     private:
@@ -97,13 +102,24 @@ namespace LmbrCentral
         void OnSelected() override;
         void OnDeselected() override;
 
+        // EditorComponentSelectionRequestsBus::Handler
+        AZ::Aabb GetEditorSelectionBounds() override;
+        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        bool SupportsEditorRayIntersect() override { return true; };
+        AZ::u32 GetBoundingBoxDisplayType() override { return AzToolsFramework::EditorComponentSelectionRequests::NoBoundingBox; }
+
+        // EditorComponentSelectionNotificationsBus::Handler
+        void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override { m_accentType = accent; };
+
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
         // SplineComponentRequestBus handler
-        AZ::ConstSplinePtr GetSpline() override;
+        AZ::SplinePtr GetSpline() override;
         void ChangeSplineType(AZ::u64 splineType) override;
         void SetClosed(bool closed) override;
+
+        // SplineComponentRequestBus/VertexContainerInterface
         bool GetVertex(size_t index, AZ::Vector3& vertex) const override;
         void AddVertex(const AZ::Vector3& vertex) override;
         bool UpdateVertex(size_t index, const AZ::Vector3& vertex) override;
@@ -125,8 +141,15 @@ namespace LmbrCentral
 
         void OnChangeSplineType();
 
+        void SplineChanged() const;
+
         AzToolsFramework::EditorVertexSelectionVariable<AZ::Vector3> m_vertexSelection; ///< Handles all manipulator interactions with vertices (inserting and translating).
 
-        SplineCommon m_splineCommon; ///< Stores common spline functionality and properties
+        SplineCommon m_splineCommon; ///< Stores common spline functionality and properties.
+
+        AZ::Transform m_currentTransform; ///< Stores the current transform of the component.
+
+        AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None; ///< State of the entity selection in the viewport.
+        bool m_visibleInEditor = true; ///< Visible in the editor viewport.
     };
 } // namespace LmbrCentral

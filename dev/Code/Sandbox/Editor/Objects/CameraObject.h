@@ -47,7 +47,7 @@ class SANDBOX_API CCameraObject
 public:
 
     //////////////////////////////////////////////////////////////////////////
-    // Overides from CBaseObject.
+    // Overrides from CBaseObject.
     //////////////////////////////////////////////////////////////////////////
     bool Init(IEditor* ie, CBaseObject* prev, const QString& file);
     void InitVariables();

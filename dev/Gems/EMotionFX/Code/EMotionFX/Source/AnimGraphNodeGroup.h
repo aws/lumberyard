@@ -15,8 +15,8 @@
 // include required files
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
+#include <AzCore/std/string/string.h>
 
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Array.h>
 #include <MCore/Source/Color.h>
 
@@ -62,13 +62,13 @@ namespace EMotionFX
         const char* GetName() const;
 
         /**
-         * Get the name of the group, in form of a MCore::String object.
-         * @result The name as a reference to a MCore::String object.
+         * Get the name of the group, in form of a AZStd::string object.
+         * @result The name as a reference to a AZStd::string object.
          */
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
 
         /**
-         * Get the unique identification number returned by the MCore::GetStringIDGenerator() for the given node group name.
+         * Get the unique identification number returned by the MCore::GetStringIdPool() for the given node group name.
          * @return The unique name identification number.
          */
         uint32 GetNameID() const;

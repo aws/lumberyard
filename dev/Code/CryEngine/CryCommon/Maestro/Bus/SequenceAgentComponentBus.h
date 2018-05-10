@@ -74,6 +74,10 @@ namespace Maestro
 
         //! Returns the Uuid of the type that the 'getter' returns for this animatableAddress
         virtual AZ::Uuid GetAnimatedAddressTypeId(const Maestro::SequenceComponentRequests::AnimatablePropertyAddress& animatableAddress) = 0;
+
+        //! Track View will expect some components (those using AZ::Data::AssetBlends as a virtual property) to supply a GetAssetDuration event
+        //! so Track View can query the duration of an asset (like a motion) without having any knowledge of that that asset is.
+        virtual void GetAssetDuration(AnimatedValue& returnValue, AZ::ComponentId componentId, const AZ::Data::AssetId& assetId) = 0;
     };
 
     using SequenceAgentComponentRequestBus = AZ::EBus<SequenceAgentComponentRequests>;

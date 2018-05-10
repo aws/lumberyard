@@ -19,7 +19,7 @@
 #include <cctype>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(LocalFileIO_cpp)
+#include AZ_RESTRICTED_FILE(LocalFileIO_cpp, AZ_RESTRICTED_PLATFORM)
 #elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64)
 #include "LocalFileIO_win.inl"
 #elif defined(AZ_PLATFORM_ANDROID)
@@ -461,6 +461,17 @@ namespace AZ
             return DestroyPath_Recurse(this, resolvedPath);
         }
 
+        static void toUnixSlashes(char *path, AZ::u64 size)
+        {
+            for (AZ::u64 i = 0; i < size && path[i] != '\0'; i++)
+            {
+                if (path[i] == '\\')
+                {
+                    path[i] = '/';
+                }
+            }
+        }
+
         bool LocalFileIO::ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize)
         {
             if (path == nullptr)
@@ -481,14 +492,7 @@ namespace AZ
                         LowerIfBeginsWith(resolvedPath, resolvedPathSize, GetAlias("@root@"));
                     }
 
-                    for (AZ::u64 i = 0; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
-                    {
-                        if (resolvedPath[i] == '\\')
-                        {
-                            resolvedPath[i] = '/';
-                        }
-                    }
-
+                    toUnixSlashes(resolvedPath, resolvedPathSize);
                     return true;
                 }
                 else
@@ -527,15 +531,13 @@ namespace AZ
                 rootedPath = rootedPathBuffer;
             }
 
-            for (AZ::u64 i = 0; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
+            if (ResolveAliases(rootedPath, resolvedPath, resolvedPathSize))
             {
-                if (resolvedPath[i] == '\\')
-                {
-                    resolvedPath[i] = '/';
-                }
+                toUnixSlashes(resolvedPath, resolvedPathSize);
+                return true;
             }
 
-            return ResolveAliases(rootedPath, resolvedPath, resolvedPathSize);
+            return false;
         }
 
         void LocalFileIO::SetAlias(const char* key, const char* path)
@@ -623,7 +625,7 @@ namespace AZ
                 size_t finalStringSize = alias_size + remainingData;
                 if (finalStringSize >= bufferLength)
                 {
-                    AZ_Error("FileIO", false, "Buffer overflow avoided for ConverToAlias on %s (len %llu) with alias %s", inOutBuffer, bufferLength, longestAlias);
+                    AZ_Error("FileIO", false, "Buffer overflow avoided for ConvertToAlias on %s (max len %llu, actual len %llu) with alias %s", inOutBuffer, bufferLength, finalStringSize, longestAlias);
                     // avoid buffer overflow, return original untouched
                     return bufStringLength;
                 }

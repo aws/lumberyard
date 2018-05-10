@@ -20,6 +20,14 @@
 
 #include "../Common/Textures/TextureManager.h"
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DTILEDSHADING_CPP_SECTION_1 1
+#define D3DTILEDSHADING_CPP_SECTION_2 2
+#define D3DTILEDSHADING_CPP_SECTION_3 3
+#endif
+
 #if defined(FEATURE_SVO_GI)
 #include "D3D_SVO.h"
 #endif
@@ -169,6 +177,10 @@ void CTiledShading::CreateResources()
             CryFatalError("Couldn't allocate specular probe texture atlas");
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTILEDSHADING_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DTiledShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 
     if (!m_diffuseProbeAtlas.texArray)
@@ -185,6 +197,10 @@ void CTiledShading::CreateResources()
             CryFatalError("Couldn't allocate diffuse probe texture atlas");
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTILEDSHADING_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DTiledShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 
     if (!m_spotTexAtlas.texArray)
@@ -198,6 +214,10 @@ void CTiledShading::CreateResources()
             CryFatalError("Couldn't allocate spot texture atlas");
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTILEDSHADING_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DTiledShading_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 
     STexState ts1(FILTER_LINEAR, true);
@@ -937,7 +957,7 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
     uint32 dispatchSizeY = nScreenHeight / LightTileSizeY + (nScreenHeight % LightTileSizeY > 0 ? 1 : 0);
 
     const bool shaderAvailable = SD3DPostEffectsUtils::ShBeginPass(CShaderMan::s_shDeferredShading, techTiledShading, FEF_DONTSETSTATES);
-    if (shaderAvailable)  // Temporary workaround for PS4 shader cache issue
+    if (shaderAvailable)  // Temporary workaround for a shader cache issue
     {
         D3DShaderResourceView* pTiledBaseRes[8] = {
             m_LightShadeInfoBuf.GetShaderResourceView(),

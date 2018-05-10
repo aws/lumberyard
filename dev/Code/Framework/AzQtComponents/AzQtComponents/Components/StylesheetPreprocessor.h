@@ -25,7 +25,8 @@ namespace AzQtComponents
         Q_OBJECT
 
     public:
-        StylesheetPreprocessor(QObject* pParent);
+        explicit StylesheetPreprocessor(QObject* pParent);
+        ~StylesheetPreprocessor();
 
         void ClearVariables();
         void ReadVariables(const QString& variables);

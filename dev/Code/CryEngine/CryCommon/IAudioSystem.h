@@ -954,7 +954,7 @@ namespace Audio
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const bool EnableEventQueue = true;
-        using MutexType = AZStd::mutex;
+        using MutexType = AZStd::recursive_mutex;
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
         virtual void PushRequestThreadSafe(const SAudioRequest& audioRequestData) = 0;

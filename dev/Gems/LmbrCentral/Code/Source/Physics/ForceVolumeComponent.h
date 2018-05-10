@@ -12,55 +12,27 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include "ForceVolume.h"
+
+#include <AzCore/Math/Spline.h>
 #include <AzCore/Math/Vector3.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/Component/TickBus.h>
 #include <LmbrCentral/Scripting/TriggerAreaComponentBus.h>
 #include <LmbrCentral/Physics/ForceVolumeRequestBus.h>
-
-struct IPhysicalEntity;
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
 
 namespace LmbrCentral
 {
     /**
-     * Configuration for the ForceVolume
-     * @see ForceVolumeRequests
-     */
-    struct ForceVolumeConfiguration
-    {
-        AZ_CLASS_ALLOCATOR(ForceVolumeConfiguration, AZ::SystemAllocator, 0);
-        AZ_TYPE_INFO(ForceVolumeConfiguration, "{B0270667-B52B-4117-974F-035472E9F25A}");
-        static void Reflect(AZ::ReflectContext* context);
-
-        bool UsePoint() const { return m_forceMode == ForceMode::ePoint; }
-        bool UseDirection() const { return m_forceMode == ForceMode::eDirection; }
-
-        ForceMode m_forceMode = ForceMode::eDirection;
-        ForceSpace m_forceSpace = ForceSpace::eWorldSpace;
-        bool m_useMass = false;
-        AZ::Vector3 m_forceDirection = AZ::Vector3::CreateAxisX();
-        float m_forceMagnitude = 20.0f;
-        float m_volumeDamping = 0.0f;
-        float m_volumeDensity = 0.0f;
-    };
-
-    /**
      * ForceVolumeComponent
      * 
-     * /brief Applies a forces to objects within a volume
+     * /brief Applies a forces to objects within a volume.
      * 
-     * Three types of forces are applied to entities within the volume:
-     * 
-     * Force - a linear force in local/world space. Can be mass indepedent.
-     * Damping - A force applied opposite to the entities velocity
-     * Resistance - Used to simulate air resistance. Each shape is approximated to a sphere
-     * 
-     * The forces are calculated for each entity in the CalculateForce, CalculateDamping, CalculateResistance methods and then summed together.
-     * Game developers should subclass this component and override the behaviour of these functions for further customisation.
+     * Uses a trigger area and a shape to receive notifications about entities entering and exiting
+     * the volume. Each tick a net force will be calculated per entity by summing all the attached forces.
      */
     class ForceVolumeComponent
         : public AZ::Component
-        , public ForceVolumeRequestBus::Handler
         , protected LmbrCentral::TriggerAreaNotificationBus::Handler
         , protected AZ::TickBus::Handler
     {
@@ -69,30 +41,13 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
         ForceVolumeComponent() = default;
-        explicit ForceVolumeComponent(const ForceVolumeConfiguration& configuration);
+        explicit ForceVolumeComponent(const ForceVolume& forceVolume, bool debug);
         ~ForceVolumeComponent() override = default;
 
-        // ForceVolumeRequests
-        void SetForceMode(ForceMode mode) override;
-        ForceMode GetForceMode() override;
-        void SetForceSpace(ForceSpace space) override;
-        ForceSpace GetForceSpace() override;
-        void SetUseMass(bool useMass) override;
-        bool GetUseMass() override;
-        void SetForceMagnitude(float magnitude) override;
-        float GetForceMagnitude() override;
-        void SetForceDirection(const AZ::Vector3& direction) override;
-        const AZ::Vector3& GetForceDirection() override;
-        void SetVolumeDamping(float damping) override;
-        float GetVolumeDamping() override;
-        void SetVolumeDensity(float density) override;
-        float GetVolumeDensity() override;
-
     protected:
-        friend class EditorForceVolumeComponent;
-
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
+            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
             required.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c));
         }
 
@@ -107,13 +62,10 @@ namespace LmbrCentral
         void Activate() override;
         void Deactivate() override;
 
-        static AZ::Vector3 GetWorldForceDirectionAtPoint(const ForceVolumeConfiguration& config, const AZ::Vector3& point, const AZ::Vector3& volumeCenter, const AZ::Quaternion& volumeRotation);
+        void DrawDebugForceForEntity(const EntityParams&, const AZ::Vector3& netForce);
 
-        virtual AZ::Vector3 CalculateForce(const AZ::EntityId& entity, float deltaTime);
-        virtual AZ::Vector3 CalculateDamping(const AZ::EntityId& entity, float deltaTime);
-        virtual AZ::Vector3 CalculateResistance(const AZ::EntityId& entity, float deltaTime);
-
-        ForceVolumeConfiguration m_configuration;   ///< Configuration of the force volume
-        AZStd::vector<AZ::EntityId> m_entities;     ///< List of entitiy ids contained within the volume
+        AZStd::vector<AZ::EntityId> m_entities; ///< List of entitiy ids contained within the volume.
+        ForceVolume m_forceVolume; ///< Calculates the net force.
+        bool m_debugForces = false; ///< Draws debug lines for entities in the volume
     };
 } // namespace LmbrCentral

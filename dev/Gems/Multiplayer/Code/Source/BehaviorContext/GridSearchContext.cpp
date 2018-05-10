@@ -26,6 +26,7 @@ namespace Multiplayer
      */
     struct GridSearchTicket
     {
+        AZ_TYPE_INFO(GridSearchTicket, "{ADFA9839-4D38-4B3E-8909-9D55261E69D5}");
         AZ_CLASS_ALLOCATOR(GridSearchTicket, AZ::SystemAllocator, 0);
 
         GridSearchTicket(GridMate::GridSearch* ptr) : m_ptr(ptr)
@@ -327,11 +328,27 @@ namespace Multiplayer
     {
         void Reflect(AZ::ReflectContext* reflectContext)
         {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext);
+
+            if (serializeContext)
+            {
+                serializeContext->Class<GridMate::SearchInfo>()
+                    ->Version(1)
+                    ->Field("SessionId", &GridMate::SearchInfo::m_sessionId)
+                    ->Field("FreePublicSlots", &GridMate::SearchInfo::m_numFreePublicSlots)
+                    ->Field("FreePrivateSlots", &GridMate::SearchInfo::m_numFreePrivateSlots)
+                    ->Field("UsedPublicSlots", &GridMate::SearchInfo::m_numUsedPublicSlots)
+                    ->Field("UsedPrivateSlots", &GridMate::SearchInfo::m_numUsedPrivateSlots)
+                    ->Field("NumPlayers", &GridMate::SearchInfo::m_numPlayers)
+                ;
+            }
+
             AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflectContext);
             if (behaviorContext)
             {
                 behaviorContext->Class<GridSearchTicket>()
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)
                     ->Method("GetNumResults", &GridSearchTicket::GetNumResults)
                     ;
 

@@ -11,6 +11,13 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SHALLOCATOR_H_SECTION_1 1
+#define SHALLOCATOR_H_SECTION_2 2
+#endif
+
 #ifndef CRYINCLUDE_TOOLS_PRT_SHALLOCATOR_H
 #define CRYINCLUDE_TOOLS_PRT_SHALLOCATOR_H
 #pragma once
@@ -29,7 +36,10 @@
 #endif
 #include <limits>
 
-#if   !defined(LINUX) && !defined(APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SHALLOCATOR_H_SECTION_1
+#include AZ_RESTRICTED_FILE(SHAllocator_h, AZ_RESTRICTED_PLATFORM)
+#elif !defined(LINUX) && !defined(APPLE)
 #ifdef __cplusplus
 	#include <new.h> 
 #endif
@@ -128,6 +138,13 @@ public:
 	typedef size_t    size_type;
 #ifdef  _WIN64
 	typedef __int64 difference_type;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SHALLOCATOR_H_SECTION_2
+#include AZ_RESTRICTED_FILE(SHAllocator_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(LINUX) || defined(APPLE)
 	typedef int64 difference_type;
 #else

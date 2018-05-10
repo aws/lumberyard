@@ -7,6 +7,7 @@
             "Android/AndroidEnv.h",
             "Android/APKFileHandler.cpp",
             "Android/APKFileHandler.h",
+            "Android/ApiLevel.h",
             "Android/Utils.cpp",
             "Android/Utils.h"
         ],

@@ -17,13 +17,22 @@
 //               the listener functionality and offers a uniform device
 //               interface using IInputDevice.
 
-#ifndef CRYINCLUDE_CRYINPUT_BASEINPUT_H
-#define CRYINCLUDE_CRYINPUT_BASEINPUT_H
 #pragma once
 
 #include <platform.h>
 #include <IInput.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define BASEINPUT_H_SECTION_1 1
+#define BASEINPUT_H_SECTION_2 2
+#define BASEINPUT_H_SECTION_3 3
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BASEINPUT_H_SECTION_1
+#include AZ_RESTRICTED_FILE(BaseInput_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 struct IInputDevice;
 class CInputCVars;
@@ -109,7 +118,15 @@ public:
 
     virtual IKinectInput* GetKinectInput()
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BASEINPUT_H_SECTION_2
+#include AZ_RESTRICTED_FILE(BaseInput_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         return nullptr;
+#endif
     }
 
     virtual INaturalPointInput* GetNaturalPointInput(){return nullptr; }
@@ -167,10 +184,11 @@ private:
     //CVars
     CInputCVars*                    m_pCVars;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION BASEINPUT_H_SECTION_3
+#include AZ_RESTRICTED_FILE(BaseInput_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 protected:
     uint32                              m_platformFlags;
 };
-
-#endif // CRYINCLUDE_CRYINPUT_BASEINPUT_H
-

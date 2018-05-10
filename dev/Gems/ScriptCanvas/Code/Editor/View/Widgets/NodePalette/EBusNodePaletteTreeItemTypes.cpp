@@ -28,6 +28,7 @@
 
 #include "ScriptCanvas/Bus/RequestBus.h"
 #include "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h"
+#include "Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h"
 
 #include <Core/Attributes.h>
 #include <Editor/Metrics.h>
@@ -60,10 +61,10 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateEBusSenderMimeEvent::CreateNode(const AZ::EntityId& graphId) const
+    ScriptCanvasEditor::NodeIdPair CreateEBusSenderMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropSender, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), graphId);
-        return Nodes::CreateObjectOrObjectMethodNode(m_busName, m_eventName, graphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropSender, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::Method>::Uuid(), scriptCanvasGraphId);
+        return Nodes::CreateObjectMethodNode(m_busName, m_eventName, scriptCanvasGraphId);
     }
 
     /////////////////////////////////
@@ -83,7 +84,7 @@ namespace ScriptCanvasEditor
     }
 
     EBusSendEventPaletteTreeItem::EBusSendEventPaletteTreeItem(const QString& busName, const QString& eventName)
-        : DraggableNodePaletteTreeItem(eventName, GetDefaultIcon())
+        : DraggableNodePaletteTreeItem(eventName, ScriptCanvasEditor::AssetEditorId)
         , m_busName(busName)
         , m_eventName(eventName)
     {
@@ -104,6 +105,8 @@ namespace ScriptCanvasEditor
         {
             SetToolTip(displayEventTooltip.c_str());
         }
+
+        SetTitlePalette("MethodNodeTitlePalette");
     }
 
     GraphCanvas::GraphCanvasMimeEvent* EBusSendEventPaletteTreeItem::CreateMimeEvent() const
@@ -138,10 +141,10 @@ namespace ScriptCanvasEditor
     {
     }
 
-    ScriptCanvasEditor::NodeIdPair CreateEBusHandlerMimeEvent::CreateNode(const AZ::EntityId& graphId) const
+    ScriptCanvasEditor::NodeIdPair CreateEBusHandlerMimeEvent::CreateNode(const AZ::EntityId& scriptCanvasGraphId) const
     {
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), graphId);
-        return Nodes::CreateEbusWrapperNode(m_busName, graphId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), scriptCanvasGraphId);
+        return Nodes::CreateEbusWrapperNode(m_busName, scriptCanvasGraphId);
     }
 
     ////////////////////////////////////
@@ -174,19 +177,19 @@ namespace ScriptCanvasEditor
     {
     }
 
-    NodeIdPair CreateEBusHandlerEventMimeEvent::ConstructNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition)
+    NodeIdPair CreateEBusHandlerEventMimeEvent::ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition)
     {
-        NodeIdPair eventNode = CreateEventNode(sceneId, scenePosition);
+        NodeIdPair eventNode = CreateEventNode(graphCanvasGraphId, scenePosition);
 
         CreateEBusHandlerMimeEvent ebusMimeEvent(m_busName);
 
         AZ::Vector2 position = scenePosition;
-        if (ebusMimeEvent.ExecuteEvent(position, position, sceneId))
+        if (ebusMimeEvent.ExecuteEvent(position, position, graphCanvasGraphId))
         {
             NodeIdPair handlerNode = ebusMimeEvent.GetCreatedPair();
 
             GraphCanvas::WrappedNodeConfiguration configuration;
-            EBusNodeDescriptorRequestBus::EventResult(configuration, handlerNode.m_graphCanvasId, &EBusNodeDescriptorRequests::GetEventConfiguration, m_eventName);
+            EBusHandlerNodeDescriptorRequestBus::EventResult(configuration, handlerNode.m_graphCanvasId, &EBusHandlerNodeDescriptorRequests::GetEventConfiguration, m_eventName);
 
             GraphCanvas::WrapperNodeRequestBus::Event(handlerNode.m_graphCanvasId, &GraphCanvas::WrapperNodeRequests::WrapNode, eventNode.m_graphCanvasId, configuration);
         }
@@ -194,17 +197,21 @@ namespace ScriptCanvasEditor
         return eventNode;
     }
 
-    bool CreateEBusHandlerEventMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& sceneId)
+    bool CreateEBusHandlerEventMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId)
     {
-        NodeIdPair eventNode = CreateEventNode(sceneId, sceneDropPosition);
+        NodeIdPair eventNode = CreateEventNode(graphCanvasGraphId, sceneDropPosition);
 
         if (eventNode.m_graphCanvasId.IsValid())
         {
             GraphCanvas::SceneMemberUIRequestBus::Event(eventNode.m_graphCanvasId, &GraphCanvas::SceneMemberUIRequests::SetSelected, true);
-            ScriptCanvasEditor::NodeCreationNotificationBus::Event(sceneId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, eventNode.m_graphCanvasId);
+
+            AZ::EntityId scriptCanvasGraphId;
+            GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+
+            ScriptCanvasEditor::NodeCreationNotificationBus::Event(scriptCanvasGraphId, &ScriptCanvasEditor::NodeCreationNotifications::OnGraphCanvasNodeCreated, eventNode.m_graphCanvasId);
 
             AZ::EntityId gridId;
-            GraphCanvas::SceneRequestBus::EventResult(gridId, sceneId, &GraphCanvas::SceneRequests::GetGrid);
+            GraphCanvas::SceneRequestBus::EventResult(gridId, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGrid);
 
             AZ::Vector2 offset;
             GraphCanvas::GridRequestBus::EventResult(offset, gridId, &GraphCanvas::GridRequests::GetMinorPitch);
@@ -214,18 +221,16 @@ namespace ScriptCanvasEditor
         return eventNode.m_graphCanvasId.IsValid();
     }
 
-    NodeIdPair CreateEBusHandlerEventMimeEvent::CreateEventNode(const AZ::EntityId& sceneId, const AZ::Vector2& scenePosition) const
+    NodeIdPair CreateEBusHandlerEventMimeEvent::CreateEventNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) const
     {
-        AZ::EntityId graphId;
-        GeneralRequestBus::BroadcastResult(graphId, &GeneralRequests::GetGraphId, sceneId);
+        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), graphCanvasGraphId);
 
-        Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::AzTypeInfo<ScriptCanvas::Nodes::Core::EBusEventHandler>::Uuid(), graphId);
-
-        NodeIdPair nodeIdPair = Nodes::CreateEbusEventNode(m_busName, m_eventName, graphId);
+        NodeIdPair nodeIdPair;
+        nodeIdPair.m_graphCanvasId = Nodes::DisplayEbusEventNode(graphCanvasGraphId, m_busName, m_eventName);
 
         if (nodeIdPair.m_graphCanvasId.IsValid())
         {
-            GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::AddNode, nodeIdPair.m_graphCanvasId, scenePosition);
+            GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, nodeIdPair.m_graphCanvasId, scenePosition);
         }
 
         return nodeIdPair;
@@ -248,7 +253,7 @@ namespace ScriptCanvasEditor
     }
 
     EBusHandleEventPaletteTreeItem::EBusHandleEventPaletteTreeItem(const QString& busName, const QString& eventName)
-        : DraggableNodePaletteTreeItem(eventName, GetDefaultIcon())
+        : DraggableNodePaletteTreeItem(eventName, ScriptCanvasEditor::AssetEditorId)
         , m_busName(busName)
         , m_eventName(eventName)
     {
@@ -269,6 +274,8 @@ namespace ScriptCanvasEditor
         {
             SetToolTip(displayEventTooltip.c_str());
         }
+
+        SetTitlePalette("HandlerNodeTitlePalette");
     }
 
     GraphCanvas::GraphCanvasMimeEvent* EBusHandleEventPaletteTreeItem::CreateMimeEvent() const

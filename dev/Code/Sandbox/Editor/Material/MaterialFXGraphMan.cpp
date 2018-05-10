@@ -243,7 +243,7 @@ bool CMaterialFXGraphMan::NewMaterialFx(QString& filename, CHyperGraph** pHyperG
     // We are expected to return a pointer to the hypergraph of the matfx FlowGraph we just created.
     if (pHyperGraph)
     {
-        char aliasedPath[AZ_MAX_PATH_LEN];
+        char aliasedPath[AZ_MAX_PATH_LEN] = { 0 };
         if (azstrcpy(aliasedPath, AZ_MAX_PATH_LEN, targetFilename.c_str()) != 0)
         {
             return false;

@@ -22,7 +22,7 @@ class LoadingErrorWidget
 
 public:
 
-    LoadingErrorWidget(ResourceManagementView* view);
+    LoadingErrorWidget(ResourceManagementView* view, QWidget* parent);
 
     void OnRetryClicked();
     void OnCancelClicked();

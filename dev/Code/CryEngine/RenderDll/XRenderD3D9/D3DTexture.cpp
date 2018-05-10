@@ -320,6 +320,23 @@ RenderTargetData::~RenderTargetData()
 }
 //===============================================================================
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define D3DTEXTURE_CPP_SECTION_1 1
+#define D3DTEXTURE_CPP_SECTION_2 2
+#define D3DTEXTURE_CPP_SECTION_3 3
+#define D3DTEXTURE_CPP_SECTION_4 4
+#define D3DTEXTURE_CPP_SECTION_5 5
+#define D3DTEXTURE_CPP_SECTION_6 6
+#define D3DTEXTURE_CPP_SECTION_7 7
+#define D3DTEXTURE_CPP_SECTION_8 8
+#define D3DTEXTURE_CPP_SECTION_9 9
+#define D3DTEXTURE_CPP_SECTION_10 10
+#define D3DTEXTURE_CPP_SECTION_11 11
+#define D3DTEXTURE_CPP_SECTION_12 12
+#endif
+
 #if defined(TEXTURE_GET_SYSTEM_COPY_SUPPORT)
 byte* CTexture::Convert(const byte* sourceData, int nWidth, int nHeight, int sourceMipCount, ETEX_Format eTFSrc, ETEX_Format eTFDst, int& nOutSize, bool bLinear)
 {
@@ -514,7 +531,15 @@ bool CTexture::IsDeviceFormatTypeless(D3DFormat nFormat)
     case DXGI_FORMAT_EAC_RG11_TYPELESS:
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     case DXGI_FORMAT_BC6H_TYPELESS:
+#endif
     case DXGI_FORMAT_BC7_TYPELESS:
 
 #ifdef CRY_USE_METAL
@@ -1366,10 +1391,18 @@ D3DFormat CTexture::ConvertToTypelessFmt(D3DFormat fmt)
     case DXGI_FORMAT_BC5_SNORM:
         return DXGI_FORMAT_BC5_TYPELESS;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     case DXGI_FORMAT_BC6H_UF16:
         return DXGI_FORMAT_BC6H_TYPELESS;
     case DXGI_FORMAT_BC6H_SF16:
         return DXGI_FORMAT_BC6H_TYPELESS;
+#endif
     case DXGI_FORMAT_BC7_UNORM:
         return DXGI_FORMAT_BC7_TYPELESS;
     case DXGI_FORMAT_BC7_UNORM_SRGB:
@@ -2110,7 +2143,16 @@ bool CTexture::CreateRenderTarget(ETEX_Format eTF, const ColorF& cClear)
     PostCreate();
 
     // Assign name to RT for enhanced debugging
-#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+#if !defined(_RELEASE)
+#if defined(WIN32)
+#define D3DTEXTURE_CPP_USE_PRIVATEDATA
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#endif
+
+#if defined(D3DTEXTURE_CPP_USE_PRIVATEDATA)
 	if (bRes)
     {
         m_pDevTexture->GetBaseTexture()->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(m_SrcName.c_str()), m_SrcName.c_str());
@@ -2163,8 +2205,13 @@ bool CTexture::CreateDeviceTexture(const byte* pData[6])
     if (gRenDev->m_pRT->RC_CreateDeviceTexture(this, pData))
     {
         // Assign name to Texture for enhanced debugging
-#if !defined(RELEASE) && (defined (WIN64))
+#if !defined(RELEASE)
+#if defined (WIN64)
         m_pDevTexture->GetBaseTexture()->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(m_SrcName.c_str()), m_SrcName.c_str());
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #endif
 
         return true;
@@ -2192,6 +2239,10 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
     HRESULT hr;
 
     int32 nESRAMOffset = -1;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(MAC)
     if (!(m_nFlags & FT_FROMIMAGE) && (GetBlockDim(m_eTFDst) != Vec2i(1)))
@@ -2226,6 +2277,10 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
     if (m_nFlags & (FT_USAGE_RENDERTARGET | FT_USAGE_UNORDERED_ACCESS))
     {
         m_pRenderTargetData = new RenderTargetData();
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     }
 
     uint32 nArraySize = m_nArraySize;
@@ -2411,6 +2466,10 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         }
         else
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+        #endif
 
             SAFE_RELEASE(m_pDevTexture);
             hr = pDevMan->Create2DTexture(m_SrcName, nWdt, nHgt, nMips, nArraySize, nUsage, m_cClearColor, D3DFmt, (D3DPOOL)0, &m_pDevTexture, &TI, false, nESRAMOffset);
@@ -2839,7 +2898,7 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
     // Notify that resource is dirty
     InvalidateDeviceResource(eDeviceResourceDirty | eDeviceResourceViewDirty);
 
-#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+#if defined(D3DTEXTURE_CPP_USE_PRIVATEDATA)
     if (m_pDevTexture)
     {
         m_pDevTexture->GetBaseTexture()->SetPrivateData(WKPDID_D3DDebugObjectName, m_SrcName.length(), m_SrcName.c_str());
@@ -2994,8 +3053,16 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
     HRESULT hr = E_FAIL;
     void* pResult = NULL;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     // DX expects -1 for selecting all mip maps/slices. max count throws an exception
     const uint nSliceCount = rv.m_Desc.nSliceCount == SResourceView().m_Desc.nSliceCount ? (uint) - 1 : (uint)rv.m_Desc.nSliceCount;
+#endif
 
 
     D3DTexture* pTex = m_pDevTexture->Get2DTexture();
@@ -3014,7 +3081,7 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         hr = gcpRendD3D->GetDevice().CreateShaderResourceView(pTex, &srvDesc, &pSRV);
         pResult = pSRV;
 
-#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+#if defined(D3DTEXTURE_CPP_USE_PRIVATEDATA)
         if (pSRV)
         {
             AZStd::string srvName = AZStd::string::format("[SRV] %s", m_SrcName.c_str());
@@ -3036,7 +3103,7 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         hr = gcpRendD3D->GetDevice().CreateRenderTargetView(pTex, &rtvDesc, &pRTV);
         pResult = pRTV;
 
-#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+#if defined(D3DTEXTURE_CPP_USE_PRIVATEDATA)
             if (pRTV)
             {
                 AZStd::string rtvName = AZStd::string::format("[RTV] %s", m_SrcName.c_str());
@@ -3051,12 +3118,16 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         SetDepthStencilViewDesc(rv, m_eTT, pPixFormat->DeviceFormat, m_nArraySize, nSliceCount, dsvDesc);
 
         dsvDesc.Flags = rv.m_Desc.nFlags;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         D3DDepthSurface* pDSV = NULL;
         hr = gcpRendD3D->GetDevice().CreateDepthStencilView(pTex, &dsvDesc, &pDSV);
         pResult = pDSV;
 
-#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+#if defined(D3DTEXTURE_CPP_USE_PRIVATEDATA)
             if (pDSV)
             {
                 AZStd::string dsvName = AZStd::string::format("[DSV] %s", m_SrcName.c_str());
@@ -3080,7 +3151,7 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         hr = gcpRendD3D->GetDevice().CreateUnorderedAccessView(pTex, &uavDesc, &pUAV);
 
         pResult = pUAV;
-#if !defined(_RELEASE) && (defined(WIN32) || AZ_ENABLE_GNM_PA_DEBUG)
+#if defined(D3DTEXTURE_CPP_USE_PRIVATEDATA)
             if (pUAV)
             {
                 AZStd::string uavName = AZStd::string::format("[UAV] %s", m_SrcName.c_str());
@@ -5060,6 +5131,10 @@ void CTexture::ReleaseSystemTargets()
     SAFE_RELEASE_FORCE(s_ptexAOColorBleed);
     SAFE_RELEASE_FORCE(s_ptexSceneDiffuse);
     SAFE_RELEASE_FORCE(s_ptexSceneSpecular);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     SAFE_RELEASE_FORCE(s_ptexSceneDiffuseAccMap);
     SAFE_RELEASE_FORCE(s_ptexSceneSpecularAccMap);
     SAFE_RELEASE_FORCE(s_ptexBackBuffer);
@@ -5127,6 +5202,10 @@ void CTexture::CopySliceChain(CDeviceTexture* const pDevTexture, int ownerMips, 
 {
     assert(pSrcDevTex && pDevTexture);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     D3DBaseTexture* pDstResource = pDevTexture->GetBaseTexture();
     D3DBaseTexture* pSrcResource = pSrcDevTex->GetBaseTexture();
@@ -5142,6 +5221,10 @@ void CTexture::CopySliceChain(CDeviceTexture* const pDevTexture, int ownerMips, 
     }
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     assert(nSrcMip >= 0 && nDstMip >= 0);
     for (int i = 0; i < nNumMips; ++i)
     {

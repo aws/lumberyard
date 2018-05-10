@@ -14,7 +14,6 @@
 #include <Components/Slots/SlotComponent.h>
 
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
-#include <GraphCanvas/Components/Nodes/Variable/VariableNodeBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 
 namespace GraphCanvas
@@ -23,8 +22,6 @@ namespace GraphCanvas
         : public SlotComponent
         , public DataSlotRequestBus::Handler
         , public NodeNotificationBus::Handler
-        , public VariableNotificationBus::Handler
-        , public VariableReferenceSceneNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(DataSlotComponent, "{DB13C73D-2453-44F8-BB38-316C90264B73}", SlotComponent);
@@ -43,21 +40,10 @@ namespace GraphCanvas
         void Deactivate();
         ////
 
-        // VariableNotificationBus
-        using VariableNotificationBus::Handler::OnNameChanged;
-        void OnNameChanged() override;
-        void OnVariableActivated() override;
-        void OnVariableDestroyed() override;
-        ////
-
-        // VariableReferenceSceneNotificationBus
-        void ResolvePastedReferences() override;
-        ////
-
         // NodeNotificationBus
         using NodeNotificationBus::Handler::OnNameChanged;
-        void OnNodeAboutToSerialize(SceneSerialization& sceneSerialization) override;
-        void OnNodeDeserialized(const SceneSerialization& sceneSerialization) override;
+        void OnNodeAboutToSerialize(GraphSerialization& sceneSerialization) override;
+        void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphSerialization& sceneSerialization) override;
         ////
 
         // SlotRequestBus
@@ -98,8 +84,9 @@ namespace GraphCanvas
         ////
 
     private:
-
-        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const override;
+        DataSlotComponent(const DataSlotComponent&) = delete;
+        DataSlotComponent& operator=(const DataSlotComponent&) = delete;
+        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const override;
 
         bool            m_fixedType;
         DataSlotType    m_dataSlotType;

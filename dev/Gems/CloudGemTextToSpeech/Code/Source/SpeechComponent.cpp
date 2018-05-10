@@ -41,7 +41,7 @@ namespace CloudGemTextToSpeech
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<SpeechComponent>()
+            serializeContext->Class<SpeechComponent, AZ::Component>()
                 ->Version(1)
                 ->Field("Wwise Trigger", &SpeechComponent::m_triggerName)
                 ->Field("Viseme animation set", &SpeechComponent::m_visemeSet)

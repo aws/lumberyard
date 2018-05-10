@@ -860,7 +860,8 @@ const Matrix34& DisplayContext::GetMatrix()
 //////////////////////////////////////////////////////////////////////////
 void DisplayContext::DrawBall(const Vec3& pos, float radius)
 {
-    pRenderAuxGeom->DrawSphere(ToWorldSpacePosition(pos), radius, m_color4b);
+    pRenderAuxGeom->DrawSphere(
+        ToWorldSpacePosition(pos), ToWorldSpaceVector(Vec3(radius, 0.0f, 0.0f)).GetLength(), m_color4b);
 }
 
 //////////////////////////////////////////////////////////////////////////

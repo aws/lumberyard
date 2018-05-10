@@ -21,7 +21,7 @@
 #include <EMotionFX/Source/WaveletSkeletalMotion.h>
 #include <MCore/Source/FileSystem.h>
 #include <EMotionFX/Exporters/ExporterLib/Exporter/ExporterFileProcessor.h>
-
+#include <MCore/Source/StringConversions.h>
 
 namespace CommandSystem
 {
@@ -46,7 +46,7 @@ namespace CommandSystem
     EMotionFX::Motion* CommandKeyframeCompressMotion::OptimizeSkeletalMotion(EMotionFX::SkeletalMotion* motion, bool optimizePosition, bool optimizeRotation, bool optimizeScale, float maxPositionError, float maxRotationError, float maxScaleError, Statistics* outStatistics, bool removeFromMotionManager)
     {
         // check if filename exists
-        if (motion->GetFileNameString().GetIsEmpty())
+        if (motion->GetFileNameString().empty())
         {
             return nullptr;
         }
@@ -179,7 +179,7 @@ namespace CommandSystem
     */
 
     // execute
-    bool CommandKeyframeCompressMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandKeyframeCompressMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the motion id and the corresponding motion pointer
         int32               motionID    = parameters.GetValueAsInt("motionID", this);
@@ -188,7 +188,7 @@ namespace CommandSystem
         // check if the motion with the given id exists
         if (motion == nullptr)
         {
-            outResult.Format("Cannot compress motion. Motion with id='%i' does not exist.", motionID);
+            outResult = AZStd::string::format("Cannot compress motion. Motion with id='%i' does not exist.", motionID);
             return false;
         }
 
@@ -264,7 +264,7 @@ namespace CommandSystem
             }   */
         else // handle unsupported motion types
         {
-            outResult.Format("Cannot compress motion. Unsupported motion type: %s", motion->GetTypeString());
+            outResult = AZStd::string::format("Cannot compress motion. Unsupported motion type: %s", motion->GetTypeString());
             return false;
         }
 
@@ -282,12 +282,11 @@ namespace CommandSystem
             }
             //      EMotionFX::GetMotionManager().RemoveMotionByID( motion->GetID(), false );
 
-            GetCommandManager()->ExecuteCommandInsideCommand(MCore::String().Format("AdjustMotion -motionID %i -dirtyFlag true", optimizedMotionID).AsChar(), outResult);
-            GetCommandManager()->ExecuteCommandInsideCommand(MCore::String().Format("Select -motionIndex %i", EMotionFX::GetMotionManager().FindMotionIndexByID(optimizedMotionID)).AsChar(), outResult);
+            GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("AdjustMotion -motionID %i -dirtyFlag true", optimizedMotionID).c_str(), outResult);
+            GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -motionIndex %i", EMotionFX::GetMotionManager().FindMotionIndexByID(optimizedMotionID)).c_str(), outResult);
 
             // set the outresult to the id of the compressed motion
-            //outResult.Format( "%i", optimizedMotionID );
-            outResult = MCore::String(optimizedMotionID);
+            AZStd::to_string(outResult, optimizedMotionID);
 
             // return true, if command has been executed successfully
             return true;
@@ -298,7 +297,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandKeyframeCompressMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandKeyframeCompressMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -392,7 +391,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandWaveletCompressMotion::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandWaveletCompressMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the motion id and the corresponding motion pointer
         int32               motionID        = parameters.GetValueAsInt("motionID", this);
@@ -402,7 +401,7 @@ namespace CommandSystem
         // check if the motion with the given id exists
         if (motion == nullptr)
         {
-            outResult.Format("Cannot compress motion. Motion with id='%i' does not exist.", motionID);
+            outResult = AZStd::string::format("Cannot compress motion. Motion with id='%i' does not exist.", motionID);
             return false;
         }
 
@@ -458,7 +457,7 @@ namespace CommandSystem
         }
         else // handle unsupported motion types
         {
-            outResult.Format("Cannot compress wavelet motion. Only skeletal motions can be compressed.");
+            outResult = AZStd::string::format("Cannot compress wavelet motion. Only skeletal motions can be compressed.");
             return false;
         }
 
@@ -472,12 +471,11 @@ namespace CommandSystem
             //      delete motion;
             //      motion = nullptr;
 
-            GetCommandManager()->ExecuteCommandInsideCommand(MCore::String().Format("AdjustMotion -motionID %i -dirtyFlag true", optimizedMotionID).AsChar(), outResult);
-            GetCommandManager()->ExecuteCommandInsideCommand(MCore::String().Format("Select -motionIndex %i", EMotionFX::GetMotionManager().FindMotionIndexByID(optimizedMotionID)).AsChar(), outResult);
+            GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("AdjustMotion -motionID %i -dirtyFlag true", optimizedMotionID).c_str(), outResult);
+            GetCommandManager()->ExecuteCommandInsideCommand(AZStd::string::format("Select -motionIndex %i", EMotionFX::GetMotionManager().FindMotionIndexByID(optimizedMotionID)).c_str(), outResult);
 
             // set the outresult to the id of the compressed motion
-            //outResult.Format( "%i", optimizedMotionID );
-            outResult = MCore::String(optimizedMotionID);
+            AZStd::to_string(outResult, optimizedMotionID);
 
             // return true, if command has been executed successfully
             return true;
@@ -488,7 +486,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandWaveletCompressMotion::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandWaveletCompressMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);

@@ -28,6 +28,7 @@ def build(bld):
         use                = [ 'AzFramework' ],
         defines            = ['ENGINE_EXPORTS'],
         win_features       = ['crcfix'],
+        includes           = [bld.ThirdPartyPath('mikkelsen')],
 
        
 

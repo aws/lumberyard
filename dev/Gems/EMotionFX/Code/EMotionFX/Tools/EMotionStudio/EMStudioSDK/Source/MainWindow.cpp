@@ -19,8 +19,6 @@
 #include "KeyboardShortcutsWindow.h"
 #include "DockWidgetPlugin.h"
 #include "LoadActorSettingsWindow.h"
-#include "UnitScaleWindow.h"
-#include "UnitSetupWindow.h"
 
 #include <LyViewPaneNames.h>
 
@@ -61,7 +59,6 @@
 #include <EMotionFX/CommandSystem/Source/AnimGraphCommands.h>
 
 #include <AzFramework/API/ApplicationAPI.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
@@ -72,6 +69,25 @@
     #include <dbt.h>
 #endif
 
+namespace
+{
+    // Iterates through the objects in one of the Manager classes, and returns
+    // true if there is at least one object that is not owned by the runtime
+    template<class ManagerType, typename GetNumFunc, typename GetEntityFunc>
+    bool HasEntityInEditor(const ManagerType& manager, const GetNumFunc& getNumEntitiesFunc, const GetEntityFunc& getEntityFunc)
+    {
+        const uint32 numEntities = (manager.*getNumEntitiesFunc)();
+        for (uint32 i = 0; i < numEntities; ++i)
+        {
+            const auto& entity = (manager.*getEntityFunc)(i);
+            if (!entity->GetIsOwnedByRuntime())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+}
 
 namespace EMStudio
 {
@@ -159,11 +175,11 @@ namespace EMStudio
     {
         mAutosaveTimer                  = nullptr;
         mPreferencesWindow              = nullptr;
-        mNodeSelectionWindow            = nullptr;
         mApplicationMode                = nullptr;
         mDirtyFileManager               = nullptr;
         mFileManager                    = nullptr;
         mShortcutManager                = nullptr;
+        mNativeEventFilter              = nullptr;
         mImportActorCallback            = nullptr;
         mRemoveActorCallback            = nullptr;
         mRemoveActorInstanceCallback    = nullptr;
@@ -184,6 +200,13 @@ namespace EMStudio
     // destructor
     MainWindow::~MainWindow()
     {
+        if (mNativeEventFilter)
+        {
+            QAbstractEventDispatcher::instance()->removeNativeEventFilter(mNativeEventFilter);
+            delete mNativeEventFilter;
+            mNativeEventFilter = nullptr;
+        }
+
         if (mAutosaveTimer)
         {
             mAutosaveTimer->stop();
@@ -389,12 +412,6 @@ namespace EMStudio
         QAction* preferencesAction = menu->addAction(tr("&Preferences"), this, SLOT(OnPreferences()));
         preferencesAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Preferences.png"));
 
-        // selection menu
-        menu = menuBar->addMenu(tr("&Select"));
-        menu->addAction(tr("Select All Actor Instances"), this, SLOT(OnSelectAllActorInstances()));
-        menu->addAction(tr("Unselect All Actor Instances"), this, SLOT(OnUnselectAllActorInstances()));
-        menu->addAction(tr("Adjust Selection"), this, SLOT(OnAdjustNodeSelection()));
-
         // layouts item
         mLayoutsMenu = menuBar->addMenu(tr("&Layouts"));
         UpdateLayoutsMenu();
@@ -415,10 +432,6 @@ namespace EMStudio
         folders->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
         folders->addAction("Open autosave folder", this, SLOT(OnOpenAutosaveFolder()));
         folders->addAction("Open settings folder", this, SLOT(OnOpenSettingsFolder()));
-
-        // create the node selection window
-        mNodeSelectionWindow = new NodeSelectionWindow(this, false);
-        connect(mNodeSelectionWindow->GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnNodeSelected(MCore::Array<SelectionItem>)));
 
         // set the window title without filename, as new workspace
         SetWindowTitleFromFileName("<not saved yet>");
@@ -444,7 +457,7 @@ namespace EMStudio
         mShortcutManager = new MysticQt::KeyboardShortcutManager();
 
         // load the old shortcuts
-        QSettings shortcutSettings(MCore::String(GetManager()->GetAppDataFolder() + "EMStudioKeyboardShortcuts.cfg").AsChar(), QSettings::IniFormat, this);
+        QSettings shortcutSettings(AZStd::string(GetManager()->GetAppDataFolder() + "EMStudioKeyboardShortcuts.cfg").c_str(), QSettings::IniFormat, this);
         mShortcutManager->Load(&shortcutSettings);
 
         // add the application mode group
@@ -483,7 +496,9 @@ namespace EMStudio
         GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
         GetCommandManager()->RegisterCommandCallback("SaveWorkspace", mSaveWorkspaceCallback);
 
-        QAbstractEventDispatcher::instance()->installNativeEventFilter(new NativeEventFilter(this));
+        AZ_Assert(!mNativeEventFilter, "Double initialization?");
+        mNativeEventFilter = new NativeEventFilter(this);
+        QAbstractEventDispatcher::instance()->installNativeEventFilter(mNativeEventFilter);
 
         settings.endGroup();
     }
@@ -499,7 +514,6 @@ namespace EMStudio
             {
                 // The reason why there are multiple of such messages is because it emits messages for all related hardware nodes.
                 // But we do not know the name of the hardware to look for here either, so we can't filter that.
-                AZ_TracePrintf("EMotionFX", "Hardware changes detected\n");
                 emit m_MainWindow->HardwareChangeDetected();
             }
         }
@@ -915,9 +929,9 @@ namespace EMStudio
 
     bool MainWindow::CommandSaveWorkspaceCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        MCore::String filename;
+        AZStd::string filename;
         commandLine.GetValue("filename", command, &filename);
-        GetManager()->GetMainWindow()->OnWorkspaceSaved(filename.AsChar());
+        GetManager()->GetMainWindow()->OnWorkspaceSaved(filename.c_str());
         return true;
     }
 
@@ -1008,21 +1022,21 @@ namespace EMStudio
     }
 
 
-    void MainWindow::SetWindowTitleFromFileName(const MCore::String& fileName)
+    void MainWindow::SetWindowTitleFromFileName(const AZStd::string& fileName)
     {
         // get only the version number of EMotion FX
-        MCore::String emfxVersionString = EMotionFX::GetEMotionFX().GetVersionString();
-        emfxVersionString.RemoveAllParts("EMotion FX ");
-
+        AZStd::string emfxVersionString = EMotionFX::GetEMotionFX().GetVersionString();
+        AzFramework::StringFunc::Replace(emfxVersionString, "EMotion FX ", "", true /* case sensitive */);
+        
         // set the window title
         // only set the EMotion FX version if the filename is empty
-        MCore::String windowTitle;
-        windowTitle.Format("EMotion Studio %s (BUILD %s)", emfxVersionString.AsChar(), MCORE_DATE);
-        if (fileName.GetIsEmpty() == false)
+        AZStd::string windowTitle;
+        windowTitle = AZStd::string::format("EMotion Studio %s (BUILD %s)", emfxVersionString.c_str(), MCORE_DATE);
+        if (fileName.empty() == false)
         {
-            windowTitle.FormatAdd(" - %s", fileName.AsChar());
+            windowTitle += AZStd::string::format(" - %s", fileName.c_str());
         }
-        setWindowTitle(windowTitle.AsChar());
+        setWindowTitle(windowTitle.c_str());
     }
 
 
@@ -1051,7 +1065,7 @@ namespace EMStudio
         const uint32 numPlugins = pluginManager->GetNumPlugins();
 
         // add each plugin name in an array to sort them
-        MCore::Array<MCore::String> sortedPlugins;
+        MCore::Array<AZStd::string> sortedPlugins;
         sortedPlugins.Reserve(numPlugins);
         for (uint32 p = 0; p < numPlugins; ++p)
         {
@@ -1067,7 +1081,7 @@ namespace EMStudio
         for (uint32 p = 0; p < numPlugins; ++p)
         {
             // get the plugin
-            const uint32 pluginIndex = pluginManager->FindPluginByTypeString(sortedPlugins[p]);
+            const uint32 pluginIndex = pluginManager->FindPluginByTypeString(sortedPlugins[p].c_str());
             EMStudioPlugin* plugin = pluginManager->GetPlugin(pluginIndex);
 
             // don't add invisible plugins to the list
@@ -1118,10 +1132,10 @@ namespace EMStudio
         if (checked)
         {
             // try to create the new window
-            EMStudioPlugin* newPlugin = EMStudio::GetPluginManager()->CreateWindowOfType(FromQtString(pluginName).AsChar());
+            EMStudioPlugin* newPlugin = EMStudio::GetPluginManager()->CreateWindowOfType(FromQtString(pluginName).c_str());
             if (newPlugin == nullptr)
             {
-                MCore::LogError("Failed to create window using plugin '%s'", FromQtString(pluginName).AsChar());
+                MCore::LogError("Failed to create window using plugin '%s'", FromQtString(pluginName).c_str());
                 return;
             }
 
@@ -1136,7 +1150,7 @@ namespace EMStudio
         }
         else // (checked == false)
         {
-            EMStudioPlugin* plugin = EMStudio::GetPluginManager()->GetActivePluginByTypeString(FromQtString(pluginName).AsChar());
+            EMStudioPlugin* plugin = EMStudio::GetPluginManager()->GetActivePluginByTypeString(FromQtString(pluginName).c_str());
             AZ_Assert(plugin, "Failed to get plugin, since it was checked it should be active");
             EMStudio::GetPluginManager()->RemoveActivePlugin(plugin);
         }
@@ -1148,7 +1162,7 @@ namespace EMStudio
     // open the autosave folder
     void MainWindow::OnOpenAutosaveFolder()
     {
-        const QUrl url(("file:///" + GetManager()->GetAutosavesFolder()).AsChar());
+        const QUrl url(("file:///" + GetManager()->GetAutosavesFolder()).c_str());
         QDesktopServices::openUrl(url);
     }
 
@@ -1156,7 +1170,7 @@ namespace EMStudio
     // open the settings folder
     void MainWindow::OnOpenSettingsFolder()
     {
-        const QUrl url(("file:///" + GetManager()->GetAppDataFolder()).AsChar());
+        const QUrl url(("file:///" + GetManager()->GetAppDataFolder()).c_str());
         QDesktopServices::openUrl(url);
     }
 
@@ -1197,11 +1211,6 @@ namespace EMStudio
             categoryName = "Keyboard\nShortcuts";
             KeyboardShortcutsWindow* shortcutsWindow = new KeyboardShortcutsWindow(mPreferencesWindow);
             mPreferencesWindow->AddCategory(shortcutsWindow, categoryName, "Images/Preferences/KeyboardShortcuts.png", false);
-
-            // unit setup
-            categoryName = "Unit Setup";
-            UnitSetupWindow* unitSetupWindow  = new UnitSetupWindow(mPreferencesWindow);
-            mPreferencesWindow->AddCategory(unitSetupWindow, categoryName, "Images/Preferences/UnitSetup.png", false);
 
             // add all categories from the plugins
             mPreferencesWindow->AddCategoriesFromPlugin(nullptr);
@@ -1378,8 +1387,6 @@ namespace EMStudio
         // read the last used application mode string
         mLastUsedMode = settings.value("applicationMode", "AnimGraph").toString();
 
-        settings.endGroup();
-
         // load the auto load last workspace flag
         const bool autoLoadLastWorkspace = settings.value("autoLoadLastWorkspace", GetManager()->GetAutoLoadLastWorkspace()).toBool();
         GetManager()->SetAutoLoadLastWorkspace(autoLoadLastWorkspace);
@@ -1390,14 +1397,14 @@ namespace EMStudio
     void MainWindow::LoadActor(const char* fileName, bool replaceCurrentScene)
     {
         // create the final command
-        MCore::String commandResult;
+        AZStd::string commandResult;
 
         // set the command group name based on the parameters
-        const MCore::String commandGroupName = (replaceCurrentScene) ? "Open actor" : "Merge actor";
+        const AZStd::string commandGroupName = (replaceCurrentScene) ? "Open actor" : "Merge actor";
 
         // create the command group
-        MCore::String outResult;
-        MCore::CommandGroup commandGroup(commandGroupName.AsChar());
+        AZStd::string outResult;
+        MCore::CommandGroup commandGroup(commandGroupName.c_str());
 
         // clear the scene if not merging
         // clear the actors and actor instances selection if merging
@@ -1411,27 +1418,27 @@ namespace EMStudio
         }
 
         // create the load command
-        MCore::String loadActorCommand;
+        AZStd::string loadActorCommand;
 
         // add the import command
-        loadActorCommand.Format("ImportActor -filename \"%s\" ", fileName);
+        loadActorCommand = AZStd::string::format("ImportActor -filename \"%s\" ", fileName);
 
         // add the load actor settings
         LoadActorSettingsWindow::LoadActorSettings loadActorSettings;
-        loadActorCommand.FormatAdd("-loadMeshes %d ",          loadActorSettings.mLoadMeshes);
-        loadActorCommand.FormatAdd("-loadTangents %d ",        loadActorSettings.mLoadTangents);
-        loadActorCommand.FormatAdd("-autoGenTangents %d ",     loadActorSettings.mAutoGenerateTangents);
-        loadActorCommand.FormatAdd("-loadLimits %d ",          loadActorSettings.mLoadLimits);
-        loadActorCommand.FormatAdd("-loadGeomLods %d ",        loadActorSettings.mLoadGeometryLODs);
-        loadActorCommand.FormatAdd("-loadMorphTargets %d ",    loadActorSettings.mLoadMorphTargets);
-        loadActorCommand.FormatAdd("-loadCollisionMeshes %d ", loadActorSettings.mLoadCollisionMeshes);
-        loadActorCommand.FormatAdd("-loadMaterialLayers %d ",  loadActorSettings.mLoadStandardMaterialLayers);
-        loadActorCommand.FormatAdd("-loadSkinningInfo %d ",    loadActorSettings.mLoadSkinningInfo);
-        loadActorCommand.FormatAdd("-loadSkeletalLODs %d ",    loadActorSettings.mLoadSkeletalLODs);
-        loadActorCommand.FormatAdd("-dualQuatSkinning %d ",    loadActorSettings.mDualQuaternionSkinning);
+        loadActorCommand += "-loadMeshes " + AZStd::to_string(loadActorSettings.mLoadMeshes);
+        loadActorCommand += " -loadTangents " + AZStd::to_string(loadActorSettings.mLoadTangents);
+        loadActorCommand += " -autoGenTangents " + AZStd::to_string(loadActorSettings.mAutoGenerateTangents);
+        loadActorCommand += " -loadLimits " + AZStd::to_string(loadActorSettings.mLoadLimits);
+        loadActorCommand += " -loadGeomLods " + AZStd::to_string(loadActorSettings.mLoadGeometryLODs);
+        loadActorCommand += " -loadMorphTargets " + AZStd::to_string(loadActorSettings.mLoadMorphTargets);
+        loadActorCommand += " -loadCollisionMeshes " + AZStd::to_string(loadActorSettings.mLoadCollisionMeshes);
+        loadActorCommand += " -loadMaterialLayers " + AZStd::to_string(loadActorSettings.mLoadStandardMaterialLayers);
+        loadActorCommand += " -loadSkinningInfo " + AZStd::to_string(loadActorSettings.mLoadSkinningInfo);
+        loadActorCommand += " -loadSkeletalLODs " + AZStd::to_string(loadActorSettings.mLoadSkeletalLODs);
+        loadActorCommand += " -dualQuatSkinning " + AZStd::to_string(loadActorSettings.mDualQuaternionSkinning);
 
         // add the load and the create instance commands
-        commandGroup.AddCommandString(loadActorCommand.AsChar());
+        commandGroup.AddCommandString(loadActorCommand.c_str());
         commandGroup.AddCommandString("CreateActorInstance -actorID %LASTRESULT%");
 
         // if the current scene is replaced or merge on an empty scene, focus on the new actor instance
@@ -1616,6 +1623,7 @@ namespace EMStudio
         }
 
         Workspace* workspace = GetManager()->GetWorkspace();
+        AZStd::string command;
 
         // save using the current filename or show the dialog
         if (workspace->GetFilenameString().empty())
@@ -1628,33 +1636,22 @@ namespace EMStudio
             }
 
             // save the workspace using the newly selected filename
-            const AZStd::string command = AZStd::string::format("SaveWorkspace -filename \"%s\"", filename.c_str());
-
-            AZStd::string result;
-            if (EMStudio::GetCommandManager()->ExecuteCommand(command, result))
-            {
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, "Workspace <font color=green>successfully</font> saved");
-            }
-            else
-            {
-                AZ_Error("EMotionFX", false, result.c_str());
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "Workspace <font color=red>failed</font> to save");
-            }
+            command = AZStd::string::format("SaveWorkspace -filename \"%s\"", filename.c_str());
         }
         else
         {
-            const AZStd::string command = AZStd::string::format("SaveWorkspace -filename \"%s\"", workspace->GetFilename());
-
-            AZStd::string result;
-            if (EMStudio::GetCommandManager()->ExecuteCommand(command, result))
-            {
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, "Workspace <font color=green>successfully</font> saved");
-            }
-            else
-            {
-                AZ_Error("EMotionFX", false, result.c_str());
-                GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "Workspace <font color=red>failed</font> to save");
-            }
+            command = AZStd::string::format("SaveWorkspace -filename \"%s\"", workspace->GetFilename());
+        }
+        AZStd::string result;
+        if (EMStudio::GetCommandManager()->ExecuteCommand(command, result))
+        {
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, 
+                "Workspace <font color=green>successfully</font> saved");
+        }
+        else
+        {
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, 
+                AZStd::string::format("Workspace <font color=red>failed</font> to save<br/><br/>%s", result.c_str()).c_str());
         }
     }
 
@@ -1680,12 +1677,13 @@ namespace EMStudio
         AZStd::string result;
         if (EMStudio::GetCommandManager()->ExecuteCommand(command, result))
         {
-            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, "Workspace <font color=green>successfully</font> saved");
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, 
+                "Workspace <font color=green>successfully</font> saved");
         }
         else
         {
-            MCore::LogError(result.c_str());
-            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "Workspace <font color=red>failed</font> to save");
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, 
+                AZStd::string::format("Workspace <font color=red>failed</font> to save<br/><br/>%s", result.c_str()).c_str());
         }
     }
 
@@ -1773,82 +1771,59 @@ namespace EMStudio
         layout->setSpacing(4);
         vLayout->addLayout(layout);
 
-        mActorCheckbox = new QCheckBox("Actors");
-        mActors = EMotionFX::GetActorManager().GetNumActors() > 0;
-        if (mActors)
-        {
-            mActorCheckbox->setChecked(true);
-        }
-        else
-        {
-            mActorCheckbox->setChecked(false);
-            mActorCheckbox->setDisabled(true);
-        }
+        m_actorCheckbox = new QCheckBox("Actors");
+        const bool hasActors = HasEntityInEditor(
+            EMotionFX::GetActorManager(), &EMotionFX::ActorManager::GetNumActors, &EMotionFX::ActorManager::GetActor);
+        m_actorCheckbox->setChecked(hasActors);
+        m_actorCheckbox->setDisabled(!hasActors);
 
-        mMotionCheckbox = new QCheckBox("Motions");
-        mMotions = EMotionFX::GetMotionManager().GetNumMotions() > 0;
-        if (mMotions)
-        {
-            mMotionCheckbox->setChecked(true);
-        }
-        else
-        {
-            mMotionCheckbox->setChecked(false);
-            mMotionCheckbox->setDisabled(true);
-        }
+        m_motionCheckbox = new QCheckBox("Motions");
+        const bool hasMotions = HasEntityInEditor(
+            EMotionFX::GetMotionManager(), &EMotionFX::MotionManager::GetNumMotions, &EMotionFX::MotionManager::GetMotion);
+        m_motionCheckbox->setChecked(hasMotions);
+        m_motionCheckbox->setDisabled(!hasMotions);
 
-        mMotionSetCheckbox = new QCheckBox("Motion Sets");
-        mMotionSets = EMotionFX::GetMotionManager().GetNumMotionSets() > 0;
-        if (mMotionSets)
-        {
-            mMotionSetCheckbox->setChecked(true);
-        }
-        else
-        {
-            mMotionSetCheckbox->setChecked(false);
-            mMotionSetCheckbox->setDisabled(true);
-        }
+        m_motionSetCheckbox = new QCheckBox("Motion Sets");
+        const bool hasMotionSets = HasEntityInEditor(
+            EMotionFX::GetMotionManager(), &EMotionFX::MotionManager::GetNumMotionSets, &EMotionFX::MotionManager::GetMotionSet);
+        m_motionSetCheckbox->setChecked(hasMotionSets);
+        m_motionSetCheckbox->setDisabled(!hasMotionSets);
 
-        mAnimGraphCheckbox = new QCheckBox("Anim Graphs");
-        mAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs() > 0;
-        if (mAnimGraphs)
-        {
-            mAnimGraphCheckbox->setChecked(true);
-        }
-        else
-        {
-            mAnimGraphCheckbox->setChecked(false);
-            mAnimGraphCheckbox->setDisabled(true);
-        }
+        m_animGraphCheckbox = new QCheckBox("Anim Graphs");
+        const bool hasAnimGraphs = HasEntityInEditor(
+            EMotionFX::GetAnimGraphManager(), &EMotionFX::AnimGraphManager::GetNumAnimGraphs, &EMotionFX::AnimGraphManager::GetAnimGraph);
+        m_animGraphCheckbox->setChecked(hasAnimGraphs);
+        m_animGraphCheckbox->setDisabled(!hasAnimGraphs);
 
-        layout->addWidget(mActorCheckbox, Qt::AlignLeft);
-        layout->addWidget(mMotionCheckbox, Qt::AlignLeft);
-        layout->addWidget(mMotionSetCheckbox, Qt::AlignLeft);
-        layout->addWidget(mAnimGraphCheckbox, Qt::AlignLeft);
+        layout->addWidget(m_actorCheckbox);
+        layout->addWidget(m_motionCheckbox);
+        layout->addWidget(m_motionSetCheckbox);
+        layout->addWidget(m_animGraphCheckbox);
 
-        connect(mActorCheckbox,        SIGNAL(stateChanged(int)), this, SLOT(OnActorCheckbox(int)));
-        connect(mMotionCheckbox,       SIGNAL(stateChanged(int)), this, SLOT(OnMotionCheckbox(int)));
-        connect(mMotionSetCheckbox,    SIGNAL(stateChanged(int)), this, SLOT(OnMotionSetCheckbox(int)));
-        connect(mAnimGraphCheckbox,   SIGNAL(stateChanged(int)), this, SLOT(OnAnimGraphCheckbox(int)));
+        QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+        connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+        vLayout->addWidget(buttonBox);
+    }
 
-        /*  layout->addWidget( new QLabel( "Actors" ), 0, 1 );
-            layout->addWidget( new QLabel( "Motions" ), 1, 1 );
-            layout->addWidget( new QLabel( "Motion Sets" ), 2, 1 );
-            layout->addWidget( new QLabel( "Anim Graphs" ), 3, 1 );*/
+    bool ResetSettingsWindow::IsActorsChecked() const
+    {
+        return m_actorCheckbox->isChecked();
+    }
 
-        QHBoxLayout* hLayout = new QHBoxLayout();
-        mOK = new QPushButton("OK");
-        mCancel = new QPushButton("Cancel");
-        hLayout->addWidget(mOK);
-        hLayout->addWidget(mCancel);
-        hLayout->setMargin(5);
-        vLayout->addLayout(hLayout);
+    bool ResetSettingsWindow::IsMotionsChecked() const
+    {
+        return m_motionCheckbox->isChecked();
+    }
 
-        connect(mOK, SIGNAL(clicked()), this, SLOT(OnOKButton()));
-        connect(mCancel, SIGNAL(clicked()), this, SLOT(OnCancelButton()));
+    bool ResetSettingsWindow::IsMotionSetsChecked() const
+    {
+        return m_motionSetCheckbox->isChecked();
+    }
 
-        setMinimumSize(325, 150);
-        setMaximumSize(325, 150);
+    bool ResetSettingsWindow::IsAnimGraphsChecked() const
+    {
+        return m_animGraphCheckbox->isChecked();
     }
 
 
@@ -1863,7 +1838,12 @@ namespace EMStudio
         ResetSettingsWindow resetWindow(this);
         if (resetWindow.exec() == QDialog::Accepted)
         {
-            Reset(resetWindow.mActors, resetWindow.mMotionSets, resetWindow.mMotions, resetWindow.mAnimGraphs);
+            Reset(
+                resetWindow.IsActorsChecked(),
+                resetWindow.IsMotionSetsChecked(),
+                resetWindow.IsMotionsChecked(),
+                resetWindow.IsAnimGraphsChecked()
+            );
         }
     }
 
@@ -1962,106 +1942,6 @@ namespace EMStudio
     }
 
 
-    // select all actor instances
-    void MainWindow::OnSelectAllActorInstances()
-    {
-        MCore::String outResult;
-        if (GetCommandManager()->ExecuteCommand("Select -actorInstanceID SELECT_ALL", outResult) == false)
-        {
-            MCore::LogError(outResult.AsChar());
-        }
-    }
-
-
-    // unselect all actor instances
-    void MainWindow::OnUnselectAllActorInstances()
-    {
-        MCore::String outResult;
-        if (GetCommandManager()->ExecuteCommand("Unselect -actorInstanceID SELECT_ALL", outResult) == false)
-        {
-            MCore::LogError(outResult.AsChar());
-        }
-    }
-
-
-    // adjust node selection
-    void MainWindow::OnAdjustNodeSelection()
-    {
-        // show the node selection window
-        mNodeSelectionWindow->Update(MCORE_INVALIDINDEX32);
-        mNodeSelectionWindow->show();
-    }
-
-
-    void MainWindow::OnNodeSelected(MCore::Array<SelectionItem> selection)
-    {
-        uint32 i;
-        CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-
-        // clear the old selection
-        selectionList.ClearNodeSelection();
-
-        const uint32 numSelectedItems = selection.GetLength();
-
-        MCore::Array<uint32> selectedActorInstances;
-        for (i = 0; i < numSelectedItems; ++i)
-        {
-            const uint32                actorInstanceID = selection[i].mActorInstanceID;
-            EMotionFX::ActorInstance*   actorInstance   = EMotionFX::GetActorManager().FindActorInstanceByID(actorInstanceID);
-            if (actorInstance == nullptr)
-            {
-                continue;
-            }
-
-            // if the node name is empty we have selected the actor instance
-            if (selection[i].GetNodeNameString().GetIsEmpty())
-            {
-                selectedActorInstances.Add(actorInstanceID);
-            }
-        }
-
-        // get the number of selected actor instances and iterate through them
-        const uint32 numSelectedActorInstances = selectedActorInstances.GetLength();
-
-        // create our import motion command group
-        MCore::String outResult;
-        MCore::CommandGroup group("Select actor instances");
-
-        group.AddCommandString("ClearSelection");
-
-        // iterate over all selected actor instances
-        for (i = 0; i < numSelectedActorInstances; ++i)
-        {
-            group.AddCommandString(MCore::String().Format("Select -actorInstanceID %i", selectedActorInstances[i]).AsChar());
-        }
-
-        // execute the group command
-        GetCommandManager()->ExecuteCommandGroup(group, outResult);
-
-        // get the number of selected items and iterate through them
-        for (i = 0; i < numSelectedItems; ++i)
-        {
-            const uint32                actorInstanceID = selection[i].mActorInstanceID;
-            EMotionFX::ActorInstance*   actorInstance   = EMotionFX::GetActorManager().FindActorInstanceByID(actorInstanceID);
-            if (actorInstance == nullptr)
-            {
-                continue;
-            }
-
-            // if the node name is empty we have selected the actor instance
-            if (selection[i].GetNodeNameString().GetIsEmpty() == false)
-            {
-                EMotionFX::Actor*   actor = actorInstance->GetActor();
-                EMotionFX::Node*    node = actor->GetSkeleton()->FindNodeByName(selection[i].GetNodeName());
-                if (node)
-                {
-                    selectionList.AddNode(node);
-                }
-            }
-        }
-    }
-
-
     // update the layouts menu
     void MainWindow::UpdateLayoutsMenu()
     {
@@ -2069,7 +1949,7 @@ namespace EMStudio
         mLayoutsMenu->clear();
 
         // generate the layouts path
-        QString layoutsPath = MysticQt::GetDataDir().AsChar();
+        QString layoutsPath = MysticQt::GetDataDir().c_str();
         layoutsPath += "Layouts/";
 
         // open the dir
@@ -2079,7 +1959,7 @@ namespace EMStudio
 
         // add each layout
         mLayoutNames.Clear();
-        MCore::String filename;
+        AZStd::string filename;
         const QFileInfoList list = dir.entryInfoList();
         const int listSize = list.size();
         for (int i = 0; i < listSize; ++i)
@@ -2089,9 +1969,12 @@ namespace EMStudio
             FromQtString(fileInfo.fileName(), &filename);
 
             // check the extension, only ".layout" are accepted
-            if (filename.ExtractFileExtension().Lowered() == "layout")
+            AZStd::string extension;
+            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
+            AZStd::to_lower(extension.begin(), extension.end());
+            if (extension == "layout")
             {
-                filename.RemoveFileExtension();
+                AzFramework::StringFunc::Path::GetFileName(filename.c_str(), filename);
                 mLayoutNames.Add(filename);
             }
         }
@@ -2100,7 +1983,7 @@ namespace EMStudio
         const uint32 numLayoutNames = mLayoutNames.GetLength();
         for (uint32 i = 0; i < numLayoutNames; ++i)
         {
-            QAction* action = mLayoutsMenu->addAction(mLayoutNames[i].AsChar());
+            QAction* action = mLayoutsMenu->addAction(mLayoutNames[i].c_str());
             connect(action, SIGNAL(triggered()), this, SLOT(OnLoadLayout()));
         }
 
@@ -2123,7 +2006,7 @@ namespace EMStudio
             // add each layout in the remove menu
             for (uint32 i = 0; i < numLayoutNames; ++i)
             {
-                QAction* action = removeMenu->addAction(mLayoutNames[i].AsChar());
+                QAction* action = removeMenu->addAction(mLayoutNames[i].c_str());
                 connect(action, SIGNAL(triggered()), this, SLOT(OnRemoveLayout()));
             }
         }
@@ -2135,7 +2018,7 @@ namespace EMStudio
         mApplicationMode->clear();
         for (uint32 i = 0; i < numLayoutNames; ++i)
         {
-            mApplicationMode->addItem(mLayoutNames[i].AsChar());
+            mApplicationMode->addItem(mLayoutNames[i].c_str());
         }
 
         // update the current selection of combo box
@@ -2161,18 +2044,26 @@ namespace EMStudio
     // called when the application mode combo box changed
     void MainWindow::ApplicationModeChanged(const QString& text)
     {
+        if (text.isEmpty())
+        {
+            // If the text is empty, this means no .layout files exist on disk.
+            // In this case, load the built-in layout
+            GetLayoutManager()->LoadLayout(":/EMotionFX/AnimGraph.layout");
+            return;
+        }
+
         // update the last used layout and save it in the preferences file
         mLastUsedMode = text;
         SavePreferences();
 
         // generate the filename
-        MCore::String filename;
-        filename.Format("%sLayouts/%s.layout", MysticQt::GetDataDir().AsChar(), FromQtString(text).AsChar());
+        AZStd::string filename;
+        filename = AZStd::string::format("%sLayouts/%s.layout", MysticQt::GetDataDir().c_str(), FromQtString(text).c_str());
 
         // try to load it
-        if (GetLayoutManager()->LoadLayout(filename.AsChar()) == false)
+        if (GetLayoutManager()->LoadLayout(filename.c_str()) == false)
         {
-            MCore::LogError("Failed to load layout from file '%s'", filename.AsChar());
+            MCore::LogError("Failed to load layout from file '%s'", filename.c_str());
         }
     }
 
@@ -2190,18 +2081,18 @@ namespace EMStudio
 
         // generate the filename
         QAction* action = qobject_cast<QAction*>(sender());
-        const QString filename = QString(MysticQt::GetDataDir().AsChar()) + "Layouts/" + action->text() + ".layout";
+        const QString filename = QString(MysticQt::GetDataDir().c_str()) + "Layouts/" + action->text() + ".layout";
 
         // try to remove the file
         QFile file(filename);
         if (file.remove() == false)
         {
-            MCore::LogError("Failed to remove layout file '%s'", FromQtString(filename).AsChar());
+            MCore::LogError("Failed to remove layout file '%s'", FromQtString(filename).c_str());
             return;
         }
         else
         {
-            MCore::LogInfo("Successfullly removed layout file '%s'", FromQtString(filename).AsChar());
+            MCore::LogInfo("Successfullly removed layout file '%s'", FromQtString(filename).c_str());
         }
 
         // check if the layout removed is the current used
@@ -2233,11 +2124,11 @@ namespace EMStudio
         SavePreferences();
 
         // generate the filename
-        MCore::String filename;
-        filename.Format("%sLayouts/%s.layout", MysticQt::GetDataDir().AsChar(), FromQtString(action->text()).AsChar());
+        AZStd::string filename;
+        filename = AZStd::string::format("%sLayouts/%s.layout", MysticQt::GetDataDir().c_str(), FromQtString(action->text()).c_str());
 
         // try to load it
-        if (GetLayoutManager()->LoadLayout(filename.AsChar()))
+        if (GetLayoutManager()->LoadLayout(filename.c_str()))
         {
             // update the combo box
             mApplicationMode->blockSignals(true);
@@ -2247,7 +2138,7 @@ namespace EMStudio
         }
         else
         {
-            MCore::LogError("Failed to load layout from file '%s'", filename.AsChar());
+            MCore::LogError("Failed to load layout from file '%s'", filename.c_str());
         }
     }
 
@@ -2259,15 +2150,15 @@ namespace EMStudio
         if (GetCommandManager()->GetNumHistoryItems() > 0 && GetCommandManager()->GetHistoryIndex() >= 0)
         {
             // perform the undo
-            MCore::String outResult;
+            AZStd::string outResult;
             const bool result = GetCommandManager()->Undo(outResult);
 
             // log the results if there are any
-            if (outResult.GetLength() > 0)
+            if (outResult.size() > 0)
             {
                 if (result == false)
                 {
-                    MCore::LogError(outResult.AsChar());
+                    MCore::LogError(outResult.c_str());
                 }
             }
         }
@@ -2284,15 +2175,15 @@ namespace EMStudio
         if (GetCommandManager()->GetNumHistoryItems() > 0 && GetCommandManager()->GetHistoryIndex() < (int32)GetCommandManager()->GetNumHistoryItems() - 1)
         {
             // perform the redo
-            MCore::String outResult;
+            AZStd::string outResult;
             const bool result = GetCommandManager()->Redo(outResult);
 
             // log the results if there are any
-            if (outResult.GetLength() > 0)
+            if (outResult.size() > 0)
             {
                 if (result == false)
                 {
-                    MCore::LogError(outResult.AsChar());
+                    MCore::LogError(outResult.c_str());
                 }
             }
         }
@@ -2335,10 +2226,10 @@ namespace EMStudio
     }
 
 
-    void MainWindow::LoadFile(const MCore::String& fileName, int32 contextMenuPosX, int32 contextMenuPosY, bool contextMenuEnabled, bool reload)
+    void MainWindow::LoadFile(const AZStd::string& fileName, int32 contextMenuPosX, int32 contextMenuPosY, bool contextMenuEnabled, bool reload)
     {
         AZStd::vector<AZStd::string> filenames;
-        filenames.push_back(AZStd::string(fileName.AsChar()));
+        filenames.push_back(AZStd::string(fileName.c_str()));
         LoadFiles(filenames, contextMenuPosX, contextMenuPosY, contextMenuEnabled, reload);
     }
 
@@ -2364,7 +2255,7 @@ namespace EMStudio
         {
             // get the complete file name and extract the extension
             filename = filenames[i];
-            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false);
+            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
             if (AzFramework::StringFunc::Equal(extension.c_str(), "actor"))
             {
@@ -2421,7 +2312,7 @@ namespace EMStudio
         if (actorCount == 1)
         {
             mDroppedActorFileName = actorFilenames[0].c_str();
-            mRecentActors.AddRecentFile(mDroppedActorFileName.AsChar());
+            mRecentActors.AddRecentFile(mDroppedActorFileName.c_str());
 
             if (contextMenuEnabled)
             {
@@ -2510,6 +2401,43 @@ namespace EMStudio
         }
     }
 
+    void MainWindow::Activate(const AZ::Data::AssetId& actorAssetId, const EMotionFX::AnimGraph* animGraph, const EMotionFX::MotionSet* motionSet)
+    {
+        AZStd::string cachePath = gEnv->pFileIO->GetAlias("@assets@");
+        AZStd::string filename;
+        AzFramework::StringFunc::AssetDatabasePath::Normalize(cachePath);
+
+        AZStd::string actorFilename;
+        EBUS_EVENT_RESULT(actorFilename, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, actorAssetId);
+        AzFramework::StringFunc::AssetDatabasePath::Join(cachePath.c_str(), actorFilename.c_str(), filename, true);
+        actorFilename = filename;
+
+        MCore::CommandGroup commandGroup("Animgraph and motion set activation");
+        AZStd::string commandString;
+
+        const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
+        for (uint32 i = 0; i < numActorInstances; ++i)
+        {
+            EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(i);
+            if (!actorInstance || actorFilename != actorInstance->GetActor()->GetFileName())
+            {
+                continue;
+            }
+
+            commandString = AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %d -motionSetID %d",
+                    actorInstance->GetID(),
+                    animGraph->GetID(),
+                    motionSet->GetID());
+            commandGroup.AddCommandString(commandString);
+        }
+
+        AZStd::string result;
+        if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
+        {
+            AZ_Error("EMotionFX", false, result.c_str());
+        }
+    }
+
     void MainWindow::LoadLayoutAfterShow()
     {
         if (!mLayoutLoaded)
@@ -2517,6 +2445,15 @@ namespace EMStudio
             mLayoutLoaded = true;
 
             LoadDefaultLayout();
+            if (mCharacterFiles.empty() && GetManager()->GetAutoLoadLastWorkspace())
+            {
+                // load last workspace
+                const AZStd::string lastRecentWorkspace = mRecentWorkspaces.GetLastRecentFileName();
+                if (!lastRecentWorkspace.empty())
+                {
+                    mCharacterFiles.push_back(lastRecentWorkspace);
+                }
+            }
             if (!mCharacterFiles.empty())
             {
                 // Need to defer loading the character until the layout is ready. We also
@@ -2550,6 +2487,16 @@ namespace EMStudio
     // Load default layout.
     void MainWindow::LoadDefaultLayout()
     {
+        if (mApplicationMode->count() == 0)
+        {
+            // When the combo box is empty, the call to setCurrentIndex will
+            // not cause any slots to be fired, so dispatch the call manually.
+            // Pass an empty string to duplicate the behavior of calling
+            // currentText() on an empty combo box
+            ApplicationModeChanged("");
+            return;
+        }
+
         int layoutIndex = mApplicationMode->findText(mLastUsedMode);
 
         // If searching for the last used layout fails load the default or viewer layout if they exist
@@ -2599,14 +2546,14 @@ namespace EMStudio
     // gets called when the user drag&dropped an actor to the application and then chose to open it in the context menu
     void MainWindow::OnOpenDroppedActor()
     {
-        LoadActor(mDroppedActorFileName.AsChar(), true);
+        LoadActor(mDroppedActorFileName.c_str(), true);
     }
 
 
     // gets called when the user drag&dropped an actor to the application and then chose to merge it in the context menu
     void MainWindow::OnMergeDroppedActor()
     {
-        LoadActor(mDroppedActorFileName.AsChar(), false);
+        LoadActor(mDroppedActorFileName.c_str(), false);
     }
 
 
@@ -2798,7 +2745,7 @@ namespace EMStudio
         MCore::CommandGroup commandGroup("Autosave");
 
         // get the autosaves folder
-        const MCore::String autosavesFolder = GetManager()->GetAutosavesFolder();
+        const AZStd::string autosavesFolder = GetManager()->GetAutosavesFolder();
 
         // save each dirty object
         QStringList entryList;
@@ -2814,10 +2761,10 @@ namespace EMStudio
             startWithAutosave += "_Autosave";
 
             // get the extension
-            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false);
+            AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
             // open the dir and get the file list
-            const QDir dir = QDir(autosavesFolder.AsChar());
+            const QDir dir = QDir(autosavesFolder.c_str());
             entryList = dir.entryList(QDir::Files, QDir::Time | QDir::Reversed);
 
             // generate the autosave file list
@@ -2827,7 +2774,7 @@ namespace EMStudio
             for (int j = 0; j < numEntry; ++j)
             {
                 // get the file info
-                const QFileInfo fileInfo = QFileInfo(autosavesFolder + entryList[j]);
+                const QFileInfo fileInfo = QFileInfo(QString::fromStdString(autosavesFolder.data()) + entryList[j]);
 
                 // check the extension
                 if (fileInfo.suffix() != extension.c_str())
@@ -2846,7 +2793,7 @@ namespace EMStudio
                     if (numberExtracted > 0)
                     {
                         // add the file in the list
-                        autosaveFileList.append(autosavesFolder + entryList[j]);
+                        autosaveFileList.append(QString::fromStdString(autosavesFolder.data()) + entryList[j]);
                         AZ_Printf("EMotionFX", "Appending '%s' #%i\n", entryList[j].toUtf8().data(), numberExtracted);
 
                         // Update the maximum autosave file number that already exists on disk.
@@ -2860,7 +2807,7 @@ namespace EMStudio
             {
                 // number of files to delete
                 // one is added because one space needs to be free for the new file
-                const int numFilesToDelete = (autosaveFileList.size() - mAutosaveNumberOfFiles) + 1;
+                const int numFilesToDelete = mAutosaveNumberOfFiles ? (autosaveFileList.size() - mAutosaveNumberOfFiles + 1) : autosaveFileList.size();
 
                 // delete each file
                 for (int j = 0; j < numFilesToDelete; ++j)
@@ -2880,7 +2827,7 @@ namespace EMStudio
 
             // save the new file
             AZStd::string newFileFilename;
-            newFileFilename = AZStd::string::format("%s%s%d.%s", autosavesFolder.AsChar(), startWithAutosave.c_str(), newAutosaveFileNumber, extension.c_str());
+            newFileFilename = AZStd::string::format("%s%s%d.%s", autosavesFolder.c_str(), startWithAutosave.c_str(), newAutosaveFileNumber, extension.c_str());
             AZ_Printf("EMotionFX", "Saving to '%s'\n", newFileFilename.c_str());
 
             // Backing up actors and motions doesn't work anymore as we just update the .assetinfos and the asset processor does the rest.
@@ -2906,12 +2853,13 @@ namespace EMStudio
         AZStd::string result;
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, result, false))
         {
-            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, "Autosave <font color=green>completed</font>");
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, 
+                "Autosave <font color=green>completed</font>");
         }
         else
         {
-            MCore::LogError(result.c_str());
-            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, "Autosave <font color=red>failed</font>");
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, 
+                AZStd::string::format("Autosave <font color=red>failed</font><br/><br/>%s", result.c_str()).c_str());
         }
     }
 
@@ -2934,7 +2882,6 @@ namespace EMStudio
     {
         // sort the active plugins based on their priority
         PluginManager* pluginManager = GetPluginManager();
-        pluginManager->SortActivePlugins();
 
         // get the number of active plugins, iterate through them and call the process frame method
         const uint32 numPlugins = pluginManager->GetNumActivePlugins();
@@ -2948,108 +2895,6 @@ namespace EMStudio
         }
     }
 
-
-    // scale the selected actors
-    void MainWindow::OnScaleSelectedActors()
-    {
-        UnitScaleWindow scaleWindow(this);
-        if (scaleWindow.exec() != QDialog::Accepted)
-        {
-            return;
-        }
-
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelectedActors = selectionList.GetNumSelectedActors();
-        if (numSelectedActors == 0)
-        {
-            return;
-        }
-
-        MCore::CommandGroup commandGroup("Scale actor data");
-        MCore::String tempString;
-        for (uint32 i = 0; i < numSelectedActors; ++i)
-        {
-            EMotionFX::Actor* actor = selectionList.GetActor(i);
-            tempString.Format("ScaleActorData -id %d -scaleFactor %.8f", actor->GetID(), scaleWindow.GetScaleFactor());
-            commandGroup.AddCommandString(tempString.AsChar());
-        }
-
-        // execute the command group
-        MCore::String outResult;
-        if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
-        {
-            MCore::LogError(outResult.AsChar());
-        }
-    }
-
-
-    // scale the selected motions
-    void MainWindow::OnScaleSelectedMotions()
-    {
-        UnitScaleWindow scaleWindow(this);
-        if (scaleWindow.exec() != QDialog::Accepted)
-        {
-            return;
-        }
-
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelected = selectionList.GetNumSelectedMotions();
-        if (numSelected == 0)
-        {
-            return;
-        }
-
-        MCore::CommandGroup commandGroup("Scale motion data");
-        MCore::String tempString;
-        for (uint32 i = 0; i < numSelected; ++i)
-        {
-            EMotionFX::Motion* motion = selectionList.GetMotion(i);
-            const char* skipInterfaceUpdate = (i == (numSelected - 1)) ? "false" : "true";
-            tempString.Format("ScaleMotionData -id %d -scaleFactor %.8f -skipInterfaceUpdate %s", motion->GetID(), scaleWindow.GetScaleFactor(), skipInterfaceUpdate);
-            commandGroup.AddCommandString(tempString.AsChar());
-        }
-
-        // execute the command group
-        MCore::String outResult;
-        if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
-        {
-            MCore::LogError(outResult.AsChar());
-        }
-    }
-
-
-    // scale the selected motions
-    void MainWindow::OnScaleSelectedAnimGraphs()
-    {
-        UnitScaleWindow scaleWindow(this);
-        if (scaleWindow.exec() != QDialog::Accepted)
-        {
-            return;
-        }
-
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numSelected = selectionList.GetNumSelectedAnimGraphs();
-        if (numSelected == 0)
-        {
-            return;
-        }
-
-        MCore::CommandGroup commandGroup("Scale anim graph data");
-        MCore::String tempString;
-        for (uint32 i = 0; i < numSelected; ++i)
-        {
-            EMotionFX::AnimGraph* animGraph = selectionList.GetAnimGraph(i);
-            tempString.Format("ScaleAnimGraphData -id %d -scaleFactor %.8f", animGraph->GetID(), scaleWindow.GetScaleFactor());
-            commandGroup.AddCommandString(tempString.AsChar());
-        }
-
-        // execute the command group
-        MCore::String outResult;
-        if (GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult) == false)
-        {
-            MCore::LogError(outResult.AsChar());
-        }
-    }
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindow.moc>

@@ -1,0 +1,49 @@
+{
+    "name": "pvr_tex_tool",
+    "source": "@3P:powerVRTexTool@",
+    "description": "PVRTextTool Library",
+    "includes": [
+        "Include"
+    ],
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "importlibpath": [
+                "Windows_x86_64"
+            ],
+            "sharedlibpath": [
+                "Windows_x86_64"
+            ],
+            "import": [
+                "PVRTexLib.lib"
+            ],
+            "shared": [
+                "PVRTexLib.dll"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013",
+        "darwin_x64": {
+            "sharedlibpath": [
+                "OSX_x86"
+            ],
+            "shared": [
+                "libPVRTexLib.dylib"
+            ]
+        },
+        "linux_x64": {
+            "sharedlibpath": [
+                "Linux_x86_64"
+            ],
+            "shared": [
+                "libPVRTexLib.so"
+            ]
+        }
+    }
+}
+
+
+
+
+
+

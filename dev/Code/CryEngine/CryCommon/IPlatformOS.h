@@ -13,18 +13,27 @@
 
 // Description : Interface to the Platform OS
 
-
-#ifndef CRYINCLUDE_CRYCOMMON_IPLATFORMOS_H
-#define CRYINCLUDE_CRYCOMMON_IPLATFORMOS_H
 #pragma once
-
 
 #include <BoostHelpers.h>
 #include <CryFixedString.h>
 #include <ILocalizationManager.h>
 #include <ITimer.h>
 
-#if   defined(WIN32) || defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define IPLATFORMOS_H_SECTION_1 1
+#define IPLATFORMOS_H_SECTION_2 2
+#define IPLATFORMOS_H_SECTION_3 3
+#define IPLATFORMOS_H_SECTION_4 4
+#define IPLATFORMOS_H_SECTION_5 5
+#define IPLATFORMOS_H_SECTION_6 6
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_1
+#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+#elif defined(WIN32) || defined(WIN64)
 //#include <Lmcons.h> // this causes issues when including other windows headers later by defining PASCAL
 #endif
 
@@ -88,6 +97,10 @@ struct SUserPII
         string                  postCode;
     } address;
 };
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_2
+#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 struct SStreamingInstallProgress
 {
@@ -132,7 +145,13 @@ struct IPlatformOS
 
     enum
     {
-#if   defined(WIN32) || defined(WIN64)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_3
+#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(WIN32) || defined(WIN64)
         USER_MAX_NAME = 256 + 1,//UNLEN+1,
 #else
         USER_MAX_NAME = 256,
@@ -395,6 +414,10 @@ struct IPlatformOS
         } m_uParams;
     };
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_4
+#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     struct ISaveReader
     {
@@ -579,6 +602,10 @@ struct IPlatformOS
     // UserGetName:
     //   Get the offline name of a user. Returns true on success.
     virtual bool            UserGetName(unsigned int userIndex, IPlatformOS::TUserName& outName) const = 0;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_5
+#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+#endif
     // UserGetOnlineName:
     //   Get the online name of a user. Returns true on success.
     virtual bool            UserGetOnlineName(unsigned int userIndex, IPlatformOS::TUserName& outName) const = 0;
@@ -632,6 +659,10 @@ struct IPlatformOS
     virtual IPlatformOS::ECDP_Delete DeleteCachePak(const char* const filename) = 0;
     virtual IPlatformOS::ECDP_Write WriteCachePak(const char* const filename, const void* const pData, const size_t numBytes) = 0;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_6
+#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     // ExtractZips:
     //  Finds any .zip files in the directory given, opens them, and writes the unpacked contents into the same directory
@@ -963,6 +994,3 @@ protected:
         }
     };
 };
-
-#endif // CRYINCLUDE_CRYCOMMON_IPLATFORMOS_H
-

@@ -42,6 +42,7 @@ namespace EMotionFX
                     ->Field("ActorAsset", &Configuration::m_actorAsset)
                     ->Field("MaterialPerLOD", &Configuration::m_materialPerLOD)
                     ->Field("RenderSkeleton", &Configuration::m_renderSkeleton)
+                    ->Field("RenderCharacter", &Configuration::m_renderCharacter)
                     ->Field("AttachmentType", &Configuration::m_attachmentType)
                     ->Field("AttachmentTarget", &Configuration::m_attachmentTarget)
                     ->Field("AttachmentJointIndex", &Configuration::m_attachmentJointIndex)
@@ -75,7 +76,7 @@ namespace EMotionFX
                 ;
 
                 behaviorContext->EBus<ActorComponentNotificationBus>("ActorComponentNotificationBus")
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
                     ->Event("OnActorInstanceCreated", &ActorComponentNotificationBus::Events::OnActorInstanceCreated)
                     ->Event("OnActorInstanceDestroyed", &ActorComponentNotificationBus::Events::OnActorInstanceDestroyed)
                 ;
@@ -87,7 +88,9 @@ namespace EMotionFX
             : m_attachmentJointIndex(0)
             , m_attachmentType(AttachmentType::None)
             , m_renderSkeleton(false)
+            , m_renderCharacter(true)
             , m_skinningMethod(SkinningMethod::DualQuat)
+            , m_actorAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_NO_LOAD))
         {
         }
 
@@ -162,13 +165,10 @@ namespace EMotionFX
 
                 // There's no guarantee that we will receive a on transform change call for the target entity because of the entity activate order.
                 // Enforce a transform query on target to get the correct initial transform.
-                AZ::TransformInterface* transformInterface = AZ::TransformBus::FindFirstHandler(GetEntity()->GetId());
-                if (transformInterface)
-                {
-                    AZ::Transform transform;
-                    AZ::TransformBus::EventResult(transform, targetEntityId, &AZ::TransformBus::Events::GetWorldTM);
-                    transformInterface->SetWorldTM(transform);
-                }
+                AZ::Transform transform;
+                AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM); // default to using our own TM
+                AZ::TransformBus::EventResult(transform, targetEntityId, &AZ::TransformBus::Events::GetWorldTM); // attempt to get target's TM
+                AZ::TransformBus::Event(GetEntityId(), &AZ::TransformBus::Events::SetWorldTM, transform); // set our TM
             }
             else
             {
@@ -243,8 +243,9 @@ namespace EMotionFX
 
                 m_renderNode = AZStd::make_unique<ActorRenderNode>(GetEntityId(), m_actorInstance, m_configuration.m_actorAsset, transform);
                 m_renderNode->SetMaterials(m_configuration.m_materialPerLOD);
-                m_renderNode->RegisterWithRenderer(true);
+                m_renderNode->RegisterWithRenderer();
                 m_renderNode->SetSkinningMethod(m_configuration.m_skinningMethod);
+                m_renderNode->Hide(!m_configuration.m_renderCharacter);
 
                 CheckAttachToEntity();
 

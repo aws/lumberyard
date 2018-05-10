@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include "NodePaletteTreeItem.h"
+#include <GraphCanvas/Widgets/NodePalette/TreeItems/DraggableNodePaletteTreeItem.h>
 #include "CreateNodeMimeEvent.h"
 
 namespace ScriptCanvasEditor
@@ -38,7 +38,7 @@ namespace ScriptCanvasEditor
     };
 
     class EntityRefNodePaletteTreeItem
-        : public DraggableNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
     {
     public:
         AZ_CLASS_ALLOCATOR(EntityRefNodePaletteTreeItem, AZ::SystemAllocator, 0);
@@ -67,7 +67,7 @@ namespace ScriptCanvasEditor
     };
 
     class CommentNodePaletteTreeItem
-        : public DraggableNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
     {
     public:
         AZ_CLASS_ALLOCATOR(CommentNodePaletteTreeItem, AZ::SystemAllocator, 0);
@@ -96,7 +96,7 @@ namespace ScriptCanvasEditor
     };
 
     class BlockCommentNodePaletteTreeItem
-        : public DraggableNodePaletteTreeItem
+        : public GraphCanvas::DraggableNodePaletteTreeItem
     {
     public:
         AZ_CLASS_ALLOCATOR(BlockCommentNodePaletteTreeItem, AZ::SystemAllocator, 0);

@@ -15,10 +15,14 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <ScriptCanvas/Core/Graph.h>
+#include <ScriptCanvas/Variable/VariableBus.h>
+#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/Undo/ScriptCanvasUndoManager.h>
 #include <Editor/Undo/ScriptCanvasUndoCache.h>
 #include <Editor/Undo/ScriptCanvasGraphCommand.h>
 #include <ScriptCanvas/Bus/UndoBus.h>
+#include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
+#include <ScriptCanvas/Bus/RequestBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -37,20 +41,20 @@ namespace ScriptCanvasEditor
     SceneUndoState::SceneUndoState(AzToolsFramework::UndoSystem::IUndoNotify* undoNotify)
         : m_undoStack(AZStd::make_unique<AzToolsFramework::UndoSystem::UndoStack>(c_undoLimit, undoNotify))
         , m_undoCache(AZStd::make_unique<UndoCache>())
-    {        
+    {
     }
 
     void SceneUndoState::BeginUndoBatch(AZStd::string_view label)
     {
         if (!m_currentUndoBatch)
         {
-            m_currentUndoBatch = aznew AzToolsFramework::UndoSystem::URSequencePoint(label, 0);
+            m_currentUndoBatch = aznew AzToolsFramework::UndoSystem::BatchCommand(label, 0);
         }
         else
         {
             auto parentUndoBatch = m_currentUndoBatch;
 
-            m_currentUndoBatch = aznew AzToolsFramework::UndoSystem::URSequencePoint(label, 0);
+            m_currentUndoBatch = aznew AzToolsFramework::UndoSystem::BatchCommand(label, 0);
             m_currentUndoBatch->SetParent(parentUndoBatch);
         }
     }
@@ -90,14 +94,14 @@ namespace ScriptCanvasEditor
 
     UndoManager::UndoManager()
     {
-        MainWindowNotificationBus::Handler::BusConnect();
+        GraphCanvas::AssetEditorNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
         UndoRequestBus::Handler::BusConnect();
     }
 
     UndoManager::~UndoManager()
     {
-        MainWindowNotificationBus::Handler::BusDisconnect();
         UndoRequestBus::Handler::BusDisconnect();
+        GraphCanvas::AssetEditorNotificationBus::Handler::BusDisconnect();
 
         for (auto& mapPair : m_undoMapping)
         {
@@ -117,9 +121,12 @@ namespace ScriptCanvasEditor
         return nullptr;
     }
 
-    UndoCache* UndoManager::GetSceneUndoCache(AZ::EntityId sceneId)
+    UndoCache* UndoManager::GetSceneUndoCache(AZ::EntityId scriptCanvasGraphId)
     {
-        SceneUndoState* sceneUndoState = FindUndoState(sceneId);
+        AZ::EntityId graphCanvasGraphId;
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+
+        SceneUndoState* sceneUndoState = FindUndoState(graphCanvasGraphId);
 
         if (sceneUndoState)
         {
@@ -234,19 +241,26 @@ namespace ScriptCanvasEditor
         AddUndo(command);
     }
 
-    UndoData UndoManager::CreateUndoData(AZ::EntityId entityId)
+    UndoData UndoManager::CreateUndoData(AZ::EntityId scriptCanvasEntityId)
     {
-        GraphCanvas::SceneData* sceneData{};
-        GraphCanvas::SceneRequestBus::EventResult(sceneData, entityId, &GraphCanvas::SceneRequests::GetSceneData);
+        AZ::EntityId graphCanvasGraphId;
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasEntityId, &EditorGraphRequests::GetGraphCanvasGraphId);
+
+        GraphCanvas::GraphData* graphCanvasGraphData{};
+        GraphCanvas::SceneRequestBus::EventResult(graphCanvasGraphData, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGraphData);
 
         ScriptCanvas::GraphData* graphData{};
-        ScriptCanvas::GraphRequestBus::EventResult(graphData, entityId, &ScriptCanvas::GraphRequests::GetGraphData);
+        ScriptCanvas::GraphRequestBus::EventResult(graphData, scriptCanvasEntityId, &ScriptCanvas::GraphRequests::GetGraphData);
+
+        const ScriptCanvas::VariableData* varData{};
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varData, scriptCanvasEntityId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableDataConst);
 
         UndoData undoData;
-        if (graphData && sceneData)
+        if (graphData && graphCanvasGraphData && varData)
         {
-            undoData.m_sceneData = *sceneData;
+            undoData.m_graphCanvasGraphData = *graphCanvasGraphData;
             undoData.m_graphData = *graphData;
+            undoData.m_variableData = *varData;
         }
 
         return undoData;
@@ -269,109 +283,120 @@ namespace ScriptCanvasEditor
         EBUS_EVENT(UndoNotificationBus, UndoNotifications::OnCanRedoChanged, m_canRedo);
     }
 
-    void UndoManager::OnActiveSceneChanged(const AZ::EntityId& sceneId)
+    void UndoManager::OnActiveGraphChanged(const GraphCanvas::GraphId& graphCanvasGraphId)
     {
-        m_activeScene = sceneId;
+        m_activeGraphCanvasGraphId.SetInvalid();
+        m_activeGraphCanvasGraphId = graphCanvasGraphId;
+        
         OnUndoStackChanged();
     }
 
-    void UndoManager::OnSceneLoaded(const AZ::EntityId& sceneId)
+    void UndoManager::OnGraphLoaded(const GraphCanvas::GraphId& graphCanvasGraphId)
     {
-        if (!sceneId.IsValid())
+        AZ::EntityId scriptCanvasGraphId;
+        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+
+        if (!scriptCanvasGraphId.IsValid())
         {
             return;
         }
 
-        auto mapIter = m_undoMapping.find(sceneId);
+        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
 
         if (mapIter == m_undoMapping.end())
         {
-            m_undoMapping[sceneId] = aznew SceneUndoState(this);
+            m_undoMapping[graphCanvasGraphId] = aznew SceneUndoState(this);
         }
     }
 
-    void UndoManager::OnSceneUnloaded(const AZ::EntityId& sceneId)
+    void UndoManager::OnGraphUnloaded(const GraphCanvas::GraphId& graphCanvasGraphId)
     {
-        auto mapIter = m_undoMapping.find(sceneId);
+        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
 
         if (mapIter != m_undoMapping.end())
         {
             delete mapIter->second;
             m_undoMapping.erase(mapIter);
-            if (m_activeScene == sceneId)
+            if (m_activeGraphCanvasGraphId == graphCanvasGraphId)
             {
-                m_activeScene.SetInvalid();
+                m_activeGraphCanvasGraphId.SetInvalid();
             }
         }
     }
 
-    void UndoManager::OnSceneRefreshed(const AZ::EntityId& oldSceneId, const AZ::EntityId& newSceneId)
+    void UndoManager::OnGraphRefreshed(const GraphCanvas::GraphId& oldGraphCanvasGraphId, const AZ::EntityId& newGraphCanvasGraphId)
     {
-        if (!oldSceneId.IsValid())
+        if (!oldGraphCanvasGraphId.IsValid())
         {
-            OnSceneLoaded(newSceneId);
+            OnGraphLoaded(newGraphCanvasGraphId);
             return;
         }
 
         // Switches the undo stack when the scene gets remapped(i.e. when it's saved as)
-        auto oldSceneIter = m_undoMapping.find(oldSceneId);
-        auto newSceneIter = m_undoMapping.find(newSceneId);
+        auto oldSceneIter = m_undoMapping.find(oldGraphCanvasGraphId);
+        auto newSceneIter = m_undoMapping.find(newGraphCanvasGraphId);
 
-        if (oldSceneIter != m_undoMapping.find(oldSceneId)
+        if (oldSceneIter != m_undoMapping.find(oldGraphCanvasGraphId)
             && newSceneIter == m_undoMapping.end())
         {
-            m_undoMapping[newSceneId] = oldSceneIter->second;
+            m_undoMapping[newGraphCanvasGraphId] = oldSceneIter->second;
             m_undoMapping.erase(oldSceneIter);
-            if (m_activeScene == oldSceneId)
+            if (m_activeGraphCanvasGraphId == oldGraphCanvasGraphId)
             {
-                m_activeScene = newSceneId;
+                m_activeGraphCanvasGraphId = newGraphCanvasGraphId;
             }
         }
     }
 
-    AZStd::unique_ptr<SceneUndoState> UndoManager::ExtractSceneUndoState(AZ::EntityId sceneId)
+    AZStd::unique_ptr<SceneUndoState> UndoManager::ExtractSceneUndoState(AZ::EntityId scriptCanvasGraphId)
     {
-        if (!sceneId.IsValid())
+        AZ::EntityId graphCanvasGraphId;
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+
+        if (!graphCanvasGraphId.IsValid())
         {
             return {};
         }
 
         AZStd::unique_ptr<SceneUndoState> extractUndoState;
-        auto mapIter = m_undoMapping.find(sceneId);
+        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
         if (mapIter != m_undoMapping.end())
         {
             extractUndoState.reset(mapIter->second);
             m_undoMapping.erase(mapIter);
-            if (m_activeScene == sceneId)
+            if (m_activeGraphCanvasGraphId == graphCanvasGraphId)
             {
-                m_activeScene.SetInvalid();
+                m_activeGraphCanvasGraphId.SetInvalid();
             }
         }
 
         return extractUndoState;
     }
 
-    void UndoManager::InsertUndoState(AZ::EntityId sceneId, AZStd::unique_ptr<SceneUndoState> sceneUndoState)
+    void UndoManager::InsertUndoState(AZ::EntityId scriptCanvasGraphId, AZStd::unique_ptr<SceneUndoState> sceneUndoState)
     {
-        if (!sceneId.IsValid() || !sceneUndoState)
+        AZ::EntityId graphCanvasGraphId;
+        EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasGraphId, &EditorGraphRequests::GetGraphCanvasGraphId);
+
+        if (!graphCanvasGraphId.IsValid() || !sceneUndoState)
         {
             return;
         }
 
-        delete m_undoMapping[sceneId];
-        m_undoMapping[sceneId] = sceneUndoState.release();
+        delete m_undoMapping[graphCanvasGraphId];
+        m_undoMapping[graphCanvasGraphId] = sceneUndoState.release();
     }
 
     SceneUndoState* UndoManager::FindActiveUndoState() const
     {
-        return FindUndoState(m_activeScene);
+        return FindUndoState(m_activeGraphCanvasGraphId);
     }
 
-    SceneUndoState* UndoManager::FindUndoState(const AZ::EntityId& sceneId) const
+    SceneUndoState* UndoManager::FindUndoState(const GraphCanvas::GraphId& graphCanvasGraphId) const
     {
         SceneUndoState* undoState = nullptr;
 
-        auto mapIter = m_undoMapping.find(sceneId);
+        auto mapIter = m_undoMapping.find(graphCanvasGraphId);
 
         if (mapIter != m_undoMapping.end())
         {

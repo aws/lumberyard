@@ -15,7 +15,9 @@
             "Actor/ActorExporter.h",
             "Actor/ActorExporter.cpp",
             "Actor/ActorGroupExporter.h",
-            "Actor/ActorGroupExporter.cpp"
+            "Actor/ActorGroupExporter.cpp",
+            "Actor/MorphTargetExporter.h",
+            "Actor/MorphTargetExporter.cpp"
         ],
         "Pipeline/RCExt/Motion":
         [

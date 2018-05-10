@@ -90,7 +90,7 @@ namespace EMotionFX
 
     // convert attributes for backward compatibility
     // this handles attributes that got renamed or who's types have changed during the development progress
-    bool BlendTreeBlendNNode::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName)
+    bool BlendTreeBlendNNode::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
     {
         // convert things by the base class
         const bool result = AnimGraphObject::ConvertAttribute(attributeIndex, attributeToConvert, attributeName);
@@ -202,11 +202,15 @@ namespace EMotionFX
             weight = MCore::Clamp<float>(weight, 0.0f, 1.0f);
         }
 
-        // calculate how many poses are used/linked
-        const float stepSize = 1.0f / (float)(numInputPoses - 1);
+        float poseFloatNumber = 0.0f;
+        if (numInputPoses > 1)
+        {
+            // calculate how many poses are used/linked
+            const float stepSize = 1.0f / (float)(numInputPoses - 1);
 
-        // calculate the two poses to interpolate between
-        const float poseFloatNumber = weight / stepSize;
+            // calculate the two poses to interpolate between
+            poseFloatNumber = weight / stepSize;
+        }
         const uint32 portIndexA = (uint32)MCore::Math::Floor(poseFloatNumber);  // TODO: floor really needed?
         uint32 poseIndexA = portNumbers[portIndexA];
 
@@ -585,7 +589,14 @@ namespace EMotionFX
             EMotionFX::BlendTreeConnection* connection = mInputPorts[INPUTPORT_POSE_0 + i].mConnection;
             if (connection)
             {
-                connection->GetSourceNode()->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
+                AnimGraphNode* sourceNode = connection->GetSourceNode();
+                if (sourceNode != nodeA && sourceNode != nodeB)
+                {
+                    AnimGraphNodeData* nodeData = sourceNode->FindUniqueNodeData(animGraphInstance);
+                    nodeData->SetGlobalWeight(0.0f);
+                    nodeData->SetLocalWeight(0.0f);
+                }
+                sourceNode->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
             }
         }
     }

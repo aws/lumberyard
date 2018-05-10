@@ -16,12 +16,12 @@
 
 namespace LmbrCentral
 {
-    /** 
+    /**
      * Type ID for the BoxShapeComponent
      */
     static const AZ::Uuid BoxShapeComponentTypeId = "{5EDF4B9E-0D3D-40B8-8C91-5142BCFC30A6}";
 
-    /** 
+    /**
      * Type ID for the EditorBoxShapeComponent
      */
     static const AZ::Uuid EditorBoxShapeComponentTypeId = "{2ADD9043-48E8-4263-859A-72E0024372BF}";
@@ -33,35 +33,34 @@ namespace LmbrCentral
         : public AZ::ComponentConfig
     {
     public:
-        AZ_CLASS_ALLOCATOR(BoxShapeConfig, AZ::SystemAllocator, 0);
-        AZ_RTTI(BoxShapeConfig, "{F034FBA2-AC2F-4E66-8152-14DFB90D6283}", AZ::ComponentConfig);
+        AZ_CLASS_ALLOCATOR(BoxShapeConfig, AZ::SystemAllocator, 0)
+        AZ_RTTI(BoxShapeConfig, "{F034FBA2-AC2F-4E66-8152-14DFB90D6283}", AZ::ComponentConfig)
+
         static void Reflect(AZ::ReflectContext* context);
 
         BoxShapeConfig() = default;
-        BoxShapeConfig(AZ::Vector3 dimensions) : m_dimensions(dimensions) {}
+        explicit BoxShapeConfig(const AZ::Vector3& dimensions) : m_dimensions(dimensions) {}
 
-        //Event to be overridden by editor derivative
-        virtual void ChangeDimension() {}
-
-        AZ_INLINE void SetDimensions(const AZ::Vector3& newDimensions)
+        void SetDimensions(const AZ::Vector3& dimensions)
         {
-            m_dimensions = newDimensions;
+            AZ_WarningOnce("LmbrCentral", false, "SetDimensions Deprecated - Please use m_dimensions");
+            m_dimensions = dimensions;
         }
 
-        AZ_INLINE AZ::Vector3 GetDimensions() const
+        AZ::Vector3 GetDimensions() const
         {
+            AZ_WarningOnce("LmbrCentral", false, "GetDimensions Deprecated - Please use m_dimensions");
             return m_dimensions;
         }
 
-        //! Stores the dimensions of the box along each axis
-        AZ::Vector3 m_dimensions = AZ::Vector3(1.f, 1.f, 1.f);
+        AZ::Vector3 m_dimensions = AZ::Vector3::CreateOne(); ///< Stores the dimensions of the box along each axis.
     };
 
     using BoxShapeConfiguration = BoxShapeConfig; ///< @deprecated Use BoxShapeConfig instead
 
-    /*!
-    * Services provided by the Box Shape Component
-    */
+    /**
+     * Services provided by the Box Shape Component
+     */
     class BoxShapeComponentRequests
         : public AZ::ComponentBus
     {
@@ -69,16 +68,16 @@ namespace LmbrCentral
         virtual BoxShapeConfig GetBoxConfiguration() = 0;
 
         /**
-        * \brief Gets dimensions for the Box Shape
-        * \return Vector3 indicating dimensions along the x,y & z axis
+        * @brief Gets dimensions for the Box Shape
+        * @return Vector3 indicating dimensions along the x,y & z axis
         */
         virtual AZ::Vector3 GetBoxDimensions() = 0;
 
         /**
-        * \brief Sets new dimensions for the Box Shape
-        * \param newDimensions Vector3 indicating new dimensions along the x,y & z axis
+        * @brief Sets new dimensions for the Box Shape
+        * @param newDimensions Vector3 indicating new dimensions along the x,y & z axis
         */
-        virtual void SetBoxDimensions(AZ::Vector3 newDimensions) = 0;
+        virtual void SetBoxDimensions(const AZ::Vector3& newDimensions) = 0;
     };
 
     // Bus to service the Box Shape component event group

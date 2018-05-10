@@ -42,8 +42,8 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("In", "Input signal"));
 
                 // Outputs
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("True", "Signalled if the reference provided is null."));
-                ScriptCanvas_Out(ScriptCanvas_Out::Name("False", "Signalled if the reference provided is not null."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("True", "Signaled if the reference provided is null."));
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("False", "Signaled if the reference provided is not null."));
 
             protected:
                 void OnInit() override;

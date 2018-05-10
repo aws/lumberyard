@@ -18,6 +18,8 @@
 
 namespace LmbrCentral
 {
+
+
     /**
      * Services provided by the Spline Component.
      */
@@ -31,7 +33,7 @@ namespace LmbrCentral
         /**
          * Returns a reference to the underlying spline.
          */
-        virtual AZ::ConstSplinePtr GetSpline() = 0;
+        virtual AZ::SplinePtr GetSpline() = 0;
         /**
          * Change the type of interpolation used by the spline.
          * @param splineType Refers to the RTTI Hash of the underlying Spline type
@@ -54,6 +56,7 @@ namespace LmbrCentral
      */
     class SplineComponentNotification
         : public AZ::ComponentBus
+        , public AZ::VertexContainerNotificationInterface<AZ::Vector3>
     {
     public:
         virtual ~SplineComponentNotification() {}
@@ -62,6 +65,31 @@ namespace LmbrCentral
          * Called when the spline has changed.
          */
         virtual void OnSplineChanged() {}
+
+        /**
+         * Called when a new vertex is added to spline.
+         */
+        void OnVertexAdded(size_t /*index*/) override {}
+
+        /**
+         * Called when a vertex is removed from spline.
+         */
+        void OnVertexRemoved(size_t /*index*/) override {}
+
+        /**
+         * Called when a vertex is updated.
+         */
+        void OnVertexUpdated(size_t /*index*/) override {}
+
+        /**
+         * Called when all vertices on the spline are set.
+         */
+        void OnVerticesSet(const AZStd::vector<AZ::Vector3>& /*vertices*/) override {}
+
+        /**
+         * Called when all vertices from the spline are removed.
+         */
+        void OnVerticesCleared() override {}
     };
 
     /**

@@ -15,7 +15,6 @@
 
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 
 #include <EMotionFX/Source/NodeGroup.h>
 
@@ -47,7 +46,7 @@ namespace EMStudio
                  MCORE_MEMORYOBJECTCATEGORY(NodeGroupRenameWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
-        NodeGroupRenameWindow(QWidget* parent, EMotionFX::AnimGraph* animGraph, const MCore::String& nodeGroup);
+        NodeGroupRenameWindow(QWidget* parent, EMotionFX::AnimGraph* animGraph, const AZStd::string& nodeGroup);
 
     private slots:
         void TextEdited(const QString& text);
@@ -55,7 +54,7 @@ namespace EMStudio
 
     private:
         EMotionFX::AnimGraph*  mAnimGraph;
-        MCore::String           mNodeGroup;
+        AZStd::string           mNodeGroup;
         QLineEdit*              mLineEdit;
         QPushButton*            mOKButton;
         //QLabel*               mErrorMsg;

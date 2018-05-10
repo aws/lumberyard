@@ -670,6 +670,38 @@ namespace EMotionFX
     }
 
 
+
+    // Update the mesh morph deformers, which updates the vertex positions on the CPU, so performing CPU morphing.
+    void ActorInstance::UpdateMorphMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers)
+    {
+        timePassedInSeconds *= GetEMotionFX().GetGlobalSimulationSpeed();
+
+        // Update the mesh morph deformers.
+        const Skeleton* skeleton = mActor->GetSkeleton();
+        const uint32 numNodes = mEnabledNodes.GetLength();
+        for (uint32 i = 0; i < numNodes; ++i)
+        {
+            const uint16 nodeNr = mEnabledNodes[i];
+            Node* node = skeleton->GetNode(nodeNr);
+            MeshDeformerStack* stack = mActor->GetMeshDeformerStack(mLODLevel, nodeNr);
+            if (stack)
+            {
+                stack->UpdateByModifierType(this, node, timePassedInSeconds, MorphMeshDeformer::TYPE_ID, true, processDisabledDeformers);
+            }
+        }
+
+        // Update the bounds when we are set to use mesh based bounds.
+        if (GetBoundsUpdateEnabled() == BOUNDS_MESH_BASED)
+        {
+            mBoundsUpdatePassedTime += timePassedInSeconds;
+            if (mBoundsUpdatePassedTime >= mBoundsUpdateFrequency)
+            {
+                UpdateBounds(mLODLevel, mBoundsUpdateType, mBoundsUpdateItemFreq);
+                mBoundsUpdatePassedTime = 0.0f;
+            }
+        }
+    }
+
     // add an attachment
     void ActorInstance::AddAttachment(Attachment* attachment)
     {

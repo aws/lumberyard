@@ -71,7 +71,7 @@ namespace EMStudio
         QHBoxLayout* layout = new QHBoxLayout();
         layout->addWidget(mIcon);
         layout->addWidget(mMessageLabel);
- 
+
         // set the layout
         setLayout(layout);
 

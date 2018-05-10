@@ -26,9 +26,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
@@ -41,8 +39,6 @@ import java.lang.InterruptedException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.amazon.lumberyard.input.KeyboardHandler;
-
 import com.amazon.lumberyard.io.APKHandler;
 import com.amazon.lumberyard.io.obb.ObbDownloaderActivity;
 
@@ -52,27 +48,9 @@ public class LumberyardActivity extends NativeActivity
 {
     ////////////////////////////////////////////////////////////////
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)
+    public void onBackPressed()
     {
-        if (m_keyboardHandler != null && keyCode == KeyEvent.KEYCODE_BACK)
-        {
-            // this is to prevent the native activity from exiting on back button press
-            KeyboardHandler.SendKeyCode(keyCode, event.getAction());
-            return true;
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    ////////////////////////////////////////////////////////////////
-    @Override
-    public boolean onKeyUp(int keyCode, KeyEvent event)
-    {
-        if (m_keyboardHandler != null && keyCode == KeyEvent.KEYCODE_BACK)
-        {
-            KeyboardHandler.SendKeyCode(keyCode, event.getAction());
-            return true; // for consistency since we consume the down event
-        }
-        return super.onKeyUp(keyCode, event);
+        // by doing nothing here will prevent the activity from being exited (the default behaviour)
     }
 
     ////////////////////////////////////////////////////////////////
@@ -100,17 +78,6 @@ public class LumberyardActivity extends NativeActivity
     }
 
     ////////////////////////////////////////////////////////////////
-    // accessor for the native to create and get the KeyboardHandler
-    public KeyboardHandler GetKeyboardHandler()
-    {
-        if (m_keyboardHandler == null)
-        {
-            m_keyboardHandler = new KeyboardHandler(this);
-        }
-        return m_keyboardHandler;
-    }
-
-    ////////////////////////////////////////////////////////////////
     // called from the native code to show the Java splash screen
     public void ShowSplashScreen()
     {
@@ -122,7 +89,7 @@ public class LumberyardActivity extends NativeActivity
             {
                 if (!m_splashShowing)
                 {
-                    ShowSplashScreenImpl(); 
+                    ShowSplashScreenImpl();
                 }
                 else
                 {
@@ -268,7 +235,13 @@ public class LumberyardActivity extends NativeActivity
                 result.notifyAll();
             }
         }
-        super.onDestroy();
+
+        // Ideally we should be calling super.onDestroy() here and going through the "graceful" shutdown process,
+        // however some deadlock(s) happen in the static de-allocation preventing the process to naturally exit.
+        // On phones, and most tablets, this doesn't happen because the process is terminated by the system but
+        // while running in Samsung DEX mode it's kept alive until it seemingly exits naturally.  Manually killing
+        // the process in the onDestroy is probably the best compromise until the graceful exit is fixed with LY-70527
+        android.os.Process.killProcess(android.os.Process.myPid());
     }
 
     ////////////////////////////////////////////////////////////////
@@ -377,7 +350,7 @@ public class LumberyardActivity extends NativeActivity
         Point size = new Point();
         display.getSize(size);
 
-        // create the popup with the splash screen layout. this is because the standard 
+        // create the popup with the splash screen layout. this is because the standard
         // view hierarchy for Android apps doesn't exist when using the NativeActivity
         m_slashWindow = new PopupWindow(splashView, size.x, size.y);
         m_slashWindow.setClippingEnabled(false);
@@ -410,8 +383,6 @@ public class LumberyardActivity extends NativeActivity
 
     private PopupWindow m_slashWindow = null;
     private boolean m_splashShowing = false;
-
-    private KeyboardHandler m_keyboardHandler = null;
 
     private List<ActivityResultsListener> m_activityResultsListeners = new ArrayList<ActivityResultsListener>();
     private List<ActivityResult> m_waitingResultList = new ArrayList<ActivityResult>();

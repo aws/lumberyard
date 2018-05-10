@@ -79,7 +79,7 @@ def build(bld):
         file_list = gem_file_list,
         test_all_file_list = gem_test_all_file_list,
         platforms = ['all'],
-        includes = [bld.Path('Code/SDKs/AWSNativeSDK/include'), 'Source'],
+        includes = ['Source'],
         use = ['CloudGemFramework.StaticLibrary','AzFramework'],  
         test_all_uselib = gem_test_uselib,
         uselib = ['AWS_CPP_SDK_COGNITO_IDENTITY', 'AWS_CPP_SDK_IDENTITY_MANAGEMENT','AWS_CPP_SDK_LAMBDA', 'AWS_CPP_SDK_CORE'],
@@ -93,7 +93,6 @@ def build(bld):
         StaticLibrary = dict(
             file_list = static_lib_file_list,
 
-            includes = [bld.Path('Code/SDKs/AWSNativeSDK/include')],
             use = static_lib_use,
             features = static_lib_features,
             uselib = static_lib_uselib,

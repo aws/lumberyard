@@ -55,7 +55,9 @@ void LoadAllocatorModule(FNC_SHMalloc& rpfMalloc, FNC_SHFreeSize& rpfFreeSize)
         {
             //now assume current dir is one level below
 #if defined(_WIN64)
-    #if (_MSC_VER == 1900)
+    #if (_MSC_VER >= 1910)
+            gsSystem = LoadLibrary("Bin64vc141/SHAllocator.dll");
+    #elif (_MSC_VER >= 1900)
             gsSystem = LoadLibrary("Bin64vc140/SHAllocator.dll");
     #else
             gsSystem = LoadLibrary("Bin64vc120/SHAllocator.dll");

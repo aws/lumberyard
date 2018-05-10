@@ -729,8 +729,15 @@ void CAttachmentSKIN::DrawAttachment(SRendParams& RendParams, const SRenderingPa
             SVertexSkinData vertexSkinData(pD, geometry);
             CRY_ASSERT(pRenderMesh->GetVerticesCount() == geometry.GetVertexCount());
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AttachmentSkin_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             const uint fslCreate = FSL_SYSTEM_CREATE;
             const uint fslRead = FSL_READ;
+#endif
 
             vertexSkinData.pVertexPositionsPrevious = strided_pointer<const Vec3>(NULL);
             if (pD->m_pSkinningData->pPreviousSkinningRenderData)

@@ -439,7 +439,7 @@ def add_game_projects_to_specs(self):
 #############################################################################
 @conf
 def get_product_name(self, target, game_project):
-    if target == 'PCLauncher' or target == 'OrbisLauncher' or target == 'DurangoLauncher': # ACCEPTED_USE
+    if target == 'PCLauncher':
         return self.get_launcher_product_name(game_project)
     elif target == 'DedicatedLauncher':
         return self.get_dedicated_server_product_name(game_project)
@@ -541,6 +541,7 @@ def get_bootstrap_vfs(self):
     return vfs
 
 GAME_PLATFORM_MAP = {
+    'darwin_x64' : 'osx',
 }
 
 @conf
@@ -552,7 +553,7 @@ def get_bootstrap_assets(self, platform=None):
     """
     if platform is None:
         platform = self.env['PLATFORM']
-    bootstrap_cfg = self.path.make_node('bootstrap.cfg')
+    bootstrap_cfg = self.engine_node.make_node('bootstrap.cfg')
     bootstrap_contents = bootstrap_cfg.read()
     assets = 'pc'
     game_platform = GAME_PLATFORM_MAP.get(platform, platform)

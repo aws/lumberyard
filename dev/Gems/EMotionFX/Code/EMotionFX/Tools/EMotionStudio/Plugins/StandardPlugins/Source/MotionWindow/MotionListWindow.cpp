@@ -10,7 +10,6 @@
 *
 */
 
-#include <AzCore/std/string/string.h>
 #include "MotionListWindow.h"
 #include "MotionWindowPlugin.h"
 #include <QMenu>
@@ -315,15 +314,15 @@ namespace EMStudio
         mMotionTable->setItem(rowIndex, 0, nameTableItem);
 
         // create the length item
-        MCore::String length;
-        length.Format("%.2f sec", motion->GetMaxTime());
-        QTableWidgetItem* lengthTableItem = new QTableWidgetItem(length.AsChar());
+        AZStd::string length;
+        length = AZStd::string::format("%.2f sec", motion->GetMaxTime());
+        QTableWidgetItem* lengthTableItem = new QTableWidgetItem(length.c_str());
 
         // set the item in the motion table
         mMotionTable->setItem(rowIndex, 1, lengthTableItem);
 
         // set the sub and msub text
-        MCore::String sub, msub;
+        AZStd::string sub, msub;
         if ((motion->GetType() != EMotionFX::SkeletalMotion::TYPE_ID) && (motion->GetType() != EMotionFX::WaveletSkeletalMotion::TYPE_ID))
         {
             sub = "";
@@ -332,13 +331,13 @@ namespace EMStudio
         else
         {
             EMotionFX::SkeletalMotion* skeletalMotion = static_cast<EMotionFX::SkeletalMotion*>(motion);
-            sub.Format("%d", skeletalMotion->GetNumSubMotions());
-            msub.Format("%d", skeletalMotion->GetNumMorphSubMotions());
+            sub = AZStd::string::format("%d", skeletalMotion->GetNumSubMotions());
+            msub = AZStd::string::format("%d", skeletalMotion->GetNumMorphSubMotions());
         }
 
         // create the sub and msub item
-        QTableWidgetItem* subTableItem = new QTableWidgetItem(sub.AsChar());
-        QTableWidgetItem* msubTableItem = new QTableWidgetItem(msub.AsChar());
+        QTableWidgetItem* subTableItem = new QTableWidgetItem(sub.c_str());
+        QTableWidgetItem* msubTableItem = new QTableWidgetItem(msub.c_str());
 
         // set the items in the motion table
         mMotionTable->setItem(rowIndex, 2, subTableItem);
@@ -423,8 +422,9 @@ namespace EMStudio
             return false;
         }
 
-        const MCore::String motionNameLowered = entry->mMotion->GetNameString().Lowered();
-        if (mFindString.empty() || motionNameLowered.Contains(mFindString.c_str()))
+        AZStd::string motionNameLowered = entry->mMotion->GetNameString();
+        AZStd::to_lower(motionNameLowered.begin(), motionNameLowered.end());
+        if (mFindString.empty() || motionNameLowered.find(mFindString) != AZStd::string::npos)
         {
             return true;
         }
@@ -474,15 +474,15 @@ namespace EMStudio
             mMotionTable->setItem(i, 0, nameTableItem);
 
             // create the length item
-            MCore::String length;
-            length.Format("%.2f sec", motion->GetMaxTime());
-            QTableWidgetItem* lengthTableItem = new QTableWidgetItem(length.AsChar());
+            AZStd::string length;
+            length = AZStd::string::format("%.2f sec", motion->GetMaxTime());
+            QTableWidgetItem* lengthTableItem = new QTableWidgetItem(length.c_str());
 
             // set the item in the motion table
             mMotionTable->setItem(i, 1, lengthTableItem);
 
             // set the sub and msub text
-            MCore::String sub, msub;
+            AZStd::string sub, msub;
             if ((motion->GetType() != EMotionFX::SkeletalMotion::TYPE_ID) && (motion->GetType() != EMotionFX::WaveletSkeletalMotion::TYPE_ID))
             {
                 sub = "";
@@ -491,13 +491,13 @@ namespace EMStudio
             else
             {
                 EMotionFX::SkeletalMotion* skeletalMotion = static_cast<EMotionFX::SkeletalMotion*>(motion);
-                sub.Format("%d", skeletalMotion->GetNumSubMotions());
-                msub.Format("%d", skeletalMotion->GetNumMorphSubMotions());
+                sub = AZStd::string::format("%d", skeletalMotion->GetNumSubMotions());
+                msub = AZStd::string::format("%d", skeletalMotion->GetNumMorphSubMotions());
             }
 
             // create the sub and msub item
-            QTableWidgetItem* subTableItem = new QTableWidgetItem(sub.AsChar());
-            QTableWidgetItem* msubTableItem = new QTableWidgetItem(msub.AsChar());
+            QTableWidgetItem* subTableItem = new QTableWidgetItem(sub.c_str());
+            QTableWidgetItem* msubTableItem = new QTableWidgetItem(msub.c_str());
 
             // set the items in the motion table
             mMotionTable->setItem(i, 2, subTableItem);
@@ -726,7 +726,7 @@ namespace EMStudio
         MCore::CommandGroup commandGroup(groupName);
 
         // add in each selected motion set
-        MCore::String motionName;
+        AZStd::string motionName;
         for (uint32 m = 0; m < numSelectedMotionSets; ++m)
         {
             EMotionFX::MotionSet* motionSet = selectedMotionSets[m];
@@ -743,7 +743,7 @@ namespace EMStudio
                 EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&motionName);
 
                 // construct and call the command for actually adding it
-                CommandSystem::AddMotionSetEntry(motionSet->GetID(), "", idStrings, motionName.AsChar(), &commandGroup);
+                CommandSystem::AddMotionSetEntry(motionSet->GetID(), "", idStrings, motionName.c_str(), &commandGroup);
             }
         }
 
@@ -827,14 +827,6 @@ namespace EMStudio
             QAction* saveAction = menu.addAction("Save Selected Motions");
             saveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.png"));
             connect(saveAction, SIGNAL(triggered()), this, SLOT(OnSave()));
-
-            menu.addSeparator();
-
-            // data scaling
-            QAction* scaleAction = menu.addAction("Scale Motion Data");
-            scaleAction->setToolTip("<b>Scale Motion Data:</b><br>This will scale all internal data of the motion. This adjusts all pose and keyframe position values.");
-            scaleAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Rendering/Scale.png"));
-            connect(scaleAction, SIGNAL(triggered()), GetMainWindow(), SLOT(OnScaleSelectedMotions()));
         }
 
         // show the menu at the given position
@@ -955,7 +947,7 @@ namespace EMStudio
     void MotionListWindow::OnStopAllMotionsButton()
     {
         // execute the command
-        MCore::String outResult;
+        AZStd::string outResult;
         GetCommandManager()->ExecuteCommand("StopAllMotionInstances", outResult);
     }
 
@@ -988,20 +980,20 @@ namespace EMStudio
         const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
 
         // get the number of selected motions and return directly if there are no motions selected
-        MCore::String textData, command;
+        AZStd::string textData, command;
         const uint32 numMotions = selectionList.GetNumSelectedMotions();
         for (uint32 i = 0; i < numMotions; ++i)
         {
             EMotionFX::Motion* motion = selectionList.GetMotion(i);
 
             // construct the drag&drop data string
-            command.Format("-window \"MotionWindow\" -motionID %i\n", motion->GetID());
+            command = AZStd::string::format("-window \"MotionWindow\" -motionID %i\n", motion->GetID());
             textData += command;
         }
 
         // create the data, set the text and return it
         QMimeData* mimeData = new QMimeData();
-        mimeData->setText(textData.AsChar());
+        mimeData->setText(textData.c_str());
         return mimeData;
     }
 

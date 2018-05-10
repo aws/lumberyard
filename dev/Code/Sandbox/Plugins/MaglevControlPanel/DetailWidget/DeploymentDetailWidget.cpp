@@ -29,8 +29,8 @@
 #include <QPushButton>
 
 
-DeploymentDetailWidget::DeploymentDetailWidget(ResourceManagementView* view, QSharedPointer<IDeploymentStatusModel> deploymentStatusModel)
-    : DetailWidget{view}
+DeploymentDetailWidget::DeploymentDetailWidget(ResourceManagementView* view, QSharedPointer<IDeploymentStatusModel> deploymentStatusModel, QWidget* parent)
+    : DetailWidget{view, parent}
     , m_deploymentStatusModel{deploymentStatusModel}
 {
     setObjectName("Deployment");
@@ -50,7 +50,7 @@ void DeploymentDetailWidget::UpdateUI()
     switch (m_view->GetResourceManager()->GetInitializationState())
     {
     case IAWSResourceManager::InitializationState::UnknownState:
-        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view}; });
+        m_layout.SetWidget(State::Loading, [this](){ return new LoadingWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::InitializingState:
@@ -59,15 +59,15 @@ void DeploymentDetailWidget::UpdateUI()
         break;
 
     case IAWSResourceManager::InitializationState::InitializedState:
-        m_layout.SetWidget(State::Status, [this](){ return new DeploymentStatusWidget {m_view, m_deploymentStatusModel}; });
+        m_layout.SetWidget(State::Status, [this](){ return new DeploymentStatusWidget {m_view, m_deploymentStatusModel, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::NoProfileState:
-        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view}; });
+        m_layout.SetWidget(State::NoProfile, [this](){ return new NoProfileWidget {m_view, this}; });
         break;
 
     case IAWSResourceManager::InitializationState::ErrorLoadingState:
-        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget{m_view}; });
+        m_layout.SetWidget(State::Error, [&](){ return new LoadingErrorWidget{m_view, this}; });
         break;
 
     default:

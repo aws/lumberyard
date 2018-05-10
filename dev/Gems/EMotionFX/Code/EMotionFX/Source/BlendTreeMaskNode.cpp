@@ -380,7 +380,7 @@ namespace EMotionFX
                 Skeleton* skeleton = actor->GetSkeleton();
                 for (uint32 a = 0; a < numNodes; ++a)
                 {
-                    Node* node = skeleton->FindNodeByName(nodeMask->GetNode(a).mName.AsChar());
+                    Node* node = skeleton->FindNodeByName(nodeMask->GetNode(a).mName.c_str());
                     if (node)
                     {
                         nodeIndices.Add(node->GetNodeIndex());

@@ -23,6 +23,13 @@
 namespace ATG
 {
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define WAVEFILE_CPP_SECTION_1 1
+#define WAVEFILE_CPP_SECTION_2 2
+#endif
+
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                              \
 	((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |       \
@@ -385,12 +392,20 @@ namespace ATG
 	//--------------------------------------------------------------------------------------
 	// Name: GetFormat()
 	// Desc: Gets the wave file format.
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WAVEFILE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(WaveFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 	//--------------------------------------------------------------------------------------
 	HRESULT WaveFileMemory::GetFormat( WAVEFORMATEXTENSIBLE* pwfxFormat ) const
 	{
 		assert( pwfxFormat );
 		DWORD dwValidSize = m_FormatChunk.GetDataSize();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION WAVEFILE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(WaveFile_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 		assert( dwValidSize <= sizeof(WAVEFORMATEXTENSIBLE) );
 
 		char *buffer = new char[dwValidSize];

@@ -56,7 +56,9 @@ namespace AzGameFramework
 
         components.insert(components.end(), std::initializer_list<AZ::Uuid>{
             azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),
+#if !defined(_RELEASE)
             azrtti_typeid<AzFramework::TargetManagementComponent>(),
+#endif
             azrtti_typeid<AzFramework::DrillToFileComponent>(),
         });
 

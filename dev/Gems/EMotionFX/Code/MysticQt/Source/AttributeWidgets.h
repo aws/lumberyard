@@ -16,7 +16,6 @@
 // include required headers
 #include "MysticQtConfig.h"
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/AttributeBool.h>
 #include <MCore/Source/AttributeInt32.h>

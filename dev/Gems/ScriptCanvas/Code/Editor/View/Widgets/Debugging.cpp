@@ -49,9 +49,10 @@ namespace ScriptCanvasEditor
         void Debugging::onConnectReleased()
         {
             // TODO: Send the ID of the graph to attach
-            AZ::EntityId graphId;
-            ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(graphId, &ScriptCanvasEditor::GeneralRequests::GetActiveGraphId);
-            if (!graphId.IsValid())
+            AZ::EntityId scriptCanvasSceneId;
+            ScriptCanvasEditor::GeneralRequestBus::BroadcastResult(scriptCanvasSceneId, &ScriptCanvasEditor::GeneralRequests::GetActiveScriptCanvasGraphId);
+
+            if (!scriptCanvasSceneId.IsValid())
             {
                 // Do nothing
                 return;
@@ -77,12 +78,12 @@ namespace ScriptCanvasEditor
             
                 ScriptCanvas::Debugger::NotificationBus::Handler::BusConnect();
 
-                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Attach, graphId);
+                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Attach, scriptCanvasSceneId);
             }
             else
             {
                 // Request the debugger to detach
-                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Detach, graphId);
+                ScriptCanvas::Debugger::ConnectionRequestBus::Broadcast(&ScriptCanvas::Debugger::ConnectionRequests::Detach, scriptCanvasSceneId);
             }
 
 

@@ -32,13 +32,13 @@
 
 #include <SystemComponent.h>
 
-#include <Builder/CoreBuilderSystemComponent.h>
 #include <ScriptCanvas/Core/Graph.h>
 #include <ScriptCanvas/Data/DataRegistry.h>
 
 #include <ScriptCanvas/Libraries/Libraries.h>
 
 #include <ScriptCanvas/Debugger/Debugger.h>
+#include <ScriptCanvas/Variable/GraphVariableManagerComponent.h>
 
 namespace ScriptCanvas
 {

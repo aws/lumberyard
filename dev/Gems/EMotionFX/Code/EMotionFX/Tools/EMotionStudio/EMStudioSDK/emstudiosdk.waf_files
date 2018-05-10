@@ -62,9 +62,7 @@
             "Source/MotionSetSelectionWindow.cpp",
             "Source/MotionSetSelectionWindow.h",
             "Source/UnitScaleWindow.cpp",
-            "Source/UnitScaleWindow.h",
-            "Source/UnitSetupWindow.cpp",
-            "Source/UnitSetupWindow.h"
+            "Source/UnitScaleWindow.h"
         ],
         "EmotionFXTools/EMStudioSDK/RenderPlugin": [
             "Source/RenderPlugin/CommandCallbacks.cpp",

@@ -15,6 +15,7 @@
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/ActorManager.h>
+#include <EMotionFX/Source/MorphTarget.h>
 
 
 namespace CommandSystem
@@ -28,6 +29,7 @@ namespace CommandSystem
         mSelectedMotionInstances.SetMemoryCategory(MEMCATEGORY_COMMANDSYSTEM);
         mSelectedMotions.SetMemoryCategory(MEMCATEGORY_COMMANDSYSTEM);
         mSelectedAnimGraphs.SetMemoryCategory(MEMCATEGORY_COMMANDSYSTEM);
+        mSelectedMorphTargets.SetMemoryCategory(MEMCATEGORY_COMMANDSYSTEM);
     }
 
 
@@ -96,6 +98,13 @@ namespace CommandSystem
         }
     }
 
+    void SelectionList::AddMorphTarget(EMotionFX::MorphTarget* morphTarget)
+    {
+        if (!CheckIfHasMorphTarget(morphTarget))
+        {
+            mSelectedMorphTargets.Add(morphTarget);
+        }
+    }
 
     // add a complete selection list to this one
     void SelectionList::Add(SelectionList& selection)
@@ -108,7 +117,8 @@ namespace CommandSystem
         const uint32 numSelectedActorInstances  = selection.GetNumSelectedActorInstances();
         const uint32 numSelectedMotions         = selection.GetNumSelectedMotions();
         const uint32 numSelectedMotionInstances = selection.GetNumSelectedMotionInstances();
-        const uint32 numSelectedAnimGraphs     = selection.GetNumSelectedAnimGraphs();
+        const uint32 numSelectedAnimGraphs      = selection.GetNumSelectedAnimGraphs();
+        const uint32 numSelectedMorphTargets    = selection.GetNumSelectedMorphTargets();
 
         // iterate through all nodes and select them
         for (i = 0; i < numSelectedNodes; ++i)
@@ -145,6 +155,11 @@ namespace CommandSystem
         {
             AddAnimGraph(selection.GetAnimGraph(i));
         }
+
+        for (i = 0; i < numSelectedMorphTargets; ++i)
+        {
+            AddMorphTarget(selection.GetMorphTarget(i));
+        }
     }
 
 
@@ -159,7 +174,8 @@ namespace CommandSystem
         const uint32 numSelectedActors          = GetNumSelectedActors();
         const uint32 numSelectedMotions         = GetNumSelectedMotions();
         const uint32 numSelectedMotionInstances = GetNumSelectedMotionInstances();
-        const uint32 numSelectedAnimGraphs     = GetNumSelectedAnimGraphs();
+        const uint32 numSelectedAnimGraphs      = GetNumSelectedAnimGraphs();
+        const uint32 numSelectedMorphTargets    = GetNumSelectedMorphTargets();
 
         MCore::LogInfo("SelectionList:");
 
@@ -200,6 +216,13 @@ namespace CommandSystem
         for (i = 0; i < numSelectedAnimGraphs; ++i)
         {
             MCore::LogInfo("    + AnimGraph #%.3d: name='%s'", i, GetAnimGraph(i)->GetName());
+        }
+
+        // iterate through all morph targets and select them
+        MCore::LogInfo(" - MorphTargets (%i)", numSelectedMorphTargets);
+        for (i = 0; i < numSelectedMorphTargets; ++i)
+        {
+            MCore::LogInfo("    + MorphTarget #%.3d: name='%s'", i, GetMorphTarget(i)->GetName());
         }
     }
 
@@ -275,6 +298,16 @@ namespace CommandSystem
     }
 
 
+    void SelectionList::RemoveMorphTarget(EMotionFX::MorphTarget* morphTarget)
+    {
+        const uint32 index = mSelectedMorphTargets.Find(morphTarget);
+        if (index != MCORE_INVALIDINDEX32)
+        {
+            mSelectedMorphTargets.Remove(index);
+        }
+    }
+
+
     // make the selection valid
     void SelectionList::MakeValid()
     {
@@ -284,7 +317,7 @@ namespace CommandSystem
         //for (i=0; i<numSelectedNodes; ++i)
 
         // iterate through all actors and remove the invalid ones
-        for (i = 0; i < mSelectedActors.GetLength(); )
+        for (i = 0; i < mSelectedActors.GetLength();)
         {
             EMotionFX::Actor* actor = mSelectedActors[i];
             if (EMotionFX::GetActorManager().FindActorIndex(actor) == MCORE_INVALIDINDEX32)
@@ -298,7 +331,7 @@ namespace CommandSystem
         }
 
         // iterate through all actor instances and remove the invalid ones
-        for (i = 0; i < mSelectedActorInstances.GetLength(); )
+        for (i = 0; i < mSelectedActorInstances.GetLength();)
         {
             EMotionFX::ActorInstance* actorInstance = mSelectedActorInstances[i];
 
@@ -317,7 +350,7 @@ namespace CommandSystem
         // iterate through all motion instances and remove the invalid ones
 
         // iterate through all anim graphs and remove all valid ones
-        for (i = 0; i < mSelectedAnimGraphs.GetLength(); )
+        for (i = 0; i < mSelectedAnimGraphs.GetLength();)
         {
             EMotionFX::AnimGraph* animGraph = mSelectedAnimGraphs[i];
 

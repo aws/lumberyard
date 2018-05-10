@@ -24,6 +24,12 @@
 #define MAX_EXTENSION_SIZE          (4)     // .xxx
 #define MAX_FILETITLE_SIZE          (MAX_NUMBER_STRING_SIZE + MAX_EXTENSION_SIZE + 1)   // null-terminated
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define FILEIOHANDLER_WWISE_CPP_SECTION_1 1
+#define FILEIOHANDLER_WWISE_CPP_SECTION_2 2
+#endif
+
 namespace Audio
 {
     // AkFileHandle must be able to store our AZ::IO::HandleType
@@ -37,7 +43,15 @@ namespace Audio
             return AkFileHandle(INVALID_HANDLE_VALUE);
         }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION FILEIOHANDLER_WWISE_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(FileIOHandler_wwise_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         return reinterpret_cast<AkFileHandle>(realFileHandle);
+#endif
     }
 
     AZ::IO::HandleType GetRealFileHandle(AkFileHandle akFileHandle)
@@ -47,7 +61,13 @@ namespace Audio
             return AZ::IO::InvalidHandle;
         }
 
-#if   defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION FILEIOHANDLER_WWISE_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(FileIOHandler_wwise_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_PLATFORM_APPLE)
         // On 64 bit systems, strict compilers throw an error trying to reinterpret_cast
         // from AkFileHandle (a 64 bit pointer) to AZ::IO::HandleType (a uint32_t) because:
         //

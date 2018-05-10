@@ -115,6 +115,11 @@ namespace AzToolsFramework
 
         // check if theres a notification function.
         PropertyModificationRefreshLevel DoPropertyNotify();
+        void DoEditingCompleteNotify();
+
+        // validate a change if there are validation functions specified
+        bool ShouldPreValidatePropertyChange() const;
+        bool ValidatePropertyChange(void* valueToValidate, const AZ::Uuid& valueType) const;
 
         void RefreshAttributesFromNode(bool initial);
         void ConsumeAttribute(AZ::u32 attributeName, PropertyAttributeReader& reader, bool initial, QString* descriptionOut=nullptr, bool* foundDescriptionOut=nullptr);
@@ -149,7 +154,11 @@ namespace AzToolsFramework
         int CalculateLabelWidth() const;
 
         bool IsHidden(InstanceDataNode* node) const;
-        void HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node);
+
+        struct ChangeNotification;
+        void HandleChangeNotifyAttribute(PropertyAttributeReader& reader, InstanceDataNode* node, AZStd::vector<ChangeNotification>& notifiers);
+        void HandleChangeValidateAttribute(PropertyAttributeReader& reader, InstanceDataNode* node);
+        InstanceDataNode* ResolveToNodeByType(InstanceDataNode* startNode, const AZ::Uuid& typeId) const;
 
         QHBoxLayout* m_mainLayout;
         QHBoxLayout* m_leftHandSideLayout;
@@ -178,7 +187,9 @@ namespace AzToolsFramework
             AZ::Edit::Attribute* m_attribute = nullptr;
         };
 
-        AZStd::vector<ChangeNotification> m_changeNotifiers;
+        AZStd::vector<ChangeNotification> m_changeNotifiers; 
+        AZStd::vector<ChangeNotification> m_changeValidators;
+        AZStd::vector<ChangeNotification> m_editingCompleteNotifiers;
         QSpacerItem* m_indent;
         PropertyHandlerBase* m_handler; // the CURRENT handler.
         PropertyRowWidget* m_parentRow; // not the parent widget.

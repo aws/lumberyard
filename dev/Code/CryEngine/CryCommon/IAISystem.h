@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_IAISYSTEM_H
-#define CRYINCLUDE_CRYCOMMON_IAISYSTEM_H
 #pragma once
 
 #include "SerializeFwd.h"
@@ -1052,6 +1050,9 @@ public:
     }
 
     // need to force as no_inline, else on some implementations (if cstr and dstr are inlined), we get totaly wrong numbers
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(IAISystem_h, AZ_RESTRICTED_PLATFORM)
+	#endif
     NO_INLINE ~CAILightProfileSection()
     {
         IAISystem* pAISystem = gEnv->pAISystem;
@@ -1069,6 +1070,3 @@ private:
 #else
 #define AISYSTEM_LIGHT_PROFILER()
 #endif
-
-#endif // CRYINCLUDE_CRYCOMMON_IAISYSTEM_H
-

@@ -41,7 +41,9 @@ def build(bld):
         target                  = 'CryAction',
         vs_filter               = 'CryEngine',
         copyright_org           = 'Amazon-CryTek',
-        file_list               = 'cryaction.waf_files',
+        file_list               = [
+                                    'cryaction.waf_files',
+                                  ],
         platforms               = ['all'],
         configurations          = ['all'],
         pch                     = 'StdAfx.cpp',

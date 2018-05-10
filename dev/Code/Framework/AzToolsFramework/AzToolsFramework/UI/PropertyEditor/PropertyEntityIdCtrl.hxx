@@ -38,6 +38,7 @@ namespace AzToolsFramework
     class PropertyEntityIdCtrl
         : public QWidget
         , private EditorPickModeRequests::Bus::Handler
+        , private AzToolsFramework::EditorEvents::Bus::Handler
     {
         Q_OBJECT
     public:
@@ -52,6 +53,8 @@ namespace AzToolsFramework
         QWidget* GetLastInTabOrder();
         void UpdateTabOrder();
 
+        bool SetChildWidgetsProperty(const char* name, const QVariant& variant);
+
         // QT overrides
         virtual void dragEnterEvent(QDragEnterEvent* event) override;
         virtual void dropEvent(QDropEvent* event) override;
@@ -60,8 +63,12 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // EditorPickModeRequests::Bus::Handler
         void StopObjectPickMode() override;
-        void OnPickModeSelect(AZ::EntityId /*id*/) override;
+        void OnPickModeSelect(AZ::EntityId /*id*/) override;        
         //////////////////////////////////////////////////////////////////////////
+
+        // AzToolsFramework::EditorEvents::Bus::Handler
+        void OnEscape() override;
+        ////
 
         void SetRequiredServices(const AZStd::vector<AZ::ComponentServiceType>& requiredServices);
         void SetIncompatibleServices(const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
@@ -82,6 +89,7 @@ namespace AzToolsFramework
         bool IsCorrectMimeData(const QMimeData* data) const;
         AZ::EntityId EntityIdFromMimeData(const QMimeData &data) const;
         void InitObjectPickMode();
+        void CancelObjectPickMode();
 
         QString BuildTooltip();
 

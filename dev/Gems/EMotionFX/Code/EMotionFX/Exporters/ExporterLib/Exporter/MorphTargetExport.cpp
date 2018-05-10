@@ -61,7 +61,7 @@ namespace ExporterLib
         MCore::LogDetailedInfo("    + RangeMax = %f", morphTarget->GetRangeMax());
         MCore::LogDetailedInfo("    + NumDeformDatas = %d", numDeformDatas);
         MCore::LogDetailedInfo("    + NumTransformations = %d", numTransformations);
-        MCore::LogDetailedInfo("    + PhonemesSets: %s", EMotionFX::MorphTarget::GetPhonemeSetString((EMotionFX::MorphTarget::EPhonemeSet)morphTarget->GetPhonemeSets()).AsChar());
+        MCore::LogDetailedInfo("    + PhonemesSets: %s", EMotionFX::MorphTarget::GetPhonemeSetString((EMotionFX::MorphTarget::EPhonemeSet)morphTarget->GetPhonemeSets()).c_str());
 
         // convert endian
         ConvertFloat(&morphTargetChunk.mRangeMin, targetEndianType);
@@ -309,13 +309,13 @@ namespace ExporterLib
             EMotionFX::MorphTarget* morphTarget = morphSetup->GetMorphTarget(i);
 
             // check if the name of the morph target is valid
-            if (morphTarget->GetNameString().GetIsEmpty())
+            if (morphTarget->GetNameString().empty())
             {
                 // rename the morph target
-                MCore::String morphTargetName;
-                morphTargetName.Format("Morph Target %d", MCore::GetIDGenerator().GenerateID());
-                MCore::LogWarning("The morph target has an empty name. The morph target will be automatically renamed to '%s'.", morphTargetName.AsChar());
-                morphTarget->SetName(morphTargetName.AsChar());
+                AZStd::string morphTargetName;
+                morphTargetName = AZStd::string::format("Morph Target %d", MCore::GetIDGenerator().GenerateID());
+                MCore::LogWarning("The morph target has an empty name. The morph target will be automatically renamed to '%s'.", morphTargetName.c_str());
+                morphTarget->SetName(morphTargetName.c_str());
             }
         }
 
@@ -364,14 +364,14 @@ namespace ExporterLib
     }
 
 
-    bool AddMorphTarget(EMotionFX::Actor* actor, MCore::MemoryFile* file, const MCore::String& morphTargetName, uint32 captureMode, uint32 phonemeSets, float rangeMin, float rangeMax, uint32 geomLODLevel)
+    bool AddMorphTarget(EMotionFX::Actor* actor, MCore::MemoryFile* file, const AZStd::string& morphTargetName, uint32 captureMode, uint32 phonemeSets, float rangeMin, float rangeMax, uint32 geomLODLevel)
     {
         MCORE_ASSERT(actor && file);
 
         // check if the memory file actually contains any data
         if (file->GetFileSize() <= 0)
         {
-            MCore::LogWarning("Memory file does not contain any data. Skipping morph target '%s'.", morphTargetName.AsChar());
+            MCore::LogWarning("Memory file does not contain any data. Skipping morph target '%s'.", morphTargetName.c_str());
             return false;
         }
 
@@ -395,7 +395,7 @@ namespace ExporterLib
         EMotionFX::Actor* morphTargetActor = EMotionFX::GetImporter().LoadActor(file, &loadSettings);
         if (morphTargetActor == nullptr)
         {
-            MCore::LogError("Could not load morph target '%s'.", morphTargetName.AsChar());
+            MCore::LogError("Could not load morph target '%s'.", morphTargetName.c_str());
             return false;
         }
         /*
@@ -406,12 +406,12 @@ namespace ExporterLib
             }
         */
         // set the morph target name as actor name
-        morphTargetActor->SetName(morphTargetName.AsChar());
+        morphTargetActor->SetName(morphTargetName.c_str());
 
         // check if a morph target with the same name already exists
-        if (morphSetup->FindMorphTargetByName(morphTargetName.AsChar()))
+        if (morphSetup->FindMorphTargetByName(morphTargetName.c_str()))
         {
-            MCore::LogError("Error while adding morph target. There already is a morph target named '%s'. This will lead to view errors. Please check for duplicated morph target names.", morphTargetName.AsChar());
+            MCore::LogError("Error while adding morph target. There already is a morph target named '%s'. This will lead to view errors. Please check for duplicated morph target names.", morphTargetName.c_str());
             return false;
         }
 
@@ -420,19 +420,19 @@ namespace ExporterLib
         switch (captureMode)
         {
         case 0: // transforms
-            morphTarget = EMotionFX::MorphTargetStandard::Create(true, false, actor, morphTargetActor, morphTargetName.AsChar());
+            morphTarget = EMotionFX::MorphTargetStandard::Create(true, false, actor, morphTargetActor, morphTargetName.c_str());
             break;
 
         case 1: // mesh deforms
-            morphTarget = EMotionFX::MorphTargetStandard::Create(false, true, actor, morphTargetActor, morphTargetName.AsChar());
+            morphTarget = EMotionFX::MorphTargetStandard::Create(false, true, actor, morphTargetActor, morphTargetName.c_str());
             break;
 
         case 2: // both
-            morphTarget = EMotionFX::MorphTargetStandard::Create(true, true, actor, morphTargetActor, morphTargetName.AsChar());
+            morphTarget = EMotionFX::MorphTargetStandard::Create(true, true, actor, morphTargetActor, morphTargetName.c_str());
             break;
 
         default:
-            MCore::LogError("Capture mode undefined for '%s'", morphTargetName.AsChar());
+            MCore::LogError("Capture mode undefined for '%s'", morphTargetName.c_str());
             return false;
         }
 
@@ -448,7 +448,7 @@ namespace ExporterLib
         }
         else
         {
-            MCore::LogWarning("Skipping morph target '%s' as it doesn't contain any transformations as well as deform datas.", morphTargetName.AsChar());
+            MCore::LogWarning("Skipping morph target '%s' as it doesn't contain any transformations as well as deform datas.", morphTargetName.c_str());
             morphTarget->Destroy();
         }
 

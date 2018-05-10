@@ -17,7 +17,6 @@
 #include <Components/StylingComponent.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
-#include <GraphCanvas/Components/Nodes/Variable/VariableNodeBus.h>
 
 namespace GraphCanvas
 {
@@ -36,12 +35,12 @@ namespace GraphCanvas
         }
     }
 
-    AZ::Entity* DataConnectionComponent::CreateDataConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, const AZStd::string& substyle)
+    AZ::Entity* DataConnectionComponent::CreateDataConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection, const AZStd::string& substyle)
     {
         // Create this Connection's entity.
         AZ::Entity* entity = aznew AZ::Entity("Connection");
 
-        entity->CreateComponent<DataConnectionComponent>(sourceEndpoint, targetEndpoint);
+        entity->CreateComponent<DataConnectionComponent>(sourceEndpoint, targetEndpoint, createModelConnection);
         entity->CreateComponent<StylingComponent>(Styling::Elements::Connection, AZ::EntityId(), substyle);
         entity->CreateComponent<DataConnectionVisualComponent>();
 
@@ -51,8 +50,8 @@ namespace GraphCanvas
         return entity;
     }
     
-    DataConnectionComponent::DataConnectionComponent(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
-        : ConnectionComponent(sourceEndpoint, targetEndpoint)
+    DataConnectionComponent::DataConnectionComponent(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection)
+        : ConnectionComponent(sourceEndpoint, targetEndpoint, createModelConnection)
     {
     }
 

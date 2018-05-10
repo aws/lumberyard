@@ -25,7 +25,7 @@ class DeploymentDetailWidget
 
 public:
 
-    DeploymentDetailWidget(ResourceManagementView* view, QSharedPointer<IDeploymentStatusModel> deploymentStatusModel);
+    DeploymentDetailWidget(ResourceManagementView* view, QSharedPointer<IDeploymentStatusModel> deploymentStatusModel, QWidget* parent = nullptr);
 
     void show() override;
 

@@ -13,7 +13,6 @@
 #pragma once
 
 // include MCore
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Color.h>
 #include <MCore/Source/CommandGroup.h>
 #include <MCore/Source/CommandManagerCallback.h>
@@ -63,7 +62,7 @@ namespace EMStudio
         EMStudioManager(QApplication* app, int& argc, char* argv[]);
         ~EMStudioManager();
 
-        const char* GetCompileDate() const                                      { return mCompileDate.AsChar(); }
+        const char* GetCompileDate() const                                      { return mCompileDate.c_str(); }
 
         MCORE_INLINE QApplication* GetApp()                                     { return mApp; }
         MCORE_INLINE bool HasMainWindow() const                                 { return !mMainWindow.isNull(); }
@@ -73,9 +72,9 @@ namespace EMStudio
         MCORE_INLINE OutlinerManager* GetOutlinerManager()                      { return mOutlinerManager; }
         MCORE_INLINE NotificationWindowManager* GetNotificationWindowManager()  { return mNotificationWindowManager; }
         MCORE_INLINE CommandSystem::CommandManager* GetCommandManager()         { return mCommandManager; }
-        MCore::String GetAppDataFolder() const;
-        MCore::String GetRecoverFolder() const;
-        MCore::String GetAutosavesFolder() const;
+        AZStd::string GetAppDataFolder() const;
+        AZStd::string GetRecoverFolder() const;
+        AZStd::string GetAutosavesFolder() const;
 
         // text rendering helper function
         static void RenderText(QPainter& painter, const QString& text, const QColor& textColor, const QFont& font, const QFontMetrics& fontMetrics, Qt::Alignment textAlignment, const QRect& rect);
@@ -123,12 +122,12 @@ namespace EMStudio
         OutlinerManager*                    mOutlinerManager;
         NotificationWindowManager*          mNotificationWindowManager;
         CommandSystem::CommandManager*      mCommandManager;
-        MCore::String                       mCompileDate;
+        AZStd::string                       mCompileDate;
         MCore::Array<uint32>                mVisibleNodeIndices;        // node name rendering filter
         MCore::Array<uint32>                mSelectedNodeIndices;       // node name rendering filter
         Workspace                           mWorkspace;
         bool                                mAutoLoadLastWorkspace;
-        MCore::String                       mHTMLLinkString;
+        AZStd::string                       mHTMLLinkString;
         bool                                mAvoidRendering;
         MotionEventPresetManager*           mEventPresetManager;
 
@@ -139,7 +138,7 @@ namespace EMStudio
 
         public:
             void OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override;
-            void OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const MCore::String& outResult) override;
+            void OnPostExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult) override;
             void OnPreExecuteCommandGroup(MCore::CommandGroup* group, bool undo) override                                                                                                       { MCORE_UNUSED(group); MCORE_UNUSED(undo); }
             void OnPostExecuteCommandGroup(MCore::CommandGroup* group, bool wasSuccess) override                                                                                                { MCORE_UNUSED(group); MCORE_UNUSED(wasSuccess); }
             void OnAddCommandToHistory(uint32 historyIndex, MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override                                { MCORE_UNUSED(historyIndex); MCORE_UNUSED(group); MCORE_UNUSED(command); MCORE_UNUSED(commandLine); }

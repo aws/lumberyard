@@ -16,7 +16,7 @@
 #include "StandardHeaders.h"
 #include "Attribute.h"
 #include "Vector.h"
-
+#include "StringConversions.h"
 
 namespace MCore
 {
@@ -59,16 +59,17 @@ namespace MCore
             mValue = static_cast<const AttributeVector3*>(other)->GetValue();
             return true;
         }
-        bool InitFromString(const String& valueString) override
+        bool InitFromString(const AZStd::string& valueString) override
         {
-            if (valueString.CheckIfIsValidVector3() == false)
+            AZ::Vector3 vec3;
+            if (!AzFramework::StringFunc::LooksLikeVector3(valueString.c_str(), &vec3))
             {
                 return false;
             }
-            mValue = valueString.ToVector3();
+            mValue.Set(vec3.GetX(), vec3.GetY(), vec3.GetZ());
             return true;
         }
-        bool ConvertToString(String& outString) const override      { outString.FromVector3(AZ::Vector3(mValue)); return true; }
+        bool ConvertToString(AZStd::string& outString) const override      { AZStd::to_string(outString, AZ::Vector3(mValue)); return true; }
         uint32 GetClassSize() const override                        { return sizeof(AttributeVector3); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_VECTOR3; }
         void Scale(float scaleFactor) override                      { mValue = AZ::PackedVector3f(AZ::Vector3(mValue) * scaleFactor); }

@@ -47,9 +47,7 @@ function AWSBehaviorHTTPTest:GetResponse(responseCode, headerMap, contentType, r
     Debug.Log("\tContent Type: " .. contentType)
     Debug.Log("\tResponse Body: " .. responseBody)
 
-    local headerStringMap = StringMap()
-    headerStringMap.map = headerMap
-    headerStringMap:LogToDebugger()
+    headerMap:LogToDebugger()
 
 end
 

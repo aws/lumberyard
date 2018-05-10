@@ -19,5 +19,3 @@
 #include <ScriptCanvas/Core/Attributes.h>
 
 #define NOMINMAX
-
-

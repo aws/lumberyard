@@ -80,7 +80,7 @@ namespace CloudGemSpeechRecognition
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {
-            serialize->Class<VoiceRecorderSystemComponent>()
+            serialize->Class<VoiceRecorderSystemComponent, AZ::Component>()
                 ->Version(1)
                 ;
         

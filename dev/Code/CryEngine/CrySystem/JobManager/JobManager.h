@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYSYSTEM_JOBMANAGER_JOBMANAGER_H
-#define CRYINCLUDE_CRYSYSTEM_JOBMANAGER_JOBMANAGER_H
 #pragma once
 
 
@@ -276,6 +274,9 @@ namespace JobManager
 
         IBackend*               m_pFallBackBackEnd;             // Backend for development, jobs are executed in their calling thread
 	// Backend for regular jobs, available on PC
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(JobManager_h, AZ_RESTRICTED_PLATFORM)
+#endif
         IBackend*               m_pThreadBackEnd;
         IBackend*               m_pBlockingBackEnd;             // Backend for tasks which can block to prevent stalling regular jobs in this case
 
@@ -336,5 +337,3 @@ inline void JobManager::CJobManager::IncreaseRunFallbackJobs()
 {
     CryInterlockedIncrement((int volatile*)&m_nFallbackJobsRunCounter);
 }
-
-#endif //__JOBMAN_SPU_H

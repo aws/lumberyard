@@ -44,7 +44,7 @@ namespace MysticQt
         layout->setSizeConstraint(QLayout::SetNoConstraint);
         innerWidget->setLayout(layout);
 
-        QPixmap handleImage(MCore::String(GetMysticQt()->GetDataDir() + "Images/DockHandle.png").AsChar());
+        QPixmap handleImage(AZStd::string(GetMysticQt()->GetDataDir() + "Images/DockHandle.png").c_str());
         QLabel* handle = new QLabel();
         handle->setPixmap(handleImage);
         handle->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);

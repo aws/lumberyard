@@ -16,7 +16,6 @@
 // include required headers
 #include "EMStudioConfig.h"
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include <MysticQt/Source/PropertyWidget.h>
 #include <QDialog>
 
@@ -45,7 +44,7 @@ namespace EMStudio
             QWidget *                    mWidget;
             MysticQt::PropertyWidget*   mPropertyWidget;
             QListWidgetItem*            mListWidgetItem;
-            MCore::String               mName;
+            AZStd::string               mName;
         };
 
         PreferencesWindow(QWidget* parent);
@@ -58,8 +57,8 @@ namespace EMStudio
 
         MCORE_INLINE Category* GetCategory(uint32 index)                                                    { return mCategories[index]; }
         MCORE_INLINE uint32 GetNumCategories()                                                              { return mCategories.GetLength(); }
-        Category* FindCategoryByName(const char* categoryName);
-        MCORE_INLINE MysticQt::PropertyWidget* FindPropertyWidgetByName(const char* categoryName)
+        Category* FindCategoryByName(const char* categoryName) const;
+        MCORE_INLINE MysticQt::PropertyWidget* FindPropertyWidgetByName(const char* categoryName) const
         {
             Category* category = FindCategoryByName(categoryName);
             if (category == nullptr)

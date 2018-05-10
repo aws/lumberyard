@@ -45,11 +45,30 @@ namespace ScriptCanvas
 
             }
 
+            void DrawTextNode::OnInputChanged(const Datum&, const SlotId& slotId)
+            {
+                ScriptCanvas::SlotId textSlotId = DrawTextNodeProperty::GetTextSlotId(this);
+                if (slotId == textSlotId)
+                {
+                    m_text = DrawTextNodeProperty::GetText(this);
+                }
+            }
+
             void DrawTextNode::OnDebugDraw(IRenderer* renderer)
             {
 #if defined(SCRIPTCANVASDIAGNOSTICSLIBRARY_EDITOR)
 
                 if (!renderer)
+                {
+                    return;
+                }
+
+                if (m_text.empty())
+                {
+                    m_text = DrawTextNodeProperty::GetText(this);
+                }
+
+                if (m_text.empty())
                 {
                     return;
                 }
@@ -86,19 +105,7 @@ namespace ScriptCanvas
 
                 ti.flags |= DrawTextNodeProperty::GetCentered(this) ? eDrawText_Center | eDrawText_CenterV : 0;
 
-                ScriptCanvas::SlotId textSlotId = DrawTextNodeProperty::GetTextSlotId(this);
-                const Datum* input = GetInput(textSlotId);
-
-                AZStd::string text;
-                if (input && !input->Empty())
-                {
-                    input->ToString(text);
-                }
-
-                if (!text.empty())
-                {
-                    renderer->DrawTextQueued(Vec3(x, y, 0.5f), ti, text.c_str());
-                }
+                renderer->DrawTextQueued(Vec3(x, y, 0.5f), ti, m_text.c_str());
 #endif
             }
         }

@@ -101,7 +101,7 @@ namespace EMStudio
         bool operator<(const EMStudioPlugin& plugin)                                        { return GetProcessFramePriority() < plugin.GetProcessFramePriority(); }
         bool operator>(const EMStudioPlugin& plugin)                                        { return GetProcessFramePriority() > plugin.GetProcessFramePriority(); }
 
-        virtual bool GetHasWindowWithObjectName(const MCore::String& objectName) = 0;
+        virtual bool GetHasWindowWithObjectName(const AZStd::string& objectName) = 0;
 
         virtual QString GetObjectName() const = 0;
         virtual void SetObjectName(const QString& objectName) = 0;

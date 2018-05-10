@@ -51,7 +51,7 @@ namespace AzToolsFramework
 
         void SourceThumbnail::LoadThread()
         {
-            auto sourceKey = qobject_cast<const SourceThumbnailKey*>(m_key);
+            auto sourceKey = azrtti_cast<const SourceThumbnailKey*>(m_key.data());
             AZ_Assert(sourceKey, "Incorrect key type, excpected SourceThumbnailKey");
 
             QString finalPath = QString::fromUtf8(sourceKey->GetFileName().c_str());
@@ -82,7 +82,7 @@ namespace AzToolsFramework
 
         bool SourceThumbnailCache::IsSupportedThumbnail(SharedThumbnailKey key) const
         {
-            return qobject_cast<const SourceThumbnailKey*>(key.data());
+            return azrtti_istypeof<const SourceThumbnailKey*>(key.data());
         }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

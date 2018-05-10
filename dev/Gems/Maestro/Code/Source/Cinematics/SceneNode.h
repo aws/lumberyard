@@ -141,8 +141,9 @@ private:
     int m_lastConsoleKey;
     int m_lastSequenceKey;
     int m_nLastGotoKey;
-    int m_lastCaptureKey;
+    int m_lastCaptureKey;    
     bool m_bLastCapturingEnded;
+    int m_captureFrameCount;
     bool m_sequenceTrackUpConverted = false;
 
     // used for legacy cameras only for clearing trigger area flags in OnReset;

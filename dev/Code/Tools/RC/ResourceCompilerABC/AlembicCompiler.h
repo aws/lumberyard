@@ -189,6 +189,8 @@ private:
     string GetOutputFileNameOnly() const;
     string GetOutputPath() const;
 
+    uint32_t GetIndex(Alembic::AbcGeom::GeometryScope geomScope, const Alembic::Abc::UInt32ArraySamplePtr& normalIndices, size_t currentIndexArraysIndex, int32_t positionIndex);
+
     bool CheckTimeSampling(Alembic::Abc::IArchive& archive);
     void OutputTimeSamplingType(const Alembic::Abc::TimeSamplingType& timeSamplingType);
 

@@ -12,14 +12,72 @@
 
 #include "LmbrCentral_precompiled.h"
 #include "CapsuleShapeComponent.h"
-#include <MathConversion.h>
-#include <AzCore/Math/IntersectPoint.h>
-#include <AzCore/Math/Transform.h>
+
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <Shape/ShapeComponentConverters.h>
+#include <Shape/ShapeDisplay.h>
 
 namespace LmbrCentral
 {
+    void CapsuleShapeDebugDisplayComponent::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<CapsuleShapeDebugDisplayComponent, EntityDebugDisplayComponent>()
+                ->Version(1)
+                ->Field("Configuration", &CapsuleShapeDebugDisplayComponent::m_capsuleShapeConfig)
+                ;
+        }
+    }
+
+    void CapsuleShapeDebugDisplayComponent::Activate()
+    {
+        EntityDebugDisplayComponent::Activate();
+        GenerateVertices();
+    }
+    
+    void CapsuleShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* /*displayContext*/)
+    {
+        DrawShape(g_defaultShapeDrawParams, m_capsuleShapeMesh);
+    }
+
+    bool CapsuleShapeDebugDisplayComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
+    {
+        if (const auto config = azrtti_cast<const CapsuleShapeConfig*>(baseConfig))
+        {
+            m_capsuleShapeConfig = *config;
+            return true;
+        }
+        return false;
+    }
+
+    bool CapsuleShapeDebugDisplayComponent::WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const
+    {
+        if (auto outConfig = azrtti_cast<CapsuleShapeConfig*>(outBaseConfig))
+        {
+            *outConfig = m_capsuleShapeConfig;
+            return true;
+        }
+        return false;
+    }
+
+    void CapsuleShapeDebugDisplayComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
+    {
+        EntityDebugDisplayComponent::OnTransformChanged(local, world);
+        GenerateVertices();
+    }
+
+    void CapsuleShapeDebugDisplayComponent::GenerateVertices()
+    {
+        GenerateCapsuleMesh(
+            GetCurrentTransform(), m_capsuleShapeConfig.m_radius, m_capsuleShapeConfig.m_height,
+            g_capsuleDebugShapeSides, g_capsuleDebugShapeCapSegments, m_capsuleShapeMesh.m_vertexBuffer, m_capsuleShapeMesh.m_indexBuffer,
+            m_capsuleShapeMesh.m_lineBuffer);
+    }
+
+
     namespace ClassConverters
     {
         static bool DeprecateCapsuleColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
@@ -28,15 +86,14 @@ namespace LmbrCentral
 
     void CapsuleShapeConfig::Reflect(AZ::ReflectContext* context)
     {
-        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             // Deprecate: CapsuleColliderConfiguration -> CapsuleShapeConfig
             serializeContext->ClassDeprecate(
                 "CapsuleColliderConfiguration",
                 "{902BCDA9-C9E5-429C-991B-74C241ED2889}",
-                &ClassConverters::DeprecateCapsuleColliderConfiguration
-                );
+                &ClassConverters::DeprecateCapsuleColliderConfiguration)
+                ;
 
             serializeContext->Class<CapsuleShapeConfig>()
                 ->Version(1)
@@ -44,12 +101,11 @@ namespace LmbrCentral
                 ->Field("Radius", &CapsuleShapeConfig::m_radius)
                 ;
 
-            AZ::EditContext* editContext = serializeContext->GetEditContext();
-            if (editContext)
+            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<CapsuleShapeConfig>("Configuration", "Capsule shape configuration parameters")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CapsuleShapeConfig::m_height, "Height", "End to end height of capsule, this includes the cylinder and both caps")
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
@@ -58,12 +114,11 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 0.05f)
-                    ;
+                        ;
             }
         }
 
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
-        if (behaviorContext)
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Class<CapsuleShapeConfig>()
                 ->Property("Height", BehaviorValueProperty(&CapsuleShapeConfig::m_height))
@@ -74,10 +129,9 @@ namespace LmbrCentral
 
     void CapsuleShapeComponent::Reflect(AZ::ReflectContext* context)
     {
-        CapsuleShapeConfig::Reflect(context);
+        CapsuleShape::Reflect(context);
 
-        auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             // Deprecate: CapsuleColliderComponent -> CapsuleShapeComponent
             serializeContext->ClassDeprecate(
@@ -87,13 +141,12 @@ namespace LmbrCentral
                 );
 
             serializeContext->Class<CapsuleShapeComponent, AZ::Component>()
-                ->Version(1)
-                ->Field("Configuration", &CapsuleShapeComponent::m_configuration)
+                ->Version(2, &ClassConverters::UpgradeCapsuleShapeComponent)
+                ->Field("CapsuleShape", &CapsuleShapeComponent::m_capsuleShape)
                 ;
         }
 
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
-        if (behaviorContext)
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Constant("CapsuleShapeComponentTypeId", BehaviorConstant(CapsuleShapeComponentTypeId));
 
@@ -103,24 +156,23 @@ namespace LmbrCentral
                 ->Event("SetRadius", &CapsuleShapeComponentRequestsBus::Events::SetRadius)
                 ;
         }
-
     }
 
     void CapsuleShapeComponent::Activate()
     {
-        CapsuleShape::Activate(GetEntityId());
+        m_capsuleShape.Activate(GetEntityId());
     }
 
     void CapsuleShapeComponent::Deactivate()
     {
-        CapsuleShape::Deactivate();
+        m_capsuleShape.Deactivate();
     }
 
     bool CapsuleShapeComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
     {
-        if (auto config = azrtti_cast<const CapsuleShapeConfig*>(baseConfig))
+        if (const auto config = azrtti_cast<const CapsuleShapeConfig*>(baseConfig))
         {
-            m_configuration = *config;
+            m_capsuleShape.SetCapsuleConfiguration(*config);
             return true;
         }
         return false;
@@ -130,13 +182,12 @@ namespace LmbrCentral
     {
         if (auto outConfig = azrtti_cast<CapsuleShapeConfig*>(outBaseConfig))
         {
-            *outConfig = m_configuration;
+            *outConfig = m_capsuleShape.GetCapsuleConfiguration();
             return true;
         }
         return false;
     }
 
-    //////////////////////////////////////////////////////////////////////////
     namespace ClassConverters
     {
         static bool DeprecateCapsuleColliderConfiguration(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
@@ -172,7 +223,7 @@ namespace LmbrCentral
             }
 
             // Convert to CapsuleShapeConfig
-            bool result = classElement.Convert<CapsuleShapeConfig>(context);
+            const bool result = classElement.Convert<CapsuleShapeConfig>(context);
             if (result)
             {
                 int newIndex = classElement.AddElement<float>(context, "Height");
@@ -180,14 +231,19 @@ namespace LmbrCentral
                 {
                     classElement.GetSubElement(newIndex).SetData<float>(context, oldHeight);
                 }
+                else
+                {
+                    return false;
+                }
 
                 newIndex = classElement.AddElement<float>(context, "Radius");
                 if (newIndex != -1)
                 {
                     classElement.GetSubElement(newIndex).SetData<float>(context, oldRadius);
+                    return true;
                 }
-                return true;
             }
+
             return false;
         }
 
@@ -220,7 +276,7 @@ namespace LmbrCentral
             }
 
             // Convert to CapsuleShapeComponent
-            bool result = classElement.Convert<CapsuleShapeComponent>(context);
+            const bool result = classElement.Convert<CapsuleShapeComponent>(context);
             if (result)
             {
                 configIndex = classElement.AddElement<CapsuleShapeConfig>(context, "Configuration");
@@ -234,5 +290,4 @@ namespace LmbrCentral
         }
 
     } // namespace ClassConverters
-
 } // namespace LmbrCentral

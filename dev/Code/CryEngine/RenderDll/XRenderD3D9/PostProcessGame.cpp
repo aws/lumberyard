@@ -569,8 +569,8 @@ void CScreenBlood::Render()
 void ScreenFader::Render()
 {
     // CD3D9Renderer::Draw2dImage() is based off of the "virtual screen" dimensions, not the viewport, rendertarget or renderer dimensions.
-    const unsigned int renderWidth = VIRTUAL_SCREEN_WIDTH;
-    const unsigned int renderHeight = VIRTUAL_SCREEN_HEIGHT;
+    const unsigned int renderWidth = static_cast<decltype(renderWidth)>(VIRTUAL_SCREEN_WIDTH);
+    const unsigned int renderHeight = static_cast<decltype(renderHeight)>(VIRTUAL_SCREEN_HEIGHT);
 
     // Render all of our Screen Fader passes in order.
     for ( auto passIter = m_screenPasses.begin(); passIter != m_screenPasses.end(); ++passIter )

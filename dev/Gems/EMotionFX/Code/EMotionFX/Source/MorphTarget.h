@@ -17,7 +17,7 @@
 #include "BaseObject.h"
 #include "EMotionFXManager.h"
 #include <MCore/Source/Quaternion.h>
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 
 namespace EMotionFX
@@ -90,10 +90,10 @@ namespace EMotionFX
         const char* GetName() const;
 
         /**
-         * Get the unique name of the morph target, in form of a MCore::String object.
+         * Get the unique name of the morph target, in form of a AZStd::string object.
          * @result The name of the morph target.
          */
-        const MCore::String& GetNameString() const;
+        const AZStd::string& GetNameString() const;
 
         /**
          * Set the minimum weight range value of this morph target.
@@ -181,7 +181,7 @@ namespace EMotionFX
          * @param phonemeName The name of the phoneme (e.g. "UW", TH", "EY").
          * @result The corresponding phoneme set. If the phoneme set has not been found or if it is empty the PHONEMESET_NEUTRAL_POSE value will be returned.
          */
-        static EPhonemeSet FindPhonemeSet(const MCore::String& phonemeName);
+        static EPhonemeSet FindPhonemeSet(const AZStd::string& phonemeName);
 
         /**
          * Get the name of a phoneme set from the given phoneme set type.
@@ -191,7 +191,7 @@ namespace EMotionFX
          * @param phonemeSet The phoneme set value.
          * @return String describing the given phoneme set.
          */
-        static MCore::String GetPhonemeSetString(const EPhonemeSet phonemeSet);
+        static AZStd::string GetPhonemeSetString(const EPhonemeSet phonemeSet);
 
         /**
          * Get the number of available phoneme sets inside the enum EPhonemeSet.

@@ -19,7 +19,6 @@
 #include <Libraries/Libraries.h>
 #include <algorithm>
 #include <random>
-#include "LinearInterpolation.h"
 
 #pragma warning (disable:4503) // decorated name length exceeded, name was truncated
 
@@ -118,7 +117,8 @@ namespace ScriptCanvas
                     editContext->Class<Math>("Math", "")->
                         ClassElement(AZ::Edit::ClassElements::EditorData, "")->
                         Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Libraries/Math.png")->
-                        Attribute(AZ::Edit::Attributes::CategoryStyle, ".math")
+                        Attribute(AZ::Edit::Attributes::CategoryStyle, ".math")->
+                        Attribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride, "MathNodeTitlePalette")
                         ;
                 }
             }
@@ -138,7 +138,7 @@ namespace ScriptCanvas
             AddNodeToRegistry<Math, OBB>(nodeRegistry);
             AddNodeToRegistry<Math, Plane>(nodeRegistry);           
             AddNodeToRegistry<Math, Random>(nodeRegistry);
-            AddNodeToRegistry<Math, Rotation>(nodeRegistry);
+            AddNodeToRegistry<Math, Quaternion>(nodeRegistry);
             AddNodeToRegistry<Math, Subtract>(nodeRegistry);
             AddNodeToRegistry<Math, Sum>(nodeRegistry);
             AddNodeToRegistry<Math, Transform>(nodeRegistry);
@@ -146,6 +146,7 @@ namespace ScriptCanvas
             AddNodeToRegistry<Math, Vector3>(nodeRegistry);
             AddNodeToRegistry<Math, Vector4>(nodeRegistry);
             MathRegistrar::AddToRegistry<Math>(nodeRegistry);
+            RandomNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             AABBNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             ColorNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             CrcNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
@@ -153,7 +154,7 @@ namespace ScriptCanvas
             Matrix4x4Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             OBBNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             PlaneNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
-            RotationNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
+            QuaternionNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             TransformNodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             Vector2Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
             Vector3Nodes::Registrar::AddToRegistry<Math>(nodeRegistry);
@@ -175,7 +176,7 @@ namespace ScriptCanvas
                     ScriptCanvas::Nodes::Math::OBB::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Plane::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Random::CreateDescriptor(),
-                    ScriptCanvas::Nodes::Math::Rotation::CreateDescriptor(),
+                    ScriptCanvas::Nodes::Math::Quaternion::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Subtract::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Sum::CreateDescriptor(),
                     ScriptCanvas::Nodes::Math::Transform::CreateDescriptor(),
@@ -185,6 +186,7 @@ namespace ScriptCanvas
             };
 
             MathRegistrar::AddDescriptors(descriptors);
+            RandomNodes::Registrar::AddDescriptors(descriptors);
             AABBNodes::Registrar::AddDescriptors(descriptors);
             ColorNodes::Registrar::AddDescriptors(descriptors);
             CrcNodes::Registrar::AddDescriptors(descriptors);
@@ -192,7 +194,7 @@ namespace ScriptCanvas
             Matrix4x4Nodes::Registrar::AddDescriptors(descriptors);
             OBBNodes::Registrar::AddDescriptors(descriptors);
             PlaneNodes::Registrar::AddDescriptors(descriptors);
-            RotationNodes::Registrar::AddDescriptors(descriptors);
+            QuaternionNodes::Registrar::AddDescriptors(descriptors);
             TransformNodes::Registrar::AddDescriptors(descriptors);
             Vector2Nodes::Registrar::AddDescriptors(descriptors);
             Vector3Nodes::Registrar::AddDescriptors(descriptors);

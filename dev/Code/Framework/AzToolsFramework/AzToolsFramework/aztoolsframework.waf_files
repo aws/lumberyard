@@ -29,10 +29,13 @@
             "API/EditorAssetSystemAPI.h",
             "API/AssetDatabaseBus.h",
             "API/ComponentEntityObjectBus.h",
+            "API/ComponentEntitySelectionBus.h",
             "API/EditorCameraBus.h",
+            "API/EditorAnimationSystemRequestBus.h",
             "API/EditorVegetationRequestsBus.h",
             "API/EntityCompositionRequestBus.h",
             "API/EntityCompositionNotificationBus.h",
+            "API/HyperGraphBus.h",
             "API/ViewPaneOptions.h"
         ],
         "Application": [
@@ -347,8 +350,6 @@
             "UI/PropertyEditor/ComponentEditor.cpp",
             "UI/PropertyEditor/ComponentEditorHeader.hxx",
             "UI/PropertyEditor/ComponentEditorHeader.cpp",
-            "UI/PropertyEditor/ComponentEditorNotification.hxx",
-            "UI/PropertyEditor/ComponentEditorNotification.cpp",
             "UI/PropertyEditor/DHQComboBox.hxx",
             "UI/PropertyEditor/DHQComboBox.cpp",
             "UI/PropertyEditor/DHQSlider.hxx",
@@ -456,7 +457,8 @@
             "Commands/EntityTransformCommand.cpp",
             "Commands/EntityTransformCommand.h",
             "Commands/PreemptiveUndoCache.cpp",
-            "Commands/PreemptiveUndoCache.h"
+            "Commands/PreemptiveUndoCache.h",
+            "Commands/LegacyCommand.h"
         ],
         "Viewport": [
             "Viewport/ViewportMessages.h"

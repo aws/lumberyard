@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #1 $
+# $Revision: #2 $
 
 import time
 
@@ -121,17 +121,18 @@ class StackContext(object):
 
         return res['StackId']
 
-    def create_using_template(self, stack_name, template_body, region, created_callback = None, capabilities = []):
+    def create_using_template(self, stack_name, template_body, region, created_callback = None, capabilities = [], timeoutinminutes=60):
 
         self.context.view.creating_stack(stack_name)
 
         cf = self.context.aws.client('cloudformation', region=region)
-
+        
         try:
             res = cf.create_stack(
                 StackName = stack_name,
                 TemplateBody = template_body,
-                Capabilities = capabilities
+                Capabilities = capabilities,
+                TimeoutInMinutes = timeoutinminutes
             )
         except ClientError as e:
             raise HandledError('Could not start creation of {0} stack.'.format(stack_name), e)
@@ -158,7 +159,7 @@ class StackContext(object):
         cf = self.context.aws.client('cloudformation', region=util.get_region_from_arn(stack_id))
 
         parameter_list = [ { 'ParameterKey': k, 'ParameterValue': v } for k, v in parameters.iteritems() ]
-
+        
         try:
             res = cf.update_stack(
                 StackName = stack_id,
@@ -185,13 +186,18 @@ class StackContext(object):
         monitor = Monitor(self.context, stack_id, 'DELETE')
 
         cf = self.context.aws.client('cloudformation', region=util.get_region_from_arn(stack_id))
-
-        try:
-            res = cf.delete_stack(StackName = stack_id)
-        except ClientError as e:
-            raise HandledError('Could not start delete of {} stack ({}).'.format(stack_name, stack_id), e)
-
-        monitor.wait()
+        
+        failed_resources=[]
+        attempts =0;
+        while attempts < 5:
+            try:
+                res = cf.delete_stack(StackName = stack_id, RetainResources=list(failed_resources)) 
+            except ClientError as e:
+                raise HandledError('Could not start delete of {} stack ({}).'.format(stack_name, stack_id), e)
+            failed_resources = monitor.wait()                        
+            if len(failed_resources)==0:
+                break
+            attempts+=1
 
         self.__clean_log_groups(stack_id, pending_resource_status = pending_resource_status)
 
@@ -1054,16 +1060,16 @@ class Monitor(object):
         '''Waits for the operation to complete, displaying events as they occur.'''
 
         errors = []
-
+        failed_resources = set([])
         done = False
         while not done:
 
             for monitored_stack_id in self.monitored_stacks:
-
+                
                 try:
                     res = self.client.describe_stack_events(StackName = monitored_stack_id)
                     stack_events = reversed(res['StackEvents'])
-                except ClientError as e:
+                except ClientError as e:                    
                     if e.response['Error']['Code'] == 'Throttling':
                         time.sleep(MONITOR_WAIT_SECONDS)
                         stack_events = []
@@ -1071,6 +1077,7 @@ class Monitor(object):
                         raise HandledError('Could not get events for {0} stack.'.format(self.stack_id), e)
 
                 for event in stack_events:
+                   
                     if event['EventId'] not in self.events_seen:
 
                         resource_status = event.get('ResourceStatus', None)
@@ -1095,18 +1102,31 @@ class Monitor(object):
                                 if errors:
                                     self.context.view.stack_event_errors(errors, resource_status == self.success_status);
                                 if resource_status == self.success_status:
-                                    done = True
-                                    break
-                                else:
+                                    done = True                                    
+                                else:                                    
+                                    if len(failed_resources) > 0:
+                                        return failed_resources
                                     raise HandledError("The operation failed.")
 
-                        if event['ResourceType'] == 'AWS::CloudFormation::Stack':
+                        if event['ResourceType'] == 'AWS::CloudFormation::Stack':                             
                             if resource_status in self.start_nested_stack_status and resource_status not in self.monitored_stacks:
                                 if event['PhysicalResourceId'] is not None and event['PhysicalResourceId'] != '':
                                     self.monitored_stacks.append(event['PhysicalResourceId'])
 
                             if resource_status in self.end_nested_stack_status and resource_status in self.monitored_stacks:
                                 self.monitored_stacks.remove(event['PhysicalResourceId'])
+                        else:
+                            #return resources ids for resources that failed to delete
+                            logical_resource_id = event.get('LogicalResourceId', None)                            
+                            if logical_resource_id is not None:
+                                if resource_status != self.context.stack.STATUS_DELETE_COMPLETE:                                    
+                                    failed_resources.add(logical_resource_id)
+                                elif logical_resource_id in failed_resources:
+                                    failed_resources.remove(logical_resource_id)
 
             if not done:
-                time.sleep(MONITOR_WAIT_SECONDS) # seconds
+                time.sleep(MONITOR_WAIT_SECONDS) # seconds   
+            else:
+                return []        
+        
+        

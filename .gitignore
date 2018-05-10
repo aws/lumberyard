@@ -107,6 +107,8 @@
 /dev/Bin64vc120.Debug
 /dev/Bin64vc140
 /dev/Bin64vc140.Debug
+/dev/Bin64vc141
+/dev/Bin64vc141.Debug
 /dev/Cache
 /dev/FeatureTests
 /dev/SamplesProject
@@ -122,6 +124,7 @@
 /dev/Gems/PBSreferenceMaterials
 /dev/Gems/Substance
 /dev/Tools/CrySCompileServer/x64
+/dev/Tools/LmbrSetup/Win.vc141.Debug
 /dev/Tools/LmbrSetup/Win.vc140.Debug
 /dev/Tools/LmbrSetup/Win.vc120.Debug
 

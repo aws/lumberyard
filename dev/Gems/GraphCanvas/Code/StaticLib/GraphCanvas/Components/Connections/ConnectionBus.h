@@ -137,11 +137,6 @@ namespace GraphCanvas
         using BusIdType = AZ::EntityId;
 
         virtual void UpdateConnectionPath() = 0;
-
-        virtual void SetDisplayState(ConnectionDisplayState displayState) = 0;
-
-        virtual void SetSelected(bool selected) = 0;
-        virtual bool IsSelected() const = 0;
     };
 
     using ConnectionUIRequestBus = AZ::EBus<ConnectionUIRequests>;
@@ -161,32 +156,4 @@ namespace GraphCanvas
     };
 
     using ConnectableObjectRequestBus = AZ::EBus<ConnectableObjectRequests>;
-
-    //! Bus that makes a request out to whomever created the scene
-    //! In order to verify any new connections are valid.
-    class ConnectionSceneRequests : public AZ::EBusTraits
-    {
-    public:
-        // The key here is the scene that the connection belongs to.
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-        using BusIdType = AZ::EntityId;
-
-        //! This is sent when a connection is disconnected.
-        virtual void DisconnectConnection(const AZ::EntityId& connectionId) = 0;
-
-        //! This is sent when attempting to create a given connection.
-        virtual bool CreateConnection(const AZ::EntityId& connectionId, const Endpoint& sourcePoint, const Endpoint& targetPoint) = 0;
-
-        //! This is sent to confirm whether or not a connection can take place.
-        virtual bool IsValidConnection(const Endpoint& sourcePoint, const Endpoint& targetPoint) const = 0;
-
-        //! This is sent to confirm whether or not a variable assignment can take place.
-        virtual bool IsValidVariableAssignment(const AZ::EntityId& variableId, const Endpoint& targetPoint) const = 0;
-
-        //! Get the snapping distance for connections around slots
-        virtual double GetSnapDistance() const { return 10.0; }
-    };
-
-    using ConnectionSceneRequestBus = AZ::EBus<ConnectionSceneRequests>;
 }

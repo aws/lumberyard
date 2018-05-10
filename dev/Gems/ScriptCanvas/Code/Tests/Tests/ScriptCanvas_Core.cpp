@@ -18,8 +18,10 @@
 
 #include <AzCore/Serialization/IdUtils.h>
 
-#include <ScriptCanvas/Core/GraphAsset.h>
-#include <ScriptCanvas/Core/GraphAssetHandler.h>
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
+#include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
+#include <ScriptCanvas/Execution/RuntimeComponent.h>
+#include <ScriptCanvas/Variable/GraphVariableManagerComponent.h>
 
 using namespace ScriptCanvasTests;
 using namespace TestNodes;
@@ -141,6 +143,124 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
     m_behaviorContext->DisableRemoveReflection();
 }
 
+TEST_F(ScriptCanvasTestFixture, AddRemoveSlotNotifications)
+{
+    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+
+    AddNodeWithRemoveSlot::Reflect(m_serializeContext);
+    AddNodeWithRemoveSlot::Reflect(m_behaviorContext);
+
+    using namespace ScriptCanvas;
+    using namespace Nodes;
+
+    AZStd::unique_ptr<AZ::Entity> numberAddEntity = AZStd::make_unique<AZ::Entity>("numberAddEntity");
+    auto numberAddNode = numberAddEntity->CreateComponent<AddNodeWithRemoveSlot>();
+    numberAddEntity->Init();
+
+    ScriptUnitTestNodeNotificationHandler nodeNotifications(numberAddNode->GetEntityId());
+
+    SlotId testSlotId = numberAddNode->AddSlot("test");
+    EXPECT_EQ(1U, nodeNotifications.GetSlotsAdded());
+    numberAddNode->RemoveSlot(testSlotId);
+    EXPECT_EQ(1U, nodeNotifications.GetSlotsRemoved());
+
+    testSlotId = numberAddNode->AddSlot("duplicate");
+    EXPECT_EQ(2U, nodeNotifications.GetSlotsAdded());
+    // This should not signal the NodeNotification::OnSlotAdded event as the slot already exist on the node
+    SlotId duplicateSlotId = numberAddNode->AddSlot("duplicate");
+    EXPECT_EQ(2U, nodeNotifications.GetSlotsAdded());
+    EXPECT_EQ(testSlotId, duplicateSlotId);
+    
+    numberAddNode->RemoveSlot(testSlotId);
+    EXPECT_EQ(2U, nodeNotifications.GetSlotsRemoved());
+    // This should not signal the NodeNotification::OnSlotRemoved event as the slot no longer exist on the node
+    numberAddNode->RemoveSlot(testSlotId); 
+    EXPECT_EQ(2U, nodeNotifications.GetSlotsRemoved());
+
+    numberAddEntity.reset();
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    AddNodeWithRemoveSlot::Reflect(m_serializeContext);
+    AddNodeWithRemoveSlot::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
+}
+
+TEST_F(ScriptCanvasTestFixture, InsertSlot)
+{
+    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+
+    InsertSlotConcatNode::Reflect(m_serializeContext);
+    InsertSlotConcatNode::Reflect(m_behaviorContext);
+
+    using namespace ScriptCanvas;
+    using namespace Nodes;
+
+    AZStd::unique_ptr<AZ::Entity> graphEntity = AZStd::make_unique<AZ::Entity>("RemoveSlotGraph");
+    graphEntity->Init();
+    
+    SystemRequestBus::Broadcast(&SystemRequests::CreateEngineComponentsOnEntity, graphEntity.get());
+    Graph* graph = AZ::EntityUtils::FindFirstDerivedComponent<Graph>(graphEntity.get());
+    
+    AZ::EntityId graphUniqueId = graph->GetUniqueId();
+
+    AZ::EntityId outId;
+    auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outId);
+    auto insertSlotConcatNode = CreateTestNode<InsertSlotConcatNode>(graphUniqueId, outId);
+    auto setVariableNode = CreateTestNode<Nodes::Core::SetVariableNode>(graphUniqueId, outId);
+    VariableId resultVarId = CreateVariable(graphUniqueId, Data::StringType(), "result");
+    VariableId middleValueVarId = CreateVariable(graphUniqueId, Data::StringType(" Ice Cream"), "middleValue");
+    setVariableNode->SetId(resultVarId);
+    EXPECT_TRUE(setVariableNode->GetDataInSlotId().IsValid());
+
+    //logic connections
+    EXPECT_TRUE(Connect(*graph, startNode->GetEntityId(), "Out", insertSlotConcatNode->GetEntityId(), "In"));
+    EXPECT_TRUE(Connect(*graph, insertSlotConcatNode->GetEntityId(), "Out", setVariableNode->GetEntityId(), "In"));
+
+    // insert slots
+    auto concatSlotId = insertSlotConcatNode->InsertSlot(-1, "A");
+    auto slotAId = concatSlotId;
+    insertSlotConcatNode->SetInput_UNIT_TEST(concatSlotId, Data::StringType("Hello"));
+    concatSlotId = insertSlotConcatNode->InsertSlot(-1, "B");
+    auto slotBId = concatSlotId;
+    insertSlotConcatNode->SetInput_UNIT_TEST(concatSlotId, Data::StringType(" World"));
+    
+    // data connections
+    EXPECT_TRUE(graph->Connect(insertSlotConcatNode->GetEntityId(), insertSlotConcatNode->GetSlotId("Result"), setVariableNode->GetEntityId(), setVariableNode->GetDataInSlotId()));
+
+    graphEntity->Activate();
+    EXPECT_FALSE(graph->IsInErrorState());
+    graphEntity->Deactivate();
+
+    const VariableDatum* resultDatum{};
+    VariableRequestBus::EventResult(resultDatum, resultVarId, &VariableRequests::GetVariableDatumConst);
+    ASSERT_NE(nullptr, resultDatum);
+    EXPECT_EQ("Hello World", resultDatum->GetData().ToString());
+
+    // insert additional slot between A and B
+    auto slotIndexOutcome = insertSlotConcatNode->FindSlotIndex(slotBId);
+    EXPECT_TRUE(slotIndexOutcome);
+    concatSlotId = insertSlotConcatNode->InsertSlot(slotIndexOutcome.GetValue(), "Alpha");
+    NodeRequestBus::Event(insertSlotConcatNode->GetEntityId(), &NodeRequests::SetSlotVariableId, concatSlotId, middleValueVarId);
+
+    // re-execute the graph
+    graphEntity->Activate();
+    EXPECT_FALSE(graph->IsInErrorState());
+    graphEntity->Deactivate();
+
+    // the new concatenated string should be in the middle
+    EXPECT_EQ("Hello Ice Cream World", resultDatum->GetData().ToString());
+
+    graphEntity.reset();
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    InsertSlotConcatNode::Reflect(m_serializeContext);
+    InsertSlotConcatNode::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
+}
 
 TEST_F(ScriptCanvasTestFixture, NativeProperties)
 {
@@ -160,7 +280,9 @@ TEST_F(ScriptCanvasTestFixture, NativeProperties)
 
     AZ::EntityId startID;
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
-    AZ::EntityId addId = CreateClassFunctionNode(graphUniqueId, "Vector3", "Add");
+    
+    AZ::EntityId addId;
+    CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, addId);
 
     AZ::EntityId vector3IdA, vector3IdB, vector3IdC;
     auto vector3NodeA = CreateTestNode<Nodes::Math::Vector3>(graphUniqueId, vector3IdA);
@@ -187,8 +309,8 @@ TEST_F(ScriptCanvasTestFixture, NativeProperties)
     EXPECT_TRUE(Connect(*graph, number5Id, "Get", vector3IdB, "Number: y"));
     EXPECT_TRUE(Connect(*graph, number6Id, "Get", vector3IdB, "Number: z"));
 
-    EXPECT_TRUE(Connect(*graph, vector3IdA, "Get", addId, "Vector3: 0"));
-    EXPECT_TRUE(Connect(*graph, vector3IdB, "Get", addId, "Vector3: 1"));
+    EXPECT_TRUE(Connect(*graph, vector3IdA, "Get", addId, "Vector3: A"));
+    EXPECT_TRUE(Connect(*graph, vector3IdB, "Get", addId, "Vector3: B"));
 
     EXPECT_TRUE(Connect(*graph, addId, "Result: Vector3", vector3IdC, "Set"));
 
@@ -243,6 +365,242 @@ TEST_F(ScriptCanvasTestFixture, NativeProperties)
     delete graphEntity;
 }
 
+TEST_F(ScriptCanvasTestFixture, ExtractPropertiesNativeType)
+{
+    // TODO: Add Extract test for all Native Types
+    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+
+    using namespace ScriptCanvas;
+    using namespace Nodes;
+
+    AZStd::unique_ptr<AZ::Entity> graphEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
+    Graph* graph{};
+    SystemRequestBus::BroadcastResult(graph, &SystemRequests::CreateGraphOnEntity, graphEntity.get());
+    ASSERT_NE(nullptr, graph);
+
+    AZ::EntityId propertyEntityId = graphEntity->GetId();
+    AZ::EntityId graphUniqueId = graph->GetUniqueId();
+
+    graphEntity->Init();
+
+    // Create Extract Property Node
+    AZ::EntityId outID;
+    auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outID);
+    auto extractPropertyNode = CreateTestNode<Nodes::Core::ExtractProperty>(graphUniqueId, outID);
+    auto printNode = CreateTestNode<TestResult>(graphUniqueId, outID);
+
+    // Test Native Vector3 Properties
+    auto vector3Node = CreateDataNode(graphUniqueId, Data::Vector3Type(10.0f, 23.3f, 77.45f), outID);
+
+    auto numberResultNode1 = CreateDataNode(graphUniqueId, 0.0f, outID);
+    auto numberResultNode2 = CreateDataNode(graphUniqueId, 0.0f, outID);
+    auto numberResultNode3 = CreateDataNode(graphUniqueId, 0.0f, outID);
+
+    // data
+    EXPECT_EQ(0, extractPropertyNode->GetPropertyFields().size());
+    EXPECT_FALSE(extractPropertyNode->GetSourceSlotDataType().IsValid());
+
+    EXPECT_TRUE(Connect(*graph, vector3Node->GetEntityId(), "Get", extractPropertyNode->GetEntityId(), "Source"));
+
+    auto propertyFields = extractPropertyNode->GetPropertyFields();
+    EXPECT_EQ(3, propertyFields.size());
+    EXPECT_TRUE(extractPropertyNode->GetSourceSlotDataType().IS_A(Data::Type::Vector3()));
+
+    // Vector3::x
+    auto propIt = AZStd::find_if(propertyFields.begin(), propertyFields.end(), [](const AZStd::pair<AZStd::string_view, SlotId> propertyField)
+    {
+        return propertyField.first == "x";
+    });
+
+    ASSERT_NE(propIt, propertyFields.end());
+    EXPECT_TRUE(graph->Connect(extractPropertyNode->GetEntityId(), propIt->second, numberResultNode1->GetEntityId(), numberResultNode1->GetSlotId("Set")));
+
+    // Vector3::y
+    propIt = AZStd::find_if(propertyFields.begin(), propertyFields.end(), [](const AZStd::pair<AZStd::string_view, SlotId> propertyField)
+    {
+        return propertyField.first == "y";
+    });
+
+    ASSERT_NE(propIt, propertyFields.end());
+    EXPECT_TRUE(graph->Connect(extractPropertyNode->GetEntityId(), propIt->second, numberResultNode2->GetEntityId(), numberResultNode2->GetSlotId("Set")));
+
+    // Vector3::z
+    propIt = AZStd::find_if(propertyFields.begin(), propertyFields.end(), [](const AZStd::pair<AZStd::string_view, SlotId> propertyField)
+    {
+        return propertyField.first == "z";
+    });
+
+    ASSERT_NE(propIt, propertyFields.end());
+    EXPECT_TRUE(graph->Connect(extractPropertyNode->GetEntityId(), propIt->second, numberResultNode3->GetEntityId(), numberResultNode3->GetSlotId("Set")));
+
+    // Print the z value to console
+    EXPECT_TRUE(graph->Connect(numberResultNode3->GetEntityId(), numberResultNode3->GetSlotId("Get"), printNode->GetEntityId(), printNode->GetSlotId("Value")));
+
+    // logic
+    EXPECT_TRUE(Connect(*graph, startNode->GetEntityId(), "Out", extractPropertyNode->GetEntityId(), "In"));
+    EXPECT_TRUE(Connect(*graph, extractPropertyNode->GetEntityId(), "Out", printNode->GetEntityId(), "In"));
+
+    // execute
+    {
+        ScopedOutputSuppression suppressOutput;
+        graphEntity->Activate();
+    }
+    EXPECT_FALSE(graph->IsInErrorState());
+    graphEntity->Deactivate();
+
+    AZ::Entity* connectionEntity{};
+    EXPECT_TRUE(graph->FindConnection(connectionEntity, { vector3Node->GetEntityId(), vector3Node->GetSlotId("Get") }, { extractPropertyNode->GetEntityId(), extractPropertyNode->GetSlotId("Source") }));
+    EXPECT_TRUE(graph->DisconnectById(connectionEntity->GetId()));
+    EXPECT_EQ(0, extractPropertyNode->GetPropertyFields().size());
+    EXPECT_FALSE(extractPropertyNode->GetSourceSlotDataType().IsValid());
+    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode1->GetEntityId(), numberResultNode1->GetSlotId("Set") }).empty()); // x result node
+    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode2->GetEntityId(), numberResultNode1->GetSlotId("Set") }).empty()); // y result node
+    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode3->GetEntityId(), numberResultNode1->GetSlotId("Set") }).empty()); // z result node
+
+    const float tolerance = 0.001f;
+    // x result
+    auto vectorElementResult = numberResultNode1->GetInput_UNIT_TEST<Data::NumberType>("Set");
+    ASSERT_NE(nullptr, vectorElementResult);
+    EXPECT_NEAR(10.0f, *vectorElementResult, tolerance);
+
+    // y result
+    vectorElementResult = numberResultNode2->GetInput_UNIT_TEST<Data::NumberType>("Set");
+    ASSERT_NE(nullptr, vectorElementResult);
+    EXPECT_NEAR(23.3f, *vectorElementResult, tolerance);
+
+    // z result
+    vectorElementResult = numberResultNode3->GetInput_UNIT_TEST<Data::NumberType>("Set");
+    ASSERT_NE(nullptr, vectorElementResult);
+    EXPECT_NEAR(77.45f, *vectorElementResult, tolerance);
+
+    graphEntity.reset();
+}
+
+TEST_F(ScriptCanvasTestFixture, ExtractPropertiesBehaviorType)
+{
+    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+
+    TestBehaviorContextProperties::Reflect(m_serializeContext);
+    TestBehaviorContextProperties::Reflect(m_behaviorContext);
+
+    using namespace ScriptCanvas;
+    using namespace Nodes;
+
+    AZStd::unique_ptr<AZ::Entity> graphEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
+    Graph* graph{};
+    SystemRequestBus::BroadcastResult(graph, &SystemRequests::CreateGraphOnEntity, graphEntity.get());
+    ASSERT_NE(nullptr, graph);
+
+    AZ::EntityId propertyEntityId = graphEntity->GetId();
+    AZ::EntityId graphUniqueId = graph->GetUniqueId();
+
+    graphEntity->Init();
+
+    // Create Extract Property Node
+    AZ::EntityId outID;
+    auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outID);
+    auto extractPropertyNode = CreateTestNode<Nodes::Core::ExtractProperty>(graphUniqueId, outID);
+    auto printNode = CreateTestNode<TestResult>(graphUniqueId, outID);
+
+    // Test BehaviorContext Properties
+
+    TestBehaviorContextProperties behaviorContextProperties;
+    behaviorContextProperties.m_booleanProp = true;
+    behaviorContextProperties.m_numberProp = 11.90f;
+    behaviorContextProperties.m_stringProp = "String Property";
+    auto behaviorContextPropertyNode = CreateDataNode(graphUniqueId, behaviorContextProperties, outID);
+
+    auto booleanResultNode = CreateDataNode(graphUniqueId, false, outID);
+    auto numberResultNode = CreateDataNode(graphUniqueId, 0.0f, outID);
+    auto stringResultNode = CreateDataNode(graphUniqueId, Data::StringType("Uninitialized"), outID);
+
+    // data
+    EXPECT_EQ(0, extractPropertyNode->GetPropertyFields().size());
+    EXPECT_FALSE(extractPropertyNode->GetSourceSlotDataType().IsValid());
+
+    EXPECT_TRUE(Connect(*graph, behaviorContextPropertyNode->GetEntityId(), "Get", extractPropertyNode->GetEntityId(), "Source"));
+
+    auto propertyFields = extractPropertyNode->GetPropertyFields();
+    EXPECT_EQ(4, propertyFields.size());
+    EXPECT_TRUE(extractPropertyNode->GetSourceSlotDataType().IS_A(Data::FromAZType<TestBehaviorContextProperties>()));
+
+    // TestBehaviorContextProperties::boolean
+    auto propIt = AZStd::find_if(propertyFields.begin(), propertyFields.end(), [](const AZStd::pair<AZStd::string_view, SlotId> propertyField)
+    {
+        return propertyField.first == "boolean";
+    });
+
+    ASSERT_NE(propIt, propertyFields.end());
+    EXPECT_TRUE(graph->Connect(extractPropertyNode->GetEntityId(), propIt->second, booleanResultNode->GetEntityId(), booleanResultNode->GetSlotId("Set")));
+
+    // TestBehaviorContextProperties::number
+    propIt = AZStd::find_if(propertyFields.begin(), propertyFields.end(), [](const AZStd::pair<AZStd::string_view, SlotId> propertyField)
+    {
+        return propertyField.first == "number";
+    });
+
+    ASSERT_NE(propIt, propertyFields.end());
+    EXPECT_TRUE(graph->Connect(extractPropertyNode->GetEntityId(), propIt->second, numberResultNode->GetEntityId(), numberResultNode->GetSlotId("Set")));
+
+    // TestBehaviorContextProperties::string
+    propIt = AZStd::find_if(propertyFields.begin(), propertyFields.end(), [](const AZStd::pair<AZStd::string_view, SlotId> propertyField)
+    {
+        return propertyField.first == "string";
+    });
+
+    ASSERT_NE(propIt, propertyFields.end());
+    EXPECT_TRUE(graph->Connect(extractPropertyNode->GetEntityId(), propIt->second, stringResultNode->GetEntityId(), stringResultNode->GetSlotId("Set")));
+
+    // Print the string value to console
+    EXPECT_TRUE(graph->Connect(stringResultNode->GetEntityId(), stringResultNode->GetSlotId("Get"), printNode->GetEntityId(), printNode->GetSlotId("Value")));
+
+    // logic
+    EXPECT_TRUE(Connect(*graph, startNode->GetEntityId(), "Out", extractPropertyNode->GetEntityId(), "In"));
+    EXPECT_TRUE(Connect(*graph, extractPropertyNode->GetEntityId(), "Out", printNode->GetEntityId(), "In"));
+
+    // execute
+    {
+        ScopedOutputSuppression suppressOutput;
+        graphEntity->Activate();
+    }
+    EXPECT_FALSE(graph->IsInErrorState());
+    graphEntity->Deactivate();
+
+    AZ::Entity* connectionEntity{};
+    EXPECT_TRUE(graph->FindConnection(connectionEntity, { behaviorContextPropertyNode->GetEntityId(), behaviorContextPropertyNode->GetSlotId("Get") }, { extractPropertyNode->GetEntityId(), extractPropertyNode->GetSlotId("Source") }));
+    EXPECT_TRUE(graph->DisconnectById(connectionEntity->GetId()));
+    EXPECT_EQ(0, extractPropertyNode->GetPropertyFields().size());
+    EXPECT_FALSE(extractPropertyNode->GetSourceSlotDataType().IsValid());
+    EXPECT_TRUE(graph->GetConnectedEndpoints({ booleanResultNode->GetEntityId(), booleanResultNode->GetSlotId("Set") }).empty()); // x result node
+    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode->GetEntityId(), numberResultNode->GetSlotId("Set") }).empty()); // y result node
+    EXPECT_TRUE(graph->GetConnectedEndpoints({ stringResultNode->GetEntityId(), stringResultNode->GetSlotId("Set") }).empty()); // z result node
+
+                                                                                                                                // boolean result
+    auto booleanResult = booleanResultNode->GetInput_UNIT_TEST<Data::BooleanType>("Set");
+    ASSERT_NE(nullptr, booleanResult);
+    EXPECT_TRUE(booleanResult);
+
+    // number result
+    const float tolerance = 0.001f;
+    auto numberResult = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set");
+    ASSERT_NE(nullptr, numberResult);
+    EXPECT_NEAR(11.90f, *numberResult, tolerance);
+
+    // string result
+    auto stringResult = stringResultNode->GetInput_UNIT_TEST<Data::StringType>("Set");
+    ASSERT_NE(nullptr, stringResult);
+    EXPECT_EQ("String Property", *stringResult);
+
+    graphEntity.reset();
+
+    m_serializeContext->EnableRemoveReflection();
+    TestBehaviorContextProperties::Reflect(m_serializeContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    TestBehaviorContextProperties::Reflect(m_behaviorContext);
+    m_behaviorContext->DisableRemoveReflection();
+}
+
 TEST_F(ScriptCanvasTestFixture, IsNullCheck)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
@@ -250,6 +608,8 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
 
     EventTestHandler::Reflect(m_serializeContext);
     EventTestHandler::Reflect(m_behaviorContext);
+    TestBehaviorContextObject::Reflect(m_serializeContext);
+    TestBehaviorContextObject::Reflect(m_behaviorContext);
 
     Graph* graph(nullptr);
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -276,15 +636,15 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
     AZ::EntityId normalizeID;
     Nodes::Core::Method* normalize = CreateTestNode<Nodes::Core::Method>(graphUniqueId, normalizeID);
     Namespaces empty;
-    normalize->InitializeClass(empty, "Vector3", "Normalize");
+    normalize->InitializeClass(empty, "TestBehaviorContextObject", "Normalize");
 
     AZ::EntityId vectorID;
     Nodes::Core::BehaviorContextObjectNode* vector = CreateTestNode<Nodes::Core::BehaviorContextObjectNode>(graphUniqueId, vectorID);
-    const AZStd::string vector3("Vector3");
+    const AZStd::string vector3("TestBehaviorContextObject");
     vector->InitializeObject(vector3);
-    if (auto vector3 = vector->ModInput_UNIT_TEST<AZ::Vector3>("Set"))
+    if (auto vector3 = vector->ModInput_UNIT_TEST<TestBehaviorContextObject>("Set"))
     {
-        *vector3 = AZ::Vector3(1, 1, 1);
+        EXPECT_FALSE(vector3->IsNormalized());
     }
     else
     {
@@ -296,8 +656,9 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
         ScopedOutputSuppression suppressOutput;
         EXPECT_FALSE(Connect(*graph, isNullResultFalseID, "Get", isNullTrueID, "Reference"));
     }
+
     // data
-    EXPECT_TRUE(Connect(*graph, vectorID, "Get", normalizeID, "Vector3: 0"));
+    EXPECT_TRUE(Connect(*graph, vectorID, "Get", normalizeID, "TestBehaviorContextObject: 0"));
     EXPECT_TRUE(Connect(*graph, vectorID, "Get", isNullFalseID, "Reference"));
     EXPECT_TRUE(Connect(*graph, isNullTrueID, "Is Null", isNullResultTrueID, "Set"));
     EXPECT_TRUE(Connect(*graph, isNullFalseID, "Is Null", isNullResultFalseID, "Set"));
@@ -305,8 +666,7 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
     EXPECT_TRUE(Connect(*graph, startID, "Out", isNullTrueID, "In"));
     EXPECT_TRUE(Connect(*graph, isNullTrueID, "True", isNullFalseID, "In"));
     EXPECT_TRUE(Connect(*graph, isNullFalseID, "False", normalizeID, "In"));
-
-
+    
     AZ::Entity* graphEntity = graph->GetEntity();
 
     {
@@ -315,7 +675,7 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
     }
     EXPECT_FALSE(graph->IsInErrorState());
 
-    if (auto vector3 = vector->GetInput_UNIT_TEST<AZ::Vector3>("Set"))
+    if (auto vector3 = vector->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set"))
     {
         EXPECT_TRUE(vector3->IsNormalized());
     }
@@ -349,6 +709,8 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
     m_behaviorContext->EnableRemoveReflection();
     EventTestHandler::Reflect(m_serializeContext);
     EventTestHandler::Reflect(m_behaviorContext);
+    TestBehaviorContextObject::Reflect(m_serializeContext);
+    TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
 }
@@ -360,6 +722,8 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
 
     EventTestHandler::Reflect(m_serializeContext);
     EventTestHandler::Reflect(m_behaviorContext);
+    TestBehaviorContextObject::Reflect(m_serializeContext);
+    TestBehaviorContextObject::Reflect(m_behaviorContext);
 
     Graph* graph(nullptr);
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -375,7 +739,7 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
     AZ::EntityId normalizeID;
     Nodes::Core::Method* normalize = CreateTestNode<Nodes::Core::Method>(graphUniqueId, normalizeID);
     Namespaces empty;
-    normalize->InitializeClass(empty, "Vector3", "Normalize");
+    normalize->InitializeClass(empty, "TestBehaviorContextObject", "Normalize");
 
     EXPECT_TRUE(Connect(*graph, startID, "Out", normalizeID, "In"));
 
@@ -394,6 +758,8 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
     m_behaviorContext->EnableRemoveReflection();
     EventTestHandler::Reflect(m_serializeContext);
     EventTestHandler::Reflect(m_behaviorContext);
+    TestBehaviorContextObject::Reflect(m_serializeContext);
+    TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
 }
@@ -413,14 +779,18 @@ TEST_F(ScriptCanvasTestFixture, Assignment)
     AssignTest(AZ::Color(255.f, 127.f, 0.f, 127.f), AZ::Color(0.f, 127.f, 255.f, 127.f));
     AssignTest(CRCType("lhs"), CRCType("rhs"));
     AssignTest(true, false);
-    AssignTest(AZ::EntityId(1), AZ::EntityId(2));
+    m_entityContext.AddEntity(AZ::EntityId(1));
+    m_entityContext.AddEntity(AZ::EntityId(2));
+    AssignTest(AZ::EntityId(1), AZ::EntityId(2), &m_entityContext);
+    m_entityContext.RemoveEntity(AZ::EntityId(1));
+    m_entityContext.RemoveEntity(AZ::EntityId(2));
     AssignTest(3.0, 4.0);
     AssignTest(Matrix3x3Type::CreateIdentity(), Matrix3x3Type::CreateZero());
     AssignTest(Matrix4x4Type::CreateIdentity(), Matrix4x4Type::CreateZero());
     AssignTest(PlaneType::CreateFromNormalAndDistance(min, 10), PlaneType::CreateFromNormalAndDistance(max, -10));
     AssignTest(OBBType::CreateFromAabb(AABBType::CreateFromMinMax(min, max)), OBBType::CreateFromAabb(AABBType::CreateFromMinMax(max, min + max)));
     AssignTest(StringType("hello"), StringType("good-bye"));
-    AssignTest(RotationType::CreateIdentity(), RotationType::CreateZero());
+    AssignTest(QuaternionType::CreateIdentity(), QuaternionType::CreateZero());
     AssignTest(TransformType::CreateIdentity(), TransformType::CreateZero());
     AssignTest(AZ::Vector2(2, 2), AZ::Vector2(1, 1));
     AssignTest(AZ::Vector3(2, 2, 2), AZ::Vector3(1, 1, 1));
@@ -478,31 +848,31 @@ TEST_F(ScriptCanvasTestFixture, ValueTypes)
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
-    Datum number0(Datum::CreateInitializedCopy(0));
+    Datum number0(Datum(0));
     int number0Value = *number0.GetAs<int>();
 
-    Datum number1(Datum::CreateInitializedCopy(1));
+    Datum number1(Datum(1));
     int number1Value = *number1.GetAs<int>();
 
-    Datum numberFloat(Datum::CreateInitializedCopy(2.f));
+    Datum numberFloat(Datum(2.f));
     float numberFloatValue = *numberFloat.GetAs<float>();
 
-    Datum numberDouble(Datum::CreateInitializedCopy(3.0));
+    Datum numberDouble(Datum(3.0));
     double numberDoubleValue = *numberDouble.GetAs<double>();
 
-    Datum numberHex(Datum::CreateInitializedCopy(0xff));
+    Datum numberHex(Datum(0xff));
     int numberHexValue = *numberHex.GetAs<int>();
 
-    Datum numberPi(Datum::CreateInitializedCopy(3.14f));
+    Datum numberPi(Datum(3.14f));
     float numberPiValue = *numberPi.GetAs<float>();
 
-    Datum numberSigned(Datum::CreateInitializedCopy(-100));
+    Datum numberSigned(Datum(-100));
     int numberSignedValue = *numberSigned.GetAs<int>();
 
-    Datum numberUnsigned(Datum::CreateInitializedCopy(100u));
+    Datum numberUnsigned(Datum(100u));
     unsigned int numberUnsignedValue = *numberUnsigned.GetAs<unsigned int>();
 
-    Datum numberDoublePi(Datum::CreateInitializedCopy(6.28));
+    Datum numberDoublePi(Datum(6.28));
     double numberDoublePiValue = *numberDoublePi.GetAs<double>();
 
     EXPECT_EQ(number0Value, 0);
@@ -517,13 +887,13 @@ TEST_F(ScriptCanvasTestFixture, ValueTypes)
     EXPECT_NE(number0Value, numberPiValue);
     EXPECT_NE(numberPiValue, numberDoublePiValue);
 
-    Datum boolTrue(Datum::CreateInitializedCopy(true));
+    Datum boolTrue(Datum(true));
     EXPECT_TRUE(*boolTrue.GetAs<bool>());
-    Datum boolFalse(Datum::CreateInitializedCopy(false));
+    Datum boolFalse(Datum(false));
     EXPECT_FALSE(*boolFalse.GetAs<bool>());
     boolFalse = boolTrue;
     EXPECT_TRUE(*boolFalse.GetAs<bool>());
-    Datum boolFalse2(Datum::CreateInitializedCopy(false));
+    Datum boolFalse2(Datum(false));
     boolTrue = boolFalse2;
     EXPECT_FALSE(*boolTrue.GetAs<bool>());
 
@@ -571,7 +941,7 @@ namespace
     }
 }
 
-TEST_F(ScriptCanvasTestFixture, SerializationSaveTest_Binary)
+TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
@@ -665,23 +1035,20 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest_Binary)
     vector3NodeC->InitializeObject(azrtti_typeid<AZ::Vector3>());
     *vector3NodeC->ModInput_UNIT_TEST<AZ::Vector3>("Set") = allFour;
 
-    AZ::EntityId add3IdA = CreateClassFunctionNode(graphUniqueId, "Vector3", "Add");
+    AZ::EntityId add3IdA;
+    CreateTestNode<Vector3Nodes::AddNode>(graphUniqueId, add3IdA);
 
     EXPECT_TRUE(Connect(*graph, printID, "Out", add3IdA, "In"));
-    EXPECT_TRUE(Connect(*graph, vector3IdA, "Get", add3IdA, "Vector3: 0"));
-    EXPECT_TRUE(Connect(*graph, vector3IdB, "Get", add3IdA, "Vector3: 1"));
+    EXPECT_TRUE(Connect(*graph, vector3IdA, "Get", add3IdA, "Vector3: A"));
+    EXPECT_TRUE(Connect(*graph, vector3IdB, "Get", add3IdA, "Vector3: B"));
     EXPECT_TRUE(Connect(*graph, vector3IdC, "Set", add3IdA, "Result: Vector3"));
 
     AZStd::unique_ptr<AZ::Entity> graphEntity{ graph->GetEntity() };
 
     EXPECT_EQ(allOne, *vector3NodeA->GetInput_UNIT_TEST<AZ::Vector3>("Set"));
     EXPECT_EQ(allTwo, *vector3NodeB->GetInput_UNIT_TEST<AZ::Vector3>("Set"));
-    EXPECT_EQ(allFour, *vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set"));
-
-    EXPECT_TRUE(GraphHasVectorWithValue(*graph, allOne));
-    EXPECT_TRUE(GraphHasVectorWithValue(*graph, allTwo));
-    EXPECT_FALSE(GraphHasVectorWithValue(*graph, allThree));
-    EXPECT_TRUE(GraphHasVectorWithValue(*graph, allFour));
+    auto vector3C = *vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set");
+    EXPECT_EQ(allFour, vector3C);
 
     auto nodeIDs = graph->GetNodes();
     EXPECT_EQ(9, nodeIDs.size());
@@ -691,8 +1058,8 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest_Binary)
     TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
-    auto vector3C = *vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set");
-    EXPECT_EQ(vector3C, allThree);
+    vector3C = *vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set");
+    EXPECT_EQ(allThree, vector3C);
 
     if (auto result = printNode->GetInput_UNIT_TEST<float>("Value"))
     {
@@ -703,12 +1070,6 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest_Binary)
         ADD_FAILURE();
     }
 
-    EXPECT_TRUE(GraphHasVectorWithValue(*graph, allOne));
-    EXPECT_TRUE(GraphHasVectorWithValue(*graph, allTwo));
-    EXPECT_TRUE(GraphHasVectorWithValue(*graph, allThree));
-    EXPECT_FALSE(GraphHasVectorWithValue(*graph, allFour));
-
-
     graphEntity->Deactivate();
 
     auto* fileIO = AZ::IO::LocalFileIO::GetInstance();
@@ -716,22 +1077,18 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest_Binary)
 
     // Save it
     bool result = false;
-    AZ::IO::FileIOStream outFileStream("serializationTest.scriptCanvas", AZ::IO::OpenMode::ModeWrite);
+    AZ::IO::FileIOStream outFileStream("serializationTest.scriptcanvas_compiled", AZ::IO::OpenMode::ModeWrite);
     if (outFileStream.IsOpen())
     {
-        GraphAssetHandler graphAssetHandler;
-        AZ::Data::Asset<GraphAsset> graphAsset;
-        graphAsset.Create(AZ::Uuid::CreateRandom());
-        GraphData saveGraphData;
-        graphAsset.Get()->SetGraphData(*graph->GetGraphDataConst());
-        EXPECT_TRUE(graphAssetHandler.SaveAssetData(graphAsset, &outFileStream));
-        graphAsset.Get()->GetGraphData().Clear(); // Clear GraphData structure to prevent the asset from deleting the graph data
+        RuntimeAssetHandler runtimeAssetHandler;
+        AZ::Data::Asset<RuntimeAsset> runtimeAsset = CreateRuntimeAsset(graph);
+        EXPECT_TRUE(runtimeAssetHandler.SaveAssetData(runtimeAsset, &outFileStream));
     }
 
     outFileStream.Close();
 }
 
-TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Binary)
+TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Graph)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
@@ -745,19 +1102,19 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Binary)
 
     auto* fileIO = AZ::IO::LocalFileIO::GetInstance();
     EXPECT_NE(nullptr, fileIO);
-    EXPECT_TRUE(fileIO->Exists("serializationTest.ScriptCanvas"));
+    EXPECT_TRUE(fileIO->Exists("serializationTest.scriptcanvas_compiled"));
 
     // Load it
-    AZ::IO::FileIOStream inFileStream("serializationTest.scriptCanvas", AZ::IO::OpenMode::ModeRead);
+    AZ::IO::FileIOStream inFileStream("serializationTest.scriptcanvas_compiled", AZ::IO::OpenMode::ModeRead);
     if (inFileStream.IsOpen())
     {
         // Serialize the graph entity back in.
-        GraphAssetHandler graphAssetHandler;
-        AZ::Data::Asset<GraphAsset> graphAsset;
-        graphAsset.Create(AZ::Uuid::CreateRandom());
-        EXPECT_TRUE(graphAssetHandler.LoadAssetData(graphAsset, &inFileStream, {}));
+        RuntimeAssetHandler runtimeAssetHandler;
+        AZ::Data::Asset<RuntimeAsset> runtimeAsset;
+        runtimeAsset.Create(AZ::Uuid::CreateRandom());
+        EXPECT_TRUE(runtimeAssetHandler.LoadAssetData(runtimeAsset, &inFileStream, {}));
 
-        GraphData& assetGraphData = graphAsset.Get()->GetGraphData();
+        GraphData& assetGraphData = runtimeAsset.Get()->GetData().m_graphData;
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> idRemap;
         AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&assetGraphData, idRemap, m_serializeContext);
         graph->AddGraphData(assetGraphData);
@@ -785,11 +1142,6 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Binary)
 
         auto nodeIDs = graph->GetNodes();
         EXPECT_EQ(9, nodeIDs.size());
-
-        EXPECT_TRUE(GraphHasVectorWithValue(*graph, allOne));
-        EXPECT_TRUE(GraphHasVectorWithValue(*graph, allTwo));
-        EXPECT_TRUE(GraphHasVectorWithValue(*graph, allThree));
-        EXPECT_FALSE(GraphHasVectorWithValue(*graph, allFour));
 
         // Graph result should be still 16
         // Serialized graph has new remapped entity ids
@@ -819,6 +1171,113 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Binary)
         EXPECT_TRUE(GraphHasVectorWithValue(*graph, allTwo));
         EXPECT_TRUE(GraphHasVectorWithValue(*graph, allThree));
         EXPECT_FALSE(GraphHasVectorWithValue(*graph, allFour));
+    }
+}
+
+TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_RuntimeComponent)
+{
+    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    using namespace ScriptCanvas;
+    //////////////////////////////////////////////////////////////////////////
+
+    // Make the graph.
+    AZStd::unique_ptr<AZ::Entity> executionEntity = AZStd::make_unique<AZ::Entity>("Loaded Graph");
+    auto executionComponent = executionEntity->CreateComponent<RuntimeComponent>();
+
+    auto* fileIO = AZ::IO::LocalFileIO::GetInstance();
+    EXPECT_NE(nullptr, fileIO);
+    EXPECT_TRUE(fileIO->Exists("serializationTest.scriptcanvas_compiled"));
+
+    // Load it
+    AZ::IO::FileIOStream inFileStream("serializationTest.scriptcanvas_compiled", AZ::IO::OpenMode::ModeRead);
+    if (inFileStream.IsOpen())
+    {
+        // Serialize the runtime asset back in.
+        RuntimeAssetHandler runtimeAssetHandler;
+        AZ::Data::Asset<RuntimeAsset> runtimeAsset;
+        runtimeAsset.Create(AZ::Uuid::CreateRandom());
+        EXPECT_TRUE(runtimeAssetHandler.LoadAssetData(runtimeAsset, &inFileStream, {}));
+        runtimeAssetHandler.InitAsset(runtimeAsset, true, false);
+
+        // Close the file
+        inFileStream.Close();
+
+        // Initialize the entity
+        executionComponent->SetRuntimeAsset(runtimeAsset);
+        executionEntity->Init();
+        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+        executionEntity->Activate();
+        // Dispatch the AssetBus events to force onAssetReady event
+        AZ::Data::AssetManager::Instance().DispatchEvents();
+        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+        EXPECT_FALSE(executionComponent->IsInErrorState());
+
+        const AZ::Vector3 allOne(1, 1, 1);
+        const AZ::Vector3 allTwo(2, 2, 2);
+        const AZ::Vector3 allThree(3, 3, 3);
+        const AZ::Vector3 allFour(4, 4, 4);
+
+        auto nodeIds = executionComponent->GetNodes();
+        EXPECT_EQ(9, nodeIds.size());
+
+        // Graph result should be still 16
+        // Serialized graph has new remapped entity ids
+
+        auto sumNodeIt = AZStd::find_if(nodeIds.begin(), nodeIds.end(), [](const AZ::EntityId& nodeId) -> bool
+        {
+            AZ::Entity* entity{};
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, nodeId);
+            return entity ? AZ::EntityUtils::FindFirstDerivedComponent<TestResult>(entity) ? true : false : false;
+        });
+        EXPECT_NE(nodeIds.end(), sumNodeIt);
+
+        TestResult* printNode = nullptr;
+        SystemRequestBus::BroadcastResult(printNode, &SystemRequests::GetNode<TestResult>, *sumNodeIt);
+        EXPECT_TRUE(printNode != nullptr);
+
+        if (auto result = printNode->GetInput_UNIT_TEST<float>("Value"))
+        {
+            EXPECT_FLOAT_EQ(*result, 16.0f);
+        }
+        else
+        {
+            ADD_FAILURE();
+        }
+
+        AZStd::vector<AZ::Vector3> vector3Results;
+        for (auto nodeId : nodeIds)
+        {
+            AZ::Entity* entity{};
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, nodeId);
+            auto behaviorContextNode = entity ? AZ::EntityUtils::FindFirstDerivedComponent<Core::BehaviorContextObjectNode>(entity) : nullptr;
+            auto rawVector3 = behaviorContextNode ? behaviorContextNode->GetInput_UNIT_TEST<AZ::Vector3>(PureData::k_setThis) : nullptr;
+            if (rawVector3)
+            {
+                vector3Results.push_back(*rawVector3);
+            }
+        }
+
+        auto allOneFound = AZStd::any_of(vector3Results.begin(), vector3Results.end(), [allOne](const AZ::Vector3& vector3Result)
+        {
+            return allOne == vector3Result;
+        });
+        auto allTwoFound = AZStd::any_of(vector3Results.begin(), vector3Results.end(), [allTwo](const AZ::Vector3& vector3Result)
+        {
+            return allTwo == vector3Result;
+        });
+        auto allThreeFound = AZStd::any_of(vector3Results.begin(), vector3Results.end(), [allThree](const AZ::Vector3& vector3Result)
+        {
+            return allThree == vector3Result;
+        });
+        auto allFourFound = AZStd::any_of(vector3Results.begin(), vector3Results.end(), [allFour](const AZ::Vector3& vector3Result)
+        {
+            return allFour == vector3Result;
+        });
+
+        EXPECT_TRUE(allOneFound);
+        EXPECT_TRUE(allTwoFound);
+        EXPECT_TRUE(allThreeFound);
+        EXPECT_FALSE(allFourFound);
     }
 }
 
@@ -888,6 +1347,13 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
     EXPECT_FALSE(graph->IsInErrorState());
     graph->GetEntity()->Deactivate();
     delete graph->GetEntity();
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    ContractNode::Reflect(m_serializeContext);
+    ContractNode::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
 }
 
 #if defined (SCRIPTCANVAS_ERRORS_ENABLED)
@@ -947,12 +1413,29 @@ TEST_F(ScriptCanvasTestFixture, Error)
 
     graph->GetEntity()->Deactivate();
     delete graph->GetEntity();
+
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    UnitTestErrorNode::Reflect(m_serializeContext);
+    UnitTestErrorNode::Reflect(m_behaviorContext);
+    InfiniteLoopNode::Reflect(m_serializeContext);
+    InfiniteLoopNode::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorHandled)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
+
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    UnitTestErrorNode::Reflect(m_serializeContext);
+    UnitTestErrorNode::Reflect(m_behaviorContext);
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1007,12 +1490,26 @@ TEST_F(ScriptCanvasTestFixture, ErrorHandled)
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX2), 1);
 
     delete graph->GetEntity();
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    UnitTestErrorNode::Reflect(m_serializeContext);
+    UnitTestErrorNode::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorNode)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
+
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    UnitTestErrorNode::Reflect(m_serializeContext);
+    UnitTestErrorNode::Reflect(m_behaviorContext);
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1067,12 +1564,29 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
 
     delete graph->GetEntity();
+
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    UnitTestErrorNode::Reflect(m_serializeContext);
+    UnitTestErrorNode::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
+
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
+
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    UnitTestErrorNode::Reflect(m_serializeContext);
+    UnitTestErrorNode::Reflect(m_behaviorContext);
+
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1123,12 +1637,28 @@ TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 2);
 
     delete graph->GetEntity();
+
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    UnitTestErrorNode::Reflect(m_serializeContext);
+    UnitTestErrorNode::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
+
 }
 
 TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
 {
     RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
+
+    InfiniteLoopNode::Reflect(m_serializeContext);
+    InfiniteLoopNode::Reflect(m_behaviorContext);
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1187,6 +1717,15 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
     EXPECT_EQ(0, unitTestHandler.SideEffectCount(sideFXfail));
 
     delete graph->GetEntity();
+
+    m_serializeContext->EnableRemoveReflection();
+    m_behaviorContext->EnableRemoveReflection();
+    InfiniteLoopNode::Reflect(m_serializeContext);
+    InfiniteLoopNode::Reflect(m_behaviorContext);
+    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    m_serializeContext->DisableRemoveReflection();
+    m_behaviorContext->DisableRemoveReflection();
 }
 
 #endif // SCRIPTCANAS_ERRORS_ENABLED
@@ -1378,6 +1917,10 @@ TEST_F(ScriptCanvasTestFixture, EntityRefTest)
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
     EXPECT_TRUE(graph != nullptr);
 
+    m_entityContext.AddEntity(first.GetId());
+    m_entityContext.AddEntity(second.GetId());
+    m_entityContext.AddEntity(graph->GetEntityId());
+
     graph->GetEntity()->SetName("Graph Owner Entity");
 
     graph->GetEntity()->CreateComponent<ScriptCanvasTests::TestComponent>();
@@ -1461,7 +2004,6 @@ TEST_F(ScriptCanvasTestFixture, EntityRefTest)
     EXPECT_TRUE(Connect(*graph, eventCid, "Boolean: 2", trueNodeId, "Get"));
 
     // Execute the graph
-    graph->ResolveSelfReferences(graphEntityId);
 
     TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
     graph->GetEntity()->Activate();

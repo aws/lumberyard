@@ -10,8 +10,6 @@
 *
 */
 
-#pragma once
-
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <Groups/LoggingGroup.h>

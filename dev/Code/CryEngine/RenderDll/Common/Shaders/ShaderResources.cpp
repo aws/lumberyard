@@ -212,7 +212,15 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
         *m_pDeformInfo = pSrc->m_DeformInfo;
     }
 
-    m_TexturesResourcesMap = pSrc->m_TexturesResourcesMap;
+    for (const auto& it : pSrc->m_TexturesResourcesMap)
+    {
+        const SEfResTexture& texture = it.second;
+        // Omit any resources with no texture present
+        if (!texture.m_Name.empty() || texture.m_Sampler.m_pTex)
+        {
+            m_TexturesResourcesMap[it.first] = texture;
+        }
+    }
     
 
     SetInputLM(pSrc->m_LMaterial);

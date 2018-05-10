@@ -42,6 +42,7 @@
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/Casting/numeric_cast.h>
 
 // Enable to insert Crc checks for each message
 #if defined(AZ_DEBUG_BUILD)
@@ -56,9 +57,12 @@ namespace GridMate
 {
     static const EndianType kCarrierEndian = EndianType::BigEndian;
 
-    static const int m_maxNumberOfChannels = 4;
-    static const int m_systemChannel = 3;
-
+    static const int k_maxNumberOfChannels = 4;
+    static const int k_systemChannel = 3;
+    static const int k_compressionHintUncompressed = 0;
+    static const int k_compressionHintCompressed = 1;
+    static const size_t k_sizeOfCompressedHintHeader = 1;
+    static const size_t k_sizeOfCompressionWorkerBuffer = (128 * 1024);
     class CarrierThread;
 
     /**
@@ -70,8 +74,12 @@ namespace GridMate
     {
         GM_CLASS_ALLOCATOR(MessageData); // make a pool and use it...
 
-        MessageData()
-            : m_data(nullptr)
+        MessageData() : 
+#ifdef AZ_DEBUG_BUILD
+            m_flagsFromPacket(0),
+#endif
+            m_data(nullptr)
+
         {}
         enum MessageFlags
         {
@@ -82,8 +90,11 @@ namespace GridMate
             MF_DATA_CHANNEL     = (1 << 5),
 
             MF_CONNECTING       = (1 << 7),       ///< Set when we are in connection state (trying to connect). This is used to reject generic datagrams/messages
+            MF_UNUSED_FLAGS     = ((1 << 1) | (1 << 6))
         };
-
+#ifdef AZ_DEBUG_BUILD
+        AZ::u8 m_flagsFromPacket;               ///< so we know some details of how the read buffer was parsed when debugging, not used on writes
+#endif
         Carrier::DataReliability m_reliability;
         unsigned char   m_channel;              ///< channel for sending
         SequenceNumber  m_numChunks;            ///< number of chunks/messages that we need to assemble for this message [1..N]
@@ -117,10 +128,10 @@ namespace GridMate
 
     struct OutgoingDataGramContext
     {
-        SequenceNumber lastSequenceNumber[m_maxNumberOfChannels];
-        SequenceNumber lastSeqReliableNumber[m_maxNumberOfChannels];
-        bool isWrittenFirstSequenceNum[m_maxNumberOfChannels];
-        bool isWrittenFirstRelSeqNum[m_maxNumberOfChannels];
+        SequenceNumber lastSequenceNumber[k_maxNumberOfChannels];
+        SequenceNumber lastSeqReliableNumber[k_maxNumberOfChannels];
+        bool isWrittenFirstSequenceNum[k_maxNumberOfChannels];
+        bool isWrittenFirstRelSeqNum[k_maxNumberOfChannels];
 
         OutgoingDataGramContext()
         {
@@ -413,8 +424,8 @@ namespace GridMate
 
         Carrier::ConnectionStates   m_state;
 
-        SequenceNumber              m_sendSeqNum[m_maxNumberOfChannels];            ///< Next message sequence number.
-        SequenceNumber              m_sendReliableSeqNum[m_maxNumberOfChannels];    ///< Next reliable message sequence number.
+        SequenceNumber              m_sendSeqNum[k_maxNumberOfChannels];            ///< Next message sequence number.
+        SequenceNumber              m_sendReliableSeqNum[k_maxNumberOfChannels];    ///< Next reliable message sequence number.
 
         // TODO: Unless we use lockless queues for messages we should have minimize the amount of
         // interlocked or lock operations as they are expensive. One lock per connection or even one per update should be fine.
@@ -422,7 +433,7 @@ namespace GridMate
         AZStd::mutex                m_toSendLock;
         MessageDataListType         m_toSend[Carrier::PRIORITY_MAX];                ///< Send lists based on priority.
         AZStd::mutex                m_toReceiveLock;
-        MessageDataListType         m_toReceive[m_maxNumberOfChannels];             ///< Received messages in order for the user to receive, sorted on a channel.
+        MessageDataListType         m_toReceive[k_maxNumberOfChannels];             ///< Received messages in order for the user to receive, sorted on a channel.
 
         AZStd::mutex                m_statsLock;
         TrafficControl::CongestionState m_congestionState;
@@ -499,12 +510,12 @@ namespace GridMate
 
         AZStd::intrusive_ptr<DriverAddress> m_target;                               ///< Driver address of this connection.
 
-        SequenceNumber          m_receivedSeqNum[m_maxNumberOfChannels];            ///< Last received seq number.
-        SequenceNumber          m_receivedReliableSeqNum[m_maxNumberOfChannels];    ///< Last received reliable seq number.
+        SequenceNumber          m_receivedSeqNum[k_maxNumberOfChannels];            ///< Last received seq number.
+        SequenceNumber          m_receivedReliableSeqNum[k_maxNumberOfChannels];    ///< Last received reliable seq number.
 
-        MessageDataListType::iterator m_receivedLastInsert[m_maxNumberOfChannels];  ///< Cached iterator in the received list when we insert packets.
-        MessageDataListType::iterator m_receivedLastReliableChunk[m_maxNumberOfChannels];   ///< Cached iterator pointing to the last received sequential chunk (used for chucked messages only).
-        MessageDataListType           m_received[m_maxNumberOfChannels];                    ///< Messages in process to be received by the main connection.
+        MessageDataListType::iterator m_receivedLastInsert[k_maxNumberOfChannels];  ///< Cached iterator in the received list when we insert packets.
+        MessageDataListType::iterator m_receivedLastReliableChunk[k_maxNumberOfChannels];   ///< Cached iterator pointing to the last received sequential chunk (used for chucked messages only).
+        MessageDataListType           m_received[k_maxNumberOfChannels];                    ///< Messages in process to be received by the main connection.
 
         DatagramDataListType    m_sendDataGrams;                                    ///< List with sent datagrams waiting for ACK.
 
@@ -658,6 +669,8 @@ namespace GridMate
         inline void GenerateOutgoingDataGram(ThreadConnection* connection, DatagramData& dgram, WriteBuffer& writeBuffer, OutgoingDataGramContext& ctx, size_t maxDatagramSize);
         //inline void ResendDataGram(DatagramData& dgram, WriteBuffer& writeBuffer);
 
+        // parameter recvDataGramSize is only used for recording the size of the original packet for data flow purposes, it is not used as a bounds on the readBuffer.
+        // in situations where the data is decompressed before this call is made, this parameter is the original compressed size
         void OnReceivedIncomingDataGram(ThreadConnection* from, ReadBuffer& readBuffer, unsigned int recvDataGramSize);
 
         void SendSystemMessage(SystemMessageId id, WriteBuffer& wb, ThreadConnection* target);
@@ -766,6 +779,7 @@ namespace GridMate
         WriteBufferStatic<64* 1024> m_datagramTempWriteBuffer;
 
         vector<AZ::u8> m_compressionMem; // Temp buffer used for compression, basically acts like linear allocator for compressor. Should only be used on carrier thread.
+        size_t m_compressionMemBytesUsed;
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -906,7 +920,7 @@ Connection::Connection(CarrierThread* threadOwner, const string& address)
     , m_fullAddress(address)
     , m_state(Carrier::CST_CONNECTING)
 {
-    for (unsigned char iChannel = 0; iChannel < m_maxNumberOfChannels; ++iChannel)
+    for (unsigned char iChannel = 0; iChannel < k_maxNumberOfChannels; ++iChannel)
     {
         m_sendSeqNum[iChannel] = SequenceNumberMax;
         m_sendReliableSeqNum[iChannel] = SequenceNumberMax;
@@ -935,7 +949,7 @@ Connection::~Connection()
         }
     }
 
-    for (unsigned char iChannel = 0; iChannel < m_maxNumberOfChannels; ++iChannel)
+    for (unsigned char iChannel = 0; iChannel < k_maxNumberOfChannels; ++iChannel)
     {
         //AZStd::lock_guard<AZStd::mutex> l(toReceive);
         while (!m_toReceive[iChannel].empty())
@@ -966,7 +980,7 @@ ThreadConnection::ThreadConnection(CarrierThread* threadOwner)
     , m_isDisconnected(false)
     , m_isBadPackets(false)
 {
-    for (unsigned char iChannel = 0; iChannel < m_maxNumberOfChannels; ++iChannel)
+    for (unsigned char iChannel = 0; iChannel < k_maxNumberOfChannels; ++iChannel)
     {
         m_receivedSeqNum[iChannel] = SequenceNumberMax;
         m_receivedReliableSeqNum[iChannel] = SequenceNumberMax;
@@ -981,7 +995,7 @@ ThreadConnection::~ThreadConnection()
     m_target->m_threadConnection = NULL;
     m_target = NULL;
 
-    for (unsigned char iChannel = 0; iChannel < m_maxNumberOfChannels; ++iChannel)
+    for (unsigned char iChannel = 0; iChannel < k_maxNumberOfChannels; ++iChannel)
     {
         while (!m_received[iChannel].empty())
         {
@@ -1054,21 +1068,20 @@ CarrierThread::CarrierThread(const CarrierDesc& desc, Compressor* compressor)
 
     m_maxDataGramSizeBytes = m_driver->GetMaxSendSize();
     m_maxMsgDataSizeBytes = m_maxDataGramSizeBytes - GetDataGramHeaderSize() - GetMaxMessageHeaderSize();
-    if (m_compressor)
-    {
-        m_maxMsgDataSizeBytes = (unsigned int)m_compressor->GetMaxChunkSize(m_maxMsgDataSizeBytes);
-    }
 
     m_connectionTimeoutMS = desc.m_connectionTimeoutMS;
     m_enableDisconnectDetection = desc.m_enableDisconnectDetection;
-    m_connectionEvaluationThreshold = AZStd::max AZ_PREVENT_MACRO_SUBSTITUTION (0.0f, AZStd::min AZ_PREVENT_MACRO_SUBSTITUTION (desc.m_connectionEvaluationThreshold, 1.0f));
+    m_connectionEvaluationThreshold = AZStd::max AZ_PREVENT_MACRO_SUBSTITUTION(0.0f, AZStd::min AZ_PREVENT_MACRO_SUBSTITUTION(desc.m_connectionEvaluationThreshold, 1.0f));
     m_maxConnections = desc.m_maxConnections;
+    m_compressionMemBytesUsed = 0;
 
     //////////////////////////////////////////////////////////////////////////
     // Initializing compressor
     if (m_compressor)
     {
-        m_compressionMem.reserve(128 * 1024);
+        m_compressionMem.reserve(k_sizeOfCompressionWorkerBuffer);
+        m_compressionMem.resize(k_sizeOfCompressionWorkerBuffer, 0);
+
         bool isInit = m_compressor->Init();
         AZ_UNUSED(isInit);
         AZ_Error("GridMate", isInit, "GridMate carrier failed to initialize compression\n");
@@ -1352,42 +1365,88 @@ CarrierThread::UpdateSend()
                     break;
                 }
 
+                // Clears buffer contents but leaves memory allocated
                 writeBuffer.Clear();
+
                 OutgoingDataGramContext dgramCtx;
                 DatagramData& dgram = AllocateDatagram();
+
                 // Generating acks message before sending data
                 InitOutgoingDatagram(conn, writeBuffer);
 
-                if (m_compressor && conn->m_mainConnection->m_state != Carrier::CST_CONNECTING) // do not start compression until connection established
+                // both sides must match either having, or not having a compressor supplied. This will indicate to the code that it should include a compression hint header.
+                if (m_compressor)
                 {
-                    m_compressionMem.clear(); // clearing old data
-
-                    size_t compPacketSize = 0;
+                    unsigned char compressionHintFlags = k_compressionHintUncompressed; // default to NOT being compressed, if we can compress, we will use the compressed buffer otherwise we will use this buffer uncompressed
                     CompressorError compErr = CompressorError::Ok;
+                    bool tryToCompress = true;
+                    bool compressionWasBeneficial = true;
 
-                    while (true)
+                    // write a hint value to indicate this buffer is not compressed, this reserves the space for the hint to be changed in the m_compressionMem buffer if we use compression
+                    // if we chose to not use the compressed data we can use the write buffer "as is".
+                    writeBuffer.Write(compressionHintFlags);
+
+                    // GetMaxChunkSize estimates the max compressed data size, we pass this estimated value to the compressor to GenerateOutgoingDataGram()
+                    // so it can determine how much more uncompressed data it can take, and if this data can fit into the current dataGram.
+                    // Since we no longer loop to add compressed data this should behave similarly to the non compressed code path.
+                    size_t chunkSize = m_compressor->GetMaxChunkSize(maxDatagramSize);
+
+                    // writes data FROM Connection::m_toSend queue into writeBuffer, if we can't send from this point, the data will be lost
+                    GenerateOutgoingDataGram(conn, dgram, writeBuffer, dgramCtx, chunkSize);
+                    ++conn->m_dataGramSeqNum;
+
+                    // check with the compressor to see how large the output buffer needs to be, given the input size
+                    size_t maxSizeNeeded = AZ::GetMin(m_compressor->GetMaxCompressedBufferSize(writeBuffer.Size()), (k_sizeOfCompressionWorkerBuffer - k_sizeOfCompressedHintHeader));
+
+                    // set up pointers to buffers and sizes to not include the compression hint header, and only deal with the payload
+                    const void* pInDataPointerAfterCompressionHintHeader = writeBuffer.Get() + k_sizeOfCompressedHintHeader;
+                    void* pOutDataPointerAfterCompressionHintHeader = m_compressionMem.data() + k_sizeOfCompressedHintHeader;
+                    const size_t sizeOfUnCompressedPayload = writeBuffer.Size() - k_sizeOfCompressedHintHeader;
+
+                    // preventing compression of these packets because UpdateReceive() doesn't know how to handle compressed packets until it's established a connection through MakeNewConnection()
+                    if (conn->m_mainConnection->m_state == Carrier::CST_CONNECTING)
                     {
-                        size_t chunkSize = m_compressor->GetMaxChunkSize(maxDatagramSize - compPacketSize);
-                        GenerateOutgoingDataGram(conn, dgram, writeBuffer, dgramCtx, chunkSize);
-                        if (writeBuffer.Size() <= GetDataGramHeaderSize()) // no payload in the datagram
-                        {
-                            break;
-                        }
-                        ++conn->m_dataGramSeqNum;
-                        size_t maxSizeNeeded = m_compressor->GetMaxCompressedBufferSize(writeBuffer.Size());
-                        m_compressionMem.resize(maxSizeNeeded + compPacketSize);
-                        size_t compSize = 0;
-                        compErr = m_compressor->Compress(writeBuffer.Get(), writeBuffer.Size(), m_compressionMem.data() + compPacketSize, compSize);
-                        compPacketSize += compSize;
-                        writeBuffer.Clear();
+                        tryToCompress = false;
                     }
 
-                    AZ_Assert(compErr == CompressorError::Ok, "Failed to compress chunk with error=%d.", static_cast<int>(compErr));
+                    if (tryToCompress)
+                    {
+                        // compress data from writeBuffer (data that was moved from m_sendTo) and store in m_compressionMem         
+                        compErr = m_compressor->Compress(pInDataPointerAfterCompressionHintHeader, sizeOfUnCompressedPayload, pOutDataPointerAfterCompressionHintHeader, maxSizeNeeded, m_compressionMemBytesUsed);
 
-                    data = (char*)(m_compressionMem.data());
-                    dataSize = static_cast<unsigned int>(compPacketSize);
+                        // optimization: don't use compressed data if there was no gain over the uncompressed data so the client doesn't have to perform the decompress step
+                        if (m_compressionMemBytesUsed >= (writeBuffer.Size() - k_sizeOfCompressedHintHeader))
+                        {
+                            compressionWasBeneficial = false;
+                        }
+                        
+                        // account for header size that we skipped
+                        m_compressionMemBytesUsed += k_sizeOfCompressedHintHeader;
+
+                        // change compression hint to indicate compressed the data
+                        m_compressionMem[0] = k_compressionHintCompressed;
+                    }
+
+                    // if we are trying to use the compressed buffer, and the compression was a success, and we have determined the compression had a benefit
+                    if (tryToCompress && compErr == CompressorError::Ok && compressionWasBeneficial)
+                    {
+                        // set up pointer to include compression hint and account for that in the size`
+                        data = reinterpret_cast<const char*>(m_compressionMem.data());
+                        dataSize = static_cast<unsigned int>(m_compressionMemBytesUsed);
+                    }
+                    else // go uncompressed
+                    {
+                        if (compErr != CompressorError::Ok)
+                        {
+                            AZ_Error("GridMate", compErr == CompressorError::Ok, "Failed to compress chunk with error=%d.\n", static_cast<int>(compErr));
+                        }
+
+                        // we can use writeBuffer directly because we already added the compression hint to indicate that this data is uncompressed
+                        data = writeBuffer.Get();
+                        dataSize = static_cast<unsigned int>(writeBuffer.Size());
+                    }  
                 }
-                else
+                else // we have no compressor
                 {
                     GenerateOutgoingDataGram(conn, dgram, writeBuffer, dgramCtx, maxDatagramSize);
                     ++conn->m_dataGramSeqNum;
@@ -1458,6 +1517,7 @@ CarrierThread::UpdateReceive()
     AZStd::intrusive_ptr<DriverAddress> fromAddress;
     Driver::ResultCode resultCode;
     unsigned int recvDataGramSize;
+
     // read all datagrams
     while (true)
     {
@@ -1497,8 +1557,8 @@ CarrierThread::UpdateReceive()
         }
 
         ReadBuffer readBuffer(kCarrierEndian, data, recvDataGramSize);
+        ThreadConnection* conn = nullptr;
 
-        ThreadConnection* conn = 0;
         if (fromAddress->m_threadConnection != NULL)
         {
             conn = fromAddress->m_threadConnection;
@@ -1515,43 +1575,71 @@ CarrierThread::UpdateReceive()
             if (m_compressor) // should probably have some compression handshake than relying on existence of compressor
             {
                 CompressorError compErr;
+
                 do
                 {
-                    m_compressionMem.clear();
+					unsigned char compressionHintFlags = k_compressionHintUncompressed;
+
                     size_t uncompSize = 0;
-                    size_t chunkSize = 0;
-                    m_compressionMem.resize(m_maxDataGramSizeBytes);
-                    compErr = m_compressor->Decompress(readBuffer.GetCurrent(), readBuffer.Left().GetBytes(), m_compressionMem.data(), chunkSize, uncompSize);
-                    if (compErr != CompressorError::Ok)
+                    size_t bytesConsumedFromReadBuffer = 0;
+                    size_t bytesToDecompress = readBuffer.Left().GetBytes() - k_sizeOfCompressedHintHeader;
+
+                    // consume the compression hint, we won't be passing it to Decompress, and it won't be included in the resulting buffer we pass along to OnReceivedIncomingDataGram
+                    readBuffer.Read(compressionHintFlags);
+
+                    if (compressionHintFlags == k_compressionHintCompressed)
                     {
-                        break;
+                        compErr = m_compressor->Decompress(readBuffer.GetCurrent(), bytesToDecompress, m_compressionMem.data(), k_sizeOfCompressionWorkerBuffer, bytesConsumedFromReadBuffer, uncompSize);
+
+                        if (compErr != CompressorError::Ok)
+                        {
+                            AZ_Error("GridMate", compErr == CompressorError::Ok, "Decompress failed with error %d this will lead to data read errors!", compErr);
+                            conn->m_isBadPackets = true;
+                            break;  /// stop processing this data
+                        }
+
+                        if (bytesToDecompress != bytesConsumedFromReadBuffer)
+                        {
+                            AZ_Error("GridMate", bytesToDecompress == bytesConsumedFromReadBuffer, "Decompress must consume entire buffer [%d != %d]!", bytesConsumedFromReadBuffer, bytesToDecompress);
+                            break;  /// stop processing this data
+                        }
+
+                        // copy the uncompressed data into a new ReadBuffer
+                        ReadBuffer chunkRb(kCarrierEndian, reinterpret_cast<char*>(m_compressionMem.data()), uncompSize);
+
+                        // this function is taking recvDataGramSize ONLY so it can save the original data size off in the datagram it allocates for flow control purposes, it does not use this as a boundary on the data.
+                        OnReceivedIncomingDataGram(conn, chunkRb, recvDataGramSize);
+
+                        // since we technically read from a different buffer, we have to skip through the readBuffer explicitly
+                        readBuffer.Skip(bytesConsumedFromReadBuffer);
                     }
-
-                    ReadBuffer chunkRb(kCarrierEndian, reinterpret_cast<char*>(m_compressionMem.data()), uncompSize);
-                    OnReceivedIncomingDataGram(conn, chunkRb, recvDataGramSize);
-
-                    readBuffer.Skip(chunkSize);
+                    else // we have a compressor but the sender indicates they chose NOT to compress the data
+                    {
+                        // this function is taking recvDataGramSize ONLY so it can save the original data size off in the datagram it allocates for flow control purposes, it does not use this as a boundary on the data.
+                        OnReceivedIncomingDataGram(conn, readBuffer, recvDataGramSize);
+                    }
                 } while (!readBuffer.IsEmpty() && !readBuffer.IsOverrun());
 
-                if (compErr != CompressorError::Ok && !IsConnectRequestDataGram(data, recvDataGramSize)) // Some uncompressed connection requests might be still in fly after we already created connection object for this peer
+            } // end if we have a compressor
+            else // no compressor
+            {
+                if (!conn->m_isBadConnection && !conn->m_isBadPackets)  // don't bother receiving from bad connections
                 {
-                    conn->m_isBadPackets = true;
+                    OnReceivedIncomingDataGram(conn, readBuffer, recvDataGramSize);
                 }
-
-                continue;
             }
-        } 
-        else
+        } // end if it's NOT a new connection
+        else // it's a new connection
         {
             if (m_threadConnections.size() >= m_maxConnections)
             {
-                continue;
+                continue; /// can't accept new connections, back to Receive()
             }
             //////////////////////////////////////////////////////////////////////////
             // Check if this packet comes from a GridMate trying to connect. If not discard it.
             if (!IsConnectRequestDataGram(data, recvDataGramSize))
             {
-                continue; /// Discard invalid datagrams
+                continue; /// Discard invalid datagrams, back to Receive()
             }
             //////////////////////////////////////////////////////////////////////////
 
@@ -1561,13 +1649,19 @@ CarrierThread::UpdateReceive()
             tm->m_newConnectionAddress = fromAddress->ToAddress();
             tm->m_threadConnection = conn;
             PushMainThreadMessage(tm);
-        }
 
-        if (!conn->m_isBadConnection && !conn->m_isBadPackets)  // don't bother receiving from bad connections
-        {
-            OnReceivedIncomingDataGram(conn, readBuffer, recvDataGramSize);
-        }
-    }
+            if (!conn->m_isBadConnection && !conn->m_isBadPackets)  // don't bother receiving from bad connections
+            {
+                // skip over compression header, note that IsConnectRequestDataGram returns false for any packet that is marked as compressed
+                if (m_compressor)
+                {
+                    readBuffer.Skip(k_sizeOfCompressedHintHeader);
+                }
+
+                OnReceivedIncomingDataGram(conn, readBuffer, recvDataGramSize);
+            }
+        } // end else it's a new connection
+    } // end while (true)
     FreeMessageData(data, m_maxDataGramSizeBytes);
 }
 
@@ -1588,7 +1682,7 @@ CarrierThread::ProcessConnections()
             continue; // skip inactive connections
         }
 
-        for (unsigned char channel = 0; channel < m_maxNumberOfChannels; ++channel) // we will need a different approach if we have more channels.
+        for (unsigned char channel = 0; channel < k_maxNumberOfChannels; ++channel) // we will need a different approach if we have more channels.
         {
             while (!connection->m_received[channel].empty())
             {
@@ -2484,17 +2578,25 @@ bool CarrierThread::IsConnectRequestDataGram(const char* data, size_t dataSize) 
 {
     MessageData msg;
     ReadBuffer tempBuf(kCarrierEndian, data, dataSize);
-    tempBuf.Skip(sizeof(SequenceNumber));
-    SequenceNumber tempSeq[m_maxNumberOfChannels];
+    unsigned char compressionHintHeaderFlags = k_compressionHintUncompressed;
+    SequenceNumber tempSeq[k_maxNumberOfChannels];
     unsigned char channel = 0;
-    if (ReadMessageHeader(tempBuf, msg, tempSeq, tempSeq, channel))
+
+    if (m_compressor)
+    {
+        tempBuf.Read(compressionHintHeaderFlags);
+    }
+
+    tempBuf.Skip(sizeof(SequenceNumber));
+
+    if ((compressionHintHeaderFlags == k_compressionHintUncompressed) && ReadMessageHeader(tempBuf, msg, tempSeq, tempSeq, channel))
     {
         AZ::u8 msgId = 0;
         size_t messageIdOffset = msg.m_dataSize - sizeof(msgId);
 
         tempBuf.Skip(messageIdOffset);
         tempBuf.Read(msgId);
-        return !tempBuf.IsOverrun() && msgId == SM_CONNECT_REQUEST;
+        return !tempBuf.IsOverrun() && msgId == SM_CONNECT_REQUEST && msg.m_isConnecting;
     }
     else
     {
@@ -2540,7 +2642,7 @@ CarrierThread::ProcessIncomingDataGram(ThreadConnection* connection, DatagramDat
     dgram.m_flowControl.m_effectiveSize = 0;
 
     // prevSeqNum and prevReliableSeqNum should not be init to 0, ReadMessageHeader will set the first value (always)
-    SequenceNumber prevSeqNum[m_maxNumberOfChannels], prevReliableSeqNum[m_maxNumberOfChannels];
+    SequenceNumber prevSeqNum[k_maxNumberOfChannels], prevReliableSeqNum[k_maxNumberOfChannels];
     unsigned char channel = 0; // We need to init to 0 because we imply 0 channel if it's not set.
 
     while (!readBuffer.IsEmpty() && !readBuffer.IsOverrun())
@@ -2554,7 +2656,7 @@ CarrierThread::ProcessIncomingDataGram(ThreadConnection* connection, DatagramDat
         AZ_Assert(msg.m_dataSize, "Received Message with 0 size! This is bad data!");
 
         // Process carrier thread system messages (they should execute really quick, otherwise a blocking will occur).
-        if (msg.m_channel == m_systemChannel)
+        if (msg.m_channel == k_systemChannel)
         {
             size_t messageIdSize = 1; // 1 byte
             size_t messageIdOffset = msg.m_dataSize - messageIdSize;
@@ -2603,7 +2705,7 @@ CarrierThread::ProcessIncomingDataGram(ThreadConnection* connection, DatagramDat
             }
         }
 
-        if (msg.m_channel >= m_maxNumberOfChannels) // checking for spoofed channel
+        if (msg.m_channel >= k_maxNumberOfChannels) // checking for spoofed channel
         {
             //Corrupted packet or malicious activity. Report It!
             ThreadMessage* mtm = aznew ThreadMessage(MTM_ON_ERROR);
@@ -2704,7 +2806,7 @@ CarrierThread::ProcessIncomingDataGram(ThreadConnection* connection, DatagramDat
             // Read the payload
             msg.m_data = AllocateMessageData(msg.m_dataSize);
             readBuffer.ReadRaw(msg.m_data, msg.m_dataSize);
-            if (msg.m_channel != m_systemChannel)
+            if (msg.m_channel != k_systemChannel)
             {
                 dgram.m_flowControl.m_effectiveSize += msg.m_dataSize;
             }
@@ -2741,6 +2843,7 @@ void CarrierThread::GenerateOutgoingDataGram(ThreadConnection* connection, Datag
     dgram.m_resendDataSize = 0;
     dgram.m_flowControl.m_effectiveSize = 0;
 
+    // write 2 byte dgram header with seq number
     WriteDataGramHeader(writeBuffer, dgram);
 
     Connection* mainConn = connection->m_mainConnection;
@@ -2829,7 +2932,7 @@ void CarrierThread::GenerateOutgoingDataGram(ThreadConnection* connection, Datag
                 // add the message data to the datagram
                 writeBuffer.WriteRaw(msg.m_data, msg.m_dataSize);
 
-                if (msg.m_channel != m_systemChannel)
+                if (msg.m_channel != k_systemChannel)
                 {
                     dgram.m_flowControl.m_effectiveSize += msg.m_dataSize;
                 }
@@ -2979,14 +3082,14 @@ CarrierThread::SendSystemMessage(SystemMessageId id, WriteBuffer& wb, ThreadConn
         AZ::u32 dataCrc = AZ::Crc32(wb.Get(), wb.Size());
         wb.WriteRaw(&dataCrc, sizeof(dataCrc));
     }
-#endif // AZ_DEBUG_BUILD
+#endif // GM_CARRIER_MESSAGE_CRC
 
     const char* data = wb.Get();
     unsigned short dataSize = static_cast<unsigned short>(wb.Size());
     AZ_Assert(dataSize <= m_maxMsgDataSizeBytes, "System message is too long, we don't support split for Carrier system messages!");
     CarrierImpl::DataReliability reliability = CarrierImpl::SEND_UNRELIABLE;
     CarrierImpl::DataPriority priority = CarrierImpl::PRIORITY_SYSTEM;
-    unsigned char channel = m_systemChannel;
+    unsigned char channel = k_systemChannel;
     unsigned short dataSendStep = dataSize;
     unsigned short numChunks = 1;
 
@@ -3134,6 +3237,18 @@ CarrierThread::ReadMessageHeader(ReadBuffer& readBuffer, MessageData& msg, Seque
 {
     char flags;
     readBuffer.Read(flags);
+
+    // catch reading garbage as early as we can, the code should handle overflow in a safe way, but this is a good hint that things are probably about to go wrong.
+    if ((flags & MessageData::MF_UNUSED_FLAGS) != 0)
+    {
+        AZ_Error("GridMate", ((flags & MessageData::MF_UNUSED_FLAGS) == 0), "Packet appears to be corrupted or stream is misaligned, ignoring rest of stream.");
+        return false;
+    }
+
+#ifdef AZ_DEBUG_BUILD
+    msg.m_flagsFromPacket = flags;
+#endif
+
     readBuffer.Read(msg.m_dataSize);
 
     if (flags & MessageData::MF_RELIABLE)
@@ -3150,7 +3265,7 @@ CarrierThread::ReadMessageHeader(ReadBuffer& readBuffer, MessageData& msg, Seque
         readBuffer.Read(channel);
     }
 
-    if (channel >= m_maxNumberOfChannels)
+    if (channel >= k_maxNumberOfChannels)
     {
         return false;
     }
@@ -3595,8 +3710,8 @@ CarrierImpl::SendWithCallback(const char* data, unsigned int dataSize, AZStd::un
 {
     AZ_Assert(dataSize > 0, "You can NOT send empty messages!");
     AZ_Assert(priority > PRIORITY_SYSTEM, "PRIORITY_SYSTEM is reserved for internal use!");
-    AZ_Assert(channel < m_maxNumberOfChannels, "Invalid channel index!");
-    AZ_Assert(channel != m_systemChannel, "The channel number %d is reserved for system communication!", m_systemChannel);
+    AZ_Assert(channel < k_maxNumberOfChannels, "Invalid channel index!");
+    AZ_Assert(channel != k_systemChannel, "The channel number %d is reserved for system communication!", k_systemChannel);
 
 #if defined(GM_CARRIER_MESSAGE_CRC)
     AZ::u32 dataCrc = AZ::Crc32(data, dataSize);
@@ -3609,7 +3724,7 @@ CarrierImpl::SendWithCallback(const char* data, unsigned int dataSize, AZStd::un
     data = reinterpret_cast<const char*>(newData);
     dataSize += sizeof(dataCrc);
 
-#endif // AZ_DEBUG_BUILD
+#endif // GM_CARRIER_MESSAGE_CRC
 
     if (target == AllConnections)
     {
@@ -3648,7 +3763,7 @@ CarrierImpl::Receive(char* data, unsigned int maxDataSize, ConnectionID from, un
     ReceiveResult result;
     result.m_state = ReceiveResult::NO_MESSAGE_TO_RECEIVE;
     result.m_numBytes = 0;
-    if (channel >= m_maxNumberOfChannels)
+    if (channel >= k_maxNumberOfChannels)
     {
         AZ_Assert(false, "Invalid channel index!");
 
@@ -3665,7 +3780,7 @@ CarrierImpl::Receive(char* data, unsigned int maxDataSize, ConnectionID from, un
     if (fromConn)
     {
         /// If you are NOT connected, we allow only system channel messages to be received.
-        if (fromConn->m_state == Carrier::CST_CONNECTED || channel == m_systemChannel)
+        if (fromConn->m_state == Carrier::CST_CONNECTED || channel == k_systemChannel)
         {
             // Carrier thread has already sorted and prepared
             // all the messages in the correct order to receive.
@@ -3761,7 +3876,7 @@ CarrierImpl::Receive(char* data, unsigned int maxDataSize, ConnectionID from, un
 
         received = realDataSize;
     }
-#endif // AZ_DEBUG_BUILD
+#endif // GM_CARRIER_MESSAGE_CRC
 
     return result;
 }
@@ -3946,7 +4061,7 @@ CarrierImpl::Update()
             Connection* conn = m_connections[iConnection];
             while (true)
             {
-                Carrier::ReceiveResult result = Receive(systemMessageBuffer, m_thread->m_maxDataGramSizeBytes, conn, m_systemChannel);
+                Carrier::ReceiveResult result = Receive(systemMessageBuffer, m_thread->m_maxDataGramSizeBytes, conn, k_systemChannel);
                 if (result.m_state == ReceiveResult::RECEIVED)
                 {
                     SystemMessageId msgId;
@@ -4145,7 +4260,7 @@ CarrierImpl::QueryStatistics(ConnectionID id, TrafficControl::Statistics* lastSe
             {
                 AZStd::lock_guard<AZStd::mutex> receiveLock(conn->m_toReceiveLock);
                 flowInformation->m_numToReceiveMessages = 0;
-                for (int channel = 0; channel < m_maxNumberOfChannels; ++channel)
+                for (int channel = 0; channel < k_maxNumberOfChannels; ++channel)
                 {
                     flowInformation->m_numToReceiveMessages += conn->m_toReceive[channel].size();
                 }
@@ -4241,7 +4356,7 @@ CarrierImpl::SendSystemMessage(SystemMessageId id, WriteBuffer& wb, ConnectionID
         AZ::u32 dataCrc = AZ::Crc32(wb.Get(), wb.Size());
         wb.WriteRaw(&dataCrc, sizeof(dataCrc));
     }
-#endif // AZ_DEBUG_BUILD
+#endif // GM_CARRIER_MESSAGE_CRC
 
     if (target == AllConnections)
     {
@@ -4249,7 +4364,7 @@ CarrierImpl::SendSystemMessage(SystemMessageId id, WriteBuffer& wb, ConnectionID
         {
             if (!isForValidConnectionsOnly || m_connections[i]->m_state == Carrier::CST_CONNECTED)
             {
-                GenerateSendMessages(wb.Get(), static_cast<unsigned int>(wb.Size()), m_connections[i], reliability, PRIORITY_SYSTEM, m_systemChannel);
+                GenerateSendMessages(wb.Get(), static_cast<unsigned int>(wb.Size()), m_connections[i], reliability, PRIORITY_SYSTEM, k_systemChannel);
             }
         }
     }
@@ -4257,7 +4372,7 @@ CarrierImpl::SendSystemMessage(SystemMessageId id, WriteBuffer& wb, ConnectionID
     {
         if (!isForValidConnectionsOnly || static_cast<Connection*>(target)->m_state == Carrier::CST_CONNECTED)
         {
-            GenerateSendMessages(wb.Get(), static_cast<unsigned int>(wb.Size()), target, reliability, PRIORITY_SYSTEM, m_systemChannel);
+            GenerateSendMessages(wb.Get(), static_cast<unsigned int>(wb.Size()), target, reliability, PRIORITY_SYSTEM, k_systemChannel);
         }
     }
 }

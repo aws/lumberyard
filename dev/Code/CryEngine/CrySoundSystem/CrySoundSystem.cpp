@@ -23,11 +23,22 @@
 #include <AudioSystem.h>
 #include <SoundCVars.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define CRYSOUNDSYSTEM_CPP_SECTION_1 1
+#define CRYSOUNDSYSTEM_CPP_SECTION_2 2
+#define CRYSOUNDSYSTEM_CPP_SECTION_3 3
+#endif
+
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     #include "../CryAction/IViewSystem.h"
     #include <IGameFramework.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYSOUNDSYSTEM_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(CrySoundSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace Audio
 {
@@ -200,6 +211,10 @@ class CEngineModule_CrySoundSystem
 
         if (CreateAudioSystem(env))
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION CRYSOUNDSYSTEM_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(CrySoundSystem_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             g_audioLogger.Log(eALT_ALWAYS, "%s loaded!", GetName());
 
@@ -335,7 +350,8 @@ CRYREGISTER_SINGLETON_CLASS(CEngineModule_CrySoundSystem)
 CEngineModule_CrySoundSystem::CEngineModule_CrySoundSystem()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CrySoundSystem_cpp)
+#define AZ_RESTRICTED_SECTION CRYSOUNDSYSTEM_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(CrySoundSystem_cpp, AZ_RESTRICTED_PLATFORM)
 #else
 #define CRYSOUNDSYSTEM_CPP_TRAIT_DISABLE_AUDIO 0
 #endif
@@ -346,13 +362,13 @@ CEngineModule_CrySoundSystem::CEngineModule_CrySoundSystem()
 #endif
 
     // Register audio implementation name cvar
-    m_cvAudioSystemImplementationName = REGISTER_STRING_CB(
-            "s_AudioSystemImplementationName", DEFAULT_AUDIO_SYSTEM_IMPLEMENTATION_NAME, VF_CHEAT | VF_CHEAT_NOCHECK,
-            "Holds the name of the AudioSystemImplementation library to be used.\n"
-            "Usage: s_AudioSystemImplementationName <name of the library without extension>\n"
-            "Default: " DEFAULT_AUDIO_SYSTEM_IMPLEMENTATION_NAME "\n",
-            CEngineModule_CrySoundSystem::OnAudioImplChanged
-            );
+    // Removed the ability to change this at runtime.  If it's needed by someone we can revisit making it work again.
+    m_cvAudioSystemImplementationName = REGISTER_STRING(
+        "s_AudioSystemImplementationName", DEFAULT_AUDIO_SYSTEM_IMPLEMENTATION_NAME, VF_CHEAT | VF_CHEAT_NOCHECK | VF_REQUIRE_APP_RESTART | VF_DEV_ONLY,
+        "Holds the name of the AudioSystemImplementation library to be used.\n"
+        "Usage: s_AudioSystemImplementationName <name of the library without extension>\n"
+        "Default: " DEFAULT_AUDIO_SYSTEM_IMPLEMENTATION_NAME "\n"
+        );
 
     Audio::g_audioCVars.RegisterVariables();
 }

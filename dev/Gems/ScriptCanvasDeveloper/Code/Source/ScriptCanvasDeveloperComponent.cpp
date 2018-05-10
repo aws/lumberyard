@@ -13,6 +13,10 @@
 
 #include <ScriptCanvasDeveloper/ScriptCanvasDeveloperComponent.h>
 
+#include <ScriptCanvas/Core/Connection.h>
+#include <ScriptCanvas/Core/Graph.h>
+#include <ScriptCanvas/Core/Node.h>
+
 namespace ScriptCanvasDeveloper
 {
     void SystemComponent::Reflect(AZ::ReflectContext* context)
@@ -37,9 +41,73 @@ namespace ScriptCanvasDeveloper
 
     void SystemComponent::Activate()
     {
+        ScriptCanvas::StatusRequestBus::Handler::BusConnect();
     }
 
     void SystemComponent::Deactivate()
     {
+        ScriptCanvas::StatusRequestBus::Handler::BusDisconnect();
+    }
+
+    AZ::Outcome<void, ScriptCanvas::StatusErrors> SystemComponent::ValidateGraph(const ScriptCanvas::Graph& graph)
+    {
+        ScriptCanvas::StatusErrors statusErrors;
+        const ScriptCanvas::GraphData& graphData = *graph.GetGraphDataConst();
+
+        // Validate all connections and add invalid connections to the StatusError list of errors
+        for (auto& connectionEntity : graphData.m_connections)
+        {
+            if (auto connection = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Connection>(connectionEntity))
+            {
+                const auto& sourceEndpoint = connection->GetSourceEndpoint();
+                auto nodeIt = AZStd::find_if(graphData.m_nodes.begin(), graphData.m_nodes.end(), [sourceEndpoint](const AZ::Entity* entity) { return entity->GetId() == sourceEndpoint.GetNodeId(); });
+                if (nodeIt == graphData.m_nodes.end())
+                {
+                    statusErrors.m_graphErrors.emplace_back(AZStd::string::format("Script Canvas connection (%s)%s has invalid source endpoint node(nodeId=%s)",
+                        connectionEntity->GetName().data(), connectionEntity->GetId().ToString().data(), sourceEndpoint.GetNodeId().ToString().data()));
+                    statusErrors.m_invalidConnectionIds.emplace_back(connectionEntity->GetId());
+                }
+                else
+                {
+                    auto sourceNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(*nodeIt);
+                    AZStd::string sourceNodeName = sourceNode->GetNodeName();
+                    auto sourceSlot = sourceNode->GetSlot(sourceEndpoint.GetSlotId());
+                    if (!sourceSlot)
+                    {
+                        statusErrors.m_graphErrors.emplace_back(AZStd::string::format("Script Canvas connection (%s)%s has invalid source endpoint slot(node=%s, nodeId=%s, slotId=%s)",
+                            connectionEntity->GetName().data(), connectionEntity->GetId().ToString().data(), sourceNodeName.data(), sourceEndpoint.GetNodeId().ToString().data(), sourceEndpoint.GetSlotId().m_id.ToString<AZStd::string>().data()));
+                        statusErrors.m_invalidConnectionIds.emplace_back(connectionEntity->GetId());
+                    }
+                }
+
+                const auto& targetEndpoint = connection->GetTargetEndpoint();
+                nodeIt = AZStd::find_if(graphData.m_nodes.begin(), graphData.m_nodes.end(), [targetEndpoint](const AZ::Entity* entity) { return entity->GetId() == targetEndpoint.GetNodeId(); });
+                if (nodeIt == graphData.m_nodes.end())
+                {
+                    statusErrors.m_graphErrors.emplace_back(AZStd::string::format("Script Canvas connection (%s)%s has invalid target endpoint node(nodeId=%s)",
+                        connectionEntity->GetName().data(), connectionEntity->GetId().ToString().data(), targetEndpoint.GetNodeId().ToString().data()));
+                    statusErrors.m_invalidConnectionIds.emplace_back(connectionEntity->GetId());
+                }
+                else
+                {
+                    auto targetNode = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(*nodeIt);
+                    AZStd::string targetNodeName = targetNode->GetNodeName();
+                    auto targetSlot = targetNode->GetSlot(targetEndpoint.GetSlotId());
+                    if (!targetSlot)
+                    {
+                        statusErrors.m_graphErrors.emplace_back(AZStd::string::format("Script Canvas connection (%s)%s has invalid target endpoint slot(node=%s, nodeId=%s, slotId=%s)",
+                            connectionEntity->GetName().data(), connectionEntity->GetId().ToString().data(), targetNodeName.data(), targetEndpoint.GetNodeId().ToString().data(), targetEndpoint.GetSlotId().m_id.ToString<AZStd::string>().data()));
+                        statusErrors.m_invalidConnectionIds.emplace_back(connectionEntity->GetId());
+                    }
+                }
+            }
+        }
+
+        if (!statusErrors.m_graphErrors.empty())
+        {
+            return AZ::Failure(AZStd::move(statusErrors));
+        }
+        
+        return AZ::Success();
     }
 }

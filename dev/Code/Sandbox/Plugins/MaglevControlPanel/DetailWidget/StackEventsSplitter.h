@@ -26,7 +26,7 @@ class StackEventsSplitter
 
 public:
 
-    StackEventsSplitter(QSharedPointer<IStackEventsModel> eventsModel);
+    StackEventsSplitter(QSharedPointer<IStackEventsModel> eventsModel, QWidget* parent);
 
     QWidget* GetTopWidget() const;
     void SetTopWidget(QWidget* widget);

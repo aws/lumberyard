@@ -12,8 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 // Description : Assert dialog box
-#ifndef CRYINCLUDE_CRYCOMMON_CRYASSERT_H
-#define CRYINCLUDE_CRYCOMMON_CRYASSERT_H
+
 #pragma once
 
 #include <AzCore/base.h>
@@ -51,7 +50,7 @@
 //-----------------------------------------------------------------------------------------------------
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-    #include AZ_RESTRICTED_FILE(CryAssert_h)
+    #include AZ_RESTRICTED_FILE(CryAssert_h, AZ_RESTRICTED_PLATFORM)
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -92,6 +91,3 @@ void CryDebugBreak();
 #endif
 
 //-----------------------------------------------------------------------------------------------------
-
-
-#endif // CRYINCLUDE_CRYCOMMON_CRYASSERT_H

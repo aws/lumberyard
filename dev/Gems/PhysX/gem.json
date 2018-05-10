@@ -6,7 +6,7 @@
     "Version": "0.1.0",
     "LinkType": "Dynamic",
     "Summary": "Enabling PhysX for physics simulation (experimental, currently Windows only).",
-    "Tags": ["Untagged"],
+    "Tags": ["Physics"],
     "IconPath": "preview.png",
     "EditorModule": true
 }

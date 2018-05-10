@@ -222,8 +222,16 @@ namespace Path
         SplitPath(strExecutablePath, strDriveLetter, strDirectory, strFilename, strExtension);
         strReturnValue = strDriveLetter;
         strReturnValue += strDirectory;
-        GetParentDirectoryString(strReturnValue);
 
+        static const char EditorBundleName[] = "/Editor.app/Contents/MacOS/";
+        if (strReturnValue.endsWith(EditorBundleName))
+        {
+            // We are inside a bundle but the rest of the code is not setup to
+            // handle that.So go up a few directories to get out of the App Bundle heirarchy...
+            strReturnValue.chop(strlen(EditorBundleName));
+        }
+
+        GetParentDirectoryString(strReturnValue);
         return strReturnValue;
     }
     //////////////////////////////////////////////////////////////////////////
@@ -591,6 +599,32 @@ namespace Path
         }
 
         return CaselessPaths(path);
+    }
+
+    QString SubDirectoryCaseInsensitive(const QString& path, const QStringList& parts)
+    {
+        if (parts.isEmpty())
+        {
+            return path;
+        }
+
+        QStringList modifiedParts = parts;
+        auto currentPart = modifiedParts.takeFirst();
+
+        // case insensitive iterator
+        QDirIterator it(path);
+        while (it.hasNext())
+        {
+            it.next();
+            // the current part already exists, use it, case doesn't matter
+            auto actualName = it.fileName();
+            if (QString::compare(actualName, currentPart, Qt::CaseInsensitive) == 0)
+            {
+                return SubDirectoryCaseInsensitive(QDir(path).absoluteFilePath(actualName), modifiedParts);
+            }
+        }
+        // the current path doesn't exist yet, so just create the complete path in one rush
+        return QDir(path).absoluteFilePath(parts.join('/'));
     }
 }
 

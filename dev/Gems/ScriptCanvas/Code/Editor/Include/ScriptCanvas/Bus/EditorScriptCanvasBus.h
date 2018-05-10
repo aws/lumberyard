@@ -18,8 +18,12 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetSerializer.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Math/Uuid.h>
+#include <AzCore/Math/Vector2.h>
 
 #include <Editor/Include/ScriptCanvas/Assets/ScriptCanvasAsset.h>
+#include <Editor/Include/ScriptCanvas/Bus/NodeIdPair.h>
+#include <GraphCanvas/Editor/EditorTypes.h>
 
 namespace ScriptCanvasEditor
 {
@@ -94,4 +98,29 @@ namespace ScriptCanvasEditor
         virtual void OnScriptCanvasAssetSaved(const AZ::Data::Asset<ScriptCanvasAsset>& /*scriptCanvasAsset*/, bool /*isSuccessful*/) {};
     };
     using EditorScriptCanvasAssetNotificationBus = AZ::EBus<EditorScriptCanvasAssetNotifications>;
+    
+    class EditorGraphRequests : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+        
+        virtual void CreateGraphCanvasScene() = 0;
+        virtual GraphCanvas::GraphId GetGraphCanvasGraphId() const = 0;
+
+        virtual NodeIdPair CreateCustomNode(const AZ::Uuid& typeId, const AZ::Vector2& position) = 0;
+    };
+    
+    using EditorGraphRequestBus = AZ::EBus<EditorGraphRequests>;
+
+    class EditorNodeNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void OnGraphCanvasNodeDisplayed(AZ::EntityId /*graphCanvasNodeId*/) {}
+    };
+
+    using EditorNodeNotificationBus = AZ::EBus<EditorNodeNotifications>;
 }

@@ -37,7 +37,6 @@
 #include "BitFiddling.h"
 #include "ObjMan.h"
 #include "ParticleMemory.h"
-#include "ObjManCullQueue.h"
 #include "MergedMeshRenderNode.h"
 #include "GeomCacheManager.h"
 #include "DeformableNode.h"
@@ -1645,17 +1644,11 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
 
     GetObjManager()->GetCullThread().SetActive(true);
 
-#ifdef USE_CULL_QUEUE
-    if (GetCVars()->e_CoverageBuffer)
-    {
-        GetObjManager()->CullQueue().Wait();
-    }
-#else
     if (GetCVars()->e_CoverageBuffer)
     {
         m_pCoverageBuffer->BeginFrame(passInfo);
     }
-#endif
+
     if (m_pVisAreaManager != nullptr)
     {
         m_pVisAreaManager->DrawOcclusionAreasIntoCBuffer(m_pCoverageBuffer, passInfo);
@@ -1846,10 +1839,6 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
 
     gEnv->pGame->OnRenderScene(passInfo);
 
-    if (GetObjManager() != nullptr)
-    {
-        GetObjManager()->CullQueue().FinishedFillingTestItemQueue();
-    }
     SetupDistanceFog();
 
     SetupClearColor();
@@ -2056,11 +2045,6 @@ void C3DEngine::RenderSceneReflection(const int nRenderFlags, const SRenderingPa
         FRAME_PROFILER("Renderer::EF_EndEf3D", GetSystem(), PROFILE_RENDERER);
         GetRenderer()->EF_EndEf3D(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags,  GetObjManager()->GetUpdateStreamingPrioriryRoundId(), GetObjManager()->GetUpdateStreamingPrioriryRoundIdFast(), passInfo);
     }
-}
-
-void C3DEngine::ResetCoverageBufferSignalVariables()
-{
-    GetObjManager()->CullQueue().ResetSignalVariables();
 }
 
 void C3DEngine::ProcessOcean(const SRenderingPassInfo& passInfo)

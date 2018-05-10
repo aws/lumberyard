@@ -36,7 +36,7 @@ namespace EditorUIPlugin
         static_cast<LibraryModifyCommand*>(m_modifyCmd)->CaptureStart();
     }
 
-    ScopedLibraryModifyUndo::~ScopedLibraryModifyUndo()        
+    ScopedLibraryModifyUndo::~ScopedLibraryModifyUndo()
     {
         static_cast<LibraryModifyCommand*>(m_modifyCmd)->CaptureEnd();
         EBUS_EVENT(EditorLibraryUndoRequestsBus, AddUndo, m_modifyCmd);
@@ -105,21 +105,21 @@ namespace EditorUIPlugin
         }
         if (!m_curUndoBatch)
         {
-            m_curUndoBatch = aznew UndoSystem::URSequencePoint(label, 0);
+            m_curUndoBatch = aznew UndoSystem::BatchCommand(label, 0);
         }
         else
         {
             //use tree stucture for undo batch so it can have right label for the undo operation
             UndoSystem::URSequencePoint* pCurrent = m_curUndoBatch;
 
-            m_curUndoBatch = aznew UndoSystem::URSequencePoint(label, 0);
+            m_curUndoBatch = aznew UndoSystem::BatchCommand(label, 0);
             m_curUndoBatch->SetParent(pCurrent);
         }
     }
-   
+
     void EditorLibraryUndoManager::EndUndoBatch()
     {
-        //Note, if there is not a current batch then we return directly and treat this as expected. 
+        //Note, if there is not a current batch then we return directly and treat this as expected.
         //There is a situation where a batch could be ended twice with no adverse effect, in CLibraryTreeView::EndRename().
         if (IsSuspend() || !m_curUndoBatch)
         {
@@ -202,7 +202,7 @@ namespace EditorUIPlugin
             delete sequecePoint;
             return;
         }
-        
+
         if (m_curUndoBatch == nullptr)
         {
             m_undoStack->Post(sequecePoint);
@@ -239,7 +239,7 @@ namespace EditorUIPlugin
     {
         m_itemsCache->Clear();
     }
-    
+
     IDataBaseItem* EditorLibraryUndoManager::GetItem(const AZStd::string& itemId)
     {
         return m_libMgr->FindItemByName(itemId.c_str());
@@ -249,7 +249,7 @@ namespace EditorUIPlugin
     {
         return m_libMgr->FindLibrary(libId.c_str());
     }
-    
+
     IBaseLibraryManager* EditorLibraryUndoManager::GetLibraryManager()
     {
         return m_libMgr;
@@ -300,7 +300,7 @@ namespace EditorUIPlugin
         command->Capture(itemIds);
         AddUndo(command);
     }
-    
+
     ScopedLibraryMoveUndoPtr EditorLibraryUndoManager::AddScopedLibraryMoveUndo(const AZStd::string& libName)
     {
         if (IsSuspend())

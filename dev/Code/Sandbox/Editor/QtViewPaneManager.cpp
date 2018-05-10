@@ -207,7 +207,8 @@ DockWidget::DockWidget(QWidget* widget, QtViewPane* pane, QSettings* settings, Q
         setAttribute(Qt::WA_DeleteOnClose);
     }
 
-    setObjectName(pane->m_name);
+    QString objectNameForSave = pane->m_options.saveKeyName.length() > 0 ? pane->m_options.saveKeyName : pane->m_name;
+    setObjectName(objectNameForSave);
 
     setWidget(widget);
     setFocusPolicy(Qt::StrongFocus);
@@ -914,6 +915,9 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
             m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, entityInspectorViewPane->m_dockWidget);
             entityInspectorViewPane->m_dockWidget->setFloating(false);
 
+            static const float tabWidgetWidthPercentage = 0.2f;
+            int newWidth = (float)screenWidth * tabWidgetWidthPercentage;
+
 			if (m_enableLegacyCryEntities)
        		{
                 // Tab the entity inspector with the rollupbar so that when they are
@@ -929,12 +933,15 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
                     // Resize our tabbed entity inspector and rollup bar dock widget
                     // so that it takes up an appropriate amount of space (with the
                     // minimum sizes removed, it was being shrunk too small by default)
-                    static const float tabWidgetWidthPercentage = 0.2f;
+                    
                     QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
-                    int newWidth = (float)screenWidth * tabWidgetWidthPercentage;
                     m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
                 }
         	}
+            else
+            {
+                m_mainWindow->resizeDocks({ entityInspectorViewPane->m_dockWidget }, { newWidth }, Qt::Horizontal);
+            }
 		}
 
         if (assetBrowserViewPane && entityOutlinerViewPane)
@@ -1362,7 +1369,18 @@ QtViewPane* QtViewPaneManager::GetPane(const QString& name)
     auto it = std::find_if(m_registeredPanes.begin(), m_registeredPanes.end(),
             [name](const QtViewPane& pane) { return name == pane.m_name; });
 
-    return it == m_registeredPanes.end() ? nullptr : it;
+    QtViewPane* foundPane = ((it == m_registeredPanes.end()) ? nullptr : it);
+
+    if (foundPane == nullptr)
+    {
+        // if we couldn't find the pane based on the name (which will be the title), look it up by saveKeyName next
+        it = std::find_if(m_registeredPanes.begin(), m_registeredPanes.end(),
+            [name](const QtViewPane& pane) { return name == pane.m_options.saveKeyName; });
+
+        foundPane = ((it == m_registeredPanes.end()) ? nullptr : it);
+    }
+
+    return foundPane;
 }
 
 QtViewPane* QtViewPaneManager::GetViewportPane(int viewportType)

@@ -53,6 +53,18 @@ namespace AZ
             }
 
             ////////////////////////////////////////////////////////////////
+            AConfiguration* GetConfiguration()
+            {
+                return AndroidEnv::Get()->GetConfiguration();
+            }
+
+            ////////////////////////////////////////////////////////////////
+            void UpdateConfiguration()
+            {
+                return AndroidEnv::Get()->UpdateConfiguration();
+            }
+
+            ////////////////////////////////////////////////////////////////
             const char* GetAppPrivateStoragePath()
             {
                 return AndroidEnv::Get()->GetAppPrivateStoragePath();

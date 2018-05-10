@@ -4,16 +4,14 @@
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
 * distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
+* or, if provided, by the license below or the license accompanying this file.Do not
 * remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
-*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 
-#include <ExampleBuilder/Source/ExampleBuilderComponent.h>
 #include <AzCore/Component/Entity.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
-#include <AssetBuilderSDK/AssetBuilderBusses.h>
 
 void BuilderOnInit()
 {
@@ -25,16 +23,14 @@ void BuilderDestroy()
 
 void BuilderRegisterDescriptors()
 {
-    // register our COMPONENTS here.  We can register as many components as we want.
-    EBUS_EVENT(AssetBuilderSDK::AssetBuilderBus, RegisterComponentDescriptor, ExampleBuilder::BuilderPluginComponent::CreateDescriptor());
 }
 
 void BuilderAddComponents(AZ::Entity* entity)
 {
-    // we can attach any components we want to this entity, including management components.
-    // however we need at least 1 component that will be the "life cycle component"
-    entity->CreateComponentIfReady<ExampleBuilder::BuilderPluginComponent>();
+    AZ_UNUSED(entity);
 }
 
-// we must use this macro to register this as an assetbuilder
+// This builder dll is deprecated, and has moved into the CustomAssetExample gem.
+// We keep it around for a few versions with minimal code in order to replace old dlls with harmless dlls.
+// Since the AP will assert when loading this dll if it's not registered properly, we still register this empty builder.
 REGISTER_ASSETBUILDER

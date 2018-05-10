@@ -68,7 +68,7 @@ public:
     void Select(bool bSelect);
     bool IsSelected() const;
 
-    void SetTime(float time);
+    void SetTime(float time, bool notifyListeners = true);
     float GetTime() const;
 
     float GetDuration() const;

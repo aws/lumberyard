@@ -89,10 +89,24 @@
 *     ScriptCanvas_Out::Name             // The friendly name and description to display in the editor
 *
 * Example:
-*     ScriptCanvas_Out(ScriptCanvas_Out::Name("On Finished", "Will be signalled when the operation is complete."));
+*     ScriptCanvas_Out(ScriptCanvas_Out::Name("On Finished", "Will be signaled when the operation is complete."));
 *
 * ---------------------------------------------------------------------------------------------------------- */
 #define ScriptCanvas_Out(...) 
+
+/* -----------------------------------------------------------------------------------------------------------
+*
+* ScriptCanvas_OutLatent
+* This tag provides a named latent out execution slot to the node.
+*
+* Supports:
+*     ScriptCanvas_OutLatent::Name             // The friendly name and description to display in the editor
+*
+* Example:
+*     ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("On Finished", "Will be signaled when the operation is complete."));
+*
+* ---------------------------------------------------------------------------------------------------------- */
+#define ScriptCanvas_OutLatent(...) 
 
 /*
 *----------------------------------------------------------------------------------------------------------
@@ -204,6 +218,7 @@
 
 #define ScriptCanvas_In(...) AZCG_CreateArgumentAnnotation(ScriptCanvas_In, Identifier(In), __VA_ARGS__) int AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 #define ScriptCanvas_Out(...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Out, Identifier(Out), __VA_ARGS__) int AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
+#define ScriptCanvas_OutLatent(...) AZCG_CreateArgumentAnnotation(ScriptCanvas_OutLatent, Identifier(Out), __VA_ARGS__) int AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 
 #define ScriptCanvas_Property(Type, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Property, Identifier(Property), ValueType(Type), __VA_ARGS__) Type AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
 #define ScriptCanvas_PropertyWithDefaults(Type, Default, ...) AZCG_CreateArgumentAnnotation(ScriptCanvas_Property, Identifier(Property), ValueType(Type), DefaultValue(AZ_STRINGIZE(Default)), __VA_ARGS__) Type AZ_JOIN(m_azCodeGenInternal, __COUNTER__);
@@ -276,6 +291,11 @@ namespace ScriptCanvasTags
         template <typename ...Args>
         EditAttributes(Args&&... args) {}
     };
+
+    struct Deprecated
+    {
+        Deprecated(const char* details) {}
+    };
 }
 
 namespace ScriptCanvas_Node
@@ -311,6 +331,11 @@ namespace ScriptCanvas_Out
     using ScriptCanvasTags::Name;
 }
 
+namespace ScriptCanvas_OutLatent
+{
+    using ScriptCanvasTags::Name;
+}
+
 namespace ScriptCanvas_Property
 {
     using ScriptCanvasTags::Name;
@@ -325,7 +350,7 @@ namespace ScriptCanvas_Property
     using AzCommon::Attributes::Max;
     
     // Will produce an untyped input slot.
-    using Untyped = bool;
+    using Overloaded = bool;
 
     // Will expose this property as an INPUT slot on the node.
     using Input = bool;
@@ -344,6 +369,7 @@ namespace EditProperty
 {
     using ScriptCanvasTags::Name;
     using ScriptCanvasTags::Category;
+    using ScriptCanvasTags::EditAttributes;
 
     using AzCommon::Attributes::ChangeNotify;
     using AzCommon::Attributes::Visibility;

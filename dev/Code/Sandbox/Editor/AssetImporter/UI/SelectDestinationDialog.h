@@ -19,6 +19,8 @@
 class StyledLineEdit;
 class QValidator;
 
+class DestinationDialogValidator;
+
 namespace Ui {
     class SelectDestinationDialog;
 }
@@ -39,7 +41,7 @@ Q_SIGNALS:
     void BrowseDestinationPath(QLineEdit* destinationLineEdit);
     void Cancel();
     void UpdateImportButtonState(bool enabled);
-    void SetDestinationDiretory(QString destinationDirectory);
+    void SetDestinationDirectory(QString destinationDirectory);
 
 public Q_SLOTS:
     void accept();
@@ -55,5 +57,5 @@ private:
     QString DestinationDirectory() const;
 
     QScopedPointer<Ui::SelectDestinationDialog> m_ui;
-    QValidator* m_validator;
+    DestinationDialogValidator* m_validator;
 };

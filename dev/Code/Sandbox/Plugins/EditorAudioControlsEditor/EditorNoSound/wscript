@@ -23,7 +23,7 @@ def build(bld):
         target      = 'EditorNoSound',
         vs_filter   = 'Sandbox/Plugins/AudioControlsEditor',
         file_list   = ['editornosound.waf_files'],
-        platforms   = ['win'],
+        platforms   = ['win', 'darwin'],
         configurations = ['debug', 'debug_test', 'profile', 'profile_test'],
         pch         = "StdAfx.cpp",
         use         = 'EditorCommon',

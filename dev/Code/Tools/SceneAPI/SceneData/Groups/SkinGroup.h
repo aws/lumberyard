@@ -42,6 +42,7 @@ namespace AZ
                 AZ_CLASS_ALLOCATOR_DECL
 
                 SkinGroup();
+                ~SkinGroup() override = default;
 
                 const AZStd::string& GetName() const override;
                 void SetName(const AZStd::string& name);

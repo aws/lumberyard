@@ -20,6 +20,7 @@
 #include <MCore/Source/AttributeSettings.h>
 #include <MCore/Source/AttributeSet.h>
 #include <MCore/Source/Distance.h>
+#include <MCore/Source/StringConversions.h>
 
 #include "../KeyTrackLinear.h"
 
@@ -124,21 +125,19 @@ namespace EMotionFX
     bool SharedHelperData::GetIsUnicodeFile(const char* dateString, MCore::Array<SharedData*>* sharedData)
     {
         // find the helper data
-        SharedData* data                = Importer::FindSharedData(sharedData, SharedHelperData::TYPE_ID);
-        SharedHelperData* helperData    = static_cast<SharedHelperData*>(data);
+        SharedData* data = Importer::FindSharedData(sharedData, SharedHelperData::TYPE_ID);
+        SharedHelperData* helperData = static_cast<SharedHelperData*>(data);
 
-        MCore::Array<MCore::String> dateParts;
-        dateParts.SetMemoryCategory(EMFX_MEMCATEGORY_IMPORTER);
-        dateParts = MCore::String(dateString).Split(MCore::UnicodeCharacter::space);
-        dateParts.RemoveByValue("");
+        AZStd::vector<AZStd::string> dateParts;
+        AzFramework::StringFunc::Tokenize(dateString, dateParts, MCore::CharacterConstants::space, false /* keep empty strings */, true /* keep space strings */);
 
         // decode the month
         int32 month = 0;
-        const MCore::String& monthString = dateParts[0];
+        const AZStd::string& monthString = dateParts[0];
         const char* monthStrings[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         for (int32 i = 0; i < 12; ++i)
         {
-            if (monthString.CheckIfIsEqual(monthStrings[i]))
+            if (monthString == monthStrings[i])
             {
                 month = i + 1;
                 break;
@@ -146,7 +145,11 @@ namespace EMotionFX
         }
 
         //int32 day = dateParts[1].ToInt();
-        int32 year  = dateParts[2].ToInt();
+        int32 year;
+        if (!AzFramework::StringFunc::LooksLikeInt(dateParts[2].c_str(), &year))
+        {
+            return false;
+        }
 
         // set if the file contains unicode strings or not based on the compilcation date
         if (year < 2012 || (year == 2012 && month < 11))
@@ -413,9 +416,15 @@ namespace EMotionFX
 
             if (GetLogging())
             {
-                MCore::LogDetailedInfo("      - Position:      x=%f, y=%f, z=%f", pos.GetX(), pos.GetY(), pos.GetZ());
+                MCore::LogDetailedInfo("      - Position:      x=%f, y=%f, z=%f", 
+                    static_cast<float>(pos.GetX()), 
+                    static_cast<float>(pos.GetY()), 
+                    static_cast<float>(pos.GetZ()));
                 MCore::LogDetailedInfo("      - Rotation:      x=%f, y=%f, z=%f, w=%f", rot.x, rot.y, rot.z, rot.w);
-                MCore::LogDetailedInfo("      - Scale:         x=%f, y=%f, z=%f", scale.GetX(), scale.GetY(), scale.GetZ());
+                MCore::LogDetailedInfo("      - Scale:         x=%f, y=%f, z=%f", 
+                    static_cast<float>(scale.GetX()), 
+                    static_cast<float>(scale.GetY()), 
+                    static_cast<float>(scale.GetZ()));
                 MCore::LogDetailedInfo("      - IncludeInBoundsCalc: %d", includeInBoundsCalc);
             }
         } // for all nodes
@@ -907,12 +916,24 @@ namespace EMotionFX
                 MCore::Quaternion uncompressedBindPoseRot       = bindPoseRot.ToQuaternion();
 
                 MCore::LogDetailedInfo("- Skeletal SubMotion = '%s'", motionPartName);
-                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", posePos.GetX(), posePos.GetY(), posePos.GetZ());
+                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", 
+                    static_cast<float>(posePos.GetX()), 
+                    static_cast<float>(posePos.GetY()), 
+                    static_cast<float>(posePos.GetZ()));
                 MCore::LogDetailedInfo("    + Pose Rotation:         x=%f, y=%f, z=%f, w=%f", uncompressedPoseRot.x, uncompressedPoseRot.y, uncompressedPoseRot.z, uncompressedPoseRot.w);
-                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", poseScale.GetX(), poseScale.GetY(), poseScale.GetZ());
-                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", bindPosePos.GetX(), bindPosePos.GetY(), bindPosePos.GetZ());
+                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", 
+                    static_cast<float>(poseScale.GetX()), 
+                    static_cast<float>(poseScale.GetY()), 
+                    static_cast<float>(poseScale.GetZ()));
+                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", 
+                    static_cast<float>(bindPosePos.GetX()), 
+                    static_cast<float>(bindPosePos.GetY()), 
+                    static_cast<float>(bindPosePos.GetZ()));
                 MCore::LogDetailedInfo("    + Bind Pose Rotation:    x=%f, y=%f, z=%f, w=%f", uncompressedBindPoseRot.x, uncompressedBindPoseRot.y, uncompressedBindPoseRot.z, uncompressedBindPoseRot.w);
-                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", bindPoseScale.GetX(), bindPoseScale.GetY(), bindPoseScale.GetZ());
+                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", 
+                    static_cast<float>(bindPoseScale.GetX()), 
+                    static_cast<float>(bindPoseScale.GetY()), 
+                    static_cast<float>(bindPoseScale.GetZ()));
                 MCore::LogDetailedInfo("    + Num Pos Keys:          %d", fileSubMotion.mNumPosKeys);
                 MCore::LogDetailedInfo("    + Num Rot Keys:          %d", fileSubMotion.mNumRotKeys);
                 MCore::LogDetailedInfo("    + Num Scale Keys:        %d", fileSubMotion.mNumScaleKeys);
@@ -1520,10 +1541,10 @@ namespace EMotionFX
         motionEventTable->ReserveNumTracks(fileEventTable.mNumTracks);
 
         // read all tracks
-        MCore::String trackName;
-        MCore::Array<MCore::String> typeStrings;
-        MCore::Array<MCore::String> paramStrings;
-        MCore::Array<MCore::String> mirrorTypeStrings;
+        AZStd::string trackName;
+        MCore::Array<AZStd::string> typeStrings;
+        MCore::Array<AZStd::string> paramStrings;
+        MCore::Array<AZStd::string> mirrorTypeStrings;
         for (uint32 t = 0; t < fileEventTable.mNumTracks; ++t)
         {
             // read the motion event table header
@@ -1542,7 +1563,7 @@ namespace EMotionFX
             if (GetLogging())
             {
                 MCore::LogDetailedInfo("- Motion Event Track:");
-                MCore::LogDetailedInfo("   + Name       = %s", trackName.AsChar());
+                MCore::LogDetailedInfo("   + Name       = %s", trackName.c_str());
                 MCore::LogDetailedInfo("   + Num events = %d", fileTrack.mNumEvents);
                 MCore::LogDetailedInfo("   + Num types  = %d", fileTrack.mNumTypeStrings);
                 MCore::LogDetailedInfo("   + Num params = %d", fileTrack.mNumParamStrings);
@@ -1566,7 +1587,7 @@ namespace EMotionFX
                 typeStrings[i] = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
                 if (GetLogging())
                 {
-                    MCore::LogDetailedInfo("     [%d] = '%s'", i, typeStrings[i].AsChar());
+                    MCore::LogDetailedInfo("     [%d] = '%s'", i, typeStrings[i].c_str());
                 }
             }
 
@@ -1580,7 +1601,7 @@ namespace EMotionFX
                 paramStrings[i] = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
                 if (GetLogging())
                 {
-                    MCore::LogDetailedInfo("     [%d] = '%s'", i, paramStrings[i].AsChar());
+                    MCore::LogDetailedInfo("     [%d] = '%s'", i, paramStrings[i].c_str());
                 }
             }
 
@@ -1593,7 +1614,7 @@ namespace EMotionFX
                 mirrorTypeStrings[i] = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
                 if (GetLogging())
                 {
-                    MCore::LogDetailedInfo("     [%d] = '%s'", i, mirrorTypeStrings[i].AsChar());
+                    MCore::LogDetailedInfo("     [%d] = '%s'", i, mirrorTypeStrings[i].c_str());
                 }
             }
 
@@ -1605,7 +1626,7 @@ namespace EMotionFX
             }
 
             // create the default event track
-            MotionEventTrack* track = MotionEventTrack::Create(trackName.AsChar(), motion);
+            MotionEventTrack* track = MotionEventTrack::Create(trackName.c_str(), motion);
             track->SetIsEnabled(fileTrack.mIsEnabled != 0);
             track->ReserveNumEvents(fileTrack.mNumEvents);
             track->ReserveNumParameters(fileTrack.mNumParamStrings);
@@ -1617,12 +1638,12 @@ namespace EMotionFX
                 GetEventManager().Lock();
                 for (i = 0; i < fileTrack.mNumMirrorTypeStrings; ++i)
                 {
-                    if (GetEventManager().CheckIfHasEventType(mirrorTypeStrings[i].AsChar()) == false)
+                    if (GetEventManager().CheckIfHasEventType(mirrorTypeStrings[i].c_str()) == false)
                     {
-                        const uint32 mirrorID = GetEventManager().RegisterEventType(mirrorTypeStrings[i].AsChar());
+                        const uint32 mirrorID = GetEventManager().RegisterEventType(mirrorTypeStrings[i].c_str());
                         if (GetLogging())
                         {
-                            MCore::LogInfo("     Event '%s' has been automatically registered with ID %d", mirrorTypeStrings[i].AsChar(), mirrorID);
+                            MCore::LogInfo("     Event '%s' has been automatically registered with ID %d", mirrorTypeStrings[i].c_str(), mirrorID);
                         }
                     }
                 }
@@ -1650,7 +1671,7 @@ namespace EMotionFX
                 // print motion event information
                 if (GetLogging())
                 {
-                    MCore::LogDetailedInfo("     [%d] StartTime = %f  -  EndTime = %f  -  Type = '%s'  -  Param = '%s'  -  Mirror = '%s'", i, fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].AsChar(), paramStrings[fileEvent.mParamIndex].AsChar(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].AsChar());
+                    MCore::LogDetailedInfo("     [%d] StartTime = %f  -  EndTime = %f  -  Type = '%s'  -  Param = '%s'  -  Mirror = '%s'", i, fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].c_str(), paramStrings[fileEvent.mParamIndex].c_str(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].c_str());
                 }
 
                 // if we want to automatically register motion events
@@ -1661,13 +1682,13 @@ namespace EMotionFX
                     // if the event type hasn't been registered yet
                     if (fileEvent.mEventTypeIndex != MCORE_INVALIDINDEX32)
                     {
-                        if (GetEventManager().CheckIfHasEventType(typeStrings[fileEvent.mEventTypeIndex].AsChar()) == false)
+                        if (GetEventManager().CheckIfHasEventType(typeStrings[fileEvent.mEventTypeIndex].c_str()) == false)
                         {
                             // register/link the event type with the free ID
-                            const uint32 id = GetEventManager().RegisterEventType(typeStrings[fileEvent.mEventTypeIndex].AsChar());
+                            const uint32 id = GetEventManager().RegisterEventType(typeStrings[fileEvent.mEventTypeIndex].c_str());
                             if (GetLogging())
                             {
-                                MCore::LogInfo("     Event '%s' has been automatically registered with ID %d", typeStrings[fileEvent.mEventTypeIndex].AsChar(), id);
+                                MCore::LogInfo("     Event '%s' has been automatically registered with ID %d", typeStrings[fileEvent.mEventTypeIndex].c_str(), id);
                             }
                         }
                     }
@@ -1688,22 +1709,22 @@ namespace EMotionFX
                 {
                     if (fileEvent.mEventTypeIndex != MCORE_INVALIDINDEX32)
                     {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].AsChar(), paramStrings[fileEvent.mParamIndex].AsChar(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].AsChar());
+                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].c_str(), paramStrings[fileEvent.mParamIndex].c_str(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].c_str());
                     }
                     else
                     {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, "", paramStrings[fileEvent.mParamIndex].AsChar(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].AsChar());
+                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, "", paramStrings[fileEvent.mParamIndex].c_str(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].c_str());
                     }
                 }
                 else
                 {
                     if (fileEvent.mEventTypeIndex != MCORE_INVALIDINDEX32)
                     {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].AsChar(), paramStrings[fileEvent.mParamIndex].AsChar(), "");
+                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].c_str(), paramStrings[fileEvent.mParamIndex].c_str(), "");
                     }
                     else
                     {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, "", paramStrings[fileEvent.mParamIndex].AsChar(), "");
+                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, "", paramStrings[fileEvent.mParamIndex].c_str(), "");
                     }
                 }
             }
@@ -1883,7 +1904,7 @@ namespace EMotionFX
             MCore::LogDetailedInfo("    + RangeMax           = %f", morphTargetChunk.mRangeMax);
             MCore::LogDetailedInfo("    + NumDeformDatas     = %d", morphTargetChunk.mNumMeshDeformDeltas);
             MCore::LogDetailedInfo("    + NumTransformations = %d", morphTargetChunk.mNumTransformations);
-            MCore::LogDetailedInfo("    + PhonemeSets: %s", MorphTarget::GetPhonemeSetString((MorphTarget::EPhonemeSet)morphTargetChunk.mPhonemeSets).AsChar());
+            MCore::LogDetailedInfo("    + PhonemeSets: %s", MorphTarget::GetPhonemeSetString((MorphTarget::EPhonemeSet)morphTargetChunk.mPhonemeSets).c_str());
         }
 
         // check if the morph setup has already been created, if not create it
@@ -2027,10 +2048,10 @@ namespace EMotionFX
                     delta = file8BitVectors[d];
 
                     // decompress and convert coordinate system
-                    AZ::Vector3 temp = MCore::Compressed8BitVector3(delta.mX, delta.mY, delta.mZ).ToVector3(-1.0f, +1.0f);
+                    AZ::Vector3 temp = MCore::Compressed8BitVector3(delta.mX, delta.mY, delta.mZ).ToVector3(-2.0f, +2.0f);
 
                     // compress the value after coordinate system conversion
-                    deformData->mDeltas[d].mNormal = MCore::Compressed8BitVector3(temp, -1.0f, +1.0f);
+                    deformData->mDeltas[d].mNormal = MCore::Compressed8BitVector3(temp, -2.0f, +2.0f);
                 }
 
                 // read the tangents
@@ -2129,9 +2150,15 @@ namespace EMotionFX
             if (GetLogging())
             {
                 MCore::LogDetailedInfo("    - Transform #%d: Node='%s' (index=%d)", i, skeleton->GetNode(transform.mNodeIndex)->GetName(), transform.mNodeIndex);
-                MCore::LogDetailedInfo("       + Pos:      %f, %f, %f", transform.mPosition.GetX(), transform.mPosition.GetY(), transform.mPosition.GetZ());
+                MCore::LogDetailedInfo("       + Pos:      %f, %f, %f", 
+                    static_cast<float>(transform.mPosition.GetX()), 
+                    static_cast<float>(transform.mPosition.GetY()), 
+                    static_cast<float>(transform.mPosition.GetZ()));
                 MCore::LogDetailedInfo("       + Rotation: %f, %f, %f %f", transform.mRotation.x, transform.mRotation.y, transform.mRotation.z, transform.mRotation.w);
-                MCore::LogDetailedInfo("       + Scale:    %f, %f, %f", transform.mScale.GetX(), transform.mScale.GetY(), transform.mScale.GetZ());
+                MCore::LogDetailedInfo("       + Scale:    %f, %f, %f", 
+                    static_cast<float>(transform.mScale.GetX()), 
+                    static_cast<float>(transform.mScale.GetY()), 
+                    static_cast<float>(transform.mScale.GetZ()));
                 MCore::LogDetailedInfo("       + ScaleRot: %f, %f, %f %f", scaleRot.x, scaleRot.y, scaleRot.z, scaleRot.w);
             }
 
@@ -2239,7 +2266,7 @@ namespace EMotionFX
             const char* name = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
 
             // create a new  morph motion part and set it's id
-            const int32 id = MCore::GetStringIDGenerator().GenerateIDForString(name);
+            const int32 id = MCore::GetStringIdPool().GenerateIdForString(name);
             MorphSubMotion* morphSubMotion = MorphSubMotion::Create(id);
 
             // get the part's keytrack
@@ -2257,7 +2284,7 @@ namespace EMotionFX
                 MCore::LogDetailedInfo("       + Pose Weight        = %f", morphSubMotionChunk.mPoseWeight);
                 MCore::LogDetailedInfo("       + Minimum Weight     = %f", morphSubMotionChunk.mMinWeight);
                 MCore::LogDetailedInfo("       + Maximum Weight     = %f", morphSubMotionChunk.mMaxWeight);
-                MCore::LogDetailedInfo("       + PhonemeSet         = %s", MorphTarget::GetPhonemeSetString((MorphTarget::EPhonemeSet)morphSubMotionChunk.mPhonemeSet).AsChar());
+                MCore::LogDetailedInfo("       + PhonemeSet         = %s", MorphTarget::GetPhonemeSetString((MorphTarget::EPhonemeSet)morphSubMotionChunk.mPhonemeSet).c_str());
             }
 
             // set the pose weight
@@ -2425,7 +2452,7 @@ namespace EMotionFX
                 MCore::LogDetailedInfo("     - RangeMax           = %f", morphTargetChunk.mRangeMax);
                 MCore::LogDetailedInfo("     - NumDeformDatas     = %d", morphTargetChunk.mNumMeshDeformDeltas);
                 MCore::LogDetailedInfo("     - NumTransformations = %d", morphTargetChunk.mNumTransformations);
-                MCore::LogDetailedInfo("     - PhonemeSets: %s", MorphTarget::GetPhonemeSetString((MorphTarget::EPhonemeSet)morphTargetChunk.mPhonemeSets).AsChar());
+                MCore::LogDetailedInfo("     - PhonemeSets: %s", MorphTarget::GetPhonemeSetString((MorphTarget::EPhonemeSet)morphTargetChunk.mPhonemeSets).c_str());
             }
 
             // create the mesh morph target
@@ -2625,9 +2652,15 @@ namespace EMotionFX
                 if (GetLogging())
                 {
                     MCore::LogDetailedInfo("     + Transform #%d: Node='%s' (index=%d)", i, skeleton->GetNode(transform.mNodeIndex)->GetName(), transform.mNodeIndex);
-                    MCore::LogDetailedInfo("        - Pos:      %f, %f, %f", transform.mPosition.GetX(), transform.mPosition.GetY(), transform.mPosition.GetZ());
+                    MCore::LogDetailedInfo("        - Pos:      %f, %f, %f", 
+                        static_cast<float>(transform.mPosition.GetX()), 
+                        static_cast<float>(transform.mPosition.GetY()), 
+                        static_cast<float>(transform.mPosition.GetZ()));
                     MCore::LogDetailedInfo("        - Rotation: %f, %f, %f %f", transform.mRotation.x, transform.mRotation.y, transform.mRotation.z, transform.mRotation.w);
-                    MCore::LogDetailedInfo("        - Scale:    %f, %f, %f", transform.mScale.GetX(), transform.mScale.GetY(), transform.mScale.GetZ());
+                    MCore::LogDetailedInfo("        - Scale:    %f, %f, %f", 
+                        static_cast<float>(transform.mScale.GetX()), 
+                        static_cast<float>(transform.mScale.GetY()), 
+                        static_cast<float>(transform.mScale.GetZ()));
                     MCore::LogDetailedInfo("        - ScaleRot: %f, %f, %f %f", scaleRot.x, scaleRot.y, scaleRot.z, scaleRot.w);
                 }
 
@@ -3030,9 +3063,6 @@ namespace EMotionFX
         FileFormat::AnimGraph_AdditionalInfo fileInfo;
         file->Read(&fileInfo, sizeof(FileFormat::AnimGraph_AdditionalInfo));
 
-        animGraph->SetUnitType(static_cast<MCore::Distance::EUnitType>(fileInfo.mUnitType));
-        animGraph->SetFileUnitType(animGraph->GetUnitType());
-
         return true;
     }
 
@@ -3292,7 +3322,7 @@ namespace EMotionFX
             newParam->SetDescription(SharedHelperData::ReadString(file, importParams.mSharedData, importParams.mEndianType));
 
             // make sure the internal name is set correctly
-            if (newParam->GetInternalNameString().GetIsEmpty())
+            if (newParam->GetInternalNameString().empty())
             {
                 newParam->SetInternalName(newParam->GetName());
             }
@@ -3862,12 +3892,24 @@ namespace EMotionFX
                 MCore::Quaternion uncompressedBindPoseRot       = bindPoseRot.ToQuaternion();
 
                 MCore::LogDetailedInfo("- Wavelet Skeletal SubMotion = '%s'", subMotionName);
-                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", posePos.GetX(), posePos.GetY(), posePos.GetZ());
+                MCore::LogDetailedInfo("    + Pose Position:         x=%f, y=%f, z=%f", 
+                    static_cast<float>(posePos.GetX()), 
+                    static_cast<float>(posePos.GetY()), 
+                    static_cast<float>(posePos.GetZ()));
                 MCore::LogDetailedInfo("    + Pose Rotation:         x=%f, y=%f, z=%f, w=%f", uncompressedPoseRot.x, uncompressedPoseRot.y, uncompressedPoseRot.z, uncompressedPoseRot.w);
-                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", poseScale.GetX(), poseScale.GetY(), poseScale.GetZ());
-                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", bindPosePos.GetX(), bindPosePos.GetY(), bindPosePos.GetZ());
+                MCore::LogDetailedInfo("    + Pose Scale:            x=%f, y=%f, z=%f", 
+                    static_cast<float>(poseScale.GetX()),
+                    static_cast<float>(poseScale.GetY()), 
+                    static_cast<float>(poseScale.GetZ()));
+                MCore::LogDetailedInfo("    + Bind Pose Position:    x=%f, y=%f, z=%f", 
+                    static_cast<float>(bindPosePos.GetX()), 
+                    static_cast<float>(bindPosePos.GetY()), 
+                    static_cast<float>(bindPosePos.GetZ()));
                 MCore::LogDetailedInfo("    + Bind Pose Rotation:    x=%f, y=%f, z=%f, w=%f", uncompressedBindPoseRot.x, uncompressedBindPoseRot.y, uncompressedBindPoseRot.z, uncompressedBindPoseRot.w);
-                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", bindPoseScale.GetX(), bindPoseScale.GetY(), bindPoseScale.GetZ());
+                MCore::LogDetailedInfo("    + Bind Pose Scale:       x=%f, y=%f, z=%f", 
+                    static_cast<float>(bindPoseScale.GetX()), 
+                    static_cast<float>(bindPoseScale.GetY()), 
+                    static_cast<float>(bindPoseScale.GetZ()));
             }
 
             // create the part, and add it to the motion
@@ -3909,7 +3951,7 @@ namespace EMotionFX
             }
 
             // create the morph submotion, and add it to the motion
-            MorphSubMotion* subMotion = MorphSubMotion::Create(MCore::GetStringIDGenerator().GenerateIDForString(subMotionName));
+            MorphSubMotion* subMotion = MorphSubMotion::Create(MCore::GetStringIdPool().GenerateIdForString(subMotionName));
             subMotion->SetPoseWeight(fileMorphSubMotion.mPoseWeight);
 
             waveletMotion->SetMorphSubMotion(i, subMotion);
@@ -4072,13 +4114,13 @@ namespace EMotionFX
             // get the parent set
             const char* parentSetName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
             GetMotionManager().Lock();
-            MotionSet* parentSet = GetMotionManager().FindMotionSetByName(parentSetName);
+            MotionSet* parentSet = GetMotionManager().FindMotionSetByName(parentSetName, importParams.m_isOwnedByRuntime);
             GetMotionManager().Unlock();
 
             // read the motion set name and create our new motion set
             const char* motionSetName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
-            //MCORE_ASSERT( GetMotionManager().FindMotionSetByName(motionSetName) == nullptr );
             MotionSet* motionSet = MotionSet::Create(motionSetName, parentSet);
+            motionSet->SetIsOwnedByRuntime(importParams.m_isOwnedByRuntime);
 
             // set the root motion set to the importer params motion set, this will be returned by the Importer::LoadMotionSet() function
             if (parentSet == nullptr)
@@ -4138,22 +4180,22 @@ namespace EMotionFX
         MCore::Endian::ConvertUnsignedInt32(&nodeMapChunk.mNumEntries, endianType);
 
         // load the source actor filename string
-        MCore::String sourceActorFileName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
-        importParams.mNodeMap->SetSourceActorFileName(sourceActorFileName);
+        AZStd::string sourceActorFileName = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
+        importParams.mNodeMap->SetSourceActorFileName(sourceActorFileName.c_str());
 
         // log some info
         if (GetLogging())
         {
             MCore::LogDetailedInfo("- Node Map:");
             MCore::LogDetailedInfo("  + Num entries = %d", nodeMapChunk.mNumEntries);
-            MCore::LogDetailedInfo("  + Source actor filename = '%s'", sourceActorFileName.AsChar());
+            MCore::LogDetailedInfo("  + Source actor filename = '%s'", sourceActorFileName.c_str());
         }
 
         // for all entries
         const uint32 numEntries = nodeMapChunk.mNumEntries;
         importParams.mNodeMap->Reserve(numEntries);
-        MCore::String firstName;
-        MCore::String secondName;
+        AZStd::string firstName;
+        AZStd::string secondName;
         for (uint32 i = 0; i < numEntries; ++i)
         {
             // read both names
@@ -4162,13 +4204,13 @@ namespace EMotionFX
 
             if (GetLogging())
             {
-                MCore::LogDetailedInfo("  + [%d] '%s' -> '%s'", i, firstName.AsChar(), secondName.AsChar());
+                MCore::LogDetailedInfo("  + [%d] '%s' -> '%s'", i, firstName.c_str(), secondName.c_str());
             }
 
             // create the entry
             if (importParams.mNodeMapSettings->mLoadNodes)
             {
-                importParams.mNodeMap->AddEntry(firstName.AsChar(), secondName.AsChar());
+                importParams.mNodeMap->AddEntry(firstName.c_str(), secondName.c_str());
             }
         }
 

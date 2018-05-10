@@ -10,7 +10,7 @@
  *
  */
 
-#include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/RTTI/RTTI.h>
@@ -192,12 +192,17 @@ bool AssetBuilderComponent::Run()
         result = RunOneShotTask(task);
     }
 
+    // note that we destroy (unload) the builder dlls soon after this (see UnloadBuilders() below),
+    // so we must tick here before that occurs.
+    // ticking here causes assets that have a 0 refcount (and are thus in the destroy list) to actually be destroyed.
+    AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
+
     AZ_Error("AssetBuilder", result, "Failed to handle `%s` request", task.c_str());
 
     bool disconnected = false;
     AzFramework::AssetSystemRequestBus::BroadcastResult(disconnected, &AzFramework::AssetSystem::AssetSystemRequests::Disconnect);
     AZ_Error("AssetBuilder", disconnected, "Failed to disconnect from Asset Processor.");
-    
+
     UnloadBuilders();
 
     return result;
@@ -391,7 +396,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
             builder->m_createJobFunction(createRequest, createResponse);
 
             AZStd::string responseFile;
-            AzFramework::StringFunc::Path::ConstructFull(createJobsTempDirPath.c_str(), "CreateJobsResponse.xml", responseFile);
+            AzFramework::StringFunc::Path::Join(createJobsTempDirPath.c_str(), "CreateJobsResponse.xml", responseFile);
             if (!AZ::Utils::SaveObjectToFile(responseFile, AZ::DataStream::ST_XML, &createResponse))
             {
                 AZ_Error("AssetBuilder", false, "Failed to serialize response to file: %s", responseFile.c_str());
@@ -403,6 +408,8 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
                 jobDescriptions = AZStd::move(createResponse.m_createJobOutputs);
             }
         }
+        
+        AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick); // flush assets in case any are present with 0 refcount.
 
         if (runProcessJob)
         {
@@ -450,7 +457,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
                 UpdateResultCode(processRequest, processResponse);
 
                 AZStd::string responseFile;
-                AzFramework::StringFunc::Path::ConstructFull(processJobTempDirPath.c_str(), 
+                AzFramework::StringFunc::Path::Join(processJobTempDirPath.c_str(), 
                     AZStd::string::format("%i_%s", i, AssetBuilderSDK::s_processJobResponseFileName).c_str(), responseFile);
                 if (!AZ::Utils::SaveObjectToFile(responseFile, AZ::DataStream::ST_XML, &processResponse))
                 {
@@ -466,10 +473,15 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
 bool AssetBuilderComponent::RunOneShotTask(const AZStd::string& task)
 {
-    AZStd::string modulePath, inputFilePath, outputFilePath;
+    // Load the requested module.  This is not a required param for the task, since the builders can be in gems.
+    AZStd::string modulePath;
+    if (GetParameter(s_paramModule, modulePath) && !LoadBuilder(modulePath))
+    {
+        return false;
+    }
 
-    if (!GetParameter(s_paramModule, modulePath)
-        || !GetParameter(s_paramInput, inputFilePath)
+    AZStd::string inputFilePath, outputFilePath;
+    if (!GetParameter(s_paramInput, inputFilePath)
         || !GetParameter(s_paramOutput, outputFilePath))
     {
         return false;
@@ -477,12 +489,6 @@ bool AssetBuilderComponent::RunOneShotTask(const AZStd::string& task)
 
     AzFramework::StringFunc::Path::Normalize(inputFilePath);
     AzFramework::StringFunc::Path::Normalize(outputFilePath);
-
-    if (!LoadBuilder(modulePath))
-    {
-        return false;
-    }
-
     if (task == s_taskRegisterBuilder)
     {
         return HandleRegisterBuilder(inputFilePath, outputFilePath);
@@ -643,6 +649,8 @@ void AssetBuilderComponent::JobThread()
             AZ_Error("AssetBuilder", false, "Unhandled job request type");
             continue;
         }
+
+        AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
 
         //Flush our output so the AP can properly associate all output with the current job
         std::fflush(stdout);

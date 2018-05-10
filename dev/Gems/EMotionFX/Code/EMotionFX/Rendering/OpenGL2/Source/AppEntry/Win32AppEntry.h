@@ -33,7 +33,7 @@ int32               gFrameBasedMouseDeltaX      = MCORE_INVALIDINDEX32;
 int32               gFrameBasedMouseDeltaY      = MCORE_INVALIDINDEX32;
 int32               gFrameBasedLastMousePosX    = MCORE_INVALIDINDEX32;
 int32               gFrameBasedLastMousePosY    = MCORE_INVALIDINDEX32;
-MCore::String       gString;
+AZStd::string       gString;
 wchar_t             gTitle[1024];
 
 // structure for keyboard stuff, holds true/false for each key
@@ -739,7 +739,7 @@ void Render(float timeDelta)
         ((MCommon::RenderUtil*)renderUtil)->Render2DLines();
 
         // render the frames per second to the HUD
-        //gString.Format("FPS %0.0f", gFPS);
+        //gString = AZStd::string::format("FPS %0.0f", gFPS);
         //gEngine->GetRenderUtil()->RenderText( gScreenWidth-55, 5, gString.AsChar(), MCore::RGBAColor(1,1,1,1), 11.0f );
 
         /*#ifdef MCORE_DEBUG
@@ -793,8 +793,8 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
     application.hInstance = hInstance;                                  // application Instance
 
-    MCore::String caption;
-    caption.Format("%s - API - http://www.emotionfx.com", EMotionFX::GetEMotionFX().GetVersionString());
+    AZStd::string caption;
+    caption = AZStd::string::format("%s - API - http://www.emotionfx.com", EMotionFX::GetEMotionFX().GetVersionString());
 
     // fill out window
     ZeroMemory(&window, sizeof(GL_Window));                             // make sure memory is zeroed

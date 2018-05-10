@@ -300,12 +300,12 @@ void CPrefabManager::AddSelectionToPrefab()
         if (objects[i]->GetType() == OBJTYPE_AZENTITY)
         {
             // Component entities cannot be added to legacy prefabs.
-            Warning("Object %s is a component entity and not compatible with legacy prefabs. Use Slices instead.", objects[i]->GetName());
+            Warning("Object %s is a component entity and not compatible with legacy prefabs. Use Slices instead.", objects[i]->GetName().toUtf8().constData());
             invalidAddOperation = true;
         }
         else if (!pPrefab->CanObjectBeAddedAsMember(objects[i]))
         {
-            Warning("Object %s is already part of a prefab (%s)", objects[i]->GetName(), objects[i]->GetPrefab()->GetName());
+            Warning("Object %s is already part of a prefab (%s)", objects[i]->GetName().toUtf8().constData(), objects[i]->GetPrefab()->GetName().toUtf8().constData());
             invalidAddOperation = true;
         }
     }

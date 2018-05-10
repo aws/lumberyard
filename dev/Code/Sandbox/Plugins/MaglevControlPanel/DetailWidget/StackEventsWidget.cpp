@@ -39,24 +39,22 @@ StackEventsWidget::StackEventsWidget(QSharedPointer<IStackEventsModel> stackEven
 {
     setObjectName("StackEvents");
 
-    auto mainLayout = new QVBoxLayout {};
+    auto mainLayout = new QVBoxLayout {this};
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
-    QWidget::setLayout(mainLayout);
 
     mainLayout->addWidget(CreateTitleBar(), 0);
 
-    auto content = new QFrame {};
+    auto content = new QFrame {this};
     content->setObjectName("Content");
     content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
     mainLayout->addWidget(content, 1);
 
-    auto contentLayout = new QVBoxLayout {};
+    auto contentLayout = new QVBoxLayout {content};
     contentLayout->setSpacing(0);
     contentLayout->setContentsMargins(0, 0, 0, 0);
-    content->setLayout(contentLayout);
 
-    m_logTable = new QTableView {};
+    m_logTable = new QTableView {content};
     m_logTable->setObjectName("Table");
     m_logTable->setModel(m_stackEventsModel.data());
     m_logTable->verticalHeader()->hide();

@@ -11,7 +11,6 @@
 */
 
 #include "NodePaletteWidget.h"
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/LogManager.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/Source/EMotionFXManager.h>
@@ -214,7 +213,7 @@ namespace EMStudio
     AZStd::string NodePaletteWidget::GetNodeIconFileName(EMotionFX::AnimGraphNode* node)
     {
         AZStd::string filename      = AZStd::string::format("/Images/AnimGraphPlugin/%s.png", node->GetTypeString());
-        AZStd::string fullFilename  = AZStd::string::format("%s/Images/AnimGraphPlugin/%s.png", MysticQt::GetDataDir().AsChar(), node->GetTypeString());
+        AZStd::string fullFilename  = AZStd::string::format("%s/Images/AnimGraphPlugin/%s.png", MysticQt::GetDataDir().c_str(), node->GetTypeString());
 
         if (QFile::exists(fullFilename.c_str()) == false)
         {

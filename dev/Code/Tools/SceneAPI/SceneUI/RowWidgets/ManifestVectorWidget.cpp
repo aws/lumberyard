@@ -119,6 +119,7 @@ namespace AZ
                 {
                     if ((*it).get() == object)
                     {
+                        object->OnUserRemoved();
                         m_manifestVector.erase(it);
                         QTimer::singleShot(0, this, 
                             [this, object]()
@@ -205,7 +206,10 @@ namespace AZ
                 
                 AZ_TraceContext("Object name", objectName);
                 AZStd::shared_ptr<DataTypes::IManifestObject> newObject(static_cast<DataTypes::IManifestObject*>(factory->Create(objectName.c_str())));
-                
+                if (newObject)
+                {
+                    newObject->OnUserAdded();
+                }
                 ManifestWidget* root = ManifestWidget::FindRoot(this);
                 AZ_Assert(root, "ManifestVectorWidget is not a child of a ManifestWidget.");
                 if (!root)

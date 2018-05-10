@@ -110,7 +110,7 @@ static void GetPixel(const byte* data, int depth,  unsigned long& a, unsigned lo
 
 bool WriteTGA(const byte* data, int width, int height, const char* filename, int src_bits_per_pixel, int dest_bits_per_pixel)
 {
-#if defined(APPLE) || defined(LINUX)
+#if defined(AZ_PLATFORMS_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_LINUX)
     return false;
 #else
     int i;

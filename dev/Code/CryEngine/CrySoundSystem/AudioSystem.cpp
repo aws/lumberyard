@@ -51,6 +51,9 @@ namespace Audio
         AZStd::thread_desc threadDesc;
         threadDesc.m_name = "Audio Thread";
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AudioSystem_cpp, AZ_RESTRICTED_PLATFORM)
+    #endif
 
         auto threadFunc = AZStd::bind(&CAudioThread::Run, this);
         m_thread = AZStd::thread(threadFunc, &threadDesc);

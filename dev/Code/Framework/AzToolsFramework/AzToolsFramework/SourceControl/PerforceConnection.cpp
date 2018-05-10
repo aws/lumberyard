@@ -429,8 +429,7 @@ namespace AzToolsFramework
         {
             if (CommandHasError())
             {
-                AZ_TracePrintf(SCC_WINDOW, "Perforce - ERRORS\n%s\n", GetCommandError().c_str());
-                AZ_TracePrintf(SCC_WINDOW, "Perforce - Error = %s\n", !m_command.FileExists() ? "No such file exists" : "Unknown error");
+                AZ_TracePrintf(SCC_WINDOW, "Perforce - Error\n%s\n", GetCommandError().c_str());
             }
 
             m_command.ThrowWarningMessage();

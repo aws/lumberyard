@@ -22,7 +22,8 @@
 #include <Components/Slots/SlotConnectionPin.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
-#include <Styling/definitions.h>
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
+#include <GraphCanvas/Styling/definitions.h>
 
 namespace GraphCanvas
 {
@@ -45,16 +46,27 @@ namespace GraphCanvas
     void SlotConnectionPin::Activate()
     {
         SlotUIRequestBus::Handler::BusConnect(m_slotId);
+        SlotNotificationBus::Handler::BusConnect(m_slotId);
     }
 
     void SlotConnectionPin::Deactivate()
     {
+        SlotNotificationBus::Handler::BusDisconnect();
         SlotUIRequestBus::Handler::BusDisconnect();
+    }
+
+    void SlotConnectionPin::OnRegisteredToNode(const AZ::EntityId& nodeId)
+    {
+        StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
+        RootGraphicsItemRequestBus::EventResult(stateController, nodeId, &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+        m_nodeDisplayStateStateSetter.AddStateController(stateController);
     }
 	
 	void SlotConnectionPin::RefreshStyle()
     {
-        m_style.SetStyle(m_slotId, Styling::Elements::ConnectionPin);
+        OnRefreshStyle();
+        setCacheMode(QGraphicsItem::CacheMode::ItemCoordinateCache);
     }
 	
 	QPointF SlotConnectionPin::GetConnectionPoint() const
@@ -88,6 +100,7 @@ namespace GraphCanvas
 
     void SlotConnectionPin::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget /*= nullptr*/)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         qreal decorationPadding = m_style.GetAttribute(Styling::Attribute::Padding, 2.);
         qreal borderWidth = m_style.GetBorder().widthF();
 
@@ -111,7 +124,7 @@ namespace GraphCanvas
         {
             if (keyEvent->key() == Qt::Key::Key_Alt)
             {
-                SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, ConnectionDisplayState::Deletion);
+                SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, RootGraphicsItemDisplayState::Deletion);
             }            
         }
     }
@@ -124,7 +137,7 @@ namespace GraphCanvas
         {
             if (keyEvent->key() == Qt::Key::Key_Alt)
             {
-                SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, ConnectionDisplayState::Inspection);
+                SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, RootGraphicsItemDisplayState::Inspection);
             }
         }
     }
@@ -136,20 +149,27 @@ namespace GraphCanvas
 
         if (hoverEvent->modifiers() & Qt::KeyboardModifier::AltModifier)
         {
-            SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, ConnectionDisplayState::Deletion);
+            SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, RootGraphicsItemDisplayState::Deletion);
         }
         else
         {
-            SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, ConnectionDisplayState::Inspection);
+            SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, RootGraphicsItemDisplayState::Inspection);
         }
+
+        m_nodeDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::Inspection);
     }
 
     void SlotConnectionPin::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
     {
+        m_nodeDisplayStateStateSetter.ReleaseState();
+
         m_hovered = false;
         ungrabKeyboard();
 
-        SlotRequestBus::Event(m_slotId, &SlotRequests::SetConnectionDisplayState, ConnectionDisplayState::None);
+        AZ::EntityId nodeId;
+        SlotRequestBus::EventResult(nodeId, m_slotId, &SlotRequests::GetNode);
+
+        SlotRequestBus::Event(m_slotId, &SlotRequests::ReleaseConnectionDisplayState);
     }
 
     void SlotConnectionPin::mousePressEvent(QGraphicsSceneMouseEvent* event)
@@ -162,8 +182,11 @@ namespace GraphCanvas
             }
             else
             {
+                m_nodeDisplayStateStateSetter.ReleaseState();
+
                 AZ::EntityId nodeId;
                 SlotRequestBus::EventResult(nodeId, m_slotId, &SlotRequests::GetNode);
+
                 AZ::EntityId sceneId;
                 SceneMemberRequestBus::EventResult(sceneId, nodeId, &SceneMemberRequests::GetScene);
 
@@ -224,5 +247,10 @@ namespace GraphCanvas
         {
             painter->drawRect(drawRect);
         }
+    }
+
+    void SlotConnectionPin::OnRefreshStyle()
+    {
+        m_style.SetStyle(m_slotId, Styling::Elements::ConnectionPin);
     }
 }

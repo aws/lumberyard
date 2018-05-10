@@ -15,9 +15,8 @@
 // include required files
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Array.h>
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 #include <MCore/Source/Endian.h>
 
 // MCore forward declarations
@@ -62,13 +61,13 @@ namespace EMotionFX
         uint32 GetNumEntries() const;
         const char* GetFirstName(uint32 entryIndex) const;
         const char* GetSecondName(uint32 entryIndex) const;
-        const MCore::String& GetFirstNameString(uint32 entryIndex) const;
-        const MCore::String& GetSecondNameString(uint32 entryIndex) const;
+        const AZStd::string& GetFirstNameString(uint32 entryIndex) const;
+        const AZStd::string& GetSecondNameString(uint32 entryIndex) const;
         bool GetHasEntry(const char* firstName) const;
         uint32 FindEntryIndexByName(const char* firstName) const;
         uint32 FindEntryIndexByNameID(uint32 firstNameID) const;
         const char* FindSecondName(const char* firstName) const;
-        void FindSecondName(const char* firstName, MCore::String* outString);
+        void FindSecondName(const char* firstName, AZStd::string* outString);
 
         // set/modify
         void SetFirstName(uint32 entryIndex, const char* name);
@@ -83,7 +82,7 @@ namespace EMotionFX
         // filename
         void SetFileName(const char* fileName);
         const char* GetFileName() const;
-        const MCore::String& GetFileNameString() const;
+        const AZStd::string& GetFileNameString() const;
 
         // source actor
         void SetSourceActorFileName(const char* fileName);
@@ -92,7 +91,7 @@ namespace EMotionFX
         void SetAutoDeleteSourceActor(bool autoDelete);
         bool GetAutoDeleteSourceActor() const;
         const char* GetSourceActorFileName() const;
-        const MCore::String& GetSourceActorFileNameString() const;
+        const AZStd::string& GetSourceActorFileNameString() const;
 
         // auto load source actor, based on the set source actor filename, and store the pointer also inside this class
         bool LoadSourceActor();
@@ -102,8 +101,8 @@ namespace EMotionFX
 
     private:
         MCore::Array<MapEntry>  mEntries;                   /**< The array of entries. */
-        MCore::String           mFileName;                  /**< The filename. */
-        MCore::String           mSourceActorFileName;       /**< The source actor filename. */
+        AZStd::string           mFileName;                  /**< The filename. */
+        AZStd::string           mSourceActorFileName;       /**< The source actor filename. */
         Actor*                  mSourceActor;               /**< The source actor. */
         bool                    mAutoDeleteSourceActor;     /**< Automatically delete the source actor object on destruction? */
 
@@ -112,8 +111,8 @@ namespace EMotionFX
         ~NodeMap();
 
         // file saving
-        bool WriteFileString(MCore::DiskFile* f, const MCore::String& textToSave, MCore::Endian::EEndianType targetEndianType) const;
+        bool WriteFileString(MCore::DiskFile* f, const AZStd::string& textToSave, MCore::Endian::EEndianType targetEndianType) const;
         uint32 CalcFileChunkSize() const;
-        uint32 CalcFileStringSize(const MCore::String& text) const;
+        uint32 CalcFileStringSize(const AZStd::string& text) const;
     };
 }   // namespace EMotionFX

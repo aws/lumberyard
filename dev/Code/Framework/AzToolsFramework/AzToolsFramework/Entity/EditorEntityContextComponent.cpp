@@ -34,6 +34,7 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Commands/PreemptiveUndoCache.h>
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
@@ -986,10 +987,12 @@ namespace AzToolsFramework
         {
             for (const auto& instance : slice.GetInstances())
             {
-                auto instantiated = instance.GetInstantiated();
-                for (auto* metadataEntity : instantiated->m_metadataEntities)
+                if (auto instantiated = instance.GetInstantiated())
                 {
-                    SliceMetadataEntityContextRequestBus::Broadcast(&SliceMetadataEntityContextRequestBus::Events::AddMetadataEntityToContext, AZ::SliceComponent::SliceInstanceAddress(const_cast<AZ::SliceComponent::SliceReference*>(&slice), const_cast<AZ::SliceComponent::SliceInstance*>(&instance)), *metadataEntity);
+                    for (auto* metadataEntity : instantiated->m_metadataEntities)
+                    {
+                        SliceMetadataEntityContextRequestBus::Broadcast(&SliceMetadataEntityContextRequestBus::Events::AddMetadataEntityToContext, AZ::SliceComponent::SliceInstanceAddress(const_cast<AZ::SliceComponent::SliceReference*>(&slice), const_cast<AZ::SliceComponent::SliceInstance*>(&instance)), *metadataEntity);
+                    }
                 }
             }
         }
@@ -1011,6 +1014,16 @@ namespace AzToolsFramework
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
         // All editor entities are automatically activated.
+
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "EditorEntityContextComponent::SetupEditorEntities:ScrubEntities");
+
+            // Scrub entities before initialization.
+            // Anything could go wrong with entities loaded from disk.
+            // Ex: There might be duplicates of components that do not tolerate
+            // duplication and would crash during their Init().
+            EntityCompositionRequestBus::Broadcast(&EntityCompositionRequestBus::Events::ScrubEntities, entities);
+        }
 
         {
             AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "EditorEntityContextComponent::SetupEditorEntities:InitEntities");

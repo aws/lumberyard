@@ -11,7 +11,6 @@
 */
 
 #include "AnimGraphParameterGroupCommands.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "AnimGraphParameterCommands.h"
 #include "CommandManager.h"
 #include <EMotionFX/Source/AnimGraph.h>
@@ -85,7 +84,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphAdjustParameterGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustParameterGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
         AZStd::string name;
@@ -97,7 +96,7 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot adjust parameter group. Anim graph id '%d' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot adjust parameter group. Anim graph id '%d' is not valid.", animGraphID);
             return false;
         }
 
@@ -206,14 +205,14 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphAdjustParameterGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustParameterGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Find the anim graph by using the id from command parameter.
         const uint32 animGraphID = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot undo adjust parameter group. Anim graph id '%d' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot undo adjust parameter group. Anim graph id '%d' is not valid.", animGraphID);
             return false;
         }
 
@@ -289,10 +288,10 @@ namespace CommandSystem
         }
 
         // Execute the command group.
-        MCore::String result;
+        AZStd::string result;
         if (!GetCommandManager()->ExecuteCommandGroupInsideCommand(commandGroup, result))
         {
-            AZ_Error("EMotionFX", false, result.AsChar());
+            AZ_Error("EMotionFX", false, result.c_str());
         }
 
         // Set the dirty flag back to the old value.
@@ -331,18 +330,18 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphAddParameterGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAddParameterGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Find the anim graph by using the id from command parameter.
         const uint32 animGraphID = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot add parameter group. Anim graph id '%d' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot add parameter group. Anim graph id '%d' is not valid.", animGraphID);
             return false;
         }
 
-        MCore::String valueString;
+        AZStd::string valueString;
         if (parameters.CheckIfHasParameter("name"))
         {
             parameters.GetValue("name", this, &valueString);
@@ -350,14 +349,14 @@ namespace CommandSystem
         else
         {
             // generate a unique parameter name
-            valueString.GenerateUniqueString("Parameter",   [&](const MCore::String& value)
+            valueString = MCore::GenerateUniqueString("Parameter", [&](const AZStd::string& value)
                 {
-                    return (animGraph->FindParameterGroupByName(value.AsChar()) == nullptr);
+                    return (animGraph->FindParameterGroupByName(value.c_str()) == nullptr);
                 });
         }
 
         // add new parameter group to the anim graph
-        EMotionFX::AnimGraphParameterGroup* parameterGroup = EMotionFX::AnimGraphParameterGroup::Create(valueString.AsChar());
+        EMotionFX::AnimGraphParameterGroup* parameterGroup = EMotionFX::AnimGraphParameterGroup::Create(valueString.c_str());
 
         // if the index parameter is specified and valid insert the parameter group at the given position, else just add it to the end
         const uint32 index = parameters.GetValueAsInt("index", this);
@@ -401,24 +400,24 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphAddParameterGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAddParameterGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Find the anim graph by using the id from command parameter.
         const uint32 animGraphID = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot undo add parameter group. Anim graph id '%d' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot undo add parameter group. Anim graph id '%d' is not valid.", animGraphID);
             return false;
         }
 
         // Construct and execute the command.
         const AZStd::string command = AZStd::string::format("AnimGraphRemoveParameterGroup -animGraphID %i -name \"%s\"", animGraphID, mOldName.c_str());
 
-        MCore::String result;
+        AZStd::string result;
         if (!GetCommandManager()->ExecuteCommandInsideCommand(command, result))
         {
-            AZ_Error("EMotionFX", false, result.AsChar());
+            AZ_Error("EMotionFX", false, result.c_str());
         }
 
         // Set the dirty flag back to the old value.
@@ -455,7 +454,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphRemoveParameterGroup::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveParameterGroup::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
         AZStd::string name;
@@ -466,7 +465,7 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot remove parameter group. Anim graph id '%d' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot remove parameter group. Anim graph id '%d' is not valid.", animGraphID);
             return false;
         }
 
@@ -474,7 +473,7 @@ namespace CommandSystem
         const uint32 groupIndex = animGraph->FindParameterGroupIndexByName(name.c_str());
         if (groupIndex == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("Cannot add parameter group to anim graph. Parameter group index is invalid.", groupIndex);
+            outResult = AZStd::string::format("Cannot add parameter group to anim graph. Parameter group index is invalid.", groupIndex);
             return false;
         }
 
@@ -516,14 +515,14 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphRemoveParameterGroup::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveParameterGroup::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Find the anim graph by using the id from command parameter.
         const uint32 animGraphID = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot undo remove parameter group. Anim graph id '%d' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot undo remove parameter group. Anim graph id '%d' is not valid.", animGraphID);
             return false;
         }
 
@@ -538,10 +537,10 @@ namespace CommandSystem
         commandGroup.AddCommandString(command);
 
         // Execute the command group.
-        MCore::String result;
+        AZStd::string result;
         if (!GetCommandManager()->ExecuteCommandGroupInsideCommand(commandGroup, result))
         {
-            AZ_Error("EMotionFX", false, result.AsChar());
+            AZ_Error("EMotionFX", false, result.c_str());
         }
 
         // Set the dirty flag back to the old value.

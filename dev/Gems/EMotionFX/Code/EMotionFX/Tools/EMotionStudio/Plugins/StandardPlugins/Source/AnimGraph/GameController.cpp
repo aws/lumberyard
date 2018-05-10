@@ -306,7 +306,7 @@ HRESULT GameController::InitDirectInput(HWND hWnd)
     mJoystick->Acquire();
 
     // display the device info
-    MCore::LogDetailedInfo("- Controller = %s", mDeviceInfo.mName.AsChar());
+    MCore::LogDetailedInfo("- Controller = %s", mDeviceInfo.mName.c_str());
     MCore::LogDetailedInfo("   + Num buttons = %d", mDeviceInfo.mNumButtons);
     MCore::LogDetailedInfo("   + Num axes    = %d", mDeviceInfo.mNumAxes);
     MCore::LogDetailedInfo("   + Num sliders = %d", mDeviceInfo.mNumSliders);
@@ -322,7 +322,7 @@ HRESULT GameController::InitDirectInput(HWND hWnd)
         }
 
         numPresentElements++;
-        MCore::LogDetailedInfo("   + Element #%d  = %s", numPresentElements, mDeviceElements[i].mName.AsChar());
+        MCore::LogDetailedInfo("   + Element #%d  = %s", numPresentElements, mDeviceElements[i].mName.c_str());
     }
 
     mValid = true;
@@ -564,53 +564,53 @@ const char* GameController::GetElementEnumName(uint32 index)
 }
 
 
-uint32 GameController::FindElemendIDByName(const MCore::String& elementEnumName)
+uint32 GameController::FindElemendIDByName(const AZStd::string& elementEnumName)
 {
-    if (elementEnumName.CheckIfIsEqual("Pos X"))
+    if (elementEnumName == "Pos X")
     {
         return ELEM_POS_X;
     }
-    else if (elementEnumName.CheckIfIsEqual("Pos Y"))
+    else if (elementEnumName == "Pos Y")
     {
         return ELEM_POS_Y;
     }
-    else if (elementEnumName.CheckIfIsEqual("Pos Z"))
+    else if (elementEnumName == "Pos Z")
     {
         return ELEM_POS_Z;
     }
-    else if (elementEnumName.CheckIfIsEqual("Rot X"))
+    else if (elementEnumName == "Rot X")
     {
         return ELEM_ROT_X;
     }
-    else if (elementEnumName.CheckIfIsEqual("Rot Y"))
+    else if (elementEnumName == "Rot Y")
     {
         return ELEM_ROT_Y;
     }
-    else if (elementEnumName.CheckIfIsEqual("Rot Z"))
+    else if (elementEnumName == "Rot Z")
     {
         return ELEM_ROT_Z;
     }
-    else if (elementEnumName.CheckIfIsEqual("Slider 1"))
+    else if (elementEnumName == "Slider 1")
     {
         return ELEM_SLIDER_1;
     }
-    else if (elementEnumName.CheckIfIsEqual("Slider 2"))
+    else if (elementEnumName == "Slider 2")
     {
         return ELEM_SLIDER_2;
     }
-    else if (elementEnumName.CheckIfIsEqual("POV 1"))
+    else if (elementEnumName == "POV 1")
     {
         return ELEM_POV_1;
     }
-    else if (elementEnumName.CheckIfIsEqual("POV 2"))
+    else if (elementEnumName == "POV 2")
     {
         return ELEM_POV_2;
     }
-    else if (elementEnumName.CheckIfIsEqual("POV 3"))
+    else if (elementEnumName == "POV 3")
     {
         return ELEM_POV_3;
     }
-    else if (elementEnumName.CheckIfIsEqual("POV 4"))
+    else if (elementEnumName == "POV 4")
     {
         return ELEM_POV_4;
     }

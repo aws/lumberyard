@@ -35,14 +35,18 @@ namespace ScriptCanvas
 
             classElement.AddElementWithData(context, "slotName", slotName);
         }
+
+        if (classElement.GetVersion() <= 8)
+        {
+            classElement.RemoveElementByName(AZ_CRC("index", 0x80736701));
+        }
         return true;
     }
 
-    Slot::Slot(AZStd::string_view name, AZStd::string_view toolTip, SlotType type, int index, const AZStd::vector<ContractDescriptor>& contractDescs)
+    Slot::Slot(AZStd::string_view name, AZStd::string_view toolTip, SlotType type, const AZStd::vector<ContractDescriptor>& contractDescs)
         : m_name(name)
         , m_toolTip(toolTip)
         , m_type(type)
-        , m_index(index)
         , m_id(AZ::Uuid::CreateRandom())
     {
         // Add the slot type contract by default, It is used for filtering input/output slots and flow/data slots
@@ -59,7 +63,6 @@ namespace ScriptCanvas
         , m_type(other.m_type)
         , m_id(other.m_id)
         , m_nodeId(other.m_nodeId)
-        , m_index(other.m_index)
     {
         for (auto& otherContract : other.m_contracts)
         {
@@ -74,7 +77,6 @@ namespace ScriptCanvas
         , m_id(AZStd::move(slot.m_id))
         , m_nodeId(AZStd::move(slot.m_nodeId))
         , m_contracts(AZStd::move(slot.m_contracts))
-        , m_index(AZStd::move(slot.m_index))
     {
     }
 
@@ -85,7 +87,6 @@ namespace ScriptCanvas
         m_type = slot.m_type;
         m_id = slot.m_id;
         m_nodeId = slot.m_nodeId;
-        m_index = slot.m_index;
         for (auto& otherContract : slot.m_contracts)
         {
             m_contracts.emplace_back(AZ::EntityUtils::GetApplicationSerializeContext()->CloneObject(otherContract.get()));
@@ -123,7 +124,6 @@ namespace ScriptCanvas
         DynamicTypeContract::Reflect(reflection);
         SlotTypeContract::Reflect(reflection);
         ConnectionLimitContract::Reflect(reflection);
-        StorageRequiredContract::Reflect(reflection);
         DisallowReentrantExecutionContract::Reflect(reflection);
         ContractRTTI::Reflect(reflection);
         IsReferenceTypeContract::Reflect(reflection);
@@ -132,11 +132,10 @@ namespace ScriptCanvas
         if (serializeContext)
         {
             serializeContext->Class<Slot>()
-                ->Version(8, &SlotVersionConverter)
+                ->Version(9, &SlotVersionConverter)
                 ->Field("id", &Slot::m_id)
                 ->Field("nodeId", &Slot::m_nodeId)
                 ->Field("type", &Slot::m_type)
-                ->Field("index", &Slot::m_index)
                 ->Field("contracts", &Slot::m_contracts)
                 ->Field("slotName", &Slot::m_name)
                 ->Field("toolTip", &Slot::m_toolTip)

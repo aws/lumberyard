@@ -18,6 +18,7 @@
 #include <EMotionFX/Source/Motion.h>
 #include <EMotionFX/Source/MotionInstance.h>
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/MorphTarget.h>
 
 
 namespace CommandSystem
@@ -78,6 +79,12 @@ namespace CommandSystem
         MCORE_INLINE uint32 GetNumSelectedAnimGraphs() const                       { return mSelectedAnimGraphs.GetLength(); }
 
         /**
+         * Get the number of selected morph targets.
+         * @return The number of selected morph targets.
+         */
+        MCORE_INLINE uint32 GetNumSelectedMorphTargets() const                     { return mSelectedMorphTargets.GetLength(); }
+
+        /**
          * Get the total number of selected objects.
          * @return The number of selected nodes, actors and motions.
          */
@@ -89,7 +96,7 @@ namespace CommandSystem
          */
         MCORE_INLINE bool GetIsEmpty() const
         {
-            if (mSelectedNodes.GetIsEmpty() && mSelectedActors.GetIsEmpty() && mSelectedActorInstances.GetIsEmpty() && mSelectedMotions.GetIsEmpty() && mSelectedMotionInstances.GetIsEmpty() && mSelectedAnimGraphs.GetIsEmpty())
+            if (mSelectedNodes.GetIsEmpty() && mSelectedActors.GetIsEmpty() && mSelectedActorInstances.GetIsEmpty() && mSelectedMotions.GetIsEmpty() && mSelectedMotionInstances.GetIsEmpty() && mSelectedAnimGraphs.GetIsEmpty() && mSelectedMorphTargets.GetIsEmpty())
             {
                 return true;
             }
@@ -102,7 +109,7 @@ namespace CommandSystem
         /**
          * Clear the selection list. This will unselect all objects.
          */
-        MCORE_INLINE void Clear()                                                   { mSelectedNodes.Clear(); mSelectedActors.Clear(); mSelectedActorInstances.Clear(); mSelectedMotions.Clear(); mSelectedMotionInstances.Clear(); mSelectedAnimGraphs.Clear(); }
+        MCORE_INLINE void Clear()                                                   { mSelectedNodes.Clear(); mSelectedActors.Clear(); mSelectedActorInstances.Clear(); mSelectedMotions.Clear(); mSelectedMotionInstances.Clear(); mSelectedAnimGraphs.Clear(); mSelectedMorphTargets.Clear(); }
 
         /**
          * Add a node to the selection list. Select node without replacing the old selection.
@@ -134,10 +141,16 @@ namespace CommandSystem
         void AddMotionInstance(EMotionFX::MotionInstance* motionInstance);
 
         /**
-         * Add a anim graph to the selection list. Selects anim graph without replacing the old selection.
+         * Add an anim graph to the selection list. Selects anim graph without replacing the old selection.
          * @param animGraph The anim graph which will be added to the selection.
          */
         void AddAnimGraph(EMotionFX::AnimGraph* animGraph);
+
+        /**
+         * Add a morph target to the selection list. Selects the morph target without replacing the old selection.
+         * @param morphTarget The morph target which will be added to the selection.
+         */
+        void AddMorphTarget(EMotionFX::MorphTarget* morphTarget);
 
         /**
          * Add a complete selection list to this one. Select motionobjects without replacing the old selection.
@@ -224,6 +237,18 @@ namespace CommandSystem
             }
             return mSelectedAnimGraphs[0];
         }
+
+
+        MCORE_INLINE EMotionFX::MorphTarget* GetMorphTarget(uint32 index) const              { return mSelectedMorphTargets[index]; }
+        MCORE_INLINE EMotionFX::MorphTarget* GetFirstMorphTarget() const
+        {
+            if (mSelectedMorphTargets.GetIsEmpty())
+            {
+                return nullptr;
+            }
+            return mSelectedMorphTargets[0];
+        }
+
 
         /**
          * Get the single selected actor.
@@ -320,6 +345,12 @@ namespace CommandSystem
         MCORE_INLINE void RemoveAnimGraph(uint32 index)                                        { mSelectedAnimGraphs.Remove(index); }
 
         /**
+         * Remove the given morph target from the selection list.
+         * @param index The index of the morph target to remove from the selection list.
+         */
+        MCORE_INLINE void RemoveMorphTarget(uint32 index)                                      { mSelectedMorphTargets.Remove(index); }
+
+        /**
          * Remove the given node from the selection list.
          * @param node The node to be removed from the selection list.
          */
@@ -354,6 +385,12 @@ namespace CommandSystem
          * @param animGraph The anim graph to be removed from the list.
          */
         void RemoveAnimGraph(EMotionFX::AnimGraph* animGraph);
+
+        /**
+         * Remove the given morph target from the selection list.
+         * @param morphTarget The morph target to be removed from the list.
+         */
+        void RemoveMorphTarget(EMotionFX::MorphTarget* morphTarget);
 
         /**
          * Check if a given node is selected / is in this selection list.
@@ -395,15 +432,17 @@ namespace CommandSystem
          */
         MCORE_INLINE bool CheckIfHasMotionInstance(EMotionFX::MotionInstance* motionInstance) const     { return (mSelectedMotionInstances.Find(motionInstance) != MCORE_INVALIDINDEX32); }
 
+        MCORE_INLINE bool CheckIfHasMorphTarget(EMotionFX::MorphTarget* morphTarget) const              { return (mSelectedMorphTargets.Find(morphTarget) != MCORE_INVALIDINDEX32); }
+
         MCORE_INLINE void ClearActorSelection()                                     { mSelectedActors.Clear(); }
         MCORE_INLINE void ClearActorInstanceSelection()                             { mSelectedActorInstances.Clear(); }
         MCORE_INLINE void ClearNodeSelection()                                      { mSelectedNodes.Clear(); }
         MCORE_INLINE void ClearMotionSelection()                                    { mSelectedMotions.Clear(); }
         MCORE_INLINE void ClearMotionInstanceSelection()                            { mSelectedMotionInstances.Clear(); }
         MCORE_INLINE void ClearAnimGraphSelection()                                 { mSelectedAnimGraphs.Clear(); }
+        MCORE_INLINE void ClearMorphTargets()                                       { mSelectedMorphTargets.Clear(); }
 
         void Log();
-
         void MakeValid();
 
     private:
@@ -413,6 +452,6 @@ namespace CommandSystem
         MCore::Array<EMotionFX::MotionInstance*>    mSelectedMotionInstances;   /**< Array of selected motion instances. */
         MCore::Array<EMotionFX::Motion*>            mSelectedMotions;           /**< Array of selected motions. */
         MCore::Array<EMotionFX::AnimGraph*>         mSelectedAnimGraphs;        /**< Array of selected anim graphs. */
+        MCore::Array<EMotionFX::MorphTarget*>       mSelectedMorphTargets;      /**< Array of selected morph targets. */
     };
-
 } // namespace CommandSystem

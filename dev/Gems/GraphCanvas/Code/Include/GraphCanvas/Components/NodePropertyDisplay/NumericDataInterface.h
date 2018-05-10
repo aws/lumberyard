@@ -15,12 +15,12 @@
 
 namespace GraphCanvas
 {
-    class DoubleDataInterface 
+    class NumericDataInterface 
         : public DataInterface
     {
     public:    
-        virtual double GetDouble() const = 0;
-        virtual void SetDouble(double value) = 0;
+        virtual double GetNumber() const = 0;
+        virtual void SetNumber(double value) = 0;
 
         virtual int GetDecimalPlaces() const
         {

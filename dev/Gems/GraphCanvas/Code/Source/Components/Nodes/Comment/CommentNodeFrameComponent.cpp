@@ -26,7 +26,7 @@ namespace GraphCanvas
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<CommentNodeFrameComponent>()
+            serializeContext->Class<CommentNodeFrameComponent, AZ::Component>()
                 ->Version(1)
                 ;
         }

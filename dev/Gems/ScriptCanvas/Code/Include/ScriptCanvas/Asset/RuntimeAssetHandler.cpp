@@ -12,9 +12,9 @@
 
 #include "precompiled.h"
 
-#include "Graph.h"
-#include "GraphAsset.h"
-#include "GraphAssetHandler.h"
+#include <ScriptCanvas/Core/Graph.h>
+#include <ScriptCanvas/Asset/RuntimeAsset.h>
+#include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
 
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
 
@@ -29,37 +29,42 @@
 namespace ScriptCanvas
 {
     //=========================================================================
-    // GraphAssetHandler
+    // RuntimeAssetHandler
     //=========================================================================
-    GraphAssetHandler::GraphAssetHandler(AZ::SerializeContext* context)
+    RuntimeAssetHandler::RuntimeAssetHandler(AZ::SerializeContext* context)
     {
         SetSerializeContext(context);
 
-        AZ::AssetTypeInfoBus::MultiHandler::BusConnect(AZ::AzTypeInfo<GraphAsset>::Uuid());
+        AZ::AssetTypeInfoBus::MultiHandler::BusConnect(AZ::AzTypeInfo<RuntimeAsset>::Uuid());
+    }
+
+    RuntimeAssetHandler::~RuntimeAssetHandler()
+    {
+        AZ::AssetTypeInfoBus::MultiHandler::BusDisconnect();
     }
 
     //=========================================================================
     // CreateAsset
     //=========================================================================
-    AZ::Data::AssetPtr GraphAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
+    AZ::Data::AssetPtr RuntimeAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
     {
         (void)type;
-        AZ_Assert(type == AZ::AzTypeInfo<GraphAsset>::Uuid(), "This handler deals only with GraphAsset type!");
+        AZ_Assert(type == AZ::AzTypeInfo<RuntimeAsset>::Uuid(), "This handler deals only with the Script Canvas Runtime Asset type!");
 
-        return aznew GraphAsset(id);
+        return aznew RuntimeAsset(id);
     }
 
     //=========================================================================
     // LoadAssetData
     //=========================================================================
-    bool GraphAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
+    bool RuntimeAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
     {
-        GraphAsset* graphAsset = asset.GetAs<GraphAsset>();
-        AZ_Assert(graphAsset, "This should be a Script Canvas graph asset, as this is the only type we process!");
-        if (graphAsset && m_serializeContext)
+        RuntimeAsset* runtimeAsset = asset.GetAs<RuntimeAsset>();
+        AZ_Assert(runtimeAsset, "This should be a Script Canvas runtime asset, as this is the only type we process!");
+        if (runtimeAsset && m_serializeContext)
         {
             stream->Seek(0U, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-            bool loadSuccess = AZ::Utils::LoadObjectFromStreamInPlace(*stream, graphAsset->m_graphData, m_serializeContext, assetLoadFilterCB);
+            bool loadSuccess = AZ::Utils::LoadObjectFromStreamInPlace(*stream, runtimeAsset->m_runtimeData, m_serializeContext, AZ::ObjectStream::FilterDescriptor(assetLoadFilterCB));
             return loadSuccess;
         }
         return false;
@@ -69,7 +74,7 @@ namespace ScriptCanvas
     // LoadAssetData
     // Load through IFileIO
     //=========================================================================
-    bool GraphAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
+    bool RuntimeAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
     {
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
         if (fileIO)
@@ -87,14 +92,14 @@ namespace ScriptCanvas
     //=========================================================================
     // SaveAssetData
     //=========================================================================
-    bool GraphAssetHandler::SaveAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream)
+    bool RuntimeAssetHandler::SaveAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream)
     {
-        GraphAsset* graphAsset = asset.GetAs<GraphAsset>();
-        AZ_Assert(graphAsset, "This should be a Script Canvas graph asset, as this is the only type we process!");
-        if (graphAsset && m_serializeContext)
+        RuntimeAsset* runtimeAsset = asset.GetAs<RuntimeAsset>();
+        AZ_Assert(runtimeAsset, "This should be a Script Canvas runtime asset, as this is the only type we process!");
+        if (runtimeAsset && m_serializeContext)
         {
             AZ::ObjectStream* binaryObjStream = AZ::ObjectStream::Create(stream, *m_serializeContext, AZ::ObjectStream::ST_XML);
-            bool graphSaved = binaryObjStream->WriteClass(&graphAsset->m_graphData);
+            bool graphSaved = binaryObjStream->WriteClass(&runtimeAsset->m_runtimeData);
             binaryObjStream->Finalize();
             return graphSaved;
         }
@@ -105,7 +110,7 @@ namespace ScriptCanvas
     //=========================================================================
     // DestroyAsset
     //=========================================================================
-    void GraphAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
+    void RuntimeAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
     {
         delete ptr;
     }
@@ -113,15 +118,15 @@ namespace ScriptCanvas
     //=========================================================================
     // GetHandledAssetTypes
     //=========================================================================.
-    void GraphAssetHandler::GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes)
+    void RuntimeAssetHandler::GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes)
     {
-        assetTypes.push_back(AZ::AzTypeInfo<GraphAsset>::Uuid());
+        assetTypes.push_back(AZ::AzTypeInfo<RuntimeAsset>::Uuid());
     }
 
     //=========================================================================
     // GetSerializeContext
     //=========================================================================.
-    AZ::SerializeContext* GraphAssetHandler::GetSerializeContext() const
+    AZ::SerializeContext* RuntimeAssetHandler::GetSerializeContext() const
     {
         return m_serializeContext;
     }
@@ -129,17 +134,17 @@ namespace ScriptCanvas
     //=========================================================================
     // SetSerializeContext
     //=========================================================================.
-    void GraphAssetHandler::SetSerializeContext(AZ::SerializeContext* context)
+    void RuntimeAssetHandler::SetSerializeContext(AZ::SerializeContext* context)
     {
         m_serializeContext = context;
 
         if (m_serializeContext == nullptr)
         {
             // use the default app serialize context
-            EBUS_EVENT_RESULT(m_serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+            AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
             if (!m_serializeContext)
             {
-                AZ_Error("Script Canvas", false, "GraphAssetHandler: No serialize context provided! We will not be able to process Graph Asset type");
+                AZ_Error("Script Canvas", false, "RuntimeAssetHandler: No serialize context provided! We will not be able to process the Script Canvas Runtime Asset type");
             }
         }
     }
@@ -147,22 +152,41 @@ namespace ScriptCanvas
     //=========================================================================
     // GetAssetTypeExtensions
     //=========================================================================.
-    void GraphAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
+    void RuntimeAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
     {
         const AZ::Uuid& assetType = *AZ::AssetTypeInfoBus::GetCurrentBusId();
-        if (assetType == AZ::AzTypeInfo<GraphAsset>::Uuid())
+        if (assetType == AZ::AzTypeInfo<RuntimeAsset>::Uuid())
         {
-            extensions.push_back(GraphAsset::GetFileExtension());
+            extensions.push_back(RuntimeAsset::GetFileExtension());
         }
     }
 
     //=========================================================================
     // GetAssetType
     //=========================================================================.
-    AZ::Data::AssetType GraphAssetHandler::GetAssetType() const
+    AZ::Data::AssetType RuntimeAssetHandler::GetAssetType() const
     {
-        return AZ::AzTypeInfo<GraphAsset>::Uuid();
+        return AZ::AzTypeInfo<RuntimeAsset>::Uuid();
     }
 
+    const char* RuntimeAssetHandler::GetAssetTypeDisplayName() const
+    {
+        return "Script Canvas Runtime Graph";
+    }
+
+    const char* RuntimeAssetHandler::GetGroup() const
+    {
+        return "Script";
+    }
+
+    const char* RuntimeAssetHandler::GetBrowserIcon() const
+    {
+        return "Editor/Icons/ScriptCanvas/Viewport/ScriptCanvas.png";
+    }
+
+    AZ::Uuid RuntimeAssetHandler::GetComponentTypeId() const
+    {
+        return azrtti_typeid<Graph>();
+    }
 
 } // namespace AZ

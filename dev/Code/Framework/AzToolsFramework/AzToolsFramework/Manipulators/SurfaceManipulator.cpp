@@ -12,7 +12,6 @@
 
 #include "SurfaceManipulator.h"
 
-#include <AzCore/Component/TransformBus.h>
 #include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
 
@@ -90,9 +89,7 @@ namespace AzToolsFramework
         const ViewportInteraction::MouseInteraction& interaction,
         float /*rayIntersectionDistance*/)
     {
-        AZ::Transform worldFromLocal;
-        AZ::TransformBus::EventResult(
-            worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+        const AZ::Transform worldFromLocalUniformScale = WorldFromLocalWithUniformScale(GetEntityId());
 
         const bool snapping =
             GridSnapping(interaction.m_interactionId.m_viewportId);
@@ -105,14 +102,14 @@ namespace AzToolsFramework
             &ViewportInteractionRequestBus::Events::PickSurface, interaction.m_mousePick.m_screenCoordinates);
 
         m_startInternal = CalculateManipulationDataStart(
-            worldFromLocal, worldSurfacePosition, m_position,
+            worldFromLocalUniformScale, worldSurfacePosition, m_position,
             snapping, gridSize, interaction.m_interactionId.m_viewportId);
 
         if (m_onLeftMouseDownCallback)
         {
             m_onLeftMouseDownCallback(CalculateManipulationDataAction(
-                m_startInternal, worldFromLocal, worldSurfacePosition, snapping,
-                gridSize, interaction.m_interactionId.m_viewportId));
+                m_startInternal, worldFromLocalUniformScale, worldSurfacePosition,
+                snapping, gridSize, interaction.m_interactionId.m_viewportId));
         }
     }
 
@@ -120,17 +117,13 @@ namespace AzToolsFramework
     {
         if (m_onLeftMouseUpCallback)
         {
-            AZ::Transform worldFromLocal;
-            AZ::TransformBus::EventResult(
-                worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
             AZ::Vector3 worldSurfacePosition;
             ViewportInteractionRequestBus::EventResult(
                 worldSurfacePosition, interaction.m_interactionId.m_viewportId,
                 &ViewportInteractionRequestBus::Events::PickSurface, interaction.m_mousePick.m_screenCoordinates);
 
             m_onLeftMouseUpCallback(CalculateManipulationDataAction(
-                m_startInternal, worldFromLocal, worldSurfacePosition,
+                m_startInternal, WorldFromLocalWithUniformScale(GetEntityId()), worldSurfacePosition,
                 GridSnapping(interaction.m_interactionId.m_viewportId),
                 GridSize(interaction.m_interactionId.m_viewportId), interaction.m_interactionId.m_viewportId));
         }
@@ -140,17 +133,13 @@ namespace AzToolsFramework
     {
         if (m_onMouseMoveCallback)
         {
-            AZ::Transform worldFromLocal;
-            AZ::TransformBus::EventResult(
-                worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
             AZ::Vector3 worldSurfacePosition;
             ViewportInteractionRequestBus::EventResult(
                 worldSurfacePosition, interaction.m_interactionId.m_viewportId,
                 &ViewportInteractionRequestBus::Events::PickSurface, interaction.m_mousePick.m_screenCoordinates);
 
             m_onMouseMoveCallback(CalculateManipulationDataAction(
-                m_startInternal, worldFromLocal, worldSurfacePosition,
+                m_startInternal, WorldFromLocalWithUniformScale(GetEntityId()), worldSurfacePosition,
                 GridSnapping(interaction.m_interactionId.m_viewportId),
                 GridSize(interaction.m_interactionId.m_viewportId), interaction.m_interactionId.m_viewportId));
         }
@@ -162,17 +151,14 @@ namespace AzToolsFramework
     }
 
     void SurfaceManipulator::Draw(
+        const ManipulatorManagerState& managerState,
         AzFramework::EntityDebugDisplayRequests& display,
         const ViewportInteraction::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        AZ::Transform worldFromLocal;
-        AZ::TransformBus::EventResult(
-            worldFromLocal, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
         m_manipulatorView->Draw(
-            GetManipulatorManagerId(), GetManipulatorId(),
-            MouseOver(), m_position, worldFromLocal,
+            GetManipulatorManagerId(), managerState,
+            GetManipulatorId(), { WorldFromLocalWithUniformScale(GetEntityId()), m_position, MouseOver() },
             display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
     }
 

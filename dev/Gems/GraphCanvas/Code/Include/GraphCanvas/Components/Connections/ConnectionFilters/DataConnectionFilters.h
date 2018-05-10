@@ -13,9 +13,9 @@
 
 #include <AzCore/std/containers/unordered_set.h>
 
-#include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/Connections/ConnectionFilters/ConnectionFilterBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
+#include <GraphCanvas/Editor/GraphModelBus.h>
 
 namespace GraphCanvas
 {    
@@ -90,7 +90,7 @@ namespace GraphCanvas
                     AZ::EntityId variableId;
                     DataSlotRequestBus::EventResult(variableId, sourceEndpoint.GetSlotId(), &DataSlotRequests::GetVariableId);
 
-                    ConnectionSceneRequestBus::EventResult(acceptConnection, sceneId, &ConnectionSceneRequests::IsValidVariableAssignment, variableId, targetEndpoint);
+                    GraphModelRequestBus::EventResult(acceptConnection, sceneId, &GraphModelRequests::IsValidVariableAssignment, variableId, targetEndpoint);
                 }
             }
             else if (sourceType == DataSlotType::Value)
@@ -106,7 +106,7 @@ namespace GraphCanvas
 
                 if (acceptConnection)
                 {
-                    ConnectionSceneRequestBus::EventResult(acceptConnection, sceneId, &ConnectionSceneRequests::IsValidConnection, sourceEndpoint, targetEndpoint);
+                    GraphModelRequestBus::EventResult(acceptConnection, sceneId, &GraphModelRequests::IsValidConnection, sourceEndpoint, targetEndpoint);
                 }
             }
 

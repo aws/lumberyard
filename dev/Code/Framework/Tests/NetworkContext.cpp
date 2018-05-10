@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Application/Application.h>

@@ -196,6 +196,9 @@ void JobManager::BlockingBackEnd::CBlockingBackEndWorkerThread::Run()
     // set up thread id
     JobManager::detail::SetWorkerThreadId(0 | 0x40000000);
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(BlockingBackEnd_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(WIN32)
     ((CSystem*)gEnv->pSystem)->EnableFloatExceptions(g_cvars.sys_float_exceptions);

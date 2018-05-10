@@ -16,8 +16,9 @@
 #include "AttributePool.h"
 #include "AttributeFactory.h"
 #include "MCoreSystem.h"
-#include "StringIDGenerator.h"
+#include "StringIdPool.h"
 #include "CommandLine.h"
+#include "StringConversions.h"
 
 
 namespace MCore
@@ -48,7 +49,7 @@ namespace MCore
         mMaxValue       = nullptr;
         mDefaultValue   = nullptr;
         mParent         = nullptr;
-        mInternalName   = GetStringIDGenerator().GenerateIDForString(internalName);
+        mInternalName   = GetStringIdPool().GenerateIdForString(internalName);
         mName           = mInternalName;
         mFlags          = 0;
     }
@@ -109,20 +110,6 @@ namespace MCore
         }
 
         delete this;
-    }
-
-
-    // check if we can scale
-    bool AttributeSettings::GetCanScale() const
-    {
-        return GetFlag(FLAGINDEX_CAN_SCALE);
-    }
-
-
-    // set if we can scale
-    void AttributeSettings::SetCanScale(bool enabled)
-    {
-        SetFlag(FLAGINDEX_CAN_SCALE, enabled);
     }
 
 
@@ -217,14 +204,14 @@ namespace MCore
     // set the internal name
     void AttributeSettings::SetInternalName(const char* internalName)
     {
-        mInternalName = GetStringIDGenerator().GenerateIDForString(internalName);
+        mInternalName = GetStringIdPool().GenerateIdForString(internalName);
     }
 
 
     // set the name
     void AttributeSettings::SetName(const char* name)
     {
-        mName = GetStringIDGenerator().GenerateIDForString(name);
+        mName = GetStringIdPool().GenerateIdForString(name);
     }
 
 
@@ -245,21 +232,21 @@ namespace MCore
     // get the internal name
     const char* AttributeSettings::GetInternalName() const
     {
-        return (mInternalName != MCORE_INVALIDINDEX32) ? GetStringIDGenerator().GetName(mInternalName).AsChar() : "";
+        return (mInternalName != MCORE_INVALIDINDEX32) ? GetStringIdPool().GetName(mInternalName).c_str() : "";
     }
 
 
     // get the name
     const char* AttributeSettings::GetName() const
     {
-        return (mInternalName != MCORE_INVALIDINDEX32) ? GetStringIDGenerator().GetName(mName).AsChar() : "";
+        return (mInternalName != MCORE_INVALIDINDEX32) ? GetStringIdPool().GetName(mName).c_str() : "";
     }
 
 
     // get the description
     const char* AttributeSettings::GetDescription() const
     {
-        return mDescription.AsChar();
+        return mDescription.c_str();
     }
 
 
@@ -280,14 +267,14 @@ namespace MCore
     // get a given combobox value string
     const char* AttributeSettings::GetComboValue(uint32 index) const
     {
-        return GetStringIDGenerator().GetName(mComboValues[index]).AsChar();
+        return GetStringIdPool().GetName(mComboValues[index]).c_str();
     }
 
 
     // get a given combobox value string
-    const String& AttributeSettings::GetComboValueString(uint32 index) const
+    const AZStd::string& AttributeSettings::GetComboValueString(uint32 index) const
     {
-        return GetStringIDGenerator().GetName(mComboValues[index]);
+        return GetStringIdPool().GetName(mComboValues[index]);
     }
 
 
@@ -299,21 +286,21 @@ namespace MCore
 
 
     // get the internal name as string
-    const String& AttributeSettings::GetInternalNameString() const
+    const AZStd::string& AttributeSettings::GetInternalNameString() const
     {
-        return GetStringIDGenerator().GetName(mInternalName);
+        return GetStringIdPool().GetName(mInternalName);
     }
 
 
     // get the name as string
-    const String& AttributeSettings::GetNameString() const
+    const AZStd::string& AttributeSettings::GetNameString() const
     {
-        return GetStringIDGenerator().GetName(mName);
+        return GetStringIdPool().GetName(mName);
     }
 
 
     // get a description string
-    const String& AttributeSettings::GetDescriptionString() const
+    const AZStd::string& AttributeSettings::GetDescriptionString() const
     {
         return mDescription;
     }
@@ -357,14 +344,14 @@ namespace MCore
     // add a combobox value
     void AttributeSettings::AddComboValue(const char* value)
     {
-        mComboValues.Add(GetStringIDGenerator().GenerateIDForString(value));
+        mComboValues.Add(GetStringIdPool().GenerateIdForString(value));
     }
 
 
     // set a given combobox value
     void AttributeSettings::SetComboValue(uint32 index, const char* value)
     {
-        mComboValues[index] = GetStringIDGenerator().GenerateIDForString(value);
+        mComboValues[index] = GetStringIdPool().GenerateIdForString(value);
     }
 
 
@@ -541,7 +528,7 @@ namespace MCore
         }
 
         // write the attribute internal name string
-        uint32 numChars = GetInternalNameString().GetLength();
+        uint32 numChars = static_cast<uint32>(GetInternalNameString().size());
         Endian::ConvertUnsignedInt32To(&numChars, targetEndianType);
         if (stream->Write(&numChars, sizeof(uint32)) == 0)
         {
@@ -550,14 +537,14 @@ namespace MCore
 
         if (numChars > 0)
         {
-            if (stream->Write(GetInternalName(), GetInternalNameString().GetLength()) == 0)
+            if (stream->Write(GetInternalName(), static_cast<uint32>(GetInternalNameString().size())) == 0)
             {
                 return false;
             }
         }
 
         // write the attribute name string
-        numChars = GetNameString().GetLength();
+        numChars = static_cast<uint32>(GetNameString().size());
         Endian::ConvertUnsignedInt32To(&numChars, targetEndianType);
         if (stream->Write(&numChars, sizeof(uint32)) == 0)
         {
@@ -566,14 +553,14 @@ namespace MCore
 
         if (numChars > 0)
         {
-            if (stream->Write(GetName(), GetNameString().GetLength()) == 0)
+            if (stream->Write(GetName(), static_cast<uint32>(GetNameString().size())) == 0)
             {
                 return false;
             }
         }
 
         // write the attribute description
-        numChars = GetDescriptionString().GetLength();
+        numChars = static_cast<uint32>(GetDescriptionString().size());
         Endian::ConvertUnsignedInt32To(&numChars, targetEndianType);
         if (stream->Write(&numChars, sizeof(uint32)) == 0)
         {
@@ -582,7 +569,7 @@ namespace MCore
 
         if (numChars > 0)
         {
-            if (stream->Write(GetDescription(), GetDescriptionString().GetLength()) == 0)
+            if (stream->Write(GetDescription(), static_cast<uint32>(GetDescriptionString().size())) == 0)
             {
                 return false;
             }
@@ -608,7 +595,7 @@ namespace MCore
         numComboValues = GetNumComboValues();
         for (uint32 i = 0; i < numComboValues; ++i)
         {
-            numChars = GetComboValueString(i).GetLength();
+            numChars = static_cast<uint32>(GetComboValueString(i).size());
             Endian::ConvertUnsignedInt32To(&numChars, targetEndianType);
             if (stream->Write(&numChars, sizeof(uint32)) == 0)
             {
@@ -617,7 +604,7 @@ namespace MCore
 
             if (numChars > 0)
             {
-                if (stream->Write(GetComboValue(i), GetComboValueString(i).GetLength()) == 0)
+                if (stream->Write(GetComboValue(i), static_cast<uint32>(GetComboValueString(i).size())) == 0)
                 {
                     return false;
                 }
@@ -665,22 +652,22 @@ namespace MCore
             }
             Endian::ConvertUnsignedInt32(&numChars, endianType);
 
-            String tempString;
-            tempString.Reserve(128);
-            tempString.Clear(); // keeps the memory
+            AZStd::string tempString;
+            tempString.reserve(128);
+            tempString.clear(); // keeps the memory
             if (numChars > 0)
             {
-                tempString.Resize(numChars);
-                if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                tempString.resize(numChars);
+                if (stream->Read(tempString.data(), numChars) == 0)
                 {
                     return false;
                 }
             }
 
-            SetInternalName(tempString.AsChar());
+            SetInternalName(tempString.c_str());
 
             // read the name
-            tempString.Clear();
+            tempString.clear();
             if (stream->Read(&numChars, sizeof(uint32)) == 0)
             {
                 return false;
@@ -688,17 +675,17 @@ namespace MCore
             Endian::ConvertUnsignedInt32(&numChars, endianType);
             if (numChars > 0)
             {
-                tempString.Resize(numChars);
-                if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                tempString.resize(numChars);
+                if (stream->Read(tempString.data(), numChars) == 0)
                 {
                     return false;
                 }
             }
-            SetName(tempString.AsChar());
+            SetName(tempString.c_str());
 
 
             // read the description
-            tempString.Clear();
+            tempString.clear();
             if (stream->Read(&numChars, sizeof(uint32)) == 0)
             {
                 return false;
@@ -706,13 +693,13 @@ namespace MCore
             Endian::ConvertUnsignedInt32(&numChars, endianType);
             if (numChars > 0)
             {
-                tempString.Resize(numChars);
-                if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                tempString.resize(numChars);
+                if (stream->Read(tempString.data(), numChars) == 0)
                 {
                     return false;
                 }
             }
-            SetDescription(tempString.AsChar());
+            SetDescription(tempString.c_str());
 
 
             // read the interface type
@@ -737,7 +724,7 @@ namespace MCore
             // read the combo strings
             for (uint32 i = 0; i < numComboValues; ++i)
             {
-                tempString.Clear();
+                tempString.clear();
                 if (stream->Read(&numChars, sizeof(uint32)) == 0)
                 {
                     return false;
@@ -745,13 +732,13 @@ namespace MCore
                 Endian::ConvertUnsignedInt32(&numChars, endianType);
                 if (numChars > 0)
                 {
-                    tempString.Resize(numChars);
-                    if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                    tempString.resize(numChars);
+                    if (stream->Read(tempString.data(), numChars) == 0)
                     {
                         return false;
                     }
                 }
-                SetComboValue(i, tempString.AsChar());
+                SetComboValue(i, tempString.c_str());
             }
 
             // save the actual attribute data
@@ -795,22 +782,22 @@ namespace MCore
             }
             Endian::ConvertUnsignedInt32(&numChars, endianType);
 
-            String tempString;
-            tempString.Reserve(128);
-            tempString.Clear(); // keeps the memory
+            AZStd::string tempString;
+            tempString.reserve(128);
+            tempString.clear(); // keeps the memory
             if (numChars > 0)
             {
-                tempString.Resize(numChars);
-                if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                tempString.resize(numChars);
+                if (stream->Read(tempString.data(), numChars) == 0)
                 {
                     return false;
                 }
             }
 
-            SetInternalName(tempString.AsChar());
+            SetInternalName(tempString.c_str());
 
             // read the name
-            tempString.Clear();
+            tempString.clear();
             if (stream->Read(&numChars, sizeof(uint32)) == 0)
             {
                 return false;
@@ -818,17 +805,17 @@ namespace MCore
             Endian::ConvertUnsignedInt32(&numChars, endianType);
             if (numChars > 0)
             {
-                tempString.Resize(numChars);
-                if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                tempString.resize(numChars);
+                if (stream->Read(tempString.data(), numChars) == 0)
                 {
                     return false;
                 }
             }
-            SetName(tempString.AsChar());
+            SetName(tempString.c_str());
 
 
             // read the description
-            tempString.Clear();
+            tempString.clear();
             if (stream->Read(&numChars, sizeof(uint32)) == 0)
             {
                 return false;
@@ -836,13 +823,13 @@ namespace MCore
             Endian::ConvertUnsignedInt32(&numChars, endianType);
             if (numChars > 0)
             {
-                tempString.Resize(numChars);
-                if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                tempString.resize(numChars);
+                if (stream->Read(tempString.data(), numChars) == 0)
                 {
                     return false;
                 }
             }
-            SetDescription(tempString.AsChar());
+            SetDescription(tempString.c_str());
 
 
             // read the interface type
@@ -867,7 +854,7 @@ namespace MCore
             // read the combo strings
             for (uint32 i = 0; i < numComboValues; ++i)
             {
-                tempString.Clear();
+                tempString.clear();
                 if (stream->Read(&numChars, sizeof(uint32)) == 0)
                 {
                     return false;
@@ -875,13 +862,13 @@ namespace MCore
                 Endian::ConvertUnsignedInt32(&numChars, endianType);
                 if (numChars > 0)
                 {
-                    tempString.Resize(numChars);
-                    if (stream->Read(tempString.GetPtr(), numChars) == 0)
+                    tempString.resize(numChars);
+                    if (stream->Read(tempString.data(), numChars) == 0)
                     {
                         return false;
                     }
                 }
-                SetComboValue(i, tempString.AsChar());
+                SetComboValue(i, tempString.c_str());
             }
 
             // save the actual attribute data
@@ -918,13 +905,13 @@ namespace MCore
         totalSize += sizeof(uint16); // flags
 
         totalSize += sizeof(uint32); // numchars for the internal name string
-        totalSize += GetInternalNameString().GetLength();
+        totalSize += static_cast<uint32>(GetInternalNameString().size());
 
         totalSize += sizeof(uint32); // numchars for the name string
-        totalSize += GetNameString().GetLength();
+        totalSize += static_cast<uint32>(GetNameString().size());
 
         totalSize += sizeof(uint32); // numchars for the description string
-        totalSize += GetDescriptionString().GetLength();
+        totalSize += static_cast<uint32>(GetDescriptionString().size());
 
         totalSize += sizeof(uint32); // interface type
 
@@ -933,7 +920,7 @@ namespace MCore
         for (uint32 i = 0; i < numComboValues; ++i)
         {
             totalSize += sizeof(uint32); // numchars for the combo value string
-            totalSize += GetComboValueString(i).GetLength();
+            totalSize += static_cast<uint32>(GetComboValueString(i).size());
         }
 
         totalSize += Attribute::GetFullAttributeSize(mDefaultValue);
@@ -945,13 +932,13 @@ namespace MCore
 
 
     // convert this to a string
-    bool AttributeSettings::ConvertToString(String& outString) const
+    bool AttributeSettings::ConvertToString(AZStd::string& outString) const
     {
         // -name { name } -internalName { intName } -description { descr } -defaultValue { value } -minValue { minValue } -maxValue { maxValue } -flags flags -interfaceType interfaceType -comboValues { value1;value2;value3 }
-        outString.Clear();
-        outString.Reserve(1024);
+        outString.clear();
+        outString.reserve(1024);
 
-        if (GetNameString().GetLength() > 0)
+        if (GetNameString().size() > 0)
         {
             outString += "-name";
             outString += " {";
@@ -959,7 +946,7 @@ namespace MCore
             outString += "} ";
         }
 
-        if (GetInternalNameString().GetLength() > 0)
+        if (GetInternalNameString().size() > 0)
         {
             outString += "-internalName";
             outString += " {";
@@ -967,7 +954,7 @@ namespace MCore
             outString += "} ";
         }
 
-        if (GetDescriptionString().GetLength() > 0)
+        if (GetDescriptionString().size() > 0)
         {
             outString += "-description";
             outString += " {";
@@ -992,22 +979,22 @@ namespace MCore
 
         outString += "-interfaceType";
         outString += " ";
-        outString += String((uint32)GetInterfaceType());
+        outString += AZStd::to_string((uint32)GetInterfaceType());
         outString += " ";
 
         outString += "-flags";
         outString += " ";
-        outString += String((uint32)mFlags);
+        outString += AZStd::to_string((uint32)mFlags);
         outString += " ";
 
-        String tempString;
+        AZStd::string tempString;
         if (mDefaultValue)
         {
-            tempString.Clear();
+            tempString.clear();
             if (mDefaultValue->ConvertToString(tempString) == false)
             {
                 LogError("AttributeSettings::ConvertToString() - Failed to convert the default value for settings '%s' to a string.", GetInternalName());
-                outString.Clear();
+                outString.clear();
                 return false;
             }
 
@@ -1025,11 +1012,11 @@ namespace MCore
 
         if (mMinValue)
         {
-            tempString.Clear();
+            tempString.clear();
             if (mMinValue->ConvertToString(tempString) == false)
             {
                 LogError("AttributeSettings::ConvertToString() - Failed to convert the minimum value for settings '%s' to a string.", GetInternalName());
-                outString.Clear();
+                outString.clear();
                 return false;
             }
 
@@ -1047,11 +1034,11 @@ namespace MCore
 
         if (mMaxValue)
         {
-            tempString.Clear();
+            tempString.clear();
             if (mMaxValue->ConvertToString(tempString) == false)
             {
                 LogError("AttributeSettings::ConvertToString() - Failed to convert the maximum value for settings '%s' to a string.", GetInternalName());
-                outString.Clear();
+                outString.clear();
                 return false;
             }
 
@@ -1072,35 +1059,35 @@ namespace MCore
 
 
     // init from a string
-    bool AttributeSettings::InitFromString(const String& valueString)
+    bool AttributeSettings::InitFromString(const AZStd::string& valueString)
     {
         // -name { name } -internalName { intName } -description { descr } -defaultValue { value } -minValue { minValue } -maxValue { maxValue } -flags flags -interfaceType interfaceType -comboValues { value1;value2;value3 }
         CommandLine commandLine(valueString);
 
         // set the internal name
-        String tempString;
-        commandLine.GetValue("internalName", "", &tempString);
+        AZStd::string tempString;
+        commandLine.GetValue("internalName", "", tempString);
         /*  if (tempString.GetLength() == 0)
             {
                 LogError("AttributeSettings::InitFromString() - Failed to extract internal name.");
                 return false;
             }*/
-        SetInternalName(tempString);
+        SetInternalName(tempString.c_str());
 
         // set the name
         commandLine.GetValue("name", "", &tempString);
-        if (tempString.GetLength() == 0)
+        if (tempString.size() == 0)
         {
             SetName(GetInternalName());
         }
         else
         {
-            SetName(tempString);
+            SetName(tempString.c_str());
         }
 
         // set the description
         commandLine.GetValue("description", "", &tempString);
-        SetDescription(tempString);
+        SetDescription(tempString.c_str());
 
         // set the interface type
         const uint32 interfaceType = static_cast<uint32>(commandLine.GetValueAsInt("interfaceType", ATTRIBUTE_INTERFACETYPE_DEFAULT));
@@ -1122,25 +1109,28 @@ namespace MCore
 
         // set the combo values
         commandLine.GetValue("comboValues", "", &tempString);
-        if (tempString.GetLength() > 0)
+        if (tempString.size() > 0)
         {
-            Array<String> comboValues = tempString.Split(UnicodeCharacter::semiColon);
-            mComboValues.Resize(comboValues.GetLength());
-            for (uint32 i = 0; i < comboValues.GetLength(); ++i)
+            AZStd::vector<AZStd::string> comboValues;
+            AzFramework::StringFunc::Tokenize(tempString.c_str(), comboValues, MCore::CharacterConstants::semiColon, true /* keep empty strings */, true /* keep space strings */);
+
+            mComboValues.Resize(static_cast<uint32>(comboValues.size()));
+            const uint32 comboValuesSize = static_cast<uint32>(comboValues.size());
+            for (uint32 i = 0; i < comboValuesSize; ++i)
             {
-                SetComboValue(i, comboValues[i].AsChar());
+                SetComboValue(i, comboValues[i].c_str());
             }
         }
 
         // get the default value string
-        MCore::String typeString;
+        AZStd::string typeString;
         commandLine.GetValue("defaultValue", "", &tempString);
-        if (tempString.GetLength() > 0)
+        if (tempString.size() > 0)
         {
             // check the type
             CommandLine defaultCommandLine(tempString);
             defaultCommandLine.GetValue("type", "", &typeString);
-            if (typeString.GetLength() == 0)
+            if (typeString.size() == 0)
             {
                 MCore::LogError("AttributeSettings::InitFromString() - Failed to get the default value type for attribute '%s'.", GetInternalName());
                 return false;
@@ -1148,24 +1138,24 @@ namespace MCore
 
             // get the value
             defaultCommandLine.GetValue("value", "", &tempString);
-            if (tempString.GetLength() == 0 && defaultCommandLine.CheckIfHasParameter("value") == false)
+            if (tempString.size() == 0 && defaultCommandLine.CheckIfHasParameter("value") == false)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to get the default value string for attribute '%s' of type '%s'.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to get the default value string for attribute '%s' of type '%s'.", GetInternalName(), typeString.c_str());
                 return false;
             }
 
             // create the attribute
-            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.AsChar());
+            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.c_str());
             if (value == nullptr)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to create the default value attribute object for attribute '%s' of type '%s'.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to create the default value attribute object for attribute '%s' of type '%s'.", GetInternalName(), typeString.c_str());
                 return false;
             }
 
             // init the attribute from the given data string
             if (value->InitFromString(tempString) == false)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to init the default value attribute object for attribute '%s' of type '%s' from a given string.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to init the default value attribute object for attribute '%s' of type '%s' from a given string.", GetInternalName(), typeString.c_str());
                 value->Destroy();
                 return false;
             }
@@ -1176,12 +1166,12 @@ namespace MCore
 
         // set the minimum
         commandLine.GetValue("minValue", "", &tempString);
-        if (tempString.GetLength() > 0)
+        if (tempString.size() > 0)
         {
             // check the type
             CommandLine minCommandLine(tempString);
             minCommandLine.GetValue("type", "", &typeString);
-            if (typeString.GetLength() == 0)
+            if (typeString.size() == 0)
             {
                 MCore::LogError("AttributeSettings::InitFromString() - Failed to get the minimum value type for attribute '%s'.", GetInternalName());
                 SetDefaultValue(nullptr);
@@ -1190,18 +1180,18 @@ namespace MCore
 
             // get the value
             minCommandLine.GetValue("value", "", &tempString);
-            if (tempString.GetLength() == 0 && minCommandLine.CheckIfHasParameter("value") == false)
+            if (tempString.size() == 0 && minCommandLine.CheckIfHasParameter("value") == false)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to get the minimum value string for attribute '%s' of type '%s'.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to get the minimum value string for attribute '%s' of type '%s'.", GetInternalName(), typeString.c_str());
                 SetDefaultValue(nullptr);
                 return false;
             }
 
             // create the attribute
-            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.AsChar());
+            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.c_str());
             if (value == nullptr)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to create the minimum value attribute object for attribute '%s' of type '%s'.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to create the minimum value attribute object for attribute '%s' of type '%s'.", GetInternalName(), typeString.c_str());
                 SetDefaultValue(nullptr);
                 return false;
             }
@@ -1209,7 +1199,7 @@ namespace MCore
             // init the attribute from the given data string
             if (value->InitFromString(tempString) == false)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to init the minimum value attribute object for attribute '%s' of type '%s' from a given string.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to init the minimum value attribute object for attribute '%s' of type '%s' from a given string.", GetInternalName(), typeString.c_str());
                 SetDefaultValue(nullptr);
                 value->Destroy();
                 return false;
@@ -1226,12 +1216,12 @@ namespace MCore
 
         // set the maximum
         commandLine.GetValue("maxValue", "", &tempString);
-        if (tempString.GetLength() > 0)
+        if (tempString.size() > 0)
         {
             // check the type
             CommandLine maxCommandLine(tempString);
             maxCommandLine.GetValue("type", "", &typeString);
-            if (typeString.GetLength() == 0)
+            if (typeString.size() == 0)
             {
                 MCore::LogError("AttributeSettings::InitFromString() - Failed to get the maximum value type for attribute '%s'.", GetInternalName());
                 SetDefaultValue(nullptr);
@@ -1241,19 +1231,19 @@ namespace MCore
 
             // get the value
             maxCommandLine.GetValue("value", "", &tempString);
-            if (tempString.GetLength() == 0 && maxCommandLine.CheckIfHasParameter("value") == false)
+            if (tempString.size() == 0 && maxCommandLine.CheckIfHasParameter("value") == false)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to get the maximum value string for attribute '%s' of type '%s'.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to get the maximum value string for attribute '%s' of type '%s'.", GetInternalName(), typeString.c_str());
                 SetDefaultValue(nullptr);
                 SetMinValue(nullptr);
                 return false;
             }
 
             // create the attribute
-            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.AsChar());
+            Attribute* value = GetAttributeFactory().CreateAttributeByTypeString(typeString.c_str());
             if (value == nullptr)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to create the maximum value attribute object for attribute '%s' of type '%s'.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to create the maximum value attribute object for attribute '%s' of type '%s'.", GetInternalName(), typeString.c_str());
                 SetDefaultValue(nullptr);
                 SetMinValue(nullptr);
                 return false;
@@ -1262,7 +1252,7 @@ namespace MCore
             // init the attribute from the given data string
             if (value->InitFromString(tempString) == false)
             {
-                MCore::LogError("AttributeSettings::InitFromString() - Failed to init the maximum value attribute object for attribute '%s' of type '%s' from a given string.", GetInternalName(), typeString.AsChar());
+                MCore::LogError("AttributeSettings::InitFromString() - Failed to init the maximum value attribute object for attribute '%s' of type '%s' from a given string.", GetInternalName(), typeString.c_str());
                 SetDefaultValue(nullptr);
                 SetMinValue(nullptr);
                 value->Destroy();
@@ -1296,34 +1286,37 @@ namespace MCore
 
 
     // build a tooltip string
-    void AttributeSettings::BuildToolTipString(String& outString, MCore::Attribute* value)
+    void AttributeSettings::BuildToolTipString(AZStd::string& outString, MCore::Attribute* value)
     {
-        String tempString;
-        outString.Reserve(2048);
+        AZStd::string tempString;
+        outString.reserve(2048);
 
         outString = "<table border=\"0\">";
-        outString.FormatAdd("<tr><td width=\"150\"><b>%s</b></td><td width=\"300\">%s</td></tr>",  "Name: ",           GetName());
-        outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",              "Internal Name: ",  GetInternalName());
+        outString += AZStd::string::format("<tr><td width=\"150\"><b>%s</b></td><td width=\"300\">%s</td></tr>",  "Name: ",           GetName());
+        outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",              "Internal Name: ",  GetInternalName());
 
         if (value)
         {
             value->BuildHierarchicalName(tempString);
-            outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",          "Hierarchical Name: ",  tempString.AsChar());
+            outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",          "Hierarchical Name: ",  tempString.c_str());
         }
 
-        if (mDescription.GetLength() > 0)
+        if (mDescription.size() > 0)
         {
-            outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",          "Description: ",    GetDescription());
+            outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",          "Description: ",    GetDescription());
         }
 
         if (mDefaultValue)
         {
-            outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",          "Attribute Type: ", mDefaultValue->GetTypeString());
+            outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",          "Attribute Type: ", mDefaultValue->GetTypeString());
 
             if (mDefaultValue->ConvertToString(tempString))
             {
-                tempString.ElideRight(100);
-                outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",      "Default Value: ",  tempString.AsChar());
+                if (tempString.size() > 100)
+                {
+                    tempString.resize(100);
+                }
+                outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",      "Default Value: ",  tempString.c_str());
             }
         }
 
@@ -1331,8 +1324,11 @@ namespace MCore
         {
             if (mMinValue->ConvertToString(tempString))
             {
-                tempString.ElideRight(100);
-                outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",      "Minimum Value: ",  tempString.AsChar());
+                if (tempString.size() > 100)
+                {
+                    tempString.resize(100);
+                }
+                outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",      "Minimum Value: ",  tempString.c_str());
             }
         }
 
@@ -1340,13 +1336,16 @@ namespace MCore
         {
             if (mMaxValue->ConvertToString(tempString))
             {
-                tempString.ElideRight(100);
-                outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",      "Maximum Value: ",  tempString.AsChar());
+                if (tempString.size() > 100)
+                {
+                    tempString.resize(100);
+                }
+                outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",      "Maximum Value: ",  tempString.c_str());
             }
         }
 
-        outString.FormatAdd("<tr><td><b>%s</b></td><td>%d</td></tr>",              "Interface Type ID: ",  mInterfaceType);
-        outString.FormatAdd("<tr><td><b>%s</b></td><td>%s</td></tr>",              "References Other: ",   GetReferencesOtherAttribute() ? "Yes" : "No");
+        outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%d</td></tr>",              "Interface Type ID: ",  mInterfaceType);
+        outString += AZStd::string::format("<tr><td><b>%s</b></td><td>%s</td></tr>",              "References Other: ",   GetReferencesOtherAttribute() ? "Yes" : "No");
 
         outString += "</table>";
     }

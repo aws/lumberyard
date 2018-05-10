@@ -24,7 +24,7 @@ namespace CommandSystem
     // add a LOD level to the actor
     MCORE_DEFINECOMMAND_START(CommandAddLOD, "Add LOD", false)
     bool                            mOldDirtyFlag;
-    MCore::String                   mOldSkeletalLOD;
+    AZStd::string                   mOldSkeletalLOD;
     MCORE_DEFINECOMMAND_END
 
 
@@ -35,5 +35,5 @@ namespace CommandSystem
 
     // helper functions
     void COMMANDSYSTEM_API ClearLODLevels(EMotionFX::Actor* actor, MCore::CommandGroup* commandGroup = nullptr);
-    void COMMANDSYSTEM_API ConstructReplaceManualLODCommand(EMotionFX::Actor* actor, uint32 lodLevel, const char* lodActorFileName, const MCore::Array<uint32>& enabledNodeIDs, MCore::String* outString, bool useForMetaData = false);
+    void COMMANDSYSTEM_API ConstructReplaceManualLODCommand(EMotionFX::Actor* actor, uint32 lodLevel, const char* lodActorFileName, const MCore::Array<uint32>& enabledNodeIDs, AZStd::string* outString, bool useForMetaData = false);
 } // namespace CommandSystem

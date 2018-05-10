@@ -171,7 +171,7 @@ private:
     {
         auto compare = [column](const QVariantMap& v1, const QVariantMap& v2)
             {
-                return v1[column] < v2[column];
+                return v1[column].toString() < v2[column].toString();
             };
 
         qSort(list.begin(), list.end(), compare);

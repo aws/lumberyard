@@ -226,7 +226,7 @@ class EventFilter : public QObject
 {
     Q_OBJECT
 public:
-    EventFilter(QObject* target);
+    explicit EventFilter(QObject* target);
 
     bool eventFilter(QObject* object, QEvent* event) override;
 

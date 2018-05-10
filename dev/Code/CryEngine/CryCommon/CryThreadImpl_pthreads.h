@@ -111,7 +111,8 @@ void* CryCreateCriticalSection()
     return (void*) new TCritSecType;
 }
 
-#if defined(INTERLOCKED_COMPARE_EXCHANGE_128_NOT_SUPPORTED)
+#if AZ_TRAIT_SKIP_CRYINTERLOCKED
+#elif defined(INTERLOCKED_COMPARE_EXCHANGE_128_NOT_SUPPORTED)
 //////////////////////////////////////////////////////////////////////////
 void CryInterlockedPushEntrySList(SLockFreeSingleLinkedListHeader& list,  SLockFreeSingleLinkedListEntry& element)
 {

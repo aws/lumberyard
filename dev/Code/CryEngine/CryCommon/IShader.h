@@ -3040,6 +3040,11 @@ struct SRenderLight
         return ((float) m_nAttenFalloffMax) / 255.0f;
     }
 
+    // Calculate the scissor rectangle in screenspace that encompasses this light.  These values are used to set
+    // the hardware scissor rect in order to clip the min/max 2d extents for the light.
+    // These values must be calculated and read on the render thread due to the VR tracking updates performed on the render thread.
+    void CalculateScissorRect();
+
     //=========================================================================================================================
 
     // Commonly used on most code paths (64 bytes)

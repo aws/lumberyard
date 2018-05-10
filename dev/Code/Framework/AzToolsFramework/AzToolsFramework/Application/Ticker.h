@@ -18,7 +18,7 @@ namespace AzToolsFramework
 
     public:
 
-        Ticker(QObject* parent = nullptr, float timeoutMS = 10.f);
+        explicit Ticker(QObject* parent = nullptr, float timeoutMS = 10.f);
         virtual ~Ticker();
 
         //! Starts the ticking on a thread

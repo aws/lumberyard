@@ -28,6 +28,16 @@ namespace EventTrace
 
 void CSimpleGPUTimer::EnableTiming()
 {
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define GPUTIMER_CPP_SECTION_1 1
+#define GPUTIMER_CPP_SECTION_2 2
+#define GPUTIMER_CPP_SECTION_3 3
+#define GPUTIMER_CPP_SECTION_4 4
+#define GPUTIMER_CPP_SECTION_5 5
+#endif
+
 #ifdef ENABLE_SIMPLE_GPU_TIMERS
     if (!s_bTimingEnabled && s_bTimingAllowed)
     {
@@ -90,6 +100,9 @@ void CSimpleGPUTimer::Release()
     SAFE_RELEASE(m_pQueryStart);
     SAFE_RELEASE(m_pQueryStop);
     SAFE_RELEASE(m_pQueryFreq);
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
     m_bInitialized = false;
     m_bWaiting = false;
@@ -112,6 +125,9 @@ bool CSimpleGPUTimer::Init()
         {
             m_bInitialized = true;
         }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
     #endif
 
         EBUS_EVENT(AZ::Debug::EventTraceDrillerSetupBus, SetThreadName, EventTrace::GpuThreadId, EventTrace::GpuThreadName);
@@ -134,6 +150,9 @@ void CSimpleGPUTimer::Start(const char* name)
         gcpRendD3D->GetDeviceContext().Begin(m_pQueryFreq);
         gcpRendD3D->GetDeviceContext().End(m_pQueryStart);
         m_bStarted = true;
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
     #endif
     }
 #endif
@@ -149,6 +168,9 @@ void CSimpleGPUTimer::Stop()
         gcpRendD3D->GetDeviceContext().End(m_pQueryFreq);
         m_bStarted = false;
         m_bWaiting = true;
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
     #endif
     }
 #endif
@@ -180,6 +202,9 @@ void CSimpleGPUTimer::UpdateTime()
             }
             m_bWaiting = false;
         }
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
     #endif
 
         if (!m_bWaiting)

@@ -36,7 +36,7 @@ namespace Input
                 ->Version(1)
                 ;
 
-            serializeContext->Class<InputConfigurationComponent>()
+            serializeContext->Class<InputConfigurationComponent, AZ::Component>()
                 ->Version(2)
                 ->Field("Input Event Bindings", &InputConfigurationComponent::m_inputEventBindingsAsset)
                 ->Field("Input Contexts", &InputConfigurationComponent::m_inputContexts);
@@ -123,20 +123,38 @@ namespace Input
         }
     }
 
+    void InputConfigurationComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        if (asset.GetId() == m_inputEventBindingsAsset.GetId())
+        {
+            // before we reload and reapply, disable any existing old ones, or else they'd double up
+            // and you'd end up with both being active.
+            m_inputEventBindings.Deactivate(Input::ProfileId(m_associatedProfileName.c_str()));
+
+            m_inputEventBindingsAsset = asset;
+            if (asset.IsReady())
+            {
+                OnAssetReady(asset);
+            }
+        }
+    }
+
     void InputConfigurationComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
         if (InputEventBindingsAsset* inputAsset = asset.GetAs<InputEventBindingsAsset>())
         {
-            AZStd::vector<char> buffer;
-            AZ::IO::ByteContainerStream<AZStd::vector<char>> assetCopier(&buffer);
-            // Save to stream
-            AZ::Utils::SaveObjectToStream<InputEventBindingsAsset>(assetCopier, AZ::DataStream::ST_BINARY, inputAsset);
-            // Move to the beginning of the stream
-            assetCopier.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
+            // the input asset actually requires us to do additional cloning and copying of the data
+            // mainly because we retrieve the player profile data and apply it as a bindings patch on top of the data.
 
-            if (InputEventBindingsAsset* localCopyOfAsset = AZ::Utils::LoadObjectFromStream<InputEventBindingsAsset>(assetCopier))
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
             {
-                m_inputEventBindings.Swap(&localCopyOfAsset->m_bindings);
+                // we swap with a fresh empty one here just to make sure that if this happens repeatedly, we don't have anything left over.
+                InputEventBindings freshBindings;
+                serializeContext->CloneObjectInplace<InputEventBindings>(freshBindings, &inputAsset->m_bindings);
+                m_inputEventBindings.Swap(&freshBindings);
             }
 
             //patch the data
@@ -153,6 +171,9 @@ namespace Input
                     m_inputEventBindings = *patchedBindings;
                 }
             }
+
+            m_isAssetPrepared = true;
+            ActivateBindingsIfAppropriate();
         }
         else
         {
@@ -160,14 +181,24 @@ namespace Input
         }
     }
 
+    void InputConfigurationComponent::ActivateBindingsIfAppropriate()
+    {
+        if ((m_isContextActive) && (m_isAssetPrepared))
+        {
+            AZ::InputRequestBus::Broadcast(&AZ::InputRequests::RequestDeviceIndexMapping, AZ::Crc32(m_associatedProfileName.c_str()));
+            m_inputEventBindings.Activate(Input::ProfileId(m_associatedProfileName.c_str()));
+        }
+    }
+
     void InputConfigurationComponent::OnInputContextActivated()
     {
-        AZ::InputRequestBus::Broadcast(&AZ::InputRequests::RequestDeviceIndexMapping, AZ::Crc32(m_associatedProfileName.c_str()));
-        m_inputEventBindings.Activate(Input::ProfileId(m_associatedProfileName.c_str()));
+        m_isContextActive = true;
+        ActivateBindingsIfAppropriate();
     }
 
     void InputConfigurationComponent::OnInputContextDeactivated()
     {
+        m_isContextActive = false;
         m_inputEventBindings.Deactivate(Input::ProfileId(m_associatedProfileName.c_str()));
     }
 

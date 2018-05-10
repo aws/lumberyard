@@ -38,7 +38,7 @@ namespace AZ
                 Q_OBJECT
 
             public:
-                JobWatcher(const AZStd::string& sourceAssetFullPath, Uuid traceTag);
+                explicit JobWatcher(const AZStd::string& sourceAssetFullPath, Uuid traceTag);
                 void StartMonitoring();
 
             signals:

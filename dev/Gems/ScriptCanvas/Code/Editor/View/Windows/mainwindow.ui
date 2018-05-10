@@ -100,6 +100,9 @@
     <addaction name="action_ViewDebugger"/>
     <addaction name="action_ViewCommandLine"/>
     <addaction name="action_ViewLog"/>
+    <addaction name="action_ViewBookmarks"/>
+    <addaction name="action_ViewMiniMap"/>
+    <addaction name="action_ViewVariableManager"/>
     <addaction name="separator"/>
     <addaction name="action_ViewRestoreDefaultLayout"/>
    </widget>
@@ -177,10 +180,6 @@
    <property name="checked">
     <bool>true</bool>
    </property>
-   <property name="icon">
-    <iconset resource="ScriptCanvasEditorResources.qrc">
-     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_nodes.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_nodes.png</iconset>
-   </property>
    <property name="text">
     <string>&amp;Node Palette</string>
    </property>
@@ -195,10 +194,6 @@
    <property name="checked">
     <bool>true</bool>
    </property>
-   <property name="icon">
-    <iconset resource="ScriptCanvasEditorResources.qrc">
-     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_outliner.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_outliner.png</iconset>
-   </property>
    <property name="text">
     <string>&amp;Node Outliner</string>
    </property>
@@ -212,10 +207,6 @@
    </property>
    <property name="checked">
     <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="ScriptCanvasEditorResources.qrc">
-     <normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_properties.png</normaloff>:/ScriptCanvasEditorResources/Resources/scriptcanvas_properties.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Node Inspector</string>
@@ -358,6 +349,45 @@
     <string>Batch Conversion</string>
    </property>
   </action>
+  <action name="action_ViewBookmarks">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Bookmarks</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+B</string>
+   </property>
+  </action>
+  <action name="action_ViewMiniMap">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;MiniMap</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+M</string>
+   </property>
+  </action>
+  <action name="action_ViewVariableManager">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Variable Manager</string>
+   </property>
+  </action>
   <addaction name="action_ViewNodePalette"/>
   <addaction name="action_ViewOutline"/>
   <addaction name="action_ViewProperties"/>
@@ -367,6 +397,7 @@
  </widget>
  <resources>
   <include location="ScriptCanvasEditorResources.qrc"/>
+  <include location="../../../../../GraphCanvas/Code/StaticLib/GraphCanvas/Widgets/Resources/GraphCanvasEditorResources.qrc"/>
  </resources>
  <connections/>
 </ui>

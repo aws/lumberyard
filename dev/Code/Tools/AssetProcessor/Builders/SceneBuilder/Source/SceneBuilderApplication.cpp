@@ -12,9 +12,6 @@
 
 #include <AzCore/Component/Entity.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
-#include <AssetBuilderSDK/AssetBuilderBusses.h>
-#include <SceneBuilder/Source/SceneBuilderComponent.h>
-#include <SceneBuilder/Source/SceneSerializationHandler.h>
 
 void BuilderOnInit()
 {
@@ -26,14 +23,14 @@ void BuilderDestroy()
 
 void BuilderRegisterDescriptors()
 {
-    AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Events::RegisterComponentDescriptor, SceneBuilder::BuilderPluginComponent::CreateDescriptor());
-    AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Events::RegisterComponentDescriptor, SceneBuilder::SceneSerializationHandler::CreateDescriptor());
 }
 
 void BuilderAddComponents(AZ::Entity* entity)
 {
-    entity->CreateComponentIfReady<SceneBuilder::BuilderPluginComponent>();
+    AZ_UNUSED(entity);
 }
 
-// we must use this macro to register this as an asset builder
+// This builder dll is deprecated, and has moved into the SceneProcessing gem.
+// We keep it around for a few versions with minimal code in order to replace old dlls with harmless dlls.
+// Since the AP will assert when loading this dll if it's not registered properly, we still register this empty builder.
 REGISTER_ASSETBUILDER

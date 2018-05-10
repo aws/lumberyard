@@ -2,21 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSHumanReadableCopyright</key>
-	<string>Portions of this file Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved. Original file Copyright (c) Crytek GMBH. Used under license by Amazon.com, Inc. and its affiliates.</string>
-	<key>NSPrincipalClass</key>
-	<string>NSApplication</string>
-	<key>CFBundleIconFile</key>
-	<string>editor_icon.icns</string>
+	<key>CFBundleExecutable</key>
+	<string>Editor</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.Amazon.Lumberyard.Editor</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleExecutable</key>
-	<string>Editor</string>
-	<key>CFBundleShortVersionString</key>
-	<string>0.1.0.1</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.Amazon.Editor</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Portions of this file Copyright (c) Amazon.com, Inc. or its affiliates. All Rights Reserved. Original file Copyright (c) Crytek GMBH. Used under license by Amazon.com, Inc. and its affiliates.</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
 </dict>
 </plist>

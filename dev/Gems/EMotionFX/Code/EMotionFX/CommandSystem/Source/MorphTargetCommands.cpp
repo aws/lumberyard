@@ -15,6 +15,7 @@
 #include "CommandManager.h"
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/Source/MorphSetup.h>
+#include <MCore/Source/StringConversions.h>
 
 
 namespace CommandSystem
@@ -37,7 +38,7 @@ namespace CommandSystem
 
 
     // get the requested morph target and its instance
-    bool CommandAdjustMorphTarget::GetMorphTarget(EMotionFX::Actor* actor, EMotionFX::ActorInstance* actorInstance, uint32 lodLevel, const char* morphTargetName, EMotionFX::MorphTarget** outMorphTarget, EMotionFX::MorphSetupInstance::MorphTarget** outMorphTargetInstance, MCore::String& outResult)
+    bool CommandAdjustMorphTarget::GetMorphTarget(EMotionFX::Actor* actor, EMotionFX::ActorInstance* actorInstance, uint32 lodLevel, const char* morphTargetName, EMotionFX::MorphTarget** outMorphTarget, EMotionFX::MorphSetupInstance::MorphTarget** outMorphTargetInstance, AZStd::string& outResult)
     {
         // reset the output results
         *outMorphTarget         = nullptr;
@@ -46,7 +47,7 @@ namespace CommandSystem
         // check if either the actor or the actor instance is set
         if (actor == nullptr && actorInstance == nullptr)
         {
-            outResult.Format("Cannot adjust morph target '%s'. No actor or actor instance id given.", morphTargetName);
+            outResult = AZStd::string::format("Cannot adjust morph target '%s'. No actor or actor instance id given.", morphTargetName);
             return false;
         }
 
@@ -61,7 +62,7 @@ namespace CommandSystem
                 morphTarget = morphSetup->FindMorphTargetByName(morphTargetName);
                 if (morphTarget == nullptr)
                 {
-                    outResult.Format("Cannot adjust morph target '%s'. The morph target does not exist in actor with the id %i.", morphTargetName, actor->GetID());
+                    outResult = AZStd::string::format("Cannot adjust morph target '%s'. The morph target does not exist in actor with the id %i.", morphTargetName, actor->GetID());
                     return false;
                 }
 
@@ -80,7 +81,7 @@ namespace CommandSystem
                 EMotionFX::MorphSetupInstance::MorphTarget* morphTargetInstance = morphSetupInstance->FindMorphTargetByID(morphTarget->GetID());
                 if (morphTargetInstance == nullptr)
                 {
-                    outResult.Format("Cannot adjust morph target '%s'. The morph target instance does not exist in the actor instance with id '%i'.", morphTargetName, actorInstance->GetID());
+                    outResult = AZStd::string::format("Cannot adjust morph target '%s'. The morph target instance does not exist in the actor instance with id '%i'.", morphTargetName, actorInstance->GetID());
                     return false;
                 }
 
@@ -94,10 +95,10 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandAdjustMorphTarget::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMorphTarget::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the name of the morph target
-        MCore::String valueString;
+        AZStd::string valueString;
         parameters.GetValue("name", this, &valueString);
 
         // get the actor and the actor instance id and find the corresponding objects
@@ -119,7 +120,7 @@ namespace CommandSystem
         // get the morph target and the corresponding morph target instance
         EMotionFX::MorphTarget* morphTarget;
         EMotionFX::MorphSetupInstance::MorphTarget* morphTargetInstance;
-        GetMorphTarget(actor, actorInstance, lodLevel, valueString.AsChar(), &morphTarget, &morphTargetInstance, outResult);
+        GetMorphTarget(actor, actorInstance, lodLevel, valueString.c_str(), &morphTarget, &morphTargetInstance, outResult);
 
         // set the new weight of the morph target
         if (parameters.CheckIfHasParameter("weight") && morphTargetInstance)
@@ -157,7 +158,7 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("phonemeAction") && morphTarget)
         {
             // get phoneme sets parameters
-            MCore::String phonemeSetsString;
+            AZStd::string phonemeSetsString;
             parameters.GetValue("phonemeAction", this, &valueString);
             parameters.GetValue("phonemeSets", this, &phonemeSetsString);
 
@@ -165,12 +166,14 @@ namespace CommandSystem
             mOldPhonemeSets = morphTarget->GetPhonemeSets();
 
             // remove the phoneme set
-            if (valueString.CheckIfIsEqualNoCase("remove"))
+            if (AzFramework::StringFunc::Equal(valueString.c_str(), "remove", false /* no case */))
             {
                 // split the phoneme sets string and remove them
-                MCore::Array<MCore::String> phonemeSets = phonemeSetsString.Split(MCore::UnicodeCharacter(','));
-                const uint32 numPhonemeSets = phonemeSets.GetLength();
-                for (uint32 i = 0; i < numPhonemeSets; ++i)
+                AZStd::vector<AZStd::string> phonemeSets;
+                AzFramework::StringFunc::Tokenize(phonemeSetsString.c_str(), phonemeSets, MCore::CharacterConstants::comma, true /* keep empty strings */, true /* keep space strings */);
+
+                const size_t numPhonemeSets = phonemeSets.size();
+                for (size_t i = 0; i < numPhonemeSets; ++i)
                 {
                     EMotionFX::MorphTarget::EPhonemeSet phonemeSet = morphTarget->FindPhonemeSet(phonemeSets[i]);
                     morphTarget->EnablePhonemeSet(phonemeSet, false);
@@ -178,21 +181,23 @@ namespace CommandSystem
             }
             else
             {
-                if (valueString.CheckIfIsEqualNoCase("clear")) // clear the set
+                if (AzFramework::StringFunc::Equal(valueString.c_str(), "clear", false /* no case */)) // clear the set
                 {
                     morphTarget->SetPhonemeSets(EMotionFX::MorphTarget::PHONEMESET_NONE);
                 }
                 else // add the phoneme sets
                 {
-                    if (valueString.CheckIfIsEqualNoCase("replace")) // replace the set
+                    if (AzFramework::StringFunc::Equal(valueString.c_str(), "replace", false /* no case */)) // replace the set
                     {
                         morphTarget->SetPhonemeSets(EMotionFX::MorphTarget::PHONEMESET_NONE);
                     }
 
                     // split the phoneme sets string and add them
-                    MCore::Array<MCore::String> phonemeSets = phonemeSetsString.Split(MCore::UnicodeCharacter(','));
-                    const uint32 numPhonemeSets = phonemeSets.GetLength();
-                    for (uint32 i = 0; i < numPhonemeSets; ++i)
+                    AZStd::vector<AZStd::string> phonemeSets;
+                    AzFramework::StringFunc::Tokenize(phonemeSetsString.c_str(), phonemeSets, MCore::CharacterConstants::colon, false, true);
+
+                    const size_t numPhonemeSets = phonemeSets.size();
+                    for (size_t i = 0; i < numPhonemeSets; ++i)
                     {
                         EMotionFX::MorphTarget::EPhonemeSet phonemeSet = morphTarget->FindPhonemeSet(phonemeSets[i]);
                         morphTarget->EnablePhonemeSet(phonemeSet, true);
@@ -209,10 +214,10 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandAdjustMorphTarget::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAdjustMorphTarget::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // get the name of the morph target
-        MCore::String valueString;
+        AZStd::string valueString;
         parameters.GetValue("name", this, &valueString);
 
         // get the actor and the actor instance id and find the corresponding objects
@@ -234,7 +239,7 @@ namespace CommandSystem
         // get the morph target and the corresponding morph target instance
         EMotionFX::MorphTarget* morphTarget;
         EMotionFX::MorphSetupInstance::MorphTarget* morphTargetInstance;
-        GetMorphTarget(actor, actorInstance, lodLevel, valueString.AsChar(), &morphTarget, &morphTargetInstance, outResult);
+        GetMorphTarget(actor, actorInstance, lodLevel, valueString.c_str(), &morphTarget, &morphTargetInstance, outResult);
 
         // set the old weight of the morph target
         if (parameters.CheckIfHasParameter("weight") && morphTargetInstance)

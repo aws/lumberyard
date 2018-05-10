@@ -14,8 +14,7 @@ def build(bld):
             file_list.append('lmbraws_unsupported.waf_files')
 
     bld.DefineGem(
-        includes    = [bld.Path('Code/SDKs'),
-                       bld.Path('Code/CryEngine/CryAction'),
+        includes    = [bld.Path('Code/CryEngine/CryAction'),
                        bld.Path('Code/CryEngine/CrySoundSystem')],
         
         file_list = file_list,

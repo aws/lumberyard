@@ -9,11 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #include <precompiled.h>
-#include "NodeOutliner.h"
-#include <GraphCanvas/Components/VisualBus.h>
-#include <GraphCanvas/Components/SceneBus.h>
 
 #include <QEvent>
 #include <QGraphicsScene>
@@ -23,6 +19,14 @@
 #include <QScopedValueRollback>
 #include <QLineEdit>
 #include <QTimer>
+
+#include "NodeOutliner.h"
+
+#include <GraphCanvas/Components/VisualBus.h>
+
+#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
+
+Q_DECLARE_METATYPE(AZ::EntityId);
 
 namespace ScriptCanvasEditor
 {
@@ -99,12 +103,12 @@ namespace ScriptCanvasEditor
 
             QObject::connect(&m_filterTimer, &QTimer::timeout, this, &NodeOutliner::UpdateFilter);
 
-            MainWindowNotificationBus::Handler::BusConnect();
+            GraphCanvas::AssetEditorNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
         }
 
         NodeOutliner::~NodeOutliner()
         {
-            MainWindowNotificationBus::Handler::BusDisconnect();
+            GraphCanvas::AssetEditorNotificationBus::Handler::BusDisconnect();
         }
 
         void NodeOutliner::RefreshDisplay(const AZStd::vector<AZ::EntityId>& selectedEntities)
@@ -131,7 +135,7 @@ namespace ScriptCanvasEditor
             }
         }
 
-        void NodeOutliner::OnActiveSceneChanged(const AZ::EntityId& sceneId)
+        void NodeOutliner::OnActiveGraphChanged(const AZ::EntityId& sceneId)
         {
             m_sceneId = sceneId;
 
@@ -359,6 +363,39 @@ namespace ScriptCanvasEditor
 
                 m_model->invalidate();
             }
+        }
+
+        QVariant NodeOutlineModel::data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const
+        {
+            AZ::EntityId nodeId;
+
+            if (index.row() < m_nodeIds.size())
+            {
+                nodeId = m_nodeIds[index.row()];
+            }
+
+            switch (role)
+            {
+            case NodeIdRole:
+                return QVariant::fromValue<AZ::EntityId>(nodeId);
+
+            case Qt::DisplayRole:
+            {
+                if (index.column() == ColumnIndex::Name)
+                {
+                    AZStd::string title;
+
+                    GraphCanvas::NodeTitleRequestBus::EventResult(title, nodeId, &GraphCanvas::NodeTitleRequests::GetTitle);
+                    return QVariant(title.c_str());
+                }
+            }
+            break;
+
+            default:
+                break;
+            }
+
+            return QVariant();
         }
 
     }

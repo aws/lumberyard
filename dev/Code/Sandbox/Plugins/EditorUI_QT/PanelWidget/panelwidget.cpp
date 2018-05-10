@@ -78,7 +78,7 @@ QWidget* PanelWidget::addItemPanel(const char* name, CAttributeItem* attr_item, 
         dWidgetScrollArea->setMaximumHeight(attr_item->layout()->minimumSize().height());
 
         dWidgetScrollArea->setWidgetResizable(true);
-        attr_item->setSizePolicy(QSizePolicy::QSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum));
+        attr_item->setSizePolicy(QSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum));
         dWidget->setWidget(dWidgetScrollArea);
     }
     else
@@ -88,7 +88,7 @@ QWidget* PanelWidget::addItemPanel(const char* name, CAttributeItem* attr_item, 
         //attr_item->setSizePolicy(QSizePolicy::QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum));
         dWidget->setWidget(attr_item);
 
-        attr_item->setSizePolicy(QSizePolicy::QSizePolicy(attr_item->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
+        attr_item->setSizePolicy(QSizePolicy(attr_item->sizePolicy().horizontalPolicy(), QSizePolicy::Maximum));
     }
 
     connect(dWidget, &QDockWidget::topLevelChanged, [dWidget](bool isTopLevel)
@@ -131,7 +131,7 @@ QWidget* PanelWidget::addPanel(const char* name, QWidget* contentWidget, bool sc
         dWidgetScrollArea->setMaximumHeight(contentWidget->layout()->minimumSize().height());
 
         dWidgetScrollArea->setWidgetResizable(true);
-        contentWidget->setSizePolicy(QSizePolicy::QSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum));
+        contentWidget->setSizePolicy(QSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum));
         dWidget->setWidget(dWidgetScrollArea);
         this->stackUnder(dWidgetScrollArea);
     }
@@ -240,7 +240,7 @@ void PanelWidget::addShowPanelItemsToMenu(QMenu* menu)
         action->setChecked(titlebar->isVisible());
 #endif
 
-        connect(action, &QAction::triggered, [action, dw, menu]()
+        connect(action, &QAction::triggered, dw, [action, dw, menu]
             {
                 //Set panel visibility
                 dw->setVisible(!dw->isVisible());

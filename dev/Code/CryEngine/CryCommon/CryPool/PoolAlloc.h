@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYPOOL_POOLALLOC_H
-#define CRYINCLUDE_CRYPOOL_POOLALLOC_H
 #pragma once
 
 #if defined(POOLALLOCTESTSUIT)
@@ -23,7 +21,7 @@
 
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(PoolAlloc_h)
+#include AZ_RESTRICTED_FILE(PoolAlloc_h, AZ_RESTRICTED_PLATFORM)
 #elif defined(APPLE) || defined(LINUX)
 #define POOLALLOC_H_TRAIT_USE_MEMALIGN 1
 #endif
@@ -55,6 +53,3 @@
 #undef CPA_ASSERT
 #undef CPA_ASSERT_STATIC
 #undef CPA_BREAK
-
-#endif // CRYINCLUDE_CRYPOOL_POOLALLOC_H
-

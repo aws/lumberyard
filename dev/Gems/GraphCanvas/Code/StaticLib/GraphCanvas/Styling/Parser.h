@@ -15,26 +15,23 @@
 #include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/document.h>
 
-#include <Styling/Style.h>
+#include <GraphCanvas/Styling/Style.h>
 
 namespace GraphCanvas
 {
+    class StyleManager;
+
     namespace Styling
     {
-        class StyleSheetImplementation;
-
         class Parser
         {
         public:
-            StyleSheet* Parse(const AZStd::string& json);
-            StyleSheet* Parse(const rapidjson::Document& json);
-
-            static StyleSheet* DefaultStyleSheet();
+            static void Parse(StyleManager& styleManager, const AZStd::string& json);
+            static void Parse(StyleManager& styleManager, const rapidjson::Document& json);
 
         private:
-            void LoadDefaults(StyleSheet& styleSheet);
 
-            void ParseStyle(const rapidjson::Value& value, StyleSheet& styleSheet);
+            static void ParseStyle(StyleManager& styleManager, const rapidjson::Value& value);
 
             static SelectorVector ParseSelectors(const rapidjson::Value& value);
         };

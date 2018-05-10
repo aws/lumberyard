@@ -48,9 +48,9 @@ namespace News
 
         Ui::KeepInTouchViewWidget* m_ui = nullptr;
 
-        const char* m_twitchUrl = "https://www.twitch.tv/AmazonLumberyard";
-        const char* m_twitterUrl = "https://twitter.com/AmznLumberyard";
-        const char* m_youtubeUrl = "https://www.youtube.com/c/amazonlumberyard";
-        const char* m_facebookUrl = "https://facebook.com/AmazonLumberyard";
+        const char* m_twitchUrl = "https://docs.aws.amazon.com/console/lumberyard/twitch";
+        const char* m_twitterUrl = "https://docs.aws.amazon.com/console/lumberyard/twitter";
+        const char* m_youtubeUrl = "https://docs.aws.amazon.com/console/lumberyard/youtube";
+        const char* m_facebookUrl = "https://docs.aws.amazon.com/console/lumberyard/facebook";
     };
 }

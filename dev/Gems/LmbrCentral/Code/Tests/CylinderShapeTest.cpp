@@ -15,101 +15,307 @@
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Math/Matrix3x3.h>
-#include <AzCore/Math/VertexContainerInterface.h>
 #include <AzCore/Math/Random.h>
-
-#include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
-
+#include <Shape/CylinderShapeComponent.h>
 #include <Tests/TestTypes.h>
 
-#include <Shape/CylinderShapeComponent.h>
+using namespace AZ;
+using namespace AzFramework;
+using namespace LmbrCentral;
 
-class CylinderShapeTest
-    : public UnitTest::AllocatorsFixture
+namespace UnitTest
 {
-    AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
-    AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
-    AZStd::unique_ptr<AZ::ComponentDescriptor> m_cylinderShapeComponentDescriptor;
-
-public:
-    void SetUp() override
+    class CylinderShapeTest
+        : public AllocatorsFixture
     {
-        UnitTest::AllocatorsFixture::SetUp();
-        m_serializeContext = AZStd::make_unique<AZ::SerializeContext>();
+        AZStd::unique_ptr<SerializeContext> m_serializeContext;
+        AZStd::unique_ptr<ComponentDescriptor> m_transformComponentDescriptor;
+        AZStd::unique_ptr<ComponentDescriptor> m_cylinderShapeComponentDescriptor;
 
-        m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
-        m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
-        m_cylinderShapeComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(LmbrCentral::CylinderShapeComponent::CreateDescriptor());
-        m_cylinderShapeComponentDescriptor->Reflect(&(*m_serializeContext));
-    }
-
-    void TearDown() override
-    {
-        m_serializeContext.reset();
-        UnitTest::AllocatorsFixture::TearDown();
-    }
-};
-
-void SetupCylinderComponent(const AZ::Transform& transform, AZ::Entity& entity)
-{
-    LmbrCentral::CylinderShapeComponent* cylinderShapeComponent = entity.CreateComponent<LmbrCentral::CylinderShapeComponent>();
-    entity.CreateComponent<AzFramework::TransformComponent>();
-
-    entity.Init();
-    entity.Activate();
-
-    AZ::TransformBus::Event(entity.GetId(), &AZ::TransformBus::Events::SetWorldTM, transform);
-
-    LmbrCentral::CylinderShapeComponentRequestsBus::Event(entity.GetId(), &LmbrCentral::CylinderShapeComponentRequestsBus::Events::SetHeight, 10.0f);
-    LmbrCentral::CylinderShapeComponentRequestsBus::Event(entity.GetId(), &LmbrCentral::CylinderShapeComponentRequestsBus::Events::SetRadius, 10.0f);
-}
-
-bool RandomPointsAreInCylinder(const AZ::RandomDistributionType distributionType)
-{
-    //Apply a simple transform to put the Cylinder off the origin
-    AZ::Transform transform = AZ::Transform::CreateIdentity();
-    transform.SetRotationPartFromQuaternion(AZ::Quaternion::CreateRotationY(AZ::Constants::HalfPi));
-    transform.SetTranslation(AZ::Vector3(5, 5, 5));
-
-    AZ::Entity entity;
-    SetupCylinderComponent(transform, entity);
-
-    const AZ::u32 testPoints = 10000;
-    AZ::Vector3 testPoint;
-    bool testPointInVolume = false;
-
-    //Test a bunch of random points generated with the Normal random distribution type 
-    //They should all end up in the volume
-    for (AZ::u32 i = 0; i < testPoints; ++i)
-    {
-        LmbrCentral::ShapeComponentRequestsBus::EventResult(testPoint, entity.GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::GenerateRandomPointInside, distributionType);
-
-        LmbrCentral::ShapeComponentRequestsBus::EventResult(testPointInVolume, entity.GetId(), &LmbrCentral::ShapeComponentRequestsBus::Events::IsPointInside, testPoint);
-
-        if (!testPointInVolume)
+    public:
+        void SetUp() override
         {
-            return false;
+            AllocatorsFixture::SetUp();
+            m_serializeContext = AZStd::make_unique<SerializeContext>();
+
+            m_transformComponentDescriptor = AZStd::unique_ptr<ComponentDescriptor>(TransformComponent::CreateDescriptor());
+            m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
+            m_cylinderShapeComponentDescriptor = AZStd::unique_ptr<ComponentDescriptor>(CylinderShapeComponent::CreateDescriptor());
+            m_cylinderShapeComponentDescriptor->Reflect(&(*m_serializeContext));
         }
+
+        void TearDown() override
+        {
+            m_serializeContext.reset();
+            AllocatorsFixture::TearDown();
+        }
+    };
+
+    void CreateCylinder(const Transform& transform, float radius, float height, Entity& entity)
+    {
+        entity.CreateComponent<CylinderShapeComponent>();
+        entity.CreateComponent<TransformComponent>();
+
+        entity.Init();
+        entity.Activate();
+
+        TransformBus::Event(entity.GetId(), &TransformBus::Events::SetWorldTM, transform);
+
+        CylinderShapeComponentRequestsBus::Event(entity.GetId(), &CylinderShapeComponentRequestsBus::Events::SetHeight, height);
+        CylinderShapeComponentRequestsBus::Event(entity.GetId(), &CylinderShapeComponentRequestsBus::Events::SetRadius, radius);
     }
 
-    return true;
-}
+    void CreateDefaultCylinder(const Transform& transform, Entity& entity)
+    {
+        CreateCylinder(transform, 10.0f, 10.0f, entity);
+    }
 
-TEST_F(CylinderShapeTest, NormalDistributionRandomPointsAreInVolume)
-{
-    bool allRandomPointsInVolume = false;
+    bool RandomPointsAreInCylinder(const RandomDistributionType distributionType)
+    {
+        //Apply a simple transform to put the Cylinder off the origin
+        Transform transform = Transform::CreateIdentity();
+        transform.SetRotationPartFromQuaternion(Quaternion::CreateRotationY(Constants::HalfPi));
+        transform.SetTranslation(Vector3(5.0f, 5.0f, 5.0f));
 
-    allRandomPointsInVolume = RandomPointsAreInCylinder(AZ::RandomDistributionType::Normal);
+        Entity entity;
+        CreateDefaultCylinder(transform, entity);
 
-    ASSERT_TRUE(allRandomPointsInVolume);
-}
+        const u32 testPoints = 10000;
+        Vector3 testPoint;
+        bool testPointInVolume = false;
 
-TEST_F(CylinderShapeTest, UniformRealDistributionRandomPointsAreInVolume)
-{
-    bool allRandomPointsInVolume = false;
+        //Test a bunch of random points generated with the Normal random distribution type
+        //They should all end up in the volume
+        for (u32 i = 0; i < testPoints; ++i)
+        {
+            ShapeComponentRequestsBus::EventResult(testPoint, entity.GetId(), &ShapeComponentRequestsBus::Events::GenerateRandomPointInside, distributionType);
 
-    allRandomPointsInVolume = RandomPointsAreInCylinder(AZ::RandomDistributionType::UniformReal);
+            ShapeComponentRequestsBus::EventResult(testPointInVolume, entity.GetId(), &ShapeComponentRequestsBus::Events::IsPointInside, testPoint);
 
-    ASSERT_TRUE(allRandomPointsInVolume);
+            if (!testPointInVolume)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    TEST_F(CylinderShapeTest, NormalDistributionRandomPointsAreInVolume)
+    {
+        EXPECT_TRUE(RandomPointsAreInCylinder(RandomDistributionType::Normal));
+    }
+
+    TEST_F(CylinderShapeTest, UniformRealDistributionRandomPointsAreInVolume)
+    {
+        EXPECT_TRUE(RandomPointsAreInCylinder(RandomDistributionType::UniformReal));
+    }
+
+    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess1)
+    {
+        Entity entity;
+        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateIdentity(), Vector3(0.0f, 0.0f, 5.0f)),
+            0.5f, 5.0f, entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(0.0f, 5.0f, 5.0f), Vector3(0.0f, -1.0f, 0.0f), distance);
+
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 4.5f, 1e-4f);
+    }
+
+    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess2)
+    {
+        Entity entity;
+        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi), Vector3(-10.0f, -10.0f, 0.0f)),
+            1.0f, 5.0f, entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(-10.0f, -20.0f, 0.0f), Vector3(0.0f, 1.0f, 0.0f), distance);
+
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 7.5f, 1e-2f);
+    }
+
+    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess3)
+    {
+        Entity entity;
+        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi), Vector3(-10.0f, -10.0f, 0.0f)),
+            1.0f, 5.0f, entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(-10.0f, -10.0f, -10.0f), Vector3(0.0f, 0.0f, 1.0f), distance);
+
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 9.0f, 1e-2f);
+    }
+
+    // transform scaled
+    TEST_F(CylinderShapeTest, GetRayIntersectCylinderSuccess4)
+    {
+        Entity entity;
+        CreateCylinder(
+            Transform::CreateTranslation(Vector3(-14.0f, -14.0f, -1.0f)) *
+            Transform::CreateRotationY(Constants::HalfPi) *
+            Transform::CreateRotationZ(Constants::HalfPi) *
+            Transform::CreateScale(Vector3(4.0f)),
+            1.0f, 1.25f, entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(-9.0f, -14.0f, -1.0f), Vector3(-1.0f, 0.0f, 0.0f), distance);
+
+        EXPECT_TRUE(rayHit);
+        EXPECT_NEAR(distance, 2.5f, 1e-2f);
+    }
+
+    TEST_F(CylinderShapeTest, GetRayIntersectCylinderFailure)
+    {
+        Entity entity;
+        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateIdentity(), Vector3(0.0f, -10.0f, 0.0f)),
+            5.0f, 1.0f, entity);
+
+        bool rayHit = false;
+        VectorFloat distance;
+        ShapeComponentRequestsBus::EventResult(
+            rayHit, entity.GetId(), &ShapeComponentRequests::IntersectRay,
+            Vector3(0.0f, 0.0f, 0.0f), Vector3(1.0f, 0.0f, 0.0f), distance);
+
+        EXPECT_FALSE(rayHit);
+    }
+
+    TEST_F(CylinderShapeTest, GetAabb1)
+    {
+        Entity entity;
+        CreateCylinder(Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateIdentity(), Vector3(0.0f, -10.0f, 0.0f)),
+            5.0f, 1.0f, entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -15.0f, -0.5f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, -5.0f, 0.5f)));
+    }
+
+    TEST_F(CylinderShapeTest, GetAabb2)
+    {
+        Entity entity;
+        CreateCylinder(
+            Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 0.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi),
+            1.0f, 5.0f, entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-12.4748f, -12.4748f, -1.0f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(-7.52512f, -7.52512f, 1.0f)));
+    }
+
+    // transformed scaled
+    TEST_F(CylinderShapeTest, GetAabb3)
+    {
+        Entity entity;
+        CreateCylinder(
+            Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 10.0f)) *
+            Transform::CreateScale(Vector3(3.5f)),
+            1.0f, 5.0f, entity);
+
+        Aabb aabb;
+        ShapeComponentRequestsBus::EventResult(
+            aabb, entity.GetId(), &ShapeComponentRequests::GetEncompassingAabb);
+
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-13.5f, -13.5f, 1.25f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(-6.5f, -6.5f, 18.75f)));
+    }
+
+    // point inside scaled
+    TEST_F(CylinderShapeTest, IsPointInsideSuccess1)
+    {
+        Entity entity;
+        CreateCylinder(
+            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateScale(Vector3(2.5f, 1.0f, 1.0f)), // test max scale
+            0.5f, 2.0f, entity);
+
+        bool inside;
+        ShapeComponentRequestsBus::EventResult(
+            inside, entity.GetId(), &ShapeComponentRequests::IsPointInside, Vector3(27.0f, 28.5f, 40.0f));
+
+        EXPECT_TRUE(inside);
+    }
+
+    // point inside scaled
+    TEST_F(CylinderShapeTest, IsPointInsideSuccess2)
+    {
+        Entity entity;
+        CreateCylinder(
+            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(0.5f)),
+            0.5f, 2.0f, entity);
+
+        bool inside;
+        ShapeComponentRequestsBus::EventResult(
+            inside, entity.GetId(), &ShapeComponentRequests::IsPointInside, Vector3(27.0f, 28.155f, 37.82f));
+
+        EXPECT_TRUE(inside);
+    }
+
+    // distance scaled - along length
+    TEST_F(CylinderShapeTest, DistanceFromPoint1)
+    {
+        Entity entity;
+        CreateCylinder(
+            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(2.0f)),
+            0.5f, 4.0f, entity);
+
+        float distance;
+        ShapeComponentRequestsBus::EventResult(
+            distance, entity.GetId(), &ShapeComponentRequests::DistanceFromPoint, Vector3(27.0f, 28.0f, 41.0f));
+
+        EXPECT_NEAR(distance, 2.0f, 1e-2f);
+    }
+
+    // distance scaled - from end
+    TEST_F(CylinderShapeTest, DistanceFromPoint2)
+    {
+        Entity entity;
+        CreateCylinder(
+            Transform::CreateTranslation(Vector3(27.0f, 28.0f, 38.0f)) *
+            Transform::CreateRotationX(Constants::HalfPi) *
+            Transform::CreateRotationY(Constants::QuarterPi) *
+            Transform::CreateScale(Vector3(2.0f)),
+            0.5f, 4.0f, entity);
+
+        float distance;
+        ShapeComponentRequestsBus::EventResult(
+            distance, entity.GetId(), &ShapeComponentRequests::DistanceFromPoint, Vector3(22.757f, 32.243f, 38.0f));
+
+        EXPECT_NEAR(distance, 2.0f, 1e-2f);
+    }
 }

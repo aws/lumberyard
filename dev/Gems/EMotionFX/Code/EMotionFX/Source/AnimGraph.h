@@ -14,7 +14,6 @@
 
 // include the required headers
 #include "EMotionFXConfig.h"
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Distance.h>
 #include "BaseObject.h"
 
@@ -53,8 +52,8 @@ namespace EMotionFX
 
         const char* GetName() const;
         const char* GetFileName() const;
-        const MCore::String& GetNameString() const;
-        const MCore::String& GetFileNameString() const;
+        const AZStd::string& GetNameString() const;
+        const AZStd::string& GetFileNameString() const;
         void SetName(const char* name);
         void SetFileName(const char* fileName);
 
@@ -87,7 +86,7 @@ namespace EMotionFX
 
         void DecreaseInternalAttributeIndices(uint32 decreaseEverythingHigherThan);
 
-        MCore::String GenerateNodeName(const MCore::Array<MCore::String>& nameReserveList, const char* prefix = "Node") const;
+        AZStd::string GenerateNodeName(const MCore::Array<AZStd::string>& nameReserveList, const char* prefix = "Node") const;
 
         void SetNumParameters(uint32 numParams);
 
@@ -346,19 +345,19 @@ namespace EMotionFX
         void AddObject(AnimGraphObject* object);       // registers the object in the array and modifies the object's object index value
         void RemoveObject(AnimGraphObject* object);    // doesn't actually remove it from memory, just removes it from the list
 
-        MCORE_INLINE uint32 GetNumObjects() const                                                           { return mObjects.GetLength(); }
+        MCORE_INLINE uint32 GetNumObjects() const                                                          { return mObjects.GetLength(); }
         MCORE_INLINE AnimGraphObject* GetObject(uint32 index) const                                        { return mObjects[index]; }
         void ReserveNumObjects(uint32 numObjects);
 
-        MCORE_INLINE uint32 GetNumNodes() const                                                             { return mNodes.GetLength(); }
+        MCORE_INLINE uint32 GetNumNodes() const                                                            { return mNodes.GetLength(); }
         MCORE_INLINE AnimGraphNode* GetNode(uint32 index) const                                            { return mNodes[index]; }
         void ReserveNumNodes(uint32 numNodes);
 
-        MCORE_INLINE uint32 GetNumMotionNodes() const                                                       { return mMotionNodes.GetLength(); }
+        MCORE_INLINE uint32 GetNumMotionNodes() const                                                      { return mMotionNodes.GetLength(); }
         MCORE_INLINE AnimGraphMotionNode* GetMotionNode(uint32 index) const                                { return mMotionNodes[index]; }
 
         MCORE_INLINE uint32 GetNumAnimGraphInstances() const                                               { return mAnimGraphInstances.GetLength(); }
-        MCORE_INLINE AnimGraphInstance* GetAnimGraphInstance(uint32 index) const                          { return mAnimGraphInstances[index]; }
+        MCORE_INLINE AnimGraphInstance* GetAnimGraphInstance(uint32 index) const                           { return mAnimGraphInstances[index]; }
         void ReserveNumAnimGraphInstances(uint32 numInstances);
         void AddAnimGraphInstance(AnimGraphInstance* animGraphInstance);
         void RemoveAnimGraphInstance(AnimGraphInstance* animGraphInstance);
@@ -368,27 +367,6 @@ namespace EMotionFX
         void Lock();
         void Unlock();
 
-        void SetUnitType(MCore::Distance::EUnitType unitType);
-        MCore::Distance::EUnitType GetUnitType() const;
-
-        void SetFileUnitType(MCore::Distance::EUnitType unitType);
-        MCore::Distance::EUnitType GetFileUnitType() const;
-
-        /**
-         * Scale all data.
-         * This is a very slow operation and is used to convert between different unit systems (cm, meters, etc).
-         * @param scaleFactor The scale factor to scale the current data by.
-         */
-        void Scale(float scaleFactor);
-
-        /**
-         * Scale to a given unit type.
-         * This method does nothing if the motion is already in this unit type.
-         * You can check what the current unit type is with the GetUnitType() method.
-         * @param targetUnitType The unit type to scale into (meters, centimeters, etc).
-         */
-        void ScaleToUnitType(MCore::Distance::EUnitType targetUnitType);
-
 
     private:
         void RecursiveCalcStatistics(Statistics& outStatistics, AnimGraphNode* animGraphNode, uint32 currentHierarchyDepth=0) const;
@@ -396,29 +374,27 @@ namespace EMotionFX
         AnimGraph(const char* name);
         ~AnimGraph();
 
-        MCore::AttributeSettingsSet*                    mParameterSettings;
-        MCore::AttributeSet*                            mAttributeSet;
-        MCore::Array<AnimGraphNodeGroup*>              mNodeGroups;
-        MCore::Array<AnimGraphParameterGroup*>         mParameterGroups;
-        MCore::Array<AnimGraphObject*>                 mObjects;
-        MCore::Array<AnimGraphNode*>                   mNodes;
-        MCore::Array<AnimGraphMotionNode*>             mMotionNodes;
-        MCore::Array<AnimGraphInstance*>               mAnimGraphInstances;
-        MCore::String                                   mName;
-        MCore::String                                   mFileName;
-        MCore::String                                   mDescription;
-        AnimGraphStateMachine*                         mRootStateMachine;
-        AnimGraphGameControllerSettings*               mGameControllerSettings;
-        MCore::Mutex                                    mLock;
-        MCore::Distance::EUnitType                      mUnitType;
-        MCore::Distance::EUnitType                      mFileUnitType;
-        uint32                                          mID;                    /**< The unique identification number for the anim graph. */
-        bool                                            mAutoUnregister;        /**< Specifies whether we will automatically unregister this anim graph set from the anim graph manager or not, when deleting this object. */
-        bool                                            mRetarget;              /**< Is retargeting enabled on default? */
-        bool                                            mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to the anim graph since the last file save operation. */
+        MCore::AttributeSettingsSet*            mParameterSettings;
+        MCore::AttributeSet*                    mAttributeSet;
+        MCore::Array<AnimGraphNodeGroup*>       mNodeGroups;
+        MCore::Array<AnimGraphParameterGroup*>  mParameterGroups;
+        MCore::Array<AnimGraphObject*>          mObjects;
+        MCore::Array<AnimGraphNode*>            mNodes;
+        MCore::Array<AnimGraphMotionNode*>      mMotionNodes;
+        MCore::Array<AnimGraphInstance*>        mAnimGraphInstances;
+        AZStd::string                           mName;
+        AZStd::string                           mFileName;
+        AZStd::string                           mDescription;
+        AnimGraphStateMachine*                  mRootStateMachine;
+        AnimGraphGameControllerSettings*        mGameControllerSettings;
+        MCore::Mutex                            mLock;
+        uint32                                  mID;                    /**< The unique identification number for the anim graph. */
+        bool                                    mAutoUnregister;        /**< Specifies whether we will automatically unregister this anim graph set from the anim graph manager or not, when deleting this object. */
+        bool                                    mRetarget;              /**< Is retargeting enabled on default? */
+        bool                                    mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to the anim graph since the last file save operation. */
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
-        bool                                            mIsOwnedByRuntime;      /**< Set if the anim graph is used/owned by the engine runtime. */
+        bool                                    mIsOwnedByRuntime;      /**< Set if the anim graph is used/owned by the engine runtime. */
 #endif // EMFX_DEVELOPMENT_BUILD
     };
 }   // namespace EMotionFX

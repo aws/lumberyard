@@ -613,7 +613,6 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     pcMenu.AddAction(ID_GAME_PC_ENABLEMEDIUMSPEC);
     pcMenu.AddAction(ID_GAME_PC_ENABLELOWSPEC);
 
-    graphicPerformanceSubMenu.AddAction(ID_GAME_OSXGL_ENABLESPEC);
     graphicPerformanceSubMenu.AddAction(ID_GAME_OSXMETAL_ENABLESPEC);
 
     auto androidMenu = graphicPerformanceSubMenu.AddMenu(tr("Android"));
@@ -628,7 +627,15 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     iosMenu.AddAction(ID_GAME_IOS_ENABLEMEDIUMSPEC);
     iosMenu.AddAction(ID_GAME_IOS_ENABLELOWSPEC);
 
-
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+    auto publicname##Menu = graphicPerformanceSubMenu.AddMenu(tr(PublicAuxName2));\
+    publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC);\
+    publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEMEDIUMSPEC);\
+    publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLELOWSPEC);
+    AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
 
     graphicPerformanceSubMenu.AddAction(ID_GAME_APPLETV_ENABLESPEC);
 
@@ -709,10 +716,10 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
         // Generate 3D Debug Voxels
         aiMenu.AddAction(ID_AI_GENERATE3DDEBUGVOXELS);
-    }
 
-    // Create New Navigation Area
-    aiMenu.AddAction(ID_AI_NAVIGATION_NEW_AREA);
+        // Create New Navigation Area
+        aiMenu.AddAction(ID_AI_NAVIGATION_NEW_AREA);
+    }
 
     // Request a Full MNM Rebuild
     aiMenu.AddAction(ID_AI_NAVIGATION_TRIGGER_FULL_REBUILD);
@@ -720,8 +727,11 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     // Show Navigation Areas
     aiMenu.AddAction(ID_AI_NAVIGATION_SHOW_AREAS);
 
-    // Add Navigation Seed
-    aiMenu.AddAction(ID_AI_NAVIGATION_ADD_SEED);
+    if (m_enableLegacyCryEntities)
+    {
+        // Add Navigation Seed
+        aiMenu.AddAction(ID_AI_NAVIGATION_ADD_SEED);
+    }
 
     // Continuous Update
     aiMenu.AddAction(ID_AI_NAVIGATION_ENABLE_CONTINUOUS_UPDATE);
@@ -729,11 +739,11 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
     // Visualize Navigation Accessibility
     aiMenu.AddAction(ID_AI_NAVIGATION_VISUALIZE_ACCESSIBILITY);
 
+    // Medium Sized Characters (Use the old version for now)
+    aiMenu.AddAction(ID_AI_NAVIGATION_DISPLAY_AGENT);
+
     if (m_enableLegacyCryEntities)
     {
-        // Medium Sized Characters (Use the old version for now)
-        aiMenu.AddAction(ID_AI_NAVIGATION_DISPLAY_AGENT);
-
         // Generate Cover Surfaces
         aiMenu.AddAction(ID_AI_GENERATECOVERSURFACES);
 
@@ -757,27 +767,27 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
     gameMenu.AddSeparator();
 
-    // Clouds
-    auto cloudsMenu = gameMenu.AddMenu(tr("Clouds"));
-
-    // Create
-    cloudsMenu.AddAction(ID_CLOUDS_CREATE);
-
-    // Destroy
-    cloudsMenu.AddAction(ID_CLOUDS_DESTROY);
-    cloudsMenu.AddSeparator();
-
-    // Open
-    cloudsMenu.AddAction(ID_CLOUDS_OPEN);
-
-    // Close
-    cloudsMenu.AddAction(ID_CLOUDS_CLOSE);
-
-    gameMenu.AddSeparator();
-
-    // Prefabs
     if (m_enableLegacyCryEntities)
     {
+        // Clouds
+        auto cloudsMenu = gameMenu.AddMenu(tr("Clouds"));
+
+        // Create
+        cloudsMenu.AddAction(ID_CLOUDS_CREATE);
+
+        // Destroy
+        cloudsMenu.AddAction(ID_CLOUDS_DESTROY);
+        cloudsMenu.AddSeparator();
+
+        // Open
+        cloudsMenu.AddAction(ID_CLOUDS_OPEN);
+
+        // Close
+        cloudsMenu.AddAction(ID_CLOUDS_CLOSE);
+
+        gameMenu.AddSeparator();
+
+        // Prefabs
         auto prefabsMenu = gameMenu.AddMenu(tr("Prefabs"));
 
         prefabsMenu.AddAction(ID_PREFABS_MAKEFROMSELECTION);
@@ -1124,7 +1134,15 @@ QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
             // Otherwise, this action should open the view pane
             else
             {
-                QtViewPaneManager::instance()->OpenPane(viewPaneName);
+                const QtViewPane* pane = QtViewPaneManager::instance()->OpenPane(viewPaneName);
+
+                if (pane != nullptr)
+                {
+                    QObject::connect(pane->Widget(), &QWidget::destroyed, action, [action]
+                    {
+                        action->setChecked(false);
+                    });
+                }
             }
         }, Qt::UniqueConnection);
 

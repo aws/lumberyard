@@ -20,14 +20,29 @@
 #pragma warning(disable:4700)
 #pragma warning(disable:6326)
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define VERTEXCOMMAND_CPP_SECTION_1 1
+#define VERTEXCOMMAND_CPP_SECTION_2 2
+#define VERTEXCOMMAND_CPP_SECTION_3 3
+#endif
+
 #if defined(WIN32) || defined(WIN64)
     #define USE_VERTEXCOMMAND_SSE
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION VERTEXCOMMAND_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(VertexCommand_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
 
 #ifdef USE_VERTEXCOMMAND_SSE
 
 #define vec4f_swizzle(v, p, q, r, s) (_mm_shuffle_ps((v), (v), ((s) << 6 | (r) << 4 | (q) << 2 | (p))))
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION VERTEXCOMMAND_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(VertexCommand_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 ILINE __m128 _mm_dp_ps_emu(const __m128& a, const __m128& b)
 {
     __m128 tmp = _mm_mul_ps(a, b);
@@ -609,7 +624,15 @@ void VertexCommandSkin::ExecuteInternal(VertexCommandSkin& command, CVertexData&
 
         const int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(_weightsi, _zeroi));
         unsigned long count;
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION VERTEXCOMMAND_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(VertexCommand_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         _BitScanForward(&count, mask | maxVertexCountMask);
+#endif
 
         _weightsi = _mm_unpacklo_epi8(_weightsi, _zeroi);
 

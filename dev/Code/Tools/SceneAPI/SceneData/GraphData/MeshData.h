@@ -26,7 +26,7 @@ namespace AZ
     {
         namespace GraphData
         {
-            class MeshData
+            class SCENE_DATA_CLASS MeshData
                 : public AZ::SceneAPI::DataTypes::IMeshData
             {
             public:

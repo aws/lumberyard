@@ -19,9 +19,9 @@
 
 #include <Components/Nodes/NodeLayoutComponent.h>
 #include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
-#include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeLayoutBus.h>
+#include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 #include <GraphCanvas/Components/StyleBus.h>
-#include <Styling/StyleHelper.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
 
 class QGraphicsGridLayout;
 
@@ -168,13 +168,16 @@ namespace GraphCanvas
 
         void WrapNode(const AZ::EntityId& nodeId, const WrappedNodeConfiguration& nodeConfiguration) override;
         void UnwrapNode(const AZ::EntityId& nodeId) override;
+
+        void SetWrapperType(const AZ::Crc32& wrapperType) override;
+        AZ::Crc32 GetWrapperType() const override;
         ////
 
         // NodeNotificationBus
         void OnNodeActivated() override;
 
-        void OnNodeAboutToSerialize(SceneSerialization& sceneSerialization) override;
-        void OnNodeDeserialized(const SceneSerialization& sceneSerialization) override;
+        void OnNodeAboutToSerialize(GraphSerialization& sceneSerialization) override;
+        void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphSerialization& sceneSerialization) override;
 
         void OnAddedToScene(const AZ::EntityId& sceneId) override;
         void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
@@ -199,6 +202,8 @@ namespace GraphCanvas
         void RefreshDisplay();
 
         Styling::StyleHelper m_styleHelper;
+
+        AZ::Crc32                   m_wrapperType;
 
         AZ::u32                     m_elementCounter;
         WrappedNodeConfigurationMap m_wrappedNodeConfigurations;

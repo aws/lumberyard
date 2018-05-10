@@ -9,16 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-#include <precompiled.h>
-#include <Styling/Selector.h>
+#include <QDebug>
 
 #include <AzCore/Component/EntityUtils.h>
 
-#include <Components/StyleBus.h>
-#include <Styling/SelectorImplementations.h>
+#include <GraphCanvas/Styling/Selector.h>
 
-#include <QDebug>
+#include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Styling/SelectorImplementations.h>
 
 namespace GraphCanvas
 {

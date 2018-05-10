@@ -293,5 +293,17 @@ private:
     PropertyType m_propertyType;
 };
 
+class ReflectedVarMotionAdapter
+    : public ReflectedVarAdapter
+{
+public:
+    void SetVariable(IVariable* pVariable) override;
+    void SyncReflectedVarToIVar(IVariable* pVariable) override;
+    void SyncIVarToReflectedVar(IVariable* pVariable) override;
+    CReflectedVar* GetReflectedVar() override { return m_reflectedVar.data(); }
+private:
+    QScopedPointer<CReflectedVarMotion > m_reflectedVar;
+};
+
 
 #endif // CRYINCLUDE_EDITOR_UTILS_REFLECTEDVARWRAPPER_H

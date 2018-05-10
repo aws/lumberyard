@@ -26,10 +26,8 @@
 
 QCopyableWidget::QCopyableWidget(QWidget* parent /*= 0*/)
     : QWidget(parent)
-    , m_menu(new ContextMenu(this))
     , m_flags(COPY_MENU_FLAGS(COPY_MENU_DISABLED))
 {
-    RebuildMenu();
 }
 
 void QCopyableWidget::mousePressEvent(QMouseEvent* event)
@@ -41,7 +39,7 @@ void QCopyableWidget::mousePressEvent(QMouseEvent* event)
     return QWidget::mousePressEvent(event);
 }
 
-void QCopyableWidget::RebuildMenu()
+void QCopyableWidget::BuildMenu(QMenu *menu)
 {
     if (m_flags & COPY_MENU_DISABLED)
     {
@@ -49,14 +47,14 @@ void QCopyableWidget::RebuildMenu()
     }
 
     // just rebuild menu by clearing
-    m_menu->clear();
+    menu->clear();
 
     QAction* action = nullptr;
 
-    m_menu->addSeparator();    
+    menu->addSeparator();
     if (m_flags & ENABLE_COPY)
     {
-        action = m_menu->addAction("Copy");
+        action = menu->addAction("Copy");
         connect(action, &QAction::triggered, [this, action]()
             {
                 if ((bool)onCopyCallback)
@@ -67,7 +65,7 @@ void QCopyableWidget::RebuildMenu()
     }
     if (m_flags & ENABLE_PASTE)
     {
-        action = m_menu->addAction("Paste");
+        action = menu->addAction("Paste");
         if (onCheckPasteCallback)
         {
             action->setDisabled(!onCheckPasteCallback());
@@ -87,7 +85,7 @@ void QCopyableWidget::RebuildMenu()
     }
     if (m_flags & ENABLE_DUPLICATE)
     {
-        action = m_menu->addAction("Duplicate");
+        action = menu->addAction("Duplicate");
         connect(action, &QAction::triggered, [this, action](bool state)
             {
                 if ((bool)onDuplicateCallback)
@@ -98,7 +96,7 @@ void QCopyableWidget::RebuildMenu()
     }
     if (m_flags & ENABLE_RESET)
     {
-        action = m_menu->addAction("Reset to default");
+        action = menu->addAction("Reset to default");
         connect(action, &QAction::triggered, [this, action]()
             {
                 if ((bool)onResetCallback)
@@ -111,11 +109,11 @@ void QCopyableWidget::RebuildMenu()
             action->setEnabled(onCheckResetCallback());
         }
     }
-    m_menu->addSeparator();
+    menu->addSeparator();
 
     if (onCustomMenuCreationCallback)
     {
-        onCustomMenuCreationCallback(m_menu);
+        onCustomMenuCreationCallback(menu);
     }
 }
 
@@ -166,9 +164,10 @@ void QCopyableWidget::SetCheckResetCallback(std::function<bool()> callback)
 
 void QCopyableWidget::LaunchMenu(QPoint pos)
 {
-    RebuildMenu(); //Ensure that the show/hide checkboxes and the paste disabled state are in sync
-    m_menu->setFocus();
-    m_menu->exec(pos);
+    ContextMenu menu(this);
+    BuildMenu(&menu); //Ensure that the show/hide checkboxes and the paste disabled state are in sync
+    menu.setFocus();
+    menu.exec(pos);
 }
 
 void QCopyableWidget::keyPressEvent(QKeyEvent* event)

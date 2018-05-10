@@ -251,7 +251,7 @@ namespace StarterGameGem
 		AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
 		if (serializeContext)
 		{
-			serializeContext->Class<CameraSettingsComponent>()
+			serializeContext->Class<CameraSettingsComponent, AZ::Component>()
 				->Version(1)
 				->Field("InitialSettings", &CameraSettingsComponent::m_initialSettings)
 				->Field("Settings", &CameraSettingsComponent::m_settings)

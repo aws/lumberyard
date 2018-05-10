@@ -960,7 +960,7 @@ void CMannequinModelViewport::OnRender()
         }
 
         float colour[] = {0.0f, 1.0f, 1.0f, 1.0f};
-        renderer->DrawLabelEx(pos, 1.5f, colour, true, true, "%s\n%s", m_pHoverBaseObject->GetName(), currentPropName);
+        renderer->DrawLabelEx(pos, 1.5f, colour, true, true, "%s\n%s", m_pHoverBaseObject->GetName().toUtf8().constData(), currentPropName);
     }
 
     UpdateAnimation(m_playbackMultiplier * gEnv->pTimer->GetFrameTime());
@@ -981,7 +981,7 @@ void CMannequinModelViewport::OnRender()
             {
                 uint32 ypos = 600;
                 float color1[4] = {1, 1, 1, 1};
-                renderer->Draw2dLabel(12, ypos, 1.2f, color1, false, "bonename: %s %d", bonename, idx);
+                renderer->Draw2dLabel(12, ypos, 1.2f, color1, false, "bonename: %s %d", bonename.toUtf8().constData(), idx);
                 ypos += 10;
 
                 QuatT absQuat = QuatT(m_PhysicalLocation * GetCharacterBase()->GetISkeletonPose()->GetAbsJointByID(idx));

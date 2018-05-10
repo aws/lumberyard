@@ -253,12 +253,10 @@ void PostAAPass::RenderTemporalAA(
             GetUtils().SetTexture(CTexture::s_ptexHDRToneMaps[0], 2, FILTER_LINEAR);
         }
     }
-#if defined(CRY_USE_METAL) // Metal still expects a bound texture here!
     else
     {
         GetUtils().SetTexture(CTextureManager::Instance()->GetWhiteTexture(), 2, FILTER_LINEAR);
     }
-#endif
 
     GetUtils().SetTexture(GetUtils().GetVelocityObjectRT(), 3, FILTER_POINT);
     GetUtils().SetTexture(CTexture::s_ptexZTarget, 5, FILTER_POINT);
@@ -298,6 +296,15 @@ void PostAAPass::Execute()
     CTexture* inOutBuffer = CTexture::s_ptexSceneSpecular;
     GetUtils().CopyScreenToTexture(inOutBuffer);
 
+#if defined(OPENGL_ES)
+    if (CRenderer::CV_r_AntialiasingMode != eAT_NOAA)
+    {
+        //Opengl ES only supports FXAA    
+        AZ_Warning("Rendering", CRenderer::CV_r_AntialiasingMode == eAT_FXAA, "Android only supports FXAA");
+        CRenderer::CV_r_AntialiasingMode = eAT_FXAA;
+    }
+#endif
+    
     switch (CRenderer::CV_r_AntialiasingMode)
     {
     case eAT_SMAA1TX:

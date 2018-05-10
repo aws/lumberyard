@@ -27,6 +27,5 @@ def build(bld):
 
         use                         = ['AzGameFramework'],
 
-        copy_dependent_files        = ['Bin64/dbghelp.dll',
-                                       'Bin64/d3dcompiler_47.dll']
+        copy_dependent_files        = ['Bin64/d3dcompiler_47.dll']
     )

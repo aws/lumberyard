@@ -26,9 +26,7 @@ namespace GraphCanvas
             if (serializeContext)
             {
                 serializeContext->Class<NodeConfiguration>()
-                    ->Version(2)
-                    ->Field("Name", &NodeConfiguration::m_name)
-                    ->Field("Description", &NodeConfiguration::m_description)
+                    ->Version(3)
                     ->Field("Tooltip", &NodeConfiguration::m_tooltip)
                     ->Field("ShowInOutliner", &NodeConfiguration::m_showInOutliner)
                     ;
@@ -39,10 +37,6 @@ namespace GraphCanvas
                     editContext->Class<NodeConfiguration>("Configuration", "The Node's configuration data")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "Node's configuration class attributes")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &NodeConfiguration::m_name, "Name", "This node's name")
-                        ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &NodeConfiguration::m_description, "Description", "This node's description")
-                        ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &NodeConfiguration::m_tooltip, "Tooltip", "Tooltip explaining node functionality")
                         ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
                         ;
@@ -52,17 +46,9 @@ namespace GraphCanvas
 
         // Default configuration
         NodeConfiguration()
-            : m_name("Node")
-            , m_description("")
-            , m_tooltip("")
+            : m_tooltip("")
             , m_showInOutliner(true)
         {}
-
-        void SetName(const AZStd::string& name) { m_name = name; }
-        const AZStd::string& GetName() const { return m_name; }
-
-        void SetDescription(const AZStd::string& description) { m_description = description; }
-        const AZStd::string& GetDescription() const { return m_description; }
 
         void SetTooltip(const AZStd::string& tooltip) { m_tooltip = tooltip; }
         const AZStd::string& GetTooltip() const { return m_tooltip; }
@@ -71,8 +57,6 @@ namespace GraphCanvas
         bool GetShowInOutliner() const { return m_showInOutliner; }
 
     protected:
-        AZStd::string m_name;
-        AZStd::string m_description;
         AZStd::string m_tooltip;
 
         bool m_showInOutliner;

@@ -153,7 +153,7 @@ namespace Lightning
 
         if (!rootNode)
         {
-            AZ_Warning("LightningGameEffectAZ", "Could not load lightning data. Invalid XML file '%s'! ", fileLocation);
+            AZ_Warning("LightningGameEffectAZ", false, "Could not load lightning data. Invalid XML file '%s'! ", fileLocation);
             return;
         }
 

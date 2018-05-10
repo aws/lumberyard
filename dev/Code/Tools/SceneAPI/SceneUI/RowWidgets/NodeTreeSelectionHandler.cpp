@@ -78,12 +78,14 @@ namespace AZ
                 property_t& instance, AzToolsFramework::InstanceDataNode* /*node*/)
             {
                 GUI->CopyListTo(instance);
+                GUI->UpdateSelectionLabel();
             }
 
             bool NodeTreeSelectionHandler::ReadValuesIntoGUI(size_t /*index*/, NodeTreeSelectionWidget* GUI, const property_t& instance,
                 AzToolsFramework::InstanceDataNode* /*node*/)
             {
                 GUI->SetList(instance);
+                GUI->UpdateSelectionLabel();
                 return false;
             }
 

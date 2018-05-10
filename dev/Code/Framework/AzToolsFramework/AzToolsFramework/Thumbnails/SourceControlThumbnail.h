@@ -12,7 +12,6 @@
 
 #pragma once
 
-#include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzToolsFramework/Thumbnails/Thumbnail.h>
 #include <AzToolsFramework/Thumbnails/SourceControlThumbnailBus.h>
 
@@ -27,15 +26,24 @@ namespace AzToolsFramework
         {
             Q_OBJECT
         public:
+            AZ_RTTI(SourceControlFileInfo, "{F6772100-A178-45A7-8F75-41426B07D829}", ThumbnailKey);
+
             explicit SourceControlThumbnailKey(const char* fileName);
+
             const AZStd::string& GetFileName() const;
+
+            bool UpdateThumbnail() override;
+
         protected:
             //! absolute path
             AZStd::string m_fileName;
+            //! how often should sc thumbnails auto update
+            const AZStd::chrono::minutes m_updateInterval;
+            //! time since this sc thumbnail updated
+            AZStd::chrono::system_clock::time_point m_nextUpdate;
         };
 
         //! SourceControlThumbnail currently replicates the source control functionality within Material Browser
-        //! This thumbnail refreshes source control status for each individual file every UPDATE_INTERVAL_S
         //! Additionally source control status is refreshed whenever an operation is performed through context menu
         class SourceControlThumbnail
             : public Thumbnail
@@ -46,26 +54,25 @@ namespace AzToolsFramework
             SourceControlThumbnail(SharedThumbnailKey key, int thumbnailSize);
             ~SourceControlThumbnail() override;
 
-            void UpdateTime(float deltaTime) override;
-
             //////////////////////////////////////////////////////////////////////////
             // SourceControlNotificationBus
             //////////////////////////////////////////////////////////////////////////
             void FileStatusChanged(const char* filename) override;
 
-        protected:
-            void LoadThread() override;
+            static bool ReadyForUpdate();
+
+        public Q_SLOTS:
+            void Update() override;
 
         private:
-            //! How often to check status
-            static const float UPDATE_INTERVAL_S;
             static const char* CHECKEDOUT_ICON_PATH;
             static const char* READONLY_ICON_PATH;
 
-            AZStd::binary_semaphore m_sourceControlWait;            
-            //! How long before next update
-            float m_timeToUpdate;
-            bool m_readyToUpdate = false;
+            //! If another sc thumbnail is currently requesting sc status this will return false
+            static bool m_readyForUpdate;
+            
+            // To avoid overpopulating sc update stack with status requests, sc thumbnail does not load until this function is called
+            void RequestSourceControlStatus();
 
             void SourceControlFileInfoUpdated(bool succeeded, const SourceControlFileInfo& fileInfo);
         };
@@ -86,8 +93,8 @@ namespace AzToolsFramework
             public:
                 bool operator()(const SharedThumbnailKey& val1, const SharedThumbnailKey& val2) const
                 {
-                    auto sourceThumbnailKey1 = qobject_cast<const SourceControlThumbnailKey*>(val1.data());
-                    auto sourceThumbnailKey2 = qobject_cast<const SourceControlThumbnailKey*>(val2.data());
+                    auto sourceThumbnailKey1 = azrtti_cast<const SourceControlThumbnailKey*>(val1.data());
+                    auto sourceThumbnailKey2 = azrtti_cast<const SourceControlThumbnailKey*>(val2.data());
                     if (!sourceThumbnailKey1 || !sourceThumbnailKey2)
                     {
                         return false;

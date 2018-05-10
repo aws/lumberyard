@@ -2607,7 +2607,7 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
 
     SMMRMGeometry* procGeom = s_GeomManager.GetGeometry(sample.InstGroupId, 0);
 
-    m_cullJobExecutor.WaitForCompletion();
+    Cry3DEngineBase::m_pMergedMeshesManager->m_nodeCullJobExecutor.WaitForCompletion();
     for (size_t i = 0; i < m_nGroups; ++i)
     {
         if (m_groups[i].instGroupId == sample.InstGroupId &&
@@ -2620,7 +2620,7 @@ IRenderNode* CMergedMeshRenderNode::AddInstance(const SProcVegSample& sample)
         }
     }
 
-    m_updateJobExecutor.WaitForCompletion();
+    Cry3DEngineBase::m_pMergedMeshesManager->m_nodeUpdateJobExecutor.WaitForCompletion();
     if (headerIndex == (size_t)-1)
     {
         resize_list(m_groups, m_nGroups + 1, 128);
@@ -2689,8 +2689,8 @@ size_t CMergedMeshRenderNode::RemoveInstance(size_t headerIndex, size_t instance
     assert (headerIndex < m_nGroups);
 
     SMMRMGroupHeader* header = &m_groups[headerIndex];
-    m_cullJobExecutor.WaitForCompletion();
-    m_updateJobExecutor.WaitForCompletion();
+    Cry3DEngineBase::m_pMergedMeshesManager->m_nodeCullJobExecutor.WaitForCompletion();
+    Cry3DEngineBase::m_pMergedMeshesManager->m_nodeUpdateJobExecutor.WaitForCompletion();
 
     assert (instanceIndex < header->numSamples);
     std::swap(header->instances[instanceIndex], header->instances[header->numSamples - 1]);
@@ -2742,11 +2742,14 @@ void CMergedMeshRenderNode::SampleWind()
 bool CMergedMeshRenderNode::DeleteRenderMesh(RENDERMESH_UPDATE_TYPE type, bool block, bool zap)
 {
     MEMORY_SCOPE_CHECK_HEAP();
-    while (!SyncAllJobs())
     {
-        if (!block)
+        AZ_PROFILE_SCOPE_STALL(AZ::Debug::ProfileCategory::ThreeDEngine, "CMergedMeshRenderNode::DeleteRenderMesh:SyncAllJobs");
+        while (!SyncAllJobs())
         {
-            return false;
+            if (!block)
+            {
+                return false;
+            }
         }
     }
     // Clear the rendermesh update structures
@@ -2917,11 +2920,12 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
         rmchunks.reserve(mesh->updates.size());
         CRenderChunk chunk;
         chunk.m_vertexFormat = eVF_P3S_C4B_T2S;
-        size_t iv = 0, ii = 0, beg = k, accum = 0;
+        size_t iv = 0, ii = 0, beg = k;
         for (; k < mesh->updates.size(); ++k)
         {
+            size_t accum = 0;
             SMMRMUpdateContext* update = & mesh->updates[k];
-            for (size_t j = 0, acumm = 0, nc = update->chunks.size(); j < nc; ++j)
+            for (size_t j = 0, nc = update->chunks.size(); j < nc; ++j)
             {
                 accum += update->chunks[j].vcnt;
             }
@@ -2930,7 +2934,7 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
             // knows re-exporting will fix it
             if (accum > maxVertices)
             {
-                CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, "CMergedMeshRenderNode::CreateRenderMesh submesh exceeds max vertices. Perform Export To Game to resolve issue.");
+                CryWarning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, "CMergedMeshRenderNode::CreateRenderMesh submesh exceeds max vertices. Perform Export To Engine to resolve issue.");
                 goto outer;
             }
 
@@ -3041,14 +3045,22 @@ for (size_t i = 0, nrm = renderMeshes.size(); i < nrm; ++i)
             update->idx_end = idxBuf + ii;
 #       endif
 #       if MMRM_USE_JOB_SYSTEM
-            if (update->group->deform_vertices)
-            {
-                    m_updateJobExecutor.StartJob([update](){ update->MergeInstanceMeshesDeform(&s_mmrm_globals.camera, 0u); }); // legacy: job.SetPriorityLevel(JobManager::eLowPriority);
-            }
-            else
-            {
-                    m_updateJobExecutor.StartJob([update](){ update->MergeInstanceMeshesSpines(&s_mmrm_globals.camera, 0u); }); // legacy: job.SetPriorityLevel(JobManager::eLowPriority);
-            }
+            ++m_updateJobsInFlight;
+            Cry3DEngineBase::m_pMergedMeshesManager->m_nodeUpdateJobExecutor.StartJob(
+                [this, update]()
+                {
+                    if (update->group->deform_vertices)
+                    {
+                        update->MergeInstanceMeshesDeform(&s_mmrm_globals.camera, 0u);
+                    }
+                    else
+                    {
+                        update->MergeInstanceMeshesSpines(&s_mmrm_globals.camera, 0u);
+                    }
+                    AZ_Assert(m_updateJobsInFlight, "Invalid in-flight update job count");
+                    --m_updateJobsInFlight;
+                }
+            ); // legacy: job.SetPriorityLevel(JobManager::eLowPriority);
 #       else
             if (update->group->deform_vertices)
             {
@@ -3215,13 +3227,15 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
                             (unsigned int)m_groups[i].instances,
                             (unsigned int)m_groups[i].numSamples);
 
-                        m_cullJobExecutor.StartJob(
+                        ++m_cullJobsInFlight;
+                        Cry3DEngineBase::m_pMergedMeshesManager->m_nodeCullJobExecutor.StartJob(
                             [this, i, flags]()
                             {
                                 m_groups[i].CullInstances(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags);
+                                AZ_Assert(m_cullJobsInFlight, "Invalid in-flight cull job count");
+                                --m_cullJobsInFlight;
                             }
                         ); // legacy: job.SetPriorityLevel(JobManager::eHighPriority);
-                        //gEnv->pJobManager->WaitForJob(m_cullState);
 #else
                         m_groups[i].CullInstances(& s_mmrm_globals.camera, & m_internalAABB.min, & m_pos, m_zRotation, flags);
 #endif
@@ -3250,10 +3264,13 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
                         }
                         int flags = (int)(nLod << MMRM_LOD_SHIFT) | MMRM_CULL_LOD | MMRM_CULL_DISTANCE;
 #if MMRM_USE_JOB_SYSTEM
-                        m_cullJobExecutor.StartJob(
+                        ++m_cullJobsInFlight;
+                        Cry3DEngineBase::m_pMergedMeshesManager->m_nodeCullJobExecutor.StartJob(
                             [this, i, flags]()
                             {
                                 m_groups[i].CullInstances(&s_mmrm_globals.camera, &m_internalAABB.min, &m_pos, m_zRotation, flags); // job.SetPriorityLevel(JobManager::eHighPriority);
+                                AZ_Assert(m_cullJobsInFlight, "Invalid in-flight cull job count");
+                                --m_cullJobsInFlight;
                             }
                         );
 #else
@@ -3396,9 +3413,9 @@ bool CMergedMeshRenderNode::PostRender(const SRenderingPassInfo& passInfo)
 
     // Sadly because of the interleaved renderchunks structure, we can
     // only start building a mesh when all culling tasks have completed.
-    IF(m_cullJobExecutor.IsRunning(), 1)
+    IF(m_cullJobsInFlight, 1)
     {
-        return true; 
+        return true;
     }
 
     const float distance = (s_mmrm_globals.camera.GetPosition() - m_pos).len();
@@ -3526,11 +3543,7 @@ void CMergedMeshRenderNode::FillSamples(DynArray<Vec2>& samples)
 
 void CMergedMeshRenderNode::ActivateSpines()
 {
-    if (m_spineInitializationJobExecutor.IsRunning() || m_updateJobExecutor.IsRunning())
-    {
-        return;
-    }
-    if (m_State != STREAMED_IN || m_SpinesActive)
+    if (m_State != STREAMED_IN || m_SpinesActive || m_spineInitJobsInFlight || m_updateJobsInFlight)
     {
         return;
     }
@@ -3555,7 +3568,15 @@ void CMergedMeshRenderNode::ActivateSpines()
         }
     }
 # if MMRM_USE_JOB_SYSTEM
-    m_spineInitializationJobExecutor.StartJob([this](){ this->InitializeSpines(); }); // job.SetPriorityLevel(JobManager::eLowPriority);
+    ++m_spineInitJobsInFlight;
+    Cry3DEngineBase::m_pMergedMeshesManager->m_nodeSpineInitJobExecutor.StartJob(
+        [this]()
+        {
+            this->InitializeSpines();
+            AZ_Assert(m_spineInitJobsInFlight, "Invalid in-flight spine init job count");
+            --m_spineInitJobsInFlight;
+        }
+    ); // job.SetPriorityLevel(JobManager::eLowPriority);
 # else
     InitializeSpines();
 # endif
@@ -3563,11 +3584,7 @@ void CMergedMeshRenderNode::ActivateSpines()
 
 void CMergedMeshRenderNode::RemoveSpines()
 {
-    if (m_spineInitializationJobExecutor.IsRunning() || m_updateJobExecutor.IsRunning())
-    {
-        return;
-    }
-    if (m_State != STREAMED_IN || !m_SpinesActive)
+    if (m_State != STREAMED_IN || !m_SpinesActive || m_spineInitJobsInFlight || m_updateJobsInFlight)
     {
         return;
     }
@@ -4193,15 +4210,15 @@ bool CMergedMeshRenderNode::UpdateStreamableComponents(
 
 bool CMergedMeshRenderNode::SyncAllJobs()
 {
-    IF(m_cullJobExecutor.IsRunning(), 0)
+    IF(m_cullJobsInFlight, 0)
     {
         return false;
     }
-    IF(m_updateJobExecutor.IsRunning(), 0)
+    IF(m_updateJobsInFlight, 0)
     {
         return false;
     }
-    IF(m_spineInitializationJobExecutor.IsRunning(), 0)
+    IF(m_spineInitJobsInFlight, 0)
     {
         return false;
     }
@@ -4264,10 +4281,9 @@ void CMergedMeshRenderNode::Reset()
             m_groups[i].procGeom->geomPrepareJobExecutor.WaitForCompletion();
         }
     }
-    m_cullJobExecutor.WaitForCompletion();
-    m_cullJobExecutor.Reset();
-    m_updateJobExecutor.WaitForCompletion();
-    m_updateJobExecutor.Reset();
+
+    AZ_Assert(m_cullJobsInFlight == 0, "Cull jobs should be complete before calling Reset");
+    AZ_Assert(m_updateJobsInFlight == 0, "Update jobs should be complete before calling Reset");
 
     m_renderMeshes[0].clear();
     m_renderMeshes[1].clear();
@@ -5245,6 +5261,9 @@ void CMergedMeshesManager::PostRenderMeshes(const SRenderingPassInfo& passInfo)
 
 void CMergedMeshesManager::ResetActiveNodes()
 {
+    m_nodeCullJobExecutor.WaitForCompletion();
+    m_nodeUpdateJobExecutor.WaitForCompletion();
+
     for (size_t i = 0; i < HashDimXY; ++i)
     {
         for (size_t j = 0; j < HashDimXY; ++j)

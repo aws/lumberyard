@@ -21,6 +21,7 @@
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Script/ScriptProperty.h>
+#include <AzCore/Math/Crc.h>
 
 #include <AzCore/Serialization/EditContextConstants.inl>
 
@@ -28,20 +29,42 @@
 
 namespace
 {
-    AZStd::string GetLabel(AzToolsFramework::InstanceDataNode* node)
+    AZStd::string GetStringFromAttribute(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
     {
+        if (!node)
+        {
+            return "";
+        }
+
+        AZ::Edit::Attribute* attr{};
         const AZ::Edit::ElementData* elementEditData = node->GetElementEditMetadata();
-        if(!elementEditData)
+        if (elementEditData)
+        {
+            attr = elementEditData->FindAttribute(attribId);
+        }
+
+        // Attempt to look up the attribute on the node reflected class data.
+        // This look up is done via AZ::SerializeContext::ClassData -> AZ::Edit::ClassData -> EditorData element
+        if (!attr)
+        {
+            if (const AZ::SerializeContext::ClassData* classData = node->GetClassMetadata())
+            {
+                if (const auto* editClassData = classData->m_editData)
+                {
+                    if (const auto* classEditorData = editClassData->FindElementData(AZ::Edit::ClassElements::EditorData))
+                    {
+                        attr = classEditorData->FindAttribute(attribId);
+                    }
+                }
+            }
+        }
+
+        if (!attr)
         {
             return "";
         }
 
-        AZ::Edit::Attribute* attr = elementEditData->FindAttribute(AZ::Edit::Attributes::NameLabelOverride);
-        if(!attr)
-        {
-            return "";
-        }
-
+        // Read the string from the attribute found.
         AZStd::string label;
         for (size_t instIndex = 0; instIndex < node->GetNumInstances(); ++instIndex)
         {
@@ -53,6 +76,103 @@ namespace
         }
 
         return "";
+    }
+
+    template<typename Type>
+    Type GetFromAttribute(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
+    {
+        if (!node)
+        {
+            return Type();
+        }
+
+        AZ::Edit::Attribute* attr{};
+        const AZ::Edit::ElementData* elementEditData = node->GetElementEditMetadata();
+        if (elementEditData)
+        {
+            attr = elementEditData->FindAttribute(attribId);
+        }
+
+        // Attempt to look up the attribute on the node reflected class data.
+        // This look up is done via AZ::SerializeContext::ClassData -> AZ::Edit::ClassData -> EditorData element
+        if (!attr)
+        {
+            if (const AZ::SerializeContext::ClassData* classData = node->GetClassMetadata())
+            {
+                if (const auto* editClassData = classData->m_editData)
+                {
+                    if (const auto* classEditorData = editClassData->FindElementData(AZ::Edit::ClassElements::EditorData))
+                    {
+                        attr = classEditorData->FindAttribute(attribId);
+                    }
+                }
+            }
+        }
+
+        if (!attr)
+        {
+            return Type();
+        }
+
+        // Read the value from the attribute found.
+        Type retVal = Type();
+        for (size_t instIndex = 0; instIndex < node->GetNumInstances(); ++instIndex)
+        {
+            AzToolsFramework::PropertyAttributeReader reader(node->GetInstance(instIndex), attr);
+            if (reader.Read<Type>(retVal))
+            {
+                return retVal;
+            }
+        }
+
+        return Type();
+    }
+
+    AZStd::string GetDisplayLabel(AzToolsFramework::InstanceDataNode* node)
+    {
+        if (!node)
+        {
+            return "";
+        }
+
+        AZStd::string label;
+
+        // We want to check to see if a name override was provided by our first real
+        // non-container parent.
+        //
+        // 'real' basically means something that is actually going to display.
+        //
+        // If we don't have a parent override, then we can take a look at applying out internal name override.        
+        AzToolsFramework::InstanceDataNode* parentNode = node->GetParent();
+
+        while (parentNode)
+        {
+            bool nonContainerNodeFound = !parentNode->GetClassMetadata() || !parentNode->GetClassMetadata()->m_container;
+
+            if (nonContainerNodeFound)
+            {
+                const bool isSlicePushUI = false;
+                AzToolsFramework::NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility((*parentNode), isSlicePushUI);
+
+                nonContainerNodeFound = (visibility == AzToolsFramework::NodeDisplayVisibility::Visible);
+            }
+
+            label = GetStringFromAttribute(parentNode, AZ::Edit::Attributes::ChildNameLabelOverride);
+            if (!label.empty() || nonContainerNodeFound)
+            {
+                break;
+            }
+
+            parentNode = parentNode->GetParent();
+        }
+
+        // If our parent isn't controlling us. Fall back to whatever we want to be called
+        if (label.empty())
+        {
+            label = GetStringFromAttribute(node, AZ::Edit::Attributes::NameLabelOverride);
+        }
+
+        return label;
     }
 }
 
@@ -408,13 +528,8 @@ namespace AzToolsFramework
                 );
         }
 
-        RefreshComparisonData(accessFlags, dynamicEditDataProvider);
-
-        // if we ended up with anything to display, we need to do another pass to fix up container element nodes.
-        if (m_matched)
-        {
-            FixupEditData(this, 0);
-        }
+        RefreshComparisonData(accessFlags, dynamicEditDataProvider);        
+        FixupEditData();
     }
 
     //-----------------------------------------------------------------------------
@@ -454,7 +569,7 @@ namespace AzToolsFramework
             }
             if (mergeContainerEditData)
             {
-                AZStd::string label = GetLabel(node);
+                AZStd::string label = GetDisplayLabel(node);
                 m_supplementalEditData.back().m_displayLabel = label.empty() ? AZStd::string::format("[%d]", siblingIdx) : label;
                 editData->m_description = nullptr;
                 editData->m_name = m_supplementalEditData.back().m_displayLabel.c_str();

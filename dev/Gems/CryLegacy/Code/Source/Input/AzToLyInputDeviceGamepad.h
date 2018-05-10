@@ -26,3 +26,13 @@ protected:
                              bool& o_hasBeenConsumed) override;
 };
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, AZ_RESTRICTED_PLATFORM)
+#elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_PS4)
+#endif
+#endif

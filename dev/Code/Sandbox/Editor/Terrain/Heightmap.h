@@ -55,7 +55,7 @@ class IHeightmap
 {
 public:
     virtual void UpdateEngineTerrain(int x1, int y1, int width, int height, bool bElevation, bool bInfoBits) = 0;
-    virtual void RecordUndo(int x1, int y1, int width, int height, bool bInfo) = 0;
+    virtual void RecordAzUndoBatchTerrainModify(AZ::u32 x, AZ::u32 y, AZ::u32 width, AZ::u32 height) = 0;
 };
 
 // Editor data structure to keep the heights, detail layer information/holes, terrain texture
@@ -265,7 +265,8 @@ public:
 
     void GetMemoryUsage(ICrySizer* pSizer);
 
-    void RecordUndo(int x1, int y1, int width, int height, bool bInfo = false) override;
+    void RecordUndo(int x1, int y1, int width, int height, bool bInfo = false);
+    void RecordAzUndoBatchTerrainModify(AZ::u32 x, AZ::u32 y, AZ::u32 width, AZ::u32 height) override;
 
     CRGBLayer* GetRGBLayer() { return &m_TerrainBGRTexture; }
 

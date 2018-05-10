@@ -129,8 +129,10 @@ namespace AZ
             }
 
             void* loadedInstance = nullptr;
+            AZ::Uuid loadedClassID = AZ::Uuid::CreateNull();
+
             bool success = ObjectStream::LoadBlocking(&stream, *context,
-                    [&loadedInstance, targetClassId](void* classPtr, const Uuid& classId, const SerializeContext* serializeContext)
+                    [&loadedInstance, &loadedClassID, targetClassId](void* classPtr, const Uuid& classId, const SerializeContext* serializeContext)
                     {
                         if (targetClassId)
                         {
@@ -141,6 +143,7 @@ namespace AZ
                             {
                                 AZ_Assert(!loadedInstance, "loadedInstance must be NULL, otherwise we are being invoked with multiple valid objects");
                                 loadedInstance = instance;
+                                loadedClassID = classId;
                                 return;
                             }
                         }
@@ -149,6 +152,7 @@ namespace AZ
                             if (!loadedInstance)
                             {
                                 loadedInstance = classPtr;
+                                loadedClassID = classId;
                                 return;
                             }
                         }
@@ -165,6 +169,15 @@ namespace AZ
 
             if (!success)
             {
+                // if serialization failed, clean up by destroying the instance that was loaded.
+                if (loadedInstance)
+                {
+                    const AZ::SerializeContext::ClassData* classData = context->FindClassData(loadedClassID);
+                    if (classData && classData->m_factory)
+                    {
+                        classData->m_factory->Destroy(loadedInstance);
+                    }
+                }
                 return nullptr;
             }
 

@@ -13,13 +13,15 @@
 #include <GraphCanvasModule.h>
 #include <GraphCanvas.h>
 
+#include <Components/BookmarkAnchor/BookmarkAnchorComponent.h>
+#include <Components/BookmarkAnchor/BookmarkAnchorVisualComponent.h>
+#include <Components/BookmarkManagerComponent.h>
 #include <Components/GeometryComponent.h>
 #include <Components/GridComponent.h>
 #include <Components/GridVisualComponent.h>
 #include <Components/SceneComponent.h>
+#include <Components/SceneMemberComponent.h>
 #include <Components/StylingComponent.h>
-
-#include <Components/ColorPaletteManager/ColorPaletteManagerComponent.h>
 
 #include <Components/Connections/ConnectionComponent.h>
 #include <Components/Connections/ConnectionVisualComponent.h>
@@ -48,8 +50,11 @@
 #include <Components/Slots/Property/PropertySlotComponent.h>
 #include <Components/Slots/Property/PropertySlotLayoutComponent.h>
 
-#include <Styling/Style.h>
-#include <Styling/PseudoElement.h>
+#include <GraphCanvas/Components/ColorPaletteManager/ColorPaletteManagerComponent.h>
+#include <GraphCanvas/Components/GraphCanvasPropertyBus.h>
+#include <GraphCanvas/Styling/Style.h>
+#include <GraphCanvas/Styling/StyleManager.h>
+#include <GraphCanvas/Styling/PseudoElement.h>
 
 namespace GraphCanvas
 {
@@ -60,19 +65,23 @@ namespace GraphCanvas
     {
         m_descriptors.insert(m_descriptors.end(), {
 
-            // Components
+            // Components            
+            BookmarkManagerComponent::CreateDescriptor(),
             GraphCanvasSystemComponent::CreateDescriptor(),
             SceneComponent::CreateDescriptor(),
+            SceneMemberComponent::CreateDescriptor(),
+            GraphCanvasPropertyComponent::CreateDescriptor(),
 
             // Background Grid
             GridComponent::CreateDescriptor(),
             GridVisualComponent::CreateDescriptor(),
 
-            // General
-            GeometryComponent::CreateDescriptor(),
+            // BookmarkAnchor
+            BookmarkAnchorComponent::CreateDescriptor(),
+            BookmarkAnchorVisualComponent::CreateDescriptor(),
 
-            // ColorPalette
-            ColorPaletteManagerComponent::CreateDescriptor(),
+            // General
+            GeometryComponent::CreateDescriptor(),            
 
             // Connections
             ConnectionComponent::CreateDescriptor(),
@@ -124,9 +133,12 @@ namespace GraphCanvas
             // Styling
             StylingComponent::CreateDescriptor(),
 
-            Styling::ComputedStyle::CreateDescriptor(),
-            Styling::StyleSheet::CreateDescriptor(),
-            Styling::VirtualChildElement::CreateDescriptor()
+            Styling::ComputedStyle::CreateDescriptor(),            
+            Styling::VirtualChildElement::CreateDescriptor(),
+
+            // Deprecated Components
+            Deprecated::ColorPaletteManagerComponent::CreateDescriptor(),
+            Deprecated::StyleSheetComponent::CreateDescriptor()
         });
     }
 

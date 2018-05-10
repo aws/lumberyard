@@ -50,9 +50,26 @@
 #include <IJobManager_JobDelegator.h>
 
 #include "StatObjBus.h"
+#include "RenderBus.h"
 
 #include "RenderCapabilities.h"
 #include "RenderView.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define RENDERER_CPP_SECTION_1 1
+#define RENDERER_CPP_SECTION_2 2
+#define RENDERER_CPP_SECTION_4 4
+#define RENDERER_CPP_SECTION_5 5
+#define RENDERER_CPP_SECTION_7 7
+#define RENDERER_CPP_SECTION_8 8
+#define RENDERER_CPP_SECTION_9 9
+#define RENDERER_CPP_SECTION_10 10
+#define RENDERER_CPP_SECTION_11 11
+#define RENDERER_CPP_SECTION_12 12
+#define RENDERER_CPP_SECTION_13 13
+#endif
+
 #ifdef WIN64
     #pragma warning(disable: 4244)
 #endif
@@ -66,6 +83,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <Common/Memory/VRAMDriller.h>
 #include "Maestro/Types/AnimParamType.h"
+#include <MainThreadRenderRequestBus.h>
 
 #if defined(AZ_PLATFORM_WINDOWS) // Scrubber friendly define negation
     #if defined(OPENGL) // Scrubber friendly define negation
@@ -117,6 +135,10 @@ ENGINE_API CRenderer* gRenDev = nullptr;
 
 #define RENDERER_DEFAULT_FONT "Fonts/default.xml"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #if !defined(RENDERER_DEFAULT_MESHPOOLSIZE)
 # define RENDERER_DEFAULT_MESHPOOLSIZE (0U)
 #endif
@@ -226,6 +248,10 @@ AllocateConstIntCVar(CRenderer, CV_r_logShaders);
 int CRenderer::CV_r_logVBuffers;
 AllocateConstIntCVar(CRenderer, CV_r_logVidMem);
 AllocateConstIntCVar(CRenderer, CV_r_predicatedtiling);
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 int CRenderer::CV_r_DeferredShadingSortLights;
 int CRenderer::CV_r_DeferredShadingAmbientSClear;
 int CRenderer::CV_r_msaa;
@@ -1257,6 +1283,28 @@ static void OnChange_CV_r_DebugLightLayers(ICVar* pCVar)
     }
 }
 
+static void OnChange_CV_r_DeferredShadingTiled(ICVar* pCVar)
+{
+#if defined (AZ_PLATFORM_APPLE_OSX)
+    // We don't support deferred shading tiled on macOS yet so always force the cvar to 0
+    AZ_Warning("Rendering", pCVar->GetIVal() == 0, "Deferred Shading Tiled is not supported on macOS");
+    CRenderer::CV_r_DeferredShadingTiled = 0;
+#endif
+}
+
+static void OnChange_CV_r_Fur(ICVar* pCVar)
+{
+
+#if defined (CRY_USE_METAL) || defined (OPENGL_ES)
+    // We don't support fur on gmem/pls path yet so always force the cvar to 0
+    if (RenderCapabilities::Supports256bppGmemPath() || RenderCapabilities::Supports128bppGmemPath() || RenderCapabilities::SupportsPLSExtension())
+    {
+        AZ_Warning("Rendering", pCVar->GetIVal() == 0, "Fur is not supported on gmem/pls for mobile");
+        CRenderer::CV_r_Fur = 0;
+    }
+#endif
+}
+
 static void OnChange_CV_r_TexelsPerMeter(ICVar* pCVar)
 {
     if (pCVar && pCVar->GetFVal() == CRenderer::s_previousTexelsPerMeter)
@@ -1370,6 +1418,10 @@ void CRenderer::InitRenderer()
         gRenDev = this;
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     m_cEF.m_Bin.m_pCEF = &m_cEF;
 
@@ -1438,12 +1490,13 @@ void CRenderer::InitRenderer()
         "7 - Add tone mapping / bloom / color grading.\n",
         OnChange_CV_r_DebugLightLayers);
 
-    REGISTER_CVAR3("r_DeferredShadingTiled", CV_r_DeferredShadingTiled, 0, VF_DUMPTODISK,
+    REGISTER_CVAR3_CB("r_DeferredShadingTiled", CV_r_DeferredShadingTiled, 0, VF_DUMPTODISK,
         "Toggles tiled shading using a compute shader\n"
         "1 - Tiled forward shading for transparent objects\n"
         "2 - Tiled deferred and forward shading\n"
         "3 - Tiled deferred and forward shading with debug info\n"
-        "4 - Light coverage visualization\n");
+        "4 - Light coverage visualization\n",
+        OnChange_CV_r_DeferredShadingTiled);
 
     REGISTER_CVAR3("r_DeferredShadingTiledHairQuality", CV_r_DeferredShadingTiledHairQuality, 2, VF_DUMPTODISK,
         "Tiled shading hair quality\n"
@@ -2254,7 +2307,7 @@ void CRenderer::InitRenderer()
         "Usage: r_sunshafts [0/1]\n"
         "Default is 1 (on). Set to 0 to disable.");
 
-    REGISTER_CVAR3_CB("r_PostProcessEffects", CV_r_PostProcess_CB, 1, VF_CHEAT,
+    REGISTER_CVAR3_CB("r_PostProcessEffects", CV_r_PostProcess_CB, 1, VF_NULL,
         "Enables post processing special effects.\n"
         "Usage: r_PostProcessEffects [0/1/2]\n"
         "Default is 1 (enabled). 2 enables and displays active effects",
@@ -2629,7 +2682,7 @@ void CRenderer::InitRenderer()
         "Default is 0 (off)");
 
 #if !defined(CONSOLE)
-    REGISTER_CVAR3("r_ShadersOrbis", CV_r_shadersorbis, 0, VF_NULL, ""); // ACCEPTED_USE
+    REGISTER_CVAR3("r_ShadersOrbis", CV_r_shadersorbis, 1, VF_NULL, ""); // ACCEPTED_USE
     REGISTER_CVAR3("r_ShadersDX11", CV_r_shadersdx11, 1, VF_NULL, "");
     REGISTER_CVAR3("r_ShadersGL4", CV_r_shadersGL4, 1, VF_NULL, "");
     REGISTER_CVAR3("r_ShadersGLES3", CV_r_shadersGLES3, 1, VF_NULL, "");
@@ -3039,6 +3092,10 @@ void CRenderer::InitRenderer()
     DefineConstIntCVar3("r_PredicatedTiling", CV_r_predicatedtiling, 0, VF_REQUIRE_APP_RESTART,
         "Toggles predicated tiling mode (X360 only)\n" // ACCEPTED_USE
         "Usage: r_PredicatedTiling [0/1]");
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     DefineConstIntCVar3("r_MeasureOverdraw", CV_r_measureoverdraw, 0, VF_CHEAT,
         "Activate a special rendering mode that visualize the rendering cost of each pixel by color.\n"
         "0=off,\n"
@@ -3146,8 +3203,16 @@ void CRenderer::InitRenderer()
         "Usage: r_StereoGammaAdjustment [offset]"
         "0: off");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
     const int DEVICE_WIDTH  =   1152;
     const int   DEVICE_HEIGHT   =   720;
+#endif
 
     REGISTER_CVAR3("r_ConsoleBackbufferWidth", CV_r_ConsoleBackbufferWidth, DEVICE_WIDTH, VF_DUMPTODISK,
         "console specific backbuffer resolution - width");
@@ -3236,6 +3301,10 @@ void CRenderer::InitRenderer()
         "Stops the sun being drawn during cubemap generation.\n");
 
     // more details: http://en.wikipedia.org/wiki/Overscan
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_8
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
     REGISTER_COMMAND("r_OverscanBorders", &cmd_OverscanBorders, VF_NULL,
         "Changes the size of the overscan borders for the left/right and top/bottom\n"
         "of the screen for adjusting the title safe area. This is for logo placements\n"
@@ -3385,11 +3454,12 @@ void CRenderer::InitRenderer()
         "0 Off\n"
         "1 ON\n");
 
-    REGISTER_CVAR3("r_Fur", CV_r_Fur, 1, VF_NULL,
+    REGISTER_CVAR3_CB("r_Fur", CV_r_Fur, 1, VF_NULL,
         "Specifies how fur is rendered:\n"
         "0: Fur is disabled - objects using Fur shader appear similar to Illum\n"
         "1: Alpha blended transparent passes\n"
-        "2: Alpha tested opaque passes");
+        "2: Alpha tested opaque passes",
+    OnChange_CV_r_Fur);
 
     REGISTER_CVAR3("r_FurShellPassCount", CV_r_FurShellPassCount, 64, VF_NULL,
         "Number of passes to perform for rendering fur shells");
@@ -3707,6 +3777,10 @@ void CRenderer::Release()
         CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_ERROR_DBGBRK, "could not free all buffers from CDevBufferMan!");
     }
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_9
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
     // Shutdown the VRAM driller
     if (m_vramDriller)
@@ -4282,6 +4356,10 @@ void CRenderer::EF_ReleaseInputShaderResource(SInputShaderResources* pRes)
 
 //#include "../Common/Character/CryModel.h"
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_10
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 void CRenderer::ForceSwapBuffers()
 {
     m_pRT->RC_ForceSwapBuffers();
@@ -4344,6 +4422,8 @@ void CRenderer::FreeResources(int nFlags)
     }
 
     CTimeValue tBegin = gEnv->pTimer->GetAsyncTime();
+
+    AZ::RenderNotificationsBus::Broadcast(&AZ::RenderNotifications::OnRendererFreeResources);
 
 #if !defined(_RELEASE)
     ClearDrawCallsInfo();
@@ -6217,7 +6297,15 @@ void CRenderer::EF_QueryImpl(ERenderQueryTypes eQuery, void* pInOut0, uint32 nIn
         STextureStreamingStats* stats = (STextureStreamingStats*)(pInOut0);
         if (stats)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_11
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
             stats->nCurrentPoolSize = CTexture::s_pPoolMgr->GetReservedSize();    // s_nStatsStreamPoolInUseMem;
+#endif
             stats->nStreamedTexturesSize = CTexture::s_nStatsStreamPoolInUseMem;
 
             stats->nStaticTexturesSize = CTexture::s_nStatsCurManagedNonStreamedTexMem;
@@ -6231,6 +6319,10 @@ void CRenderer::EF_QueryImpl(ERenderQueryTypes eQuery, void* pInOut0, uint32 nIn
             stats->nNumTexturesPerFrame = gRenDev->m_RP.m_PS[gRenDev->m_RP.m_nProcessThreadID].m_NumTextures;
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_12
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             if (stats->bComputeReuquiredTexturesPerFrame)
             {
@@ -6504,7 +6596,7 @@ _smart_ptr<IRenderMesh> CRenderer::CreateRenderMeshInitialized(
     pRenderMesh->m_nClientTextureBindID = nClientTextureBindID;
 
     // Precache for static buffers
-    if (CV_r_meshprecache && pRenderMesh->_GetNumVerts() && bPrecache && !m_bDeviceLost && m_pRT->IsRenderThread())
+    if (CV_r_meshprecache && pRenderMesh->GetNumVerts() && bPrecache && !m_bDeviceLost && m_pRT->IsRenderThread())
     {
         pRenderMesh->CheckUpdate(-1);
     }
@@ -6706,8 +6798,8 @@ static float LinearToGamma(float x)
 
 #pragma warning(push)
 #pragma warning(disable:4819)   // Invalid character not in default code page
-#include <squish-ccr/squish.h>
-#include <squish-ccr/squish.inl>
+#include <squish.h>
+#include <squish.inl>
 #pragma warning(pop)
 
 #ifdef __GNUC__
@@ -7215,6 +7307,13 @@ ERenderType CRenderer::GetRenderType() const
 {
 #if defined(NULL_RENDERER)
     return eRT_Null;
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERER_CPP_SECTION_13
+#include AZ_RESTRICTED_FILE(Renderer_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(CRY_USE_METAL)
     return eRT_Metal;
 #elif defined(OPENGL)
@@ -8074,7 +8173,7 @@ void CRenderer::ForceUpdateShaderItem(SShaderItem* pShaderItem, _smart_ptr<IMate
     m_pRT->RC_UpdateShaderItem(pShaderItem, pMaterial);
 }
 
-void CRenderer::RT_UpdateShaderItem(SShaderItem* pShaderItem)
+void CRenderer::RT_UpdateShaderItem(SShaderItem* pShaderItem, IMaterial* material)
 {
     AZ_TRACE_METHOD();
     CShader* pShader = static_cast<CShader*>(pShaderItem->m_pShader);
@@ -8082,6 +8181,23 @@ void CRenderer::RT_UpdateShaderItem(SShaderItem* pShaderItem)
     {
         pShader->m_Flags &= ~EF_RELOADED;
         pShaderItem->Update();
+    }
+
+    if (material)
+    {
+        // We received a raw pointer to the material instead of a smart_ptr because writing/reading smart pointers from
+        // the render thread queue causes the ref count to be increased incorrectly in some platforms (e.g. 32 bit architectures). 
+        // In order to keep the material reference "alive" we manually increment the reference count and decrement it when we finish using it.
+        material->AddRef();
+        AZStd::function<void()> runOnMainThread = [material]()
+        {
+            // Updating the material flags after the shader has been parse and loaded.
+            material->UpdateFlags();
+            // Remove reference that we added.
+            material->Release();
+        };
+
+        EBUS_QUEUE_FUNCTION(AZ::MainThreadRenderRequestBus, runOnMainThread);
     }
 }
 

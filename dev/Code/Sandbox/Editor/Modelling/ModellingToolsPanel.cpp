@@ -90,8 +90,8 @@ void CModellingToolsPanel::CreateButtons()
             button->setProperty("tool", tool);
             m_pushButtons.append(button);
             qDebug("button: %p", button);
-            qDebug("button: %s", button->text());
-            qDebug("button: %s", button->objectName());
+            qDebug("button: %s", button->text().toUtf8().constData());
+            qDebug("button: %s", button->objectName().toUtf8().constData());
 
             ui->MAIN_GRID_LAYOUT->addWidget(button, row, nItem % 2);
             connect(button, &QPushButton::clicked, this, &CModellingToolsPanel::OnButtonPressed);

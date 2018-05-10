@@ -39,6 +39,18 @@ bool CTexture::s_bStreamingFromHDD = true;
 CTextureArrayAlloc<STexStreamInState, CTexture::MaxStreamTasks> CTexture::s_StreamInTasks;
 CTextureArrayAlloc<STexStreamPrepState*, CTexture::MaxStreamPrepTasks> CTexture::s_StreamPrepTasks;
 
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define TEXTURESTREAMING_CPP_SECTION_1 1
+#define TEXTURESTREAMING_CPP_SECTION_2 2
+#define TEXTURESTREAMING_CPP_SECTION_3 3
+#define TEXTURESTREAMING_CPP_SECTION_4 4
+#define TEXTURESTREAMING_CPP_SECTION_5 5
+#define TEXTURESTREAMING_CPP_SECTION_6 6
+#define TEXTURESTREAMING_CPP_SECTION_7 7
+#endif
+
 #ifdef TEXSTRM_ASYNC_TEXCOPY
 CTextureArrayAlloc<STexStreamOutState, CTexture::MaxStreamTasks> CTexture::s_StreamOutTasks;
 #endif
@@ -137,12 +149,20 @@ void STexStreamOutState::Reset()
     m_bDone = false;
     m_bAborted = false;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 }
 
 bool STexStreamOutState::TryCommit()
 {
     if (m_bDone)
     {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         if (!m_bAborted)
         {
@@ -233,10 +253,13 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
 #if defined(TEXSTRM_ASYNC_UPLOAD)
         tp->StreamUploadMip(pStream, nMip, m_nHigherUploadedMip, m_pNewPoolItem, mipState);
         mipState.m_bUploaded = true;
-#define TEXTURESTREAMING_CPP_SECTION_IMPLEMENTED
+#define AZ_RESTRICTED_SECTION_IMPLEMENTED
+#elif defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_3
+#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
 #endif
-#if defined(TEXTURESTREAMING_CPP_SECTION_IMPLEMENTED)
-#undef TEXTURESTREAMING_CPP_SECTION_IMPLEMENTED
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
         if (!mipState.m_bStreamInPlace)
         {
@@ -273,6 +296,10 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
     {
         if (!m_bAborted)
         {
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_4
+#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
 
@@ -370,6 +397,10 @@ bool STexStreamInState::TryCommit()
         }
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_5
+#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
         if (!m_bValidLowMips)
         {
@@ -1430,6 +1461,10 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
         }
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_6
+#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #if TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_SRCTILEMODE_CHECK && !defined(NULL_RENDERER)
         CDeviceTexture* pDevTex = pNewPoolItem->m_pDevTexture;
@@ -1535,6 +1570,10 @@ bool CTexture::StartStreaming(CTexture* pTex, STexPoolItem* pNewPoolItem, const 
 
                     byte* pBaseAddress = NULL;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_7
+#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
                     if (pBaseAddress)
                     {

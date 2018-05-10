@@ -16,7 +16,6 @@
 #include <SceneAPI/SceneCore/Containers/Views/PairIterator.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
-#include <SceneAPI/SceneData/Rules/CommentRule.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
@@ -26,6 +25,7 @@
 #include <SceneAPIExt/Rules/MotionCompressionSettingsRule.h>
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
 #include <SceneAPIExt/Rules/MotionRangeRule.h>
+#include <SceneAPIExt/Rules/MorphTargetRule.h>
 
 namespace EMotionFX
 {
@@ -40,6 +40,7 @@ namespace EMotionFX
                 Group::MotionGroup::Reflect(context);
                 Rule::MotionScaleRule::Reflect(context);
                 Rule::MotionCompressionSettingsRule::Reflect(context);
+                Rule::MorphTargetRuleReadOnly::Reflect(context);
 
                 AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serializeContext)
@@ -72,7 +73,6 @@ namespace EMotionFX
             {
                 if (target.RTTI_IsTypeOf(Group::IMotionGroup::TYPEINFO_Uuid()))
                 {
-                    modifiers.push_back(AZ::SceneAPI::SceneData::CommentRule::TYPEINFO_Uuid());
                     const Group::IMotionGroup* group = azrtti_cast<const Group::IMotionGroup*>(&target);
                     const AZ::SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainerConst();
 
@@ -182,6 +182,7 @@ namespace EMotionFX
                 AZ::SceneAPI::Containers::SceneManifest& manifest = scene.GetManifest();
                 auto valueStorage = manifest.GetValueStorage();
                 auto view = AZ::SceneAPI::Containers::MakeDerivedFilterView<Group::MotionGroup>(valueStorage);
+                const size_t morphAnimationCount = Rule::MorphTargetRuleReadOnly::DetectMorphTargetAnimations(scene);
                 for (Group::MotionGroup& group : view)
                 {
                     if (group.GetName().empty())
@@ -195,6 +196,29 @@ namespace EMotionFX
                         // name of the group as there could be multiple groups.
                         group.OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, Group::MotionGroup::TYPEINFO_Uuid(), group.GetName()));
                         updated = true;
+                    }
+                    if (morphAnimationCount)
+                    {
+                        AZStd::shared_ptr<Rule::MorphTargetRuleReadOnly> rule = group.GetRuleContainer().FindFirstByType<Rule::MorphTargetRuleReadOnly>();
+                        if (rule)
+                        { 
+                            if (rule->GetMorphAnimationCount() != morphAnimationCount)
+                            {
+                                rule->SetMorphAnimationCount(morphAnimationCount);
+                            }
+                        }
+                        else
+                        {
+                            group.GetRuleContainer().AddRule(AZStd::make_shared<Rule::MorphTargetRuleReadOnly>(morphAnimationCount));
+                        }
+                    }
+                    else
+                    {
+                        AZStd::shared_ptr<Rule::MorphTargetRuleReadOnly> rule = group.GetRuleContainer().FindFirstByType<Rule::MorphTargetRuleReadOnly>();
+                        if (rule)
+                        {
+                            group.GetRuleContainer().RemoveRule(rule);
+                        }
                     }
                 }
 

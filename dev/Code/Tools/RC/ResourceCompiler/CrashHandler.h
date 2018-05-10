@@ -21,64 +21,28 @@
 
 #ifdef WIN32
 
+#include <AzCore/Debug/TraceMessageBus.h>
 
 //!============================================================================
 //!
-//! CrashHandler class, captures call stack information from symbol files,
-//! writes callstack & minidump files.
+//! CrashHandler class
+//! writes minidump files.
 //!
 //!============================================================================
-class CrashHandler
+class CrashHandler : AZ::Debug::TraceMessageBus::Handler
 {
-private:
-    enum ELogDestination
-    {
-        eDefaultLog,
-        eCrashLog,
-        eNull
-    };
-
 public:
     CrashHandler();
     ~CrashHandler();
 
-    //! Sets files used for logging and crash dumping.
-    void SetFiles(const char* logFilename0, const char* logFilename1, const char* dumpFilename);
+    bool OnException(const char* message) override;
 
-    //! Dumps Current Call Stack to log.
-    void LogCallStack();
-
-    //! Exception handler.
-    int HandleException(EXCEPTION_POINTERS* pex);
+    void SetDumpFile(const char* dumpFilename);
 
 private:
-    void LogLine(ELogDestination logDestination, const char* format, ...) const;
+    void WriteMinidump();
 
-    bool InitSymbols(ELogDestination logDestination);
-    void DoneSymbols();
-
-    void LogCallStack(ELogDestination logDestination, const std::vector<string>& funcs);
-    int  UpdateCallStack(EXCEPTION_POINTERS* pex);
-    void FillStackTrace(int maxStackEntries = MAX_DEBUG_STACK_ENTRIES, HANDLE hThread = GetCurrentThread());
-    void LogExceptionInfo(EXCEPTION_POINTERS* pex);
-
-    void WriteMinidump(EXCEPTION_POINTERS* pex);
-
-private:
-    //! Limits the maximal number of functions in call stack.
-    static const int MAX_DEBUG_STACK_ENTRIES = 30;
-
-    int m_nSkipNumFunctions;
-    std::vector<string> m_functions;
-
-    char m_excModule[MAX_PATH];
-
-    bool m_bSymbols;
-
-    HANDLE m_hThread;
-    CONTEXT m_context;
-
-    void* m_prevExceptionHandler;
+    char m_dumpFilename[MAX_PATH];
 };
 
 #endif //WIN32

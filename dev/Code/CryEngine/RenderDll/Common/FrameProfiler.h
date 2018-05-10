@@ -15,8 +15,6 @@
 // and displaying their different average statistics.
 // For usage, see the bottom of the file
 
-#ifndef CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_FRAMEPROFILER_H
-#define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_FRAMEPROFILER_H
 #pragma once
 
 #include <CryProfileMarker.h>
@@ -154,7 +152,12 @@
 #if defined(ENABLE_FRAME_PROFILER_LABELS)
 
 // marcos to implement the platform differences for pushing GPU Markers
-    #if   defined(OPENGL)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(FrameProfiler_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #elif defined(OPENGL)
         #define PROFILE_LABEL_GPU(_NAME) DXGLProfileLabel(_NAME);
         #define PROFILE_LABEL_PUSH_GPU(_NAME) DXGLProfileLabelPush(_NAME);
         #define PROFILE_LABEL_POP_GPU(_NAME) DXGLProfileLabelPop(_NAME);
@@ -252,5 +255,3 @@ namespace NCryProfile
 #else
     #define FUNCTION_PROFILER_RENDER_FLAT
 #endif
-
-#endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_FRAMEPROFILER_H

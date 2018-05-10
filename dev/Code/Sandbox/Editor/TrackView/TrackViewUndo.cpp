@@ -22,9 +22,10 @@
 #include "TrackViewTrack.h"
 #include "Objects/ObjectLayer.h"
 #include "Objects/EntityObject.h"
-#include "Maestro/Types/AnimNodeType.h"
-#include "Maestro/Types/AnimParamType.h"
-#include "Maestro/Types/SequenceType.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/SequenceType.h>
+#include <AnimationContext.h>
 
 //////////////////////////////////////////////////////////////////////////
 CUndoSequenceSettings::CUndoSequenceSettings(CTrackViewSequence* pSequence)
@@ -42,6 +43,12 @@ void CUndoSequenceSettings::Undo(bool bUndo)
 
     m_pSequence->SetTimeRange(m_oldTimeRange);
     m_pSequence->SetFlags(m_oldFlags);
+
+    CAnimationContext* animationContext = GetIEditor()->GetAnimation();
+    if (nullptr != animationContext)
+    {
+        animationContext->UpdateTimeRange();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -49,6 +56,12 @@ void CUndoSequenceSettings::Redo()
 {
     m_pSequence->SetTimeRange(m_newTimeRange);
     m_pSequence->SetFlags(m_newFlags);
+
+    CAnimationContext* animationContext = GetIEditor()->GetAnimation();
+    if (nullptr != animationContext)
+    {
+        animationContext->UpdateTimeRange();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

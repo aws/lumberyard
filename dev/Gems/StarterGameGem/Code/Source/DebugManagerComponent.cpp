@@ -84,7 +84,7 @@ namespace StarterGameGem
 		AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
 		if (serializeContext)
 		{
-			serializeContext->Class<DebugManagerComponent>()
+			serializeContext->Class<DebugManagerComponent, AZ::Component>()
 				->Version(1)
 			;
 

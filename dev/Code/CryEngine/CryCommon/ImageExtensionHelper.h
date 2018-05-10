@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_IMAGEEXTENSIONHELPER_H
-#define CRYINCLUDE_CRYCOMMON_IMAGEEXTENSIONHELPER_H
 #pragma once
 
 #include <ITexture.h>
@@ -21,7 +19,21 @@
 #include <Cry_Vector3.h>
 #include <Cry_Color.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define IMAGEEXTENSIONHELPER_H_SECTION_1 1
+#define IMAGEEXTENSIONHELPER_H_SECTION_2 2
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_1
+#include AZ_RESTRICTED_FILE(ImageExtensionHelper_h, AZ_RESTRICTED_PLATFORM)
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_2
+#include AZ_RESTRICTED_FILE(ImageExtensionHelper_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 #ifndef MAKEFOURCC
     #define MAKEFOURCC(ch0, ch1, ch2, ch3)                \
@@ -2197,5 +2209,3 @@ namespace CImageExtensionHelper
         return NameForTextureFormat(nFormat);
     }
 };
-
-#endif // CRYINCLUDE_CRYCOMMON_IMAGEEXTENSIONHELPER_H

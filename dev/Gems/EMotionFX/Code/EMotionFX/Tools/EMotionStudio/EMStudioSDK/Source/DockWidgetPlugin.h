@@ -15,7 +15,6 @@
 
 // include MCore
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/UnicodeString.h>
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
 #include <MysticQt/Source/DockWidget.h>
@@ -54,7 +53,7 @@ namespace EMStudio
 
         virtual QSize GetInitialWindowSize() const                          { return QSize(500, 650); }
 
-        virtual bool GetHasWindowWithObjectName(const MCore::String& objectName) override;
+        virtual bool GetHasWindowWithObjectName(const AZStd::string& objectName) override;
 
         MysticQt::DockWidget* GetDockWidget();
 

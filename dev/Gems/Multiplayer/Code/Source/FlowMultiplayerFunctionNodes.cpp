@@ -23,6 +23,20 @@
 #include "Multiplayer/MultiplayerUtils.h"
 
 
+#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#undef AZ_RESTRICTED_SECTION
+#define FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_1 1
+#define FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_2 2
+#define FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_LANPATH 3
+#define FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_FLOWNODES 4
+#define FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_REGISTERNODES 5
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_1
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
 
 #include <GameLift/GameLiftBus.h>
@@ -51,7 +65,16 @@ namespace
     const char* g_multiplayerConnectLANNodePath = "Multiplayer:Functions:LAN:Connect";
     const char* g_multiplayerListServersLANNodePath = "Multiplayer:Functions:LAN:ListServers";
 
-
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_LANPATH
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_LANPATH
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
 }
 
 namespace FlowMultiplayerNodes
@@ -803,11 +826,19 @@ public:
                             {
                                 m_search = StartGridSearch();
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_2
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #else
                                 GridMate::LANSearchParams searchParams;
                                 searchParams.m_serverPort = gEnv->pConsole->GetCVar("cl_serverport")->GetIVal() + 1;
                                 searchParams.m_listenPort = 0;
 
                                 EBUS_EVENT_ID_RESULT(m_search,gridmate,GridMate::LANSessionServiceBus,StartGridSearch,searchParams);
+    #endif
                                 if (m_search)
                                 {
                                     BusConnect(gridmate);
@@ -1015,8 +1046,16 @@ public:
 };
 // </LAN>
 
-
-
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_FLOWNODES
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_FLOWNODES
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
 
 // GameLift Flow Nodes
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
@@ -1076,7 +1115,16 @@ REGISTER_FLOW_NODE(g_multiplayerHostLANNodePath,LANFlowNode_Host);
 REGISTER_FLOW_NODE(g_multiplayerConnectLANNodePath,LANFlowNode_Connect);
 REGISTER_FLOW_NODE(g_multiplayerListServersLANNodePath,LANFlowNode_ListServers);
 
-
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XBONE)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_REGISTERNODES
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+#endif
+#if defined(TOOLS_SUPPORT_PS4)
+#define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_REGISTERNODES
+#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+#endif
+#endif
 
 REGISTER_FLOW_NODE(g_multiplayerListServersResultNodePath, FlowNode_ListServersResult);
 REGISTER_FLOW_NODE(g_multiplayerSetOwnerNodePath, FlowNode_SetOwner);

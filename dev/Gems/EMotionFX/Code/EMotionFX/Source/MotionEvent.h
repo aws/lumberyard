@@ -14,8 +14,7 @@
 
 // include the required headers
 #include "EMotionFXConfig.h"
-#include <MCore/Source/UnicodeString.h>
-
+#include <AzCore/std/string/string.h>
 
 namespace EMotionFX
 {
@@ -117,7 +116,7 @@ namespace EMotionFX
          * @param eventTrack The motion event track where this event belongs to.
          * @result The string which contains the parameters for this event, for example "Footstep.wav".
          */
-        const MCore::String& GetParameterString(MotionEventTrack* eventTrack) const;
+        const AZStd::string& GetParameterString(MotionEventTrack* eventTrack) const;
 
         /**
          * Set the start time value of the event, which is when the event should be processed.

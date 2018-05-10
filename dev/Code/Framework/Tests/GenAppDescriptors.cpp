@@ -10,7 +10,7 @@
 *
 */
 
-#include "TestTypes.h"
+#include <Tests/TestTypes.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/ObjectStream.h>
@@ -90,6 +90,7 @@ namespace UnitTest
             SerializeContext serializeContext;
             AZ::ComponentApplication::Descriptor::Reflect(&serializeContext, &app);
             AZ::Entity::Reflect(&serializeContext);
+            DynamicModuleDescriptor::Reflect(&serializeContext);
 
             AZ::Entity dummySystemEntity(AZ::SystemEntityId, "SystemEntity");
 

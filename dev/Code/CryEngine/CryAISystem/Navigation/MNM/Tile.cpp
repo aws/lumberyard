@@ -358,7 +358,8 @@ namespace MNM
         SAuxGeomRenderFlags renderFlags(oldFlags);
 
         renderFlags.SetAlphaBlendMode(e_AlphaBlended);
-        renderFlags.SetDepthWriteFlag(e_DepthWriteOff);
+        renderFlags.SetDepthTestFlag(e_DepthTestOn);
+        renderFlags.SetDepthWriteFlag(e_DepthWriteOn);
 
         renderAuxGeom->SetRenderFlags(renderFlags);
 

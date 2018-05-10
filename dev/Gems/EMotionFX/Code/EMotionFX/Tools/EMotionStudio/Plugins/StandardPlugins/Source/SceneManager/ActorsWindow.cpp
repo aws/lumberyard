@@ -11,7 +11,6 @@
 */
 
 #include "ActorsWindow.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "SceneManagerPlugin.h"
 #include <MCore/Source/CommandGroup.h>
 #include <EMotionFX/CommandSystem/Source/ActorCommands.h>
@@ -396,13 +395,13 @@ namespace EMStudio
             {
                 QTreeWidgetItem* child = item->child(i);
 
-                mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(child), (item->checkState(0) == Qt::Checked ? "true" : "false"));
+                mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(child), AZStd::to_string(item->checkState(0) == Qt::Checked).c_str());
                 commandGroup.AddCommandString(mTempString);
             }
         }
         else
         {
-            mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(item), (item->checkState(0) == Qt::Checked ? "true" : "false"));
+            mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", GetIDFromTreeItem(item), AZStd::to_string(item->checkState(0) == Qt::Checked).c_str());
             commandGroup.AddCommandString(mTempString);
         }
 
@@ -582,16 +581,6 @@ namespace EMStudio
             QAction* saveAction = menu.addAction("Save Selected Actors");
             saveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.png"));
             connect(saveAction, SIGNAL(triggered()), GetMainWindow(), SLOT(OnFileSaveSelectedActors()));
-
-            if (actorSelected)
-            {
-                menu.addSeparator();
-
-                QAction* scaleAction = menu.addAction("Scale Actor Data");
-                scaleAction->setToolTip("<b>Scale Actor Data:</b><br>This will scale all internal data of the actor. This is different from scaling a transform as this actually will scale all vertex data, morph target data, bind pose transforms, bounding volumes, etc.");
-                scaleAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Rendering/Scale.png"));
-                connect(scaleAction, SIGNAL(triggered()), GetMainWindow(), SLOT(OnScaleSelectedActors()));
-            }
         }
 
         // show the menu at the given position
@@ -681,7 +670,7 @@ namespace EMStudio
             // extract the id from the given item
             const uint32 id = GetIDFromTreeItem(item);
 
-            mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", id, (isVisible ? "true" : "false"));
+            mTempString = AZStd::string::format("AdjustActorInstance -actorInstanceId %i -doRender %s", id, AZStd::to_string(isVisible).c_str());
             commandGroup.AddCommandString(mTempString);
         }
 
@@ -703,7 +692,7 @@ namespace EMStudio
         {
             return MCORE_INVALIDINDEX32;
         }
-        return FromQtString(item->text(1)).ToInt();
+        return AzFramework::StringFunc::ToInt(FromQtString(item->text(1)).c_str());
     }
 } // namespace EMStudio
 

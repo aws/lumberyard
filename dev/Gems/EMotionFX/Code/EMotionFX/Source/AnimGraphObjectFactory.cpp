@@ -28,6 +28,7 @@
 #include "BlendTreeBlend2Node.h"
 #include "BlendTreeBlendNNode.h"
 #include "BlendTreePoseSwitchNode.h"
+#include "BlendTreeFloatConstantNode.h"
 #include "BlendTreeFloatMath1Node.h"
 #include "BlendTreeFloatMath2Node.h"
 #include "BlendTreeFloatSwitchNode.h"
@@ -35,6 +36,7 @@
 #include "BlendTreeBoolLogicNode.h"
 #include "BlendTreeSmoothingNode.h"
 #include "BlendTreeMaskNode.h"
+#include "BlendTreeMorphTargetNode.h"
 #include "BlendTreeMotionFrameNode.h"
 #include "BlendTreeVector3Math1Node.h"
 #include "BlendTreeVector3Math2Node.h"
@@ -50,6 +52,7 @@
 #include "BlendTreeAccumTransformNode.h"
 #include "BlendTreeRangeRemapperNode.h"
 #include "BlendTreeDirectionToWeightNode.h"
+#include "BlendTreeMirrorPoseNode.h"
 #include "BlendTree.h"
 #include "AnimGraphStateMachine.h"
 #include "AnimGraphExitNode.h"
@@ -62,13 +65,6 @@
 #include "AnimGraphTagCondition.h"
 #include "AnimGraphVector2Condition.h"
 #include "AnimGraphPlayTimeCondition.h"
-#include "BlendTreeMirrorPoseNode.h"
-
-// in production
-//#include "AnimGraphMotionFieldNode.h"
-//#include "BlendTreeRetargetPoseNode.h"
-//#include "BlendTreeFootPlantIKNode.h"
-//#include "AnimGraphReferenceNode.h"
 
 
 namespace EMotionFX
@@ -103,6 +99,7 @@ namespace EMotionFX
         RegisterObjectType(BlendTreeBlend2Node::Create(nullptr));
         RegisterObjectType(BlendTreeBlendNNode::Create(nullptr));
         RegisterObjectType(BlendTreeParameterNode::Create(nullptr));
+        RegisterObjectType(BlendTreeFloatConstantNode::Create(nullptr));
         RegisterObjectType(BlendTreeFloatMath1Node::Create(nullptr));
         RegisterObjectType(BlendTreeFloatMath2Node::Create(nullptr));
         RegisterObjectType(BlendTreeFloatConditionNode::Create(nullptr));
@@ -126,16 +123,13 @@ namespace EMotionFX
         RegisterObjectType(AnimGraphEntryNode::Create(nullptr));
         RegisterObjectType(BlendTreeDirectionToWeightNode::Create(nullptr));
         RegisterObjectType(BlendTreeMirrorPoseNode::Create(nullptr));
-        //RegisterObjectType( BlendTreeRetargetPoseNode::Create(nullptr) );
-        //RegisterObjectType( AnimGraphReferenceNode::Create(nullptr) );
-        //RegisterObjectType( AnimGraphMotionFieldNode::Create(nullptr) );
+        RegisterObjectType(BlendTreeMorphTargetNode::Create(nullptr));
 
         // controller nodes
         RegisterObjectType(BlendTreeTwoLinkIKNode::Create(nullptr));
         RegisterObjectType(BlendTreeLookAtNode::Create(nullptr));
         RegisterObjectType(BlendTreeTransformNode::Create(nullptr));
         RegisterObjectType(BlendTreeAccumTransformNode::Create(nullptr));
-        //RegisterObjectType( BlendTreeFootPlantIKNode::Create(nullptr) );
 
         // register transition nodes
         RegisterObjectType(AnimGraphStateTransition::Create(nullptr));
@@ -279,10 +273,6 @@ namespace EMotionFX
         // register the unique data to the pool
         GetEMotionFX().GetAnimGraphManager()->GetObjectDataPool().Register(object->GetType(), 32, AnimGraphObjectDataPool::POOLTYPE_DYNAMIC, 128);
 
-        // scale the attributes (min, max, default) while assuming they are inside the nodes initialized in meters
-        const float scaleFactor = (float)MCore::Distance::GetConversionFactor(MCore::Distance::UNITTYPE_METERS, GetEMotionFX().GetUnitType());
-        object->Scale(scaleFactor);
-
         return true;
     }
 
@@ -384,7 +374,7 @@ namespace EMotionFX
             uuid = azrtti_typeid(object);
             uuidString = uuid.ToString<AZStd::string>();
 
-            AZ_Printf("EMotionFX", "    + Object #%d: Name='%s' UUID='%s'", i+1, object->GetPaletteName(), uuidString.c_str());
+            AZ_Printf("EMotionFX", "    + Object #%d: Name='%s' UUID='%s'", i + 1, object->GetPaletteName(), uuidString.c_str());
         }
     }
 } // namespace EMotionFX

@@ -38,7 +38,7 @@ namespace CommandSystem
 
 
     // execute
-    bool CommandRecorderClear::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRecorderClear::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
@@ -48,7 +48,7 @@ namespace CommandSystem
 
 
     // undo the command
-    bool CommandRecorderClear::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandRecorderClear::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);

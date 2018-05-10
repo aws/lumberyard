@@ -50,7 +50,7 @@ public:
     }
 
 protected:
-    MCore::String   mText;
+    AZStd::string   mText;
     float           mFontSize;
     int32           mX;
     int32           mY;
@@ -208,11 +208,11 @@ public:
 
         if (mType == SLIDERTYPE_INT)
         {
-            mValueText.Format("%.0f", mValue);
+            mValueText = AZStd::string::format("%.0f", mValue);
         }
         else
         {
-            mValueText.Format("%.1f", mValue);
+            mValueText = AZStd::string::format("%.1f", mValue);
         }
 
         OnChanged();
@@ -231,7 +231,7 @@ private:
     // on slider changed handling callback
     void (* mOnChangedCallback)(Slider*, float);
 
-    MCore::String   mValueText;
+    AZStd::string   mValueText;
     SliderType      mType;
     float           mValue;
     float           mMinValue;

@@ -11,8 +11,6 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYCOMMON_BUCKETALLOCATORPOLICY_H
-#define CRYINCLUDE_CRYCOMMON_BUCKETALLOCATORPOLICY_H
 #pragma once
 
 #ifdef WIN32
@@ -27,7 +25,7 @@
 
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(BucketAllocatorPolicy_h)
+#include AZ_RESTRICTED_FILE(BucketAllocatorPolicy_h, AZ_RESTRICTED_PLATFORM)
 #else
 #if defined(WIN32)
 #define BUCKETALLOCATORPOLICY_H_TRAIT_USE_INTERLOCKED_FREELISTHEADER 1
@@ -278,5 +276,3 @@ namespace BucketAllocatorDetail
         }
     };
 }
-
-#endif // CRYINCLUDE_CRYCOMMON_BUCKETALLOCATORPOLICY_H

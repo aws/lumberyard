@@ -72,9 +72,14 @@ public:
     void AddObject(CBaseObject* pObject) { m_objects.push_back(pObject); }
     void ClearObjects() { m_objects.clear(); }
     void Reserve(int nCount) { m_objects.reserve(nCount); }
+
+    /// Checksum is used as a dirty flag.  
+    unsigned int GetSerialNumber() { return m_serialNumber; }
+    void SetSerialNumber(unsigned int serialNumber) { m_serialNumber = serialNumber; }
 private:
     //! List of objects that was displayed at last frame.
     std::vector<_smart_ptr<CBaseObject> > m_objects;
+    unsigned int m_serialNumber = 0;
 };
 
 /*!
@@ -93,8 +98,8 @@ public:
 
     void RegisterObjectClasses();
 
-    CBaseObject* NewObject(CObjectClassDesc* cls, CBaseObject* prev = 0, const QString& file = "");
-    CBaseObject* NewObject(const QString& typeName, CBaseObject* prev = 0, const QString& file = "");
+    CBaseObject* NewObject(CObjectClassDesc* cls, CBaseObject* prev = 0, const QString& file = "", const char* newObjectName = nullptr);
+    CBaseObject* NewObject(const QString& typeName, CBaseObject* prev = 0, const QString& file = "", const char* newEntityName = nullptr);
 
     void    DeleteObject(CBaseObject* obj);
     void    DeleteSelection(CSelectionGroup* pSelection);
@@ -408,8 +413,12 @@ private:
 
     //! Array of currently visible objects.
     TBaseObjects m_visibleObjects;
-    bool m_bVisibleObjectValid;
-    unsigned int m_lastHideMask;
+    
+    // this number changes whenever visibility is invalidated.  Viewports can use it to keep track of whether they need to recompute object
+    // visibility.
+    unsigned int m_visibilitySerialNumber = 1; 
+    unsigned int m_lastComputedVisibility = 0; // when the object manager itself last updated visibility (since it also has a cache)
+    int m_lastHideMask = 0;
 
     float m_maxObjectViewDistRatio;
 

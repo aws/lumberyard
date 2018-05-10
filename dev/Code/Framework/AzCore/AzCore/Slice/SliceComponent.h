@@ -387,7 +387,7 @@ namespace AZ
 
             bool m_isInstantiated;
 
-            SliceComponent* m_component;
+            SliceComponent* m_component = nullptr;
 
             SliceInstances m_instances; ///< Instances of the slice in our slice reference
 
@@ -683,6 +683,16 @@ namespace AZ
         /// Utility function to apply a EntityIdToEntityIdMap to a EntityIdToEntityIdMap (the mapping will override values in the destination)
         static void ApplyEntityMapId(EntityIdToEntityIdMap& destination, const EntityIdToEntityIdMap& mapping);
 
+        /// Utility function to add an assetId to the cycle checker vector
+        void PushInstantiateCycle(const AZ::Data::AssetId& assetId);
+
+        /// Utility function to check if the given assetId would cause an instantiation cycle, and if so
+        /// output the chain of slices that causes the cycle.
+        bool CheckContainsInstantiateCycle(const AZ::Data::AssetId& assetId);
+        
+        /// Utility function to pop an assetId to the cycle checker vector (also checks to make sure its at the tail of it and clears it)
+        void PopInstantiateCycle(const AZ::Data::AssetId& assetId);
+
         SliceAsset* m_myAsset;   ///< Pointer to the asset we belong to, note this is just a reference stored by the handler, we don't need Asset<SliceAsset> as it's not a reference to another asset.
 
         SerializeContext* m_serializeContext;
@@ -705,6 +715,14 @@ namespace AZ
         AZ::u32 m_filterFlags; ///< Asset load filter flags to apply for internal loads during data patching
 
         AZStd::recursive_mutex m_instantiateMutex; ///< Used to prevent multiple threads from trying to instantiate the slices at once
+        
+        typedef AZStd::vector<AZ::Data::AssetId> AssetIdVector;
+
+        // note that this vector provides a "global" view of instantiation occurring and is only accessed while m_instantiateMutex is locked.
+        // in addition, it only temporarily contains data - during instantiation it is the stack of assetIds that is in the current branch
+        // of instantiation, and when we finish instantiation and return from the recursive call it is emptied and the memory is freed, so
+        // there should be no risk of leaking it or having it survive beyond the allocator's existence.
+        static AssetIdVector m_instantiateCycleChecker; ///< Used to prevent cyclic dependencies
     };
 
     /// @deprecated Use SliceComponent.

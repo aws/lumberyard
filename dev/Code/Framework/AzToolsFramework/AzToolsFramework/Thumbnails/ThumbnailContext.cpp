@@ -44,14 +44,16 @@ namespace AzToolsFramework
                     if (thumbnail->GetState() == Thumbnail::State::Unloaded)
                     {
                         // listen to the loading signal, so the anyone using it will update loading animation
-                        connect(m_loadingThumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::Updated);
+                        connect(m_loadingThumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::ThumbnailUpdatedSignal);
                         // once the thumbnail is loaded, disconnect it from loading thumbnail
                         connect(thumbnail.data(), &Thumbnail::Updated, [this, key, thumbnail]()
                             {
-                                disconnect(m_loadingThumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::Updated);
-                                thumbnail.data()->disconnect();
-                                connect(thumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::Updated);
-                                Q_EMIT key->Updated();
+                                disconnect(m_loadingThumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::ThumbnailUpdatedSignal);
+                                thumbnail->disconnect();
+                                connect(thumbnail.data(), &Thumbnail::Updated, key.data(), &ThumbnailKey::ThumbnailUpdatedSignal);
+                                connect(key.data(), &ThumbnailKey::UpdateThumbnailSignal, thumbnail.data(), &Thumbnail::Update);
+                                key->m_ready = true;
+                                Q_EMIT key->ThumbnailUpdatedSignal();
                             });
                         thumbnail->Load();
                     }

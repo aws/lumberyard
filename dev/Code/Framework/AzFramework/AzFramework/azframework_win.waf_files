@@ -18,7 +18,8 @@
         ],
         "Input/Devices/Keyboard": [
             "Input/Devices/Keyboard/InputDeviceKeyboard_win.cpp",
-            "Input/Devices/Keyboard/InputDeviceKeyboard_win_common.inl"
+            "Input/Devices/Keyboard/InputDeviceKeyboard_win_common.inl",
+            "Input/Devices/Keyboard/InputDeviceKeyboard_win_scancodes.inl"
         ],
         "Input/Devices/Motion": [
             "Input/Devices/Motion/InputDeviceMotion_none.cpp"

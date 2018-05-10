@@ -1,6 +1,6 @@
 {
     "name": "p4api",
-    "source": "@ROOT@/Code/SDKs/p4api",
+    "source": "@3P:p4api@",
     "description": "Perforce API Library",
     "aliases": {
         "lib_names": [
@@ -37,6 +37,7 @@
                 "${lib_names}.lib"
             ]
         },
+        "win_x64_vs2017": "@win_x64_vs2015",
         "darwin_x64": {
             "libpath": [
                 "macos"

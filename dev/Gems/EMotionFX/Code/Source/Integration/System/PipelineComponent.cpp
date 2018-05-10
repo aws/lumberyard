@@ -15,6 +15,7 @@
 #include <Integration/System/PipelineComponent.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
+#include <Integration/System/SystemCommon.h>
 
 
 namespace EMotionFX
@@ -31,6 +32,11 @@ namespace EMotionFX
         {
             if (!m_EMotionFXInited)
             {
+                // Start EMotionFX allocator.
+                EMotionFX::Integration::EMotionFXAllocator::Descriptor allocatorDescriptor;
+                allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+                AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Create();
+
                 MCore::Initializer::InitSettings coreSettings;
                 coreSettings.mNumThreads = 0;
 
@@ -64,6 +70,9 @@ namespace EMotionFX
                 m_commandManager.reset();
                 EMotionFX::Initializer::Shutdown();
                 MCore::Initializer::Shutdown();
+
+                // Memory leaks will be reported.
+                AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Destroy();
             }
         }
 
@@ -72,7 +81,7 @@ namespace EMotionFX
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<PipelineComponent>()->Version(1);
+                serializeContext->Class<PipelineComponent, AZ::SceneAPI::SceneCore::SceneSystemComponent>()->Version(1);
             }
         }
     } // Pipeline

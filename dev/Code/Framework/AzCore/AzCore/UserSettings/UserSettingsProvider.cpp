@@ -84,8 +84,10 @@ namespace AZ
             {
                 IO::SystemFileStream settingsFileStream(&settingsFile, false);
                 ObjectStream::ClassReadyCB readyCB(AZStd::bind(&UserSettingsProvider::OnSettingLoaded, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3));
-                ObjectStream::FilterDescriptor filter(nullptr, ObjectStream::FilterFlags::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
-                settingsLoaded = ObjectStream::LoadBlocking(&settingsFileStream, *sc, readyCB, filter);
+               
+                // do not try to load assets during User Settings Provider bootup - we are still initializing the application!
+                // in addition, the file may contain settings we don't understand, from other applications - don't error on those.
+                settingsLoaded = ObjectStream::LoadBlocking(&settingsFileStream, *sc, readyCB, ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
                 settingsFile.Close();
             }
         }

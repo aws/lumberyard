@@ -105,6 +105,10 @@ namespace AzToolsFramework
     Components::EditorComponentDescriptor* GetEditorComponentDescriptor(const AZ::Component* component);
     Components::EditorComponentBase* GetEditorComponent(AZ::Component* component);
 
+    /// Return true if the editor should show this component to users,
+    /// false if the component should be hidden from users.
+    bool ShouldInspectorShowComponent(const AZ::Component* component);
+
     AZ::EntityId GetEntityIdForSortInfo(const AZ::EntityId parentId);
 
     void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, bool forceAddToBack = false);

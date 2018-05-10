@@ -56,12 +56,10 @@ namespace PhysX
 
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
-            dependent.push_back(AZ_CRC("ColliderService", 0x902d4e93));
+            dependent.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
         }
 
     protected:
-        // ColliderComponentEvents
-        //void OnColliderChanged() override;
 
         // AZ::Component
         void Init() override;
@@ -88,6 +86,7 @@ namespace PhysX
         float GetSleepThreshold() override;
         void SetSleepThreshold(float threshold) override;
         AZ::Aabb GetAabb() override;
+        Physics::RigidBody* GetRigidBody() override;
 
         // EntityPhysXEvents
         void OnPostStep() override;

@@ -24,8 +24,9 @@ def build(bld):
                            'QT5GUI',
                            'QT5WIDGETS'],
         disable_pch     = True,
-        darwin_rpath    = ['@executable_path/../BinMac64/qtlibs/lib', 
+        darwin_rpath    = ['@executable_path/qtlibs/lib',
                            '@executable_path'],
+        win_features    = ['crcfix'],
         features        = ['link_running_program']
     )
 

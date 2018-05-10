@@ -40,6 +40,11 @@ namespace ScriptCanvas
             AddSlot(UnaryOperator::k_evaluateName, "Signal to perform the evaluation when desired.", ScriptCanvas::SlotType::ExecutionIn);
         }
 
+        SlotId UnaryOperator::GetOutputSlotId() const
+        {
+            return GetSlotId(k_resultName);
+        }
+
         void UnaryOperator::Reflect(AZ::ReflectContext* reflection)
         {
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
@@ -52,7 +57,6 @@ namespace ScriptCanvas
                 {
                     editContext->Class<UnaryOperator>("UnaryOperator", "UnaryOperator")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
             }
@@ -62,11 +66,13 @@ namespace ScriptCanvas
         {
         }
 
-        void UnaryExpression::OnInputSignal(const SlotId& slot)
+        void UnaryExpression::OnInputSignal(const SlotId&)
         {
-            AZ_Assert(m_outputSlotIndex != -1, "m_outputSlotIndex was not configured to the index of the result slot");
-            const Datum output = Evaluate(m_inputData[k_datumIndex]);
-            PushOutput(output, m_slotContainer.m_slots[m_outputSlotIndex]);
+            const Datum output = Evaluate(*GetDatumByIndex(k_datumIndex));
+            if (auto slot = GetSlot(GetOutputSlotId()))
+            {
+                PushOutput(output, *slot);
+            }
 
             const bool* value = output.GetAs<bool>();
             if (value && *value)
@@ -83,9 +89,7 @@ namespace ScriptCanvas
         {
             AddInputDatumSlot(UnaryExpression::k_valueName, "", AZStd::move(Data::Type::Boolean()), Datum::eOriginality::Original);
 
-            SlotId slotId = AddOutputTypeSlot(UnaryExpression::k_resultName, "", Data::Type::Boolean(), OutputStorage::Optional);
-            const Slot* slot{};
-            GetValidSlotIndex(slotId, slot, m_outputSlotIndex);
+            AddOutputTypeSlot(UnaryExpression::k_resultName, "", Data::Type::Boolean(), OutputStorage::Optional);
 
             UnaryOperator::ConfigureSlots();
 
@@ -108,7 +112,6 @@ namespace ScriptCanvas
                 {
                     editContext->Class<UnaryExpression>("UnaryExpression", "UnaryExpression")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
                 }
             }

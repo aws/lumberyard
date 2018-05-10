@@ -61,7 +61,7 @@ namespace EMStudio
         mPresetComboBox             = nullptr;
         mInterfaceTimerID           = MCORE_INVALIDINDEX32;
         mGameControllerTimerID      = MCORE_INVALIDINDEX32;
-        mString.Reserve(4096);
+        mString.reserve(4096);
     #ifdef HAS_GAME_CONTROLLER
         mGameController         = nullptr;
     #endif
@@ -188,7 +188,7 @@ namespace EMStudio
     {
     #ifdef HAS_GAME_CONTROLLER
         // this will call ReInit();
-        if (mGameController->GetDeviceNameString().GetIsEmpty() == false && mGameControllerComboBox->count() > 1)
+        if (mGameController->GetDeviceNameString().empty() == false && mGameControllerComboBox->count() > 1)
         {
             mGameControllerComboBox->setCurrentIndex(1);
         }
@@ -232,7 +232,7 @@ namespace EMStudio
 
         // add the gamepad in case it is valid and the device name is not empty
     #ifdef HAS_GAME_CONTROLLER
-        if (mGameController->GetIsValid() && mGameController->GetDeviceNameString().GetIsEmpty() == false)
+        if (mGameController->GetIsValid() && mGameController->GetDeviceNameString().empty() == false)
         {
             mGameControllerComboBox->addItem(mGameController->GetDeviceName());
         }
@@ -355,9 +355,9 @@ namespace EMStudio
             }
 
             // add the parameter name to the layout
-            MCore::String labelString = attributeSettings->GetName();
+            AZStd::string labelString = attributeSettings->GetName();
             labelString += ":";
-            QLabel* label = new QLabel(labelString.AsChar());
+            QLabel* label = new QLabel(labelString.c_str());
             label->setToolTip(attributeSettings->GetDescription());
             label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             mParameterGridLayout->addWidget(label, i, 0);
@@ -488,8 +488,8 @@ namespace EMStudio
             MCORE_ASSERT(settingsInfo);
 
             // add the button name to the layout
-            mString.Format("Button %s%d", (i < 10) ? "0" : "", i);
-            QLabel* nameLabel = new QLabel(mString.AsChar());
+            mString = AZStd::string::format("Button %s%d", (i < 10) ? "0" : "", i);
+            QLabel* nameLabel = new QLabel(mString.c_str());
             nameLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             mButtonGridLayout->addWidget(nameLabel, i, 0);
 
@@ -566,8 +566,8 @@ namespace EMStudio
         previewGridLayout->addLayout(deadZoneLayout, realTimePreviewLabelCounter + 1, 1);
 
         mDeadZoneSlider->setValue(mGameController->GetDeadZone() * 100);
-        mString.Format("%.2f", mGameController->GetDeadZone());
-        mDeadZoneValueLabel->setText(mString.AsChar());
+        mString = AZStd::string::format("%.2f", mGameController->GetDeadZone());
+        mDeadZoneValueLabel->setText(mString.c_str());
         connect(mDeadZoneSlider, SIGNAL(valueChanged(int)), this, SLOT(OnDeadZoneSliderChanged(int)));
     #endif
 
@@ -677,8 +677,8 @@ namespace EMStudio
     {
     #ifdef HAS_GAME_CONTROLLER
         mGameController->SetDeadZone(value * 0.01f);
-        mString.Format("%.2f", value * 0.01f);
-        mDeadZoneValueLabel->setText(mString.AsChar());
+        mString = AZStd::string::format("%.2f", value * 0.01f);
+        mDeadZoneValueLabel->setText(mString.c_str());
     #else
         MCORE_UNUSED(value);
     #endif
@@ -827,9 +827,9 @@ namespace EMStudio
 
             MysticQt::LinkWidget* linkWidget = new MysticQt::LinkWidget("Select node");
             linkWidget->setProperty("ButtonIndex", buttonIndex);
-            if (settingsInfo->mString.GetIsEmpty() == false)
+            if (settingsInfo->mString.empty() == false)
             {
-                linkWidget->setText(settingsInfo->mString.AsChar());
+                linkWidget->setText(settingsInfo->mString.c_str());
             }
 
             connect(linkWidget, SIGNAL(clicked()), this, SLOT(OnSelectNodeButtonClicked()));
@@ -868,7 +868,7 @@ namespace EMStudio
             comboBox->setProperty("ButtonIndex", buttonIndex);
 
             // select the correct parameter
-            int comboIndex = comboBox->findText(settingsInfo->mString.AsChar());
+            int comboIndex = comboBox->findText(settingsInfo->mString.c_str());
             if (comboIndex != -1)
             {
                 comboBox->setCurrentIndex(comboIndex);
@@ -965,14 +965,14 @@ namespace EMStudio
         EMotionFX::AnimGraphGameControllerSettings::ButtonInfo* settingsInfo = activePreset->FindButtonInfo(buttonIndex);
         MCORE_ASSERT(settingsInfo);
 
-        const uint32 parameterIndex = mAnimGraph->FindParameterIndex(FromQtString(combo->currentText()).AsChar());
+        const uint32 parameterIndex = mAnimGraph->FindParameterIndex(FromQtString(combo->currentText()).c_str());
         if (parameterIndex != MCORE_INVALIDINDEX32)
         {
             settingsInfo->mString = mAnimGraph->GetParameter(parameterIndex)->GetName();
         }
         else
         {
-            settingsInfo->mString.Clear();
+            settingsInfo->mString.clear();
         }
 
         // update the parameter window
@@ -1007,7 +1007,7 @@ namespace EMStudio
         settingsInfo->mMode = (EMotionFX::AnimGraphGameControllerSettings::ButtonMode)combo->currentIndex();
 
         // check if the button info is pointing to a correct parameter
-        if (mAnimGraph->FindParameter(settingsInfo->mString.AsChar()) == nullptr)
+        if (mAnimGraph->FindParameter(settingsInfo->mString.c_str()) == nullptr)
         {
             // find the first bool parameter
             const uint32 numParameters = mAnimGraph->GetNumParameters();
@@ -1034,14 +1034,14 @@ namespace EMStudio
         EMotionFX::AnimGraphGameControllerSettings* gameControllerSettings = mAnimGraph->GetGameControllerSettings();
 
         uint32 presetNumber = gameControllerSettings->GetNumPresets();
-        mString.Format("Preset %d", presetNumber);
-        while (gameControllerSettings->FindPresetIndexByName(mString.AsChar()) != MCORE_INVALIDINDEX32)
+        mString = AZStd::string::format("Preset %d", presetNumber);
+        while (gameControllerSettings->FindPresetIndexByName(mString.c_str()) != MCORE_INVALIDINDEX32)
         {
             presetNumber++;
-            mString.Format("Preset %d", presetNumber);
+            mString = AZStd::string::format("Preset %d", presetNumber);
         }
 
-        EMotionFX::AnimGraphGameControllerSettings::Preset* preset = EMotionFX::AnimGraphGameControllerSettings::Preset::Create(mString.AsChar());
+        EMotionFX::AnimGraphGameControllerSettings::Preset* preset = EMotionFX::AnimGraphGameControllerSettings::Preset::Create(mString.c_str());
         gameControllerSettings->AddPreset(preset);
 
         ReInit();
@@ -1097,17 +1097,17 @@ namespace EMStudio
 
         assert(sender()->inherits("QLineEdit"));
         QLineEdit* widget = qobject_cast<QLineEdit*>(sender());
-        MCore::String newValue;
+        AZStd::string newValue;
         FromQtString(widget->text(), &newValue);
 
         // get the currently selected preset
         uint32 presetIndex = mPresetComboBox->currentIndex();
 
-        uint32 newValueIndex = gameControllerSettings->FindPresetIndexByName(newValue.AsChar());
+        uint32 newValueIndex = gameControllerSettings->FindPresetIndexByName(newValue.c_str());
         if (newValueIndex == MCORE_INVALIDINDEX32)
         {
             EMotionFX::AnimGraphGameControllerSettings::Preset* preset = gameControllerSettings->GetPreset(presetIndex);
-            preset->SetName(newValue.AsChar());
+            preset->SetName(newValue.c_str());
             ReInit();
         }
     }
@@ -1119,7 +1119,7 @@ namespace EMStudio
         EMotionFX::AnimGraphGameControllerSettings* gameControllerSettings = mAnimGraph->GetGameControllerSettings();
 
         // check if there already is a preset with the currently entered name
-        uint32 presetIndex = gameControllerSettings->FindPresetIndexByName(FromQtString(text).AsChar());
+        uint32 presetIndex = gameControllerSettings->FindPresetIndexByName(FromQtString(text).c_str());
         if (presetIndex != MCORE_INVALIDINDEX32 && presetIndex != gameControllerSettings->GetActivePresetIndex())
         {
             GetManager()->SetWidgetAsInvalidInput(mPresetNameLineEdit);
@@ -1175,7 +1175,7 @@ namespace EMStudio
     #ifdef HAS_GAME_CONTROLLER
         if (paramInfo->mAttributeSettings->GetDefaultValue()->GetType() == MCore::AttributeFloat::TYPE_ID)
         {
-            const uint32 elementID = (GameController::Axis)mGameController->FindElemendIDByName(FromQtString(combo->currentText()).AsChar());
+            const uint32 elementID = (GameController::Axis)mGameController->FindElemendIDByName(FromQtString(combo->currentText()).c_str());
             if (elementID >= MCORE_INVALIDINDEX8)
             {
                 settingsInfo->mAxis = MCORE_INVALIDINDEX8;
@@ -1468,8 +1468,8 @@ namespace EMStudio
                     ParameterInfo* interfaceParamInfo = FindButtonInfoByAttributeInfo(attributeSettings);
                     if (interfaceParamInfo)
                     {
-                        mString.Format("%.2f", value);
-                        interfaceParamInfo->mValue->setText(mString.AsChar());
+                        mString = AZStd::string::format("%.2f", value);
+                        interfaceParamInfo->mValue->setText(mString.c_str());
                     }
                 }
             } // if it's a float attribute
@@ -1630,8 +1630,8 @@ namespace EMStudio
                     ParameterInfo* interfaceParamInfo = FindButtonInfoByAttributeInfo(attributeSettings);
                     if (interfaceParamInfo)
                     {
-                        mString.Format("%.2f, %.2f", value.GetX(), value.GetY());
-                        interfaceParamInfo->mValue->setText(mString.AsChar());
+                        mString = AZStd::string::format("%.2f, %.2f", value.GetX(), value.GetY());
+                        interfaceParamInfo->mValue->setText(mString.c_str());
                     }
                 }
             } // if it's a vector2 attribute
@@ -1647,7 +1647,7 @@ namespace EMStudio
             EMotionFX::AnimGraphGameControllerSettings::ButtonInfo* settingsInfo = activePreset->FindButtonInfo(i);
             MCORE_ASSERT(settingsInfo);
 
-            if (settingsInfo->mString.GetIsEmpty())
+            if (settingsInfo->mString.empty())
             {
                 continue;
             }
@@ -1670,7 +1670,7 @@ namespace EMStudio
                     // switch to the desired state
                     if (animGraphInstance)
                     {
-                        animGraphInstance->TransitionToState(settingsInfo->mString.AsChar());
+                        animGraphInstance->TransitionToState(settingsInfo->mString.c_str());
                     }
                 }
                 break;
@@ -1679,7 +1679,7 @@ namespace EMStudio
             case EMotionFX::AnimGraphGameControllerSettings::BUTTONMODE_TOGGLEBOOLEANPARAMETER:
             {
                 // find the corresponding attribute
-                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.AsChar());
+                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.c_str());
                 if (parameterIndex == MCORE_INVALIDINDEX32)
                 {
                     continue;
@@ -1714,7 +1714,7 @@ namespace EMStudio
             case EMotionFX::AnimGraphGameControllerSettings::BUTTONMODE_ENABLEBOOLWHILEPRESSED:
             {
                 // find the corresponding attribute
-                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.AsChar());
+                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.c_str());
                 if (parameterIndex == MCORE_INVALIDINDEX32)
                 {
                     continue;
@@ -1744,7 +1744,7 @@ namespace EMStudio
             case EMotionFX::AnimGraphGameControllerSettings::BUTTONMODE_DISABLEBOOLWHILEPRESSED:
             {
                 // find the corresponding attribute
-                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.AsChar());
+                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.c_str());
                 if (parameterIndex == MCORE_INVALIDINDEX32)
                 {
                     continue;
@@ -1773,7 +1773,7 @@ namespace EMStudio
             case EMotionFX::AnimGraphGameControllerSettings::BUTTONMODE_ENABLEBOOLFORONLYONEFRAMEONLY:
             {
                 // find the corresponding attribute
-                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.AsChar());
+                const uint32 parameterIndex = mAnimGraph->FindParameterIndex(settingsInfo->mString.c_str());
                 if (parameterIndex == MCORE_INVALIDINDEX32)
                 {
                     continue;
@@ -1836,33 +1836,33 @@ namespace EMStudio
                     const float value = mGameController->GetValue(i);
                     if (value > 1000.0f)
                     {
-                        mString.Clear();
+                        mString.clear();
                     }
                     else
                     {
-                        mString.Format("%.2f", value);
+                        mString = AZStd::string::format("%.2f", value);
                     }
 
-                    mPreviewLabels[i]->setText(mString.AsChar());
+                    mPreviewLabels[i]->setText(mString.c_str());
                 }
             }
 
             // update the active button string
-            mString.Clear();
+            mString.clear();
             for (i = 0; i < numButtons; ++i)
             {
                 if (mGameController->GetIsButtonPressed(i))
                 {
-                    mString.FormatAdd("%s%d ", (i < 10) ? "0" : "", i);
+                    mString += AZStd::string::format("%s%d ", (i < 10) ? "0" : "", i);
                 }
             }
-            if (mString.GetLength() == 0)
+            if (mString.size() == 0)
             {
                 mPreviewLabels[GameController::NUM_ELEMENTS]->setText(" ");
             }
             else
             {
-                mPreviewLabels[GameController::NUM_ELEMENTS]->setText(mString.AsChar());
+                mPreviewLabels[GameController::NUM_ELEMENTS]->setText(mString.c_str());
             }
         }
     #endif
@@ -1958,15 +1958,15 @@ namespace EMStudio
         // get the game controller settings from the anim graph
         EMotionFX::AnimGraphGameControllerSettings* gameControllerSettings = animGraph->GetGameControllerSettings();
 
-        MCore::String name;
+        AZStd::string name;
         commandLine.GetValue("name", command, &name);
 
-        MCore::String newName;
+        AZStd::string newName;
         commandLine.GetValue("newName", command, &newName);
 
         if (gameControllerSettings)
         {
-            gameControllerSettings->OnParameterNameChange(name.AsChar(), newName.AsChar());
+            gameControllerSettings->OnParameterNameChange(name.c_str(), newName.c_str());
         }
 
         ReInitGameControllerWindow();
@@ -1995,15 +1995,15 @@ namespace EMStudio
         // get the game controller settings from the anim graph
         EMotionFX::AnimGraphGameControllerSettings* gameControllerSettings = animGraph->GetGameControllerSettings();
 
-        MCore::String name;
+        AZStd::string name;
         commandLine.GetValue("name", command, &name);
 
-        MCore::String newName;
+        AZStd::string newName;
         commandLine.GetValue("newName", command, &newName);
 
         if (gameControllerSettings)
         {
-            gameControllerSettings->OnParameterNameChange(newName.AsChar(), name.AsChar());
+            gameControllerSettings->OnParameterNameChange(newName.c_str(), name.c_str());
         }
 
         ReInitGameControllerWindow();

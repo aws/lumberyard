@@ -33,7 +33,7 @@ namespace GraphCanvas
             return;
         }
 
-        serializeContext->Class<GridComponent>()
+        serializeContext->Class<GridComponent, AZ::Component>()
             ->Version(1)
             ->Field("MajorPitch", &GridComponent::m_majorPitch)
             ->Field("MinorPitch", &GridComponent::m_minorPitch)
@@ -69,6 +69,7 @@ namespace GraphCanvas
         entity->CreateComponent<StylingComponent>(Styling::Elements::Graph);
 
         entity->Init();
+        entity->Activate();
 
         return entity;
     }

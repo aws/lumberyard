@@ -29,6 +29,10 @@ namespace AZ
         namespace Containers
         {
             AZ_CLASS_ALLOCATOR_IMPL(SceneManifest, AZ::SystemAllocator, 0)
+
+            SceneManifest::~SceneManifest()
+            {
+            }
             
             void SceneManifest::Clear()
             {
@@ -95,7 +99,7 @@ namespace AZ
 
                 // Gems can be removed, causing the setting for manifest objects in the the Gem to not be registered. Instead of failing
                 //      to load the entire manifest, just ignore those values.
-                ObjectStream::FilterDescriptor loadFilter(nullptr, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+                ObjectStream::FilterDescriptor loadFilter(AZ::ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
                 return Utils::LoadObjectFromStreamInPlace<SceneManifest>(stream, *this, context, loadFilter);
             }
             

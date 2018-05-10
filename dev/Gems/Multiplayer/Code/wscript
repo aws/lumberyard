@@ -18,7 +18,9 @@ def build(bld):
         uselib      = ['OPENSSL'],
         includes    = [bld.Path('Code/CryEngine/CryAction'),
                        bld.Path('Code/CryEngine/CryNetwork')],
-        file_list   = ['Multiplayer.waf_files'],
+        file_list   = [
+                        'Multiplayer.waf_files',
+                      ],
 
         # Platform Specific
         win_use     = ['AWS_CPP_SDK_GAMELIFT',

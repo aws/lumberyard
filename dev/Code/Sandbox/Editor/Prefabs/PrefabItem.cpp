@@ -153,7 +153,7 @@ void CPrefabItem::MakeFromSelection(CSelectionGroup& fromSelection)
         {
             if (!warned)
             {
-                Warning("Object %s is a component entity and not compatible with legacy prefabs. Use Slices instead.", object->GetName());
+                Warning("Object %s is a component entity and not compatible with legacy prefabs. Use Slices instead.", object->GetName().toUtf8().constData());
                 warned = true;
             }
             selection.RemoveObject(object);

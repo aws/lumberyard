@@ -38,7 +38,7 @@ namespace AzToolsFramework
             public:
                 size_t operator() (const Thumbnailer::SharedThumbnailKey& val) const
                 {
-                    auto productThumbnailKey = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(val.data());
+                    auto productThumbnailKey = azrtti_cast<const Thumbnailer::ProductThumbnailKey*>(val.data());
                     if (!productThumbnailKey)
                     {
                         return 0;
@@ -52,8 +52,8 @@ namespace AzToolsFramework
             public:
                 bool operator()(const Thumbnailer::SharedThumbnailKey& val1, const Thumbnailer::SharedThumbnailKey& val2) const
                 {
-                    auto productThumbnailKey1 = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(val1.data());
-                    auto productThumbnailKey2 = qobject_cast<const Thumbnailer::ProductThumbnailKey*>(val2.data());
+                    auto productThumbnailKey1 = azrtti_cast<const Thumbnailer::ProductThumbnailKey*>(val1.data());
+                    auto productThumbnailKey2 = azrtti_cast<const Thumbnailer::ProductThumbnailKey*>(val2.data());
                     if (!productThumbnailKey1 || !productThumbnailKey2)
                     {
                         return false;

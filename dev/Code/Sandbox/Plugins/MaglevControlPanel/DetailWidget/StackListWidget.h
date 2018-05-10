@@ -28,7 +28,7 @@ class StackListWidget
 {
 public:
 
-    StackListWidget(QSharedPointer<IStackStatusListModel> stackStatusListModel);
+    StackListWidget(QSharedPointer<IStackStatusListModel> stackStatusListModel, QWidget* parent);
 
     void AddButton(QPushButton* button);
 

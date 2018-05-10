@@ -316,7 +316,7 @@ void AssetImporterManager::OnOpenSelectDestinationDialog()
     connect(&selectDestinationDialog, &SelectDestinationDialog::DoCopyFiles, this, &AssetImporterManager::OnCopyFiles);
     connect(&selectDestinationDialog, &SelectDestinationDialog::DoMoveFiles, this, &AssetImporterManager::OnMoveFiles);
     connect(&selectDestinationDialog, &SelectDestinationDialog::Cancel, this, &AssetImporterManager::reject);
-    connect(&selectDestinationDialog, &SelectDestinationDialog::SetDestinationDiretory, this, &AssetImporterManager::OnSetDestinationDirectory);
+    connect(&selectDestinationDialog, &SelectDestinationDialog::SetDestinationDirectory, this, &AssetImporterManager::OnSetDestinationDirectory);
     selectDestinationDialog.exec();
 }
 

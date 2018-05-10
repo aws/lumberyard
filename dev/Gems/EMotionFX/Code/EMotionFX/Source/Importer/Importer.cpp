@@ -741,8 +741,6 @@ namespace EMotionFX
     // try to load a motion set from a file
     MotionSet* Importer::LoadMotionSet(MCore::File* f, MotionSetSettings* settings)
     {
-        MCORE_UNUSED(settings);
-
         MCORE_ASSERT(f);
         MCORE_ASSERT(f->GetIsOpen());
 
@@ -768,6 +766,7 @@ namespace EMotionFX
         ImportParameters params;
         params.mSharedData  = &sharedData;
         params.mEndianType  = endianType;
+        params.m_isOwnedByRuntime = settings ? settings->m_isOwnedByRuntime : false;
 
         // read the chunks
         while (ProcessChunk(f, params))
@@ -1452,7 +1451,7 @@ namespace EMotionFX
     Importer::EFileType Importer::CheckFileType(const char* filename)
     {
         // check for a valid name
-        if (MCore::String(filename).GetIsEmpty())
+        if (AZStd::string(filename).empty())
         {
             return FILETYPE_UNKNOWN;
         }
@@ -1734,12 +1733,6 @@ namespace EMotionFX
         // get rid of shared data
         ResetSharedData(sharedData);
         sharedData.Clear();
-
-        // scale to a desired unit type
-        if (animGraphSettings.mUnitTypeConvert)
-        {
-            animGraph->ScaleToUnitType(GetEMotionFX().GetUnitType());
-        }
 
         // recursively update attributes of all state machines and blend tree nodes
         if (animGraph->GetRootStateMachine())

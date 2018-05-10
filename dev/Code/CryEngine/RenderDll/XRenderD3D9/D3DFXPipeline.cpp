@@ -59,6 +59,9 @@ long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Fo
 
     SOnDemandD3DVertexDeclarationCache* pDeclCache = &m_RP.m_D3DVertexDeclarationCache[(StreamMask & 0xff) >> 1][bMorph || bInstanced][declCacheCRC];
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(D3DFXPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 #endif
 
     if (!pDeclCache->m_pDeclaration)
@@ -3025,7 +3028,7 @@ void CD3D9Renderer::FX_DrawBatchesSkinned(CShader* pSh, SShaderPass* pPass, SSki
             }
             else
             {
-                FX_DrawIndexedMesh(pRenderMesh ? pRenderMesh->_GetPrimitiveType() : eptTriangleList);
+                FX_DrawIndexedMesh(pRenderMesh ? pRenderMesh->GetPrimitiveType() : eptTriangleList);
             }
         }
     }
@@ -3458,6 +3461,13 @@ void CD3D9Renderer::FX_DrawShader_Fur(CShader* ef, SShaderTechnique* pTech)
     bool isFurZPost = (pTech->m_NameCRC == techFurZPost);
     furPasses.SetFurShellPassPercent(isFurZPost ? 1.0f : 0.0f);
 
+    // Fur should be rendered with an object containing a render node.
+    // Example of objects without render node are various effects such as light beams
+    // light arc that their material was set to Fur by mistake - in such case we gracefully don't render ;)
+    // Adding a trace warning is an option but it'll slow down the render frame quite noticeably. 
+    if (!m_RP.m_pCurObject || !m_RP.m_pCurObject->m_pRenderNode)
+        return;
+
     static CCryNameTSCRC techFurShell("General");
     if (pTech->m_NameCRC == techFurShell)
     {
@@ -3536,8 +3546,9 @@ void CD3D9Renderer::FX_DrawShader_Fur(CShader* ef, SShaderTechnique* pTech)
                         }
 
                         // Not using pRenderNode->GetMaxViewDist() because we want to be able to LOD out the fur while still being able to see the object at distance
-                        float maxDistance = CV_r_FurMaxViewDist * pRenderNode->GetViewDistanceMultiplier();
-                        float lodDistance = AZ::GetClamp(pRenderNode->GetFirstLodDistance() / lodRatio, 0.0f, maxDistance - 0.001f);
+                        float   maxDistance = CV_r_FurMaxViewDist * pRenderNode->GetViewDistanceMultiplier();
+                        float   firstLodDistance = pRenderNode->GetFirstLodDistance();
+                        float   lodDistance = AZ::GetClamp(firstLodDistance / lodRatio, 0.0f, maxDistance - 0.001f);
 
                         // Distance before first LOD change (factoring in LOD ratio) uses full number of shells
                         // Beyond that distance, number of shells linearly decreases to 0 as distance approaches max view distance.

@@ -420,7 +420,7 @@ namespace EMotionFX
 
         MotionInstancePool& motionInstancePool = GetMotionInstancePool();
 
-        const AZStd::string masterMotionId(GetAttributeString(ATTRIB_SYNC_MASTERMOTION)->GetValue().AsChar());
+        const AZStd::string masterMotionId(GetAttributeString(ATTRIB_SYNC_MASTERMOTION)->GetValue().c_str());
         uniqueData->m_masterMotionIdx = 0;
 
         PlayBackInfo playInfo;// TODO: Init from attributes

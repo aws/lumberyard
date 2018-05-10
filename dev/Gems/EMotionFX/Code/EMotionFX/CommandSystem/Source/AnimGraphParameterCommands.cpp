@@ -11,7 +11,6 @@
 */
 
 #include "AnimGraphParameterCommands.h"
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "AnimGraphConnectionCommands.h"
 #include "CommandManager.h"
 
@@ -47,7 +46,7 @@ namespace CommandSystem
     }
 
     
-    bool CommandAnimGraphCreateParameter::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphCreateParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
         AZStd::string name;
@@ -58,14 +57,14 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot add parameter '%s' to anim graph. Anim graph id '%i' is not valid.", name.c_str(), animGraphID);
+            outResult = AZStd::string::format("Cannot add parameter '%s' to anim graph. Anim graph id '%i' is not valid.", name.c_str(), animGraphID);
             return false;
         }
 
         // Check if the parameter name is unique and not used by any other parameter yet.
         if (animGraph->FindParameter(name.c_str()))
         {
-            outResult.Format("There is already a parameter with the name '%s', please use a another, unique name.", name.c_str());
+            outResult = AZStd::string::format("There is already a parameter with the name '%s', please use a another, unique name.", name.c_str());
             return false;
         }
 
@@ -73,7 +72,7 @@ namespace CommandSystem
         const uint32 interfaceType = parameters.GetValueAsInt("interfaceType", this);
         if (interfaceType == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("The interface type is not a valid interface type. Please use -help or use the command browser to see a list of valid options.");
+            outResult = AZStd::string::format("The interface type is not a valid interface type. Please use -help or use the command browser to see a list of valid options.");
             return false;
         }
 
@@ -82,10 +81,6 @@ namespace CommandSystem
         newParam->SetName(name.c_str());
         newParam->SetInternalName(name.c_str());
         newParam->SetInterfaceType(interfaceType);
-
-        const bool scalable = parameters.GetValueAsBool("isScalable", false);
-        newParam->SetCanScale(scalable);
-
         // Get the data type.
         const uint32 dataType = EMotionFX::AnimGraphObject::InterfaceTypeToDataType(interfaceType);
 
@@ -102,7 +97,7 @@ namespace CommandSystem
             parameters.GetValue("minValue", this, valueString);
             if (!newParam->GetMinValue()->InitFromString(valueString.c_str()))
             {
-                outResult.Format("Failed to initialize minimum value from string '%s'", valueString.c_str());
+                outResult = AZStd::string::format("Failed to initialize minimum value from string '%s'", valueString.c_str());
                 return false;
             }
 
@@ -110,7 +105,7 @@ namespace CommandSystem
             parameters.GetValue("maxValue", this, valueString);
             if (!newParam->GetMaxValue()->InitFromString(valueString.c_str()))
             {
-                outResult.Format("Failed to initialize maximum value from string '%s'", valueString.c_str());
+                outResult = AZStd::string::format("Failed to initialize maximum value from string '%s'", valueString.c_str());
                 return false;
             }
         }
@@ -119,7 +114,7 @@ namespace CommandSystem
         parameters.GetValue("defaultValue", this, valueString);
         if (!newParam->GetDefaultValue()->InitFromString(valueString.c_str()))
         {
-            outResult.Format("Failed to initialize default value from string '%s'", valueString.c_str());
+            outResult = AZStd::string::format("Failed to initialize default value from string '%s'", valueString.c_str());
             return false;
         }
 
@@ -136,7 +131,7 @@ namespace CommandSystem
             mIndex = parameters.GetValueAsInt("index", this);
             if (mIndex < 0 || mIndex >= (int32)animGraph->GetNumParameters())
             {
-                outResult.Format("Index '%d' out of range.", mIndex);
+                outResult = AZStd::string::format("Index '%d' out of range.", mIndex);
                 mIndex = -1;
             }
         }
@@ -259,7 +254,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphCreateParameter::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphCreateParameter::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
         AZStd::string name;
@@ -270,16 +265,16 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot undo add parameter '%s' to anim graph. Anim graph id '%i' is not valid.", name.c_str(), animGraphID);
+            outResult = AZStd::string::format("Cannot undo add parameter '%s' to anim graph. Anim graph id '%i' is not valid.", name.c_str(), animGraphID);
             return false;
         }
 
         const AZStd::string commandString = AZStd::string::format("AnimGraphRemoveParameter -animGraphID %i -name \"%s\"", animGraph->GetID(), name.c_str());
         
-        MCore::String result;
+        AZStd::string result;
         if (!GetCommandManager()->ExecuteCommandInsideCommand(commandString, result))
         {
-            AZ_Error("EMotionFX", false, result.AsChar());
+            AZ_Error("EMotionFX", false, result.c_str());
         }
 
         // Set the dirty flag back to the old value.
@@ -300,7 +295,6 @@ namespace CommandSystem
         GetSyntax().AddParameter("description",             "The description of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("index",                   "The position where the parameter should be added. If the parameter is not specified it will get added to the end.", MCore::CommandSyntax::PARAMTYPE_INT, "-1");
         GetSyntax().AddParameter("parameterGroupName",      "The parameter group into which the parameter should be added. If the parameter is not specified it will get added to any parameter group.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("isScalable",              "Is this parameter scalable?", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
     }
 
 
@@ -323,7 +317,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphRemoveParameter::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
         AZStd::string name;
@@ -334,7 +328,7 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot remove parameter '%s' from anim graph. Anim graph id '%i' is not valid.", name.c_str(), animGraphID);
+            outResult = AZStd::string::format("Cannot remove parameter '%s' from anim graph. Anim graph id '%i' is not valid.", name.c_str(), animGraphID);
             return false;
         }
 
@@ -342,7 +336,7 @@ namespace CommandSystem
         const uint32 paramIndex = animGraph->FindParameterIndex(name.c_str());
         if (paramIndex == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("Cannot remove parameter '%s' from anim graph. There is no parameter with the given name.", name.c_str(), animGraphID);
+            outResult = AZStd::string::format("Cannot remove parameter '%s' from anim graph. There is no parameter with the given name.", name.c_str(), animGraphID);
             return false;
         }
 
@@ -352,15 +346,14 @@ namespace CommandSystem
         mDescription    = parameter->GetDescription();
         mInterfaceType  = parameter->GetInterfaceType();
         mIndex          = paramIndex;
-        mIsScalable     = parameter->GetCanScale();
 
-        MCore::String tempString;
+        AZStd::string tempString;
         parameter->GetMinValue()->ConvertToString(tempString);
-        mMinValue = tempString.AsChar();
+        mMinValue = tempString.c_str();
         parameter->GetMaxValue()->ConvertToString(tempString);
-        mMaxValue = tempString.AsChar();
+        mMaxValue = tempString.c_str();
         parameter->GetDefaultValue()->ConvertToString(tempString);
-        mDefaultValue = tempString.AsChar();
+        mDefaultValue = tempString.c_str();
 
         // Find and save the parameter group in which the node was before, for undo reasons.
         EMotionFX::AnimGraphParameterGroup* oldParameterGroup = animGraph->FindParameterGroupForParameter(paramIndex);
@@ -448,14 +441,14 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphRemoveParameter::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphRemoveParameter::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Find the anim graph by using the id from command parameter.
         const uint32 animGraphID = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot undo remove parameter '%s' from anim graph. Anim graph id '%i' is not valid.", mName.c_str(), animGraphID);
+            outResult = AZStd::string::format("Cannot undo remove parameter '%s' from anim graph. Anim graph id '%i' is not valid.", mName.c_str(), animGraphID);
             return false;
         }
 
@@ -463,11 +456,26 @@ namespace CommandSystem
         AZStd::string commandString;
         if (mDescription.empty())
         {
-            commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %i -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\" -isScalable %s", animGraph->GetID(), mName.c_str(), mIndex, mInterfaceType, mMinValue.c_str(), mMaxValue.c_str(), mDefaultValue.c_str(), mIsScalable ? "true" : "false");
+            commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %i -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\"", 
+                animGraph->GetID(), 
+                mName.c_str(), 
+                mIndex, 
+                mInterfaceType, 
+                mMinValue.c_str(), 
+                mMaxValue.c_str(), 
+                mDefaultValue.c_str());
         }
         else
         {
-            commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %i -description \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\" -isScalable %s", animGraph->GetID(), mName.c_str(), mIndex, mDescription.c_str(), mInterfaceType, mMinValue.c_str(), mMaxValue.c_str(), mDefaultValue.c_str(), mIsScalable ? "true" : "false");
+            commandString = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -index %i -description \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\"", 
+                animGraph->GetID(), 
+                mName.c_str(), 
+                mIndex, 
+                mDescription.c_str(), 
+                mInterfaceType, 
+                mMinValue.c_str(),
+                mMaxValue.c_str(), 
+                mDefaultValue.c_str());
         }
 
         // In case the parameter was inside a parameter group before, restore it.
@@ -479,7 +487,7 @@ namespace CommandSystem
         // Execute the command.
         if (!GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult))
         {
-            AZ_Error("EMotionFX", false, outResult.AsChar());
+            AZ_Error("EMotionFX", false, outResult.c_str());
             return false;
         }
 
@@ -539,7 +547,7 @@ namespace CommandSystem
                 EMotionFX::AnimGraphParameterCondition* parameterCondition = static_cast<EMotionFX::AnimGraphParameterCondition*>(conditions[j]);
 
                 // Adjust all parameter conditions along with the parameter name change.
-                if (parameterCondition->GetAttributeString(EMotionFX::AnimGraphParameterCondition::ATTRIB_PARAMETER)->GetValue().CheckIfIsEqual(oldParameterName))
+                if (parameterCondition->GetAttributeString(EMotionFX::AnimGraphParameterCondition::ATTRIB_PARAMETER)->GetValue() == oldParameterName)
                 {
                     parameterCondition->GetAttributeString(EMotionFX::AnimGraphParameterCondition::ATTRIB_PARAMETER)->SetValue(newParameterName);
                 }
@@ -551,7 +559,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphAdjustParameter::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
         AZStd::string name;
@@ -562,14 +570,14 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot adjust parameter '%s'. Anim graph with id '%d' not found.", name.c_str(), animGraphID);
+            outResult = AZStd::string::format("Cannot adjust parameter '%s'. Anim graph with id '%d' not found.", name.c_str(), animGraphID);
             return false;
         }
 
         const uint32 paramIndex = animGraph->FindParameterIndex(name.c_str());
         if (paramIndex == MCORE_INVALIDINDEX32)
         {
-            outResult.Format("There is no parameter with the name '%s'.", name.c_str());
+            outResult = AZStd::string::format("There is no parameter with the name '%s'.", name.c_str());
             return false;
         }
 
@@ -579,15 +587,10 @@ namespace CommandSystem
         mOldName            = paramSettings->GetName();
         mOldDescription     = paramSettings->GetDescription();
         mOldInterfaceType   = paramSettings->GetInterfaceType();
-        mOldIsScalable      = paramSettings->GetCanScale();
 
-        MCore::String tempString;
-        paramSettings->GetMinValue()->ConvertToString(tempString);
-        mOldMinValue = tempString.AsChar();
-        paramSettings->GetMaxValue()->ConvertToString(tempString);
-        mOldMaxValue = tempString.AsChar();
-        paramSettings->GetDefaultValue()->ConvertToString(tempString);
-        mOldDefaultValue = tempString.AsChar();
+        paramSettings->GetMinValue()->ConvertToString(mOldMinValue);
+        paramSettings->GetMaxValue()->ConvertToString(mOldMaxValue);
+        paramSettings->GetDefaultValue()->ConvertToString(mOldDefaultValue);
 
         // Get the new name and check if it is valid.
         AZStd::string newName;
@@ -597,7 +600,7 @@ namespace CommandSystem
             const uint32 newIndex = animGraph->FindParameterIndex(newName.c_str());
             if (newIndex != paramIndex && newIndex != MCORE_INVALIDINDEX32)
             {
-                outResult.Format("There is already a parameter with the name '%s', please use a unique name.", newName.c_str());
+                outResult = AZStd::string::format("There is already a parameter with the name '%s', please use a unique name.", newName.c_str());
                 return false;
             }
         }
@@ -609,7 +612,7 @@ namespace CommandSystem
             interfaceType = parameters.GetValueAsInt("interfaceType", this);
             if (interfaceType == MCORE_INVALIDINDEX32)
             {
-                outResult.Format("The interface type is not a valid interface type. Please use -help or use the command browser to see a list of valid options.");
+                outResult = AZStd::string::format("The interface type is not a valid interface type. Please use -help or use the command browser to see a list of valid options.");
                 return false;
             }
         }
@@ -639,13 +642,6 @@ namespace CommandSystem
         paramSettings->SetMinValue(MCore::GetAttributeFactory().CreateAttributeByType(dataType));
         paramSettings->SetMaxValue(MCore::GetAttributeFactory().CreateAttributeByType(dataType));
         paramSettings->SetDefaultValue(MCore::GetAttributeFactory().CreateAttributeByType(dataType));
-
-        if (parameters.CheckIfHasParameter("isScalable"))
-        {
-            const bool isScalable = parameters.GetValueAsBool("isScalable", this);
-            paramSettings->SetCanScale(isScalable);
-        }
-
         // Set the minimum and maximum values.
         if (dataType != MCore::AttributeBool::TYPE_ID)
         {
@@ -653,7 +649,7 @@ namespace CommandSystem
             {
                 if (!paramSettings->GetMinValue()->InitFromString(minValue.c_str()))
                 {
-                    outResult.Format("Failed to initialize minimum value from string '%s'", minValue.c_str());
+                    outResult = AZStd::string::format("Failed to initialize minimum value from string '%s'", minValue.c_str());
                     return false;
                 }
             }
@@ -662,7 +658,7 @@ namespace CommandSystem
             {
                 if (!paramSettings->GetMaxValue()->InitFromString(maxValue.c_str()))
                 {
-                    outResult.Format("Failed to initialize maximum value from string '%s'", maxValue.c_str());
+                    outResult = AZStd::string::format("Failed to initialize maximum value from string '%s'", maxValue.c_str());
                     return false;
                 }
             }
@@ -673,7 +669,7 @@ namespace CommandSystem
         {
             if (!paramSettings->GetDefaultValue()->InitFromString(defaultValue.c_str()))
             {
-                outResult.Format("Failed to initialize default value from string '%s'", defaultValue.c_str());
+                outResult = AZStd::string::format("Failed to initialize default value from string '%s'", defaultValue.c_str());
                 return false;
             }
         }
@@ -803,14 +799,14 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphAdjustParameter::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphAdjustParameter::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Find the anim graph by using the id from command parameter.
         const uint32 animGraphID = parameters.GetValueAsInt("animGraphID", this);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot adjust parameter to anim graph. Anim graph id '%d' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot adjust parameter to anim graph. Anim graph id '%d' is not valid.", animGraphID);
             return false;
         }
 
@@ -832,11 +828,11 @@ namespace CommandSystem
         {
             if (newName.empty())
             {
-                outResult.Format("There is no parameter with the name '%s'.", name.c_str());
+                outResult = AZStd::string::format("There is no parameter with the name '%s'.", name.c_str());
             }
             else
             {
-                outResult.Format("There is no parameter with the name '%s'.", newName.c_str());
+                outResult = AZStd::string::format("There is no parameter with the name '%s'.", newName.c_str());
             }
 
             return false;
@@ -856,16 +852,31 @@ namespace CommandSystem
         AZStd::string commandString;
         if (!mOldDescription.empty())
         {
-            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -description \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\" -isScalable %s", animGraph->GetID(), name.c_str(), mOldName.c_str(), mOldDescription.c_str(), mOldInterfaceType, mOldMinValue.c_str(), mOldMaxValue.c_str(), mOldDefaultValue.c_str(), mOldIsScalable ? "true" : "false");
+            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -description \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\"", 
+                animGraph->GetID(), 
+                name.c_str(), 
+                mOldName.c_str(), 
+                mOldDescription.c_str(), 
+                mOldInterfaceType, 
+                mOldMinValue.c_str(), 
+                mOldMaxValue.c_str(), 
+                mOldDefaultValue.c_str());
         }
         else
         {
-            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\" -isScalable %s", animGraph->GetID(), name.c_str(), mOldName.c_str(), mOldInterfaceType, mOldMinValue.c_str(), mOldMaxValue.c_str(), mOldDefaultValue.c_str(), mOldIsScalable ? "true" : "false");
+            commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\"", 
+                animGraph->GetID(), 
+                name.c_str(), 
+                mOldName.c_str(), 
+                mOldInterfaceType, 
+                mOldMinValue.c_str(), 
+                mOldMaxValue.c_str(), 
+                mOldDefaultValue.c_str());
         }
 
         if (!GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult))
         {
-            AZ_Error("EMotionFX", false, outResult.AsChar());
+            AZ_Error("EMotionFX", false, outResult.c_str());
         }
 
         animGraph->SetDirtyFlag(mOldDirtyFlag);
@@ -884,7 +895,6 @@ namespace CommandSystem
         GetSyntax().AddParameter("minValue",                "The new minimum value of the parameter. In case of checkboxes or strings this parameter value will be ignored.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("maxValue",                "The new maximum value of the parameter. In case of checkboxes or strings this parameter value will be ignored.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("description",             "The new description of the parameter.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("isScalable",              "Is this parameter scalable? This is used when scaling anim graphs.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
     }
 
 
@@ -908,7 +918,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphSwapParameters::Execute(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphSwapParameters::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZStd::string what;
         AZStd::string with;
@@ -920,7 +930,7 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot swap parameters. Anim graph id '%i' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot swap parameters. Anim graph id '%i' is not valid.", animGraphID);
             return false;
         }
 
@@ -1044,7 +1054,7 @@ namespace CommandSystem
     }
 
 
-    bool CommandAnimGraphSwapParameters::Undo(const MCore::CommandLine& parameters, MCore::String& outResult)
+    bool CommandAnimGraphSwapParameters::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         AZStd::string what;
         AZStd::string with;
@@ -1056,14 +1066,14 @@ namespace CommandSystem
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
         if (!animGraph)
         {
-            outResult.Format("Cannot undo swap parameters. Anim graph id '%i' is not valid.", animGraphID);
+            outResult = AZStd::string::format("Cannot undo swap parameters. Anim graph id '%i' is not valid.", animGraphID);
             return false;
         }
 
         const AZStd::string commandString = AZStd::string::format("AnimGraphSwapParameters -animGraphID %i -what \"%s\" -with \"%s\"", animGraphID, with.c_str(), what.c_str());
         if (!GetCommandManager()->ExecuteCommandInsideCommand(commandString, outResult))
         {
-            AZ_Error("EMotionFX", false, outResult.AsChar());
+            AZ_Error("EMotionFX", false, outResult.c_str());
 
             return false;
         }
@@ -1094,11 +1104,11 @@ namespace CommandSystem
     //--------------------------------------------------------------------------------
     // Construct create parameter command strings
     //--------------------------------------------------------------------------------
-    void ConstructCreateParameterCommand(AZStd::string& outResult, EMotionFX::AnimGraph* animGraph, const char* parameterName, uint32 interfaceType, const MCore::Attribute* minAttribute, const MCore::Attribute* maxAttribute, const MCore::Attribute* defaultAttribute, const AZStd::string& description, uint32 insertAtIndex, bool isScalable)
+    void ConstructCreateParameterCommand(AZStd::string& outResult, EMotionFX::AnimGraph* animGraph, const char* parameterName, uint32 interfaceType, const MCore::Attribute* minAttribute, const MCore::Attribute* maxAttribute, const MCore::Attribute* defaultAttribute, const AZStd::string& description, uint32 insertAtIndex)
     {
-        MCore::String minValue;
-        MCore::String maxValue;
-        MCore::String defaultValue;
+        AZStd::string minValue;
+        AZStd::string maxValue;
+        AZStd::string defaultValue;
 
         // Convert the values to strings.
         minAttribute->ConvertToString(minValue);
@@ -1106,7 +1116,12 @@ namespace CommandSystem
         defaultAttribute->ConvertToString(defaultValue);
 
         // Build the command string.
-        outResult = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\" -isScalable %s", animGraph->GetID(), parameterName, interfaceType, minValue.AsChar(), maxValue.AsChar(), defaultValue.AsChar(), isScalable ? "true" : "false");
+        outResult = AZStd::string::format("AnimGraphCreateParameter -animGraphID %i -name \"%s\" -interfaceType %i -minValue \"%s\" -maxValue \"%s\" -defaultValue \"%s\"", 
+            animGraph->GetID(), 
+            parameterName, interfaceType, 
+            minValue.c_str(), 
+            maxValue.c_str(), 
+            defaultValue.c_str());
 
         if (!description.empty())
         {
@@ -1120,9 +1135,9 @@ namespace CommandSystem
     }
 
 
-    void ConstructCreateParameterCommand(AZStd::string& outResult, EMotionFX::AnimGraph* animGraph, MCore::AttributeSettings* attributeSettings, uint32 insertAtIndex, bool isScalable)
+    void ConstructCreateParameterCommand(AZStd::string& outResult, EMotionFX::AnimGraph* animGraph, MCore::AttributeSettings* attributeSettings, uint32 insertAtIndex)
     {
-        ConstructCreateParameterCommand(outResult, animGraph, attributeSettings->GetName(), attributeSettings->GetInterfaceType(), attributeSettings->GetMinValue(), attributeSettings->GetMaxValue(), attributeSettings->GetDefaultValue(), attributeSettings->GetDescription(), insertAtIndex, isScalable);
+        ConstructCreateParameterCommand(outResult, animGraph, attributeSettings->GetName(), attributeSettings->GetInterfaceType(), attributeSettings->GetMinValue(), attributeSettings->GetMaxValue(), attributeSettings->GetDefaultValue(), attributeSettings->GetDescription(), insertAtIndex);
     }
 
 
@@ -1149,14 +1164,14 @@ namespace CommandSystem
         if (!commandGroup)
         {
             // Create and fill the command group.
-            MCore::String outResult;
+            AZStd::string outResult;
             MCore::CommandGroup internalCommandGroup("Clear parameters");
             RemoveParametersCommand(animGraph, parameterNames, &internalCommandGroup);
 
             // Execute the command group.
             if (!GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, outResult))
             {
-                AZ_Error("EMotionFX", false, outResult.AsChar());
+                AZ_Error("EMotionFX", false, outResult.c_str());
             }
         }
         else
@@ -1192,7 +1207,7 @@ namespace CommandSystem
         const uint32 numParameterIndices = parameterIndices.GetLength();
 
         // Create the command group.
-        MCore::String outResult;
+        AZStd::string outResult;
         AZStd::string commandString;
 
         MCore::CommandGroup internalCommandGroup(commandString.c_str());
@@ -1327,7 +1342,7 @@ namespace CommandSystem
         {
             if (!GetCommandManager()->ExecuteCommandGroup(internalCommandGroup, outResult))
             {
-                AZ_Error("EMotionFX", false, outResult.AsChar());
+                AZ_Error("EMotionFX", false, outResult.c_str());
                 return false;
             }
         }

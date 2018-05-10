@@ -16,6 +16,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
@@ -44,6 +45,8 @@ namespace LmbrCentral
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private LegacyMeshComponentRequestBus::Handler
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
+        , private AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
     {
     public:
 
@@ -53,13 +56,10 @@ namespace LmbrCentral
 
         const float s_renderNodeRequestBusOrder = 100.f;
 
-        //////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // MeshComponentRequestBus interface implementation
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
@@ -67,63 +67,50 @@ namespace LmbrCentral
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;
         bool GetVisibility() override;
-        ///////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // MaterialOwnerRequestBus interface implementation
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
-        ///////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // MeshComponentNotificationBus interface implementation
         void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
         void OnMeshDestroyed() override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // RenderNodeRequestBus::Handler
         IRenderNode* GetRenderNode() override;
         float GetRenderNodeRequestBusOrder() const override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // TransformBus::Handler
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // TransformBus::Handler
         void OnStaticChanged(bool isStatic) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // EditorVisibilityNotificationBus::Handler
         void OnEntityVisibilityChanged(bool visibility) override;
-        //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // AzFramework::EntityDebugDisplayEventBus interface implementation
         void DisplayEntity(bool& handled) override;
-        //////////////////////////////////////////////////////////////////////////
 
         //! Called when you want to change the game asset through code (like when creating components based on assets).
         void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 
-        //////////////////////////////////////////////////////////////////////////
         // MeshComponentRequestBus interface implementation
         IStatObj* GetStatObj() override;
-        ///////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-        ///////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
         // AZ::Data::AssetBus::Handler
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
-        //////////////////////////////////////////////////////////////////////////
+
+        // EditorComponentSelectionRequestsBus::Handler
+        AZ::Aabb GetEditorSelectionBounds() override;
+        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        bool SupportsEditorRayIntersect() override { return true; };
+
+        // EditorComponentSelectionNotificationsBus::Handler
+        void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override;
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
@@ -161,7 +148,8 @@ namespace LmbrCentral
 
         AZStd::string GetMeshViewportIconPath();
 
-        MeshComponentRenderNode m_mesh;     ///< IRender node implementation
+        AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None;  ///< State of the entity selection in the viewport.
+        MeshComponentRenderNode m_mesh;     ///< IRender node implementation.
 
         IPhysicalEntity* m_physicalEntity = nullptr;  ///< Edit-time physical entity (for object snapping).
         AZ::Vector3 m_physScale;      ///< To track scale changes, which requires re-physicalizing.

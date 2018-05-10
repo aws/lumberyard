@@ -19,9 +19,9 @@
 #include <Components/Slots/SlotComponent.h>
 
 #include <Components/Connections/ConnectionComponent.h>
-#include <Components/Connections/ConnectionFilters/ConnectionFilters.h>
 #include <Components/Slots/Default/DefaultSlotLayoutComponent.h>
 #include <Components/Slots/SlotConnectionFilterComponent.h>
+#include <GraphCanvas/Components/Connections/ConnectionFilters/ConnectionFilters.h>
 
 namespace GraphCanvas
 {
@@ -45,7 +45,7 @@ namespace GraphCanvas
             ->Field("ToolTip", &SlotConfiguration::m_tooltip)
         ;
 
-        serializeContext->Class<SlotComponent>()
+        serializeContext->Class<SlotComponent, AZ::Component>()
             ->Version(4)
             ->Field("Configuration", &SlotComponent::m_slotConfiguration)
             ->Field("UserData", &SlotComponent::m_userData)
@@ -325,31 +325,14 @@ namespace GraphCanvas
 
     AZ::EntityId SlotComponent::CreateConnectionWithEndpoint(const Endpoint& otherEndpoint) const
     {
-        Endpoint sourceEndpoint;
-        Endpoint targetEndpoint;
+        const bool createConnection = true;
+        return CreateConnectionHelper(otherEndpoint, createConnection);
+    }
 
-        Endpoint endpoint(GetNode(), GetEntityId());
-
-        if (GetConnectionType() == CT_Input)
-        {
-            sourceEndpoint = otherEndpoint;
-            targetEndpoint = endpoint;
-        }
-        else
-        {
-            sourceEndpoint = endpoint;
-            targetEndpoint = otherEndpoint;
-        }
-
-        AZ::Entity* connectionEntity = ConstructConnectionEntity(sourceEndpoint, targetEndpoint);
-
-        if (connectionEntity)
-        {
-            SceneRequestBus::Event(GetScene(), &SceneRequests::AddConnection, connectionEntity->GetId());
-            return connectionEntity->GetId();
-        }
-
-        return AZ::EntityId();
+    AZ::EntityId SlotComponent::DisplayConnectionWithEndpoint(const Endpoint& otherEndpoint) const
+    {
+        const bool createConnection = false;
+        return CreateConnectionHelper(otherEndpoint, createConnection);
     }
 
     AZStd::any* SlotComponent::GetUserData()
@@ -378,12 +361,24 @@ namespace GraphCanvas
         return m_connections;
     }
 
-    void SlotComponent::SetConnectionDisplayState(ConnectionDisplayState displayState)
+    void SlotComponent::SetConnectionDisplayState(RootGraphicsItemDisplayState displayState)
     {
+        m_connectionDisplayStateStateSetter.ResetStateSetter();
+
         for (const AZ::EntityId& connectionId : m_connections)
         {
-            ConnectionUIRequestBus::Event(connectionId, &ConnectionUIRequests::SetDisplayState, displayState);
+            StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
+            RootGraphicsItemRequestBus::EventResult(stateController, connectionId, &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+            m_connectionDisplayStateStateSetter.AddStateController(stateController);
         }
+
+        m_connectionDisplayStateStateSetter.SetState(displayState);
+    }
+
+    void SlotComponent::ReleaseConnectionDisplayState()
+    {
+        m_connectionDisplayStateStateSetter.ResetStateSetter();
     }
 
     void SlotComponent::ClearConnections()
@@ -398,9 +393,38 @@ namespace GraphCanvas
         SceneRequestBus::Event(GetScene(), &SceneRequests::Delete, deleteIds);
     }
 
-    AZ::Entity* SlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    AZ::EntityId SlotComponent::CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection) const
     {
-        return ConnectionComponent::CreateGeneralConnection(sourceEndpoint, targetEndpoint);
+        Endpoint sourceEndpoint;
+        Endpoint targetEndpoint;
+
+        Endpoint endpoint(GetNode(), GetEntityId());
+
+        if (GetConnectionType() == CT_Input)
+        {
+            sourceEndpoint = otherEndpoint;
+            targetEndpoint = endpoint;
+        }
+        else
+        {
+            sourceEndpoint = endpoint;
+            targetEndpoint = otherEndpoint;
+        }
+
+        AZ::Entity* connectionEntity = ConstructConnectionEntity(sourceEndpoint, targetEndpoint, createConnection);
+
+        if (connectionEntity)
+        {
+            SceneRequestBus::Event(GetScene(), &SceneRequests::AddConnection, connectionEntity->GetId());
+            return connectionEntity->GetId();
+        }
+
+        return AZ::EntityId();
+    }
+
+    AZ::Entity* SlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
+    {
+        return ConnectionComponent::CreateGeneralConnection(sourceEndpoint, targetEndpoint, createModelConnection);
     }
 
     void SlotComponent::FinalizeDisplay()

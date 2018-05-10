@@ -47,11 +47,6 @@
 
 #define ERROR_MESSAGE_BUF_SIZE      512
 
-#ifdef USE_COPYPROTECTION
-#define SECUROM_INCLUDE_EXE_FUNCTIONS
-#include <CopyProtection.h>
-#endif
-
 #ifdef AZ_MONOLITHIC_BUILD
 extern "C" IGameStartup * CreateGameStartup();
 extern "C" void CreateStaticModules(AZStd::vector<AZ::Module*>&);

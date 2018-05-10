@@ -257,7 +257,7 @@ namespace EMotionFX
 
     // convert attributes for backward compatibility
     // this handles attributes that got renamed or who's types have changed during the development progress
-    bool AnimGraphStateTransition::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const MCore::String& attributeName)
+    bool AnimGraphStateTransition::ConvertAttribute(uint32 attributeIndex, const MCore::Attribute* attributeToConvert, const AZStd::string& attributeName)
     {
         // convert things by the base class
         const bool result = AnimGraphObject::ConvertAttribute(attributeIndex, attributeToConvert, attributeName);
@@ -439,7 +439,7 @@ namespace EMotionFX
 
 
     // callback for when we renamed a node
-    void AnimGraphStateTransition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const MCore::String& oldName)
+    void AnimGraphStateTransition::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
         // get the number of conditions, iterate through them and call the callback
         const uint32 numConditions = mConditions.GetLength();

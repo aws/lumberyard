@@ -39,11 +39,12 @@ public:
 
 protected:
     void showEvent(QShowEvent* event) override;
-
+    
 private:
     void CreateImages();
     void CreatePages();
     void SetActivePage(EditorPreferencesTreeWidgetItem* pageItem);
+    void SetFilter(const QString& filter);
 
     void OnTreeCurrentItemChanged();
     void OnReject();
@@ -70,5 +71,6 @@ private:
     QPixmap m_selectedPixmap;
     QPixmap m_unSelectedPixmap;
     EditorPreferencesTreeWidgetItem* m_currentPageItem;
+    QString m_filter;
 };
 

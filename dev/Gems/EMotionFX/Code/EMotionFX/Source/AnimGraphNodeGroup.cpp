@@ -13,7 +13,7 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNodeGroup.h"
-#include <MCore/Source/StringIDGenerator.h>
+#include <MCore/Source/StringIdPool.h>
 
 
 namespace EMotionFX
@@ -87,7 +87,7 @@ namespace EMotionFX
     {
         if (groupName)
         {
-            mNameID = MCore::GetStringIDGenerator().GenerateIDForString(groupName);
+            mNameID = MCore::GetStringIdPool().GenerateIdForString(groupName);
         }
         else
         {
@@ -99,14 +99,14 @@ namespace EMotionFX
     // get the name of the group as character buffer
     const char* AnimGraphNodeGroup::GetName() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID).AsChar();
+        return MCore::GetStringIdPool().GetName(mNameID).c_str();
     }
 
 
     // get the name of the string as mcore string object
-    const MCore::String& AnimGraphNodeGroup::GetNameString() const
+    const AZStd::string& AnimGraphNodeGroup::GetNameString() const
     {
-        return MCore::GetStringIDGenerator().GetName(mNameID);
+        return MCore::GetStringIdPool().GetName(mNameID);
     }
 
 

@@ -15,11 +15,9 @@
 #include <AzCore/JSON/document.h>
 #include <AzCore/JSON/stringbuffer.h>
 #include <AzCore/JSON/prettywriter.h>
-#include <AzCore/std/string/conversions.h>
 #include <AzCore/std/functional.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include "CommandManager.h"
-
+#include "StringConversions.h"
 
 namespace MCore
 {
@@ -53,7 +51,7 @@ namespace MCore
             AZStd::string baseFilename;
             AzFramework::StringFunc::Path::GetFileName(filename, baseFilename);
             AZStd::string extension;
-            AzFramework::StringFunc::Path::GetExtension(filename, extension, false);
+            AzFramework::StringFunc::Path::GetExtension(filename, extension, false /* include dot */);
 
             // Find a unique backup filename.
             AZ::u32 backupFileIndex = 0;
@@ -101,7 +99,7 @@ namespace MCore
                 AZ::u64 bytesWritten = 0;
                 if (!fileIo->Write(fileHandle, buffer.GetString(), buffer.GetSize(), &bytesWritten))
                 {
-                    AZ_Error("EMotionFX", "Failed to write recover file: %s", recoverFilename.c_str());
+                    AZ_Error("EMotionFX", false, "Failed to write recover file: %s", recoverFilename.c_str());
                 }
 
                 fileIo->Close(fileHandle);

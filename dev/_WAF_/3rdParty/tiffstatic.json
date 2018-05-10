@@ -1,6 +1,6 @@
 {
     "name": "tiffstatic",
-    "source": "@ROOT@/Code/SDKs/tiff",
+    "source": "@3P:tiff@",
     "description": "Tiff Library (static runtime)",
     "includes": [
         "libtiff"
@@ -35,6 +35,7 @@
             "linkflags" : [
                 "/ignore:4099"
             ]
-        }
+        },
+        "win_x64_vs2017": "@win_x64_vs2015"
     }
 }

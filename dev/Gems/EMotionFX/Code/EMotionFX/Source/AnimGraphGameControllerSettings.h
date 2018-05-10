@@ -15,8 +15,8 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
-#include <MCore/Source/UnicodeString.h>
 #include <MCore/Source/Array.h>
+#include <AzCore/std/string/string.h>
 
 
 namespace EMotionFX
@@ -54,7 +54,7 @@ namespace EMotionFX
 
             ParameterInfo* Clone() const;
 
-            MCore::String           mParameterName;
+            AZStd::string           mParameterName;
             ParameterMode           mMode;
             bool                    mInvert;
             bool                    mEnabled;
@@ -70,7 +70,7 @@ namespace EMotionFX
 
             uint32                  mButtonIndex;
             ButtonMode              mMode;
-            MCore::String           mString;                /**< Mostly used to store the attribute or parameter name to which this button belongs to. */
+            AZStd::string           mString;                /**< Mostly used to store the attribute or parameter name to which this button belongs to. */
             bool                    mOldIsPressed;
             bool                    mEnabled;
         };
@@ -114,8 +114,8 @@ namespace EMotionFX
             void Clear();
 
             void SetName(const char* name)                              { mName = name; }
-            const char* GetName() const                                 { return mName.AsChar(); }
-            const MCore::String& GetNameString() const                  { return mName; }
+            const char* GetName() const                                 { return mName.c_str(); }
+            const AZStd::string& GetNameString() const                  { return mName; }
 
             void SetNumParamInfos(uint32 numParamInfos)                 { mParameterInfos.Resize(numParamInfos); }
             void SetParamInfo(uint32 index, ParameterInfo* paramInfo)   { mParameterInfos[index] = paramInfo; }
@@ -132,7 +132,7 @@ namespace EMotionFX
         private:
             MCore::Array<ParameterInfo*>    mParameterInfos;
             MCore::Array<ButtonInfo*>       mButtonInfos;
-            MCore::String                   mName;
+            AZStd::string                   mName;
 
             Preset(const char* name);
             ~Preset();

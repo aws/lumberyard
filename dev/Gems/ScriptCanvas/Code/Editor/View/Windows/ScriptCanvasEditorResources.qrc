@@ -1,21 +1,24 @@
 <RCC>
     <qresource prefix="/ScriptCanvasEditorResources">
+      <file>Resources/arrow-curve-180.png</file>
+      <file>Resources/arrow-curve-270.png</file>
+      <file>Resources/arrow-curve.png</file>
+      <file>Resources/arrow-step-out.png</file>
+      <file>Resources/breakpoints toggle.png</file>
+      <file>Resources/breakpoints.png</file>
+      <file>Resources/control_play.png</file>
+      <file>Resources/lineedit_clear.png</file>
+      <file>Resources/pin.png</file>
+      <file>Resources/reset.png</file>
+      <file>Resources/scriptcanvas_bookmark.png</file>
       <file>Resources/scriptcanvas_commandline.png</file>
+      <file>Resources/scriptcanvas_debugger.png</file>
+      <file>Resources/scriptcanvas_debugger_off.png</file>
+      <file>Resources/scriptcanvas_minimap.png</file>
       <file>Resources/scriptcanvas_nodes.png</file>
       <file>Resources/scriptcanvas_outliner.png</file>
       <file>Resources/scriptcanvas_properties.png</file>
-      <file>Resources/scriptcanvas_debugger.png</file>
-      <file>Resources/scriptcanvas_debugger_off.png</file>
-      <file>Resources/reset.png</file>
+      <file>Resources/scriptcanvas_variables.png</file>
       <file>Resources/settings_icon.png</file>
-      <file>Resources/control_play.png</file>
-      <file>Resources/lineedit_clear.png</file>
-      <file>Resources/breakpoints.png</file>
-      <file>Resources/breakpoints toggle.png</file>
-      <file>Resources/arrow-step-out.png</file>
-      <file>Resources/arrow-curve-270.png</file>
-      <file>Resources/arrow-curve-180.png</file>
-      <file>Resources/arrow-curve.png</file>
-      <file>graphcanvas_style.json</file>
     </qresource>
 </RCC>

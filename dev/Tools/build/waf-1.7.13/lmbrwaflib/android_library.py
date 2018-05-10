@@ -9,7 +9,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
-import os, re, zipfile
+import os, re, string, urllib, urllib2, zipfile
 
 import xml.etree.ElementTree as ET
 
@@ -21,9 +21,39 @@ from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 from waflib.TaskGen import feature
 
 
+################################################################
+#                     Defaults                                 #
+ANDROID_SDK_LOCAL_REPOS = [
+    '${ANDROID_SDK_HOME}/extras/android/m2repository',
+    '${ANDROID_SDK_HOME}/extras/google/m2repository',
+    '${ANDROID_SDK_HOME}/extras/m2repository',
+    '${THIRD_PARTY}/android-sdk/1.0-az/google/m2repository',
+]
+
+GOOGLE_MAIN_MAVEN_REPO = 'https://maven.google.com'
+GOOGLE_MAIN_MAVEN_REPO_INDEX = {}
+
+GOOGLE_BINTRAY_MAVEN_REOPS = [
+    'https://google.bintray.com/play-billing',
+    'https://google.bintray.com/googlevr',
+]
+#                                                              #
+################################################################
+
+
+def is_xml_elem_valid(xml_elem):
+    '''
+    FutureWarning safe way of checking to see if an XML element is valid
+    '''
+    if xml_elem is not None:
+        return True
+    else:
+        return False
+
+
 def get_package_name(android_manifest):
     xml_tree = ET.parse(android_manifest)
-    xml_node = xml_tree.get_root()
+    xml_node = xml_tree.getroot()
 
     raw_attributes = getattr(xml_node, 'attrib', None)
     if not raw_attributes:
@@ -33,6 +63,265 @@ def get_package_name(android_manifest):
     return raw_attributes.get('package', None)
 
 
+def build_google_main_maven_repo_index():
+    '''
+    Connects to the Google's main Maven repository and creates a local map of all libs currently hosted there
+    '''
+
+    global GOOGLE_MAIN_MAVEN_REPO_INDEX
+    if GOOGLE_MAIN_MAVEN_REPO_INDEX:
+        return
+
+    master_url = '/'.join([ GOOGLE_MAIN_MAVEN_REPO, 'master-index.xml' ])
+
+    try:
+        master_repo = urllib2.urlopen(master_url)
+    except:
+        Logs.error('[ERROR] Failed to connect to {}.  Unable to access to Google\'s main Maven repository at this time.'.format(master_url))
+        return
+
+    data = master_repo.read()
+    if not data:
+        Logs.error('[ERROR] Failed to retrive data from {}.  Unable to access to Google\'s main Maven repository at this time.'.format(master_url))
+        return
+
+    master_index = ET.fromstring(data)
+    if not is_xml_elem_valid(master_index):
+        Logs.error('[ERROR] Data retrived from {} is malformed.  Unable to access to Google\'s main Maven repository at this time.'.format(master_url))
+        return
+
+    for group in master_index:
+        Logs.debug('android_library: Adding group %s to the main maven repo index', group.tag)
+
+        group_index_url = '/'.join([ GOOGLE_MAIN_MAVEN_REPO ] + group.tag.split('.') + [ 'group-index.xml' ])
+
+        try:
+            group_index = urllib2.urlopen(group_index_url)
+        except:
+            Logs.warn('[WARN] Failed to connect to {}.  Access to Google\'s main Maven repository may be incomplete.'.format(group_index_url))
+            continue
+
+        data = group_index.read()
+        if not data:
+            Logs.warn('[WARN] Failed to retrive data from {}.  Access to Google\'s main Maven repository may be incomplete.'.format(group_index_url))
+            continue
+
+        group_libraries = {}
+
+        group_index = ET.fromstring(data)
+        for lib in group_index:
+            versions = lib.attrib.get('versions', None)
+            if not versions:
+                Logs.warn('[WARN] No found versions for library {} in group {}.  Skipping'.format(lib.tag, group))
+                continue
+
+            Logs.debug('android_library:    -> Adding library %s with version(s) %s', lib.tag, versions)
+            group_libraries[lib.tag] = versions.split(',')
+
+        GOOGLE_MAIN_MAVEN_REPO_INDEX[group.tag] = group_libraries
+
+
+def get_bintray_version_info(url_root):
+    '''
+    Connects to a Bintray Maven repository and gets the latest version and all versions currently hosted here
+    '''
+    def _log_error(message):
+        Logs.error('[ERROR] {}.  Unable to access this repository at this time.'.format(message))
+
+    bintray_metadata_url = '/'.join([ url_root, 'maven-metadata.xml' ])
+    try:
+        bintray_metadata = urllib2.urlopen(bintray_metadata_url)
+    except:
+        return None, []
+
+    data = bintray_metadata.read()
+    if not data:
+        _log_error('Failed to retrive data from {}'.format(bintray_metadata_url))
+        return None, []
+
+    metadata_root = ET.fromstring(data)
+    if not is_xml_elem_valid(metadata_root):
+        _log_error('Data retrived from {} is malformed'.format(bintray_metadata_url))
+        return None, []
+
+    versioning_node = metadata_root.find('versioning')
+    if not is_xml_elem_valid(versioning_node):
+        _log_error('Data retrived from {} is does not contain versioning information'.format(bintray_metadata_url))
+        return None, []
+
+
+    all_versions = []
+    versions_node = versioning_node.find('versions')
+    for ver_entry in versions_node:
+        if ver_entry.tag == 'version':
+            all_versions.append(ver_entry.text)
+
+    if not all_versions:
+        _log_error('Data retrived from {} is does not contain master version list'.format(bintray_metadata_url))
+        return None, []
+
+
+    latest_version = None
+    latest_version_node = versioning_node.find('latest')
+    if is_xml_elem_valid(latest_version_node):
+        latest_version = latest_version_node.text
+    else:
+        Logs.warn('[WARN] Data retrived from {} is does not contain a latest version entry.  Auto-detecting latest from master version list'.format(bintray_metadata_url))
+        latest_version = all_versions[-1] # given the 2 bintray repos used as an example, it's safe to use the last entry from the master version list
+
+    return latest_version, all_versions
+
+
+def search_maven_repos(ctx, name, group, version):
+    '''
+    Searches all known maven repositories (local, main and bintray) for the exact library or closest match based on the inputs
+    '''
+
+    group_path = group.replace('.', '/')
+
+    partial_version = False
+    if version and '+' in version:
+        Logs.warn('[WARN] It is not recommended to use "+" in version numbers.  '
+                  'This will lead to unpredictable results due to the version silently changing.  '
+                  'Found while processing {}'.format(name))
+        partial_version = True
+
+
+    def _filter_versions(versions_list):
+        if partial_version:
+            base_version = version.split('+')[0]
+            valid_versions = [ ver for ver in versions_list if ver.startswith(base_version) ]
+
+        # the support lib versions are based on API built against
+        elif group == 'com.android.support' and 'multidex' not in name:
+            android_api_level = str(ctx.env['ANDROID_SDK_VERSION_NUMBER'])
+            valid_versions = [ ver for ver in versions_list if ver.startswith(android_api_level) ]
+
+        # try to elimiate the alpha, beta and rc versions
+        stable_versions = []
+        for ver in valid_versions:
+            if ('alpha' in ver) or ('beta' in ver) or ('rc' in ver):
+                continue
+            stable_versions.append(ver)
+
+        if stable_versions:
+            return sorted(stable_versions)
+        else:
+            return sorted(valid_versions)
+
+    # make sure the 3rd Party path is in the env
+    if 'THIRD_PARTY' not in ctx.env:
+        ctx.env['THIRD_PARTY'] = ctx.tp.calculate_3rd_party_root()
+
+    # first search the local repos from the Android SDK installation
+    for local_repo in ANDROID_SDK_LOCAL_REPOS:
+        repo_root = string.Template(local_repo).substitute(ctx.env)
+
+        lib_root = os.path.join(repo_root, group_path, name)
+        Logs.debug('android_library: Searching %s', lib_root)
+
+        if not os.path.exists(lib_root):
+            continue
+
+        if not version or partial_version:
+
+            # filter out all the non-directory, non-numerical entries
+            installed_versions = []
+
+            contents = os.listdir(lib_root)
+            for entry in contents:
+                path = os.path.join(lib_root, entry)
+                if os.path.isdir(path) and entry.split('.')[0].isdigit():
+                    installed_versions.append(entry)
+
+            valid_versions = _filter_versions(installed_versions)
+            if valid_versions:
+                Logs.debug('android_library: Valid installed versions of {} found: {}'.format(name, valid_versions))
+
+                highest_useable_version = valid_versions[-1]
+
+                aar_file = '{}-{}.aar'.format(name, highest_useable_version)
+                file_path = os.path.join(lib_root, highest_useable_version, aar_file)
+                file_url = 'file:{}'.format(file_path)
+
+                if os.path.exists(file_path):
+                    return file_url, aar_file
+
+        else:
+
+            aar_file = '{}-{}.aar'.format(name, version)
+            file_path = os.path.join(lib_root, version, aar_file)
+            file_url = 'file:{}'.format(file_path)
+
+            if os.path.exists(file_path):
+                return file_url, aar_file
+
+    # if it's not local, try the main google maven repo
+    Logs.debug('android_library: Searching %s', GOOGLE_MAIN_MAVEN_REPO)
+    build_google_main_maven_repo_index()
+
+    if group in GOOGLE_MAIN_MAVEN_REPO_INDEX:
+        repo_libs = GOOGLE_MAIN_MAVEN_REPO_INDEX[group]
+        if name in repo_libs:
+            repo_versions = repo_libs[name]
+
+            if not version or partial_version:
+
+                valid_versions = _filter_versions(repo_versions)
+                Logs.debug('android_library: Valid repo versions of {} found: {}'.format(name, valid_versions))
+
+                highest_useable_version = valid_versions[-1]
+
+                aar_file = '{}-{}.aar'.format(name, highest_useable_version)
+                file_url = '/'.join([ GOOGLE_MAIN_MAVEN_REPO, group_path, name, highest_useable_version, aar_file ])
+
+                return file_url, aar_file
+
+            elif version in repo_versions:
+
+                aar_file = '{}-{}.aar'.format(name, version)
+                file_url = '/'.join([ GOOGLE_MAIN_MAVEN_REPO, group_path, name, version, aar_file ])
+
+                return file_url, aar_file
+
+    # finally check the other known google maven repos
+    for repo_root in GOOGLE_BINTRAY_MAVEN_REOPS:
+        Logs.debug('android_library: Searching %s', repo_root)
+
+        lib_root = '/'.join([ repo_root, group_path, name ])
+        latest_version, all_versions = get_bintray_version_info(lib_root)
+
+        if not (latest_version and all_versions):
+            continue
+
+        if not version:
+            aar_file = '{}-{}.aar'.format(name, latest_version)
+            file_url = '/'.join([ lib_root, latest_version, aar_file ])
+            return file_url, aar_file
+
+        elif partial_version:
+            valid_versions = _filter_versions(all_versions)
+            Logs.debug('android_library: Valid repo versions of {} found: {}'.format(name, valid_versions))
+
+            highest_useable_version = valid_versions[-1]
+
+            aar_file = '{}-{}.aar'.format(name, highest_useable_version)
+            file_url = '/'.join([ lib_root, highest_useable_version, aar_file ])
+
+            return file_url, aar_file
+
+        elif version in all_versions:
+
+            aar_file = '{}-{}.aar'.format(name, version)
+            file_url = '/'.join([ lib_root, version, aar_file ])
+
+            return file_url, aar_file
+
+    return None, None
+
+
+###############################################################################
+###############################################################################
 class fake_jar(Task):
     '''
     Dummy primary Java Archive Resource task for an Android Archive Resource
@@ -65,7 +354,7 @@ class fake_aar(Task):
 
 class android_manifest_merger(Task):
     '''
-    Merges the input manifests into the "main" manifest specifed in the task generator 
+    Merges the input manifests into the "main" manifest specifed in the task generator
     '''
     color = 'PINK'
     run_str = '${JAVA} -cp ${MANIFEST_MERGER_CLASSPATH} ${MANIFEST_MERGER_ENTRY_POINT} --main ${MAIN_MANIFEST} --libs ${LIBRARY_MANIFESTS} --out ${TGT}'
@@ -82,47 +371,67 @@ class android_manifest_merger(Task):
 
 
 @conf
-def read_aar(conf, name, paths, is_android_support_lib = False, android_studio_name = None):
+def read_aar(conf, name, group = None, version = None, paths = None):
     '''
-    Read an Android Archive Resource, enabling its use as a local Android library. Will trigger a rebuild if the file changes
+    Read an Android Archive Resource (local or remote), enabling its use as a local Android library.   Will trigger a rebuild
+    if the file changes
     :param conf:    The Context
-    :param name:    Name of the task
-    :param paths:   Possible locations on disk the library could be
-    :param is_android_support_lib: [Optional] Special flag for Android support libraries so the version can be auto detected 
-                                    based on the specified Android API level used.  Default is False
-    :param android_studio_name:    [Optional] Override the name used in the Android Studio project generation.  This is mostly
-                                    used for AARs that come with the Android SDK as they are sourced from a repository, which
-                                    requires a special naming convention. Default is none, in which the name will be used
+    :param name:    Name of the library
+
+    :param group:   Maven repository group identifier.  Required for libraries supplied by Google e.g. found in a 'm2repository'
+                    directory of the Android SDK.  Cannot be used with the 'paths' parameter.
+    :param version: The version number of the Maven hosted library.  If omitted, the version will be auto-detected.  Can only
+                    be used with the 'group' parameter.
+
+    :param paths:   Location of the library on disk.  Required for standalone libraries e.g. found outside of a 'm2repository'
+                    directory in the Android SDK, 3rd Party libraries, etc.  Cannot be used with the 'group'/'version' parameters.
 
     def build(bld):
         bld.read_aar(
-            name = 'play-services-games-11.0.2', 
-            paths = '/Developer/Android/sdk/extras/google/m2repository/com/google/android/gms/play-services-games/11.0.2',
-            android_studio_name = 'com.google.android.gms:play-services-games:11.0.2
+            name = 'play-services-games',
+            group = 'com.google.android.gms',
+            version = '11.0.2'
         )
 
         bld.read_aar(
-            name = 'support-v4', 
-            is_android_support_lib = True,
-            paths = '/Developer/Android/sdk/extras/android/m2repository/com/android/support/support-v4', # root path to the versions
+            name = 'support-v4',
+            group = 'com.android.support'
         )
 
-        bld.AndroidAPK(project_name = 'AwesomeGame', use = [ 'play-services-games-11.0.2', 'support-v4' ])
+        bld.read_aar(
+            name = 'gfxtracer',
+            paths = 'C:/Android/android-sdk/extras/android/gapid_3/android'
+        )
+
+        bld.AndroidAPK(project_name = 'AwesomeGame', use = [ 'play-services-games', 'support-v4', 'gfxtracer' ])
     '''
+
+    # unable to determine how to locate the library when both types are specified
+    if (group or version) and paths:
+        conf.Fatal('[ERROR] The "group" (or "version") and "paths" arguments are both specified for call to read_aar.  '
+                    'Only one set of arguments can be specified: [ group, version ] OR [ paths ]'
+                    'Unable to locate library {}.'.format(name))
+
     if isinstance(paths, str):
         paths = [ paths ]
 
-    return conf(name = name, features = 'fake_aar', lib_paths = paths, is_android_support_lib = is_android_support_lib, android_studio_name = android_studio_name)
+    return conf(name = name, features = 'fake_aar', group_id = group, version = version, paths = paths)
 
 
 @feature('fake_aar')
 def process_aar(self):
-    """
+    '''
     Find the Android library and unpack it so it's resources can be used by other modules
-    """
+    '''
+    def _could_not_find_lib_error():
+        raise Errors.WafError('[ERROR] Could not find Android library %r' % self.name)
+
     bld = self.bld
     platform = bld.env['PLATFORM']
-    if not (bld.is_android_platform(platform) or platform =='project_generator'):
+
+    # the android studio project generation also requires this to run in order for the
+    # aar dependencies to get added to gradle correctly
+    if not (bld.is_android_platform(platform) or bld.cmd == 'android_studio'):
         Logs.debug('android_library: Skipping the reading of the aar')
         return
 
@@ -140,54 +449,70 @@ def process_aar(self):
         aapt_resources = None,
     )
 
+    group = self.group_id
+    version = self.version
+    search_paths = self.paths
+
+    android_cache = bld.get_android_cache_node()
+    aar_cache = android_cache.make_node('aar')
+    aar_cache.mkdir()
+
+    Logs.debug('android_library: Processing Android library %s', self.name)
     lib_node = None
-    search_paths = []
 
-    if self.is_android_support_lib:
-        android_api_level = str(self.env['ANDROID_SDK_VERSION_NUMBER'])
-        Logs.debug('android_library: Searching for support library - %s - built with API %s', self.name, android_api_level)
+    if search_paths:
+        aar_filename = '{}.aar'.format(self.name)
 
-        for path in self.lib_paths:
-            if os.path.exists(path):
-                entries = os.listdir(path)
-                Logs.debug('android_library: All API versions installed {}'.format(entries))
+        for path in search_paths:
+            if not isinstance(path, Node.Node):
+                path = bld.root.find_node(path) or self.path.find_node(path)
+                if not path:
+                    Logs.debug('android_library: Unable to find node for path %s', path)
+                    continue
 
-                api_versions = sorted([ entry for entry in entries if entry.startswith(android_api_level) ])
-                Logs.debug('android_library: Found versions {}'.format(api_versions))
-                highest_useable_version = api_versions[-1]
-
-                search_paths.append(os.path.join(path, highest_useable_version))
-
-                self.android_studio_name = 'com.android.support:{}:{}'.format(self.name, highest_useable_version)
-                lib_name = '{}-{}.aar'.format(self.name, highest_useable_version)
+            Logs.debug('android_library: Searching path {}'.format(path.abspath()))
+            lib_node = path.find_node(aar_filename)
+            if lib_node:
                 break
         else:
-            raise Errors.WafError('Unable to detect a valid useable version for Android support library  %r' % self.name)
+            _could_not_find_lib_error()
+
+        self.android_studio_name = 'file:{}'.format(lib_node.abspath()).replace('\\', '/')
 
     else:
-        lib_name = '{}.aar'.format(self.name)
-        search_paths = self.lib_paths + [ self.path ]
+        file_url, aar_filename = search_maven_repos(bld, self.name, group, version)
 
-    for path in search_paths:
-        Logs.debug('android_library: Searching path {}'.format(path))
+        if not (file_url and aar_filename):
+            _could_not_find_lib_error()
 
-        if not isinstance(path, Node.Node):
-            path = self.bld.root.find_node(path) or self.path.find_node(path)
-            if not path:
-                Logs.debug('android_library: Unable to find node for path')
-                continue
+        if file_url.startswith('file:'):
+            local_path = file_url[5:]
 
-        lib_node = path.find_node(lib_name)
-        if lib_node:
-            lib_node.sig = Utils.h_file(lib_node.abspath())
-            break
+            lib_node = bld.root.find_node(local_path)
+            if not lib_node:
+                _could_not_find_lib_error()
 
-    else:
-        raise Errors.WafError('Could not find Android library %r' % self.name)
+        else:
+            lib_node = aar_cache.find_node(aar_filename)
+            if not lib_node:
+                lib_node = aar_cache.make_node(aar_filename)
+                Logs.debug('android_library: Downloading %s => %s', file_url, lib_node.abspath())
 
-    android_cache = self.bld.get_android_cache_node()
+                try:
+                    url_opener = urllib.FancyURLopener()
+                    url_opener.retrieve(file_url, filename = lib_node.abspath())
+                except:
+                    bld.Fatal('[ERROR] Failed to download Android library {} from {}.'.format(self.name, file_url))
 
-    extraction_node = android_cache.make_node([ 'aar', self.name ])
+        if not version:
+            version = os.path.splitext(aar_filename)[0].split('-')[-1]
+
+        self.android_studio_name = '{}:{}:{}'.format(group, self.name, version)
+
+    lib_node.sig = Utils.h_file(lib_node.abspath())
+
+    folder_name = os.path.splitext(aar_filename)[0]
+    extraction_node = aar_cache.make_node(folder_name)
     if os.path.exists(extraction_node.abspath()):
         extraction_node.delete()
     extraction_node.mkdir()

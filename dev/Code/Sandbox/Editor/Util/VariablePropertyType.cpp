@@ -43,6 +43,7 @@ namespace Prop
         { IVariable::DT_FILE, "File", ePropertyFile, 7 },
         { IVariable::DT_TEXTURE, "Texture", ePropertyTexture, 4 },
         { IVariable::DT_ANIMATION, "Animation", ePropertyAnimation, -1 },
+        { IVariable::DT_MOTION, "Motion", ePropertyMotion, -1 },
         { IVariable::DT_OBJECT, "Model", ePropertyModel, 5 },
         { IVariable::DT_SIMPLE, "Selection", ePropertySelection, -1 },
         { IVariable::DT_SIMPLE, "List", ePropertyList, -1 },

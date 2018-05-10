@@ -105,6 +105,8 @@ namespace MNM
                 , status(Invalid)
             {}
 
+            ProcessingContext(const ProcessingContext&) = delete;
+
             ProcessingContext(ProcessingContext&& other)
                 : processingRequest(std::move(other.processingRequest))
                 , queryResult(std::move(other.queryResult))
@@ -114,7 +116,9 @@ namespace MNM
                 other.jobExecutor.WaitForCompletion();
             }
 
-            ProcessingContext(const ProcessingContext&) = delete;
+
+            ProcessingContext& operator=(const ProcessingContext&) = delete;
+            ProcessingContext& operator=(ProcessingContext&&) = delete;
 
             void Reset()
             {
@@ -173,7 +177,7 @@ namespace MNM
         class ProcessingContextsPool
         {
         public:
-            typedef std::vector<ProcessingContext> Pool;
+            typedef AZStd::vector<ProcessingContext> Pool;
             typedef Pool::iterator PoolIterator;
             typedef Pool::const_iterator PoolConstIterator;
             typedef Functor1<ProcessingContext&> ProcessingOperation;

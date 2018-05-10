@@ -164,7 +164,7 @@ org.gradle.daemon=true
 
 # Since Lumberyard is a large project, we need to override the JVM daemon process memory settings
 # Defaults -Xmx10248m -XX:MaxPermSize=256m
-org.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=512m
+org.gradle.jvmargs=-Xmx4096m -XX:MaxPermSize=1024m
 
 # Enable the new (incubating) selective Gradle configure mode.  This should help improve
 # build time due to the large size of Lumberyard.
@@ -1069,14 +1069,28 @@ class Module(GradleContainer):
                 except:
                     return None
 
-            launcher_name = getattr(task_generator, 'project_name', '')
-            apk_task_name = '{}_APK'.format(launcher_name)
+            game_project = getattr(task_generator, 'project_name', '')
+            apk_task_name = '{}_APK'.format(game_project)
 
             apk_task = _get_task_gen(apk_task_name)
             if apk_task:
                 uses_added = []
 
                 uses = project.ctx.collect_task_gen_attrib(apk_task, 'use')
+
+                for tsk_gen in project.ctx.project_tasks:
+                    module_name = tsk_gen.target
+
+                    # skip the launchers / same module, those source paths were already added above
+                    if module_name.endswith('AndroidLauncher'):
+                        continue
+
+                    if project.ctx.is_module_for_game_project(module_name, game_project, None):
+                        module_uses = project.ctx.collect_task_gen_attrib(tsk_gen, 'use')
+                        uses = uses + module_uses
+
+                uses = list(set(uses))
+
                 for use in uses:
                     use_task_gen = _get_task_gen(use)
                     if use_task_gen:
@@ -1087,7 +1101,11 @@ class Module(GradleContainer):
 
                         android_studio_name = getattr(use_task_gen, 'android_studio_name', None)
                         if android_studio_name:
-                            deps.add_compile_libraries(android_studio_name)
+                            if android_studio_name.startswith('file:'):
+                                android_studio_name = android_studio_name[5:]
+                                deps.add_compile_files(android_studio_name)
+                            else:
+                                deps.add_compile_libraries(android_studio_name)
                             uses_added.append(android_studio_name)
                         else:
                             deps.add_compile_projects(use)

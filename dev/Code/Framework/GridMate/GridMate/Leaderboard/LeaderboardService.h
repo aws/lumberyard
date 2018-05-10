@@ -89,6 +89,9 @@ namespace GridMate
         StorageType     m_storageType;      // Specifies C++ data type for this field
         int             m_infoType;         // OBSOLETE PLATFORM ONLY?
         int             m_columnId;         // OBSOLETE PLATFORM ONLY?
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(LeaderboardService_h, AZ_RESTRICTED_PLATFORM)
+#endif
         gridmate_string m_dataSource;
     };
 

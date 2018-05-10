@@ -143,6 +143,9 @@ namespace XMLCPB
         {
             SetName("ZLibCompressor");
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(XMLCPB_ZLibCompressor_cpp, AZ_RESTRICTED_PLATFORM)
+#endif
 
             while (!m_bCancelled || !m_files.empty())
             {

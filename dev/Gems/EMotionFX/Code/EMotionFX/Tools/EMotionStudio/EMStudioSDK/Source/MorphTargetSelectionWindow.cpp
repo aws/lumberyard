@@ -18,17 +18,24 @@
 
 namespace EMStudio
 {
-    MorphTargetSelectionWindow::MorphTargetSelectionWindow(QWidget* parent)
+    MorphTargetSelectionWindow::MorphTargetSelectionWindow(QWidget* parent, bool multiSelect)
         : QDialog(parent)
     {
-        setWindowTitle("Morph Target Selection Window");
+        setWindowTitle("Morph target selection window");
 
         QVBoxLayout* layout = new QVBoxLayout();
 
         mListWidget = new QListWidget();
         mListWidget->setAlternatingRowColors(true);
+        if (multiSelect)
+        {
+            mListWidget->setSelectionMode(QListWidget::ExtendedSelection);
+        }
+        else
+        {
+            mListWidget->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+        }
 
-        // create the ok and cancel buttons
         QHBoxLayout* buttonLayout = new QHBoxLayout();
         mOKButton       = new QPushButton("OK");
         mCancelButton   = new QPushButton("Cancel");
@@ -50,6 +57,12 @@ namespace EMStudio
     }
 
 
+    const AZStd::vector<uint32>& MorphTargetSelectionWindow::GetMorphTargetIDs() const
+    {
+        return mSelection;
+    }
+
+
     void MorphTargetSelectionWindow::OnSelectionChanged()
     {
         mSelection.clear();
@@ -59,14 +72,12 @@ namespace EMStudio
         for (int i = 0; i < numItems; ++i)
         {
             QListWidgetItem* item = mListWidget->item(i);
-
-            // add the morph target id to the selection array in case the item is selected
-            if (item->isSelected())
+            if (!item->isSelected())
             {
                 continue;
             }
 
-            mSelection.push_back(item->data(Qt::UserRole).toInt());
+            mSelection.emplace_back(item->data(Qt::UserRole).toInt());
         }
     }
 
@@ -78,9 +89,10 @@ namespace EMStudio
             return;
         }
 
-        mListWidget->setSelectionMode(QListWidget::ExtendedSelection);
         mListWidget->blockSignals(true);
         mListWidget->clear();
+
+        mSelection = selection;
 
         const uint32 numMorphTargets = morphSetup->GetNumMorphTargets();
         for (uint32 i = 0; i < numMorphTargets; ++i)

@@ -23,16 +23,6 @@
 #include <ImageExtensionHelper.h>
 #include <IConsole.h>
 #include <platform.h>
-
-#if defined(AZ_PLATFORM_WINDOWS)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>   // needed for DbgHelp.h
-#pragma warning(push)
-#pragma warning(disable : 4091) // Needed to bypass the "'typedef ': ignored on left of '' when no variable is declared" brought in by DbgHelp.h
-#include <DbgHelp.h>
-#pragma warning(pop)
-#endif
-
 #include "FileUtil.h"
 #include "IRCLog.h"
 #include "IResCompiler.h"
@@ -1073,7 +1063,15 @@ void CTextureSplitter::ProcessPlatformSpecificConversions(std::vector<STexture>&
             }
         }
 
-
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        if (m_targetType == eTT_##PrivateName)\
+        {\
+            ProcessPlatformSpecificConversions_##PrivateName(resource, dwSides, dwWidth, dwHeight, dwDepth, dwMips, format, bBlockCompressed, nBitsPerPixel);\
+        }
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#endif
     }
 
     // apply to attached images recursively

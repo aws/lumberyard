@@ -36,6 +36,7 @@ namespace GraphicsReflectContext
             ScriptCanvas_Node::Name("Screen Fader") // The localization tool doesn't support custom SC nodes, so we have to put the spaces in here.
             ScriptCanvas_Node::Category("Rendering/Post Effects")
             ScriptCanvas_Node::Description("Controls fading the screen to a color and/or texture")
+            ScriptCanvas_Node::Version(1, ScreenFaderNodeVersionConverter)
         );
 
     public:

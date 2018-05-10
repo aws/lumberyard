@@ -900,8 +900,15 @@ namespace AzToolsFramework
 
         void ScriptEditorComponent::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
-            (void)asset;
-            AZ_Error("Lua Script", false, "Failed to load asset for ScriptComponent: id=%s, type %s", asset.GetId().ToString<AZStd::string>().c_str(), asset.GetType().ToString<AZStd::string>().c_str());
+            // only notify for asset errors for the asset we care about.
+#if defined(AZ_ENABLE_TRACING)
+            if ((asset.GetId().IsValid()) && (asset == m_scriptAsset))
+            {
+                AZ_Error("Lua Script", false, "Failed to load asset for ScriptComponent: %s", m_scriptAsset.ToString<AZStd::string>().c_str());
+            }
+#else // else if AZ_ENABLE_TRACING is not currently defined...
+            AZ_UNUSED(asset);
+#endif
         }
 
         void ScriptEditorComponent::SetScript(const AZ::Data::Asset<AZ::ScriptAsset>& script) 

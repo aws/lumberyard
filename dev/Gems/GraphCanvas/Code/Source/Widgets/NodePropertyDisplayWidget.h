@@ -30,7 +30,7 @@ namespace GraphCanvas
 {
     class NodePropertyDisplayWidget
         : public QGraphicsWidget
-        , public VisualNotificationBus::Handler
+        , public RootGraphicsItemNotificationBus::Handler
         , public NodePropertiesRequestBus::Handler
         , public NodePropertyRequestBus::Handler
     {
@@ -41,10 +41,9 @@ namespace GraphCanvas
         ~NodePropertyDisplayWidget() override;
 
         void RefreshStyle();
-        
-        // VisualNotificationBus
-        void OnHoverEnter(QGraphicsItem* graphicsItem) override;
-        void OnHoverLeave(QGraphicsItem* graphicsItem) override;
+
+        // RootGraphicsItemNotificationBus
+        void OnDisplayStateChanged(RootGraphicsItemDisplayState oldState, RootGraphicsItemDisplayState newState);
         ////
         
         // NodePropertiesRequestBus

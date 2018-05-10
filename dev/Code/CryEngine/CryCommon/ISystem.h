@@ -22,9 +22,9 @@
 #pragma once
 
 #ifdef CRYSYSTEM_EXPORTS
-    #define CRYSYSTEM_API DLL_EXPORT
+#define CRYSYSTEM_API DLL_EXPORT
 #else
-    #define CRYSYSTEM_API DLL_IMPORT
+#define CRYSYSTEM_API DLL_IMPORT
 #endif
 
 #include "CryAssert.h"
@@ -32,6 +32,15 @@
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/any.h>
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define ISYSTEM_H_SECTION_1 1
+#define ISYSTEM_H_SECTION_2 2
+#define ISYSTEM_H_SECTION_3 3
+#define ISYSTEM_H_SECTION_4 4
+#define ISYSTEM_H_SECTION_5 5
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -184,12 +193,12 @@ namespace JobManager {
 
 enum ESystemUpdateFlags
 {
-    ESYSUPDATE_IGNORE_AI            = 0x0001,
+    ESYSUPDATE_IGNORE_AI = 0x0001,
     ESYSUPDATE_IGNORE_PHYSICS = 0x0002,
     // Summary:
     //   Special update mode for editor.
-    ESYSUPDATE_EDITOR                   =   0x0004,
-    ESYSUPDATE_MULTIPLAYER      = 0x0008,
+    ESYSUPDATE_EDITOR = 0x0004,
+    ESYSUPDATE_MULTIPLAYER = 0x0008,
     ESYSUPDATE_EDITOR_AI_PHYSICS = 0x0010,
     ESYSUPDATE_EDITOR_ONLY = 0x0020,
     ESYSUPDATE_UPDATE_VIEW_ONLY = 0x0040
@@ -202,10 +211,10 @@ static const int NUM_PLATFORMS = 8;
 //   Configuration specification, depends on user selected machine specification.
 enum ESystemConfigSpec
 {
-    CONFIG_AUTO_SPEC     = 0,
-    CONFIG_LOW_SPEC      = 1,
-    CONFIG_MEDIUM_SPEC   = 2,
-    CONFIG_HIGH_SPEC     = 3,
+    CONFIG_AUTO_SPEC = 0,
+    CONFIG_LOW_SPEC = 1,
+    CONFIG_MEDIUM_SPEC = 2,
+    CONFIG_HIGH_SPEC = 3,
     CONFIG_VERYHIGH_SPEC = 4,
 
     END_CONFIG_SPEC_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
@@ -242,15 +251,15 @@ struct CVarInfo
 //   Configuration platform. Autodetected at start, can be modified through the editor.
 enum ESystemConfigPlatform
 {
-    CONFIG_INVALID_PLATFORM   = 0,
-    CONFIG_PC                 = 1,
-    CONFIG_OSX_GL             = 2,
-    CONFIG_OSX_METAL          = 3,
-    CONFIG_ANDROID            = 4,
-    CONFIG_IOS                = 5,
-    CONFIG_XBONE              = 6,
-    CONFIG_PS4                = 7,
-    CONFIG_APPLETV            = 8,
+    CONFIG_INVALID_PLATFORM = 0,
+    CONFIG_PC = 1,
+    CONFIG_OSX_GL = 2,
+    CONFIG_OSX_METAL = 3,
+    CONFIG_ANDROID = 4,
+    CONFIG_IOS = 5,
+    CONFIG_XBONE = 6,
+    CONFIG_PS4 = 7,
+    CONFIG_APPLETV = 8,
 
     END_CONFIG_PLATFORM_ENUM, // MUST BE LSAT VALUE. USED FOR ERROR CHECKING.
 };
@@ -496,7 +505,15 @@ enum ESystemEvent
     //      Sent when frontend is reloaded
     ESYSTEM_EVENT_FRONTEND_RELOADED,
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_1
+#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_2
+#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+#endif
     ESYSTEM_EVENT_STREAMING_INSTALL_ERROR,
 
     // Description:
@@ -521,7 +538,7 @@ enum ESystemEvent
 struct ISystemUserCallback
 {
     // <interfuscator:shuffle>
-    virtual ~ISystemUserCallback(){}
+    virtual ~ISystemUserCallback() {}
     // Description:
     //   This method is called at the earliest point the ISystem pointer can be used
     //   the log might not be yet there.
@@ -593,7 +610,7 @@ struct ISystemUserCallback
 struct ISystemEventListener
 {
     // <interfuscator:shuffle>
-    virtual ~ISystemEventListener(){}
+    virtual ~ISystemEventListener() {}
     virtual void OnSystemEventAnyThread(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) {}
     virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) { }
     // </interfuscator:shuffle>
@@ -604,7 +621,7 @@ struct ISystemEventListener
 struct ISystemEventDispatcher
 {
     // <interfuscator:shuffle>
-    virtual ~ISystemEventDispatcher(){}
+    virtual ~ISystemEventDispatcher() {}
     virtual bool RegisterListener(ISystemEventListener* pListener) = 0;
     virtual bool RemoveListener(ISystemEventListener* pListener) = 0;
 
@@ -651,6 +668,10 @@ struct ICVarsWhitelist
 };
 #endif // defined(CVARS_WHITELIST)
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_3
+#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
 namespace AZ
 {
@@ -691,11 +712,11 @@ struct SSystemInitParams
     char szSystemCmdLine[2048];                     // Command line.
 
 
-    // set some paths before you create the system.
+                                                    // set some paths before you create the system.
 
-    // rootPath - (REQUIRED) folder containing root.  Must contain system.cfg or bootstrap.cfg basically.
-    // the remainder are optional and if specified should contain prefixes that can be prepended to any file to get to that location:
-    // READ ONLY!
+                                                    // rootPath - (REQUIRED) folder containing root.  Must contain system.cfg or bootstrap.cfg basically.
+                                                    // the remainder are optional and if specified should contain prefixes that can be prepended to any file to get to that location:
+                                                    // READ ONLY!
     char rootPath[256];
     char rootPathCache[256];
 
@@ -754,9 +775,9 @@ struct SSystemInitParams
 
     ISystem* pSystem;                                           // Pointer to existing ISystem interface, it will be reused if not NULL.
     IGameStartup* pGameStartup;                     // Pointer to the calling GameStartup instance, to allow use of some game specific data during engine init.
-    //  char szLocalIP[256];                                    // local IP address (needed if we have several servers on one machine)
+                                                    //  char szLocalIP[256];                                    // local IP address (needed if we have several servers on one machine)
 
-    typedef void* (* ProtectedFunction)(void* param1, void* param2);
+    typedef void* (*ProtectedFunction)(void* param1, void* param2);
     ProtectedFunction pProtectedFunctions[eProtectedFuncsLast];         // Protected functions.
 
     SCvarsDefault* pCvarsDefault;               // to override the default value of some cvar
@@ -861,7 +882,7 @@ struct SSystemInitParams
 
 // Summary:
 //   Typedef for frame profile callback function.
-typedef void (* FrameProfilerSectionCallback)(class CFrameProfilerSection* pSection);
+typedef void(*FrameProfilerSectionCallback)(class CFrameProfilerSection* pSection);
 
 // Notes:
 //   Can be used for LoadConfiguration().
@@ -870,7 +891,7 @@ typedef void (* FrameProfilerSectionCallback)(class CFrameProfilerSection* pSect
 struct ILoadConfigurationEntrySink
 {
     // <interfuscator:shuffle>
-    virtual ~ILoadConfigurationEntrySink(){}
+    virtual ~ILoadConfigurationEntrySink() {}
     virtual void OnLoadConfigurationEntry(const char* szKey, const char* szValue, const char* szGroup) = 0;
     virtual void OnLoadConfigurationEntry_End() {}
     // </interfuscator:shuffle>
@@ -909,7 +930,7 @@ struct SSystemUpdateStats
     SSystemUpdateStats()
         : avgUpdateTime(0.0f)
         , minUpdateTime(0.0f)
-        , maxUpdateTime(0.0f){}
+        , maxUpdateTime(0.0f) {}
     float avgUpdateTime;
     float minUpdateTime;
     float maxUpdateTime;
@@ -973,19 +994,23 @@ struct SSystemGlobalEnvironment
     IFilePathManager* pFilePathManager;
     IThreadManager*               pThreadManager;
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_4
+#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+#endif
 
     ISystemScheduler*          pSystemScheduler;
 
     threadID                                 mMainThreadId;     //The main thread ID is used in multiple systems so should be stored globally
 
-    //////////////////////////////////////////////////////////////////////////
+                                                                //////////////////////////////////////////////////////////////////////////
     uint32                     nMainFrameID;
 
     //////////////////////////////////////////////////////////////////////////
     const char*                szCmdLine;  // Startup command line.
 
-    //////////////////////////////////////////////////////////////////////////
-    // Generic debug string which can be easily updated by any system and output by the debug handler
+                                           //////////////////////////////////////////////////////////////////////////
+                                           // Generic debug string which can be easily updated by any system and output by the debug handler
     enum
     {
         MAX_DEBUG_STRING_LENGTH = 128
@@ -1024,8 +1049,8 @@ struct SSystemGlobalEnvironment
     // Protected functions.
     SSystemInitParams::ProtectedFunction pProtectedFunctions[eProtectedFuncsLast];  // Protected functions.
 
-    //////////////////////////////////////////////////////////////////////////
-    // Flag to able to print out of memory conditon
+                                                                                    //////////////////////////////////////////////////////////////////////////
+                                                                                    // Flag to able to print out of memory conditon
     bool                                            bIsOutOfMemory;
     bool                                            bIsOutOfVideoMemory;
 
@@ -1201,7 +1226,7 @@ public:
 struct IProfilingSystem
 {
     // <interfuscator:shuffle>
-    virtual ~IProfilingSystem(){}
+    virtual ~IProfilingSystem() {}
     //////////////////////////////////////////////////////////////////////////
     // VTune Profiling interface.
 
@@ -1225,7 +1250,7 @@ struct ISystem
     struct ILoadingProgressListener
     {
         // <interfuscator:shuffle>
-        virtual ~ILoadingProgressListener(){}
+        virtual ~ILoadingProgressListener() {}
         virtual void OnLoadingProgress(int steps) = 0;
         // </interfuscator:shuffle>
     };
@@ -1248,14 +1273,14 @@ struct ISystem
 #endif
 
     // <interfuscator:shuffle>
-    virtual ~ISystem(){}
+    virtual ~ISystem() {}
     // Summary:
     //   Releases ISystem.
     virtual void Release() = 0;
     virtual ILoadConfigurationEntrySink* GetCVarsWhiteListConfigSink() const = 0; // will return NULL if no whitelisting
 
-    // Summary:
-    //   Returns pointer to the global environment structure.
+                                                                                  // Summary:
+                                                                                  //   Returns pointer to the global environment structure.
     virtual SSystemGlobalEnvironment* GetGlobalEnvironment() = 0;
 
     // Summary:
@@ -1298,9 +1323,9 @@ struct ISystem
     //   Renders the statistics; this is called from RenderEnd, but if the
     //   Host application (Editor) doesn't employ the Render cycle in ISystem,
     //   it may call this method to render the essential statistics.
-    virtual void RenderStatistics () = 0;
+    virtual void RenderStatistics() = 0;
     virtual void RenderPhysicsHelpers() = 0;
-    virtual void RenderPhysicsStatistics (IPhysicalWorld* pWorld) = 0;
+    virtual void RenderPhysicsStatistics(IPhysicalWorld* pWorld) = 0;
 
     // Summary:
     //   Returns the current used memory.
@@ -1408,7 +1433,7 @@ struct ISystem
     virtual IStreamEngine* GetStreamEngine() = 0;
     virtual ICmdLine* GetICmdLine() = 0;
     virtual ILog* GetILog() = 0;
-    virtual ICryPak* GetIPak()  = 0;
+    virtual ICryPak* GetIPak() = 0;
     virtual ICryFont* GetICryFont() = 0;
     virtual IEntitySystem* GetIEntitySystem() = 0;
     virtual IMemoryManager* GetIMemoryManager() = 0;
@@ -1862,7 +1887,7 @@ struct DiskOperationInfo
         , m_nFileOpenCount(0)
         , m_nFileReadCount(0)
         , m_dOperationSize(0.)
-        , m_dOperationTime(0.)   {}
+        , m_dOperationTime(0.) {}
     int m_nSeeksCount;
     int m_nFileOpenCount;
     int m_nFileReadCount;
@@ -1904,14 +1929,14 @@ struct DiskOperationInfo
 
 struct CLoadingTimeProfiler
 {
-    CLoadingTimeProfiler (ISystem* pSystem, const char* szFuncName)
-        : m_pSystem (pSystem)
+    CLoadingTimeProfiler(ISystem* pSystem, const char* szFuncName)
+        : m_pSystem(pSystem)
     {
         m_pSystem = pSystem;
         m_pTimeContainer = m_pSystem->StartLoadingSectionProfiling(this, szFuncName);
     }
 
-    ~CLoadingTimeProfiler ()
+    ~CLoadingTimeProfiler()
     {
         m_pSystem->EndLoadingSectionProfiling(this);
     }
@@ -1973,7 +1998,7 @@ public:
 //////////////////////////////////////////////////////////////////////////
 // CrySystem DLL Exports.
 //////////////////////////////////////////////////////////////////////////
-typedef ISystem* (* PFNCREATESYSTEMINTERFACE)(SSystemInitParams& initParams);
+typedef ISystem* (*PFNCREATESYSTEMINTERFACE)(SSystemInitParams& initParams);
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -2010,7 +2035,7 @@ extern int g_iTraceAllocations;
 //   Interface of the DLL.
 extern "C"
 {
-CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& initParams);
+    CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& initParams);
 }
 
 // Description:
@@ -2059,19 +2084,23 @@ inline void CryWarning(EValidatorModule module, EValidatorSeverity severity, con
 }
 
 #ifdef EXCLUDE_CVARHELP
-    #define CVARHELP(_comment)  0
+#define CVARHELP(_comment)  0
 #else
-    #define CVARHELP(_comment)  _comment
+#define CVARHELP(_comment)  _comment
 #endif
 
 //Provide macros for fixing cvars for release mode on consoles to enums to allow for code stripping
 //Do not enable for PC, apply VF_CHEAT there if required
 #if defined(CONSOLE)
-    #define CONST_CVAR_FLAGS (VF_CHEAT)
+#define CONST_CVAR_FLAGS (VF_CHEAT)
 #else
-    #define CONST_CVAR_FLAGS (VF_NULL)
+#define CONST_CVAR_FLAGS (VF_NULL)
 #endif
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_5
+#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+#endif
 #if defined(_RELEASE) && defined(IS_CONSOLE_PLATFORM)
 #ifndef LOG_CONST_CVAR_ACCESS
 #error LOG_CONST_CVAR_ACCESS should be defined in ProjectDefines.h
@@ -2162,7 +2191,7 @@ namespace Detail
                 InvalidAccess();
             }
         }
-        void ClearFlags (int flags) {}
+        void ClearFlags(int flags) {}
         int GetFlags() const { return VF_CONST_CVAR | VF_READONLY; }
         int SetFlags(int flags) { return 0; }
         int GetType() { return SQueryTypeEnum<T>::type; }
@@ -2199,39 +2228,39 @@ namespace Detail
         }                                                                                \
     } while (0)
 
-    # define CONSOLE_CONST_CVAR_MODE
-    # define DeclareConstIntCVar(name, defaultValue) enum { name = (defaultValue) }
-    # define DeclareStaticConstIntCVar(name, defaultValue) enum { name = (defaultValue) }
+# define CONSOLE_CONST_CVAR_MODE
+# define DeclareConstIntCVar(name, defaultValue) enum { name = (defaultValue) }
+# define DeclareStaticConstIntCVar(name, defaultValue) enum { name = (defaultValue) }
 
 # define DefineConstIntCVarName(strname, name, defaultValue, flags, help) { COMPILE_TIME_ASSERT((int)(defaultValue) == (int)(name)); REGISTER_DUMMY_CVAR(int, strname, defaultValue); }
 # define DefineConstIntCVar(name, defaultValue, flags, help) { COMPILE_TIME_ASSERT((int)(defaultValue) == (int)(name)); REGISTER_DUMMY_CVAR(int, (#name), defaultValue); }
 // DefineConstIntCVar2 is deprecated, any such instance can be converted to the 3 variant by removing the quotes around the first parameter
 # define DefineConstIntCVar3(name, _var_, defaultValue, flags, help) { COMPILE_TIME_ASSERT((int)(defaultValue) == (int)(_var_)); REGISTER_DUMMY_CVAR(int, name, defaultValue); }
-    # define AllocateConstIntCVar(scope, name)
+# define AllocateConstIntCVar(scope, name)
 
 # define DefineConstFloatCVar(name, flags, help) { REGISTER_DUMMY_CVAR(float, (#name), name ## Default); }
-    # define DeclareConstFloatCVar(name)
-    # define DeclareStaticConstFloatCVar(name)
-    # define AllocateConstFloatCVar(scope, name)
+# define DeclareConstFloatCVar(name)
+# define DeclareStaticConstFloatCVar(name)
+# define AllocateConstFloatCVar(scope, name)
 
 #else
 
-    # define DeclareConstIntCVar(name, defaultValue) int name
-    # define DeclareStaticConstIntCVar(name, defaultValue) static int name
-    # define DefineConstIntCVarName(strname, name, defaultValue, flags, help) \
+# define DeclareConstIntCVar(name, defaultValue) int name
+# define DeclareStaticConstIntCVar(name, defaultValue) static int name
+# define DefineConstIntCVarName(strname, name, defaultValue, flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register(strname, &name, defaultValue, flags | CONST_CVAR_FLAGS, CVARHELP(help)))
-    # define DefineConstIntCVar(name, defaultValue, flags, help) \
+# define DefineConstIntCVar(name, defaultValue, flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register((#name), &name, defaultValue, flags | CONST_CVAR_FLAGS, CVARHELP(help), 0, false))
 // DefineConstIntCVar2 is deprecated, any such instance can be converted to the 3 variant by removing the quotes around the first parameter
-    # define DefineConstIntCVar3(_name, _var, _def_val, _flags, help) \
+# define DefineConstIntCVar3(_name, _var, _def_val, _flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register(_name, &(_var), (_def_val), (_flags) | CONST_CVAR_FLAGS, CVARHELP(help), 0, false))
-    # define AllocateConstIntCVar(scope, name) int scope:: name
+# define AllocateConstIntCVar(scope, name) int scope:: name
 
-    # define DefineConstFloatCVar(name, flags, help) \
+# define DefineConstFloatCVar(name, flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register((#name), &name, name ## Default, flags | CONST_CVAR_FLAGS, CVARHELP(help), 0, false))
-    # define DeclareConstFloatCVar(name) float name
-    # define DeclareStaticConstFloatCVar(name) static float name
-    # define AllocateConstFloatCVar(scope, name) float scope:: name
+# define DeclareConstFloatCVar(name) float name
+# define DeclareStaticConstFloatCVar(name) static float name
+# define AllocateConstFloatCVar(scope, name) float scope:: name
 #endif
 
 #if defined(USE_CRY_ASSERT)
@@ -2384,9 +2413,9 @@ static void AssertConsoleExists(void)
 
 #ifdef EXCLUDE_NORMAL_LOG               // setting this removes a lot of logging to reduced code size (useful for consoles)
 
-    #define CryLog(...) ((void)0)
-    #define CryComment(...) ((void)0)
-    #define CryLogAlways(...) ((void)0)
+#define CryLog(...) ((void)0)
+#define CryComment(...) ((void)0)
+#define CryLogAlways(...) ((void)0)
 
 #else // EXCLUDE_NORMAL_LOG
 

@@ -275,7 +275,8 @@ namespace GridMate {
         AZStd::chrono::system_clock::time_point m_nextSendTime; // next expected send slot
 
         ReplicaPeer m_self; // the local peer
-        ReplicaPeerList m_remotePeers; // remote peers
+        AZStd::recursive_mutex  m_mutexRemotePeers; // mutex for remote peers
+        ReplicaPeerList         m_remotePeers;      // remote peers
         unordered_map<PeerId, ReplicaInternal::PeerReplica::Ptr> m_peerReplicas;
 
         vector<char> m_receiveBuffer;
@@ -486,7 +487,7 @@ namespace GridMate {
         /*
          * Replicas
          */
-        ReplicaPtr FindReplica(ReplicaId replicaId);
+        virtual ReplicaPtr FindReplica(ReplicaId replicaId);
         ReplicaId AddMaster(const ReplicaPtr& pMaster);
 
         /*

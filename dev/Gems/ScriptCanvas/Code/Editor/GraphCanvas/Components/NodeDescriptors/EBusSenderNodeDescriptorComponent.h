@@ -13,7 +13,7 @@
 
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 
-#include "Editor/GraphCanvas/Components/NodeDescriptorComponent.h"
+#include "Editor/GraphCanvas/Components/NodeDescriptors/NodeDescriptorComponent.h"
 
 namespace ScriptCanvasEditor
 {
@@ -24,9 +24,8 @@ namespace ScriptCanvasEditor
     public:
         AZ_COMPONENT(EBusSenderNodeDescriptorComponent, "{6B646A3A-CB7F-49C4-8146-D848F418E0B1}", NodeDescriptorComponent);
         static void Reflect(AZ::ReflectContext* reflectContext);
-
-        EBusSenderNodeDescriptorComponent() = default;
-        EBusSenderNodeDescriptorComponent(const AZStd::string& busName, const AZStd::string& eventName);
+        
+        EBusSenderNodeDescriptorComponent();
         ~EBusSenderNodeDescriptorComponent() = default;
 
         // Component
@@ -37,10 +36,5 @@ namespace ScriptCanvasEditor
         // NodeNotificationBus::Handler
         void OnAddedToScene(const AZ::EntityId& sceneId) override;
         ////
-        
-    private:
-    
-        AZStd::string m_busName;
-        AZStd::string m_eventName;
     };
 }

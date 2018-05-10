@@ -164,7 +164,7 @@ namespace EMStudio
 
         // windows section
         CreateEntry(windowsMenu, mToolbarLayout, "Parameter Window",            "",     false, true, WINDOWS_PARAMETERWINDOW);
-        CreateEntry(windowsMenu, mToolbarLayout, "Hierarchy Window",            "",     false, true, WINDOWS_HIERARCHYWINDOW);
+        CreateEntry(windowsMenu, mToolbarLayout, "Anim Graphs Window",          "",     false, true, WINDOWS_HIERARCHYWINDOW);
         CreateEntry(windowsMenu, mToolbarLayout, "Attribute Window",            "",     false, true, WINDOWS_ATTRIBUTEWINDOW);
         CreateEntry(windowsMenu, mToolbarLayout, "Node Group Window",           "",     false, true, WINDOWS_NODEGROUPWINDOW);
         CreateEntry(windowsMenu, mToolbarLayout, "Palette Window",              "",     false, true, WINDOWS_PALETTEWINDOW);
@@ -700,8 +700,8 @@ namespace EMStudio
         }
 
         // create the command group
-        MCore::String command;
-        MCore::String outResult;
+        AZStd::string command;
+        AZStd::string outResult;
         MCore::CommandGroup commandGroup("Align anim graph nodes");
 
         // iterate over all nodes
@@ -711,21 +711,21 @@ namespace EMStudio
 
             if (node->GetIsSelected())
             {
-                command.Format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" ", animGraph->GetID(), node->GetName());
+                command = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" ", animGraph->GetID(), node->GetName());
 
                 switch (mode)
                 {
                 case SELECTION_ALIGNLEFT:
-                    command.FormatAdd("-xPos %i", alignedXPos);
+                    command += AZStd::string::format("-xPos %i", alignedXPos);
                     break;
                 case SELECTION_ALIGNRIGHT:
-                    command.FormatAdd("-xPos %i", alignedXPos - node->CalcRequiredWidth());
+                    command += AZStd::string::format("-xPos %i", alignedXPos - node->CalcRequiredWidth());
                     break;
                 case SELECTION_ALIGNTOP:
-                    command.FormatAdd("-yPos %i", alignedYPos);
+                    command += AZStd::string::format("-yPos %i", alignedYPos);
                     break;
                 case SELECTION_ALIGNBOTTOM:
-                    command.FormatAdd("-yPos %i", alignedYPos - node->CalcRequiredHeight());
+                    command += AZStd::string::format("-yPos %i", alignedYPos - node->CalcRequiredHeight());
                     break;
                 default:
                     MCORE_ASSERT(false);

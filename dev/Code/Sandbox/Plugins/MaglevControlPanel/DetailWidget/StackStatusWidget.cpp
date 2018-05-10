@@ -23,8 +23,9 @@
 
 #include <DetailWidget/StackStatusWidget.moc>
 
-StackStatusWidget::StackStatusWidget(QSharedPointer<IStackStatusModel> stackStatusModel)
-    : m_stackStatusModel{stackStatusModel}
+StackStatusWidget::StackStatusWidget(QSharedPointer<IStackStatusModel> stackStatusModel, QWidget* parent)
+    : QFrame(parent)
+    , m_stackStatusModel{stackStatusModel}
 {
     CreateUI();
 }
@@ -35,10 +36,9 @@ void StackStatusWidget::CreateUI()
 
     setObjectName("Status");
 
-    auto rootLayout = new QVBoxLayout {};
+    auto rootLayout = new QVBoxLayout {this};
     rootLayout->setSpacing(0);
     rootLayout->setMargin(0);
-    setLayout(rootLayout);
 
     // title row
 
@@ -50,7 +50,7 @@ void StackStatusWidget::CreateUI()
     // title row - title
 
     m_titleLabel = new QLabel {
-        m_stackStatusModel->GetStatusTitleText()
+        m_stackStatusModel->GetStatusTitleText(), this
     };
     m_titleLabel->setObjectName("Title");
     m_titleLabel->setWordWrap(false);
@@ -72,7 +72,7 @@ void StackStatusWidget::CreateUI()
 
     // table
 
-    m_statusTable = new QTableView {};
+    m_statusTable = new QTableView {this};
     m_statusTable->setObjectName("Table");
     m_statusTable->setModel(m_stackStatusModel.data());
     m_statusTable->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeMode::ResizeToContents);

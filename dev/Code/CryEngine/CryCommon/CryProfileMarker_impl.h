@@ -14,12 +14,15 @@
 // Description : Platform Profiling Marker Implementation, dispatches to the correct header file
 
 
-#ifndef CRYINCLUDE_CRYCOMMON_CRYPROFILEMARKER_IMPL_H
-#define CRYINCLUDE_CRYCOMMON_CRYPROFILEMARKER_IMPL_H
 #pragma once
 
 #if defined(ENABLE_PROFILING_MARKERS)
-    #if   defined(ANDROID)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#include AZ_RESTRICTED_FILE(CryProfileMarker_impl_h, AZ_RESTRICTED_PLATFORM)
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+    #elif defined(ANDROID)
         #include <CryProfileMarker_impl.android.h>
     #elif defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
         #include <CryProfileMarker_impl.pc.h>
@@ -27,5 +30,3 @@
         #error No Platform support for Profile Marker
     #endif
 #endif
-
-#endif // CRYINCLUDE_CRYCOMMON_CRYPROFILEMARKER_IMPL_H

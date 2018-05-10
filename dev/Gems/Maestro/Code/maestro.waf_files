@@ -40,6 +40,7 @@
         "Source/Cinematics/Tracks": [
             "Source/Cinematics/AnimSplineTrack.cpp",
             "Source/Cinematics/AnimTrack.cpp",
+            "Source/Cinematics/AssetBlendTrack.cpp",
             "Source/Cinematics/BoolTrack.cpp",
             "Source/Cinematics/CaptureTrack.cpp",
             "Source/Cinematics/CharacterTrack.cpp",
@@ -61,6 +62,7 @@
             "Source/Cinematics/AnimSplineTrack.h",
             "Source/Cinematics/AnimSplineTrack_Vec2Specialization.h",
             "Source/Cinematics/AnimTrack.h",
+            "Source/Cinematics/AssetBlendTrack.h",
             "Source/Cinematics/BoolTrack.h",
             "Source/Cinematics/CaptureTrack.h",
             "Source/Cinematics/CharacterTrack.h",

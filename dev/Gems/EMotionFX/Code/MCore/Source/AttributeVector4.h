@@ -17,6 +17,7 @@
 #include "StandardHeaders.h"
 #include "Attribute.h"
 #include "Vector.h"
+#include "StringConversions.h"
 
 
 namespace MCore
@@ -62,16 +63,11 @@ namespace MCore
             mValue = static_cast<const AttributeVector4*>(other)->GetValue();
             return true;
         }
-        bool InitFromString(const String& valueString) override
+        bool InitFromString(const AZStd::string& valueString) override
         {
-            if (valueString.CheckIfIsValidVector4() == false)
-            {
-                return false;
-            }
-            mValue = valueString.ToVector4();
-            return true;
+            return AzFramework::StringFunc::LooksLikeVector4(valueString.c_str(), &mValue);
         }
-        bool ConvertToString(String& outString) const override      { outString.FromVector4(mValue); return true; }
+        bool ConvertToString(AZStd::string& outString) const override      { AZStd::to_string(outString, mValue); return true; }
         //      void ConvertCoordinateSystem()                              { GetCoordinateSystem().ConvertVector4(&mValue); }
         uint32 GetClassSize() const override                        { return sizeof(AttributeVector4); }
         uint32 GetDefaultInterfaceType() const override             { return ATTRIBUTE_INTERFACETYPE_VECTOR4; }

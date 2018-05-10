@@ -256,8 +256,8 @@ namespace MCommon
         if (mMode != SCALE_NONE)
         {
             const AZ::Vector3& currScale = mCallback->GetCurrValueVec();
-            mTempString.Format("Abs. Scale X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(float(currScale.GetX()), 0.0f), MCore::Max(float(currScale.GetY()), 0.0f), MCore::Max(float(currScale.GetZ()), 0.0f));
-            renderUtil->RenderText(10, 10, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f);
+            mTempString = AZStd::string::format("Abs. Scale X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(float(currScale.GetX()), 0.0f), MCore::Max(float(currScale.GetY()), 0.0f), MCore::Max(float(currScale.GetZ()), 0.0f));
+            renderUtil->RenderText(10, 10, mTempString.c_str(), ManipulatorColors::mSelectionColor, 9.0f);
         }
 
         // calculate the position offset of the relative text
@@ -273,14 +273,14 @@ namespace MCommon
             AZ::Vector3 scaleFactor = ((AZ::Vector3(mSize, mSize, mSize) + mScale) / (float)mSize);
 
             // render the scaling value below the gizmo
-            mTempString.Format("X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(float(scaleFactor.GetX()), 0.0f), MCore::Max(float(scaleFactor.GetY()), 0.0f), MCore::Max(float(scaleFactor.GetZ()), 0.0f));
-            renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mTempString.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+            mTempString = AZStd::string::format("X: %.3f, Y: %.3f, Z: %.3f", MCore::Max(float(scaleFactor.GetX()), 0.0f), MCore::Max(float(scaleFactor.GetY()), 0.0f), MCore::Max(float(scaleFactor.GetZ()), 0.0f));
+            renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mTempString.c_str(), ManipulatorColors::mSelectionColor, 9.0f, true);
         }
         else
         {
-            if (mName.GetLength() > 0)
+            if (mName.size() > 0)
             {
-                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mName.AsChar(), ManipulatorColors::mSelectionColor, 9.0f, true);
+                renderUtil->RenderText(textPos.GetX(), textPos.GetY() + yOffset, mName.c_str(), ManipulatorColors::mSelectionColor, 9.0f, true);
             }
         }
     }

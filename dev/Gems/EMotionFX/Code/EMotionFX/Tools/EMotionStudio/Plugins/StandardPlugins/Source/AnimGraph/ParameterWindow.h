@@ -13,9 +13,7 @@
 #pragma once
 
 #include <MCore/Source/StandardHeaders.h>
-#include <AzCore/std/string/string.h>
 #include <MCore/Source/Array.h>
-#include <MCore/Source/UnicodeString.h>
 #include <EMotionFX/Source/AnimGraph.h>
 
 #include "../StandardPluginsConfig.h"

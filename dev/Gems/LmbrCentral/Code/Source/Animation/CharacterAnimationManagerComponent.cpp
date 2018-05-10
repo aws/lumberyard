@@ -55,6 +55,7 @@ namespace LmbrCentral
         , m_previousWorldTransform(AZ::Transform::Identity())
         , m_useAnimDrivenMotion(false)
         , m_appliedAnimDrivenMotion(false)
+		, m_limbIkEnabled(true)
     {
     }
 
@@ -68,7 +69,7 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusConnect(m_entityId);
         CharacterAnimationRequestBus::Handler::BusConnect(m_entityId);
         AimIKComponentRequestBus::Handler::BusConnect(m_entityId);
-
+		LimbIKComponentRequestBus::Handler::BusConnect(m_entityId);
         PhysicsSystemEventBus::Handler::BusConnect();
 
         EBUS_EVENT_ID_RESULT(m_currentWorldTransform, m_entityId, AZ::TransformBus, GetWorldTM);
@@ -97,6 +98,7 @@ namespace LmbrCentral
 
         PhysicsSystemEventBus::Handler::BusDisconnect();
 
+		LimbIKComponentRequestBus::Handler::BusDisconnect();
         AimIKComponentRequestBus::Handler::BusDisconnect();
         CharacterAnimationRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
@@ -112,7 +114,7 @@ namespace LmbrCentral
         if (m_characterInstance && m_characterInstance->GetISkeletonAnim())
         {
             // Tick limb IK.
-            if (m_limbIK)
+            if (m_limbIK && m_limbIkEnabled)
             {
                 m_limbIK->Update(AZTransformToLYQuatT(m_currentWorldTransform), deltaTime);
             }
@@ -382,6 +384,10 @@ namespace LmbrCentral
                 ->Event("SetAimIKPolarCoordinatesMaxRadiansPerSecond", &AimIKComponentRequestBus::Events::SetAimIKPolarCoordinatesMaxRadiansPerSecond)
                 ->Event("GetAimIKBlend", &AimIKComponentRequestBus::Events::GetAimIKBlend)
                 ;
+
+			behaviorContext->EBus<LimbIKComponentRequestBus>("LimbIKComponentRequestBus")
+				->Event("EnableLimbIK", &LimbIKComponentRequestBus::Events::EnableLimbIK)
+				;
         }
     }
 
@@ -568,6 +574,11 @@ namespace LmbrCentral
         }
         return 0.f;
     }
+
+	void CharacterAnimationManagerComponent::CharacterInstanceEntry::EnableLimbIK(bool enable)
+	{
+		m_limbIkEnabled = enable;
+	}
     //////////////////////////////////////////////////////////////////////////
 
 } // namespace LmbrCentral

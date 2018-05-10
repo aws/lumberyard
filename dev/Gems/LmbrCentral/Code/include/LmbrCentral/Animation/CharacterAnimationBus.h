@@ -117,6 +117,21 @@ namespace LmbrCentral
 
     using AimIKComponentRequestBus = AZ::EBus<AimIKComponentRequests>;
 
+	/**
+	 * Limb IK component request bus
+	 */
+	class LimbIKComponentRequests
+		: public AZ::ComponentBus
+	{
+	public:
+
+		/// Enable/disable limb IK
+		/// \param enable - true to enable, false to disable.
+		virtual void EnableLimbIK(bool enable) = 0;
+	};
+
+	using LimbIKComponentRequestBus = AZ::EBus<LimbIKComponentRequests>;
+
     /**
      * Represents a timed event/annotation dispatched during animation playback.
      */

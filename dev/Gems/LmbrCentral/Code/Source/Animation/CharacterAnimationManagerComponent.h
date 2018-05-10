@@ -82,6 +82,7 @@ namespace LmbrCentral
             , private CharacterAnimationRequestBus::Handler
             , private AzFramework::PhysicsSystemEventBus::Handler
             , private AimIKComponentRequestBus::Handler
+			, private LimbIKComponentRequestBus::Handler
         {
         public:
 
@@ -131,6 +132,11 @@ namespace LmbrCentral
             float GetAimIKBlend() override;
             //////////////////////////////////////////////////////////////////////////
 
+			//////////////////////////////////////////////////////////////////////////
+			// LimbIKComponentRequestBus handler
+			void EnableLimbIK(bool enable) override;
+			//////////////////////////////////////////////////////////////////////////
+
         private:
 
             void UpdateParametricBlendParameters(float deltaTime, const AZ::Transform& frameMotionDelta);
@@ -148,6 +154,7 @@ namespace LmbrCentral
             Animation::MotionParameterSmoothingSettings m_motionParamsSmoothingSettings;    ///< Parameter smoothing settings currently set this character instance.
 
             IAnimationPoseAlignerPtr m_limbIK;  ///< Limb IK instance.
+			bool m_limbIkEnabled;   ///< Are limb IK requests enabled/disabled
         };
 
         //////////////////////////////////////////////////////////////////////////

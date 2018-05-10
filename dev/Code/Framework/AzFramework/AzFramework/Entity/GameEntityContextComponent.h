@@ -55,6 +55,7 @@ namespace AzFramework
         AZ::Entity* CreateGameEntity(const char* name) override;
         BehaviorEntity CreateGameEntityForBehaviorContext(const char* name) override;
         void AddGameEntity(AZ::Entity* entity) override;
+		AZ::Entity* CloneGameEntity(AZ::Entity* entity, bool activate = true, const char* name = nullptr) override;
         void DestroyGameEntity(const AZ::EntityId&) override;
         void DestroyGameEntityAndDescendants(const AZ::EntityId&) override;
         bool DestroyDynamicSliceByEntity(const AZ::EntityId&) override;
@@ -110,6 +111,9 @@ namespace AzFramework
         };
 
         AZStd::unordered_map<SliceInstantiationTicket, InstantiatingDynamicSliceInfo> m_instantiatingDynamicSlices;
+
+	private:
+		bool m_activationDisabledForCloning = false;
     };
 } // namespace AzFramework
 

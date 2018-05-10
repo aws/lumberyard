@@ -88,6 +88,14 @@ namespace AzFramework
          */
         virtual void AddGameEntity(AZ::Entity* /*entity*/) = 0;
 
+		/**
+		* Clones an existing entity in the game context.
+		* @param entity A pointer to the entity to clone.
+		* @param activate Optional parameter to skip activation.
+		* @param name A name for the cloned entity.
+		*/		
+		virtual AZ::Entity* CloneGameEntity(AZ::Entity* /*entity*/, bool /* activate = true*/, const char* /* name = nullptr*/) { return nullptr; }
+
         /**
          * Destroys an entity. 
          * The entity is immediately deactivated and will be destroyed on the next tick.

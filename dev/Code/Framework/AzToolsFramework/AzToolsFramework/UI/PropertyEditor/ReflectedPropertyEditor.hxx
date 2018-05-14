@@ -86,6 +86,7 @@ namespace AzToolsFramework
 
         void ExpandAll();
         void CollapseAll();
+		void CollapseAllProperties();
 
         const WidgetList& GetWidgets() const;
 

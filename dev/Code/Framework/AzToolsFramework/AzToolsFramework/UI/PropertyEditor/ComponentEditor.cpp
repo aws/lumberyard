@@ -753,6 +753,13 @@ namespace AzToolsFramework
         return false;
     }
 
+	void ComponentEditor::CollapseAllProperties()
+	{
+		m_header->SetExpanded(true);
+		m_propertyEditor->setVisible(true);
+		m_propertyEditor->CollapseAllProperties();
+	}
+
     void ComponentEditor::SetSelected(bool selected)
     {
         if (m_selected != selected)

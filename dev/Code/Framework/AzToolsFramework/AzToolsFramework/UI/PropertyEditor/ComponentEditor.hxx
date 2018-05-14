@@ -61,6 +61,8 @@ namespace AzToolsFramework
         bool IsExpanded() const;
         bool IsExpandable() const;
 
+		void CollapseAllProperties();
+
         void SetSelected(bool selected);
         bool IsSelected() const;
 

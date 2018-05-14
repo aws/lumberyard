@@ -1799,6 +1799,15 @@ namespace AzToolsFramework
         connect(m_actionToMoveComponentsBottom, &QAction::triggered, this, &EntityPropertyEditor::MoveComponentsBottom);
         addAction(m_actionToMoveComponentsBottom);
 
+		QAction* seperator3 = aznew QAction(this);
+		seperator3->setSeparator(true);
+		addAction(seperator3);
+
+		m_actionToCollapseAllProperties = aznew QAction(tr("Collapse Properties"), this);
+		m_actionToCollapseAllProperties->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+		connect(m_actionToCollapseAllProperties, &QAction::triggered, this, &EntityPropertyEditor::CollapseAllProperties);
+		addAction(m_actionToCollapseAllProperties);
+
         UpdateInternalState();
     }
 
@@ -1817,7 +1826,8 @@ namespace AzToolsFramework
         m_actionToMoveComponentsUp->setEnabled(allowRemove && IsMoveComponentsUpAllowed());
         m_actionToMoveComponentsDown->setEnabled(allowRemove && IsMoveComponentsDownAllowed());
         m_actionToMoveComponentsTop->setEnabled(allowRemove && IsMoveComponentsUpAllowed());
-        m_actionToMoveComponentsBottom->setEnabled(allowRemove && IsMoveComponentsDownAllowed());
+		m_actionToMoveComponentsBottom->setEnabled(allowRemove && IsMoveComponentsDownAllowed());
+		m_actionToCollapseAllProperties->setEnabled(IsCollapseAllPropertiesAllowed());
 
         bool allowEnable = false;
         bool allowDisable = false;
@@ -2258,6 +2268,12 @@ namespace AzToolsFramework
         return IsMoveAllowed(componentEditors);
     }
 
+	bool EntityPropertyEditor::IsCollapseAllPropertiesAllowed() const
+	{
+		const auto& componentsToEdit = GetSelectedComponentEditors();
+		return !m_selectedEntityIds.empty() && !componentsToEdit.empty();
+	}
+
     void EntityPropertyEditor::ResetToSlice()
     {
         // Reset selected components to slice values
@@ -2288,6 +2304,20 @@ namespace AzToolsFramework
             QueuePropertyRefresh();
         }
     }
+	
+	void EntityPropertyEditor::CollapseAllProperties()
+	{
+		const auto& componentsToEdit = GetSelectedComponentEditors();
+		if (m_selectedEntityIds.size() == 0 || componentsToEdit.size() == 0)
+		{
+			return;
+		}
+
+		for (auto component : componentsToEdit)
+		{
+			component->CollapseAllProperties();
+		}
+	}
 
     bool EntityPropertyEditor::DoesOwnFocus() const
     {

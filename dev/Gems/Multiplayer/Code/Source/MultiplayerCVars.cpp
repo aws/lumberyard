@@ -423,6 +423,9 @@ namespace Multiplayer
             REGISTER_COMMAND("mpsearch", MPJoinLANCmd, 0, "try to find a LAN session");
             REGISTER_COMMAND("mpdisconnect", MPDisconnectCmd, 0, "disconnect from our session");
 
+			REGISTER_INT("mp_build_version", 0, VF_READONLY, "Build version which was synced to make this build.");
+			REGISTER_INT("mp_build_version_matching", 0, VF_READONLY, "Enables/Disables build version matching.");
+
             REGISTER_INT("gm_version", 1, 0, "Set the gridmate version number.");
 
 #ifdef NET_SUPPORT_SECURE_SOCKET_DRIVER
@@ -522,6 +525,9 @@ namespace Multiplayer
             UNREGISTER_CVAR("gm_netsec_private_key");
             UNREGISTER_CVAR("gm_netsec_enable");
 #endif
+			UNREGISTER_CVAR("mp_build_version"); 
+			UNREGISTER_CVAR("mp_build_version_matching");
+
             UNREGISTER_CVAR("gm_version");
 
             if (gEnv->pConsole)

@@ -241,6 +241,7 @@ namespace GridMate
             , m_driverIsFullPackets(false)
             , m_driverIsCrossPlatform(false)
             , m_version(1)
+			, m_buildVersion(0)
             , m_securityData(nullptr)
             , m_enableDisconnectDetection(true)
             , m_connectionTimeoutMS(5000)
@@ -274,6 +275,7 @@ namespace GridMate
         bool                            m_driverIsCrossPlatform;    ///< True if we will need communicate across platforms (need to make sure we use common platform features).
 
         VersionType                     m_version;                  ///< Carriers with mismatching version numbers are not allowed to connect to each other. Default is 1.
+		VersionType						m_buildVersion;				///< Carriers with mismatching buildVersion numbers are not allowed to connect to each other. Default is 0.
 
         const char*                     m_securityData;             ///< Pointer to string with security data
 
@@ -389,6 +391,7 @@ namespace GridMate
         DISCONNECT_DEBUG_DELETE_CONNECTION,
 
         DISCONNECT_VERSION_MISMATCH,            ///< Attempting to connect to a different application version.
+		DISCONNECT_BUILDVERSION_MISMATCH,		///< Attempting to connect to a build with a different changelist version
 
         DISCONNECT_MAX,                         ///< Must be last for internal reasons
     };

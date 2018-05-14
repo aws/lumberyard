@@ -72,6 +72,7 @@ namespace Multiplayer
             carrierDesc.m_securityData = gEnv->pConsole->GetCVar("gm_securityData")->GetString();
             carrierDesc.m_familyType = CVarToFamilyType(gEnv->pConsole->GetCVar("gm_ipversion")->GetString());
             carrierDesc.m_version = gEnv->pConsole->GetCVar("gm_version")->GetIVal();
+			carrierDesc.m_buildVersion = gEnv->pConsole->GetCVar("mp_build_version")->GetIVal();
 
             ApplyDisconnectDetectionSettings(carrierDesc);
 

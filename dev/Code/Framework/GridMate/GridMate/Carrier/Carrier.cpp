@@ -3989,6 +3989,10 @@ CarrierImpl::Update()
                             {
                                 DisconnectRequest(conn, CarrierDisconnectReason::DISCONNECT_VERSION_MISMATCH);
                             }
+							else if (requestError == HandshakeErrorCode::BUILDVERSION_MISMATCH)
+							{
+								DisconnectRequest(conn, CarrierDisconnectReason::DISCONNECT_BUILDVERSION_MISMATCH);
+							}
                             else
                             {
                                 DisconnectRequest(conn, CarrierDisconnectReason::DISCONNECT_HANDSHAKE_REJECTED);
@@ -4465,6 +4469,9 @@ CarrierEventsBase::ReasonToString(CarrierDisconnectReason reason)
     case CarrierDisconnectReason::DISCONNECT_VERSION_MISMATCH:
         reasonStr = "Version mismatch when establishing a connection.";
         break;
+	case CarrierDisconnectReason::DISCONNECT_BUILDVERSION_MISMATCH:
+		reasonStr = "Build version mismatch.";
+		break;
     default:
         reasonStr = "Unknown reason";
     }

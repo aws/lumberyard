@@ -24,6 +24,7 @@ namespace GridMate
         REJECTED,
         PENDING,
         VERSION_MISMATCH,
+		BUILDVERSION_MISMATCH,
     };
 
     /**

@@ -55,6 +55,8 @@ namespace
 
 namespace Multiplayer
 {
+	void LoadBuildMetaData();
+	void InitBuildVersionMismatch();
 
     int MultiplayerModule::s_NetsecEnabled = 0;
     int MultiplayerModule::s_NetsecVerifyClient = 0;
@@ -89,6 +91,9 @@ namespace Multiplayer
     {
         CryHooksModule::OnCrySystemInitialized(system, systemInitParams);
         m_cvars.RegisterCVars();
+
+		LoadBuildMetaData();
+		InitBuildVersionMismatch();
 
         AZ::BehaviorContext* behaviorContext = nullptr;
         EBUS_EVENT_RESULT(behaviorContext, AZ::ComponentApplicationBus, GetBehaviorContext);
@@ -275,6 +280,55 @@ namespace Multiplayer
             m_simulator->Disable();
         }
     }
+
+	//-----------------------------------------------------------------------------
+	void LoadBuildMetaData()
+	{
+#if defined( LOAD_BUILD_METADATA )	
+		//	Register "build_changelist" and "build_time" CVars which will be used for version matching.
+		const auto cvarFlags = VF_DUMPTODISK | VF_READONLY;
+		REGISTER_INT("build_changelist", 0, cvarFlags, "Source changelist which was synced to make this build.");
+		REGISTER_STRING("build_time", "Unknown", cvarFlags, "Local time that the build was made.");
+
+		// Load additional meta data about the build from the game.exe.buildmeta file.
+		// This will set the values of "build_changelist" and "build_time"
+		char szExeFileName[_MAX_PATH];
+		GetModuleFileName(GetModuleHandle(NULL), szExeFileName, sizeof(szExeFileName));
+		ILoadConfigurationEntrySink* pCVarsWhiteListConfigSink = GetISystem()->GetCVarsWhiteListConfigSink();
+		GetISystem()->LoadConfiguration(string(szExeFileName) + ".buildmeta", pCVarsWhiteListConfigSink);
+
+		// Print out the resultant values
+		if (gEnv && gEnv->pConsole)
+		{
+			int buildChangeVersion = gEnv->pConsole->GetCVar("build_changelist") ? gEnv->pConsole->GetCVar("build_changelist")->GetIVal() : 0;
+			auto buildTime = gEnv->pConsole->GetCVar("build_time") ? gEnv->pConsole->GetCVar("build_time")->GetString() : "N/A";
+
+			AZ_TracePrintf("MultiplayerModule", "================================================================================");
+			AZ_TracePrintf("MultiplayerModule", "Build version: %i", buildChangeVersion);
+			AZ_TracePrintf("MultiplayerModule", "Build time: %s", buildTime);
+			AZ_TracePrintf("MultiplayerModule", "================================================================================");
+		}
+#endif
+	}
+
+	/*
+	*	When in the launcher, or dedicated server, check to see if build version matching should be enabled.
+	*/
+	void InitBuildVersionMismatch()
+	{
+#if defined( LOAD_BUILD_METADATA )	
+		if (gEnv && !gEnv->IsEditor() && gEnv->pConsole)
+		{
+			auto pConsole = gEnv->pConsole;
+			const int enableBuildVersionMatching = pConsole->GetCVar("mp_build_version_matching") ? pConsole->GetCVar("mp_build_version_matching")->GetIVal() : 0;
+			if (enableBuildVersionMatching == 1)
+			{
+				const int buildChangeVersion = pConsole->GetCVar("build_changelist") ? pConsole->GetCVar("build_changelist")->GetIVal() : 0;
+				pConsole->GetCVar("mp_build_version")->Set(buildChangeVersion);
+			}
+		}
+#endif
+	}
 }
 
 AZ_DECLARE_MODULE_CLASS(Multiplayer_d3ed407a19bb4c0d92b7c4872313d600, Multiplayer::MultiplayerModule)

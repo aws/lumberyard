@@ -73,7 +73,7 @@ namespace GridMate
             typedef vector<AZ::u8> UserDataBufferType;
             typedef unordered_set<string> AddressSetType;
 
-            GridSessionHandshake(unsigned int handshakeTimeoutMS, const VersionType& version);
+            GridSessionHandshake(unsigned int handshakeTimeoutMS, const VersionType& version, const VersionType& buildVersion);
             virtual ~GridSessionHandshake() {}
 
             //////////////////////////////////////////////////////////////////////////
@@ -131,6 +131,7 @@ namespace GridMate
             string                  m_sessionId;
             RemotePeerMode          m_peerMode;
             VersionType             m_version;
+			VersionType				m_buildVersion;
 
             unsigned int            m_handshakeTimeOutMS;
             bool                    m_isHost;
@@ -1557,7 +1558,7 @@ GridSession::OnStateCreate(HSM& sm, const HSM::Event& e)
     case HSM::EnterEventId:
     {
         AZ_Assert(m_carrierDesc.m_handshake == nullptr, "You cannot override the default carrier handshake provider if you are using the default multiplayer service!");
-        m_handshake = aznew GridSessionHandshake(m_carrierDesc.m_connectionTimeoutMS, m_carrierDesc.m_version);
+        m_handshake = aznew GridSessionHandshake(m_carrierDesc.m_connectionTimeoutMS, m_carrierDesc.m_version, m_carrierDesc.m_buildVersion);
         m_carrierDesc.m_handshake = m_handshake;
         m_carrier = DefaultCarrier::Create(m_carrierDesc, m_gridMate);
         CarrierEventBus::Handler::BusConnect(m_gridMate);
@@ -2617,9 +2618,10 @@ SessionService::RemoveSession(GridSession* session)
 //=========================================================================
 // GridSessionHandshake
 //=========================================================================
-GridSessionHandshake::GridSessionHandshake(unsigned int handshakeTimeoutMS, const VersionType& version)
+GridSessionHandshake::GridSessionHandshake(unsigned int handshakeTimeoutMS, const VersionType& version, const VersionType& buildVersion)
     : m_peerMode(Mode_Undefined)
     , m_version(version)
+	, m_buildVersion(buildVersion)
     , m_handshakeTimeOutMS(handshakeTimeoutMS)
     , m_isHost(false)
     , m_isInvited(false)
@@ -2640,6 +2642,7 @@ void GridSessionHandshake::OnInitiate(ConnectionID id, WriteBuffer& wb)
     wb.Write(m_isInvited);
     wb.Write(m_peerMode);
     wb.Write(m_version);
+	wb.Write(m_buildVersion);
 
     if (!m_userData.empty())
     {
@@ -2658,16 +2661,23 @@ HandshakeErrorCode GridSessionHandshake::OnReceiveRequest(ConnectionID id, ReadB
     bool isInvited = false;
     RemotePeerMode peerMode;
     VersionType version;
+	VersionType buildVersion;
 
     bool isRead = rb.Read(sessionId);
     isRead &= rb.Read(isInvited);
     isRead &= rb.Read(peerMode);
     isRead &= rb.Read(version);
+	isRead &= rb.Read(buildVersion);
 
     if (version != m_version)
     {
         return HandshakeErrorCode::VERSION_MISMATCH;
     }
+
+	if (buildVersion != m_buildVersion)
+	{
+		return HandshakeErrorCode::BUILDVERSION_MISMATCH;
+	}
 
     bool isSaneData = isRead && (peerMode == Mode_Undefined || peerMode == Mode_Client || peerMode == Mode_Peer);
     if (!isSaneData)

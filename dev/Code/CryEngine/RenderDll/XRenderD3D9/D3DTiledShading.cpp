@@ -1101,7 +1101,7 @@ void CTiledShading::Render(TArray<SRenderLight>& envProbes, TArray<SRenderLight>
 
 void CTiledShading::BindForwardShadingResources(CShader*, EHWShaderClass shaderType)
 {
-    if (!CRenderer::CV_r_DeferredShadingTiled)
+    if (!CRenderer::CV_r_DeferredShadingTiled || !m_dispatchSizeX || !m_dispatchSizeY)
     {
         return;
     }

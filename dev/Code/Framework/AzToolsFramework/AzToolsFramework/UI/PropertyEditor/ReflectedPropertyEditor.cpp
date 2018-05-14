@@ -1472,6 +1472,17 @@ namespace AzToolsFramework
         }
     }
 
+	void ReflectedPropertyEditor::CollapseAllProperties()
+	{
+		for (PropertyRowWidget* widget : m_impl->m_widgetsInDisplayOrder)
+		{
+			if (widget->GetParentRow())
+			{
+				widget->DoExpandOrContract(false, true);
+			}
+		}
+	}
+
     const ReflectedPropertyEditor::WidgetList& ReflectedPropertyEditor::GetWidgets() const
     {
         return m_impl->m_widgets;

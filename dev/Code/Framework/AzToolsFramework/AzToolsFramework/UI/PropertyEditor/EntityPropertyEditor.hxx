@@ -234,6 +234,7 @@ namespace AzToolsFramework
         QAction* m_actionToMoveComponentsTop;
         QAction* m_actionToMoveComponentsBottom;
         QAction* m_resetToSliceAction;
+		QAction* m_actionToCollapseAllProperties;
 
         void CreateActions();
         void UpdateActions();
@@ -252,6 +253,7 @@ namespace AzToolsFramework
         void MoveComponentsDown();
         void MoveComponentsTop();
         void MoveComponentsBottom();
+		void CollapseAllProperties();
 
         //component reorder and drag drop helpers
 
@@ -275,6 +277,7 @@ namespace AzToolsFramework
 
         bool IsMoveComponentsUpAllowed() const;
         bool IsMoveComponentsDownAllowed() const;
+		bool IsCollapseAllPropertiesAllowed() const;
 
         void ResetToSlice();
 

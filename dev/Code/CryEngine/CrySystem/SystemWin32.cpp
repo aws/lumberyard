@@ -104,6 +104,13 @@ const char* g_szModuleGroups[][2] = {
 };
 
 //////////////////////////////////////////////////////////////////////////
+// Allow the affinity to be set after launch
+void AffinityChangedCallback(ICVar*)
+{
+	((CSystem*)GetISystem())->SetAffinity();
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CSystem::SetAffinity()
 {
     // the following code is only for Windows
@@ -112,7 +119,12 @@ void CSystem::SetAffinity()
     ICVar* pcvAffinityMask = GetIConsole()->GetCVar("sys_affinity");
     if (!pcvAffinityMask)
     {
+#if defined(_RELEASE)
         pcvAffinityMask = REGISTER_INT("sys_affinity", 0, VF_NULL, "");
+#else
+		pcvAffinityMask = REGISTER_INT("sys_affinity", 0, VF_NULL, "", AffinityChangedCallback);
+#endif
+
     }
 
     if (pcvAffinityMask)

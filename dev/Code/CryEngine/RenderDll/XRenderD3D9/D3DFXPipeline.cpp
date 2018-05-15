@@ -288,7 +288,6 @@ void CD3D9Renderer::EF_ClearTargetsLater(uint32 nFlags)
     //      uint8(m_pNewTarget[0]->m_pSurfDepth->pTex->GetClearColor().g));
 }
 
-
 void CD3D9Renderer::FX_ClearTargetRegion(const uint32 nAdditionalStates /* = 0*/)
 {
     assert(m_pRT->IsRenderThread());
@@ -5249,7 +5248,7 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
             assert(pEnvTex != NULL);
             if (pEnvTex && pEnvTex->m_pTex && pEnvTex->m_pTex->m_pTexture)
             {
-                FX_ClearTarget(pEnvTex->m_pTex->m_pTexture, Clr_Empty);
+                m_pRT->RC_ClearTarget(pEnvTex->m_pTex->m_pTexture, Clr_Empty);
             }
             return true;
         }

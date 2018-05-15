@@ -119,7 +119,12 @@ void CSystem::SetAffinity()
     ICVar* pcvAffinityMask = GetIConsole()->GetCVar("sys_affinity");
     if (!pcvAffinityMask)
     {
-        pcvAffinityMask = REGISTER_INT("sys_affinity", 0, VF_DEV_ONLY, "", AffinityChangedCallback);
+#if defined(_RELEASE)
+        pcvAffinityMask = REGISTER_INT("sys_affinity", 0, VF_NULL, "");
+#else
+		pcvAffinityMask = REGISTER_INT("sys_affinity", 0, VF_NULL, "", AffinityChangedCallback);
+#endif
+
     }
 
     if (pcvAffinityMask)

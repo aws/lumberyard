@@ -433,7 +433,8 @@
             "ManualResetEvent.h",
             "UniqueManualEvent.h",
             "CryCommonReflection.h",
-            "OceanConstants.h"
+            "OceanConstants.h",
+            "ConsoleNotificationBus.h"
         ],
         "Common_h/RenderElements":
         [

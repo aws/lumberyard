@@ -38,6 +38,12 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzCore/std/string/conversions.h>
 
+// Includes for notifying when console variables change - optionally redirect console command to an EBus notification
+#include <ConsoleNotificationBus.h>
+#include <AzCore/EBus/Results.h>
+#include <AzCore/std/functional_basic.h>
+#include <AzCore/std/string/conversions.h>
+
 //#define DEFENCE_CVAR_HASH_LOGGING
 
 static inline void AssertName(const char* szName)
@@ -4017,7 +4023,12 @@ bool CXConsole::OnBeforeVarChange(ICVar* pVar, const char* sNewValue)
         }
     }
 
-    if (!m_consoleVarSinks.empty())
+	//	Check the consoleVarSinks(old CryEngine style listeners) and AZ::ConsoleNotificationBus OnVariableChanging to verify if variable can be changed
+	AZ::EBusReduceResult<bool, AZStd::logical_and<bool>> canChange(true);
+	EBUS_EVENT_ID_RESULT(canChange, AZ::Crc32(), AZ::ConsoleNotificationBus, OnVariableChanging, pVar);
+	EBUS_EVENT_ID_RESULT(canChange, AZ::Crc32(pVar->GetName()), AZ::ConsoleNotificationBus, OnVariableChanging, pVar);
+
+    if (canChange.value && !m_consoleVarSinks.empty())
     {
         ConsoleVarSinks::iterator it, next;
         for (it = m_consoleVarSinks.begin(); it != m_consoleVarSinks.end(); it = next)
@@ -4036,6 +4047,10 @@ bool CXConsole::OnBeforeVarChange(ICVar* pVar, const char* sNewValue)
 //////////////////////////////////////////////////////////////////////////
 void CXConsole::OnAfterVarChange(ICVar* pVar)
 {
+	//	Notify listeners that the cvar has changed
+	EBUS_EVENT_ID(AZ::Crc32(), AZ::ConsoleNotificationBus, OnVariableChanged, pVar);
+	EBUS_EVENT_ID(AZ::Crc32(pVar->GetName()), AZ::ConsoleNotificationBus, OnVariableChanged, pVar);
+
     if (!m_consoleVarSinks.empty())
     {
         ConsoleVarSinks::iterator it, next;

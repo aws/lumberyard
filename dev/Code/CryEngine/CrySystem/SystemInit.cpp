@@ -2858,6 +2858,14 @@ bool CSystem::InitFileSystem_LoadEngineFolders(const SSystemInitParams& initPara
     // Load game-specific folder.
     LoadConfiguration("game.cfg");
 
+#if defined (DEDICATED_SERVER)
+	// Load the dedicated-server-specific configuration
+    LoadConfiguration("server.cfg");
+#else
+	// Load the client-specific configuration
+    LoadConfiguration("client.cfg");
+#endif
+
     if (initParams.bShaderCacheGen)
     {
         LoadConfiguration("shadercachegen.cfg");

@@ -975,6 +975,25 @@ namespace AZ
     }
 
     //=========================================================================
+    // EntityId_FromString
+    //=========================================================================
+    static AZ_INLINE void EntityId_FromString(AZ::ScriptDataContext& dc)
+    {
+        AZ::EntityId entityId;
+        const char* str = nullptr;
+        if (dc.GetNumArguments() > 0 && dc.IsString(0) && dc.ReadArg(0, str) && str != nullptr && str[0] != '\0')
+        {
+            // EntityId::ToString() now wraps the id in square brackets. Let's handle this case, 
+            // so local someEntityId == EntityId.FromString(someEntityId:ToString()) is true.
+            str = (str[0] == '[') ? (str + 1) : str;
+            char* end = nullptr;
+            AZ::u64 id = strtoull(str, &end, 10);
+            entityId = AZ::EntityId(id);
+        }
+        dc.PushResult(entityId);
+    }
+
+    //=========================================================================
     // Reflect
     // [5/30/2012]
     //=========================================================================
@@ -1036,6 +1055,7 @@ namespace AZ
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Method("Equal", &EntityId::operator==)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Equal)
+                ->Method("FromString", &EntityId_FromString);
                 ;
 
             behaviorContext->Constant("SystemEntityId", BehaviorConstant(SystemEntityId));

@@ -229,6 +229,10 @@ void CSystem::RenderBegin()
     }
 
     gEnv->nMainFrameID = (rndAvail) ? m_env.pRenderer->GetFrameID(false) : 0;
+
+	// Notify listeners that a new frame is about to begin rendering 
+	// so that custom rendering can be initialised.
+	EBUS_EVENT(AZ::RenderStepNotificationBus, OnStartFrame);
 }
 
 char* PhysHelpersToStr(int iHelpers, char* strHelpers);
@@ -304,6 +308,10 @@ void CSystem::RenderEnd(bool bRenderStats, bool bMainWindow)
                 {
                     lyShine->Render();
                 }
+				
+				//	Make sure OnUIRendered is not only called during OnScene3DEnd, but also
+				//	when no level is loaded, for example during loading screens
+				EBUS_EVENT(AZ::RenderStepNotificationBus, OnUIRendered);
 
                 //Same goes for the console. When no level is loaded, it's okay to render it outside of the renderer
                 //so that users can load maps or change settings.
@@ -327,6 +335,9 @@ void CSystem::RenderEnd(bool bRenderStats, bool bMainWindow)
                 pConsole->CalcCheatVarHash();
             }
         }
+
+		// Notify listeners that the new frame is now rendered so that custom rendering can be cleaned up.
+		EBUS_EVENT(AZ::RenderStepNotificationBus, OnEndFrame);
     }
 
 #if defined(USE_FRAME_PROFILER)
@@ -342,11 +353,18 @@ void CSystem::OnScene3DEnd()
         gEnv->pLyShine->Render();
     }
 
+	// Notify listeners that UI was rendered, so that custom rendering
+	// can be done on top of the scene and UI, but before the console.
+	EBUS_EVENT(AZ::RenderStepNotificationBus, OnUIRendered);
+
     //Render Console
     if (IConsole* pConsole = gEnv->pConsole)
     {
         pConsole->Draw();
     }
+
+	// Notify listeners that 3d scene was rendered.
+	EBUS_EVENT(AZ::RenderStepNotificationBus, OnScene3DRendered); 
 }
 
 //////////////////////////////////////////////////////////////////////////

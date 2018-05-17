@@ -48,4 +48,21 @@ namespace AZ
     };
 
     using RenderNotificationsBus = AZ::EBus<RenderNotifications>;
+
+	/**
+	* This bus will notify listeners when frame starts/ends, 
+	* scene3d finishes rendering, etc. so that custom rendering 
+	* can be added as appropriate.
+	*/
+	class RenderStepNotifications
+		: public AZ::EBusTraits
+	{
+	public:
+		virtual void OnStartFrame() {};
+		virtual void OnScene3DRendered() {};
+		virtual void OnUIRendered() {};
+		virtual void OnEndFrame() {};
+	};
+
+	using RenderStepNotificationBus = AZ::EBus<RenderStepNotifications>;
 }

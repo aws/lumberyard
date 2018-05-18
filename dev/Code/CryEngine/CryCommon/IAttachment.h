@@ -296,6 +296,10 @@ struct IAttachmentManager
     virtual IAttachment* GetInterfaceByNameCRC(uint32 nameCRC) const = 0;
 
     virtual int32 GetAttachmentCount() const = 0;
+
+    using AttachmentNames = AZStd::vector<const char*>;
+    virtual AttachmentNames GetAllAttachmentNames() const = 0;
+
     virtual int32 GetIndexByName(const char* szName) const = 0;
     virtual int32 GetIndexByNameCRC(uint32 nameCRC) const = 0;
 

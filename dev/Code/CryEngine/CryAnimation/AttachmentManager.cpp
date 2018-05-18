@@ -909,8 +909,19 @@ IAttachment* CAttachmentManager::CreateAttachment(const char* szAttName, uint32 
     return 0;
 };
 
-
-
+IAttachmentManager::AttachmentNames CAttachmentManager::GetAllAttachmentNames() const
+{
+    AttachmentNames attachmentNames;
+    attachmentNames.reserve(GetAttachmentCount());
+    for (const auto attachment : m_arrAttachments)
+    {
+        if (attachment)
+        {
+            attachmentNames.push_back(attachment->GetName());
+        }
+    }
+    return attachmentNames;
+}
 
 ICharacterInstance* CAttachmentManager::GetSkelInstance() const
 {

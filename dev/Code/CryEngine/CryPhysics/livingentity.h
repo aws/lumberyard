@@ -225,6 +225,7 @@ public:
     unsigned int m_bActiveEnvironment : 1;
     unsigned int m_bStuck : 1;
     unsigned int m_bReleaseGroundColliderWhenNotActive : 1;
+    unsigned int m_bUseCustomGravity : 1;
     mutable unsigned int m_bHadCollisions : 1;
     int m_bSquashed;
 

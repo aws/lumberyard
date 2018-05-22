@@ -34,7 +34,39 @@ namespace LmbrCentral
         /// \param velocity - Requested velocity (direction and magnitude).
         /// \param jump - Controls how velocity is applid within Living Entity. See physinterface.h, \ref pe_action_move::iJump for more details.
         virtual void RequestVelocity(const AZ::Vector3& velocity, int jump) = 0;
+
+        /// Is the character grounded.
+        virtual bool IsFlying() = 0;
+
+        /// Get the velocity of the living entity
+        virtual AZ::Vector3 GetVelocity() { return AZ::Vector3::CreateZero(); }
+
+        ///  Enables gravity on a character so they fall.
+        virtual void EnableGravity() {};
+
+        ///  Disables gravity on a character so they do not fall.
+        virtual void DisableGravity() {};
+
+        /// Get the current value of gravity.
+        virtual AZ::Vector3 GetCurrentGravity() { return AZ::Vector3::CreateZero(); };
+
+        ///  Set gravity to be a custom vector3
+        virtual void SetCustomGravity(AZ::Vector3 customGravity) {};
+
     };
 
     using CryCharacterPhysicsRequestBus = AZ::EBus<CryCharacterPhysicsRequests>;
+
+    class CryCharacterPhysicsNotifications
+        : public AZ::ComponentBus
+    {
+    public:
+
+        virtual ~CryCharacterPhysicsNotifications() {}
+
+        /// Notifies when isFlying variable changes.
+        virtual void OnCharacterIsFlyingChanged(bool bIsFlying) = 0;
+    };
+
+    using CryCharacterPhysicsNotificationsBus = AZ::EBus<CryCharacterPhysicsNotifications>;
 } // namespace LmbrCentral

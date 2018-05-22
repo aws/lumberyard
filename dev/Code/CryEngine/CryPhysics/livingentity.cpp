@@ -198,6 +198,7 @@ CLivingEntity::CLivingEntity(CPhysicalWorld* pWorld, IGeneralMemoryHeap* pHeap)
     m_dtRequested = 0;
 
     m_bReleaseGroundColliderWhenNotActive = 1;
+    m_bUseCustomGravity = 0;
 }
 
 CLivingEntity::~CLivingEntity()
@@ -647,6 +648,10 @@ int CLivingEntity::SetParams(const pe_params* _params, int bThreadSafe)
         {
             m_bReleaseGroundColliderWhenNotActive = params->bReleaseGroundColliderWhenNotActive;
         }
+        if (!is_unused(params->bUseCustomGravity))
+        {
+            m_bUseCustomGravity = params->bUseCustomGravity;
+        }
         if (!is_unused(params->bActive))
         {
             if (m_bActive + params->bActive * 2 == 2)
@@ -708,6 +713,7 @@ int CLivingEntity::GetParams(pe_params* _params) const
         params->pLivingEntToIgnore = m_pLivingEntToIgnore;
         params->bActive = m_bActive;
         params->bReleaseGroundColliderWhenNotActive = m_bReleaseGroundColliderWhenNotActive;
+        params->bUseCustomGravity = m_bUseCustomGravity;
         return 1;
     }
 
@@ -2987,13 +2993,16 @@ nomove:;
     {
         if (bMoving)
         {
-            Vec3 gravity;
-            MARK_UNUSED gravity;
-            pe_params_buoyancy pb;
-            m_pWorld->CheckAreas(this, gravity, &pb, 0);
-            if (!is_unused(gravity))
+            if (!m_bUseCustomGravity)
             {
-                m_gravity = gravity;
+                Vec3 gravity;
+                MARK_UNUSED gravity;
+                pe_params_buoyancy pb;
+                m_pWorld->CheckAreas(this, gravity, &pb, 0);
+                if (!is_unused(gravity))
+                {
+                    m_gravity = gravity;
+                }
             }
 
             if (m_pWorld->m_pWaterMan)

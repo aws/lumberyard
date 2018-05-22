@@ -21,11 +21,22 @@
 #include <ISystem.h>
 #include <IPhysics.h>
 #include <AzCore/EBus/EBus.h>
+#include <LmbrCentral/Physics/CryCharacterPhysicsBus.h>
 
 namespace LmbrCentral
 {
     using AzFramework::PhysicsComponentRequestBus;
     using AzFramework::PhysicsComponentNotificationBus;
+
+    class CryCharacterPhysicsNotificationsBusHandler : public CryCharacterPhysicsNotificationsBus::Handler, public AZ::BehaviorEBusHandler {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(CryCharacterPhysicsNotificationsBusHandler, "{162C3BBF-D877-4F73-A9FF-814339700414}", AZ::SystemAllocator,
+            OnCharacterIsFlyingChanged);
+
+        void OnCharacterIsFlyingChanged(bool bIsFlying) override {
+            Call(FN_OnCharacterIsFlyingChanged, bIsFlying);
+        }
+    };
 
     void CharacterPhysicsComponent::CryPlayerPhysicsConfiguration::PlayerDimensions::Reflect(AZ::ReflectContext* context)
     {
@@ -313,6 +324,7 @@ namespace LmbrCentral
         if (m_useCustomGravity)
         {
             out.gravity = AZVec3ToLYVec3(m_gravity);
+            out.bUseCustomGravity = 1;
         }
         out.nodSpeed = m_nodSpeed;
         out.bSwimming = m_isSwimming;
@@ -375,7 +387,20 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<CryCharacterPhysicsRequestBus>("CryCharacterPhysicsRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
-                ->Event("RequestVelocity", &CryCharacterPhysicsRequestBus::Events::RequestVelocity);
+                ->Event("RequestVelocity", &CryCharacterPhysicsRequestBus::Events::RequestVelocity)
+                ->Event("GetVelocity", &CryCharacterPhysicsRequestBus::Events::GetVelocity)
+                ->Event("IsFlying", &CryCharacterPhysicsRequestBus::Events::IsFlying)
+                ->Event("EnableGravity", &CryCharacterPhysicsRequestBus::Events::EnableGravity)
+                ->Event("DisableGravity", &CryCharacterPhysicsRequestBus::Events::DisableGravity)
+                ->Event("GetCurrentGravity", &CryCharacterPhysicsRequestBus::Events::GetCurrentGravity)
+                ->Event("SetCustomGravity", &CryCharacterPhysicsRequestBus::Events::SetCustomGravity)
+                ;
+
+
+            behaviorContext->EBus<CryCharacterPhysicsNotificationsBus>("CryCharacterPhysicsNotificationsBus")
+                ->Handler<CryCharacterPhysicsNotificationsBusHandler>()
+                ->Event("OnCharacterIsFlyingChanged", &CryCharacterPhysicsNotificationsBus::Events::OnCharacterIsFlyingChanged)
+                ;
         }
     }
 
@@ -599,6 +624,19 @@ namespace LmbrCentral
         m_isApplyingPhysicsToEntityTransform = true;
         EBUS_EVENT_ID(event.m_entity, AZ::TransformBus, SetWorldTM, transform);
         m_isApplyingPhysicsToEntityTransform = false;
+
+        if (m_physicalEntity)
+        {
+            pe_status_living statusLiving;
+            m_physicalEntity->GetStatus(&statusLiving);
+
+            bool bIsFlying = statusLiving.bFlying == 1;
+            if (m_wasFlying != bIsFlying)
+            {
+                EBUS_EVENT_ID(event.m_entity, CryCharacterPhysicsNotificationsBus, OnCharacterIsFlyingChanged, bIsFlying);
+            }
+            m_wasFlying = bIsFlying;
+        }
     }
 
     void CharacterPhysicsComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
@@ -670,6 +708,69 @@ namespace LmbrCentral
             action.impulse = AZVec3ToLYVec3(impulse);
             action.point = AZVec3ToLYVec3(worldSpacePoint);
             m_physicalEntity->Action(&action);
+        }
+    }
+
+
+    bool CharacterPhysicsComponent::IsFlying()
+    {
+        pe_status_living status;
+        m_physicalEntity->GetStatus(&status);
+
+        bool isFlying = status.bFlying != 0;
+
+        return isFlying;
+    }
+
+    // Enables gravity on a character so they fall.
+    void CharacterPhysicsComponent::EnableGravity()
+    {
+        if (m_physicalEntity)
+        {
+            pe_player_dynamics dynamics;
+            dynamics.bActive = true;
+            dynamics.collTypes = 0;
+
+            m_physicalEntity->SetParams(&dynamics);
+        }
+    }
+
+
+    // Disables gravity on a character so they do not fall.
+    void CharacterPhysicsComponent::DisableGravity()
+    {
+        if (m_physicalEntity)
+        {
+            pe_player_dynamics dynamics;
+            dynamics.bActive = false;
+            dynamics.collTypes = 0;
+
+            m_physicalEntity->SetParams(&dynamics);
+        }
+    }
+
+    // Get the current value gravity is set to.
+    AZ::Vector3 CharacterPhysicsComponent::GetCurrentGravity()
+    {
+        auto currentGravity = AZ::Vector3::CreateZero();
+        if (m_physicalEntity)
+        {
+            pe_player_dynamics dynamics;
+            m_physicalEntity->GetParams(&dynamics);
+            currentGravity = LYVec3ToAZVec3(dynamics.gravity);
+        }
+        return currentGravity;
+    }
+
+    // Override default gravity value.
+    void CharacterPhysicsComponent::SetCustomGravity(AZ::Vector3 customGravity)
+    {
+        if (m_physicalEntity)
+        {
+            pe_player_dynamics dynamics;
+            dynamics.gravity = AZVec3ToLYVec3(customGravity);
+            dynamics.bUseCustomGravity = 1;
+            m_physicalEntity->SetParams(&dynamics);
         }
     }
 

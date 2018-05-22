@@ -161,6 +161,7 @@ namespace LmbrCentral
                 const bool s_defaultLivingEntityIsActive = true;
                 const bool s_defaultLivingEntityReleaseGroundColliderWhenNotActive = true;
                 const bool s_defaultLivingEntityIsSwimming = false;
+                const bool s_defaultLivingEntityIsFlying = false;
                 const int s_defaultLivingEntitySurfaceIndex = 0;
                 const float s_defaultLivingEntityMinFallAngle = 70.2f;
                 const float s_defaultLivingEntityMinSlideAngle = 36.f;
@@ -211,6 +212,9 @@ namespace LmbrCentral
 
                 //! whether entity is swimming (is not bound to ground plane)
                 bool m_isSwimming = s_defaultLivingEntityIsSwimming;
+
+                //! whether entity is in the air, ie has released ground colliders
+                bool m_isFlying = s_defaultLivingEntityIsFlying;
 
                 //! surface identifier for collisions
                 int m_surfaceIndex = s_defaultLivingEntitySurfaceIndex;
@@ -324,6 +328,13 @@ namespace LmbrCentral
         ////////////////////////////////////////////////////////////////////////
         // CharacterPhysicsRequestBus
         void RequestVelocity(const AZ::Vector3& velocity, int jump) override;
+        bool IsFlying() override;
+        void EnableGravity() override;
+        void DisableGravity() override;
+        AZ::Vector3 GetCurrentGravity() override;
+        void SetCustomGravity(AZ::Vector3 customGravity) override;
+        ////////////////////////////////////////////////////////////////////////
+
         ////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -337,6 +348,7 @@ namespace LmbrCentral
         bool m_isApplyingPhysicsToEntityTransform = false;
         SProximityElement* m_proximityTriggerProxy = nullptr;
         AZ::Transform m_previousEntityTransform = AZ::Transform::CreateIdentity();
+        bool m_wasFlying = false;
         //////////////////////////////////////////////////////////////////////////
 
     };

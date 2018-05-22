@@ -1127,6 +1127,7 @@ struct pe_player_dynamics
     {
         type = type_id;
         MARK_UNUSED kInertia, kInertiaAccel, kAirControl, gravity, gravity.z, nodSpeed, mass, bSwimming, surface_idx, bActive, collTypes, pLivingEntToIgnore;
+        MARK_UNUSED bUseCustomGravity;
         MARK_UNUSED minSlideAngle, maxClimbAngle, maxJumpAngle, minFallAngle, kAirResistance, maxVelGround, timeImpulseRecover, bReleaseGroundColliderWhenNotActive;
     }
 
@@ -1149,6 +1150,7 @@ struct pe_player_dynamics
     IPhysicalEntity* pLivingEntToIgnore; // ignore collisions with this *living entity* (doesn't work with other entity types)
     int bActive; // 0 disables all simulation for the character, apart from moving along the requested velocity
     int bReleaseGroundColliderWhenNotActive; // when not 0, if the living entity is not active, the ground collider, if any, will be explicitly released during the simulation step.
+    int bUseCustomGravity;	// when 1, the living entity will use the supplied gravity, 0 or default will use world gravity
 };
 
 ////////// particle entity params

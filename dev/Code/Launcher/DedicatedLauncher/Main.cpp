@@ -252,11 +252,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         }
 #endif
 
-        /*
-        * Dedicated server does not depend on Asset Processor and assumes that assets are already prepared.
-        */
-        engineCfg.m_waitForConnect = false;
-
         char configPath[AZ_MAX_PATH_LEN];
         AzGameFramework::GameApplication::GetGameDescriptorPath(configPath, engineCfg.m_gameFolder);
         if (!AZ::IO::SystemFile::Exists(configPath))

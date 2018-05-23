@@ -356,7 +356,7 @@ struct IRenderNode
     virtual uint8 GetSortPriority() { return 0; }
 
     // Types of voxelization for objects and lights
-    enum EVoxelGIMode : int
+    enum EVoxelGIMode : signed int
     {
         VM_None = 0, // No voxelization
         VM_Static, // Incremental or asynchronous lazy voxelization

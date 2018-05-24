@@ -1612,12 +1612,9 @@ void CLivingEntity::RegisterContact(const Vec3& posSelf, const Vec3& pt, const V
         {
             if (!(pCollider->m_parts[ipart].flags & geom_manually_breakable))
             {
-                if (!((v - m_vel - m_velGround).len2() > 3 && pbody->V < m_size.GetVolume() * 8))
-                {
-                    return;
-                }
-                epc.n = v.normalized();
-                imp = (epc.n * (v - m_vel - m_velGround)) * (m_mass * (m_mass * pbody->Minv + 1.0f));
+                Vec3 vRel = v - m_vel - m_velGround;  
+                epc.n = vRel.normalized();
+                imp = (epc.n * vRel) * (m_mass / (m_mass * pbody->Minv + 1.0f));
             }
         }
         epc.pt = pt;

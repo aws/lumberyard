@@ -958,10 +958,8 @@ CCryEditApp* CCryEditApp::s_currentInstance = nullptr;
 /////////////////////////////////////////////////////////////////////////////
 // CCryEditApp construction
 CCryEditApp::CCryEditApp()
-    : m_pEventLoopHook(0)
 {
     s_currentInstance = this;
-    m_mutexApplication = NULL;
 
     m_sPreviewFile[0] = 0;
 
@@ -981,32 +979,10 @@ CCryEditApp::CCryEditApp()
 
     // TODO: add construction code here,
     // Place all significant initialization in InitInstance
-    m_pEditor = 0;
-    m_bExiting = false;
-    m_bPreviewMode = false;
-    m_bConsoleMode = false;
-    m_bTestMode = false;
-    m_bPrecacheShaderList = false;
-    m_bStatsShaderList = false;
-    m_bMergeShaders = false;
-    m_pMatEditDlg = 0;
-    m_bLevelLoadTestMode = false;
-
     ZeroStruct(m_tagLocations);
     ZeroStruct(m_tagAngles);
 
-    m_fastRotateAngle = 45;
-    m_moveSpeedStep = 0.1f;
-
-    m_pConsoleDialog = 0;
-
-    m_bForceProcessIdle = false;
-    m_bKeepEditorActive = false;
-
-    m_initSegmentsToOpen = 0;
     AzFramework::AssetSystemInfoBus::Handler::BusConnect();
-
-    m_disableIdleProcessingCounter = 0;
     EditorIdleProcessingBus::Handler::BusConnect();
 }
 

@@ -289,6 +289,11 @@ namespace LmbrCentral
         const char* GetJointNameByIndex(AZ::u32 jointIndex) override;
         AZ::s32 GetJointIndexByName(const char* jointName) override;
         AZ::Transform GetJointTransformCharacterRelative(AZ::u32 jointIndex) override;
+        SkeletalHierarchyRequests::AttachmentNames GetAllAttachmentNames() override;
+        AZ::Transform GetWorldJointTransformByName(const char* jointName) override;
+        AZ::Transform GetWorldJointTransformByCrc(AZ::Crc32 jointNameCrc) override;
+        AZ::Transform GetLocalJointTransformByName(const char* jointName) override;
+        AZ::Transform GetLocalJointTransformByCrc(AZ::Crc32 jointNameCrc) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

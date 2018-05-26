@@ -58,6 +58,14 @@ namespace LmbrCentral
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->Class<SkinnedMeshComponent>()->RequestBus("MeshComponentRequestBus");
+
+            behaviorContext->EBus<SkeletalHierarchyRequestBus>("SkeletalHierarchyRequestBus")
+                ->Event("GetAllAttachmentNames", &SkeletalHierarchyRequestBus::Events::GetAllAttachmentNames)
+                ->Event("GetWorldJointTransformByName", &SkeletalHierarchyRequestBus::Events::GetWorldJointTransformByName)
+                ->Event("GetWorldJointTransformByCrc", &SkeletalHierarchyRequestBus::Events::GetWorldJointTransformByCrc)
+                ->Event("GetLocalJointTransformByName", &SkeletalHierarchyRequestBus::Events::GetLocalJointTransformByName)
+                ->Event("GetLocalJointTransformByCrc", &SkeletalHierarchyRequestBus::Events::GetLocalJointTransformByCrc)
+                ;
         }
     }
 
@@ -916,6 +924,106 @@ namespace LmbrCentral
         return m_skinnedMeshRenderNode.GetJointTransformCharacterRelative(jointIndex);
     }
 
+    SkeletalHierarchyRequests::AttachmentNames SkinnedMeshComponent::GetAllAttachmentNames()
+    {
+        SkeletalHierarchyRequests::AttachmentNames attachmentNames;
+        const auto character = GetCharacterInstance();
+        if (character)
+        {
+            const auto& attachmentManager = character->GetIAttachmentManager();
+            if (attachmentManager)
+            {
+                attachmentNames = attachmentManager->GetAllAttachmentNames();
+            }
+        }
+        return attachmentNames;
+    }
+
+    AZ::Transform SkinnedMeshComponent::GetWorldJointTransformByName(const char* jointName)
+    {
+        return GetWorldJointTransformByCrc(AZ::Crc32(jointName));
+    }
+
+    AZ::Transform SkinnedMeshComponent::GetWorldJointTransformByCrc(AZ::Crc32 jointNameCrc)
+    {
+        enum
+        {
+            InvalidIndex = -1,
+        };
+
+        auto character = GetCharacterInstance();
+        if (character)
+        {
+            // Attached Joint has higher priority than the raw Joints
+            auto attachmentManager = character->GetIAttachmentManager();
+            if (attachmentManager)
+            {
+                AZ::u32 index = attachmentManager->GetIndexByNameCRC(jointNameCrc);
+                if (index != InvalidIndex)
+                {
+                    auto attachment = attachmentManager->GetInterfaceByIndex(index);
+                    if (attachment)
+                    {
+                        return GetEntity()->GetTransform()->GetWorldTM() * LYQuatTToAZTransform(attachment->GetAttModelRelative());
+                    }
+                }
+            }
+
+            // Fallback to a raw Joint
+            AZ::u32 index = character->GetIDefaultSkeleton().GetJointIDByCRC32(jointNameCrc);
+            if (index != InvalidIndex)
+            {
+                return GetEntity()->GetTransform()->GetWorldTM() * LYQuatTToAZTransform(character->GetISkeletonPose()->GetAbsJointByID(index));
+            }
+        }
+
+        // Ignore asset status that are in-progress. We only care if we didn't get a result and this is unexpected for some reason
+        auto assetStatus = GetMeshAsset().GetStatus();
+        AZ_Assert(assetStatus == AZ::Data::AssetData::AssetStatus::Loading || assetStatus == AZ::Data::AssetData::AssetStatus::ReadyPreNotify, "World Joint Transform not found!  About to return identity ");
+
+        return AZ::Transform::CreateIdentity();
+    }
+
+    AZ::Transform SkinnedMeshComponent::GetLocalJointTransformByName(const char* jointName)
+    {
+        return GetLocalJointTransformByCrc(AZ::Crc32(jointName));
+    }
+
+    AZ::Transform SkinnedMeshComponent::GetLocalJointTransformByCrc(AZ::Crc32 jointNameCrc)
+    {
+        enum
+        {
+            InvalidIndex = -1,
+        };
+
+        auto character = GetCharacterInstance();
+        if (character)
+        {
+            // Attached Joint has higher priority than the raw Joints
+            auto attachmentManager = character->GetIAttachmentManager();
+            if (attachmentManager)
+            {
+                AZ::u32 index = attachmentManager->GetIndexByNameCRC(jointNameCrc);
+                if (index != InvalidIndex)
+                {
+                    auto attachment = attachmentManager->GetInterfaceByIndex(index);
+                    if (attachment)
+                    {
+                        return LYQuatTToAZTransform(attachment->GetAttModelRelative());
+                    }
+                }
+            }
+
+            // Fallback to a raw Joint
+            AZ::u32 index = character->GetIDefaultSkeleton().GetJointIDByCRC32(jointNameCrc);
+            if (index != InvalidIndex)
+            {
+                return LYQuatTToAZTransform(character->GetISkeletonPose()->GetAbsJointByID(index));
+            }
+        }
+
+        return AZ::Transform::CreateIdentity();
+    }
     //////////////////////////////////////////////////////////////////////////
     /// Deprecated MeshComponent
 

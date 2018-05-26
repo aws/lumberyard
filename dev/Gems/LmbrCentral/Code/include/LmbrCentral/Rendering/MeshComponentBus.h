@@ -91,9 +91,39 @@ namespace LmbrCentral
 
         /**
         * \param jointIndex Index of joint whose local-space transform should be returned.
-        * \return Joint's character-space transform. Identify if joint index was not valid.
+        * \return Joint's character-space transform. Identity if joint index was not valid.
         */
         virtual AZ::Transform GetJointTransformCharacterRelative(AZ::u32 /*jointIndex*/) { return AZ::Transform::CreateIdentity(); }
+        
+        /**
+        * \param jointName Name of joint whose world-space transform should be returned.
+        * \return Joint's world-space transform. Identity if joint was not valid.
+        */
+        virtual AZ::Transform GetWorldJointTransformByName(const char* jointName) { return AZ::Transform::CreateIdentity(); }
+
+        /**
+        * \param jointNameCrc Crc32 of joint whose world-space transform should be returned.
+        * \return Joint's world-space transform. Identity if joint was not valid.
+        */
+        virtual AZ::Transform GetWorldJointTransformByCrc(AZ::Crc32 jointNameCrc) { return AZ::Transform::CreateIdentity(); }
+
+        /**
+        * \param jointName Name of joint whose local-space transform should be returned.
+        * \return Joint's local-space transform. Identity if joint was not valid.
+        */
+        virtual AZ::Transform GetLocalJointTransformByName(const char* jointName) { return AZ::Transform::CreateIdentity(); }
+
+        /**
+        * \param jointNameCrc Crc32 of joint whose local-space transform should be returned.
+        * \return Joint's local-space transform. Identity if joint was not valid.
+        */
+        virtual AZ::Transform GetLocalJointTransformByCrc(AZ::Crc32 jointNameCrc) { return AZ::Transform::CreateIdentity(); }
+
+        /**
+        * \return List of all attachment names.
+        */
+        using AttachmentNames = AZStd::vector<const char*>;
+        virtual AttachmentNames GetAllAttachmentNames() { return AZStd::vector<const char*>(); }
     };
 
     using SkeletalHierarchyRequestBus = AZ::EBus<SkeletalHierarchyRequests>;

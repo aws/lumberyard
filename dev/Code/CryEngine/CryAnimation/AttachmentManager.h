@@ -58,6 +58,7 @@ public:
     IAttachment* CreateAttachment(const char* szAttName, uint32 type, const char* szFirstJointName = 0, bool bCallProject = true, const char* szSecondJointName = 0);
 
     int32 GetAttachmentCount() const { return m_arrAttachments.size(); };
+    AttachmentNames GetAllAttachmentNames() const override;
 
     IAttachment* GetInterfaceByIndex(uint32 c) const;
     IAttachment* GetInterfaceByName(const char* szName) const;

@@ -99,7 +99,7 @@ namespace
     {
         return (fabs_tpl(q1.v.x - q2.v.x) <= epsilon)
                && (fabs_tpl(q1.v.y - q2.v.y) <= epsilon)
-               && (fabs_tpl(q2.v.z - q2.v.z) <= epsilon)
+               && (fabs_tpl(q1.v.z - q2.v.z) <= epsilon)
                && (fabs_tpl(q1.w - q2.w) <= epsilon);
     }
 

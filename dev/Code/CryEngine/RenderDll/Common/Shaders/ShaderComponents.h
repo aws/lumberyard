@@ -492,8 +492,6 @@ struct SCGTexture : SCGBind
             sp.m_BindingSlot == m_BindingSlot &&
             sp.m_Flags == m_Flags &&
             sp.m_pAnimInfo == m_pAnimInfo &&
-            sp.m_pTexture == m_pTexture &&
-            sp.m_eCGTextureType == m_eCGTextureType &&
             sp.m_bSRGBLookup == m_bSRGBLookup &&
             sp.m_bGlobal == m_bGlobal)
         {

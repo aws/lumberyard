@@ -29,6 +29,8 @@ namespace LmbrCentral
         RigidPhysicsComponent() = default;
         ~RigidPhysicsComponent() override = default;
 
+        const AzFramework::RigidPhysicsConfig& GetRigidPhysicsConfiguration() const { return m_configuration; }
+
     protected:
         ////////////////////////////////////////////////////////////////////////
         // PhysicsComponent

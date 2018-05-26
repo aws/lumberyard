@@ -1858,6 +1858,15 @@ void CLevelSystem::OnLoadingProgress(ILevelInfo* pLevel, int progressAmount)
 }
 
 //------------------------------------------------------------------------
+void CLevelSystem::OnUnloadStart(ILevel* pLevel)
+{
+    for (std::vector<ILevelSystemListener*>::const_iterator it = m_listeners.begin(); it != m_listeners.end(); ++it)
+    {
+        (*it)->OnUnloadStart(pLevel);
+    }
+}
+
+//------------------------------------------------------------------------
 void CLevelSystem::OnUnloadComplete(ILevel* pLevel)
 {
     for (std::vector<ILevelSystemListener*>::const_iterator it = m_listeners.begin(); it != m_listeners.end(); ++it)
@@ -2020,6 +2029,10 @@ void CLevelSystem::UnLoadLevel()
 {
     if (gEnv->IsEditor())
     {
+        if (gEnv->IsEditorGameMode())
+        {
+            OnUnloadStart(m_pCurrentLevel);
+        }
         return;
     }
     if (!m_pLoadingLevelInfo)
@@ -2027,6 +2040,7 @@ void CLevelSystem::UnLoadLevel()
         return;
     }
 
+    OnUnloadStart(m_pCurrentLevel);
     CryLog("UnLoadLevel Start");
     INDENT_LOG_DURING_SCOPE();
 

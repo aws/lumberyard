@@ -270,6 +270,7 @@ private:
     void OnLoadingComplete(ILevel* pLevel);
     void OnLoadingError(ILevelInfo* pLevel, const char* error);
     void OnLoadingProgress(ILevelInfo* pLevel, int progressAmount);
+    void OnUnloadStart(ILevel* pLevel);
     void OnUnloadComplete(ILevel* pLevel);
 
     // lowercase string and replace backslashes with forward slashes

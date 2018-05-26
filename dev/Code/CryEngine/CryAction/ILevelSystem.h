@@ -194,6 +194,8 @@ struct ILevelSystemListener
     virtual void OnLoadingError(ILevelInfo* pLevel, const char* error) {}
     //! Called whenever the loading status of a level changes. progressAmount goes from 0->100.
     virtual void OnLoadingProgress(ILevelInfo* pLevel, int progressAmount) {}
+    //! Called before a level is unloaded
+    virtual void OnUnloadStart(ILevel* pLevel) {}
     //! Called after a level is unloaded, before the data is freed.
     virtual void OnUnloadComplete(ILevel* pLevel) {}
 

@@ -261,7 +261,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         AzGameFramework::GameApplication::GetGameDescriptorPath(configPath, engineCfg.m_gameFolder);
         if (!AZ::IO::SystemFile::Exists(configPath))
         {
-            fprintf(stderr, "Application descriptor file not found:\n%s", configPath);
+            char msg[ERROR_MESSAGE_BUF_SIZE] = { 0 };
+            azsnprintf(msg, sizeof(msg), "Application descriptor file not found:\n%s", configPath);
+            fprintf(stderr, msg);
+            MessageBox(0, msg, "File not found", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
             return 1;
         }
 

@@ -6409,6 +6409,9 @@ void CSystem::CreateSystemVars()
 
     REGISTER_CVAR_CB(sys_ProfileLevelLoadingDump, 0, VF_CHEAT,  "Output level loading dump stats into log\n", OnLevelLoadingDump);
 
+    REGISTER_CVAR2("sys_ds_skipSleep", &g_cvars.sys_dedicatedServer_skipSleepIfNeeded, 0, VF_CHEAT, "If set then the sleepIfNeeded call is skipped.\n"
+        "0 = Sleep as usual (default)\n"
+        "1 = Skip the sleep for better frame profiling");
 
     assert(m_env.pConsole);
     m_env.pConsole->CreateKeyBind("alt_keyboard_key_function_F12", "Screenshot");

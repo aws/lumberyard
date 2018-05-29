@@ -321,6 +321,8 @@ struct SSystemCVars
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_2
 #include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
 #endif
+
+    int sys_dedicatedServer_skipSleepIfNeeded;
 };
 extern SSystemCVars g_cvars;
 

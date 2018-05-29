@@ -1443,7 +1443,7 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
 
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE
     // do the dedicated sleep earlier than the frame profiler to avoid having it counted
-    if (gEnv->IsDedicated())
+    if (gEnv->IsDedicated() && g_cvars.sys_dedicatedServer_skipSleepIfNeeded == 0)
     {
 #if defined(MAP_LOADING_SLICING)
         gEnv->pSystemScheduler->SchedulingSleepIfNeeded();

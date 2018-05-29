@@ -35,6 +35,7 @@ namespace Camera
         , m_specifyDimensions(properties.m_specifyFrustumDimensions)
         , m_frustumWidth(properties.m_frustumWidth)
         , m_frustumHeight(properties.m_frustumHeight)
+        , m_autoActivate(properties.m_autoActivate)
     {
     }
 
@@ -60,7 +61,14 @@ namespace Camera
                 m_view->LinkTo(GetEntity());
                 UpdateCamera();
             }
-            MakeActiveView();
+
+
+            // Only activate the view if m_activate checkbox is ticked. 
+            // This allows more control over multiple cameras in a scene.
+            if (m_autoActivate)
+            {
+                MakeActiveView();
+            }
         }
         CameraRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
@@ -97,13 +105,15 @@ namespace Camera
         {
             serializeContext->ClassDeprecate("CameraComponent", "{A0C21E18-F759-4E72-AF26-7A36FC59E477}", &ClassConverters::DeprecateCameraComponentWithoutEditor);
             serializeContext->Class<CameraComponent, AZ::Component>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Field of View", &CameraComponent::m_fov)
                 ->Field("Near Clip Plane Distance", &CameraComponent::m_nearClipPlaneDistance)
                 ->Field("Far Clip Plane Distance", &CameraComponent::m_farClipPlaneDistance)
                 ->Field("SpecifyDimensions", &CameraComponent::m_specifyDimensions)
                 ->Field("FrustumWidth", &CameraComponent::m_frustumWidth)
-                ->Field("FrustumHeight", &CameraComponent::m_frustumHeight);
+                ->Field("FrustumHeight", &CameraComponent::m_frustumHeight)
+                ->Field("Activate", &CameraComponent::m_autoActivate)
+                ;
         }
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection))
         {

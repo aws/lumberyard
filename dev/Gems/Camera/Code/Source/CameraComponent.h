@@ -27,6 +27,7 @@ namespace Camera
         float m_frustumWidth;
         float m_frustumHeight;
         bool m_specifyFrustumDimensions;
+        bool m_autoActivate;
     };
 
     const float s_defaultFoV = 75.0f;
@@ -110,5 +111,6 @@ namespace Camera
         bool m_specifyDimensions = false;
         float m_frustumWidth = s_defaultFrustumDimension;
         float m_frustumHeight = s_defaultFrustumDimension;
+        bool m_autoActivate = true;
     };
 } // Camera

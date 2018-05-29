@@ -92,7 +92,7 @@ namespace Camera
         if (serializeContext)
         {
             serializeContext->Class<EditorCameraComponent, AzToolsFramework::Components::EditorComponentBase>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("Field of View", &EditorCameraComponent::m_fov)
                 ->Field("Near Clip Plane Distance", &EditorCameraComponent::m_nearClipPlaneDistance)
                 ->Field("Far Clip Plane Distance", &EditorCameraComponent::m_farClipPlaneDistance)
@@ -102,6 +102,7 @@ namespace Camera
                 ->Field("ViewButton", &EditorCameraComponent::m_viewButton)
                 ->Field("FrustumLengthPercent", &EditorCameraComponent::m_frustumViewPercentLength)
                 ->Field("FrustumDrawColor", &EditorCameraComponent::m_frustumDrawColor)
+                ->Field("AutoActivate", &EditorCameraComponent::m_autoActivate)
                 ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -137,6 +138,8 @@ namespace Camera
                         ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->Attribute(AZ::Edit::Attributes::Step, 10.f)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshAttributesAndValues", 0xcbc2147c))
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorCameraComponent::m_autoActivate, "Auto-activate",
+                        "switch the view to this camera when the camera entity is activated")
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Debug")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
@@ -353,6 +356,7 @@ namespace Camera
         properties.m_specifyFrustumDimensions = m_specifyDimensions;
         properties.m_frustumWidth = m_frustumWidth;
         properties.m_frustumHeight = m_frustumHeight;
+        properties.m_autoActivate = m_autoActivate;
         CameraComponent* cameraComponent = gameEntity->CreateComponent<CameraComponent>(properties);
     }
 

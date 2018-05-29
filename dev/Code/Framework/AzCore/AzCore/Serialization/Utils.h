@@ -26,14 +26,14 @@ namespace AZ
     {
         typedef AZ::ObjectStream::FilterDescriptor FilterDescriptor;
 
-        void* LoadObjectFromStream(IO::GenericStream& stream, SerializeContext* context = nullptr, const Uuid* targetClassId = nullptr, const FilterDescriptor& filterDesc = FilterDescriptor());
+        void* LoadObjectFromStream(IO::GenericStream& stream, SerializeContext* context = nullptr, const Uuid* targetClassId = nullptr, const FilterDescriptor& filterDesc = FilterDescriptor(), const ObjectStream::TickCB& tickCB = ObjectStream::TickCB());
         bool LoadObjectFromStreamInPlace(IO::GenericStream& stream, AZ::SerializeContext* context, const Uuid& targetClassId, void* targetPointer, const FilterDescriptor& filterDesc = FilterDescriptor());
         bool LoadObjectFromStreamInPlace(IO::GenericStream& stream, AZ::SerializeContext* context, const SerializeContext::ClassData* objectClassData, void* targetPointer, const FilterDescriptor& filterDesc = FilterDescriptor());
 
         template <typename ObjectType>
-        ObjectType* LoadObjectFromStream(IO::GenericStream& stream, SerializeContext* context = nullptr, const FilterDescriptor& filterDesc = FilterDescriptor())
+        ObjectType* LoadObjectFromStream(IO::GenericStream& stream, SerializeContext* context = nullptr, const FilterDescriptor& filterDesc = FilterDescriptor(), const ObjectStream::TickCB& tickCB = ObjectStream::TickCB())
         {
-            return reinterpret_cast<ObjectType*>(LoadObjectFromStream(stream, context, &AzTypeInfo<ObjectType>::Uuid(), filterDesc));
+            return reinterpret_cast<ObjectType*>(LoadObjectFromStream(stream, context, &AzTypeInfo<ObjectType>::Uuid(), filterDesc, tickCB));
         }
 
         template <typename ObjectType>

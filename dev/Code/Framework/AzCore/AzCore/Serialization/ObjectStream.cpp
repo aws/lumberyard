@@ -97,7 +97,7 @@ namespace AZ
 
             AZ_CLASS_ALLOCATOR(ObjectStreamImpl, SystemAllocator, 0);
 
-            ObjectStreamImpl(IO::GenericStream* stream, SerializeContext* sc, const ClassReadyCB& readyCB, const CompletionCB& doneCB, const FilterDescriptor& filterDesc = FilterDescriptor(), int flags = 0, const InplaceLoadRootInfoCB& inplaceLoadInfoCB = InplaceLoadRootInfoCB())
+            ObjectStreamImpl(IO::GenericStream* stream, SerializeContext* sc, const ClassReadyCB& readyCB, const CompletionCB& doneCB, const FilterDescriptor& filterDesc = FilterDescriptor(), int flags = 0, const InplaceLoadRootInfoCB& inplaceLoadInfoCB = InplaceLoadRootInfoCB(), const TickCB& tickCB = TickCB())
                 : ObjectStream(sc)
                 , m_flags(flags)
                 , m_stream(stream)
@@ -108,6 +108,7 @@ namespace AZ
                 , m_pending(0)
                 , m_inStream(&m_buffer1)
                 , m_outStream(&m_buffer2)
+                , m_tickCB(tickCB)
             {
                 // Assign default asset filter if none was provided by the user.
                 m_scratchSpace.resize(m_scratchSpace.capacity());
@@ -144,6 +145,7 @@ namespace AZ
             IO::GenericStream*              m_stream;
             ClassReadyCB                        m_readyCB;
             CompletionCB                        m_doneCB;
+            TickCB                              m_tickCB;
             InplaceLoadRootInfoCB               m_inplaceLoadInfoCB;
             unsigned int                        m_version;
             SerializeContext::ErrorHandler      m_errorLogger;
@@ -859,6 +861,11 @@ namespace AZ
                         
                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                     }
+                }
+
+                if (m_tickCB)
+                {
+                    m_tickCB();
                 }
 
                 // Read child nodes
@@ -2000,10 +2007,10 @@ namespace AZ
     // LoadBlocking
     // [7/11/2012]
     //=========================================================================
-    /*static*/ bool ObjectStream::LoadBlocking(IO::GenericStream* stream, SerializeContext& sc, const ClassReadyCB& readyCB, const FilterDescriptor& filterDesc, const InplaceLoadRootInfoCB& inplaceRootInfo)
+    /*static*/ bool ObjectStream::LoadBlocking(IO::GenericStream* stream, SerializeContext& sc, const ClassReadyCB& readyCB, const FilterDescriptor& filterDesc, const InplaceLoadRootInfoCB& inplaceRootInfo, const TickCB& tickCB)
     {
         AZ_Assert(stream != nullptr, "You are trying to serialize from a NULL stream!");
-        ObjectStreamInternal::ObjectStreamImpl objectStream(stream, &sc, readyCB, CompletionCB(), filterDesc, 0, inplaceRootInfo);
+        ObjectStreamInternal::ObjectStreamImpl objectStream(stream, &sc, readyCB, CompletionCB(), filterDesc, 0, inplaceRootInfo, tickCB);
 
         // This runs and completes (not asynchronous).
         return objectStream.Start();

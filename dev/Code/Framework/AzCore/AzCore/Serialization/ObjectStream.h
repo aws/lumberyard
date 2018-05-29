@@ -113,6 +113,9 @@ namespace AZ
         /// Called to indicate that loading has completed
         typedef AZStd::function< void (Handle /*objectstream*/, bool /*success*/) > CompletionCB;
 
+        /// Tick callback to allow injection of code between entity deserialization
+        typedef AZStd::function< void() > TickCB;
+
         /// Filter flags control the overall behavior of the serialize operation and can cause it to skip over unnecessary data (the default)
         /// or instead throw an error and fail if any error is encountered.
         enum FilterFlags
@@ -155,7 +158,7 @@ namespace AZ
         };
 
         /// Create objects from a stream. All processing happens in the caller thread. Returns true on success.
-        static bool LoadBlocking(IO::GenericStream* stream, SerializeContext& sc, const ClassReadyCB& readyCB, const FilterDescriptor& filterDesc = FilterDescriptor(), const InplaceLoadRootInfoCB& inplaceRootInfo = InplaceLoadRootInfoCB());
+        static bool LoadBlocking(IO::GenericStream* stream, SerializeContext& sc, const ClassReadyCB& readyCB, const FilterDescriptor& filterDesc = FilterDescriptor(), const InplaceLoadRootInfoCB& inplaceRootInfo = InplaceLoadRootInfoCB(), const TickCB& tickCB = TickCB());
 
         /// Create a new object stream for writing
         static ObjectStream* Create(IO::GenericStream* stream, SerializeContext& sc, DataStream::StreamType fmt);

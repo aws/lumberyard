@@ -590,7 +590,7 @@ namespace AzToolsFramework
 
         // Load the exported stream into the game context.
         stream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-        AzFramework::GameEntityContextRequestBus::Broadcast(&AzFramework::GameEntityContextRequests::LoadFromStream, stream, true);
+        AzFramework::GameEntityContextRequestBus::Broadcast(&AzFramework::GameEntityContextRequests::LoadFromStream, stream, true, AZ::ObjectStream::TickCB());
 
         // Retrieve Id map from game entity context (editor->runtime).
         AzFramework::EntityContextId gameContextId = AzFramework::EntityContextId::CreateNull();

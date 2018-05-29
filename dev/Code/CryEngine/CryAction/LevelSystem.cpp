@@ -1504,7 +1504,20 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
                 if (fileBuffer.size() == entitiesFile.ReadRaw(fileBuffer.begin(), fileBuffer.size()))
                 {
                     AZ::IO::ByteContainerStream<AZStd::vector<char> > fileStream(&fileBuffer);
-                    EBUS_EVENT(AzFramework::GameEntityContextRequestBus, LoadFromStream, fileStream, false);
+                    int64 lastUpdate = CryGetTicks();
+                    int64 ticksPerUpdate = CryGetTicksPerSec() / 20;
+                    EBUS_EVENT(AzFramework::GameEntityContextRequestBus, LoadFromStream, fileStream, false,
+                        [&lastUpdate, &ticksPerUpdate]
+                        {
+                            // Only update every so often as this can slow down loading significantly
+                            int64 t = CryGetTicks();
+                            if (t > (lastUpdate + ticksPerUpdate))
+                            {
+                                gEnv->pLog->UpdateLoadingScreen(nullptr);
+                                lastUpdate = t;
+                            }
+                        }
+                    );
                 }
             }
         }

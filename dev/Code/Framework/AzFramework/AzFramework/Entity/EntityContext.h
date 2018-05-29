@@ -94,7 +94,8 @@ namespace AzFramework
         /// \param remapIds - if true, entity Ids will be remapped post-load
         /// \param idRemapTable - if remapIds is true, the provided table is filled with a map of original ids to new ids.
         /// \param loadFlags - any ObjectStream::LoadFlags.
-        virtual bool LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds, AZ::SliceComponent::EntityIdToEntityIdMap* idRemapTable = nullptr, const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor());
+        /// \param tickCB - Tick callback to pass to the ObjectStream
+        virtual bool LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds, AZ::SliceComponent::EntityIdToEntityIdMap* idRemapTable = nullptr, const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor(), const AZ::ObjectStream::TickCB& tickCB = AZ::ObjectStream::TickCB());
 
         /// Initialize this entity context with a newly loaded root slice
         /// \return whether or not the root slice is valid.

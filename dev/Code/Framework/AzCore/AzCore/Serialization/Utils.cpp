@@ -113,7 +113,7 @@ namespace AZ
             return LoadObjectFromStreamInPlace(fileStream, context, targetClassId, destination, filterDesc);
         }
 
-        void* LoadObjectFromStream(IO::GenericStream& stream, AZ::SerializeContext* context, const Uuid* targetClassId, const FilterDescriptor& filterDesc)
+        void* LoadObjectFromStream(IO::GenericStream& stream, AZ::SerializeContext* context, const Uuid* targetClassId, const FilterDescriptor& filterDesc, const ObjectStream::TickCB& tickCB)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
 
@@ -164,7 +164,8 @@ namespace AZ
                         }
                     },
                     filterDesc,
-                    ObjectStream::InplaceLoadRootInfoCB()
+                    ObjectStream::InplaceLoadRootInfoCB(),
+                    tickCB
                     );
 
             if (!success)

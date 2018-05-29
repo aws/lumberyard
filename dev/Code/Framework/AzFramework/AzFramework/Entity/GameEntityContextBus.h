@@ -144,10 +144,11 @@ namespace AzFramework
          * Loads game entities from a stream.
          * @param stream The root slice.
          * @param remapIds Use true to remap the entity IDs after the stream is loaded.
+         * @param tickCB Tick callback to pass to the ObjectStream
          * @return True if the stream successfully loaded. Otherwise, false. This operation  
          * can fail if the source file is corrupt or the data could not be up-converted.
          */
-        virtual bool LoadFromStream(AZ::IO::GenericStream& /*stream*/, bool /*remapIds*/) = 0;
+        virtual bool LoadFromStream(AZ::IO::GenericStream& /*stream*/, bool /*remapIds*/, const AZ::ObjectStream::TickCB& /*tickCB*/) = 0;
 
         /**
          * Completely resets the game context. 

@@ -528,13 +528,13 @@ namespace AzFramework
     //=========================================================================
     // LoadFromStream
     //=========================================================================
-    bool EntityContext::LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds, AZ::SliceComponent::EntityIdToEntityIdMap* idRemapTable, const AZ::ObjectStream::FilterDescriptor& filterDesc)
+    bool EntityContext::LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds, AZ::SliceComponent::EntityIdToEntityIdMap* idRemapTable, const AZ::ObjectStream::FilterDescriptor& filterDesc, const AZ::ObjectStream::TickCB& tickCB)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
 
         AZ_Assert(m_rootAsset, "The context has not been initialized.");
 
-        AZ::Entity* newRootEntity = AZ::Utils::LoadObjectFromStream<AZ::Entity>(stream, m_serializeContext, filterDesc);
+        AZ::Entity* newRootEntity = AZ::Utils::LoadObjectFromStream<AZ::Entity>(stream, m_serializeContext, filterDesc, tickCB);
 
         // make sure that PRE_NOTIFY assets get their notify before we activate, so that we can preserve the order of 
         // (load asset) -> (notify) -> (init) -> (activate)

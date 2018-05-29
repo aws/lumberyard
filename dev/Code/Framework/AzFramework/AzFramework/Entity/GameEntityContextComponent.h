@@ -62,7 +62,7 @@ namespace AzFramework
         void DeactivateGameEntity(const AZ::EntityId&) override;
         SliceInstantiationTicket InstantiateDynamicSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper) override;
         void CancelDynamicSliceInstantiation(const SliceInstantiationTicket& ticket) override;
-        bool LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds) override;
+        bool LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds, const AZ::ObjectStream::TickCB& tickCB) override;
         AZStd::string GetEntityName(const AZ::EntityId& id) override;
         void MarkEntityForNoActivation(AZ::EntityId entityId) override;
         //////////////////////////////////////////////////////////////////////////

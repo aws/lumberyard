@@ -374,9 +374,9 @@ namespace AzFramework
     //=========================================================================
     // EntityContextEventBus::LoadFromStream
     //=========================================================================
-    bool GameEntityContextComponent::LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds)
+    bool GameEntityContextComponent::LoadFromStream(AZ::IO::GenericStream& stream, bool remapIds, const AZ::ObjectStream::TickCB& tickCB)
     {
-        if (AzFramework::EntityContext::LoadFromStream(stream, remapIds))
+        if (AzFramework::EntityContext::LoadFromStream(stream, remapIds, nullptr, AZ::ObjectStream::FilterDescriptor(), tickCB))
         {
             EBUS_EVENT(GameEntityContextEventBus, OnGameEntitiesStarted);
             return true;

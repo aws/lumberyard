@@ -62,8 +62,14 @@ public:
     //! \brief Adds this object as a handler for UiCanvasLuaBus
     void BusConnect(AZ::EntityId entityId);
 
+    //! \brief Clean up
+    void BusDisconnect();
+
     //! \brief Loads the canvas with the given filename
     AZ::EntityId LoadCanvas(const char* canvasFilename);
+
+    //! Find a canvas by path, optionally load the canvas if it was not found
+    AZ::EntityId FindCanvasByPathname(const char* canvasFilename, bool loadIfNotFound = false);
 
     //! \brief Unloads the canvas with the given canvas entity Id
     void UnloadCanvas(AZ::EntityId canvasEntityId);

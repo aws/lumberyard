@@ -173,11 +173,16 @@ void UiCanvasManager::UnloadCanvas(AZ::EntityId canvasEntityId)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::EntityId UiCanvasManager::FindLoadedCanvasByPathName(const AZStd::string& assetIdPathname)
+AZ::EntityId UiCanvasManager::FindLoadedCanvasByPathName(const AZStd::string& assetIdPathname, bool loadIfNotFound/*= false*/)
 {
     // this is only used for finding canvases loaded in game
     UiCanvasComponent* canvasComponent = FindCanvasComponentByPathname(assetIdPathname.c_str());
-    return canvasComponent ? canvasComponent->GetEntityId() : AZ::EntityId();
+    AZ::EntityId canvasId = canvasComponent ? canvasComponent->GetEntityId() : AZ::EntityId();
+    if (!canvasId.IsValid() && loadIfNotFound)
+    {
+        canvasId = LoadCanvas(assetIdPathname);
+    }
+    return canvasId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

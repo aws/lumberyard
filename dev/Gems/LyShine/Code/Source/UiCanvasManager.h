@@ -57,7 +57,7 @@ public: // member functions
     AZ::EntityId CreateCanvas() override;
     AZ::EntityId LoadCanvas(const AZStd::string& canvasPathname) override;
     void UnloadCanvas(AZ::EntityId canvasEntityId) override;
-    AZ::EntityId FindLoadedCanvasByPathName(const AZStd::string& canvasPathname) override;
+    AZ::EntityId FindLoadedCanvasByPathName(const AZStd::string& canvasPathname, bool loadIfNotFound = false) override;
     CanvasEntityList GetLoadedCanvases() override;
     // ~UiCanvasManagerBus
 

@@ -264,7 +264,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             char msg[ERROR_MESSAGE_BUF_SIZE] = { 0 };
             azsnprintf(msg, sizeof(msg), "Application descriptor file not found:\n%s", configPath);
             fprintf(stderr, msg);
-            MessageBox(0, msg, "Invalid Application Descriptor", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
+            MessageBox(0, msg, "File not found", MB_OK | MB_DEFAULT_DESKTOP_ONLY | MB_ICONERROR);
             return 1;
         }
 

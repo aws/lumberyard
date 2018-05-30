@@ -198,6 +198,9 @@ CLivingEntity::CLivingEntity(CPhysicalWorld* pWorld, IGeneralMemoryHeap* pHeap)
     m_dtRequested = 0;
 
     m_bReleaseGroundColliderWhenNotActive = 1;
+    m_timeStepFull = 0.0f;
+    m_timeStepPerformed = 0.0f;
+    m_iLastGroundColliderPart = -1;
 }
 
 CLivingEntity::~CLivingEntity()
@@ -793,7 +796,6 @@ int CLivingEntity::GetStatus(pe_status* _status) const
         status->bSquashed = m_bSquashed;
         return 1;
     }
-    else
 
     if (_status->type == pe_status_dynamics::type_id)
     {
@@ -1373,18 +1375,7 @@ int CLivingEntity::SetStateFromSnapshot(TSerialize ser, int flags)
         */
 
         float distance = m_pos.GetDistance(helper.pos);
-        if (ser.GetSerializationTarget() == eST_Network)
-        {
-            /*if (distance > MAX_DIFFERENCE)
-                setpos.pos = helper.pos + (m_pos - helper.pos).GetNormalized() * MAX_DIFFERENCE;
-            else
-                setpos.pos = m_pos + (helper.pos - m_pos) * distance/MAX_DIFFERENCE*0.033f;*/
-            setpos.pos = helper.pos;
-        }
-        else
-        {
-            setpos.pos = helper.pos;
-        }
+        setpos.pos = helper.pos;
 
         SetParams(&setpos, 0);
 

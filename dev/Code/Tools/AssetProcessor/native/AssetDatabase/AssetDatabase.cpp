@@ -1282,7 +1282,7 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         if(!statement)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_SOURCE);
+            AZ_Error(LOG_NAME, false, "Could not get statement: %s", DELETE_SOURCE);
             return false;
         }
 
@@ -1343,7 +1343,7 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         if (!statement)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s\n", GET_HIGHEST_JOBRUNKEY);
+            AZ_Error(LOG_NAME, false, "Could not get statement: %s\n", GET_HIGHEST_JOBRUNKEY);
             return 0;
         }
 
@@ -1543,7 +1543,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if(!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_JOB);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", INSERT_JOB);
                 return false;
             }
 
@@ -1697,7 +1697,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if(!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_JOB);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", UPDATE_JOB);
                 return false;
             }
             
@@ -1838,7 +1838,7 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         if(!statement)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_JOB);
+            AZ_Error(LOG_NAME, false, "Could not get statement: %s", DELETE_JOB);
             return false;
         }
 
@@ -2135,7 +2135,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if(!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_PRODUCT);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", UPDATE_PRODUCT);
                 return false;
             }
 
@@ -2452,7 +2452,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if (!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_SOURCE_DEPENDENCY);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", INSERT_SOURCE_DEPENDENCY);
                 return false;
             }
 
@@ -2520,7 +2520,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if (!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_SOURCE_DEPENDENCY);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", UPDATE_SOURCE_DEPENDENCY);
                 return false;
             }
 
@@ -2608,7 +2608,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if (!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID);
                 return false;
             }
 
@@ -2718,7 +2718,7 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         if (!statement)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", statementName);
+            AZ_Error(LOG_NAME, false, "Could not get statement: %s", statementName);
             return false;
         }
 
@@ -2789,7 +2789,7 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         if (!statement)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
+            AZ_Error(LOG_NAME, false, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
             return false;
         }
 
@@ -2827,7 +2827,7 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         if (!statement)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRODUCTID);
+            AZ_Error(LOG_NAME, false, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRODUCTID);
             return false;
         }
 
@@ -3001,7 +3001,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if (!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_PRODUCT_DEPENDENCY);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", UPDATE_PRODUCT_DEPENDENCY);
                 return false;
             }
 
@@ -3048,7 +3048,7 @@ namespace AssetProcessor
         Statement* statement = autoFinal.Get();
         if (!statement)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
+            AZ_Error(LOG_NAME, false, "Could not get statement: %s", DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
             return false;
         }
 

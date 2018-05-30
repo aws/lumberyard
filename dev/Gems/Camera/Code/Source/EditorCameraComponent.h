@@ -130,5 +130,6 @@ namespace Camera
         bool m_viewButton = false;
         float m_frustumViewPercentLength = 1.f;
         AZ::Color m_frustumDrawColor = AzFramework::ViewportColors::HoverColor;
+        bool m_autoActivate = true;
     };
 } // Camera

@@ -114,12 +114,36 @@ void UiCanvasLuaProxy::BusConnect(AZ::EntityId entityId)
     }
 }
 
+void UiCanvasLuaProxy::BusDisconnect()
+{
+    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
+        "UiCanvasLuaProxy:BusDisconnect is deprecated. Please use the UiCanvasBus instead of the UiCanvasLuaBus and UiCanvasLuaProxy\n");
+
+    if (UiCanvasLuaBus::Handler::BusIsConnected())
+    {
+        UiCanvasLuaBus::Handler::BusDisconnect();
+    }
+}
+
 AZ::EntityId UiCanvasLuaProxy::LoadCanvas(const char* canvasFilename)
 {
     CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
         "UiCanvasLuaProxy:LoadCanvas is deprecated. Please use UiCanvasManagerBus:LoadCanvas instead\n");
 
     return gEnv->pLyShine->LoadCanvas(canvasFilename);
+}
+
+AZ::EntityId UiCanvasLuaProxy::FindCanvasByPathname(const char* canvasFilename, bool loadIfNotFound/* = false*/)
+{
+    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING,
+        "UiCanvasLuaProxy:FindCanvasByPathname is deprecated. Please use UiCanvasManagerBus:FindCanvasByPathname instead\n");
+
+    AZ::EntityId canvasId = gEnv->pLyShine->FindLoadedCanvasByPathName(canvasFilename);
+    if (!canvasId.IsValid() && loadIfNotFound)
+    {
+        canvasId = LoadCanvas(canvasFilename);
+    }
+    return canvasId;
 }
 
 void UiCanvasLuaProxy::UnloadCanvas(AZ::EntityId canvasEntityId)
@@ -164,8 +188,10 @@ void UiCanvasLuaProxy::Reflect(AZ::ReflectContext* context)
             ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
             ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             ->Method("LoadCanvas", &UiCanvasLuaProxy::LoadCanvas)
+            ->Method("FindCanvasByPathname", &UiCanvasLuaProxy::FindCanvasByPathname)
             ->Method("UnloadCanvas", &UiCanvasLuaProxy::UnloadCanvas)
             ->Method("BusConnect", &UiCanvasLuaProxy::BusConnect)
+            ->Method("BusDisconnect", &UiCanvasLuaProxy::BusDisconnect)
         ;
     }
 }

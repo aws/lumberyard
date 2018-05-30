@@ -1281,7 +1281,7 @@ void CCryDXGLDeviceContext::OMGetBlendState(ID3D11BlendState** ppBlendState, FLO
     BlendFactor[0] = m_auBlendFactor[0];
     BlendFactor[1] = m_auBlendFactor[1];
     BlendFactor[2] = m_auBlendFactor[2];
-    BlendFactor[2] = m_auBlendFactor[3];
+    BlendFactor[3] = m_auBlendFactor[3];
     *pSampleMask = m_uSampleMask;
 }
 

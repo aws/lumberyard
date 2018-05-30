@@ -1153,7 +1153,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if(!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_SOURCE);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", INSERT_SOURCE);
                 return false;
             }
 
@@ -1221,7 +1221,7 @@ namespace AssetProcessor
             Statement* statement = autoFinal.Get();
             if(!statement)
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_SOURCE);
+                AZ_Error(LOG_NAME, false, "Could not get statement: %s", UPDATE_SOURCE);
                 return false;
             }
 

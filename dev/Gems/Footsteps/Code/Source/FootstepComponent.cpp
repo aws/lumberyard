@@ -143,10 +143,24 @@ namespace Footsteps
                 pe_status_living livingStatus;
                 livingStatus.groundSlope.Set(0.f, 0.f, 1.f);
                 LmbrCentral::CryPhysicsComponentRequestBus::Event(GetEntityId(), &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicsStatus, livingStatus);
-                effectId = pMaterialEffects->GetEffectId(fxLibName.c_str(), livingStatus.groundSurfaceIdx);
-                if (effectId == InvalidEffectId)
+
+                if (livingStatus.groundSurfaceIdx >= 0)  // Filter out the surface id -1 as this means the entity was not in contact with the ground
                 {
-                    AZ_Warning("FootstepComponent", false, "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+                    effectId = pMaterialEffects->GetEffectId(fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+                    if (effectId == InvalidEffectId)
+                    {
+                        // In non release builds, make sure that we don't spam the log output by only warning once per surface
+#if !defined( _RELEASE )
+                        static AZStd::vector<int> s_surfacesWarnedAbout;
+                        if (AZStd::find(s_surfacesWarnedAbout.begin(), s_surfacesWarnedAbout.end(), livingStatus.groundSurfaceIdx) == s_surfacesWarnedAbout.end())
+                        {
+                            AZ_Warning("FootstepComponent", "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+                            s_surfacesWarnedAbout.push_back(livingStatus.groundSurfaceIdx);
+                        }
+#else
+                        AZ_Warning("FootstepComponent", "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+#endif
+                    }
                 }
             }
 

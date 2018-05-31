@@ -7516,7 +7516,8 @@ void S3DEngineCommon::UpdateRainOccInfo(int nThreadID)
         m_RainOccluders.Release();
     }
 
-    const Vec3 vCamPos = gRenDev->GetViewParameters().vOrigin;
+    // Get the rendering camera position from the renderer
+    const Vec3 vCamPos = gEnv->p3DEngine->GetRenderingCamera().GetPosition();
     bool bDisableOcclusion = m_RainInfo.bDisableOcclusion;
     static bool bOldDisableOcclusion = true;    // set to true to allow update at first run
 

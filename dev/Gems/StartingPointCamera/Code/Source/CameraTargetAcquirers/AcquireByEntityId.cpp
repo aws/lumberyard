@@ -47,7 +47,7 @@ namespace Camera
         }
     }
 
-    bool AcquireByEntityId::AcquireTarget(AZ::Transform& outTransformInformation)
+    AZ::EntityId AcquireByEntityId::AcquireTarget(AZ::Transform& outTransformInformation)
     {
         if (m_target.IsValid())
         {
@@ -61,8 +61,8 @@ namespace Camera
             {
                 outTransformInformation.SetColumns(targetsTransform.GetColumn(0), targetsTransform.GetColumn(1), targetsTransform.GetColumn(2), outTransformInformation.GetColumn(3));
             }
-            return true;
+            return m_target;
         }
-        return false;
+        return AZ::EntityId();
     }
 } // namespace Camera

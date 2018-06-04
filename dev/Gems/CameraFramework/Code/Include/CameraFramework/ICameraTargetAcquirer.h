@@ -29,6 +29,6 @@ namespace Camera
         AZ_RTTI(ICameraTargetAcquirer, "{350C8DA8-732B-42F6-8EBD-70F8D5497436}", ICameraSubComponent);
         virtual ~ICameraTargetAcquirer() = default;
         /// Assign the transform of the desired target to outTransformInformation
-        virtual bool AcquireTarget(AZ::Transform& outTransformInformation) = 0;
+        virtual AZ::EntityId AcquireTarget(AZ::Transform& outTransformInformation) = 0;
     };
 } //namespace Camera

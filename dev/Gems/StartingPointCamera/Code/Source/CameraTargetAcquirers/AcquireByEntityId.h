@@ -36,7 +36,7 @@ namespace Camera
 
         //////////////////////////////////////////////////////////////////////////
         // ICameraTargetAcquirer
-        bool AcquireTarget(AZ::Transform& outTransformInformation) override;
+        AZ::EntityId AcquireTarget(AZ::Transform& outTransformInformation) override;
         void Activate(AZ::EntityId) override {}
         void Deactivate() override {}
 

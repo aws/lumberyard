@@ -23,8 +23,10 @@
 #include "CameraLookAtBehaviors/SlideAlongAxisBasedOnAngle.h"
 #include "CameraLookAtBehaviors/RotateCameraLookAt.h"
 #include "CameraTransformBehaviors/FaceTarget.h"
+#include "CameraZoomBehaviors/DefaultZoomBehavior.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Module/Module.h>
 
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
@@ -48,11 +50,22 @@ namespace StartingPointCamera
             Camera::SlideAlongAxisBasedOnAngle::Reflect(reflection);
             Camera::RotateCameraLookAt::Reflect(reflection);
             Camera::FaceTarget::Reflect(reflection);
+            Camera::DefaultZoomBehavior::Reflect(reflection);
 
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
                 serializeContext->Class<StartingPointCameraGemComponent, AZ::Component>()
                     ->Version(0)
+                    ;
+            }
+
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection))
+            {
+                behaviorContext->EBus<Camera::CameraZoomBehaviorBus>("CameraZoomBehaviorBus")
+                    ->Event("SetZoomTarget", &Camera::CameraZoomBehaviorBus::Events::SetZoomTarget)
+                    ->Event("SetTimeToZoom", &Camera::CameraZoomBehaviorBus::Events::SetTimeToZoom)
+                    ->Event("StartZoom", &Camera::CameraZoomBehaviorBus::Events::StartZoom)
+                    ->Event("StopZoom", &Camera::CameraZoomBehaviorBus::Events::StopZoom)
                     ;
             }
         }

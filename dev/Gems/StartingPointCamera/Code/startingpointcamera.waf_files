@@ -4,7 +4,8 @@
         "Include": 
         [
             "Include/StartingPointCamera/StartingPointCameraConstants.h",
-            "Include/StartingPointCamera/StartingPointCameraUtilities.h"
+            "Include/StartingPointCamera/StartingPointCameraUtilities.h",
+            "Include/StartingPointCamera/StartingPointCameraZoomBehaviorBus.h"
         ],
         "Source": 
         [
@@ -38,6 +39,11 @@
             "Source/CameraTransformBehaviors/OffsetCameraPosition.cpp",
             "Source/CameraTransformBehaviors/Rotate.h",
             "Source/CameraTransformBehaviors/Rotate.cpp"
+        ],
+        "Source/ZoomBehaviors": 
+        [
+            "Source/CameraZoomBehaviors/DefaultZoomBehavior.h",
+            "Source/CameraZoomBehaviors/DefaultZoomBehavior.cpp"
         ]
     },
     "none":

@@ -15,9 +15,11 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/Entity.h>
+#include <AzFramework/Components/CameraBus.h>
 #include "CameraFramework/ICameraTargetAcquirer.h"
 #include "CameraFramework/ICameraLookAtBehavior.h"
 #include "CameraFramework/ICameraTransformBehavior.h"
+#include "CameraFramework/ICameraZoomBehavior.h"
 
 namespace Camera
 {
@@ -34,6 +36,10 @@ namespace Camera
         for (ICameraTransformBehavior* transformBehavior : m_transformBehaviors)
         {
             transformBehavior->Init();
+        }
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            zoomBehavior->Init();
         }
     }
 
@@ -58,6 +64,13 @@ namespace Camera
         {
             transformBehavior->Activate(GetEntityId());
         }
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            zoomBehavior->Activate(GetEntityId());
+        }
+
+        // Get initial fov so that each frame we start from the initial unaltered value
+        EBUS_EVENT_ID_RESULT(m_initialFov, GetEntityId(), CameraRequestBus, GetFov);
 
         m_initialTransform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(m_initialTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
@@ -80,6 +93,10 @@ namespace Camera
         {
             transformBehavior->Deactivate();
         }
+        for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+        {
+            zoomBehavior->Deactivate();
+        }
     }
 
     void CameraRigComponent::Reflect(AZ::ReflectContext* reflection)
@@ -98,7 +115,8 @@ namespace Camera
                 ->Version(1)
                 ->Field("Target Acquirers", &CameraRigComponent::m_targetAcquirers)
                 ->Field("Look-at Behaviors", &CameraRigComponent::m_lookAtBehaviors)
-                ->Field("Camera Transform Behaviors", &CameraRigComponent::m_transformBehaviors);
+                ->Field("Camera Transform Behaviors", &CameraRigComponent::m_transformBehaviors)
+                ->Field("Zoom Behaviors", &CameraRigComponent::m_zoomBehaviors);
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
@@ -122,7 +140,11 @@ namespace Camera
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(0, &CameraRigComponent::m_transformBehaviors, "Transform behaviors",
                     "A list of behaviors that run in order, each having the chance to sequentially modify the camera's transform based on the look-at transform")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(0, &CameraRigComponent::m_zoomBehaviors, "Zoom Behaviors",
+                    "A list of behaviors that run in order, each having the chance to sequentially modify the camera's zoom")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ;
             }
         }
     }
@@ -148,9 +170,11 @@ namespace Camera
         AZ::Transform initialCameraTransform = AZ::Transform::Identity();
         EBUS_EVENT_ID_RESULT(initialCameraTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
         AZ::Transform targetTransform(m_initialTransform);
+        AZ::EntityId targetEntityId;
         for (ICameraTargetAcquirer* targetAcquirer : m_targetAcquirers)
         {
-            if (targetAcquirer->AcquireTarget(targetTransform))
+            targetEntityId = targetAcquirer->AcquireTarget(targetTransform);
+            if (targetEntityId.IsValid())
             {
                 break;
             }
@@ -172,5 +196,18 @@ namespace Camera
 
         // Step 4 Alert the camera component of the new desired transform
         EBUS_EVENT_ID(GetEntityId(), AZ::TransformBus, SetWorldTM, finalTransform);
+
+        // Step 5 Modify the zoom of the camera behavior
+        if (!m_zoomBehaviors.empty())
+        {
+            float zoom = 1.0f;
+            for (ICameraZoomBehavior* zoomBehavior : m_zoomBehaviors)
+            {
+                zoomBehavior->ModifyZoom(targetEntityId, zoom);
+            }
+
+            float fov = m_initialFov / zoom;
+            EBUS_EVENT_ID(GetEntityId(), CameraRequestBus, SetFov, fov);
+        }
     }
 } //namespace Camera

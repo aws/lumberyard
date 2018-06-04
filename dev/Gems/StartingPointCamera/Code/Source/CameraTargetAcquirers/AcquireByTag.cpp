@@ -52,7 +52,7 @@ namespace Camera
         }
     }
 
-    bool AcquireByTag::AcquireTarget(AZ::Transform& outTransformInformation)
+    AZ::EntityId AcquireByTag::AcquireTarget(AZ::Transform& outTransformInformation)
     {
         if (m_targets.size())
         {
@@ -66,9 +66,9 @@ namespace Camera
             {
                 outTransformInformation.SetColumns(targetsTransform.GetColumn(0), targetsTransform.GetColumn(1), targetsTransform.GetColumn(2), outTransformInformation.GetColumn(3));
             }
-            return true;
+            return m_targets[0];
         }
-        return false;
+        return AZ::EntityId();
     }
 
     void AcquireByTag::Activate(AZ::EntityId)

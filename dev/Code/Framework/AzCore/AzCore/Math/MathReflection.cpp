@@ -1025,6 +1025,14 @@ namespace AZ
             return AZStd::string::format("(r=%.7f,g=%.7f,b=%.7f,a=%.7f)", static_cast<float>(c.GetR()), static_cast<float>(c.GetG()), static_cast<float>(c.GetB()), static_cast<float>(c.GetA()));
         }
 
+        // Load a colour previously serialized to a string
+        Color StringToColor(const char* colorString)
+        {
+            Color color;
+            color.FromString(colorString);
+            return color;
+        }
+
         //////////////////////////////////////////////////////////////////////////
         void QuaternionScriptConstrcutor(Quaternion* thisPtr, ScriptDataContext& dc)
         {
@@ -2660,6 +2668,7 @@ namespace AZ
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("ToString", &Internal::ColorToString)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)->
+            Method("FromString", &Internal::StringToColor)->
             Method<const Color(Color::*)(const VectorFloat&) const>("MultiplyFloat", &Color::operator*)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::ColorMultiplyGeneric)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Mul)->

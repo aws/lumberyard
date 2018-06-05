@@ -152,6 +152,9 @@ namespace AZ
         // Color from u32 => 0xAABBGGRR, RGB convert from Gamma corrected to Linear values.
         void FromU32GammaToLinear(u32 c);
 
+        // Color from string => 0xAABBGGRR
+        void FromString(char const* colorString);
+
         // Convert color from linear to gamma corrected space.
         Color LinearToGamma() const;
 

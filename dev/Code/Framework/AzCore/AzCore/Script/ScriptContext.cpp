@@ -3447,6 +3447,9 @@ LUA_API const Node* lua_getDummyNode()
 
                 HookUserData* ud = reinterpret_cast<HookUserData*>(userData);
                 lua_State* lua = ud->m_luaHandler->m_lua;
+
+                AZ_Assert(ScriptContext::FromNativeContext(lua)->DebugIsCallingThreadTheOwner(), "Lua EBus handler is called from a non-owner thread. This is most likely a bug!");
+
                 LSV_BEGIN(lua, 0);
 
                 int numArguments = static_cast<int>(ud->m_args.size());
@@ -3591,6 +3594,8 @@ LUA_API const Node* lua_getDummyNode()
                 )
                 , m_scriptPropertyTableFactory(&AZ::ScriptPropertyTable::TryCreateProperty)
             {
+                m_ownerThreadId = AZStd::this_thread::get_id();
+
                 m_lua = nativeContext;
                 m_isCustomLuaVM = nativeContext != nullptr;
 
@@ -5022,6 +5027,7 @@ LUA_API const Node* lua_getDummyNode()
             AZStd::vector< ScriptTypeFactory >  m_scriptPropertyArrayFactories;
             ScriptTypeFactory                   m_scriptPropertyTableFactory;
             AZStd::unique_ptr<Internal::LuaSystemAllocator> m_luaAllocator;
+            AZStd::thread::id m_ownerThreadId; // Validate if Lua methods (including EBus handlers) are called from background threads.
         };
     } // namespace AZ
 
@@ -5256,6 +5262,19 @@ LUA_API const Node* lua_getDummyNode()
     ScriptContextDebug* ScriptContext::GetDebugContext()
     {
         return m_impl->m_debug;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    void ScriptContext::DebugSetOwnerThread(AZStd::thread::id ownerThreadId)
+    {
+        // By default the thread that creates the script context is the owner. This method allows to override this default behaviour.
+        m_impl->m_ownerThreadId = ownerThreadId;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    bool ScriptContext::DebugIsCallingThreadTheOwner() const
+    {
+        return m_impl->m_ownerThreadId == AZStd::this_thread::get_id();
     }
 
     //////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,7 @@
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/allocator_static.h>
+#include <AzCore/std/parallel/thread.h>
 
 #ifndef AZ_USE_CUSTOM_SCRIPT_BIND
 struct lua_State;
@@ -865,6 +866,19 @@ namespace AZ
         void EnableDebug();   ///< Creates debug context (you can obtain vie GetDebugContext()). Depending on the implementation this can require more memory.
         void DisableDebug();  ///< Destroys debug context
         ScriptContextDebug* GetDebugContext();
+
+        /**
+         * Make sure that the Lua EBus handlers are not called from background threads.
+         * By default the thread that creates the script context is the owner.
+         * This method allows to override this default behaviour.                                                                      
+        */        
+        void DebugSetOwnerThread(AZStd::thread::id ownerThreadId); 
+        
+        /**
+         * Make sure that the Lua EBus handlers are not called from background threads.
+         * Use this to make sure the calling thread is the thread that owns the script context.
+        */        
+        bool DebugIsCallingThreadTheOwner() const;                 
 
         void SetErrorHook(ErrorHook cb);
         ErrorHook GetErrorHook() const;

@@ -248,4 +248,62 @@ namespace AZ
     {
         return rhs * multiplier;
     }
+
+    AZ_MATH_FORCE_INLINE void Color::FromString(const char* colorString)
+    {
+        Set(0.0f, 0.0f, 0.0f, 1.0f);
+        auto c = colorString;
+        if (c && c[0] != '\0')
+        {
+            size_t len = strlen(colorString);
+            if (c[0] == '#' && len >= 7)
+            {
+                // Colour in format #4466BB or #4466BBAA
+                const char r[] = { c[1], c[2], '\0' };
+                const char g[] = { c[3], c[4], '\0' };
+                const char b[] = { c[5], c[6], '\0' };
+                SetR8(AZ::u8(strtol(r, nullptr, 16)));
+                SetG8(AZ::u8(strtol(g, nullptr, 16)));
+                SetB8(AZ::u8(strtol(b, nullptr, 16)));
+                if (len >= 9)
+                {
+                    const char a[] = { c[7], c[8], '\0' };
+                    SetA8(AZ::u8(strtol(a, nullptr, 16)));
+                }
+            }
+            else
+            {
+                // Colour in format (r=%.7f,g=%.7f,b=%.7f,a=%.7f)
+                if (c[0] == '(')
+                {
+                    c++;
+                }
+                if (c[0] == 'r' && c[1] == '=')
+                {
+                    c += 2;
+                    char* end = nullptr;
+                    float r = strtof(c, &end);
+                    SetR(r);
+                    if (end && end[0] == ',' && end[1] == 'g' && end[2] == '=')
+                    {
+                        c = end + 3;
+                        float g = strtof(c, &end);
+                        SetG(g);
+                    }
+                    if (end && end[0] == ',' && end[1] == 'b' && end[2] == '=')
+                    {
+                        c = end + 3;
+                        float b = strtof(c, &end);
+                        SetB(b);
+                    }
+                    if (end && end[0] == ',' && end[1] == 'a' && end[2] == '=')
+                    {
+                        c = end + 3;
+                        float a = strtof(c, &end);
+                        SetA(a);
+                    }
+                }
+            }
+        }
+    }
 }

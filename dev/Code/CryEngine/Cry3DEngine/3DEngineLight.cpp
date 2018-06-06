@@ -617,16 +617,19 @@ void CLightVolumesMgr::Update(const SRenderingPassInfo& passInfo)
                         continue;
                     }
 
-                    const SRenderLight& pDL = (*pLights)[nLightId];
-                    const int32 nNextLightId = lightCell.nLightID[(l + 1) & (LIGHTVOLUME_MAXLIGHTS - 1)];
-                    const SRenderLight& pNextDL = (*pLights)[nNextLightId];
-                    CryPrefetch(&pNextDL);
-                    CryPrefetch(&pNextDL.m_ObjMatrix);
-
-                    IF (lightProcessedStateArray[nLightId] != v + 1, 1)
+                    if (static_cast<uint32>(nLightId) < nLightCount)
                     {
-                        lightProcessedStateArray[nLightId] = v + 1;
-                        AddLight(pDL, &*lightVolsInfo[v], lightVols[v]);
+                        const SRenderLight& pDL = (*pLights)[nLightId];
+                        const int32 nNextLightId = lightCell.nLightID[(l + 1) & (LIGHTVOLUME_MAXLIGHTS - 1)];
+                        const SRenderLight& pNextDL = (*pLights)[nNextLightId];
+                        CryPrefetch(&pNextDL);
+                        CryPrefetch(&pNextDL.m_ObjMatrix);
+
+                        IF(lightProcessedStateArray[nLightId] != v + 1, 1)
+                        {
+                            lightProcessedStateArray[nLightId] = v + 1;
+                            AddLight(pDL, &*lightVolsInfo[v], lightVols[v]);
+                        }
                     }
                 }
             }

@@ -31,6 +31,7 @@
 
 #include <AzGameFramework/Application/GameApplication.h>
 #include <AzCore/IO/SystemFile.h> // for max path
+#include <AzFramework/CommandLine/CommandLine.h>
 
 // We need shell api for Current Root Extruction.
 #include "shlwapi.h"
@@ -137,6 +138,15 @@ ILINE int RunGame(const char* commandLine, CEngineConfig& engineCfg, AzGameFrame
     startupParams.sLogFileName = logFileName;
 
     startupParams.bDedicatedServer = true;
+
+    //  Allow the log directory to be specified with a command line flag.
+    AzFramework::CommandLine azCommandLine;
+    azCommandLine.Parse();
+    if (azCommandLine.HasSwitch("logpath"))
+    {
+        auto logPath = azCommandLine.GetSwitchValue("logpath", 0);
+        azsnprintf(startupParams.logPath, 256, logPath.c_str());
+    }
 
     strcpy(startupParams.szSystemCmdLine, commandLine);
 

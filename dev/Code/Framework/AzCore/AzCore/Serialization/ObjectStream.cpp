@@ -1902,7 +1902,7 @@ namespace AZ
                         jsonDocument.ParseInsitu(memoryBuffer.data());
                         if (jsonDocument.HasParseError())
                         {
-                            AZ_Error("Serialize", false, "JSON parse error: %d (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
+                            AZ_Error("Serialize", false, "JSON parse error: %s (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
                             // this is considered a "fatal" error since the entire stream is unreadable.
                             result = false;
                         }

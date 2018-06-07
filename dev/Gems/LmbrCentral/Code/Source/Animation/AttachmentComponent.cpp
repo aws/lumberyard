@@ -57,8 +57,12 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<AttachmentComponentRequestBus>("AttachmentComponentRequestBus")
                 ->Event("Attach", &AttachmentComponentRequestBus::Events::Attach)
+                ->Event("AttachWithCurrentOffset", &AttachmentComponentRequestBus::Events::AttachWithCurrentOffset)
                 ->Event("Detach", &AttachmentComponentRequestBus::Events::Detach)
-                ->Event("SetAttachmentOffset", &AttachmentComponentRequestBus::Events::SetAttachmentOffset);
+                ->Event("SetAttachmentOffset", &AttachmentComponentRequestBus::Events::SetAttachmentOffset)
+                ->Event("GetAttachmentOffset", &AttachmentComponentRequestBus::Events::GetAttachmentOffset)
+                ->Event("GetTargetBoneName", &AttachmentComponentRequestBus::Events::GetTargetBoneName);
+                ;
 
             behaviorContext->EBus<AttachmentComponentNotificationBus>("AttachmentComponentNotificationBus")
                 ->Handler<BehaviorAttachmentComponentNotificationBusHandler>();
@@ -92,6 +96,7 @@ namespace LmbrCentral
         m_targetCanAnimate = targetCanAnimate;
         m_isUpdatingOwnerTransform = false;
         m_scaleSource = configuration.m_scaleSource;
+        m_targetOffset = configuration.m_targetOffset;
 
         m_cachedOwnerTransform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(m_cachedOwnerTransform, m_ownerId, AZ::TransformBus, GetWorldTM);
@@ -163,6 +168,11 @@ namespace LmbrCentral
         AttachmentComponentNotificationBus::Event(m_ownerId, &AttachmentComponentNotificationBus::Events::OnAttached, m_targetId);
     }
 
+    void BoneFollower::AttachWithCurrentOffset(AZ::EntityId targetId, const char* targetBoneName)
+    {
+        Attach(targetId, targetBoneName, m_targetOffset);
+    }
+
     void BoneFollower::Detach()
     {
         AZ_Assert(m_ownerId.IsValid(), "BoneFollower must be Activated to use.");
@@ -190,6 +200,26 @@ namespace LmbrCentral
             m_targetOffset = offset;
             UpdateOwnerTransformIfNecessary();
         }
+    }
+
+    const AZ::Transform BoneFollower::GetAttachmentOffset()
+    {
+        AZ_Assert(m_ownerId.IsValid(), "BoneFollower must be Activated to use.");
+        if (m_targetId.IsValid())
+        {
+            return m_targetOffset;
+        }
+        return AZ::Transform::CreateIdentity();
+    }
+
+    const char* BoneFollower::GetTargetBoneName()
+    {
+        AZ_Assert(m_ownerId.IsValid(), "BoneFollower must be Activated to use.");
+        if (m_targetId.IsValid())
+        {
+            return m_targetBoneName.c_str();
+        }
+        return "";
     }
 
     void BoneFollower::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)

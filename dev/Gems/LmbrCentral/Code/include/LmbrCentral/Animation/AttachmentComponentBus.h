@@ -41,11 +41,26 @@ namespace LmbrCentral
         //! \param offset           Attachment's offset from target.
         virtual void Attach(AZ::EntityId targetId, const char* targetBoneName, const AZ::Transform& offset) = 0;
 
+        //! Change attachment target, use the offset specified in the editor, or set previously.
+        //! The entity will detach from any previous target.
+        //!
+        //! \param targetId         Attach to this entity.
+        //! \param targetBoneName   Attach to this bone on target entity.
+        //!                         If targetBone is not found then attach to
+        //!                         target entity's transform origin.
+        virtual void AttachWithCurrentOffset(AZ::EntityId targetId, const char* targetBoneName) = 0;
+
         //! The entity will detach from its target.
         virtual void Detach() = 0;
 
         //! Update entity's offset from target.
         virtual void SetAttachmentOffset(const AZ::Transform& offset) = 0;
+
+        //! Return current attachment offset
+        virtual const AZ::Transform GetAttachmentOffset() = 0;
+
+        //! Get name of the target bone
+        virtual const char* GetTargetBoneName() = 0;
     };
     using AttachmentComponentRequestBus = AZ::EBus<AttachmentComponentRequests>;
 

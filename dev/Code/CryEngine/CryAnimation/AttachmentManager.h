@@ -88,7 +88,10 @@ public:
     void UpdateAllLocations(Skeleton::CPoseData& pPoseData);
 
     void UpdateAllLocationsFast(Skeleton::CPoseData& pPoseData);
-    void ProcessAllAttachedObjectsFast();
+    void ProcessAllAttachedObjectsFast()
+    {
+        AZ_Error("AttachmentManager", false, "ProcessAllAttachedObjectsFast has not been implemented.");
+    }
 
     void DrawAttachments(const SRendParams& rRendParams, const Matrix34& m, const SRenderingPassInfo& passInfo);
 

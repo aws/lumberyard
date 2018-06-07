@@ -78,8 +78,11 @@ namespace LmbrCentral
         ////////////////////////////////////////////////////////////////////////
         // AttachmentComponentRequests
         void Attach(AZ::EntityId targetId, const char* targetBoneName, const AZ::Transform& offset) override;
+        void AttachWithCurrentOffset(AZ::EntityId targetId, const char* targetBoneName) override;
         void Detach() override;
         void SetAttachmentOffset(const AZ::Transform& offset) override;
+        const AZ::Transform GetAttachmentOffset() override;
+        const char* GetTargetBoneName() override;
         ////////////////////////////////////////////////////////////////////////
 
     private:

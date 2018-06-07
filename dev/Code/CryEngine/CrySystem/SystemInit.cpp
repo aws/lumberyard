@@ -2183,6 +2183,25 @@ bool CSystem::LaunchAssetProcessor()
         azstrncpy(assetProcessorExe, AZ_ARRAY_SIZE(assetProcessorExe), engineAssetProcessorPath.c_str(), engineAssetProcessorPath.length());
     }
 
+#if defined (DEDICATED_SERVER)
+    // If running the ds, we want to launch the non-ds asset processor
+    auto StripDedicatedPath = [&](char* path)
+    {
+        AZStd::string pathString(path);
+        AZStd::string replaceSearch(".Dedicated");
+        size_t replaceStart = pathString.find(replaceSearch);
+        if (replaceStart != AZStd::string::npos)
+        {
+            pathString.replace(replaceStart, replaceSearch.length(), "");
+            size_t length = pathString.copy(path, AZ_MAX_PATH_LEN - 1);
+            path[length] = '\0';
+        }
+    };
+
+    StripDedicatedPath(assetProcessorExe);
+    StripDedicatedPath(workingDir);
+#endif
+
 
 #if defined(AZ_PLATFORM_WINDOWS)
     if (appRoot == nullptr)

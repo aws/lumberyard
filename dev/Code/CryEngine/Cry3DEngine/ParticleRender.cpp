@@ -885,7 +885,7 @@ void CParticle::GetRenderMatrix(Vec3& vX, Vec3& vY, Vec3& vZ, Vec3& vT, const Qu
         float sizeY = params.fSizeY.GetValueFromMod(m_BaseMods.SizeY, fRelativeAge);
         if (abs(sizeY) < 0.0001f || abs(m_sizeScale.y) < 0.0001f)
         {
-            aspect = 0;
+            aspect = 1.0f;
         }
         else
         {

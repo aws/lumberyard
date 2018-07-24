@@ -1488,7 +1488,7 @@ namespace
         CPrefabManager* pPrefabManager = GetIEditor()->GetPrefabManager();
         if (!pPrefabManager)
         {
-            std::runtime_error("Invalid Prefab Manager.");
+            throw std::runtime_error("Invalid Prefab Manager.");
         }
 
         std::vector<std::string> results;
@@ -1512,7 +1512,7 @@ namespace
         CPrefabManager* pPrefabManager = GetIEditor()->GetPrefabManager();
         if (!pPrefabManager)
         {
-            std::runtime_error("Invalid Prefab Manager.");
+            throw std::runtime_error("Invalid Prefab Manager.");
         }
 
         IDataBaseLibrary* pPrefabLibrary = pPrefabManager->FindLibrary(pLibraryName);
@@ -1540,7 +1540,7 @@ namespace
         CPrefabManager* pPrefabManager = GetIEditor()->GetPrefabManager();
         if (!pPrefabManager)
         {
-            std::runtime_error("Invalid Prefab Manager.");
+            throw std::runtime_error("Invalid Prefab Manager.");
         }
 
         IDataBaseLibrary* pPrefabLibrary = pPrefabManager->FindLibrary(pLibraryName);
@@ -1600,7 +1600,7 @@ namespace
         CPrefabManager* pPrefabManager = GetIEditor()->GetPrefabManager();
         if (!pPrefabManager)
         {
-            std::runtime_error("Invalid Prefab Manager.");
+            throw std::runtime_error("Invalid Prefab Manager.");
         }
 
         IDataBaseLibrary* pPrefabLibrary = pPrefabManager->FindLibrary(pLibraryName);
@@ -1616,7 +1616,7 @@ namespace
         CPrefabManager* pPrefabManager = GetIEditor()->GetPrefabManager();
         if (!pPrefabManager)
         {
-            std::runtime_error("Invalid Prefab Manager.");
+            throw std::runtime_error("Invalid Prefab Manager.");
         }
 
         IDataBaseLibrary* pPrefabLibrary = pPrefabManager->FindLibrary(pLibraryName);
@@ -1641,7 +1641,7 @@ namespace
         CPrefabManager* pPrefabManager = GetIEditor()->GetPrefabManager();
         if (!pPrefabManager)
         {
-            std::runtime_error("Invalid Prefab Manager.");
+            throw std::runtime_error("Invalid Prefab Manager.");
         }
 
         IDataBaseLibrary* pPrefabLibrary = pPrefabManager->FindLibrary(pLibraryName);

@@ -1025,22 +1025,22 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
         }
         case OPERAND_TYPE_TEMP:
         {
-			SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, psOperand);
+			SHADER_VARIABLE_TYPE eTypeTemp = GetOperandDataType(psContext, psOperand);
             bcatcstr(glsl, "Temp");
 
-            if(eType == SVT_INT)
+            if(eTypeTemp == SVT_INT)
             {
                 bcatcstr(glsl, "_int");
             }
-            else if(eType == SVT_UINT)
+            else if(eTypeTemp == SVT_UINT)
             {
                 bcatcstr(glsl, "_uint");
             }
-			else if(eType == SVT_DOUBLE)
+			else if(eTypeTemp == SVT_DOUBLE)
 			{
 				bcatcstr(glsl, "_double");
 			}
-            else if(eType == SVT_VOID &&
+            else if(eTypeTemp == SVT_VOID &&
                 (ui32TOFlag & TO_FLAG_DESTINATION))
             {
 				ASSERT(0 && "Should never get here!");
@@ -1221,7 +1221,6 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
 				{
 					// Array of matrices is treated as array of vec4s in HLSL,
 					// but that would mess up uniform types in GLSL. Do gymnastics.
-					SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, psOperand->psSubOperand[0]);
 					uint32_t opFlags = TO_FLAG_INTEGER;
 
 					if (psVarType && (psVarType->Class == SVC_MATRIX_COLUMNS || psVarType->Class == SVC_MATRIX_ROWS) && (psVarType->Elements > 1))
@@ -1255,9 +1254,9 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
 				{
 					// Array of matrices is treated as array of vec4s in HLSL,
 					// but that would mess up uniform types in GLSL. Do gymnastics.
-					SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, psOperand->psSubOperand[1]);
+					SHADER_VARIABLE_TYPE eTypeTemp = GetOperandDataType(psContext, psOperand->psSubOperand[1]);
 					uint32_t opFlags = TO_FLAG_INTEGER;
-					if (eType != SVT_INT && eType != SVT_UINT)
+					if (eTypeTemp != SVT_INT && eTypeTemp != SVT_UINT)
 						opFlags = TO_AUTO_BITCAST_TO_INT;
 
 					if (psVarType && (psVarType->Class == SVC_MATRIX_COLUMNS || psVarType->Class == SVC_MATRIX_ROWS) && (psVarType->Elements > 1))
@@ -1302,7 +1301,6 @@ static void TranslateVariableNameWithMask(HLSLCrossCompilerContext* psContext, c
                 }
 				else if(psOperand->psSubOperand[1] != NULL)
 				{
-					SHADER_VARIABLE_TYPE eType = GetOperandDataType(psContext, psOperand->psSubOperand[1]);
 					bcatcstr(glsl, "[");
 					TranslateOperand(psContext, psOperand->psSubOperand[1], TO_FLAG_INTEGER);
 					bcatcstr(glsl, "]");

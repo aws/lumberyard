@@ -792,7 +792,7 @@ int CArticulatedEntity::SetParams(const pe_params* _params, int bThreadSafe)
                 nChanges++;
                 if (!(m_joints[op[1]].flags & angle0_locked << i) &&
                     isneg(m_joints[op[1]].limits[0][i] - m_joints[op[1]].qext[i]) + isneg(m_joints[op[1]].qext[i] - m_joints[op[1]].limits[1][i]) +
-                    isneg(m_joints[op[1]].limits[1][i] - m_joints[op[1]].limits[1][i]) < 2)
+                    isneg(m_joints[op[1]].limits[1][i] - m_joints[op[1]].limits[1][i]) < 2) //m_joints[op[1]].limits[1][i] minus itself is 0, possible typo?
                 {   // qext violates limits; adjust the limits
                     float diff[2];
                     diff[0] = m_joints[op[1]].limits[0][i] - m_joints[op[1]].qext[i];

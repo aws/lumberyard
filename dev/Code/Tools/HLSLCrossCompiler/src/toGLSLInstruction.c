@@ -651,7 +651,7 @@ void CallTernaryOp(HLSLCrossCompilerContext* psContext, const char* op1, const c
 
     AddIndentation(psContext);
 
-    if (src1SwizCount == src0SwizCount == src2SwizCount == dstSwizCount)
+    if (src1SwizCount == src0SwizCount && src0SwizCount == src2SwizCount && src2SwizCount == dstSwizCount)
     {
         BeginAssignment(psContext, &psInst->asOperands[dest], dataType, psInst->bSaturate);
         TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);

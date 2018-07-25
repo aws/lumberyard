@@ -870,6 +870,7 @@ namespace
     {
         switch (type.GetType())
         {
+        case Data::eType::BehaviorContextObject:
             AZ_Error("ScriptCanvas", false, "BehaviorContextObject passed into IsDataGreater, which is invalid, an attempt must be made to call the behavior method");
             return false;
 

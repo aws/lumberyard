@@ -163,10 +163,6 @@ bool CVehicleComponent::Init(IVehicle* pVehicle, const CVehicleParams& paramsTab
                 {
                     behaviorParams.ignoreOnVehicleDestroyed = false;
                 }
-                else
-                {
-                    behaviorParams.ignoreOnVehicleDestroyed = behaviorParams.ignoreOnVehicleDestroyed;
-                }
 
                 if (damageBehaviorTable.haveAttr("class"))
                 {

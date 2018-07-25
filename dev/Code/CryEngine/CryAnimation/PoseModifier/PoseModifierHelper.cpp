@@ -239,7 +239,7 @@ namespace PoseModifierHelper {
         ANIM_ASSERT(b3 > 0); //Hinge Joint2
         int32 b4 = rIKLimbType.m_arrJointChain[4].m_idxJoint;
         ANIM_ASSERT(b4 > 0); //End-Effector
-        if (((goal - pAbsPose[b4].t) | (goal - pAbsPose[b4].t)) < 0.0000001f)
+        if (((goal - pAbsPose[b4].t) | (goal - pAbsPose[b4].t)) < 0.0000001f) //(goal - pAbsPose[b4].t) duplicated, possible typo
         {
             return; //end-effector and new goal are very close ... IK not necessary
         }

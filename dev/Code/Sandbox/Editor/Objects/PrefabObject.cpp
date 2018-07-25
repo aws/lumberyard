@@ -1470,7 +1470,7 @@ namespace
         IDataBaseLibrary* pLibrary = GetIEditor()->GetPrefabManager()->FindLibrary(libraryName);
         if (pLibrary == NULL)
         {
-            IDataBaseLibrary* pLibrary = GetIEditor()->GetPrefabManager()->LoadLibrary(libraryName);
+            pLibrary = GetIEditor()->GetPrefabManager()->LoadLibrary(libraryName);
         }
 
         IDataBaseItem* pItem = GetIEditor()->GetPrefabManager()->FindItemByName(itemName);

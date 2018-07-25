@@ -1895,7 +1895,7 @@ float C3DEngine::GetDistanceToSectorWithWater()
     bool bCameraInTerrainBounds = Overlap::Point_AABB2D(camPostion, m_pTerrain->GetRootNode()->GetBBoxVirtual());
 
     return (bCameraInTerrainBounds && (m_pTerrain && m_pTerrain->GetDistanceToSectorWithWater() > 0.1f))
-           ? m_pTerrain->GetDistanceToSectorWithWater() : max(camPostion.z - OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel(), 0.1f);
+           ? m_pTerrain->GetDistanceToSectorWithWater() : max(camPostion.z - (OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel()), 0.1f);
 }
 
 Vec3 C3DEngine::GetSunColor() const

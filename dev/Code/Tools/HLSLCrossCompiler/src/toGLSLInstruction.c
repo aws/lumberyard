@@ -561,7 +561,7 @@ void CallBinaryOp(HLSLCrossCompilerContext* psContext, const char* name, Instruc
     bool qualcommWorkaround = (psContext->flags & HLSLCC_FLAG_QUALCOMM_GLES30_DRIVER_WORKAROUND) != 0;
     bool isBitwiseOperator = psInst->eOpcode == OPCODE_AND || psInst->eOpcode == OPCODE_OR || psInst->eOpcode == OPCODE_XOR;
     const char* swizzleString[] = { ".x", ".y", ".z", ".w" };
-    if (src1SwizCount == src0SwizCount == dstSwizCount)
+    if (src1SwizCount == src0SwizCount && src0SwizCount == dstSwizCount)
     {
         BeginAssignment(psContext, &psInst->asOperands[dest], dataType, psInst->bSaturate);
         if (qualcommWorkaround && isBitwiseOperator && src0SwizCount > 1)

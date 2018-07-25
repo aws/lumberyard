@@ -1034,9 +1034,7 @@ bool CImageCompiler::AnalyzeWithProperties(bool autopreset, const char* szExtend
             fprintf(stderr, "Name\n");
         }
 
-        bool optimizable = autopreset;
-
-        optimizable = optimizable | (eA != ImageObject::eAlphaContent_Greyscale ? (walpha ? true : false) : false);
+        const bool optimizable = autopreset || (eA != ImageObject::eAlphaContent_Greyscale ? walpha : false);
 
         fprintf(stderr, "%d,", optimizable ? 1 : 0);
 

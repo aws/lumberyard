@@ -854,7 +854,7 @@ void CSvoRenderer::ConeTracePass(SSvoTargetsSet* pTS)
                 SetShaderFloat(eHWSC_Pixel, nameSVO_Reserved, (Vec4*)&vReserved, 1);
             }
 
-            if (pTS->pRT_ALD_1 && pTS->pRT_ALD_1)
+            if (pTS->pRT_ALD_1 && pTS->pRT_RGB_1)
             {
                 static int nPrevWidth = 0;
                 if (nPrevWidth != (pTS->pRT_ALD_1->GetWidth() + e_svoTI_Diffuse_Cache))

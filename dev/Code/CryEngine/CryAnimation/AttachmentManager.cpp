@@ -406,7 +406,6 @@ uint32 CAttachmentManager::ParseXMLAttachmentList(CharacterAttachment* parrAttac
 void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>& parrAttachments, const AZStd::string& pathname, uint32 nLoadingFlags, int nKeepModelInMemory)
 {
     uint32 nLogWarnings = (nLoadingFlags & CA_DisableLogWarnings) == 0;
-    CSkeletonPose& rSkelPose = (CSkeletonPose&)*m_pSkelInstance->GetISkeletonPose();
     CDefaultSkeleton& rDefaultSkeleton = *m_pSkelInstance->m_pDefaultSkeleton;
 
     bool bHasVertexAnimation = false;
@@ -455,7 +454,6 @@ void CAttachmentManager::InitAttachmentList(const DynArray<CharacterAttachment>&
             pAttachment->HideAttachment(attach.m_AttFlags & FLAGS_ATTACH_HIDE_ATTACHMENT);
             SimulationParams& ap = pAttachment->GetSimulationParams();
             ap = attach.ap;
-            CSkeletonPose& rSkelPose = (CSkeletonPose&)*m_pSkelInstance->GetISkeletonPose();
 
             if (IsSKEL || IsCGA || IsCDF)
             {

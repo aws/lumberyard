@@ -186,7 +186,7 @@ IGameObjectSystem::ExtensionID CGameObjectSystem::GetID(const char* name)
 
 const char* CGameObjectSystem::GetName(ExtensionID id)
 {
-    if (id > m_extensionInfo.size())
+    if (id >= m_extensionInfo.size())
     {
         return NULL;
     }
@@ -283,7 +283,7 @@ IGameObject* CGameObjectSystem::CreateGameObjectForEntity(EntityId entityId)
 
 IGameObjectExtensionPtr CGameObjectSystem::Instantiate(ExtensionID id, IGameObject* pObject)
 {
-    if (id > m_extensionInfo.size())
+    if (id >= m_extensionInfo.size())
     {
         return IGameObjectExtensionPtr();
     }

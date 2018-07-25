@@ -104,7 +104,7 @@ void CGameObjectSystem::LoadSerializationOrderFile()
 //////////////////////////////////////////////////////////////////////////
 uint32 CGameObjectSystem::GetExtensionSerializationPriority(IGameObjectSystem::ExtensionID id)
 {
-    if (id > m_extensionInfo.size())
+    if (id >= m_extensionInfo.size())
     {
         return 0xffffffff; // minimum possible priority
     }

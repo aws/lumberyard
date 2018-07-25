@@ -346,7 +346,6 @@ void CBreakpointsTreeCtrl::OnBreakpointInvalidated(const SBreakPoint& breakpoint
             if (pPort)
             {
                 CFlowGraph* pFlowgraph = GetIEditor()->GetFlowGraphManager()->FindGraph(pFlowGraph);
-                CFlowNode* pNode = pFlowgraph->FindFlowNode(breakpoint.addr.node);
                 hPortItem->setText(0, pPort->GetHumanName());
             }
         }

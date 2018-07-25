@@ -2041,7 +2041,7 @@ int CArticulatedEntity::Step(float time_interval)
             {
                 if (!(m_joints[i].flags & angle0_locked << j) &&
                     isneg(m_joints[i].limits[0][j] - m_joints[i].qext[j]) + isneg(m_joints[i].qext[j] - m_joints[i].limits[1][j]) +
-                    isneg(m_joints[i].limits[1][j] - m_joints[i].limits[1][j]) < 2)
+                    isneg(m_joints[i].limits[1][j] - m_joints[i].limits[1][j]) < 2) //m_joints[i].limits[1][j] minus itself is 0, possible typo?
                 { // qext violates limits; adjust the limits
                     float diff[2];
                     diff[0] = m_joints[i].limits[0][j] - m_joints[i].qext[j];

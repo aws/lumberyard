@@ -127,7 +127,6 @@ bool CFileUtil::CompileLuaFile(const char* luaFilename)
             QObject::tr("Error output from Lua compiler:\r\n%1\r\nDo you want to edit the file ?").arg(CompilerOutput), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
         {
             int line = 0;
-            QString cmdLine = luaFile;
             int index = CompilerOutput.indexOf("at line");
             if (index >= 0)
             {

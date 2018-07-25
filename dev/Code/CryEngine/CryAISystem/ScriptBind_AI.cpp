@@ -5200,7 +5200,7 @@ int CScriptBind_AI::GetFlyingVehicleFlockingPos(IFunctionHandler* pH)
             continue;
         }
 
-        float heightAboveWater = vHisPos.z - OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vHisPos) : gEnv->p3DEngine->GetWaterLevel(&vHisPos);
+        float heightAboveWater = vHisPos.z - (OceanToggle::IsActive() ? OceanRequest::GetWaterLevel(vHisPos) : gEnv->p3DEngine->GetWaterLevel(&vHisPos));
         if (heightAboveWater < checkAbove)                  // only think flying object
         {
             continue;

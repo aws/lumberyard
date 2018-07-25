@@ -2109,7 +2109,7 @@ void CTrackViewDialog::UpdateTracksToolBar()
                 }
 
                 CTrackViewTrack* pTrack = pAnimNode->GetTrackForParameter(paramType);
-                if (pTrack && (!pAnimNode->GetParamFlags(paramType) & IAnimNode::eSupportedParamFlags_MultipleTracks))
+                if (pTrack && (!(pAnimNode->GetParamFlags(paramType) & IAnimNode::eSupportedParamFlags_MultipleTracks)))
                 {
                     continue;
                 }

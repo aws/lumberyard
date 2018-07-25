@@ -133,7 +133,7 @@ void QColumnWidget::QCustomLabel::SetCollapsible(bool val)
     int groupDepth = l.count() - 2;
     m_collapsible = val;
     //24 is the size of the icon for QCollapseWidget, add to make the first letters of the label align
-    setIndent((groupDepth * 24) + (!m_collapsible) ? 24 : 0);
+    setIndent((groupDepth * 24) + (!m_collapsible ? 24 : 0));
 }
 
 void QColumnWidget::mousePressEvent(QMouseEvent* e)

@@ -3373,7 +3373,7 @@ bool CTacticalPointSystem::Parse(const char* sSpec, TTacticalPointQuery& _query,
     string sWords[MAXWORDS];
 
     int iC = 0, iWord = 0;
-    for (; iWord < MAXWORDS; !sWords[iWord].empty(), iWord++)
+    for (; iWord < MAXWORDS; !sWords[iWord].empty(), iWord++) //Such expressions using the ',' operator are dangerous. Make sure the expression is correct
     {
         sWords[iWord] = sInput.Tokenize("_", iC);
     }

@@ -561,7 +561,7 @@ void CallBinaryOp(HLSLCrossCompilerContext* psContext, const char* name, Instruc
     bool qualcommWorkaround = (psContext->flags & HLSLCC_FLAG_QUALCOMM_GLES30_DRIVER_WORKAROUND) != 0;
     bool isBitwiseOperator = psInst->eOpcode == OPCODE_AND || psInst->eOpcode == OPCODE_OR || psInst->eOpcode == OPCODE_XOR;
     const char* swizzleString[] = { ".x", ".y", ".z", ".w" };
-    if (src1SwizCount == src0SwizCount == dstSwizCount)
+    if (src1SwizCount == src0SwizCount && src0SwizCount == dstSwizCount)
     {
         BeginAssignment(psContext, &psInst->asOperands[dest], dataType, psInst->bSaturate);
         if (qualcommWorkaround && isBitwiseOperator && src0SwizCount > 1)
@@ -651,7 +651,7 @@ void CallTernaryOp(HLSLCrossCompilerContext* psContext, const char* op1, const c
 
     AddIndentation(psContext);
 
-    if (src1SwizCount == src0SwizCount == src2SwizCount == dstSwizCount)
+    if (src1SwizCount == src0SwizCount && src0SwizCount == src2SwizCount && src2SwizCount == dstSwizCount)
     {
         BeginAssignment(psContext, &psInst->asOperands[dest], dataType, psInst->bSaturate);
         TranslateOperand(psContext, &psInst->asOperands[src0], TO_FLAG_NONE | dataType);
@@ -2911,7 +2911,7 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
             {
                 eNewType = GetOperandDataType(psContext, &psInst->asOperands[2]);
                 //Check assumption that both the values which MOVC might pick have the same basic data type.
-                if (!psContext->flags & HLSLCC_FLAG_AVOID_TEMP_REGISTER_ALIASING)
+                if (!(psContext->flags & HLSLCC_FLAG_AVOID_TEMP_REGISTER_ALIASING))
                 {
                     ASSERT(GetOperandDataType(psContext, &psInst->asOperands[2]) == GetOperandDataType(psContext, &psInst->asOperands[3]));
                 }

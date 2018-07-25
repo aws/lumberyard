@@ -99,7 +99,7 @@ public:
     {
         if (src.len != len && !(flags & mtx_foreign_data))
         {
-            delete data;
+            delete[] data;
             data = new ftype[src.len];
         }
         len = src.len;
@@ -114,7 +114,7 @@ public:
     {
         if (src.len != len && !(flags & mtx_foreign_data))
         {
-            delete data;
+            delete[] data;
             data = new ftype[src.len];
         }
         len = src.len;

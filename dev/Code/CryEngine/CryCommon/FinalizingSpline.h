@@ -666,7 +666,7 @@ namespace spline
                                 tds = 2 * tds;
                             }
                             
-                            newElement.sc = dd - dd;
+                            newElement.sc = dd - dd; //dd -dd equals 0. Possible typo?
                             newElement.sd = dd - value_type(tds);
 
                             newElement.dev_eval(val, 1, Tvalue);

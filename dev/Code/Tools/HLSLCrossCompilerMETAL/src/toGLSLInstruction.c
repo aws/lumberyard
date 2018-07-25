@@ -466,7 +466,7 @@ static void CallBinaryOp(HLSLCrossCompilerContext* psContext, const char* name, 
 
 	AddIndentation(psContext);
 
-	if (src1SwizCount == src0SwizCount == dstSwizCount)
+	if (src1SwizCount == src0SwizCount && src0SwizCount == dstSwizCount)
 	{
 		// Optimization for readability (and to make for loops in WebGL happy): detect cases where either src == dest and emit +=, -= etc. instead.
 		if (AreTempOperandsIdentical(&psInst->asOperands[dest], &psInst->asOperands[src0]) != 0)

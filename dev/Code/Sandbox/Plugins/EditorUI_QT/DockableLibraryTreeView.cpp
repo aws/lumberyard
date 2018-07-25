@@ -133,6 +133,7 @@ bool DockableLibraryTreeView::Init(IDataBaseLibrary* lib)
     m_defaultView->setAcceptDrops(true);
     m_centralWidget->setAcceptDrops(true);
 
+    bool returnValue = false;
     if (m_treeView && m_titleBar && m_defaultView)
     {
         if (m_treeView->topLevelItemCount() > 0)
@@ -143,14 +144,16 @@ bool DockableLibraryTreeView::Init(IDataBaseLibrary* lib)
         {
             ShowDefaultView();
         }
-        return true;
+        returnValue = true;
     }
     else
     {
-        return false;
+        returnValue = false;
     }
 
     emit SignalFocused(this);
+
+    return returnValue;
 }
 
 void DockableLibraryTreeView::ShowDefaultView()

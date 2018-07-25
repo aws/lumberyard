@@ -57,16 +57,11 @@ namespace AZ
                 if (BuildSceneMeshFromFbxMesh(createdData, *context.m_sourceNode.GetMesh(), context.m_sourceSceneSystem))
                 {
                     context.m_createdData.push_back(std::move(createdData));
+                    context.m_createdData.push_back();
                     return Events::ProcessingResult::Success;
                 }
-                else
-                {
-                    return Events::ProcessingResult::Failure;
-                }
-
-                context.m_createdData.push_back();
-
-                return Events::ProcessingResult::Success;
+                
+                return Events::ProcessingResult::Failure;
             }
         } // namespace FbxSceneBuilder
     } // namespace SceneAPI

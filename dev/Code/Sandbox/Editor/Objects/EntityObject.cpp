@@ -1697,8 +1697,8 @@ void CEntityObject::EndEditParams(IEditor* ie)
     }
     ms_pTreePanel = NULL;
 
-    //s_pPropertiesPanel duplicated, unsure why
-    if (s_pPropertiesPanel && s_pPropertiesPanel)
+    //s_pPropertiesPanel duplicated, unsure why so temporarily removed the duplicated s_pPropertiesPanel
+    if (s_pPropertiesPanel)
     {
         s_pPropertiesPanel->ClearUpdateCallback();
     }

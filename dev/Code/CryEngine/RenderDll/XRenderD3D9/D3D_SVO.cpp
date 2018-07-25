@@ -1038,7 +1038,7 @@ void CSvoRenderer::DemosaicPass(SSvoTargetsSet* pTS)
 
     if (e_svoTI_Apply)
     { // SVO
-        if (!pTS->pRT_ALD_0 || !pTS->pRT_ALD_0)
+        if (!pTS->pRT_ALD_0 || !pTS->pRT_RGB_0)
         {
             return;
         }
@@ -1805,6 +1805,7 @@ bool CSvoRenderer::SetSamplers(int nCustomID, EHWShaderClass eSHClass, int nTUni
 CTexture* CSvoRenderer::GetTroposphereMinRT()
 {
 #ifdef FEATURE_SVO_GI_ALLOW_HQ
+    //checking m_pRT_AIR_MIN twice, unsure what it should be instead
     if (m_pRT_AIR_MIN && m_pRT_AIR_MIN && ((m_pRT_AIR_MIN)->m_nUpdateFrameID > (gRenDev->GetFrameID(false) - 4)))
     {
         return m_pRT_AIR_MIN;
@@ -1816,6 +1817,7 @@ CTexture* CSvoRenderer::GetTroposphereMinRT()
 CTexture* CSvoRenderer::GetTroposphereMaxRT()
 {
 #ifdef FEATURE_SVO_GI_ALLOW_HQ
+    //checking m_pRT_AIR_MAX twice, unsure what it should be instead
     if (m_pRT_AIR_MAX && m_pRT_AIR_MAX && ((m_pRT_AIR_MAX)->m_nUpdateFrameID > (gRenDev->GetFrameID(false) - 4)))
     {
         return m_pRT_AIR_MAX;
@@ -1827,6 +1829,7 @@ CTexture* CSvoRenderer::GetTroposphereMaxRT()
 CTexture* CSvoRenderer::GetTroposphereShadRT()
 {
 #ifdef FEATURE_SVO_GI_ALLOW_HQ
+    //checking m_pRT_AIR_SHAD twice, unsure what it should be instead
     if (m_pRT_AIR_SHAD && m_pRT_AIR_SHAD && ((m_pRT_AIR_SHAD)->m_nUpdateFrameID > (gRenDev->GetFrameID(false) - 4)))
     {
         return m_pRT_AIR_SHAD;

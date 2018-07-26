@@ -3373,9 +3373,13 @@ bool CTacticalPointSystem::Parse(const char* sSpec, TTacticalPointQuery& _query,
     string sWords[MAXWORDS];
 
     int iC = 0, iWord = 0;
-    for (; iWord < MAXWORDS; !sWords[iWord].empty(), iWord++)
+    for (; iWord < MAXWORDS; iWord++)
     {
         sWords[iWord] = sInput.Tokenize("_", iC);
+        if (sWords[iWord].empty())
+        {
+            break;
+        }
     }
 
     TTacticalPointQuery token;

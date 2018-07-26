@@ -188,7 +188,7 @@ bool FillSpaceTool::FillHoleBasedOnSelectedElements()
 
     if (validEdgeList.empty())
     {
-        false;
+        return false;
     }
     std::vector<BrushEdge3D> linkedEdgeList;
     std::set<int> usedEdgeSet;

@@ -1828,8 +1828,8 @@ namespace
                 {
                     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
                     {
-                        uint32 stencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rRP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);
-                        stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) | CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+                        uint32 stencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rRP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);                        
+                        stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) || (CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0));
                         result[0].f[0] = azlossy_caster(stencilRef);
                         result[0].f[1] = 0.0f;
                         result[0].f[2] = 0.0f;

@@ -2911,7 +2911,7 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
             {
                 eNewType = GetOperandDataType(psContext, &psInst->asOperands[2]);
                 //Check assumption that both the values which MOVC might pick have the same basic data type.
-                if (!psContext->flags & HLSLCC_FLAG_AVOID_TEMP_REGISTER_ALIASING)
+                if (!(psContext->flags & HLSLCC_FLAG_AVOID_TEMP_REGISTER_ALIASING))
                 {
                     ASSERT(GetOperandDataType(psContext, &psInst->asOperands[2]) == GetOperandDataType(psContext, &psInst->asOperands[3]));
                 }

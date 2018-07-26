@@ -1834,7 +1834,7 @@ struct ParticleParams
         , fVolumeThickness(1.0f)
         , fSoundFXParam(1.f)
         , fSortConvergancePerFrame(1.f)
-        , eConfigMax(eConfigMax.VeryHigh)
+        , eConfigMax(EConfigSpecBrief::VeryHigh)
         // the default vec3 constructor sets values to nan if _DEBUG is defined.  This occurs after the ZeroInit base class initialization.  Reset these to zero.
         , vLocalInitAngles(ZERO)
         , vLocalRandomAngles(ZERO)

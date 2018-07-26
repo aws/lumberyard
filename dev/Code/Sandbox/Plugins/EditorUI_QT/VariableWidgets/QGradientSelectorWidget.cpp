@@ -472,7 +472,6 @@ bool QGradientSelectorWidget::LoadSessionPresetFromName(QSettings* settings, con
     QStringList presets = settings->childGroups();
     for (QString preset : presets)
     {
-        QString curveName = "";
         SCurveEditorContent content;
         QGradientStops stops;
         settings->beginGroup(preset); //start of this preset
@@ -485,7 +484,6 @@ bool QGradientSelectorWidget::LoadSessionPresetFromName(QSettings* settings, con
             SCurveEditorCurve _curve;
             f = settings->value("defValue").toFloat();
             _curve.m_defaultValue = f;
-            QString curveName = settings->value("name").toString();
             QStringList keys = settings->childGroups();
             for (QString key : keys)
             {
@@ -521,7 +519,7 @@ bool QGradientSelectorWidget::LoadSessionPresetFromName(QSettings* settings, con
             stops.append(_stop);
         }
         settings->endGroup(); // end of stops
-        AddPresetToLibrary(new QGradientSwatchWidget(content, stops, this), index, curveName, true, false);
+        AddPresetToLibrary(new QGradientSwatchWidget(content, stops, this), index, preset, true, false);
         settings->endGroup(); //end of this preset
     }
     settings->endGroup(); //end of this library

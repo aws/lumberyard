@@ -460,7 +460,7 @@ void CAIDebuggerView::OnMButtonDown(QMouseEvent* event)
             update();
             grabMouse();
         }
-        else if (m_listRect.contains(event->pos()) || m_listRect.contains(event->pos()))
+        else if (m_listRect.contains(event->pos()) || m_detailsRect.contains(event->pos()))
         {
             m_dragStartVal = m_itemsOffset;
             m_dragStartPt = event->pos();

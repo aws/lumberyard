@@ -400,6 +400,13 @@ bool ShapeTool::IsSeparateStatus() const
     return m_bSeparatedNewShape;
 }
 
+void ShapeTool::StoreSeparateStatus()
+{
+    const bool isShiftModifierOn = Qt::ShiftModifier & QApplication::queryKeyboardModifiers();
+    const bool isPickedPolygon = GetPickedPolygon();
+    m_bSeparatedNewShape = isPickedPolygon && isShiftModifierOn;
+}
+
 void ShapeTool::CancelCreation()
 {
     MODEL_SHELF_RECONSTRUCTOR(GetModel());

@@ -1697,7 +1697,7 @@ void CEntityObject::EndEditParams(IEditor* ie)
     }
     ms_pTreePanel = NULL;
 
-    if (s_pPropertiesPanel && s_pPropertiesPanel)
+    if (s_pPropertiesPanel)
     {
         s_pPropertiesPanel->ClearUpdateCallback();
     }
